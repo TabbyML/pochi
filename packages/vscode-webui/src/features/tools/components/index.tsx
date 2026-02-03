@@ -20,6 +20,7 @@ import { searchFilesTool } from "./search-files";
 import { StartBackgroundJobTool } from "./start-background-job";
 import { todoWriteTool } from "./todo-write";
 import type { ToolProps } from "./types";
+import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
 
 export function ToolInvocationPart({
@@ -28,12 +29,14 @@ export function ToolInvocationPart({
   className,
   messages,
   changes,
+  isSubTask,
 }: {
   tool: ToolUIPart<UITools>;
   isLoading: boolean;
   messages: Message[];
   className?: string;
   changes?: ToolCallCheckpoint;
+  isSubTask?: boolean;
 }) {
   const toolName = getToolName(tool);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
@@ -52,6 +55,7 @@ export function ToolInvocationPart({
           isLoading={isLoading}
           changes={changes}
           messages={messages}
+          isSubTask={isSubTask}
         />
       ) : (
         <McpToolCall
@@ -82,6 +86,7 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   globFiles: globFilesTool,
   todoWrite: todoWriteTool,
   editNotebook: editNotebookTool,
+  useSkill: UseSkillTool,
   // @ts-expect-error
   newTask: newTaskTool,
 };

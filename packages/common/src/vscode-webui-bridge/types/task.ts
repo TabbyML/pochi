@@ -1,3 +1,5 @@
+import type { ActiveSelection } from "./message";
+
 export type FileUIPart = {
   name: string;
   contentType: string;
@@ -20,12 +22,13 @@ export type PochiTaskParams = { cwd: string } & (
       uid?: string;
       prompt?: string;
       files?: FileUIPart[];
+      activeSelection?: ActiveSelection;
       mcpConfigOverride?: McpConfigOverride;
     }
   | {
       type: "fork-task";
-      messages: string;
-      title: string;
+      uid: string;
+      storeId: string;
       mcpConfigOverride?: McpConfigOverride;
     }
   | {

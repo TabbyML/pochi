@@ -28,7 +28,7 @@ export {
   buildShellCommand,
 } from "./shell";
 export { parseAgentFile } from "./agent-parser";
-export { parseWorkflow } from "./workflow-parser";
+export { parseSkillFile } from "./skill-parser";
 export {
   type NotebookCell,
   type NotebookContent,
@@ -39,3 +39,4 @@ export {
   serializeNotebook,
 } from "./notebook-utils";
 export { readMediaFile } from "./media";
+export { resolveToolCallArgs, resolvePochiUri } from "./resolve-tool-call-args";

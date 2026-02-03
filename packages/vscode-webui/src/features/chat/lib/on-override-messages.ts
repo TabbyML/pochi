@@ -1,9 +1,5 @@
-import { getTaskChangedFileStore } from "@/lib/hooks/use-task-changed-files";
 import { vscodeHost } from "@/lib/vscode";
-import { prompts } from "@getpochi/common";
-import { extractWorkflowBashCommands } from "@getpochi/common/message-utils";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
-import { ThreadAbortSignal } from "@quilted/threads";
 import { unique } from "remeda";
 
 /**
@@ -14,7 +10,6 @@ export async function onOverrideMessages({
   store,
   taskId,
   messages,
-  abortSignal,
 }: {
   store: LiveKitStore;
   taskId: string;
@@ -27,7 +22,6 @@ export async function onOverrideMessages({
   const lastMessage = messages.at(-1);
   if (lastMessage) {
     const ckpt = await appendCheckpoint(lastMessage);
-    await appendWorkflowBashOutputs(lastMessage, abortSignal);
 
     const firstCheckpoint = checkpoints.at(0);
     if (firstCheckpoint) {
@@ -74,49 +68,6 @@ async function appendCheckpoint(message: Message) {
     },
   });
   return ckpt;
-}
-
-/**
- * Executes bash commands found in workflows within a message.
- * @param message The message to process for workflow bash commands.
- */
-async function appendWorkflowBashOutputs(
-  message: Message,
-  abortSignal: AbortSignal,
-) {
-  if (message.role !== "user") return;
-
-  const commands = extractWorkflowBashCommands(message);
-  if (!commands.length) return [];
-
-  const bashCommandResults: {
-    command: string;
-    output: string;
-    error?: string;
-  }[] = [];
-  for (const command of commands) {
-    if (abortSignal?.aborted) {
-      break;
-    }
-
-    try {
-      const { output, error } = await vscodeHost.executeBashCommand(
-        command,
-        ThreadAbortSignal.serialize(abortSignal),
-      );
-      bashCommandResults.push({ command, output, error });
-    } catch (e) {
-      const error = e instanceof Error ? e.message : String(e);
-      bashCommandResults.push({ command, output: "", error });
-      // The AbortError is a specific error that should stop the whole process.
-      if (e instanceof Error && e.name === "AbortError") {
-        break;
-      }
-    }
-  }
-  if (bashCommandResults.length) {
-    prompts.injectBashOutputs(message, bashCommandResults);
-  }
 }
 
 async function updateTaskLineChanges(
@@ -171,6 +122,6 @@ async function updateChangedFiles(
       .map((p) => p.input.path),
   );
 
-  const store = getTaskChangedFileStore(taskId);
-  await store.getState().updateChangedFiles(recentChangedFiles, lastCheckpoint);
+  const taskChangedFiles = await vscodeHost.readTaskChangedFiles(taskId);
+  await taskChangedFiles.updateChangedFiles(recentChangedFiles, lastCheckpoint);
 }

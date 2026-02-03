@@ -3,7 +3,11 @@ import { useCallback, useEffect, useMemo } from "react"; // useMemo is now in th
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
+import {
+  type SubtaskInfo,
+  useAutoApproveGuard,
+  useToolCallLifeCycle,
+} from "@/features/chat";
 import {
   useSelectedModels,
   useSubtaskOffhand,
@@ -11,7 +15,8 @@ import {
 } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -21,6 +26,7 @@ interface ToolCallApprovalButtonProps {
   isSubTask: boolean;
   taskId?: string;
   parentUid?: string;
+  subtask?: SubtaskInfo;
 }
 
 // Component
@@ -29,6 +35,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   pendingApproval,
   isSubTask,
   parentUid,
+  subtask,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -80,6 +87,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
   const store = useDefaultStore();
+  const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
+    isSubTask && subtask?.agent === "browser" && taskId
+      ? { type: subtask.agent, sessionId: taskId }
+      : undefined;
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
@@ -110,12 +121,27 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
             : undefined;
         const subtaskUid = newTaskInput?._meta?.uid;
         if (subtaskUid) {
+          // For async tasks (runAsync: true), use VS Code to open a panel.
+          // In web UI, fall back to manual navigation so the task actually starts.
+          if (newTaskInput?.runAsync && isVSCodeEnvironment()) {
+            lifecycle.execute(tools[i].input, {
+              contentType: selectedModel?.contentType,
+              builtinSubAgentInfo,
+            });
+            const uid = parentUid || taskId;
+            if (uid) {
+              vscodeHost.onTaskRunning(uid);
+            }
+            return;
+          }
+          // For non-async tasks, use manual navigation
           manualRunSubtask(subtaskUid);
         }
         return;
       }
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
+        builtinSubAgentInfo,
       });
 
       const uid = parentUid || taskId;
@@ -133,6 +159,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     selectedModel,
     taskId,
     parentUid,
+    builtinSubAgentInfo,
   ]);
 
   const onReject = useCallback(() => {

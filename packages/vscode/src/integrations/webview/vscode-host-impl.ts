@@ -1,23 +1,31 @@
 import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
+import { BrowserSessionStore } from "@/lib/browser-session-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
   collectRuleFiles,
-  collectWorkflows,
   copyThirdPartyRules,
   detectThirdPartyRules,
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { ForkTaskStatus } from "@/lib/fork-task-status";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiLanguage } from "@/lib/pochi-language";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { SkillManager } from "@/lib/skill-manager";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskChangedFilesManager } from "@/lib/task-changed-files-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "@/lib/task-data-store";
 import {
@@ -42,6 +50,7 @@ import { readFile } from "@/tools/read-file";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
+import { useSkill } from "@/tools/use-skill";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -54,10 +63,14 @@ import {
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
+  resolvePochiUri,
+  resolveToolCallArgs,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
+  type BuiltinSubAgentInfo,
   type CaptureEvent,
+  type ChangedFileContent,
   type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
@@ -73,6 +86,7 @@ import {
   type RuleFile,
   type SaveCheckpointOptions,
   type SessionState,
+  type SkillFile,
   type TaskArchivedParams,
   type TaskChangedFile,
   type TaskStates,
@@ -97,10 +111,9 @@ import {
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
-import * as R from "remeda";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
-import { Lifecycle, inject, injectable, scoped } from "tsyringe";
+import { Lifecycle, container, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
@@ -114,6 +127,7 @@ import {
   EditorContextState,
   type FileSelection,
 } from "../editor/editor-context-state";
+import { PochiFileSystemProvider } from "../editor/pochi-file-system-provider";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskActivityTracker } from "../editor/task-activity-tracker";
 // biome-ignore lint/style/useImportType: needed for dependency injections
@@ -163,6 +177,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
+    private readonly skillManager: SkillManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly taskActivityTracker: TaskActivityTracker,
     private readonly githubPullRequestState: GithubPullRequestState,
@@ -173,6 +188,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly globalStateSignals: GlobalStateSignals,
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
+    private readonly taskChangedFilesManager: TaskChangedFilesManager,
+    private readonly lang: PochiLanguage,
+    private readonly browserSessionStore: BrowserSessionStore,
+    private readonly forkTaskStatus: ForkTaskStatus,
   ) {}
 
   private get cwd() {
@@ -192,17 +211,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
-  };
-
-  listWorkflows = (): Promise<
-    {
-      id: string;
-      path: string;
-      content: string;
-      frontmatter: { model?: string };
-    }[]
-  > => {
-    return this.cwd ? collectWorkflows(this.cwd) : Promise.resolve([]);
   };
 
   readResourceURI = (): Promise<ResourceURI> => {
@@ -262,6 +270,20 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return ThreadSignal.serialize(this.taskHistoryStore.tasks);
   };
 
+  readBrowserSession = async (taskId: string) => {
+    return ThreadSignal.serialize(
+      computed(() => this.browserSessionStore.browserSessions.value[taskId]),
+    );
+  };
+
+  registerBrowserSession = async (taskId: string) => {
+    return this.browserSessionStore.registerBrowserSession(taskId);
+  };
+
+  unregisterBrowserSession = async (taskId: string) => {
+    return this.browserSessionStore.unregisterBrowserSession(taskId);
+  };
+
   readEnvironment = async (options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
@@ -308,6 +330,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ...systemInfo,
         customRules,
       },
+      shareId: this.task?.shareId ?? undefined,
     };
 
     return environment;
@@ -328,6 +351,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readPochiTabs = async (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return ThreadSignal.serialize(this.taskActivityTracker.state);
+  };
+
+  closePochiTabs = async (uid?: string): Promise<void> => {
+    PochiFileSystemProvider.closePochiTabs(uid);
   };
 
   readActiveSelection = async (): Promise<
@@ -413,6 +440,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
+        builtinSubAgentInfo?: BuiltinSubAgentInfo;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -443,14 +471,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
 
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
+      const envs = resolveToolCallEnvs(toolName, options.builtinSubAgentInfo);
       const toolCallStart = Date.now();
+      const resolvedArgs = resolveToolCallArgs(args, this.task.id);
       const result = await safeCall(
-        tool(resolveToolCallArgs(args, this.task), {
+        tool(resolvedArgs, {
           abortSignal,
           messages: [],
           toolCallId: options.toolCallId,
           cwd: this.cwd,
           contentType: options.contentType,
+          envs,
         }),
       );
 
@@ -513,8 +544,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ? new ThreadAbortSignal(options.abortSignal)
         : undefined;
 
+      const resolvedArgs = resolveToolCallArgs(
+        args,
+        this.task.id,
+      ) as Partial<unknown> | null;
       return await safeCall<PreviewReturnType>(
-        tool(resolveToolCallArgs(args, this.task) as Partial<unknown> | null, {
+        tool(resolvedArgs, {
           ...options,
           abortSignal,
           cwd: this.cwd,
@@ -534,12 +569,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
+    if (!this.task) return;
     let fileUri = vscode.Uri.parse(filePath);
     let resolvedPath = filePath;
 
     // Open file directly if it's a pochi scheme
-    if (fileUri.scheme === "pochi" && this.task) {
-      resolvedPath = resolvePochiUri(filePath, this.task);
+    if (fileUri.scheme === "pochi") {
+      resolvedPath = resolvePochiUri(filePath, this.task.id);
       vscode.commands.executeCommand(
         "vscode.open",
         vscode.Uri.parse(resolvedPath),
@@ -835,25 +871,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   );
 
-  diffChangedFiles = runExclusive.build(
-    this.checkpointGroup,
-    async (files: TaskChangedFile[]) => {
-      return this.checkpointService.diffChangedFiles(files);
-    },
-  );
-
-  showChangedFiles = runExclusive.build(
-    this.checkpointGroup,
-    async (files: TaskChangedFile[], title: string) => {
-      const changes =
-        await this.checkpointService.getChangedFilesChanges(files);
-      if (!this.cwd) {
-        return false;
-      }
-      return await showDiffChanges(changes, title, this.cwd, true);
-    },
-  );
-
   readExtensionVersion = async () => {
     return this.context.extension.packageJSON.version;
   };
@@ -934,8 +951,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   openTaskInPanel = async (
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void> => {
+    if (
+      options?.preserveFocus &&
+      (params.type === "open-task" || params.type === "new-task") &&
+      params.uid &&
+      this.taskActivityTracker.state.value[params.uid]
+    ) {
+      return;
+    }
     await PochiTaskEditorProvider.openTaskEditor(params, options);
   };
 
@@ -1035,6 +1063,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<CustomAgentFile[]>
   > => {
     return ThreadSignal.serialize(this.customAgentManager.agents);
+  };
+
+  readSkills = async (): Promise<ThreadSignalSerialization<SkillFile[]>> => {
+    return ThreadSignal.serialize(this.skillManager.skills);
   };
 
   onTaskUpdated = async (taskData: unknown): Promise<void> => {
@@ -1140,15 +1172,26 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readTaskArchived = async () => {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return {
       value: ThreadSignal.serialize(this.taskStateStore.getArchivedSignal()),
+      hasArchivableTasks: ThreadSignal.serialize(
+        computed(() => {
+          const tasks = this.taskHistoryStore.tasks.value;
+          const archived = this.taskStateStore.getArchivedSignal().value;
+          return Object.values(tasks).some((task) => {
+            if (task.parentId !== null) return false;
+            if (archived[task.id]) return false;
+            return task.updatedAt < oneWeekAgo;
+          });
+        }),
+      ),
       setTaskArchived: async (params: TaskArchivedParams) => {
         if (params.type === "single") {
           await this.taskStateStore.setArchived({
             [params.taskId]: params.archived,
           });
         } else if (params.type === "batch") {
-          const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
           const tasks = this.taskHistoryStore.tasks.value;
           const updates: Record<string, boolean> = {};
 
@@ -1169,6 +1212,68 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
+  readLang = async () => ({
+    value: ThreadSignal.serialize(this.lang.currentLang),
+    updateLang: this.lang.updateLang,
+  });
+
+  readForkTaskStatus = async () => ({
+    status: ThreadSignal.serialize(this.forkTaskStatus.status),
+    setForkTaskStatus: async (uid: string, status: "inProgress" | "ready") => {
+      this.forkTaskStatus.setStatus(uid, status);
+    },
+  });
+
+  readTaskChangedFiles = async (taskId: string) => {
+    // Migrate from global state if needed (async, handles its own errors)
+    await this.taskChangedFilesManager.migrateFromGlobalState(taskId);
+
+    return {
+      changedFiles: ThreadSignal.serialize(
+        this.taskChangedFilesManager.getChangedFilesSignal(taskId),
+      ),
+      visibleChangedFiles: ThreadSignal.serialize(
+        this.taskChangedFilesManager.getVisibleChangedFilesSignal(taskId),
+      ),
+      updateChangedFiles: async (files: string[], checkpoint: string) => {
+        await this.taskChangedFilesManager.updateChangedFiles(
+          taskId,
+          files,
+          checkpoint,
+          this.checkpointService,
+        );
+      },
+      acceptChangedFile: async (
+        content: ChangedFileContent,
+        filepath?: string,
+      ) => {
+        await this.taskChangedFilesManager.acceptChangedFile(
+          taskId,
+          content,
+          filepath,
+        );
+      },
+      revertChangedFile: async (filepath?: string) => {
+        await this.taskChangedFilesManager.revertChangedFile(
+          taskId,
+          filepath,
+          this.checkpointService,
+        );
+      },
+      showChangedFiles: async (filepath?: string) => {
+        if (!this.cwd) {
+          return false;
+        }
+        return await this.taskChangedFilesManager.showChangedFiles(
+          taskId,
+          this.cwd,
+          filepath,
+          this.checkpointService,
+        );
+      },
+    };
+  };
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();
@@ -1185,40 +1290,24 @@ function safeCall<T>(x: Promise<T>) {
   });
 }
 
-const resolvePochiUri = (
-  path: string,
-  task: { id: string; parentId: string | null },
+const resolveToolCallEnvs = (
+  toolName: string,
+  builtInSubAgentInfo?: BuiltinSubAgentInfo,
 ) => {
-  const uri = vscode.Uri.parse(path);
-  if (uri.scheme !== "pochi") {
-    return path;
-  }
-  if (uri.authority === "self") {
-    return path.replace("self", task.id);
-  }
-  if (uri.authority === "parent") {
-    return path.replace("parent", task.parentId || task.id);
-  }
-  return path;
-};
+  let envs: Record<string, string> | undefined;
 
-const resolveToolCallArgs = (
-  args: unknown,
-  task: { id: string; parentId: string | null },
-) => {
-  if (!R.isObjectType(args)) {
-    return args;
+  if (builtInSubAgentInfo?.type !== "browser") {
+    return envs;
   }
 
-  return R.mapValues(args, (v) => {
-    if (typeof v === "string") {
-      try {
-        return resolvePochiUri(v, task);
-      } catch (err) {
-        return v;
-      }
-    }
-  });
+  if (toolName !== "executeCommand") {
+    return envs;
+  }
+
+  const browserSessionStore = container.resolve(BrowserSessionStore);
+  envs = browserSessionStore.getAgentBrowserEnvs(builtInSubAgentInfo.sessionId);
+
+  return envs;
 };
 
 const ToolMap: Record<
@@ -1238,6 +1327,7 @@ const ToolMap: Record<
   applyDiff,
   todoWrite,
   editNotebook,
+  useSkill,
 };
 
 const ToolPreviewMap: Record<

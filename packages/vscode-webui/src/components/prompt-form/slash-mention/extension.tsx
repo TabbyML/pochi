@@ -8,8 +8,8 @@ import {
 } from "@tiptap/react";
 
 /**
- * A React component to render a workflow node in the editor.
- * Displays the workflow with a / symbol in a highlighted style.
+ * A React component to render a slash command node in the editor.
+ * Displays the slash command with a / symbol in a highlighted style.
  */
 export const SlashComponent = (props: NodeViewProps) => {
   const { node } = props;
@@ -24,11 +24,11 @@ export const SlashComponent = (props: NodeViewProps) => {
   );
 };
 
-// Create a unique plugin key for workflow suggestions
-export const SlashMentionPluginKey = new PluginKey("workflowMentionPluginKey");
+// Create a unique plugin key for slash command suggestions
+export const SlashMentionPluginKey = new PluginKey("slashMentionPluginKey");
 
 /**
- * A custom TipTap extension to handle workflows (like /workflow-name).
+ * A custom TipTap extension to handle slash commands (like /agent-name).
  */
 export const PromptFormSlashExtension = Mention.extend({
   name: "slashMention",
@@ -37,13 +37,12 @@ export const PromptFormSlashExtension = Mention.extend({
   },
 
   renderText({ node }) {
-    const { type, id, path, rawData } = node.attrs;
-    if (type === "workflow") {
-      const loadedContent: string = rawData.content || `error loading ${type}`;
-      return prompts.workflow(id, path, loadedContent);
-    }
+    const { type, id, path } = node.attrs;
     if (type === "custom-agent") {
       return prompts.customAgent(id, path);
+    }
+    if (type === "skill") {
+      return prompts.skill(id, path);
     }
     return "";
   },

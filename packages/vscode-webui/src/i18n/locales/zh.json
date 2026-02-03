@@ -14,8 +14,7 @@
     "subtitle": "Pochi 由 AI 驱动，可能会出现错误。",
     "tips": {
       "attachments": "发送文件",
-      "context": "附加上下文",
-      "workflow": "触发工作流"
+      "context": "附加上下文"
     },
     "autoSave": {
       "title": "启用自动保存时 Pochi 无法正常工作。",
@@ -62,7 +61,7 @@
     "super": "加强",
     "swift": "极速",
     "reload": "重新加载",
-    "subscriptionRequired": "需要订阅"
+    "subscriptionRequired": "订阅以使用 Super 模型"
   },
   "worktreeSelect": {
     "selectWorktree": "选择工作树",
@@ -124,13 +123,10 @@
       "developerMode": "开发者模式",
       "enablePochiModels": "启用 Pochi 模型",
       "clearStorage": "清除存储",
+      "resetReviewPlanTutorialCounter": "重置评审计划教程计数器",
       "language": "语言",
       "languageDescription": "选择您的首选语言",
       "hideRecommendSettings": "隐藏推荐设置"
-    },
-    "workflows": {
-      "title": "工作流",
-      "noWorkflows": "工作区中未找到工作流。"
     },
     "rules": {
       "title": "规则",
@@ -169,6 +165,16 @@
         "validationError": "代理定义缺少必需的属性"
       }
     },
+    "skills": {
+      "title": "技能",
+      "loading": "加载技能中...",
+      "empty": "未找到技能。在工作区的 .pochi/skills/ 目录中创建技能文件",
+      "errors": {
+        "readError": "读取技能定义失败",
+        "parseError": "解析技能定义失败",
+        "validationError": "技能定义缺少必需的属性"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "全局配置 Pochi 的 MCP。",
@@ -203,6 +209,10 @@
     "needHelp": "需要帮助？查看文档"
   },
   "tasksPage": {
+    "tasks": "任务",
+    "filter": "筛选任务",
+    "archivedTasks": "已归档任务",
+    "deletedWorktrees": "已删除的工作树",
     "emptyState": {
       "title": "未找到任务",
       "description": "无可用任务",
@@ -225,8 +235,6 @@
     "newTask": "新任务",
     "deleted": "已删除",
     "tasksCount": "{{count}} 个任务",
-    "showDeletedWorktrees": "显示已删除的工作树",
-    "hideDeletedWorktrees": "隐藏已删除的工作树",
     "openWorktreeDiff": "查看更改",
     "openWorktreeInTerminal": "在终端中打开工作树",
     "deleteWorktree": "删除工作树",
@@ -242,17 +250,18 @@
       "requiresApproval": "需要批准"
     },
     "loadMore": "加载更多",
-    "showArchivedTasks": "显示已归档任务",
-    "hideArchivedTasks": "隐藏已归档任务",
     "archiveTask": "归档任务",
     "unarchiveTask": "取消归档任务",
-    "archiveOldTasks": "归档一周前的任务",
-    "moreOptions": "更多选项"
+    "archiveOldTasks": "归档旧任务",
+    "archiveOldTasksTooltip": "归档一周前的任务",
+    "showAnyTasks": "显示所有任务",
+    "showOpenTasks": "显示活动任务"
   },
   "toolInvocation": {
     "requiresApproval": "需要批准",
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",
+
     "writing": "正在写入 ",
     "continue": "继续",
     "cancel": "取消",
@@ -358,14 +367,13 @@
   "mentionList": {
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索...",
-    "workflow": "工作流",
     "agent": "代理",
+    "skill": "技能",
     "useHashForIssues": "使用 # 搜索 Github issue"
   },
   "subtask": {
     "back": "返回",
-    "complete": "完成",
-    "startImplementation": "开始实现"
+    "complete": "完成"
   },
   "errorMessageView": {
     "reachedCreditLimit": "您已达到消费限额。",
@@ -471,8 +479,13 @@
     "fixError": "使用 Pochi 修复错误"
   },
   "planCard": {
-    "title": "计划",
     "reviewPlan": "评审",
-    "executePlan": "执行计划"
+    "reviewPlanTitle": "评审计划",
+    "reviewPlanTooltip": "点击plan artifact 的行号前的‘+’ 来 leave comments",
+    "executePlan": "执行计划",
+    "creatingPlan": "正在分析您的代码并制定计划..."
+  },
+  "browserView": {
+    "noFrameAvailable": "无画面"
   }
 }

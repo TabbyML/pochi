@@ -3,7 +3,10 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
+  BrowserSession,
+  BuiltinSubAgentInfo,
   CaptureEvent,
+  ChangedFileContent,
   CustomAgentFile,
   DisplayModel,
   FileDiff,
@@ -17,6 +20,7 @@ import type {
   Review,
   RuleFile,
   SessionState,
+  SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
@@ -77,6 +81,7 @@ const VSCodeHostStub = {
     _options: {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
@@ -96,16 +101,6 @@ const VSCodeHostStub = {
   listRuleFiles: (): Promise<RuleFile[]> => {
     return Promise.resolve([]);
   },
-  listWorkflows: (): Promise<
-    {
-      id: string;
-      path: string;
-      content: string;
-      frontmatter: { model?: string };
-    }[]
-  > => {
-    return Promise.resolve([]);
-  },
   readActiveTabs: (): Promise<
     ThreadSignalSerialization<Array<{ filepath: string; isDir: boolean }>>
   > => {
@@ -117,6 +112,9 @@ const VSCodeHostStub = {
   },
   readPochiTabs: (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
+  },
+  closePochiTabs: (_uid?: string): Promise<void> => {
+    return Promise.resolve();
   },
   readActiveSelection: (): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>
@@ -205,16 +203,7 @@ const VSCodeHostStub = {
   showCheckpointDiff: async (): Promise<boolean> => {
     return Promise.resolve(true);
   },
-  diffChangedFiles: async (
-    _changedFiles: TaskChangedFile[],
-  ): Promise<TaskChangedFile[]> => {
-    return Promise.resolve([]);
-  },
-  showChangedFiles: async (
-    _changedFiles: TaskChangedFile[],
-  ): Promise<boolean> => {
-    return Promise.resolve(true);
-  },
+
   readExtensionVersion: () => {
     return Promise.resolve("");
   },
@@ -264,9 +253,16 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<CustomAgentFile[]>);
   },
 
+  readSkills: async (): Promise<ThreadSignalSerialization<SkillFile[]>> => {
+    return Promise.resolve({} as ThreadSignalSerialization<SkillFile[]>);
+  },
+
   openTaskInPanel: async (
     _params: PochiTaskParams,
-    _options?: { keepEditor?: boolean },
+    _options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void> => {},
 
   sendTaskNotification: async (): Promise<void> => {},
@@ -329,6 +325,15 @@ const VSCodeHostStub = {
   setGlobalState: async (): Promise<void> => {},
   readTasks: (): Promise<ThreadSignalSerialization<Record<string, unknown>>> =>
     Promise.resolve({} as ThreadSignalSerialization<Record<string, unknown>>),
+  readBrowserSession: (
+    _taskId: string,
+  ): Promise<ThreadSignalSerialization<BrowserSession | undefined>> =>
+    Promise.resolve(
+      {} as ThreadSignalSerialization<BrowserSession | undefined>,
+    ),
+  registerBrowserSession: (_taskId: string): Promise<void> => Promise.resolve(),
+  unregisterBrowserSession: (_taskId: string): Promise<void> =>
+    Promise.resolve(),
   readMcpConfigOverride: async (
     _taskId: string,
   ): Promise<{
@@ -345,12 +350,61 @@ const VSCodeHostStub = {
   },
   readTaskArchived(): Promise<{
     value: ThreadSignalSerialization<Record<string, boolean>>;
+    hasArchivableTasks: ThreadSignalSerialization<boolean>;
     setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
   }> {
     return Promise.resolve({
       value: {} as ThreadSignalSerialization<Record<string, boolean>>,
+      hasArchivableTasks: {} as ThreadSignalSerialization<boolean>,
       setTaskArchived: (_params: TaskArchivedParams) => Promise.resolve(),
     });
+  },
+
+  readLang: async (): Promise<{
+    value: ThreadSignalSerialization<string>;
+    updateLang: (lang: string) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<string>,
+      updateLang: (_lang: string) => Promise.resolve(),
+    };
+  },
+
+  readForkTaskStatus: async (): Promise<{
+    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
+    setForkTaskStatus: () => Promise<void>;
+  }> => {
+    return {
+      status: {} as ThreadSignalSerialization<
+        Record<string, "inProgress" | "ready">
+      >,
+      setForkTaskStatus: () => Promise.resolve(),
+    };
+  },
+
+  readTaskChangedFiles: async (
+    _taskId: string,
+  ): Promise<{
+    changedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    visibleChangedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
+    acceptChangedFile: (
+      content: ChangedFileContent,
+      filepath?: string,
+    ) => Promise<void>;
+    revertChangedFile: (filepath?: string) => Promise<void>;
+    showChangedFiles: (filepath?: string) => Promise<boolean>;
+  }> => {
+    return {
+      changedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
+      visibleChangedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
+      updateChangedFiles: (_files: string[], _checkpoint: string) =>
+        Promise.resolve(),
+      acceptChangedFile: (_content: ChangedFileContent, _filepath?: string) =>
+        Promise.resolve(),
+      revertChangedFile: (_filepath?: string) => Promise.resolve(),
+      showChangedFiles: (_filepath?: string) => Promise.resolve(true),
+    };
   },
 } satisfies VSCodeHostApi;
 

@@ -15,8 +15,7 @@ import { signal } from "@preact/signals-core";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
 import type { FileChange } from "../editor/diff-changes-editor";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { WorktreeManager } from "../git/worktree";
+import { getMainWorktreePath } from "../git/util";
 import { ShadowGitRepo } from "./shadow-git-repo";
 import {
   filterGitChanges,
@@ -26,6 +25,33 @@ import {
 
 const logger = getLogger("CheckpointService");
 const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
+
+/** Timeout for saveCheckpoint operation in milliseconds */
+const SaveCheckpointTimeoutMs = 10_000;
+
+/**
+ * Wraps a promise with a timeout. Returns null if the timeout is reached.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operationName: string,
+): Promise<T | null> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timeoutId = setTimeout(() => {
+      logger.warn(`${operationName} timed out after ${timeoutMs}ms`);
+      resolve(null);
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
 
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
@@ -40,7 +66,6 @@ export class CheckpointService implements vscode.Disposable {
     private readonly workspaceScope: WorkspaceScope,
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
-    private readonly worktreeManager: WorktreeManager,
   ) {}
 
   private get cwd() {
@@ -83,12 +108,24 @@ export class CheckpointService implements vscode.Disposable {
   /**
    * Saves a checkpoint for the current workspace.
    * @param message A message to associate with the checkpoint.
-   * @returns The commit hash of the created checkpoint. If the repository is clean, returns undefined.
+   * @returns The commit hash of the created checkpoint. If the repository is clean or timeout, returns null.
    */
   saveCheckpoint = async (
     message: string,
     options: SaveCheckpointOptions = {},
   ): Promise<string | null> => {
+    return withTimeout(
+      this.saveCheckpointImpl(message, options),
+      SaveCheckpointTimeoutMs,
+      "saveCheckpoint",
+    );
+  };
+
+  private saveCheckpointImpl = async (
+    message: string,
+    options: SaveCheckpointOptions = {},
+  ): Promise<string | null> => {
+    const startTime = performance.now();
     logger.trace(`Saving checkpoint with message: ${message}`);
 
     await this.ensureInitialized();
@@ -100,19 +137,25 @@ export class CheckpointService implements vscode.Disposable {
     try {
       const status = await this.shadowGit.status();
       if (status.isClean && !options.force) {
+        const duration = performance.now() - startTime;
+        logger.trace(
+          `Skipped checkpoint (no changes) with message: ${message}, duration: ${duration.toFixed(0)}ms`,
+        );
         return null;
       }
       await this.shadowGit.stageAll();
       const commitMessage = `${checkpointCommitPrefix(this.cwd)}${message}`;
       const commitHash = await this.shadowGit.commit(commitMessage);
+      const duration = performance.now() - startTime;
       logger.trace(
-        `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}`,
+        `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}, duration: ${duration.toFixed(0)}ms`,
       );
       this.latestCheckpoint.value = commitHash;
       return commitHash;
     } catch (error) {
+      const duration = performance.now() - startTime;
       const errorMessage = toErrorMessage(error);
-      const fullErrorMessage = `Failed to save checkpoint with message: ${message}: ${errorMessage}`;
+      const fullErrorMessage = `Failed to save checkpoint with message: ${message}: ${errorMessage}, duration: ${duration.toFixed(0)}ms`;
       logger.error(fullErrorMessage, { error });
       throw new Error(fullErrorMessage);
     }
@@ -185,12 +228,7 @@ export class CheckpointService implements vscode.Disposable {
     if (!this.context.globalStorageUri) {
       throw new Error("Extension global storage URI is not available");
     }
-    await this.worktreeManager.inited.promise;
-    const workspacePath =
-      this.worktreeManager.getMainWorktree()?.path ?? this.workspaceScope.cwd;
-    if (!workspacePath) {
-      throw new Error("Cannot get workspace path");
-    }
+    const workspacePath = (await getMainWorktreePath(this.cwd)) ?? this.cwd;
     const storagePath = await this.getWorkspaceStoragePath(workspacePath);
     const checkpointDir = path.join(storagePath, "checkpoint");
     logger.info(

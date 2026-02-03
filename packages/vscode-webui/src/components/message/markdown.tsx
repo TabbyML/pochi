@@ -229,7 +229,13 @@ interface FileComponentProps {
   children: string;
 }
 
-interface WorkflowComponentProps {
+interface CustomAgentComponentProps {
+  id: string;
+  path: string;
+  children: string;
+}
+
+interface SkillComponentProps {
   id: string;
   path: string;
   children: string;
@@ -401,8 +407,8 @@ export function MessageMarkdown({
               ],
               attributes: {
                 ...defaultSchema.attributes,
-                workflow: ["path", "id"],
                 "custom-agent": ["path", "id"],
+                skill: ["path", "id"],
                 issue: ["id", "url", "title"],
                 ...mathSanitizeConfig.attributes,
               },
@@ -418,17 +424,24 @@ export function MessageMarkdown({
         const filepath = String(children);
         return <FileBadge path={filepath} />;
       },
-      workflow: (props: WorkflowComponentProps) => {
-        const { id, path } = props;
-        return (
-          <FileBadge label={id.replaceAll("user-content-", "/")} path={path} />
-        );
-      },
-      "custom-agent": (props: WorkflowComponentProps) => {
+      "custom-agent": (props: CustomAgentComponentProps) => {
         const { id, path } = props;
         const cleanId = id.replaceAll("user-content-", "/");
         // Handle legacy empty path
         if (!path || path === BuiltInAgentPath) {
+          return (
+            <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
+              {cleanId.replaceAll("/", "")}
+            </span>
+          );
+        }
+        return <FileBadge label={cleanId} path={path} />;
+      },
+      skill: (props: SkillComponentProps) => {
+        const { id, path } = props;
+        const cleanId = id.replaceAll("user-content-", "/");
+
+        if (!path) {
           return (
             <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
               {cleanId}

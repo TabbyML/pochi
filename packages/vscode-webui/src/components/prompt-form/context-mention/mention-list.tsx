@@ -32,6 +32,7 @@ export interface MentionListProps {
   query?: string;
   fetchItems?: (query?: string) => Promise<MentionItem[]>;
   checkHasIssues?: () => Promise<boolean>;
+  onSelectedIndexChange?: (index: number) => void;
 }
 
 /**
@@ -40,7 +41,14 @@ export interface MentionListProps {
  */
 export const MentionList = forwardRef<MentionListActions, MentionListProps>(
   (
-    { items: initialItems, command, query, fetchItems, checkHasIssues },
+    {
+      items: initialItems,
+      command,
+      query,
+      fetchItems,
+      checkHasIssues,
+      onSelectedIndexChange,
+    },
     ref,
   ) => {
     const { t } = useTranslation();
@@ -61,6 +69,11 @@ export const MentionList = forwardRef<MentionListActions, MentionListProps>(
       }
     }, [items.length, selectedIndex]);
 
+    // Notify parent when selected index changes
+    useEffect(() => {
+      onSelectedIndexChange?.(selectedIndex);
+    }, [selectedIndex, onSelectedIndexChange]);
+
     const handleSelect = useCallback(
       (item: MentionItem) => {
         command({ id: item.filepath, filepath: item.filepath });
@@ -75,7 +88,11 @@ export const MentionList = forwardRef<MentionListActions, MentionListProps>(
       handleSelect,
     );
 
-    useImperativeHandle(ref, () => keyboardNavigation);
+    useImperativeHandle(ref, () => ({
+      ...keyboardNavigation,
+      selectedIndex,
+      items,
+    }));
 
     return (
       <div className="relative flex w-[80vw] flex-col overflow-hidden py-1 sm:w-[600px]">
@@ -136,6 +153,7 @@ const MentionItemView = memo(function MentionItemView({
       className={`flex cursor-pointer flex-nowrap items-center gap-1 overflow-hidden rounded-md px-2 py-1.5 text-sm ${
         isSelected ? "bg-accent text-accent-foreground" : "hover:bg-muted/50"
       }`}
+      title={data.filepath}
       {...rest}
       ref={ref}
     >

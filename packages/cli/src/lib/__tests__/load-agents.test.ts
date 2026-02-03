@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadAgents } from "../load-agents";
+import { loadAgents, builtInAgentFiles } from "../load-agents";
 import * as path from "node:path";
 
 describe("Load Agents", () => {
@@ -14,8 +14,8 @@ describe("Load Agents", () => {
     expect(agents.length).toBeGreaterThanOrEqual(0);
   });
 
-  it("should return empty array for non-existent directories", async () => {
+  it("should return built-in agents for non-existent directories", async () => {
     const agents = await loadAgents("/non/existent/path", false);
-    expect(agents).toEqual([]);
+    expect(agents).toEqual(builtInAgentFiles);
   });
 });

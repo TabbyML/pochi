@@ -27,6 +27,7 @@ export const tables = {
       isPublicShared: State.SQLite.boolean({ default: false }),
       title: State.SQLite.text({ nullable: true }),
       parentId: State.SQLite.text({ nullable: true }),
+      runAsync: State.SQLite.boolean({ nullable: true }),
       status: State.SQLite.text({
         default: "pending-input",
         schema: TaskStatus,
@@ -222,7 +223,7 @@ export const events = {
     name: "v1.WriteTaskFile",
     schema: Schema.Struct({
       taskId: Schema.String,
-      filePath: Schema.String,
+      filePath: Schema.Literal("/plan.md"),
       content: Schema.String,
     }),
   }),
@@ -232,12 +233,44 @@ export const events = {
       messages: Schema.Array(DBMessage),
     }),
   }),
+  forkTaskInited: Events.synced({
+    name: "v1.ForkTaskInited",
+    schema: Schema.Struct({
+      tasks: Schema.Array(
+        Schema.Struct({
+          id: Schema.String,
+          cwd: Schema.optional(Schema.String),
+          title: Schema.optional(Schema.String),
+          parentId: Schema.optional(Schema.String),
+          modelId: Schema.optional(Schema.String),
+          status: TaskStatus,
+          git: Schema.optional(Git),
+          createdAt: Schema.Date,
+        }),
+      ),
+      messages: Schema.Array(
+        Schema.Struct({
+          id: Schema.String,
+          taskId: Schema.String,
+          data: DBMessage,
+        }),
+      ),
+      files: Schema.Array(
+        Schema.Struct({
+          taskId: Schema.String,
+          filePath: Schema.String,
+          content: Schema.String,
+        }),
+      ),
+    }),
+  }),
 };
 
 const materializers = State.SQLite.materializers(events, {
   "v1.TaskInited": ({
     id,
     parentId,
+    runAsync,
     createdAt,
     cwd,
     initMessage,
@@ -247,6 +280,7 @@ const materializers = State.SQLite.materializers(events, {
   }) => [
     tables.tasks.insert({
       id,
+      shareId: parentId ? undefined : `p-${id.replaceAll("-", "")}`,
       status: initMessages
         ? initMessages.length > 0
           ? "pending-model"
@@ -255,11 +289,13 @@ const materializers = State.SQLite.materializers(events, {
           ? "pending-model"
           : "pending-input",
       parentId,
+      runAsync: runAsync ?? false,
       createdAt,
       cwd,
       title: initTitle,
       displayId,
       updatedAt: createdAt,
+      isPublicShared: true,
     }),
     ...(initMessages?.map((message) => {
       return tables.messages.insert({
@@ -408,6 +444,13 @@ const materializers = State.SQLite.materializers(events, {
         })
         .where({ id: message.id }),
     ),
+  "v1.ForkTaskInited": ({ tasks, messages, files }) => [
+    ...tasks.map((task) =>
+      tables.tasks.insert({ ...task, updatedAt: task.createdAt }),
+    ),
+    ...messages.map((message) => tables.messages.insert(message)),
+    ...files.map((file) => tables.files.insert(file)),
+  ],
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

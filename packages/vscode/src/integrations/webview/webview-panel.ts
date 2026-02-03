@@ -73,7 +73,7 @@ export class PochiWebviewPanel
       info,
     );
     this.setupAuthEventListeners();
-    this.setupFileWatcher(info.cwd);
+    this.setupFileWatcher(info.cwd, info.uid);
 
     // Listen to panel events
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -98,6 +98,12 @@ export class PochiWebviewPanel
     return PochiWebviewPanel.panels
       .get(taskId)
       ?.webviewHost?.writeTaskFile(taskId, filePath, content);
+  }
+
+  static readTaskOutput(taskId: string) {
+    return PochiWebviewPanel.panels
+      .get(taskId)
+      ?.webviewHost?.readTaskOutput(taskId);
   }
 
   dispose(): void {
@@ -193,7 +199,9 @@ export class PochiTaskEditorProvider
   ) {
     try {
       const uid =
-        ((params.type === "new-task" || params.type === "open-task") &&
+        ((params.type === "new-task" ||
+          params.type === "open-task" ||
+          params.type === "fork-task") &&
           params.uid) ||
         crypto.randomUUID();
       const taskInfo: PochiTaskInfo = {

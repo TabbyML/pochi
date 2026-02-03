@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import * as crypto from "node:crypto";
+import { getTerminalEnv } from "@getpochi/common/env-utils";
 import { getShellPath } from "@getpochi/common/tool-utils";
-import { getCommonProcessEnv } from "./process-env";
 
 export interface BackgroundJob {
   id: string;
@@ -23,7 +23,7 @@ export class BackgroundJobManager {
     const child = spawn(command, {
       shell,
       cwd,
-      env: getCommonProcessEnv(),
+      env: { ...process.env, ...getTerminalEnv() },
       stdio: ["ignore", "pipe", "pipe"],
     });
 

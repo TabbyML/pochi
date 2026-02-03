@@ -29,7 +29,6 @@ import { CheckpointUI } from "../checkpoint-ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActiveSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
-import { BashOutputsPart } from "./bash-outputs";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
@@ -52,7 +51,8 @@ export const MessageList: React.FC<{
   className?: string;
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
-  hideCheckPoint?: boolean;
+  isSubTask?: boolean;
+  hideUserEditsActions?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
 }> = ({
@@ -65,7 +65,8 @@ export const MessageList: React.FC<{
   className,
   showLoader = true,
   forkTask,
-  hideCheckPoint,
+  isSubTask,
+  hideUserEditsActions,
   repairMermaid,
   repairingChart,
 }) => {
@@ -159,7 +160,8 @@ export const MessageList: React.FC<{
                       isExecuting={isExecuting}
                       messages={renderMessages}
                       forkTask={forkTask}
-                      hideCheckPoint={hideCheckPoint}
+                      isSubTask={isSubTask}
+                      hideUserEditsActions={hideUserEditsActions}
                       latestCheckpoint={latestCheckpoint}
                       lastCheckpointInMessage={lastCheckpointInMessage}
                       userEditsCheckpoint={getUserEditsCheckpoint(
@@ -180,7 +182,7 @@ export const MessageList: React.FC<{
                   nextMessage={renderMessages[messageIndex + 1]}
                   isLoading={isLoading || isExecuting}
                   forkTask={forkTask}
-                  hideCheckPoint={hideCheckPoint}
+                  isSubTask={isSubTask}
                   latestCheckpoint={latestCheckpoint}
                   lastCheckpointInMessage={lastCheckpointInMessage}
                 />
@@ -248,9 +250,10 @@ function Part({
   isExecuting,
   messages,
   forkTask,
-  hideCheckPoint,
+  isSubTask,
   latestCheckpoint,
   lastCheckpointInMessage,
+  hideUserEditsActions,
   userEditsCheckpoint,
 }: {
   role: Message["role"];
@@ -261,7 +264,8 @@ function Part({
   isExecuting: boolean;
   messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
-  hideCheckPoint?: boolean;
+  isSubTask?: boolean;
+  hideUserEditsActions?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
   userEditsCheckpoint?: {
@@ -289,7 +293,7 @@ function Part({
   }
 
   if (part.type === "data-checkpoint") {
-    if (role === "assistant" && isVSCodeEnvironment() && !hideCheckPoint) {
+    if (role === "assistant" && isVSCodeEnvironment() && !isSubTask) {
       return (
         <CheckpointUI
           checkpoint={part.data}
@@ -314,16 +318,13 @@ function Part({
       <UserEditsPart
         userEdits={part.data.userEdits}
         checkpoints={userEditsCheckpoint}
+        hideActions={hideUserEditsActions}
       />
     );
   }
 
   if (part.type === "data-active-selection") {
     return null;
-  }
-
-  if (part.type === "data-bash-outputs") {
-    return <BashOutputsPart outputs={part.data.bashOutputs} />;
   }
 
   if (isToolUIPart(part)) {
@@ -334,6 +335,7 @@ function Part({
         isLoading={isLoading}
         changes={getToolCallCheckpoint(part, messages)}
         messages={messages}
+        isSubTask={isSubTask}
       />
     );
   }
@@ -362,7 +364,7 @@ const SeparatorWithCheckpoint: React.FC<{
   nextMessage: Message;
   isLoading: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
-  hideCheckPoint?: boolean;
+  isSubTask?: boolean;
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
 }> = ({
@@ -371,12 +373,12 @@ const SeparatorWithCheckpoint: React.FC<{
   nextMessage,
   isLoading,
   forkTask,
-  hideCheckPoint,
+  isSubTask,
   latestCheckpoint,
   lastCheckpointInMessage,
 }) => {
   const sep = <Separator className="mt-1 mb-2" />;
-  if (hideCheckPoint) return sep;
+  if (isSubTask) return sep;
 
   let checkpointMessage: Message | null = null;
   let restoreMessageId: string | undefined = undefined;

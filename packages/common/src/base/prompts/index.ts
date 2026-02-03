@@ -2,15 +2,13 @@ import { BuiltInAgentPath } from "../../vscode-webui-bridge/types/custom-agent";
 import { renderActiveSelection } from "./active-selection";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
-import { createPr } from "./create-pr";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
-import { injectBashOutputs } from "./inject-bash-outputs";
 import { renderReviewComments } from "./review-comments";
+import { createSkillPrompt, createUseSkillResult } from "./skill";
 import { createSystemPrompt } from "./system";
 import { renderUserEdits } from "./user-edits";
-import { createWorkflowPrompt } from "./workflow";
 
 export const prompts = {
   system: createSystemPrompt,
@@ -24,15 +22,14 @@ export const prompts = {
   inlineCompact,
   parseInlineCompact,
   generateTitle,
-  workflow: createWorkflowPrompt,
   customAgent: createCustomAgentPrompt,
-  injectBashOutputs,
-  createPr,
+  skill: createSkillPrompt,
   renderReviewComments,
   renderActiveSelection,
   renderUserEdits,
   renderBashOutputs,
   fixMermaidError,
+  createUseSkillResult,
 };
 
 function createSystemReminder(content: string) {
@@ -88,5 +85,5 @@ function createCustomAgentPrompt(id: string, path?: string) {
       return match.replace("<", "&lt;");
     },
   );
-  return `<custom-agent id="${id}" path="${path || BuiltInAgentPath}">newTask:${processedAgentName}</custom-agent>`;
+  return `<custom-agent id="${id}" path="${path || BuiltInAgentPath}">Please use the newTask tool to run ${processedAgentName} to complete the following request:\n</custom-agent>`;
 }

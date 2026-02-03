@@ -4,7 +4,7 @@ import {
   makePersistedAdapter,
 } from "@livestore/adapter-web";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
-import type { Store } from "@livestore/livestore";
+import type { Store, StoreRegistry } from "@livestore/livestore";
 import { type ReactApi, storeOptions, useStore } from "@livestore/react";
 import type React from "react";
 import { createContext, useContext } from "react";
@@ -70,4 +70,18 @@ export function useDefaultStore(): Store<typeof catalog.schema> & ReactApi {
     );
   }
   return useStore(storeOptions);
+}
+
+export function getOrLoadTaskStore({
+  storeRegistry,
+  storeId,
+  jwt,
+}: { storeRegistry: StoreRegistry; storeId: string; jwt: string | null }) {
+  return storeRegistry.getOrLoadPromise({
+    storeId,
+    schema: catalog.schema,
+    adapter,
+    syncPayload: { jwt },
+    disableDevtools: true,
+  });
 }

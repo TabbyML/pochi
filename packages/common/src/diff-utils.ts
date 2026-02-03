@@ -3,8 +3,12 @@ import { getLogger } from "./base";
 
 const logger = getLogger("diffUtils");
 
-function normalize(content: string): string {
-  return content.replace(/\r\n/g, "\n").trimEnd();
+function normalizeLineEndings(content: string): string {
+  return content.replace(/\r\n/g, "\n");
+}
+
+function normalizeForSearch(content: string): string {
+  return normalizeLineEndings(content).trimEnd();
 }
 
 export class DiffError extends Error {
@@ -28,9 +32,34 @@ export async function parseDiffAndApply(
   );
 
   const isCRLF = fileContent.includes("\r\n");
+  // Preserve trailing whitespace (newlines) from the original file
+  const normalizedForLineEndings = normalizeLineEndings(fileContent);
+  const trimmedContent = normalizedForLineEndings.trimEnd();
+  const trailingWhitespace = normalizedForLineEndings.slice(
+    trimmedContent.length,
+  );
 
-  const normalizedFileContent = normalize(fileContent);
-  const normalizedSearchContent = normalize(searchContent);
+  const normalizedFileContent = normalizeForSearch(fileContent);
+  const normalizedSearchContent = normalizeForSearch(searchContent);
+
+  // If the search content ends with a newline, trim the same trailing whitespace
+  // from replaceContent to avoid introducing extra empty lines
+  const searchContentNormalized = normalizeLineEndings(searchContent);
+  const searchTrailingWhitespace =
+    searchContentNormalized.length - searchContentNormalized.trimEnd().length;
+  let normalizedReplaceContent = normalizeLineEndings(replaceContent);
+  if (searchTrailingWhitespace > 0) {
+    const replaceTrailingWhitespace =
+      normalizedReplaceContent.length -
+      normalizedReplaceContent.trimEnd().length;
+    // Trim the same amount of trailing whitespace from replaceContent as searchContent
+    if (replaceTrailingWhitespace >= searchTrailingWhitespace) {
+      normalizedReplaceContent = normalizedReplaceContent.slice(
+        0,
+        normalizedReplaceContent.length - searchTrailingWhitespace,
+      );
+    }
+  }
 
   if (searchContent === replaceContent) {
     throw new DiffError(
@@ -90,8 +119,18 @@ export async function parseDiffAndApply(
   }
 
   // Replace all occurrences
-  const result = replaceMatches(normalizedFileContent, matches, replaceContent);
+  let result = replaceMatches(
+    normalizedFileContent,
+    matches,
+    normalizedReplaceContent,
+  );
   logger.trace("Successfully applied diff");
+
+  // Restore trailing whitespace (including multiple newlines) if the original file had any
+  if (trailingWhitespace && !result.endsWith(trailingWhitespace)) {
+    // Remove any trailing whitespace that might have been added by replacement
+    result = result.trimEnd() + trailingWhitespace;
+  }
 
   if (isCRLF) {
     return result.replace(/\n/g, "\r\n");
@@ -144,8 +183,8 @@ const searchContentExact: SearchContent = (
   originalContent: string,
   searchContent: string,
 ) => {
-  const normalizedOriginal = normalize(originalContent);
-  const normalizedSearch = normalize(searchContent);
+  const normalizedOriginal = normalizeForSearch(originalContent);
+  const normalizedSearch = normalizeForSearch(searchContent);
 
   if (normalizedSearch === "") return [];
 
@@ -206,10 +245,15 @@ const searchContentWithLineTrimmed: SearchContent = (
         matchStartIndex += originalLines[k].length + 1; // +1 for \n
       }
 
-      // Find end character index
+      // Find end character index - don't include the trailing newline of the last matched line
+      // This ensures that content after the match (including empty lines) is preserved
       let matchEndIndex = matchStartIndex;
       for (let k = 0; k < searchLines.length; k++) {
-        matchEndIndex += originalLines[i + k].length + 1; // +1 for \n
+        matchEndIndex += originalLines[i + k].length;
+        // Only add newline if not the last matched line
+        if (k < searchLines.length - 1) {
+          matchEndIndex += 1; // +1 for \n between matched lines
+        }
       }
 
       matches.push({ start: matchStartIndex, end: matchEndIndex });
@@ -314,9 +358,14 @@ const searchContentByBlockAnchor: SearchContent = (
       for (let k = 0; k < i; k++) {
         matchStartIndex += originalLines[k].length + 1;
       }
+      // Don't include the trailing newline of the last matched line
       let matchEndIndex = matchStartIndex;
       for (let k = 0; k < searchBlockSize; k++) {
-        matchEndIndex += originalLines[i + k].length + 1;
+        matchEndIndex += originalLines[i + k].length;
+        // Only add newline if not the last matched line
+        if (k < searchBlockSize - 1) {
+          matchEndIndex += 1;
+        }
       }
       matches.push({ start: matchStartIndex, end: matchEndIndex });
     }
@@ -354,9 +403,14 @@ const searchContentByBlockAnchor: SearchContent = (
     for (let k = 0; k < i; k++) {
       matchStartIndex += originalLines[k].length + 1;
     }
+    // Don't include the trailing newline of the last matched line
     let matchEndIndex = matchStartIndex;
     for (let k = 0; k < searchBlockSize; k++) {
-      matchEndIndex += originalLines[i + k].length + 1;
+      matchEndIndex += originalLines[i + k].length;
+      // Only add newline if not the last matched line
+      if (k < searchBlockSize - 1) {
+        matchEndIndex += 1;
+      }
     }
     matches.push({ start: matchStartIndex, end: matchEndIndex });
   }

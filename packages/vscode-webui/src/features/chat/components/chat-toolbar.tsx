@@ -281,6 +281,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             allowAddToolResult={allowAddToolResult}
             isSubTask={isSubTask}
             task={task}
+            subtask={subtask}
           />
           <SubmitReviewsButton
             showSubmitReviewButton={showSubmitReviewButton}

@@ -31,7 +31,7 @@ export function fuzzySearchStrings(needle: string, haystack: string[]) {
 }
 
 /**
- * Fuzzy search function for workflow objects with name and content properties
+ * Fuzzy search function for objects with id properties
  */
 export function fuzzySearchSlashCandidates<T extends { id: string }>(
   needle: string | undefined,
@@ -46,7 +46,7 @@ export function fuzzySearchSlashCandidates<T extends { id: string }>(
     return data.slice(0, limit);
   }
 
-  // Create a haystack of workflow names for searching
+  // Create a haystack of names for searching
   const haystack = data.map((w) => w.id);
   const [_, info, order] = uf.search(haystack, needle);
 

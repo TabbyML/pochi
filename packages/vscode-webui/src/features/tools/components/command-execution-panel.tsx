@@ -193,6 +193,8 @@ export const BackgroundJobPanel: FC<{
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
   const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
+  const hasCommand = Boolean(info?.command);
+  const title = info?.command ?? backgroundJobId;
   const isActive = useMemo(
     () =>
       backgroundJobId
@@ -210,6 +212,7 @@ export const BackgroundJobPanel: FC<{
   return (
     <CommandPanelContainer
       icon={
+        hasCommand &&
         info?.displayId && (
           <BackgroundJobIdButton
             displayId={info.displayId}
@@ -218,7 +221,7 @@ export const BackgroundJobPanel: FC<{
           />
         )
       }
-      title={info?.command}
+      title={title}
       expanded={output !== undefined && expanded}
       actions={
         <>

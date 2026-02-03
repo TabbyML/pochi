@@ -5,13 +5,13 @@ import {
 } from "node:child_process";
 import * as path from "node:path";
 import { promisify } from "node:util";
+import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
   MaxTerminalOutputSize,
   fixExecuteCommandOutput,
   getShellPath,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-import { getCommonProcessEnv } from "../lib/process-env";
 
 export const executeCommand =
   (): ToolFunctionType<ClientTools["executeCommand"]> =>
@@ -40,7 +40,7 @@ export const executeCommand =
         timeout: timeout * 1000, // Convert to milliseconds
         cwd: resolvedCwd,
         signal: abortSignal,
-        env: getCommonProcessEnv(),
+        env: { ...process.env, ...getTerminalEnv() },
       });
 
       const { output, isTruncated } = processCommandOutput(

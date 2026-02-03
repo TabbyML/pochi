@@ -1,9 +1,11 @@
 import { blobStore } from "@/lib/remote-blob-store";
-import { vscodeHost } from "@/lib/vscode";
-
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 
-import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  BuiltinSubAgentInfo,
+  ExecuteCommandResult,
+} from "@getpochi/common/vscode-webui-bridge";
 import {
   type LiveKitStore,
   type Message,
@@ -28,7 +30,8 @@ type ExecuteCommandReturnType = {
 };
 type NewTaskParameterType = InferToolInput<ClientTools["newTask"]>;
 type NewTaskReturnType = {
-  uid: string;
+  result: string;
+  runAsync: boolean;
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
@@ -141,7 +144,13 @@ export interface ToolCallLifeCycle {
    * @param args - Tool call arguments
    * @param options - Execution options including model selection
    */
-  execute(args: unknown, options?: { contentType?: string[] }): void;
+  execute(
+    args: unknown,
+    options?: {
+      contentType?: string[];
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
+    },
+  ): void;
 
   /**
    * Abort the currently executing tool call.
@@ -313,7 +322,13 @@ export class ManagedToolCallLifeCycle
     }
   }
 
-  execute(args: unknown, options?: { contentType?: string[] }) {
+  execute(
+    args: unknown,
+    options?: {
+      contentType?: string[];
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
+    },
+  ) {
     const abortController = new AbortController();
     const abortSignal = AbortSignal.any([
       abortController.signal,
@@ -328,6 +343,7 @@ export class ManagedToolCallLifeCycle
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
+        builtinSubAgentInfo: options?.builtinSubAgentInfo,
       });
     }
 
@@ -355,7 +371,23 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    return Promise.resolve({ uid });
+    const runAsync = !!args.runAsync;
+    if (runAsync && isVSCodeEnvironment()) {
+      const cwd = window.POCHI_TASK_INFO?.cwd;
+      if (cwd) {
+        void vscodeHost.openTaskInPanel(
+          {
+            type: "open-task",
+            uid,
+            cwd,
+            storeId: this.store.storeId,
+          },
+          { preserveFocus: true },
+        );
+      }
+    }
+
+    return Promise.resolve({ result: uid, runAsync });
   }
 
   addResult(result: unknown): void {
@@ -460,7 +492,23 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private onExecuteNewTask({ uid }: NewTaskReturnType) {
+  private onExecuteNewTask({ result, runAsync }: NewTaskReturnType) {
+    const uid = result;
+    if (!uid) {
+      throw new Error("Missing uid in newTask result");
+    }
+
+    if (runAsync) {
+      this.transitTo("execute", {
+        type: "complete",
+        result: {
+          result: uid,
+        },
+        reason: "execute-finish",
+      });
+      return;
+    }
+
     const cleanupFns: (() => void)[] = [];
     const cleanup = () => {
       for (const fn of cleanupFns) {

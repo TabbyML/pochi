@@ -4,8 +4,12 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 import type { UserInfo } from "../configuration";
 import type {
+  BrowserSession,
+  BuiltinSubAgentInfo,
   CaptureEvent,
+  ChangedFileContent,
   CustomAgentFile,
+  ExecuteCommandResult,
   FileDiff,
   GitWorktree,
   McpConfigOverride,
@@ -16,6 +20,7 @@ import type {
   RuleFile,
   SaveCheckpointOptions,
   SessionState,
+  SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
   TaskStates,
@@ -86,6 +91,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
+      builtinSubAgentInfo?: BuiltinSubAgentInfo;
     },
   ): Promise<unknown>;
 
@@ -104,19 +110,6 @@ export interface VSCodeHostApi {
   listRuleFiles(): Promise<RuleFile[]>;
 
   /**
-   * List all workflows from .pochirules/workflows directory
-   * Returns an array of objects containing the name and content of each workflow.
-   */
-  listWorkflows(): Promise<
-    {
-      id: string;
-      path: string;
-      content: string;
-      frontmatter: { model?: string };
-    }[]
-  >;
-
-  /**
    * Get active tabs with real-time updates via ThreadSignal
    * Each tab is represented by an object with:
    * - filepath: Path to the file
@@ -130,6 +123,13 @@ export interface VSCodeHostApi {
   >;
 
   readPochiTabs(): Promise<ThreadSignalSerialization<TaskStates>>;
+
+  /**
+   * Closes all Pochi tabs with the given uid (task id).
+   * If uid is not provided, closes all Pochi tabs.
+   * @param uid - Optional task id to filter tabs to close.
+   */
+  closePochiTabs(uid?: string): Promise<void>;
 
   readActiveSelection(): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>
@@ -170,6 +170,8 @@ export interface VSCodeHostApi {
   }>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
+
+  readSkills(): Promise<ThreadSignalSerialization<SkillFile[]>>;
 
   executeBashCommand: (
     command: string,
@@ -277,10 +279,6 @@ export interface VSCodeHostApi {
     displayPaths?: string[],
   ): Promise<boolean>;
 
-  diffChangedFiles(changedFiles: TaskChangedFile[]): Promise<TaskChangedFile[]>;
-
-  showChangedFiles(files: TaskChangedFile[], title: string): Promise<boolean>;
-
   readExtensionVersion(): Promise<string>;
 
   readVSCodeSettings(): Promise<ThreadSignalSerialization<VSCodeSettings>>;
@@ -317,7 +315,10 @@ export interface VSCodeHostApi {
    */
   openTaskInPanel(
     params: PochiTaskParams,
-    options?: { keepEditor?: boolean },
+    options?: {
+      keepEditor?: boolean;
+      preserveFocus?: boolean;
+    },
   ): Promise<void>;
 
   sendTaskNotification(
@@ -359,6 +360,14 @@ export interface VSCodeHostApi {
 
   readTasks(): Promise<ThreadSignalSerialization<Record<string, unknown>>>;
 
+  readBrowserSession(
+    taskId: string,
+  ): Promise<ThreadSignalSerialization<BrowserSession | undefined>>;
+
+  registerBrowserSession(taskId: string): Promise<void>;
+
+  unregisterBrowserSession(taskId: string): Promise<void>;
+
   /**
    * Read mcpConfigOverride for a task.
    * Returns a serialized signal for the value and a setter function.
@@ -376,7 +385,45 @@ export interface VSCodeHostApi {
    */
   readTaskArchived(): Promise<{
     value: ThreadSignalSerialization<Record<string, boolean>>;
+    hasArchivableTasks: ThreadSignalSerialization<boolean>;
     setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
+  }>;
+
+  readLang(): Promise<{
+    value: ThreadSignalSerialization<string>;
+    updateLang: (lang: string) => Promise<void>;
+  }>;
+
+  readForkTaskStatus(): Promise<{
+    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
+    setForkTaskStatus: (
+      uid: string,
+      status: "inProgress" | "ready",
+    ) => Promise<void>;
+  }>;
+
+  /**
+   * Read and manage changed files for a task.
+   * Returns serialized signals for changed files and visible changed files,
+   * plus action functions to manipulate them.
+   * Also performs migration from global state to task data store if needed.
+   */
+  readTaskChangedFiles(taskId: string): Promise<{
+    /** Signal for all changed files */
+    changedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    /** Signal for visible (pending) changed files only */
+    visibleChangedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
+    /** Update changed files with new file paths from a tool call */
+    updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
+    /** Accept changed files (mark as accepted) */
+    acceptChangedFile: (
+      content: ChangedFileContent,
+      filepath?: string,
+    ) => Promise<void>;
+    /** Revert changed files (restore from checkpoint and mark as reverted) */
+    revertChangedFile: (filepath?: string) => Promise<void>;
+    /** Show changed files in a diff view */
+    showChangedFiles: (filepath?: string) => Promise<boolean>;
   }>;
 }
 
@@ -389,8 +436,6 @@ export interface WebviewHostApi {
 
   isFocused(): Promise<boolean>;
 
-  onFileChanged(filePath: string, content: string): void;
-
   writeTaskFile(
     taskId: string,
     filePath: string,
@@ -398,4 +443,6 @@ export interface WebviewHostApi {
   ): Promise<void>;
 
   readTaskFile(taskId: string, filePath: string): Promise<string | null>;
+
+  readTaskOutput(taskId: string): Promise<ExecuteCommandResult>;
 }

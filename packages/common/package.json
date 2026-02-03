@@ -13,6 +13,7 @@
     "./message-utils": "./src/message-utils/index.ts",
     "./git-utils": "./src/git-utils.ts",
     "./diff-utils": "./src/diff-utils.ts",
+    "./env-utils": "./src/env-utils.ts",
     "./tool-utils": "./src/tool-utils/index.ts",
     "./mcp-utils": "./src/mcp-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",
@@ -43,6 +44,7 @@
     "hast-util-to-text": "^4.0.2",
     "hono": "catalog:",
     "ignore": "^7.0.5",
+    "jose": "catalog:",
     "jsonc-parser": "catalog:",
     "mime": "^4.1.0",
     "minimatch": "^10.0.1",
@@ -53,9 +55,9 @@
     "run-exclusive": "catalog:",
     "silver-fleece": "^1.2.1",
     "tslog": "catalog:",
+    "unist-util-remove": "^4.0.0",
     "vfile-matter": "^5.0.1",
-    "zod": "catalog:",
-    "jose": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/fast-levenshtein": "^0.0.4",

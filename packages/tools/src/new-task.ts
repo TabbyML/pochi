@@ -33,7 +33,7 @@ export const overrideCustomAgentTools = (
     return { ...customAgent, tools: undefined };
   }
 
-  const toAddTools = ["todoWrite", "attemptCompletion"];
+  const toAddTools = ["todoWrite", "attemptCompletion", "useSkill"];
   const toDeleteTools = ["askFollowupQuestion", "newTask"];
 
   const updatedTools = customAgent.tools.filter(
@@ -64,6 +64,10 @@ export const inputSchema = z.object({
     .string()
     .optional()
     .describe("The type of the specialized agent to use for the task."),
+  runAsync: z
+    .boolean()
+    .optional()
+    .describe("Set to true to run this agent in the background."),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),
@@ -85,6 +89,8 @@ ${makeCustomAgentToolDescription(customAgents)}
 Always include a reminder in your prompt to ensure the result will be submitted through the \`attemptCompletion\` tool.
 If the task stops without submitting the result, it will return an error message.
 
+You can optionally run agents in the background using the runAsync parameter. You can continue working while background agents run.
+
 When NOT to use the newTask tool:
 - If you want to read a specific file path, use the readFile or globFiles tool instead of the newTask tool, to find the match more quickly
 - If you are searching for a specific class definition like "class Foo", use the globFiles tool instead, to find the match more quickly
@@ -98,14 +104,13 @@ Usage notes:
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
-7. If the user's message contains "newTask:<agent>", you must use the "newTask" tool with the specified agent.
       `.trim(),
     inputSchema,
     outputSchema: z.object({
       result: z
         .string()
         .describe(
-          "The result of the task, submitted through the `attemptCompletion` tool.",
+          "The task result. For async tasks, this contains the spawned task uid; otherwise it is the completion result.",
         ),
     }),
   });

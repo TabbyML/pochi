@@ -14,8 +14,7 @@
     "subtitle": "Pochi는 AI로 구동되므로 오류가 발생할 수 있습니다.",
     "tips": {
       "attachments": "파일 보내기",
-      "context": "컨텍스트 첨부",
-      "workflow": "워크플로우 실행"
+      "context": "컨텍스트 첨부"
     },
     "autoSave": {
       "title": "자동 저장이 활성화된 경우 Pochi는 제대로 작동하지 않습니다.",
@@ -62,7 +61,7 @@
     "super": "가강",
     "swift": "극속",
     "reload": "새로고침",
-    "subscriptionRequired": "구독 필요"
+    "subscriptionRequired": "Super 모델을 사용하려면 구독하세요"
   },
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",
@@ -124,13 +123,10 @@
       "developerMode": "개발자 모드",
       "enablePochiModels": "Pochi 모델 활성화",
       "clearStorage": "저장소 지우기",
+      "resetReviewPlanTutorialCounter": "리뷰 계획 튜토리얼 카운터 재설정",
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요",
       "hideRecommendSettings": "추천 설정 숨기기"
-    },
-    "workflows": {
-      "title": "워크플로우",
-      "noWorkflows": "워크스페이스에서 워크플로우를 찾을 수 없습니다."
     },
     "rules": {
       "title": "규칙",
@@ -169,6 +165,16 @@
         "validationError": "에이전트 정의에 필수 속성이 없습니다"
       }
     },
+    "skills": {
+      "title": "스킬",
+      "loading": "스킬 로딩 중...",
+      "empty": "스킬을 찾을 수 없습니다. 워크스페이스의 .pochi/skills/ 디렉터리에 스킬 파일을 생성하세요",
+      "errors": {
+        "readError": "스킬 정의를 읽지 못했습니다",
+        "parseError": "스킬 정의를 파싱하지 못했습니다",
+        "validationError": "스킬 정의에 필수 속성이 없습니다"
+      }
+    },
     "mcp": {
       "title": "MCP",
       "tooltip": "Pochi 전역 MCP 구성.",
@@ -204,6 +210,10 @@
     "needHelp": "도움이 필요하신가요? 문서 보기"
   },
   "tasksPage": {
+    "tasks": "작업",
+    "filter": "작업 필터",
+    "archivedTasks": "보관된 작업",
+    "deletedWorktrees": "삭제된 워크트리",
     "emptyState": {
       "title": "작업을 찾을 수 없습니다",
       "description": "사용 가능한 작업이 없습니다",
@@ -226,8 +236,6 @@
     "newTask": "새 작업",
     "deleted": "삭제됨",
     "tasksCount": "{{count}}개 작업",
-    "showDeletedWorktrees": "삭제된 워크트리 표시",
-    "hideDeletedWorktrees": "삭제된 워크트리 숨기기",
     "openWorktreeDiff": "변경 사항 보기",
     "openWorktreeInTerminal": "터미널에서 워크트리 열기",
     "deleteWorktree": "워크트리 삭제",
@@ -243,17 +251,18 @@
       "requiresApproval": "승인 대기 중"
     },
     "loadMore": "더 보기",
-    "showArchivedTasks": "보관된 작업 표시",
-    "hideArchivedTasks": "보관된 작업 숨기기",
     "archiveTask": "작업 보관",
     "unarchiveTask": "작업 보관 취소",
-    "archiveOldTasks": "1주일 이상 된 작업 보관",
-    "moreOptions": "더 많은 옵션"
+    "archiveOldTasks": "오래된 작업 보관",
+    "archiveOldTasksTooltip": "1주일 이상 된 작업 보관",
+    "showAnyTasks": "모든 작업 표시",
+    "showOpenTasks": "활성 작업 표시"
   },
   "toolInvocation": {
     "requiresApproval": "승인 대기 중",
     "taskCompleted": "작업 완료",
     "reading": "읽는 중 ",
+
     "writing": "쓰는 중 ",
     "continue": "계속",
     "cancel": "취소",
@@ -359,14 +368,13 @@
   "mentionList": {
     "noResultsFound": "결과를 찾을 수 없습니다",
     "typeToSearch": "입력하여 검색...",
-    "workflow": "워크플로",
     "agent": "에이전트",
+    "skill": "스킬",
     "useHashForIssues": "Github 이슈를 검색하려면 #을 사용하세요"
   },
   "subtask": {
     "back": "뒤로",
-    "complete": "완료",
-    "startImplementation": "구현 시작"
+    "complete": "완료"
   },
   "errorMessageView": {
     "reachedCreditLimit": "지출 한도에 도달했습니다.",
@@ -467,8 +475,13 @@
     "fixError": "Pochi로 오류 수정"
   },
   "planCard": {
-    "title": "계획",
     "reviewPlan": "검토",
-    "executePlan": "계획 실행"
+    "reviewPlanTitle": "계획 검토",
+    "reviewPlanTooltip": "계획 아티팩트의 줄 번호 앞에 있는 '+'를 클릭하여 댓글을 남기세요",
+    "executePlan": "계획 실행",
+    "creatingPlan": "코드를 분석하고 계획을 수립 중입니다..."
+  },
+  "browserView": {
+    "noFrameAvailable": "프레임 없음"
   }
 }

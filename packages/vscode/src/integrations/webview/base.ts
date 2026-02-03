@@ -2,6 +2,7 @@ import type { AuthEvents } from "@/lib/auth-events";
 import { asRelativePath } from "@/lib/fs";
 import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
+import { taskFileChanged } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
 import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
 import type {
@@ -150,7 +151,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         `script-src 'nonce-${nonce}' 'unsafe-eval'`,
         `style-src ${webview.cspSource} 'unsafe-inline'`,
         `font-src ${webview.cspSource} data:`,
-        `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://*.vscode-cdn.net https://* http://*:* data: blob:`,
+        `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://*.vscode-cdn.net https://* http://*:* ws://localhost:* data: blob:`,
         "worker-src data: blob:",
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
@@ -221,7 +222,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${webview.cspSource} data:`,
-      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* data: blob:`,
+      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
       `worker-src ${devWebUIHttpBaseUrl} blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
@@ -261,14 +262,15 @@ export abstract class WebviewBase implements vscode.Disposable {
     );
   }
 
-  protected setupFileWatcher(cwd: string): void {
+  protected setupFileWatcher(cwd: string, taskId: string): void {
     this.disposables.push(
       vscode.workspace.onDidSaveTextDocument(async (event) => {
         if (event.uri.fsPath.startsWith(cwd)) {
-          this.webviewHost?.onFileChanged(
-            asRelativePath(event.uri, cwd),
-            event.getText(),
-          );
+          const relativePath = asRelativePath(event.uri, cwd);
+          const content = event.getText();
+
+          // Emit event for task changed files tracking
+          taskFileChanged.fire({ taskId, filepath: relativePath, content });
         }
       }),
     );
@@ -327,9 +329,9 @@ export abstract class WebviewBase implements vscode.Disposable {
           "openSettings",
           "onAuthChanged",
           "isFocused",
-          "onFileChanged",
           "writeTaskFile",
           "readTaskFile",
+          "readTaskOutput",
         ],
       },
     );

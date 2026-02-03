@@ -3,6 +3,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 export interface MentionListActions {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+  selectedIndex?: number;
+  items?: unknown[];
 }
 
 /**

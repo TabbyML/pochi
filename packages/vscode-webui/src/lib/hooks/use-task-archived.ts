@@ -25,6 +25,7 @@ export const useTaskArchived = () => {
 
   return {
     tasksArchived: data?.tasksArchived.value,
+    hasArchivableTasks: data?.hasArchivableTasks.value,
     setTaskArchived: data?.setTaskArchived,
     isLoading: isLoading,
     isTaskArchived,
@@ -35,6 +36,7 @@ async function fetchTaskArchived() {
   const result = await vscodeHost.readTaskArchived();
   return {
     tasksArchived: threadSignal(result.value),
+    hasArchivableTasks: threadSignal(result.hasArchivableTasks),
     setTaskArchived: result.setTaskArchived,
   };
 }
