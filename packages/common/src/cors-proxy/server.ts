@@ -163,3 +163,7 @@ export function startCorsProxy() {
 export function getCorsProxyPort() {
   return port;
 }
+
+export function getWSProxyUrl(url: string) {
+  return `ws://localhost:${port}?target=${encodeURI(url)}`;
+}

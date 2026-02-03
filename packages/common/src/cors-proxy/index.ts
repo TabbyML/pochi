@@ -1,1 +1,1 @@
-export { startCorsProxy, getCorsProxyPort } from "./server";
+export { startCorsProxy, getCorsProxyPort, getWSProxyUrl } from "./server";
