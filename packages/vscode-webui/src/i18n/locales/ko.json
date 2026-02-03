@@ -372,8 +372,7 @@
   },
   "subtask": {
     "back": "뒤로",
-    "complete": "완료",
-    "startImplementation": "구현 시작"
+    "complete": "완료"
   },
   "errorMessageView": {
     "reachedCreditLimit": "지출 한도에 도달했습니다.",

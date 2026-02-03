@@ -371,8 +371,7 @@
   },
   "subtask": {
     "back": "返回",
-    "complete": "完成",
-    "startImplementation": "开始实现"
+    "complete": "完成"
   },
   "errorMessageView": {
     "reachedCreditLimit": "您已达到消费限额。",
