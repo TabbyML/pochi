@@ -16,10 +16,8 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import fs from "node:fs/promises";
-import path from "node:path";
 import { Command, Option } from "@commander-js/extra-typings";
-import { constants, getLogger, prompts } from "@getpochi/common";
+import { constants, getLogger } from "@getpochi/common";
 import {
   pochiConfig,
   setPochiConfigWorkspacePath,
@@ -29,7 +27,6 @@ import { createModel } from "@getpochi/common/vendor/edge";
 import {
   type LLMRequestData,
   type Message,
-  fileToUri,
 } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -54,7 +51,6 @@ import type {
   SkillFile,
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { FileUIPart } from "ai";
 import { JsonRenderer } from "./json-renderer";
 import {
   containsSlashCommandReference,
@@ -72,6 +68,7 @@ import { blobStore } from "./node-blob-store";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
+import { processAttachments } from "./attachment-utils";
 
 const logger = getLogger("Pochi");
 globalThis.POCHI_CLIENT = `PochiCli/${packageJson.version}`;
@@ -172,85 +169,7 @@ const program = new Command()
     );
 
     const store = await createStore(uid);
-    const parts: Message["parts"] = [];
-    if (attachments && attachments.length > 0) {
-      for (const attachmentPath of attachments) {
-        try {
-          const isUrl =
-            attachmentPath.trim().startsWith("http://") ||
-            attachmentPath.trim().startsWith("https://") ||
-            attachmentPath.trim().startsWith("gs://");
-          let dataUrl: string;
-          let mimeType: string;
-          let filename: string;
-
-          if (isUrl) {
-            //TODO: Large video URLs now do not cause OOM, but will still not be completed by the assistant
-            //TODO: Follow up fix is needed to fix this issue.
-            dataUrl = attachmentPath;
-            filename = path.basename(new URL(attachmentPath).pathname);
-
-            // Special handling for YouTube URLs
-            if (
-              attachmentPath.match(
-                /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/,
-              )
-            ) {
-              mimeType = "video/mp4"; // Treat YouTube as video
-            } else {
-              // Try to get mime type from HEAD request
-              try {
-                const response = await fetch(attachmentPath, {
-                  method: "HEAD",
-                });
-                const contentType = response.headers.get("content-type");
-                if (contentType) {
-                  mimeType = contentType.split(";")[0].trim();
-                } else {
-                  // Fallback to extension if no content-type header
-                  mimeType = getMimeType(new URL(attachmentPath).pathname);
-                }
-              } catch (e) {
-                // Fallback to extension if fetch fails
-                mimeType = getMimeType(new URL(attachmentPath).pathname);
-              }
-            }
-          } else {
-            const absolutePath = path.resolve(process.cwd(), attachmentPath);
-            const buffer = await fs.readFile(absolutePath);
-            mimeType = getMimeType(attachmentPath);
-            filename = path.basename(absolutePath);
-            dataUrl = await fileToUri(
-              blobStore,
-              new File([buffer], attachmentPath, {
-                type: mimeType,
-              }),
-            );
-          }
-
-          parts.push({
-            type: "text",
-            text: prompts.createSystemReminder(
-              `Attached file: ${
-                isUrl
-                  ? attachmentPath
-                  : path.relative(process.cwd(), attachmentPath)
-              }`,
-            ),
-          });
-          parts.push({
-            type: "file",
-            mediaType: mimeType,
-            filename,
-            url: dataUrl,
-          } satisfies FileUIPart);
-        } catch (error) {
-          program.error(
-            `Failed to read attachment: ${attachmentPath}\n${error}`,
-          );
-        }
-      }
-    }
+    const parts: Message["parts"] = await processAttachments(attachments, blobStore, program);
 
     if (prompt) {
       parts.push({ type: "text", text: prompt });
@@ -584,31 +503,4 @@ function parseOutputSchema(outputSchema: string): z.ZodAny {
     `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
   )(z);
   return schema;
-}
-
-function getMimeType(filePath: string): string {
-  const extension = path.extname(filePath).toLowerCase();
-  switch (extension) {
-    case ".png":
-      return "image/png";
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".gif":
-      return "image/gif";
-    case ".webp":
-      return "image/webp";
-    case ".svg":
-      return "image/svg+xml";
-    case ".mp4":
-      return "video/mp4";
-    case ".webm":
-      return "video/webm";
-    case ".mov":
-      return "video/quicktime";
-    case ".avi":
-      return "video/x-msvideo";
-    default:
-      return "application/octet-stream";
-  }
 }
