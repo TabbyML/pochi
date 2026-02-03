@@ -1,5 +1,10 @@
 import { MessageMarkdown } from "@/components/message";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSendMessage } from "@/features/chat";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
@@ -64,31 +69,39 @@ export const AttemptCompletionTool: React.FC<
           <Check className="size-4" />
           {t("toolInvocation.taskCompleted")}
         </span>
+        {!!currentWorkspace && isLastPart && !isSubTask && (
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 text-muted-foreground"
+                  onClick={onClickCreateWalkthrough}
+                >
+                  <Footprints className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("worktree.createWalkthrough")}</TooltipContent>
+            </Tooltip>
+            {!hasPR && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-muted-foreground"
+                    onClick={onClickCreatePR}
+                  >
+                    <GitPullRequest className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("worktree.createPr")}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        )}
       </div>
-      {!!currentWorkspace && isLastPart && !isSubTask && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 px-3 text-xs font-normal"
-            onClick={onClickCreateWalkthrough}
-          >
-            <Footprints className="size-3.5" />
-            {t("worktree.createWalkthrough")}
-          </Button>
-          {!hasPR && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1.5 px-3 text-xs font-normal"
-              onClick={onClickCreatePR}
-            >
-              <GitPullRequest className="size-3.5" />
-              {t("worktree.createPr")}
-            </Button>
-          )}
-        </div>
-      )}
       <MessageMarkdown>{result}</MessageMarkdown>
     </div>
   );
