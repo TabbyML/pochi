@@ -1,17 +1,62 @@
-import * as http from "node:http";
-import * as https from "node:https";
 import type { AddressInfo } from "node:net";
 import { serve } from "@hono/node-server";
+import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { WebSocket } from "ws";
 import { getLogger } from "../base";
 
 const app = new Hono();
 const logger = getLogger("CorsProxy");
 
+const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
+
 const excludeHeaders = new Set(["origin", "referer", "x-proxy-origin"]);
 
-app.use(cors()).all("*", async (c) => {
+app.use(cors()).all("*", async (c, next) => {
+  // Proxy websocket requests
+  if (c.req.header("upgrade") === "websocket") {
+    const proxyOrigin = c.req.query("proxy-origin");
+    if (!proxyOrigin) {
+      logger.error("Missing proxy origin for websocket request");
+      return c.text("Missing proxy origin", 400);
+    }
+    logger.debug(`Proxying websocket request to ${proxyOrigin}`);
+    return upgradeWebSocket(() => {
+      const proxyWs = new WebSocket(proxyOrigin);
+      proxyWs.addEventListener("open", () => {
+        logger.debug("Proxy websocket connected");
+      });
+      proxyWs.addEventListener("error", (err) => {
+        logger.error("Proxy websocket error", err);
+      });
+      return {
+        onOpen(_, wsContext) {
+          logger.debug("Client websocket connected");
+          proxyWs.addEventListener("message", (event) => {
+            if (wsContext.readyState === WebSocket.OPEN) {
+              // biome-ignore lint/suspicious/noExplicitAny: event.data is complex type from ws
+              wsContext.send(event.data as any);
+            }
+          });
+          proxyWs.addEventListener("close", () => {
+            logger.debug("Proxy websocket closed");
+            wsContext.close();
+          });
+        },
+        onMessage(event) {
+          if (proxyWs.readyState === WebSocket.OPEN) {
+            proxyWs.send(event.data);
+          }
+        },
+        onClose() {
+          logger.debug("Client websocket closed");
+          proxyWs.close();
+        },
+      };
+    })(c, next);
+  }
+  // Proxy http requests
   const proxyOrigin = c.req.header("x-proxy-origin");
   if (!proxyOrigin) {
     return c.text("x-proxy-origin header is required", 400);
@@ -56,99 +101,7 @@ export function startCorsProxy() {
     port: 0,
   });
 
-  server.on("upgrade", (req, socket, head) => {
-    const url = new URL(req.url ?? "", "http://localhost");
-    const targetUrlStr = url.searchParams.get("target");
-
-    if (!targetUrlStr) {
-      logger.error("Missing target URL in upgrade request");
-      socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
-      socket.destroy();
-      return;
-    }
-
-    let targetUrl: URL;
-    try {
-      targetUrl = new URL(targetUrlStr);
-    } catch (err: unknown) {
-      logger.error("Invalid target URL", targetUrlStr, err);
-      socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
-      socket.destroy();
-      return;
-    }
-
-    logger.debug("Proxying upgrade request to", targetUrl.toString());
-
-    const isSecure =
-      targetUrl.protocol === "wss:" || targetUrl.protocol === "https:";
-    const requestLib = isSecure ? https : http;
-    const port = targetUrl.port || (isSecure ? 443 : 80);
-
-    const headers: http.OutgoingHttpHeaders = {};
-    for (const key of Object.keys(req.headers)) {
-      if (key.toLowerCase().startsWith("sec-websocket")) {
-        headers[key] = req.headers[key];
-      }
-    }
-
-    const proxyReq = requestLib.request({
-      hostname: targetUrl.hostname,
-      port: port,
-      path: targetUrl.pathname + targetUrl.search,
-      method: req.method,
-      headers: {
-        ...headers,
-        host: targetUrl.host,
-        connection: "Upgrade",
-        upgrade: "websocket",
-      },
-    });
-
-    proxyReq.on("upgrade", (proxyRes, proxySocket, proxyHead) => {
-      if (head && head.length > 0) {
-        socket.unshift(head);
-      }
-      if (proxyHead && proxyHead.length > 0) {
-        proxySocket.unshift(proxyHead);
-      }
-
-      let responseHead = `HTTP/1.1 ${proxyRes.statusCode} ${proxyRes.statusMessage}\r\n`;
-      for (const [key, value] of Object.entries(proxyRes.headers)) {
-        if (Array.isArray(value)) {
-          for (const v of value) {
-            responseHead += `${key}: ${v}\r\n`;
-          }
-        } else if (value) {
-          responseHead += `${key}: ${value}\r\n`;
-        }
-      }
-      responseHead += "\r\n";
-      socket.write(responseHead);
-
-      socket.pipe(proxySocket);
-      proxySocket.pipe(socket);
-
-      proxySocket.on("error", (err: Error) => {
-        logger.error("Proxy socket error", err);
-        socket.destroy();
-      });
-
-      socket.on("error", (err: Error) => {
-        logger.error("Client socket error", err);
-        proxySocket.destroy();
-      });
-    });
-
-    proxyReq.on("error", (err: Error) => {
-      logger.error("Proxy request error", err);
-      if (socket.writable && !socket.writableEnded) {
-        socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
-      }
-      socket.destroy();
-    });
-
-    proxyReq.end();
-  });
+  injectWebSocket(server);
 
   port = (server.address() as AddressInfo).port;
   logger.debug(`Proxy server started on port ${port}`);
@@ -165,5 +118,5 @@ export function getCorsProxyPort() {
 }
 
 export function getWSProxyUrl(url: string) {
-  return `ws://localhost:${port}?target=${encodeURI(url)}`;
+  return `ws://localhost:${port}?proxy-origin=${encodeURI(url)}`;
 }
