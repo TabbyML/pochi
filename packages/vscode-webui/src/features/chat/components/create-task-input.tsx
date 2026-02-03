@@ -399,7 +399,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           <SubmitDropdownButton
             isLoading={debouncedIsCreatingTask}
             disabled={!selectedModel || isUploadingAttachments}
-            onSubmit={() => handleClickSubmit(false)}
+            onSubmit={() => handleClickSubmit()}
             onSubmitPlan={() => handleClickSubmit(true)}
             mcpConfigOverride={mcpConfigOverride}
             onToggleServer={toggleServer}
