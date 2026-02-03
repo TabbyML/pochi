@@ -39,6 +39,10 @@ export function useWebsocketFrame(streamUrl: string | undefined | null) {
             const data = JSON.parse(event.data);
             if (data.type === "frame") {
               setFrame(data.data); // base64 image
+            } else if (data.type === "error") {
+              logger.error("Browser message error", event);
+              // Force close to trigger onclose and retry
+              ws?.close();
             }
           } catch (e) {
             logger.error("Failed to parse browser frame", e);

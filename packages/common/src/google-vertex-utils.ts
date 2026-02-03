@@ -4,9 +4,9 @@ import {
 } from "@ai-sdk/google-vertex/edge";
 import type { GoogleVertexModel } from "./configuration";
 
-// Declare global variable for CORS proxy port
+// Declare global variable for CORS proxy url prefix
 declare global {
-  var POCHI_CORS_PROXY_PORT: string;
+  var POCHI_CORS_PROXY_URL_PREFIX: string;
 }
 
 function createPatchedFetchForFinetune(accessToken?: string | undefined) {
@@ -45,12 +45,11 @@ function createPatchedFetchForFinetune(accessToken?: string | undefined) {
     }
 
     // Use CORS proxy if configured
-    if (globalThis.POCHI_CORS_PROXY_PORT) {
-      const origin = finalUrl.origin;
-      finalUrl.protocol = "http:";
-      finalUrl.host = "localhost";
-      finalUrl.port = globalThis.POCHI_CORS_PROXY_PORT;
-      patchedRequestInit.headers.set("x-proxy-origin", origin);
+    if (globalThis.POCHI_CORS_PROXY_URL_PREFIX) {
+      const proxyUrl = finalUrl.toString();
+      finalUrl = new URL(
+        globalThis.POCHI_CORS_PROXY_URL_PREFIX + encodeURIComponent(proxyUrl),
+      );
     }
 
     return fetch(finalUrl, patchedRequestInit);

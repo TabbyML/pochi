@@ -24,18 +24,10 @@ export function createAnthropicModel(
 }
 
 const proxedFetch: typeof fetch = async (input, init) => {
-  const url = new URL(input.toString());
-  const origin = url.origin;
-  url.protocol = "http:";
-  url.host = "localhost";
-  url.port = globalThis.POCHI_CORS_PROXY_PORT;
+  const originalUrl = input.toString();
+  const url = new URL(
+    globalThis.POCHI_CORS_PROXY_URL_PREFIX + encodeURIComponent(originalUrl),
+  );
 
-  const headers = {
-    ...init?.headers,
-    "x-proxy-origin": origin,
-  };
-  return fetch(url, {
-    ...init,
-    headers,
-  });
+  return fetch(url, init);
 };

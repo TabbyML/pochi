@@ -4,7 +4,7 @@ import { getNonce } from "@/lib/get-nonce";
 import { getUri } from "@/lib/get-uri";
 import { taskFileChanged } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
-import { getCorsProxyPort } from "@getpochi/common/cors-proxy";
+import { getCorsProxyUrlPrefix } from "@getpochi/common/cors-proxy";
 import type {
   PochiTaskInfo,
   ResourceURI,
@@ -99,7 +99,7 @@ export abstract class WebviewBase implements vscode.Disposable {
     const nonce = getNonce();
     const injectGlobalVars = `<script type="module" nonce="${nonce}">
       window.POCHI_CLIENT = "Pochi/${this.context.extension.packageJSON.version}"
-      window.POCHI_CORS_PROXY_PORT = "${getCorsProxyPort()}";
+      window.POCHI_CORS_PROXY_URL_PREFIX = "${getCorsProxyUrlPrefix()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";
       ${info ? `window.POCHI_TASK_INFO = ${JSON.stringify(info)};` : ""}
