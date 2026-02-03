@@ -24,10 +24,7 @@ import {
 } from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
-import {
-  type LLMRequestData,
-  type Message,
-} from "@getpochi/livekit";
+import type { LLMRequestData, Message } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
 import z from "zod/v4";
@@ -51,6 +48,7 @@ import type {
   SkillFile,
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
+import { processAttachments } from "./attachment-utils";
 import { JsonRenderer } from "./json-renderer";
 import {
   containsSlashCommandReference,
@@ -68,7 +66,6 @@ import { blobStore } from "./node-blob-store";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
-import { processAttachments } from "./attachment-utils";
 
 const logger = getLogger("Pochi");
 globalThis.POCHI_CLIENT = `PochiCli/${packageJson.version}`;
@@ -169,7 +166,11 @@ const program = new Command()
     );
 
     const store = await createStore(uid);
-    const parts: Message["parts"] = await processAttachments(attachments, blobStore, program);
+    const parts: Message["parts"] = await processAttachments(
+      attachments,
+      blobStore,
+      program,
+    );
 
     if (prompt) {
       parts.push({ type: "text", text: prompt });
