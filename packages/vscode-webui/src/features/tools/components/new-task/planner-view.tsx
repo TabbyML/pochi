@@ -153,12 +153,12 @@ export function PlannerView(props: NewTaskToolViewProps) {
             source={taskSource}
             showMessageList={true}
             showTodos={false}
-            scrollAreaClassName="border-none min-h-[10vh] my-0"
+            scrollAreaClassName="border-none h-[20vh] my-0"
             assistant={{ name: "Planner" }}
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-[10vh] flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
+        <div className="flex h-[20vh] flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
           <span className="text-base">{t("planCard.creatingPlan")}</span>
         </div>
       )}
