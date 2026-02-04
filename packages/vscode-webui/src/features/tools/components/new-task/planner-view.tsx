@@ -12,7 +12,6 @@ import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutori
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
-import { useNavigate } from "@tanstack/react-router";
 import {
   ClipboardList,
   FilePenLine,
@@ -23,6 +22,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
+import { useVSCodeNavigate } from "@/lib/hooks/use-vscode-navigate";
 
 const reviewTutorialImage =
   "https://app.getpochi.com/images/review-plan-tutorial.gif";
@@ -37,7 +37,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
     catalog.queries.makeFileQuery(taskSource?.parentId || "", "/plan.md"),
   );
   const sendRetry = useSendRetry();
-  const navigate = useNavigate();
+  const navigate = useVSCodeNavigate();
   const description = tool?.input?.description;
   const { count, incrementCount } = useReviewPlanTutorialCounter();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
