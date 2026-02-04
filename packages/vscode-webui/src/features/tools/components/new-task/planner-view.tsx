@@ -9,6 +9,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
+import { useVSCodeNavigate } from "@/lib/hooks/use-vscode-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
@@ -22,7 +23,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
-import { useVSCodeNavigate } from "@/lib/hooks/use-vscode-navigate";
 
 const reviewTutorialImage =
   "https://app.getpochi.com/images/review-plan-tutorial.gif";
