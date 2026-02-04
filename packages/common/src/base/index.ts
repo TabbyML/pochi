@@ -22,6 +22,8 @@ export { toErrorMessage } from "./error";
 
 export { builtInAgents } from "./agents";
 
+export { validateTaskFilePath } from "./validate-task-file-path";
+
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
   client: z.string(),

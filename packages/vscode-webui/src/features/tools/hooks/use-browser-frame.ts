@@ -3,7 +3,8 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as runExclusive from "run-exclusive";
 
 const logger = getLogger("useBrowserFrame");
 
@@ -19,7 +20,6 @@ export function useBrowserFrame(options: {
   const muxerRef = useRef<Muxer<ArrayBufferTarget> | null>(null);
   const videoEncoderRef = useRef<VideoEncoder | null>(null);
   const startTimeRef = useRef<number>(0);
-  const isStoppingRef = useRef(false);
 
   // WebSocket connection to get frames
   useEffect(() => {
@@ -80,10 +80,8 @@ export function useBrowserFrame(options: {
     };
   }, [streamUrl]);
 
-  // Recording logic
-  useEffect(() => {
-    const processFrame = async () => {
-      if (!frame) return;
+  const recordFrame = useMemo(() => {
+    return runExclusive.build(async (frame: string) => {
       try {
         const binaryString = window.atob(frame);
         const len = binaryString.length;
@@ -137,11 +135,12 @@ export function useBrowserFrame(options: {
       } catch (err) {
         logger.error("Failed to process frame", err);
       }
-    };
+    });
+  }, []);
 
-    const stopRecording = async () => {
-      if (isStoppingRef.current) return;
-      isStoppingRef.current = true;
+  const stopRecording = useMemo(() => {
+    return runExclusive.build(async () => {
+      if (!muxerRef.current) return;
 
       try {
         if (videoEncoderRef.current?.state === "configured") {
@@ -168,17 +167,19 @@ export function useBrowserFrame(options: {
       } finally {
         muxerRef.current = null;
         videoEncoderRef.current = null;
-        isStoppingRef.current = false;
       }
-    };
+    });
+  }, [parentTaskId, toolCallId, store]);
 
+  // Recording logic
+  useEffect(() => {
     if (frame && !completed) {
-      processFrame();
+      recordFrame(frame);
     }
-    if (muxerRef.current && completed) {
+    if (completed) {
       stopRecording();
     }
-  }, [frame, toolCallId, parentTaskId, completed, store]);
+  }, [frame, completed, stopRecording, recordFrame]);
 
   return frame;
 }

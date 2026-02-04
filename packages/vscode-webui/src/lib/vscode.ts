@@ -1,5 +1,4 @@
-import { getLogger } from "@getpochi/common";
-import { validateTaskFilePath } from "@getpochi/common/tool-utils";
+import { getLogger, validateTaskFilePath } from "@getpochi/common";
 import type {
   ExecuteCommandResult,
   VSCodeHostApi,

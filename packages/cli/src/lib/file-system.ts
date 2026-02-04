@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { resolvePath, validateTaskFilePath } from "@getpochi/common/tool-utils";
+import { validateTaskFilePath } from "@getpochi/common";
+import { resolvePath } from "@getpochi/common/tool-utils";
 import type { LiveKitStore } from "@getpochi/livekit";
 import { catalog } from "@getpochi/livekit";
 
