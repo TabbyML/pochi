@@ -57,13 +57,10 @@ export class JsonRenderer {
         if (isToolUIPart(part) && part.type === "tool-attemptCompletion") {
           if (part.input) {
             const input = part.input as Record<string, unknown>;
-            if (
-              this.attemptCompletionSchemaOverride 
-            ) {
+            if (this.attemptCompletionSchemaOverride) {
               console.log(JSON.stringify(input.result, null, 2));
             } else {
               console.log(input.result);
-
             }
           }
           return;

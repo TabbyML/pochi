@@ -263,12 +263,12 @@ function renderToolPart(
     const input = part.input || {};
 
     let content = "";
-    if (part.state === "input-streaming"){
+    if (part.state === "input-streaming") {
       return {
         text: "",
         stop: "stopAndPersist",
         error: errorText,
-      }
+      };
     }
     if (attemptCompletionSchemaOverride) {
       content = JSON.stringify(input.result, null, 2);
