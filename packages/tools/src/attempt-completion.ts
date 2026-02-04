@@ -31,26 +31,9 @@ ${NoOtherToolsReminderPrompt}
 
 export const attemptCompletion = defineClientTool(toolDef);
 
-export const createAttemptCompletionTool = (schema?: z.ZodAny) => {
-  if (!schema) {
-    return defineClientTool(toolDef);
-  }
-
-  // Preprocess to handle cases where the model returns a JSON string instead of an object
-  const preprocessedSchema = z.preprocess((val) => {
-    if (typeof val === "string") {
-      try {
-        return JSON.parse(val);
-      } catch {
-        return val;
-      }
-    }
-    return val;
-  }, schema);
-
-  return defineClientTool({
+export const createAttemptCompletionTool = (schema?: z.ZodAny) =>
+  defineClientTool({
     ...toolDef,
     // Always wrap in result - use custom schema if provided, otherwise use default string result
-    inputSchema: z.object({ result: preprocessedSchema }),
+    inputSchema: schema ? z.object({ result: schema }) : attemptCompletionSchema,
   });
-};
