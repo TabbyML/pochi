@@ -81,17 +81,19 @@ export async function loadAgents(
     }
 
     // Filter out invalid agents for CLI usage
-    const validAgents = uniqueBy(allAgents, (agent) => agent.name).filter(
-      (agent): agent is ValidCustomAgentFile => {
-        if (isValidCustomAgentFile(agent)) {
-          return true;
-        }
-        logger.warn(
-          `Ignoring invalid custom agent file ${agent.filePath}: [${agent.error}] ${agent.message}`,
-        );
-        return false;
-      },
-    );
+    const validAgents = uniqueBy(allAgents, (agent) =>
+      agent.filePath === BuiltInAgentPath
+        ? agent.name + BuiltInAgentPath
+        : agent.name,
+    ).filter((agent): agent is ValidCustomAgentFile => {
+      if (isValidCustomAgentFile(agent)) {
+        return true;
+      }
+      logger.warn(
+        `Ignoring invalid custom agent file ${agent.filePath}: [${agent.error}] ${agent.message}`,
+      );
+      return false;
+    });
 
     logger.debug(
       `Loaded ${allAgents.length} custom agents (${validAgents.length} valid, ${allAgents.length - validAgents.length} invalid)`,

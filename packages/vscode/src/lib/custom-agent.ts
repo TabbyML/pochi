@@ -150,7 +150,11 @@ export class CustomAgentManager implements vscode.Disposable {
         })),
       );
 
-      this.agents.value = uniqueBy(allAgents, (agent) => agent.name);
+      this.agents.value = uniqueBy(allAgents, (agent) =>
+        agent.filePath === BuiltInAgentPath
+          ? agent.name + agent.filePath
+          : agent.name,
+      );
       logger.debug(`Loaded ${allAgents.length} custom agents`);
     } catch (error) {
       logger.error("Failed to load custom agents", error);

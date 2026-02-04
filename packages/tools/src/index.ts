@@ -146,7 +146,7 @@ export const selectClientTools = (
 
   if (options?.isSubTask) {
     const { newTask, ...rest } = clientTools;
-    if (options.agent?.builtin === true && options.agent.name === "reviewer") {
+    if (options.agent?.name === "reviewer") {
       return {
         ...rest,
         createReview,

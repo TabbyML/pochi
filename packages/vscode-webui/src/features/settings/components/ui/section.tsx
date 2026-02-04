@@ -90,17 +90,13 @@ export const SectionItem: React.FC<{
       onClick={onClick}
     >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-1 items-center gap-1 overflow-x-hidden">
+        <div className="flex items-center gap-1 overflow-x-hidden">
           <div className="flex size-6 shrink-0 items-center justify-center">
             {icon}
           </div>
-          <div className="flex items-center gap-2 overflow-x-hidden">
-            <span className={cn("shrink-0 truncate font-semibold", {})}>
-              {title}
-            </span>
-          </div>
+          <span className="shrink-0 font-semibold">{title}</span>
         </div>
-        <div className="flex items-center">
+        <div className="flex min-w-0 flex-1 items-center justify-end">
           <span className="mr-1 truncate text-muted-foreground text-xs">
             {subtitle}
           </span>

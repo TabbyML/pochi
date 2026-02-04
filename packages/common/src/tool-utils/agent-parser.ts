@@ -3,7 +3,7 @@ import { remark } from "remark";
 import remarkFrontmatter from "remark-frontmatter";
 import { matter } from "vfile-matter";
 import z from "zod/v4";
-import { toErrorMessage } from "../base";
+import { builtInAgents, toErrorMessage } from "../base";
 import type { CustomAgentFile } from "../vscode-webui-bridge";
 import type {
   InvalidCustomAgentFile,
@@ -92,9 +92,21 @@ export async function parseAgentFile(
       .filter((tool) => tool.length > 0);
   }
 
+  const agentName = frontmatterData.name || defaultName;
+
+  if (builtInAgents.some((agent) => agent.name === agentName)) {
+    return {
+      name: agentName,
+      filePath,
+      error: "validationError",
+      message: `"${agentName}" is a reserved built-in agent name. Please choose a different name. Reserved names: ${builtInAgents.map((agent) => agent.name).join(", ")}`,
+      systemPrompt,
+    } satisfies InvalidCustomAgentFile;
+  }
+
   return {
     filePath,
-    name: frontmatterData.name || defaultName,
+    name: agentName,
     tools,
     description: frontmatterData.description,
     systemPrompt,

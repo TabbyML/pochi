@@ -2,7 +2,6 @@ import type { CustomAgent } from "@getpochi/tools";
 
 export const browser: CustomAgent = {
   name: "browser",
-  builtin: true,
   description:
     "Web browser automation agent for navigating websites, interacting with pages, and extracting information. Uses agent-browser CLI for headless browser control.",
   tools: ["executeCommand"],

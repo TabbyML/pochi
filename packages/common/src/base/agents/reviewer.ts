@@ -2,7 +2,6 @@ import type { CustomAgent } from "@getpochi/tools";
 
 export const reviewer: CustomAgent = {
   name: "reviewer",
-  builtin: true,
   description: `
 Engage this agent to perform code reviews and leave inline comments.
 This agent can analyze code and create review comments on specific lines.
