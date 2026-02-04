@@ -338,7 +338,9 @@ function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   return (
     lastToolPart?.type === "tool-newTask" &&
-    lastToolPart?.input?.agentType === "planner" &&
+    ["planner", "walkthrough"].includes(
+      lastToolPart?.input?.agentType || "",
+    ) &&
     lastToolPart?.state === "output-available"
   );
 }

@@ -483,6 +483,11 @@
     "creatingPlan": "코드를 분석하고 계획을 수립 중입니다...",
     "planCreationPaused": "계획 수립이 일시 중지되었습니다"
   },
+  "walkthroughCard": {
+    "openWalkthrough": "열기",
+    "creatingWalkthrough": "워크스루 생성 중...",
+    "walkthroughCreationPaused": "워크스루 생성이 일시 중지되었습니다"
+  },
   "browserView": {
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",

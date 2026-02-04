@@ -489,6 +489,11 @@
     "creatingPlan": "コードを分析し、計画を作成しています...",
     "planCreationPaused": "計画の作成が一時停止しました"
   },
+  "walkthroughCard": {
+    "openWalkthrough": "開く",
+    "creatingWalkthrough": "ウォークスルーを作成中...",
+    "walkthroughCreationPaused": "ウォークスルーの作成が一時停止しました"
+  },
   "browserView": {
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
