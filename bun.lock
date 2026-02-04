@@ -403,6 +403,7 @@
         "react-use": "^17.6.0",
         "rehype-sanitize": "^6.0.0",
         "remeda": "catalog:",
+        "run-exclusive": "catalog:",
         "shiki": "^3.13.0",
         "streamdown": "^1.6.0",
         "tailwind-merge": "^3.0.2",
