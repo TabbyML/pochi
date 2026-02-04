@@ -3,20 +3,83 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const logger = getLogger("useBrowserRecording");
+const logger = getLogger("useBrowserFrame");
 
-export function useBrowserRecording(
-  taskId: string,
-  frame: string | null,
-  isExecuting: boolean,
-) {
+export function useBrowserFrame(options: {
+  toolCallId: string;
+  parentTaskId: string;
+  completed: boolean;
+  streamUrl?: string;
+}) {
+  const { toolCallId, parentTaskId, completed, streamUrl } = options;
+  const [frame, setFrame] = useState<string | null>(null);
   const store = useDefaultStore();
   const muxerRef = useRef<Muxer<ArrayBufferTarget> | null>(null);
   const videoEncoderRef = useRef<VideoEncoder | null>(null);
   const startTimeRef = useRef<number>(0);
 
+  // WebSocket connection to get frames
+  useEffect(() => {
+    if (!streamUrl) return;
+
+    let ws: WebSocket | null = null;
+    let retryTimeout: NodeJS.Timeout;
+    const retryInterval = 2500;
+
+    const connect = () => {
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+        ws = null;
+      }
+      try {
+        ws = new WebSocket(streamUrl);
+        ws.onclose = () => {
+          // Always retry
+          retryTimeout = setTimeout(connect, retryInterval);
+        };
+        ws.onerror = (event) => {
+          logger.error("Browser stream error", event);
+          // Force close to trigger onclose and retry
+          ws?.close();
+        };
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "frame") {
+              setFrame(data.data); // base64 image
+            } else if (data.type === "error") {
+              logger.error("Browser message error", event);
+              // Force close to trigger onclose and retry
+              ws?.close();
+            }
+          } catch (e) {
+            logger.error("Failed to parse browser frame", e);
+          }
+        };
+      } catch (e) {
+        logger.error("Failed to connect to browser stream", e);
+        retryTimeout = setTimeout(connect, retryInterval);
+      }
+    };
+
+    connect();
+
+    return () => {
+      clearTimeout(retryTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.onmessage = null;
+        ws.close();
+        ws = null;
+      }
+    };
+  }, [streamUrl]);
+
+  // Recording logic
   useEffect(() => {
     const processFrame = async () => {
       if (!frame) return;
@@ -32,7 +95,6 @@ export function useBrowserRecording(
           resizeHeight: 480,
           resizeQuality: "high",
         });
-
         if (!muxerRef.current) {
           try {
             const { width, height } = imageBitmap;
@@ -64,14 +126,12 @@ export function useBrowserRecording(
             logger.error("Failed to initialize recording", e);
           }
         }
-
         if (videoEncoderRef.current?.state === "configured") {
           const timestamp = (performance.now() - startTimeRef.current) * 1000;
           const videoFrame = new VideoFrame(imageBitmap, { timestamp });
           videoEncoderRef.current.encode(videoFrame);
           videoFrame.close();
         }
-
         imageBitmap.close();
       } catch (err) {
         logger.error("Failed to process frame", err);
@@ -93,8 +153,8 @@ export function useBrowserRecording(
 
           store.commit(
             catalog.events.writeTaskFile({
-              taskId,
-              filePath: `/browser-recording/${taskId}.mp4`,
+              taskId: parentTaskId,
+              filePath: `/browser-recording/${toolCallId}.mp4`,
               content: url,
             }),
           );
@@ -107,10 +167,13 @@ export function useBrowserRecording(
       }
     };
 
-    if (isExecuting && frame) {
+    if (frame && !completed) {
       processFrame();
-    } else if (!isExecuting && muxerRef.current) {
+    }
+    if (muxerRef.current && completed) {
       stopRecording();
     }
-  }, [frame, isExecuting, taskId, store]);
+  }, [frame, toolCallId, parentTaskId, completed, store]);
+
+  return frame;
 }

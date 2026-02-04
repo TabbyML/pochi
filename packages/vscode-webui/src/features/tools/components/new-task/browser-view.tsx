@@ -4,25 +4,30 @@ import { catalog } from "@getpochi/livekit";
 import { Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
-import { useBrowserRecording } from "../../hooks/use-browser-recording";
-import { useWebsocketFrame } from "../../hooks/use-websocket-frame";
+import { useBrowserFrame } from "../../hooks/use-browser-frame";
 import { SubAgentView } from "./sub-agent-view";
 
 export function BrowserView(props: NewTaskToolViewProps) {
-  const { taskSource, uid, tool, toolCallStatusRegistryRef, isExecuting } =
-    props;
+  const { taskSource, uid, tool, toolCallStatusRegistryRef } = props;
   const { t } = useTranslation();
   const description = tool.input?.description;
+  const completed =
+    tool.state === "output-available" &&
+    "result" in tool.output &&
+    tool.output.result.trim().length > 0;
   const browserSession = useBrowserSession(uid || "");
   const streamUrl = browserSession?.streamUrl;
-  const frame = useWebsocketFrame(streamUrl);
-  useBrowserRecording(uid || "", frame, isExecuting);
-
+  const frame = useBrowserFrame({
+    toolCallId: tool.toolCallId,
+    parentTaskId: taskSource?.parentId || "",
+    completed,
+    streamUrl,
+  });
   const store = useDefaultStore();
   const file = store.useQuery(
     catalog.queries.makeFileQuery(
-      uid || "",
-      `/browser-recording/${uid || ""}.mp4`,
+      taskSource?.parentId || "",
+      `/browser-recording/${tool.toolCallId}.mp4`,
     ),
   );
   const videoUrl = file?.content;
@@ -37,6 +42,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
       <div className="flex flex-col gap-2 bg-black">
         <div className="relative aspect-video max-h-[20vh] w-full">
           {videoUrl ? (
+            // biome-ignore lint/a11y/useMediaCaption: No audio track available
             <video
               key={videoUrl}
               src={videoUrl}
