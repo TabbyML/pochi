@@ -261,15 +261,21 @@ function renderToolPart(
 
   if (part.type === "tool-attemptCompletion") {
     const input = part.input || {};
+
+    // Handle input streaming state
+    if (part.state === "input-streaming") {
+      return {
+        text: `${chalk.bold(chalk.green("🎉 Task Completing..."))}`,
+        stop: "stopAndPersist",
+        error: errorText,
+      };
+    }
+
     let content = "";
-    if (
-      !attemptCompletionSchemaOverride &&
-      "result" in input &&
-      typeof input.result === "string"
-    ) {
+    if (!attemptCompletionSchemaOverride && typeof input.result === "string") {
       content = input.result;
     } else {
-      content = JSON.stringify(input, null, 2);
+      content = JSON.stringify(input.result, null, 2);
     }
     const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${content}`;
 

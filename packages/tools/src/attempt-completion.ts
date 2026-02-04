@@ -2,12 +2,14 @@ import { z } from "zod/v4";
 import { NoOtherToolsReminderPrompt } from "./constants";
 import { defineClientTool } from "./types";
 
+const defaultResultSchema = z
+  .string()
+  .describe(
+    "The result of the task. Formulate this result in a way that is final and does not require further input from the user.",
+  );
+
 export const attemptCompletionSchema = z.object({
-  result: z
-    .string()
-    .describe(
-      "The result of the task. Formulate this result in a way that is final and does not require further input from the user.",
-    ),
+  result: defaultResultSchema,
 });
 
 const toolDef = {
@@ -29,9 +31,26 @@ ${NoOtherToolsReminderPrompt}
 
 export const attemptCompletion = defineClientTool(toolDef);
 
-export const createAttemptCompletionTool = (schema?: z.ZodAny) =>
-  defineClientTool({
+export const createAttemptCompletionTool = (schema?: z.ZodAny) => {
+  if (!schema) {
+    return defineClientTool(toolDef);
+  }
+
+  // Preprocess to handle cases where the model returns a JSON string instead of an object
+  const preprocessedSchema = z.preprocess((val) => {
+    if (typeof val === "string") {
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val;
+      }
+    }
+    return val;
+  }, schema);
+
+  return defineClientTool({
     ...toolDef,
-    // If a schema is provided, use it; otherwise, use the default
-    inputSchema: schema || attemptCompletionSchema,
+    // Always wrap in result - use custom schema if provided, otherwise use default string result
+    inputSchema: z.object({ result: preprocessedSchema }),
   });
+};

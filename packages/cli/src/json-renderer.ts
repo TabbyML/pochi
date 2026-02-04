@@ -59,12 +59,11 @@ export class JsonRenderer {
             const input = part.input as Record<string, unknown>;
             if (
               !this.attemptCompletionSchemaOverride &&
-              "result" in input &&
               typeof input.result === "string"
             ) {
               console.log(input.result);
             } else {
-              console.log(JSON.stringify(input, null, 2));
+              console.log(JSON.stringify(input.result, null, 2));
             }
           }
           return;
