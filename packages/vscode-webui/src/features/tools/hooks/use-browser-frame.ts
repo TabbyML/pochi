@@ -19,6 +19,7 @@ export function useBrowserFrame(options: {
   const muxerRef = useRef<Muxer<ArrayBufferTarget> | null>(null);
   const videoEncoderRef = useRef<VideoEncoder | null>(null);
   const startTimeRef = useRef<number>(0);
+  const isStoppingRef = useRef(false);
 
   // WebSocket connection to get frames
   useEffect(() => {
@@ -139,6 +140,9 @@ export function useBrowserFrame(options: {
     };
 
     const stopRecording = async () => {
+      if (isStoppingRef.current) return;
+      isStoppingRef.current = true;
+
       try {
         if (videoEncoderRef.current?.state === "configured") {
           await videoEncoderRef.current.flush();
@@ -164,6 +168,7 @@ export function useBrowserFrame(options: {
       } finally {
         muxerRef.current = null;
         videoEncoderRef.current = null;
+        isStoppingRef.current = false;
       }
     };
 
