@@ -154,7 +154,7 @@ export function useBrowserFrame(options: {
           store.commit(
             catalog.events.writeTaskFile({
               taskId: parentTaskId,
-              filePath: `/browser-recording/${toolCallId}.mp4`,
+              filePath: `/browser-session/${toolCallId}.mp4`,
               content: url,
             }),
           );

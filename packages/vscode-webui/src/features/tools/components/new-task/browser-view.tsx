@@ -27,7 +27,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const file = store.useQuery(
     catalog.queries.makeFileQuery(
       taskSource?.parentId || "",
-      `/browser-recording/${tool.toolCallId}.mp4`,
+      `/browser-session/${tool.toolCallId}.mp4`,
     ),
   );
   const videoUrl = file?.content;
