@@ -1,6 +1,4 @@
-export function validateTaskFilePath(
-  filePath: string,
-): "/plan.md" | `/browser-session/${string}.mp4` {
+export function validateTaskFilePath(filePath: string) {
   if (
     filePath === "/plan.md" ||
     /^\/browser-session\/.*\.mp4$/.test(filePath)
