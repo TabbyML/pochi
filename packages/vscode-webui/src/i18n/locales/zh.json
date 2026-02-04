@@ -123,6 +123,7 @@
       "developerMode": "开发者模式",
       "enablePochiModels": "启用 Pochi 模型",
       "clearStorage": "清除存储",
+      "resetReviewPlanTutorialCounter": "重置评审计划教程计数器",
       "language": "语言",
       "languageDescription": "选择您的首选语言",
       "hideRecommendSettings": "隐藏推荐设置"
@@ -209,7 +210,7 @@
   },
   "tasksPage": {
     "tasks": "任务",
-    "filter": "筛选",
+    "filter": "筛选任务",
     "archivedTasks": "已归档任务",
     "deletedWorktrees": "已删除的工作树",
     "emptyState": {
@@ -251,7 +252,8 @@
     "loadMore": "加载更多",
     "archiveTask": "归档任务",
     "unarchiveTask": "取消归档任务",
-    "archiveOldTasks": "归档一周前的任务",
+    "archiveOldTasks": "归档旧任务",
+    "archiveOldTasksTooltip": "归档一周前的任务",
     "showAnyTasks": "显示所有任务",
     "showOpenTasks": "显示活动任务"
   },
@@ -371,8 +373,7 @@
   },
   "subtask": {
     "back": "返回",
-    "complete": "完成",
-    "startImplementation": "开始实现"
+    "complete": "完成"
   },
   "errorMessageView": {
     "reachedCreditLimit": "您已达到消费限额。",
@@ -479,6 +480,8 @@
   },
   "planCard": {
     "reviewPlan": "评审",
+    "reviewPlanTitle": "评审计划",
+    "reviewPlanTooltip": "点击plan artifact 的行号前的‘+’ 来 leave comments",
     "executePlan": "执行计划",
     "creatingPlan": "正在分析您的代码并制定计划..."
   },

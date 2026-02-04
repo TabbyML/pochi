@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 
 import { DevRetryCountdown } from "@/components/dev-retry-countdown";
 import { ActiveSelectionBadge } from "@/components/prompt-form/active-selection-badge";
@@ -37,28 +37,47 @@ interface ChatInputFormProps {
   lastCheckpointHash?: string;
 }
 
-export function ChatInputForm({
-  input,
-  setInput,
-  onSubmit,
-  onCtrlSubmit,
-  isLoading,
-  editable,
-  onPaste,
-  onFocus,
-  pendingApproval,
-  status,
-  onFileDrop,
-  messageContent,
-  queuedMessages,
-  onRemoveQueuedMessage,
-  isSubTask,
-  reviews,
-  taskId,
-  lastCheckpointHash,
-  children,
-}: ChatInputFormProps) {
+export interface ChatInputFormHandle {
+  addToSubmitHistory: () => void;
+}
+
+export const ChatInputForm = forwardRef<
+  ChatInputFormHandle,
+  ChatInputFormProps
+>(function ChatInputForm(
+  {
+    input,
+    setInput,
+    onSubmit,
+    onCtrlSubmit,
+    isLoading,
+    editable,
+    onPaste,
+    onFocus,
+    pendingApproval,
+    status,
+    onFileDrop,
+    messageContent,
+    queuedMessages,
+    onRemoveQueuedMessage,
+    isSubTask,
+    reviews,
+    taskId,
+    lastCheckpointHash,
+    children,
+  },
+  ref,
+) {
   const editorRef = useRef<Editor | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    addToSubmitHistory: () => {
+      const editor = editorRef.current;
+      if (editor && !editor.isDestroyed) {
+        editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
+      }
+    },
+  }));
 
   return (
     <FormEditor
@@ -97,4 +116,4 @@ export function ChatInputForm({
       {children}
     </FormEditor>
   );
-}
+});

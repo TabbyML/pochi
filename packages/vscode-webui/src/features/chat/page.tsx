@@ -12,7 +12,7 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { type Task, catalog } from "@getpochi/livekit";
+import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
@@ -20,7 +20,7 @@ import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useApprovalAndRetry, useShouldStopAutoApprove } from "../approval";
+import { useApprovalAndRetry } from "../approval";
 import {
   useAutoApprove,
   useSelectedModels,
@@ -30,6 +30,7 @@ import { ChatArea } from "./components/chat-area";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
+import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
 import { useForkTask } from "./hooks/use-fork-task";
@@ -118,8 +119,6 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveGuard: autoApproveGuard.current === "auto",
     isSubTask,
   });
-
-  const shouldStopAutoApprove = useShouldStopAutoApprove();
 
   const {
     onStreamStart: onChartNotificationsStreamStart,
@@ -252,6 +251,11 @@ function Chat({ user, uid, info }: ChatProps) {
 
   useAddSubtaskResult({ ...chat });
 
+  useAutoOpenPlanFile({
+    isSubTask,
+    subtask,
+  });
+
   useScrollToBottom({
     messagesContainerRef,
     isLoading,
@@ -328,4 +332,13 @@ function fromTaskError(task?: Task) {
   if (task?.error) {
     return new Error(task.error.message);
   }
+}
+
+function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
+  const lastToolPart = messages.at(-1)?.parts.at(-1);
+  return (
+    lastToolPart?.type === "tool-newTask" &&
+    lastToolPart?.input?.agentType === "planner" &&
+    lastToolPart?.state === "output-available"
+  );
 }

@@ -121,4 +121,67 @@ describe("TaskHistoryStore", () => {
     assert.strictEqual(Object.keys(savedTasks).length, 1);
     assert.ok(savedTasks["task-2"]);
   });
+
+  it("should filter out tasks older than 1 week when worktree is deleted", async () => {
+    const now = Date.now();
+    const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
+    const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000;
+    
+    // Create a temp directory to simulate an existing worktree
+    const existingWorktree = vscode.Uri.joinPath(tempStorageUri, "existing-worktree");
+    await vscode.workspace.fs.createDirectory(existingWorktree);
+    
+    const nonExistingWorktree = `/tmp/non-existing-worktree-${Date.now()}`;
+
+    const tasks = {
+      "task-old-deleted-worktree": { 
+        id: "task-old-deleted-worktree", 
+        updatedAt: twoWeeksAgo,
+        cwd: nonExistingWorktree 
+      },
+      "task-old-existing-worktree": { 
+        id: "task-old-existing-worktree", 
+        updatedAt: twoWeeksAgo,
+        cwd: existingWorktree.fsPath 
+      },
+      "task-recent-deleted-worktree": { 
+        id: "task-recent-deleted-worktree", 
+        updatedAt: threeDaysAgo,
+        cwd: nonExistingWorktree 
+      },
+      "task-old-no-cwd": { 
+        id: "task-old-no-cwd", 
+        updatedAt: twoWeeksAgo 
+      },
+    };
+
+    // Setup file with tasks
+    const fileUri = vscode.Uri.joinPath(tempStorageUri, "tasks.json");
+    await vscode.workspace.fs.writeFile(
+        fileUri, 
+        new TextEncoder().encode(JSON.stringify(tasks))
+    );
+
+    taskStore = new TaskHistoryStore(context);
+    await taskStore.ready;
+
+    const currentTasks = taskStore.tasks.value;
+    
+    // Task with old timestamp and deleted worktree should be removed
+    assert.strictEqual(currentTasks["task-old-deleted-worktree"], undefined);
+    
+    // Task with old timestamp but existing worktree should be kept
+    assert.ok(currentTasks["task-old-existing-worktree"]);
+    
+    // Task with recent timestamp and deleted worktree should be kept
+    assert.ok(currentTasks["task-recent-deleted-worktree"]);
+    
+    // Task with old timestamp but no cwd should be kept
+    assert.ok(currentTasks["task-old-no-cwd"]);
+
+    // Verify file was updated
+    const content = await vscode.workspace.fs.readFile(fileUri);
+    const savedTasks = JSON.parse(content.toString());
+    assert.strictEqual(Object.keys(savedTasks).length, 3);
+  });
 });

@@ -3,12 +3,19 @@ import { getCorsProxyUrl } from "@getpochi/common/cors-proxy";
 import type { BrowserSession } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
+import type * as vscode from "vscode";
 import { getAvailablePort } from "./get-available-port";
 
 @injectable()
 @singleton()
-export class BrowserSessionStore {
+export class BrowserSessionStore implements vscode.Disposable {
   browserSessions = signal<Record<string, BrowserSession>>({});
+
+  dispose() {
+    for (const taskId of Object.keys(this.browserSessions.value)) {
+      void this.unregisterBrowserSession(taskId);
+    }
+  }
 
   async registerBrowserSession(taskId: string) {
     const port = await getAvailablePort();
@@ -22,20 +29,22 @@ export class BrowserSessionStore {
   }
 
   async unregisterBrowserSession(taskId: string) {
-    const { [taskId]: _, ...rest } = this.browserSessions.value;
-    this.browserSessions.value = rest;
-
     // Cleanup agent-browser process
     const envs = this.getAgentBrowserEnvs(taskId);
-    const child = spawn("agent-browser", ["close"], {
-      env: {
-        ...process.env,
-        ...envs,
-      },
-      detached: true,
-      stdio: "ignore",
-    });
-    child.unref();
+    if (envs) {
+      const child = spawn("agent-browser", ["close"], {
+        env: {
+          ...process.env,
+          ...envs,
+        },
+        detached: true,
+        stdio: "ignore",
+      });
+      child.unref();
+    }
+
+    const { [taskId]: _, ...rest } = this.browserSessions.value;
+    this.browserSessions.value = rest;
   }
 
   getAgentBrowserEnvs(taskId: string): Record<string, string> | undefined {

@@ -123,6 +123,7 @@
       "developerMode": "개발자 모드",
       "enablePochiModels": "Pochi 모델 활성화",
       "clearStorage": "저장소 지우기",
+      "resetReviewPlanTutorialCounter": "리뷰 계획 튜토리얼 카운터 재설정",
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요",
       "hideRecommendSettings": "추천 설정 숨기기"
@@ -210,7 +211,7 @@
   },
   "tasksPage": {
     "tasks": "작업",
-    "filter": "필터",
+    "filter": "작업 필터",
     "archivedTasks": "보관된 작업",
     "deletedWorktrees": "삭제된 워크트리",
     "emptyState": {
@@ -252,7 +253,8 @@
     "loadMore": "더 보기",
     "archiveTask": "작업 보관",
     "unarchiveTask": "작업 보관 취소",
-    "archiveOldTasks": "1주일 이상 된 작업 보관",
+    "archiveOldTasks": "오래된 작업 보관",
+    "archiveOldTasksTooltip": "1주일 이상 된 작업 보관",
     "showAnyTasks": "모든 작업 표시",
     "showOpenTasks": "활성 작업 표시"
   },
@@ -372,8 +374,7 @@
   },
   "subtask": {
     "back": "뒤로",
-    "complete": "완료",
-    "startImplementation": "구현 시작"
+    "complete": "완료"
   },
   "errorMessageView": {
     "reachedCreditLimit": "지출 한도에 도달했습니다.",
@@ -475,6 +476,8 @@
   },
   "planCard": {
     "reviewPlan": "검토",
+    "reviewPlanTitle": "계획 검토",
+    "reviewPlanTooltip": "계획 아티팩트의 줄 번호 앞에 있는 '+'를 클릭하여 댓글을 남기세요",
     "executePlan": "계획 실행",
     "creatingPlan": "코드를 분석하고 계획을 수립 중입니다..."
   },

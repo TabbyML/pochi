@@ -124,6 +124,13 @@ export interface VSCodeHostApi {
 
   readPochiTabs(): Promise<ThreadSignalSerialization<TaskStates>>;
 
+  /**
+   * Closes all Pochi tabs with the given uid (task id).
+   * If uid is not provided, closes all Pochi tabs.
+   * @param uid - Optional task id to filter tabs to close.
+   */
+  closePochiTabs(uid?: string): Promise<void>;
+
   readActiveSelection(): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>
   >;
