@@ -35,5 +35,7 @@ export const createAttemptCompletionTool = (schema?: z.ZodAny) =>
   defineClientTool({
     ...toolDef,
     // Always wrap in result - use custom schema if provided, otherwise use default string result
-    inputSchema: schema ? z.object({ result: schema }) : attemptCompletionSchema,
+    inputSchema: schema
+      ? z.object({ result: schema })
+      : attemptCompletionSchema,
   });
