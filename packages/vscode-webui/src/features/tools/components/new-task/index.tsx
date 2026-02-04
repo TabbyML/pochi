@@ -6,7 +6,7 @@ import {
   ToolCallStatusRegistry,
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { useVSCodeNavigate } from "@/lib/hooks/use-vscode-navigate";
+import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
@@ -121,7 +121,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
     props;
   const store = useDefaultStore();
-  const navigate = useVSCodeNavigate();
+  const navigate = useNavigate();
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
   const agentType = tool.input?.agentType;

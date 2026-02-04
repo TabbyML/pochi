@@ -1,0 +1,15 @@
+id: no-tanstack-useNavigate
+language: tsx
+rule:
+  any:
+    - pattern: import { useNavigate } from "@tanstack/react-router"
+    - pattern: import { useNavigate, $$$REST } from "@tanstack/react-router"
+    - pattern: import { $$$REST, useNavigate } from "@tanstack/react-router"
+    - pattern: import { $$$BEFORE, useNavigate, $$$AFTER } from "@tanstack/react-router"
+message: Don't import useNavigate from @tanstack/react-router directly, use useNavigate from @/lib/hooks/use-navigate instead.
+severity: error
+ignores:
+  - "packages/vscode-webui/src/lib/hooks/use-navigate.ts"
+files:
+  - "packages/vscode-webui/src/**/*.ts"
+  - "packages/vscode-webui/src/**/*.tsx"

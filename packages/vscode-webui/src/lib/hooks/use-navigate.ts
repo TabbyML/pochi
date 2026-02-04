@@ -1,7 +1,7 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate as useTanStackNavigate } from "@tanstack/react-router";
 import { isVSCodeEnvironment } from "../vscode";
 
-type NavigateFn = ReturnType<typeof useNavigate>;
+type NavigateFn = ReturnType<typeof useTanStackNavigate>;
 
 const noopNavigate = (() => {}) as unknown as NavigateFn;
 
@@ -11,7 +11,7 @@ const noopNavigate = (() => {}) as unknown as NavigateFn;
  * In VSCode webview: returns the real useNavigate() from TanStack Router.
  * In other environments (e.g., share page iframe): returns a no-op function.
  */
-export function useVSCodeNavigate(): NavigateFn {
+export function useNavigate(): NavigateFn {
   // biome-ignore lint/correctness/useHookAtTopLevel: isVSCodeEnvironment() is a constant determined at page load, hook order is stable
-  return isVSCodeEnvironment() ? useNavigate() : noopNavigate;
+  return isVSCodeEnvironment() ? useTanStackNavigate() : noopNavigate;
 }

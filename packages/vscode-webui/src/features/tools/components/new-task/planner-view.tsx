@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/hover-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
+import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
-import { useVSCodeNavigate } from "@/lib/hooks/use-vscode-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
@@ -37,7 +37,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
     catalog.queries.makeFileQuery(taskSource?.parentId || "", "/plan.md"),
   );
   const sendRetry = useSendRetry();
-  const navigate = useVSCodeNavigate();
+  const navigate = useNavigate();
   const description = tool?.input?.description;
   const { count, incrementCount } = useReviewPlanTutorialCounter();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
