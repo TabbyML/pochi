@@ -159,10 +159,6 @@ export class PochiTaskEditorProvider
       ),
     );
 
-    setAutoLockGroupsConfig();
-
-    disposables.push(autoCleanTabGroupLock());
-
     return vscode.Disposable.from(...disposables);
   }
 
@@ -347,23 +343,6 @@ export class PochiTaskEditorProvider
   }
 }
 
-function setAutoLockGroupsConfig() {
-  const autoLockGroupsConfig =
-    vscode.workspace.getConfiguration("workbench.editor");
-
-  const result =
-    autoLockGroupsConfig.inspect<Record<string, boolean>>("autoLockGroups");
-
-  autoLockGroupsConfig.update(
-    "autoLockGroups",
-    {
-      ...(result?.globalValue ?? {}),
-      [PochiTaskEditorProvider.viewType]: true,
-    },
-    vscode.ConfigurationTarget.Global,
-  );
-}
-
 async function openTaskInColumn(
   uri: vscode.Uri,
   options?: { keepEditor?: boolean; viewColumn?: vscode.ViewColumn },
@@ -380,11 +359,7 @@ async function openTaskInColumn(
     return;
   }
 
-  const viewColumn =
-    options?.viewColumn ??
-    (await getViewColumnForTask({
-      cwd: params.cwd,
-    }));
+  const viewColumn = options?.viewColumn ?? getViewColumnForTask();
 
   await vscode.commands.executeCommand(
     "vscode.openWith",
@@ -392,39 +367,6 @@ async function openTaskInColumn(
     PochiTaskEditorProvider.viewType,
     { preview: true, viewColumn },
   );
-}
-
-function autoCleanTabGroupLock() {
-  return vscode.window.tabGroups.onDidChangeTabs((event) => {
-    // if we have more than one tab group, do nothing. vscode will close tab group when it has no tab
-    if (vscode.window.tabGroups.all.length > 1) {
-      return;
-    }
-
-    // if the tab group still have pochi tab, do nothing
-    if (
-      vscode.window.tabGroups.all.length > 0 &&
-      vscode.window.tabGroups.all[0].tabs.filter(
-        (tab) =>
-          tab.input instanceof vscode.TabInputCustom &&
-          tab.input.viewType === PochiTaskEditorProvider.viewType,
-      ).length > 0
-    ) {
-      return;
-    }
-
-    // if closed tabs contain pochi tab, unlock this tab group
-    if (
-      event.closed.length > 0 &&
-      event.closed.some(
-        (tab) =>
-          tab.input instanceof vscode.TabInputCustom &&
-          tab.input.viewType === PochiTaskEditorProvider.viewType,
-      )
-    ) {
-      vscode.commands.executeCommand("workbench.action.unlockEditorGroup");
-    }
-  });
 }
 
 const TaskUri = z.object({

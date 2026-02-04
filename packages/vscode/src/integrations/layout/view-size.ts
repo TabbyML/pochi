@@ -3,7 +3,7 @@ interface Group {
   groups?: Group[];
 }
 
-export interface EditorLayoutViewSize {
+export interface EditorLayout {
   orientation: 0 | 1;
   groups: Group[];
 }
@@ -11,7 +11,7 @@ export interface EditorLayoutViewSize {
 const PochiLayoutSizeLeft = 0.35;
 const PochiLayoutSizeRightTop = 0.7;
 
-export const PochiLayoutViewSize: EditorLayoutViewSize = {
+export const PochiLayout: EditorLayout = {
   orientation: 0, // Left-right
   groups: [
     {
@@ -31,7 +31,7 @@ export const PochiLayoutViewSize: EditorLayoutViewSize = {
   ],
 };
 
-export function countTabGroups(groups: Group[]) {
+export function countTabGroupsRecersive(groups: Group[]) {
   const countGroups = (group: Group): number => {
     if (group.groups && group.groups.length > 0) {
       return sumGroups(group.groups);
@@ -44,11 +44,8 @@ export function countTabGroups(groups: Group[]) {
   return sumGroups(groups);
 }
 
-export function isPochiLayoutViewSize(layout: EditorLayoutViewSize): boolean {
-  if (countTabGroups(layout.groups) !== 3) {
-    return false;
-  }
-  if (layout.orientation !== PochiLayoutViewSize.orientation) {
+export function isLayoutViewSizeMatched(layout: EditorLayout): boolean {
+  if (layout.orientation !== PochiLayout.orientation) {
     return false;
   }
   if (layout.groups.length !== 2) {

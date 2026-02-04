@@ -1,8 +1,8 @@
 import { container } from "tsyringe";
 import { LayoutManager } from "./layout-manager";
 
-export function getViewColumnForTask(params: { cwd: string }) {
-  return container.resolve(LayoutManager).getViewColumnForTask(params);
+export function getViewColumnForTask() {
+  return container.resolve(LayoutManager).getViewColumnForTask();
 }
 
 export function getViewColumnForTerminal() {

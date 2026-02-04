@@ -22,10 +22,10 @@ import {
 import { isTerminalCreatedByDefault } from "./terminal-utils";
 import { TimedList } from "./timed-list";
 import {
-  type EditorLayoutViewSize,
-  PochiLayoutViewSize,
-  countTabGroups,
-  isPochiLayoutViewSize,
+  type EditorLayout,
+  PochiLayout,
+  countTabGroupsRecersive,
+  isLayoutViewSizeMatched,
 } from "./view-size";
 
 const logger = getLogger("Layout");
@@ -59,26 +59,39 @@ type LayoutEvent =
 @injectable()
 @singleton()
 export class LayoutManager implements vscode.Disposable {
-  private disposables: vscode.Disposable[] = [];
+  private configListener: vscode.Disposable;
+  private listeners: vscode.Disposable[] = [];
   private exclusiveGroup = runExclusive.createGroupRef();
+
   private newOpenTerminal = new TimedList<vscode.Terminal>(); // Saves the terminals that are newly opened
+  private enabled = false;
 
   constructor(
     private readonly configuration: PochiConfiguration,
     private readonly workspaceScope: WorkspaceScope,
   ) {
-    this.setupListeners();
-    this.fsm.start();
+    this.configListener = {
+      dispose: this.configuration.advancedSettings.subscribe((config) => {
+        const enabled = !!config.pochiLayout?.enabled;
+        executeVSCodeCommand("setContext", "pochiLayoutEnabled", enabled);
+        const prevEnabled = this.enabled;
+        this.enabled = enabled;
+
+        if (!prevEnabled && enabled) {
+          this.fsm.start();
+          this.setupListeners();
+        } else if (prevEnabled && !enabled) {
+          this.disposeListeners();
+          this.fsm.stop();
+        }
+      }),
+    };
   }
 
   get allTabGroups(): readonly vscode.TabGroup[] {
     return vscode.window.tabGroups.all.toSorted(
       (a, b) => a.viewColumn - b.viewColumn,
     );
-  }
-
-  get autoApplyEnabled() {
-    return !!this.configuration.advancedSettings.value.pochiLayout?.enabled;
   }
 
   private tabGroupsShape = getTabGroupsShape(this.allTabGroups);
@@ -90,7 +103,7 @@ export class LayoutManager implements vscode.Disposable {
       initial: {
         entry: async () => {
           const valid = await this.validate();
-          if (valid && this.autoApplyEnabled) {
+          if (valid && this.enabled) {
             this.fsm.send("layout-valid");
           } else {
             this.fsm.send("layout-invalid");
@@ -139,12 +152,49 @@ export class LayoutManager implements vscode.Disposable {
   private fsm = interpret(this.fsmDef);
 
   private setupListeners() {
-    this.disposables.push(
+    this.listeners.push(
       {
         dispose: this.fsm.subscribe((state) => {
-          logger.trace("FSM state: ", state);
+          logger.trace("- FSM state:", state.value);
         }).unsubscribe,
       },
+      vscode.window.tabGroups.onDidChangeTabGroups(
+        async (event: vscode.TabGroupChangeEvent) => {
+          this.tabGroupsShape = getTabGroupsShape(this.allTabGroups);
+
+          if (event.opened.length > 0 || event.closed.length > 0) {
+            const valid = await this.validate();
+            this.fsm.send(valid ? "layout-valid" : "layout-invalid");
+          }
+        },
+      ),
+      vscode.window.tabGroups.onDidChangeTabs(
+        async (event: vscode.TabChangeEvent) => {
+          const prevTabGroupsShape = this.tabGroupsShape;
+          this.tabGroupsShape = getTabGroupsShape(this.allTabGroups);
+
+          if (event.opened.length > 0 || event.closed.length > 0) {
+            const valid = await this.validate();
+            this.fsm.send(valid ? "layout-valid" : "layout-invalid");
+          }
+
+          if (this.fsm.state.value === "non-pochi-layout") {
+            // Auto apply when new task tab open
+            const prevTaskTabsCount = countPochiTaskTabs(prevTabGroupsShape);
+            const taskTabsCount = countPochiTaskTabs(this.tabGroupsShape);
+            if (taskTabsCount > prevTaskTabsCount) {
+              this.fsm.send("start-apply");
+            }
+
+            // Auto apply when first other type tab open
+            const prevOtherTabsCount = countOtherTabs(prevTabGroupsShape);
+            const otherTabsCount = countOtherTabs(this.tabGroupsShape);
+            if (prevOtherTabsCount === 0 && otherTabsCount > 0) {
+              this.fsm.send("start-apply");
+            }
+          }
+        },
+      ),
       vscode.window.onDidOpenTerminal((terminal: vscode.Terminal) => {
         this.newOpenTerminal.add(terminal);
       }),
@@ -159,7 +209,7 @@ export class LayoutManager implements vscode.Disposable {
             // the terminal to the editor group and close the sidebar/bottom-panel.
             const isCreatedByDefault = isTerminalCreatedByDefault(terminal);
 
-            if (this.autoApplyEnabled && !isCreatedByDefault) {
+            if (!isCreatedByDefault) {
               if (this.fsm.state.value === "non-pochi-layout") {
                 this.fsm.send("start-apply");
               } else {
@@ -169,47 +219,14 @@ export class LayoutManager implements vscode.Disposable {
           }
         },
       ),
-      vscode.window.tabGroups.onDidChangeTabGroups(
-        async (_event: vscode.TabGroupChangeEvent) => {
-          this.tabGroupsShape = getTabGroupsShape(this.allTabGroups);
-          const valid = await this.validate();
-          if (!valid) {
-            this.fsm.send("layout-invalid");
-          } else if (this.autoApplyEnabled) {
-            this.fsm.send("layout-valid");
-          }
-        },
-      ),
-      vscode.window.tabGroups.onDidChangeTabs(
-        async (_event: vscode.TabChangeEvent) => {
-          const prevTabGroupsShape = this.tabGroupsShape;
-          this.tabGroupsShape = getTabGroupsShape(this.allTabGroups);
-          const valid = await this.validate();
-          if (!valid) {
-            this.fsm.send("layout-invalid");
-          } else if (this.autoApplyEnabled) {
-            this.fsm.send("layout-valid");
-          }
-
-          if (
-            this.fsm.state.value === "non-pochi-layout" &&
-            this.autoApplyEnabled
-          ) {
-            const prevTaskTabsCount = countPochiTaskTabs(prevTabGroupsShape);
-            const taskTabsCount = countPochiTaskTabs(this.tabGroupsShape);
-            if (prevTaskTabsCount === 0 && taskTabsCount > 0) {
-              this.fsm.send("start-apply");
-            }
-
-            const prevOtherTabsCount = countOtherTabs(prevTabGroupsShape);
-            const otherTabsCount = countOtherTabs(this.tabGroupsShape);
-            if (prevOtherTabsCount === 0 && otherTabsCount > 0) {
-              this.fsm.send("start-apply");
-            }
-          }
-        },
-      ),
     );
+  }
+
+  private disposeListeners() {
+    for (const disposable of this.listeners) {
+      disposable.dispose();
+    }
+    this.listeners = [];
   }
 
   startApplyPochiLayout(options?: {
@@ -223,89 +240,17 @@ export class LayoutManager implements vscode.Disposable {
   }
 
   getViewColumnForTerminal() {
-    // Find existing terminal group
-    const terminalGroups = this.allTabGroups.filter(
-      (group) => getTabGroupType(group.tabs) === "terminal",
-    );
-    if (terminalGroups.length > 0) {
-      const active = terminalGroups.find((group) => group.isActive);
-      if (active) {
-        return active.viewColumn;
-      }
-      return terminalGroups[0].viewColumn;
+    if (this.enabled && this.fsm.state.value === "pochi-layout") {
+      return vscode.ViewColumn.Three;
     }
-
-    // If no existing terminal group and is pochi-layout
-    if (this.fsm.state.value === "pochi-layout") {
-      const emptyGroups = this.allTabGroups
-        .slice(2)
-        .filter((group) => getTabGroupType(group.tabs) === "empty");
-      if (emptyGroups.length > 0) {
-        return emptyGroups[0].viewColumn;
-      }
-    }
-
-    // Otherwise use default view column
     return undefined;
   }
 
-  async getViewColumnForTask(params: {
-    cwd: string;
-  }) {
-    // Find existing task group
-    const taskGroups = this.allTabGroups.filter(
-      (group) => getTabGroupType(group.tabs) === "pochi-task",
-    );
-    if (taskGroups.length > 0) {
-      const sameCwdGroups = taskGroups.filter((group) =>
-        group.tabs.some(
-          (tab) =>
-            isPochiTaskTab(tab) &&
-            PochiTaskEditorProvider.parseTaskUri(tab.input.uri)?.cwd ===
-              params.cwd,
-        ),
-      );
-      if (sameCwdGroups.length > 0) {
-        const activeSameCwdGroups = sameCwdGroups.find(
-          (group) => group.isActive,
-        );
-        if (activeSameCwdGroups) {
-          return activeSameCwdGroups.viewColumn;
-        }
-        return sameCwdGroups[0].viewColumn;
-      }
-      const active = taskGroups.find((group) => group.isActive);
-      if (active) {
-        return active.viewColumn;
-      }
-      return taskGroups[0].viewColumn;
-    }
-
-    // If no existing task group and is pochi-layout
-    if (this.fsm.state.value === "pochi-layout") {
-      const emptyGroups = this.allTabGroups.filter(
-        (group) => getTabGroupType(group.tabs) === "empty",
-      );
-      if (emptyGroups.length > 0) {
-        return emptyGroups[0].viewColumn;
-      }
-    }
-
-    // Not pochi-layout, find or create a view group
-    const currentGroups = this.allTabGroups;
-    // if the first group is empty, we can reuse it
-    if (
-      currentGroups.length > 0 &&
-      getTabGroupType(currentGroups[0].tabs) === "empty"
-    ) {
-      await focusEditorGroup(0);
-      await executeVSCodeCommand("workbench.action.lockEditorGroup");
+  getViewColumnForTask() {
+    if (this.enabled && this.fsm.state.value === "pochi-layout") {
       return vscode.ViewColumn.One;
     }
-    // otherwise, we open new pochi task in a new first column
-    await focusEditorGroup(0);
-    await executeVSCodeCommand("workbench.action.newGroupLeft");
-    return vscode.ViewColumn.One;
+    return undefined;
   }
 
   private validate = runExclusive.build(this.exclusiveGroup, async () => {
@@ -327,90 +272,77 @@ export class LayoutManager implements vscode.Disposable {
   );
 
   private async validateImpl() {
-    logger.trace("Begin validate layout.");
-    const invalid = () => {
-      logger.trace("Result: invalid.");
+    logger.trace(">>> Begin validate layout.");
+    const invalid = (reason: string) => {
+      logger.trace("<<< Validate result: invalid.", reason);
       return false;
     };
     const valid = () => {
-      logger.trace("Result: valid.");
+      logger.trace("<<< Validate result: valid.");
       return true;
     };
 
     if (this.allTabGroups.length < 3) {
-      // Not enough groups
-      return invalid();
+      return invalid("Less than 3 groups.");
     }
 
-    const editorLayoutViewSize = (await executeVSCodeCommand(
+    const editorLayout = (await executeVSCodeCommand(
       "vscode.getEditorLayout",
-    )) as EditorLayoutViewSize;
-    if (editorLayoutViewSize.orientation !== 0) {
-      // Not horizontal
-      return invalid();
-    }
+    )) as EditorLayout;
     if (
-      this.allTabGroups.length > countTabGroups(editorLayoutViewSize.groups)
+      this.allTabGroups.length > countTabGroupsRecersive(editorLayout.groups)
     ) {
-      // Has split windows
-      return invalid();
+      return invalid("Has split windows");
+    }
+    if (editorLayout.orientation !== 0) {
+      return invalid("Root: not horizontal");
+    }
+    if (editorLayout.groups.length !== 2) {
+      return invalid("Root: not 2 column");
     }
 
-    const leftGroupsViewSize = editorLayoutViewSize.groups.slice(
-      0,
-      editorLayoutViewSize.groups.length - 1,
-    );
-    const rightGroupsViewSize =
-      editorLayoutViewSize.groups[editorLayoutViewSize.groups.length - 1];
-    if (!rightGroupsViewSize.groups) {
-      // The right column is single group
-      return invalid();
-    }
-    const rightTopGroupsViewSize = rightGroupsViewSize.groups.slice(
-      0,
-      rightGroupsViewSize.groups.length - 1,
-    );
-
-    const leftGroupsCount = countTabGroups(leftGroupsViewSize);
-    const rightTopGroupsCount = countTabGroups(rightTopGroupsViewSize);
-
-    const leftGroups = this.allTabGroups.slice(0, leftGroupsCount);
-    const leftGroupsValid = leftGroups.some((group) => {
-      const type = getTabGroupType(group.tabs);
-      return type === "empty" || type === "pochi-task";
-    });
-    if (!leftGroupsValid) {
-      return invalid();
+    const leftGroup = editorLayout.groups[0];
+    if (leftGroup.groups) {
+      return invalid("Left: has sub groups");
     }
 
-    const rightTopGroups = this.allTabGroups.slice(
-      leftGroupsCount,
-      leftGroupsCount + rightTopGroupsCount,
-    );
-    const rightTopGroupsValid = rightTopGroups.some((group) => {
-      const type = getTabGroupType(group.tabs);
-      return type === "empty" || type === "editor";
-    });
-    if (!rightTopGroupsValid) {
-      return invalid();
+    const rightGroup = editorLayout.groups[1];
+    if (rightGroup.groups?.length !== 2) {
+      return invalid("Right: not 2 row");
     }
 
-    const rightBottomGroups = this.allTabGroups.slice(
-      leftGroupsCount + rightTopGroupsCount,
-    );
-    const rightBottomGroupsValid = rightBottomGroups.some((group) => {
-      const type = getTabGroupType(group.tabs);
-      return type === "empty" || type === "terminal";
-    });
-    if (!rightBottomGroupsValid) {
-      return invalid();
+    const rightBottomGroup = rightGroup.groups[1];
+    if (rightBottomGroup.groups) {
+      return invalid("Right-Bottom: has sub groups");
+    }
+
+    const leftTabGroup = this.allTabGroups[0];
+    const leftTabGroupType = getTabGroupType(leftTabGroup.tabs);
+    if (!(leftTabGroupType === "empty" || leftTabGroupType === "pochi-task")) {
+      return invalid("Left: not empty or pochi-task only");
+    }
+
+    const rightBottomTabGroup = this.allTabGroups[this.allTabGroups.length - 1];
+
+    const rightBottomTabGroupType = getTabGroupType(rightBottomTabGroup.tabs);
+    if (
+      !(
+        rightBottomTabGroupType === "empty" ||
+        rightBottomTabGroupType === "terminal"
+      )
+    ) {
+      return invalid("Right-Bottom: not empty or terminal only");
+    }
+
+    if (!isLayoutViewSizeMatched(editorLayout)) {
+      return invalid("Layout view size mismatch");
     }
 
     return valid();
   }
 
   private async applyPochiLayoutImpl(e: LayoutEventStartApply) {
-    logger.trace("Begin applyPochiLayout.");
+    logger.trace(">>> Begin applyPochiLayout.");
     const cwd = e.cwd ?? this.workspaceScope.cwd ?? undefined;
 
     // Store the current focus tab
@@ -418,18 +350,15 @@ export class LayoutManager implements vscode.Disposable {
     const userActiveTerminal = vscode.window.activeTerminal;
 
     // Move bottom panel views to secondary sidebar
-    const shouldMovePanelToSidePanel = this.autoApplyEnabled;
-    if (shouldMovePanelToSidePanel) {
-      await executeVSCodeCommand("workbench.action.movePanelToSidePanel");
-    }
+    await executeVSCodeCommand("workbench.action.movePanelToSidePanel");
 
     // Check current window layout
-    let editorLayoutViewSize = (await executeVSCodeCommand(
+    let editorLayout = (await executeVSCodeCommand(
       "vscode.getEditorLayout",
-    )) as EditorLayoutViewSize;
+    )) as EditorLayout;
 
     const hasSplitWindows =
-      this.allTabGroups.length > countTabGroups(editorLayoutViewSize.groups);
+      this.allTabGroups.length > countTabGroupsRecersive(editorLayout.groups);
     logger.trace("- hasSplitWindows: ", hasSplitWindows);
 
     // Focus on main window if has split windows
@@ -438,14 +367,14 @@ export class LayoutManager implements vscode.Disposable {
       await waitFocusWindowChanged();
 
       // Check main window layout
-      editorLayoutViewSize = (await executeVSCodeCommand(
+      editorLayout = (await executeVSCodeCommand(
         "vscode.getEditorLayout",
-      )) as EditorLayoutViewSize;
+      )) as EditorLayout;
     }
 
     // Check main window tab groups
-    const mainWindowTabGroupsCount = countTabGroups(
-      editorLayoutViewSize.groups,
+    const mainWindowTabGroupsCount = countTabGroupsRecersive(
+      editorLayout.groups,
     );
     const mainWindowTabGroups = this.allTabGroups.slice(
       0,
@@ -561,20 +490,6 @@ export class LayoutManager implements vscode.Disposable {
     // Terminal group is ready now
     logger.trace("End setup terminal group.");
 
-    // Check layout is PochiLayout view size
-    const shouldSetPochiLayoutViewSize =
-      !isPochiLayoutViewSize(editorLayoutViewSize);
-    logger.trace(
-      "- shouldSetPochiLayoutViewSize: ",
-      shouldSetPochiLayoutViewSize,
-    );
-
-    // Apply pochi-layout group size
-    if (shouldSetPochiLayoutViewSize) {
-      await executeVSCodeCommand("workbench.action.evenEditorWidths");
-      await executeVSCodeCommand("vscode.setEditorLayout", PochiLayoutViewSize);
-    }
-
     // Loop editor group, move task/terminal tabs
     logger.trace("Begin move tabs in editor group.");
     let tabIndex = 0;
@@ -661,6 +576,22 @@ export class LayoutManager implements vscode.Disposable {
     // Re-active the user active terminal
     if (userActiveTerminal) {
       userActiveTerminal.show();
+    }
+
+    // Check layout is PochiLayout view size
+    editorLayout = (await executeVSCodeCommand(
+      "vscode.getEditorLayout",
+    )) as EditorLayout;
+    const shouldSetPochiLayoutViewSize = !isLayoutViewSizeMatched(editorLayout);
+    logger.trace(
+      "- shouldSetPochiLayoutViewSize: ",
+      shouldSetPochiLayoutViewSize,
+    );
+
+    // Apply pochi-layout group size
+    if (shouldSetPochiLayoutViewSize) {
+      await executeVSCodeCommand("workbench.action.evenEditorWidths");
+      await executeVSCodeCommand("vscode.setEditorLayout", PochiLayout);
     }
 
     // Calculate focus group index
@@ -791,34 +722,24 @@ export class LayoutManager implements vscode.Disposable {
       vscode.window.createTerminal({ cwd, location }).show();
     }
 
-    logger.trace("End applyPochiLayout.");
+    logger.trace("<<< End applyPochiLayout.");
   }
 
   private async moveNewTerminalImpl() {
-    const viewColumn = this.getViewColumnForTerminal();
-    if (!viewColumn) {
-      logger.debug(
-        `Expected viewColumn when moving new terminal, but got ${viewColumn}`,
-      );
-      return;
-    }
-    const groupIndex = (viewColumn as number) - 1;
-    await focusEditorGroup(groupIndex);
+    await focusEditorGroup(2);
     await executeVSCodeCommand("workbench.action.unlockEditorGroup");
     await executeVSCodeCommand("workbench.action.terminal.moveToEditor");
     await executeVSCodeCommand("workbench.action.lockEditorGroup");
   }
 
   dispose() {
-    for (const disposable of this.disposables) {
-      disposable.dispose();
-    }
-    this.disposables = [];
+    this.configListener.dispose();
+    this.disposeListeners();
   }
 }
 
 async function executeVSCodeCommand(command: string, ...args: unknown[]) {
-  logger.trace(command, ...args);
+  logger.trace("EXEC", command, ...args);
   return await vscode.commands.executeCommand(command, ...args);
 }
 

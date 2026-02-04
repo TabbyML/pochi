@@ -146,7 +146,14 @@
         "command": "pochi.applyPochiLayout",
         "title": "Pochi Layout",
         "category": "Pochi",
-        "icon": "$(layout)"
+        "icon": "$(layout)",
+        "enablement": "pochiLayoutEnabled"
+      },
+      {
+        "command": "pochi.applyPochiLayoutWithCycleFocus",
+        "title": "Pochi Layout (Cycle Focus)",
+        "category": "Pochi",
+        "enablement": "pochiLayoutEnabled"
       },
       {
         "command": "pochi.openTerminal",
@@ -233,7 +240,7 @@
         },
         {
           "command": "pochi.applyPochiLayout",
-          "when": "resourceScheme == 'pochi-task'",
+          "when": "resourceScheme == 'pochi-task' && pochiLayoutEnabled",
           "group": "navigation"
         }
       ],
@@ -268,6 +275,10 @@
         },
         {
           "command": "pochi.createTaskInPanel",
+          "when": "false"
+        },
+        {
+          "command": "pochi.applyPochiLayoutWithCycleFocus",
           "when": "false"
         },
         {
