@@ -2,15 +2,13 @@ import { z } from "zod/v4";
 import { NoOtherToolsReminderPrompt } from "./constants";
 import { defineClientTool } from "./types";
 
-const defaultResultSchema = z
-  .string()
-  .describe(
-    "The result of the task. Formulate this result in a way that is final and does not require further input from the user.",
-  );
-
 export const attemptCompletionSchema = z.object({
-  result: defaultResultSchema,
-});
+  result: z
+    .string()
+    .describe(
+      "The result of the task. Formulate this result in a way that is final and does not require further input from the user.",
+    ),
+  });
 
 const toolDef = {
   description:
