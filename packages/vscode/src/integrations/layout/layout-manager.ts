@@ -24,7 +24,7 @@ import { TimedList } from "./timed-list";
 import {
   type EditorLayout,
   PochiLayout,
-  countTabGroupsRecersive,
+  countTabGroupsRecursive,
   isLayoutViewSizeMatched,
 } from "./view-size";
 
@@ -290,7 +290,7 @@ export class LayoutManager implements vscode.Disposable {
       "vscode.getEditorLayout",
     )) as EditorLayout;
     if (
-      this.allTabGroups.length > countTabGroupsRecersive(editorLayout.groups)
+      this.allTabGroups.length > countTabGroupsRecursive(editorLayout.groups)
     ) {
       return invalid("Has split windows");
     }
@@ -358,7 +358,7 @@ export class LayoutManager implements vscode.Disposable {
     )) as EditorLayout;
 
     const hasSplitWindows =
-      this.allTabGroups.length > countTabGroupsRecersive(editorLayout.groups);
+      this.allTabGroups.length > countTabGroupsRecursive(editorLayout.groups);
     logger.trace("- hasSplitWindows: ", hasSplitWindows);
 
     // Focus on main window if has split windows
@@ -373,7 +373,7 @@ export class LayoutManager implements vscode.Disposable {
     }
 
     // Check main window tab groups
-    const mainWindowTabGroupsCount = countTabGroupsRecersive(
+    const mainWindowTabGroupsCount = countTabGroupsRecursive(
       editorLayout.groups,
     );
     const mainWindowTabGroups = this.allTabGroups.slice(

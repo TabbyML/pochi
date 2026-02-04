@@ -31,7 +31,7 @@ export const PochiLayout: EditorLayout = {
   ],
 };
 
-export function countTabGroupsRecersive(groups: Group[]) {
+export function countTabGroupsRecursive(groups: Group[]) {
   const countGroups = (group: Group): number => {
     if (group.groups && group.groups.length > 0) {
       return sumGroups(group.groups);
