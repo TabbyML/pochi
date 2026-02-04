@@ -157,7 +157,9 @@ function createVSCodeHost(): VSCodeHostApi {
             globalStore.commit(
               catalog.events.writeTaskFile({
                 taskId,
-                filePath: filePath as "/plan.md" | `/browser-session/${string}.mp4`,
+                filePath: filePath as
+                  | "/plan.md"
+                  | `/browser-session/${string}.mp4`,
                 content,
               }),
             );
