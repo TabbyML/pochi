@@ -1,4 +1,4 @@
-id: no-tanstack-useNavigate
+id: no-tanstack-use-navigate
 language: tsx
 rule:
   any:

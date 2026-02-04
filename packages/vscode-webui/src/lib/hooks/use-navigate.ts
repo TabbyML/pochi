@@ -1,7 +1,7 @@
-import { useNavigate as useTanStackNavigate } from "@tanstack/react-router";
+import { useNavigate as useTanstackNavigate } from "@tanstack/react-router";
 import { isVSCodeEnvironment } from "../vscode";
 
-type NavigateFn = ReturnType<typeof useTanStackNavigate>;
+type NavigateFn = ReturnType<typeof useTanstackNavigate>;
 
 const noopNavigate = (() => {}) as unknown as NavigateFn;
 
@@ -13,5 +13,5 @@ const noopNavigate = (() => {}) as unknown as NavigateFn;
  */
 export function useNavigate(): NavigateFn {
   // biome-ignore lint/correctness/useHookAtTopLevel: isVSCodeEnvironment() is a constant determined at page load, hook order is stable
-  return isVSCodeEnvironment() ? useTanStackNavigate() : noopNavigate;
+  return isVSCodeEnvironment() ? useTanstackNavigate() : noopNavigate;
 }
