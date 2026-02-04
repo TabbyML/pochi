@@ -150,20 +150,23 @@ function createVSCodeHost(): VSCodeHostApi {
             return;
           }
 
-          // if (filePath === "/plan.md") {
-          globalStore.commit(
-            catalog.events.writeTaskFile({
-              taskId,
-              filePath,
-              content,
-            }),
-          );
-          // } else {
-          //   logger.warn(
-          //     `Ignoring writeTaskFile for unsupported path: ${filePath}`,
-          //   );
-          //   throw new Error(`Filepath ${filePath} is not accessible`);
-          // }
+          if (
+            filePath === "/plan.md" ||
+            /^\/browser-session\/.*\.mp4$/.test(filePath)
+          ) {
+            globalStore.commit(
+              catalog.events.writeTaskFile({
+                taskId,
+                filePath: filePath as "/plan.md" | `/browser-session/${string}.mp4`,
+                content,
+              }),
+            );
+          } else {
+            logger.warn(
+              `Ignoring writeTaskFile for unsupported path: ${filePath}`,
+            );
+            throw new Error(`Filepath ${filePath} is not accessible`);
+          }
         },
 
         async readTaskOutput(taskId: string): Promise<ExecuteCommandResult> {

@@ -50,16 +50,17 @@ export class TaskFileSystem implements FileSystem {
       throw new Error(`Invalid task URI: ${filePath}`);
     }
 
-    // if (uri.filePath !== "/plan.md") {
-    //   throw new Error(
-    //     `Only /plan.md is supported for task file system, got: ${uri.filePath}`,
-    //   );
-    // }
+    if (
+      uri.filePath !== "/plan.md" &&
+      !/^\/browser-session\/.*\.mp4$/.test(uri.filePath)
+    ) {
+      throw new Error(`Filepath ${uri.filePath} is not accessible`);
+    }
 
     await this.store.commit(
       catalog.events.writeTaskFile({
         taskId: uri.taskId,
-        filePath: uri.filePath,
+        filePath: uri.filePath as "/plan.md" | `/browser-session/${string}.mp4`,
         content,
       }),
     );
