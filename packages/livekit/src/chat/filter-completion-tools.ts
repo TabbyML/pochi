@@ -1,11 +1,10 @@
 import type { Message } from "../types";
 
-// type A: attemptCompletion/askFollowupQuestion
-// type B: toolcalls exclude todoWrite and attemptCompletion/askFollowupQuestion
-
-// Rules:
-// If there are both type A and B tool calls in the last step, remove all type A tool calls
-
+// Condition A: The last step contains completion tools (attemptCompletion or askFollowupQuestion).
+// Condition B: The last step contains other functional tools (excluding todoWrite).
+// Rule:
+// If both conditions are met, remove the completion tools. This prevents the agent from
+// attempting to complete the task or ask a question while simultaneously performing other actions.
 export function filterCompletionTools(message: Message): Message {
   const lastStepStartIndex = message.parts.findLastIndex(
     (part) => part.type === "step-start",

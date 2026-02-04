@@ -16,21 +16,15 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import fs from "node:fs/promises";
-import path from "node:path";
 import { Command, Option } from "@commander-js/extra-typings";
-import { constants, getLogger, prompts } from "@getpochi/common";
+import { constants, getLogger } from "@getpochi/common";
 import {
   pochiConfig,
   setPochiConfigWorkspacePath,
 } from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
-import {
-  type LLMRequestData,
-  type Message,
-  fileToUri,
-} from "@getpochi/livekit";
+import type { LLMRequestData, Message } from "@getpochi/livekit";
 import chalk from "chalk";
 import * as commander from "commander";
 import z from "zod/v4";
@@ -54,7 +48,7 @@ import type {
   SkillFile,
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { FileUIPart } from "ai";
+import { processAttachments } from "./attachment-utils";
 import { JsonRenderer } from "./json-renderer";
 import {
   containsSlashCommandReference,
@@ -172,38 +166,11 @@ const program = new Command()
     );
 
     const store = await createStore(uid);
-    const parts: Message["parts"] = [];
-    if (attachments && attachments.length > 0) {
-      for (const attachmentPath of attachments) {
-        try {
-          const absolutePath = path.resolve(process.cwd(), attachmentPath);
-          const buffer = await fs.readFile(absolutePath);
-          const mimeType = getMimeType(attachmentPath);
-          const dataUrl = await fileToUri(
-            blobStore,
-            new File([buffer], attachmentPath, {
-              type: mimeType,
-            }),
-          );
-          parts.push({
-            type: "text",
-            text: prompts.createSystemReminder(
-              `Attached file: ${path.relative(process.cwd(), absolutePath)}`,
-            ),
-          });
-          parts.push({
-            type: "file",
-            mediaType: mimeType,
-            filename: path.basename(absolutePath),
-            url: dataUrl,
-          } satisfies FileUIPart);
-        } catch (error) {
-          program.error(
-            `Failed to read attachment: ${attachmentPath}\n${error}`,
-          );
-        }
-      }
-    }
+    const parts: Message["parts"] = await processAttachments(
+      attachments,
+      blobStore,
+      program,
+    );
 
     if (prompt) {
       parts.push({ type: "text", text: prompt });
@@ -537,31 +504,4 @@ function parseOutputSchema(outputSchema: string): z.ZodAny {
     `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
   )(z);
   return schema;
-}
-
-function getMimeType(filePath: string): string {
-  const extension = path.extname(filePath).toLowerCase();
-  switch (extension) {
-    case ".png":
-      return "image/png";
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".gif":
-      return "image/gif";
-    case ".webp":
-      return "image/webp";
-    case ".svg":
-      return "image/svg+xml";
-    case ".mp4":
-      return "video/mp4";
-    case ".webm":
-      return "video/webm";
-    case ".mov":
-      return "video/quicktime";
-    case ".avi":
-      return "video/x-msvideo";
-    default:
-      return "application/octet-stream";
-  }
 }

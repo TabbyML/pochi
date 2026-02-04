@@ -51,14 +51,11 @@ function createPatchedFetch(
     let finalUrl: string | URL | Request;
 
     // Check if CORS proxy is available (VSCode environment)
-    if (globalThis.POCHI_CORS_PROXY_PORT) {
-      const originalUrl = new URL(requestInfo.toString());
-      const url = new URL(originalUrl);
-      url.protocol = "http:";
-      url.host = "localhost";
-      url.port = globalThis.POCHI_CORS_PROXY_PORT;
-
-      headers.set("x-proxy-origin", originalUrl.origin);
+    if (globalThis.POCHI_CORS_PROXY_URL_PREFIX) {
+      const url = new URL(
+        globalThis.POCHI_CORS_PROXY_URL_PREFIX +
+          encodeURIComponent(requestInfo.toString()),
+      );
       finalUrl = url;
     } else {
       // CLI environment - make direct request

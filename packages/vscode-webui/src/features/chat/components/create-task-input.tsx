@@ -24,9 +24,9 @@ import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatInputForm } from "./chat-input-form";
+import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 
 interface CreateTaskInputProps {
   cwd: string;
@@ -114,6 +114,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       worktrees?.filter((x: GitWorktree) => x.path === workspacePath) ?? []
     );
   }, [isOpenMainWorktree, worktrees, workspacePath]);
+
+  const chatInputFormRef = useRef<ChatInputFormHandle>(null);
 
   const onFocus = () => {
     useSettingsStore.persist.rehydrate();
@@ -292,13 +294,20 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     [handleSubmitImpl],
   );
 
-  const handleCreatePlan = useCallback(async () => {
-    handleSubmitImpl({ shouldCreatePlan: true });
-  }, [handleSubmitImpl]);
+  const handleClickSubmit = useCallback(
+    async (shouldCreatePlan?: boolean) => {
+      chatInputFormRef.current?.addToSubmitHistory();
+      handleSubmitImpl({
+        shouldCreatePlan: !!shouldCreatePlan,
+      });
+    },
+    [handleSubmitImpl],
+  );
 
   return (
     <>
       <ChatInputForm
+        ref={chatInputFormRef}
         input={input}
         setInput={setInput}
         onSubmit={handleSubmit}
@@ -390,8 +399,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           <SubmitDropdownButton
             isLoading={debouncedIsCreatingTask}
             disabled={!selectedModel || isUploadingAttachments}
-            onSubmit={() => handleSubmitImpl()}
-            onSubmitPlan={handleCreatePlan}
+            onSubmit={() => handleClickSubmit()}
+            onSubmitPlan={() => handleClickSubmit(true)}
             mcpConfigOverride={mcpConfigOverride}
             onToggleServer={toggleServer}
             resetMcpTools={resetMcpTools}

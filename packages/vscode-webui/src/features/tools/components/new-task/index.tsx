@@ -6,10 +6,10 @@ import {
   ToolCallStatusRegistry,
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef } from "react";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 

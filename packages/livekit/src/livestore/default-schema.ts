@@ -223,7 +223,10 @@ export const events = {
     name: "v1.WriteTaskFile",
     schema: Schema.Struct({
       taskId: Schema.String,
-      filePath: Schema.Literal("/plan.md", "/walkthrough.md"),
+      filePath: Schema.Union(
+        Schema.Literal("/plan.md", "/walkthrough.md"),
+        Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
+      ),
       content: Schema.String,
     }),
   }),

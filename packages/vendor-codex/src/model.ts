@@ -100,13 +100,11 @@ function createProxyFetch(getCredentials: () => Promise<unknown>) {
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const originalUrl = new URL(input.toString());
-    const apiOrigin = originalUrl.origin;
+    const originalUrl = input.toString();
 
-    const url = new URL(originalUrl);
-    url.protocol = "http:";
-    url.host = "localhost";
-    url.port = globalThis.POCHI_CORS_PROXY_PORT;
+    const url = new URL(
+      globalThis.POCHI_CORS_PROXY_URL_PREFIX + encodeURIComponent(originalUrl),
+    );
 
     const transformedBody = transformRequestBody(
       typeof init?.body === "string" ? init.body : undefined,
@@ -114,8 +112,6 @@ function createProxyFetch(getCredentials: () => Promise<unknown>) {
 
     const credentials = await (getCredentials() as Promise<CodexCredentials>);
     const headers = createCodexHeaders(credentials, init);
-
-    headers.set("x-proxy-origin", apiOrigin);
 
     return fetch(url, {
       ...init,

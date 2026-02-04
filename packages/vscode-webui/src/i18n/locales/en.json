@@ -124,6 +124,7 @@
       "developerMode": "Developer Mode",
       "enablePochiModels": "Enable Pochi Models",
       "clearStorage": "Clear Storage",
+      "resetReviewPlanTutorialCounter": "Reset Review Plan Tutorial Counter",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
       "openInTab": "Allows to open the task in a new tab",
@@ -212,7 +213,7 @@
   },
   "tasksPage": {
     "tasks": "Tasks",
-    "filter": "Filter",
+    "filter": "Filter tasks",
     "archivedTasks": "Archived tasks",
     "deletedWorktrees": "Deleted worktrees",
     "emptyState": {
@@ -255,7 +256,8 @@
     "loadMore": "Load more",
     "archiveTask": "Archive task",
     "unarchiveTask": "Unarchive task",
-    "archiveOldTasks": "Archive tasks older than one week",
+    "archiveOldTasks": "Archive old tasks",
+    "archiveOldTasksTooltip": "Archive tasks older than one week",
     "showAnyTasks": "Show any tasks",
     "showOpenTasks": "Show open tasks"
   },
@@ -376,8 +378,7 @@
   },
   "subtask": {
     "back": "Back",
-    "complete": "Complete",
-    "startImplementation": "Start Implementation"
+    "complete": "Complete"
   },
   "errorMessageView": {
     "reachedCreditLimit": "You have reached the spending limit.",
@@ -479,10 +480,16 @@
   },
   "planCard": {
     "reviewPlan": "Review",
+    "reviewPlanTitle": "Review Plan",
+    "reviewPlanTooltip": "Click the '+' before the line number of the plan artifact to leave comments",
     "executePlan": "Execute Plan",
-    "creatingPlan": "Analyzing your code and creating a plan..."
+    "openPlan": "Open",
+    "creatingPlan": "Analyzing your code and creating a plan...",
+    "planCreationPaused": "Plan creation paused"
   },
   "browserView": {
-    "noFrameAvailable": "No frame available"
+    "noFrameAvailable": "No frame available",
+    "executing": "Executing...",
+    "paused": "Paused"
   }
 }

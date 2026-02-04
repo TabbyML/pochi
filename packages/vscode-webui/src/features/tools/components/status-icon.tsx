@@ -23,9 +23,17 @@ interface StatusIconProps {
   tool: ToolUIPart;
   isExecuting: boolean;
   className?: string;
+  iconClassName?: string;
+  successIcon?: React.ReactNode;
 }
 
-export function StatusIcon({ tool, isExecuting, className }: StatusIconProps) {
+export function StatusIcon({
+  tool,
+  isExecuting,
+  className,
+  iconClassName,
+  successIcon,
+}: StatusIconProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
@@ -65,22 +73,45 @@ export function StatusIcon({ tool, isExecuting, className }: StatusIconProps) {
   }
 
   let statusIcon = (
-    <Pause className="size-4 text-zinc-500 dark:text-zinc-400" />
+    <Pause
+      className={cn("size-4 text-zinc-500 dark:text-zinc-400", iconClassName)}
+    />
   );
   if (error) {
-    statusIcon = <X className="size-4 cursor-help text-error" />;
+    statusIcon = (
+      <X className={cn("size-4 cursor-help text-error", iconClassName)} />
+    );
     tooltipContent.push(<p>{error}</p>);
   } else if (tool.state === "output-available") {
-    statusIcon = (
-      <Check className="size-4 text-emerald-700 dark:text-emerald-300" />
+    statusIcon = successIcon ? (
+      <div className={cn("text-zinc-500 dark:text-zinc-400", iconClassName)}>
+        {successIcon}
+      </div>
+    ) : (
+      <Check
+        className={cn(
+          "size-4 text-emerald-700 dark:text-emerald-300",
+          iconClassName,
+        )}
+      />
     );
   } else if (tool.state === "input-streaming") {
     statusIcon = (
-      <CircleSmall className="size-4 animate-bounce text-zinc-500 dark:text-zinc-400" />
+      <CircleSmall
+        className={cn(
+          "size-4 animate-bounce text-zinc-500 dark:text-zinc-400",
+          iconClassName,
+        )}
+      />
     );
   } else if (isExecuting) {
     statusIcon = (
-      <Loader2 className="size-4 animate-spin text-zinc-500 dark:text-zinc-400" />
+      <Loader2
+        className={cn(
+          "size-4 animate-spin text-zinc-500 dark:text-zinc-400",
+          iconClassName,
+        )}
+      />
     );
   }
 

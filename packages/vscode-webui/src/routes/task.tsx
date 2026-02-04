@@ -27,7 +27,7 @@ function RouteComponent() {
   const searchParams = Route.useSearch();
   let info: typeof window.POCHI_TASK_INFO;
   if (window.POCHI_WEBVIEW_KIND === "pane" && window.POCHI_TASK_INFO) {
-    if (info?.uid !== searchParams.uid) {
+    if (searchParams.uid === window.POCHI_TASK_INFO.uid) {
       info = window.POCHI_TASK_INFO;
     } else {
       info = {

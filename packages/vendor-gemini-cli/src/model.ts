@@ -67,12 +67,11 @@ function createFetcher(
     let urlToFetch: URL;
 
     if (cors) {
-      const url = new URL(originalUrl);
-      url.protocol = "http:";
-      url.host = "localhost";
-      url.port = globalThis.POCHI_CORS_PROXY_PORT;
+      const url = new URL(
+        globalThis.POCHI_CORS_PROXY_URL_PREFIX +
+          encodeURIComponent(originalUrl.toString()),
+      );
       urlToFetch = url;
-      headers.set("x-proxy-origin", originalUrl.toString());
     } else {
       urlToFetch = originalUrl;
     }

@@ -157,14 +157,22 @@ export class PochiSidebar {
   }
 
   async toggleArchivedTasksVisibility() {
-    // Find the Tasks header and hover to reveal the toggle button
+    // Find the Tasks header and hover to reveal the filter button
     const tasksHeader = $('[data-testid="tasks-header"]');
     await tasksHeader.moveTo();
 
-    // Click the toggle all/active tasks button
-    const toggleButton = $('[data-testid="toggle-all-tasks"]');
-    await toggleButton.waitForClickable();
-    await toggleButton.click();
+    // Click the filter dropdown button
+    const filterButton = $('[data-testid="filter-tasks-dropdown"]');
+    await filterButton.waitForClickable();
+    await filterButton.click();
+
+    // Wait for dropdown to open
+    await browser.pause(300);
+
+    // Click the archived tasks checkbox
+    const archivedCheckbox = $('[data-testid="filter-archived-tasks"]');
+    await archivedCheckbox.waitForClickable();
+    await archivedCheckbox.click();
 
     // Wait for UI to update
     await browser.pause(500);

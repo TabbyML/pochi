@@ -2,7 +2,7 @@
 
 declare namespace globalThis {
   // biome-ignore lint/style/noVar: <explanation>
-  var POCHI_CORS_PROXY_PORT: string;
+  var POCHI_CORS_PROXY_URL_PREFIX: string;
   // biome-ignore lint/style/noVar: <explanation>
   var POCHI_CLIENT: string;
 }

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { validateTaskFilePath } from "@getpochi/common/pochi-file-system";
 import { resolvePath } from "@getpochi/common/tool-utils";
 import type { LiveKitStore } from "@getpochi/livekit";
 import { catalog } from "@getpochi/livekit";
@@ -50,20 +51,15 @@ export class TaskFileSystem implements FileSystem {
       throw new Error(`Invalid task URI: ${filePath}`);
     }
 
-    if (uri.filePath !== "/plan.md" && uri.filePath !== "/walkthrough.md") {
-      throw new Error(`Filepath ${uri.filePath} is not accessible`);
-    }
-
+    const validPath = validateTaskFilePath(uri.filePath);
     await this.store.commit(
       catalog.events.writeTaskFile({
         taskId: uri.taskId,
-        filePath: uri.filePath,
+        filePath: validPath,
         content,
       }),
     );
   }
-
-  // ...
 
   private parseUri(
     uriString: string,

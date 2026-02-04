@@ -20,6 +20,6 @@ export function createModel(vendorId: string, opts: CreateModelOptions) {
 }
 
 declare global {
-  var POCHI_CORS_PROXY_PORT: string;
+  var POCHI_CORS_PROXY_URL_PREFIX: string;
   var POCHI_CLIENT: string;
 }

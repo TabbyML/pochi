@@ -14,10 +14,10 @@ import {
   useToolAutoApproval,
 } from "@/features/settings";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
-import { useNavigate } from "@tanstack/react-router";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
