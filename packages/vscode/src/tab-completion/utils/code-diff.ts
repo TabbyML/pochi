@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { LinesDiff } from "vscode-diff";
-import type { LineNumberRange } from "./range";
+import { type LineNumberRange, isLineEndPosition } from "./range";
+import { isBlank } from "./string";
 
 export interface RangeMapping {
   original: vscode.Range;
@@ -19,6 +20,13 @@ export interface DetailedLineRangeMapping extends LineRangeMapping {
 export interface CodeDiff {
   changes: DetailedLineRangeMapping[];
 }
+
+export const LinesDiffOptions = {
+  ignoreTrimWhitespace: false,
+  maxComputationTimeMs: 0,
+  computeMoves: false,
+  extendToSubwords: true,
+};
 
 // from 1-based line-number range to LineNumberRange
 export function toZeroBasedLineNumberRange(range: {
@@ -62,4 +70,38 @@ export function toCodeDiff(diffResult: LinesDiff): CodeDiff {
       };
     }),
   };
+}
+
+export function isAddingBlankLines(
+  change: RangeMapping,
+  originalDocument: vscode.TextDocument,
+  modifiedDocument: vscode.TextDocument,
+): boolean {
+  const { original, modified } = change;
+  if (
+    original.start.isEqual(original.end) &&
+    (original.start.character === 0 ||
+      isLineEndPosition(original.start, originalDocument))
+  ) {
+    const modifiedText = modifiedDocument.getText(modified);
+    if (modifiedText.includes("\n") && isBlank(modifiedText)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function isRemovingBlankLines(
+  change: RangeMapping,
+  originalDocument: vscode.TextDocument,
+  modifiedDocument: vscode.TextDocument,
+): boolean {
+  return isAddingBlankLines(
+    {
+      original: change.modified,
+      modified: change.original,
+    },
+    modifiedDocument,
+    originalDocument,
+  );
 }
