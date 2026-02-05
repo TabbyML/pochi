@@ -33,10 +33,15 @@ export const newTask =
       }
     }
 
-    const subTaskRunner = options.createSubTaskRunner(taskId, customAgent);
+    const isAsync = !!runAsync;
+    const subTaskRunner = options.createSubTaskRunner(
+      taskId,
+      isAsync,
+      customAgent,
+    );
 
     // Check if this is an async task
-    if (runAsync) {
+    if (isAsync) {
       // Start the subtask but don't wait for completion
       void Promise.resolve(subTaskRunner.run()).catch(() => {
         // Ignore errors for Async tasks

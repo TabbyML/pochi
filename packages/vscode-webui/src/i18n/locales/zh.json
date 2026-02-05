@@ -279,6 +279,7 @@
     "imgAlt": "MCP工具响应快照",
     "applyingDiffTo": "正在应用差异到 ",
     "applyingDiffsTo": "正在应用差异到 ",
+    "addingReviewComment": "正在审查 ",
     "in": "在",
     "executeCommand": "我将执行以下命令",
     "executingCommand": "正在执行命令",
@@ -416,7 +417,8 @@
     "copyCheckpointCommand": "复制检查点命令",
     "copyTodos": "复制待办事项",
     "noCheckpointAvailable": "没有可用的检查点",
-    "openStore": "打开存储"
+    "openStore": "打开存储",
+    "reviewChanges": "审查变更"
   },
   "devRetryCountdown": {
     "attempts": "尝试次数：",

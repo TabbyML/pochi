@@ -562,14 +562,13 @@ export class CommandManager implements vscode.Disposable {
         }
 
         // Open terminal for task
-        const params = taskUri
-          ? PochiTaskEditorProvider.parseTaskUri(taskUri)
+        const cwd = taskUri
+          ? PochiTaskEditorProvider.parseTaskUri(taskUri)?.cwd
           : undefined;
-        const viewColumn = await getViewColumnForTerminal({
-          cwd: params?.cwd,
-        });
+
+        const viewColumn = getViewColumnForTerminal();
         const location = viewColumn ? { viewColumn } : undefined;
-        vscode.window.createTerminal({ cwd: params?.cwd, location }).show();
+        vscode.window.createTerminal({ cwd, location }).show();
       }),
 
       vscode.commands.registerCommand(
@@ -585,9 +584,7 @@ export class CommandManager implements vscode.Disposable {
         "pochi.worktree.openTerminal",
         async (worktreePath: string) => {
           if (worktreePath) {
-            const viewColumn = await getViewColumnForTerminal({
-              cwd: worktreePath,
-            });
+            const viewColumn = getViewColumnForTerminal();
             const location = viewColumn ? { viewColumn } : undefined;
             vscode.window
               .createTerminal({ cwd: worktreePath, location })
@@ -750,11 +747,9 @@ export class CommandManager implements vscode.Disposable {
         cwd = workspaceFolder;
       }
     }
-    await this.layoutManager.applyPochiLayout({
+    this.layoutManager.startApplyPochiLayout({
       cwd,
       cycleFocus,
-      movePanelToSidePanel:
-        this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled,
     });
   }
 

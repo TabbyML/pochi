@@ -209,6 +209,32 @@ export class ReviewController implements vscode.Disposable {
     }
   }
 
+  async createThread(
+    uri: vscode.Uri,
+    range: vscode.Range,
+    body: string,
+  ): Promise<Thread> {
+    const thread = this.controller.createCommentThread(
+      uri,
+      range,
+      [],
+    ) as Thread;
+    thread.id = crypto.randomUUID();
+    thread.contextValue = "canDelete";
+    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+    thread.comments = [
+      {
+        id: crypto.randomUUID(),
+        body,
+        author: { name: "Pochi" },
+        mode: vscode.CommentMode.Preview,
+      },
+    ];
+    this.threads.set(thread.id, thread);
+    this.updateSignal();
+    return thread;
+  }
+
   private getAuthor() {
     const user = this.userStorage.users.value.pochi;
     return {

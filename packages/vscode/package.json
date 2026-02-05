@@ -146,7 +146,14 @@
         "command": "pochi.applyPochiLayout",
         "title": "Pochi Layout",
         "category": "Pochi",
-        "icon": "$(layout)"
+        "icon": "$(layout)",
+        "enablement": "pochiLayoutEnabled"
+      },
+      {
+        "command": "pochi.applyPochiLayoutWithCycleFocus",
+        "title": "Pochi Layout (Cycle Focus)",
+        "category": "Pochi",
+        "enablement": "pochiLayoutEnabled"
       },
       {
         "command": "pochi.openTerminal",
@@ -233,7 +240,7 @@
         },
         {
           "command": "pochi.applyPochiLayout",
-          "when": "resourceScheme == 'pochi-task'",
+          "when": "resourceScheme == 'pochi-task' && pochiLayoutEnabled",
           "group": "navigation"
         }
       ],
@@ -268,6 +275,10 @@
         },
         {
           "command": "pochi.createTaskInPanel",
+          "when": "false"
+        },
+        {
+          "command": "pochi.applyPochiLayoutWithCycleFocus",
           "when": "false"
         },
         {
@@ -738,6 +749,11 @@
                     "description": "Set the log level for file logging."
                   }
                 }
+              },
+              "reviewAgent": {
+                "type": "boolean",
+                "default": false,
+                "description": "Enable the review agent for code reviews."
               }
             }
           }
@@ -785,6 +801,7 @@
     "@preact/signals-core": "catalog:",
     "@quilted/threads": "catalog:",
     "@vscode-logging/logger": "^2.0.0",
+    "@xstate/fsm": "^2.1.0",
     "ai": "catalog:",
     "canvaskit-wasm": "^0.40.0",
     "deepmerge-ts": "^7.1.5",

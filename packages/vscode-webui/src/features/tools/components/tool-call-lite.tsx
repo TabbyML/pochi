@@ -24,6 +24,7 @@ export function ToolCallLite({ tools, requiresApproval }: Props) {
     case "tool-writeToFile":
     case "tool-applyDiff":
     case "tool-multiApplyDiff":
+    case "tool-createReview":
       detail = (
         <LabelAndFilePathView
           tool={tool}
@@ -106,6 +107,8 @@ function getLabelFromTool(
       return t("toolInvocation.applyingDiffTo") as string;
     case "tool-multiApplyDiff":
       return t("toolInvocation.applyingDiffsTo") as string;
+    case "tool-createReview":
+      return t("toolInvocation.addingReviewComment") as string;
     default:
       return "";
   }
@@ -124,7 +127,7 @@ const LabelAndFilePathView = ({
   tool,
   label,
 }: LabelAndFilePathViewProps<
-  "readFile" | "applyDiff" | "writeToFile" | "multiApplyDiff"
+  "readFile" | "applyDiff" | "writeToFile" | "multiApplyDiff" | "createReview"
 >) => {
   const { path } = tool.input || {};
 

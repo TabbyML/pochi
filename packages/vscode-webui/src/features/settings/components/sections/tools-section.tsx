@@ -26,7 +26,7 @@ export const ToolsSection: React.FC = () => {
     </Section>
   );
 };
-const ToolDescriptions: Record<ToolName, string> = {
+const ToolDescriptions: Record<Exclude<ToolName, "createReview">, string> = {
   applyDiff:
     "This tool is designed for precision edits to existing files. It allows Pochi to apply a specific change by identifying a unique block of code or text (searchContent) and replacing it with your desired content (replaceContent). To ensure accuracy, Pochi provides enough surrounding context in searchContent to make it unique within the file. This prevents accidental changes to other parts of the code.\n\nFor example, Pochi can use applyDiff to fix a bug in a function, update a configuration value, or refactor a small piece of code. It's particularly useful when Pochi knows exactly what needs to change and wants to avoid rewriting the entire file. If Pochi needs to make the same change in multiple places, Pochi can specify expectedReplacements to ensure all instances are updated correctly.",
   askFollowupQuestion:

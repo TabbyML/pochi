@@ -548,9 +548,7 @@ export async function setupWorktree(worktree: string): Promise<boolean> {
   }
 
   try {
-    const viewColumn = await getViewColumnForTerminal({
-      cwd: worktree,
-    });
+    const viewColumn = getViewColumnForTerminal();
     const location = viewColumn ? { viewColumn } : undefined;
     const terminal = vscode.window.createTerminal({
       name: "Setup Pochi Worktree",

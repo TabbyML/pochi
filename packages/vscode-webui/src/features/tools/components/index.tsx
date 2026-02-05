@@ -6,6 +6,7 @@ import { type ToolUIPart, getToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
 import { AskFollowupQuestionTool } from "./ask-followup-question";
 import { AttemptCompletionTool } from "./attempt-completion";
+import { createReviewTool } from "./create-review";
 import { editNotebookTool } from "./edit-notebook";
 import { executeCommandTool } from "./execute-command";
 import { globFilesTool } from "./glob-files";
@@ -85,6 +86,7 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   listFiles: listFilesTool,
   globFiles: globFilesTool,
   todoWrite: todoWriteTool,
+  createReview: createReviewTool,
   editNotebook: editNotebookTool,
   useSkill: UseSkillTool,
   // @ts-expect-error

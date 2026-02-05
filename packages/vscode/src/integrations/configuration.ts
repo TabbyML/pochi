@@ -223,6 +223,7 @@ const PochiAdvanceSettings = z.object({
         .optional(),
     })
     .optional(),
+  reviewAgent: z.boolean().optional(),
 });
 
 export type PochiAdvanceSettings = z.infer<typeof PochiAdvanceSettings>;

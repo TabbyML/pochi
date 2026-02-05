@@ -41,11 +41,12 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const lineRange = startLine
-    ? endLine && startLine !== endLine
-      ? `:${startLine}-${endLine}`
-      : `:${startLine}`
-    : "";
+  const lineRange =
+    startLine !== undefined
+      ? endLine && startLine !== endLine
+        ? `:${startLine}-${endLine}`
+        : `:${startLine}`
+      : "";
 
   const defaultOnClick = async () => {
     if (changes?.origin && changes?.modified) {
@@ -70,7 +71,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
       fallbackGlobPattern: fallbackGlobPattern,
       webviewKind: globalThis.POCHI_WEBVIEW_KIND,
     };
-    if (startLine) {
+    if (startLine !== undefined) {
       options.start = startLine;
       options.end = endLine;
     }

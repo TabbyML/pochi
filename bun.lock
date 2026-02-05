@@ -267,6 +267,7 @@
         "@preact/signals-core": "catalog:",
         "@quilted/threads": "catalog:",
         "@vscode-logging/logger": "^2.0.0",
+        "@xstate/fsm": "^2.1.0",
         "ai": "catalog:",
         "canvaskit-wasm": "^0.40.0",
         "deepmerge-ts": "^7.1.5",
