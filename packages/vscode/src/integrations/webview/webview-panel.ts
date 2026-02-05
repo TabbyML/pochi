@@ -195,6 +195,7 @@ export class PochiTaskEditorProvider
       keepEditor?: boolean;
       viewColumn?: vscode.ViewColumn;
       preserveFocus?: boolean;
+      preview?: boolean;
     },
   ) {
     try {
@@ -353,6 +354,7 @@ async function openTaskInColumn(
     keepEditor?: boolean;
     viewColumn?: vscode.ViewColumn;
     preserveFocus?: boolean;
+    preview?: boolean;
   },
 ) {
   const params = PochiTaskEditorProvider.parseTaskUri(uri);
@@ -373,7 +375,11 @@ async function openTaskInColumn(
     "vscode.openWith",
     uri,
     PochiTaskEditorProvider.viewType,
-    { preview: true, viewColumn, preserveFocus: options?.preserveFocus },
+    {
+      viewColumn,
+      preserveFocus: options?.preserveFocus,
+      preview: options?.preview ?? true,
+    },
   );
 }
 
