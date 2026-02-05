@@ -24,7 +24,6 @@ interface StatusIconProps {
   isExecuting: boolean;
   className?: string;
   iconClassName?: string;
-  successIcon?: React.ReactNode;
 }
 
 export function StatusIcon({
@@ -32,7 +31,6 @@ export function StatusIcon({
   isExecuting,
   className,
   iconClassName,
-  successIcon,
 }: StatusIconProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -83,11 +81,7 @@ export function StatusIcon({
     );
     tooltipContent.push(<p>{error}</p>);
   } else if (tool.state === "output-available") {
-    statusIcon = successIcon ? (
-      <div className={cn("text-zinc-500 dark:text-zinc-400", iconClassName)}>
-        {successIcon}
-      </div>
-    ) : (
+    statusIcon = (
       <Check
         className={cn(
           "size-4 text-emerald-700 dark:text-emerald-300",

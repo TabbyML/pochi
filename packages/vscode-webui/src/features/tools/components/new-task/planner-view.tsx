@@ -11,17 +11,11 @@ import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
-import {
-  ClipboardList,
-  FilePenLine,
-  Play,
-  SquareArrowOutUpRight,
-} from "lucide-react";
+import { FilePenLine, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StatusIcon } from "../status-icon";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
 
@@ -39,7 +33,6 @@ export function PlannerView(props: NewTaskToolViewProps) {
   );
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
-  const description = tool?.input?.description;
   const { count, incrementCount } = useReviewPlanTutorialCounter();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
@@ -52,17 +45,17 @@ export function PlannerView(props: NewTaskToolViewProps) {
   }, []);
 
   const handleReviewPlan = () => {
-    navigate({
-      to: "/task",
-      search: {
-        uid: uid || "",
-        storeId: store.storeId,
-      },
-    });
-  };
-
-  const handleOpenPlan = () => {
-    vscodeHost.openFile("pochi://-/plan.md");
+    if (uid) {
+      navigate({
+        to: "/task",
+        search: {
+          uid,
+          storeId: store.storeId,
+        },
+        replace: true,
+        viewTransition: true,
+      });
+    }
   };
 
   const handleExecutePlan = () => {
@@ -71,81 +64,65 @@ export function PlannerView(props: NewTaskToolViewProps) {
 
   return (
     <SubAgentView
-      icon={
-        <StatusIcon
-          tool={tool}
-          isExecuting={isExecuting}
-          className="align-baseline"
-          iconClassName="size-3.5"
-          successIcon={<ClipboardList className="size-3.5" />}
-        />
-      }
-      title={description}
+      uid={uid}
+      tool={tool}
+      isExecuting={isExecuting}
       expandable={!!file}
-      actions={
-        <Button
-          size="icon"
-          variant="ghost"
-          disabled={isExecuting}
-          onClick={handleOpenPlan}
-          className="size-auto px-2 py-1"
-        >
-          <SquareArrowOutUpRight className="size-3.5" />
-        </Button>
-      }
       taskSource={taskSource}
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       footerActions={
-        <>
-          <HoverCard
-            openDelay={0}
-            onOpenChange={(open) => {
-              if (open && count <= 2 && isImageLoaded) {
-                incrementCount();
-              }
-            }}
-          >
-            <HoverCardTrigger asChild>
-              <Button
-                variant="outline"
-                size="xs"
-                className="h-7 px-2"
-                onClick={handleReviewPlan}
-                disabled={isExecuting}
-              >
-                <FilePenLine className="mr-0.5 size-3.5" />
-                {t("planCard.reviewPlan")}
-              </Button>
-            </HoverCardTrigger>
-            <HoverCardContent
-              hidden={count > 2 || !isImageLoaded}
-              className="w-[80vw] max-w-[480px]"
+        isVSCodeEnvironment() && (
+          <>
+            <HoverCard
+              openDelay={0}
+              onOpenChange={(open) => {
+                if (open && count <= 2 && isImageLoaded) {
+                  incrementCount();
+                }
+              }}
             >
-              <div className="flex flex-col gap-2">
-                <img
-                  src={reviewTutorialImage}
-                  alt="Review Plan"
-                  className="rounded-md"
-                />
-                <p className="mb-1 font-medium text-xl">
-                  {t("planCard.reviewPlanTitle")}
-                </p>
-                <span className="text-lg">
-                  {t("planCard.reviewPlanTooltip")}
-                </span>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-          <Button
-            size="xs"
-            className="h-7 px-2"
-            onClick={handleExecutePlan}
-            disabled={isExecuting || !file}
-          >
-            <Play className="mr-0.5 size-3.5" />
-            {t("planCard.executePlan")}
-          </Button>
-        </>
+              <HoverCardTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="h-7 px-2"
+                  onClick={handleReviewPlan}
+                  disabled={isExecuting}
+                >
+                  <FilePenLine className="mr-0.5 size-3.5" />
+                  {t("planCard.reviewPlan")}
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent
+                hidden={count > 2 || !isImageLoaded}
+                className="w-[80vw] max-w-[480px]"
+              >
+                <div className="flex flex-col gap-2">
+                  <img
+                    src={reviewTutorialImage}
+                    alt="Review Plan"
+                    className="rounded-md"
+                  />
+                  <p className="mb-1 font-medium text-xl">
+                    {t("planCard.reviewPlanTitle")}
+                  </p>
+                  <span className="text-lg">
+                    {t("planCard.reviewPlanTooltip")}
+                  </span>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
+            <Button
+              size="xs"
+              className="h-7 px-2"
+              onClick={handleExecutePlan}
+              disabled={isExecuting || !file}
+            >
+              <Play className="mr-0.5 size-3.5" />
+              {t("planCard.executePlan")}
+            </Button>
+          </>
+        )
       }
     >
       {file?.content ? (
@@ -167,7 +144,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-[20vh] flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
+        <div className="flex h-full w-full items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting
               ? t("planCard.creatingPlan")
