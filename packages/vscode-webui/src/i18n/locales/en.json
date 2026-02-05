@@ -483,9 +483,12 @@
     "reviewPlanTooltip": "Click the '+' before the line number of the plan artifact to leave comments",
     "executePlan": "Execute Plan",
     "openPlan": "Open",
-    "creatingPlan": "Analyzing your code and creating a plan..."
+    "creatingPlan": "Analyzing your code and creating a plan...",
+    "planCreationPaused": "Plan creation paused"
   },
   "browserView": {
-    "noFrameAvailable": "No frame available"
+    "noFrameAvailable": "No frame available",
+    "executing": "Executing...",
+    "paused": "Paused"
   }
 }

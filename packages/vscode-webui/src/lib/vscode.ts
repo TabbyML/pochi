@@ -1,4 +1,5 @@
 import { getLogger } from "@getpochi/common";
+import { validateTaskFilePath } from "@getpochi/common/pochi-file-system";
 import type {
   ExecuteCommandResult,
   VSCodeHostApi,
@@ -150,20 +151,14 @@ function createVSCodeHost(): VSCodeHostApi {
             return;
           }
 
-          if (filePath === "/plan.md") {
-            globalStore.commit(
-              catalog.events.writeTaskFile({
-                taskId,
-                filePath,
-                content,
-              }),
-            );
-          } else {
-            logger.warn(
-              `Ignoring writeTaskFile for unsupported path: ${filePath}`,
-            );
-            throw new Error(`Filepath ${filePath} is not accessible`);
-          }
+          const validPath = validateTaskFilePath(filePath);
+          globalStore.commit(
+            catalog.events.writeTaskFile({
+              taskId,
+              filePath: validPath,
+              content,
+            }),
+          );
         },
 
         async readTaskOutput(taskId: string): Promise<ExecuteCommandResult> {

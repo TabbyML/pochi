@@ -485,9 +485,12 @@
     "reviewPlanTitle": "計画を確認",
     "reviewPlanTooltip": "プランアーティファクトの行番号の前にある「+」をクリックしてコメントを残します",
     "executePlan": "計画を実行",
-    "creatingPlan": "コードを分析し、計画を作成しています..."
+    "creatingPlan": "コードを分析し、計画を作成しています...",
+    "planCreationPaused": "計画の作成が一時停止しました"
   },
   "browserView": {
-    "noFrameAvailable": "フレームが利用できません"
+    "noFrameAvailable": "フレームが利用できません",
+    "executing": "実行中...",
+    "paused": "一時停止"
   }
 }

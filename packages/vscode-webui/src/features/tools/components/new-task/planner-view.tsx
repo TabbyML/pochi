@@ -8,11 +8,11 @@ import {
 } from "@/components/ui/hover-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
+import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
-import { useNavigate } from "@tanstack/react-router";
 import {
   ClipboardList,
   FilePenLine,
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { StatusIcon } from "../status-icon";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
 
@@ -70,7 +71,15 @@ export function PlannerView(props: NewTaskToolViewProps) {
 
   return (
     <SubAgentView
-      icon={<ClipboardList className="size-3.5" />}
+      icon={
+        <StatusIcon
+          tool={tool}
+          isExecuting={isExecuting}
+          className="align-baseline"
+          iconClassName="size-3.5"
+          successIcon={<ClipboardList className="size-3.5" />}
+        />
+      }
       title={description}
       expandable={!!file}
       actions={
@@ -131,7 +140,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
             size="xs"
             className="h-7 px-2"
             onClick={handleExecutePlan}
-            disabled={isExecuting}
+            disabled={isExecuting || !file}
           >
             <Play className="mr-0.5 size-3.5" />
             {t("planCard.executePlan")}
@@ -159,7 +168,11 @@ export function PlannerView(props: NewTaskToolViewProps) {
         </FixedStateChatContextProvider>
       ) : (
         <div className="flex h-[20vh] flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
-          <span className="text-base">{t("planCard.creatingPlan")}</span>
+          <span className="text-base">
+            {isExecuting
+              ? t("planCard.creatingPlan")
+              : t("planCard.planCreationPaused")}
+          </span>
         </div>
       )}
     </SubAgentView>

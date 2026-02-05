@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { catalog } from "@getpochi/livekit";
-import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { type MouseEvent, useCallback } from "react";
 import { useTranslation } from "react-i18next";
