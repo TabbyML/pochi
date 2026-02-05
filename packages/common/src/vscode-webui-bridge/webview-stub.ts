@@ -262,6 +262,7 @@ const VSCodeHostStub = {
     _options?: {
       keepEditor?: boolean;
       preserveFocus?: boolean;
+      preview?: boolean;
     },
   ): Promise<void> => {},
 
