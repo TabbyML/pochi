@@ -19,7 +19,7 @@
     },
     "packages/cli": {
       "name": "@getpochi/cli",
-      "version": "0.5.0-dev",
+      "version": "0.5.105",
       "bin": {
         "pochi": "src/cli.ts",
       },
@@ -253,7 +253,7 @@
     },
     "packages/vscode": {
       "name": "pochi",
-      "version": "0.27.0-dev",
+      "version": "0.29.0-dev",
       "dependencies": {
         "@ai-sdk/google-vertex": "catalog:",
         "@getpochi/common": "workspace:*",
