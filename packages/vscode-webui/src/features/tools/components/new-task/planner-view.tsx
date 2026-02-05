@@ -144,7 +144,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="w-full h-[20vh] flex items-center justify-center p-3 text-muted-foreground">
+        <div className="flex h-[20vh] w-full items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting
               ? t("planCard.creatingPlan")
