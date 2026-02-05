@@ -33,6 +33,7 @@
         "@getpochi/vendor-github-copilot": "workspace:*",
         "@getpochi/vendor-pochi": "workspace:*",
         "@getpochi/vendor-qwen-code": "workspace:*",
+        "@getpochi/vendor-tabby": "workspace:*",
         "@inquirer/select": "^4.3.2",
         "@livestore/adapter-node": "catalog:",
         "@livestore/livestore": "catalog:",
@@ -249,6 +250,22 @@
         "@ai-sdk/provider": "catalog:",
         "@getpochi/common": "workspace:*",
         "ai": "catalog:",
+      },
+    },
+    "packages/vendor-tabby": {
+      "name": "@getpochi/vendor-tabby",
+      "version": "0.0.1",
+      "dependencies": {
+        "@ai-sdk/openai-compatible": "catalog:",
+        "@ai-sdk/provider": "catalog:",
+        "@getpochi/common": "workspace:*",
+        "@getpochi/tools": "workspace:*",
+        "@hono/zod-validator": "catalog:",
+        "ai": "catalog:",
+        "better-auth": "catalog:",
+        "hono": "catalog:",
+        "jose": "catalog:",
+        "zod": "catalog:",
       },
     },
     "packages/vscode": {
@@ -857,6 +874,8 @@
     "@getpochi/vendor-pochi": ["@getpochi/vendor-pochi@workspace:packages/vendor-pochi"],
 
     "@getpochi/vendor-qwen-code": ["@getpochi/vendor-qwen-code@workspace:packages/vendor-qwen-code"],
+
+    "@getpochi/vendor-tabby": ["@getpochi/vendor-tabby@workspace:packages/vendor-tabby"],
 
     "@getpochi/vscode-webui": ["@getpochi/vscode-webui@workspace:packages/vscode-webui"],
 
