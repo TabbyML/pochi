@@ -3683,7 +3683,7 @@ The same principle applies outside the database layer. With SSH and shell access
 
 A shell is a general-purpose programming environment. Once exposed, safety boundaries become undefined.
 
-An agent can use cat to overwrite files, using grep can exfiltrate secrets, and tail -f, if used on the wrong file, can leak sensitive data indefinitely. On the other hand, having an allowlist to control which binaries are executed does not automatically constrain the kind of operations that are possible on the system.
+An agent can use `cat` to overwrite files, using `grep` can exfiltrate secrets, and `tail -f`, if used on the wrong file, can leak sensitive data indefinitely. On the other hand, having an allowlist to control which binaries are executed does not automatically constrain the kind of operations that are possible on the system.
 
 Having a shell exposed grants access to the file system, process creation, and the environment state. And once a shell exists, the boundary of what is allowed is no longer clear.
 
@@ -3702,7 +3702,7 @@ Instead of connecting agents to long-lived servers, teams route them to short-li
 Some teams still require agents for log inspection, operational debugging, or controlled maintenance. But even in these cases, full interactive shells are rarely necessary. Common restrictions can include:
 
 * SSH users with no home directory and limited permissions
-* forced commands in authorized\_keys so only specific scripts can run
+* forced commands in `authorized_keys` so only specific scripts can run
 * wrapper binaries that expose narrow actions instead of general shells
 
 For example, instead of allowing:
@@ -6151,7 +6151,7 @@ The same principle applies outside the database layer. With SSH and shell access
 
 A shell is a general-purpose programming environment. Once exposed, safety boundaries become undefined.
 
-An agent can use cat to overwrite files, using grep can exfiltrate secrets, and tail -f, if used on the wrong file, can leak sensitive data indefinitely. On the other hand, having an allowlist to control which binaries are executed does not automatically constrain the kind of operations that are possible on the system.
+An agent can use `cat` to overwrite files, using `grep` can exfiltrate secrets, and `tail -f`, if used on the wrong file, can leak sensitive data indefinitely. On the other hand, having an allowlist to control which binaries are executed does not automatically constrain the kind of operations that are possible on the system.
 
 Having a shell exposed grants access to the file system, process creation, and the environment state. And once a shell exists, the boundary of what is allowed is no longer clear.
 
@@ -6170,7 +6170,7 @@ Instead of connecting agents to long-lived servers, teams route them to short-li
 Some teams still require agents for log inspection, operational debugging, or controlled maintenance. But even in these cases, full interactive shells are rarely necessary. Common restrictions can include:
 
 * SSH users with no home directory and limited permissions
-* forced commands in authorized\_keys so only specific scripts can run
+* forced commands in `authorized_keys` so only specific scripts can run
 * wrapper binaries that expose narrow actions instead of general shells
 
 For example, instead of allowing:
