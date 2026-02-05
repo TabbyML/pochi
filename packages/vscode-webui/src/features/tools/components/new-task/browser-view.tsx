@@ -71,7 +71,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-full w-full items-center justify-center p-3 text-muted-foreground">
+        <div className="w-full h-[20vh] flex items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting ? t("browserView.executing") : t("browserView.paused")}
           </span>

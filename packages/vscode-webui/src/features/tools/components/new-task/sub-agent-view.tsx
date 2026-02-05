@@ -1,10 +1,11 @@
 import { TaskThread } from "@/components/task-thread";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FixedStateChatContextProvider } from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
+import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
-import { SquareArrowOutUpRight } from "lucide-react";
 import { useState } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
@@ -42,21 +43,8 @@ export function SubAgentView({
   const showFooter = showExpandIcon || footerActions;
   const navigate = useNavigate();
   const store = useDefaultStore();
-  const title = tool.input?.description;
-
-  const handleOpenTask = () => {
-    if (uid) {
-      navigate({
-        to: "/task",
-        search: {
-          uid,
-          storeId: store.storeId,
-        },
-        replace: true,
-        viewTransition: true,
-      });
-    }
-  };
+  const toolTitle = tool.input?.agentType;
+  const description = tool.input?.description;
 
   return (
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
@@ -67,17 +55,33 @@ export function SubAgentView({
           className="align-baseline"
           iconClassName="size-3.5"
         />
-        <span className="flex-1 truncate">{title}</span>
-        {isVSCodeEnvironment() && (
-          <Button
-            size="icon"
-            variant="ghost"
-            disabled={isExecuting}
-            onClick={handleOpenTask}
-            className="size-auto px-2 py-1"
-          >
-            <SquareArrowOutUpRight className="size-3.5" />
-          </Button>
+        <Badge variant="secondary" className={cn("my-0.5 py-0")}>
+          {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
+            <Button
+              variant="link"
+              className="h-auto p-0 font-inherit text-inherit underline-offset-2"
+              onClick={() => {
+                navigate({
+                  to: "/task",
+                  search: {
+                    uid,
+                    storeId: store.storeId,
+                  },
+                  replace: true,
+                  viewTransition: true,
+                });
+              }}
+            >
+              {toolTitle}
+            </Button>
+          ) : (
+            <>{toolTitle}</>
+          )}
+        </Badge>
+        {description && (
+          <span className="min-w-0 truncate text-muted-foreground">
+            {description}
+          </span>
         )}
       </div>
 
