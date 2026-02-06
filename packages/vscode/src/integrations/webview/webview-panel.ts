@@ -194,7 +194,7 @@ export class PochiTaskEditorProvider
     options?: {
       keepEditor?: boolean;
       viewColumn?: vscode.ViewColumn;
-      preverseFocus?: boolean;
+      preserveFocus?: boolean;
     },
   ) {
     try {

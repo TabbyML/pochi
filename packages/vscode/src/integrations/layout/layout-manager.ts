@@ -781,7 +781,7 @@ export class LayoutManager implements vscode.Disposable {
         },
         {
           viewColumn: vscode.ViewColumn.One,
-          preverseFocus: true,
+          preserveFocus: true,
         },
       );
     }
