@@ -112,7 +112,7 @@ export function isSameTabInput(
   );
 }
 
-export type TabGroupShape = {
+export type TabGroupShape = readonly {
   tabs: readonly vscode.Tab[];
 }[];
 
@@ -147,6 +147,13 @@ export function countPochiTaskTabs(tabGroups: TabGroupShape) {
   return tabGroups.reduce(
     (acc, group) =>
       acc + group.tabs.filter((tab) => isPochiTaskTab(tab)).length,
+    0,
+  );
+}
+
+export function countTerminalTabs(tabGroups: TabGroupShape) {
+  return tabGroups.reduce(
+    (acc, group) => acc + group.tabs.filter((tab) => isTerminalTab(tab)).length,
     0,
   );
 }

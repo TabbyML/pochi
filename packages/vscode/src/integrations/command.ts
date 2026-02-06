@@ -40,6 +40,7 @@ import { WorktreeManager } from "./git/worktree";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import {
   LayoutManager,
+  createTerminal,
   findActivePochiTaskTab,
   getViewColumnForTerminal,
 } from "./layout";
@@ -568,7 +569,7 @@ export class CommandManager implements vscode.Disposable {
 
         const viewColumn = getViewColumnForTerminal();
         const location = viewColumn ? { viewColumn } : undefined;
-        vscode.window.createTerminal({ cwd, location }).show();
+        createTerminal({ cwd, location }).show();
       }),
 
       vscode.commands.registerCommand(
@@ -586,9 +587,7 @@ export class CommandManager implements vscode.Disposable {
           if (worktreePath) {
             const viewColumn = getViewColumnForTerminal();
             const location = viewColumn ? { viewColumn } : undefined;
-            vscode.window
-              .createTerminal({ cwd: worktreePath, location })
-              .show();
+            createTerminal({ cwd: worktreePath, location }).show();
           }
         },
       ),
