@@ -419,7 +419,7 @@ export class TaskRunner {
       );
       const message = createUserMessage(
         prompts.createSystemReminder(
-          "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestions to clarify the request.",
+          "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
         ),
       );
       this.chat.appendOrReplaceMessage(message);
