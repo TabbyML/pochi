@@ -7498,7 +7498,8 @@ Agents must never execute arbitrary code against production systems. At the same
 
 We’ll walk through multiple access tiers, explain their security tradeoffs, and show how to progressively increase agent autonomy without expanding the production attack surface.
 
-Prerequisites
+### Prerequisites
+
 Before we start, you’ll need the following:
 
 * **[Node.js installed](https://nodejs.org/en/download)**
@@ -8138,7 +8139,7 @@ For example, Managed Postgres (RDS, Cloud SQL, Neon, Supabase) has read replicas
 
 As a user, all you need to do is route the agent to the correct tier depending on the operation you intend to perform.
 
-### Conclusion
+## Conclusion
 
 In this tutorial, we displayed why tool-level restrictions are not enough and how agents can still bypass read-only controls if they have any execution surface.
 
