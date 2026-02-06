@@ -84,6 +84,7 @@
   },
   "worktree": {
     "createPr": "PR 생성",
+    "createWalkthrough": "워크스루 생성",
     "createDraftPr": "초안 PR 생성",
     "createPrManually": "수동으로 PR 생성",
     "installGhCli": "PR을 생성하려면 GitHub CLI를 설치하세요",
@@ -483,6 +484,11 @@
     "executePlan": "계획 실행",
     "creatingPlan": "코드를 분석하고 계획을 수립 중입니다...",
     "planCreationPaused": "계획 수립이 일시 중지되었습니다"
+  },
+  "walkthroughCard": {
+    "openWalkthrough": "열기",
+    "creatingWalkthrough": "워크스루 생성 중...",
+    "walkthroughCreationPaused": "워크스루 생성이 일시 중지되었습니다"
   },
   "browserView": {
     "noFrameAvailable": "프레임 없음",

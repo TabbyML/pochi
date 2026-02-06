@@ -84,6 +84,7 @@
   },
   "worktree": {
     "createPr": "创建 PR",
+    "createWalkthrough": "创建 Walkthrough",
     "createDraftPr": "创建草稿 PR",
     "createPrManually": "手动创建 PR",
     "installGhCli": "请安装 GitHub CLI 以创建 PR",
@@ -487,6 +488,11 @@
     "executePlan": "执行计划",
     "creatingPlan": "正在分析您的代码并制定计划...",
     "planCreationPaused": "计划创建已暂停"
+  },
+  "walkthroughCard": {
+    "openWalkthrough": "打开",
+    "creatingWalkthrough": "正在创建 Walkthrough...",
+    "walkthroughCreationPaused": "Walkthrough 创建已暂停"
   },
   "browserView": {
     "noFrameAvailable": "无画面",

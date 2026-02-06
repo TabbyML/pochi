@@ -19,6 +19,7 @@ import { ExpandIcon, ToolTitle } from "../tool-container";
 import type { ToolProps } from "../types";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
+import { WalkthroughView } from "./walkthrough-view";
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
@@ -148,6 +149,10 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
 
   if (agentType === "planner") {
     return <PlannerView {...props} />;
+  }
+
+  if (agentType === "walkthrough") {
+    return <WalkthroughView {...props} />;
   }
 
   return (

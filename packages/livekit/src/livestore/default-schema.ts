@@ -224,7 +224,7 @@ export const events = {
     schema: Schema.Struct({
       taskId: Schema.String,
       filePath: Schema.Union(
-        Schema.Literal("/plan.md"),
+        Schema.Literal("/plan.md", "/walkthrough.md"),
         Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
       ),
       content: Schema.String,

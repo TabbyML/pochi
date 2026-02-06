@@ -84,6 +84,7 @@
   },
   "worktree": {
     "createPr": "Create PR",
+    "createWalkthrough": "Create Walkthrough",
     "createDraftPr": "Create draft PR",
     "createPrManually": "Create PR manually",
     "installGhCli": "Please install GitHub CLI to create PRs",
@@ -487,6 +488,11 @@
     "openPlan": "Open",
     "creatingPlan": "Analyzing your code and creating a plan...",
     "planCreationPaused": "Plan creation paused"
+  },
+  "walkthroughCard": {
+    "openWalkthrough": "Open",
+    "creatingWalkthrough": "Creating walkthrough...",
+    "walkthroughCreationPaused": "Walkthrough creation paused"
   },
   "browserView": {
     "noFrameAvailable": "No frame available",
