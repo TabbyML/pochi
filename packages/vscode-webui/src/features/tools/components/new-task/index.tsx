@@ -12,10 +12,9 @@ import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { type RefObject, useEffect, useRef } from "react";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
-
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
-import { ExpandIcon, ToolTitle } from "../tool-container";
+import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
@@ -36,7 +35,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   const inlinedTaskSource = useInlinedSubTask(tool);
 
   if (isRunAsync) {
-    return <BackgroundTaskToolView {...props} uid={uid} />;
+    return <AsyncTaskToolView {...props} uid={uid} />;
   }
 
   if (inlinedTaskSource) {
@@ -50,7 +49,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 };
 
-function BackgroundTaskToolView(
+function AsyncTaskToolView(
   props: NewTaskToolProps & { uid: string | undefined },
 ) {
   const { tool, isExecuting, uid } = props;
@@ -73,29 +72,34 @@ function BackgroundTaskToolView(
     });
   };
 
+  const title = (
+    <>
+      <div className="flex min-w-0 items-center gap-2">
+        <StatusIcon tool={tool} isExecuting={isExecuting} />
+        <Badge variant="secondary" className={cn("my-0.5 py-0")}>
+          {toolTitle}
+        </Badge>
+        {description && (
+          <span className="min-w-0 text-muted-foreground">{description}</span>
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-4 px-2 text-xs"
+        onClick={openInTab}
+        disabled={!canOpen}
+      >
+        {"ASYNC"}
+      </Button>
+    </>
+  );
+
   return (
-    <div>
-      <ToolTitle className="justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          <StatusIcon tool={tool} isExecuting={isExecuting} />
-          <Badge variant="secondary" className={cn("my-0.5 py-0")}>
-            {toolTitle}
-          </Badge>
-          {description && (
-            <span className="min-w-0 text-muted-foreground">{description}</span>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={openInTab}
-          disabled={!canOpen}
-        >
-          {"ASYNC"}
-        </Button>
-      </ToolTitle>
-    </div>
+    <ExpandableToolContainer
+      title={title}
+      titleClassname="flex w-full items-center justify-between"
+    />
   );
 }
 
@@ -150,60 +154,57 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     return <PlannerView {...props} />;
   }
 
-  return (
-    <div>
-      <ToolTitle>
-        <div className="flex min-w-0 items-center gap-2">
-          <StatusIcon tool={tool} isExecuting={isExecuting} />
-          <Badge variant="secondary" className={cn("my-0.5 py-0")}>
-            {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
-              <Button
-                variant="link"
-                className="h-auto p-0 font-inherit text-inherit underline-offset-2"
-                onClick={() => {
-                  navigate({
-                    to: "/task",
-                    search: {
-                      uid,
-                      storeId: store.storeId,
-                    },
-                    replace: true,
-                    viewTransition: true,
-                  });
-                }}
-              >
-                {toolTitle}
-              </Button>
-            ) : (
-              <>{toolTitle}</>
-            )}
-          </Badge>
-          {description && (
-            <span className="min-w-0 text-muted-foreground">{description}</span>
-          )}
-        </div>
-        {taskSource && taskSource.messages.length > 1 && (
-          <ExpandIcon
-            className="cursor-pointer"
-            isExpanded={showMessageList}
-            onClick={() => setShowMessageListImmediately(!showMessageList)}
-          />
-        )}
-      </ToolTitle>
-      {taskSource && taskSource.messages.length > 1 && (
-        <div className="mt-1 pl-6">
-          <FixedStateChatContextProvider
-            toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+  const title = (
+    <div className="flex min-w-0 items-center gap-2">
+      <StatusIcon tool={tool} isExecuting={isExecuting} />
+      <Badge variant="secondary" className={cn("my-0.5 py-0")}>
+        {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
+          <span
+            onClick={() => {
+              navigate({
+                to: "/task",
+                search: {
+                  uid,
+                  storeId: store.storeId,
+                },
+                replace: true,
+                viewTransition: true,
+              });
+            }}
+            className="cursor-pointer hover:underline"
           >
-            <TaskThread
-              source={{ ...taskSource, isLoading: false }}
-              showMessageList={showMessageList}
-              assistant={{ name: agent ?? "Pochi" }}
-            />
-          </FixedStateChatContextProvider>
-        </div>
+            {toolTitle}
+          </span>
+        ) : (
+          <>{toolTitle}</>
+        )}
+      </Badge>
+      {description && (
+        <span className="min-w-0 text-muted-foreground">{description}</span>
       )}
     </div>
+  );
+
+  const expandableDetail =
+    taskSource && taskSource.messages.length > 1 ? (
+      <FixedStateChatContextProvider
+        toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+      >
+        <TaskThread
+          source={{ ...taskSource, isLoading: false }}
+          showMessageList={showMessageList}
+          assistant={{ name: agent ?? "Pochi" }}
+        />
+      </FixedStateChatContextProvider>
+    ) : undefined;
+
+  return (
+    <ExpandableToolContainer
+      title={title}
+      expandableDetail={expandableDetail}
+      expanded={showMessageList}
+      onToggle={setShowMessageListImmediately}
+    />
   );
 }
 
