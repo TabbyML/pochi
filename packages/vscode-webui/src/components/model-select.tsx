@@ -62,8 +62,10 @@ export function ModelSelect({
     onChange(v.id);
   };
 
-  const payingUser = usePayingPlan();
-  const isSuperModelsDisabled = payingUser === "freebie";
+  const payingInfo = usePayingPlan();
+  const isSuperModelsDisabled =
+    payingInfo.plan === "freebie" &&
+    !payingInfo.isFreebieWhitelistedForSuperModel;
 
   return (
     <LoadingWrapper

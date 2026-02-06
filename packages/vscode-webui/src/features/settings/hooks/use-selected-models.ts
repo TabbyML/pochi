@@ -94,13 +94,16 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     [models, updateSelectedModel],
   );
 
-  const payingUser = usePayingPlan();
+  const payingInfo = usePayingPlan();
 
   // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
     if (!isLoading && !selectedModelFromStore && models?.length) {
       let initialModel = models[0];
-      if (payingUser === "freebie") {
+      if (
+        payingInfo.plan === "freebie" &&
+        !payingInfo.isFreebieWhitelistedForSuperModel
+      ) {
         initialModel =
           models.find((x) => x.options.label !== "super") || models[0];
       }
@@ -111,7 +114,7 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     models,
     selectedModelFromStore,
     updateSelectedModel,
-    payingUser,
+    payingInfo,
   ]);
 
   return {
