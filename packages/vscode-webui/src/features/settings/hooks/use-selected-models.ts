@@ -60,6 +60,7 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     const customModels: ModelGroup = {
       title: t("modelSelect.custom"),
       models: [],
+      isCustom: true,
     };
 
     for (const x of models) {
