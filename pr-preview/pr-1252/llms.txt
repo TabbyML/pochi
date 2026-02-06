@@ -3187,7 +3187,7 @@ We focused on correctness, clearer UI behavior, and better visibility into what 
 
 ### ✨ Enhancements
 
-* **Expanded URL support for Google-based models:** Google-based models can now accept HTTP/HTTPS URLs and Google Cloud Storage (`gs://`) URLs as inputs, allowing them to process content from external sources more reliably. **[#1207](https://github.com/TabbyML/pochi/issues/1207)**
+* **Expanded URL support for Google-based models:** Google-based models can now accept `HTTP`/`HTTPS` URLs and Google Cloud Storage (`gs://`) URLs as inputs, allowing them to process content from external sources more reliably. **[#1207](https://github.com/TabbyML/pochi/issues/1207)**
 
 * **Updated model selection for subscription-based models:** Super Models are now hidden when a subscription is required, and a “Subscribe to access Super models” link is shown in the Swift Models group header, making upgrade paths clearer without cluttering the model list. **[#1204](https://github.com/TabbyML/pochi/issues/1204)**
 
@@ -3783,7 +3783,7 @@ We focused on correctness, clearer UI behavior, and better visibility into what 
 
 ### ✨ Enhancements
 
-* **Expanded URL support for Google-based models:** Google-based models can now accept HTTP/HTTPS URLs and Google Cloud Storage (`gs://`) URLs as inputs, allowing them to process content from external sources more reliably. **[#1207](https://github.com/TabbyML/pochi/issues/1207)**
+* **Expanded URL support for Google-based models:** Google-based models can now accept `HTTP`/`HTTPS` URLs and Google Cloud Storage (`gs://`) URLs as inputs, allowing them to process content from external sources more reliably. **[#1207](https://github.com/TabbyML/pochi/issues/1207)**
 
 * **Updated model selection for subscription-based models:** Super Models are now hidden when a subscription is required, and a “Subscribe to access Super models” link is shown in the Swift Models group header, making upgrade paths clearer without cluttering the model list. **[#1204](https://github.com/TabbyML/pochi/issues/1204)**
 
