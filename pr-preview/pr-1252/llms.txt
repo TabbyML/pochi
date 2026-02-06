@@ -3197,8 +3197,6 @@ We focused on correctness, clearer UI behavior, and better visibility into what 
 
 * **Support symlinked directories in the skill loader:** Skills can now be loaded from symlinked directories in both the CLI and VS Code extension, which makes it easier to develop skills locally by symlinking them into `.pochi/skills`. **[#1199](https://github.com/TabbyML/pochi/issues/1199)**
 
-* **Fixed task info loading when navigating between tasks:** Corrected task route initialization logic so task information loads and updates correctly when opening or switching between tasks in the VS Code UI. **[#1229](https://github.com/TabbyML/pochi/issues/1229)**
-
 ### 📖 Resources
 
 * **How to give coding agents access to SSH and databases without breaking production:** We published a deep dive on why common safety patterns like command allowlists, SQL filters, and approval dialogs fail with autonomous agents, and why safety must be enforced at the infrastructure and execution layer instead of through prompts or behavioral controls. **[Read blog](https://docs.getpochi.com/developer-updates/ssh-database-access/)**
@@ -3792,8 +3790,6 @@ We focused on correctness, clearer UI behavior, and better visibility into what 
 ### 🐛 Bug Fixes
 
 * **Support symlinked directories in the skill loader:** Skills can now be loaded from symlinked directories in both the CLI and VS Code extension, which makes it easier to develop skills locally by symlinking them into `.pochi/skills`. **[#1199](https://github.com/TabbyML/pochi/issues/1199)**
-
-* **Fixed task info loading when navigating between tasks:** Corrected task route initialization logic so task information loads and updates correctly when opening or switching between tasks in the VS Code UI. **[#1229](https://github.com/TabbyML/pochi/issues/1229)**
 
 ### 📖 Resources
 
