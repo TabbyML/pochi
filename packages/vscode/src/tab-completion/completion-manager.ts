@@ -28,10 +28,10 @@ import {
   mergeSolution,
 } from "./solution";
 import {
+  AfterAcceptCompletionTrigger,
   EditorSelectionTrigger,
-  type EditorSelectionTriggerEvent,
   InlineCompletionProviderTrigger,
-  type InlineCompletionProviderTriggerEvent,
+  type TriggerEvent,
 } from "./triggers";
 import {
   delayFn,
@@ -55,9 +55,11 @@ const DefaultProviders = [
 export class TabCompletionManager implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
 
+  private afterAcceptCompletionTrigger = new AfterAcceptCompletionTrigger();
   private triggers = [
     new EditorSelectionTrigger(),
     new InlineCompletionProviderTrigger(),
+    this.afterAcceptCompletionTrigger,
   ];
   private providersConfig:
     | NonNullable<PochiAdvanceSettings["tabCompletion"]>["providers"]
@@ -214,6 +216,18 @@ export class TabCompletionManager implements vscode.Disposable {
     if (this.current === current) {
       this.removeCurrent();
     }
+
+    if (
+      !this.current ||
+      this.current.triggerEvent.document.uri.toString() !==
+        editor.document.uri.toString() ||
+      !this.current.triggerEvent.selection.isEqual(editor.selection)
+    ) {
+      this.afterAcceptCompletionTrigger.fire({
+        document: editor.document,
+        selection: editor.selection,
+      });
+    }
   }
 
   reject() {
@@ -266,9 +280,7 @@ export class TabCompletionManager implements vscode.Disposable {
     );
   }
 
-  private async handleTriggerEvent(
-    event: EditorSelectionTriggerEvent | InlineCompletionProviderTriggerEvent,
-  ) {
+  private async handleTriggerEvent(event: TriggerEvent) {
     logger.trace("Handling trigger event.");
     if (event.token?.isCancellationRequested) {
       return;
@@ -345,9 +357,36 @@ export class TabCompletionManager implements vscode.Disposable {
       logger.trace("Create solution.", logToFileObject({ hash: context.hash }));
     }
 
-    // create requests
     const debounce = this.debounce;
     debounce.trigger();
+    const offset = context.documentSnapshot.offsetAt(context.selection.active);
+    const triggerCharacter = context.documentSnapshot.getText(
+      offsetRangeToPositionRange(
+        {
+          start: Math.max(0, offset - 1),
+          end: offset,
+        },
+        context.documentSnapshot,
+      ),
+    );
+    const decounceDelayParmas = {
+      triggerCharacter:
+        triggerCharacter.length === 1 ? triggerCharacter : undefined,
+      isLineEnd: isLineEndPosition(
+        context.selection.active,
+        context.documentSnapshot,
+      ),
+      isDocumentEnd: !!context.documentSnapshot
+        .getText(
+          new vscode.Range(
+            context.selection.active,
+            new vscode.Position(context.documentSnapshot.lineCount, 0),
+          ),
+        )
+        .match(/^\W*$/),
+      isManually: context.isManually,
+    };
+
     const providerRequests = [] as {
       request: TabCompletionProviderRequest;
       tokenSource: vscode.CancellationTokenSource;
@@ -359,26 +398,37 @@ export class TabCompletionManager implements vscode.Disposable {
       providerRequests,
     );
     this.current = current;
+    if (event.token) {
+      event.token.onCancellationRequested(() => {
+        current.dispose();
+        if (this.current === current) {
+          this.removeCurrent();
+        }
+      });
+    }
 
     if (!context.isManually && solution.items.length > 0) {
       logger.trace(
         "No new requests will be sent.",
         logToFileObject({ hash: context.hash }),
       );
-      this.handleDidUpdateSolution();
+      const delay = debounce.getDelay(decounceDelayParmas);
+      const tokenSource = new vscode.CancellationTokenSource();
+      current.noNewRequestDelayTokenSource = tokenSource;
+      delayFn(
+        () => {
+          this.handleDidUpdateSolution();
+        },
+        delay,
+        tokenSource.token,
+      ).catch(() => {
+        // ignore
+      });
+
       return;
     }
 
-    const offset = context.documentSnapshot.offsetAt(context.selection.active);
-    const triggerCharacter = context.documentSnapshot.getText(
-      offsetRangeToPositionRange(
-        {
-          start: Math.max(0, offset - 1),
-          end: offset,
-        },
-        context.documentSnapshot,
-      ),
-    );
+    // create requests
     for (const provider of this.providers) {
       logger.trace(
         `Create new request for provider ${provider.client.id}.`,
@@ -427,21 +477,7 @@ export class TabCompletionManager implements vscode.Disposable {
           ? request.status.value.estimatedResponseTime
           : 0;
       const delay = debounce.getDelay({
-        triggerCharacter:
-          triggerCharacter.length === 1 ? triggerCharacter : undefined,
-        isLineEnd: isLineEndPosition(
-          context.selection.active,
-          context.documentSnapshot,
-        ),
-        isDocumentEnd: !!context.documentSnapshot
-          .getText(
-            new vscode.Range(
-              context.selection.active,
-              new vscode.Position(context.documentSnapshot.lineCount, 0),
-            ),
-          )
-          .match(/^\W*$/),
-        isManually: context.isManually,
+        ...decounceDelayParmas,
         estimatedResponseTime,
       });
 
@@ -561,13 +597,12 @@ export class TabCompletionManager implements vscode.Disposable {
 class TabCompletionManagerContext implements vscode.Disposable {
   decorationItemIndex: number | undefined;
   decorationTokenSource: vscode.CancellationTokenSource | undefined;
+  noNewRequestDelayTokenSource: vscode.CancellationTokenSource | undefined;
 
   private shouldLogContext = true;
 
   constructor(
-    readonly triggerEvent:
-      | EditorSelectionTriggerEvent
-      | InlineCompletionProviderTriggerEvent,
+    readonly triggerEvent: TriggerEvent,
     readonly solution: TabCompletionSolution,
     readonly providerRequests: {
       request: TabCompletionProviderRequest;
@@ -600,6 +635,10 @@ class TabCompletionManagerContext implements vscode.Disposable {
     if (this.decorationTokenSource) {
       this.decorationTokenSource.cancel();
       this.decorationTokenSource.dispose();
+    }
+    if (this.noNewRequestDelayTokenSource) {
+      this.noNewRequestDelayTokenSource.cancel();
+      this.noNewRequestDelayTokenSource.dispose();
     }
   }
 }
