@@ -1,30 +1,44 @@
-export class TimedJobList<T> {
-  private readonly list: {
-    id: T;
-    timer: ReturnType<typeof setTimeout>;
-    jobFn: (item: T) => void;
-  }[] = [];
+import type * as vscode from "vscode";
+
+export class TimedJobList<T> implements vscode.Disposable {
+  private readonly map = new Map<
+    T,
+    { timer: ReturnType<typeof setTimeout>; jobFn: (item: T) => void }
+  >();
 
   // push delayed job
   push(id: T, delay: number, jobFn: (id: T) => void) {
+    const existing = this.map.get(id);
+    if (existing) {
+      clearTimeout(existing.timer);
+    }
+
     const timer = setTimeout(() => {
       this.trigger(id);
     }, delay);
-    this.list.push({ id, timer, jobFn: jobFn });
+    this.map.set(id, { timer, jobFn });
   }
 
   // trigger immediately
   trigger(id: T) {
-    const index = this.list.findIndex((i) => i.id === id);
-    if (index < 0) {
+    const item = this.map.get(id);
+    if (!item) {
       return;
     }
-    const [{ timer, jobFn }] = this.list.splice(index, 1);
+    const { timer, jobFn } = item;
+    this.map.delete(id);
     clearTimeout(timer);
     jobFn(id);
   }
 
   get ids(): readonly T[] {
-    return this.list.map((i) => i.id);
+    return Array.from(this.map.keys());
+  }
+
+  dispose() {
+    for (const { timer } of this.map.values()) {
+      clearTimeout(timer);
+    }
+    this.map.clear();
   }
 }

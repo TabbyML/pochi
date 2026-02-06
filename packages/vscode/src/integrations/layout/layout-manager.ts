@@ -422,7 +422,7 @@ export class LayoutManager implements vscode.Disposable {
   }
 
   private async applyPochiLayoutImpl(e: LayoutEventStartApply) {
-    logger.trace(">>> Begin applyPochiLayout.");
+    logger.trace(">>> Begin applyPochiLayout.", e);
     const cwd = e.cwd ?? this.workspaceScope.cwd ?? undefined;
 
     // Store the current focus tab
@@ -806,7 +806,10 @@ export class LayoutManager implements vscode.Disposable {
       e.trigger !== "create-terminal" &&
       this.allTabGroups[2].tabs.length === 0
     ) {
-      const location = { viewColumn: vscode.ViewColumn.Three };
+      const location = {
+        viewColumn: vscode.ViewColumn.Three,
+        preserveFocus: true,
+      };
       this.createTerminal({ cwd, location });
     }
 
@@ -827,6 +830,7 @@ export class LayoutManager implements vscode.Disposable {
   }
 
   dispose() {
+    this.scheduled.dispose();
     for (const disposable of this.staticListeners) {
       disposable.dispose();
     }
