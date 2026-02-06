@@ -382,7 +382,7 @@ export class ManagedToolCallLifeCycle
             cwd,
             storeId: this.store.storeId,
           },
-          { preserveFocus: true },
+          { preserveFocus: true, preview: false },
         );
       }
     }

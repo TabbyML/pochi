@@ -12,10 +12,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const { taskSource, uid, tool, toolCallStatusRegistryRef, isExecuting } =
     props;
   const { t } = useTranslation();
-  const completed =
-    tool.state === "output-available" &&
-    "result" in tool.output &&
-    tool.output.result.trim().length > 0;
+  const completed = tool.state === "output-available";
   const browserSession = useBrowserSession(uid || "");
   const streamUrl = browserSession?.streamUrl;
   const frame = useBrowserFrame({

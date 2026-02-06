@@ -1,7 +1,9 @@
 import * as os from "node:os";
 import * as vscode from "vscode";
 
-export function isTerminalCreatedByDefault(terminal: vscode.Terminal): boolean {
+export function isTerminalLikelyCreatedByDefault(
+  terminal: vscode.Terminal,
+): boolean {
   // Determine if the terminal was created by default when the terminal panel appears
   // We have no api to detect it, checking the creationOptions is the best effort
 
@@ -14,6 +16,9 @@ export function isTerminalCreatedByDefault(terminal: vscode.Terminal): boolean {
 
   const termOptions = creationOptions as vscode.TerminalOptions;
   if (termOptions.location) {
+    return false;
+  }
+  if (termOptions.message) {
     return false;
   }
 
@@ -31,7 +36,8 @@ export function isTerminalCreatedByDefault(terminal: vscode.Terminal): boolean {
     return (
       termOptions.name === undefined &&
       termOptions.shellPath === undefined &&
-      termOptions.shellArgs === undefined
+      termOptions.shellArgs === undefined &&
+      termOptions.cwd === undefined
     );
   }
 
@@ -41,14 +47,21 @@ export function isTerminalCreatedByDefault(terminal: vscode.Terminal): boolean {
   );
   if (defaultProfileName in profiles) {
     const profile = profiles[defaultProfileName];
-    if (profile && "overrideName" in profile && profile.overrideName) {
-      return termOptions.name === defaultProfileName;
+    if (!profile) {
+      return false;
     }
-  } else if (getContributedTerminalProfiles().includes(defaultProfileName)) {
+    const name =
+      "overrideName" in profile && profile.overrideName
+        ? defaultProfileName
+        : undefined;
+    return termOptions.name === name && termOptions.cwd === undefined;
+  }
+
+  if (getContributedTerminalProfiles().includes(defaultProfileName)) {
     return termOptions.name === defaultProfileName;
   }
 
-  return termOptions.name === undefined;
+  return termOptions.name === undefined && termOptions.cwd === undefined;
 }
 
 function getContributedTerminalProfiles() {

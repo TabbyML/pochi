@@ -60,6 +60,18 @@ describe("buildShellCommand", () => {
       args: ["-c", "echo 'hello'"],
     });
   });
+
+  it("should use flatpak-spawn on Linux when running inside Flatpak", () => {
+    vi.stubGlobal("process", {
+      platform: "linux",
+      env: { SHELL: "/bin/bash", FLATPAK_ID: "com.visualstudio.code" },
+    });
+    const command = buildShellCommand("echo 'hello'");
+    expect(command).toEqual({
+      command: "/usr/bin/flatpak-spawn",
+      args: ["--host", "/bin/bash", "-lc", "echo 'hello'"],
+    });
+  });
 });
 
 describe("fixExecuteCommandOutput", () => {
@@ -73,4 +85,3 @@ describe("fixExecuteCommandOutput", () => {
     expect(fixExecuteCommandOutput(output)).toBe("line 1\r\nline 2");
   });
 });
-

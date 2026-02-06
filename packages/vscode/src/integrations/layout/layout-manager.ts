@@ -12,6 +12,8 @@ import { findDefaultTextDocument } from "./default-document";
 import {
   countOtherTabs,
   countPochiTaskTabs,
+  countTerminalTabs,
+  findActivePochiTaskTab,
   getTabGroupType,
   getTabGroupsShape,
   isPochiTaskTab,
@@ -19,8 +21,8 @@ import {
   isSameTabInput,
   isTerminalTab,
 } from "./tab-utils";
-import { isTerminalCreatedByDefault } from "./terminal-utils";
-import { TimedList } from "./timed-list";
+import { isTerminalLikelyCreatedByDefault } from "./terminal-utils";
+import { TimedJobList } from "./timed-job-list";
 import {
   type EditorLayout,
   PochiLayout,
@@ -37,6 +39,7 @@ interface LayoutState {
 
 interface LayoutEventStartApply {
   type: "start-apply";
+  trigger: "manual" | "open-task" | "create-terminal" | "open-editor";
   cwd?: string | undefined;
   cycleFocus?: boolean;
 }
@@ -59,33 +62,44 @@ type LayoutEvent =
 @injectable()
 @singleton()
 export class LayoutManager implements vscode.Disposable {
-  private configListener: vscode.Disposable;
+  private readonly staticListeners: vscode.Disposable[];
   private listeners: vscode.Disposable[] = [];
   private exclusiveGroup = runExclusive.createGroupRef();
-
-  private newOpenTerminal = new TimedList<vscode.Terminal>(); // Saves the terminals that are newly opened
   private enabled = false;
+  private scheduled = new TimedJobList<vscode.Tab | vscode.Terminal>();
+
+  readonly pochiCreatedTerminals: vscode.Terminal[] = [];
 
   constructor(
     private readonly configuration: PochiConfiguration,
     private readonly workspaceScope: WorkspaceScope,
   ) {
-    this.configListener = {
-      dispose: this.configuration.advancedSettings.subscribe((config) => {
-        const enabled = !!config.pochiLayout?.enabled;
-        executeVSCodeCommand("setContext", "pochiLayoutEnabled", enabled);
-        const prevEnabled = this.enabled;
-        this.enabled = enabled;
+    this.staticListeners = [
+      {
+        dispose: this.configuration.advancedSettings.subscribe((config) => {
+          const enabled = !!config.pochiLayout?.enabled;
+          executeVSCodeCommand("setContext", "pochiLayoutEnabled", enabled);
+          const prevEnabled = this.enabled;
+          this.enabled = enabled;
 
-        if (!prevEnabled && enabled) {
-          this.fsm.start();
-          this.setupListeners();
-        } else if (prevEnabled && !enabled) {
-          this.disposeListeners();
-          this.fsm.stop();
+          if (!prevEnabled && enabled) {
+            this.fsm.start();
+            this.setupListeners();
+          } else if (prevEnabled && !enabled) {
+            this.disposeListeners();
+            this.fsm.stop();
+          }
+        }),
+      },
+      vscode.window.onDidCloseTerminal((terminal: vscode.Terminal) => {
+        const index = this.pochiCreatedTerminals.findIndex(
+          (t) => t === terminal,
+        );
+        if (index >= 0) {
+          this.pochiCreatedTerminals.splice(index, 1);
         }
       }),
-    };
+    ];
   }
 
   get allTabGroups(): readonly vscode.TabGroup[] {
@@ -166,6 +180,16 @@ export class LayoutManager implements vscode.Disposable {
             const valid = await this.validate();
             this.fsm.send(valid ? "layout-valid" : "layout-invalid");
           }
+
+          for (const tabGroup of event.changed) {
+            if (
+              tabGroup.isActive &&
+              tabGroup.activeTab &&
+              this.scheduled.ids.includes(tabGroup.activeTab)
+            ) {
+              this.scheduled.trigger(tabGroup.activeTab);
+            }
+          }
         },
       ),
       vscode.window.tabGroups.onDidChangeTabs(
@@ -178,44 +202,94 @@ export class LayoutManager implements vscode.Disposable {
             this.fsm.send(valid ? "layout-valid" : "layout-invalid");
           }
 
-          if (this.fsm.state.value === "non-pochi-layout") {
-            // Auto apply when new task tab open
-            const prevTaskTabsCount = countPochiTaskTabs(prevTabGroupsShape);
-            const taskTabsCount = countPochiTaskTabs(this.tabGroupsShape);
-            if (taskTabsCount > prevTaskTabsCount) {
-              this.fsm.send("start-apply");
+          for (const tab of event.opened) {
+            if (
+              // Auto apply when task tab open
+              isPochiTaskTab(tab)
+            ) {
+              const params = PochiTaskEditorProvider.parseTaskUri(
+                tab.input.uri,
+              );
+              this.scheduled.push(tab, 100, () => {
+                if (this.fsm.state.value === "non-pochi-layout") {
+                  this.fsm.send({
+                    type: "start-apply",
+                    trigger: "open-task",
+                    cwd: params?.cwd,
+                  });
+                }
+              });
+            } else if (
+              // Auto apply when first editor tab open and task tab exists
+              !isPochiTaskTab(tab) &&
+              !isTerminalTab(tab) &&
+              countOtherTabs(prevTabGroupsShape) === 0 &&
+              countPochiTaskTabs(this.tabGroupsShape) > 0
+            ) {
+              const taskTab = findActivePochiTaskTab();
+              const params = taskTab
+                ? PochiTaskEditorProvider.parseTaskUri(taskTab.input.uri)
+                : undefined;
+              this.scheduled.push(tab, 100, () => {
+                if (this.fsm.state.value === "non-pochi-layout") {
+                  this.fsm.send({
+                    type: "start-apply",
+                    trigger: "open-editor",
+                    cwd: params?.cwd,
+                  });
+                }
+              });
             }
+          }
 
-            // Auto apply when first other type tab open
-            const prevOtherTabsCount = countOtherTabs(prevTabGroupsShape);
-            const otherTabsCount = countOtherTabs(this.tabGroupsShape);
-            if (prevOtherTabsCount === 0 && otherTabsCount > 0) {
-              this.fsm.send("start-apply");
+          for (const tab of event.changed) {
+            if (
+              tab.group.isActive &&
+              tab.isActive &&
+              this.scheduled.ids.includes(tab)
+            ) {
+              this.scheduled.trigger(tab);
             }
           }
         },
       ),
       vscode.window.onDidOpenTerminal((terminal: vscode.Terminal) => {
-        this.newOpenTerminal.add(terminal);
+        // Do not apply layout if the terminal is created by default to avoid the case of:
+        // User wants to open the sidebar/bottom-panel and the terminal panel is the active view,
+        // then a default terminal will be created. But auto apply Pochi layout can directly move
+        // the terminal to the editor group and close the sidebar/bottom-panel.
+        const isCreatedByDefault = isTerminalLikelyCreatedByDefault(terminal);
+
+        if (
+          this.pochiCreatedTerminals.includes(terminal) ||
+          !isCreatedByDefault
+        ) {
+          this.scheduled.push(terminal, 100, () => {
+            const cwdOption =
+              "cwd" in terminal.creationOptions
+                ? terminal.creationOptions.cwd
+                : undefined;
+            const cwd =
+              cwdOption instanceof vscode.Uri ? cwdOption.fsPath : cwdOption;
+            if (this.fsm.state.value === "non-pochi-layout") {
+              this.fsm.send({
+                type: "start-apply",
+                trigger: "create-terminal",
+                cwd,
+              });
+            } else {
+              this.moveTerminals();
+            }
+          });
+        }
       }),
       vscode.window.onDidChangeActiveTerminal(
         async (terminal: vscode.Terminal | undefined) => {
-          if (terminal && this.newOpenTerminal.getItems().includes(terminal)) {
-            this.newOpenTerminal.remove(terminal);
-
-            // Do not apply layout if the terminal is created by default to avoid the case of:
-            // User wants to open the sidebar/bottom-panel and the terminal panel is the active view,
-            // then a default terminal will be created. But auto apply Pochi layout can directly move
-            // the terminal to the editor group and close the sidebar/bottom-panel.
-            const isCreatedByDefault = isTerminalCreatedByDefault(terminal);
-
-            if (!isCreatedByDefault) {
-              if (this.fsm.state.value === "non-pochi-layout") {
-                this.fsm.send("start-apply");
-              } else {
-                await this.moveNewTerminal();
-              }
-            }
+          if (!terminal) {
+            return;
+          }
+          if (this.scheduled.ids.includes(terminal)) {
+            this.scheduled.trigger(terminal);
           }
         },
       ),
@@ -235,6 +309,7 @@ export class LayoutManager implements vscode.Disposable {
   }) {
     this.fsm.send({
       type: "start-apply",
+      trigger: "manual",
       ...options,
     });
   }
@@ -244,6 +319,14 @@ export class LayoutManager implements vscode.Disposable {
       return vscode.ViewColumn.Three;
     }
     return undefined;
+  }
+
+  createTerminal(
+    options: vscode.TerminalOptions | vscode.ExtensionTerminalOptions,
+  ) {
+    const terminal = vscode.window.createTerminal(options);
+    this.pochiCreatedTerminals.push(terminal);
+    return terminal;
   }
 
   getViewColumnForTask() {
@@ -264,12 +347,9 @@ export class LayoutManager implements vscode.Disposable {
     },
   );
 
-  private moveNewTerminal = runExclusive.build(
-    this.exclusiveGroup,
-    async () => {
-      return this.moveNewTerminalImpl();
-    },
-  );
+  private moveTerminals = runExclusive.build(this.exclusiveGroup, async () => {
+    return this.moveTerminalsImpl();
+  });
 
   private async validateImpl() {
     logger.trace(">>> Begin validate layout.");
@@ -342,7 +422,7 @@ export class LayoutManager implements vscode.Disposable {
   }
 
   private async applyPochiLayoutImpl(e: LayoutEventStartApply) {
-    logger.trace(">>> Begin applyPochiLayout.");
+    logger.trace(">>> Begin applyPochiLayout.", e);
     const cwd = e.cwd ?? this.workspaceScope.cwd ?? undefined;
 
     // Store the current focus tab
@@ -562,16 +642,7 @@ export class LayoutManager implements vscode.Disposable {
     logger.trace("End merge tabs in split window.");
 
     // Move all terminals from panel into terminal groups, then lock
-    for (
-      let i = 0;
-      i < vscode.window.terminals.length - this.allTabGroups[2].tabs.length;
-      i++
-    ) {
-      await focusEditorGroup(2);
-      await executeVSCodeCommand("workbench.action.unlockEditorGroup");
-      await executeVSCodeCommand("workbench.action.terminal.moveToEditor");
-      await executeVSCodeCommand("workbench.action.lockEditorGroup");
-    }
+    await this.moveTerminalsImpl();
 
     // Re-active the user active terminal
     if (userActiveTerminal) {
@@ -606,6 +677,10 @@ export class LayoutManager implements vscode.Disposable {
     const currentFocusGroupIndex =
       vscode.window.tabGroups.activeTabGroup.viewColumn - 1;
     const targetFocusGroupIndex = (() => {
+      // Triggered by create-terminal, focus to terminal group
+      if (e.trigger === "create-terminal") {
+        return 2;
+      }
       // Only terminals tab moved, focus to terminal group
       if (
         isSameTabGroupsShape(
@@ -693,7 +768,11 @@ export class LayoutManager implements vscode.Disposable {
     }
 
     // If no tabs in task group, open a new task
-    if (this.allTabGroups[0].tabs.length === 0 && cwd) {
+    if (
+      e.trigger !== "open-task" &&
+      this.allTabGroups[0].tabs.length === 0 &&
+      cwd
+    ) {
       logger.trace("Open new task tab.");
       await PochiTaskEditorProvider.openTaskEditor(
         {
@@ -702,38 +781,59 @@ export class LayoutManager implements vscode.Disposable {
         },
         {
           viewColumn: vscode.ViewColumn.One,
+          preserveFocus: true,
         },
       );
     }
 
     // If no editors in editor group, open a default text file
-    if (this.allTabGroups[1].tabs.length === 0 && cwd) {
+    if (
+      e.trigger !== "open-editor" &&
+      this.allTabGroups[1].tabs.length === 0 &&
+      cwd
+    ) {
       logger.trace("Open new default text file tab.");
       const defaultTextDocument = await findDefaultTextDocument(cwd);
       await vscode.window.showTextDocument(
         defaultTextDocument,
         vscode.ViewColumn.Two,
+        true,
       );
     }
 
     // If no terminals in terminal group, open one
-    if (this.allTabGroups[2].tabs.length === 0) {
-      const location = { viewColumn: vscode.ViewColumn.Three };
-      vscode.window.createTerminal({ cwd, location }).show();
+    if (
+      e.trigger !== "create-terminal" &&
+      this.allTabGroups[2].tabs.length === 0
+    ) {
+      const location = {
+        viewColumn: vscode.ViewColumn.Three,
+        preserveFocus: true,
+      };
+      this.createTerminal({ cwd, location });
     }
 
     logger.trace("<<< End applyPochiLayout.");
   }
 
-  private async moveNewTerminalImpl() {
-    await focusEditorGroup(2);
-    await executeVSCodeCommand("workbench.action.unlockEditorGroup");
-    await executeVSCodeCommand("workbench.action.terminal.moveToEditor");
-    await executeVSCodeCommand("workbench.action.lockEditorGroup");
+  private async moveTerminalsImpl() {
+    for (
+      let i = 0;
+      i < vscode.window.terminals.length - countTerminalTabs(this.allTabGroups);
+      i++
+    ) {
+      await focusEditorGroup(2);
+      await executeVSCodeCommand("workbench.action.unlockEditorGroup");
+      await executeVSCodeCommand("workbench.action.terminal.moveToEditor");
+      await executeVSCodeCommand("workbench.action.lockEditorGroup");
+    }
   }
 
   dispose() {
-    this.configListener.dispose();
+    this.scheduled.dispose();
+    for (const disposable of this.staticListeners) {
+      disposable.dispose();
+    }
     this.disposeListeners();
   }
 }
