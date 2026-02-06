@@ -19,7 +19,7 @@ ${NoOtherToolsReminderPrompt}
     followUp: z
       .array(z.string())
       .describe(
-        "A list of 2-4 suggested answers that logically follow from the question.",
+        "A list of 2-4 suggested answers that logically follow from the question. Put the recommended default answer first when applicable.",
       ),
   }),
   outputSchema: z.object({
