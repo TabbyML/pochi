@@ -12,6 +12,7 @@ import {
   deduplicateSnippets,
   getRelativePath,
   isAddingBlankLines,
+  isBlank,
   isRemovingBlankLines,
   offsetRangeToPositionRange,
   simpleDiff,
@@ -254,9 +255,12 @@ export class NESSweepModelClient
         const changeEndOffset = originalDocument.offsetAt(change.original.end);
         if (
           changeStartOffset < baseSegments.startOffset ||
-          changeStartOffset >= baseSegments.endOffset ||
           changeEndOffset < baseSegments.startOffset ||
-          changeEndOffset >= baseSegments.endOffset
+          changeStartOffset > baseSegments.endOffset ||
+          changeEndOffset > baseSegments.endOffset ||
+          (!isBlank(originalDocument.content.slice(baseSegments.endOffset)) &&
+            changeStartOffset === baseSegments.endOffset &&
+            changeEndOffset === baseSegments.endOffset)
         ) {
           return false;
         }
