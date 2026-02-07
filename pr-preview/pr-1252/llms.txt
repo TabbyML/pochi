@@ -3185,13 +3185,22 @@ This release is a collection of small but important fixes and refinements.
 
 We focused on correctness, clearer UI behavior, and better visibility into what agents are actually doing, along with a couple of pieces of writing that reflect how we think about safety in production.
 
-### ✨ Enhancements
+### 🚀 Features
 
-* **Expanded URL support for Google-based models:** Google-based models can now accept `HTTP`/`HTTPS` URLs and Google Cloud Storage (`gs://`) URLs as inputs, allowing them to process content from external sources more reliably. **[#1207](https://github.com/TabbyML/pochi/issues/1207)**
+* **Built-in browser subagent with live streaming:** Pochi now includes a built-in browser subagent powered by agent-browser. It runs browser automation commands through the existing execution pipeline and streams the live browser session directly in the UI, so you can see what the agent is doing as it navigates, clicks, and captures pages.**[#1107](https://github.com/TabbyML/pochi/issues/1107)**
 
-* **Updated model selection for subscription-based models:** Super Models are now hidden when a subscription is required, and a “Subscribe to access Super models” link is shown in the Swift Models group header, making upgrade paths clearer without cluttering the model list. **[#1204](https://github.com/TabbyML/pochi/issues/1204)**
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/browser-agent-030.mp4" type="video/mp4" />
 
-<div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![subscribe-to-access-super-models-030](./images/subscribe-to-access-super-models-030.png)</div>
+    Your browser does not support the video tag.
+  </video>
 
 ### 🐛 Bug Fixes
 
@@ -3779,13 +3788,22 @@ This release is a collection of small but important fixes and refinements.
 
 We focused on correctness, clearer UI behavior, and better visibility into what agents are actually doing, along with a couple of pieces of writing that reflect how we think about safety in production.
 
-### ✨ Enhancements
+### 🚀 Features
 
-* **Expanded URL support for Google-based models:** Google-based models can now accept `HTTP`/`HTTPS` URLs and Google Cloud Storage (`gs://`) URLs as inputs, allowing them to process content from external sources more reliably. **[#1207](https://github.com/TabbyML/pochi/issues/1207)**
+* **Built-in browser subagent with live streaming:** Pochi now includes a built-in browser subagent powered by agent-browser. It runs browser automation commands through the existing execution pipeline and streams the live browser session directly in the UI, so you can see what the agent is doing as it navigates, clicks, and captures pages.**[#1107](https://github.com/TabbyML/pochi/issues/1107)**
 
-* **Updated model selection for subscription-based models:** Super Models are now hidden when a subscription is required, and a “Subscribe to access Super models” link is shown in the Swift Models group header, making upgrade paths clearer without cluttering the model list. **[#1204](https://github.com/TabbyML/pochi/issues/1204)**
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/browser-agent-030.mp4" type="video/mp4" />
 
-<div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![subscribe-to-access-super-models-030](./images/subscribe-to-access-super-models-030.png)</div>
+    Your browser does not support the video tag.
+  </video>
 
 ### 🐛 Bug Fixes
 
