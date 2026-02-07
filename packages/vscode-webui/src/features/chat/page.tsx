@@ -162,11 +162,9 @@ function Chat({ user, uid, info }: ChatProps) {
     onOverrideMessages,
     onStreamStart(data) {
       onChartNotificationsStreamStart.current(data);
-      // onManageBrowserSessionStreamStart.current(data);
     },
     onStreamFinish(data) {
       onChartNotificationsStreamFinish.current(data);
-      // onManageBrowserSessionStreamFinish.current(data);
     },
   });
 
