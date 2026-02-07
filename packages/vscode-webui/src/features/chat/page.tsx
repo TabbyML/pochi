@@ -132,15 +132,6 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveSettings,
   });
 
-  const {
-    onStreamStart: onManageBrowserSessionStreamStart,
-    onStreamFinish: onManageBrowserSessionStreamFinish,
-  } = useManageBrowserSession({
-    uid,
-    task,
-    isSubTask,
-  });
-
   const chatKit = useLiveChatKit({
     store,
     blobStore,
@@ -171,11 +162,11 @@ function Chat({ user, uid, info }: ChatProps) {
     onOverrideMessages,
     onStreamStart(data) {
       onChartNotificationsStreamStart.current(data);
-      onManageBrowserSessionStreamStart.current(data);
+      // onManageBrowserSessionStreamStart.current(data);
     },
     onStreamFinish(data) {
       onChartNotificationsStreamFinish.current(data);
-      onManageBrowserSessionStreamFinish.current(data);
+      // onManageBrowserSessionStreamFinish.current(data);
     },
   });
 
@@ -253,6 +244,10 @@ function Chat({ user, uid, info }: ChatProps) {
   useAutoOpenPlanFile({
     isSubTask,
     subtask,
+  });
+
+  useManageBrowserSession({
+    messages,
   });
 
   useScrollToBottom({
