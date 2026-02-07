@@ -3181,13 +3181,11 @@ URL: /developer-updates/2026-02-06-weekly-update-22
 
 ### TL;DR
 
-This release is a collection of small but important fixes and refinements.
-
-We focused on correctness, clearer UI behavior, and better visibility into what agents are actually doing, along with a couple of pieces of writing that reflect how we think about safety in production.
+This release we shipped a built-in browser subagent, tightened up a few rough edges, and published new writing on how we think about safety and visibility when agents interact with real systems.
 
 ### 🚀 Features
 
-* **Built-in browser subagent with live streaming:** Pochi now includes a built-in browser subagent powered by agent-browser. It runs browser automation commands through the existing execution pipeline and streams the live browser session directly in the UI, so you can see what the agent is doing as it navigates, clicks, and captures pages.**[#1107](https://github.com/TabbyML/pochi/issues/1107)**
+* **Built-in browser subagent with live streaming:** Pochi now includes a built-in browser subagent powered by agent-browser. It runs browser automation commands through the existing execution pipeline and streams the live browser session directly in the UI, so you can see what the agent is doing as it navigates, clicks, and captures pages. <br /> <br /> Browser sessions are persisted, allowing you to revisit screenshots or recordings after the task completes.**[#1107](https://github.com/TabbyML/pochi/issues/1107)**
 
   <video
     controls
@@ -3205,6 +3203,8 @@ We focused on correctness, clearer UI behavior, and better visibility into what 
 ### 🐛 Bug Fixes
 
 * **Support symlinked directories in the skill loader:** Skills can now be loaded from symlinked directories in both the CLI and VS Code extension, which makes it easier to develop skills locally by symlinking them into `.pochi/skills`. **[#1199](https://github.com/TabbyML/pochi/issues/1199)**
+
+* **Fixed task forking to correctly fork subtasks:** Forking a task now also forks any subtasks created within its conversation history, instead of referencing the original task’s subtasks. This prevents broken references and ensures forked tasks are fully self-contained. **[#1134](https://github.com/TabbyML/pochi/issues/1134)**
 
 ### 📖 Resources
 
@@ -3784,13 +3784,11 @@ The only reliable way to make agents safe is to design environments where destru
 
 ### TL;DR
 
-This release is a collection of small but important fixes and refinements.
-
-We focused on correctness, clearer UI behavior, and better visibility into what agents are actually doing, along with a couple of pieces of writing that reflect how we think about safety in production.
+This release we shipped a built-in browser subagent, tightened up a few rough edges, and published new writing on how we think about safety and visibility when agents interact with real systems.
 
 ### 🚀 Features
 
-* **Built-in browser subagent with live streaming:** Pochi now includes a built-in browser subagent powered by agent-browser. It runs browser automation commands through the existing execution pipeline and streams the live browser session directly in the UI, so you can see what the agent is doing as it navigates, clicks, and captures pages.**[#1107](https://github.com/TabbyML/pochi/issues/1107)**
+* **Built-in browser subagent with live streaming:** Pochi now includes a built-in browser subagent powered by agent-browser. It runs browser automation commands through the existing execution pipeline and streams the live browser session directly in the UI, so you can see what the agent is doing as it navigates, clicks, and captures pages. <br /> <br /> Browser sessions are persisted, allowing you to revisit screenshots or recordings after the task completes.**[#1107](https://github.com/TabbyML/pochi/issues/1107)**
 
   <video
     controls
@@ -3808,6 +3806,8 @@ We focused on correctness, clearer UI behavior, and better visibility into what 
 ### 🐛 Bug Fixes
 
 * **Support symlinked directories in the skill loader:** Skills can now be loaded from symlinked directories in both the CLI and VS Code extension, which makes it easier to develop skills locally by symlinking them into `.pochi/skills`. **[#1199](https://github.com/TabbyML/pochi/issues/1199)**
+
+* **Fixed task forking to correctly fork subtasks:** Forking a task now also forks any subtasks created within its conversation history, instead of referencing the original task’s subtasks. This prevents broken references and ensures forked tasks are fully self-contained. **[#1134](https://github.com/TabbyML/pochi/issues/1134)**
 
 ### 📖 Resources
 
