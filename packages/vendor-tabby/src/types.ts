@@ -3,4 +3,5 @@ export const VendorId = "tabby";
 
 export type TabbyCredentials = PochiCredentials & {
   url: string;
+  chatEndpointName?: string;
 };

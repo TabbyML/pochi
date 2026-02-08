@@ -23,6 +23,7 @@
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
+    "@getpochi/vendor-tabby": "workspace:*",
     "@getpochi/vendor-qwen-code": "workspace:*",
     "@leeoniya/ufuzzy": "catalog:",
     "@livestore/adapter-web": "catalog:",

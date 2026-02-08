@@ -14,12 +14,7 @@
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@getpochi/common": "workspace:*",
-    "@getpochi/tools": "workspace:*",
-    "@hono/zod-validator": "catalog:",
     "ai": "catalog:",
-    "better-auth": "catalog:",
-    "hono": "catalog:",
-    "jose": "catalog:",
     "zod": "catalog:"
   }
 }

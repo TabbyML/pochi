@@ -51,9 +51,10 @@ function createPatchedFetch(getCredentials: () => Promise<TabbyCredentials>) {
 
     // Replace placeholder URL with Tabby's endpoint
     // Original: http://placeholder.local/v1/chat/completions
-    // Target:   {baseUrl}/v2/endpoints/oai/v1/chat/completions
+    // Target:   {baseUrl}/v2/endpoints/{endpointName}/v1/chat/completions
+    const endpointName = credentials.chatEndpointName || "oai";
     const tabbyUrl = new URL(
-      `/v2/endpoints/oai${originalUrl.pathname}`,
+      `/v2/endpoints/${endpointName}${originalUrl.pathname}`,
       baseUrl,
     );
 

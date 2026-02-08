@@ -53,6 +53,7 @@ interface AgentEndpointInfo {
 
 export class Tabby extends VendorBase {
   private cachedModels?: Record<string, ModelOptions>;
+  private chatEndpointName?: string;
 
   constructor() {
     super(VendorId);
@@ -100,13 +101,13 @@ export class Tabby extends VendorBase {
   }
 
   private async fetchOpenAIModels(
-    name: string,
+    endpointName: string,
     creds: TabbyCredentials,
   ): Promise<Record<string, ModelOptions>> {
     const data = await withRetry(
       async () => {
         const response = await fetch(
-          `${creds.url}/v2/endpoints/${name}/v1/models`,
+          `${creds.url}/v2/endpoints/${endpointName}/v1/models`,
           {
             headers: {
               Authorization: `Bearer ${creds.token}`,
@@ -131,15 +132,16 @@ export class Tabby extends VendorBase {
       return { data: [] }; // Return an empty array on error
     });
 
+    // Store the endpoint name for later use in model creation
+    this.chatEndpointName = endpointName;
+
     return Object.fromEntries(
-      data.data
-        .filter((x) => x.id.startsWith("gpt-5")) // FIXME(wei): filter models that start with "gpt-5" for dev
-        .map((x) => [
-          x.id,
-          {
-            useToolCallMiddleware: false,
-          } satisfies ModelOptions,
-        ]),
+      data.data.map((x) => [
+        x.id,
+        {
+          useToolCallMiddleware: false,
+        } satisfies ModelOptions,
+      ]),
     );
   }
 
@@ -186,6 +188,13 @@ export class Tabby extends VendorBase {
     credentials: PochiCredentials,
   ): Promise<PochiCredentials> {
     // Tabby does not need to renew the credentials
+    // Add chat endpoint name if we have it cached
+    if (this.chatEndpointName) {
+      return {
+        ...credentials,
+        chatEndpointName: this.chatEndpointName,
+      } as TabbyCredentials;
+    }
     return credentials;
   }
 
