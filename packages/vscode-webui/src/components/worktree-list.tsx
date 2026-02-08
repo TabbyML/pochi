@@ -49,9 +49,10 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Filter,
   GitCompare,
   GitPullRequest,
+  ListFilterIcon,
+  ListFilterPlusIcon,
   Loader2,
   Plus,
   Terminal,
@@ -209,10 +210,10 @@ export function WorktreeList({
     <div className="flex flex-col gap-1">
       {/* Tasks Header */}
       <div
-        className="group flex items-center gap-2 px-1 pt-2 pb-1"
+        className="group flex items-center gap-2 px-1 pb-1"
         data-testid="tasks-header"
       >
-        <span className="font-bold font-sans text-sm uppercase">
+        <span className="font-bold font-sans text-sm uppercase leading-6">
           {t("tasksPage.tasks")}
         </span>
         <div
@@ -228,15 +229,15 @@ export function WorktreeList({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={cn(
-                      "h-6 w-6 p-0",
-                      hasActiveFilters &&
-                        "text-primary hover:bg-primary/10 hover:text-primary",
-                    )}
+                    className="h-6 w-6 p-0"
                     aria-label="filter-tasks-button"
                     data-testid="filter-tasks-dropdown"
                   >
-                    <Filter className="size-4" />
+                    {hasActiveFilters ? (
+                      <ListFilterPlusIcon className="size-4" />
+                    ) : (
+                      <ListFilterIcon className="size-4" />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
