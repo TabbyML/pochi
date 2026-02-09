@@ -41,7 +41,7 @@ export class AfterAcceptCompletionTrigger
     );
   }
 
-  fire(parmas: {
+  fire(params: {
     document: vscode.TextDocument;
     selection: vscode.Selection;
   }) {
@@ -58,7 +58,7 @@ export class AfterAcceptCompletionTrigger
     if (!vscode.languages.match(DocumentSelector, document)) {
       return;
     }
-    if (parmas.document.uri.toString() !== document.uri.toString()) {
+    if (params.document.uri.toString() !== document.uri.toString()) {
       return;
     }
 
@@ -70,7 +70,7 @@ export class AfterAcceptCompletionTrigger
     this.triggerEventEmitter.fire({
       kind: "after-accept-completion",
       document,
-      selection: parmas.selection,
+      selection: params.selection,
       token,
     });
   }
