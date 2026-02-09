@@ -143,21 +143,11 @@ function filterTrailingAskFollowupQuestion(messages: Message[]): Message[] {
   const parts = lastMessage.parts;
   if (!Array.isArray(parts) || parts.length === 0) return messages;
 
-  // Find the last tool part (parts with type starting with "tool-")
-  let lastToolPartIndex = -1;
-  for (let i = parts.length - 1; i >= 0; i--) {
-    if (parts[i].type.startsWith("tool-")) {
-      lastToolPartIndex = i;
-      break;
-    }
-  }
-
-  if (lastToolPartIndex === -1) return messages;
-
-  const lastToolPart = parts[lastToolPartIndex];
-  if (lastToolPart.type === "tool-askFollowupQuestion") {
+  // Check if the last part is an askFollowupQuestion
+  const lastPart = parts[parts.length - 1];
+  if (lastPart.type === "tool-askFollowupQuestion") {
     // Remove the askFollowupQuestion tool call from the message
-    const filteredParts = parts.filter((_, i) => i !== lastToolPartIndex);
+    const filteredParts = parts.slice(0, -1);
     if (filteredParts.length === 0) {
       // If no parts left, remove the entire message
       return messages.slice(0, -1);
