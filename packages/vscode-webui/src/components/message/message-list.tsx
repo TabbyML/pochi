@@ -336,6 +336,7 @@ function Part({
         changes={getToolCallCheckpoint(part, messages)}
         messages={messages}
         isSubTask={isSubTask}
+        isLastPart={isLastPartInMessages}
       />
     );
   }

@@ -5,10 +5,12 @@ import type { ToolProps } from "./types";
 
 export const AskFollowupQuestionTool: React.FC<
   ToolProps<"askFollowupQuestion">
-> = ({ tool: toolCall, isLoading }) => {
+> = ({ tool: toolCall, isLoading, isLastPart }) => {
   const sendMessage = useSendMessage();
   const replaceJobIdsInContent = useReplaceJobIdsInContent();
   const { question, followUp } = toolCall.input || {};
+
+  const isClickable = !isLoading && isLastPart;
 
   return (
     <div className="flex flex-col gap-2">
@@ -22,12 +24,13 @@ export const AskFollowupQuestionTool: React.FC<
             {followUp.map((followUpText, index) => (
               <li
                 key={index}
-                className={cn("text-muted-foreground hover:text-foreground", {
-                  "cursor-pointer": !isLoading,
+                className={cn("text-muted-foreground", {
+                  "cursor-pointer hover:text-foreground": isClickable,
                   "cursor-wait": isLoading,
+                  "cursor-not-allowed opacity-50": !isLastPart && !isLoading,
                 })}
                 onClick={() =>
-                  !isLoading &&
+                  isClickable &&
                   sendMessage({
                     prompt: followUpText || "",
                   })

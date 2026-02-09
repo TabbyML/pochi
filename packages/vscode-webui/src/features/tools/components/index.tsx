@@ -31,6 +31,7 @@ export function ToolInvocationPart({
   messages,
   changes,
   isSubTask,
+  isLastPart,
 }: {
   tool: ToolUIPart<UITools>;
   isLoading: boolean;
@@ -38,6 +39,7 @@ export function ToolInvocationPart({
   className?: string;
   changes?: ToolCallCheckpoint;
   isSubTask?: boolean;
+  isLastPart?: boolean;
 }) {
   const toolName = getToolName(tool);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
@@ -57,6 +59,7 @@ export function ToolInvocationPart({
           changes={changes}
           messages={messages}
           isSubTask={isSubTask}
+          isLastPart={isLastPart}
         />
       ) : (
         <McpToolCall

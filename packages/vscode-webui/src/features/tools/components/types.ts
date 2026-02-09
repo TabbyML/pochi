@@ -10,4 +10,5 @@ export interface ToolProps<T extends ToolName> {
   messages: Message[];
   changes?: ToolCallCheckpoint;
   isSubTask?: boolean;
+  isLastPart?: boolean;
 }
