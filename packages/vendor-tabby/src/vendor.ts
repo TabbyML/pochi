@@ -101,8 +101,9 @@ export class Tabby extends VendorBase {
   }
 
   private async fetchOpenAIModels(
-    endpointName: string,
     creds: TabbyCredentials,
+    endpointName: string,
+    activeModelPattern?: string,
   ): Promise<Record<string, ModelOptions>> {
     const data = await withRetry(
       async () => {
@@ -135,8 +136,18 @@ export class Tabby extends VendorBase {
     // Store the endpoint name for later use in model creation
     this.chatEndpointName = endpointName;
 
+    let models = data.data;
+    if (activeModelPattern) {
+      try {
+        const regex = new RegExp(activeModelPattern);
+        models = models.filter((m) => regex.test(m.id));
+      } catch (e) {
+        logger.error(`Invalid active model pattern: ${activeModelPattern}`, e);
+      }
+    }
+
     return Object.fromEntries(
-      data.data.map((x) => [
+      models.map((x) => [
         x.id,
         {
           useToolCallMiddleware: false,
@@ -170,8 +181,9 @@ export class Tabby extends VendorBase {
       switch (provider) {
         case "openai":
           this.cachedModels = await this.fetchOpenAIModels(
-            chatEndpoint.name,
             creds,
+            chatEndpoint.name,
+            chatEndpoint.metadata?.pochi?.active_models,
           );
           break;
         default:
