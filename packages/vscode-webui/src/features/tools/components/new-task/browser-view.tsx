@@ -1,8 +1,7 @@
+import { useFile } from "@/components/files-provider";
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
 import { useBrowserSession } from "@/lib/use-browser-session";
-import { useDefaultStore } from "@/lib/use-default-store";
-import { catalog } from "@getpochi/livekit";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
 import { useBrowserFrame } from "../../hooks/use-browser-frame";
@@ -21,12 +20,9 @@ export function BrowserView(props: NewTaskToolViewProps) {
     completed,
     streamUrl,
   });
-  const store = useDefaultStore();
-  const file = store.useQuery(
-    catalog.queries.makeFileQuery(
-      taskSource?.parentId || "",
-      `/browser-session/${tool.toolCallId}.mp4`,
-    ),
+  const file = useFile(
+    taskSource?.parentId || "",
+    `/browser-session/${tool.toolCallId}.mp4`,
   );
   const videoUrl = file?.content;
 
@@ -40,7 +36,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
       expandable={!!videoUrl || !!frame}
     >
       {videoUrl ? (
-        <div className="relative aspect-video h-[20vh]">
+        <div className="relative aspect-video h-[200px]">
           {/* biome-ignore lint/a11y/useMediaCaption: No audio track available */}
           <video
             src={videoUrl}
@@ -63,12 +59,12 @@ export function BrowserView(props: NewTaskToolViewProps) {
             source={taskSource}
             showMessageList={true}
             showTodos={false}
-            scrollAreaClassName="border-none h-[20vh] my-0"
+            scrollAreaClassName="border-none h-[200px] my-0"
             assistant={{ name: "Browser" }}
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-[20vh] w-full items-center justify-center p-3 text-muted-foreground">
+        <div className="flex h-[200px] w-full items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting ? t("browserView.executing") : t("browserView.paused")}
           </span>

@@ -18,6 +18,15 @@ export const ShareEvent = z.object({
     })
     .optional(),
   todos: z.array(Todo).optional(),
+  files: z
+    .array(
+      z.object({
+        taskId: z.string(),
+        filePath: z.string(),
+        content: z.string(),
+      }),
+    )
+    .optional(),
   isLoading: z.boolean().optional(),
   error: z
     .object({

@@ -8,6 +8,7 @@ export type {
   UITools,
   DataParts,
   LiveKitStore,
+  File,
 } from "./types";
 export type { BlobStore } from "./blob-store";
 

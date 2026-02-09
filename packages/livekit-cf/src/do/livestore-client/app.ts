@@ -66,6 +66,7 @@ store
       ...subTask,
       messages: subTask.messages.map((x) => sanitizeMessage(x as Message)),
     }));
+    const files = store.query(catalog.queries.makeFilesQuery(taskId));
 
     const user = await c.env.getOwner();
 
@@ -73,6 +74,7 @@ store
       type: "share",
       messages: inlineSubTasks(messages, subTasks),
       todos: task.todos as DeepWritable<typeof task.todos>,
+      files: files as DeepWritable<typeof files>,
       isLoading: task.status === "pending-model",
       error: task.error,
       // FIXME: Use the actual user name

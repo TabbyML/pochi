@@ -5,7 +5,7 @@ import {
 } from "./text-document-snapshot";
 import { type OffsetMap, type TextEdit, applyEdit } from "./text-edit";
 
-// A TextDocumentEditStep represents a group of TextEdit that are continuing edit actions.
+// A TextDocumentEditStep represents a group of TextEdit that are continuous edit actions.
 export class TextDocumentEditStep {
   private readonly before: TextDocumentSnapshot;
   private readonly edits: TextEdit[] = [];
@@ -54,8 +54,12 @@ export class TextDocumentEditStep {
     if (!this.isContinuingEdit(newEdit)) {
       return false;
     }
-    const { text, editedRanges } = applyEdit(this.after.getText(), newEdit);
+    const { text, editedRanges, offsetMap } = applyEdit(
+      this.after.getText(),
+      newEdit,
+    );
     this.edits.push(newEdit);
+    this.offsetMaps.push(offsetMap);
     this.after = createTextDocumentSnapshotWithNewText(this.after, text);
     this.lastEditedRanges = editedRanges;
     return true;
