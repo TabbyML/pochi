@@ -214,7 +214,6 @@ export class NESSweepModelClient
         "</s>",
         "<|fim_middle|>", // The model may unexpectedly generate this token
         "\n".repeat(10), // prevent infinite newlines loop
-        "\r\n".repeat(10),
       ],
     };
 
