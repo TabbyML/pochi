@@ -3,8 +3,6 @@ import { isVSCodeEnvironment } from "@/lib/vscode";
 import { type File, catalog } from "@getpochi/livekit";
 import { createContext, useContext } from "react";
 
-export type Theme = "dark" | "light";
-
 type FileProviderProps = {
   children: React.ReactNode;
   defaultFiles?: File[];
