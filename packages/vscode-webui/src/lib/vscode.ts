@@ -236,7 +236,18 @@ function createVSCodeHost(): VSCodeHostApi {
     },
   );
 
-  return thread.imports;
+  const vscodeHostApi: VSCodeHostApi = thread.imports;
+  const openFile: VSCodeHostApi["openFile"] = async (filePath, options) => {
+    return vscodeHostApi.openFile(filePath, {
+      ...options,
+      taskId: POCHI_TASK_INFO?.uid,
+    });
+  };
+
+  return {
+    ...vscodeHostApi,
+    openFile,
+  };
 }
 
 export const vscodeHost = createVSCodeHost();

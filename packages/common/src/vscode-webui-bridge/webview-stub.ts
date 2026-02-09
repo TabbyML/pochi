@@ -62,6 +62,7 @@ const VSCodeHostStub = {
   readEnvironment: (_options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
+    shareId: string;
   }): Promise<Environment> => {
     return Promise.resolve({} as Environment);
   },
@@ -71,6 +72,7 @@ const VSCodeHostStub = {
     _options: {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
+      taskId: string;
     },
   ): Promise<{ error: string } | undefined> => {
     return Promise.resolve(undefined);
@@ -82,6 +84,7 @@ const VSCodeHostStub = {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      taskId: string;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
@@ -125,7 +128,12 @@ const VSCodeHostStub = {
   },
   openFile: (
     _filePath: string,
-    _options?: { start?: number; end?: number; preserveFocus?: boolean },
+    _options?: {
+      start?: number;
+      end?: number;
+      preserveFocus?: boolean;
+      taskId?: string;
+    },
   ): void => {},
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();

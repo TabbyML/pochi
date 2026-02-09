@@ -319,7 +319,6 @@ export class PochiTaskEditorProvider
     const events = workspaceContainer.resolve(AuthEvents);
     const pochiConfiguration = workspaceContainer.resolve(PochiConfiguration);
     const vscodeHost = workspaceContainer.resolve(VSCodeHostImpl);
-    vscodeHost.taskId = uid;
 
     webviewPanel.webview.options = {
       enableScripts: true,

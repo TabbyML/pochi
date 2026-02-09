@@ -76,6 +76,7 @@ export function useLiveSubTask(
     todos: todosRef,
     isSubTask: true,
     modelOverride: customAgentModel,
+    shareId: task?.shareId,
   });
 
   // FIXME: handle auto retry for output without task.
@@ -139,6 +140,7 @@ export function useLiveSubTask(
           ),
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
+          taskId: uid,
         },
       );
 

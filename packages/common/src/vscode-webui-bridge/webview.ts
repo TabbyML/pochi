@@ -63,6 +63,7 @@ export interface VSCodeHostApi {
   readEnvironment(options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
+    shareId?: string;
   }): Promise<Environment>;
 
   previewToolCall(
@@ -72,6 +73,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
+      taskId: string;
     },
   ): Promise<PreviewReturnType>;
 
@@ -92,6 +94,7 @@ export interface VSCodeHostApi {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      taskId: string;
     },
   ): Promise<unknown>;
 
@@ -161,6 +164,7 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      taskId?: string;
     },
   ): void;
 
