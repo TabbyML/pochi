@@ -36,6 +36,8 @@ import {
 import {
   delayFn,
   isLineEndPosition,
+  isPaymentRequiredError,
+  isRateLimitExceededError,
   offsetRangeToPositionRange,
 } from "./utils";
 
@@ -70,6 +72,9 @@ export class TabCompletionManager implements vscode.Disposable {
   private readonly debounce = new TabCompletionDebounce();
 
   readonly isFetching = signal(false);
+
+  readonly error = signal<string | undefined>();
+
   private current: TabCompletionManagerContext | undefined = undefined;
 
   constructor(
@@ -418,6 +423,18 @@ export class TabCompletionManager implements vscode.Disposable {
               }
             }
           }
+
+          if (status.type === "error" && status.error) {
+            // handle with 429 and 402
+            if (
+              isRateLimitExceededError(status.error) ||
+              isPaymentRequiredError(status.error)
+            ) {
+              this.updateError(status.error.message);
+            }
+          } else {
+            this.updateError(undefined);
+          }
         }),
       });
 
@@ -536,6 +553,7 @@ export class TabCompletionManager implements vscode.Disposable {
   private removeCurrent() {
     this.current = undefined;
     this.updateIsFetching();
+    this.updateError(undefined);
   }
 
   private updateIsFetching() {
@@ -543,6 +561,10 @@ export class TabCompletionManager implements vscode.Disposable {
       this.current?.providerRequests.some(
         (r) => r.request.status.value.type === "processing",
       ) ?? false;
+  }
+
+  private updateError(error: string | undefined) {
+    this.error.value = error;
   }
 
   dispose() {

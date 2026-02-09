@@ -25,6 +25,7 @@ export class StatusBarItem implements vscode.Disposable {
     | "conflict-detected"
     | "ready"
     | "loading"
+    | "error"
   >("initializing");
 
   constructor(
@@ -112,6 +113,10 @@ export class StatusBarItem implements vscode.Disposable {
       return "loading";
     }
 
+    if (this.tabCompletionManager.error.value) {
+      return "error";
+    }
+
     return "ready";
   }
 
@@ -167,6 +172,13 @@ export class StatusBarItem implements vscode.Disposable {
       case "loading":
         this.statusBarItem.text = "$(loading~spin) Pochi";
         this.statusBarItem.tooltip = "Generating a completion...";
+        this.statusBarItem.backgroundColor = undefined;
+        this.statusBarItem.command = undefined;
+        break;
+
+      case "error":
+        this.statusBarItem.text = "$(warning) Pochi";
+        this.statusBarItem.tooltip = this.tabCompletionManager.error.value;
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.command = undefined;
         break;
