@@ -25,6 +25,7 @@ import { postprocess } from "./post-process";
 const WindowLines = 21;
 const MaxCodeSnippets = 5;
 const MaxCharsPerCodeSnippet = 2000;
+const PromptSegmentsMaxChars = 12000;
 const MaxOutputTokens = 512;
 const Temperature = 0.0;
 const RequestTimeOut = 60 * 1000;
@@ -290,22 +291,44 @@ function buildPrompt(
   baseSegments: BaseSegments,
   extraSegments?: ExtraSegments | undefined,
 ) {
-  let prompt = "";
+  let quota = PromptSegmentsMaxChars;
+
+  let mainPart = "";
+  mainPart += `<|file_sep|>original/${baseSegments.filepath}\n`;
+  mainPart += `${baseSegments.original}\n`;
+  mainPart += `<|file_sep|>current/${baseSegments.filepath}\n`;
+  mainPart += `${baseSegments.current}\n`;
+  mainPart += `<|file_sep|>updated/${baseSegments.filepath}\n`;
+  quota -= mainPart.length;
+
+  const diffParts: string[] = [];
+  // loop backward
+  for (let i = baseSegments.diffs.length - 1; i >= 0; i--) {
+    const diff = baseSegments.diffs[i];
+    let diffPart = "";
+    diffPart += `<|file_sep|>${diff.filepath}.diff\n`;
+    diffPart += "original:\n";
+    diffPart += `${diff.original}\n`;
+    diffPart += "updated:\n";
+    diffPart += `${diff.modified}\n`;
+    if (quota >= diffPart.length) {
+      diffParts.unshift(diffPart);
+      quota -= diffPart.length;
+    } else {
+      break;
+    }
+  }
+
+  const codeSnippetParts: string[] = [];
   for (const snippet of extraSegments?.codeSnippets ?? []) {
-    prompt += `<|file_sep|>${snippet.filepath}\n`;
-    prompt += `${snippet.text}\n`;
+    let codeSnippetPart = "";
+    codeSnippetPart += `<|file_sep|>${snippet.filepath}\n`;
+    codeSnippetPart += `${snippet.text}\n`;
+    if (quota >= codeSnippetPart.length) {
+      codeSnippetParts.push(codeSnippetPart);
+      quota -= codeSnippetPart.length;
+    }
   }
-  for (const diff of baseSegments.diffs) {
-    prompt += `<|file_sep|>${diff.filepath}.diff\n`;
-    prompt += "original:\n";
-    prompt += `${diff.original}\n`;
-    prompt += "updated:\n";
-    prompt += `${diff.modified}\n`;
-  }
-  prompt += `<|file_sep|>original/${baseSegments.filepath}\n`;
-  prompt += `${baseSegments.original}\n`;
-  prompt += `<|file_sep|>current/${baseSegments.filepath}\n`;
-  prompt += `${baseSegments.current}\n`;
-  prompt += `<|file_sep|>updated/${baseSegments.filepath}\n`;
-  return prompt;
+
+  return codeSnippetParts.join("") + diffParts.join("") + mainPart;
 }

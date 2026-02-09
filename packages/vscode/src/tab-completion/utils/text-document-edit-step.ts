@@ -3,7 +3,12 @@ import {
   type TextDocumentSnapshot,
   createTextDocumentSnapshotWithNewText,
 } from "./text-document-snapshot";
-import { type OffsetMap, type TextEdit, applyEdit } from "./text-edit";
+import {
+  type OffsetMap,
+  type TextEdit,
+  applyEdit,
+  buildOffsetMap,
+} from "./text-edit";
 
 // A TextDocumentEditStep represents a group of TextEdit that are continuing edit actions.
 export class TextDocumentEditStep {
@@ -55,7 +60,12 @@ export class TextDocumentEditStep {
       return false;
     }
     const { text, editedRanges } = applyEdit(this.after.getText(), newEdit);
+    const offsetMap = buildOffsetMap(
+      newEdit.changes.map((c) => c.range),
+      editedRanges,
+    );
     this.edits.push(newEdit);
+    this.offsetMaps.push(offsetMap);
     this.after = createTextDocumentSnapshotWithNewText(this.after, text);
     this.lastEditedRanges = editedRanges;
     return true;
