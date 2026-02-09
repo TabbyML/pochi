@@ -17,6 +17,7 @@ export function applyEdit(
 ): {
   text: string;
   editedRanges: OffsetRange[];
+  offsetMap: OffsetMap;
 } {
   const sortedChanges = edit.changes.toSorted((a, b) => {
     return a.range.start - b.range.start;
@@ -38,7 +39,14 @@ export function applyEdit(
     editedIndex = editedRangeEnd;
   }
   text += original.slice(originalIndex);
-  return { text, editedRanges };
+  return {
+    text,
+    editedRanges,
+    offsetMap: buildOffsetMap(
+      sortedChanges.map((c) => c.range),
+      editedRanges,
+    ),
+  };
 }
 
 export interface OffsetMap {
@@ -46,7 +54,7 @@ export interface OffsetMap {
   getOffsetAfter: (offsetBefore: number) => number;
 }
 
-export function buildOffsetMap(
+function buildOffsetMap(
   originalRanges: OffsetRange[],
   editedRanges: OffsetRange[],
 ): OffsetMap {
