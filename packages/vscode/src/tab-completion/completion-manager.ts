@@ -369,7 +369,7 @@ export class TabCompletionManager implements vscode.Disposable {
         context.documentSnapshot,
       ),
     );
-    const decounceDelayParmas = {
+    const debounceDelayParams = {
       triggerCharacter:
         triggerCharacter.length === 1 ? triggerCharacter : undefined,
       isLineEnd: isLineEndPosition(
@@ -412,7 +412,7 @@ export class TabCompletionManager implements vscode.Disposable {
         "No new requests will be sent.",
         logToFileObject({ hash: context.hash }),
       );
-      const delay = debounce.getDelay(decounceDelayParmas);
+      const delay = debounce.getDelay(debounceDelayParams);
       const tokenSource = new vscode.CancellationTokenSource();
       current.noNewRequestDelayTokenSource = tokenSource;
       delayFn(
@@ -477,7 +477,7 @@ export class TabCompletionManager implements vscode.Disposable {
           ? request.status.value.estimatedResponseTime
           : 0;
       const delay = debounce.getDelay({
-        ...decounceDelayParmas,
+        ...debounceDelayParams,
         estimatedResponseTime,
       });
 
