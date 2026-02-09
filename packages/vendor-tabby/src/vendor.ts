@@ -51,6 +51,11 @@ interface EndpointInfo {
   metadata?: Record<string, unknown>;
 }
 
+interface TabbyModelConfig {
+  name: string;
+  context_window?: number;
+}
+
 export class Tabby extends VendorBase {
   private cachedModels?: Record<string, ModelOptions>;
   private chatEndpointName?: string;
@@ -103,7 +108,7 @@ export class Tabby extends VendorBase {
   private async fetchOpenAIModels(
     creds: TabbyCredentials,
     endpointName: string,
-    activeModels?: string[],
+    activeModels?: TabbyModelConfig[],
   ): Promise<Record<string, ModelOptions>> {
     const data = await withRetry(
       async () => {
@@ -138,16 +143,22 @@ export class Tabby extends VendorBase {
 
     let models = data.data;
     if (activeModels && Array.isArray(activeModels)) {
-      models = models.filter((m) => activeModels.includes(m.id));
+      models = models.filter((m) =>
+        activeModels.some((am) => am.name === m.id),
+      );
     }
 
     return Object.fromEntries(
-      models.map((x) => [
-        x.id,
-        {
-          useToolCallMiddleware: false,
-        } satisfies ModelOptions,
-      ]),
+      models.map((x) => {
+        const config = activeModels?.find((am) => am.name === x.id);
+        return [
+          x.id,
+          {
+            useToolCallMiddleware: false,
+            contextWindow: config?.context_window,
+          } satisfies ModelOptions,
+        ];
+      }),
     );
   }
 
@@ -182,7 +193,7 @@ export class Tabby extends VendorBase {
           this.cachedModels = await this.fetchOpenAIModels(
             creds,
             chatEndpoint.name,
-            pochi?.models as string[] | undefined,
+            pochi?.models as TabbyModelConfig[] | undefined,
           );
           break;
         default:
