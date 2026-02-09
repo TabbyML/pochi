@@ -1,9 +1,8 @@
+import { useFile } from "@/components/files-provider";
 import { MessageMarkdown } from "@/components/message";
 import { TaskThread } from "@/components/task-thread";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FixedStateChatContextProvider } from "@/features/chat";
-import { useDefaultStore } from "@/lib/use-default-store";
-import { catalog } from "@getpochi/livekit";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
@@ -13,13 +12,7 @@ export function WalkthroughView(props: NewTaskToolViewProps) {
     props;
 
   const { t } = useTranslation();
-  const store = useDefaultStore();
-  const file = store.useQuery(
-    catalog.queries.makeFileQuery(
-      taskSource?.parentId || "",
-      "/walkthrough.md",
-    ),
-  );
+  const file = useFile(taskSource?.parentId || "", "/walkthrough.md");
 
   return (
     <SubAgentView
