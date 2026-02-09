@@ -402,6 +402,7 @@ export class TabCompletionManager implements vscode.Disposable {
           if (status.type === "finished" && status.response) {
             solution.addItem(status.response);
             this.handleDidUpdateSolution();
+            this.updateError(undefined);
 
             // update forward cache
             const forward = generateForwardCache(
@@ -431,9 +432,10 @@ export class TabCompletionManager implements vscode.Disposable {
               isPaymentRequiredError(status.error)
             ) {
               this.updateError(status.error.message);
+            } else {
+              // ignore
+              this.updateError(undefined);
             }
-          } else {
-            this.updateError(undefined);
           }
         }),
       });
