@@ -46,9 +46,9 @@ async function withRetry<T>(
   throw lastError;
 }
 
-interface AgentEndpointInfo {
+interface EndpointInfo {
   name: string;
-  metadata?: Record<string, Record<string, string>>;
+  metadata?: Record<string, unknown>;
 }
 
 export class Tabby extends VendorBase {
@@ -86,7 +86,7 @@ export class Tabby extends VendorBase {
 
   private async fetchEndpoints(
     creds: TabbyCredentials,
-  ): Promise<AgentEndpointInfo[]> {
+  ): Promise<EndpointInfo[]> {
     const response = await fetch(`${creds.url}/v2/endpoints`, {
       headers: {
         Authorization: `Bearer ${creds.token}`,
@@ -97,13 +97,13 @@ export class Tabby extends VendorBase {
       throw new Error(`Failed to fetch endpoints: ${response.statusText}`);
     }
 
-    return response.json() as Promise<AgentEndpointInfo[]>;
+    return response.json() as Promise<EndpointInfo[]>;
   }
 
   private async fetchOpenAIModels(
     creds: TabbyCredentials,
     endpointName: string,
-    activeModelPattern?: string,
+    activeModels?: string[],
   ): Promise<Record<string, ModelOptions>> {
     const data = await withRetry(
       async () => {
@@ -137,13 +137,8 @@ export class Tabby extends VendorBase {
     this.chatEndpointName = endpointName;
 
     let models = data.data;
-    if (activeModelPattern) {
-      try {
-        const regex = new RegExp(activeModelPattern);
-        models = models.filter((m) => regex.test(m.id));
-      } catch (e) {
-        logger.error(`Invalid active model pattern: ${activeModelPattern}`, e);
-      }
+    if (activeModels && Array.isArray(activeModels)) {
+      models = models.filter((m) => activeModels.includes(m.id));
     }
 
     return Object.fromEntries(
@@ -168,22 +163,26 @@ export class Tabby extends VendorBase {
         return [];
       });
 
-      const chatEndpoint = endpoints.find(
-        (e) => e.metadata?.pochi?.use_case === "chat",
-      );
+      const chatEndpoint = endpoints.find((e) => {
+        const pochi = e.metadata?.pochi as Record<string, unknown> | undefined;
+        return pochi?.use_case === "chat";
+      });
       if (!chatEndpoint) {
         logger.warn("No chat endpoint found");
         this.cachedModels = {};
         return this.cachedModels;
       }
 
-      const provider = chatEndpoint?.metadata?.pochi?.provider;
+      const pochi = chatEndpoint.metadata?.pochi as
+        | Record<string, unknown>
+        | undefined;
+      const provider = pochi?.provider;
       switch (provider) {
         case "openai":
           this.cachedModels = await this.fetchOpenAIModels(
             creds,
             chatEndpoint.name,
-            chatEndpoint.metadata?.pochi?.active_models,
+            pochi?.models as string[] | undefined,
           );
           break;
         default:
