@@ -1,3 +1,4 @@
+import { FilesProvider } from "@/components/files-provider";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
@@ -52,7 +53,9 @@ import {
 export function ChatPage(props: ChatProps) {
   return (
     <ChatContextProvider>
-      <Chat {...props} />
+      <FilesProvider>
+        <Chat {...props} />
+      </FilesProvider>
     </ChatContextProvider>
   );
 }

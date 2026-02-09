@@ -1,3 +1,4 @@
+import { FilesProvider } from "@/components/files-provider";
 import { MessageList } from "@/components/message/message-list";
 import { VSCodeWebProvider } from "@/components/vscode-web-provider";
 import { ChatContextProvider } from "@/features/chat";
@@ -63,6 +64,7 @@ export function SharePage() {
     messages = [],
     user,
     assistant,
+    files,
     isLoading = false,
     error,
   } = shareData || {};
@@ -83,49 +85,51 @@ export function SharePage() {
   return (
     <VSCodeWebProvider>
       <ChatContextProvider>
-        <div>
-          {/* todo skeleton outside? */}
-          {messages.length === 0 ? (
-            <div className="flex min-h-screen items-center justify-center">
-              <Loader2 className="size-6 animate-spin" />
-            </div>
-          ) : (
-            <div
-              ref={monitorHeight}
-              className={cn("grid grid-cols-1 gap-3", {
-                "md:grid-cols-4": todos && todos.length > 0,
-              })}
-            >
+        <FilesProvider defaultFiles={files}>
+          <div>
+            {/* todo skeleton outside? */}
+            {messages.length === 0 ? (
+              <div className="flex min-h-screen items-center justify-center">
+                <Loader2 className="size-6 animate-spin" />
+              </div>
+            ) : (
               <div
-                className={cn("col-span-1", {
-                  "md:col-span-3": todos && todos.length > 0,
+                ref={monitorHeight}
+                className={cn("grid grid-cols-1 gap-3", {
+                  "md:grid-cols-4": todos && todos.length > 0,
                 })}
               >
-                <MessageList
-                  user={user}
-                  assistant={assistant}
-                  messages={renderMessages}
-                  isLoading={isLoading}
-                  hideUserEditsActions
-                />
-                <ErrorMessageView error={error ?? undefined} />
-              </div>
-              {todos && todos.length > 0 && (
-                <div className="col-span-1">
-                  <TodoList
-                    todos={todos}
-                    className="px-4 md:px-0"
-                    disableCollapse
-                    disableInProgressTodoTitle
-                  >
-                    <TodoList.Header />
-                    <TodoList.Items />
-                  </TodoList>
+                <div
+                  className={cn("col-span-1", {
+                    "md:col-span-3": todos && todos.length > 0,
+                  })}
+                >
+                  <MessageList
+                    user={user}
+                    assistant={assistant}
+                    messages={renderMessages}
+                    isLoading={isLoading}
+                    hideUserEditsActions
+                  />
+                  <ErrorMessageView error={error ?? undefined} />
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                {todos && todos.length > 0 && (
+                  <div className="col-span-1">
+                    <TodoList
+                      todos={todos}
+                      className="px-4 md:px-0"
+                      disableCollapse
+                      disableInProgressTodoTitle
+                    >
+                      <TodoList.Header />
+                      <TodoList.Items />
+                    </TodoList>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </FilesProvider>
       </ChatContextProvider>
     </VSCodeWebProvider>
   );

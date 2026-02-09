@@ -1,3 +1,4 @@
+import { useFile } from "@/components/files-provider";
 import { MessageMarkdown } from "@/components/message";
 import { TaskThread } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,6 @@ import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { isVSCodeEnvironment } from "@/lib/vscode";
-import { catalog } from "@getpochi/livekit";
 import { FilePenLine, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,9 +28,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
 
   const { t } = useTranslation();
   const store = useDefaultStore();
-  const file = store.useQuery(
-    catalog.queries.makeFileQuery(taskSource?.parentId || "", "/plan.md"),
-  );
+  const file = useFile(taskSource?.parentId || "", "/plan.md");
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const { count, incrementCount } = useReviewPlanTutorialCounter();
@@ -126,7 +124,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
       }
     >
       {file?.content ? (
-        <ScrollArea viewportClassname="h-[20vh]">
+        <ScrollArea viewportClassname="h-[200px]">
           <div className="p-3 text-xs">
             <MessageMarkdown>{file.content}</MessageMarkdown>
           </div>
@@ -139,12 +137,12 @@ export function PlannerView(props: NewTaskToolViewProps) {
             source={taskSource}
             showMessageList={true}
             showTodos={false}
-            scrollAreaClassName="border-none h-[20vh] my-0"
+            scrollAreaClassName="border-none h-[200px] my-0"
             assistant={{ name: "Planner" }}
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-[20vh] w-full items-center justify-center p-3 text-muted-foreground">
+        <div className="flex h-[200px] w-full items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting
               ? t("planCard.creatingPlan")

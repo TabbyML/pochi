@@ -163,4 +163,6 @@ export type RequestData = z.infer<typeof RequestData>;
 
 export type Task = typeof tables.tasks.Type;
 
+export type File = typeof tables.files.Type;
+
 export type LiveKitStore = Store<typeof defaultCatalog.schema>;
