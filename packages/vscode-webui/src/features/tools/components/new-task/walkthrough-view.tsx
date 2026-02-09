@@ -24,7 +24,7 @@ export function WalkthroughView(props: NewTaskToolViewProps) {
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
     >
       {file?.content ? (
-        <ScrollArea viewportClassname="h-[20vh]">
+        <ScrollArea viewportClassname="h-[200px]">
           <div className="p-3 text-xs">
             <MessageMarkdown>{file.content}</MessageMarkdown>
           </div>
@@ -37,12 +37,12 @@ export function WalkthroughView(props: NewTaskToolViewProps) {
             source={taskSource}
             showMessageList={true}
             showTodos={false}
-            scrollAreaClassName="border-none h-[20vh] my-0"
+            scrollAreaClassName="border-none h-[200px] my-0"
             assistant={{ name: "Walkthrough" }}
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-[20vh] flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
+        <div className="flex h-[200px] flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
           <span className="text-base">
             {isExecuting
               ? t("walkthroughCard.creatingWalkthrough")
