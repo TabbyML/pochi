@@ -16,7 +16,7 @@ import {
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -113,32 +113,20 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         continue;
       }
 
-      if (lifecycle.toolName === "newTask" && subtaskOffhand === false) {
-        const newTaskInput =
-          pendingApproval.name === "newTask" &&
-          pendingApproval.tool.type === "tool-newTask"
-            ? pendingApproval.tool.input
-            : undefined;
-        const subtaskUid = newTaskInput?._meta?.uid;
+      const tool = tools[i];
+      const runManually =
+        !subtaskOffhand &&
+        // Async task cannot be run manually.
+        !(tool.type === "tool-newTask" && tool.input?.runAsync);
+      if (tool.type === "tool-newTask" && runManually) {
+        const subtaskUid = tool.input?._meta?.uid;
         if (subtaskUid) {
-          // For async tasks (runAsync: true), use VS Code to open a panel.
-          // In web UI, fall back to manual navigation so the task actually starts.
-          if (newTaskInput?.runAsync && isVSCodeEnvironment()) {
-            lifecycle.execute(tools[i].input, {
-              contentType: selectedModel?.contentType,
-              builtinSubAgentInfo,
-            });
-            const uid = parentUid || taskId;
-            if (uid) {
-              vscodeHost.onTaskRunning(uid);
-            }
-            return;
-          }
           // For non-async tasks, use manual navigation
           manualRunSubtask(subtaskUid);
         }
         return;
       }
+
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
         builtinSubAgentInfo,
@@ -154,7 +142,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     lifecycles,
     autoApproveGuard,
     manualRunSubtask,
-    pendingApproval,
     subtaskOffhand,
     selectedModel,
     taskId,

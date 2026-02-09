@@ -1,12 +1,20 @@
 import { TaskThread } from "@/components/task-thread";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FixedStateChatContextProvider } from "@/features/chat";
+import { useNavigate } from "@/lib/hooks/use-navigate";
+import { useDefaultStore } from "@/lib/use-default-store";
+import { cn } from "@/lib/utils";
+import { isVSCodeEnvironment } from "@/lib/vscode";
 import { useState } from "react";
 import type { NewTaskToolViewProps } from ".";
+import { StatusIcon } from "../status-icon";
 import { ExpandIcon } from "../tool-container";
 
 interface SubAgentViewProps {
-  icon: React.ReactNode;
-  title?: string;
+  uid?: string;
+  tool: NewTaskToolViewProps["tool"];
+  isExecuting: NewTaskToolViewProps["isExecuting"];
   actions?: React.ReactNode;
   children: React.ReactNode;
   footerActions?: React.ReactNode;
@@ -18,9 +26,9 @@ interface SubAgentViewProps {
 }
 
 export function SubAgentView({
-  icon,
-  title,
-  actions,
+  uid,
+  tool,
+  isExecuting,
   children,
   footerActions,
   taskSource,
@@ -33,13 +41,48 @@ export function SubAgentView({
   const showExpandIcon =
     expandable && taskSource && taskSource.messages.length > 1;
   const showFooter = showExpandIcon || footerActions;
+  const navigate = useNavigate();
+  const store = useDefaultStore();
+  const toolTitle = tool.input?.agentType;
+  const description = tool.input?.description;
 
   return (
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
       <div className="flex items-center gap-2 border-b bg-muted px-3 py-2 font-medium text-muted-foreground text-xs">
-        {icon}
-        <span className="flex-1 truncate">{title}</span>
-        {actions}
+        <StatusIcon
+          tool={tool}
+          isExecuting={isExecuting}
+          className="align-baseline"
+          iconClassName="size-3.5"
+        />
+        <Badge variant="secondary" className={cn("my-0.5 py-0")}>
+          {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
+            <Button
+              variant="link"
+              className="h-auto p-0 font-inherit text-inherit underline-offset-2"
+              onClick={() => {
+                navigate({
+                  to: "/task",
+                  search: {
+                    uid,
+                    storeId: store.storeId,
+                  },
+                  replace: true,
+                  viewTransition: true,
+                });
+              }}
+            >
+              {toolTitle}
+            </Button>
+          ) : (
+            <>{toolTitle}</>
+          )}
+        </Badge>
+        {description && (
+          <span className="min-w-0 truncate text-muted-foreground">
+            {description}
+          </span>
+        )}
       </div>
 
       {children}

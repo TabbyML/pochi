@@ -214,6 +214,7 @@ const PochiAdvanceSettings = z.object({
   pochiLayout: z
     .object({
       enabled: z.boolean().optional(),
+      developerMode: z.boolean().optional(),
     })
     .optional(),
   logToFile: z

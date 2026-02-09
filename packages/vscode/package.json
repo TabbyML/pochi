@@ -726,6 +726,10 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable Pochi Layout."
+                  },
+                  "developerMode": {
+                    "type": "boolean",
+                    "default": false
                   }
                 }
               },

@@ -25,6 +25,10 @@ export const buildShellCommand = (
     }
   | undefined => {
   const shellPath = getShellPath();
+  const isFlatpak =
+    process.platform === "linux" &&
+    Boolean(process.env.FLATPAK_ID || process.env.FLATPAK_SANDBOX_DIR);
+  const loginArg = isFlatpak ? "-lc" : "-c";
 
   if (shellPath) {
     // Determine shell type and appropriate arguments using RegExp for precise matching
@@ -44,10 +48,19 @@ export const buildShellCommand = (
     }
 
     if (/(bash|zsh)$/.test(shellName)) {
-      return {
+      const shellCommand = {
         command: shellPath,
-        args: ["-c", commandString],
+        args: [loginArg, commandString],
       };
+
+      if (isFlatpak) {
+        return {
+          command: "/usr/bin/flatpak-spawn",
+          args: ["--host", shellCommand.command, ...shellCommand.args],
+        };
+      }
+
+      return shellCommand;
     }
   }
 

@@ -5,27 +5,15 @@ import type { TabCompletionContext } from "../context";
 import type { TabCompletionProviderResponseItem } from "../providers/types";
 import {
   type CodeDiff,
-  type RangeMapping,
-  type TextChange,
+  LinesDiffOptions,
   type TextEdit,
   createTextDocumentSnapshotWithApplyEdit,
-  createTextDocumentSnapshotWithEmptyText,
   getLines,
-  isBlank,
-  isLineEndPosition,
   lineNumberRangeToPositionRange,
   toCodeDiff,
-  toOffsetRange,
 } from "../utils";
 
 const logger = getLogger("TabCompletion.Solution.Item");
-
-const linesDiffOptions = {
-  ignoreTrimWhitespace: false,
-  maxComputationTimeMs: 0,
-  computeMoves: false,
-  extendToSubwords: true,
-};
 
 export class TabCompletionSolutionItem {
   public readonly valid: boolean;
@@ -38,65 +26,31 @@ export class TabCompletionSolutionItem {
     public readonly context: TabCompletionContext,
     public readonly responseItem: TabCompletionProviderResponseItem,
   ) {
-    const originalDocument = context.documentSnapshot;
-    const editedDocument = createTextDocumentSnapshotWithApplyEdit(
-      originalDocument,
+    const document = context.documentSnapshot;
+    const targetDocument = createTextDocumentSnapshotWithApplyEdit(
+      document,
       responseItem.edit,
     );
-    const diffResult = linesDiffComputers
+
+    const codeDiffResult = linesDiffComputers
       .getDefault()
       .computeDiff(
-        getLines(originalDocument),
-        getLines(editedDocument),
-        linesDiffOptions,
-      );
-    const diff = toCodeDiff(diffResult);
-
-    // refine changes
-    const refinedChanges: TextChange[] = [];
-    for (const change of diff.changes) {
-      for (const innerChange of change.innerChanges) {
-        if (shouldSkipChange(innerChange, originalDocument, editedDocument)) {
-          continue;
-        }
-        refinedChanges.push({
-          range: toOffsetRange(innerChange.original, originalDocument),
-          text: editedDocument.getText(innerChange.modified),
-        });
-      }
-    }
-    if (refinedChanges.length < 1) {
-      this.valid = false;
-      this.target = createTextDocumentSnapshotWithEmptyText(originalDocument);
-      this.diff = { changes: [] };
-      this.textEdit = { changes: [] };
-      return;
-    }
-
-    const refinedTextEdit: TextEdit = { changes: refinedChanges };
-    const targetDocument = createTextDocumentSnapshotWithApplyEdit(
-      originalDocument,
-      refinedTextEdit,
-    );
-    const refinedDiffResult = linesDiffComputers
-      .getDefault()
-      .computeDiff(
-        getLines(originalDocument),
+        getLines(document),
         getLines(targetDocument),
-        linesDiffOptions,
+        LinesDiffOptions,
       );
-    const refinedDiff = toCodeDiff(refinedDiffResult);
+    const refinedDiff = toCodeDiff(codeDiffResult);
     const inlineCompletionItem = this.calculateInlineCompletionItem(
       refinedDiff,
-      originalDocument,
+      document,
       targetDocument,
       context.selection.active,
     );
 
-    this.valid = true;
+    this.valid = document.content !== targetDocument.content;
     this.target = targetDocument;
     this.diff = refinedDiff;
-    this.textEdit = refinedTextEdit;
+    this.textEdit = responseItem.edit;
     this.inlineCompletionItem = inlineCompletionItem;
   }
 
@@ -228,51 +182,6 @@ export interface OnDidAcceptInlineCompletionItemParams {
   insertedText: string;
   rangeBefore: vscode.Range;
   rangeAfter: vscode.Range;
-}
-
-function shouldSkipChange(
-  change: RangeMapping,
-  originalDocument: vscode.TextDocument,
-  modifiedDocument: vscode.TextDocument,
-): boolean {
-  return (
-    isAddingBlankLines(change, originalDocument, modifiedDocument) ||
-    isRemovingBlankLines(change, originalDocument, modifiedDocument)
-  );
-}
-
-function isAddingBlankLines(
-  change: RangeMapping,
-  originalDocument: vscode.TextDocument,
-  modifiedDocument: vscode.TextDocument,
-): boolean {
-  const { original, modified } = change;
-  if (
-    original.start.isEqual(modified.end) &&
-    (original.start.character === 0 ||
-      isLineEndPosition(original.start, originalDocument))
-  ) {
-    const modifiedText = modifiedDocument.getText(modified);
-    if (modifiedText.includes("\n") && isBlank(modifiedText)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isRemovingBlankLines(
-  change: RangeMapping,
-  originalDocument: vscode.TextDocument,
-  modifiedDocument: vscode.TextDocument,
-): boolean {
-  return isAddingBlankLines(
-    {
-      original: change.modified,
-      modified: change.original,
-    },
-    modifiedDocument,
-    originalDocument,
-  );
 }
 
 function isSubsequence(small: string, large: string): boolean {

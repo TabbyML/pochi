@@ -6,15 +6,21 @@ import type { TabCompletionContext } from "../../context";
 import { DeclarationSnippetsProvider } from "../../context-providers";
 import {
   type CodeSnippet,
+  type RangeMapping,
+  type TextDocumentSnapshot,
   cropTextToMaxChars,
   deduplicateSnippets,
   getRelativePath,
+  isAddingBlankLines,
+  isBlank,
+  isRemovingBlankLines,
   offsetRangeToPositionRange,
   simpleDiff,
 } from "../../utils";
 import type { Fetcher, RequestBody } from "../fetchers";
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
+import { postprocess } from "./post-process";
 
 const WindowLines = 21;
 const MaxCodeSnippets = 5;
@@ -193,7 +199,7 @@ export class NESSweepModelClient
 
   async fetchCompletion(
     requestId: string,
-    _context: TabCompletionContext,
+    context: TabCompletionContext,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,
@@ -216,22 +222,64 @@ export class NESSweepModelClient
       return undefined;
     }
 
-    // Remove trailing new line
-    const text = result.text.replace(/\n$/, "");
+    const edit = {
+      changes: [
+        {
+          range: {
+            start: baseSegments.startOffset,
+            end: baseSegments.endOffset,
+          },
+          text: result.text,
+        },
+      ],
+    };
+
+    const processedEdit = postprocess(
+      edit,
+      context,
+      (
+        change: RangeMapping,
+        originalDocument: TextDocumentSnapshot,
+        modifiedDocument: TextDocumentSnapshot,
+      ) => {
+        if (
+          isAddingBlankLines(change, originalDocument, modifiedDocument) ||
+          isRemovingBlankLines(change, originalDocument, modifiedDocument)
+        ) {
+          return false;
+        }
+
+        const changeStartOffset = originalDocument.offsetAt(
+          change.original.start,
+        );
+        const changeEndOffset = originalDocument.offsetAt(change.original.end);
+        if (
+          changeStartOffset < baseSegments.startOffset ||
+          changeEndOffset < baseSegments.startOffset ||
+          changeStartOffset > baseSegments.endOffset ||
+          changeEndOffset > baseSegments.endOffset ||
+          (!isBlank(originalDocument.content.slice(baseSegments.endOffset)) &&
+            changeStartOffset === baseSegments.endOffset &&
+            changeEndOffset === baseSegments.endOffset)
+        ) {
+          return false;
+        }
+
+        return true;
+      },
+    );
+
+    if (!processedEdit) {
+      logger.trace(
+        "No result after postprocessing.",
+        logToFileObject({ requestId }),
+      );
+      return undefined;
+    }
 
     const output = {
       requestId,
-      edit: {
-        changes: [
-          {
-            range: {
-              start: baseSegments.startOffset,
-              end: baseSegments.endOffset,
-            },
-            text,
-          },
-        ],
-      },
+      edit: processedEdit,
     };
     logger.trace("Result:", logToFileObject(output));
     return output;

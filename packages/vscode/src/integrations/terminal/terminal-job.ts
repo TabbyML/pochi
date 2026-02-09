@@ -3,6 +3,7 @@ import { getLogger } from "@/lib/logger";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
+import { createTerminal } from "../layout";
 import { OutputManager } from "./output";
 import { ExecutionError } from "./utils";
 
@@ -59,7 +60,7 @@ export class TerminalJob implements vscode.Disposable {
     TerminalJob.jobs.set(this.id, this);
 
     // Create the terminal with the provided configuration
-    this.terminal = vscode.window.createTerminal({
+    this.terminal = createTerminal({
       name: config.name,
       cwd: config.cwd,
       location: config.location,

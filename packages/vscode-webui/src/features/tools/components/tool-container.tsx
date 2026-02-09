@@ -50,21 +50,40 @@ export const ExpandableToolContainer: React.FC<{
   expandableDetail?: React.ReactNode;
   expandableDetailIcon?: React.ReactNode;
   detail?: React.ReactNode;
+  expanded?: boolean;
+  defaultExpanded?: boolean;
   onToggle?: (expand: boolean) => void;
-}> = ({ title, expandableDetail, expandableDetailIcon, detail, onToggle }) => {
-  const [showDetails, setShowDetails] = useState(false);
+  titleClassname?: string;
+}> = ({
+  title,
+  expandableDetail,
+  expandableDetailIcon,
+  detail,
+  expanded,
+  defaultExpanded = false,
+  onToggle,
+  titleClassname,
+}) => {
+  const [internalShowDetails, setInternalShowDetails] =
+    useState(defaultExpanded);
+  const showDetails = expanded ?? internalShowDetails;
 
   const handleToggle = () => {
-    setShowDetails(!showDetails);
+    const next = !showDetails;
+    if (expanded === undefined) {
+      setInternalShowDetails(next);
+    }
     if (onToggle) {
-      onToggle(!showDetails);
+      onToggle(next);
     }
   };
 
   return (
     <ToolContainer>
       <ToolTitle>
-        <span className="pr-1 leading-relaxed">{title}</span>
+        <span className={cn("pr-1 leading-relaxed", titleClassname)}>
+          {title}
+        </span>
         {expandableDetailIcon && (
           <span className={"mt-0.5 self-start rounded p-1"}>
             {expandableDetailIcon}

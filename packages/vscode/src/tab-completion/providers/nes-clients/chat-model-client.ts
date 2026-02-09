@@ -9,15 +9,20 @@ import type { TabCompletionContext } from "../../context";
 import { DeclarationSnippetsProvider } from "../../context-providers";
 import {
   type CodeSnippet,
+  type RangeMapping,
+  type TextDocumentSnapshot,
   cropTextToMaxChars,
   deduplicateSnippets,
   formatPlaceholders,
   getRelativePath,
+  isAddingBlankLines,
   isCanceledError,
+  isRemovingBlankLines,
   offsetRangeToPositionRange,
 } from "../../utils";
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
+import { postprocess } from "./post-process";
 
 const EditableRegionPrefixLine = 5;
 const EditableRegionSuffixLine = 5;
@@ -186,7 +191,7 @@ export class NESChatModelClient
 
   async fetchCompletion(
     requestId: string,
-    _context: TabCompletionContext,
+    context: TabCompletionContext,
     baseSegments: BaseSegments,
     extraSegments?: ExtraSegments | undefined,
     token?: vscode.CancellationToken | undefined,
@@ -248,19 +253,44 @@ export class NESChatModelClient
 
       const extractedResult = extractResult(result.text, baseSegments);
       if (extractedResult) {
+        const edit = {
+          changes: [
+            {
+              range: {
+                start: baseSegments.editableRegionStartOffset,
+                end: baseSegments.editableRegionEndOffset,
+              },
+              text: extractedResult,
+            },
+          ],
+        };
+
+        const processedEdit = postprocess(
+          edit,
+          context,
+          (
+            change: RangeMapping,
+            originalDocument: TextDocumentSnapshot,
+            modifiedDocument: TextDocumentSnapshot,
+          ) => {
+            return (
+              !isAddingBlankLines(change, originalDocument, modifiedDocument) &&
+              !isRemovingBlankLines(change, originalDocument, modifiedDocument)
+            );
+          },
+        );
+
+        if (!processedEdit) {
+          logger.trace(
+            "No result after postprocessing.",
+            logToFileObject({ requestId }),
+          );
+          return undefined;
+        }
+
         const output = {
           requestId,
-          edit: {
-            changes: [
-              {
-                range: {
-                  start: baseSegments.editableRegionStartOffset,
-                  end: baseSegments.editableRegionEndOffset,
-                },
-                text: extractedResult,
-              },
-            ],
-          },
+          edit: processedEdit,
         };
         logger.trace("Result:", logToFileObject(output));
         return output;

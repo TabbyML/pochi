@@ -318,6 +318,7 @@ export interface VSCodeHostApi {
     options?: {
       keepEditor?: boolean;
       preserveFocus?: boolean;
+      preview?: boolean;
     },
   ): Promise<void>;
 
