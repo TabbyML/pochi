@@ -33,6 +33,10 @@ export const newTask =
       }
     }
 
+    if (customAgent?.name === "browser") {
+      await options.browserSessionStore?.registerBrowserSession(taskId);
+    }
+
     const isAsync = !!runAsync;
     const subTaskRunner = options.createSubTaskRunner(
       taskId,

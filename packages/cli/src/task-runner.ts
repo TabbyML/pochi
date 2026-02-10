@@ -1,4 +1,5 @@
 import { getLogger, prompts } from "@getpochi/common";
+import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
@@ -124,6 +125,8 @@ export interface RunnerOptions {
    * The file system to use for the task runner.
    */
   filesystem: FileSystem;
+
+  browserSessionStore?: BrowserSessionStore;
 }
 
 const logger = getLogger("TaskRunner");
@@ -141,6 +144,7 @@ export class TaskRunner {
   private backgroundJobManager: BackgroundJobManager;
   private asyncSubTaskManager: AsyncSubTaskManager;
   private fileSystem: FileSystem;
+  private customAgent?: CustomAgent;
 
   private attemptCompletionHook?: string;
 
@@ -162,6 +166,7 @@ export class TaskRunner {
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
     this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
+    this.customAgent = options.customAgent;
 
     this.fileSystem = options.filesystem;
 
@@ -174,6 +179,7 @@ export class TaskRunner {
       mcpHub: options.mcpHub,
       backgroundJobManager: this.backgroundJobManager,
       asyncSubTaskManager: this.asyncSubTaskManager,
+      browserSessionStore: options.browserSessionStore,
       createSubTaskRunner: (
         taskId: string,
         runAsync: boolean,
@@ -279,6 +285,11 @@ export class TaskRunner {
       this.chatKit.markAsFailed(error);
     } finally {
       this.backgroundJobManager.killAll();
+      if (this.customAgent?.name === "browser") {
+        this.toolCallOptions.browserSessionStore?.unregisterBrowserSession(
+          this.taskId,
+        );
+      }
     }
   }
 
@@ -441,6 +452,13 @@ export class TaskRunner {
       const { taskId } = decodeStoreId(this.store.storeId);
       const resolvedInput = resolveToolCallArgs(toolCall.input, taskId);
 
+      let envs: Record<string, string> | undefined;
+      if (this.customAgent?.name === "browser") {
+        envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
+          this.taskId,
+        );
+      }
+
       const toolResult = await processContentOutput(
         this.blobStore,
         await executeToolCall(
@@ -449,6 +467,7 @@ export class TaskRunner {
           this.cwd,
           undefined,
           this.llm.contentType,
+          envs,
         ),
       );
 

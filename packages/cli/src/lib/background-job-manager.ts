@@ -16,14 +16,14 @@ export class BackgroundJobManager {
   private jobs: Map<string, BackgroundJob> = new Map();
   private maxOutputSize = 1024 * 1024; // 1MB buffer limit per job
 
-  start(command: string, cwd: string): string {
+  start(command: string, cwd: string, envs?: Record<string, string>): string {
     const id = crypto.randomUUID();
 
     const shell = getShellPath();
     const child = spawn(command, {
       shell,
       cwd,
-      env: { ...process.env, ...getTerminalEnv() },
+      env: { ...process.env, ...getTerminalEnv(), ...envs },
       stdio: ["ignore", "pipe", "pipe"],
     });
 

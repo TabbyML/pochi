@@ -1,3 +1,4 @@
+import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { AsyncSubTaskManager } from "./lib/async-subtask-manager";
@@ -50,4 +51,9 @@ export interface ToolCallOptions {
    * Manager for handling async sub-task results in the CLI
    */
   asyncSubTaskManager: AsyncSubTaskManager;
+
+  /**
+   * Store for managing browser sessions
+   */
+  browserSessionStore?: BrowserSessionStore;
 }
