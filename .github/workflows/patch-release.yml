@@ -113,12 +113,19 @@ jobs:
           # Fetch the commit to ensure it exists locally
           git fetch origin ${{ steps.get_commit.outputs.merge_commit_sha }}
 
-          # Cherry-pick the merged commit
-          git cherry-pick ${{ steps.get_commit.outputs.merge_commit_sha }}
+          TARGET_SHA="${{ steps.get_commit.outputs.merge_commit_sha }}"
+          TARGET_SUBJECT=$(git log -1 --format=%s $TARGET_SHA)
+          HEAD_SUBJECT=$(git log -1 --format=%s HEAD)
+
+          if [[ "$TARGET_SUBJECT" == "$HEAD_SUBJECT" ]]; then
+            echo "Commit '$TARGET_SUBJECT' already exists at HEAD. Skipping cherry-pick and push."
+          else
+            # Cherry-pick the merged commit
+            git cherry-pick $TARGET_SHA
+            git push origin ${{ steps.parse_version.outputs.pre_branch }}
+          fi
 
           bun install --frozen-lockfile
-
-          git push origin ${{ steps.parse_version.outputs.pre_branch }}
 
       - name: Wait for Workflows (Pre Branch)
         if: steps.parse_version.outputs.parse_failed == 'false' && steps.parse_version.outputs.is_pre == 'true'
@@ -198,12 +205,19 @@ jobs:
           # Fetch the commit to ensure it exists locally
           git fetch origin ${{ steps.get_commit.outputs.merge_commit_sha }}
 
-          # Cherry-pick the merged commit
-          git cherry-pick ${{ steps.get_commit.outputs.merge_commit_sha }}
+          TARGET_SHA="${{ steps.get_commit.outputs.merge_commit_sha }}"
+          TARGET_SUBJECT=$(git log -1 --format=%s $TARGET_SHA)
+          HEAD_SUBJECT=$(git log -1 --format=%s HEAD)
+
+          if [[ "$TARGET_SUBJECT" == "$HEAD_SUBJECT" ]]; then
+            echo "Commit '$TARGET_SUBJECT' already exists at HEAD. Skipping cherry-pick and push."
+          else
+            # Cherry-pick the merged commit
+            git cherry-pick $TARGET_SHA
+            git push origin ${{ steps.parse_version.outputs.main_branch }}
+          fi
 
           bun install --frozen-lockfile
-
-          git push origin ${{ steps.parse_version.outputs.main_branch }}
 
       - name: Wait for Workflows (Main Branch)
         if: steps.parse_version.outputs.parse_failed == 'false'
