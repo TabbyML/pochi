@@ -466,17 +466,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         };
       }
 
-      const task = this.taskHistoryStore.tasks.value[options.taskId];
-      if (!task) {
-        return {
-          error: "No task found.",
-        };
-      }
-
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
       const envs = resolveToolCallEnvs(toolName, options.builtinSubAgentInfo);
       const toolCallStart = Date.now();
-      const resolvedArgs = resolveToolCallArgs(args, task.id);
+      const resolvedArgs = resolveToolCallArgs(args, options.taskId);
       const result = await safeCall(
         tool(resolvedArgs, {
           abortSignal,
@@ -537,11 +530,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         return;
       }
 
-      const task = this.taskHistoryStore.tasks.value[options.taskId];
-      if (!task) {
-        return;
-      }
-
       if (options.state === "call") {
         logger.debug(
           `previewToolCall(call): ${toolName}(${options.toolCallId})`,
@@ -554,7 +542,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
       const resolvedArgs = resolveToolCallArgs(
         args,
-        task.id,
+        options.taskId,
       ) as Partial<unknown> | null;
       return await safeCall<PreviewReturnType>(
         tool(resolvedArgs, {
@@ -589,10 +577,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       if (!options?.taskId) {
         return;
       }
-      const task = this.taskHistoryStore.tasks.value[options.taskId];
-      if (!task) return;
-
-      resolvedPath = resolvePochiUri(filePath, task.id);
+      resolvedPath = resolvePochiUri(filePath, options.taskId);
       vscode.commands.executeCommand(
         "vscode.open",
         vscode.Uri.parse(resolvedPath),
