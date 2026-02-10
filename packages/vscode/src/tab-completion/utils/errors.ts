@@ -49,15 +49,3 @@ export function isCanceledError(error: unknown) {
     (error instanceof HttpError && error.status === 499)
   );
 }
-
-export function isUnauthorizedError(error: unknown) {
-  return error instanceof HttpError && [401, 403].includes(error.status);
-}
-
-export function isRateLimitExceededError(error: unknown) {
-  return error instanceof HttpError && error.status === 429;
-}
-
-export function isPaymentRequiredError(error: unknown) {
-  return error instanceof HttpError && error.status === 402;
-}

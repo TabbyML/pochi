@@ -185,7 +185,11 @@ export class StatusBarItem implements vscode.Disposable {
         this.statusBarItem.text = "$(warning) Pochi";
         this.statusBarItem.tooltip = this.tabCompletionManager.error.value;
         this.statusBarItem.backgroundColor = undefined;
-        this.statusBarItem.command = undefined;
+        this.statusBarItem.command = {
+          command: "pochi.showWarningMessage",
+          title: "",
+          arguments: [this.tabCompletionManager.error.value],
+        };
         break;
 
       case "ready":

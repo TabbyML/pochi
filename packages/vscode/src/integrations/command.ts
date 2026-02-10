@@ -291,6 +291,13 @@ export class CommandManager implements vscode.Disposable {
       }),
 
       vscode.commands.registerCommand(
+        "pochi.showWarningMessage",
+        async (message: string) => {
+          vscode.window.showWarningMessage(message);
+        },
+      ),
+
+      vscode.commands.registerCommand(
         "pochi.webui.navigate.taskList",
         async () => {
           await vscode.commands.executeCommand("pochiSidebar.focus");

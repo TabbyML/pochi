@@ -36,8 +36,6 @@ import {
 import {
   delayFn,
   isLineEndPosition,
-  isPaymentRequiredError,
-  isRateLimitExceededError,
   offsetRangeToPositionRange,
 } from "./utils";
 
@@ -64,7 +62,7 @@ export class TabCompletionManager implements vscode.Disposable {
   private providersConfig:
     | NonNullable<PochiAdvanceSettings["tabCompletion"]>["providers"]
     | undefined;
-  private providers = [] as TabCompletionProvider[];
+  private readonly providersSignal = signal<TabCompletionProvider[]>([]);
   private readonly cache = new LRUCache<string, TabCompletionSolution>({
     max: 100,
     ttl: 5 * 60 * 1000, // 5 minutes,
@@ -73,7 +71,17 @@ export class TabCompletionManager implements vscode.Disposable {
 
   readonly isFetching = signal(false);
 
-  readonly error = computed(() => combineProviderErrors(this.providers));
+  readonly error = computed(() =>
+    combineProviderErrors(this.providersSignal.value),
+  );
+
+  private get providers() {
+    return this.providersSignal.value;
+  }
+
+  private set providers(value: TabCompletionProvider[]) {
+    this.providersSignal.value = value;
+  }
 
   private current: TabCompletionManagerContext | undefined = undefined;
 
@@ -406,7 +414,6 @@ export class TabCompletionManager implements vscode.Disposable {
           if (status.type === "finished" && status.response) {
             solution.addItem(status.response);
             this.handleDidUpdateSolution();
-            provider.clearError();
 
             // update forward cache
             const forward = generateForwardCache(
@@ -426,19 +433,6 @@ export class TabCompletionManager implements vscode.Disposable {
               } else {
                 this.cache.set(item.context.hash, item);
               }
-            }
-          }
-
-          if (status.type === "error" && status.error) {
-            // handle with 429 and 402
-            if (
-              isRateLimitExceededError(status.error) ||
-              isPaymentRequiredError(status.error)
-            ) {
-              provider.updateError(status.error.message);
-            } else {
-              // ignore
-              provider.clearError();
             }
           }
         }),
@@ -635,10 +629,19 @@ class TabCompletionManagerContext implements vscode.Disposable {
 function combineProviderErrors(
   providers: TabCompletionProvider[],
 ): string | undefined {
-  for (const provider of providers) {
-    if (provider.error.value) {
-      return provider.error.value;
-    }
-  }
-  return undefined;
+  const error = providers
+    .map((provider) => {
+      if (!provider.error.value) {
+        return undefined;
+      }
+      // Truncate the random suffix from client ID
+      // e.g., "NES:pochi-1-rnff7s" -> "NES:pochi-1"
+      const parts = provider.client.id.split("-");
+      const clientId =
+        parts.length > 2 ? parts.slice(0, -1).join("-") : provider.client.id;
+      return `${clientId}: ${provider.error.value}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+  return error.trim() || undefined;
 }
