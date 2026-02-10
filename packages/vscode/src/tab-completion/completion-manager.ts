@@ -559,7 +559,6 @@ export class TabCompletionManager implements vscode.Disposable {
   private removeCurrent() {
     this.current = undefined;
     this.updateIsFetching();
-    this.clearAllProviderErrors();
   }
 
   private updateIsFetching() {
@@ -567,12 +566,6 @@ export class TabCompletionManager implements vscode.Disposable {
       this.current?.providerRequests.some(
         (r) => r.request.status.value.type === "processing",
       ) ?? false;
-  }
-
-  private clearAllProviderErrors() {
-    for (const provider of this.providers) {
-      provider.clearError();
-    }
   }
 
   dispose() {
