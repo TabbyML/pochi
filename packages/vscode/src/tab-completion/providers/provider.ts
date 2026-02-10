@@ -40,6 +40,9 @@ export class TabCompletionProvider implements vscode.Disposable {
           this.error.value = status.error.message;
         } else if (status.type === "finished") {
           this.error.value = undefined;
+        } else if (status.type === "disposed") {
+          this.disposables = this.disposables.filter((d) => d !== disposable);
+          disposable.dispose();
         }
       }),
     };
