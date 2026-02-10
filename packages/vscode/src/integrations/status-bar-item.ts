@@ -65,6 +65,11 @@ export class StatusBarItem implements vscode.Disposable {
           this.update();
         }),
       },
+      {
+        dispose: this.tabCompletionManager.error.subscribe(() => {
+          this.update();
+        }),
+      },
       vscode.window.onDidChangeActiveTextEditor(() => {
         this.update();
       }),

@@ -5,7 +5,7 @@ import {
 } from "@/integrations/configuration";
 import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
-import { signal } from "@preact/signals-core";
+import { computed, signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { LRUCache } from "lru-cache";
 import { container, injectable, singleton } from "tsyringe";
@@ -73,7 +73,7 @@ export class TabCompletionManager implements vscode.Disposable {
 
   readonly isFetching = signal(false);
 
-  readonly error = signal<string | undefined>();
+  readonly error = computed(() => combineProviderErrors(this.providers));
 
   private current: TabCompletionManagerContext | undefined = undefined;
 
@@ -139,6 +139,10 @@ export class TabCompletionManager implements vscode.Disposable {
       NonNullable<PochiAdvanceSettings["tabCompletion"]>["providers"]
     >,
   ) {
+    for (const provider of this.providers) {
+      provider.dispose();
+    }
+
     const list = [] as TabCompletionProvider[];
     const providerFactory = container.resolve(TabCompletionProviderFactory);
     for (const providerConfig of providersConfig) {
@@ -402,7 +406,7 @@ export class TabCompletionManager implements vscode.Disposable {
           if (status.type === "finished" && status.response) {
             solution.addItem(status.response);
             this.handleDidUpdateSolution();
-            this.updateError(undefined);
+            provider.clearError();
 
             // update forward cache
             const forward = generateForwardCache(
@@ -431,10 +435,10 @@ export class TabCompletionManager implements vscode.Disposable {
               isRateLimitExceededError(status.error) ||
               isPaymentRequiredError(status.error)
             ) {
-              this.updateError(status.error.message);
+              provider.updateError(status.error.message);
             } else {
               // ignore
-              this.updateError(undefined);
+              provider.clearError();
             }
           }
         }),
@@ -555,7 +559,7 @@ export class TabCompletionManager implements vscode.Disposable {
   private removeCurrent() {
     this.current = undefined;
     this.updateIsFetching();
-    this.updateError(undefined);
+    this.clearAllProviderErrors();
   }
 
   private updateIsFetching() {
@@ -565,8 +569,10 @@ export class TabCompletionManager implements vscode.Disposable {
       ) ?? false;
   }
 
-  private updateError(error: string | undefined) {
-    this.error.value = error;
+  private clearAllProviderErrors() {
+    for (const provider of this.providers) {
+      provider.clearError();
+    }
   }
 
   dispose() {
@@ -574,6 +580,11 @@ export class TabCompletionManager implements vscode.Disposable {
       trigger.dispose();
     }
     this.triggers = [];
+
+    for (const provider of this.providers) {
+      provider.dispose();
+    }
+    this.providers = [];
 
     for (const disposable of this.disposables) {
       disposable.dispose();
@@ -626,4 +637,15 @@ class TabCompletionManagerContext implements vscode.Disposable {
       this.decorationTokenSource.dispose();
     }
   }
+}
+
+function combineProviderErrors(
+  providers: TabCompletionProvider[],
+): string | undefined {
+  for (const provider of providers) {
+    if (provider.error.value) {
+      return provider.error.value;
+    }
+  }
+  return undefined;
 }
