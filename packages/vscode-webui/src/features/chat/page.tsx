@@ -114,7 +114,7 @@ function Chat({ user, uid, info }: ChatProps) {
     todos: todosRef,
     isSubTask,
     mcpConfigOverride,
-    shareId: task?.shareId,
+    taskId: uid,
   });
 
   useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);

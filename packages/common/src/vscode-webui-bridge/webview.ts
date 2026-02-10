@@ -63,7 +63,10 @@ export interface VSCodeHostApi {
   readEnvironment(options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
-    shareId?: string;
+    /**
+     * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+     */
+    taskId?: string;
   }): Promise<Environment>;
 
   previewToolCall(
@@ -73,6 +76,9 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
+      /**
+       * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+       */
       taskId: string;
     },
   ): Promise<PreviewReturnType>;
@@ -94,6 +100,9 @@ export interface VSCodeHostApi {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      /**
+       * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+       */
       taskId: string;
     },
   ): Promise<unknown>;
@@ -164,6 +173,9 @@ export interface VSCodeHostApi {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      /**
+       * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+       */
       taskId?: string;
     },
   ): void;

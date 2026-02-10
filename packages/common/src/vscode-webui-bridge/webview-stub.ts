@@ -62,7 +62,7 @@ const VSCodeHostStub = {
   readEnvironment: (_options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
-    shareId: string;
+    taskId?: string;
   }): Promise<Environment> => {
     return Promise.resolve({} as Environment);
   },

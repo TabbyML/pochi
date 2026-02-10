@@ -273,10 +273,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.browserSessionStore.unregisterBrowserSession(taskId);
   };
 
+  /**
+   * @param options.taskId - The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+   */
   readEnvironment = async (options: {
     isSubTask?: boolean;
     webviewKind: "sidebar" | "pane";
-    shareId?: string;
+    taskId?: string;
   }): Promise<Environment> => {
     const isSubTask = options.isSubTask ?? false;
     const webviewKind = options.webviewKind;
@@ -302,6 +305,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       gitStatus = await gitStatusReader.readGitStatus();
     }
 
+    const shareId = options.taskId
+      ? (this.taskHistoryStore.tasks.value[options.taskId]?.shareId ??
+        undefined)
+      : undefined;
+
     const environment: Environment = {
       currentTime: new Date().toString(),
       workspace: {
@@ -320,7 +328,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ...systemInfo,
         customRules,
       },
-      shareId: options.shareId,
+      shareId,
     };
 
     return environment;
@@ -431,6 +439,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
         builtinSubAgentInfo?: BuiltinSubAgentInfo;
+        /**
+         * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+         */
         taskId: string;
       },
     ) => {
@@ -511,6 +522,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         state: "partial-call" | "call" | "result";
         abortSignal?: ThreadAbortSignalSerialization;
+        /**
+         * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+         */
         taskId: string;
       },
     ) => {
@@ -561,6 +575,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
+      /**
+       * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
+       */
       taskId?: string;
     },
   ) => {

@@ -68,7 +68,7 @@ export function PublicShareButton({
     const version = await vscodeHost.readExtensionVersion();
     const environment = await vscodeHost.readEnvironment({
       webviewKind: globalThis.POCHI_WEBVIEW_KIND,
-      shareId,
+      taskId: task?.id,
     });
     const shareUrl = `${getServerBaseUrl()}/share/${shareId}`;
 
