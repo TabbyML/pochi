@@ -1,7 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
-import { BrowserSessionStore } from "@/lib/browser-session-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
@@ -54,6 +53,8 @@ import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { BrowserSessionStore } from "@getpochi/common/browser";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
@@ -114,7 +115,7 @@ import {
 import type { Tool } from "ai";
 import { keys } from "remeda";
 import * as runExclusive from "run-exclusive";
-import { Lifecycle, container, inject, injectable, scoped } from "tsyringe";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "../checkpoint/checkpoint-service";
@@ -429,6 +430,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
+  resolveToolCallEnvs = (
+    toolName: string,
+    builtInSubAgentInfo?: BuiltinSubAgentInfo,
+  ) => {
+    let envs: Record<string, string> | undefined;
+
+    if (builtInSubAgentInfo?.type !== "browser") {
+      return envs;
+    }
+
+    if (toolName !== "executeCommand") {
+      return envs;
+    }
+
+    envs = this.browserSessionStore.getAgentBrowserEnvs(
+      builtInSubAgentInfo.sessionId,
+    );
+
+    return envs;
+  };
+
   executeToolCall = runExclusive.build(
     this.toolCallGroup,
     async (
@@ -467,7 +489,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
 
       const abortSignal = new ThreadAbortSignal(options.abortSignal);
-      const envs = resolveToolCallEnvs(toolName, options.builtinSubAgentInfo);
+      const envs = this.resolveToolCallEnvs(
+        toolName,
+        options.builtinSubAgentInfo,
+      );
       const toolCallStart = Date.now();
       const resolvedArgs = resolveToolCallArgs(args, options.taskId);
       const result = await safeCall(
@@ -1284,26 +1309,6 @@ function safeCall<T>(x: Promise<T>) {
     };
   });
 }
-
-const resolveToolCallEnvs = (
-  toolName: string,
-  builtInSubAgentInfo?: BuiltinSubAgentInfo,
-) => {
-  let envs: Record<string, string> | undefined;
-
-  if (builtInSubAgentInfo?.type !== "browser") {
-    return envs;
-  }
-
-  if (toolName !== "executeCommand") {
-    return envs;
-  }
-
-  const browserSessionStore = container.resolve(BrowserSessionStore);
-  envs = browserSessionStore.getAgentBrowserEnvs(builtInSubAgentInfo.sessionId);
-
-  return envs;
-};
 
 const ToolMap: Record<
   string,

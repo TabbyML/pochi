@@ -1,19 +1,18 @@
 import { spawn } from "node:child_process";
-import { getCorsProxyUrl } from "@getpochi/common/cors-proxy";
-import type { BrowserSession } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
-import { injectable, singleton } from "tsyringe";
-import type * as vscode from "vscode";
-import { getAvailablePort } from "./get-available-port";
+import { getCorsProxyUrl } from "../cors-proxy";
+import type { BrowserSession } from "./types";
+import { getAvailablePort } from "./utils";
 
-@injectable()
-@singleton()
-export class BrowserSessionStore implements vscode.Disposable {
+// Define a minimal Disposable interface to avoid vscode dependency
+type Disposable = { dispose(): void };
+
+export class BrowserSessionStore implements Disposable {
   browserSessions = signal<Record<string, BrowserSession>>({});
 
   dispose() {
     for (const taskId of Object.keys(this.browserSessions.value)) {
-      void this.unregisterBrowserSession(taskId);
+      this.unregisterBrowserSession(taskId);
     }
   }
 

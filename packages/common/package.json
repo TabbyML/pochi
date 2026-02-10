@@ -21,7 +21,8 @@
     "./share-utils": "./src/share-utils.ts",
     "./google-vertex-utils": "./src/google-vertex-utils.ts",
     "./cors-proxy": "./src/cors-proxy/index.ts",
-    "./pochi-file-system": "./src/pochi-file-system/index.ts"
+    "./pochi-file-system": "./src/pochi-file-system/index.ts",
+    "./browser": "./src/browser/index.ts"
   },
   "scripts": {
     "tsc": "tsc",
