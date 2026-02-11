@@ -105,7 +105,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       selectedModel: undefined,
       subtaskSelectedModel: undefined,
-      subtaskOffhand: false,
+      subtaskOffhand: true,
 
       autoApproveActive: true,
       autoApproveSettings: {
@@ -115,7 +115,6 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
-        autoRunSubtask: true,
       },
 
       // subtask manual run specific auto-approve settings
@@ -127,7 +126,6 @@ export const useSettingsStore = create<SettingsState>()(
         retry: true,
         maxRetryLimit: 3,
         mcp: false,
-        autoRunSubtask: false,
       },
 
       isDevMode: false,
