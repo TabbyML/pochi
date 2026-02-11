@@ -95,6 +95,11 @@ export class CommandManager implements vscode.Disposable {
     }
   }
 
+  private async focusSidebar(): Promise<void> {
+    const viewType = this.pochiWebviewSidebar.getSiderbarViewType();
+    await vscode.commands.executeCommand(`${viewType}.focus`);
+  }
+
   private registerCommands() {
     this.disposables.push(
       vscode.commands.registerCommand("pochi.openLoginPage", async () => {
@@ -280,7 +285,7 @@ export class CommandManager implements vscode.Disposable {
           },
           async (progress) => {
             progress.report({ message: "Pochi: Opening task..." });
-            await vscode.commands.executeCommand("pochiSidebar.focus");
+            await this.focusSidebar();
             PochiTaskEditorProvider.openTaskEditor({
               type: "open-task",
               uid,
@@ -293,7 +298,7 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.webui.navigate.taskList",
         async () => {
-          await vscode.commands.executeCommand("pochiSidebar.focus");
+          await this.focusSidebar();
           const webviewHost =
             await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openTaskList();
@@ -303,7 +308,7 @@ export class CommandManager implements vscode.Disposable {
       vscode.commands.registerCommand(
         "pochi.webui.navigate.settings",
         async () => {
-          await vscode.commands.executeCommand("pochiSidebar.focus");
+          await this.focusSidebar();
           const webviewHost =
             await this.pochiWebviewSidebar.retrieveWebviewHost();
           webviewHost.openSettings();
@@ -381,7 +386,7 @@ export class CommandManager implements vscode.Disposable {
           );
         } else {
           logger.debug("Focused on webui");
-          await vscode.commands.executeCommand("pochiSidebar.focus");
+          await this.focusSidebar();
         }
       }),
 
