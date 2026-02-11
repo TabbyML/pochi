@@ -1,4 +1,4 @@
 export interface BrowserSession {
-  port: number;
-  streamUrl: string;
+  port?: number;
+  streamUrl?: string;
 }
