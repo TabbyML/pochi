@@ -1,8 +1,11 @@
+import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo } from "react";
+import * as runExclusive from "run-exclusive";
+import { browserRecordingManager } from "./browser-recording-manager";
 
 /** @useSignals */
 export const useBrowserSession = (taskId: string) => {
@@ -18,42 +21,71 @@ export const useBrowserSession = (taskId: string) => {
 };
 
 export const useManageBrowserSession = ({
+  isSubTask,
+  task,
   messages,
-}: { messages: Message[] }) => {
+}: { isSubTask: boolean; task?: Task; messages: Message[] }) => {
+  const parentTaskId = isSubTask ? task?.parentId : task?.id;
   const lastToolPart = messages.at(-1)?.parts.at(-1);
-  const registeredSessions = useRef<string[]>([]);
+  const store = useDefaultStore();
+
+  const runSerialized = useMemo(
+    () =>
+      runExclusive.build(async (callback: () => Promise<void>) => {
+        await callback();
+      }),
+    [],
+  );
 
   useEffect(() => {
-    if (
-      lastToolPart?.type !== "tool-newTask" ||
-      lastToolPart?.input?.agentType !== "browser"
-    ) {
-      return;
-    }
-
-    const uid = lastToolPart.input?._meta?.uid;
-    if (!uid) {
-      return;
-    }
-
-    if (lastToolPart?.state === "input-available") {
-      if (!registeredSessions.current.includes(uid)) {
-        vscodeHost.registerBrowserSession(uid);
-        registeredSessions.current.push(uid);
+    const manageBrowserSession = async () => {
+      if (!lastToolPart) {
+        return;
       }
-    }
 
-    if (
-      lastToolPart?.state === "output-available" ||
-      lastToolPart?.state === "output-error"
-    ) {
-      if (registeredSessions.current.includes(uid)) {
-        vscodeHost.unregisterBrowserSession(uid);
-        registeredSessions.current.splice(
-          registeredSessions.current.indexOf(uid),
-          1,
+      // Register browser related sessions
+      if (
+        lastToolPart.type === "tool-newTask" &&
+        lastToolPart.input?.agentType === "browser" &&
+        lastToolPart.state === "input-available"
+      ) {
+        const toolCallId = lastToolPart.toolCallId;
+        const taskId = lastToolPart.input?._meta?.uid || "";
+        if (browserRecordingManager.isRegistered(toolCallId)) {
+          return;
+        }
+        browserRecordingManager.registerBrowserRecordingSession(toolCallId);
+        const browserSession = await vscodeHost.registerBrowserSession(taskId);
+        if (browserSession?.streamUrl) {
+          browserRecordingManager.startRecording(
+            toolCallId,
+            browserSession.streamUrl,
+          );
+        }
+      }
+
+      // Unregister browser related sessions
+      if (
+        lastToolPart.type === "tool-newTask" &&
+        lastToolPart.input?.agentType === "browser" &&
+        (lastToolPart.state === "output-available" ||
+          lastToolPart.state === "output-error")
+      ) {
+        const toolCallId = lastToolPart.toolCallId;
+        const taskId = lastToolPart.input?._meta?.uid || "";
+        if (!browserRecordingManager.isRegistered(toolCallId)) {
+          return;
+        }
+        await vscodeHost.unregisterBrowserSession(taskId);
+        await browserRecordingManager.stopRecording(
+          toolCallId,
+          parentTaskId || "",
+          store,
         );
+        browserRecordingManager.unregisterBrowserRecordingSession(toolCallId);
       }
-    }
-  }, [lastToolPart]);
+    };
+
+    runSerialized(manageBrowserSession);
+  }, [parentTaskId, lastToolPart, store, runSerialized]);
 };

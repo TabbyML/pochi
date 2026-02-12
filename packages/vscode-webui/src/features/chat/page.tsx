@@ -249,6 +249,8 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   useManageBrowserSession({
+    isSubTask,
+    task,
     messages,
   });
 

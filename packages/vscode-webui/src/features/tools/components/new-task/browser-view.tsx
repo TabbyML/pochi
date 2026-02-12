@@ -1,25 +1,22 @@
 import { useFile } from "@/components/files-provider";
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
-import { useBrowserSession } from "@/lib/use-browser-session";
+import { browserRecordingManager } from "@/lib/browser-recording-manager";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
-import { useBrowserFrame } from "../../hooks/use-browser-frame";
 import { SubAgentView } from "./sub-agent-view";
 
 export function BrowserView(props: NewTaskToolViewProps) {
   const { taskSource, uid, tool, toolCallStatusRegistryRef, isExecuting } =
     props;
   const { t } = useTranslation();
-  const completed = tool.state === "output-available";
-  const browserSession = useBrowserSession(uid || "");
-  const streamUrl = browserSession?.streamUrl;
-  const frame = useBrowserFrame({
-    toolCallId: tool.toolCallId,
-    parentTaskId: taskSource?.parentId || "",
-    completed,
-    streamUrl,
-  });
+  const [frame, setFrame] = useState<string | null>(null);
+
+  useEffect(() => {
+    return browserRecordingManager.subscribeFrame(tool.toolCallId, setFrame);
+  }, [tool.toolCallId]);
+
   const file = useFile(
     taskSource?.parentId || "",
     `/browser-session/${tool.toolCallId}.mp4`,

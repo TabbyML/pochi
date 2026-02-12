@@ -7,7 +7,7 @@ import type { useDefaultStore } from "./use-default-store";
 
 const logger = getLogger("BrowserRecordingManager");
 
-class BrowserRecordingSession {
+export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
@@ -20,12 +20,6 @@ class BrowserRecordingSession {
   private retryTimeout: NodeJS.Timeout | undefined;
   private retryInterval = 2500;
   private onFrameCallbacks: Set<(frame: string) => void> = new Set();
-
-  constructor(
-    private readonly toolCallId: string,
-    private readonly parentTaskId: string,
-    private readonly store: ReturnType<typeof useDefaultStore>,
-  ) {}
 
   start(streamUrl: string) {
     if (this.ws) return; // Already started
@@ -69,7 +63,7 @@ class BrowserRecordingSession {
     connect();
   }
 
-  subscribe(callback: (frame: string) => void) {
+  subscribeFrame(callback: (frame: string) => void) {
     this.onFrameCallbacks.add(callback);
     return () => {
       this.onFrameCallbacks.delete(callback);
@@ -142,7 +136,11 @@ class BrowserRecordingSession {
     });
   }
 
-  finish(): Promise<string | null> {
+  finish(
+    toolCallId: string,
+    parentTaskId: string,
+    store: ReturnType<typeof useDefaultStore>,
+  ) {
     // Stop WebSocket
     clearTimeout(this.retryTimeout);
     if (this.ws) {
@@ -154,7 +152,7 @@ class BrowserRecordingSession {
     }
 
     return this.runSerialized(async () => {
-      if (!this.muxer) return null;
+      if (!this.muxer) return;
 
       try {
         if (this.videoEncoder?.state === "configured") {
@@ -167,10 +165,10 @@ class BrowserRecordingSession {
           const uint8Array = new Uint8Array(buffer);
           const url = await blobStore.put(uint8Array, "video/mp4");
           if (url) {
-            this.store.commit(
+            store.commit(
               catalog.events.writeTaskFile({
-                taskId: this.parentTaskId,
-                filePath: `/browser-session/${this.toolCallId}.mp4`,
+                taskId: parentTaskId,
+                filePath: `/browser-session/${toolCallId}.mp4`,
                 content: url,
               }),
             );
@@ -182,7 +180,6 @@ class BrowserRecordingSession {
         this.muxer = null;
         this.videoEncoder = null;
       }
-      return null;
     });
   }
 }
@@ -190,32 +187,43 @@ class BrowserRecordingSession {
 export class BrowserRecordingManager {
   private sessions = new Map<string, BrowserRecordingSession>();
 
-  startRecording(
-    taskId: string,
-    parentTaskId: string,
-    store: ReturnType<typeof useDefaultStore>,
-    streamUrl: string,
-    onFrame?: (frame: string) => void,
-  ) {
-    let session = this.sessions.get(taskId);
-    if (!session) {
-      session = new BrowserRecordingSession(taskId, parentTaskId, store);
-      this.sessions.set(taskId, session);
-      session.start(streamUrl);
-    }
-
-    if (onFrame) {
-      return session.subscribe(onFrame);
-    }
-    return () => {};
+  isRegistered(toolCallId: string) {
+    return this.sessions.has(toolCallId);
   }
 
-  async stopRecording(taskId: string): Promise<string | null> {
-    const session = this.sessions.get(taskId);
-    if (!session) return null;
+  registerBrowserRecordingSession(toolCallId: string) {
+    this.sessions.set(toolCallId, new BrowserRecordingSession());
+  }
 
-    this.sessions.delete(taskId);
-    return session.finish();
+  startRecording(toolCallId: string, streamUrl: string) {
+    const session = this.sessions.get(toolCallId);
+    if (!session) return;
+
+    session.start(streamUrl);
+  }
+
+  subscribeFrame(toolCallId: string, callback: (frame: string) => void) {
+    const session = this.sessions.get(toolCallId);
+    if (!session) {
+      return () => {};
+    }
+
+    return session.subscribeFrame(callback);
+  }
+
+  async stopRecording(
+    toolCallId: string,
+    parentTaskId: string,
+    store: ReturnType<typeof useDefaultStore>,
+  ) {
+    const session = this.sessions.get(toolCallId);
+    if (!session) return;
+
+    return session.finish(toolCallId, parentTaskId, store);
+  }
+
+  unregisterBrowserRecordingSession(toolCallId: string) {
+    this.sessions.delete(toolCallId);
   }
 }
 
