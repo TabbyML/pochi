@@ -173,7 +173,8 @@ jobs:
           git checkout .
           git checkout ${{ steps.parse_version.outputs.pre_branch }}
           cd packages/vscode
-          bun run release --release patch --quiet --yes
+          # Use --no-git-hooks to skip pre-push hook in CI (already validated by CI workflows)
+          bun run release --release patch --quiet --yes --no-git-hooks
 
       - name: Manual Approval
         if: steps.parse_version.outputs.parse_failed == 'false' && steps.parse_version.outputs.is_pre == 'true'
@@ -265,7 +266,8 @@ jobs:
           git checkout .
           git checkout ${{ steps.parse_version.outputs.main_branch }}
           cd packages/vscode
-          bun run release --release patch --quiet --yes
+          # Use --no-git-hooks to skip pre-push hook in CI (already validated by CI workflows)
+          bun run release --release patch --quiet --yes --no-git-hooks
 
       - name: Report Failure
         if: failure() && steps.parse_version.outputs.parse_failed == 'false'
