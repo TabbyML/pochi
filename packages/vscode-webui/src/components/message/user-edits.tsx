@@ -1,4 +1,4 @@
-import { CodeBlock } from "@/components/message";
+import { DiffViewer } from "@/components/message/diff-viewer";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -203,12 +203,7 @@ function UserEditItem({ edit, checkpoints, hideActions }: UserEditItemProps) {
       </div>
       <CollapsibleContent>
         <div className="pr-3 pb-2 pl-9">
-          <CodeBlock
-            className=""
-            language="diff"
-            value={edit.diff}
-            isMinimalView={true}
-          />
+          <DiffViewer patch={edit.diff} filePath={edit.filepath} />
         </div>
       </CollapsibleContent>
     </Collapsible>

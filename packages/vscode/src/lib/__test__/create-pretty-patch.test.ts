@@ -59,17 +59,24 @@ suite("diff-utils", () => {
 
     test("should handle both strings empty or undefined", () => {
       let result = createPrettyPatch("file", "", "");
-      assert.strictEqual(
-        result,
-        "",
-        "With empty strings, no diff content should remain after header removal",
+      // With empty strings, we get only the header lines (no hunks)
+      assert.ok(
+        result.includes("Index: file"),
+        "With empty strings, should include Index header",
+      );
+      assert.ok(
+        !result.includes("@@"),
+        "With empty strings, should not include hunk header",
       );
 
       result = createPrettyPatch("file", undefined, undefined);
-      assert.strictEqual(
-        result,
-        "",
-        "With undefined strings, no diff content should remain after header removal",
+      assert.ok(
+        result.includes("Index: file"),
+        "With undefined strings, should include Index header",
+      );
+      assert.ok(
+        !result.includes("@@"),
+        "With undefined strings, should not include hunk header",
       );
     });
 
@@ -87,19 +94,20 @@ suite("diff-utils", () => {
       assert.ok(result.includes("+line5"), "Should include added line");
     });
 
-    test("should skip the first 4 lines of the diff output", () => {
+    test("should include full patch format for proper parsing", () => {
       const oldStr = "line1";
       const newStr = "modified line1";
 
       const result = createPrettyPatch("file", oldStr, newStr);
 
+      // Now returns full patch including headers for parsePatchFiles validation
       assert.ok(
-        !result.includes("diff --git"),
-        "Should not include diff --git line",
+        result.includes("Index: file"),
+        "Should include Index header",
       );
-      assert.ok(!result.includes("index"), "Should not include index line");
-      assert.ok(!result.includes("---"), "Should not include --- line");
-      assert.ok(!result.includes("+++"), "Should not include +++ line");
+      assert.ok(result.includes("--- file"), "Should include --- line");
+      assert.ok(result.includes("+++ file"), "Should include +++ line");
+      assert.ok(result.includes("@@"), "Should include hunk header");
     });
   });
 });
