@@ -13,6 +13,7 @@ import "@getpochi/vendor-github-copilot";
 import "@getpochi/vendor-qwen-code";
 
 import RagdollUriHandler from "@/integrations/uri-handler";
+import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   pochiConfigRelativePath,
   setPochiConfigWorkspacePath,
@@ -35,6 +36,7 @@ import { PochiWebviewSidebar } from "./integrations/webview";
 import { PochiTaskEditorProvider } from "./integrations/webview/webview-panel";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import "./lib/file-logger";
+import { createBrowserSessionStore } from "./integrations/browser";
 import { getLogger } from "./lib/logger";
 import { PostInstallActions } from "./lib/post-install-actions";
 import { WorkspaceScope } from "./lib/workspace-scoped";
@@ -70,6 +72,10 @@ export async function activate(context: vscode.ExtensionContext) {
   container.register<McpHub>(McpHub, {
     // McpHub is also a singleton
     useFactory: instanceCachingFactory(createMcpHub),
+  });
+  container.register<BrowserSessionStore>(BrowserSessionStore, {
+    // BrowserSessionStore is also a singleton
+    useFactory: instanceCachingFactory(createBrowserSessionStore),
   });
   container.resolve(PochiWebviewSidebar);
   container.resolve(StatusBarItem);
