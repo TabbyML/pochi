@@ -354,6 +354,15 @@
     "copy": "Copy",
     "toggleLineWrap": "Toggle line wrap"
   },
+  "diffViewer": {
+    "loading": "Loading diff viewer...",
+    "toggleView": "Toggle diff view",
+    "splitView": "Switch to split view",
+    "unifiedView": "Switch to unified view",
+    "toggleLineWrap": "Toggle line wrap",
+    "enableLineWrap": "Enable line wrap",
+    "disableLineWrap": "Disable line wrap"
+  },
   "messageList": {
     "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"
   },
