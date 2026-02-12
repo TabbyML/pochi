@@ -25,7 +25,7 @@ export const useManageBrowserSession = ({
   task,
   messages,
 }: { isSubTask: boolean; task?: Task; messages: Message[] }) => {
-  const parentTaskId = isSubTask ? task?.parentId : task?.id;
+  const parentTaskId = isSubTask ? task?.parentId || "" : task?.id;
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   const store = useDefaultStore();
 
@@ -55,7 +55,10 @@ export const useManageBrowserSession = ({
           return;
         }
         browserRecordingManager.registerBrowserRecordingSession(toolCallId);
-        const browserSession = await vscodeHost.registerBrowserSession(taskId);
+        const browserSession = await vscodeHost.registerBrowserSession(
+          taskId,
+          parentTaskId,
+        );
         if (browserSession?.streamUrl) {
           browserRecordingManager.startRecording(
             toolCallId,
