@@ -6,7 +6,7 @@ export const startBackgroundJob =
   (
     context: ToolCallOptions,
   ): ToolFunctionType<ClientTools["startBackgroundJob"]> =>
-  async ({ command, cwd = "." }, { cwd: workspaceDir }) => {
+  async ({ command, cwd = "." }, { cwd: workspaceDir, envs }) => {
     const { backgroundJobManager } = context;
     if (!backgroundJobManager) {
       throw new Error("Background job manager not available.");
@@ -23,7 +23,7 @@ export const startBackgroundJob =
       resolvedCwd = path.normalize(path.join(workspaceDir, cwd));
     }
 
-    const id = backgroundJobManager.start(command, resolvedCwd);
+    const id = backgroundJobManager.start(command, resolvedCwd, envs);
 
     return {
       backgroundJobId: id,

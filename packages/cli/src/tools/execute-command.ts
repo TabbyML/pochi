@@ -17,7 +17,7 @@ export const executeCommand =
   (): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
     { command, cwd = ".", timeout = 120 },
-    { abortSignal, cwd: workspaceDir },
+    { abortSignal, cwd: workspaceDir, envs },
   ) => {
     if (!command) {
       throw new Error("Command is required to execute.");
@@ -40,7 +40,7 @@ export const executeCommand =
         timeout: timeout * 1000, // Convert to milliseconds
         cwd: resolvedCwd,
         signal: abortSignal,
-        env: { ...process.env, ...getTerminalEnv() },
+        env: { ...process.env, ...getTerminalEnv(), ...envs },
       });
 
       const { output, isTruncated } = processCommandOutput(

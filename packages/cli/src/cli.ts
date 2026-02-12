@@ -20,6 +20,7 @@ import "@getpochi/vendor-qwen-code/edge";
 
 import { Command, Option } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
+import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   pochiConfig,
   setPochiConfigWorkspacePath,
@@ -209,6 +210,7 @@ const program = new Command()
     const localFs = new LocalFileSystem(process.cwd());
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
+    const browserSessionStore = new BrowserSessionStore();
 
     const runner = new TaskRunner({
       uid,
@@ -233,6 +235,7 @@ const program = new Command()
         : undefined,
       attemptCompletionHook: options.attemptCompletionHook,
       filesystem,
+      browserSessionStore,
     });
 
     const renderer = new OutputRenderer(runner.state, {
@@ -262,6 +265,7 @@ const program = new Command()
     if (jsonRenderer) {
       await jsonRenderer.shutdown();
     }
+    browserSessionStore.dispose();
     await shutdownStoreAndExit(store);
   });
 

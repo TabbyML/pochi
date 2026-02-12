@@ -47,6 +47,7 @@ export async function executeToolCall(
   cwd: string,
   abortSignal?: AbortSignal,
   contentType?: string[],
+  envs?: Record<string, string>,
 ) {
   const toolName = getToolName(tool);
 
@@ -60,6 +61,7 @@ export async function executeToolCall(
         abortSignal,
         cwd,
         contentType,
+        envs,
       });
     } catch (e) {
       return {
