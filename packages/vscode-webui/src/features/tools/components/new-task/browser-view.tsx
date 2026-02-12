@@ -36,15 +36,13 @@ export function BrowserView(props: NewTaskToolViewProps) {
       expandable={!!videoUrl || !!frame}
     >
       {videoUrl ? (
-        <div className="relative aspect-video h-[200px]">
-          {/* biome-ignore lint/a11y/useMediaCaption: No audio track available */}
-          <video
-            src={videoUrl}
-            controls
-            playsInline
-            className="h-full w-full object-contain"
-          />
-        </div>
+        // biome-ignore lint/a11y/useMediaCaption: No audio track available
+        <video
+          src={videoUrl}
+          controls
+          playsInline
+          className="aspect-video h-full w-full object-contain"
+        />
       ) : frame ? (
         <img
           src={`data:image/jpeg;base64,${frame}`}
