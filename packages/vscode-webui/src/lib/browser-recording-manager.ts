@@ -2,6 +2,7 @@ import { blobStore } from "@/lib/remote-blob-store";
 import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
+import * as runExclusive from "run-exclusive";
 import type { useDefaultStore } from "./use-default-store";
 
 const logger = getLogger("BrowserRecordingManager");
@@ -10,7 +11,9 @@ class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
-  private queue: Promise<void> = Promise.resolve();
+  private runSerialized = runExclusive.build(
+    async <T>(task: () => Promise<T>) => task(),
+  );
 
   // WebSocket related
   private ws: WebSocket | null = null;
@@ -79,17 +82,8 @@ class BrowserRecordingSession {
     }
   }
 
-  private enqueue<T>(task: () => Promise<T>): Promise<T> {
-    const next = this.queue.then(task);
-    this.queue = next.then(
-      () => {},
-      () => {},
-    );
-    return next;
-  }
-
   addFrame(frame: string) {
-    return this.enqueue(async () => {
+    return this.runSerialized(async () => {
       try {
         const binaryString = window.atob(frame);
         const len = binaryString.length;
@@ -159,7 +153,7 @@ class BrowserRecordingSession {
       this.ws = null;
     }
 
-    return this.enqueue(async () => {
+    return this.runSerialized(async () => {
       if (!this.muxer) return null;
 
       try {
@@ -197,16 +191,16 @@ export class BrowserRecordingManager {
   private sessions = new Map<string, BrowserRecordingSession>();
 
   startRecording(
-    toolCallId: string,
+    taskId: string,
     parentTaskId: string,
     store: ReturnType<typeof useDefaultStore>,
     streamUrl: string,
     onFrame?: (frame: string) => void,
   ) {
-    let session = this.sessions.get(toolCallId);
+    let session = this.sessions.get(taskId);
     if (!session) {
-      session = new BrowserRecordingSession(toolCallId, parentTaskId, store);
-      this.sessions.set(toolCallId, session);
+      session = new BrowserRecordingSession(taskId, parentTaskId, store);
+      this.sessions.set(taskId, session);
       session.start(streamUrl);
     }
 
@@ -216,11 +210,11 @@ export class BrowserRecordingManager {
     return () => {};
   }
 
-  async stopRecording(toolCallId: string): Promise<string | null> {
-    const session = this.sessions.get(toolCallId);
+  async stopRecording(taskId: string): Promise<string | null> {
+    const session = this.sessions.get(taskId);
     if (!session) return null;
 
-    this.sessions.delete(toolCallId);
+    this.sessions.delete(taskId);
     return session.finish();
   }
 }
