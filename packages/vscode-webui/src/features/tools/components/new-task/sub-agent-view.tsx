@@ -6,9 +6,13 @@ import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
-import { useState } from "react";
+import type { UITools } from "@getpochi/livekit";
+import { isUserInputToolPart } from "@getpochi/tools";
+import { type ToolUIPart, isToolUIPart } from "ai";
+import { useEffect, useRef, useState } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
+import { ToolCallLite } from "../tool-call-lite";
 import { ExpandIcon } from "../tool-container";
 
 interface SubAgentViewProps {
@@ -45,6 +49,24 @@ export function SubAgentView({
   const store = useDefaultStore();
   const toolTitle = tool.input?.agentType;
   const description = tool.input?.description;
+  const lastToolCall = useRef<ToolUIPart<UITools>>(null);
+
+  useEffect(() => {
+    const lastMessage = taskSource?.messages.at(-1);
+    if (!isExecuting || !lastMessage || lastMessage.role !== "assistant") {
+      return;
+    }
+    const pendingToolCall = lastMessage.parts.find(
+      (part): part is ToolUIPart<UITools> =>
+        isToolUIPart(part) &&
+        !isUserInputToolPart(part) &&
+        part.state !== "output-available" &&
+        part.state !== "output-error",
+    );
+    if (pendingToolCall) {
+      lastToolCall.current = pendingToolCall;
+    }
+  }, [isExecuting, taskSource?.messages]);
 
   return (
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
@@ -90,11 +112,22 @@ export function SubAgentView({
       {showFooter && (
         <div className="flex items-center gap-2 border-t bg-muted p-2">
           {showExpandIcon && (
-            <ExpandIcon
-              className="mt-1 rotate-270 cursor-pointer text-muted-foreground"
-              isExpanded={!isCollapsed}
-              onClick={() => setIsCollapsed(!isCollapsed)}
-            />
+            <div className="flex items-center">
+              <ExpandIcon
+                className="mt-1 rotate-270 cursor-pointer text-muted-foreground"
+                isExpanded={!isCollapsed}
+                onClick={() => setIsCollapsed(!isCollapsed)}
+              />
+              {isExecuting && lastToolCall.current && (
+                <div className="truncate text-muted-foreground text-xs">
+                  <ToolCallLite
+                    tools={[lastToolCall.current]}
+                    textOnly
+                    showDetails
+                  />
+                </div>
+              )}
+            </div>
           )}
           {footerActions && (
             <div className="ml-auto flex items-center gap-2">

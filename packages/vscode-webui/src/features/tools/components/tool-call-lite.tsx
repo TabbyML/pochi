@@ -9,9 +9,16 @@ import { useTranslation } from "react-i18next";
 interface Props {
   tools: Array<ToolUIPart<UITools>> | undefined;
   requiresApproval?: boolean;
+  textOnly?: boolean;
+  showDetails?: boolean;
 }
 
-export function ToolCallLite({ tools, requiresApproval }: Props) {
+export function ToolCallLite({
+  tools,
+  requiresApproval,
+  textOnly,
+  showDetails,
+}: Props) {
   const { t } = useTranslation();
 
   if (!tools?.length) return null;
@@ -33,7 +40,7 @@ export function ToolCallLite({ tools, requiresApproval }: Props) {
       );
       break;
     case "tool-executeCommand":
-      detail = <ExecuteCommandTool tool={tool} />;
+      detail = <ExecuteCommandTool tool={tool} showDetails={showDetails} />;
       break;
     case "tool-startBackgroundJob":
       detail = <StartBackgroundJobTool tool={tool} />;
@@ -79,11 +86,12 @@ export function ToolCallLite({ tools, requiresApproval }: Props) {
 
   return detail ? (
     <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
-      {requiresApproval ? (
-        <Pause className="size-3.5 shrink-0" />
-      ) : (
-        <Loader2 className="size-3.5 shrink-0 animate-spin" />
-      )}
+      {!textOnly &&
+        (requiresApproval ? (
+          <Pause className="size-3.5 shrink-0" />
+        ) : (
+          <Loader2 className="size-3.5 shrink-0 animate-spin" />
+        ))}
       <div className="flex flex-nowrap items-center truncate">{detail}</div>
       {!requiresApproval && tools.length > 1 && (
         <span>
@@ -121,6 +129,7 @@ interface LabelAndFilePathViewProps<T extends ToolName> {
 
 interface ToolCallLiteViewProps<T extends ToolName> {
   tool: Extract<ToolUIPart<UITools>, { type: `tool-${T}` }>;
+  showDetails?: boolean;
 }
 
 const LabelAndFilePathView = ({
@@ -142,10 +151,11 @@ const LabelAndFilePathView = ({
 
 const ExecuteCommandTool = ({
   tool,
+  showDetails,
 }: ToolCallLiteViewProps<"executeCommand">) => {
   const { t } = useTranslation();
 
-  const { cwd } = tool.input || {};
+  const { cwd, command } = tool.input || {};
   const cwdNode = cwd ? (
     <span>
       {" "}
@@ -159,6 +169,7 @@ const ExecuteCommandTool = ({
       <span className="ml-2">
         {text}
         {cwdNode}
+        {showDetails ? ` ${command}` : ""}
       </span>
     </>
   );
