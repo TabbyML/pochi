@@ -12,9 +12,6 @@ export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
-  private runSerialized = runExclusive.build(
-    async <T>(task: () => Promise<T>) => task(),
-  );
 
   // WebSocket related
   private ws: WebSocket | null = null;
@@ -77,78 +74,76 @@ export class BrowserRecordingSession {
     }
   }
 
-  addFrame(frame: string) {
-    return this.runSerialized(async () => {
-      try {
-        const binaryString = window.atob(frame);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: "image/jpeg" });
-        const imageBitmap = await createImageBitmap(blob, {
-          resizeHeight: 480,
-          resizeQuality: "high",
-        });
+  addFrame = runExclusive.buildMethod(async (frame: string) => {
+    try {
+      const binaryString = window.atob(frame);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: "image/jpeg" });
+      const imageBitmap = await createImageBitmap(blob, {
+        resizeHeight: 480,
+        resizeQuality: "high",
+      });
 
-        if (!this.muxer) {
-          try {
-            const { width, height } = imageBitmap;
-            const muxer = new Muxer({
-              target: new ArrayBufferTarget(),
-              video: {
-                codec: "avc",
-                width,
-                height,
-              },
-              fastStart: "in-memory",
-            });
-            const encoder = new VideoEncoder({
-              output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-              error: (e) => logger.error("VideoEncoder error", e),
-            });
-            encoder.configure({
-              codec: "avc1.4d001f",
+      if (!this.muxer) {
+        try {
+          const { width, height } = imageBitmap;
+          const muxer = new Muxer({
+            target: new ArrayBufferTarget(),
+            video: {
+              codec: "avc",
               width,
               height,
-              bitrate: 500_000,
-              latencyMode: "quality",
-            });
+            },
+            fastStart: "in-memory",
+          });
+          const encoder = new VideoEncoder({
+            output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+            error: (e) => logger.error("VideoEncoder error", e),
+          });
+          encoder.configure({
+            codec: "avc1.4d001f",
+            width,
+            height,
+            bitrate: 500_000,
+            latencyMode: "quality",
+          });
 
-            this.muxer = muxer;
-            this.videoEncoder = encoder;
-            this.startTime = performance.now();
-          } catch (e) {
-            logger.error("Failed to initialize recording", e);
-          }
+          this.muxer = muxer;
+          this.videoEncoder = encoder;
+          this.startTime = performance.now();
+        } catch (e) {
+          logger.error("Failed to initialize recording", e);
         }
-
-        if (this.videoEncoder?.state === "configured") {
-          const timestamp = (performance.now() - this.startTime) * 1000;
-          const videoFrame = new VideoFrame(imageBitmap, { timestamp });
-          this.videoEncoder.encode(videoFrame);
-          videoFrame.close();
-        }
-        imageBitmap.close();
-      } catch (err) {
-        logger.error("Failed to process frame", err);
       }
-    });
-  }
 
-  finish(toolCallId: string, store: ReturnType<typeof useDefaultStore>) {
-    // Stop WebSocket
-    clearTimeout(this.retryTimeout);
-    if (this.ws) {
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      this.ws.onmessage = null;
-      this.ws.close();
-      this.ws = null;
+      if (this.videoEncoder?.state === "configured") {
+        const timestamp = (performance.now() - this.startTime) * 1000;
+        const videoFrame = new VideoFrame(imageBitmap, { timestamp });
+        this.videoEncoder.encode(videoFrame);
+        videoFrame.close();
+      }
+      imageBitmap.close();
+    } catch (err) {
+      logger.error("Failed to process frame", err);
     }
+  });
 
-    return this.runSerialized(async () => {
+  finish = runExclusive.buildMethod(
+    async (toolCallId: string, store: ReturnType<typeof useDefaultStore>) => {
+      // Stop WebSocket
+      clearTimeout(this.retryTimeout);
+      if (this.ws) {
+        this.ws.onclose = null;
+        this.ws.onerror = null;
+        this.ws.onmessage = null;
+        this.ws.close();
+        this.ws = null;
+      }
+
       if (!this.muxer) return;
 
       try {
@@ -178,8 +173,8 @@ export class BrowserRecordingSession {
         this.muxer = null;
         this.videoEncoder = null;
       }
-    });
-  }
+    },
+  );
 }
 
 export class BrowserRecordingManager {

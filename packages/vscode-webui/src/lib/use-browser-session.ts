@@ -3,8 +3,7 @@ import { vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
-import * as runExclusive from "run-exclusive";
+import { useEffect, useRef } from "react";
 import { browserRecordingManager } from "./browser-recording-manager";
 
 /** @useSignals */
@@ -25,14 +24,7 @@ export const useManageBrowserSession = ({
 }: { messages: Message[] }) => {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   const store = useDefaultStore();
-
-  const runSerialized = useMemo(
-    () =>
-      runExclusive.build(async (callback: () => Promise<void>) => {
-        await callback();
-      }),
-    [],
-  );
+  const queue = useRef(Promise.resolve());
 
   useEffect(() => {
     const manageBrowserSession = async () => {
@@ -79,6 +71,6 @@ export const useManageBrowserSession = ({
       }
     };
 
-    runSerialized(manageBrowserSession);
-  }, [lastToolPart, store, runSerialized]);
+    queue.current = queue.current.then(manageBrowserSession);
+  }, [lastToolPart, store]);
 };
