@@ -22,15 +22,13 @@ export class BrowserSessionStore implements Disposable {
   }
 
   async registerBrowserSession(taskId: string) {
-    let browserSession: BrowserSession = {};
+    const browserSession: BrowserSession = {};
 
     // If we are in VSCode environment, we need to enable the websocket
     if (isVSCodeEnvironment()) {
       const port = await getAvailablePort();
-      browserSession = {
-        port,
-        streamUrl: getCorsProxyUrl(`ws://localhost:${port}`),
-      };
+      browserSession.port = port;
+      browserSession.streamUrl = getCorsProxyUrl(`ws://localhost:${port}`);
     }
 
     this.browserSessions.value = {
@@ -41,6 +39,7 @@ export class BrowserSessionStore implements Disposable {
       `Registering browser session for task ${taskId}`,
       browserSession,
     );
+    return browserSession;
   }
 
   async unregisterBrowserSession(taskId: string) {
@@ -67,16 +66,14 @@ export class BrowserSessionStore implements Disposable {
   }
 
   getAgentBrowserEnvs(taskId: string): Record<string, string> | undefined {
-    let envs: Record<string, string> | undefined;
+    const envs: Record<string, string> = {};
 
     const browserSession = this.browserSessions.value[taskId];
     if (!browserSession) {
       return envs;
     }
 
-    envs = {
-      AGENT_BROWSER_SESSION: taskId,
-    };
+    envs.AGENT_BROWSER_SESSION = taskId;
 
     // If we are in VSCode environment, we need to enable the websocket
     if (isVSCodeEnvironment()) {

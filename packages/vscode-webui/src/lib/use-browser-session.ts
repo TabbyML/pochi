@@ -1,8 +1,10 @@
+import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { browserSessionManager } from "./browser-session-manager";
 
 /** @useSignals */
 export const useBrowserSession = (taskId: string) => {
@@ -21,39 +23,46 @@ export const useManageBrowserSession = ({
   messages,
 }: { messages: Message[] }) => {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
-  const registeredSessions = useRef<string[]>([]);
+  const store = useDefaultStore();
 
   useEffect(() => {
-    if (
-      lastToolPart?.type !== "tool-newTask" ||
-      lastToolPart?.input?.agentType !== "browser"
-    ) {
-      return;
-    }
-
-    const uid = lastToolPart.input?._meta?.uid;
-    if (!uid) {
-      return;
-    }
-
-    if (lastToolPart?.state === "input-available") {
-      if (!registeredSessions.current.includes(uid)) {
-        vscodeHost.registerBrowserSession(uid);
-        registeredSessions.current.push(uid);
+    const manageBrowserSession = async () => {
+      if (!lastToolPart) {
+        return;
       }
-    }
 
-    if (
-      lastToolPart?.state === "output-available" ||
-      lastToolPart?.state === "output-error"
-    ) {
-      if (registeredSessions.current.includes(uid)) {
-        vscodeHost.unregisterBrowserSession(uid);
-        registeredSessions.current.splice(
-          registeredSessions.current.indexOf(uid),
-          1,
+      // Register browser related sessions
+      if (
+        lastToolPart.type === "tool-newTask" &&
+        lastToolPart.input?.agentType === "browser" &&
+        lastToolPart.state === "input-available"
+      ) {
+        const taskId = lastToolPart.input?._meta?.uid || "";
+        if (browserSessionManager.isRegistered(taskId)) {
+          return;
+        }
+        await browserSessionManager.registerSession(taskId);
+      }
+
+      // Unregister browser related sessions
+      if (
+        lastToolPart.type === "tool-newTask" &&
+        lastToolPart.input?.agentType === "browser" &&
+        (lastToolPart.state === "output-available" ||
+          lastToolPart.state === "output-error")
+      ) {
+        const taskId = lastToolPart.input?._meta?.uid || "";
+        if (!browserSessionManager.isRegistered(taskId)) {
+          return;
+        }
+        await browserSessionManager.unregisterSession(
+          taskId,
+          lastToolPart.toolCallId,
+          store,
         );
       }
-    }
-  }, [lastToolPart]);
+    };
+
+    manageBrowserSession();
+  }, [lastToolPart, store]);
 };
