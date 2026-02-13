@@ -89,6 +89,21 @@ const parsePositiveInt = (input: string): number => {
   return result;
 };
 
+const parseNonNegativeInt = (input: string): number => {
+  if (!input) {
+    return program.error(
+      "The value for this option must be a non-negative integer.",
+    );
+  }
+  const result = Number.parseInt(input);
+  if (Number.isNaN(result) || result < 0) {
+    return program.error(
+      "The value for this option must be a non-negative integer.",
+    );
+  }
+  return result;
+};
+
 const program = new Command()
   .name("pochi")
   .description(
@@ -123,6 +138,12 @@ const program = new Command()
     "Set the maximum number of retries for a single step in a task.",
     parsePositiveInt,
     3,
+  )
+  .option(
+    "--async-wait-timeout <ms>",
+    "Wait for async subtasks and background jobs to complete before finalizing attemptCompletion. Set to 0 to disable waiting.",
+    parseNonNegativeInt,
+    60000,
   )
   .addOption(
     new Option(
@@ -234,6 +255,7 @@ const program = new Command()
         ? parseOutputSchema(options.attemptCompletionSchema)
         : undefined,
       attemptCompletionHook: options.attemptCompletionHook,
+      asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
     });
