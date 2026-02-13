@@ -59,9 +59,8 @@ export function SubAgentView({
     const pendingToolCall = lastMessage.parts.find(
       (part): part is ToolUIPart<UITools> =>
         isToolUIPart(part) &&
-        !isUserInputToolPart(part) &&
-        part.state !== "output-available" &&
-        part.state !== "output-error",
+        part.state === "input-available" &&
+        !isUserInputToolPart(part),
     );
     if (pendingToolCall) {
       lastToolCall.current = pendingToolCall;
