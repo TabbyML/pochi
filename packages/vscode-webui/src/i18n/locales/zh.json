@@ -350,6 +350,15 @@
     "copy": "复制",
     "toggleLineWrap": "切换换行"
   },
+  "diffViewer": {
+    "loading": "加载差异查看器...",
+    "toggleView": "切换差异视图",
+    "splitView": "切换到分栏视图",
+    "unifiedView": "切换到统一视图",
+    "toggleLineWrap": "切换自动换行",
+    "enableLineWrap": "启用自动换行",
+    "disableLineWrap": "禁用自动换行"
+  },
   "messageList": {
     "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"
   },

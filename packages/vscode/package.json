@@ -55,20 +55,36 @@
       }
     ],
     "views": {
-      "pochi": [
+      "pochiDark": [
         {
-          "id": "pochiSidebar",
+          "id": "pochiSidebarDark",
           "type": "webview",
-          "name": "Pochi"
+          "name": "Pochi",
+          "when": "pochi.themeContextReady == true && pochi.isDarkTheme == true"
+        }
+      ],
+      "pochiLight": [
+        {
+          "id": "pochiSidebarLight",
+          "type": "webview",
+          "name": "Pochi",
+          "when": "pochi.themeContextReady == true && pochi.isDarkTheme == false"
         }
       ]
     },
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "pochi",
+          "id": "pochiDark",
           "title": "Pochi",
-          "icon": "$(code)"
+          "icon": "./assets/icons/pochi-logo-dark.svg",
+          "when": "pochi.themeContextReady == true && pochi.isDarkTheme == true"
+        },
+        {
+          "id": "pochiLight",
+          "title": "Pochi",
+          "icon": "./assets/icons/pochi-logo-light.svg",
+          "when": "pochi.themeContextReady == true && pochi.isDarkTheme == false"
         }
       ]
     },
@@ -325,12 +341,12 @@
       "view/title": [
         {
           "command": "pochi.webui.navigate.taskList",
-          "when": "view == pochiSidebar",
+          "when": "view == pochiSidebarDark || view == pochiSidebarLight",
           "group": "navigation@1"
         },
         {
           "command": "pochi.webui.navigate.settings",
-          "when": "view == pochiSidebar",
+          "when": "view == pochiSidebarDark || view == pochiSidebarLight",
           "group": "navigation@2"
         }
       ],
@@ -799,6 +815,7 @@
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
+    "@getpochi/vendor-tabby": "workspace:*",
     "@getpochi/vendor-qwen-code": "workspace:*",
     "@leeoniya/ufuzzy": "catalog:",
     "@orama/orama": "^3.1.11",

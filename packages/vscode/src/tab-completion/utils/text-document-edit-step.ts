@@ -13,6 +13,7 @@ export class TextDocumentEditStep {
 
   private after: TextDocumentSnapshot;
   private lastEditedRanges: OffsetRange[] | undefined = undefined;
+  private lastEditedTimestamp: number | undefined = undefined;
 
   constructor(base: TextDocumentSnapshot, initialEdit: TextEdit) {
     this.before = base;
@@ -48,6 +49,10 @@ export class TextDocumentEditStep {
     return result;
   }
 
+  getTimestamp() {
+    return this.lastEditedTimestamp;
+  }
+
   // return true if appended as continuing edit.
   // return false if the edit is not continuing edit, in which case it is not appended.
   appendEdit(newEdit: TextEdit): boolean {
@@ -62,6 +67,7 @@ export class TextDocumentEditStep {
     this.offsetMaps.push(offsetMap);
     this.after = createTextDocumentSnapshotWithNewText(this.after, text);
     this.lastEditedRanges = editedRanges;
+    this.lastEditedTimestamp = Date.now();
     return true;
   }
 

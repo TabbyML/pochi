@@ -75,34 +75,46 @@ export async function parseDiffAndApply(
     throw new DiffError("Cannot use empty search content on non-empty file");
   }
 
-  // Count occurrences of searchContent in fileContent
-  const matches = searchContentExact(
-    normalizedFileContent,
-    normalizedSearchContent,
+  // Count unique occurrences of searchContent in fileContent
+  const matches: ContentMatch[] = [];
+  const seenMatchKeys = new Set<string>();
+  const addUniqueMatches = (newMatches: ContentMatch[]) => {
+    for (const match of newMatches) {
+      const key = `${match.start}:${match.end}`;
+      if (seenMatchKeys.has(key)) {
+        continue;
+      }
+      seenMatchKeys.add(key);
+      matches.push(match);
+    }
+  };
+
+  addUniqueMatches(
+    searchContentExact(normalizedFileContent, normalizedSearchContent),
   );
 
   if (matches.length < expectedReplacements) {
-    matches.push(
-      ...searchContentWithLineTrimmed(
+    addUniqueMatches(
+      searchContentWithLineTrimmed(
         normalizedFileContent,
         normalizedSearchContent,
       ),
     );
 
     logger.trace(
-      `Found ${matches.length} matches after line trimming search strategy`,
+      `Found ${matches.length} unique matches after line trimming search strategy`,
     );
   }
 
   if (matches.length < expectedReplacements) {
-    matches.push(
-      ...searchContentByBlockAnchor(
+    addUniqueMatches(
+      searchContentByBlockAnchor(
         normalizedFileContent,
         normalizedSearchContent,
       ),
     );
     logger.trace(
-      `Found ${matches.length} matches after block anchor search strategy`,
+      `Found ${matches.length} unique matches after block anchor search strategy`,
     );
   }
 
@@ -119,9 +131,10 @@ export async function parseDiffAndApply(
   }
 
   // Replace all occurrences
+  const orderedMatches = [...matches].sort((a, b) => a.start - b.start);
   let result = replaceMatches(
     normalizedFileContent,
-    matches,
+    orderedMatches,
     normalizedReplaceContent,
   );
   logger.trace("Successfully applied diff");

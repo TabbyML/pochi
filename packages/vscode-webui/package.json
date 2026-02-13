@@ -18,11 +18,13 @@
   "dependencies": {
     "@ai-sdk/react": "catalog:",
     "@getpochi/common": "workspace:*",
+    "@pierre/diffs": "^1.1.0-beta.13",
     "@getpochi/livekit": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",
     "@getpochi/vendor-pochi": "workspace:*",
+    "@getpochi/vendor-tabby": "workspace:*",
     "@getpochi/vendor-qwen-code": "workspace:*",
     "@leeoniya/ufuzzy": "catalog:",
     "@livestore/adapter-web": "catalog:",

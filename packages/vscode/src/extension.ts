@@ -7,6 +7,7 @@ import "./lib/logger";
 
 // Register the vendor
 import "@getpochi/vendor-pochi";
+import "@getpochi/vendor-tabby";
 import "@getpochi/vendor-gemini-cli";
 import "@getpochi/vendor-codex";
 import "@getpochi/vendor-github-copilot";

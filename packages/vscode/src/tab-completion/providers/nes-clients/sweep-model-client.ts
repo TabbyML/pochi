@@ -3,7 +3,10 @@ import { getLogger } from "@/lib/logger";
 import { container } from "tsyringe";
 import * as vscode from "vscode";
 import type { TabCompletionContext } from "../../context";
-import { DeclarationSnippetsProvider } from "../../context-providers";
+import {
+  DeclarationSnippetsProvider,
+  EditHistoryTracker,
+} from "../../context-providers";
 import {
   type CodeSnippet,
   type RangeMapping,
@@ -45,11 +48,19 @@ interface BaseSegments {
     filepath: string;
     original: string;
     modified: string;
+    timestamp: number;
   }[];
 }
 
 interface ExtraSegments {
   codeSnippets?: CodeSnippet[] | undefined;
+
+  diffs: {
+    filepath: string;
+    original: string;
+    modified: string;
+    timestamp: number;
+  }[];
 }
 
 export class NESSweepModelClient
@@ -130,6 +141,7 @@ export class NESSweepModelClient
         if (diff) {
           return {
             filepath,
+            timestamp: step.getTimestamp() ?? 0,
             ...diff,
           };
         }
@@ -193,8 +205,33 @@ export class NESSweepModelClient
       ...snippet,
       text: cropTextToMaxChars(snippet.text, MaxCharsPerCodeSnippet),
     }));
+
+    const editHistoryTracker = container.resolve(EditHistoryTracker);
+    const otherFilesEditSteps = editHistoryTracker.getOtherFilesEditSteps(
+      context.document,
+    );
+    const diffs =
+      otherFilesEditSteps
+        ?.map((step) => {
+          const before = step.getBefore().getText();
+          const after = step.getAfter().getText();
+          const diff = simpleDiff(before, after);
+          const timestamp = step.getTimestamp();
+          if (diff && timestamp !== undefined) {
+            return {
+              filepath: getRelativePath(step.getBefore().uri),
+              timestamp,
+              ...diff,
+            };
+          }
+        })
+        .filter(
+          (diff): diff is NonNullable<typeof diff> => diff !== undefined,
+        ) ?? [];
+
     return {
       codeSnippets,
+      diffs,
     };
   }
 
@@ -307,9 +344,14 @@ function buildPrompt(
   quota -= mainPart.length;
 
   const diffParts: string[] = [];
+  const allDiffs = [
+    ...baseSegments.diffs,
+    ...(extraSegments?.diffs ?? []),
+  ].sort((a, b) => a.timestamp - b.timestamp);
+
   // loop backward
-  for (let i = baseSegments.diffs.length - 1; i >= 0; i--) {
-    const diff = baseSegments.diffs[i];
+  for (let i = allDiffs.length - 1; i >= 0; i--) {
+    const diff = allDiffs[i];
     let diffPart = "";
     diffPart += `<|file_sep|>${diff.filepath}.diff\n`;
     diffPart += "original:\n";

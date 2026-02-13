@@ -1,0 +1,263 @@
+import * as readline from "node:readline/promises";
+import { getLogger } from "@getpochi/common";
+import type { UserInfo } from "@getpochi/common/configuration";
+import {
+  type AuthOutput,
+  type ModelOptions,
+  VendorBase,
+} from "@getpochi/common/vendor";
+import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
+import { type TabbyCredentials, VendorId } from "./types";
+
+const logger = getLogger("TabbyVendor");
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    initialDelay?: number;
+    maxDelay?: number;
+    delayMultiplier?: number;
+  } = {},
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelay = 1000,
+    maxDelay = 10000,
+    delayMultiplier = 2,
+  } = options;
+
+  let lastError: Error | undefined;
+  let delay = initialDelay;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(delay * delayMultiplier, maxDelay);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+interface EndpointInfo {
+  name: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface TabbyModelConfig {
+  name: string;
+  context_window?: number;
+}
+
+export class Tabby extends VendorBase {
+  private cachedModels?: Record<string, ModelOptions>;
+  private chatEndpointName?: string;
+
+  constructor() {
+    super(VendorId);
+  }
+
+  override async authenticate(): Promise<AuthOutput> {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    try {
+      const urlInput = await rl.question(
+        "Enter Tabby Server URL (default: http://localhost:8080): ",
+      );
+      const url = urlInput.trim().replace(/\/$/, "") || "http://localhost:8080";
+      const token = await rl.question("Enter Tabby Token: ");
+
+      return {
+        url: "",
+        credentials: Promise.resolve({
+          url,
+          token: token.trim(),
+        }),
+      };
+    } finally {
+      rl.close();
+    }
+  }
+
+  private async fetchEndpoints(
+    creds: TabbyCredentials,
+  ): Promise<EndpointInfo[]> {
+    const response = await fetch(`${creds.url}/v2/endpoints`, {
+      headers: {
+        Authorization: `Bearer ${creds.token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch endpoints: ${response.statusText}`);
+    }
+
+    return response.json() as Promise<EndpointInfo[]>;
+  }
+
+  private async fetchOpenAIModels(
+    creds: TabbyCredentials,
+    endpointName: string,
+    activeModels?: TabbyModelConfig[],
+  ): Promise<Record<string, ModelOptions>> {
+    const data = await withRetry(
+      async () => {
+        const response = await fetch(
+          `${creds.url}/v2/endpoints/${endpointName}/v1/models`,
+          {
+            headers: {
+              Authorization: `Bearer ${creds.token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch models: ${response.statusText}`);
+        }
+
+        return response.json() as Promise<{
+          data: Array<{ id: string }>;
+        }>;
+      },
+      {
+        maxRetries: 3,
+        initialDelay: 1000,
+      },
+    ).catch((error: Error) => {
+      logger.error(`Failed to fetch models: ${error.message}`);
+      return { data: [] }; // Return an empty array on error
+    });
+
+    // Store the endpoint name for later use in model creation
+    this.chatEndpointName = endpointName;
+
+    let models = data.data;
+    if (activeModels && Array.isArray(activeModels)) {
+      models = models.filter((m) =>
+        activeModels.some((am) => am.name === m.id),
+      );
+    }
+
+    return Object.fromEntries(
+      models.map((x) => {
+        const config = activeModels?.find((am) => am.name === x.id);
+        return [
+          x.id,
+          {
+            useToolCallMiddleware: false,
+            contextWindow: config?.context_window,
+          } satisfies ModelOptions,
+        ];
+      }),
+    );
+  }
+
+  override async fetchModels(): Promise<Record<string, ModelOptions>> {
+    if (!this.cachedModels || Object.keys(this.cachedModels).length === 0) {
+      const creds = (await this.getCredentials()) as TabbyCredentials;
+
+      const endpoints = await withRetry(() => this.fetchEndpoints(creds), {
+        maxRetries: 3,
+        initialDelay: 1000,
+      }).catch((error: Error) => {
+        logger.error(`Failed to fetch endpoints: ${error.message}`);
+        return [];
+      });
+
+      const chatEndpoint = endpoints.find((e) => {
+        const pochi = e.metadata?.pochi as Record<string, unknown> | undefined;
+        return pochi?.use_case === "chat";
+      });
+      if (!chatEndpoint) {
+        logger.warn("No chat endpoint found");
+        this.cachedModels = {};
+        return this.cachedModels;
+      }
+
+      const pochi = chatEndpoint.metadata?.pochi as
+        | Record<string, unknown>
+        | undefined;
+      const provider = pochi?.provider;
+      switch (provider) {
+        case "openai":
+          this.cachedModels = await this.fetchOpenAIModels(
+            creds,
+            chatEndpoint.name,
+            pochi?.models as TabbyModelConfig[] | undefined,
+          );
+          break;
+        default:
+          logger.warn(`Unsupported provider: ${provider}`);
+          this.cachedModels = {};
+          break;
+      }
+    }
+
+    return this.cachedModels || {};
+  }
+
+  protected override async renewCredentials(
+    credentials: PochiCredentials,
+  ): Promise<PochiCredentials> {
+    // Tabby does not need to renew the credentials
+    // Add chat endpoint name if we have it cached
+    if (this.chatEndpointName) {
+      return {
+        ...credentials,
+        chatEndpointName: this.chatEndpointName,
+      } as TabbyCredentials;
+    }
+    return credentials;
+  }
+
+  protected override async fetchUserInfo(
+    credentials: PochiCredentials,
+  ): Promise<UserInfo> {
+    const creds = credentials as TabbyCredentials;
+    const response = await fetch(`${creds.url}/graphql`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${creds.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        operationName: "MeQuery",
+        query: `query MeQuery {
+  me {
+    id
+    email
+    name
+  }
+}`,
+      }),
+    });
+
+    const data = (await response.json()) as {
+      data: { me: { id: string; email: string; name: string } };
+    };
+
+    const avatarUrl = `${creds.url}/avatar/${data.data.me.id}`;
+    const avatarResponse = await fetch(avatarUrl, {
+      method: "HEAD",
+      headers: {
+        Authorization: `Bearer ${creds.token}`,
+      },
+    });
+
+    return {
+      name: data.data.me.name,
+      email: data.data.me.email,
+      image: avatarResponse.status === 200 ? avatarUrl : undefined,
+    };
+  }
+}

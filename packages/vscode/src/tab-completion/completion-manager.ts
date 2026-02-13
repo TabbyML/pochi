@@ -5,7 +5,7 @@ import {
 } from "@/integrations/configuration";
 import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
-import { signal } from "@preact/signals-core";
+import { computed, signal } from "@preact/signals-core";
 import deepEqual from "fast-deep-equal";
 import { LRUCache } from "lru-cache";
 import { container, injectable, singleton } from "tsyringe";
@@ -64,7 +64,7 @@ export class TabCompletionManager implements vscode.Disposable {
   private providersConfig:
     | NonNullable<PochiAdvanceSettings["tabCompletion"]>["providers"]
     | undefined;
-  private providers = [] as TabCompletionProvider[];
+  private readonly providersSignal = signal<TabCompletionProvider[]>([]);
   private readonly cache = new LRUCache<string, TabCompletionSolution>({
     max: 100,
     ttl: 5 * 60 * 1000, // 5 minutes,
@@ -72,6 +72,19 @@ export class TabCompletionManager implements vscode.Disposable {
   private readonly debounce = new TabCompletionDebounce();
 
   readonly isFetching = signal(false);
+
+  readonly error = computed(() =>
+    combineProviderErrors(this.providersSignal.value),
+  );
+
+  private get providers() {
+    return this.providersSignal.value;
+  }
+
+  private set providers(value: TabCompletionProvider[]) {
+    this.providersSignal.value = value;
+  }
+
   private current: TabCompletionManagerContext | undefined = undefined;
 
   constructor(
@@ -136,6 +149,10 @@ export class TabCompletionManager implements vscode.Disposable {
       NonNullable<PochiAdvanceSettings["tabCompletion"]>["providers"]
     >,
   ) {
+    for (const provider of this.providers) {
+      provider.dispose();
+    }
+
     const list = [] as TabCompletionProvider[];
     const providerFactory = container.resolve(TabCompletionProviderFactory);
     for (const providerConfig of providersConfig) {
@@ -587,6 +604,11 @@ export class TabCompletionManager implements vscode.Disposable {
     }
     this.triggers = [];
 
+    for (const provider of this.providers) {
+      provider.dispose();
+    }
+    this.providers = [];
+
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
@@ -641,4 +663,24 @@ class TabCompletionManagerContext implements vscode.Disposable {
       this.noNewRequestDelayTokenSource.dispose();
     }
   }
+}
+
+function combineProviderErrors(
+  providers: TabCompletionProvider[],
+): string | undefined {
+  const error = providers
+    .map((provider) => {
+      if (!provider.error.value) {
+        return undefined;
+      }
+      // Truncate the random suffix from client ID
+      // e.g., "NES:pochi-1-rnff7s" -> "NES:pochi-1"
+      const parts = provider.client.id.split("-");
+      const clientId =
+        parts.length > 2 ? parts.slice(0, -1).join("-") : provider.client.id;
+      return `${clientId}: ${provider.error.value}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+  return error.trim() || undefined;
 }

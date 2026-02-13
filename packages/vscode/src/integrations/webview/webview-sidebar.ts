@@ -13,6 +13,8 @@ import { WebviewBase } from "./base";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
+type SidebarViewType = "pochiSidebarDark" | "pochiSidebarLight";
+
 /**
  * This class manages the Pochi webview that appears in the VS Code sidebar.
  * It uses vscode.WebviewViewProvider to create a persistent view that stays
@@ -30,7 +32,10 @@ export class PochiWebviewSidebar
   extends WebviewBase
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
-  public static readonly viewType = "pochiSidebar";
+  readonly viewTypes: readonly SidebarViewType[] = [
+    "pochiSidebarDark",
+    "pochiSidebarLight",
+  ];
 
   private view?: vscode.WebviewView;
   private webviewHostReady = new vscode.EventEmitter<WebviewHostApi>();
@@ -44,12 +49,50 @@ export class PochiWebviewSidebar
   ) {
     super("sidebar-default", context, events, pochiConfiguration, vscodeHost);
 
+    void this.initializeThemeContext(vscode.window.activeColorTheme.kind);
     this.disposables.push(
-      vscode.window.registerWebviewViewProvider(
-        PochiWebviewSidebar.viewType,
-        this,
-        { webviewOptions: { retainContextWhenHidden: true } },
-      ),
+      vscode.window.onDidChangeActiveColorTheme((theme) => {
+        void this.updateThemeContext(theme.kind);
+      }),
+    );
+
+    for (const viewType of this.viewTypes) {
+      this.disposables.push(
+        vscode.window.registerWebviewViewProvider(viewType, this, {
+          webviewOptions: { retainContextWhenHidden: true },
+        }),
+      );
+    }
+  }
+
+  private async initializeThemeContext(
+    kind: vscode.ColorThemeKind,
+  ): Promise<void> {
+    await vscode.commands.executeCommand(
+      "setContext",
+      "pochi.themeContextReady",
+      false,
+    );
+    await this.updateThemeContext(kind);
+  }
+
+  private async updateThemeContext(kind: vscode.ColorThemeKind): Promise<void> {
+    await vscode.commands.executeCommand(
+      "setContext",
+      "pochi.isDarkTheme",
+      this.isDarkTheme(kind),
+    );
+    await vscode.commands.executeCommand(
+      "setContext",
+      "pochi.themeContextReady",
+      true,
+    );
+  }
+
+  private isDarkTheme(kind: vscode.ColorThemeKind): boolean {
+    return (
+      kind === vscode.ColorThemeKind.Dark ||
+      kind === vscode.ColorThemeKind.HighContrast
     );
   }
 
@@ -61,6 +104,15 @@ export class PochiWebviewSidebar
 
       return this.buildResourceURI(this.view.webview);
     };
+  }
+
+  public getSiderbarViewType(
+    kind: vscode.ColorThemeKind = vscode.window.activeColorTheme.kind,
+  ): SidebarViewType {
+    if (this.isDarkTheme(kind)) {
+      return "pochiSidebarDark";
+    }
+    return "pochiSidebarLight";
   }
 
   public async retrieveWebviewHost(): Promise<WebviewHostApi> {

@@ -1,0 +1,20 @@
+{
+  "name": "@getpochi/vendor-tabby",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/node.ts",
+    "./edge": "./src/edge.ts"
+  },
+  "scripts": {
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "catalog:",
+    "@ai-sdk/provider": "catalog:",
+    "@getpochi/common": "workspace:*",
+    "ai": "catalog:",
+    "zod": "catalog:"
+  }
+}
