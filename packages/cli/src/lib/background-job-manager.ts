@@ -117,9 +117,6 @@ export class BackgroundJobManager {
     this.jobs.clear();
   }
 
-  /**
-   * Check if there are any running background jobs.
-   */
   hasPendingJobs(): boolean {
     for (const job of this.jobs.values()) {
       if (job.status === "running") {
@@ -129,9 +126,6 @@ export class BackgroundJobManager {
     return false;
   }
 
-  /**
-   * Get a list of all running background job IDs.
-   */
   getPendingJobIds(): string[] {
     const ids: string[] = [];
     for (const job of this.jobs.values()) {
@@ -144,32 +138,32 @@ export class BackgroundJobManager {
 
   /**
    * Wait for all background jobs to complete.
-   * @param timeout Maximum time to wait in milliseconds (0 = no timeout)
+   * @param timeoutMs Maximum time to wait in milliseconds (0 = no timeout)
    * @param abortSignal Optional abort signal to cancel waiting
-   * @returns Object indicating whether all jobs completed or timed out
+   * @returns Status of the wait operation: "completed", "timeout", or "aborted"
    */
   async waitForAllJobs(
-    timeout: number,
+    timeoutMs: number,
     abortSignal?: AbortSignal,
-  ): Promise<{ completed: boolean; timedOut: boolean }> {
+  ): Promise<"completed" | "timeout" | "aborted"> {
     const startTime = Date.now();
     const pollInterval = 500; // Check every 500ms
 
     while (this.hasPendingJobs()) {
       // Check for abort signal
       if (abortSignal?.aborted) {
-        return { completed: false, timedOut: false };
+        return "aborted";
       }
 
       // Check for timeout
-      if (timeout > 0 && Date.now() - startTime >= timeout) {
-        return { completed: false, timedOut: true };
+      if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs) {
+        return "timeout";
       }
 
       // Wait before next check
       await new Promise((resolve) => setTimeout(resolve, pollInterval));
     }
 
-    return { completed: true, timedOut: false };
+    return "completed";
   }
 }

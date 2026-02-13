@@ -319,7 +319,7 @@ export class TaskRunner {
     ).start();
 
     // Wait for both subtasks and background jobs in parallel
-    const [subtaskResult, jobResult] = await Promise.all([
+    const [subtaskStatus, jobStatus] = await Promise.all([
       this.asyncSubTaskManager.waitForAllTasks(
         this.asyncWaitTimeoutInMs,
         this.abortSignal,
@@ -331,7 +331,7 @@ export class TaskRunner {
     ]);
 
     // Handle timeout or abort - return undefined to finish without feeding back to LLM
-    if (subtaskResult.timedOut || jobResult.timedOut) {
+    if (subtaskStatus === "timeout" || jobStatus === "timeout") {
       const remainingSubtasks = this.asyncSubTaskManager.getPendingTaskIds();
       const remainingJobs = this.backgroundJobManager.getPendingJobIds();
       spinner.fail(
@@ -340,7 +340,7 @@ export class TaskRunner {
       return undefined;
     }
 
-    if (!subtaskResult.completed || !jobResult.completed) {
+    if (subtaskStatus === "aborted" || jobStatus === "aborted") {
       spinner.fail("Async work wait was aborted.");
       return undefined;
     }

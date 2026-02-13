@@ -98,9 +98,6 @@ export class AsyncSubTaskManager {
     return false;
   }
 
-  /**
-   * Get a list of all pending async task IDs.
-   */
   getPendingTaskIds(): string[] {
     const ids: string[] = [];
     for (const taskId of this.asyncTaskIds) {
@@ -118,32 +115,32 @@ export class AsyncSubTaskManager {
 
   /**
    * Wait for all async subtasks to complete.
-   * @param timeout Maximum time to wait in milliseconds (0 = no timeout)
+   * @param timeoutMs Maximum time to wait in milliseconds (0 = no timeout)
    * @param abortSignal Optional abort signal to cancel waiting
-   * @returns Object indicating whether all tasks completed or timed out
+   * @returns Status of the wait operation: "completed", "timeout", or "aborted"
    */
   async waitForAllTasks(
-    timeout: number,
+    timeoutMs: number,
     abortSignal?: AbortSignal,
-  ): Promise<{ completed: boolean; timedOut: boolean }> {
+  ): Promise<"completed" | "timeout" | "aborted"> {
     const startTime = Date.now();
     const pollInterval = 500; // Check every 500ms
 
     while (this.hasPendingTasks()) {
       // Check for abort signal
       if (abortSignal?.aborted) {
-        return { completed: false, timedOut: false };
+        return "aborted";
       }
 
       // Check for timeout
-      if (timeout > 0 && Date.now() - startTime >= timeout) {
-        return { completed: false, timedOut: true };
+      if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs) {
+        return "timeout";
       }
 
       // Wait before next check
       await new Promise((resolve) => setTimeout(resolve, pollInterval));
     }
 
-    return { completed: true, timedOut: false };
+    return "completed";
   }
 }
