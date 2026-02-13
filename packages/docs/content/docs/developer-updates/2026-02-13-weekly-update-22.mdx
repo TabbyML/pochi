@@ -1,0 +1,75 @@
+---
+title: Weekly Update #22
+---
+
+# Weekly Update #22
+
+### TL;DR
+
+This release we shipped a built-in browser subagent so browser automation is no longer a black box, tightened up task and skill workflows that were breaking under real usage, and published new writing on why agent safety has to live below the prompt layer.
+
+### 🚀 Features
+
+- **Built-in browser subagent with live streaming:** As soon as agents start using browsers for anything non-trivial like scraping, form-filling, navigating dashboards, it brings in a new layer of visibility of how the operation is being performed. Without the visibility, debugging involves a lot of back and forth with prompts to explicity define the failure modes.<br/><br/> Pochi now includes a built-in browser subagent that runs through the same execution pipeline as other tools and streams its activity live in the UI. You can watch the agent navigate, click, and capture pages as it works. <br/><br/>Browser sessions are persisted, so you can revisit screenshots or recordings after the task completes. **[#1107](https://github.com/TabbyML/pochi/issues/1107)** 
+
+  
+  <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/browser-agent-030.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+
+### ✨ Enhancements
+
+
+- **Upgraded Plan Mode:** One of the most common failure modes we see is agents confidently generating implementation plans on top of ambiguous or incomplete requirements. <br/><br/>To address this, we’re adding a clarification phase to the planner workflow. Before generating a plan, the planner agent will ask targeted follow-up questions when it detects ambiguity, instead of silently making assumptions. <br/><br/>This will enforce more clarification from the user’s side and will avoid plan generation until key decisions are resolved. **[#1254](https://github.com/TabbyML/pochi/issues/1254)** 
+
+  
+  <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/clarification-questions-planner-mode-030.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+
+
+### 🐛 Bug fixes 
+
+- **Support symlinked directories in the skill loader:** Skills are meant to be reusable building blocks, but developing them locally was more painful than it needed to be. Many users keep skills in separate repos and iterate on them alongside projects.
+<br/><br/>We allow Skills to be loaded from symlinked directories in both the CLI and VS Code extension, making it easy to develop a skill in isolation and symlink it into `.pochi/skills` during development. **[#1199](https://github.com/TabbyML/pochi/issues/1199)** 
+
+- **Fixed task forking to correctly fork subtasks:** Forking is often used to explore alternatives or recover from a failed approach. When subtasks weren’t properly forked, it created hidden coupling between tasks. <br/><br/> To fix this, now when you fork a task, we also fork any subtasks created in its conversation history. Forked tasks are fully self-contained, with no references back to the original task’s subtasks. **[#1134](https://github.com/TabbyML/pochi/issues/1134)** 
+
+
+### 📖 Resources
+
+Alongside shipping features, we spent time documenting how we think about agent safety in practice, especially when agents interact with production systems. We submitted two resources:
+
+- **How to give coding agents access to SSH and databases without breaking production:** We published a deep dive on why common safety patterns like command allowlists, SQL filters, and approval dialogs fail with autonomous agents, and why safety must be enforced at the infrastructure and execution layer instead of through prompts or behavioral controls. **[Read blog](https://docs.getpochi.com/developer-updates/ssh-database-access/)**
+
+- **Secure production database access in Pochi:** Following our earlier post on agent safety, we released a hands-on guide showing how to grant agents controlled database access using isolated environments and gated deployment flows, without exposing production credentials or allowing uncontrolled writes. **[Read tutorial](https://docs.getpochi.com/tutorials/secure-db-access-in-pochi/)**
+
+### 🔥 Preview
+
+- **Task walkthroughs:** We’ve been working on a walkthrough feature that can generate a concise, human-readable summary of a task’s outcome in respect to what changed, why, and where to look next. The goal is to make agent-driven work easier to review, revisit, and share, especially for long-running or browser-heavy tasks. This feature is still being finalized and will land in an upcoming release.
+
+- **Improving the browser subagent:** Alongside shipping the first version of the browser subagent, we’ve been working on making it reliable for long-running, real-world use. <br/><br/>This includes:
+  1. Tightening browser session lifecycle management so sessions are cleaned up correctly when tasks end or tabs are closed
+  2. Improving recording infrastructure to avoid race conditions and ensure consistent captures
+  3. Unifying browser session handling across VS Code and the CLI so browser automation behaves the same in all environments
+
+
+- **Updating Pochi icon in VS Code Sidebar**: The current sidebar icon uses the generic `$(code)` icon, which doesn’t clearly communicate the Pochi brand identity. We’re working on a new icon that better represents Pochi’s role as an agent and its relationship to the codebase.
