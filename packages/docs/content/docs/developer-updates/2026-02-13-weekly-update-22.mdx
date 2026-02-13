@@ -26,6 +26,26 @@ This release we shipped a built-in browser subagent so browser automation is no 
     </video>
 
 
+### ✨ Enhancements
+
+
+- **Upgraded Plan Mode:** One of the most common failure modes we see is agents confidently generating implementation plans on top of ambiguous or incomplete requirements. <br/><br/>To address this, we’re adding a clarification phase to the planner workflow. Before generating a plan, the planner agent will ask targeted follow-up questions when it detects ambiguity, instead of silently making assumptions. <br/><br/>This will enforce more clarification from the user’s side and will avoid plan generation until key decisions are resolved. **[#1254](https://github.com/TabbyML/pochi/issues/1254)** 
+
+  
+  <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/clarification-questions-planner-mode-030.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
+
+
 ### 🐛 Bug fixes 
 
 - **Support symlinked directories in the skill loader:** Skills are meant to be reusable building blocks, but developing them locally was more painful than it needed to be. Many users keep skills in separate repos and iterate on them alongside projects.
@@ -46,13 +66,10 @@ Alongside shipping features, we spent time documenting how we think about agent 
 
 - **Task walkthroughs:** We’ve been working on a walkthrough feature that can generate a concise, human-readable summary of a task’s outcome in respect to what changed, why, and where to look next. The goal is to make agent-driven work easier to review, revisit, and share, especially for long-running or browser-heavy tasks. This feature is still being finalized and will land in an upcoming release.
 
-
-- **Upgraded Plan Mode:** One of the most common failure modes we see is agents confidently generating implementation plans on top of ambiguous or incomplete requirements. <br/><br/>To address this, we’re adding a clarification phase to the planner workflow. Before generating a plan, the planner agent will ask targeted follow-up questions when it detects ambiguity, instead of silently making assumptions. <br/><br/>This will enforce more clarification from the user’s side and will avoid plan generation until key decisions are resolved. 
-
-
 - **Improving the browser subagent:** Alongside shipping the first version of the browser subagent, we’ve been working on making it reliable for long-running, real-world use. <br/><br/>This includes:
   1. Tightening browser session lifecycle management so sessions are cleaned up correctly when tasks end or tabs are closed
   2. Improving recording infrastructure to avoid race conditions and ensure consistent captures
   3. Unifying browser session handling across VS Code and the CLI so browser automation behaves the same in all environments
 
 
+- **Updating Pochi icon in VS Code Sidebar**: The current sidebar icon uses the generic `$(code)` icon, which doesn’t clearly communicate the Pochi brand identity. We’re working on a new icon that better represents Pochi’s role as an agent and its relationship to the codebase.
