@@ -21,9 +21,9 @@ export class BrowserSessionStore implements Disposable {
     logger.trace("BrowserSessionStore disposed");
   }
 
-  async registerBrowserSession(taskId: string, parentTaskId?: string) {
+  async registerBrowserSession(taskId: string, parentId?: string) {
     const browserSession: BrowserSession = {
-      parentTaskId,
+      parentId,
     };
 
     // If we are in VSCode environment, we need to enable the websocket
@@ -67,10 +67,10 @@ export class BrowserSessionStore implements Disposable {
     );
   }
 
-  async unregisterBrowserSessionsByParentTaskId(parentTaskId: string) {
+  async unregisterSubtaskBrowserSessions(taskId: string) {
     const browserSessionsToUnregister = Object.entries(
       this.browserSessions.value,
-    ).filter(([_, session]) => session.parentTaskId === parentTaskId);
+    ).filter(([_, session]) => session.parentId === taskId);
 
     if (browserSessionsToUnregister.length === 0) {
       return;
@@ -80,7 +80,7 @@ export class BrowserSessionStore implements Disposable {
       await this.unregisterBrowserSession(taskId);
     }
     logger.trace(
-      `Unregistering browser sessions for parent task ${parentTaskId}`,
+      `Unregistering subtask browser sessions for task ${taskId}`,
       browserSessionsToUnregister,
     );
   }

@@ -383,7 +383,7 @@ export interface VSCodeHostApi {
 
   registerBrowserSession(
     taskId: string,
-    parentTaskId?: string,
+    parentId?: string,
   ): Promise<BrowserSession>;
 
   unregisterBrowserSession(taskId: string): Promise<void>;

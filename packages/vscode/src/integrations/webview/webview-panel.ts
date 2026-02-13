@@ -118,7 +118,7 @@ export class PochiWebviewPanel
         // When the webview panel is disposed (e.g. task is closed),
         // we must also close any open editor tabs (pochi:// scheme) associated with this task.
         PochiFileSystemProvider.closePochiTabs(uid);
-        this.browserSessionStore.unregisterBrowserSessionsByParentTaskId(uid);
+        this.browserSessionStore.unregisterSubtaskBrowserSessions(uid);
         break;
       }
     }

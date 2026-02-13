@@ -342,7 +342,7 @@ const VSCodeHostStub = {
     ),
   registerBrowserSession: (
     _taskId: string,
-    _parentTaskId?: string,
+    _parentId?: string,
   ): Promise<BrowserSession> => Promise.resolve({}),
   unregisterBrowserSession: (_taskId: string): Promise<void> =>
     Promise.resolve(),
