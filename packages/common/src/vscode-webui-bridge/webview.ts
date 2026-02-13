@@ -381,7 +381,10 @@ export interface VSCodeHostApi {
     taskId: string,
   ): Promise<ThreadSignalSerialization<BrowserSession | undefined>>;
 
-  registerBrowserSession(taskId: string): Promise<BrowserSession>;
+  registerBrowserSession(
+    taskId: string,
+    parentId?: string,
+  ): Promise<BrowserSession>;
 
   unregisterBrowserSession(taskId: string): Promise<void>;
 

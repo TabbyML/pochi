@@ -266,8 +266,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  registerBrowserSession = async (taskId: string) => {
-    return this.browserSessionStore.registerBrowserSession(taskId);
+  registerBrowserSession = async (taskId: string, parentId?: string) => {
+    return this.browserSessionStore.registerBrowserSession(taskId, parentId);
   };
 
   unregisterBrowserSession = async (taskId: string) => {

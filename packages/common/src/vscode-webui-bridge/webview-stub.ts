@@ -340,8 +340,10 @@ const VSCodeHostStub = {
     Promise.resolve(
       {} as ThreadSignalSerialization<BrowserSession | undefined>,
     ),
-  registerBrowserSession: (_taskId: string): Promise<BrowserSession> =>
-    Promise.resolve({}),
+  registerBrowserSession: (
+    _taskId: string,
+    _parentId?: string,
+  ): Promise<BrowserSession> => Promise.resolve({}),
   unregisterBrowserSession: (_taskId: string): Promise<void> =>
     Promise.resolve(),
   readMcpConfigOverride: async (

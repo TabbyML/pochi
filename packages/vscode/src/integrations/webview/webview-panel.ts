@@ -3,6 +3,7 @@ import { PochiFileSystemProvider } from "@/integrations/editor/pochi-file-system
 import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
+import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   type PochiTaskInfo,
   type PochiTaskParams,
@@ -52,6 +53,7 @@ export class PochiWebviewPanel
     pochiConfiguration: PochiConfiguration,
     vscodeHost: VSCodeHostImpl,
     info: PochiTaskInfo,
+    readonly browserSessionStore: BrowserSessionStore,
   ) {
     super(sessionId, context, events, pochiConfiguration, vscodeHost);
     this.panel = panel;
@@ -116,6 +118,7 @@ export class PochiWebviewPanel
         // When the webview panel is disposed (e.g. task is closed),
         // we must also close any open editor tabs (pochi:// scheme) associated with this task.
         PochiFileSystemProvider.closePochiTabs(uid);
+        this.browserSessionStore.unregisterSubtaskBrowserSessions(uid);
         break;
       }
     }
@@ -319,6 +322,7 @@ export class PochiTaskEditorProvider
     const events = workspaceContainer.resolve(AuthEvents);
     const pochiConfiguration = workspaceContainer.resolve(PochiConfiguration);
     const vscodeHost = workspaceContainer.resolve(VSCodeHostImpl);
+    const browserSessionStore = container.resolve(BrowserSessionStore);
 
     webviewPanel.webview.options = {
       enableScripts: true,
@@ -340,6 +344,7 @@ export class PochiTaskEditorProvider
       pochiConfiguration,
       vscodeHost,
       info,
+      browserSessionStore,
     );
 
     logger.debug(`Opened Pochi task editor: cwd=${cwd}, uid=${uid}`);

@@ -186,10 +186,13 @@ export class BrowserSessionManager {
     return this.recordingSessions.has(taskId);
   }
 
-  async registerSession(taskId: string) {
+  async registerSession(taskId: string, parentId: string) {
     const recordingSession = new BrowserRecordingSession();
     this.recordingSessions.set(taskId, recordingSession);
-    const { streamUrl } = await vscodeHost.registerBrowserSession(taskId);
+    const { streamUrl } = await vscodeHost.registerBrowserSession(
+      taskId,
+      parentId,
+    );
     if (streamUrl) {
       recordingSession.startRecording(streamUrl);
     }

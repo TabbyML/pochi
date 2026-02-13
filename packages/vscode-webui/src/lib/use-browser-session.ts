@@ -1,5 +1,6 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
@@ -38,10 +39,11 @@ export const useManageBrowserSession = ({
         lastToolPart.state === "input-available"
       ) {
         const taskId = lastToolPart.input?._meta?.uid || "";
+        const { taskId: parentId } = decodeStoreId(store.storeId);
         if (browserSessionManager.isRegistered(taskId)) {
           return;
         }
-        await browserSessionManager.registerSession(taskId);
+        await browserSessionManager.registerSession(taskId, parentId);
       }
 
       // Unregister browser related sessions
