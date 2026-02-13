@@ -1,11 +1,16 @@
+import { type Signal, signal } from "@preact/signals-core";
+import type * as vscode from "vscode";
 import type { TabCompletionContext } from "../context";
-import { LatencyTracker } from "../utils";
+import { LatencyTracker, isCanceledError, isTimeoutError } from "../utils";
 import { TabCompletionProviderRequest } from "./request";
 import type { TabCompletionProviderClient } from "./types";
 
-export class TabCompletionProvider {
+export class TabCompletionProvider implements vscode.Disposable {
   private latencyTracker = new LatencyTracker();
   private nextRequestId = 0;
+  private disposables: vscode.Disposable[] = [];
+
+  readonly error: Signal<string | undefined> = signal(undefined);
 
   constructor(readonly client: TabCompletionProviderClient<object, object>) {}
 
@@ -19,11 +24,37 @@ export class TabCompletionProvider {
     this.nextRequestId++;
     const requestId = `${this.client.id}-${this.nextRequestId}`;
 
-    return new TabCompletionProviderRequest(
+    const request = new TabCompletionProviderRequest(
       requestId,
       context,
       this.client,
       this.latencyTracker,
     );
+    const disposable = {
+      dispose: request.status.subscribe((status) => {
+        if (
+          status.type === "error" &&
+          status.error &&
+          !(isTimeoutError(status.error) || isCanceledError(status.error))
+        ) {
+          this.error.value = status.error.message;
+        } else if (status.type === "finished") {
+          this.error.value = undefined;
+        } else if (status.type === "disposed") {
+          this.disposables = this.disposables.filter((d) => d !== disposable);
+          disposable.dispose();
+        }
+      }),
+    };
+    this.disposables.push(disposable);
+
+    return request;
+  }
+
+  dispose() {
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
+    this.disposables = [];
   }
 }

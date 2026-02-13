@@ -1,11 +1,11 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import type { Message, Task } from "@getpochi/livekit";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
+import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
-import * as runExclusive from "run-exclusive";
-import { browserRecordingManager } from "./browser-recording-manager";
+import { useEffect } from "react";
+import { browserSessionManager } from "./browser-session-manager";
 
 /** @useSignals */
 export const useBrowserSession = (taskId: string) => {
@@ -21,21 +21,10 @@ export const useBrowserSession = (taskId: string) => {
 };
 
 export const useManageBrowserSession = ({
-  isSubTask,
-  task,
   messages,
-}: { isSubTask: boolean; task?: Task; messages: Message[] }) => {
-  const parentTaskId = isSubTask ? task?.parentId || "" : task?.id;
+}: { messages: Message[] }) => {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   const store = useDefaultStore();
-
-  const runSerialized = useMemo(
-    () =>
-      runExclusive.build(async (callback: () => Promise<void>) => {
-        await callback();
-      }),
-    [],
-  );
 
   useEffect(() => {
     const manageBrowserSession = async () => {
@@ -49,22 +38,12 @@ export const useManageBrowserSession = ({
         lastToolPart.input?.agentType === "browser" &&
         lastToolPart.state === "input-available"
       ) {
-        const toolCallId = lastToolPart.toolCallId;
         const taskId = lastToolPart.input?._meta?.uid || "";
-        if (browserRecordingManager.isRegistered(toolCallId)) {
+        const { taskId: parentId } = decodeStoreId(store.storeId);
+        if (browserSessionManager.isRegistered(taskId)) {
           return;
         }
-        browserRecordingManager.registerBrowserRecordingSession(toolCallId);
-        const browserSession = await vscodeHost.registerBrowserSession(
-          taskId,
-          parentTaskId,
-        );
-        if (browserSession?.streamUrl) {
-          browserRecordingManager.startRecording(
-            toolCallId,
-            browserSession.streamUrl,
-          );
-        }
+        await browserSessionManager.registerSession(taskId, parentId);
       }
 
       // Unregister browser related sessions
@@ -74,21 +53,18 @@ export const useManageBrowserSession = ({
         (lastToolPart.state === "output-available" ||
           lastToolPart.state === "output-error")
       ) {
-        const toolCallId = lastToolPart.toolCallId;
         const taskId = lastToolPart.input?._meta?.uid || "";
-        if (!browserRecordingManager.isRegistered(toolCallId)) {
+        if (!browserSessionManager.isRegistered(taskId)) {
           return;
         }
-        await vscodeHost.unregisterBrowserSession(taskId);
-        await browserRecordingManager.stopRecording(
-          toolCallId,
-          parentTaskId || "",
+        await browserSessionManager.unregisterSession(
+          taskId,
+          lastToolPart.toolCallId,
           store,
         );
-        browserRecordingManager.unregisterBrowserRecordingSession(toolCallId);
       }
     };
 
-    runSerialized(manageBrowserSession);
-  }, [parentTaskId, lastToolPart, store, runSerialized]);
+    manageBrowserSession();
+  }, [lastToolPart, store]);
 };

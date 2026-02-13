@@ -100,6 +100,55 @@ export class EditHistoryTracker implements vscode.Disposable {
     return tracker?.getEditSteps();
   }
 
+  /**
+   * Retrieves edit steps from other tracked files, sorted by recency.
+   * It selects up to `limit` most recently modified files (excluding the current one)
+   * and returns all their edit steps.
+   */
+  getOtherFilesEditSteps(
+    excludeDocument: vscode.TextDocument,
+    limit = 5,
+  ): readonly TextDocumentEditStep[] | undefined {
+    const candidates: {
+      tracker: TextDocumentEditHistoryTracker;
+      timestamp: number;
+    }[] = [];
+
+    // 1. Collect all candidates (excluding the current document)
+    for (const [uri, tracker] of this.documents.entries()) {
+      if (uri === excludeDocument.uri.toString()) {
+        continue;
+      }
+      const steps = tracker.getEditSteps();
+      if (steps.length > 0) {
+        const lastStep = steps[steps.length - 1];
+        const timestamp = lastStep.getTimestamp();
+        if (timestamp !== undefined) {
+          candidates.push({
+            tracker,
+            timestamp,
+          });
+        }
+      }
+    }
+
+    // 2. Sort by timestamp (descending) and pick top `limit` files
+    const sortedCandidates = candidates
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, limit);
+
+    // 3. Collect all steps from selected files
+    const result: TextDocumentEditStep[] = [];
+    for (const candidate of sortedCandidates) {
+      result.push(
+        ...candidate.tracker
+          .getEditSteps()
+          .filter((step) => step.getTimestamp() !== undefined),
+      );
+    }
+    return result;
+  }
+
   dispose() {
     for (const disposable of this.disposables) {
       disposable.dispose();

@@ -1,4 +1,5 @@
 import { $, $$, browser } from "@wdio/globals";
+import { openPochiSidebar } from "../lib/pochi-sidebar";
 
 export class PochiSidebar {
   get input() {
@@ -15,9 +16,7 @@ export class PochiSidebar {
 
   async open() {
     const workbench = await browser.getWorkbench();
-    const activityBar = workbench.getActivityBar();
-    const pochiView = await activityBar.getViewControl("Pochi");
-    await pochiView?.openView();
+    await openPochiSidebar(workbench);
 
     // Wait for view to load
     await browser.waitUntil(

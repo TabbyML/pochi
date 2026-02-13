@@ -404,6 +404,45 @@ const x = 1;`;
         ).rejects.toThrow(DiffError);
       });
 
+      it("should reject duplicate matches produced by fallback search strategies", async () => {
+        const fileContent = `interface VSCodeHostApi {
+  previewToolCall(
+    toolName: string,
+    args: unknown,
+    options: {
+      toolCallId: string;
+      state: "partial-call" | "call" | "result";
+      abortSignal?: ThreadAbortSignalSerialization;
+    },
+  ): Promise<PreviewReturnType>;
+}`;
+
+        const searchContent = `  previewToolCall(
+    toolName: string,
+    args: unknown,
+    options: {
+      toolCallId: string;
+      state: "partial-call" | "call" | "result";
+      abortSignal?: ThreadAbortSignalSerialization;
+    },
+  ): Promise<PreviewReturnType>;`;
+
+        const replaceContent = `  previewToolCall(
+    toolName: string,
+    args: unknown,
+    options: {
+      toolCallId: string;
+      state: "partial-call" | "call" | "result";
+      abortSignal?: ThreadAbortSignalSerialization;
+      taskId?: string;
+    },
+  ): Promise<PreviewReturnType>;`;
+
+        await expect(
+          parseDiffAndApply(fileContent, searchContent, replaceContent, 2),
+        ).rejects.toThrow(DiffError);
+      });
+
       it("should handle content with only whitespace", async () => {
         const fileContent = "   \n  \n   ";
         const searchContent = "   ";
@@ -496,7 +535,7 @@ function test() {
           fileContent,
           searchContent,
           replaceContent,
-          3, // All matches: exact, trimmed, and potentially block anchor
+          2, // Two unique matches in file content
         );
 
         expect(result).toContain("return 2;");

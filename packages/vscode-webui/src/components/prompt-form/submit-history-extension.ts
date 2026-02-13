@@ -129,6 +129,13 @@ export const SubmitHistoryExtension = Extension.create<
             if (storage.currentIndex > 0) {
               storage.currentIndex--;
             } else if (storage.currentIndex === 0) {
+              // Check if current content is already the latest history content
+              // If so, don't clear input - just return false to allow default cursor behavior
+              const latestHistoryContent = storage.history[historyLength - 1];
+              if (currentContent === latestHistoryContent) {
+                return false;
+              }
+
               // Go back to current draft
               storage.currentIndex = -1;
               storage.isNavigating = false;

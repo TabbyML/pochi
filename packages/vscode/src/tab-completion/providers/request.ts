@@ -15,7 +15,8 @@ export type TabCompletionProviderRequestStatus =
   | TabCompletionProviderRequestStatusInit
   | TabCompletionProviderRequestStatusProcessing
   | TabCompletionProviderRequestStatusFinished
-  | TabCompletionProviderRequestStatusError;
+  | TabCompletionProviderRequestStatusError
+  | TabCompletionProviderRequestStatusDisposed;
 
 export interface TabCompletionProviderRequestStatusInit {
   readonly type: "init";
@@ -34,6 +35,10 @@ export interface TabCompletionProviderRequestStatusFinished {
 export interface TabCompletionProviderRequestStatusError {
   readonly type: "error";
   readonly error: Error;
+}
+
+export interface TabCompletionProviderRequestStatusDisposed {
+  readonly type: "disposed";
 }
 
 export class TabCompletionProviderRequest implements vscode.Disposable {
@@ -181,5 +186,9 @@ export class TabCompletionProviderRequest implements vscode.Disposable {
       this.fetchingCancellationTokenSource.cancel();
       this.fetchingCancellationTokenSource = undefined;
     }
+
+    this.updateStatus({
+      type: "disposed",
+    });
   }
 }

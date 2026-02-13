@@ -1,7 +1,7 @@
 import { useFile } from "@/components/files-provider";
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
-import { browserRecordingManager } from "@/lib/browser-recording-manager";
+import { browserSessionManager } from "@/lib/browser-session-manager";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
@@ -14,8 +14,11 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const [frame, setFrame] = useState<string | null>(null);
 
   useEffect(() => {
-    return browserRecordingManager.subscribeFrame(tool.toolCallId, setFrame);
-  }, [tool.toolCallId]);
+    if (!uid) {
+      return;
+    }
+    return browserSessionManager.subscribeFrame(uid, setFrame);
+  }, [uid]);
 
   const file = useFile(
     taskSource?.parentId || "",

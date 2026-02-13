@@ -1,5 +1,6 @@
 import { browser, expect } from "@wdio/globals";
 import type { Workbench } from "wdio-vscode-service";
+import { openPochiSidebar } from "../../lib/pochi-sidebar";
 
 describe("Git Worktrees Workspace Tests", () => {
   let workbench: Workbench;
@@ -14,12 +15,7 @@ describe("Git Worktrees Workspace Tests", () => {
   });
 
   it("should be able to open Pochi sidebar", async () => {
-    const activityBar = workbench.getActivityBar();
-    const pochiView = await activityBar.getViewControl("Pochi");
-    if (!pochiView) {
-      throw new Error("Could not find Pochi view control in Activity Bar");
-    }
-    await pochiView.openView();
+    await openPochiSidebar(workbench);
 
     const sidebar = workbench.getSideBar();
     const title = await sidebar.getTitlePart().getTitle();

@@ -7,45 +7,49 @@ export async function login(vendorId: string) {
   const vendor = getVendor(vendorId);
   const { url, credentials } = await vendor.authenticate();
 
-  console.log(chalk.blue("Opening browser for authentication..."));
-  console.log(chalk.gray(`Auth URL: ${url}`));
+  // If the vendor returns a URL, open it in the browser, it's likely an OAuth flow.
+  // For some vendors, like Tabby, the `authenticate()` method might directly return credentials.
+  if (url) {
+    console.log(chalk.blue("Opening browser for authentication..."));
+    console.log(chalk.gray(`Auth URL: ${url}`));
 
-  // Try to open the browser automatically
-  try {
-    const platform = process.platform;
-    let cmd: string;
+    // Try to open the browser automatically
+    try {
+      const platform = process.platform;
+      let cmd: string;
 
-    switch (platform) {
-      case "darwin": // macOS
-        cmd = `open "${url}"`;
-        break;
-      case "win32": // Windows
-        cmd = `start "${url}"`;
-        break;
-      default: // Linux and others
-        cmd = `xdg-open "${url}"`;
-        break;
-    }
-
-    childProcess.exec(cmd, (error) => {
-      if (error) {
-        console.log(
-          chalk.yellow(
-            "\nCould not open browser automatically. Please open the following URL manually:",
-          ),
-        );
-        console.log(chalk.cyan(url));
+      switch (platform) {
+        case "darwin": // macOS
+          cmd = `open "${url}"`;
+          break;
+        case "win32": // Windows
+          cmd = `start "${url}"`;
+          break;
+        default: // Linux and others
+          cmd = `xdg-open "${url}"`;
+          break;
       }
-    });
-  } catch (error) {
-    console.log(
-      chalk.yellow(
-        "\nPlease open the following URL in your browser to authenticate:",
-      ),
-    );
-    console.log(chalk.cyan(url));
+
+      childProcess.exec(cmd, (error) => {
+        if (error) {
+          console.log(
+            chalk.yellow(
+              "\nCould not open browser automatically. Please open the following URL manually:",
+            ),
+          );
+          console.log(chalk.cyan(url));
+        }
+      });
+    } catch (error) {
+      console.log(
+        chalk.yellow(
+          "\nPlease open the following URL in your browser to authenticate:",
+        ),
+      );
+      console.log(chalk.cyan(url));
+    }
+    console.log(chalk.yellow("\nWaiting for authentication to complete..."));
   }
-  console.log(chalk.yellow("\nWaiting for authentication to complete..."));
 
   // Wait for OAuth completion
   await updateVendorConfig(vendorId, {
