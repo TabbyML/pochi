@@ -31,7 +31,7 @@ This release we shipped a built-in browser subagent so browser automation is no 
 - **Support symlinked directories in the skill loader:** Skills are meant to be reusable building blocks, but developing them locally was more painful than it needed to be. Many users keep skills in separate repos and iterate on them alongside projects.
 <br/><br/>We allow Skills to be loaded from symlinked directories in both the CLI and VS Code extension, making it easy to develop a skill in isolation and symlink it into `.pochi/skills` during development. **[#1199](https://github.com/TabbyML/pochi/issues/1199)** 
 
-- **Fixed task forking to correctly fork subtasks:** Forking is often used to explore alternatives or recover from a failed approach. When subtasks weren’t properly forked, it created hidden coupling between tasks. <br/><br/> To fix this, now when you fork a task, we also fork any subtasks created in its conversation history. Forked tasks are fully self-contained, with no references back to the original task’s subtasks.**[#1134](https://github.com/TabbyML/pochi/issues/1134)** 
+- **Fixed task forking to correctly fork subtasks:** Forking is often used to explore alternatives or recover from a failed approach. When subtasks weren’t properly forked, it created hidden coupling between tasks. <br/><br/> To fix this, now when you fork a task, we also fork any subtasks created in its conversation history. Forked tasks are fully self-contained, with no references back to the original task’s subtasks. **[#1134](https://github.com/TabbyML/pochi/issues/1134)** 
 
 
 ### 📖 Resources
