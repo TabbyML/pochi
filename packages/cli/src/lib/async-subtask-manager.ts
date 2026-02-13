@@ -80,4 +80,64 @@ export class AsyncSubTaskManager {
       error,
     };
   }
+
+  /**
+   * Check if there are any pending async tasks.
+   */
+  hasPendingTasks(): boolean {
+    for (const taskId of this.asyncTaskIds) {
+      const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+      if (!task) continue;
+      const status = mapTaskStatusToBackgroundStatus(
+        task.status as TaskStatusLike,
+      );
+      if (status !== "completed") {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getPendingTaskIds(): string[] {
+    const ids: string[] = [];
+    for (const taskId of this.asyncTaskIds) {
+      const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+      if (!task) continue;
+      const status = mapTaskStatusToBackgroundStatus(
+        task.status as TaskStatusLike,
+      );
+      if (status !== "completed") {
+        ids.push(taskId);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Wait for all async subtasks to complete.
+   * @param timeoutMs Maximum time to wait in milliseconds (0 = no timeout)
+   * @param abortSignal Optional abort signal to cancel waiting
+   * @returns Status of the wait operation: "completed", "timeout", or "aborted"
+   */
+  async waitForAllTasks(
+    timeoutMs: number,
+    abortSignal?: AbortSignal,
+  ): Promise<"completed" | "timeout" | "aborted"> {
+    const startTime = Date.now();
+    const pollInterval = 1000;
+
+    while (this.hasPendingTasks()) {
+      if (abortSignal?.aborted) {
+        return "aborted";
+      }
+
+      if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs) {
+        return "timeout";
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    return "completed";
+  }
 }

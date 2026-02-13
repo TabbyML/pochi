@@ -116,4 +116,51 @@ export class BackgroundJobManager {
     }
     this.jobs.clear();
   }
+
+  hasPendingJobs(): boolean {
+    for (const job of this.jobs.values()) {
+      if (job.status === "running") {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getPendingJobIds(): string[] {
+    const ids: string[] = [];
+    for (const job of this.jobs.values()) {
+      if (job.status === "running") {
+        ids.push(job.id);
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * Wait for all background jobs to complete.
+   * @param timeoutMs Maximum time to wait in milliseconds (0 = no timeout)
+   * @param abortSignal Optional abort signal to cancel waiting
+   * @returns Status of the wait operation: "completed", "timeout", or "aborted"
+   */
+  async waitForAllJobs(
+    timeoutMs: number,
+    abortSignal?: AbortSignal,
+  ): Promise<"completed" | "timeout" | "aborted"> {
+    const startTime = Date.now();
+    const pollInterval = 1000;
+
+    while (this.hasPendingJobs()) {
+      if (abortSignal?.aborted) {
+        return "aborted";
+      }
+
+      if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs) {
+        return "timeout";
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    return "completed";
+  }
 }
