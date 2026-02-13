@@ -131,8 +131,8 @@ export interface RunnerOptions {
 
   /**
    * Timeout in milliseconds to wait for async subtasks and background jobs
-   * to complete before finalizing attemptCompletion. Default: 0 (no wait).
-   * Set to a positive value to enable waiting.
+   * to complete before finalizing attemptCompletion. Default: 60000ms (60s).
+   * Set to 0 to disable waiting.
    */
   asyncWaitTimeoutInMs?: number;
 }
@@ -266,7 +266,7 @@ export class TaskRunner {
     this.taskId = options.uid;
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
-    this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 0;
+    this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 60000;
     this.abortSignal = options.abortSignal;
   }
 
