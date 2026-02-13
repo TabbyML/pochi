@@ -1,5 +1,6 @@
 import { blobStore } from "@/lib/remote-blob-store";
 import { getLogger } from "@getpochi/common";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
@@ -136,11 +137,7 @@ export class BrowserRecordingSession {
     });
   }
 
-  finish(
-    toolCallId: string,
-    parentTaskId: string,
-    store: ReturnType<typeof useDefaultStore>,
-  ) {
+  finish(toolCallId: string, store: ReturnType<typeof useDefaultStore>) {
     // Stop WebSocket
     clearTimeout(this.retryTimeout);
     if (this.ws) {
@@ -165,9 +162,10 @@ export class BrowserRecordingSession {
           const uint8Array = new Uint8Array(buffer);
           const url = await blobStore.put(uint8Array, "video/mp4");
           if (url) {
+            const { taskId } = decodeStoreId(store.storeId);
             store.commit(
               catalog.events.writeTaskFile({
-                taskId: parentTaskId,
+                taskId,
                 filePath: `/browser-session/${toolCallId}.mp4`,
                 content: url,
               }),
@@ -213,13 +211,12 @@ export class BrowserRecordingManager {
 
   async stopRecording(
     toolCallId: string,
-    parentTaskId: string,
     store: ReturnType<typeof useDefaultStore>,
   ) {
     const session = this.sessions.get(toolCallId);
     if (!session) return;
 
-    return session.finish(toolCallId, parentTaskId, store);
+    return session.finish(toolCallId, store);
   }
 
   unregisterBrowserRecordingSession(toolCallId: string) {

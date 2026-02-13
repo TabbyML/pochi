@@ -1,6 +1,6 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import type { Message, Task } from "@getpochi/livekit";
+import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
@@ -21,11 +21,8 @@ export const useBrowserSession = (taskId: string) => {
 };
 
 export const useManageBrowserSession = ({
-  isSubTask,
-  task,
   messages,
-}: { isSubTask: boolean; task?: Task; messages: Message[] }) => {
-  const parentTaskId = isSubTask ? task?.parentId : task?.id;
+}: { messages: Message[] }) => {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   const store = useDefaultStore();
 
@@ -77,15 +74,11 @@ export const useManageBrowserSession = ({
           return;
         }
         await vscodeHost.unregisterBrowserSession(taskId);
-        await browserRecordingManager.stopRecording(
-          toolCallId,
-          parentTaskId || "",
-          store,
-        );
+        await browserRecordingManager.stopRecording(toolCallId, store);
         browserRecordingManager.unregisterBrowserRecordingSession(toolCallId);
       }
     };
 
     runSerialized(manageBrowserSession);
-  }, [parentTaskId, lastToolPart, store, runSerialized]);
+  }, [lastToolPart, store, runSerialized]);
 };
