@@ -9,15 +9,15 @@ import { useTranslation } from "react-i18next";
 interface Props {
   tools: Array<ToolUIPart<UITools>> | undefined;
   requiresApproval?: boolean;
-  textOnly?: boolean;
-  showDetails?: boolean;
+  showApprove?: boolean;
+  showCommandDetails?: boolean;
 }
 
 export function ToolCallLite({
   tools,
   requiresApproval,
-  textOnly,
-  showDetails,
+  showApprove = true,
+  showCommandDetails,
 }: Props) {
   const { t } = useTranslation();
 
@@ -40,7 +40,12 @@ export function ToolCallLite({
       );
       break;
     case "tool-executeCommand":
-      detail = <ExecuteCommandTool tool={tool} showDetails={showDetails} />;
+      detail = (
+        <ExecuteCommandTool
+          tool={tool}
+          showCommandDetails={showCommandDetails}
+        />
+      );
       break;
     case "tool-startBackgroundJob":
       detail = <StartBackgroundJobTool tool={tool} />;
@@ -86,7 +91,7 @@ export function ToolCallLite({
 
   return detail ? (
     <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
-      {!textOnly &&
+      {showApprove &&
         (requiresApproval ? (
           <Pause className="size-3.5 shrink-0" />
         ) : (
@@ -129,7 +134,7 @@ interface LabelAndFilePathViewProps<T extends ToolName> {
 
 interface ToolCallLiteViewProps<T extends ToolName> {
   tool: Extract<ToolUIPart<UITools>, { type: `tool-${T}` }>;
-  showDetails?: boolean;
+  showCommandDetails?: boolean;
 }
 
 const LabelAndFilePathView = ({
@@ -151,7 +156,7 @@ const LabelAndFilePathView = ({
 
 const ExecuteCommandTool = ({
   tool,
-  showDetails,
+  showCommandDetails,
 }: ToolCallLiteViewProps<"executeCommand">) => {
   const { t } = useTranslation();
 
@@ -169,7 +174,7 @@ const ExecuteCommandTool = ({
       <span className="ml-2">
         {text}
         {cwdNode}
-        {showDetails ? ` ${command}` : ""}
+        {showCommandDetails ? ` ${command}` : ""}
       </span>
     </>
   );

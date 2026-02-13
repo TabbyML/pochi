@@ -113,7 +113,7 @@ export function SubAgentView({
           {showExpandIcon && (
             <div className="flex items-center">
               <ExpandIcon
-                className="mt-1 rotate-270 cursor-pointer text-muted-foreground"
+                className="rotate-270 cursor-pointer text-muted-foreground"
                 isExpanded={!isCollapsed}
                 onClick={() => setIsCollapsed(!isCollapsed)}
               />
@@ -121,8 +121,8 @@ export function SubAgentView({
                 <div className="truncate text-muted-foreground text-xs">
                   <ToolCallLite
                     tools={[lastToolCall.current]}
-                    textOnly
-                    showDetails
+                    showApprove={false}
+                    showCommandDetails
                   />
                 </div>
               )}
