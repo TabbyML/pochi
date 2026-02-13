@@ -494,7 +494,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         options.builtinSubAgentInfo,
       );
       const toolCallStart = Date.now();
-      const resolvedArgs = resolveToolCallArgs(args, options.taskId);
+      const resolvedArgs = resolveToolCallArgs(
+        args,
+        options.taskId,
+        options.builtinSubAgentInfo,
+      );
       const result = await safeCall(
         tool(resolvedArgs, {
           abortSignal,
@@ -569,6 +573,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         args,
         options.taskId,
       ) as Partial<unknown> | null;
+
       return await safeCall<PreviewReturnType>(
         tool(resolvedArgs, {
           ...options,

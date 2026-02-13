@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolvePochiUri, resolveToolCallArgs } from "../resolve-tool-call-args";
+import { PlannerPermissionError, resolvePochiUri, resolveToolCallArgs } from "../resolve-tool-call-args";
 
 describe("resolvePochiUri", () => {
   const taskId = "task-123";
@@ -75,5 +75,17 @@ describe("resolveToolCallArgs", () => {
     expect(resolveToolCallArgs(123, taskId)).toBe(123);
     expect(resolveToolCallArgs(null, taskId)).toBe(null);
     expect(resolveToolCallArgs(true, taskId)).toBe(true);
+  });
+
+  it("should resolve plan.md for planner", () => {
+    expect(
+      resolveToolCallArgs("pochi://-/plan.md", taskId, { type: "planner" }),
+    ).toBe("pochi://task-123/plan.md");
+  });
+
+  it("should throw error for planner writing to non-plan files", () => {
+    expect(() =>
+      resolveToolCallArgs("pochi://-/file.txt", taskId, { type: "planner" }),
+    ).toThrowError(PlannerPermissionError);
   });
 });
