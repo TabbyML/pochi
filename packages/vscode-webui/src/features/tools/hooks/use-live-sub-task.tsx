@@ -132,7 +132,11 @@ export function useLiveSubTask(
               type: tool.input.agentType,
               sessionId: uid,
             }
-          : undefined;
+          : tool.input?.agentType === "planner"
+            ? {
+                type: "planner",
+              }
+            : undefined;
 
       const result = await vscodeHost.executeToolCall(
         toolCall.toolName,

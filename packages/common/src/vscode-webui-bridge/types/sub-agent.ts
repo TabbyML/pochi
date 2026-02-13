@@ -1,4 +1,8 @@
-export interface BuiltinSubAgentInfo {
-  type: "browser";
-  sessionId: string;
-}
+export type BuiltinSubAgentInfo =
+  | {
+      type: "browser";
+      sessionId: string;
+    }
+  | {
+      type: "planner";
+    };
