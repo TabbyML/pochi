@@ -3,8 +3,8 @@ import { vscodeHost } from "@/lib/vscode";
 import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { browserRecordingManager } from "./browser-recording-manager";
+import { useEffect } from "react";
+import { browserSessionManager } from "./browser-session-manager";
 
 /** @useSignals */
 export const useBrowserSession = (taskId: string) => {
@@ -24,7 +24,6 @@ export const useManageBrowserSession = ({
 }: { messages: Message[] }) => {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   const store = useDefaultStore();
-  const queue = useRef(Promise.resolve());
 
   useEffect(() => {
     const manageBrowserSession = async () => {
@@ -38,19 +37,11 @@ export const useManageBrowserSession = ({
         lastToolPart.input?.agentType === "browser" &&
         lastToolPart.state === "input-available"
       ) {
-        const toolCallId = lastToolPart.toolCallId;
         const taskId = lastToolPart.input?._meta?.uid || "";
-        if (browserRecordingManager.isRegistered(toolCallId)) {
+        if (browserSessionManager.isRegistered(taskId)) {
           return;
         }
-        browserRecordingManager.registerBrowserRecordingSession(toolCallId);
-        const browserSession = await vscodeHost.registerBrowserSession(taskId);
-        if (browserSession?.streamUrl) {
-          browserRecordingManager.startRecording(
-            toolCallId,
-            browserSession.streamUrl,
-          );
-        }
+        await browserSessionManager.registerSession(taskId);
       }
 
       // Unregister browser related sessions
@@ -60,17 +51,18 @@ export const useManageBrowserSession = ({
         (lastToolPart.state === "output-available" ||
           lastToolPart.state === "output-error")
       ) {
-        const toolCallId = lastToolPart.toolCallId;
         const taskId = lastToolPart.input?._meta?.uid || "";
-        if (!browserRecordingManager.isRegistered(toolCallId)) {
+        if (!browserSessionManager.isRegistered(taskId)) {
           return;
         }
-        await vscodeHost.unregisterBrowserSession(taskId);
-        await browserRecordingManager.stopRecording(toolCallId, store);
-        browserRecordingManager.unregisterBrowserRecordingSession(toolCallId);
+        await browserSessionManager.unregisterSession(
+          taskId,
+          lastToolPart.toolCallId,
+          store,
+        );
       }
     };
 
-    queue.current = queue.current.then(manageBrowserSession);
+    manageBrowserSession();
   }, [lastToolPart, store]);
 };

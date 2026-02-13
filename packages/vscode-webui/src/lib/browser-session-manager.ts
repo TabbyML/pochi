@@ -5,6 +5,7 @@ import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
 import type { useDefaultStore } from "./use-default-store";
+import { vscodeHost } from "./vscode";
 
 const logger = getLogger("BrowserRecordingManager");
 
@@ -19,7 +20,7 @@ export class BrowserRecordingSession {
   private retryInterval = 2500;
   private onFrameCallbacks: Set<(frame: string) => void> = new Set();
 
-  start(streamUrl: string) {
+  startRecording(streamUrl: string) {
     if (this.ws) return; // Already started
 
     const connect = () => {
@@ -74,7 +75,7 @@ export class BrowserRecordingSession {
     }
   }
 
-  addFrame = runExclusive.buildMethod(async (frame: string) => {
+  private addFrame = runExclusive.buildMethod(async (frame: string) => {
     try {
       const binaryString = window.atob(frame);
       const len = binaryString.length;
@@ -99,6 +100,7 @@ export class BrowserRecordingSession {
               height,
             },
             fastStart: "in-memory",
+            firstTimestampBehavior: "offset",
           });
           const encoder = new VideoEncoder({
             output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
@@ -132,7 +134,7 @@ export class BrowserRecordingSession {
     }
   });
 
-  finish = runExclusive.buildMethod(
+  stopRecording = runExclusive.buildMethod(
     async (toolCallId: string, store: ReturnType<typeof useDefaultStore>) => {
       // Stop WebSocket
       clearTimeout(this.retryTimeout);
@@ -177,46 +179,42 @@ export class BrowserRecordingSession {
   );
 }
 
-export class BrowserRecordingManager {
-  private sessions = new Map<string, BrowserRecordingSession>();
+export class BrowserSessionManager {
+  private recordingSessions = new Map<string, BrowserRecordingSession>();
 
-  isRegistered(toolCallId: string) {
-    return this.sessions.has(toolCallId);
+  isRegistered(taskId: string) {
+    return this.recordingSessions.has(taskId);
   }
 
-  registerBrowserRecordingSession(toolCallId: string) {
-    this.sessions.set(toolCallId, new BrowserRecordingSession());
+  async registerSession(taskId: string) {
+    const recordingSession = new BrowserRecordingSession();
+    this.recordingSessions.set(taskId, recordingSession);
+    const { streamUrl } = await vscodeHost.registerBrowserSession(taskId);
+    if (streamUrl) {
+      recordingSession.startRecording(streamUrl);
+    }
   }
 
-  startRecording(toolCallId: string, streamUrl: string) {
-    const session = this.sessions.get(toolCallId);
-    if (!session) return;
-
-    session.start(streamUrl);
-  }
-
-  subscribeFrame(toolCallId: string, callback: (frame: string) => void) {
-    const session = this.sessions.get(toolCallId);
-    if (!session) {
+  subscribeFrame(taskId: string, callback: (frame: string) => void) {
+    const recordingSession = this.recordingSessions.get(taskId);
+    if (!recordingSession) {
       return () => {};
     }
-
-    return session.subscribeFrame(callback);
+    return recordingSession.subscribeFrame(callback);
   }
 
-  async stopRecording(
+  async unregisterSession(
+    taskId: string,
     toolCallId: string,
     store: ReturnType<typeof useDefaultStore>,
   ) {
-    const session = this.sessions.get(toolCallId);
-    if (!session) return;
-
-    return session.finish(toolCallId, store);
-  }
-
-  unregisterBrowserRecordingSession(toolCallId: string) {
-    this.sessions.delete(toolCallId);
+    const recordingSession = this.recordingSessions.get(taskId);
+    if (recordingSession) {
+      await recordingSession.stopRecording(toolCallId, store);
+      this.recordingSessions.delete(taskId);
+    }
+    vscodeHost.unregisterBrowserSession(taskId);
   }
 }
 
-export const browserRecordingManager = new BrowserRecordingManager();
+export const browserSessionManager = new BrowserSessionManager();
