@@ -346,7 +346,6 @@ export class TaskRunner {
     }
 
     spinner.succeed("All async work completed.");
-    logger.info("All async work completed.");
 
     // Collect results from completed async work
     const results: string[] = [];

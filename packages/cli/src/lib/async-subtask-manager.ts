@@ -124,20 +124,17 @@ export class AsyncSubTaskManager {
     abortSignal?: AbortSignal,
   ): Promise<"completed" | "timeout" | "aborted"> {
     const startTime = Date.now();
-    const pollInterval = 500; // Check every 500ms
+    const pollInterval = 1000;
 
     while (this.hasPendingTasks()) {
-      // Check for abort signal
       if (abortSignal?.aborted) {
         return "aborted";
       }
 
-      // Check for timeout
       if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs) {
         return "timeout";
       }
 
-      // Wait before next check
       await new Promise((resolve) => setTimeout(resolve, pollInterval));
     }
 
