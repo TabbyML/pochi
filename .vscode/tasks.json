@@ -190,6 +190,39 @@
         "dev:vscode-local-sync-local-server-vscode",
         "dev:vscode-local-sync-local-server-sync"
       ]
+    },
+    {
+      "type": "shell",
+      "label": "build:webui-assets",
+      "command": "cd packages/vscode-webui && bun run build:default && cd ../vscode && bun run copy:webui",
+      "group": "build"
+    },
+    {
+      "type": "shell",
+      "label": "dev:vscode-prod",
+      "command": "bun run watch:vscode",
+      "options": {
+        "cwd": "packages/vscode"
+      },
+      "isBackground": true,
+      "dependsOn": ["build:webui-assets"],
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "will-never-match",
+            "endsPattern": "Bundled"
+          }
+        }
+      ]
     }
   ]
 }

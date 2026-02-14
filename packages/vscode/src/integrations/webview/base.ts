@@ -82,7 +82,9 @@ export abstract class WebviewBase implements vscode.Disposable {
     info?: PochiTaskInfo,
   ): string {
     const isProd =
-      this.context.extensionMode === vscode.ExtensionMode.Production || isTest;
+      this.context.extensionMode === vscode.ExtensionMode.Production ||
+      isTest ||
+      process.env.POCHI_DEBUG_PROD === "true";
 
     const setiFontUri = getUri(webview, this.context.extensionUri, [
       "assets",
