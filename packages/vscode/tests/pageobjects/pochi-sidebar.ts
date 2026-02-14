@@ -71,6 +71,25 @@ export class PochiSidebar {
     return false;
   }
 
+  async selectModel(modelName: string) {
+    await this.modelSelect.click();
+    await this.modelSelectMenu.waitForDisplayed();
+
+    // Find model option with matching text
+    const menu = await this.modelSelectMenu;
+    const options = await menu.$$('[role="menuitemradio"]');
+
+    for (const option of options) {
+      const text = await option.getText();
+      if (text.includes(modelName)) {
+        await option.click();
+        return;
+      }
+    }
+
+    throw new Error(`Model ${modelName} not found in selection menu`);
+  }
+
   async sendMessage(text: string, waitMs = 1000) {
     await this.input.waitForDisplayed({ timeout: 1000 * 10 });
     await this.input.click();
