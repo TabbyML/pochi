@@ -107,9 +107,15 @@ export const MessageList: React.FC<{
         <ScrollArea
           className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
           ref={containerRef}
+          aria-label="message-list"
+          data-testid="message-list"
         >
           {renderMessages.map((m, messageIndex) => (
-            <div key={m.id} className="flex flex-col">
+            <div
+              key={m.id}
+              className="flex flex-col"
+              data-testid={`chat-message-${m.role}`}
+            >
               <div className={cn(showUserAvatar && "pt-4 pb-2")}>
                 {showUserAvatar && (
                   <div className="flex items-center gap-2">
