@@ -70,6 +70,17 @@
       "request": "launch",
       "testConfiguration": "${workspaceFolder}/packages/vscode/.vscode-test.mjs",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vscode"]
+    },
+    {
+      "name": "Run VSCode Extension (Production Debug)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vscode"],
+      "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
+      "preLaunchTask": "dev:vscode-prod",
+      "env": {
+        "POCHI_DEBUG_PROD": "true"
+      }
     }
   ]
 }
