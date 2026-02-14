@@ -20,7 +20,11 @@ export class FIMOpenAIModel implements FIMCompletionModel {
   private readonly promptTemplate: string;
 
   constructor(config: OpenAIProviderConfig) {
-    this.fetcher = new OpenAIFetcher(config);
+    this.fetcher = new OpenAIFetcher({
+      baseURL: config.baseURL,
+      authToken: config.apiKey,
+      model: config.model,
+    });
     this.model = config.model?.trim();
     this.promptTemplate =
       config.promptTemplate?.trim() || getDefaultPromptTemplate(this.model);
