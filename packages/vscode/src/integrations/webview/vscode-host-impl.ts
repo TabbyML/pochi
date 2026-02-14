@@ -1140,11 +1140,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readReviews = async (): Promise<ThreadSignalSerialization<Review[]>> => {
-    return ThreadSignal.serialize(this.reviewController.reviews);
+    // Append trailing slash to ensure exact directory match
+    // This prevents "zustand" from matching "zustand.worktree/..." in worktree scenarios
+    const cwdUriPrefix = this.cwd
+      ? `${vscode.Uri.file(this.cwd).toString()}/`
+      : null;
+    const filteredReviews = computed(() => {
+      if (!cwdUriPrefix) {
+        return [];
+      }
+      return this.reviewController.reviews.value.filter(
+        (review) =>
+          // Include pochi:// protocol URIs (e.g., plan.md) without cwd filtering
+          review.uri.startsWith("pochi://") ||
+          review.uri.startsWith(cwdUriPrefix),
+      );
+    });
+    return ThreadSignal.serialize(filteredReviews);
   };
 
-  clearReviews = async (): Promise<void> => {
-    return this.reviewController.clearThreads();
+  deleteReviews = async (reviewIds: string[]): Promise<void> => {
+    return this.reviewController.deleteThreads(reviewIds);
   };
 
   openReview = async (

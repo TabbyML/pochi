@@ -314,7 +314,7 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<Review[]>);
   },
 
-  clearReviews: async (): Promise<void> => {},
+  deleteReviews: async (_reviewIds: string[]): Promise<void> => {},
 
   openReview: async (
     _review: Review,

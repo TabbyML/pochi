@@ -35,7 +35,7 @@ export function prepareMessageParts(
         reviews: [...reviews],
       },
     });
-    vscodeHost.clearReviews();
+    vscodeHost.deleteReviews(reviews.map((r) => r.id));
   }
 
   if (userEdits) {

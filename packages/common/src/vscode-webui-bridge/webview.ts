@@ -366,7 +366,7 @@ export interface VSCodeHostApi {
 
   readReviews(): Promise<ThreadSignalSerialization<Review[]>>;
 
-  clearReviews(): Promise<void>;
+  deleteReviews(reviewIds: string[]): Promise<void>;
 
   openReview(
     review: Review,

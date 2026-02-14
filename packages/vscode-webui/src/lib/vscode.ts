@@ -113,7 +113,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "queryGithubIssues",
         "readGitBranches",
         "readReviews",
-        "clearReviews",
+        "deleteReviews",
         "openReview",
         "readUserEdits",
         "readTasks",
