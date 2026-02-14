@@ -18,7 +18,8 @@ export class BrowserRecordingSession {
   private ws: WebSocket | null = null;
   private retryTimeout: NodeJS.Timeout | undefined;
   private retryInterval = 2500;
-  private onFrameCallbacks: Set<(frame: string) => void> = new Set();
+
+  constructor(readonly taskId: string) {}
 
   startRecording(streamUrl: string) {
     if (this.ws) return; // Already started
@@ -62,16 +63,12 @@ export class BrowserRecordingSession {
     connect();
   }
 
-  subscribeFrame(callback: (frame: string) => void) {
-    this.onFrameCallbacks.add(callback);
-    return () => {
-      this.onFrameCallbacks.delete(callback);
-    };
-  }
-
   private notifyFrame(frame: string) {
-    for (const cb of this.onFrameCallbacks) {
-      cb(frame);
+    const frameSubscriptions = browserSessionManager.getTaskFrameSubscriptions(
+      this.taskId,
+    );
+    for (const callback of frameSubscriptions) {
+      callback(frame);
     }
   }
 
@@ -181,13 +178,14 @@ export class BrowserRecordingSession {
 
 export class BrowserSessionManager {
   private recordingSessions = new Map<string, BrowserRecordingSession>();
+  private frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
   isRegistered(taskId: string) {
     return this.recordingSessions.has(taskId);
   }
 
   async registerSession(taskId: string, parentId: string) {
-    const recordingSession = new BrowserRecordingSession();
+    const recordingSession = new BrowserRecordingSession(taskId);
     this.recordingSessions.set(taskId, recordingSession);
     const { streamUrl } = await vscodeHost.registerBrowserSession(
       taskId,
@@ -199,11 +197,17 @@ export class BrowserSessionManager {
   }
 
   subscribeFrame(taskId: string, callback: (frame: string) => void) {
-    const recordingSession = this.recordingSessions.get(taskId);
-    if (!recordingSession) {
-      return () => {};
+    if (!this.frameSubscriptions.has(taskId)) {
+      this.frameSubscriptions.set(taskId, new Set());
     }
-    return recordingSession.subscribeFrame(callback);
+    this.frameSubscriptions.get(taskId)?.add(callback);
+    return () => {
+      this.frameSubscriptions.get(taskId)?.delete(callback);
+    };
+  }
+
+  getTaskFrameSubscriptions(taskId: string) {
+    return this.frameSubscriptions.get(taskId) || new Set();
   }
 
   async unregisterSession(
