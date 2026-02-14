@@ -156,45 +156,4 @@ export class TaskDataStore {
   getChangedFilesSignal(taskId: string) {
     return computed(() => this.state.value[taskId]?.changedFiles ?? []);
   }
-
-  /**
-   * Migrate changed files from global state (old storage) to task data store.
-   * This handles migration from the previous storage format where each task's
-   * changed files were stored in a separate global state key.
-   */
-  async migrateFromGlobalState(taskId: string): Promise<boolean> {
-    const globalStateKey = `changed-file-store-${taskId}`;
-    const globalStateData = this.context.globalState.get<{
-      state?: { changedFiles?: TaskChangedFile[] };
-    }>(globalStateKey);
-
-    if (!globalStateData?.state?.changedFiles) {
-      logger.trace(
-        `No migration needed for ${taskId} - no global state data found`,
-      );
-      return false;
-    }
-
-    // Check if task data store already has changed files
-    const existingFiles = this.getChangedFiles(taskId);
-    if (existingFiles.length > 0) {
-      logger.trace(
-        `No migration needed for ${taskId} - task data store already has data`,
-      );
-      // Clean up old global state
-      await this.context.globalState.update(globalStateKey, undefined);
-      return false;
-    }
-
-    // Migrate data
-    logger.info(
-      `Migrating changed files for ${taskId} from global state to task data store`,
-    );
-    await this.setChangedFiles(taskId, globalStateData.state.changedFiles);
-
-    // Clean up old global state
-    await this.context.globalState.update(globalStateKey, undefined);
-    logger.info(`Successfully migrated changed files for ${taskId}`);
-    return true;
-  }
 }
