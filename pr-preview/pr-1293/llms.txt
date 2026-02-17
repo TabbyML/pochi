@@ -3729,7 +3729,7 @@ The model has to re-read large parts of the context, reconstruct what changed, a
 
 Pochi avoids this by attaching intent directly to code through **Edits** and **Reviews**.
 
-* **[Edits](https://docs.getpochi.com/edits/)**\*\* track the exact diffs you introduce locally while iterating. If you tweak a variable, adjust logic, or partially rewrite a block, Pochi includes only those changes in the agent’s context the next time you send a prompt.
+* **[Edits](https://docs.getpochi.com/edits/)** track the exact diffs you introduce locally while iterating. If you tweak a variable, adjust logic, or partially rewrite a block, Pochi includes only those changes in the agent’s context the next time you send a prompt.
   <video
     controls
     style={{
@@ -6414,7 +6414,7 @@ The model has to re-read large parts of the context, reconstruct what changed, a
 
 Pochi avoids this by attaching intent directly to code through **Edits** and **Reviews**.
 
-* **[Edits](https://docs.getpochi.com/edits/)**\*\* track the exact diffs you introduce locally while iterating. If you tweak a variable, adjust logic, or partially rewrite a block, Pochi includes only those changes in the agent’s context the next time you send a prompt.
+* **[Edits](https://docs.getpochi.com/edits/)** track the exact diffs you introduce locally while iterating. If you tweak a variable, adjust logic, or partially rewrite a block, Pochi includes only those changes in the agent’s context the next time you send a prompt.
   <video
     controls
     style={{
