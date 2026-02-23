@@ -3640,17 +3640,17 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
   --- */}
 
-## [How to Use Pochi to Prevent Context Bloat and Control Token Costs](./reduce-token-consumption-with-pochi)
+## [Five Practical Tips to Save Token Consumption with Pochi](./reduce-token-consumption-with-pochi)
 
-#### Feb 17, 2026
+#### Feb 24, 2026
 
-# How to Use Pochi to Prevent Context Bloat and Control Token Costs
+# Five Practical Tips to Save Token Consumption with Pochi
 
 The usual experience with coding agents is predictable - they start out sharp, then slowly become confused, verbose, and expensive. Instructions keep piling up, tools accumulate, and failed attempts linger in the conversation. By the time token costs start hitting the roof, the agent already feels harder to work with.
 
 At that point, most teams reach for the usual fixes: improve the prompts, avoid the biggest models for small tasks, and aggressively cache tool calls. While all of these help, they come with their own overhead of constant tuning and close monitoring - and even then, they rarely address the root cause of runaway token usage.
 
-![Token consumption Cover Image](./images/cover-image-reduce-tokens-via-pochi.png)
+![Token consumption Cover Image](./images/og-cover-image-reduce-token.png)
 
 This post breaks down practical workflow patterns you can apply to address common sources of context bloat, explains the principles behind them, and shows how Pochi supports these behaviors in day-to-day work. If you’ve ever felt like an agent got worse the longer you worked with it, these patterns are likely why, and how Pochi helps you fix it.
 
@@ -6317,23 +6317,23 @@ The plan lives as a real workspace artifact (i.e. `plan.md`) and opens in the ed
 **[Read the full docs](https://docs.getpochi.com/create-plan)**
 
 
-# How to Use Pochi to Prevent Context Bloat and Control Token Costs
+# Five Practical Tips to Save Token Consumption with Pochi
 URL: /developer-updates/reduce-token-consumption-with-pochi
-Developers are trying to make LLMs write code, but few are teaching them how to engineer
+Learn how Pochi helps in saving token consumption by addressing context bloat and improving agent efficiency/
 ***
 
-title: 'How to Use Pochi to Prevent Context Bloat and Control Token Costs'
-description: "Developers are trying to make LLMs write code, but few are teaching them how to engineer"
-image: "/og-image/rog-cover-image-reduce-tokens.png"
-----------------------------------------------------
+title: 'Five Practical Tips to Save Token Consumption with Pochi'
+description: "Learn how Pochi helps in saving token consumption by addressing context bloat and improving agent efficiency/"
+image: "/og-image/og-cover-image-reduce-token.png"
+--------------------------------------------------
 
-# How to Use Pochi to Prevent Context Bloat and Control Token Costs
+# Five Practical Tips to Save Token Consumption with Pochi
 
 The usual experience with coding agents is predictable - they start out sharp, then slowly become confused, verbose, and expensive. Instructions keep piling up, tools accumulate, and failed attempts linger in the conversation. By the time token costs start hitting the roof, the agent already feels harder to work with.
 
 At that point, most teams reach for the usual fixes: improve the prompts, avoid the biggest models for small tasks, and aggressively cache tool calls. While all of these help, they come with their own overhead of constant tuning and close monitoring - and even then, they rarely address the root cause of runaway token usage.
 
-![Token consumption Cover Image](./images/cover-image-reduce-tokens-via-pochi.png)
+![Token consumption Cover Image](./images/og-cover-image-reduce-token.png)
 
 This post breaks down practical workflow patterns you can apply to address common sources of context bloat, explains the principles behind them, and shows how Pochi supports these behaviors in day-to-day work. If you’ve ever felt like an agent got worse the longer you worked with it, these patterns are likely why, and how Pochi helps you fix it.
 
