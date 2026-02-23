@@ -10,6 +10,7 @@ import type { UITools } from "@getpochi/livekit";
 import { isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, isToolUIPart } from "ai";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
@@ -21,6 +22,7 @@ interface SubAgentViewProps {
   isExecuting: NewTaskToolViewProps["isExecuting"];
   actions?: React.ReactNode;
   children: React.ReactNode;
+  headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
   toolCallStatusRegistryRef: NewTaskToolViewProps["toolCallStatusRegistryRef"];
@@ -34,6 +36,7 @@ export function SubAgentView({
   tool,
   isExecuting,
   children,
+  headerActions,
   footerActions,
   taskSource,
   toolCallStatusRegistryRef,
@@ -47,6 +50,7 @@ export function SubAgentView({
   const showFooter = showExpandIcon || footerActions;
   const navigate = useNavigate();
   const store = useDefaultStore();
+  const { t } = useTranslation();
   const toolTitle = tool.input?.agentType;
   const description = tool.input?.description;
   const lastToolCall = useRef<ToolUIPart<UITools>>(null);
@@ -104,6 +108,9 @@ export function SubAgentView({
             {description}
           </span>
         )}
+        {headerActions && (
+          <div className="ml-auto flex items-center gap-2">{headerActions}</div>
+        )}
       </div>
 
       {children}
@@ -111,21 +118,23 @@ export function SubAgentView({
       {showFooter && (
         <div className="flex items-center gap-2 border-t bg-muted p-2">
           {showExpandIcon && (
-            <div className="flex items-center">
+            <div className="flex items-center gap-1">
               <ExpandIcon
                 className="rotate-270 cursor-pointer text-muted-foreground"
                 isExpanded={!isCollapsed}
                 onClick={() => setIsCollapsed(!isCollapsed)}
               />
-              {isExecuting && lastToolCall.current && (
-                <div className="truncate text-muted-foreground text-xs">
+              <div className="truncate text-muted-foreground text-xs">
+                {isExecuting && lastToolCall.current ? (
                   <ToolCallLite
                     tools={[lastToolCall.current]}
                     showApprove={false}
                     showCommandDetails
                   />
-                </div>
-              )}
+                ) : (
+                  t("subAgentView.clickToExpand")
+                )}
+              </div>
             </div>
           )}
           {footerActions && (

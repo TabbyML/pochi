@@ -489,7 +489,10 @@
     "failedToRender": "Failed to render Mermaid chart:",
     "fixError": "Fix error with Pochi"
   },
-  "planCard": {
+  "subAgentView": {
+    "clickToExpand": "Click to expand for details"
+  },
+  "plannerView": {
     "reviewPlan": "Review",
     "reviewPlanTitle": "Review Plan",
     "reviewPlanTooltip": "Click the '+' before the line number of the plan artifact to leave comments",
@@ -498,7 +501,7 @@
     "creatingPlan": "Analyzing your code and creating a plan...",
     "planCreationPaused": "Plan creation paused"
   },
-  "walkthroughCard": {
+  "walkthroughView": {
     "openWalkthrough": "Open",
     "creatingWalkthrough": "Creating walkthrough...",
     "walkthroughCreationPaused": "Walkthrough creation paused"

@@ -490,7 +490,10 @@
     "failedToRender": "渲染 Mermaid 图表失败：",
     "fixError": "使用 Pochi 修复错误"
   },
-  "planCard": {
+  "subAgentView": {
+    "clickToExpand": "点击展开详情"
+  },
+  "plannerView": {
     "reviewPlan": "评审",
     "reviewPlanTitle": "评审计划",
     "reviewPlanTooltip": "点击plan artifact 的行号前的‘+’ 来 leave comments",
@@ -498,7 +501,7 @@
     "creatingPlan": "正在分析您的代码并制定计划...",
     "planCreationPaused": "计划创建已暂停"
   },
-  "walkthroughCard": {
+  "walkthroughView": {
     "openWalkthrough": "打开",
     "creatingWalkthrough": "正在创建 Walkthrough...",
     "walkthroughCreationPaused": "Walkthrough 创建已暂停"
