@@ -9,6 +9,8 @@ import { vscodeHost } from "./vscode";
 
 const logger = getLogger("BrowserRecordingManager");
 
+const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
+
 export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
@@ -64,11 +66,11 @@ export class BrowserRecordingSession {
   }
 
   private notifyFrame(frame: string) {
-    const frameSubscriptions = browserSessionManager.getTaskFrameSubscriptions(
-      this.taskId,
-    );
-    for (const callback of frameSubscriptions) {
-      callback(frame);
+    const subscriptions = frameSubscriptions.get(this.taskId);
+    if (subscriptions) {
+      for (const callback of subscriptions) {
+        callback(frame);
+      }
     }
   }
 
@@ -178,7 +180,6 @@ export class BrowserRecordingSession {
 
 export class BrowserSessionManager {
   private recordingSessions = new Map<string, BrowserRecordingSession>();
-  private frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
   isRegistered(taskId: string) {
     return this.recordingSessions.has(taskId);
@@ -197,17 +198,13 @@ export class BrowserSessionManager {
   }
 
   subscribeFrame(taskId: string, callback: (frame: string) => void) {
-    if (!this.frameSubscriptions.has(taskId)) {
-      this.frameSubscriptions.set(taskId, new Set());
+    if (!frameSubscriptions.has(taskId)) {
+      frameSubscriptions.set(taskId, new Set());
     }
-    this.frameSubscriptions.get(taskId)?.add(callback);
+    frameSubscriptions.get(taskId)?.add(callback);
     return () => {
-      this.frameSubscriptions.get(taskId)?.delete(callback);
+      frameSubscriptions.get(taskId)?.delete(callback);
     };
-  }
-
-  getTaskFrameSubscriptions(taskId: string) {
-    return this.frameSubscriptions.get(taskId) || new Set();
   }
 
   async unregisterSession(
@@ -220,6 +217,7 @@ export class BrowserSessionManager {
       await recordingSession.stopRecording(toolCallId, store);
       this.recordingSessions.delete(taskId);
     }
+    frameSubscriptions.delete(taskId);
     vscodeHost.unregisterBrowserSession(taskId);
   }
 }
