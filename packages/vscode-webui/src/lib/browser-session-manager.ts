@@ -7,6 +7,41 @@ import * as runExclusive from "run-exclusive";
 import type { useDefaultStore } from "./use-default-store";
 import { vscodeHost } from "./vscode";
 
+function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
+  const width = 32;
+  const height = 32;
+  let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
+    null;
+
+  if (typeof OffscreenCanvas !== "undefined") {
+    const canvas = new OffscreenCanvas(width, height);
+    ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
+  } else {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext("2d");
+  }
+
+  if (!ctx) return false;
+
+  ctx.drawImage(imageBitmap, 0, 0, width, height);
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  // Check if all pixels are white
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r < 250 || g < 250 || b < 250) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 const logger = getLogger("BrowserRecordingManager");
 
 const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
@@ -89,6 +124,11 @@ export class BrowserRecordingSession {
       });
 
       if (!this.muxer) {
+        if (isWhiteScreen(imageBitmap)) {
+          imageBitmap.close();
+          return;
+        }
+
         try {
           const { width, height } = imageBitmap;
           const muxer = new Muxer({
