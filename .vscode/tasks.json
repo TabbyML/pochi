@@ -193,8 +193,8 @@
     },
     {
       "type": "shell",
-      "label": "build:webui-assets",
-      "command": "cd packages/vscode-webui && bun run build:default && cd ../vscode && bun run copy:webui",
+      "label": "build:vscode-prod-assets",
+      "command": "bun turbo build --output-logs=full --filter='!@getpochi/docs'",
       "group": "build"
     },
     {
@@ -205,7 +205,7 @@
         "cwd": "packages/vscode"
       },
       "isBackground": true,
-      "dependsOn": ["build:webui-assets"],
+      "dependsOn": ["build:vscode-prod-assets"],
       "problemMatcher": [
         {
           "pattern": [

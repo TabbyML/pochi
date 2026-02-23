@@ -79,7 +79,7 @@
       "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
       "preLaunchTask": "dev:vscode-prod",
       "env": {
-        "POCHI_DEBUG_PROD": "true"
+        "POCHI_PROD_DEBUG": "true"
       }
     }
   ]
