@@ -15,6 +15,7 @@ import type {
 import {
   getServerBaseUrl,
   getSyncBaseUrl,
+  isProdDebug,
   isTest,
 } from "@getpochi/common/vscode-webui-bridge";
 import { Thread } from "@quilted/threads";
@@ -82,7 +83,9 @@ export abstract class WebviewBase implements vscode.Disposable {
     info?: PochiTaskInfo,
   ): string {
     const isProd =
-      this.context.extensionMode === vscode.ExtensionMode.Production || isTest;
+      this.context.extensionMode === vscode.ExtensionMode.Production ||
+      isTest ||
+      isProdDebug;
 
     const setiFontUri = getUri(webview, this.context.extensionUri, [
       "assets",
