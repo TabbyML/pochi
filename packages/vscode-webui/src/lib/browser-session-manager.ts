@@ -8,8 +8,10 @@ import type { useDefaultStore } from "./use-default-store";
 import { vscodeHost } from "./vscode";
 
 const logger = getLogger("BrowserRecordingManager");
+
 const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
-const WHITE_SCREEN_CHECK_INTERVAL = 500;
+const whiteScreenCheckInterval = 500;
+const websocketRetryInterval = 2500;
 
 function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   const width = 32;
@@ -55,7 +57,6 @@ export class BrowserRecordingSession {
   // WebSocket related
   private ws: WebSocket | null = null;
   private retryTimeout: NodeJS.Timeout | undefined;
-  private retryInterval = 2500;
 
   constructor(readonly taskId: string) {}
 
@@ -71,7 +72,7 @@ export class BrowserRecordingSession {
       try {
         this.ws = new WebSocket(streamUrl);
         this.ws.onclose = () => {
-          this.retryTimeout = setTimeout(connect, this.retryInterval);
+          this.retryTimeout = setTimeout(connect, websocketRetryInterval);
         };
         this.ws.onerror = (event) => {
           logger.error("Browser stream error", event);
@@ -94,7 +95,7 @@ export class BrowserRecordingSession {
         };
       } catch (e) {
         logger.error("Failed to connect to browser stream", e);
-        this.retryTimeout = setTimeout(connect, this.retryInterval);
+        this.retryTimeout = setTimeout(connect, websocketRetryInterval);
       }
     };
 
@@ -114,7 +115,7 @@ export class BrowserRecordingSession {
     try {
       if (!this.muxer) {
         const now = Date.now();
-        if (now - this.lastWhiteScreenCheckTime < WHITE_SCREEN_CHECK_INTERVAL) {
+        if (now - this.lastWhiteScreenCheckTime < whiteScreenCheckInterval) {
           return;
         }
         this.lastWhiteScreenCheckTime = now;
