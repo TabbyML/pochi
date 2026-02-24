@@ -57,12 +57,12 @@ export function BrowserView(props: NewTaskToolViewProps) {
             source={taskSource}
             showMessageList={true}
             showTodos={false}
-            scrollAreaClassName="border-none h-[200px] my-0"
+            scrollAreaClassName="border-none h-[300px] my-0"
             assistant={{ name: "Browser" }}
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-[200px] w-full items-center justify-center p-3 text-muted-foreground">
+        <div className="flex h-[300px] w-full items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting ? t("browserView.executing") : t("browserView.paused")}
           </span>
