@@ -7,6 +7,10 @@ import * as runExclusive from "run-exclusive";
 import type { useDefaultStore } from "./use-default-store";
 import { vscodeHost } from "./vscode";
 
+const logger = getLogger("BrowserRecordingManager");
+const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
+const WHITE_SCREEN_CHECK_INTERVAL = 500;
+
 function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   const width = 32;
   const height = 32;
@@ -42,14 +46,11 @@ function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   return true;
 }
 
-const logger = getLogger("BrowserRecordingManager");
-
-const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
-
 export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
+  private lastWhiteScreenCheckTime = 0;
 
   // WebSocket related
   private ws: WebSocket | null = null;
@@ -111,6 +112,14 @@ export class BrowserRecordingSession {
 
   private addFrame = runExclusive.buildMethod(async (frame: string) => {
     try {
+      if (!this.muxer) {
+        const now = Date.now();
+        if (now - this.lastWhiteScreenCheckTime < WHITE_SCREEN_CHECK_INTERVAL) {
+          return;
+        }
+        this.lastWhiteScreenCheckTime = now;
+      }
+
       const binaryString = window.atob(frame);
       const len = binaryString.length;
       const bytes = new Uint8Array(len);
