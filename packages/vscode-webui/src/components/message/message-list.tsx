@@ -109,7 +109,11 @@ export const MessageList: React.FC<{
           ref={containerRef}
         >
           {renderMessages.map((m, messageIndex) => (
-            <div key={m.id} className="flex flex-col">
+            <div
+              key={m.id}
+              className="flex flex-col"
+              aria-label={`chat-message-${m.role}`}
+            >
               <div className={cn(showUserAvatar && "pt-4 pb-2")}>
                 {showUserAvatar && (
                   <div className="flex items-center gap-2">
