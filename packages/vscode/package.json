@@ -95,6 +95,11 @@
         "category": "Pochi"
       },
       {
+        "command": "pochi.loginWithTabby",
+        "title": "Login with Tabby",
+        "category": "Pochi"
+      },
+      {
         "command": "pochi.logout",
         "title": "Logout",
         "category": "Pochi"

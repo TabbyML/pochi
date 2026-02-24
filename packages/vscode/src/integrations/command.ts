@@ -21,6 +21,7 @@ import {
   type CustomModelSetting,
   type McpServerConfig,
   pochiConfig,
+  updateVendorConfig,
 } from "@getpochi/common/configuration";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
@@ -162,6 +163,56 @@ export class CommandManager implements vscode.Disposable {
             },
           );
         }
+      }),
+
+      vscode.commands.registerCommand("pochi.loginWithTabby", async () => {
+        const urlInput = await vscode.window.showInputBox({
+          prompt: "Enter Tabby Server URL",
+          placeHolder: "http://localhost:8080",
+          ignoreFocusOut: true,
+          value: "http://localhost:8080",
+        });
+        if (!urlInput) return;
+
+        const url = urlInput.trim().replace(/\/$/, "");
+
+        const token = await vscode.window.showInputBox({
+          prompt: "Enter Tabby Token",
+          placeHolder: "Paste your Tabby token here",
+          ignoreFocusOut: true,
+          password: true,
+        });
+        if (token === undefined) return;
+
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            cancellable: false,
+          },
+          async (progress) => {
+            progress.report({
+              message: "Logging in to Tabby, please wait...",
+            });
+
+            try {
+              await updateVendorConfig("tabby", {
+                credentials: { url, token: token.trim() },
+              });
+
+              const vendor = getVendor("tabby");
+              const user = await vendor.getUserInfo();
+
+              vscode.window.showInformationMessage(
+                `Logged in to Tabby${user?.name ? ` as ${user.name}` : ""}.`,
+              );
+            } catch (error) {
+              logger.error("Failed to login to Tabby", error);
+              vscode.window.showErrorMessage(
+                `Failed to login to Tabby: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+          },
+        );
       }),
 
       vscode.commands.registerCommand(
