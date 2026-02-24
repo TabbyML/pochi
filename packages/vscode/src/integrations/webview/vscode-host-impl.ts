@@ -1266,9 +1266,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   });
 
   readTaskChangedFiles = async (taskId: string) => {
-    // Migrate from global state if needed (async, handles its own errors)
-    await this.taskChangedFilesManager.migrateFromGlobalState(taskId);
-
     return {
       changedFiles: ThreadSignal.serialize(
         this.taskChangedFilesManager.getChangedFilesSignal(taskId),

@@ -226,13 +226,6 @@ export class TaskChangedFilesManager {
   }
 
   /**
-   * Migrate changed files from global state (old storage) to task data store.
-   */
-  async migrateFromGlobalState(taskId: string): Promise<boolean> {
-    return this.taskDataStore.migrateFromGlobalState(taskId);
-  }
-
-  /**
    * Show changed files in a diff view.
    * @param taskId The task ID
    * @param cwd The current working directory
