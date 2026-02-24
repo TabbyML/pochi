@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FixedStateChatContextProvider } from "@/features/chat";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { SquareArrowOutUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { LuFileSymlink } from "react-icons/lu";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
 
@@ -36,7 +36,7 @@ export function WalkthroughView(props: NewTaskToolViewProps) {
               vscodeHost.openFile("pochi://-/walkthrough.md");
             }}
           >
-            <SquareArrowOutUpRight className="h-4 w-4 text-muted-foreground" />
+            <LuFileSymlink className="h-4 w-4 text-muted-foreground" />
           </Button>
         )
       }

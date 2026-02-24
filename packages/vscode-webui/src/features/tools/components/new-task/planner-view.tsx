@@ -13,9 +13,10 @@ import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { FilePenLine, Play, SquareArrowOutUpRight } from "lucide-react";
+import { FilePenLine, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { LuFileSymlink } from "react-icons/lu";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
 
@@ -79,7 +80,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
               vscodeHost.openFile("pochi://-/plan.md");
             }}
           >
-            <SquareArrowOutUpRight className="h-4 w-4 text-muted-foreground" />
+            <LuFileSymlink className="h-4 w-4 text-muted-foreground" />
           </Button>
         )
       }

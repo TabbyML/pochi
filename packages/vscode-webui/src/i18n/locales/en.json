@@ -489,9 +489,6 @@
     "failedToRender": "Failed to render Mermaid chart:",
     "fixError": "Fix error with Pochi"
   },
-  "subAgentView": {
-    "clickToExpand": "Click to expand for details"
-  },
   "plannerView": {
     "reviewPlan": "Review",
     "reviewPlanTitle": "Review Plan",

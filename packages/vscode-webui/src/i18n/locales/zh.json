@@ -490,9 +490,6 @@
     "failedToRender": "渲染 Mermaid 图表失败：",
     "fixError": "使用 Pochi 修复错误"
   },
-  "subAgentView": {
-    "clickToExpand": "点击展开详情"
-  },
   "plannerView": {
     "reviewPlan": "评审",
     "reviewPlanTitle": "评审计划",

@@ -492,9 +492,6 @@
     "failedToRender": "Mermaid チャートのレンダリングに失敗しました：",
     "fixError": "Pochi でエラーを修正"
   },
-  "subAgentView": {
-    "clickToExpand": "クリックして詳細を展開"
-  },
   "plannerView": {
     "reviewPlan": "確認",
     "reviewPlanTitle": "計画を確認",

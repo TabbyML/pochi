@@ -486,9 +486,6 @@
     "failedToRender": "Mermaid 차트 렌더링 실패:",
     "fixError": "Pochi로 오류 수정"
   },
-  "subAgentView": {
-    "clickToExpand": "클릭하여 세부 정보 확장"
-  },
   "plannerView": {
     "reviewPlan": "검토",
     "reviewPlanTitle": "계획 검토",

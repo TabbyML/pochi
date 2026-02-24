@@ -10,7 +10,6 @@ import type { UITools } from "@getpochi/livekit";
 import { isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, isToolUIPart } from "ai";
 import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
@@ -46,11 +45,10 @@ export function SubAgentView({
 }: SubAgentViewProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const showExpandIcon =
-    expandable && taskSource && taskSource.messages.length > 1;
+    isExecuting && expandable && taskSource && taskSource.messages.length > 1;
   const showFooter = showExpandIcon || footerActions;
   const navigate = useNavigate();
   const store = useDefaultStore();
-  const { t } = useTranslation();
   const toolTitle = tool.input?.agentType;
   const description = tool.input?.description;
   const lastToolCall = useRef<ToolUIPart<UITools>>(null);
@@ -124,17 +122,15 @@ export function SubAgentView({
                 isExpanded={!isCollapsed}
                 onClick={() => setIsCollapsed(!isCollapsed)}
               />
-              <div className="truncate text-muted-foreground text-xs">
-                {isExecuting && lastToolCall.current ? (
+              {lastToolCall.current && (
+                <div className="truncate text-muted-foreground text-xs">
                   <ToolCallLite
                     tools={[lastToolCall.current]}
                     showApprove={false}
                     showCommandDetails
                   />
-                ) : (
-                  t("subAgentView.clickToExpand")
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
           {footerActions && (
@@ -145,21 +141,24 @@ export function SubAgentView({
         </div>
       )}
 
-      {isCollapsed && taskSource && taskSource.messages.length > 1 && (
-        <div className="p-1">
-          <FixedStateChatContextProvider
-            toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-          >
-            <TaskThread
-              source={{ ...taskSource, isLoading: false }}
-              showMessageList={true}
-              showTodos={false}
-              scrollAreaClassName="border-none"
-              assistant={{ name: assistantName }}
-            />
-          </FixedStateChatContextProvider>
-        </div>
-      )}
+      {isExecuting &&
+        isCollapsed &&
+        taskSource &&
+        taskSource.messages.length > 1 && (
+          <div className="p-1">
+            <FixedStateChatContextProvider
+              toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+            >
+              <TaskThread
+                source={{ ...taskSource, isLoading: false }}
+                showMessageList={true}
+                showTodos={false}
+                scrollAreaClassName="border-none"
+                assistant={{ name: assistantName }}
+              />
+            </FixedStateChatContextProvider>
+          </div>
+        )}
     </div>
   );
 }
