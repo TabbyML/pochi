@@ -9,6 +9,8 @@ import { vscodeHost } from "./vscode";
 
 const logger = getLogger("BrowserRecordingManager");
 
+const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
+
 export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
@@ -18,7 +20,8 @@ export class BrowserRecordingSession {
   private ws: WebSocket | null = null;
   private retryTimeout: NodeJS.Timeout | undefined;
   private retryInterval = 2500;
-  private onFrameCallbacks: Set<(frame: string) => void> = new Set();
+
+  constructor(readonly taskId: string) {}
 
   startRecording(streamUrl: string) {
     if (this.ws) return; // Already started
@@ -62,16 +65,12 @@ export class BrowserRecordingSession {
     connect();
   }
 
-  subscribeFrame(callback: (frame: string) => void) {
-    this.onFrameCallbacks.add(callback);
-    return () => {
-      this.onFrameCallbacks.delete(callback);
-    };
-  }
-
   private notifyFrame(frame: string) {
-    for (const cb of this.onFrameCallbacks) {
-      cb(frame);
+    const subscriptions = frameSubscriptions.get(this.taskId);
+    if (subscriptions) {
+      for (const callback of subscriptions) {
+        callback(frame);
+      }
     }
   }
 
@@ -187,7 +186,7 @@ export class BrowserSessionManager {
   }
 
   async registerSession(taskId: string, parentId: string) {
-    const recordingSession = new BrowserRecordingSession();
+    const recordingSession = new BrowserRecordingSession(taskId);
     this.recordingSessions.set(taskId, recordingSession);
     const { streamUrl } = await vscodeHost.registerBrowserSession(
       taskId,
@@ -199,11 +198,13 @@ export class BrowserSessionManager {
   }
 
   subscribeFrame(taskId: string, callback: (frame: string) => void) {
-    const recordingSession = this.recordingSessions.get(taskId);
-    if (!recordingSession) {
-      return () => {};
+    if (!frameSubscriptions.has(taskId)) {
+      frameSubscriptions.set(taskId, new Set());
     }
-    return recordingSession.subscribeFrame(callback);
+    frameSubscriptions.get(taskId)?.add(callback);
+    return () => {
+      frameSubscriptions.get(taskId)?.delete(callback);
+    };
   }
 
   async unregisterSession(
@@ -216,6 +217,7 @@ export class BrowserSessionManager {
       await recordingSession.stopRecording(toolCallId, store);
       this.recordingSessions.delete(taskId);
     }
+    frameSubscriptions.delete(taskId);
     vscodeHost.unregisterBrowserSession(taskId);
   }
 }
