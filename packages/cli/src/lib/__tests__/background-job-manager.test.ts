@@ -35,4 +35,24 @@ describe("BackgroundJobManager", () => {
     const result2 = manager.readOutput(id);
     expect(result2?.output).toBe("");
   });
+
+  it("should wait for all jobs to complete", async () => {
+    const manager = new BackgroundJobManager();
+    manager.start("sleep 0.1", ".");
+    manager.start("sleep 0.2", ".");
+
+    const result = await manager.waitForAllJobs(1000);
+    expect(result).toBe("completed");
+    expect(manager.hasPendingJobs()).toBe(false);
+  });
+
+  it("should timeout if jobs take too long", async () => {
+    const manager = new BackgroundJobManager();
+    manager.start("sleep 2", ".");
+
+    const result = await manager.waitForAllJobs(100);
+    expect(result).toBe("timeout");
+    expect(manager.hasPendingJobs()).toBe(true);
+    manager.killAll();
+  });
 });

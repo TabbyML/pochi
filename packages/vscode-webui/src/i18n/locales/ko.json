@@ -486,7 +486,7 @@
     "failedToRender": "Mermaid 차트 렌더링 실패:",
     "fixError": "Pochi로 오류 수정"
   },
-  "planCard": {
+  "plannerView": {
     "reviewPlan": "검토",
     "reviewPlanTitle": "계획 검토",
     "reviewPlanTooltip": "계획 아티팩트의 줄 번호 앞에 있는 '+'를 클릭하여 댓글을 남기세요",
@@ -494,7 +494,7 @@
     "creatingPlan": "코드를 분석하고 계획을 수립 중입니다...",
     "planCreationPaused": "계획 수립이 일시 중지되었습니다"
   },
-  "walkthroughCard": {
+  "walkthroughView": {
     "openWalkthrough": "열기",
     "creatingWalkthrough": "워크스루 생성 중...",
     "walkthroughCreationPaused": "워크스루 생성이 일시 중지되었습니다"

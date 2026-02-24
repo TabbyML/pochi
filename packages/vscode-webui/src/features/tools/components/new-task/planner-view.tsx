@@ -12,10 +12,11 @@ import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { isVSCodeEnvironment } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { FilePenLine, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { LuFileSymlink } from "react-icons/lu";
 import type { NewTaskToolViewProps } from "./index";
 import { SubAgentView } from "./sub-agent-view";
 
@@ -23,8 +24,14 @@ const reviewTutorialImage =
   "https://app.getpochi.com/images/review-plan-tutorial.gif";
 
 export function PlannerView(props: NewTaskToolViewProps) {
-  const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
-    props;
+  const {
+    tool,
+    isExecuting,
+    taskSource,
+    uid,
+    toolCallStatusRegistryRef,
+    isLastPart,
+  } = props;
 
   const { t } = useTranslation();
   const store = useDefaultStore();
@@ -68,8 +75,24 @@ export function PlannerView(props: NewTaskToolViewProps) {
       expandable={!!file}
       taskSource={taskSource}
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
+      headerActions={
+        isVSCodeEnvironment() &&
+        file && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              vscodeHost.openFile("pochi://-/plan.md");
+            }}
+          >
+            <LuFileSymlink className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        )
+      }
       footerActions={
-        isVSCodeEnvironment() && (
+        isVSCodeEnvironment() &&
+        isLastPart && (
           <>
             <HoverCard
               openDelay={0}
@@ -88,7 +111,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
                   disabled={isExecuting}
                 >
                   <FilePenLine className="mr-0.5 size-3.5" />
-                  {t("planCard.reviewPlan")}
+                  {t("plannerView.reviewPlan")}
                 </Button>
               </HoverCardTrigger>
               <HoverCardContent
@@ -102,10 +125,10 @@ export function PlannerView(props: NewTaskToolViewProps) {
                     className="rounded-md"
                   />
                   <p className="mb-1 font-medium text-xl">
-                    {t("planCard.reviewPlanTitle")}
+                    {t("plannerView.reviewPlanTitle")}
                   </p>
                   <span className="text-lg">
-                    {t("planCard.reviewPlanTooltip")}
+                    {t("plannerView.reviewPlanTooltip")}
                   </span>
                 </div>
               </HoverCardContent>
@@ -117,14 +140,14 @@ export function PlannerView(props: NewTaskToolViewProps) {
               disabled={isExecuting || !file}
             >
               <Play className="mr-0.5 size-3.5" />
-              {t("planCard.executePlan")}
+              {t("plannerView.executePlan")}
             </Button>
           </>
         )
       }
     >
       {file?.content ? (
-        <ScrollArea viewportClassname="h-[200px]">
+        <ScrollArea viewportClassname="h-[300px]">
           <div className="p-3 text-xs">
             <MessageMarkdown>{file.content}</MessageMarkdown>
           </div>
@@ -137,16 +160,16 @@ export function PlannerView(props: NewTaskToolViewProps) {
             source={taskSource}
             showMessageList={true}
             showTodos={false}
-            scrollAreaClassName="border-none h-[200px] my-0"
+            scrollAreaClassName="border-none h-[300px] my-0"
             assistant={{ name: "Planner" }}
           />
         </FixedStateChatContextProvider>
       ) : (
-        <div className="flex h-[200px] w-full items-center justify-center p-3 text-muted-foreground">
+        <div className="flex h-[300px] w-full items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting
-              ? t("planCard.creatingPlan")
-              : t("planCard.planCreationPaused")}
+              ? t("plannerView.creatingPlan")
+              : t("plannerView.planCreationPaused")}
           </span>
         </div>
       )}

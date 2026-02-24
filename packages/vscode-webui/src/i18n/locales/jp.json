@@ -492,7 +492,7 @@
     "failedToRender": "Mermaid チャートのレンダリングに失敗しました：",
     "fixError": "Pochi でエラーを修正"
   },
-  "planCard": {
+  "plannerView": {
     "reviewPlan": "確認",
     "reviewPlanTitle": "計画を確認",
     "reviewPlanTooltip": "プランアーティファクトの行番号の前にある「+」をクリックしてコメントを残します",
@@ -500,7 +500,7 @@
     "creatingPlan": "コードを分析し、計画を作成しています...",
     "planCreationPaused": "計画の作成が一時停止しました"
   },
-  "walkthroughCard": {
+  "walkthroughView": {
     "openWalkthrough": "開く",
     "creatingWalkthrough": "ウォークスルーを作成中...",
     "walkthroughCreationPaused": "ウォークスルーの作成が一時停止しました"

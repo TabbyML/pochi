@@ -9,16 +9,56 @@ import { vscodeHost } from "./vscode";
 
 const logger = getLogger("BrowserRecordingManager");
 
+const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
+const whiteScreenCheckInterval = 500;
+const websocketRetryInterval = 2500;
+
+function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
+  const width = 32;
+  const height = 32;
+  let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
+    null;
+
+  if (typeof OffscreenCanvas !== "undefined") {
+    const canvas = new OffscreenCanvas(width, height);
+    ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
+  } else {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext("2d");
+  }
+
+  if (!ctx) return false;
+
+  ctx.drawImage(imageBitmap, 0, 0, width, height);
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  // Check if all pixels are white
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r < 250 || g < 250 || b < 250) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
+  private lastWhiteScreenCheckTime = 0;
 
   // WebSocket related
   private ws: WebSocket | null = null;
   private retryTimeout: NodeJS.Timeout | undefined;
-  private retryInterval = 2500;
-  private onFrameCallbacks: Set<(frame: string) => void> = new Set();
+
+  constructor(readonly taskId: string) {}
 
   startRecording(streamUrl: string) {
     if (this.ws) return; // Already started
@@ -32,7 +72,7 @@ export class BrowserRecordingSession {
       try {
         this.ws = new WebSocket(streamUrl);
         this.ws.onclose = () => {
-          this.retryTimeout = setTimeout(connect, this.retryInterval);
+          this.retryTimeout = setTimeout(connect, websocketRetryInterval);
         };
         this.ws.onerror = (event) => {
           logger.error("Browser stream error", event);
@@ -55,28 +95,32 @@ export class BrowserRecordingSession {
         };
       } catch (e) {
         logger.error("Failed to connect to browser stream", e);
-        this.retryTimeout = setTimeout(connect, this.retryInterval);
+        this.retryTimeout = setTimeout(connect, websocketRetryInterval);
       }
     };
 
     connect();
   }
 
-  subscribeFrame(callback: (frame: string) => void) {
-    this.onFrameCallbacks.add(callback);
-    return () => {
-      this.onFrameCallbacks.delete(callback);
-    };
-  }
-
   private notifyFrame(frame: string) {
-    for (const cb of this.onFrameCallbacks) {
-      cb(frame);
+    const subscriptions = frameSubscriptions.get(this.taskId);
+    if (subscriptions) {
+      for (const callback of subscriptions) {
+        callback(frame);
+      }
     }
   }
 
   private addFrame = runExclusive.buildMethod(async (frame: string) => {
     try {
+      if (!this.muxer) {
+        const now = Date.now();
+        if (now - this.lastWhiteScreenCheckTime < whiteScreenCheckInterval) {
+          return;
+        }
+        this.lastWhiteScreenCheckTime = now;
+      }
+
       const binaryString = window.atob(frame);
       const len = binaryString.length;
       const bytes = new Uint8Array(len);
@@ -90,6 +134,11 @@ export class BrowserRecordingSession {
       });
 
       if (!this.muxer) {
+        if (isWhiteScreen(imageBitmap)) {
+          imageBitmap.close();
+          return;
+        }
+
         try {
           const { width, height } = imageBitmap;
           const muxer = new Muxer({
@@ -187,7 +236,7 @@ export class BrowserSessionManager {
   }
 
   async registerSession(taskId: string, parentId: string) {
-    const recordingSession = new BrowserRecordingSession();
+    const recordingSession = new BrowserRecordingSession(taskId);
     this.recordingSessions.set(taskId, recordingSession);
     const { streamUrl } = await vscodeHost.registerBrowserSession(
       taskId,
@@ -199,11 +248,13 @@ export class BrowserSessionManager {
   }
 
   subscribeFrame(taskId: string, callback: (frame: string) => void) {
-    const recordingSession = this.recordingSessions.get(taskId);
-    if (!recordingSession) {
-      return () => {};
+    if (!frameSubscriptions.has(taskId)) {
+      frameSubscriptions.set(taskId, new Set());
     }
-    return recordingSession.subscribeFrame(callback);
+    frameSubscriptions.get(taskId)?.add(callback);
+    return () => {
+      frameSubscriptions.get(taskId)?.delete(callback);
+    };
   }
 
   async unregisterSession(
@@ -216,6 +267,7 @@ export class BrowserSessionManager {
       await recordingSession.stopRecording(toolCallId, store);
       this.recordingSessions.delete(taskId);
     }
+    frameSubscriptions.delete(taskId);
     vscodeHost.unregisterBrowserSession(taskId);
   }
 }

@@ -77,6 +77,7 @@ const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";
 export const isDev = isPochiDev || isSyncDev;
 
 export const isTest = process.env.POCHI_TEST === "true";
+export const isProdDebug = process.env.POCHI_PROD_DEBUG === "true";
 
 export function getServerBaseUrl() {
   return isPochiDev ? "http://localhost:4113" : "https://app.getpochi.com";

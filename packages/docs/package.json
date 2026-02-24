@@ -17,7 +17,7 @@
     "mdx": "^0.3.1",
     "next": "15.3.4",
     "next-image-export-optimizer": "^1.19.0",
-    "posthog-js": "^1.345.3",
+    "posthog-js": "^1.347.1",
     "react": "catalog:",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
