@@ -23,8 +23,14 @@ const reviewTutorialImage =
   "https://app.getpochi.com/images/review-plan-tutorial.gif";
 
 export function PlannerView(props: NewTaskToolViewProps) {
-  const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
-    props;
+  const {
+    tool,
+    isExecuting,
+    taskSource,
+    uid,
+    toolCallStatusRegistryRef,
+    isLastPart,
+  } = props;
 
   const { t } = useTranslation();
   const store = useDefaultStore();
@@ -69,7 +75,8 @@ export function PlannerView(props: NewTaskToolViewProps) {
       taskSource={taskSource}
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       footerActions={
-        isVSCodeEnvironment() && (
+        isVSCodeEnvironment() &&
+        isLastPart && (
           <>
             <HoverCard
               openDelay={0}
