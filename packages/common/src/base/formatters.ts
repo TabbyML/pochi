@@ -243,6 +243,24 @@ function removeEmptyTextParts(messages: UIMessage[]) {
   });
 }
 
+function removeOpenAIItemId(messages: UIMessage[]) {
+  return messages.map((message) => {
+    message.parts = message.parts.map((part) => {
+      if ("providerOptions" in part && part.providerOptions) {
+        for (const options of Object.values(part.providerOptions)) {
+          if (options && typeof options === "object" && "itemId" in options) {
+            // biome-ignore lint/performance/noDelete: need delete to make zod happy
+            delete (options as { itemId?: unknown }).itemId;
+          }
+        }
+      }
+      return part;
+    });
+
+    return message;
+  });
+}
+
 function refineDetectedNewPromblems(messages: UIMessage[]) {
   const isWriteFileResultToolPart = (
     part: UIMessage["parts"][number],
@@ -348,6 +366,7 @@ type FormatOp = (messages: UIMessage[]) => UIMessage[];
 const LLMFormatOps: FormatOp[] = [
   removeEmptyTextParts,
   removeEmptyMessages,
+  removeOpenAIItemId,
   refineDetectedNewPromblems,
   extractCompactMessages,
   removeMessagesWithoutTextOrToolCall,
@@ -361,6 +380,7 @@ const LLMFormatOps: FormatOp[] = [
 const UIFormatOps = [
   removeEmptyTextParts,
   removeEmptyMessages,
+  removeOpenAIItemId,
   refineDetectedNewPromblems,
   resolvePendingToolCalls,
   removeSystemReminder,
@@ -370,6 +390,7 @@ const ShareUIFormatOps = [...UIFormatOps, resolvePendingToolCallsForShareUI];
 const StorageFormatOps = [
   removeEmptyTextParts,
   removeEmptyMessages,
+  removeOpenAIItemId,
   refineDetectedNewPromblems,
   removeInvalidCharForStorage,
   removeToolCallArgumentTransientData,
