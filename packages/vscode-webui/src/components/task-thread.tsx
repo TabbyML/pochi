@@ -104,9 +104,7 @@ export const TaskThread: React.FC<{
         </div>
       )}
       {showMessageList && (
-        <ScrollArea
-          ref={newTaskContainer}
-        >
+        <ScrollArea ref={newTaskContainer}>
           <MessageList
             className={cn("px-1 py-0.5", {
               "mt-2": !renderMessages.length,
