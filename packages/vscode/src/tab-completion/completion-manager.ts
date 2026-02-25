@@ -166,6 +166,41 @@ export class TabCompletionManager implements vscode.Disposable {
     this.providers = list;
   }
 
+  async reveal() {
+    logger.trace("Reveal invoked.");
+    if (!this.current) {
+      logger.trace("Failed to reveal: no current completion.");
+      return;
+    }
+    const current = this.current;
+    const { solution, decorationItemIndex } = current;
+    if (decorationItemIndex === undefined) {
+      logger.trace("Failed to reveal: no decoration item index.");
+      return;
+    }
+    const solutionItem = solution.items[decorationItemIndex];
+
+    const editor = vscode.window.activeTextEditor;
+    if (
+      !editor ||
+      editor.document.uri.toString() !==
+        solution.context.document.uri.toString()
+    ) {
+      logger.trace("Failed to reveal: active editor mismatch.");
+      return;
+    }
+
+    editor.revealRange(
+      new vscode.Range(
+        solutionItem.editRange.original.start,
+        0,
+        solutionItem.editRange.original.end,
+        0,
+      ),
+      vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+    );
+  }
+
   async accept() {
     logger.trace("Accept invoked.");
     if (!this.current) {
@@ -462,26 +497,28 @@ export class TabCompletionManager implements vscode.Disposable {
           this.updateIsFetching();
 
           if (status.type === "finished" && status.response) {
-            solution.addItem(status.response);
-            this.handleDidUpdateSolution();
+            const added = solution.addItem(status.response);
+            if (added) {
+              this.handleDidUpdateSolution();
 
-            // update forward cache
-            const forward = generateForwardCache(
-              solution,
-              solution.items.length - 1,
-            );
-            for (const item of forward) {
-              logger.trace(
-                "Generated forward cache: ",
-                logToFileObject({ hash: item.context.hash }),
+              // update forward cache
+              const forward = generateForwardCache(
+                solution,
+                solution.items.length - 1,
               );
-              if (this.cache.has(item.context.hash)) {
-                const prev = this.cache.get(
-                  item.context.hash,
-                ) as TabCompletionSolution;
-                this.cache.set(item.context.hash, mergeSolution(prev, item));
-              } else {
-                this.cache.set(item.context.hash, item);
+              for (const item of forward) {
+                logger.trace(
+                  "Generated forward cache: ",
+                  logToFileObject({ hash: item.context.hash }),
+                );
+                if (this.cache.has(item.context.hash)) {
+                  const prev = this.cache.get(
+                    item.context.hash,
+                  ) as TabCompletionSolution;
+                  this.cache.set(item.context.hash, mergeSolution(prev, item));
+                } else {
+                  this.cache.set(item.context.hash, item);
+                }
               }
             }
           }

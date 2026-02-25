@@ -546,6 +546,13 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand(
+        "pochi.tabCompletion.reveal",
+        async () => {
+          this.tabCompletionManager.reveal();
+        },
+      ),
+
+      vscode.commands.registerCommand(
         "pochi.tabCompletion.accept",
         async () => {
           this.tabCompletionManager.accept();

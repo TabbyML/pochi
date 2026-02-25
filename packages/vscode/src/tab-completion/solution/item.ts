@@ -5,11 +5,14 @@ import type { TabCompletionContext } from "../context";
 import type { TabCompletionProviderResponseItem } from "../providers/types";
 import {
   type CodeDiff,
+  type LineRangeMapping,
   LinesDiffOptions,
+  type TextDocumentSnapshot,
   type TextEdit,
   createTextDocumentSnapshotWithApplyEdit,
   getLines,
   lineNumberRangeToPositionRange,
+  mergeRanges,
   toCodeDiff,
 } from "../utils";
 
@@ -17,9 +20,10 @@ const logger = getLogger("TabCompletion.Solution.Item");
 
 export class TabCompletionSolutionItem {
   public readonly valid: boolean;
-  public readonly target: vscode.TextDocument;
+  public readonly target: TextDocumentSnapshot;
   public readonly diff: CodeDiff;
   public readonly textEdit: TextEdit;
+  public readonly editRange: LineRangeMapping;
   public readonly inlineCompletionItem: vscode.InlineCompletionItem | undefined;
 
   constructor(
@@ -39,9 +43,21 @@ export class TabCompletionSolutionItem {
         getLines(targetDocument),
         LinesDiffOptions,
       );
-    const refinedDiff = toCodeDiff(codeDiffResult);
+    const diff = toCodeDiff(codeDiffResult);
+
+    const editRange = {
+      original: mergeRanges(diff.changes.map((c) => c.original)) ?? {
+        start: 0,
+        end: 0,
+      },
+      modified: mergeRanges(diff.changes.map((c) => c.modified)) ?? {
+        start: 0,
+        end: 0,
+      },
+    };
+
     const inlineCompletionItem = this.calculateInlineCompletionItem(
-      refinedDiff,
+      diff,
       document,
       targetDocument,
       context.selection.active,
@@ -49,8 +65,9 @@ export class TabCompletionSolutionItem {
 
     this.valid = document.content !== targetDocument.content;
     this.target = targetDocument;
-    this.diff = refinedDiff;
+    this.diff = diff;
     this.textEdit = responseItem.edit;
+    this.editRange = editRange;
     this.inlineCompletionItem = inlineCompletionItem;
   }
 

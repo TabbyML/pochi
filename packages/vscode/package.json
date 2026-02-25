@@ -394,19 +394,76 @@
         "mac": "cmd+alt+l"
       },
       {
+        "command": "pochi.tabCompletion.reveal",
+        "key": "tab",
+        "when": "editorTextFocus && pochiTabCompletionState === 'scrollIndicatorVisible'"
+      },
+      {
         "command": "pochi.tabCompletion.accept",
         "key": "tab",
-        "when": "editorTextFocus && pochiTabCompletionVisible"
+        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible'"
       },
       {
         "command": "pochi.tabCompletion.reject",
         "key": "escape",
-        "when": "editorTextFocus && pochiTabCompletionVisible || inlineSuggestionVisible"
+        "when": "editorTextFocus && (pochiTabCompletionState || inlineSuggestionVisible)"
       },
       {
         "command": "pochi.applyPochiLayoutWithCycleFocus",
         "key": "ctrl+l",
         "mac": "cmd+l"
+      }
+    ],
+    "colors": [
+      {
+        "id": "pochi.tabCompletion.diffWidget.border",
+        "description": "",
+        "defaults": {
+          "dark": "#0078D4",
+          "light": "#005FB8",
+          "highContrast": "#0078D4",
+          "highContrastLight": "#005FB8"
+        }
+      },
+      {
+        "id": "pochi.tabCompletion.scrollIndicator.background",
+        "description": "",
+        "defaults": {
+          "dark": "#0078D4",
+          "light": "#005FB8",
+          "highContrast": "#0078D4",
+          "highContrastLight": "#005FB8"
+        }
+      },
+      {
+        "id": "pochi.tabCompletion.scrollIndicator.foreground",
+        "description": "",
+        "defaults": {
+          "dark": "#CCCCCC",
+          "light": "#171184",
+          "highContrast": "#CCCCCC",
+          "highContrastLight": "#171184"
+        }
+      },
+      {
+        "id": "pochi.tabCompletion.editRange.border",
+        "description": "",
+        "defaults": {
+          "dark": "#3A3D41",
+          "light": "#E5EBF1",
+          "highContrast": "#3A3D41",
+          "highContrastLight": "#E5EBF1"
+        }
+      },
+      {
+        "id": "pochi.tabCompletion.editRange.background",
+        "description": "",
+        "defaults": {
+          "dark": "#3A3D4133",
+          "light": "#E5EBF133",
+          "highContrast": "#3A3D4133",
+          "highContrastLight": "#E5EBF133"
+        }
       }
     ],
     "configuration": [

@@ -12,6 +12,20 @@ export type LineNumberRange = {
   end: number;
 };
 
+export function mergeRanges<T extends OffsetRange | LineNumberRange>(
+  ranges: T[],
+): T | undefined {
+  if (ranges.length === 0) {
+    return undefined;
+  }
+  return ranges.reduce<T>((acc, curr) => {
+    return {
+      start: Math.min(acc.start, curr.start),
+      end: Math.max(acc.end, curr.end),
+    } as T;
+  }, ranges[0]);
+}
+
 export function toOffsetRange(
   range: vscode.Range,
   document: vscode.TextDocument,
