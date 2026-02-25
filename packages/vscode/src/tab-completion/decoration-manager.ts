@@ -220,7 +220,6 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
         backgroundColor: new vscode.ThemeColor(
           "inlineEdit.originalChangedTextBackground",
         ),
-        border: "2px solid; border-radius: 2px;",
         borderColor: new vscode.ThemeColor(
           "inlineEdit.tabWillAcceptOriginalBorder",
         ),

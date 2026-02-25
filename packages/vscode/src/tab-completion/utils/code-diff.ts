@@ -75,14 +75,18 @@ export function toCodeDiff(diffResult: LinesDiff): CodeDiff {
 export function asLinesInsertion(
   change: RangeMapping,
   originalDocument: vscode.TextDocument,
-  _modifiedDocument: vscode.TextDocument,
+  modifiedDocument: vscode.TextDocument,
 ): LineRangeMapping | undefined {
   const { original, modified } = change;
   if (
     original.start.isEqual(original.end) &&
-    (original.start.character === 0 ||
-      isLineEndPosition(original.start, originalDocument)) &&
-    modified.start.line < modified.end.line
+    modified.start.line < modified.end.line &&
+    ((original.start.character === 0 &&
+      modified.start.character === 0 &&
+      modified.end.character === 0) ||
+      (isLineEndPosition(original.start, originalDocument) &&
+        isLineEndPosition(modified.start, modifiedDocument) &&
+        isLineEndPosition(modified.end, modifiedDocument)))
   ) {
     const convertLineNumber = (position: vscode.Position) => {
       return position.character === 0 ? position.line : position.line + 1;
