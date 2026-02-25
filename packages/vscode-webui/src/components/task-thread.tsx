@@ -5,7 +5,6 @@ import { formatters } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ScrollArea } from "./ui/scroll-area";
 
 export type TaskThreadSource = {
   messages: Message[];
@@ -104,25 +103,23 @@ export const TaskThread: React.FC<{
         </div>
       )}
       {showMessageList && (
-        <ScrollArea ref={newTaskContainer}>
-          <MessageList
-            className={cn("px-1 py-0.5", {
-              "mt-2": !renderMessages.length,
-            })}
-            viewportClassname={cn(
-              "max-h-[300px] my-1 rounded-sm border",
-              scrollAreaClassName,
-            )}
-            showUserAvatar={false}
-            messages={renderMessages}
-            user={user}
-            assistant={assistant}
-            isLoading={isLoading}
-            containerRef={undefined}
-            showLoader={false}
-            isSubTask={true}
-          />
-        </ScrollArea>
+        <MessageList
+          className={cn("px-1 py-0.5", {
+            "mt-2": !renderMessages.length,
+          })}
+          viewportClassname={cn(
+            "max-h-[300px] my-1 rounded-sm border",
+            scrollAreaClassName,
+          )}
+          showUserAvatar={false}
+          messages={renderMessages}
+          user={user}
+          assistant={assistant}
+          isLoading={isLoading}
+          containerRef={newTaskContainer}
+          showLoader={false}
+          isSubTask={true}
+        />
       )}
     </div>
   );
