@@ -72,17 +72,64 @@ export function toCodeDiff(diffResult: LinesDiff): CodeDiff {
   };
 }
 
+export function asLinesInsertion(
+  change: RangeMapping,
+  originalDocument: vscode.TextDocument,
+  _modifiedDocument: vscode.TextDocument,
+): LineRangeMapping | undefined {
+  const { original, modified } = change;
+  if (
+    original.start.isEqual(original.end) &&
+    (original.start.character === 0 ||
+      isLineEndPosition(original.start, originalDocument)) &&
+    modified.start.line < modified.end.line
+  ) {
+    const convertLineNumber = (position: vscode.Position) => {
+      return position.character === 0 ? position.line : position.line + 1;
+    };
+    return {
+      original: {
+        start: convertLineNumber(original.start),
+        end: convertLineNumber(original.end),
+      },
+      modified: {
+        start: convertLineNumber(change.modified.start),
+        end: convertLineNumber(change.modified.end),
+      },
+    };
+  }
+  return undefined;
+}
+
+export function asLinesRemoval(
+  change: RangeMapping,
+  originalDocument: vscode.TextDocument,
+  modifiedDocument: vscode.TextDocument,
+): LineRangeMapping | undefined {
+  const result = asLinesInsertion(
+    {
+      original: change.modified,
+      modified: change.original,
+    },
+    modifiedDocument,
+    originalDocument,
+  );
+  if (result) {
+    return {
+      original: result.modified,
+      modified: result.original,
+    };
+  }
+  return undefined;
+}
+
 export function isAddingBlankLines(
   change: RangeMapping,
   originalDocument: vscode.TextDocument,
   modifiedDocument: vscode.TextDocument,
 ): boolean {
-  const { original, modified } = change;
-  if (
-    original.start.isEqual(original.end) &&
-    (original.start.character === 0 ||
-      isLineEndPosition(original.start, originalDocument))
-  ) {
+  const { modified } = change;
+  if (asLinesInsertion(change, originalDocument, modifiedDocument)) {
     const modifiedText = modifiedDocument.getText(modified);
     if (modifiedText.includes("\n") && isBlank(modifiedText)) {
       return true;
