@@ -105,16 +105,16 @@ export const TaskThread: React.FC<{
       )}
       {showMessageList && (
         <ScrollArea
-          viewportClassname={cn(
-            "max-h-[300px] my-1 rounded-sm border",
-            scrollAreaClassName,
-          )}
           ref={newTaskContainer}
         >
           <MessageList
             className={cn("px-1 py-0.5", {
               "mt-2": !renderMessages.length,
             })}
+            viewportClassname={cn(
+              "max-h-[300px] my-1 rounded-sm border",
+              scrollAreaClassName,
+            )}
             showUserAvatar={false}
             messages={renderMessages}
             user={user}
