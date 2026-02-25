@@ -116,7 +116,7 @@ export function SubAgentView({
       {showFooter && (
         <div className="flex items-center gap-2 border-t bg-muted p-2">
           {showExpandIcon && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center">
               <ExpandIcon
                 className="rotate-270 cursor-pointer text-muted-foreground"
                 isExpanded={!isCollapsed}
