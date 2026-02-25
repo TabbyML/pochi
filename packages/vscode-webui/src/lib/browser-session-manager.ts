@@ -84,7 +84,10 @@ export class BrowserRecordingSession {
             if (data.type === "frame") {
               const frame = data.data;
               this.addFrame(frame);
-              this.notifyFrame(frame);
+              // Only notify subscribers after recording has started (passed white screen check)
+              if (this.muxer) {
+                this.notifyFrame(frame);
+              }
             } else if (data.type === "error") {
               logger.error("Browser message error", event);
               this.ws?.close();
