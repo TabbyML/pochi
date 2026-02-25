@@ -20,8 +20,6 @@ const logger = getLogger("TabCompletion.DecorationManager");
 @injectable()
 @singleton()
 export class TabCompletionDecorationManager implements vscode.Disposable {
-  private disposables: vscode.Disposable[] = [];
-
   // Scroll indicator decoration
   // shown when scrolling to edit range is required
   private scrollIndicatorUpDecorationType: vscode.TextEditorDecorationType;
@@ -65,6 +63,8 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
   // Line insertion marker decoration
   // mark a position where lines insertion is previewed in image decoration
   private lineInsertionMarkerDecorationType: vscode.TextEditorDecorationType;
+
+  private allDecorationTypes: vscode.TextEditorDecorationType[];
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -317,6 +317,25 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
           "inlineEdit.tabWillAcceptModifiedBorder",
         ),
       });
+
+    this.allDecorationTypes = [
+      this.scrollIndicatorUpDecorationType,
+      this.scrollIndicatorDownDecorationType,
+      this.imageDecorationType,
+      this.editRangeSingleLineDecorationType,
+      this.editRangeFirstLineDecorationType,
+      this.editRangeLastLineDecorationType,
+      this.editRangeMidLinesDecorationType,
+      this.spaceRemovalDecorationType,
+      this.wordRemovalDecorationType,
+      this.wordInsertionDecorationType,
+      this.lineRemovalSingleLineDecorationType,
+      this.lineRemovalFirstLineDecorationType,
+      this.lineRemovalLastLineDecorationType,
+      this.lineRemovalMidLinesDecorationType,
+      this.wordInsertionMarkerDecorationType,
+      this.lineInsertionMarkerDecorationType,
+    ];
   }
 
   async initialize() {
@@ -371,7 +390,7 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
       modified: {
         start: Math.max(0, baseEditRange.modified.start - showContextLines),
         end: Math.min(
-          originalDocument.lineCount,
+          modifiedDocument.lineCount,
           baseEditRange.modified.end + showContextLines,
         ),
       },
@@ -572,7 +591,7 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
           }
         }
 
-        const imageDecorationPostion =
+        const imageDecorationPosition =
           imageDecorationDirection === "below"
             ? new vscode.Position(editRange.original.end, 0)
             : new vscode.Position(editRange.original.start, 0);
@@ -591,8 +610,8 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
         // Create the image decoration
         const imageDecoration: vscode.DecorationOptions = {
           range: new vscode.Range(
-            imageDecorationPostion,
-            imageDecorationPostion,
+            imageDecorationPosition,
+            imageDecorationPosition,
           ),
           renderOptions: {
             before: {
@@ -990,34 +1009,15 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
   }
 
   private clearDecoration(editor: vscode.TextEditor) {
-    const allTypes = [
-      this.scrollIndicatorUpDecorationType,
-      this.scrollIndicatorDownDecorationType,
-      this.imageDecorationType,
-      this.editRangeSingleLineDecorationType,
-      this.editRangeFirstLineDecorationType,
-      this.editRangeLastLineDecorationType,
-      this.editRangeMidLinesDecorationType,
-      this.spaceRemovalDecorationType,
-      this.wordRemovalDecorationType,
-      this.wordInsertionDecorationType,
-      this.lineRemovalSingleLineDecorationType,
-      this.lineRemovalFirstLineDecorationType,
-      this.lineRemovalLastLineDecorationType,
-      this.lineRemovalMidLinesDecorationType,
-      this.wordInsertionMarkerDecorationType,
-      this.lineInsertionMarkerDecorationType,
-    ];
-    for (const type of allTypes) {
+    for (const type of this.allDecorationTypes) {
       editor.setDecorations(type, []);
     }
   }
 
   dispose() {
-    for (const disposable of this.disposables) {
-      disposable.dispose();
+    for (const type of this.allDecorationTypes) {
+      type.dispose();
     }
-    this.disposables = [];
   }
 }
 
