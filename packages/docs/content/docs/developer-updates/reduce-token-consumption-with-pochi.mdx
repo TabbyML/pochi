@@ -16,11 +16,8 @@ At that point, most teams reach for the usual fixes: improve the prompts, avoid 
 This post breaks down practical workflow patterns you can apply to address common sources of context bloat, explains the principles behind them, and shows how Pochi supports these behaviors in day-to-day work. If you’ve ever felt like an agent got worse the longer you worked with it, these patterns are likely why, and how Pochi helps you fix it.
 
 ## 1. Compact context aggressively as noise accumulates
-
-#### Problem: 
+ 
 Token usage grows over time as conversations accumulate failed attempts and abandoned approaches. This context debt increases token usage and degrades response quality, making agents more verbose and error-prone.
-
-#### Solution:
 
 To solve this, Pochi periodically allows you two options to **[compact the context](https://docs.getpochi.com/auto-compact/)**:
 
@@ -57,20 +54,13 @@ These mechanisms are especially useful during long debugging sessions, iterative
 In these cases, the majority of the conversation history becomes irrelevant once a direction is chosen. Compacting ensures the agent doesn’t keep paying for that history over and over again.
 
 
-#### Steps:
+**Steps:**
 1. When a task gets long, compact the context regularly (e.g., after 3–5 iterations).
 2. Keep only the essential state and intent.
 3. If the direction changes, create a new task with a summary of the previous conversation.
 
-#### What to watch for:
-- The agent repeats earlier failed approaches.
-- Responses become longer without improving.
-- You hit context limits.
-
 
 ## 2. Attach intent to code instead of explaining it in chat
-
-#### Problem:
 
 Explaining code changes in plain chat is one of the fastest ways to burn tokens. Each time you prompt the agent with queries like: 
 
@@ -82,8 +72,6 @@ Prompt:
 ```
 
 The model has to re-read large parts of the context, reconstruct what changed, and infer your intent all over again. This kind of repetition adds up quickly.
-
-#### Solution:
 
 Pochi avoids this by attaching intent directly to code through **Edits** and **Reviews**.
 
@@ -114,24 +102,17 @@ Pochi avoids this by attaching intent directly to code through **Edits** and **R
     </video>
 
 
-#### Steps:
+**Steps:**
+
 1. Use edits to track local diffs during iteration.
 2. Attach intent directly to code using inline comments.
 3. Batch feedback into a single update instead of multiple chat messages.
 
-#### What to watch for:
-- You’re repeatedly saying “no, not that file” or “change this part.”
-- The agent keeps re-reading the same code blocks.
-
 ## 3. Isolate intent early with subagents and forks
-
-#### Problem:
 
 Token usage often spikes when multiple ideas compete in the same context. You start with one goal, explore a few approaches, abandon some, and finally pivot to another direction. In this case, the agent is continuously juggling multiple lines of intent. Even with compaction, the model still has to reconcile what you meant before with what you want now.
 
 Language models are optimized for coherent, single-threaded intent. When a task mixes multiple implementation strategies, the model keeps all of that alive in context, even if only one direction is still relevant. 
-
-#### Solution: 
 
 The answer is isolation. Separate tasks mean separate contexts, and separate contexts mean fewer tokens spent reconciling unrelated ideas.
 
@@ -153,26 +134,17 @@ Pochi supports this through task forking and subagents:
 
     ![Subtasks](./images/subtasks-token-consumption-blog.png)
 
-### Steps:
+**Steps:**
 1. When you explore multiple approaches, create a fork or a subagent.
 2. Keep each task focused on one implementation strategy.
 3. Use separate contexts for separate goals.
 
-#### What to watch for:
-- The agent tries to reconcile old and new directions.
-- You see long “multi-threaded” reasoning.
-
-
 
 ## 4. Scope MCP servers per task to shrink the action space
-
-#### Problem: 
 
 Before an agent attempts to solve a problem, it evaluates what it can do with every enabled tool. Each additional MCP server expands the action space the model must reason over. Even if a tool is never used, the model still spends tokens evaluating whether it is relevant, how it compares to other options, and when it applies.
 
 For example, if a task only requires database access, exposing ten additional MCP servers adds unnecessary reasoning overhead. More options mean more branches to evaluate, which translates directly into higher token usage.
-
-#### Solution:
 
 Scope MCP servers per task so the agent only reasons about tools relevant to the task. Only selected servers are loaded into context, contribute tool definitions, and influence model reasoning. All other tools are invisible to the agent.
 <video
@@ -188,19 +160,16 @@ Scope MCP servers per task so the agent only reasons about tools relevant to the
     </video>
 
 
-#### Steps to follow:
+**Steps to follow:**
+
 1. Before starting a task, decide which MCP servers are necessary.
 2. Disable all MCP servers not required for this task.
 3. If the task changes, immediately rescope the tool set.
 4. Keep a task template for common workflows (DB, infra, testing, etc.).
 
-#### What to watch for:
-- The agent suggests tools unrelated to the task.
-- You see long reasoning chains before the agent chooses a tool.
 
 ## 5. When execution dominates, move heavy data processing out of the model
 
-#### Problem:
 Once you’ve scoped tools correctly, the next source of runaway token usage often shows up during execution, typically inside MCP-backed workflows.
 
 The prompt may be short and the tool choice correct, yet execution tokens spike because large volumes of raw data are streamed into the model. 
@@ -229,8 +198,6 @@ In the first attempt, the agent queried the database, fetched all matching rows,
 
 
 The answer was correct, but thousands of records flowed through the context just so the model could compute a single number. 
-
-#### Solution: 
 
 A better approach is to separate what needs to be computed from how it is computed. Instead of reasoning over data, the model should generate code that performs the computation and returns only the result.
 
@@ -319,17 +286,13 @@ Databases are cheap at filtering and counting while language models are not. The
 
 This keeps execution costs predictable, even when working with large datasets.
 
-#### Steps:
+**Steps:**
 1. Detect when tool results exceed ~100 rows.
 2. Instead of asking the model to reason over raw data, ask it to generate code that computes the result.
 3. Return only the final result to the model (summary, count, aggregation).
 4. Use aggregation-first queries when possible.
 
-#### What to watch for:
-- The agent pulls full rows instead of aggregating.
-- Your prompt is ambiguous (“find refunded orders and tell me how many”).
-
-## Conclusion:
+## Conclusion
 
 If there’s one theme across all five guides, it’s that token usage is shaped long before a prompt is sent.
 Most token blowups don’t come from bad prompts or choosing the wrong model. They come from workflows that allow too much context, too many tools, and too many competing ideas to accumulate in the same place.
