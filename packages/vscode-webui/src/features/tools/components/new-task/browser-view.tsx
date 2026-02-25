@@ -35,7 +35,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       expandable={!!videoUrl || !!frame}
     >
-      {videoUrl ? (
+      {!isExecuting && videoUrl ? (
         // biome-ignore lint/a11y/useMediaCaption: No audio track available
         <video
           src={videoUrl}
