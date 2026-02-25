@@ -56,23 +56,55 @@ export class CanvasRenderer implements vscode.Disposable {
       return undefined;
     }
 
+    // Find common indentation
+    let sharedIndentation = Number.MAX_SAFE_INTEGER;
+    if (input.hideSharedIndentation) {
+      for (const line of input.tokenLines) {
+        if (line.length === 0) {
+          continue;
+        }
+        const firstToken = line[0];
+        if (/^\s*$/.test(firstToken.text)) {
+          const indentation = firstToken.text.replace(
+            /\t/g,
+            " ".repeat(input.tabSize),
+          ).length;
+          sharedIndentation = Math.min(sharedIndentation, indentation);
+        } else {
+          sharedIndentation = 0;
+          break;
+        }
+      }
+    }
+    if (sharedIndentation === Number.MAX_SAFE_INTEGER) {
+      sharedIndentation = 0;
+    }
+    logger.trace("SharedIndentation: ", sharedIndentation);
+
     // Convert tabs to spaces
     const tokenLines: ThemedToken[][] = [];
     const offsetMap: number[][] = [];
     for (const line of input.tokenLines) {
       const tokenLine: ThemedToken[] = [];
       const offsetMapLine: number[] = [];
-      offsetMapLine[0] = 0;
       let offset = 0;
-      let updatedOffset = 0;
-      for (const token of line) {
-        tokenLine.push({
-          ...token,
-          text: token.text.replace(/\t/g, " ".repeat(input.tabSize)),
-        });
-        for (let i = 0; i < token.text.length; i++) {
+      let updatedOffset = -sharedIndentation;
+      offsetMapLine[offset] = updatedOffset;
+      for (let i = 0; i < line.length; i++) {
+        const token = line[i];
+        let text = token.text.replace(/\t/g, " ".repeat(input.tabSize));
+        if (i === 0 && sharedIndentation > 0) {
+          text = text.slice(sharedIndentation);
+        }
+        if (text.length > 0) {
+          tokenLine.push({
+            ...token,
+            text,
+          });
+        }
+        for (let j = 0; j < token.text.length; j++) {
           offset++;
-          if (token.text[i] === "\t") {
+          if (token.text[j] === "\t") {
             updatedOffset += input.tabSize;
           } else {
             updatedOffset++;
@@ -118,7 +150,7 @@ export class CanvasRenderer implements vscode.Disposable {
           : canvasKit.FontSlant.Upright;
         const decorations =
           0 |
-          (isUnderline(token.fontStyle) ? canvasKit.LineThroughDecoration : 0) |
+          (isUnderline(token.fontStyle) ? canvasKit.UnderlineDecoration : 0) |
           (isStrikethrough(token.fontStyle)
             ? canvasKit.LineThroughDecoration
             : 0);
@@ -178,8 +210,50 @@ export class CanvasRenderer implements vscode.Disposable {
       backgroundPaint,
     );
 
+    // draw lines decoration
+    for (const decoration of input.decorations.filter(
+      (d) => d.type === "line",
+    )) {
+      const rect = canvasKit.XYWHRect(
+        -1,
+        input.padding + lineHeight * decoration.start + lineHeightOffset,
+        canvasWidth + 2,
+        lineHeight * (decoration.end - decoration.start),
+      );
+
+      const border = 2;
+      const borderRadius = 0;
+      const borderColor = decoration.borderColor;
+      const bgColor = decoration.background;
+
+      if (bgColor) {
+        const paint = new canvasKit.Paint();
+        paint.setColor(canvasKit.parseColorString(bgColor));
+        paint.setStyle(canvasKit.PaintStyle.Fill);
+        canvas.drawRRect(
+          canvasKit.RRectXY(rect, borderRadius, borderRadius),
+          paint,
+        );
+        paint.delete();
+      }
+
+      if (borderColor) {
+        const paint = new canvasKit.Paint();
+        paint.setColor(canvasKit.parseColorString(borderColor));
+        paint.setStyle(canvasKit.PaintStyle.Stroke);
+        paint.setStrokeWidth(border);
+        canvas.drawRRect(
+          canvasKit.RRectXY(rect, borderRadius, borderRadius),
+          paint,
+        );
+        paint.delete();
+      }
+    }
+
     // draw chars decoration
-    for (const decoration of input.charDecorations) {
+    for (const decoration of input.decorations.filter(
+      (d) => d.type === "chars",
+    )) {
       const paragraph = paragraphs[decoration.line];
       if (!paragraph) {
         continue;
@@ -205,9 +279,11 @@ export class CanvasRenderer implements vscode.Disposable {
         );
       });
 
+      const border = 1;
       const borderRadius = 1;
-
+      const borderColor = decoration.borderColor;
       const bgColor = decoration.background;
+
       if (bgColor) {
         const paint = new canvasKit.Paint();
         paint.setColor(canvasKit.parseColorString(bgColor));
@@ -221,12 +297,11 @@ export class CanvasRenderer implements vscode.Disposable {
         paint.delete();
       }
 
-      const borderColor = decoration.borderColor;
       if (borderColor) {
         const paint = new canvasKit.Paint();
         paint.setColor(canvasKit.parseColorString(borderColor));
         paint.setStyle(canvasKit.PaintStyle.Stroke);
-        paint.setStrokeWidth(1);
+        paint.setStrokeWidth(border);
         for (const rect of rects) {
           canvas.drawRRect(
             canvasKit.RRectXY(rect, borderRadius, borderRadius),

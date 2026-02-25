@@ -15,6 +15,25 @@ export interface ThemedDocument {
   tokenLines: ThemedToken[][];
 }
 
+export interface LineDecoration {
+  type: "line";
+  start: number; // line number
+  end: number; // line number exclusive
+  borderColor?: string; // css color
+  background?: string; // css color
+}
+
+export interface CharsDecoration {
+  type: "chars";
+  line: number; // line number
+  start: number; // char index
+  end: number; // char index exclusive
+  borderColor?: string; // css color
+  background?: string; // css color
+}
+
+export type Decoration = LineDecoration | CharsDecoration;
+
 export interface RenderImageInput {
   scale: number;
 
@@ -28,18 +47,9 @@ export interface RenderImageInput {
   background: number; // color map index
   tokenLines: ThemedToken[][];
 
-  lineDecorations: {
-    start: number; // line number
-    end: number; // line number exclusive
-    background?: string; // css color
-  }[];
-  charDecorations: {
-    line: number; // line number
-    start: number; // char index
-    end: number; // char index exclusive
-    borderColor?: string; // css color
-    background?: string; // css color
-  }[];
+  decorations: Decoration[];
+
+  hideSharedIndentation: boolean;
 }
 
 export interface RenderImageOutput {
