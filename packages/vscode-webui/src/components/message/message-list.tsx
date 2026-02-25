@@ -49,6 +49,7 @@ export const MessageList: React.FC<{
   containerRef?: React.RefObject<HTMLDivElement | null>;
   showUserAvatar?: boolean;
   className?: string;
+  viewportClassname?: string;
   showLoader?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   isSubTask?: boolean;
@@ -63,6 +64,7 @@ export const MessageList: React.FC<{
   containerRef,
   showUserAvatar = true,
   className,
+  viewportClassname,
   showLoader = true,
   forkTask,
   isSubTask,
@@ -106,6 +108,7 @@ export const MessageList: React.FC<{
       <MermaidContextProvider value={mermaidContextValue}>
         <ScrollArea
           className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
+          viewportClassname={viewportClassname}
           ref={containerRef}
         >
           {renderMessages.map((m, messageIndex) => (
