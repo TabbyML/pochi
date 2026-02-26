@@ -26,6 +26,8 @@ export interface IgnoreWalkOptions {
   abortSignal?: AbortSignal;
   useGitignore?: boolean;
   usePochiignore?: boolean;
+  /** Extra ignore patterns to apply on top of gitignore/pochiignore rules */
+  extraIgnorePatterns?: string[];
 }
 
 interface IgnoreInfo {
@@ -274,12 +276,16 @@ async function processDirectory(
 /**
  * Initializes the traversal state
  * @param startDir Starting directory for traversal
+ * @param extraIgnorePatterns Extra ignore patterns to apply from the start
  * @returns Initial traversal state
  */
-function initializeTraversalState(startDir: string): TraversalState {
-  const initialIgnore = ignore().add(
-    DefaultIgnoredDirectories.map((dir) => `${dir}/`),
-  );
+function initializeTraversalState(
+  startDir: string,
+  extraIgnorePatterns?: string[],
+): TraversalState {
+  const initialIgnore = ignore()
+    .add(DefaultIgnoredDirectories.map((dir) => `${dir}/`))
+    .add(extraIgnorePatterns ?? []);
 
   return {
     scannedFileResults: [],
@@ -317,6 +323,7 @@ export async function ignoreWalk({
   abortSignal,
   useGitignore = true,
   usePochiignore = true,
+  extraIgnorePatterns,
 }: IgnoreWalkOptions): Promise<FileResult[]> {
   logger.trace(
     `Starting traversal from ${dir} with limit ${MaxScanItems}, recursive: ${recursive}`,
@@ -327,7 +334,7 @@ export async function ignoreWalk({
     return [];
   }
 
-  const state = initializeTraversalState(dir);
+  const state = initializeTraversalState(dir, extraIgnorePatterns);
 
   while (shouldContinueTraversal(state, abortSignal)) {
     const current = state.queue.shift();

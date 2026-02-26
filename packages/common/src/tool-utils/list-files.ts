@@ -79,6 +79,8 @@ interface WorkspaceFilesOptions {
   abortSignal?: AbortSignal;
   /** Maximum number of files to return before truncating */
   maxItems?: number;
+  /** Extra ignore patterns to apply on top of gitignore/pochiignore rules */
+  extraIgnorePatterns?: string[];
 }
 
 interface WorkspaceFilesResult {
@@ -100,6 +102,7 @@ export async function listWorkspaceFiles(
     recursive = true,
     abortSignal,
     maxItems = MaxListFileItems,
+    extraIgnorePatterns,
   } = options;
 
   logger.debug("Listing workspace files from", cwd, "with maxItems", maxItems);
@@ -109,6 +112,7 @@ export async function listWorkspaceFiles(
       dir: cwd,
       recursive,
       abortSignal,
+      extraIgnorePatterns,
     });
 
     const isTruncated = results.length > maxItems;

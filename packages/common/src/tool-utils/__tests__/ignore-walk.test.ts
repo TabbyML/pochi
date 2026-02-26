@@ -22,17 +22,21 @@ describe("ignoreWalk", () => {
     path: "",
   });
 
-  const mockFs = {
-    "/workspace": [
-      createMockDirent("file1.ts", false),
-      createMockDirent("dir1", true),
-      createMockDirent(".git", true),
-    ],
+  const defaultWorkspaceEntries = () => [
+    createMockDirent("file1.ts", false),
+    createMockDirent("dir1", true),
+    createMockDirent(".git", true),
+  ];
+
+  const mockFs: Record<string, ReturnType<typeof createMockDirent>[]> = {
+    "/workspace": defaultWorkspaceEntries(),
     "/workspace/dir1": [createMockDirent("file2.ts", false)],
     "/workspace/.git": [createMockDirent("config", false)],
   };
 
   beforeEach(() => {
+    // Reset the workspace entries to defaults before each test
+    mockFs["/workspace"] = defaultWorkspaceEntries();
     // @ts-ignore
     vi.mocked(fs.readdir).mockImplementation(async (path) => {
       return mockFs[path as keyof typeof mockFs] || [];
@@ -253,6 +257,41 @@ describe("ignoreWalk", () => {
     // Ensure build directories are not in results
     expect(relativePaths).not.toContain("level1/build");
     expect(relativePaths).not.toContain("level1/level2/build");
+  });
+
+  it("should apply extraIgnorePatterns to exclude files", async () => {
+    const results = await ignoreWalk({
+      dir: "/workspace",
+      extraIgnorePatterns: ["*.ts"],
+    });
+
+    expect(results.map((r) => r.relativePath)).toEqual(["dir1"]);
+  });
+
+  it("should apply extraIgnorePatterns to exclude directories", async () => {
+    const results = await ignoreWalk({
+      dir: "/workspace",
+      extraIgnorePatterns: ["dir1/"],
+    });
+
+    expect(results.map((r) => r.relativePath)).toEqual(["file1.ts"]);
+  });
+
+  it("should combine extraIgnorePatterns with gitignore rules", async () => {
+    vi.mocked(fs.readFile).mockImplementation(async (path) => {
+      if (path === "/workspace/.gitignore") {
+        return "dir1";
+      }
+      return "";
+    });
+
+    // gitignore excludes dir1, extraIgnorePatterns excludes *.ts
+    const results = await ignoreWalk({
+      dir: "/workspace",
+      extraIgnorePatterns: ["*.ts"],
+    });
+
+    expect(results.map((r) => r.relativePath)).toEqual([]);
   });
 
   it("should handle complex ignore rule inheritance correctly", async () => {
