@@ -250,8 +250,7 @@ export const Default: Story = {
       useEffect(() => {
         // Seed the store with a plan.md file
         store.commit(
-          catalog.events.writeTaskFile({
-            taskId: "root",
+          catalog.events.writeStoreFile({
             filePath: "/plan.md",
             content: planContent,
           }),

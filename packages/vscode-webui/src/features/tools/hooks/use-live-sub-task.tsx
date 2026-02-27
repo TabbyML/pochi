@@ -148,7 +148,7 @@ export function useLiveSubTask(
           ),
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
-          taskId: task?.parentId,
+          storeId: store.storeId,
         },
       );
 

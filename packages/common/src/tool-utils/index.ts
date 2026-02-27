@@ -39,5 +39,4 @@ export {
   serializeNotebook,
 } from "./notebook-utils";
 export { readMediaFile } from "./media";
-export { resolveToolCallArgs, resolvePochiUri } from "./resolve-tool-call-args";
 export { getWorkspaceExcludePatterns } from "./workspace-exclude-patterns";

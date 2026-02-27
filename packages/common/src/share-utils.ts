@@ -21,7 +21,6 @@ export const ShareEvent = z.object({
   files: z
     .array(
       z.object({
-        taskId: z.string(),
         filePath: z.string(),
         content: z.string(),
       }),

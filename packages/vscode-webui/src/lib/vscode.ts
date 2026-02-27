@@ -1,9 +1,10 @@
 import { getLogger } from "@getpochi/common";
 import { validateTaskFilePath } from "@getpochi/common/pochi-file-system";
-import type {
-  ExecuteCommandResult,
-  VSCodeHostApi,
-  WebviewHostApi,
+import {
+  type ExecuteCommandResult,
+  type VSCodeHostApi,
+  type WebviewHostApi,
+  resolvePochiUri,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   catalog,
@@ -149,7 +150,7 @@ function createVSCodeHost(): VSCodeHostApi {
           return window.document.hasFocus();
         },
 
-        async writeTaskFile(taskId: string, filePath: string, content: string) {
+        async writeStoreFile(filePath: string, content: string) {
           if (!globalStore) {
             logger.warn("Global store not set, cannot update file");
             return;
@@ -157,8 +158,7 @@ function createVSCodeHost(): VSCodeHostApi {
 
           const validPath = validateTaskFilePath(filePath);
           globalStore.commit(
-            catalog.events.writeTaskFile({
-              taskId,
+            catalog.events.writeStoreFile({
               filePath: validPath,
               content,
             }),
@@ -221,14 +221,14 @@ function createVSCodeHost(): VSCodeHostApi {
           };
         },
 
-        async readTaskFile(taskId: string, filePath: string) {
+        async readStoreFile(filePath: string) {
           if (!globalStore) {
             logger.warn("Global store not set, cannot read file");
             return null;
           }
 
           const file = globalStore.query(
-            catalog.queries.makeFileQuery(taskId, filePath),
+            catalog.queries.makeStoreFileQuery(filePath),
           );
           return file?.content ?? null;
         },
@@ -238,10 +238,10 @@ function createVSCodeHost(): VSCodeHostApi {
 
   const vscodeHostApi: VSCodeHostApi = thread.imports;
   const openFile: VSCodeHostApi["openFile"] = async (filePath, options) => {
-    return vscodeHostApi.openFile(filePath, {
-      ...options,
-      taskId: POCHI_TASK_INFO?.uid,
-    });
+    return vscodeHostApi.openFile(
+      resolvePochiUri(filePath, globalStore?.storeId ?? ""),
+      options,
+    );
   };
 
   return {

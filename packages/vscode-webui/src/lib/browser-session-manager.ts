@@ -1,6 +1,5 @@
 import { blobStore } from "@/lib/remote-blob-store";
 import { getLogger } from "@getpochi/common";
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
@@ -212,10 +211,8 @@ export class BrowserRecordingSession {
           const uint8Array = new Uint8Array(buffer);
           const url = await blobStore.put(uint8Array, "video/mp4");
           if (url) {
-            const { taskId } = decodeStoreId(store.storeId);
             store.commit(
-              catalog.events.writeTaskFile({
-                taskId,
+              catalog.events.writeStoreFile({
                 filePath: `/browser-session/${toolCallId}.mp4`,
                 content: url,
               }),
