@@ -1,6 +1,8 @@
+import { exec } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { promisify } from "node:util";
 import { getLogger } from "@/lib/logger";
 import type {
   CanvasKit,
@@ -22,6 +24,7 @@ const logger = getLogger("TabCompletion.CanvasRenderer");
 export class CanvasRenderer implements vscode.Disposable {
   private canvasKit: CanvasKit | undefined = undefined;
   private fontProvider: TypefaceFontProvider | undefined = undefined;
+  private fallbackFontFamilies: string[] = [];
   private cache = new LRUCache<string, RenderImageOutput>({
     max: 10,
     ttl: 60 * 1000, // 1 minutes,
@@ -124,11 +127,12 @@ export class CanvasRenderer implements vscode.Disposable {
     const backgroundColor = tokenColorMap[input.background];
 
     const paragraphs: Paragraph[] = [];
+    const fontFamilies = ["Droid Sans Mono", ...this.fallbackFontFamilies];
     for (const tokenLine of tokenLines) {
       const pb = canvasKit.ParagraphBuilder.MakeFromFontProvider(
         new canvasKit.ParagraphStyle({
           textStyle: {
-            fontFamilies: ["Droid Sans Mono"],
+            fontFamilies,
             fontSize: input.fontSize,
           },
           textAlign: canvasKit.TextAlign.Left,
@@ -157,7 +161,7 @@ export class CanvasRenderer implements vscode.Disposable {
 
         const textStyle = new canvasKit.TextStyle({
           color,
-          fontFamilies: ["Droid Sans Mono"],
+          fontFamilies,
           fontSize: input.fontSize,
           fontStyle: {
             weight,
@@ -266,8 +270,30 @@ export class CanvasRenderer implements vscode.Disposable {
         canvasKit.RectHeightStyle.Tight,
         canvasKit.RectWidthStyle.Tight,
       );
-      const rects = rectDirs.map((item) => {
-        const rect = item.rect;
+
+      // CanvasKit splits mixed fonts (e.g., Emoji, Chinese) into multiple rects.
+      // We merge adjacent rects to prevent drawing unwanted internal border lines.
+      const mergedRects: Float32Array[] = [];
+      const sortedRects = rectDirs
+        .map((item) => item.rect)
+        .sort((a, b) => a[0] - b[0]);
+
+      for (const r of sortedRects) {
+        if (mergedRects.length === 0) {
+          mergedRects.push(new Float32Array(r));
+        } else {
+          const last = mergedRects[mergedRects.length - 1];
+          if (r[0] <= last[2] + 0.1) {
+            last[2] = Math.max(last[2], r[2]);
+            last[1] = Math.min(last[1], r[1]);
+            last[3] = Math.max(last[3], r[3]);
+          } else {
+            mergedRects.push(new Float32Array(r));
+          }
+        }
+      }
+
+      const rects = mergedRects.map((rect) => {
         return canvasKit.XYWHRect(
           rect[0] + input.padding,
           rect[1] +
@@ -361,10 +387,91 @@ export class CanvasRenderer implements vscode.Disposable {
     });
   }
 
+  private async getSystemFallbackFontPaths(): Promise<string[]> {
+    const platform = os.platform();
+    const paths: string[] = [];
+
+    if (platform === "win32") {
+      const winDir = process.env.WINDIR || "C:\\Windows";
+      paths.push(path.join(winDir, "Fonts", "seguiemj.ttf"));
+      paths.push(path.join(winDir, "Fonts", "msyh.ttc"));
+      paths.push(path.join(winDir, "Fonts", "msyh.ttf"));
+      paths.push(path.join(winDir, "Fonts", "simsun.ttc"));
+    } else if (platform === "darwin") {
+      paths.push("/System/Library/Fonts/Apple Color Emoji.ttc");
+      paths.push("/System/Library/Fonts/PingFang.ttc");
+      paths.push("/System/Library/Fonts/Supplemental/Arial Unicode.ttf");
+    } else {
+      const execAsync = promisify(exec);
+      const queries = [
+        "emoji",
+        "sans-serif:lang=zh",
+        "sans-serif:lang=ja",
+        "sans-serif:lang=ko",
+      ];
+      for (const query of queries) {
+        try {
+          const { stdout } = await execAsync(
+            `fc-match -f "%{file}\\n" "${query}"`,
+          );
+          if (stdout.trim()) {
+            paths.push(stdout.trim());
+          }
+        } catch (e) {
+          // Ignore fc-match errors
+        }
+      }
+
+      if (paths.length === 0) {
+        if (platform === "linux") {
+          paths.push("/usr/share/fonts/noto/NotoColorEmoji.ttf");
+          paths.push(
+            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+          );
+          paths.push("/usr/share/fonts/noto/NotoSansCJK-Regular.ttc");
+          paths.push("/usr/share/fonts/wqy/wqy-microhei.ttc");
+        } else {
+          paths.push("/usr/local/share/fonts/noto/NotoColorEmoji.ttf");
+          paths.push("/usr/local/share/fonts/noto/NotoSansCJK-Regular.ttc");
+          paths.push("/usr/local/share/fonts/wqy/wqy-microhei.ttc");
+        }
+      }
+    }
+
+    return paths;
+  }
+
   private async createFontProvider() {
     if (!this.canvasKit) {
       return undefined;
     }
+
+    const canvasKit = this.canvasKit;
+    const fontProvider = canvasKit.TypefaceFontProvider.Make();
+    this.fallbackFontFamilies = [];
+
+    const loadFont = async (
+      filePath: string,
+      familyName: string,
+    ): Promise<boolean> => {
+      try {
+        const fontData = await fs.readFile(filePath);
+        const arrayBuffer = fontData.buffer.slice(
+          fontData.byteOffset,
+          fontData.byteOffset + fontData.byteLength,
+        ) as ArrayBuffer;
+        const typeface =
+          canvasKit.Typeface.MakeFreeTypeFaceFromData(arrayBuffer);
+        if (typeface) {
+          fontProvider.registerFont(fontData, familyName);
+          typeface.delete();
+          return true;
+        }
+      } catch (e) {
+        // Ignore errors (e.g., file not found or invalid format)
+      }
+      return false;
+    };
 
     const fontPath = path.join(
       this.extensionContext.extensionPath,
@@ -373,23 +480,25 @@ export class CanvasRenderer implements vscode.Disposable {
       "DroidSansMono.ttf",
     );
 
-    try {
-      const fontData = await fs.readFile(fontPath);
-      const arrayBuffer = fontData.buffer.slice(
-        fontData.byteOffset,
-        fontData.byteOffset + fontData.byteLength,
-      ) as ArrayBuffer;
-      const typeface =
-        this.canvasKit.Typeface.MakeFreeTypeFaceFromData(arrayBuffer);
-      if (typeface) {
-        const fontProvider = this.canvasKit.TypefaceFontProvider.Make();
-        fontProvider.registerFont(fontData, "Droid Sans Mono");
-        return fontProvider;
-      }
-    } catch (e) {
-      logger.debug("Cannot load font.", e);
+    const baseLoaded = await loadFont(fontPath, "Droid Sans Mono");
+    if (!baseLoaded) {
+      logger.debug("Cannot load base font.");
+      fontProvider.delete();
       return undefined;
     }
+
+    const fallbackPaths = await this.getSystemFallbackFontPaths();
+    let fallbackIndex = 0;
+    for (const p of fallbackPaths) {
+      const familyName = `System Fallback ${fallbackIndex}`;
+      if (await loadFont(p, familyName)) {
+        this.fallbackFontFamilies.push(familyName);
+        fallbackIndex++;
+        logger.debug(`Loaded fallback font: ${p}`);
+      }
+    }
+
+    return fontProvider;
   }
 
   dispose() {
