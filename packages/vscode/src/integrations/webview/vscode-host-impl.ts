@@ -62,6 +62,7 @@ import type { McpStatus } from "@getpochi/common/mcp-utils";
 import { McpHub } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
+  getWorkspaceExcludePatterns,
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
@@ -284,11 +285,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }): Promise<Environment> => {
     const isSubTask = options.isSubTask ?? false;
     const webviewKind = options.webviewKind;
+    const extraIgnorePatterns = this.cwd
+      ? await getWorkspaceExcludePatterns(this.cwd)
+      : [];
     const { files, isTruncated } = this.cwd
       ? await listWorkspaceFiles({
           cwd: this.cwd,
           recursive: true,
           maxItems: 500,
+          extraIgnorePatterns,
         })
       : { files: [], isTruncated: false };
 

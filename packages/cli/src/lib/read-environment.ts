@@ -4,6 +4,7 @@ import {
   GitStatusReader,
   collectCustomRules,
   getSystemInfo,
+  getWorkspaceExcludePatterns,
   listWorkspaceFiles,
 } from "@getpochi/common/tool-utils";
 import type { RunnerOptions } from "../task-runner";
@@ -15,10 +16,12 @@ export const readEnvironment = async (
 ): Promise<Environment> => {
   const { cwd } = context;
 
+  const extraIgnorePatterns = await getWorkspaceExcludePatterns(cwd);
   const { files, isTruncated } = await listWorkspaceFiles({
     cwd,
     recursive: true,
     maxItems: 500,
+    extraIgnorePatterns,
   });
 
   const readFileContent = async (filePath: string) =>
