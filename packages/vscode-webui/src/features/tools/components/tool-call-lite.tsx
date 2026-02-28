@@ -9,19 +9,25 @@ import { useTranslation } from "react-i18next";
 interface Props {
   tools: Array<ToolUIPart<UITools>> | undefined;
   requiresApproval?: boolean;
-  showApprove?: boolean;
   showCommandDetails?: boolean;
+  statusIcon?: ReactNode;
 }
 
 export function ToolCallLite({
   tools,
   requiresApproval,
-  showApprove = true,
   showCommandDetails,
+  statusIcon,
 }: Props) {
   const { t } = useTranslation();
 
-  if (!tools?.length) return null;
+  if (!tools?.length) {
+    return statusIcon ? (
+      <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
+        {statusIcon}
+      </div>
+    ) : null;
+  }
 
   const tool = tools[0];
   let detail: ReactNode = null;
@@ -75,8 +81,10 @@ export function ToolCallLite({
       detail = <NewTaskTool tool={tool} />;
       break;
     case "tool-askFollowupQuestion":
-    case "tool-attemptCompletion":
       detail = null;
+      break;
+    case "tool-attemptCompletion":
+      detail = <span>{t("toolInvocation.taskCompleted")}</span>;
       break;
     default:
       detail = <McpTool tool={tool} />;
@@ -91,12 +99,13 @@ export function ToolCallLite({
 
   return detail ? (
     <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
-      {showApprove &&
-        (requiresApproval ? (
-          <Pause className="size-3.5 shrink-0" />
-        ) : (
-          <Loader2 className="size-3.5 shrink-0 animate-spin" />
-        ))}
+      {statusIcon ? (
+        statusIcon
+      ) : requiresApproval ? (
+        <Pause className="size-3.5 shrink-0" />
+      ) : (
+        <Loader2 className="size-3.5 shrink-0 animate-spin" />
+      )}
       <div className="flex flex-nowrap items-center truncate">{detail}</div>
       {!requiresApproval && tools.length > 1 && (
         <span>

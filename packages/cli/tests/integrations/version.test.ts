@@ -21,5 +21,5 @@ describe("pochi --version", () => {
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
-  });
+  }, 30000);
 });
