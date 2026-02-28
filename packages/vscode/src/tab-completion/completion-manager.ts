@@ -373,7 +373,7 @@ export class TabCompletionManager implements vscode.Disposable {
     const editHistory = editHistoryTracker.getEditSteps(event.document);
 
     const notebook = vscode.workspace.notebookDocuments.find((notebook) => {
-      notebook.getCells().some((cell) => {
+      return notebook.getCells().some((cell) => {
         return cell.document.uri.toString() === event.document.uri.toString();
       });
     });
