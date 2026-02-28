@@ -75,12 +75,9 @@ export class FIMClient
     let notebookCellsPrefix = "";
     let notebookCellsSuffix = "";
     if (notebookCells) {
-      const currentCellIndex = notebookCells.indexOf(document);
-      if (
-        currentCellIndex >= 0 &&
-        currentCellIndex < notebookCells.length - 1
-      ) {
-        const currentLanguageId = document.languageId;
+      const currentCellIndex = notebookCells.indexOf(context.document);
+      if (currentCellIndex >= 0 && currentCellIndex < notebookCells.length) {
+        const currentLanguageId = context.document.languageId;
         const formatContext = (cells: vscode.TextDocument[]): string => {
           const notebookLanguageComments: {
             [languageId: string]: (code: string) => string;
@@ -104,7 +101,7 @@ export class FIMClient
                 )
               ) {
                 return (
-                  notebookLanguageComments[currentLanguageId]?.(
+                  notebookLanguageComments[textDocument.languageId]?.(
                     textDocument.getText(),
                   ) ?? ""
                 );
@@ -132,8 +129,10 @@ export class FIMClient
       return undefined;
     }
 
-    const documentCurrentLineSuffixRange = document.validateRange(
-      new vscode.Range(position.line, position.character, position.line + 1, 0),
+    const currentLine = document.lineAt(position.line);
+    const documentCurrentLineSuffixRange = new vscode.Range(
+      position,
+      currentLine.range.end,
     );
     const documentCurrentLineSuffix = documentCurrentLineSuffixRange.isEmpty
       ? ""
@@ -143,14 +142,12 @@ export class FIMClient
       ? documentCurrentLineSuffix.replace(/\r?\n$/, "").length
       : 0;
 
-    const suffixRange = document.validateRange(
-      new vscode.Range(
-        new vscode.Position(
-          position.line,
-          position.character + lineEndReplaceLength,
-        ),
-        fullDocumentRange.end,
+    const suffixRange = new vscode.Range(
+      new vscode.Position(
+        position.line,
+        position.character + lineEndReplaceLength,
       ),
+      fullDocumentRange.end,
     );
     const documentSuffix = suffixRange.isEmpty
       ? ""
