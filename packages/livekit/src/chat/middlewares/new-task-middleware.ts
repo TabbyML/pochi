@@ -3,6 +3,7 @@ import type {
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
+import { constants } from "@getpochi/common";
 import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/default-schema";
@@ -92,6 +93,9 @@ export function createNewTaskMiddleware(
               }
 
               const uid = crypto.randomUUID();
+              const runAsync =
+                (args.runAsync ?? false) && constants.enableAsyncNewTask;
+              args.runAsync = runAsync;
               args._meta = {
                 uid,
               };
@@ -100,7 +104,7 @@ export function createNewTaskMiddleware(
                   id: uid,
                   cwd,
                   parentId: parentTaskId,
-                  runAsync: args.runAsync ?? false,
+                  runAsync,
                   createdAt: new Date(),
                   initMessages: [
                     {

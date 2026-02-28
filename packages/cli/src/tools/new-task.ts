@@ -1,3 +1,4 @@
+import { constants } from "@getpochi/common";
 import type {
   ClientTools,
   CustomAgent,
@@ -37,7 +38,7 @@ export const newTask =
       await options.browserSessionStore?.registerBrowserSession(taskId);
     }
 
-    const isAsync = !!runAsync;
+    const isAsync = !!runAsync && constants.enableAsyncNewTask;
     const subTaskRunner = options.createSubTaskRunner(
       taskId,
       isAsync,

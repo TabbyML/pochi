@@ -14,3 +14,5 @@ export const DefaultMaxOutputTokens = 4096;
 export const PochiTaskIdHeader = "x-pochi-task-id";
 export const PochiClientHeader = "x-pochi-client";
 export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
+
+export const enableAsyncNewTask = false;
