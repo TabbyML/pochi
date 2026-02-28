@@ -97,7 +97,6 @@ export const prepareForkTaskData = ({
 
   const newFiles = files.map((file) => ({
     content: file.content,
-    taskId: getNewTaskId(file.taskId),
     filePath: file.filePath,
   }));
 

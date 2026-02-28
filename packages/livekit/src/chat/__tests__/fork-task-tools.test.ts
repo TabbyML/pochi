@@ -51,7 +51,6 @@ describe("prepareForkTaskData", () => {
 
   const mockFiles = [
     {
-      taskId: oldTaskId,
       filePath: "file.txt",
       content: "content",
     },
@@ -86,7 +85,6 @@ describe("prepareForkTaskData", () => {
     expect(result.messages[1].data.parts[0]).toEqual({ type: "text", text: "world" });
 
     expect(result.files).toHaveLength(1);
-    expect(result.files[0].taskId).toBe(newTaskId);
     expect(result.files[0].filePath).toBe("file.txt");
   });
 

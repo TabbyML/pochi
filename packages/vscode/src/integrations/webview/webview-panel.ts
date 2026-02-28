@@ -4,6 +4,7 @@ import { AuthEvents } from "@/lib/auth-events";
 import { WorkspaceScope, workspaceScoped } from "@/lib/workspace-scoped";
 import { getLogger, toErrorMessage } from "@getpochi/common";
 import { BrowserSessionStore } from "@getpochi/common/browser";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
   type PochiTaskInfo,
   type PochiTaskParams,
@@ -90,16 +91,26 @@ export class PochiWebviewPanel
     };
   }
 
-  static readTaskFile(taskId: string, filePath: string) {
+  static readStoreFile(storeId: string, filePath: string) {
+    const { taskId } = decodeStoreId(storeId);
+    if (!taskId) {
+      throw new Error("Invalid storeId");
+    }
+
     return PochiWebviewPanel.panels
       .get(taskId)
-      ?.webviewHost?.readTaskFile(taskId, filePath);
+      ?.webviewHost?.readStoreFile(filePath);
   }
 
-  static writeTaskFile(taskId: string, filePath: string, content: string) {
+  static writeStoreFile(storeId: string, filePath: string, content: string) {
+    const { taskId } = decodeStoreId(storeId);
+    if (!taskId) {
+      throw new Error("Invalid storeId");
+    }
+
     return PochiWebviewPanel.panels
       .get(taskId)
-      ?.webviewHost?.writeTaskFile(taskId, filePath, content);
+      ?.webviewHost?.writeStoreFile(filePath, content);
   }
 
   static readTaskOutput(taskId: string) {

@@ -33,18 +33,18 @@ export function FilesProvider({
   );
 }
 
-export const useFile = (taskId: string, filePath: string) => {
+export const useStoreFile = (filePath: string) => {
   const context = useContext(FileProviderContext);
 
   if (context === undefined) {
-    throw new Error("useFile must be used within a FilesProvider");
+    throw new Error("useStoreFile must be used within a FilesProvider");
   }
 
   const { defaultFiles } = context;
   const store = useDefaultStore();
 
   const storeFile = store.useQuery(
-    catalog.queries.makeFileQuery(taskId, filePath),
+    catalog.queries.makeStoreFileQuery(filePath),
   );
 
   if (isVSCodeEnvironment()) {

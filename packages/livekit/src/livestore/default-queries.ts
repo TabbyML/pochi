@@ -30,23 +30,18 @@ export const makeSubTaskQuery = (taskId: string) =>
     deps: [taskId],
   });
 
-export const makeFileQuery = (taskId: string, filePath: string) =>
+export const makeStoreFileQuery = (filePath: string) =>
   queryDb(
-    () =>
-      tables.files
-        .where("taskId", "=", taskId)
-        .where("filePath", "=", filePath)
-        .first(undefined),
+    () => tables.files.where("filePath", "=", filePath).first(undefined),
     {
       label: "file",
-      deps: [taskId, filePath],
+      deps: [filePath],
     },
   );
 
-export const makeFilesQuery = (taskId: string) =>
-  queryDb(() => tables.files.where("taskId", "=", taskId), {
+export const makeStoreFilesQuery = () =>
+  queryDb(() => tables.files.select(), {
     label: "files",
-    deps: [taskId],
   });
 
 export const makeAllDataQuery = () => {

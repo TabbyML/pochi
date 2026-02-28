@@ -46,3 +46,4 @@ When encountering issues like `TypeError: Descriptor for property readFile is no
     - packages/vscode/src/integrations/webview/vscode-host-impl.ts
     - packages/vscode-webui/src/lib/vscode.ts
 9. Reuse UI componnent in packages/vscode-webui/src/components
+10. When you need to look up information about LiveStore, always use the `docs` directory that's shipped as part of the `@livestore/livestore` package in `node_modules/@livestore/livestore/docs`.
