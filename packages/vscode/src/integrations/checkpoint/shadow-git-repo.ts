@@ -9,6 +9,9 @@ import { writeExcludesFile } from "./shadow-git-excludes";
 
 const logger = getLogger("ShadowGitRepo");
 
+/** Timeout (ms) for any single git operation; kills the process if git produces no output. */
+const GitOperationTimeoutMs = 10_000;
+
 export class ShadowGitRepo implements vscode.Disposable {
   private git: SimpleGit;
 
@@ -17,7 +20,7 @@ export class ShadowGitRepo implements vscode.Disposable {
     workspaceDir: string,
   ): Promise<ShadowGitRepo> {
     try {
-      await simpleGit().version();
+      await simpleGit({ timeout: { block: GitOperationTimeoutMs } }).version();
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       throw new Error(
@@ -44,8 +47,9 @@ export class ShadowGitRepo implements vscode.Disposable {
     private gitPath: string,
     private workspaceDir: string,
   ) {
-    // For bare repository, we initialize simple-git with the bare repository directory
-    this.git = simpleGit(this.gitPath).env("GIT_DIR", this.gitPath);
+    this.git = simpleGit(this.gitPath, {
+      timeout: { block: GitOperationTimeoutMs },
+    }).env("GIT_DIR", this.gitPath);
   }
 
   async init() {
@@ -204,11 +208,10 @@ export class ShadowGitRepo implements vscode.Disposable {
   }
 
   async stageAll() {
+    if (!this.git) {
+      throw new Error("Git instance is not initialized");
+    }
     try {
-      if (!this.git) {
-        throw new Error("Git instance is not initialized");
-      }
-      // For bare repository with worktree, use --work-tree flag
       await this.git.raw([
         "--work-tree",
         this.workspaceDir,
@@ -216,18 +219,13 @@ export class ShadowGitRepo implements vscode.Disposable {
         ".",
         "--ignore-errors",
       ]);
-      logger.trace(`Staged all changes in the repository at ${this.gitPath}.`);
-      return true;
     } catch (error) {
-      const errorMessage = toErrorMessage(error);
-      const message = `Failed to stage all changes in the repository at ${this.gitPath}: ${errorMessage}`;
-      logger.error(message, {
-        error,
-        gitPath: this.gitPath,
-        workspaceDir: this.workspaceDir,
-      });
-      throw new Error(message);
+      logger.warn(
+        `Some files could not be staged in the repository at ${this.gitPath} (continuing with partial stage): ${toErrorMessage(error)}`,
+      );
     }
+    logger.trace(`Staged changes in the repository at ${this.gitPath}.`);
+    return true;
   }
 
   async commit(commitMessage: string): Promise<string> {
