@@ -25,6 +25,70 @@ import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
 
 const logger = getLogger("LiveChatKit");
+const OverrideMessagesSideEffectTimeoutMs = 12_000;
+
+async function runSideEffectSafely({
+  sideEffectName,
+  timeoutMs,
+  abortSignal,
+  run,
+}: {
+  sideEffectName: string;
+  timeoutMs: number;
+  abortSignal?: AbortSignal;
+  run: () => Promise<void>;
+}): Promise<void> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+
+  const sideEffectPromise: Promise<"done"> = run()
+    .catch((error) => {
+      logger.warn(
+        `${sideEffectName} failed. Continue sending message without this side effect.`,
+        error,
+      );
+    })
+    .then(() => "done");
+
+  const timeoutPromise = new Promise<"timeout">((resolve) => {
+    timeoutId = setTimeout(() => resolve("timeout"), timeoutMs);
+  });
+
+  const racePromises: Array<Promise<"done" | "timeout" | "aborted">> = [
+    sideEffectPromise,
+    timeoutPromise,
+  ];
+
+  if (abortSignal) {
+    const abortPromise = new Promise<"aborted">((resolve) => {
+      if (abortSignal.aborted) {
+        resolve("aborted");
+        return;
+      }
+      onAbort = () => resolve("aborted");
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+    });
+    racePromises.push(abortPromise);
+  }
+
+  try {
+    const result = await Promise.race(racePromises);
+    if (result === "timeout") {
+      logger.warn(
+        `${sideEffectName} timed out after ${timeoutMs}ms. Continue sending message without waiting.`,
+      );
+    } else if (result === "aborted") {
+      logger.trace(`${sideEffectName} skipped because request was aborted.`);
+    }
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    if (abortSignal && onAbort) {
+      abortSignal.removeEventListener("abort", onAbort);
+    }
+  }
+}
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
@@ -189,11 +253,18 @@ export class LiveChatKit<
         }
       }
       if (onOverrideMessages) {
-        await onOverrideMessages({
-          store: this.store,
-          taskId: this.taskId,
-          messages,
+        await runSideEffectSafely({
+          sideEffectName: "onOverrideMessages",
+          timeoutMs: OverrideMessagesSideEffectTimeoutMs,
           abortSignal,
+          run: async () => {
+            await onOverrideMessages({
+              store: this.store,
+              taskId: this.taskId,
+              messages,
+              abortSignal,
+            });
+          },
         });
       }
     };
