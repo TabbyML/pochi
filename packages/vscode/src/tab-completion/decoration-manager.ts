@@ -110,16 +110,13 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
     this.scrollIndicatorDecorationOptions = {
       before: {
         contentText: "⇥ Tab to scroll",
-        color: new vscode.ThemeColor(
-          "pochi.tabCompletion.scrollIndicator.foreground",
-        ),
-        backgroundColor: new vscode.ThemeColor(
-          "pochi.tabCompletion.scrollIndicator.background",
-        ),
-        margin:
-          "-4px 0 0 55.5ch; padding: 4px; position: absolute; z-index: 10000;",
-        border:
-          "0; border-radius: 4px; box-shadow: 0 0 4px 4px rgba(0,108,198,0.2);",
+        color: new vscode.ThemeColor("editorWidget.foreground"),
+        backgroundColor: new vscode.ThemeColor("editorWidget.background"),
+        border: "1px solid",
+        borderColor: new vscode.ThemeColor("editorWidget.border"),
+        margin: "-4px 0 0 55.5ch; position: absolute; z-index: 10000;",
+        textDecoration:
+          "none; padding: 4px 11px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16); opacity: 0.97; font-size: 12px; font-weight: 400; letter-spacing: 0.15px;",
       },
     };
 
