@@ -1,4 +1,4 @@
-import { useFile } from "@/components/files-provider";
+import { useStoreFile } from "@/components/files-provider";
 import { MessageMarkdown } from "@/components/message";
 import { TaskThread } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
 
   const { t } = useTranslation();
   const store = useDefaultStore();
-  const file = useFile(taskSource?.parentId || "", "/plan.md");
+  const file = useStoreFile("/plan.md");
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const { count, incrementCount } = useReviewPlanTutorialCounter();

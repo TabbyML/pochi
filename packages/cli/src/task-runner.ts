@@ -10,6 +10,7 @@ import {
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 
 import { spawn } from "node:child_process";
+import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
@@ -28,8 +29,6 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import ora from "ora";
-
-import { resolveToolCallArgs } from "@getpochi/common/tool-utils";
 import type z from "zod/v4";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
@@ -40,7 +39,6 @@ import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import { Chat } from "./livekit";
 
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
@@ -549,8 +547,10 @@ export class TaskRunner {
         )}`,
       );
 
-      const { taskId } = decodeStoreId(this.store.storeId);
-      const resolvedInput = resolveToolCallArgs(toolCall.input, taskId);
+      const resolvedInput = resolveToolCallArgs(
+        toolCall.input,
+        this.store.storeId,
+      );
 
       let envs: Record<string, string> | undefined;
       if (this.customAgent?.name === "browser") {

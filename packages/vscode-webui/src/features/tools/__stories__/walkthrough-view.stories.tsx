@@ -182,8 +182,7 @@ export const Default: Story = {
       useEffect(() => {
         // Seed the store with a walkthrough.md file
         store.commit(
-          catalog.events.writeTaskFile({
-            taskId: "root",
+          catalog.events.writeStoreFile({
             filePath: "/walkthrough.md",
             content: walkthroughContent,
           }),

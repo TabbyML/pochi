@@ -23,9 +23,7 @@ export function useAutoOpenPlanFile({
   const hasOpenedPlanFile = useRef(false);
 
   const store = useDefaultStore();
-  const file = store.useQuery(
-    catalog.queries.makeFileQuery(subtask?.parentUid || "", "/plan.md"),
-  );
+  const file = store.useQuery(catalog.queries.makeStoreFileQuery("/plan.md"));
   const hasPlanFile = !!file;
 
   // Auto-open plan file when all conditions are met:
