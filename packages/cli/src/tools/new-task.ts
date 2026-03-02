@@ -38,7 +38,7 @@ export const newTask =
       await options.browserSessionStore?.registerBrowserSession(taskId);
     }
 
-    const isAsync = !!runAsync && constants.enableAsyncNewTask;
+    const isAsync = !!runAsync && constants.EnableAsyncNewTask;
     const subTaskRunner = options.createSubTaskRunner(
       taskId,
       isAsync,

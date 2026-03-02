@@ -15,4 +15,11 @@ export const PochiTaskIdHeader = "x-pochi-task-id";
 export const PochiClientHeader = "x-pochi-client";
 export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
 
-export const enableAsyncNewTask = false;
+export const EnableAsyncNewTask = false;
+
+/**
+ * Timeout (ms) for any single git operation.
+ * Used across all git invocations (simple-git block timeout, exec timeout)
+ * to prevent hangs when git itself is broken or unresponsive.
+ */
+export const GitOperationTimeoutMs = 10_000;

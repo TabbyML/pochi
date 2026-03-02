@@ -7,7 +7,7 @@ import { generateBranchName } from "@/lib/generate-branch-name";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
-import { toErrorMessage } from "@getpochi/common";
+import { constants, toErrorMessage } from "@getpochi/common";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import { isPlainText } from "@getpochi/common/tool-utils";
 import type {
@@ -51,7 +51,9 @@ export class WorktreeManager implements vscode.Disposable {
     private readonly pochiConfiguration: PochiConfiguration,
   ) {
     this.workspacePath = this.workspaceScope.workspacePath;
-    this.git = simpleGit(this.workspacePath);
+    this.git = simpleGit(this.workspacePath, {
+      timeout: { block: constants.GitOperationTimeoutMs },
+    });
     this.init();
   }
 
@@ -583,7 +585,9 @@ async function showWorktreeDiff(
     return false;
   }
 
-  const git = simpleGit(cwd);
+  const git = simpleGit(cwd, {
+    timeout: { block: constants.GitOperationTimeoutMs },
+  });
   const result: FileChange[] = [];
   try {
     const output = await git.raw(["diff", "--name-status", base]);
