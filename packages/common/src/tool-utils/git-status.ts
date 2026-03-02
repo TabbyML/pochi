@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { type GitStatus, getLogger } from "../base";
+import { constants, type GitStatus, getLogger } from "../base";
 import { parseGitOriginUrl } from "../git-utils";
 
 export interface GitStatusReaderOptions {
@@ -12,9 +12,12 @@ const logger = getLogger("GitStatus");
 
 const execPromise = promisify(exec);
 
+/** Overall timeout (ms) for the entire readGitStatus operation. */
+const ReadGitStatusTimeoutMs = 12_000;
+
 /**
  * Execute a git command and return the output
- * Returns empty string if command fails or repository not found
+ * Returns empty string if command fails, times out, or repository not found
  */
 const execGit = async (cwd: string, command: string): Promise<string> => {
   if (!cwd) {
@@ -24,6 +27,7 @@ const execGit = async (cwd: string, command: string): Promise<string> => {
   try {
     const { stdout } = await execPromise(`git ${command}`, {
       cwd,
+      timeout: constants.GitOperationTimeoutMs,
     });
     return stdout.trim();
   } catch {
@@ -191,7 +195,16 @@ export class GitStatusReader {
         path: this.cwd,
       });
 
-      return await this.readGitStatusImpl();
+      const timeoutPromise = new Promise<undefined>((resolve) => {
+        setTimeout(() => {
+          logger.warn(
+            `readGitStatus timed out after ${ReadGitStatusTimeoutMs}ms, returning undefined`,
+          );
+          resolve(undefined);
+        }, ReadGitStatusTimeoutMs);
+      });
+
+      return await Promise.race([this.readGitStatusImpl(), timeoutPromise]);
     } catch (error) {
       logger.error("Error reading Git status", error);
       return undefined;

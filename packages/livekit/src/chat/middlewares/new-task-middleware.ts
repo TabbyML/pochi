@@ -94,7 +94,7 @@ export function createNewTaskMiddleware(
 
               const uid = crypto.randomUUID();
               const runAsync =
-                (args.runAsync ?? false) && constants.enableAsyncNewTask;
+                (args.runAsync ?? false) && constants.EnableAsyncNewTask;
               args.runAsync = runAsync;
               args._meta = {
                 uid,

@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { getLogger, toErrorMessage } from "@getpochi/common";
+import { constants, getLogger, toErrorMessage } from "@getpochi/common";
 import { isFileExists } from "@getpochi/common/tool-utils";
 import simpleGit, { type SimpleGit } from "simple-git";
 import type * as vscode from "vscode";
@@ -8,9 +8,6 @@ import type { FileChange } from "../editor/diff-changes-editor";
 import { writeExcludesFile } from "./shadow-git-excludes";
 
 const logger = getLogger("ShadowGitRepo");
-
-/** Timeout (ms) for any single git operation; kills the process if git produces no output. */
-const GitOperationTimeoutMs = 10_000;
 
 export class ShadowGitRepo implements vscode.Disposable {
   private git: SimpleGit;
@@ -20,7 +17,9 @@ export class ShadowGitRepo implements vscode.Disposable {
     workspaceDir: string,
   ): Promise<ShadowGitRepo> {
     try {
-      await simpleGit({ timeout: { block: GitOperationTimeoutMs } }).version();
+      await simpleGit({
+        timeout: { block: constants.GitOperationTimeoutMs },
+      }).version();
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       throw new Error(
@@ -48,7 +47,7 @@ export class ShadowGitRepo implements vscode.Disposable {
     private workspaceDir: string,
   ) {
     this.git = simpleGit(this.gitPath, {
-      timeout: { block: GitOperationTimeoutMs },
+      timeout: { block: constants.GitOperationTimeoutMs },
     }).env("GIT_DIR", this.gitPath);
   }
 
