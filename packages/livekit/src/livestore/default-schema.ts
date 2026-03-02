@@ -95,15 +95,14 @@ export const tables = {
   files: State.SQLite.table({
     name: "files",
     columns: {
-      taskId: State.SQLite.text(),
       filePath: State.SQLite.text(),
       content: State.SQLite.text(),
     },
-    primaryKey: ["taskId", "filePath"],
+    primaryKey: ["filePath"],
     indexes: [
       {
-        name: "idx-taskId-filePath",
-        columns: ["taskId", "filePath"],
+        name: "idx-filePath",
+        columns: ["filePath"],
         isUnique: true,
       },
     ],
@@ -219,10 +218,22 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
-  writeTaskFile: Events.synced({
+  // @deprecated use writeStoreFile instead
+  _writeTaskFile: Events.synced({
     name: "v1.WriteTaskFile",
     schema: Schema.Struct({
       taskId: Schema.String,
+      filePath: Schema.Union(
+        Schema.Literal("/plan.md", "/walkthrough.md"),
+        Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
+      ),
+      content: Schema.String,
+    }),
+    deprecated: "Use writeStoreFile instead",
+  }),
+  writeStoreFile: Events.synced({
+    name: "v1.WriteStoreFile",
+    schema: Schema.Struct({
       filePath: Schema.Union(
         Schema.Literal("/plan.md", "/walkthrough.md"),
         Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
@@ -260,7 +271,6 @@ export const events = {
       ),
       files: Schema.Array(
         Schema.Struct({
-          taskId: Schema.String,
           filePath: Schema.String,
           content: Schema.String,
         }),
@@ -423,14 +433,21 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks.update({ title, updatedAt }).where({ id }),
   "v1.UpdateIsPublicShared": ({ id, isPublicShared, updatedAt }) =>
     tables.tasks.update({ isPublicShared, updatedAt }).where({ id }),
-  "v1.WriteTaskFile": ({ taskId, filePath, content }) =>
+  // @deprecated materializer kept for backward compatibility
+  "v1.WriteTaskFile": ({ filePath, content }) =>
     tables.files
       .insert({
-        taskId,
         filePath,
         content,
       })
-      .onConflict(["taskId", "filePath"], "replace"),
+      .onConflict("filePath", "replace"),
+  "v1.WriteStoreFile": ({ filePath, content }) =>
+    tables.files
+      .insert({
+        filePath,
+        content,
+      })
+      .onConflict("filePath", "replace"),
   "v1.BlobInserted": () => [],
   "v1.updateLineChanges": ({ id, lineChanges, updatedAt }) =>
     tables.tasks

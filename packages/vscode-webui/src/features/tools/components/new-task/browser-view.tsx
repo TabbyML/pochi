@@ -1,4 +1,4 @@
-import { useFile } from "@/components/files-provider";
+import { useStoreFile } from "@/components/files-provider";
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
 import { browserSessionManager } from "@/lib/browser-session-manager";
@@ -20,10 +20,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
     return browserSessionManager.subscribeFrame(uid, setFrame);
   }, [uid]);
 
-  const file = useFile(
-    taskSource?.parentId || "",
-    `/browser-session/${tool.toolCallId}.mp4`,
-  );
+  const file = useStoreFile(`/browser-session/${tool.toolCallId}.mp4`);
   const videoUrl = file?.content;
 
   return (
@@ -32,8 +29,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
       tool={tool}
       isExecuting={isExecuting}
       taskSource={taskSource}
-      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
-      expandable={!!videoUrl || !!frame}
+      showToolCall
     >
       {!isExecuting && videoUrl ? (
         // biome-ignore lint/a11y/useMediaCaption: No audio track available

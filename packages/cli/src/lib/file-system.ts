@@ -35,7 +35,7 @@ export class TaskFileSystem implements FileSystem {
     }
 
     const file = this.store.query(
-      catalog.queries.makeFileQuery(uri.taskId, uri.filePath),
+      catalog.queries.makeStoreFileQuery(uri.filePath),
     );
 
     if (!file) {
@@ -53,28 +53,22 @@ export class TaskFileSystem implements FileSystem {
 
     const validPath = validateTaskFilePath(uri.filePath);
     await this.store.commit(
-      catalog.events.writeTaskFile({
-        taskId: uri.taskId,
+      catalog.events.writeStoreFile({
         filePath: validPath,
         content,
       }),
     );
   }
 
-  private parseUri(
-    uriString: string,
-  ): { taskId: string; filePath: string } | null {
+  private parseUri(uriString: string): { filePath: string } | null {
     try {
       const url = new URL(uriString);
       if (url.protocol !== "pochi:") {
         return null;
       }
-      // pochi://<taskId>/<filePath>
-      // host is taskId
-      // pathname is /filePath (with leading slash)
-      const taskId = url.host;
+      // pochi://<authority>/<filePath>
       const filePath = url.pathname; // includes leading slash
-      return { taskId, filePath };
+      return { filePath };
     } catch {
       return null;
     }

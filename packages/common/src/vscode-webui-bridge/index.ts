@@ -71,6 +71,12 @@ export {
   buildInstructionsFromConnections,
   buildToolsetFromConnections,
 } from "./mcp-util";
+export {
+  decodeStoreIdFromUriAuthority,
+  encodeStoreIdForUriAuthority,
+  resolvePochiUri,
+  resolveToolCallArgs,
+} from "./tool-call-utils";
 
 const isPochiDev = process.env.POCHI_LOCAL_SERVER === "true";
 const isSyncDev = process.env.POCHI_LOCAL_SYNC_SERVER === "true";

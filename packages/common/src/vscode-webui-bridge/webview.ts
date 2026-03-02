@@ -76,10 +76,7 @@ export interface VSCodeHostApi {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
       abortSignal?: ThreadAbortSignalSerialization;
-      /**
-       * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-       */
-      taskId: string;
+      storeId: string;
     },
   ): Promise<PreviewReturnType>;
 
@@ -100,10 +97,7 @@ export interface VSCodeHostApi {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      /**
-       * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-       */
-      taskId: string;
+      storeId: string;
     },
   ): Promise<unknown>;
 
@@ -456,13 +450,9 @@ export interface WebviewHostApi {
 
   isFocused(): Promise<boolean>;
 
-  writeTaskFile(
-    taskId: string,
-    filePath: string,
-    content: string,
-  ): Promise<void>;
+  writeStoreFile(filePath: string, content: string): Promise<void>;
 
-  readTaskFile(taskId: string, filePath: string): Promise<string | null>;
+  readStoreFile(filePath: string): Promise<string | null>;
 
   readTaskOutput(taskId: string): Promise<ExecuteCommandResult>;
 }

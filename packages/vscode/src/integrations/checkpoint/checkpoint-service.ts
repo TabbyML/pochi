@@ -26,7 +26,7 @@ import {
 const logger = getLogger("CheckpointService");
 const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 
-/** Timeout for saveCheckpoint operation in milliseconds */
+/** Timeout (ms) for the saveCheckpoint operation. */
 const SaveCheckpointTimeoutMs = 10_000;
 
 /**

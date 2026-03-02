@@ -72,7 +72,7 @@ const VSCodeHostStub = {
     _options: {
       toolCallId: string;
       state: "partial-call" | "call" | "result";
-      taskId: string;
+      storeId: string;
     },
   ): Promise<{ error: string } | undefined> => {
     return Promise.resolve(undefined);
@@ -84,7 +84,7 @@ const VSCodeHostStub = {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      taskId: string;
+      storeId: string;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);

@@ -1,33 +1,24 @@
-import { TaskThread } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { FixedStateChatContextProvider } from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import type { UITools } from "@getpochi/livekit";
-import { isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, isToolUIPart } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
-import { ExpandIcon } from "../tool-container";
 
 interface SubAgentViewProps {
   uid?: string;
   tool: NewTaskToolViewProps["tool"];
   isExecuting: NewTaskToolViewProps["isExecuting"];
-  actions?: React.ReactNode;
   children: React.ReactNode;
   headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
-  toolCallStatusRegistryRef: NewTaskToolViewProps["toolCallStatusRegistryRef"];
-  assistantName?: string;
-  defaultCollapsed?: boolean;
-  expandable?: boolean;
+  showToolCall?: boolean;
 }
 
 export function SubAgentView({
@@ -38,52 +29,49 @@ export function SubAgentView({
   headerActions,
   footerActions,
   taskSource,
-  toolCallStatusRegistryRef,
-  assistantName = "Planner",
-  defaultCollapsed = false,
-  expandable = true,
+  showToolCall,
 }: SubAgentViewProps) {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
-  const showExpandIcon =
-    isExecuting && expandable && taskSource && taskSource.messages.length > 1;
-  const showFooter = showExpandIcon || footerActions;
+  const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
+  const showToolCallLite =
+    showToolCall &&
+    isExecuting &&
+    taskSource &&
+    taskSource.messages.length > 1 &&
+    !!lastToolCallRef.current;
+
+  const showFooter = showToolCallLite || footerActions;
   const navigate = useNavigate();
   const store = useDefaultStore();
   const toolTitle = tool.input?.agentType;
   const description = tool.input?.description;
-  const lastToolCall = useRef<ToolUIPart<UITools>>(null);
 
   useEffect(() => {
     const lastMessage = taskSource?.messages.at(-1);
-    if (!isExecuting || !lastMessage || lastMessage.role !== "assistant") {
+    if (!lastMessage || lastMessage.role !== "assistant") {
       return;
     }
-    const pendingToolCall = lastMessage.parts.find(
-      (part): part is ToolUIPart<UITools> =>
-        isToolUIPart(part) &&
-        part.state === "input-available" &&
-        !isUserInputToolPart(part),
+    const lastToolCall = lastMessage.parts.findLast(
+      (part): part is ToolUIPart<UITools> => {
+        return isToolUIPart(part);
+      },
     );
-    if (pendingToolCall) {
-      lastToolCall.current = pendingToolCall;
+    if (lastToolCall) {
+      lastToolCallRef.current = lastToolCall;
     }
-  }, [isExecuting, taskSource?.messages]);
+  }, [taskSource?.messages]);
 
   return (
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
-      <div className="flex items-center gap-2 border-b bg-muted px-3 py-2 font-medium text-muted-foreground text-xs">
-        <StatusIcon
-          tool={tool}
-          isExecuting={isExecuting}
-          className="align-baseline"
-          iconClassName="size-3.5"
-        />
-        <Badge variant="secondary" className={cn("my-0.5 py-0")}>
-          {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
-            <Button
-              variant="link"
-              className="h-auto p-0 font-inherit text-inherit underline-offset-2"
-              onClick={() => {
+      <div
+        className={cn(
+          "flex items-center gap-2 border-b bg-muted/30 px-3 py-2 font-medium text-muted-foreground text-xs",
+          uid && taskSource?.parentId && isVSCodeEnvironment()
+            ? "group cursor-pointer transition-colors hover:bg-muted hover:text-foreground"
+            : "",
+        )}
+        onClick={
+          uid && taskSource?.parentId && isVSCodeEnvironment()
+            ? () => {
                 navigate({
                   to: "/task",
                   search: {
@@ -93,72 +81,84 @@ export function SubAgentView({
                   replace: true,
                   viewTransition: true,
                 });
-              }}
-            >
-              {toolTitle}
-            </Button>
-          ) : (
-            <>{toolTitle}</>
-          )}
+              }
+            : undefined
+        }
+      >
+        <StatusIcon
+          tool={tool}
+          isExecuting={isExecuting}
+          className="align-baseline"
+          iconClassName="size-3.5"
+        />
+        <Badge variant="secondary" className={cn("my-0.5 py-0")}>
+          {toolTitle}
         </Badge>
         {description && (
-          <span className="min-w-0 truncate text-muted-foreground">
+          <span className="min-w-0 truncate text-muted-foreground group-hover:underline">
             {description}
           </span>
         )}
-        {headerActions && (
-          <div className="ml-auto flex items-center gap-2">{headerActions}</div>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {headerActions && (
+            <div onClick={(e) => e.stopPropagation()}>{headerActions}</div>
+          )}
+        </div>
       </div>
 
       {children}
 
       {showFooter && (
-        <div className="flex items-center gap-2 border-t bg-muted p-2">
-          {showExpandIcon && (
-            <div className="flex items-center">
-              <ExpandIcon
-                className="rotate-270 cursor-pointer text-muted-foreground"
-                isExpanded={!isCollapsed}
-                onClick={() => setIsCollapsed(!isCollapsed)}
-              />
-              {lastToolCall.current && (
-                <div className="truncate text-muted-foreground text-xs">
-                  <ToolCallLite
-                    tools={[lastToolCall.current]}
-                    showApprove={false}
-                    showCommandDetails
-                  />
-                </div>
-              )}
+        <div
+          className={cn(
+            "flex items-center gap-2 overflow-x-hidden border-t bg-muted/30 p-2 text-muted-foreground",
+            showToolCallLite &&
+              uid &&
+              taskSource?.parentId &&
+              isVSCodeEnvironment() &&
+              "cursor-pointer transition-colors hover:bg-muted hover:text-foreground",
+          )}
+          onClick={
+            showToolCallLite &&
+            uid &&
+            taskSource?.parentId &&
+            isVSCodeEnvironment()
+              ? () => {
+                  navigate({
+                    to: "/task",
+                    search: {
+                      uid,
+                      storeId: store.storeId,
+                    },
+                    replace: true,
+                    viewTransition: true,
+                  });
+                }
+              : undefined
+          }
+        >
+          {showToolCallLite && lastToolCallRef.current && (
+            <div className="flex flex-1 items-center">
+              <div className="animated-gradient-text truncate py-0.5 text-xs">
+                <ToolCallLite
+                  tools={[lastToolCallRef.current]}
+                  requiresApproval={false}
+                  showCommandDetails
+                  showStatusIcon={false}
+                />
+              </div>
             </div>
           )}
           {footerActions && (
-            <div className="ml-auto flex items-center gap-2">
+            <div
+              className="ml-auto flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+            >
               {footerActions}
             </div>
           )}
         </div>
       )}
-
-      {isExecuting &&
-        isCollapsed &&
-        taskSource &&
-        taskSource.messages.length > 1 && (
-          <div className="p-1">
-            <FixedStateChatContextProvider
-              toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-            >
-              <TaskThread
-                source={{ ...taskSource, isLoading: false }}
-                showMessageList={true}
-                showTodos={false}
-                scrollAreaClassName="border-none"
-                assistant={{ name: assistantName }}
-              />
-            </FixedStateChatContextProvider>
-          </div>
-        )}
     </div>
   );
 }

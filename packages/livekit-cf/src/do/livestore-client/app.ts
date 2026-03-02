@@ -66,7 +66,7 @@ store
       ...subTask,
       messages: subTask.messages.map((x) => sanitizeMessage(x as Message)),
     }));
-    const files = store.query(catalog.queries.makeFilesQuery(taskId));
+    const files = store.query(catalog.queries.makeStoreFilesQuery());
 
     const user = await c.env.getOwner();
 

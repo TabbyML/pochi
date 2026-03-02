@@ -1,5 +1,7 @@
 import { TextDecoder, TextEncoder } from "node:util";
 import { PochiWebviewPanel } from "@/integrations/webview/webview-panel";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
+import { decodeStoreIdFromUriAuthority } from "@getpochi/common/vscode-webui-bridge";
 import { inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 
@@ -8,6 +10,19 @@ import * as vscode from "vscode";
 export class PochiFileSystemProvider
   implements vscode.FileSystemProvider, vscode.Disposable
 {
+  private static matchTaskId(authority: string, taskId: string): boolean {
+    const encodedStoreId = decodeStoreIdFromUriAuthority(authority);
+    if (!encodedStoreId) {
+      return false;
+    }
+
+    try {
+      return decodeStoreId(encodedStoreId).taskId === taskId;
+    } catch {
+      return false;
+    }
+  }
+
   private _onDidChangeFile = new vscode.EventEmitter<
     vscode.FileChangeEvent[]
   >();
@@ -35,7 +50,8 @@ export class PochiFileSystemProvider
         if (tab.input instanceof vscode.TabInputText) {
           if (
             tab.input.uri.scheme === "pochi" &&
-            (uid === undefined || tab.input.uri.authority === uid)
+            (uid === undefined ||
+              PochiFileSystemProvider.matchTaskId(tab.input.uri.authority, uid))
           ) {
             tabsToClose.push(tab);
           }
@@ -56,10 +72,13 @@ export class PochiFileSystemProvider
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    const taskId = uri.authority;
+    const storeId = decodeStoreIdFromUriAuthority(uri.authority);
+    if (!storeId) {
+      throw new Error("Invalid storeId");
+    }
     const filePath = uri.path;
 
-    const content = await PochiWebviewPanel.readTaskFile(taskId, filePath);
+    const content = await PochiWebviewPanel.readStoreFile(storeId, filePath);
 
     return {
       type: vscode.FileType.File,
@@ -76,21 +95,23 @@ export class PochiFileSystemProvider
   createDirectory(): void {}
 
   async readFile(uri: vscode.Uri): Promise<Uint8Array> {
-    const taskId = uri.authority;
+    const storeId = decodeStoreIdFromUriAuthority(uri.authority);
+    if (!storeId) {
+      throw new Error("Invalid storeId");
+    }
     const filePath = uri.path;
-
-    const content = await PochiWebviewPanel.readTaskFile(taskId, filePath);
-
+    const content = await PochiWebviewPanel.readStoreFile(storeId, filePath);
     return new TextEncoder().encode(content || "");
   }
 
   async writeFile(uri: vscode.Uri, content: Uint8Array): Promise<void> {
-    const taskId = uri.authority;
+    const storeId = decodeStoreIdFromUriAuthority(uri.authority);
+    if (!storeId) {
+      throw new Error("Invalid storeId");
+    }
     const filePath = uri.path;
-
     const strContent = new TextDecoder().decode(content);
-
-    await PochiWebviewPanel.writeTaskFile(taskId, filePath, strContent);
+    await PochiWebviewPanel.writeStoreFile(storeId, filePath, strContent);
   }
 
   delete(): void {}

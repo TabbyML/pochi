@@ -66,8 +66,6 @@ import {
   ignoreWalk,
   isPlainTextFile,
   listWorkspaceFiles,
-  resolvePochiUri,
-  resolveToolCallArgs,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
@@ -97,6 +95,7 @@ import {
   type VSCodeSettings,
   type WorkspaceState,
   getTaskDisplayTitle,
+  resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
   PreviewReturnType,
@@ -466,10 +465,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         abortSignal: ThreadAbortSignalSerialization;
         contentType?: string[];
         builtinSubAgentInfo?: BuiltinSubAgentInfo;
-        /**
-         * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-         */
-        taskId: string;
+        storeId: string;
       },
     ) => {
       let tool: ToolFunctionType<Tool> | undefined;
@@ -501,7 +497,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       const toolCallStart = Date.now();
       const resolvedArgs = resolveToolCallArgs(
         args,
-        options.taskId,
+        options.storeId,
         options.builtinSubAgentInfo,
       );
       const result = await safeCall(
@@ -549,10 +545,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         toolCallId: string;
         state: "partial-call" | "call" | "result";
         abortSignal?: ThreadAbortSignalSerialization;
-        /**
-         * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-         */
-        taskId: string;
+        storeId: string;
       },
     ) => {
       const tool = ToolPreviewMap[toolName];
@@ -576,7 +569,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
       const resolvedArgs = resolveToolCallArgs(
         args,
-        options.taskId,
+        options.storeId,
       ) as Partial<unknown> | null;
 
       return await safeCall<PreviewReturnType>(
@@ -598,10 +591,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       base64Data?: string;
       fallbackGlobPattern?: string;
       cellId?: string;
-      /**
-       * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-       */
-      taskId?: string;
     },
   ) => {
     let fileUri = vscode.Uri.parse(filePath);
@@ -609,10 +598,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
     // Open file directly if it's a pochi scheme
     if (fileUri.scheme === "pochi") {
-      if (!options?.taskId) {
-        return;
-      }
-      resolvedPath = resolvePochiUri(filePath, options.taskId);
       vscode.commands.executeCommand(
         "vscode.open",
         vscode.Uri.parse(resolvedPath),

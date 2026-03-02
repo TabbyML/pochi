@@ -1,4 +1,4 @@
-import { useFile } from "@/components/files-provider";
+import { useStoreFile } from "@/components/files-provider";
 import { MessageMarkdown } from "@/components/message";
 import { TaskThread } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
@@ -15,16 +15,14 @@ export function WalkthroughView(props: NewTaskToolViewProps) {
     props;
 
   const { t } = useTranslation();
-  const file = useFile(taskSource?.parentId || "", "/walkthrough.md");
+  const file = useStoreFile("/walkthrough.md");
 
   return (
     <SubAgentView
       uid={uid}
       tool={tool}
       isExecuting={isExecuting}
-      expandable={!!file}
       taskSource={taskSource}
-      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       headerActions={
         isVSCodeEnvironment() &&
         file && (

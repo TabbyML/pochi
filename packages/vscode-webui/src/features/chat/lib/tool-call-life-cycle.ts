@@ -1,8 +1,6 @@
 import { blobStore } from "@/lib/remote-blob-store";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
-
 import type {
   BuiltinSubAgentInfo,
   ExecuteCommandResult,
@@ -232,7 +230,7 @@ export class ManagedToolCallLifeCycle
         state: convertState(state),
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
-        taskId: decodeStoreId(this.store.storeId).taskId,
+        storeId: this.store.storeId,
       })
       .then((result) => {
         this.transitTo("ready", {
@@ -272,7 +270,7 @@ export class ManagedToolCallLifeCycle
         state: convertState(state),
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
-        taskId: decodeStoreId(this.store.storeId).taskId,
+        storeId: this.store.storeId,
       });
     };
 
@@ -347,7 +345,7 @@ export class ManagedToolCallLifeCycle
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
         builtinSubAgentInfo: options?.builtinSubAgentInfo,
-        taskId: decodeStoreId(this.store.storeId).taskId,
+        storeId: this.store.storeId,
       });
     }
 
