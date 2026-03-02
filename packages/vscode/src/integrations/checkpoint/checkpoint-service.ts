@@ -29,6 +29,9 @@ const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 /** Timeout for saveCheckpoint operation in milliseconds */
 const SaveCheckpointTimeoutMs = 10_000;
 
+/** Timeout for checkpoint initialization in milliseconds */
+const InitCheckpointTimeoutMs = 15_000;
+
 /**
  * Wraps a promise with a timeout. Returns null if the timeout is reached.
  */
@@ -89,13 +92,16 @@ export class CheckpointService implements vscode.Disposable {
 
   private async init() {
     try {
-      const gitPath = await this.getShadowGitPath();
-      this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
-      logger.trace("Shadow Git repository initialized at", gitPath);
-      this.latestCheckpoint.value = await this.shadowGit.getLatestCommitHash(
-        checkpointCommitPrefix(this.cwd),
+      const result = await withTimeout(
+        this.initImpl(),
+        InitCheckpointTimeoutMs,
+        "initCheckpoint",
       );
-      this.readyDefer.resolve();
+      if (result === null) {
+        throw new Error(
+          `Initialization timed out after ${InitCheckpointTimeoutMs}ms. Git may be waiting for user input (e.g. license agreement).`,
+        );
+      }
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error("Failed to initialize Shadow Git repository:", errorMessage);
@@ -103,6 +109,16 @@ export class CheckpointService implements vscode.Disposable {
         new Error(`Failed to initialize checkpoint service: ${errorMessage}`),
       );
     }
+  }
+
+  private async initImpl(): Promise<void> {
+    const gitPath = await this.getShadowGitPath();
+    this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
+    logger.trace("Shadow Git repository initialized at", gitPath);
+    this.latestCheckpoint.value = await this.shadowGit.getLatestCommitHash(
+      checkpointCommitPrefix(this.cwd),
+    );
+    this.readyDefer.resolve();
   }
 
   /**
