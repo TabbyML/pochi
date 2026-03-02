@@ -44,14 +44,18 @@ export function SubAgentView({
   expandable,
 }: SubAgentViewProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
   const canToggleCollapse =
-    expandable && taskSource && taskSource.messages.length > 1;
+    expandable &&
+    taskSource &&
+    taskSource.messages.length > 1 &&
+    !!lastToolCallRef.current;
   const showFooter = canToggleCollapse || footerActions;
   const navigate = useNavigate();
   const store = useDefaultStore();
   const toolTitle = tool.input?.agentType;
   const description = tool.input?.description;
-  const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
+
   useEffect(() => {
     const lastMessage = taskSource?.messages.at(-1);
     if (!lastMessage || lastMessage.role !== "assistant") {
