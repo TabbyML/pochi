@@ -111,7 +111,7 @@ export function SubAgentView({
       {showFooter && (
         <div
           className={cn(
-            "flex items-center gap-2 border-t bg-muted/30 p-2 text-muted-foreground",
+            "flex items-center gap-2 overflow-x-hidden border-t bg-muted/30 p-2 text-muted-foreground",
             showToolCallLite &&
               uid &&
               taskSource?.parentId &&
@@ -138,7 +138,7 @@ export function SubAgentView({
           }
         >
           {showToolCallLite && lastToolCallRef.current && (
-            <div className="flex items-center">
+            <div className="flex flex-1 items-center">
               <div className="animated-gradient-text truncate py-0.5 text-xs">
                 <ToolCallLite
                   tools={[lastToolCallRef.current]}
