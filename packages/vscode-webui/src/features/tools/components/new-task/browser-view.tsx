@@ -2,7 +2,6 @@ import { useFile } from "@/components/files-provider";
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
 import { browserSessionManager } from "@/lib/browser-session-manager";
-import { Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
@@ -33,9 +32,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
       tool={tool}
       isExecuting={isExecuting}
       taskSource={taskSource}
-      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
-      expandable
-      icon={<Globe className="size-4" />}
+      showToolCall
     >
       {!isExecuting && videoUrl ? (
         // biome-ignore lint/a11y/useMediaCaption: No audio track available

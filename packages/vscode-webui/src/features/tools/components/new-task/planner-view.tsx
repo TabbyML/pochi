@@ -73,7 +73,6 @@ export function PlannerView(props: NewTaskToolViewProps) {
       tool={tool}
       isExecuting={isExecuting}
       taskSource={taskSource}
-      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       headerActions={
         isVSCodeEnvironment() &&
         file && (

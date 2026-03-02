@@ -10,23 +10,19 @@ interface Props {
   tools: Array<ToolUIPart<UITools>> | undefined;
   requiresApproval?: boolean;
   showCommandDetails?: boolean;
-  statusIcon?: ReactNode;
+  showStatusIcon?: boolean;
 }
 
 export function ToolCallLite({
   tools,
   requiresApproval,
   showCommandDetails,
-  statusIcon,
+  showStatusIcon = true,
 }: Props) {
   const { t } = useTranslation();
 
   if (!tools?.length) {
-    return statusIcon ? (
-      <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
-        {statusIcon}
-      </div>
-    ) : null;
+    return null;
   }
 
   const tool = tools[0];
@@ -84,7 +80,9 @@ export function ToolCallLite({
       detail = null;
       break;
     case "tool-attemptCompletion":
-      detail = <span>{t("toolInvocation.taskCompleted")}</span>;
+      detail = (
+        <span className="ml-2">{t("toolInvocation.taskCompleted")}</span>
+      );
       break;
     default:
       detail = <McpTool tool={tool} />;
@@ -99,9 +97,7 @@ export function ToolCallLite({
 
   return detail ? (
     <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
-      {statusIcon ? (
-        statusIcon
-      ) : requiresApproval ? (
+      {!showStatusIcon ? null : requiresApproval ? (
         <Pause className="size-3.5 shrink-0" />
       ) : (
         <Loader2 className="size-3.5 shrink-0 animate-spin" />

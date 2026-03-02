@@ -1,14 +1,11 @@
-import { TaskThread } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
-import { FixedStateChatContextProvider } from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import type { UITools } from "@getpochi/livekit";
 import { type ToolUIPart, isToolUIPart } from "ai";
-import { ChevronRight } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
@@ -17,40 +14,32 @@ interface SubAgentViewProps {
   uid?: string;
   tool: NewTaskToolViewProps["tool"];
   isExecuting: NewTaskToolViewProps["isExecuting"];
-  actions?: React.ReactNode;
   children: React.ReactNode;
   headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
-  toolCallStatusRegistryRef: NewTaskToolViewProps["toolCallStatusRegistryRef"];
-  assistantName?: string;
-  defaultCollapsed?: boolean;
-  expandable?: boolean;
-  icon?: ReactNode;
+  showToolCall?: boolean;
 }
 
 export function SubAgentView({
   uid,
   tool,
-  icon,
   isExecuting,
   children,
   headerActions,
   footerActions,
   taskSource,
-  toolCallStatusRegistryRef,
-  assistantName = "Planner",
-  defaultCollapsed = false,
-  expandable,
+  showToolCall,
 }: SubAgentViewProps) {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
-  const canToggleCollapse =
-    expandable &&
+  const showToolCallLite =
+    showToolCall &&
+    isExecuting &&
     taskSource &&
     taskSource.messages.length > 1 &&
     !!lastToolCallRef.current;
-  const showFooter = canToggleCollapse || footerActions;
+
+  const showFooter = showToolCallLite || footerActions;
   const navigate = useNavigate();
   const store = useDefaultStore();
   const toolTitle = tool.input?.agentType;
@@ -77,7 +66,7 @@ export function SubAgentView({
         className={cn(
           "flex items-center gap-2 border-b bg-muted/30 px-3 py-2 font-medium text-muted-foreground text-xs",
           uid && taskSource?.parentId && isVSCodeEnvironment()
-            ? "cursor-pointer transition-colors hover:bg-muted hover:text-foreground"
+            ? "group cursor-pointer transition-colors hover:bg-muted hover:text-foreground"
             : "",
         )}
         onClick={
@@ -96,32 +85,23 @@ export function SubAgentView({
             : undefined
         }
       >
-        {icon ? (
-          icon
-        ) : (
-          <StatusIcon
-            tool={tool}
-            isExecuting={isExecuting}
-            className="align-baseline"
-            iconClassName="size-3.5"
-          />
-        )}
+        <StatusIcon
+          tool={tool}
+          isExecuting={isExecuting}
+          className="align-baseline"
+          iconClassName="size-3.5"
+        />
         <Badge variant="secondary" className={cn("my-0.5 py-0")}>
           {toolTitle}
         </Badge>
         {description && (
-          <span className="min-w-0 truncate text-muted-foreground">
+          <span className="min-w-0 truncate text-muted-foreground group-hover:underline">
             {description}
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
           {headerActions && (
             <div onClick={(e) => e.stopPropagation()}>{headerActions}</div>
-          )}
-          {uid && taskSource?.parentId && isVSCodeEnvironment() && (
-            <div className="flex items-center px-2">
-              <ChevronRight className="size-3.5" />
-            </div>
           )}
         </div>
       </div>
@@ -132,33 +112,41 @@ export function SubAgentView({
         <div
           className={cn(
             "flex items-center gap-2 border-t bg-muted/30 p-2 text-muted-foreground",
-            isCollapsed && "border-b",
-            canToggleCollapse &&
+            showToolCallLite &&
+              uid &&
+              taskSource?.parentId &&
+              isVSCodeEnvironment() &&
               "cursor-pointer transition-colors hover:bg-muted hover:text-foreground",
           )}
           onClick={
-            canToggleCollapse ? () => setIsCollapsed(!isCollapsed) : undefined
+            showToolCallLite &&
+            uid &&
+            taskSource?.parentId &&
+            isVSCodeEnvironment()
+              ? () => {
+                  navigate({
+                    to: "/task",
+                    search: {
+                      uid,
+                      storeId: store.storeId,
+                    },
+                    replace: true,
+                    viewTransition: true,
+                  });
+                }
+              : undefined
           }
         >
-          {canToggleCollapse && (
+          {showToolCallLite && lastToolCallRef.current && (
             <div className="flex items-center">
-              {lastToolCallRef.current && (
-                <div className="truncate py-0.5 text-xs">
-                  <ToolCallLite
-                    tools={[lastToolCallRef.current]}
-                    requiresApproval={false}
-                    showCommandDetails
-                    statusIcon={
-                      <StatusIcon
-                        tool={tool}
-                        isExecuting={isExecuting}
-                        className="align-baseline"
-                        iconClassName="size-3.5"
-                      />
-                    }
-                  />
-                </div>
-              )}
+              <div className="animated-gradient-text truncate py-0.5 text-xs">
+                <ToolCallLite
+                  tools={[lastToolCallRef.current]}
+                  requiresApproval={false}
+                  showCommandDetails
+                  showStatusIcon={false}
+                />
+              </div>
             </div>
           )}
           {footerActions && (
@@ -169,22 +157,6 @@ export function SubAgentView({
               {footerActions}
             </div>
           )}
-        </div>
-      )}
-
-      {isCollapsed && taskSource && taskSource.messages.length > 1 && (
-        <div className="p-1">
-          <FixedStateChatContextProvider
-            toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-          >
-            <TaskThread
-              source={{ ...taskSource, isLoading: false }}
-              showMessageList={true}
-              showTodos={false}
-              scrollAreaClassName="border-none"
-              assistant={{ name: assistantName }}
-            />
-          </FixedStateChatContextProvider>
         </div>
       )}
     </div>
