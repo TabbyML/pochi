@@ -9,11 +9,7 @@ import { writeExcludesFile } from "./shadow-git-excludes";
 
 const logger = getLogger("ShadowGitRepo");
 
-/**
- * Maximum milliseconds of silence (no stdout/stderr) before a git process is
- * forcibly killed.  Prevents hangs on interactive prompts such as the macOS
- * Xcode license-agreement dialogue.
- */
+/** Timeout (ms) for any single git operation; kills the process if git produces no output. */
 const GitOperationTimeoutMs = 10_000;
 
 export class ShadowGitRepo implements vscode.Disposable {
@@ -51,9 +47,6 @@ export class ShadowGitRepo implements vscode.Disposable {
     private gitPath: string,
     private workspaceDir: string,
   ) {
-    // For bare repository, we initialize simple-git with the bare repository directory.
-    // The timeout plugin kills the git process if it produces no output for
-    // GitOperationTimeoutMs ms, preventing hangs on interactive prompts.
     this.git = simpleGit(this.gitPath, {
       timeout: { block: GitOperationTimeoutMs },
     }).env("GIT_DIR", this.gitPath);
@@ -219,12 +212,6 @@ export class ShadowGitRepo implements vscode.Disposable {
       throw new Error("Git instance is not initialized");
     }
     try {
-      // For bare repository with worktree, use --work-tree flag.
-      // --ignore-errors: continue staging other files even if some fail (e.g.
-      // nested .git directories detected as uninitialized submodules).
-      // git still exits non-zero in that case, which simple-git turns into a
-      // thrown error, so we catch it here and treat it as a warning — a
-      // partial stage is acceptable; the commit will capture what was staged.
       await this.git.raw([
         "--work-tree",
         this.workspaceDir,

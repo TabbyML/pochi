@@ -26,11 +26,7 @@ import {
 const logger = getLogger("CheckpointService");
 const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 
-/**
- * Timeout for saveCheckpoint operation in milliseconds.
- * Acts as an outer safety net on top of the per-operation timeout already
- * enforced by simple-git's timeout plugin inside ShadowGitRepo.
- */
+/** Timeout (ms) for the saveCheckpoint operation. */
 const SaveCheckpointTimeoutMs = 10_000;
 
 /**
