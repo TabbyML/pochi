@@ -26,11 +26,12 @@ import {
 const logger = getLogger("CheckpointService");
 const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 
-/** Timeout for saveCheckpoint operation in milliseconds */
+/**
+ * Timeout for saveCheckpoint operation in milliseconds.
+ * Acts as an outer safety net on top of the per-operation timeout already
+ * enforced by simple-git's timeout plugin inside ShadowGitRepo.
+ */
 const SaveCheckpointTimeoutMs = 10_000;
-
-/** Timeout for checkpoint initialization in milliseconds */
-const InitCheckpointTimeoutMs = 15_000;
 
 /**
  * Wraps a promise with a timeout. Returns null if the timeout is reached.
@@ -92,16 +93,13 @@ export class CheckpointService implements vscode.Disposable {
 
   private async init() {
     try {
-      const result = await withTimeout(
-        this.initImpl(),
-        InitCheckpointTimeoutMs,
-        "initCheckpoint",
+      const gitPath = await this.getShadowGitPath();
+      this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
+      logger.trace("Shadow Git repository initialized at", gitPath);
+      this.latestCheckpoint.value = await this.shadowGit.getLatestCommitHash(
+        checkpointCommitPrefix(this.cwd),
       );
-      if (result === null) {
-        throw new Error(
-          `Initialization timed out after ${InitCheckpointTimeoutMs}ms. Git may be waiting for user input (e.g. license agreement).`,
-        );
-      }
+      this.readyDefer.resolve();
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error("Failed to initialize Shadow Git repository:", errorMessage);
@@ -109,16 +107,6 @@ export class CheckpointService implements vscode.Disposable {
         new Error(`Failed to initialize checkpoint service: ${errorMessage}`),
       );
     }
-  }
-
-  private async initImpl(): Promise<void> {
-    const gitPath = await this.getShadowGitPath();
-    this.shadowGit = await ShadowGitRepo.getOrCreate(gitPath, this.cwd);
-    logger.trace("Shadow Git repository initialized at", gitPath);
-    this.latestCheckpoint.value = await this.shadowGit.getLatestCommitHash(
-      checkpointCommitPrefix(this.cwd),
-    );
-    this.readyDefer.resolve();
   }
 
   /**
