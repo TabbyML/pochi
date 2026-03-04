@@ -16,7 +16,10 @@ export const ToolTitle: React.FC<{
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-2 break-words rounded text-sm ${className}`}
+      className={cn(
+        "group flex items-center gap-2 break-words rounded text-sm",
+        className,
+      )}
     >
       {children}
     </div>
@@ -31,7 +34,8 @@ export const ExpandIcon: React.FC<{
   return (
     <span
       className={cn(
-        "mt-0.5 self-start rounded bg-muted p-1 hover:bg-secondary",
+        "mt-0.5 self-start rounded bg-muted p-1 transition-opacity hover:bg-secondary",
+        !isExpanded && "opacity-0 group-hover:opacity-100",
         className,
       )}
       onClick={onClick}
