@@ -23,48 +23,49 @@ export const useBrowserSession = (taskId: string) => {
 export const useManageBrowserSession = ({
   messages,
 }: { messages: Message[] }) => {
-  const lastToolPart = messages.at(-1)?.parts.at(-1);
   const store = useDefaultStore();
+  const lastMessage = messages.at(-1);
 
   useEffect(() => {
     const manageBrowserSession = async () => {
-      if (!lastToolPart) {
+      if (!lastMessage) {
         return;
       }
 
-      // Register browser related sessions
-      if (
-        lastToolPart.type === "tool-newTask" &&
-        lastToolPart.input?.agentType === "browser" &&
-        lastToolPart.state === "input-available"
-      ) {
-        const taskId = lastToolPart.input?._meta?.uid || "";
-        const { taskId: parentId } = decodeStoreId(store.storeId);
-        if (browserSessionManager.isRegistered(taskId)) {
-          return;
+      for (const part of lastMessage.parts) {
+        if (part.type !== "tool-newTask") {
+          continue;
         }
-        await browserSessionManager.registerSession(taskId, parentId);
-      }
+        if (part.input?.agentType !== "browser") {
+          continue;
+        }
 
-      // Unregister browser related sessions
-      if (
-        lastToolPart.type === "tool-newTask" &&
-        lastToolPart.input?.agentType === "browser" &&
-        (lastToolPart.state === "output-available" ||
-          lastToolPart.state === "output-error")
-      ) {
-        const taskId = lastToolPart.input?._meta?.uid || "";
-        if (!browserSessionManager.isRegistered(taskId)) {
-          return;
+        // Register browser related sessions
+        if (part.state === "input-available") {
+          const taskId = part.input?._meta?.uid || "";
+          const { taskId: parentId } = decodeStoreId(store.storeId);
+          if (!browserSessionManager.isRegistered(taskId)) {
+            await browserSessionManager.registerSession(taskId, parentId);
+          }
         }
-        await browserSessionManager.unregisterSession(
-          taskId,
-          lastToolPart.toolCallId,
-          store,
-        );
+
+        // Unregister browser related sessions
+        if (
+          part.state === "output-available" ||
+          part.state === "output-error"
+        ) {
+          const taskId = part.input?._meta?.uid || "";
+          if (browserSessionManager.isRegistered(taskId)) {
+            await browserSessionManager.unregisterSession(
+              taskId,
+              part.toolCallId,
+              store,
+            );
+          }
+        }
       }
     };
 
     manageBrowserSession();
-  }, [lastToolPart, store]);
+  }, [lastMessage, store]);
 };
