@@ -142,7 +142,7 @@ export const CommandPanelContainer: FC<{
   return (
     <div
       className={cn(
-        "code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans",
+        "group code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans",
         className,
       )}
     >
@@ -162,7 +162,14 @@ export const CommandPanelContainer: FC<{
             </span>
           </ScrollArea>
         </div>
-        <div className="ml-2 flex space-x-3 self-start">{actions}</div>
+        <div
+          className={cn(
+            "ml-2 flex space-x-3 self-start transition-opacity",
+            expanded ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+          )}
+        >
+          {actions}
+        </div>
       </div>
       {expanded && output && (
         <div
