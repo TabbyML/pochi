@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRules } from "@/lib/hooks/use-rules";
+import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { constants } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -22,15 +23,9 @@ import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 interface Props {
+  taskId: string;
   selectedModel: DisplayModel;
   totalTokens: number;
-  contextBreakdown?: {
-    system: number;
-    tools: number;
-    messages: number;
-    files: number;
-    toolResults: number;
-  };
   className?: string;
   compact?: {
     inlineCompactTaskPending: boolean;
@@ -42,12 +37,13 @@ interface Props {
 }
 
 export function TokenUsage({
+  taskId,
   totalTokens,
-  contextBreakdown,
   className,
   compact,
   selectedModel,
 }: Props) {
+  const { contextWindowUsage } = useTaskContextWindowUsage(taskId);
   const { t } = useTranslation();
   const contextWindow =
     selectedModel.options.contextWindow || constants.DefaultContextWindow;
@@ -103,17 +99,17 @@ export function TokenUsage({
   const getPct = (value: number | undefined) =>
     value ? value * percentage : 0;
 
-  const systemVal = getPct(contextBreakdown?.system);
-  const toolsVal = getPct(contextBreakdown?.tools);
-  const messagesVal = getPct(contextBreakdown?.messages);
-  const filesVal = getPct(contextBreakdown?.files);
-  const toolResultsVal = getPct(contextBreakdown?.toolResults);
+  const systemVal = getPct(contextWindowUsage?.system);
+  const toolsVal = getPct(contextWindowUsage?.tools);
+  const messagesVal = getPct(contextWindowUsage?.messages);
+  const filesVal = getPct(contextWindowUsage?.files);
+  const toolResultsVal = getPct(contextWindowUsage?.toolResults);
 
   const showSystemSection = systemVal > 0.05 || toolsVal > 0.05;
   const showUserContextSection =
     messagesVal > 0.05 || filesVal > 0.05 || toolResultsVal > 0.05;
   const showBreakdown =
-    contextBreakdown && (showSystemSection || showUserContextSection);
+    contextWindowUsage && (showSystemSection || showUserContextSection);
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>

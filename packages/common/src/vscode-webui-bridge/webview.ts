@@ -8,6 +8,7 @@ import type {
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
+  ContextWindowUsage,
   CustomAgentFile,
   ExecuteCommandResult,
   FileDiff,
@@ -391,6 +392,13 @@ export interface VSCodeHostApi {
     setMcpConfigOverride: (
       mcpConfigOverride: McpConfigOverride,
     ) => Promise<McpConfigOverride>;
+  }>;
+
+  readContextWindowUsage(taskId: string): Promise<{
+    value: ThreadSignalSerialization<ContextWindowUsage | undefined>;
+    setContextWindowUsage: (
+      contextWindowUsage: ContextWindowUsage,
+    ) => Promise<void>;
   }>;
 
   /**

@@ -31,16 +31,9 @@ function normalizeTaskRow(value: unknown) {
   if (!value || typeof value !== "object") return value;
   // Back-compat: older task rows may lack runAsync; default to 0 for schema decode.
   const record = value as Record<string, unknown>;
-
-  let normalized = record;
-
-  if (record.runAsync === undefined) {
-    normalized = { ...normalized, runAsync: 0 };
+  const runAsync = record.runAsync;
+  if (runAsync === undefined) {
+    return { ...record, runAsync: 0 };
   }
-
-  if (record.contextBreakdown === undefined) {
-    normalized = { ...normalized, contextBreakdown: null };
-  }
-
-  return normalized;
+  return value;
 }

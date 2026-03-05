@@ -75,14 +75,6 @@ export const Git = Schema.Struct({
   branch: Schema.String,
 });
 
-export const ContextBreakdown = Schema.Struct({
-  system: Schema.Number,
-  tools: Schema.Number,
-  messages: Schema.Number,
-  files: Schema.Number,
-  toolResults: Schema.Number,
-});
-
 export const taskInitFields = {
   id: Schema.String,
   parentId: Schema.optional(Schema.String),
@@ -103,7 +95,6 @@ export const taskFullFields = {
   todos: Todos,
   pendingToolCalls: Schema.optional(ToolCalls),
   totalTokens: Schema.optional(Schema.Number),
-  contextBreakdown: Schema.optional(ContextBreakdown),
   lineChanges: Schema.optional(LineChanges),
   lastStepDuration: Schema.optional(Schema.DurationFromMillis),
   lastCheckpointHash: Schema.optional(Schema.String),

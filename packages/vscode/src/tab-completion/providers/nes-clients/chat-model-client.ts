@@ -23,7 +23,6 @@ import {
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
 import { postprocess } from "./post-process";
-import { getNotebookCellsContext } from "./utils";
 
 const EditableRegionPrefixLine = 5;
 const EditableRegionSuffixLine = 5;
@@ -51,11 +50,6 @@ interface BaseSegments {
   suffix: string;
 
   edits: string[];
-
-  notebookCells?: {
-    filepath: string;
-    text: string;
-  }[];
 }
 
 interface ExtraSegments {
@@ -117,16 +111,6 @@ export class NESChatModelClient
       0,
     );
 
-    const notebookCellsContext = getNotebookCellsContext(
-      context,
-      MaxCharsPerCodeSnippet,
-    );
-    if (notebookCellsContext) {
-      logger.trace("Used notebook cells context:", {
-        notebookCells: notebookCellsContext,
-      });
-    }
-
     return {
       filepath,
 
@@ -150,7 +134,6 @@ export class NESChatModelClient
       ),
 
       edits,
-      notebookCells: notebookCellsContext,
     };
   }
 
@@ -371,18 +354,12 @@ function buildSystemPromptTemplate(
   let prompt = formatPlaceholders(SystemPromptTemplate, {
     edits: baseSegments.edits.join("\n\n"),
   });
-
-  const contextSnippets = [
-    ...(baseSegments.notebookCells ?? []),
-    ...(extraSegments?.codeSnippets ?? []),
-  ];
-
-  if (contextSnippets.length > 0) {
-    const codeSnippets = contextSnippets
-      .map((snippet) => {
+  if (extraSegments?.codeSnippets && extraSegments.codeSnippets.length > 0) {
+    const codeSnippets = extraSegments.codeSnippets
+      .map((codeSnippet) => {
         return formatPlaceholders("```{{filepath}}\n{{text}}\n```\n\n", {
-          filepath: snippet.filepath,
-          text: snippet.text,
+          filepath: codeSnippet.filepath,
+          text: codeSnippet.text,
         });
       })
       .join("");

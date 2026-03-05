@@ -50,11 +50,6 @@ interface BaseSegments {
     modified: string;
     timestamp: number;
   }[];
-
-  notebookCells?: {
-    filepath: string;
-    text: string;
-  }[];
 }
 
 interface ExtraSegments {
@@ -153,59 +148,6 @@ export class NESSweepModelClient
       })
       .filter((diff): diff is NonNullable<typeof diff> => diff !== undefined);
 
-    const notebookCells = context.notebookCells;
-    let notebookCellsContext: { filepath: string; text: string }[] | undefined;
-    if (notebookCells) {
-      const currentCellIndex = notebookCells.indexOf(context.document);
-      if (currentCellIndex >= 0 && currentCellIndex < notebookCells.length) {
-        const currentLanguageId = context.document.languageId;
-        const formatCell = (textDocument: vscode.TextDocument): string => {
-          const notebookLanguageComments: {
-            [languageId: string]: (code: string) => string;
-          } = {
-            // biome-ignore lint/style/useTemplate: <explanation>
-            markdown: (code) => "```\n" + code + "\n```",
-            python: (code) =>
-              code
-                .split("\n")
-                .map((l) => `# ${l}`)
-                .join("\n"),
-          };
-          if (textDocument.languageId === currentLanguageId) {
-            return textDocument.getText();
-          }
-          if (
-            Object.keys(notebookLanguageComments).includes(currentLanguageId)
-          ) {
-            return (
-              notebookLanguageComments[textDocument.languageId]?.(
-                textDocument.getText(),
-              ) ?? ""
-            );
-          }
-          return "";
-        };
-
-        notebookCellsContext = notebookCells
-          .map((cell, index) => {
-            if (index === currentCellIndex) return undefined;
-            const text = formatCell(cell);
-            if (isBlank(text)) return undefined;
-            return {
-              filepath: getRelativePath(cell.uri),
-              text,
-            };
-          })
-          .filter(
-            (cell): cell is NonNullable<typeof cell> => cell !== undefined,
-          );
-
-        logger.trace("Used notebook cells context:", {
-          notebookCells: notebookCellsContext,
-        });
-      }
-    }
-
     return {
       filepath,
       startOffset,
@@ -213,7 +155,6 @@ export class NESSweepModelClient
       current,
       original,
       diffs,
-      notebookCells: notebookCellsContext,
     };
   }
 
@@ -436,21 +377,5 @@ function buildPrompt(
     }
   }
 
-  const notebookCellParts: string[] = [];
-  for (const cell of baseSegments.notebookCells ?? []) {
-    let cellPart = "";
-    cellPart += `<|file_sep|>${cell.filepath}\n`;
-    cellPart += `${cell.text}\n`;
-    if (quota >= cellPart.length) {
-      notebookCellParts.push(cellPart);
-      quota -= cellPart.length;
-    }
-  }
-
-  return (
-    notebookCellParts.join("") +
-    codeSnippetParts.join("") +
-    diffParts.join("") +
-    mainPart
-  );
+  return codeSnippetParts.join("") + diffParts.join("") + mainPart;
 }

@@ -72,6 +72,7 @@ import {
   type BuiltinSubAgentInfo,
   type CaptureEvent,
   type ChangedFileContent,
+  type ContextWindowUsage,
   type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
@@ -1199,6 +1200,23 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       ),
       setMcpConfigOverride: (mcpConfigOverride: McpConfigOverride) =>
         this.taskStateStore.setMcpConfigOverride(taskId, mcpConfigOverride),
+    };
+  };
+
+  readContextWindowUsage = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<ContextWindowUsage | undefined>;
+    setContextWindowUsage: (
+      contextWindowUsage: ContextWindowUsage,
+    ) => Promise<void>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getContextWindowUsageSignal(taskId),
+      ),
+      setContextWindowUsage: (contextWindowUsage: ContextWindowUsage) =>
+        this.taskStateStore.setContextWindowUsage(taskId, contextWindowUsage),
     };
   };
 

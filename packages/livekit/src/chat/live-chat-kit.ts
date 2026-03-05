@@ -17,7 +17,8 @@ import {
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { ContextBreakdown, LiveKitStore, Message, Task } from "../types";
+import type { ContextWindowUsage } from "@getpochi/common/vscode-webui-bridge";
+import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
@@ -126,6 +127,7 @@ export type LiveChatKitOptions<T> = {
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
       error?: Error;
+      contextWindowUsage?: ContextWindowUsage;
     },
   ) => void;
 
@@ -172,6 +174,7 @@ export class LiveChatKit<
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
       error?: Error;
+      contextWindowUsage?: ContextWindowUsage;
     },
   ) => void;
   readonly compact: () => Promise<string>;
@@ -490,7 +493,7 @@ export class LiveChatKit<
 
     const status = toTaskStatus(message, message.metadata?.finishReason);
 
-    let contextBreakdown: ContextBreakdown | undefined = undefined;
+    let contextWindowUsage: ContextWindowUsage | undefined = undefined;
     if (message.metadata?.kind === "assistant") {
       const {
         messagesChars,
@@ -509,7 +512,7 @@ export class LiveChatKit<
         filesChars +
         toolResultsChars;
       if (totalChars > 0) {
-        contextBreakdown = {
+        contextWindowUsage = {
           system: systemChars / totalChars,
           tools: toolsChars / totalChars,
           messages: messagesChars / totalChars,
@@ -525,7 +528,6 @@ export class LiveChatKit<
         status,
         data: message,
         totalTokens: message.metadata.totalTokens,
-        contextBreakdown,
         updatedAt: new Date(),
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
@@ -541,6 +543,7 @@ export class LiveChatKit<
       cwd: this.task?.cwd ?? null,
       status,
       messages: [...this.chat.messages],
+      contextWindowUsage,
     });
   };
 

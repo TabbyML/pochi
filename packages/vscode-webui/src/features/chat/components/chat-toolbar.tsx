@@ -364,8 +364,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         <div className={FooterRightClassName}>
           {!!selectedModel && (
             <TokenUsage
+              taskId={taskId}
               totalTokens={totalTokens}
-              contextBreakdown={task?.contextBreakdown ?? undefined}
               className="mr-5"
               compact={compactOptions}
               selectedModel={selectedModel}
