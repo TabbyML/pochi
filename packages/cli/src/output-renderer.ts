@@ -1,19 +1,24 @@
-import { Console } from "node:console";
 import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
 import chalk from "chalk";
-import { Listr, type ListrTask, type ObservableLike } from "listr2";
-import ora, { type Ora } from "ora";
+import {
+  Listr,
+  type ListrTask,
+  ListrTaskEventType,
+  type ListrTaskObject,
+  type ObservableLike,
+} from "listr2";
+import { type Spinner, createSpinner } from "./lib/spinner";
 import type { NodeChatState } from "./livekit/chat.node";
 import type { TaskRunner } from "./task-runner";
-const console = new Console(process.stderr);
 
 export class OutputRenderer {
   private renderingSubTask = false;
   constructor(
+    private readonly stream: NodeJS.WritableStream,
     private readonly state: NodeChatState,
     private readonly options: {
       attemptCompletionSchemaOverride?: boolean;
@@ -26,7 +31,7 @@ export class OutputRenderer {
 
   private pendingMessageId = "";
   private pendingPartIndex = -1;
-  private spinner: Ora | undefined = undefined;
+  private spinner: Spinner | undefined = undefined;
 
   renderLastMessage(messages: Message[]) {
     if (this.renderingSubTask) {
@@ -45,9 +50,9 @@ export class OutputRenderer {
 
       const name = lastMessage.role === "assistant" ? "Pochi" : "You";
       if (messages.length > 1) {
-        console.log("");
+        this.stream.write("\n");
       }
-      console.log(chalk.bold(chalk.underline(name)));
+      this.stream.write(`${chalk.bold(chalk.underline(name))}\n`);
       this.nextSpinner();
     }
 
@@ -112,7 +117,12 @@ export class OutputRenderer {
   renderSubTask(runner: TaskRunner) {
     this.renderingSubTask = true;
     this.withoutSpinner(() => {
-      const listr = makeListr(runner.taskId, this.state, runner.state);
+      const listr = makeListr(
+        this.stream,
+        runner.taskId,
+        this.state,
+        runner.state,
+      );
 
       return listr.run();
     }).finally(() => {
@@ -121,7 +131,7 @@ export class OutputRenderer {
   }
 
   private nextSpinner(nextPendingPart = false) {
-    this.spinner = ora().start();
+    this.spinner = createSpinner({ stream: this.stream }).start();
     if (nextPendingPart) {
       this.pendingPartIndex++;
     }
@@ -294,6 +304,7 @@ function renderToolPart(
 type NewTaskTool = Extract<ToolUIPart<UITools>, { type: "tool-newTask" }>;
 
 function makeListr(
+  stream: NodeJS.WritableStream,
   subTaskId: string,
   task: NodeChatState,
   subtask: NodeChatState,
@@ -355,6 +366,8 @@ function makeListr(
     exitOnError: false,
     registerSignalListeners: false,
     rendererOptions: {
+      output: stream,
+      lazy: true,
       showSubtasks: true,
       collapse: false,
       collapseErrors: false,
@@ -365,6 +378,10 @@ function makeListr(
       persistentOutput: true,
       removeEmptyLines: false,
       suffixSkips: false,
+    },
+    fallbackRenderer: SubTaskNonTTYRenderer,
+    fallbackRendererOptions: {
+      stream: stream,
     },
   });
 }
@@ -381,6 +398,55 @@ function extractNewTaskTool(
   for (const part of lastMessage.parts) {
     if (part.type === "tool-newTask" && part.input?._meta?.uid === uid) {
       return part;
+    }
+  }
+}
+
+class SubTaskNonTTYRenderer {
+  private task: ListrTaskObject<never>;
+  private stream: NodeJS.WritableStream;
+  constructor(
+    tasks: ListrTaskObject<never>[],
+    options: { stream: NodeJS.WritableStream },
+  ) {
+    // only accept 1 task
+    this.task = tasks[0];
+    this.stream = options.stream;
+  }
+
+  public render(): void {
+    this.stream.write(`❯ ${this.task.title}\n`);
+
+    let lastOutput: string | undefined = undefined;
+    this.task.on(ListrTaskEventType.OUTPUT, (output) => {
+      let outputLines = output.split("\n");
+      if (lastOutput) {
+        const lastOutputLines = lastOutput.split("\n");
+        let sameLines = 0;
+        while (
+          sameLines < outputLines.length &&
+          sameLines < lastOutputLines.length &&
+          outputLines[sameLines] === lastOutputLines[sameLines]
+        ) {
+          sameLines++;
+        }
+        outputLines = outputLines.slice(sameLines);
+      }
+      for (const line of outputLines) {
+        const text = line.trimEnd();
+        if (text) {
+          this.stream.write(`| ${text}\n`);
+        }
+      }
+      lastOutput = output;
+    });
+  }
+
+  public end(err: Error): void {
+    if (err) {
+      this.stream.write(`✗ ${this.task.title}: ${err.message}\n`);
+    } else {
+      this.stream.write(`✔ ${this.task.title}\n`);
     }
   }
 }
