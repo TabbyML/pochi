@@ -24,6 +24,13 @@ import { Progress } from "./ui/progress";
 interface Props {
   selectedModel: DisplayModel;
   totalTokens: number;
+  contextBreakdown?: {
+    system: number;
+    tools: number;
+    messages: number;
+    files: number;
+    toolResults: number;
+  };
   className?: string;
   compact?: {
     inlineCompactTaskPending: boolean;
@@ -36,6 +43,7 @@ interface Props {
 
 export function TokenUsage({
   totalTokens,
+  contextBreakdown,
   className,
   compact,
   selectedModel,
@@ -92,6 +100,21 @@ export function TokenUsage({
       </TooltipContent>
     ) : null;
 
+  const getPct = (value: number | undefined) =>
+    value ? value * percentage : 0;
+
+  const systemVal = getPct(contextBreakdown?.system);
+  const toolsVal = getPct(contextBreakdown?.tools);
+  const messagesVal = getPct(contextBreakdown?.messages);
+  const filesVal = getPct(contextBreakdown?.files);
+  const toolResultsVal = getPct(contextBreakdown?.toolResults);
+
+  const showSystemSection = systemVal > 0.05 || toolsVal > 0.05;
+  const showUserContextSection =
+    messagesVal > 0.05 || filesVal > 0.05 || toolResultsVal > 0.05;
+  const showBreakdown =
+    contextBreakdown && (showSystemSection || showUserContextSection);
+
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
@@ -144,7 +167,7 @@ export function TokenUsage({
             </div>
           )}
           <div className="flex flex-col gap-y-1">
-            <div className="mb-1 flex items-center gap-1 text-muted-foreground">
+            <div className="mb-1 flex items-center gap-1 font-medium text-foreground">
               <span>{t("tokenUsage.contextWindow")}</span>
               {selectedModel.type === "provider" &&
                 selectedModel.options.contextWindow === undefined && (
@@ -156,7 +179,7 @@ export function TokenUsage({
                           className="inline-flex cursor-pointer items-center"
                           rel="noopener noreferrer"
                         >
-                          <CircleAlert className="size-3.5" />
+                          <CircleAlert className="size-3.5 text-muted-foreground" />
                         </a>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -168,13 +191,64 @@ export function TokenUsage({
                   </TooltipProvider>
                 )}
             </div>
-            <div>
-              <Progress value={percentage} className="mb-1" />
-              {t("tokenUsage.ofUsed", {
+            <div className="mb-2 text-muted-foreground">
+              {t("tokenUsage.tokensUsed", {
                 used: formatTokens(totalTokens),
                 total: formatTokens(contextWindow),
+                percentage,
               })}
             </div>
+            <Progress value={percentage} className="mb-3" />
+
+            {showBreakdown && (
+              <div className="mt-1 flex flex-col gap-y-3">
+                {showSystemSection && (
+                  <div className="flex flex-col gap-y-1.5">
+                    <div className="font-medium text-foreground">
+                      {t("tokenUsage.system")}
+                    </div>
+                    {systemVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.systemInstructions")}</span>
+                        <span>{systemVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {toolsVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.toolDefinitions")}</span>
+                        <span>{toolsVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {showUserContextSection && (
+                  <div className="flex flex-col gap-y-1.5">
+                    <div className="font-medium text-foreground">
+                      {t("tokenUsage.userContext")}
+                    </div>
+                    {messagesVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.messages")}</span>
+                        <span>{messagesVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {filesVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.files")}</span>
+                        <span>{filesVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {toolResultsVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.toolResults")}</span>
+                        <span>{toolResultsVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="mt-2 flex items-center gap-x-2">
             <TooltipProvider>

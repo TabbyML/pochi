@@ -51,8 +51,16 @@
     "ofUsed": "{{total}} のうち {{used}} 使用済み",
     "newTaskWithSummary": "新しいタスクと要約",
     "compactTask": "タスクを圧縮",
-    "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} トークンが必要です",
-    "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確なトークン管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。"
+    "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} tokens が必要です",
+    "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
+    "tokensUsed": "{{used}} / {{total}} tokens • {{percentage}}%",
+    "system": "システム",
+    "systemInstructions": "システム指示",
+    "toolDefinitions": "ツール定義",
+    "userContext": "ユーザーコンテキスト",
+    "messages": "メッセージ",
+    "files": "ファイル",
+    "toolResults": "ツールの結果"
   },
   "modelSelect": {
     "selectModel": "モデルを選択",

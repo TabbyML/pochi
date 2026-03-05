@@ -17,11 +17,21 @@ import z from "zod/v4";
 import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
+export type ContextBreakdown = {
+  system: number;
+  tools: number;
+  messages: number;
+  files: number;
+  toolResults: number;
+};
+
 export type Metadata =
   | {
       kind: "assistant";
       totalTokens: number;
       finishReason: LanguageModelV2FinishReason;
+      systemPromptChars?: number;
+      toolsChars?: number;
     }
   | {
       kind: "user";

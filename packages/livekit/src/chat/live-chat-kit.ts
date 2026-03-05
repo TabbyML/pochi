@@ -1,7 +1,12 @@
 import { getLogger } from "@getpochi/common";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
-import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
+import {
+  type ChatInit,
+  type ChatOnErrorCallback,
+  type ChatOnFinishCallback,
+  isToolUIPart,
+} from "ai";
 import type z from "zod/v4";
 import type { BlobStore } from "../blob-store";
 import {
@@ -12,7 +17,7 @@ import {
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { LiveKitStore, Message, Task } from "../types";
+import type { ContextBreakdown, LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
@@ -484,12 +489,43 @@ export class LiveChatKit<
     }
 
     const status = toTaskStatus(message, message.metadata?.finishReason);
+
+    let contextBreakdown: ContextBreakdown | undefined = undefined;
+    if (message.metadata?.kind === "assistant") {
+      const {
+        messagesChars,
+        filesChars,
+        toolResultsChars,
+        systemReminderChars,
+      } = calculateMessagesBreakdown(this.chat.messages);
+      const systemChars =
+        (message.metadata.systemPromptChars || 0) + systemReminderChars;
+      const toolsChars = message.metadata.toolsChars || 0;
+
+      const totalChars =
+        systemChars +
+        toolsChars +
+        messagesChars +
+        filesChars +
+        toolResultsChars;
+      if (totalChars > 0) {
+        contextBreakdown = {
+          system: systemChars / totalChars,
+          tools: toolsChars / totalChars,
+          messages: messagesChars / totalChars,
+          files: filesChars / totalChars,
+          toolResults: toolResultsChars / totalChars,
+        };
+      }
+    }
+
     store.commit(
       events.chatStreamFinished({
         id: this.taskId,
         status,
         data: message,
         totalTokens: message.metadata.totalTokens,
+        contextBreakdown,
         updatedAt: new Date(),
         duration: this.lastStepStartTimestamp
           ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
@@ -557,3 +593,46 @@ const getCleanCheckpoint = (messages: Message[]) => {
     return lastPart.data.commit;
   }
 };
+
+function calculateMessagesBreakdown(messages: Message[]) {
+  let messagesChars = 0;
+  let filesChars = 0;
+  let toolResultsChars = 0;
+  let systemReminderChars = 0;
+
+  for (const msg of messages) {
+    for (const part of msg.parts) {
+      if (part.type === "text") {
+        let contentStr = part.text;
+        if (msg.role === "user" && contentStr.includes("<system-reminder>")) {
+          const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
+          const reminders = contentStr.match(reminderRegex);
+          if (reminders) {
+            systemReminderChars += reminders.join("").length;
+            contentStr = contentStr.replace(reminderRegex, "");
+          }
+        }
+        messagesChars += contentStr.length;
+      } else if (isToolUIPart(part)) {
+        messagesChars += JSON.stringify(part.input || {}).length;
+        if (part.state === "output-available" && part.output) {
+          const output = (part as unknown as { output: unknown }).output;
+          const resultStr =
+            typeof output === "string" ? output : JSON.stringify(output);
+          const toolName = part.type.replace(/^tool-/, "");
+          if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {
+            filesChars += resultStr.length;
+          } else {
+            toolResultsChars += resultStr.length;
+          }
+        }
+      } else if (part.type === "reasoning") {
+        messagesChars += part.text.length;
+      } else {
+        messagesChars += JSON.stringify(part).length;
+      }
+    }
+  }
+
+  return { messagesChars, filesChars, toolResultsChars, systemReminderChars };
+}

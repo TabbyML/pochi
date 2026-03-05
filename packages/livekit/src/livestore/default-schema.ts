@@ -6,6 +6,7 @@ import {
   makeSchema,
 } from "@livestore/livestore";
 import {
+  ContextBreakdown,
   DBMessage,
   DBUIPart,
   Git,
@@ -49,6 +50,10 @@ export const tables = {
         schema: LineChanges,
       }),
       totalTokens: State.SQLite.integer({ nullable: true }),
+      contextBreakdown: State.SQLite.json({
+        nullable: true,
+        schema: ContextBreakdown,
+      }),
       lastStepDuration: State.SQLite.integer({
         nullable: true,
         schema: Schema.DurationFromMillis,
@@ -160,6 +165,7 @@ export const events = {
       id: Schema.String,
       data: DBMessage,
       totalTokens: Schema.NullOr(Schema.Number),
+      contextBreakdown: Schema.optional(ContextBreakdown),
       status: TaskStatus,
       updatedAt: Schema.Date,
       duration: Schema.optional(Schema.DurationFromMillis),
@@ -374,6 +380,7 @@ const materializers = State.SQLite.materializers(events, {
     id,
     data,
     totalTokens,
+    contextBreakdown,
     status,
     updatedAt,
     duration,
@@ -382,6 +389,7 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks
       .update({
         totalTokens,
+        contextBreakdown,
         status,
         updatedAt,
         // Clear error if the stream is finished

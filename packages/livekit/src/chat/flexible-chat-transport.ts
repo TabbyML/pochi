@@ -173,6 +173,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
 
+    const systemPrompt = prompts.system(
+      environment?.info?.customRules,
+      this.customAgent,
+      mcpInfo?.instructions,
+    );
+    const systemPromptChars = systemPrompt.length;
+    const toolsChars = JSON.stringify(tools).length;
+
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
       convertToModelMessages(
@@ -189,11 +197,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           useCase: "agent",
         } satisfies PochiProviderOptions,
       },
-      system: prompts.system(
-        environment?.info?.customRules,
-        this.customAgent,
-        mcpInfo?.instructions,
-      ),
+      system: systemPrompt,
       messages: modelMessages,
       model: wrapLanguageModel({
         model,
@@ -223,6 +227,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             totalTokens:
               part.totalUsage.totalTokens || estimateTotalTokens(messages),
             finishReason: part.finishReason,
+            systemPromptChars,
+            toolsChars,
           } satisfies Metadata;
         }
       },
