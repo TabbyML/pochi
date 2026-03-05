@@ -11,6 +11,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { KbdShortcut } from "@/components/ui/kbd-shortcut";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -38,7 +39,7 @@ interface SubmitDropdownButtonProps {
   isLoading?: boolean;
   disabled?: boolean;
   onSubmit: () => void;
-  onSubmitPlan: () => void;
+  onModShiftSubmit: () => void;
   mcpConfigOverride: McpConfigOverride;
   onToggleServer: (serverName: string) => void;
   resetMcpTools: () => void;
@@ -48,7 +49,7 @@ export function SubmitDropdownButton({
   isLoading = false,
   disabled = false,
   onSubmit,
-  onSubmitPlan,
+  onModShiftSubmit,
   mcpConfigOverride,
   onToggleServer,
   resetMcpTools,
@@ -148,10 +149,11 @@ export function SubmitDropdownButton({
             <div className="p-1">
               <DropdownMenuItem
                 className="flex cursor-pointer items-center gap-2 px-2 py-1"
-                onClick={onSubmitPlan}
+                onClick={onModShiftSubmit}
               >
                 <ClipboardList className="size-3.5 transition-colors duration-200" />
                 <span>{t("chat.createPlan")}</span>
+                <KbdShortcut keys={["Mod", "Shift", "Enter"]} />
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />

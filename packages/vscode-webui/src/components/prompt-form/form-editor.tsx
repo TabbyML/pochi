@@ -81,6 +81,13 @@ function CustomEnterKeyHandler(
             () => commands.splitBlock(),
           ]);
         },
+        "Mod-Shift-Enter": () => {
+          if (formRef.current) {
+            formRef.current.setAttribute("submitAction", "modShiftEnter");
+            formRef.current.requestSubmit();
+          }
+          return true;
+        },
         "Mod-Enter": () => {
           if (formRef.current) {
             formRef.current.setAttribute("submitAction", "ctrlEnter");
@@ -105,6 +112,7 @@ interface FormEditorProps {
   setInput: (input: ChatInput) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onModShiftSubmit?: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isLoading: boolean;
   editable?: boolean;
   formRef?: React.RefObject<HTMLFormElement>;
@@ -125,6 +133,7 @@ export function FormEditor({
   setInput,
   onSubmit,
   onCtrlSubmit,
+  onModShiftSubmit,
   isLoading,
   editable,
   children,
@@ -622,13 +631,16 @@ export function FormEditor({
         editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
       }
       const submitAction = e.currentTarget.getAttribute("submitAction");
-      if (submitAction === "ctrlEnter") {
+      e.currentTarget.removeAttribute("submitAction");
+      if (submitAction === "modShiftEnter" && onModShiftSubmit) {
+        onModShiftSubmit(e);
+      } else if (submitAction === "ctrlEnter") {
         onCtrlSubmit(e);
       } else {
         onSubmit(e);
       }
     },
-    [enableSubmitHistory, editor, onSubmit, onCtrlSubmit],
+    [enableSubmitHistory, editor, onSubmit, onCtrlSubmit, onModShiftSubmit],
   );
 
   return (
