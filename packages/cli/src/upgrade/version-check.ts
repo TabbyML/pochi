@@ -1,11 +1,8 @@
-import { Console } from "node:console";
 import chalk from "chalk";
 import packageJson from "../../package.json";
 import { fetchLatestCliRelease } from "./release-fetcher";
 import type { GitHubRelease } from "./release-fetcher";
 import { extractVersionFromTag, isNewerVersion } from "./version-utils";
-
-const console = new Console(process.stderr);
 
 export interface VersionCheckResult {
   updateAvailable: boolean;
