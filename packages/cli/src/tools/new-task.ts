@@ -1,9 +1,17 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { constants } from "@getpochi/common";
 import type {
   ClientTools,
   CustomAgent,
   ToolFunctionType,
 } from "@getpochi/tools";
+import ReconnectingWebSocket from "reconnecting-websocket";
+import { WebSocket } from "ws";
+import {
+  type Converter as VideoConverter,
+  createMjpegToMp4Converter,
+} from "../lib/ffmpeg-mjpeg-to-mp4";
 import type { ToolCallOptions } from "../types";
 
 /**
@@ -34,8 +42,63 @@ export const newTask =
       }
     }
 
-    if (customAgent?.name === "browser") {
-      await options.browserSessionStore?.registerBrowserSession(taskId);
+    // for browser agent
+    let ws: ReconnectingWebSocket | undefined = undefined;
+    let recorder: VideoConverter | undefined = undefined;
+    let finalize: (() => Promise<void>) | undefined = undefined;
+    if (customAgent?.name === "browser" && options.browserSessionStore) {
+      const { streamUrl } =
+        await options.browserSessionStore.registerBrowserSession(
+          taskId,
+          undefined,
+          !!options.saveBrowserSessionVideo,
+        );
+
+      if (options.saveBrowserSessionVideo && streamUrl) {
+        await fs.mkdir(options.saveBrowserSessionVideo, { recursive: true });
+        const recFile = path.resolve(
+          options.saveBrowserSessionVideo,
+          `pochi-browser-${taskId}.mp4`,
+        );
+        const rec = createMjpegToMp4Converter(recFile);
+        recorder = rec;
+
+        const rws = new ReconnectingWebSocket(streamUrl, [], {
+          WebSocket,
+          connectionTimeout: 8000,
+          maxRetries: Number.MAX_SAFE_INTEGER,
+          minReconnectionDelay: 1500,
+          maxReconnectionDelay: 15000,
+          reconnectionDelayGrowFactor: 1.6,
+        });
+        rws.binaryType = "arraybuffer";
+        ws = rws;
+
+        rws.addEventListener("message", (e) => {
+          if (e.type === "message") {
+            try {
+              const data = JSON.parse(e.data);
+              if (data.type === "frame") {
+                rec.handleFrame({
+                  data: data.data,
+                  ts: data.metadata.timestamp,
+                });
+              }
+            } catch (e) {
+              // ignore error
+            }
+          }
+        });
+
+        finalize = async () => {
+          ws?.close();
+          try {
+            await recorder?.stop();
+          } catch (e) {
+            // ignore error
+          }
+        };
+      }
     }
 
     const isAsync = !!runAsync && constants.EnableAsyncNewTask;
@@ -48,9 +111,13 @@ export const newTask =
     // Check if this is an async task
     if (isAsync) {
       // Start the subtask but don't wait for completion
-      void Promise.resolve(subTaskRunner.run()).catch(() => {
-        // Ignore errors for Async tasks
-      });
+      void Promise.resolve(subTaskRunner.run())
+        .then(() => {
+          return finalize?.();
+        })
+        .catch(() => {
+          // Ignore errors for Async tasks
+        });
       return {
         result: taskId,
       };
@@ -58,6 +125,7 @@ export const newTask =
 
     // Execute the sub-task (synchronous)
     await subTaskRunner.run();
+    await finalize?.();
 
     // Get the final state and extract result
     const finalState = subTaskRunner.state;

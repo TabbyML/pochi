@@ -122,6 +122,7 @@ export interface RunnerOptions {
   filesystem: FileSystem;
 
   browserSessionStore?: BrowserSessionStore;
+  saveBrowserSessionVideo?: string;
 
   /**
    * Timeout in milliseconds to wait for async subtasks and background jobs
@@ -184,6 +185,7 @@ export class TaskRunner {
       backgroundJobManager: this.backgroundJobManager,
       asyncSubTaskManager: this.asyncSubTaskManager,
       browserSessionStore: options.browserSessionStore,
+      saveBrowserSessionVideo: options.saveBrowserSessionVideo,
       createSubTaskRunner: (
         taskId: string,
         runAsync: boolean,
