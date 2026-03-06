@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitState } from "@/integrations/git/git-state";
@@ -182,18 +183,19 @@ export class WorktreeManager implements vscode.Disposable {
       return null;
     }
 
+    const mainWorktreePath = this.workspacePath;
+    if (!mainWorktreePath) {
+      logger.debug(
+        "Failed to create worktree due to cannot find workspacePath.",
+      );
+      return null;
+    }
+
     if (options?.generateBranchName) {
       // Generate branch name and create worktree
-      const workspacePath = this.workspacePath;
-      if (!workspacePath) {
-        logger.debug(
-          "Failed to create worktree due to cannot find workspacePath.",
-        );
-        return null;
-      }
       const { worktreePath, branchName } =
         await this.prepareBranchNameAndWorktreePath({
-          workspacePath,
+          workspacePath: mainWorktreePath,
           worktrees,
           prompt: options.generateBranchName.prompt,
           files: options.generateBranchName.files,
@@ -202,7 +204,7 @@ export class WorktreeManager implements vscode.Disposable {
       await this.createWorktreeImpl({
         worktreePath,
         branchName,
-        workspacePath,
+        workspacePath: mainWorktreePath,
         commitish: options?.baseBranch ?? "HEAD",
       });
     } else {
@@ -220,6 +222,13 @@ export class WorktreeManager implements vscode.Disposable {
     if (newWorktree) {
       logger.debug(`New worktree created at: ${newWorktree.path}`);
       this.updateWorktrees(newWorktree.path);
+      await copyWorktreeIncludeFiles(mainWorktreePath, newWorktree.path).catch(
+        (error) => {
+          logger.warn(
+            `Failed to copy .worktreeinclude files: ${toErrorMessage(error)}`,
+          );
+        },
+      );
       setupWorktree(newWorktree.path);
       return newWorktree;
     }
@@ -527,6 +536,65 @@ export class WorktreeManager implements vscode.Disposable {
     this.git = undefined;
     for (const disposable of this.disposables) {
       disposable.dispose();
+    }
+  }
+}
+
+/**
+ * Copies gitignored files matching .worktreeinclude patterns from the main
+ * worktree into the new worktree (e.g. .env, local config files).
+ */
+export async function copyWorktreeIncludeFiles(
+  mainWorktreePath: string,
+  newWorktreePath: string,
+): Promise<void> {
+  const includeFilePath = path.join(mainWorktreePath, ".worktreeinclude");
+
+  try {
+    await fs.access(includeFilePath);
+  } catch {
+    return; // no .worktreeinclude – nothing to do
+  }
+
+  const git = simpleGit(mainWorktreePath, {
+    timeout: { block: constants.GitOperationTimeoutMs },
+  });
+
+  let rawOutput: string;
+  try {
+    rawOutput = await git.raw([
+      "ls-files",
+      "--others",
+      "--ignored",
+      `--exclude-from=${includeFilePath}`,
+    ]);
+  } catch (error) {
+    logger.warn(
+      `Failed to list .worktreeinclude files: ${toErrorMessage(error)}`,
+    );
+    return;
+  }
+
+  const relativeFiles = rawOutput
+    .split("\n")
+    .map((f) => f.trim())
+    .filter(Boolean);
+  if (relativeFiles.length === 0) {
+    return;
+  }
+
+  logger.debug(
+    `Copying ${relativeFiles.length} .worktreeinclude file(s) to new worktree`,
+  );
+
+  for (const relativePath of relativeFiles) {
+    const src = path.join(mainWorktreePath, relativePath);
+    const dest = path.join(newWorktreePath, relativePath);
+    try {
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.copyFile(src, dest);
+    } catch (error) {
+      logger.warn(`Failed to copy ${relativePath}: ${toErrorMessage(error)}`);
     }
   }
 }
