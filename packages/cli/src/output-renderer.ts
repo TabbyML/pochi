@@ -415,13 +415,22 @@ class SubTaskNonTTYRenderer {
   }
 
   public render(): void {
-    this.stream.write(`❯ ${this.task.title}\n`);
+    this.stream.write(`❯ ${this.task.title}`);
 
     let lastOutput: string | undefined = undefined;
     this.task.on(ListrTaskEventType.OUTPUT, (output) => {
-      let outputLines = output.split("\n");
-      if (lastOutput) {
-        const lastOutputLines = lastOutput.split("\n");
+      if (output.trimEnd().length === 0) {
+        return;
+      }
+
+      let outputCurrentLine = "";
+      let outputNewLines: string[] = [];
+
+      const outputLines = output.trimEnd().split("\n");
+      if (!lastOutput) {
+        outputNewLines = outputLines;
+      } else {
+        const lastOutputLines = lastOutput.trimEnd().split("\n");
         let sameLines = 0;
         while (
           sameLines < outputLines.length &&
@@ -430,13 +439,24 @@ class SubTaskNonTTYRenderer {
         ) {
           sameLines++;
         }
-        outputLines = outputLines.slice(sameLines);
-      }
-      for (const line of outputLines) {
-        const text = line.trimEnd();
-        if (text) {
-          this.stream.write(`| ${text}\n`);
+
+        if (
+          sameLines < outputLines.length &&
+          sameLines === lastOutputLines.length - 1 &&
+          outputLines[sameLines].startsWith(lastOutputLines[sameLines])
+        ) {
+          outputCurrentLine = outputLines[sameLines].slice(
+            lastOutputLines[sameLines].length,
+          );
+          outputNewLines = outputLines.slice(sameLines + 1);
+        } else {
+          outputNewLines = outputLines.slice(sameLines);
         }
+      }
+
+      this.stream.write(outputCurrentLine);
+      for (const line of outputNewLines) {
+        this.stream.write(`\n| ${line}`);
       }
       lastOutput = output;
     });
@@ -444,9 +464,9 @@ class SubTaskNonTTYRenderer {
 
   public end(err: Error): void {
     if (err) {
-      this.stream.write(`✗ ${this.task.title}: ${err.message}\n`);
+      this.stream.write(`\n✗ ${this.task.title}: ${err.message}\n`);
     } else {
-      this.stream.write(`✔ ${this.task.title}\n`);
+      this.stream.write(`\n✔ ${this.task.title}\n`);
     }
   }
 }
