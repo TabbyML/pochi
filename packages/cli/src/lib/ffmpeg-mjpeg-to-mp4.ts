@@ -85,10 +85,8 @@ export function createMjpegToMp4Converter(
   command.run();
 
   const writeRepeatedFrames = runExclusive.build(
-    async (jpeg: Buffer, repeat: number, ts: number) => {
-      console.log(`write jpeg ${ts} +${repeat}`);
+    async (jpeg: Buffer, repeat: number) => {
       for (let i = 0; i < repeat; i++) {
-        console.log(`write jpeg ${ts} @${i} (${jpeg.length})`);
         if (!mjpegStream.write(jpeg)) {
           await new Promise<void>((r) => mjpegStream.once("drain", r));
         }
@@ -106,7 +104,7 @@ export function createMjpegToMp4Converter(
       const durMs = Math.min(rawDurSec * 1000, maxGapMs);
       const repeat = Math.max(1, Math.round((durMs / 1000) * nominalFps));
 
-      void writeRepeatedFrames(pendingJpeg, repeat, prevTs);
+      void writeRepeatedFrames(pendingJpeg, repeat);
     }
 
     // Update pending to current
@@ -121,7 +119,7 @@ export function createMjpegToMp4Converter(
         1,
         Math.round((finalFrameDurationMs / 1000) * nominalFps),
       );
-      await writeRepeatedFrames(pendingJpeg, repeat, 0);
+      await writeRepeatedFrames(pendingJpeg, repeat);
       pendingJpeg = null;
     }
 
