@@ -1,4 +1,5 @@
 import { getLogger } from "@getpochi/common";
+import { getTerminalEnv } from "@getpochi/common/env-utils";
 import { buildShellCommand } from "@getpochi/common/tool-utils";
 import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
@@ -23,6 +24,34 @@ const nodePtyPath = vscode.Uri.joinPath(
   "index.js",
 ).toString();
 
+export const toNonInteractivePtyCommand = (
+  command: string,
+  platform: NodeJS.Platform = process.platform,
+): string => {
+  if (platform === "win32") {
+    return command;
+  }
+
+  return `( ${command} ) </dev/null`;
+};
+
+export const buildPtyEnv = (
+  envs: Record<string, string> | undefined,
+): NodeJS.ProcessEnv => {
+  return {
+    ...process.env,
+    ...envs,
+    ...getTerminalEnv(),
+  };
+};
+
+export const buildPtyShellCommand = (
+  command: string,
+  platform: NodeJS.Platform = process.platform,
+) => {
+  return buildShellCommand(toNonInteractivePtyCommand(command, platform));
+};
+
 export const executeCommandWithPty = async ({
   command,
   cwd,
@@ -31,7 +60,7 @@ export const executeCommandWithPty = async ({
   onData,
   envs,
 }: ExecuteCommandOptions) => {
-  const shellCommand = buildShellCommand(command);
+  const shellCommand = buildPtyShellCommand(command);
   if (!shellCommand) {
     throw new PtySpawnError("Failed to get shell.");
   }
@@ -56,11 +85,7 @@ export const executeCommandWithPty = async ({
         cols: 80,
         rows: 30,
         cwd,
-        env: {
-          ...process.env,
-          ...envs,
-          PAGER: "cat",
-        },
+        env: buildPtyEnv(envs),
       });
 
       let output = "";

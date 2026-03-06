@@ -1,10 +1,30 @@
 import { type ChildProcess, exec, spawn } from "node:child_process";
+import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
   buildShellCommand,
   fixExecuteCommandOutput,
 } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandOptions } from "./types";
 import { ExecutionError, truncateOutput } from "./utils";
+
+export const buildExecuteCommandEnv = ({
+  color,
+  envs,
+}: Pick<ExecuteCommandOptions, "color" | "envs">): NodeJS.ProcessEnv => {
+  return {
+    ...process.env,
+    ...(color
+      ? {
+          COLORTERM: "truecolor",
+          TERM: "xterm-256color",
+          FORCE_COLOR: "1",
+          CLICOLOR_FORCE: "1",
+        }
+      : {}),
+    ...envs,
+    ...getTerminalEnv(),
+  };
+};
 
 /**
  * Executes a command in a shell
@@ -28,18 +48,7 @@ export const executeCommandWithNode = async ({
   const shellCommand = buildShellCommand(command);
   const options = {
     cwd,
-    env: {
-      ...process.env,
-      ...(color
-        ? {
-            COLORTERM: "truecolor",
-            TERM: "xterm-256color",
-            FORCE_COLOR: "1",
-            CLICOLOR_FORCE: "1",
-          }
-        : {}),
-      ...envs,
-    },
+    env: buildExecuteCommandEnv({ color, envs }),
   };
 
   return new Promise<{ output: string; isTruncated: boolean }>(
@@ -48,11 +57,13 @@ export const executeCommandWithNode = async ({
       if (shellCommand) {
         child = spawn(shellCommand.command, shellCommand.args, {
           ...options,
-          stdio: ["pipe", "pipe", "pipe"],
+          stdio: ["ignore", "pipe", "pipe"],
         });
       } else {
         child = exec(command, options);
       }
+      // Close stdin to force non-interactive behavior and avoid hanging prompts.
+      child.stdin?.end();
 
       let output = "";
       let timeoutId: NodeJS.Timeout | undefined;

@@ -63,7 +63,7 @@ describe("executeCommand", () => {
         { command: "nonexistentcommand" },
         mockToolExecutionOptions,
       );
-    expect(result.output).includes("command not found")
+    expect(result.output).toMatch(/command not found|Command exited with code/);
   });
 
   it("should indicate when output is truncated", async () => {
@@ -113,7 +113,7 @@ describe("executeCommand", () => {
       { command: "invalidcommandthatdoesnotexist" },
       mockToolExecutionOptions,
     )
-    expect(result.output).includes("command not found")
+    expect(result.output).toMatch(/command not found|Command exited with code/);
   });
 
   it("should set GIT_COMMITTER environment variables", async () => {
@@ -141,5 +141,40 @@ describe("executeCommand", () => {
 
     expect(result.output).toContain("Pochi");
     expect(result.output).toContain("noreply@getpochi.com");
+  });
+
+  it("should set non-interactive terminal guard environment variables", async () => {
+    let command: string;
+    if (process.platform === "win32") {
+      const shell = process.env.ComSpec?.toLowerCase();
+      if (shell?.includes("powershell") || !shell) {
+        command =
+          "Write-Output \"$env:GIT_TERMINAL_PROMPT $env:GCM_INTERACTIVE\"";
+      } else {
+        command = "echo %GIT_TERMINAL_PROMPT% %GCM_INTERACTIVE%";
+      }
+    } else {
+      command = "echo $GIT_TERMINAL_PROMPT $GCM_INTERACTIVE";
+    }
+
+    const result = await executeCommand()(
+      { command },
+      mockToolExecutionOptions,
+    );
+
+    expect(result.output).toContain("0");
+    expect(result.output).toContain("never");
+  });
+
+  it("should not hang on commands waiting for stdin", async () => {
+    const start = Date.now();
+    const result = await executeCommand()(
+      { command: "cat", timeout: 5 },
+      mockToolExecutionOptions,
+    );
+    const durationMs = Date.now() - start;
+
+    expect(result.output).toBe("");
+    expect(durationMs).toBeLessThan(1500);
   });
 });

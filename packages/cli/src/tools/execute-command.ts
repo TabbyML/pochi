@@ -4,7 +4,6 @@ import {
   exec,
 } from "node:child_process";
 import * as path from "node:path";
-import { promisify } from "node:util";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
   MaxTerminalOutputSize,
@@ -40,7 +39,7 @@ export const executeCommand =
         timeout: timeout * 1000, // Convert to milliseconds
         cwd: resolvedCwd,
         signal: abortSignal,
-        env: { ...process.env, ...getTerminalEnv(), ...envs },
+        env: { ...process.env, ...envs, ...getTerminalEnv() },
       });
 
       const { output, isTruncated } = processCommandOutput(
@@ -83,31 +82,43 @@ async function execWithExitCode(
   command: string,
   options: ExecOptionsWithStringEncoding,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
-  const execCommand = promisify(exec);
-  try {
-    const { stdout, stderr } = await execCommand(command, options);
-    return {
-      stdout,
-      stderr,
-      code: 0,
-    };
-  } catch (err) {
-    if (isExecException(err)) {
-      if (err.signal === "SIGTERM" && err.killed) {
-        throw new Error(
-          `Command execution timed out after ${timeout} seconds.`,
-        );
-      }
+  return await new Promise<{ stdout: string; stderr: string; code: number }>(
+    (resolve, reject) => {
+      const child = exec(command, options, (err, stdout = "", stderr = "") => {
+        if (!err) {
+          resolve({
+            stdout,
+            stderr,
+            code: 0,
+          });
+          return;
+        }
 
-      return {
-        stdout: err.stdout || "",
-        stderr: err.stderr || "",
-        code: err.code || 1,
-      };
-    }
+        if (isExecException(err)) {
+          if (err.signal === "SIGTERM" && err.killed) {
+            reject(
+              new Error(
+                `Command execution timed out after ${timeout} seconds.`,
+              ),
+            );
+            return;
+          }
 
-    throw err;
-  }
+          resolve({
+            stdout: err.stdout || "",
+            stderr: err.stderr || "",
+            code: err.code || 1,
+          });
+          return;
+        }
+
+        reject(err);
+      });
+
+      // Close stdin to force non-interactive behavior and avoid hanging prompts.
+      child.stdin?.end();
+    },
+  );
 }
 
 function processCommandOutput(
