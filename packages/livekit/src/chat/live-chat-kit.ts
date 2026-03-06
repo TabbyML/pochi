@@ -29,6 +29,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
+import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
@@ -496,28 +497,28 @@ export class LiveChatKit<
     let contextWindowUsage: ContextWindowUsage | undefined = undefined;
     if (message.metadata?.kind === "assistant") {
       const {
-        messagesChars,
-        filesChars,
-        toolResultsChars,
-        systemReminderChars,
-      } = calculateMessagesBreakdown(this.chat.messages);
-      const systemChars =
-        (message.metadata.systemPromptChars || 0) + systemReminderChars;
-      const toolsChars = message.metadata.toolsChars || 0;
+        messagesTokens,
+        filesTokens,
+        toolResultsTokens,
+        systemReminderTokens,
+      } = estimateTokenBreakdown(this.chat.messages);
+      const systemTokens =
+        (message.metadata.systemPromptTokens || 0) + systemReminderTokens;
+      const toolsTokens = message.metadata.toolsTokens || 0;
 
-      const totalChars =
-        systemChars +
-        toolsChars +
-        messagesChars +
-        filesChars +
-        toolResultsChars;
-      if (totalChars > 0) {
+      const totalTokens =
+        systemTokens +
+        toolsTokens +
+        messagesTokens +
+        filesTokens +
+        toolResultsTokens;
+      if (totalTokens > 0) {
         contextWindowUsage = {
-          system: systemChars / totalChars,
-          tools: toolsChars / totalChars,
-          messages: messagesChars / totalChars,
-          files: filesChars / totalChars,
-          toolResults: toolResultsChars / totalChars,
+          system: systemTokens,
+          tools: toolsTokens,
+          messages: messagesTokens,
+          files: filesTokens,
+          toolResults: toolResultsTokens,
         };
       }
     }
@@ -597,11 +598,11 @@ const getCleanCheckpoint = (messages: Message[]) => {
   }
 };
 
-function calculateMessagesBreakdown(messages: Message[]) {
-  let messagesChars = 0;
-  let filesChars = 0;
-  let toolResultsChars = 0;
-  let systemReminderChars = 0;
+function estimateTokenBreakdown(messages: Message[]) {
+  let messagesTokens = 0;
+  let filesTokens = 0;
+  let toolResultsTokens = 0;
+  let systemReminderTokens = 0;
 
   for (const msg of messages) {
     for (const part of msg.parts) {
@@ -611,41 +612,46 @@ function calculateMessagesBreakdown(messages: Message[]) {
           const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
           const reminders = contentStr.match(reminderRegex);
           if (reminders) {
-            systemReminderChars += reminders.join("").length;
+            systemReminderTokens += estimateTokens(reminders.join(""));
             contentStr = contentStr.replace(reminderRegex, "");
           }
         }
-        messagesChars += contentStr.length;
+        messagesTokens += estimateTokens(contentStr);
+      } else if (part.type === "file") {
+        filesTokens += ImageEstimatedTokens;
       } else if (isToolUIPart(part)) {
-        messagesChars += JSON.stringify(part.input || {}).length;
+        messagesTokens += estimateTokens(JSON.stringify(part.input || {}));
         if (part.state === "output-available" && part.output) {
           const output = (part as unknown as { output: unknown }).output;
-          let outputLength = 0;
+          let outputTokens = 0;
 
           if (output instanceof Uint8Array) {
-            // Roughly estimate token cost for binary data (like images)
-            // e.g. 500KB image ~ 5000 chars
-            outputLength = Math.floor(output.length / 100);
+            outputTokens = ImageEstimatedTokens;
           } else {
             const resultStr =
               typeof output === "string" ? output : JSON.stringify(output);
-            outputLength = resultStr.length;
+            outputTokens = estimateTokens(resultStr);
           }
 
           const toolName = part.type.replace(/^tool-/, "");
           if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {
-            filesChars += outputLength;
+            filesTokens += outputTokens;
           } else {
-            toolResultsChars += outputLength;
+            toolResultsTokens += outputTokens;
           }
         }
       } else if (part.type === "reasoning") {
-        messagesChars += part.text.length;
+        messagesTokens += estimateTokens(part.text);
       } else {
-        messagesChars += JSON.stringify(part).length;
+        messagesTokens += estimateTokens(JSON.stringify(part));
       }
     }
   }
 
-  return { messagesChars, filesChars, toolResultsChars, systemReminderChars };
+  return {
+    messagesTokens,
+    filesTokens,
+    toolResultsTokens,
+    systemReminderTokens,
+  };
 }

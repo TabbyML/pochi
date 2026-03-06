@@ -96,8 +96,21 @@ export function TokenUsage({
       </TooltipContent>
     ) : null;
 
-  const getPct = (value: number | undefined) =>
-    value ? value * percentage : 0;
+  const getPct = (value: number | undefined) => {
+    if (!value || !contextWindowUsage) return 0;
+
+    // Sum up the total tokens from the breakdown
+    const breakdownTotal =
+      contextWindowUsage.system +
+      contextWindowUsage.tools +
+      contextWindowUsage.messages +
+      contextWindowUsage.files +
+      contextWindowUsage.toolResults;
+
+    if (breakdownTotal === 0) return 0;
+
+    return (value / breakdownTotal) * percentage;
+  };
 
   const systemVal = getPct(contextWindowUsage?.system);
   const toolsVal = getPct(contextWindowUsage?.tools);

@@ -22,8 +22,8 @@ export type Metadata =
       kind: "assistant";
       totalTokens: number;
       finishReason: LanguageModelV2FinishReason;
-      systemPromptChars?: number;
-      toolsChars?: number;
+      systemPromptTokens?: number;
+      toolsTokens?: number;
     }
   | {
       kind: "user";
