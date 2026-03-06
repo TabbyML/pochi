@@ -67,9 +67,9 @@ export const newTask =
           WebSocket,
           connectionTimeout: 8000,
           maxRetries: Number.MAX_SAFE_INTEGER,
-          minReconnectionDelay: 1500,
-          maxReconnectionDelay: 15000,
-          reconnectionDelayGrowFactor: 1.6,
+          minReconnectionDelay: 100,
+          maxReconnectionDelay: 5000,
+          reconnectionDelayGrowFactor: 1.5,
         });
         rws.binaryType = "arraybuffer";
         ws = rws;
