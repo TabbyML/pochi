@@ -620,13 +620,23 @@ function calculateMessagesBreakdown(messages: Message[]) {
         messagesChars += JSON.stringify(part.input || {}).length;
         if (part.state === "output-available" && part.output) {
           const output = (part as unknown as { output: unknown }).output;
-          const resultStr =
-            typeof output === "string" ? output : JSON.stringify(output);
+          let outputLength = 0;
+
+          if (output instanceof Uint8Array) {
+            // Roughly estimate token cost for binary data (like images)
+            // e.g. 500KB image ~ 5000 chars
+            outputLength = Math.floor(output.length / 100);
+          } else {
+            const resultStr =
+              typeof output === "string" ? output : JSON.stringify(output);
+            outputLength = resultStr.length;
+          }
+
           const toolName = part.type.replace(/^tool-/, "");
           if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {
-            filesChars += resultStr.length;
+            filesChars += outputLength;
           } else {
-            toolResultsChars += resultStr.length;
+            toolResultsChars += outputLength;
           }
         }
       } else if (part.type === "reasoning") {
