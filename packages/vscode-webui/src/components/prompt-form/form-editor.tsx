@@ -118,6 +118,7 @@ interface FormEditorProps {
   onFocus?: (event: FocusEvent) => void;
   messageContent?: string;
   isSubTask: boolean;
+  onTogglePlanMode?: () => void;
 }
 
 export function FormEditor({
@@ -137,6 +138,7 @@ export function FormEditor({
   onFileDrop,
   messageContent = "",
   isSubTask,
+  onTogglePlanMode,
 }: FormEditorProps) {
   const { t } = useTranslation();
   const { updateSelectedModelId, models } = useSelectedModels({ isSubTask });
@@ -646,8 +648,11 @@ export function FormEditor({
         e.stopPropagation();
         focusEditor();
       }}
-      onKeyDown={() => {
-        // do nothing
+      onKeyDown={(e) => {
+        if (e.key === "Tab" && e.shiftKey) {
+          e.preventDefault();
+          onTogglePlanMode?.();
+        }
       }}
     >
       {children}
