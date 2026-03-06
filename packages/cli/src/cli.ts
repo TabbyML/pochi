@@ -130,6 +130,10 @@ const program = new Command()
     "Output the result from attemptCompletion. This is useful for scripts that need to capture the final result. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
   )
   .option(
+    "--save-browser-session-video [dir]",
+    "Set a dir path to save browser session video. Requires ffmpeg to be installed.",
+  )
+  .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
     parsePositiveInt,
@@ -260,6 +264,10 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
+      saveBrowserSessionVideo:
+        options.saveBrowserSessionVideo === true
+          ? "./browser-session/"
+          : options.saveBrowserSessionVideo,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
