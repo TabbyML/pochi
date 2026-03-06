@@ -15,11 +15,11 @@ Let's dive in!
 ### ✨ Enhancements
 
 
-- **Ignore package manager cache directories during repository traversal:** Directory traversal now ignores common package manager cache directories such as `node_modules`, even when a repository does not define a `.gitignore`. <br></br> 
+- **Ignore package manager cache directories during repository traversal:** Directory traversal now ignores common package manager cache directories such as `node_modules`, even when a repository does not define a `.gitignore`. <br></br>
 
-  Previously, these directories could be scanned during repository walks, which sometimes polluted the agent’s context with large dependency trees. With this change, Pochi avoids traversing common cache directories by default, keeping prompts cleaner and reducing unnecessary context. <br></br> 
+  Previously, these directories could be scanned during traversal, which sometimes polluted the agent’s file context with large dependency trees. With this change, Pochi skips common cache directories by default, keeping prompts cleaner and reducing unnecessary context. <br></br>
 
-  This change does not affect explicit file access through tools like `listFiles` or `globFiles`.
+  This change does not affect explicit file access through tools like `listFiles` or `globFiles`. **[#1279](https://github.com/TabbyML/pochi/issues/1279)**
 
 ### 🐛 Bug fixes 
 
