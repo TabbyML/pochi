@@ -61,6 +61,7 @@
         "semver": "^7.6.3",
         "tabtab": "^3.0.2",
         "unist-util-visit": "^5.0.0",
+        "ws": "^8.19.0",
         "zod": "catalog:",
       },
     },
