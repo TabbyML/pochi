@@ -4,6 +4,7 @@ import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
+import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { blobStore } from "@/lib/remote-blob-store";
 import { useManageBrowserSession } from "@/lib/use-browser-session";
@@ -110,6 +111,8 @@ function Chat({ user, uid, info }: ChatProps) {
     isLoading: isMcpConfigLoading,
   } = useTaskMcpConfigOverride(uid);
 
+  const { setContextWindowUsage } = useTaskContextWindowUsage(uid);
+
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
@@ -169,6 +172,9 @@ function Chat({ user, uid, info }: ChatProps) {
     },
     onStreamFinish(data) {
       onChartNotificationsStreamFinish.current(data);
+      if (data.contextWindowUsage) {
+        setContextWindowUsage.current(data.contextWindowUsage);
+      }
     },
   });
 

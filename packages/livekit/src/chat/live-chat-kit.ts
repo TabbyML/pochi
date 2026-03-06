@@ -1,7 +1,12 @@
 import { getLogger } from "@getpochi/common";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
-import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
+import {
+  type ChatInit,
+  type ChatOnErrorCallback,
+  type ChatOnFinishCallback,
+  isToolUIPart,
+} from "ai";
 import type z from "zod/v4";
 import type { BlobStore } from "../blob-store";
 import {
@@ -12,6 +17,7 @@ import {
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
+import type { ContextWindowUsage } from "@getpochi/common/vscode-webui-bridge";
 import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -23,6 +29,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
+import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
@@ -121,6 +128,7 @@ export type LiveChatKitOptions<T> = {
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
       error?: Error;
+      contextWindowUsage?: ContextWindowUsage;
     },
   ) => void;
 
@@ -167,6 +175,7 @@ export class LiveChatKit<
     data: Pick<Task, "id" | "cwd" | "status"> & {
       messages: Message[];
       error?: Error;
+      contextWindowUsage?: ContextWindowUsage;
     },
   ) => void;
   readonly compact: () => Promise<string>;
@@ -484,6 +493,36 @@ export class LiveChatKit<
     }
 
     const status = toTaskStatus(message, message.metadata?.finishReason);
+
+    let contextWindowUsage: ContextWindowUsage | undefined = undefined;
+    if (message.metadata?.kind === "assistant") {
+      const {
+        messagesTokens,
+        filesTokens,
+        toolResultsTokens,
+        systemReminderTokens,
+      } = estimateTokenBreakdown(this.chat.messages);
+      const systemTokens =
+        (message.metadata.systemPromptTokens || 0) + systemReminderTokens;
+      const toolsTokens = message.metadata.toolsTokens || 0;
+
+      const totalTokens =
+        systemTokens +
+        toolsTokens +
+        messagesTokens +
+        filesTokens +
+        toolResultsTokens;
+      if (totalTokens > 0) {
+        contextWindowUsage = {
+          system: systemTokens,
+          tools: toolsTokens,
+          messages: messagesTokens,
+          files: filesTokens,
+          toolResults: toolResultsTokens,
+        };
+      }
+    }
+
     store.commit(
       events.chatStreamFinished({
         id: this.taskId,
@@ -505,6 +544,7 @@ export class LiveChatKit<
       cwd: this.task?.cwd ?? null,
       status,
       messages: [...this.chat.messages],
+      contextWindowUsage,
     });
   };
 
@@ -557,3 +597,61 @@ const getCleanCheckpoint = (messages: Message[]) => {
     return lastPart.data.commit;
   }
 };
+
+function estimateTokenBreakdown(messages: Message[]) {
+  let messagesTokens = 0;
+  let filesTokens = 0;
+  let toolResultsTokens = 0;
+  let systemReminderTokens = 0;
+
+  for (const msg of messages) {
+    for (const part of msg.parts) {
+      if (part.type === "text") {
+        let contentStr = part.text;
+        if (msg.role === "user" && contentStr.includes("<system-reminder>")) {
+          const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
+          const reminders = contentStr.match(reminderRegex);
+          if (reminders) {
+            systemReminderTokens += estimateTokens(reminders.join(""));
+            contentStr = contentStr.replace(reminderRegex, "");
+          }
+        }
+        messagesTokens += estimateTokens(contentStr);
+      } else if (part.type === "file") {
+        filesTokens += ImageEstimatedTokens;
+      } else if (isToolUIPart(part)) {
+        messagesTokens += estimateTokens(JSON.stringify(part.input || {}));
+        if (part.state === "output-available" && part.output) {
+          const output = (part as unknown as { output: unknown }).output;
+          let outputTokens = 0;
+
+          if (output instanceof Uint8Array) {
+            outputTokens = ImageEstimatedTokens;
+          } else {
+            const resultStr =
+              typeof output === "string" ? output : JSON.stringify(output);
+            outputTokens = estimateTokens(resultStr);
+          }
+
+          const toolName = part.type.replace(/^tool-/, "");
+          if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {
+            filesTokens += outputTokens;
+          } else {
+            toolResultsTokens += outputTokens;
+          }
+        }
+      } else if (part.type === "reasoning") {
+        messagesTokens += estimateTokens(part.text);
+      } else {
+        messagesTokens += estimateTokens(JSON.stringify(part));
+      }
+    }
+  }
+
+  return {
+    messagesTokens,
+    filesTokens,
+    toolResultsTokens,
+    systemReminderTokens,
+  };
+}

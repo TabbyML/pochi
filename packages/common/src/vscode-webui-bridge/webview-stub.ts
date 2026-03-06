@@ -7,6 +7,7 @@ import type {
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
+  ContextWindowUsage,
   CustomAgentFile,
   DisplayModel,
   FileDiff,
@@ -358,6 +359,20 @@ const VSCodeHostStub = {
       value: {} as ThreadSignalSerialization<McpConfigOverride | undefined>,
       setMcpConfigOverride: (mcpConfigOverride: McpConfigOverride) =>
         Promise.resolve(mcpConfigOverride),
+    };
+  },
+  readContextWindowUsage: async (
+    _taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<ContextWindowUsage | undefined>;
+    setContextWindowUsage: (
+      contextWindowUsage: ContextWindowUsage,
+    ) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<ContextWindowUsage | undefined>,
+      setContextWindowUsage: (_contextWindowUsage: ContextWindowUsage) =>
+        Promise.resolve(),
     };
   },
   readTaskArchived(): Promise<{

@@ -46,6 +46,14 @@ export type PochiTaskInfo = PochiTaskParams & {
   uid: string;
 };
 
+export type ContextWindowUsage = {
+  system: number;
+  tools: number;
+  messages: number;
+  files: number;
+  toolResults: number;
+};
+
 /**
  * only include fields that are used in the webview and node process
  */

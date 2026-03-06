@@ -1,5 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import type {
+  ContextWindowUsage,
   McpConfigOverride,
   TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -11,6 +12,7 @@ type TaskStateData = {
   mcpConfigOverride?: McpConfigOverride;
   archived?: boolean;
   changedFiles?: TaskChangedFile[];
+  contextWindowUsage?: ContextWindowUsage;
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -155,5 +157,21 @@ export class TaskDataStore {
    */
   getChangedFilesSignal(taskId: string) {
     return computed(() => this.state.value[taskId]?.changedFiles ?? []);
+  }
+
+  async setContextWindowUsage(
+    taskId: string,
+    contextWindowUsage: ContextWindowUsage,
+  ): Promise<void> {
+    const existing = this.getTaskState(taskId) || {};
+    await this.saveTaskState(taskId, { ...existing, contextWindowUsage });
+  }
+
+  /**
+   * Get a computed signal for a specific task's contextWindowUsage.
+   * Used for ThreadSignal serialization.
+   */
+  getContextWindowUsageSignal(taskId: string) {
+    return computed(() => this.state.value[taskId]?.contextWindowUsage);
   }
 }
