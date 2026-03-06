@@ -56,4 +56,9 @@ export interface ToolCallOptions {
    * Store for managing browser sessions
    */
   browserSessionStore?: BrowserSessionStore;
+
+  /**
+   * Set a dir path to save browser session video
+   */
+  saveBrowserSessionVideo?: string;
 }
