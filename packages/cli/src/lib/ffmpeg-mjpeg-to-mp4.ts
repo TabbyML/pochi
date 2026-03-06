@@ -1,6 +1,7 @@
 import { PassThrough } from "node:stream";
 import { getLogger } from "@getpochi/common";
 import ffmpeg from "fluent-ffmpeg";
+import * as runExclusive from "run-exclusive";
 
 const logger = getLogger("MjpegToMp4");
 
@@ -83,36 +84,29 @@ export function createMjpegToMp4Converter(
   // Spawn
   command.run();
 
-  async function writeRepeatedFrames(jpeg: Buffer, repeat: number) {
-    for (let i = 0; i < repeat; i++) {
-      if (!mjpegStream.write(jpeg)) {
-        await new Promise<void>((r) => mjpegStream.once("drain", r));
+  const writeRepeatedFrames = runExclusive.build(
+    async (jpeg: Buffer, repeat: number, ts: number) => {
+      console.log(`write jpeg ${ts} +${repeat}`);
+      for (let i = 0; i < repeat; i++) {
+        console.log(`write jpeg ${ts} @${i} (${jpeg.length})`);
+        if (!mjpegStream.write(jpeg)) {
+          await new Promise<void>((r) => mjpegStream.once("drain", r));
+        }
       }
-    }
-  }
+    },
+  );
 
-  function handleFrame(msg: TimestampedFrame) {
-    const m = msg as Partial<TimestampedFrame>;
-    if (typeof m.data !== "string") return;
-    if (typeof m.ts !== "number" || !Number.isFinite(m.ts)) return;
+  function handleFrame(frame: TimestampedFrame) {
+    const ts = frame.ts;
+    const jpeg = decodeBase64JpegToBuffer(frame.data);
 
-    const ts = m.ts;
-    const jpeg = decodeBase64JpegToBuffer(m.data);
+    if (prevTs && pendingJpeg) {
+      // Duration for pending frame = time until current frame
+      const rawDurSec = ts - prevTs;
+      const durMs = Math.min(rawDurSec * 1000, maxGapMs);
+      const repeat = Math.max(1, Math.round((durMs / 1000) * nominalFps));
 
-    // First frame: store pending but don't write yet (unknown duration)
-    if (prevTs === null) {
-      prevTs = ts;
-      pendingJpeg = jpeg;
-      return;
-    }
-
-    // Duration for pending frame = time until current frame
-    const rawDurSec = ts - prevTs;
-    const durMs = Math.min(rawDurSec * 1000, maxGapMs);
-    const repeat = Math.max(1, Math.round((durMs / 1000) * nominalFps));
-
-    if (pendingJpeg) {
-      void writeRepeatedFrames(pendingJpeg, repeat);
+      void writeRepeatedFrames(pendingJpeg, repeat, prevTs);
     }
 
     // Update pending to current
@@ -127,7 +121,7 @@ export function createMjpegToMp4Converter(
         1,
         Math.round((finalFrameDurationMs / 1000) * nominalFps),
       );
-      await writeRepeatedFrames(pendingJpeg, repeat);
+      await writeRepeatedFrames(pendingJpeg, repeat, 0);
       pendingJpeg = null;
     }
 
@@ -136,11 +130,7 @@ export function createMjpegToMp4Converter(
 
     // Wait for ffmpeg to finish
     await new Promise<void>((resolve, reject) => {
-      let settled = false;
-
       const done = (err?: unknown) => {
-        if (settled) return;
-        settled = true;
         cleanup();
         err ? reject(err) : resolve();
       };
@@ -157,7 +147,6 @@ export function createMjpegToMp4Converter(
       command.once("error", onError);
     });
   }
-
   return { handleFrame, stop };
 }
 
