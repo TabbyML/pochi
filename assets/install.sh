@@ -13,7 +13,11 @@ download_release_from_repo() {
   local download_file="$tmpdir/$filename"
   local archive_url="$(release_url)/download/$version/$filename"
 
-  curl --progress-bar --show-error --location --fail "$archive_url" --output "$download_file" --write-out "$download_file"
+  if [ -t 2 ]; then
+    curl --progress-bar --show-error --location --fail "$archive_url" --output "$download_file" --write-out "$download_file"
+  else
+    curl -s --show-error --location --fail "$archive_url" --output "$download_file" --write-out "$download_file"
+  fi
 }
 
 usage() {
@@ -285,7 +289,16 @@ if [ $# -gt 0 ]; then
 fi
 
 get_latest_version() {
-  curl -s https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d '"' -f 4
+  local version
+  version=$(curl -s https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d '"' -f 4)
+  if [ -z "$version" ]; then
+    version=$(git ls-remote --tags --refs https://github.com/TabbyML/pochi.git "cli@*" |
+      awk '{print $2}' |
+      sed 's|refs/tags/||' |
+      sort -V |
+      tail -n1)
+  fi
+  echo "$version"
 }
 
 if [ -z "$version_to_install" ]; then
