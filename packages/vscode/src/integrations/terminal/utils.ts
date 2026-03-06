@@ -100,7 +100,7 @@ export class ExecutionError extends Error {
   static createTimeoutError(timeout: number) {
     return new ExecutionError(
       false,
-      `Command execution timed out after ${timeout} seconds, if it's used as background task, please consider use isDevServer=true to run it as a dev server.`,
+      `Command execution timed out after ${timeout} seconds, if it's used as background task, please consider use startBackgroundJob.`,
     );
   }
 }
