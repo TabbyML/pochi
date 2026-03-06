@@ -6,10 +6,11 @@ title: Weekly Update #24
 
 ### TL;DR
 
-A small but solid update this week. Pochi now skips large dependency directories like `node_modules` when exploring a repo, and we fixed a few edge cases that could cause checkpointing to hang. 
+A small but solid update this week. Pochi now ignores large dependency directories like `node_modules` when building the file context for a task, even if the repository doesn’t define a `.gitignore`. We also fixed a few edge cases that could cause checkpointing to hang.
 
 We also published a new tutorial on turning one-off migrations into reusable engineering standards, and shared a few experiments we've been building with Pochi.
 
+Let's dive in!
 
 ### ✨ Enhancements
 
@@ -18,8 +19,7 @@ We also published a new tutorial on turning one-off migrations into reusable eng
 
   Previously, these directories could be scanned during repository walks, which sometimes polluted the agent’s context with large dependency trees. With this change, Pochi avoids traversing common cache directories by default, keeping prompts cleaner and reducing unnecessary context. <br></br> 
 
-  This change does not affect explicit file access through tools like `readFile` or `readDir`. **[#1294](https://github.com/TabbyML/pochi/issues/1294)**
-
+  This change does not affect explicit file access through tools like `listFiles` or `globFiles`.
 
 ### 🐛 Bug fixes 
 
