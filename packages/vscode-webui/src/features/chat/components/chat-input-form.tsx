@@ -20,6 +20,7 @@ interface ChatInputFormProps {
   setInput: (input: ChatInput) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onModShiftSubmit?: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isLoading: boolean;
   editable?: boolean;
   onPaste: (event: ClipboardEvent) => void;
@@ -50,6 +51,7 @@ export const ChatInputForm = forwardRef<
     setInput,
     onSubmit,
     onCtrlSubmit,
+    onModShiftSubmit,
     isLoading,
     editable,
     onPaste,
@@ -85,6 +87,7 @@ export const ChatInputForm = forwardRef<
       setInput={setInput}
       onSubmit={onSubmit}
       onCtrlSubmit={onCtrlSubmit}
+      onModShiftSubmit={onModShiftSubmit}
       isLoading={isLoading}
       editable={editable}
       editorRef={editorRef}

@@ -294,6 +294,14 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     [handleSubmitImpl],
   );
 
+  const handleModShiftSubmit = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      handleSubmitImpl({ shouldCreatePlan: true });
+    },
+    [handleSubmitImpl],
+  );
+
   const handleClickSubmit = useCallback(
     async (shouldCreatePlan?: boolean) => {
       chatInputFormRef.current?.addToSubmitHistory();
@@ -312,6 +320,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         setInput={setInput}
         onSubmit={handleSubmit}
         onCtrlSubmit={handleCtrlSubmit}
+        onModShiftSubmit={handleModShiftSubmit}
         isLoading={isCreatingTask}
         editable={!isCreatingTask}
         onPaste={handlePasteAttachment}
@@ -400,7 +409,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             isLoading={debouncedIsCreatingTask}
             disabled={!selectedModel || isUploadingAttachments}
             onSubmit={() => handleClickSubmit()}
-            onSubmitPlan={() => handleClickSubmit(true)}
+            onModShiftSubmit={() => handleClickSubmit(true)}
             mcpConfigOverride={mcpConfigOverride}
             onToggleServer={toggleServer}
             resetMcpTools={resetMcpTools}
