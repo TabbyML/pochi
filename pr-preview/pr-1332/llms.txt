@@ -3364,6 +3364,80 @@ Let’s dive right in! 🏮
   This tool will not be enabled by default and will be triggered explicitly, allowing teams to opt into review workflows when needed.
 
 
+# Weekly Update
+URL: /developer-updates/2026-03-06-weekly-update-24
+
+***
+
+## title: Weekly Update #24
+
+# Weekly Update #24
+
+### TL;DR
+
+A small but solid update this week. Pochi now ignores large dependency directories like `node_modules` when building the file context for a task, even if the repository doesn’t define a `.gitignore`. We also fixed a few edge cases that could cause checkpointing to hang.
+
+We also published a new tutorial on turning one-off migrations into reusable engineering standards, and shared a few experiments we've been building with Pochi.
+
+Let's dive in!
+
+### ✨ Enhancements
+
+* **Ignore package manager cache directories during repository traversal:** Directory traversal now ignores common package manager cache directories such as `node_modules`, even when a repository does not define a `.gitignore`. <br />
+
+  Previously, these directories could be scanned during traversal, which sometimes polluted the agent’s file context with large dependency trees. With this change, Pochi skips common cache directories by default, keeping prompts cleaner and reducing unnecessary context. <br />
+
+  This change does not affect explicit file access through tools like `listFiles` or `globFiles`. **[#1279](https://github.com/TabbyML/pochi/issues/1279)**
+
+### 🐛 Bug fixes
+
+* **Fix checkpoint hangs in edge cases:** Fixed several issues where Pochi could hang when checkpoint creation failed. This could happen in environments where Git was not available, or when the workspace contained certain hidden or nested repository directories that Git could not stage properly.
+
+  Instead, checkpoint failures are now handled more robustly to prevent the UI from getting stuck in a loading state. **[#1310](https://github.com/TabbyML/pochi/issues/1310)**
+
+### 📖 Resources
+
+* **Turning a One-Shot Migration Prompt into an Executable Engineering Standard:** Library migration is a common but tedious part of maintaining production systems in an engineering team. When these changes need to be repeated across multiple repositories, keeping everything consistent quickly becomes difficult.
+
+  In this article we show how a migration was evolved into a reusable Pochi Skill and enforced through CI and lint checks, turning a one-time prompt into a version-controlled engineering standard. **[Read the full tutorial.](https://docs.getpochi.com/tutorials/safe-librarby-migration-with-pochi-skills.mdx)**
+
+### 🛠️ Experiments
+
+We’ve also been using Pochi to automate parts of our own workflow and experiment with a few side projects along the way.
+
+* **DocFlow: automate docs publishing:** A CLI tool that fetches documents from Lark, Notion, or Google Docs and converts them into Markdown/MDX ready for our docs site. It extracts assets, uploads them to S3 with content hashing, and prepares the final file for commit.
+  **[Checkout the repo](https://github.com/mufassirkazi/docflow)**
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/docflow-demo-034.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+* **GitHub Activity Visualizer:** A small experiment that turns repository activity into a tiny animated office where contributors move PRs through review pipelines. **[Checkout the repo](https://github.com/mufassirkazi/github-visualizer).**
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/github-visualiser-034.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+* **Debugging a Node.js memory issue:** In one of our services, RSS memory kept climbing even though V8 heap usage looked stable. Pochi traced the issue to an unawaited `pipeTo()` stream that was leaving native buffers alive after requests completed.
+  [Full Pochi walkthrough](https://app.getpochi.com/share/p-70108d56677140f188885644eb92b050)
+
+
 # Reusable skills. Stop repeating prompts.
 URL: /developer-updates/agent-skills
 Turn repeated instructions into reusable capabilities
@@ -3759,6 +3833,78 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
   ### Sep 22, 2025
 
   --- */}
+
+## [Weekly Update #24](./2026-03-06-weekly-update-24)
+
+#### March 06, 2026
+
+# Weekly Update #24
+
+### TL;DR
+
+A small but solid update this week. Pochi now ignores large dependency directories like `node_modules` when building the file context for a task, even if the repository doesn’t define a `.gitignore`. We also fixed a few edge cases that could cause checkpointing to hang.
+
+We also published a new tutorial on turning one-off migrations into reusable engineering standards, and shared a few experiments we've been building with Pochi.
+
+Let's dive in!
+
+### ✨ Enhancements
+
+* **Ignore package manager cache directories during repository traversal:** Directory traversal now ignores common package manager cache directories such as `node_modules`, even when a repository does not define a `.gitignore`. <br />
+
+  Previously, these directories could be scanned during traversal, which sometimes polluted the agent’s file context with large dependency trees. With this change, Pochi skips common cache directories by default, keeping prompts cleaner and reducing unnecessary context. <br />
+
+  This change does not affect explicit file access through tools like `listFiles` or `globFiles`. **[#1279](https://github.com/TabbyML/pochi/issues/1279)**
+
+### 🐛 Bug fixes
+
+* **Fix checkpoint hangs in edge cases:** Fixed several issues where Pochi could hang when checkpoint creation failed. This could happen in environments where Git was not available, or when the workspace contained certain hidden or nested repository directories that Git could not stage properly.
+
+  Instead, checkpoint failures are now handled more robustly to prevent the UI from getting stuck in a loading state. **[#1310](https://github.com/TabbyML/pochi/issues/1310)**
+
+### 📖 Resources
+
+* **Turning a One-Shot Migration Prompt into an Executable Engineering Standard:** Library migration is a common but tedious part of maintaining production systems in an engineering team. When these changes need to be repeated across multiple repositories, keeping everything consistent quickly becomes difficult.
+
+  In this article we show how a migration was evolved into a reusable Pochi Skill and enforced through CI and lint checks, turning a one-time prompt into a version-controlled engineering standard. **[Read the full tutorial.](https://docs.getpochi.com/tutorials/safe-librarby-migration-with-pochi-skills.mdx)**
+
+### 🛠️ Experiments
+
+We’ve also been using Pochi to automate parts of our own workflow and experiment with a few side projects along the way.
+
+* **DocFlow: automate docs publishing:** A CLI tool that fetches documents from Lark, Notion, or Google Docs and converts them into Markdown/MDX ready for our docs site. It extracts assets, uploads them to S3 with content hashing, and prepares the final file for commit.
+  **[Checkout the repo](https://github.com/mufassirkazi/docflow)**
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/docflow-demo-034.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+* **GitHub Activity Visualizer:** A small experiment that turns repository activity into a tiny animated office where contributors move PRs through review pipelines. **[Checkout the repo](https://github.com/mufassirkazi/github-visualizer).**
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+      }}
+  >
+    <source src="https://assets.docs.getpochi.com/github-visualiser-034.mp4" type="video/mp4" />
+
+    Your browser does not support the video tag.
+  </video>
+
+* **Debugging a Node.js memory issue:** In one of our services, RSS memory kept climbing even though V8 heap usage looked stable. Pochi traced the issue to an unawaited `pipeTo()` stream that was leaving native buffers alive after requests completed.
+  [Full Pochi walkthrough](https://app.getpochi.com/share/p-70108d56677140f188885644eb92b050)
+
+***
 
 ## [Weekly Update #23](./2026-02-27-weekly-update-23)
 
