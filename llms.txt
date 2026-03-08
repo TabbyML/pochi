@@ -3397,9 +3397,9 @@ Let's dive in!
 
 ### 📖 Resources
 
-* **Turning a One-Shot Migration Prompt into an Executable Engineering Standard:** Library migration is a common but tedious part of maintaining production systems in an engineering team. When these changes need to be repeated across multiple repositories, keeping everything consistent quickly becomes difficult.
+* **Manage Library Migration At Team Scale:** Library migration is a common but tedious part of maintaining production systems in an engineering team. When these changes need to be repeated across multiple repositories, keeping everything consistent quickly becomes difficult.
 
-  In this article we show how a migration was evolved into a reusable Pochi Skill and enforced through CI and lint checks, turning a one-time prompt into a version-controlled engineering standard. **[Read the full tutorial.](https://docs.getpochi.com/tutorials/safe-librarby-migration-with-pochi-skills.mdx)**
+  In this article we show how a migration was evolved into a reusable Pochi Skill and enforced through CI and lint checks, turning a one-time prompt into a version-controlled engineering standard. **[Read the full tutorial.](https://docs.getpochi.com/tutorials/manage-library-migration-at-team-scale/)**
 
 ### 🛠️ Experiments
 
@@ -3864,9 +3864,9 @@ Let's dive in!
 
 ### 📖 Resources
 
-* **Turning a One-Shot Migration Prompt into an Executable Engineering Standard:** Library migration is a common but tedious part of maintaining production systems in an engineering team. When these changes need to be repeated across multiple repositories, keeping everything consistent quickly becomes difficult.
+* **Manage Library Migration At Team Scale:** Library migration is a common but tedious part of maintaining production systems in an engineering team. When these changes need to be repeated across multiple repositories, keeping everything consistent quickly becomes difficult.
 
-  In this article we show how a migration was evolved into a reusable Pochi Skill and enforced through CI and lint checks, turning a one-time prompt into a version-controlled engineering standard. **[Read the full tutorial.](https://docs.getpochi.com/tutorials/safe-librarby-migration-with-pochi-skills.mdx)**
+  In this article we show how a migration was evolved into a reusable Pochi Skill and enforced through CI and lint checks, turning a one-time prompt into a version-controlled engineering standard. **[Read the full tutorial.](https://docs.getpochi.com/tutorials/manage-library-migration-at-team-scale/)**
 
 ### 🛠️ Experiments
 
