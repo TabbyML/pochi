@@ -1,12 +1,10 @@
-import type { BlobStore } from "@getpochi/livekit";
+import { type BlobStore, type LiveKitStore, catalog } from "@getpochi/livekit";
 import type { Message } from "@getpochi/livekit";
-
-import { isToolUIPart } from "ai";
-
+import type { ClientTools } from "@getpochi/tools";
+import { type InferToolInput, isToolUIPart } from "ai";
 import * as R from "remeda";
 import * as runExclusive from "run-exclusive";
 import type { NodeChatState } from "./livekit/chat.node";
-import type { TaskRunner } from "./task-runner";
 
 export interface JsonRendererOptions {
   mode: "full" | "result-only";
@@ -20,7 +18,9 @@ export class JsonRenderer {
   private attemptCompletionSchemaOverride: boolean;
 
   constructor(
-    private readonly store: BlobStore,
+    private readonly stream: NodeJS.WritableStream,
+    private readonly store: LiveKitStore,
+    private readonly blobStore: BlobStore,
     private readonly state: NodeChatState,
     options: JsonRendererOptions = { mode: "full" },
   ) {
@@ -38,6 +38,7 @@ export class JsonRenderer {
       );
     }
   }
+
   async shutdown() {
     if (this.mode === "result-only") {
       this.outputResult();
@@ -45,8 +46,6 @@ export class JsonRenderer {
       await this.outputMessages(this.state.signal.messages.value);
     }
   }
-
-  renderSubTask(_task: TaskRunner) {}
 
   private outputResult() {
     const messages = this.state.signal.messages.value;
@@ -58,9 +57,9 @@ export class JsonRenderer {
           if (part.input) {
             const input = part.input as Record<string, unknown>;
             if (this.attemptCompletionSchemaOverride) {
-              console.log(JSON.stringify(input.result, null, 2));
+              this.stream.write(`${JSON.stringify(input.result, null, 2)}\n`);
             } else {
-              console.log(input.result);
+              this.stream.write(`${input.result}\n`);
             }
           }
           return;
@@ -72,11 +71,54 @@ export class JsonRenderer {
   private async outputMessages(messages: Message[]) {
     for (const message of messages) {
       if (!this.outputMessageIds.has(message.id)) {
-        console.log(JSON.stringify(await mapStoreBlob(this.store, message)));
+        let outputMessage = await inlineSubTask(this.store, message);
+        outputMessage = (await mapStoreBlob(
+          this.blobStore,
+          outputMessage,
+        )) as Message;
+        this.stream.write(`${JSON.stringify(outputMessage)}\n`);
         this.outputMessageIds.add(message.id);
       }
     }
   }
+}
+
+async function inlineSubTask(
+  store: LiveKitStore,
+  message: Message,
+): Promise<Message> {
+  const partsWithSubtasks = message.parts.map((part) => {
+    if (part.type === "tool-newTask" && part.state !== "input-streaming") {
+      const input = part.input as InferToolInput<ClientTools["newTask"]>;
+      const subtaskId = input._meta?.uid;
+      if (subtaskId) {
+        const subtask = store.query(catalog.queries.makeTaskQuery(subtaskId));
+        const subtaskMessages = store.query(
+          catalog.queries.makeMessagesQuery(subtaskId),
+        );
+        if (subtask) {
+          return {
+            ...part,
+            input: {
+              ...input,
+              _transient: {
+                task: {
+                  clientTaskId: subtaskId,
+                  messages: subtaskMessages.map((m) => m.data as Message),
+                  todos: subtask.todos.map((t) => ({ ...t })),
+                },
+              },
+            },
+          };
+        }
+      }
+    }
+    return part;
+  });
+  return {
+    ...message,
+    parts: partsWithSubtasks,
+  };
 }
 
 async function mapStoreBlob(store: BlobStore, o: unknown): Promise<unknown> {
