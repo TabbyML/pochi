@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { prompts } from "@getpochi/common";
+import { BuiltInSkillPath, prompts } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
@@ -24,6 +24,16 @@ export const useSkill =
       throw new Error(
         `Skill '${skillName}' not found. Available skills: ${availableSkills}`,
       );
+    }
+
+    // Builtin skills don't have a real file path — return instructions directly
+    if (skill.filePath === BuiltInSkillPath) {
+      return {
+        result: prompts.createUseSkillResult(skill),
+        _meta: {
+          filePath: BuiltInSkillPath,
+        },
+      };
     }
 
     // Resolve the file path
