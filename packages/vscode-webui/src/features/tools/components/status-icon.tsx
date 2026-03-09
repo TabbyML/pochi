@@ -114,7 +114,10 @@ export function StatusIcon({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>{statusIcon}</TooltipTrigger>
-          <TooltipContent className="max-w-[calc(100vw-30px)]">
+          <TooltipContent
+            className="max-w-[calc(100vw-30px)]"
+            onClick={(e) => e.stopPropagation()}
+          >
             {tooltipContent.map((item, index) => (
               <div className="text-wrap break-words" key={index}>
                 {item}
