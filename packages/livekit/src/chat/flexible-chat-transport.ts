@@ -37,6 +37,7 @@ import {
 } from "./middlewares";
 import { createOutputSchemaMiddleware } from "./middlewares/output-schema-middleware";
 import { createModel } from "./models";
+import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -173,6 +174,16 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
 
+    const systemPrompt = prompts.system(
+      environment?.info?.customRules,
+      this.customAgent,
+      mcpInfo?.instructions,
+    );
+    const systemPromptChars = systemPrompt.length;
+    const toolsChars = JSON.stringify(tools).length;
+    const systemPromptTokens = Math.ceil(systemPromptChars / 4);
+    const toolsTokens = Math.ceil(toolsChars / 4);
+
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
       convertToModelMessages(
@@ -189,11 +200,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           useCase: "agent",
         } satisfies PochiProviderOptions,
       },
-      system: prompts.system(
-        environment?.info?.customRules,
-        this.customAgent,
-        mcpInfo?.instructions,
-      ),
+      system: systemPrompt,
       messages: modelMessages,
       model: wrapLanguageModel({
         model,
@@ -223,6 +230,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             totalTokens:
               part.totalUsage.totalTokens || estimateTotalTokens(messages),
             finishReason: part.finishReason,
+            systemPromptTokens,
+            toolsTokens,
           } satisfies Metadata;
         }
       },
@@ -257,17 +266,21 @@ function isWellKnownReasoningModel(model?: string): boolean {
 }
 
 function estimateTotalTokens(messages: Message[]): number {
-  let totalTextLength = 0;
+  let totalTokens = 0;
   for (const message of messages) {
     for (const part of message.parts) {
       if (part.type === "text") {
-        totalTextLength += part.text.length;
+        totalTokens += estimateTokens(part.text);
+      } else if (part.type === "reasoning") {
+        totalTokens += estimateTokens(part.text);
+      } else if (part.type === "file") {
+        totalTokens += ImageEstimatedTokens;
       } else if (isToolUIPart(part)) {
-        totalTextLength += JSON.stringify(part).length;
+        totalTokens += estimateTokens(JSON.stringify(part));
       }
     }
   }
-  return Math.ceil(totalTextLength / 4);
+  return totalTokens;
 }
 
 async function resolvePromise(o: unknown): Promise<unknown> {

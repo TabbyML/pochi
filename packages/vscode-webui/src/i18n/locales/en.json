@@ -47,11 +47,18 @@
     "ofTokens": "% of {{tokens}} tokens",
     "rules": "Rules",
     "contextWindow": "Context Window",
-    "ofUsed": "{{used}} of {{total}} used",
     "newTaskWithSummary": "New Task with Summary",
     "compactTask": "Compact Task",
     "minTokensRequired": "At least {{minTokens}} tokens are required to compact the conversation",
-    "defaultContextWindowWarning": "The context window value is a default and may not be accurate for your custom model. For precise token management, please adjust it in the settings according to your model provider's documentation."
+    "defaultContextWindowWarning": "The context window value is a default and may not be accurate for your custom model. For precise token management, please adjust it in the settings according to your model provider's documentation.",
+    "tokensUsed": "{{used}} / {{total}} tokens • {{percentage}}%",
+    "system": "System",
+    "systemInstructions": "System Instructions",
+    "toolDefinitions": "Tool Definitions",
+    "userContext": "User Context",
+    "messages": "Messages",
+    "files": "Files",
+    "toolResults": "Tool Results"
   },
   "modelSelect": {
     "selectModel": "Select Model",

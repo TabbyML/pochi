@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRules } from "@/lib/hooks/use-rules";
+import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { constants } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -22,6 +23,7 @@ import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 interface Props {
+  taskId: string;
   selectedModel: DisplayModel;
   totalTokens: number;
   className?: string;
@@ -35,11 +37,13 @@ interface Props {
 }
 
 export function TokenUsage({
+  taskId,
   totalTokens,
   className,
   compact,
   selectedModel,
 }: Props) {
+  const { contextWindowUsage } = useTaskContextWindowUsage(taskId);
   const { t } = useTranslation();
   const contextWindow =
     selectedModel.options.contextWindow || constants.DefaultContextWindow;
@@ -91,6 +95,34 @@ export function TokenUsage({
         </p>
       </TooltipContent>
     ) : null;
+
+  const getPct = (value: number | undefined) => {
+    if (!value || !contextWindowUsage) return 0;
+
+    // Sum up the total tokens from the breakdown
+    const breakdownTotal =
+      contextWindowUsage.system +
+      contextWindowUsage.tools +
+      contextWindowUsage.messages +
+      contextWindowUsage.files +
+      contextWindowUsage.toolResults;
+
+    if (breakdownTotal === 0) return 0;
+
+    return (value / breakdownTotal) * percentage;
+  };
+
+  const systemVal = getPct(contextWindowUsage?.system);
+  const toolsVal = getPct(contextWindowUsage?.tools);
+  const messagesVal = getPct(contextWindowUsage?.messages);
+  const filesVal = getPct(contextWindowUsage?.files);
+  const toolResultsVal = getPct(contextWindowUsage?.toolResults);
+
+  const showSystemSection = systemVal > 0.05 || toolsVal > 0.05;
+  const showUserContextSection =
+    messagesVal > 0.05 || filesVal > 0.05 || toolResultsVal > 0.05;
+  const showBreakdown =
+    contextWindowUsage && (showSystemSection || showUserContextSection);
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
@@ -144,7 +176,7 @@ export function TokenUsage({
             </div>
           )}
           <div className="flex flex-col gap-y-1">
-            <div className="mb-1 flex items-center gap-1 text-muted-foreground">
+            <div className="mb-1 flex items-center gap-1 font-medium text-foreground">
               <span>{t("tokenUsage.contextWindow")}</span>
               {selectedModel.type === "provider" &&
                 selectedModel.options.contextWindow === undefined && (
@@ -156,7 +188,7 @@ export function TokenUsage({
                           className="inline-flex cursor-pointer items-center"
                           rel="noopener noreferrer"
                         >
-                          <CircleAlert className="size-3.5" />
+                          <CircleAlert className="size-3.5 text-muted-foreground" />
                         </a>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -168,13 +200,64 @@ export function TokenUsage({
                   </TooltipProvider>
                 )}
             </div>
-            <div>
-              <Progress value={percentage} className="mb-1" />
-              {t("tokenUsage.ofUsed", {
+            <div className="mb-2 text-muted-foreground">
+              {t("tokenUsage.tokensUsed", {
                 used: formatTokens(totalTokens),
                 total: formatTokens(contextWindow),
+                percentage,
               })}
             </div>
+            <Progress value={percentage} className="mb-3" />
+
+            {showBreakdown && (
+              <div className="mt-1 flex flex-col gap-y-3">
+                {showSystemSection && (
+                  <div className="flex flex-col gap-y-1.5">
+                    <div className="font-medium text-foreground">
+                      {t("tokenUsage.system")}
+                    </div>
+                    {systemVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.systemInstructions")}</span>
+                        <span>{systemVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {toolsVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.toolDefinitions")}</span>
+                        <span>{toolsVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {showUserContextSection && (
+                  <div className="flex flex-col gap-y-1.5">
+                    <div className="font-medium text-foreground">
+                      {t("tokenUsage.userContext")}
+                    </div>
+                    {messagesVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.messages")}</span>
+                        <span>{messagesVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {filesVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.files")}</span>
+                        <span>{filesVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {toolResultsVal > 0.05 && (
+                      <div className="ml-3 flex justify-between text-muted-foreground">
+                        <span>{t("tokenUsage.toolResults")}</span>
+                        <span>{toolResultsVal.toFixed(1)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="mt-2 flex items-center gap-x-2">
             <TooltipProvider>
