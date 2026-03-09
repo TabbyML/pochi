@@ -414,6 +414,26 @@
         "when": "editorTextFocus && (pochiTabCompletionState || inlineSuggestionVisible)"
       },
       {
+        "command": "pochi.tabCompletion.nextChoice",
+        "key": "alt+]",
+        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible'"
+      },
+      {
+        "command": "pochi.tabCompletion.prevChoice",
+        "key": "alt+[",
+        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible'"
+      },
+      {
+        "command": "pochi.tabCompletion.nextChoice",
+        "key": "right",
+        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible' && pochiTabCompletionHasMultipleChoices"
+      },
+      {
+        "command": "pochi.tabCompletion.prevChoice",
+        "key": "left",
+        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible' && pochiTabCompletionHasMultipleChoices"
+      },
+      {
         "command": "pochi.applyPochiLayoutWithCycleFocus",
         "key": "ctrl+l",
         "mac": "cmd+l"

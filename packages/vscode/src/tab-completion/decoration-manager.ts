@@ -64,6 +64,15 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
   // mark a position where lines insertion is previewed in image decoration
   private lineInsertionMarkerDecorationType: vscode.TextEditorDecorationType;
 
+  // Toolbar decoration
+  // show choices switch
+  private toolbarDecorationType: vscode.TextEditorDecorationType;
+  private currentToolbarInfo?: {
+    index: number;
+    total: number;
+    position: vscode.Position;
+  };
+
   private allDecorationTypes: vscode.TextEditorDecorationType[];
 
   constructor(
@@ -314,6 +323,11 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
         ),
       });
 
+    // Toolbar decoration
+    this.toolbarDecorationType = vscode.window.createTextEditorDecorationType(
+      {},
+    );
+
     this.allDecorationTypes = [
       this.scrollIndicatorUpDecorationType,
       this.scrollIndicatorDownDecorationType,
@@ -331,6 +345,7 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
       this.lineRemovalMidLinesDecorationType,
       this.wordInsertionMarkerDecorationType,
       this.lineInsertionMarkerDecorationType,
+      this.toolbarDecorationType,
     ];
   }
 
@@ -345,15 +360,27 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
     editor: vscode.TextEditor,
     item: TabCompletionSolutionItem,
     token: vscode.CancellationToken, // cancel to hide
+    choiceIndex?: number,
+    totalChoices?: number,
   ) {
     if (token.isCancellationRequested) {
       return;
     }
 
+    this.currentToolbarInfo =
+      choiceIndex !== undefined && totalChoices !== undefined
+        ? {
+            index: choiceIndex,
+            total: totalChoices,
+            position: item.context.selection.active,
+          }
+        : undefined;
+
     const disposables: vscode.Disposable[] = [];
     const cleanup = () => {
       updatePochiTabCompletionState(undefined);
       this.clearDecoration(editor);
+      this.currentToolbarInfo = undefined;
       for (const disposable of disposables) {
         disposable.dispose();
       }
@@ -473,6 +500,7 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
           decoration,
         ]);
         updatePochiTabCompletionState("scrollIndicatorVisible");
+        this.renderToolbar(editor);
         logger.debug("Decoration updated: scroll indicator up visible.");
         return;
       }
@@ -503,6 +531,7 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
           decoration,
         ]);
         updatePochiTabCompletionState("scrollIndicatorVisible");
+        this.renderToolbar(editor);
         logger.debug("Decoration updated: scroll indicator down visible.");
         return;
       }
@@ -737,6 +766,7 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
           lineInsertionMarkers,
         );
         updatePochiTabCompletionState("diffVisible");
+        this.renderToolbar(editor);
         logger.debug("Decoration updated: image decoration visible.");
         return;
       }
@@ -858,6 +888,7 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
         lineRemovalsMidLines,
       );
       updatePochiTabCompletionState("diffVisible");
+      this.renderToolbar(editor);
       logger.debug("Decoration updated: inline diff decoration visible.");
     };
 
@@ -1008,6 +1039,66 @@ export class TabCompletionDecorationManager implements vscode.Disposable {
     for (const type of this.allDecorationTypes) {
       editor.setDecorations(type, []);
     }
+    vscode.commands.executeCommand(
+      "setContext",
+      "pochiTabCompletionHasMultipleChoices",
+      false,
+    );
+  }
+
+  updateToolbar(
+    editor: vscode.TextEditor,
+    choiceIndex: number,
+    totalChoices: number,
+    position: vscode.Position,
+  ) {
+    this.currentToolbarInfo = {
+      index: choiceIndex,
+      total: totalChoices,
+      position,
+    };
+    this.renderToolbar(editor);
+  }
+
+  private renderToolbar(editor: vscode.TextEditor) {
+    if (!this.currentToolbarInfo || this.currentToolbarInfo.total <= 1) {
+      editor.setDecorations(this.toolbarDecorationType, []);
+      vscode.commands.executeCommand(
+        "setContext",
+        "pochiTabCompletionHasMultipleChoices",
+        false,
+      );
+      return;
+    }
+
+    const { index, total, position } = this.currentToolbarInfo;
+
+    // Use a single decoration with before and after, placed exactly at the cursor position
+    // and using position: absolute to float above the completion content.
+    const textStr = ` < ${index + 1}/${total} >   Accept [Tab] `;
+    const decorationOptions: vscode.DecorationOptions = {
+      range: new vscode.Range(position, position),
+      renderOptions: {
+        before: {
+          contentText: textStr,
+          color: new vscode.ThemeColor("editorWidget.foreground"),
+          backgroundColor: new vscode.ThemeColor(
+            "editorSuggestWidget.background",
+          ),
+          border: "1px solid",
+          borderColor: new vscode.ThemeColor("editorWidget.border"),
+          textDecoration:
+            "none; position: absolute; top: -30px; padding: 4px 8px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16); font-size: 12px; font-weight: normal; vertical-align: middle; z-index: 10000; font-family: var(--vscode-editor-font-family);",
+        },
+      },
+    };
+
+    editor.setDecorations(this.toolbarDecorationType, [decorationOptions]);
+    vscode.commands.executeCommand(
+      "setContext",
+      "pochiTabCompletionHasMultipleChoices",
+      true,
+    );
   }
 
   dispose() {
