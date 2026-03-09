@@ -51,6 +51,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const { t } = useTranslation();
   const activeSelection = useActiveSelection();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
+  const [planMode, setPlanMode] = useState(false);
+  const togglePlanMode = useCallback(() => setPlanMode((v) => !v), []);
   const {
     globalMcpConfig,
     mcpConfigOverride,
@@ -208,7 +210,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       shouldCreateWorktree?: boolean;
       shouldCreatePlan?: boolean;
     }) => {
-      const { shouldCreateWorktree, shouldCreatePlan } = options || {};
+      const { shouldCreateWorktree } = options || {};
+      const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
 
       if (isCreatingTask) return;
 
@@ -263,6 +266,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
       setDebouncedIsCreatingTask(false);
+      // Reset plan mode after each submission
+      setPlanMode(false);
     },
     [
       input.text,
@@ -275,6 +280,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearUploadError,
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
+      planMode,
     ],
   );
 
@@ -323,6 +329,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
         reviews={emptyReviews}
+        onTogglePlanMode={togglePlanMode}
+        isPlanMode={planMode}
       >
         {files.length > 0 && (
           <div className="px-3">
@@ -404,6 +412,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             mcpConfigOverride={mcpConfigOverride}
             onToggleServer={toggleServer}
             resetMcpTools={resetMcpTools}
+            isPlanMode={planMode}
+            onTogglePlanMode={togglePlanMode}
           />
         </div>
       </div>
