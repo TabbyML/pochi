@@ -5,6 +5,47 @@ import * as runExclusive from "run-exclusive";
 
 const logger = getLogger("MjpegToMp4");
 
+export function setFfmpegPath(path: string) {
+  ffmpeg.setFfmpegPath(path);
+}
+
+export async function isMjpegToMp4ConverterAvaiable(): Promise<boolean> {
+  const checkCodecs = new Promise<boolean>((resolve) => {
+    ffmpeg.getAvailableCodecs((err, codecs) => {
+      if (err) {
+        logger.debug("Failed to get available codecs.", err.message);
+        return resolve(false);
+      }
+      const hasLibx264 = "libx264" in codecs && codecs.libx264.canEncode;
+      if (!hasLibx264) {
+        logger.debug("libx264 codec not available.");
+      }
+      resolve(hasLibx264);
+    });
+  });
+
+  const checkFormats = new Promise<boolean>((resolve) => {
+    ffmpeg.getAvailableFormats((err, formats) => {
+      if (err) {
+        logger.debug("Failed to get available formats.", err.message);
+        return resolve(false);
+      }
+      const hasMjpeg = "mjpeg" in formats && formats.mjpeg.canDemux;
+      if (!hasMjpeg) {
+        logger.debug("mjpeg format not available.");
+      }
+      const hasMp4 = "mp4" in formats && formats.mp4.canMux;
+      if (!hasMp4) {
+        logger.debug("mp4 format not available.");
+      }
+      resolve(hasMjpeg && hasMp4);
+    });
+  });
+
+  const [codecsOk, formatsOk] = await Promise.all([checkCodecs, checkFormats]);
+  return codecsOk && formatsOk;
+}
+
 export type TimestampedFrame = {
   data: string; // base64 jpeg
   ts: number; // seconds
@@ -33,7 +74,7 @@ type Options = {
   height?: number;
 };
 
-export function createMjpegToMp4Converter(
+export function startMjpegToMp4Converter(
   outputPath: string,
   opts: Options = {},
 ): Converter {

@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { constants } from "@getpochi/common";
 import type {
@@ -9,8 +10,8 @@ import type {
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { WebSocket } from "ws";
 import {
-  type Converter as VideoConverter,
-  createMjpegToMp4Converter,
+  isMjpegToMp4ConverterAvaiable,
+  startMjpegToMp4Converter,
 } from "../lib/ffmpeg-mjpeg-to-mp4";
 import type { ToolCallOptions } from "../types";
 
@@ -20,7 +21,7 @@ import type { ToolCallOptions } from "../types";
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType, runAsync }) => {
+  async ({ _meta, agentType, runAsync }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -43,25 +44,23 @@ export const newTask =
     }
 
     // for browser agent
-    let ws: ReconnectingWebSocket | undefined = undefined;
-    let recorder: VideoConverter | undefined = undefined;
     let finalize: (() => Promise<void>) | undefined = undefined;
     if (customAgent?.name === "browser" && options.browserSessionStore) {
+      const enableRecording = await isMjpegToMp4ConverterAvaiable();
+
       const { streamUrl } =
         await options.browserSessionStore.registerBrowserSession(
           taskId,
           undefined,
-          !!options.saveBrowserSessionVideo,
+          enableRecording,
         );
 
-      if (options.saveBrowserSessionVideo && streamUrl) {
-        await fs.mkdir(options.saveBrowserSessionVideo, { recursive: true });
-        const recFile = path.resolve(
-          options.saveBrowserSessionVideo,
-          `pochi-browser-${taskId}.mp4`,
+      if (enableRecording && streamUrl) {
+        const tmpFile = path.join(
+          await fs.realpath(os.tmpdir()),
+          `pochi-browser-agent-video-${taskId}.mp4`,
         );
-        const rec = createMjpegToMp4Converter(recFile);
-        recorder = rec;
+        const rec = startMjpegToMp4Converter(tmpFile);
 
         const rws = new ReconnectingWebSocket(streamUrl, [], {
           WebSocket,
@@ -72,7 +71,6 @@ export const newTask =
           reconnectionDelayGrowFactor: 1.5,
         });
         rws.binaryType = "arraybuffer";
-        ws = rws;
 
         rws.addEventListener("message", (e) => {
           if (e.type === "message") {
@@ -91,9 +89,16 @@ export const newTask =
         });
 
         finalize = async () => {
-          ws?.close();
+          rws.close();
           try {
-            await recorder?.stop();
+            await rec.stop();
+            const buffer = await fs.readFile(tmpFile);
+            const url = await options.blobStore.put(buffer, "video/mp4");
+            await options.fileSystem.writeFile(
+              `pochi:///browser-session/${toolCallId}.mp4`,
+              url,
+            );
+            await fs.unlink(tmpFile);
           } catch (e) {
             // ignore error
           }

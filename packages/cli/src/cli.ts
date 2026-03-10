@@ -44,6 +44,7 @@ import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
 import { handleShellCompletion } from "./completion";
 import { JsonRenderer } from "./json-renderer";
+import { setFfmpegPath } from "./lib/ffmpeg-mjpeg-to-mp4";
 import {
   CompoundFileSystem,
   LocalFileSystem,
@@ -130,10 +131,6 @@ const program = new Command()
     "Output the result from attemptCompletion. This is useful for scripts that need to capture the final result. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
   )
   .option(
-    "--save-browser-session-video [dir]",
-    "Set a dir path to save browser session video. Requires ffmpeg to be installed.",
-  )
-  .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
     parsePositiveInt,
@@ -169,8 +166,13 @@ const program = new Command()
       "Specify a command that attempt-completion will run",
     ).hideHelp(),
   )
+  .addOption(
+    new Option(
+      "--ffmpeg <path>",
+      "Specify the path to the ffmpeg executable for browser session recording. Pochi will try to use the ffmpeg executable in the system path if this option is not specified. Browser session recording is disabled when no ffmpeg executable available.",
+    ).hideHelp(),
+  )
   .optionsGroup("Model:")
-
   .option(
     "-m, --model <model>",
     "Specify the model to be used for the task.",
@@ -220,6 +222,10 @@ const program = new Command()
       );
     }
 
+    if (options.ffmpeg) {
+      setFfmpegPath(options.ffmpeg);
+    }
+
     const onSubTaskCreated = (runner: TaskRunner) => {
       outputRenderer.renderSubTask(runner);
     };
@@ -264,10 +270,6 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
-      saveBrowserSessionVideo:
-        options.saveBrowserSessionVideo === true
-          ? "./browser-session/"
-          : options.saveBrowserSessionVideo,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
