@@ -10,7 +10,7 @@ import type {
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { WebSocket } from "ws";
 import {
-  isMjpegToMp4ConverterAvaiable,
+  isMjpegToMp4ConverterAvailable,
   startMjpegToMp4Converter,
 } from "../lib/ffmpeg-mjpeg-to-mp4";
 import type { ToolCallOptions } from "../types";
@@ -46,7 +46,7 @@ export const newTask =
     // for browser agent
     let finalize: (() => Promise<void>) | undefined = undefined;
     if (customAgent?.name === "browser" && options.browserSessionStore) {
-      const enableRecording = await isMjpegToMp4ConverterAvaiable();
+      const enableRecording = await isMjpegToMp4ConverterAvailable();
 
       const { streamUrl } =
         await options.browserSessionStore.registerBrowserSession(

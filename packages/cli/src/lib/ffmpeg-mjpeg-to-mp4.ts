@@ -9,7 +9,7 @@ export function setFfmpegPath(path: string) {
   ffmpeg.setFfmpegPath(path);
 }
 
-export async function isMjpegToMp4ConverterAvaiable(): Promise<boolean> {
+export async function isMjpegToMp4ConverterAvailable(): Promise<boolean> {
   const checkCodecs = new Promise<boolean>((resolve) => {
     ffmpeg.getAvailableCodecs((err, codecs) => {
       if (err) {
