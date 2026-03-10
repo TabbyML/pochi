@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { getLogger } from "@getpochi/common";
+import { BuiltInSkillPath, builtInSkills, getLogger } from "@getpochi/common";
 import { isFileExists, parseSkillFile } from "@getpochi/common/tool-utils";
 import type {
   SkillFile,
@@ -52,12 +52,19 @@ async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
   return skills;
 }
 
+export const builtInSkillFiles: ValidSkillFile[] = builtInSkills.map(
+  (skill) => ({
+    ...skill,
+    filePath: BuiltInSkillPath,
+  }),
+);
+
 export async function loadSkills(
   workingDirectory?: string,
   includeSystemSkills = true,
 ): Promise<ValidSkillFile[]> {
   try {
-    const allSkills: SkillFile[] = [];
+    const allSkills: SkillFile[] = [...builtInSkillFiles];
 
     // Load project skills if working directory is provided
     if (workingDirectory) {
@@ -84,17 +91,19 @@ export async function loadSkills(
     }
 
     // Filter out invalid skills for CLI usage
-    const validSkills = uniqueBy(allSkills, (skill) => skill.name).filter(
-      (skill): skill is ValidSkillFile => {
-        if (isValidSkillFile(skill)) {
-          return true;
-        }
-        logger.warn(
-          `Ignoring invalid skill file ${skill.filePath}: [${skill.error}] ${skill.message}`,
-        );
-        return false;
-      },
-    );
+    const validSkills = uniqueBy(allSkills, (skill) =>
+      skill.filePath === BuiltInSkillPath
+        ? skill.name + BuiltInSkillPath
+        : skill.name,
+    ).filter((skill): skill is ValidSkillFile => {
+      if (isValidSkillFile(skill)) {
+        return true;
+      }
+      logger.warn(
+        `Ignoring invalid skill file ${skill.filePath}: [${skill.error}] ${skill.message}`,
+      );
+      return false;
+    });
 
     logger.debug(
       `Loaded ${allSkills.length} skills (${validSkills.length} valid, ${allSkills.length - validSkills.length} invalid)`,
