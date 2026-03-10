@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { getLogger } from "@getpochi/common";
+import { BuiltInSkillPath, builtInSkills, getLogger } from "@getpochi/common";
 import { parseSkillFile } from "@getpochi/common/tool-utils";
 import {
   type SkillFile,
@@ -123,7 +123,12 @@ export class SkillManager implements vscode.Disposable {
 
   private async loadSkills() {
     try {
-      const allSkills: SkillFile[] = [];
+      const allSkills: SkillFile[] = [
+        ...builtInSkills.map((skill) => ({
+          ...skill,
+          filePath: BuiltInSkillPath,
+        })),
+      ];
       if (this.cwd) {
         const projectSkillsDir = path.join(this.cwd, ".pochi", "skills");
         const cwd = this.cwd;
@@ -144,7 +149,11 @@ export class SkillManager implements vscode.Disposable {
         })),
       );
 
-      this.skills.value = uniqueBy(allSkills, (skill) => skill.name);
+      this.skills.value = uniqueBy(allSkills, (skill) =>
+        skill.filePath === BuiltInSkillPath
+          ? skill.name + BuiltInSkillPath
+          : skill.name,
+      );
       logger.debug(`Loaded ${allSkills.length} skills`);
     } catch (error) {
       logger.error("Failed to load skills", error);

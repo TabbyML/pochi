@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { getLogger, prompts } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
@@ -8,8 +9,6 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-
-import { spawn } from "node:child_process";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
@@ -28,17 +27,14 @@ import {
   isToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import ora from "ora";
 import type z from "zod/v4";
-import type { FileSystem } from "./lib/file-system";
-import { readEnvironment } from "./lib/read-environment";
-
-import { StepCount } from "./lib/step-count";
-
 import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import { BackgroundJobManager } from "./lib/background-job-manager";
+import type { FileSystem } from "./lib/file-system";
+import { readEnvironment } from "./lib/read-environment";
+import { createSpinner } from "./lib/spinner";
+import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
-
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
@@ -312,7 +308,7 @@ export class TaskRunner {
     const pendingSubtaskIds = this.asyncSubTaskManager.getPendingTaskIds();
     const pendingJobIds = this.backgroundJobManager.getPendingJobIds();
 
-    const spinner = ora(
+    const spinner = createSpinner(
       `Waiting for async work to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
 

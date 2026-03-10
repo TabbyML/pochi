@@ -22,6 +22,8 @@ export { toErrorMessage } from "./error";
 
 export { builtInAgents } from "./agents";
 
+export { builtInSkills, BuiltInSkillPath } from "./skills";
+
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
   client: z.string(),

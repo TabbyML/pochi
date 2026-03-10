@@ -4,12 +4,17 @@ import remarkFrontmatter from "remark-frontmatter";
 import { remove } from "unist-util-remove";
 import { matter } from "vfile-matter";
 import z from "zod/v4";
-import { toErrorMessage } from "../base";
+import { builtInSkills, toErrorMessage } from "../base";
 import type {
   InvalidSkillFile,
   SkillFile,
   ValidSkillFile,
 } from "../vscode-webui-bridge";
+
+/**
+ * Names reserved by builtin skills — user-defined skills cannot use these names.
+ */
+const ReservedSkillNames = new Set(builtInSkills.map((s) => s.name));
 
 type VFile = Parameters<typeof matter>[0];
 
@@ -82,6 +87,16 @@ export async function parseSkillFile(
 
   const frontmatterData = parseResult.data;
   const skillName = frontmatterData.name || defaultName;
+
+  if (ReservedSkillNames.has(skillName)) {
+    return {
+      name: skillName,
+      filePath,
+      error: "validationError",
+      message: `Skill name "${skillName}" is reserved by a built-in Pochi skill and cannot be used for custom skills.`,
+      instructions,
+    } satisfies InvalidSkillFile;
+  }
 
   return {
     filePath,

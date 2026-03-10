@@ -1,6 +1,6 @@
 import type { Command } from "@commander-js/extra-typings";
-import ora from "ora";
 import { createCliMcpHub } from "../lib/mcp-hub-factory";
+import { createSpinner } from "../lib/spinner";
 
 /**
  * Initialize MCP connections with a spinner showing progress
@@ -15,7 +15,7 @@ export async function initializeMcp(program: Command) {
   }
 
   // Wait for MCP connections to establish before starting the task
-  const spinner = ora("Initializing MCP connections...").start();
+  const spinner = createSpinner("Initializing MCP connections...").start();
   let attempts = 0;
   const maxAttempts = 15;
 

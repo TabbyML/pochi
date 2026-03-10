@@ -2,6 +2,12 @@
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
+import fs from "node:fs";
+import { Command, Option } from "@commander-js/extra-typings";
+import chalk from "chalk";
+import * as commander from "commander";
+import z from "zod/v4";
+
 // Register the vendor
 import "@getpochi/vendor-tabby";
 import "@getpochi/vendor-pochi";
@@ -18,7 +24,6 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import { Command, Option } from "@commander-js/extra-typings";
 import { constants, getLogger } from "@getpochi/common";
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
@@ -27,32 +32,26 @@ import {
 } from "@getpochi/common/configuration";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
+import type {
+  CustomAgentFile,
+  SkillFile,
+  ValidCustomAgentFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
-import chalk from "chalk";
-import * as commander from "commander";
-import z from "zod/v4";
+
 import packageJson from "../package.json";
+import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
-
 import { handleShellCompletion } from "./completion";
-
+import { JsonRenderer } from "./json-renderer";
 import {
   CompoundFileSystem,
   LocalFileSystem,
   TaskFileSystem,
 } from "./lib/file-system";
 import { findRipgrep } from "./lib/find-ripgrep";
-
 import { loadAgents } from "./lib/load-agents";
 import { loadSkills } from "./lib/load-skills";
-
-import type {
-  CustomAgentFile,
-  SkillFile,
-  ValidCustomAgentFile,
-} from "@getpochi/common/vscode-webui-bridge";
-import { processAttachments } from "./attachment-utils";
-import { JsonRenderer } from "./json-renderer";
 import {
   containsSlashCommandReference,
   getModelFromSlashCommand,
@@ -69,6 +68,9 @@ import { blobStore } from "./node-blob-store";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
+
+// Turn off AI SDK logs
+globalThis.AI_SDK_LOG_WARNINGS = false;
 
 const logger = getLogger("Pochi");
 globalThis.POCHI_CLIENT = `PochiCli/${packageJson.version}`;
@@ -120,12 +122,12 @@ const program = new Command()
   )
   .optionsGroup("Options:")
   .option(
-    "--stream-json",
-    "Stream the output in JSON format. This is useful for parsing the output in scripts.",
+    "--stream-json [filepath]",
+    "Stream the output in JSON format. This is useful for parsing the output in scripts. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --output-result.",
   )
   .option(
-    "-x, --output-result",
-    "Output the result from attemptCompletion to stdout. This is useful for scripts that need to capture the final result.",
+    "-x, --output-result [filepath]",
+    "Output the result from attemptCompletion. This is useful for scripts that need to capture the final result. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
   )
   .option(
     "--max-steps <number>",
@@ -215,7 +217,7 @@ const program = new Command()
     }
 
     const onSubTaskCreated = (runner: TaskRunner) => {
-      renderer.renderSubTask(runner);
+      outputRenderer.renderSubTask(runner);
     };
 
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
@@ -260,33 +262,46 @@ const program = new Command()
       browserSessionStore,
     });
 
-    const renderer = new OutputRenderer(runner.state, {
+    const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
+    let jsonRenderer: JsonRenderer | undefined = undefined;
 
-    let jsonRenderer: JsonRenderer | undefined;
-    if (options.streamJson) {
-      jsonRenderer = new JsonRenderer(blobStore, runner.state, {
-        mode: "full",
-        attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
-      });
-    } else if (options.outputResult) {
-      jsonRenderer = new JsonRenderer(blobStore, runner.state, {
-        mode: "result-only",
-        attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
-      });
+    let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
+      undefined;
+    if (options.streamJson && options.outputResult) {
+      program.error(
+        "Cannot use --stream-json and --output-result at same time.",
+      );
+    }
+    if (options.streamJson === true) {
+      jsonOutputStream = process.stdout;
+    } else if (typeof options.streamJson === "string") {
+      jsonOutputStream = fs.createWriteStream(options.streamJson);
+    } else if (options.outputResult === true) {
+      jsonOutputStream = process.stdout;
+    } else if (typeof options.outputResult === "string") {
+      jsonOutputStream = fs.createWriteStream(options.outputResult);
+    }
+    if (jsonOutputStream) {
+      jsonRenderer = new JsonRenderer(
+        jsonOutputStream,
+        store,
+        blobStore,
+        runner.state,
+        {
+          mode: options.outputResult ? "result-only" : "full",
+          attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
+        },
+      );
     }
 
     await runner.run();
 
     // Cleanup resources after task completion
-    renderer.shutdown();
-    if (mcpHub) {
-      mcpHub.dispose();
-    }
-    if (jsonRenderer) {
-      await jsonRenderer.shutdown();
-    }
+    outputRenderer.shutdown();
+    await jsonRenderer?.shutdown();
+    mcpHub?.dispose();
     browserSessionStore.dispose();
     await shutdownStoreAndExit(store);
   });
