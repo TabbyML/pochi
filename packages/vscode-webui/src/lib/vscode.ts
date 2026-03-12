@@ -76,7 +76,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readActiveTabs",
         "readActiveSelection",
         "readCurrentWorkspace",
-        "previewToolCall",
         "openFile",
         "readResourceURI",
         "listRuleFiles",
