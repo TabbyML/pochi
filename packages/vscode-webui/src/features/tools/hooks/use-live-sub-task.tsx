@@ -15,7 +15,6 @@ import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
-
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import type {
@@ -149,6 +148,7 @@ export function useLiveSubTask(
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
           storeId: store.storeId,
+          taskId: uid,
         },
       );
 

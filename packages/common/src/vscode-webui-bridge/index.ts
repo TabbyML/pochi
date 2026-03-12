@@ -1,6 +1,7 @@
 export type {
   VSCodeHostApi,
   WebviewHostApi,
+  ExecuteToolCallOptions,
 } from "./webview";
 
 export { createVscodeHostStub } from "./webview-stub";

@@ -4,12 +4,12 @@ import type { Environment } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type {
-  BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
   ContextWindowUsage,
   CustomAgentFile,
   DisplayModel,
+  ExecuteToolCallOptions,
   FileDiff,
   GitWorktree,
   GithubIssue,
@@ -70,12 +70,7 @@ const VSCodeHostStub = {
   executeToolCall: (
     _toolName: string,
     _args: unknown,
-    _options: {
-      toolCallId: string;
-      abortSignal: ThreadAbortSignalSerialization;
-      builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      storeId: string;
-    },
+    _options: ExecuteToolCallOptions,
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
   },

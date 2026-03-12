@@ -77,6 +77,7 @@ import {
   type CustomAgentFile,
   type DiffCheckpointOptions,
   type DisplayModel,
+  type ExecuteToolCallOptions,
   type FileDiff,
   type GitWorktree,
   type GithubIssue,
@@ -157,7 +158,10 @@ const logger = getLogger("VSCodeHostImpl");
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
 export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
-  private toolCallGroup = runExclusive.createGroupRef();
+  private toolCallGroupByTaskId = new Map<
+    string,
+    ReturnType<typeof runExclusive.build>
+  >();
   private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
 
@@ -452,86 +456,102 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return envs;
   };
 
-  executeToolCall = runExclusive.build(
-    this.toolCallGroup,
-    async (
-      toolName: string,
-      args: unknown,
-      options: {
-        toolCallId: string;
-        abortSignal: ThreadAbortSignalSerialization;
-        contentType?: string[];
-        builtinSubAgentInfo?: BuiltinSubAgentInfo;
-        storeId: string;
-      },
-    ) => {
-      let tool: ToolFunctionType<Tool> | undefined;
+  private getToolCallExclusiveRunner(lockKey: string) {
+    let exclusiveRunner = this.toolCallGroupByTaskId.get(lockKey);
+    if (!exclusiveRunner) {
+      exclusiveRunner = runExclusive.build(
+        runExclusive.createGroupRef(),
+        async (
+          toolName: string,
+          args: unknown,
+          options: ExecuteToolCallOptions,
+        ) => this.executeToolCallImpl(toolName, args, options),
+      );
+      this.toolCallGroupByTaskId.set(lockKey, exclusiveRunner);
+    }
+    return exclusiveRunner;
+  }
 
-      if (toolName in ToolMap) {
-        tool = ToolMap[toolName];
-      } else if (toolName in this.mcpHub.executeFns.value) {
-        const execute = this.mcpHub.executeFns.value[toolName];
-        tool = (args, options) => execute(args, options);
-      }
+  executeToolCall = async (
+    toolName: string,
+    args: unknown,
+    options: ExecuteToolCallOptions,
+  ) => {
+    const lockKey = options.taskId ?? options.storeId;
+    return this.getToolCallExclusiveRunner(lockKey)(toolName, args, options);
+  };
 
-      if (!tool) {
-        return {
-          error: `Tool ${toolName} not found.`,
-        };
-      }
+  private executeToolCallImpl = async (
+    toolName: string,
+    args: unknown,
+    options: ExecuteToolCallOptions,
+  ) => {
+    let tool: ToolFunctionType<Tool> | undefined;
 
-      if (!this.cwd) {
-        return {
-          error: "No workspace folder found.",
-        };
-      }
+    if (toolName in ToolMap) {
+      tool = ToolMap[toolName];
+    } else if (toolName in this.mcpHub.executeFns.value) {
+      const execute = this.mcpHub.executeFns.value[toolName];
+      tool = (args, options) => execute(args, options);
+    }
 
-      const abortSignal = new ThreadAbortSignal(options.abortSignal);
-      const envs = this.resolveToolCallEnvs(
+    if (!tool) {
+      return {
+        error: `Tool ${toolName} not found.`,
+      };
+    }
+
+    if (!this.cwd) {
+      return {
+        error: "No workspace folder found.",
+      };
+    }
+
+    const abortSignal = new ThreadAbortSignal(options.abortSignal);
+    const envs = this.resolveToolCallEnvs(
+      toolName,
+      options.builtinSubAgentInfo,
+    );
+    const toolCallStart = Date.now();
+    const resolvedArgs = resolveToolCallArgs(
+      args,
+      options.storeId,
+      options.builtinSubAgentInfo,
+    );
+    const result = await safeCall(
+      tool(resolvedArgs, {
+        abortSignal,
+        messages: [],
+        toolCallId: options.toolCallId,
+        cwd: this.cwd,
+        contentType: options.contentType,
+        envs,
+      }),
+    );
+
+    const status = abortSignal.aborted
+      ? "aborted"
+      : typeof result === "object" && result && "error" in result
+        ? "error"
+        : "success";
+
+    const durationMs = Date.now() - toolCallStart;
+    logger.debug(
+      `executeToolCall: ${toolName}(${options.toolCallId}) took ${durationMs}ms => ${status}`,
+    );
+
+    this.capture({
+      event: "executeToolCall",
+      properties: {
         toolName,
-        options.builtinSubAgentInfo,
-      );
-      const toolCallStart = Date.now();
-      const resolvedArgs = resolveToolCallArgs(
-        args,
-        options.storeId,
-        options.builtinSubAgentInfo,
-      );
-      const result = await safeCall(
-        tool(resolvedArgs, {
-          abortSignal,
-          messages: [],
-          toolCallId: options.toolCallId,
-          cwd: this.cwd,
-          contentType: options.contentType,
-          envs,
-        }),
-      );
+        durationMs,
+        batched: options.toolCallId.startsWith("batch-"),
+        status,
+      },
+    });
 
-      const status = abortSignal.aborted
-        ? "aborted"
-        : typeof result === "object" && result && "error" in result
-          ? "error"
-          : "success";
-
-      const durationMs = Date.now() - toolCallStart;
-      logger.debug(
-        `executeToolCall: ${toolName}(${options.toolCallId}) took ${durationMs}ms => ${status}`,
-      );
-
-      this.capture({
-        event: "executeToolCall",
-        properties: {
-          toolName,
-          durationMs,
-          batched: options.toolCallId.startsWith("batch-"),
-          status,
-        },
-      });
-
-      return result;
-    },
-  );
+    return result;
+  };
 
   openFile = async (
     filePath: string,

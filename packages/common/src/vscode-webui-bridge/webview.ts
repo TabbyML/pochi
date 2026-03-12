@@ -36,6 +36,16 @@ import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { VSCodeSettings } from "./types/vscode-settings";
 
+export type ExecuteToolCallOptions = {
+  toolCallId: string;
+  abortSignal: ThreadAbortSignalSerialization;
+  contentType?: string[];
+  builtinSubAgentInfo?: BuiltinSubAgentInfo;
+  storeId: string;
+  /** Task ID used to scope the exclusive lock per task. When provided, tool calls for the same task are serialized independently from other tasks. */
+  taskId?: string;
+};
+
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
 
@@ -81,13 +91,7 @@ export interface VSCodeHostApi {
   executeToolCall(
     toolName: string,
     args: unknown,
-    options: {
-      toolCallId: string;
-      abortSignal: ThreadAbortSignalSerialization;
-      contentType?: string[];
-      builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      storeId: string;
-    },
+    options: ExecuteToolCallOptions,
   ): Promise<unknown>;
 
   listFilesInWorkspace(): Promise<
