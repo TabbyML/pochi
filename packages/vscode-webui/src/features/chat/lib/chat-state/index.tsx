@@ -19,22 +19,15 @@ export function useChatAbortController() {
 }
 
 export function useToolCallLifeCycle() {
-  const {
-    getToolCallLifeCycle,
-    executingToolCalls,
-    previewingToolCalls,
-    completeToolCalls,
-  } = useChatState();
+  const { getToolCallLifeCycle, executingToolCalls, completeToolCalls } =
+    useChatState();
 
   const isExecuting = executingToolCalls.length > 0;
-  const isPreviewing = previewingToolCalls.length > 0;
   return {
     getToolCallLifeCycle,
     executingToolCalls,
-    previewingToolCalls,
     completeToolCalls,
     isExecuting,
-    isPreviewing,
   };
 }
 

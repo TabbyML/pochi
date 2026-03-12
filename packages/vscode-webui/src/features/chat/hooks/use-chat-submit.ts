@@ -51,8 +51,7 @@ export function useChatSubmit({
   taskId,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
-  const { executingToolCalls, previewingToolCalls, isExecuting, isPreviewing } =
-    useToolCallLifeCycle();
+  const { executingToolCalls, isExecuting } = useToolCallLifeCycle();
   const { t } = useTranslation();
 
   const abortExecutingToolCalls = useCallback(() => {
@@ -60,12 +59,6 @@ export function useChatSubmit({
       toolCall.abort();
     }
   }, [executingToolCalls]);
-
-  const abortPreviewingToolCalls = useCallback(() => {
-    for (const toolCall of previewingToolCalls || []) {
-      toolCall.abort();
-    }
-  }, [previewingToolCalls]);
 
   const userEdits = useUserEdits(taskId);
   const activeSelection = useActiveSelection();
@@ -83,10 +76,6 @@ export function useChatSubmit({
     // Compacting is not allowed to be stopped.
     if (blockingState.isBusy) return;
 
-    if (isPreviewing) {
-      abortPreviewingToolCalls();
-    }
-
     if (isExecuting) {
       abortExecutingToolCalls();
     } else if (isLoading) {
@@ -98,11 +87,9 @@ export function useChatSubmit({
   }, [
     blockingState.isBusy,
     isExecuting,
-    isPreviewing,
     isLoading,
     pendingApproval,
     abortExecutingToolCalls,
-    abortPreviewingToolCalls,
     stopChat,
   ]);
 

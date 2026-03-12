@@ -10,7 +10,6 @@ export interface ChatState {
   abortController: React.RefObject<AbortController>;
   getToolCallLifeCycle: (key: ToolCallLifeCycleKey) => ToolCallLifeCycle;
   executingToolCalls: ToolCallLifeCycle[];
-  previewingToolCalls: ToolCallLifeCycle[];
   completeToolCalls: ToolCallLifeCycle[];
   retryCount: RetryCount | undefined;
   setRetryCount: Dispatch<SetStateAction<RetryCount | undefined>>;

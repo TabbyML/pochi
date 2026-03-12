@@ -88,7 +88,6 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
     case "user-reject":
       output.error = "User rejected the tool call";
       break;
-    case "preview-reject":
     case "execute-finish":
       break;
     default:

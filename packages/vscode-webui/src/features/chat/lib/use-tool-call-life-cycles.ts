@@ -1,4 +1,3 @@
-import { isAutoSuccessToolName } from "@getpochi/tools";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 import { ManagedToolCallLifeCycle } from "./tool-call-life-cycle";
@@ -37,21 +36,6 @@ export function useToolCallLifeCycles(abortSignal: AbortSignal) {
     return executing;
   }, [toolCallLifeCycles]);
 
-  const previewingToolCalls = useMemo(() => {
-    const previewing = [];
-    for (const lifecycle of toolCallLifeCycles.values()) {
-      if (
-        (lifecycle.status === "init" ||
-          lifecycle.status === "pending" ||
-          lifecycle.status === "ready") &&
-        !isAutoSuccessToolName(lifecycle.toolName)
-      ) {
-        previewing.push(lifecycle);
-      }
-    }
-    return previewing;
-  }, [toolCallLifeCycles]);
-
   const reloadToolCallLifeCycles = useCallback(() => {
     setToolCallLifeCycles(new Map(toolCallLifeCyclesRef.current));
   }, []);
@@ -87,7 +71,6 @@ export function useToolCallLifeCycles(abortSignal: AbortSignal) {
   return {
     getToolCallLifeCycle,
     executingToolCalls,
-    previewingToolCalls,
     completeToolCalls,
   };
 }

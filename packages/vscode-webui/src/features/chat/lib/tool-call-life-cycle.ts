@@ -13,13 +13,13 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 
-import type { ClientTools, PreviewReturnType } from "@getpochi/tools";
+import type { ClientTools } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
   threadSignal,
 } from "@quilted/threads/signals";
-import type { InferToolInput, ToolUIPart } from "ai";
+import type { InferToolInput } from "ai";
 import Emittery from "emittery";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 
@@ -46,40 +46,14 @@ export type StreamingResult =
       throws: (error: string) => void;
     };
 
-type CompleteReason =
-  | "execute-finish"
-  | "user-reject"
-  | "preview-reject"
-  | "user-abort";
+type CompleteReason = "execute-finish" | "user-reject" | "user-abort";
 
 type AbortFunctionType = AbortController["abort"];
 
 type ToolCallState =
   | {
       // Represent a fresh state that hasn't been used.
-      type: "pre-init";
-    }
-  | {
-      // Represents preview runs at toolCall.state === "partial-call"
       type: "init";
-      previewJob: Promise<PreviewReturnType>;
-      abort: AbortFunctionType;
-      abortSignal: AbortSignal;
-      previewResult?: PreviewReturnType;
-    }
-  | {
-      // Represents the preview runs at toolCall.state === "call"
-      type: "pending";
-      previewJob: Promise<PreviewReturnType>;
-      abort: AbortFunctionType;
-      abortSignal: AbortSignal;
-      previewResult?: PreviewReturnType;
-    }
-  | {
-      type: "ready";
-      abort: AbortFunctionType;
-      abortSignal: AbortSignal;
-      previewResult?: PreviewReturnType;
     }
   | {
       type: "execute";
@@ -118,8 +92,6 @@ export interface ToolCallLifeCycle {
    */
   readonly streamingResult: StreamingResult | undefined;
 
-  readonly previewResult: PreviewReturnType | undefined;
-
   /**
    * Completion result and reason.
    * Should only be accessed when the lifecycle is in complete state.
@@ -130,13 +102,6 @@ export interface ToolCallLifeCycle {
   };
 
   dispose(): void;
-
-  /**
-   * Preview the tool call with given arguments and state.
-   * @param args - Tool call arguments
-   * @param state - Current tool invocation state
-   */
-  preview(args: unknown, state: ToolUIPart["state"]): void;
 
   /**
    * Execute the tool call with given arguments and options.
@@ -182,7 +147,7 @@ export class ManagedToolCallLifeCycle
     super();
     this.toolName = key.toolName;
     this.toolCallId = key.toolCallId;
-    this.state = { type: "pre-init" };
+    this.state = { type: "init" };
   }
 
   get status() {
@@ -192,14 +157,6 @@ export class ManagedToolCallLifeCycle
   get streamingResult() {
     return this.state.type === "execute:streaming"
       ? this.state.streamingResult
-      : undefined;
-  }
-
-  get previewResult() {
-    return this.state.type === "init" ||
-      this.state.type === "pending" ||
-      this.state.type === "ready"
-      ? this.state.previewResult
       : undefined;
   }
 
@@ -213,114 +170,6 @@ export class ManagedToolCallLifeCycle
 
   dispose() {
     this.transitTo("complete", { type: "dispose" });
-  }
-
-  preview(args: unknown, state: ToolUIPart["state"]) {
-    if (this.status === "ready") {
-      this.previewReady(args, state);
-    } else {
-      this.previewInit(args, state);
-    }
-  }
-
-  private previewReady(args: unknown, state: ToolUIPart["state"]) {
-    const { abortSignal } = this.checkState("Preview", "ready");
-    vscodeHost
-      .previewToolCall(this.toolName, args, {
-        state: convertState(state),
-        toolCallId: this.toolCallId,
-        abortSignal: ThreadAbortSignal.serialize(abortSignal),
-        storeId: this.store.storeId,
-      })
-      .then((result) => {
-        this.transitTo("ready", {
-          type: "ready",
-          abort:
-            this.state.type === "ready" ||
-            this.state.type === "pending" ||
-            this.state.type === "init"
-              ? this.state.abort
-              : () => {},
-          abortSignal,
-          previewResult: result,
-        });
-      });
-  }
-
-  private previewInit(args: unknown, state: ToolUIPart["state"]) {
-    let { abort, previewJob, abortSignal } = (() => {
-      if (this.state.type === "pre-init") {
-        const abortController = new AbortController();
-        const abortSignal = AbortSignal.any([
-          abortController.signal,
-          this.outerAbortSignal,
-        ]);
-        return {
-          previewJob: Promise.resolve(undefined),
-          // biome-ignore lint/suspicious/noExplicitAny: abort function type uses any
-          abort: (reason: any) => abortController.abort(reason),
-          abortSignal,
-        };
-      }
-
-      return this.checkState("Preview", "init");
-    })();
-    const previewToolCall = (abortSignal: AbortSignal) => {
-      return vscodeHost.previewToolCall(this.toolName, args, {
-        state: convertState(state),
-        toolCallId: this.toolCallId,
-        abortSignal: ThreadAbortSignal.serialize(abortSignal),
-        storeId: this.store.storeId,
-      });
-    };
-
-    if (state === "input-streaming") {
-      previewJob = previewJob.then(() => previewToolCall(abortSignal));
-      this.transitTo(["init", "pre-init"], {
-        type: "init",
-        previewJob,
-        abortSignal,
-        abort,
-        previewResult:
-          this.state.type === "init" ? this.state.previewResult : undefined,
-      });
-      previewJob.then((result) => {
-        this.transitTo("init", {
-          type: "init",
-          previewJob,
-          abort,
-          abortSignal,
-          previewResult: result,
-        });
-      });
-    } else if (state === "input-available") {
-      previewJob = previewJob.then(() => previewToolCall(abortSignal));
-      previewJob.then((result) => {
-        if (result && "error" in result && result?.error) {
-          logger.debug("Tool call preview rejected:", result.error);
-          this.transitTo("pending", {
-            type: "complete",
-            result,
-            reason: "preview-reject",
-          });
-        } else {
-          this.transitTo("pending", {
-            type: "ready",
-            abort,
-            abortSignal,
-            previewResult: result,
-          });
-        }
-      });
-      this.transitTo(["init", "pre-init"], {
-        type: "pending",
-        previewJob,
-        abort,
-        abortSignal,
-        previewResult:
-          this.state.type === "init" ? this.state.previewResult : undefined,
-      });
-    }
   }
 
   execute(
@@ -359,7 +208,7 @@ export class ManagedToolCallLifeCycle
         this.onExecuteDone(result);
       });
 
-    this.transitTo("ready", {
+    this.transitTo("init", {
       type: "execute",
       executeJob,
       abort: (reason) => abortController.abort(reason),
@@ -395,7 +244,7 @@ export class ManagedToolCallLifeCycle
   }
 
   addResult(result: unknown): void {
-    this.transitTo("ready", {
+    this.transitTo("init", {
       type: "complete",
       result,
       reason: "execute-finish",
@@ -404,28 +253,20 @@ export class ManagedToolCallLifeCycle
 
   abort() {
     if (
-      this.state.type === "init" ||
-      this.state.type === "pending" ||
-      this.state.type === "ready" ||
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
       this.state.abort();
-      this.transitTo(
-        ["init", "pending", "ready", "execute", "execute:streaming"],
-        {
-          type: "complete",
-          result: {},
-          reason: "user-abort",
-        },
-      );
+      this.transitTo(["execute", "execute:streaming"], {
+        type: "complete",
+        result: {},
+        reason: "user-abort",
+      });
     }
   }
 
   reject() {
-    const { abort } = this.checkState("Reject", "ready");
-    abort();
-    this.transitTo("ready", {
+    this.transitTo("init", {
       type: "complete",
       result: {},
       reason: "user-reject",
@@ -622,16 +463,4 @@ export class ManagedToolCallLifeCycle
     );
     this.emit(this.state.type, this.state);
   }
-}
-
-function convertState(state: ToolUIPart["state"]) {
-  if (state === "input-streaming") {
-    return "partial-call";
-  }
-
-  if (state === "input-available") {
-    return "call";
-  }
-
-  return "result";
 }
