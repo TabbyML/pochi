@@ -1,37 +1,9 @@
-import { createPrettyPatch, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
-import { getEditSummary, writeTextDocument } from "@/lib/write-text-document";
+import { writeTextDocument } from "@/lib/write-text-document";
 import { fixCodeGenerationOutput } from "@getpochi/common/message-utils";
-import { resolvePath } from "@getpochi/common/tool-utils";
-import type {
-  ClientTools,
-  PreviewToolFunctionType,
-  ToolFunctionType,
-} from "@getpochi/tools";
-import * as vscode from "vscode";
+import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 const logger = getLogger("writeToFileTool");
-
-export const previewWriteToFile: PreviewToolFunctionType<
-  ClientTools["writeToFile"]
-> = async (args, { cwd }) => {
-  const { path, content } = args || {};
-  if (path === undefined || content === undefined)
-    return { error: "Invalid arguments for previewing writeToFile tool." };
-
-  const processedContent = fixCodeGenerationOutput(content);
-
-  const resolvedPath = resolvePath(path, cwd);
-  const fileUri = vscode.Uri.file(resolvedPath);
-
-  const fileExists = await isFileExists(fileUri);
-  const fileContent = fileExists
-    ? (await vscode.workspace.fs.readFile(fileUri)).toString()
-    : "";
-  const editSummary = getEditSummary(fileContent, processedContent);
-  const edit = createPrettyPatch(path, fileContent, processedContent);
-  return { success: true, _meta: { edit, editSummary } };
-};
 
 /**
  * Implements the writeToFile tool for VSCode extension.

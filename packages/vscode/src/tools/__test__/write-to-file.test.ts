@@ -4,7 +4,7 @@ import * as _path from "node:path";
 import { after, before, beforeEach, describe, it } from "mocha";
 import * as vscode from "vscode";
 import proxyquire from "proxyquire";
-import { previewWriteToFile, writeToFile } from "../write-to-file";
+import { writeToFile } from "../write-to-file";
 
 async function createFile(uri: vscode.Uri, content = ""): Promise<void> {
   await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
@@ -19,7 +19,6 @@ describe("writeToFile Tool", () => {
   let currentTestTempDirUri: vscode.Uri;
   let currentTestTempDirRelativePath: string;
   let writeToFileWithMock: typeof writeToFile;
-  let previewWriteToFileWithMock: typeof previewWriteToFile;
 
   before(async () => {
     const rootPath = _path.join(
@@ -43,7 +42,6 @@ describe("writeToFile Tool", () => {
       "@/lib/fs": fsMock,
     });
     writeToFileWithMock = module.writeToFile;
-    previewWriteToFileWithMock = module.previewWriteToFile;
   });
 
   after(async () => {
@@ -285,199 +283,6 @@ describe("writeToFile Tool", () => {
       assert.strictEqual(result.success, true);
       const fileContent = await vscode.workspace.fs.readFile(fileUri);
       assert.strictEqual(fileContent.toString(), content);
-    });
-  });
-
-  describe("previewWriteToFile", () => {
-    it("should preview creating a new file", async () => {
-      const filePath = _path.join(
-        currentTestTempDirRelativePath,
-        "preview-new-file.txt",
-      );
-      const content = "Preview content";
-
-      const result = await previewWriteToFileWithMock(
-        {
-          path: filePath,
-          content: content,
-        },
-        {
-          state: "call",
-          toolCallId: "test-call-id-123",
-          cwd: testSuiteRootTempDir.fsPath,
-        },
-      );
-
-      assert.ok(result);
-      assert.ok("success" in result && result.success);
-      assert.ok("_meta" in result && result._meta);
-      assert.ok("_meta" in result && result._meta?.edit);
-      assert.ok("_meta" in result && result._meta?.editSummary);
-    });
-
-    it("should preview overwriting an existing file", async () => {
-      const filePath = _path.join(
-        currentTestTempDirRelativePath,
-        "preview-existing-file.txt",
-      );
-      const fileUri = vscode.Uri.joinPath(testSuiteRootTempDir, filePath);
-      const originalContent = "Original content";
-      const newContent = "New content";
-
-      await createFile(fileUri, originalContent);
-
-      const result = await previewWriteToFileWithMock(
-        {
-          path: filePath,
-          content: newContent,
-        },
-        {
-          state: "call",
-          toolCallId: "test-call-id-123",
-          cwd: testSuiteRootTempDir.fsPath,
-        },
-      );
-
-      assert.ok(result);
-      assert.ok("success" in result && result.success);
-      assert.ok("_meta" in result && result._meta);
-      assert.ok("_meta" in result && result._meta?.edit);
-      assert.ok("_meta" in result && result._meta?.editSummary);
-      // File should not be modified by preview
-      const fileContent = await vscode.workspace.fs.readFile(fileUri);
-      assert.strictEqual(fileContent.toString(), originalContent);
-    });
-
-    it("should preview with correct edit summary for new file", async () => {
-      const filePath = _path.join(
-        currentTestTempDirRelativePath,
-        "preview-new-with-summary.txt",
-      );
-      const content = "Line 1\nLine 2\nLine 3";
-
-      const result = await previewWriteToFileWithMock(
-        {
-          path: filePath,
-          content: content,
-        },
-        {
-          state: "call",
-          toolCallId: "test-call-id-123",
-          cwd: testSuiteRootTempDir.fsPath,
-        },
-      );
-
-      assert.ok(result);
-      assert.ok("success" in result && result.success);
-      assert.ok("_meta" in result && result._meta?.editSummary);
-      // New file should show all lines as added
-      if ("_meta" in result && result._meta?.editSummary) {
-        assert.ok(result._meta.editSummary.added > 0);
-        assert.strictEqual(result._meta.editSummary.removed, 0);
-      }
-    });
-
-    it("should preview with correct edit summary for modified file", async () => {
-      const filePath = _path.join(
-        currentTestTempDirRelativePath,
-        "preview-modified-with-summary.txt",
-      );
-      const fileUri = vscode.Uri.joinPath(testSuiteRootTempDir, filePath);
-      const originalContent = "Line 1\nLine 2\nLine 3";
-      const newContent = "Line 1\nModified Line 2\nLine 3\nLine 4";
-
-      await createFile(fileUri, originalContent);
-
-      const result = await previewWriteToFileWithMock(
-        {
-          path: filePath,
-          content: newContent,
-        },
-        {
-          state: "call",
-          toolCallId: "test-call-id-123",
-          cwd: testSuiteRootTempDir.fsPath,
-        },
-      );
-
-      assert.ok(result);
-      assert.ok("success" in result && result.success);
-      assert.ok("_meta" in result && result._meta?.editSummary);
-      // Modified file should show both additions and removals
-      if ("_meta" in result && result._meta?.editSummary) {
-        assert.ok(result._meta.editSummary.added > 0);
-        assert.ok(result._meta.editSummary.removed > 0);
-      }
-    });
-
-    it("should return error when path is undefined", async () => {
-      const result = await previewWriteToFileWithMock(
-        {
-          path: undefined,
-          content: "Some content",
-        },
-        {
-          state: "call",
-          toolCallId: "test-call-id-123",
-          cwd: testSuiteRootTempDir.fsPath,
-        },
-      );
-
-      assert.ok(result);
-      assert.ok("error" in result);
-      assert.strictEqual(
-        result.error,
-        "Invalid arguments for previewing writeToFile tool.",
-      );
-    });
-
-    it("should return error when content is undefined", async () => {
-      const result = await previewWriteToFileWithMock(
-        {
-          path: "test.txt",
-          content: undefined,
-        },
-        {
-          state: "call",
-          toolCallId: "test-call-id-123",
-          cwd: testSuiteRootTempDir.fsPath,
-        },
-      );
-
-      assert.ok(result);
-      assert.ok("error" in result);
-      assert.strictEqual(
-        result.error,
-        "Invalid arguments for previewing writeToFile tool.",
-      );
-    });
-
-    it("should handle deeply nested new file paths in preview mode", async () => {
-      const filePath = _path.join(
-        currentTestTempDirRelativePath,
-        "deep",
-        "nested",
-        "path",
-        "to",
-        "file.txt",
-      );
-      const content = "Deeply nested content";
-
-      const result = await previewWriteToFileWithMock(
-        {
-          path: filePath,
-          content: content,
-        },
-        {
-          state: "call",
-          toolCallId: "test-call-id-123",
-          cwd: testSuiteRootTempDir.fsPath,
-        },
-      );
-
-      assert.ok(result);
-      assert.ok("success" in result && result.success);
-      assert.ok("_meta" in result && result._meta);
     });
   });
 });

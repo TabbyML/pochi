@@ -67,17 +67,6 @@ const VSCodeHostStub = {
   }): Promise<Environment> => {
     return Promise.resolve({} as Environment);
   },
-  previewToolCall: (
-    _toolName: string,
-    _args: unknown,
-    _options: {
-      toolCallId: string;
-      state: "partial-call" | "call" | "result";
-      storeId: string;
-    },
-  ): Promise<{ error: string } | undefined> => {
-    return Promise.resolve(undefined);
-  },
   executeToolCall: (
     _toolName: string,
     _args: unknown,

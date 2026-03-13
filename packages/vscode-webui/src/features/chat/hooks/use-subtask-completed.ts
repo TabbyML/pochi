@@ -52,9 +52,8 @@ export const useAddSubtaskResult = ({
 }: Pick<UseChatHelpers<Message>, "messages">) => {
   const autoApproveGuard = useAutoApproveGuard();
   const store = useDefaultStore();
-  const { getToolCallLifeCycle, previewingToolCalls } = useToolCallLifeCycle();
+  const { getToolCallLifeCycle } = useToolCallLifeCycle();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(previewingToolCalls): watch for previewingToolCalls
   useEffect(() => {
     const toolPart = messages.at(-1)?.parts.at(-1);
     if (
@@ -70,18 +69,12 @@ export const useAddSubtaskResult = ({
       toolName: getToolName(toolPart),
       toolCallId: toolPart.toolCallId,
     });
-    if (lifecycle.status === "ready") {
+    if (lifecycle.status === "init") {
       const result = extractTaskResult(store, subtaskUid);
       if (result) {
         autoApproveGuard.current = "auto";
         lifecycle.addResult({ result });
       }
     }
-  }, [
-    autoApproveGuard,
-    previewingToolCalls,
-    messages,
-    getToolCallLifeCycle,
-    store,
-  ]);
+  }, [autoApproveGuard, messages, getToolCallLifeCycle, store]);
 };

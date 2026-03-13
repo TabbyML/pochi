@@ -1,5 +1,3 @@
-import { useToolCallLifeCycle } from "@/features/chat";
-import { getToolName } from "ai";
 import { useTranslation } from "react-i18next";
 import { ModelEdits } from "./code-edits";
 import { FileBadge } from "./file-badge";
@@ -13,23 +11,12 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
   isExecuting,
 }) => {
   const { t } = useTranslation();
-  const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
-    toolName: getToolName(tool),
-    toolCallId: tool.toolCallId,
-  });
 
   const { path } = tool.input || {};
 
   const result =
     tool.state === "output-available" && !("error" in tool.output)
       ? tool.output
-      : undefined;
-
-  const previewInfo =
-    lifecycle.previewResult &&
-    "success" in lifecycle.previewResult &&
-    lifecycle.previewResult.success
-      ? lifecycle.previewResult?._meta
       : undefined;
 
   const title = (
@@ -41,7 +28,7 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
         <FileBadge
           className="ml-1"
           path={path}
-          editSummary={result?._meta?.editSummary ?? previewInfo?.editSummary}
+          editSummary={result?._meta?.editSummary}
         />
       )}
     </>
@@ -67,16 +54,11 @@ export const writeToFileTool: React.FC<ToolProps<"writeToFile">> = ({
 
   const expandableDetail = details.length > 0 ? <>{details}</> : undefined;
 
-  const detail = previewInfo?.edit ? (
-    <ModelEdits edit={previewInfo.edit} filePath={path} />
-  ) : null;
-
   return (
     <ExpandableToolContainer
       title={title}
       expandableDetail={expandableDetail}
       expandableDetailIcon={result?.newProblems && <NewProblemsIcon />}
-      detail={detail}
     />
   );
 };

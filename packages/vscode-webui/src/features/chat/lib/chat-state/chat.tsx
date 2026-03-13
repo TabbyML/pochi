@@ -12,19 +12,14 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
     undefined,
   );
-  const {
-    executingToolCalls,
-    previewingToolCalls,
-    getToolCallLifeCycle,
-    completeToolCalls,
-  } = useToolCallLifeCycles(abortController.current.signal);
+  const { executingToolCalls, getToolCallLifeCycle, completeToolCalls } =
+    useToolCallLifeCycles(abortController.current.signal);
 
   const value: ChatState = {
     abortController,
     autoApproveGuard,
     getToolCallLifeCycle,
     executingToolCalls,
-    previewingToolCalls,
     completeToolCalls,
     retryCount,
     setRetryCount,
@@ -49,7 +44,6 @@ export function ChatContextProviderStub({
       throw new Error(`[${key}] is not implemented in stubbed context`);
     },
     executingToolCalls: [],
-    previewingToolCalls: [],
     completeToolCalls: [],
     retryCount,
     setRetryCount,
