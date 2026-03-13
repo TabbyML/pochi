@@ -38,7 +38,7 @@ import { TaskHistoryStore } from "@/lib/task-history-store";
 import { UserStorage } from "@/lib/user-storage";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
-import { applyDiff, previewApplyDiff } from "@/tools/apply-diff";
+import { applyDiff } from "@/tools/apply-diff";
 import { createReview } from "@/tools/create-review";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
@@ -51,7 +51,7 @@ import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
-import { previewWriteToFile, writeToFile } from "@/tools/write-to-file";
+import { writeToFile } from "@/tools/write-to-file";
 import type { Environment, GitStatus } from "@getpochi/common";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { BrowserSessionStore } from "@getpochi/common/browser";
@@ -98,11 +98,7 @@ import {
   getTaskDisplayTitle,
   resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
-import type {
-  PreviewReturnType,
-  PreviewToolFunctionType,
-  ToolFunctionType,
-} from "@getpochi/tools";
+import type { ToolFunctionType } from "@getpochi/tools";
 import { createClientTools } from "@getpochi/tools";
 import { computed } from "@preact/signals-core";
 import {
@@ -534,52 +530,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       });
 
       return result;
-    },
-  );
-
-  previewToolCall = runExclusive.build(
-    this.toolCallGroup,
-    async (
-      toolName: string,
-      args: unknown,
-      options: {
-        toolCallId: string;
-        state: "partial-call" | "call" | "result";
-        abortSignal?: ThreadAbortSignalSerialization;
-        storeId: string;
-      },
-    ) => {
-      const tool = ToolPreviewMap[toolName];
-      if (!tool) {
-        return;
-      }
-
-      if (!this.cwd) {
-        return;
-      }
-
-      if (options.state === "call") {
-        logger.debug(
-          `previewToolCall(call): ${toolName}(${options.toolCallId})`,
-        );
-      }
-
-      const abortSignal = options.abortSignal
-        ? new ThreadAbortSignal(options.abortSignal)
-        : undefined;
-
-      const resolvedArgs = resolveToolCallArgs(
-        args,
-        options.storeId,
-      ) as Partial<unknown> | null;
-
-      return await safeCall<PreviewReturnType>(
-        tool(resolvedArgs, {
-          ...options,
-          abortSignal,
-          cwd: this.cwd,
-        }),
-      );
     },
   );
 
@@ -1355,13 +1305,4 @@ const ToolMap: Record<
   editNotebook,
   useSkill,
   createReview,
-};
-
-const ToolPreviewMap: Record<
-  string,
-  // biome-ignore lint/suspicious/noExplicitAny: external call without type information
-  PreviewToolFunctionType<any>
-> = {
-  writeToFile: previewWriteToFile,
-  applyDiff: previewApplyDiff,
 };

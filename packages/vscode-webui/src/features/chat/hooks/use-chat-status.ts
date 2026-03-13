@@ -22,7 +22,7 @@ export function useChatStatus({
   isUploadingAttachments,
   blockingState,
 }: UseChatStatusProps) {
-  const { isExecuting, isPreviewing } = useToolCallLifeCycle();
+  const { isExecuting } = useToolCallLifeCycle();
 
   const isBusyCore = isModelsLoading || blockingState.isBusy;
 
@@ -36,13 +36,9 @@ export function useChatStatus({
       isInputEmpty &&
       isFilesEmpty &&
       isReviewsEmpty &&
-      !isExecuting &&
-      !isPreviewing);
+      !isExecuting);
 
-  const showStopButton =
-    isPreviewing || isExecuting || isLoading || isUploadingAttachments;
-
-  const showPreview = !isBusyCore;
+  const showStopButton = isExecuting || isLoading || isUploadingAttachments;
 
   return {
     isExecuting,
@@ -50,6 +46,5 @@ export function useChatStatus({
     showEditTodos,
     isSubmitDisabled,
     showStopButton,
-    showPreview,
   };
 }

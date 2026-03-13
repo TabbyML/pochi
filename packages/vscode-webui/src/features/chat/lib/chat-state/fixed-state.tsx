@@ -1,4 +1,3 @@
-import type { PreviewReturnType } from "@getpochi/tools";
 import Emittery from "emittery";
 import {
   type ReactNode,
@@ -31,7 +30,6 @@ export class ToolCallStatusRegistry extends Emittery<{ updated: undefined }> {
       toolName: string;
       isExecuting: boolean;
       streamingResult?: StreamingResult;
-      previewResult?: PreviewReturnType;
     }
   >();
 
@@ -88,7 +86,6 @@ export function FixedStateChatContextProvider({
                 value.toolCallId,
                 value.isExecuting ? "execute" : "dispose",
                 value.streamingResult,
-                value.previewResult,
               ),
             ];
           }),
@@ -107,7 +104,6 @@ export function FixedStateChatContextProvider({
           key.toolCallId,
           "dispose",
           undefined,
-          undefined,
         )
       );
     },
@@ -124,7 +120,6 @@ export function FixedStateChatContextProvider({
 
   const value: ChatState = {
     autoApproveGuard,
-    previewingToolCalls: [],
     abortController,
     getToolCallLifeCycle,
     executingToolCalls,

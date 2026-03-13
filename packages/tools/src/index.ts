@@ -21,11 +21,7 @@ import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
-export type {
-  ToolFunctionType,
-  PreviewToolFunctionType,
-  PreviewReturnType,
-} from "./types";
+export type { ToolFunctionType } from "./types";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";

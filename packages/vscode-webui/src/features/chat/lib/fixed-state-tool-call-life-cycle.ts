@@ -1,5 +1,3 @@
-import type { PreviewReturnType } from "@getpochi/tools";
-import type { ToolUIPart } from "ai";
 import type {
   StreamingResult,
   ToolCallLifeCycle,
@@ -11,7 +9,6 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
     readonly toolCallId: string,
     readonly status: "execute" | "dispose",
     readonly streamingResult: StreamingResult | undefined,
-    readonly previewResult: PreviewReturnType | undefined,
   ) {}
 
   get complete(): { result: unknown; reason: "execute-finish" | "user-abort" } {
@@ -22,10 +19,6 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
 
   dispose() {
     // no-op
-  }
-
-  preview(_args: unknown, _state: ToolUIPart["state"]) {
-    // no-op for preview tool call on FixedStateToolCallLifeCycle
   }
 
   execute(_args: unknown) {
