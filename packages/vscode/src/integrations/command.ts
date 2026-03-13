@@ -617,6 +617,20 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
 
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.nextChoice",
+        async () => {
+          this.tabCompletionManager.nextChoice();
+        },
+      ),
+
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.prevChoice",
+        async () => {
+          this.tabCompletionManager.prevChoice();
+        },
+      ),
+
       vscode.commands.registerCommand("pochi.openTerminal", async (...args) => {
         let taskUri: vscode.Uri | undefined = undefined;
         // Take args first

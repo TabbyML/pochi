@@ -596,13 +596,16 @@ export class TabCompletionManager implements vscode.Disposable {
 
     if (
       triggerEvent.kind === "inline-completion" &&
-      triggerEvent.selectedCompletionInfo
+      triggerEvent.selectedCompletionInfo &&
+      solution.items.length === 1
     ) {
       return;
     }
 
     if (this.current.decorationItemIndex === undefined) {
-      const index = solution.items.length - 1;
+      // First time we switch to custom decoration
+      // Always show the first item, but now with DecorationManager (to show the toolbar)
+      const index = 0;
       const tokenSource = new vscode.CancellationTokenSource();
       this.current.decorationItemIndex = index;
       this.current.decorationTokenSource = tokenSource;
@@ -619,8 +622,75 @@ export class TabCompletionManager implements vscode.Disposable {
           requestId: item.responseItem.requestId,
         }),
       );
-      this.decorationManager.show(editor, item, tokenSource.token);
+      this.decorationManager.show(
+        editor,
+        item,
+        tokenSource.token,
+        index,
+        solution.items.length,
+      );
+    } else {
+      // We are already showing custom decoration, just update the toolbar
+      const item = solution.items[this.current.decorationItemIndex];
+      this.decorationManager.updateToolbar(
+        editor,
+        this.current.decorationItemIndex,
+        solution.items.length,
+        item.context.selection.active,
+      );
     }
+  }
+
+  async nextChoice() {
+    if (!this.current) return;
+    const { solution, decorationItemIndex } = this.current;
+    if (solution.items.length <= 1) return;
+
+    let nextIndex = (decorationItemIndex ?? 0) + 1;
+    if (nextIndex >= solution.items.length) {
+      nextIndex = 0;
+    }
+
+    this.showChoice(nextIndex);
+  }
+
+  async prevChoice() {
+    if (!this.current) return;
+    const { solution, decorationItemIndex } = this.current;
+    if (solution.items.length <= 1) return;
+
+    let prevIndex = (decorationItemIndex ?? 0) - 1;
+    if (prevIndex < 0) {
+      prevIndex = solution.items.length - 1;
+    }
+
+    this.showChoice(prevIndex);
+  }
+
+  private showChoice(index: number) {
+    if (!this.current) return;
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    if (this.current.decorationTokenSource) {
+      this.current.decorationTokenSource.cancel();
+      this.current.decorationTokenSource.dispose();
+    }
+
+    const tokenSource = new vscode.CancellationTokenSource();
+    this.current.decorationItemIndex = index;
+    this.current.decorationTokenSource = tokenSource;
+    const item = this.current.solution.items[index];
+
+    vscode.commands.executeCommand("editor.action.inlineSuggest.hide");
+
+    this.decorationManager.show(
+      editor,
+      item,
+      tokenSource.token,
+      index,
+      this.current.solution.items.length,
+    );
   }
 
   private removeCurrent() {
