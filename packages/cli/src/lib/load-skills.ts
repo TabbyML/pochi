@@ -76,6 +76,22 @@ export async function loadSkills(
           filePath: path.relative(workingDirectory, x.filePath),
         })),
       );
+
+      // Load project-level .agents/skills (lower priority than .pochi/skills)
+      const projectAgentsSkillsDir = path.join(
+        workingDirectory,
+        ".agents",
+        "skills",
+      );
+      const projectAgentsSkills = await readSkillsFromDir(
+        projectAgentsSkillsDir,
+      );
+      allSkills.push(
+        ...projectAgentsSkills.map((x) => ({
+          ...x,
+          filePath: path.relative(workingDirectory, x.filePath),
+        })),
+      );
     }
 
     // Load system skills
@@ -84,6 +100,20 @@ export async function loadSkills(
       const systemSkills = await readSkillsFromDir(systemSkillsDir);
       allSkills.push(
         ...systemSkills.map((x) => ({
+          ...x,
+          filePath: x.filePath.replace(os.homedir(), "~"),
+        })),
+      );
+
+      // Load global ~/.agents/skills (lower priority than ~/.pochi/skills)
+      const systemAgentsSkillsDir = path.join(
+        os.homedir(),
+        ".agents",
+        "skills",
+      );
+      const systemAgentsSkills = await readSkillsFromDir(systemAgentsSkillsDir);
+      allSkills.push(
+        ...systemAgentsSkills.map((x) => ({
           ...x,
           filePath: x.filePath.replace(os.homedir(), "~"),
         })),
