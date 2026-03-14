@@ -4299,7 +4299,10 @@ The answer is isolation. Separate tasks mean separate contexts, and separate con
 
 Pochi supports this through task forking and subagents:
 
-* **[Forking a task](https://docs.getpochi.com/developer-updates/#-features-6)** creates a new task that starts from the current code state but does not inherit conversational noise. It’s ideal when you want to try a different approach or explore an alternative implementation without dragging prior reasoning along.
+* **[Forking a task](https://docs.getpochi.com/developer-updates/#-features-6)** creates a new task from a snapshot of the current workspace and conversation at the moment of the fork. The new task starts from that point with its own independent execution, and the conversation history is clipped to the fork boundary so it doesn’t carry later discussion or exploration. <br />
+
+  This makes it useful when you want to try a different approach or explore an alternative implementation without affecting the original task’s trajectory.
+
   <video
     controls
     style={{
@@ -6936,7 +6939,10 @@ The answer is isolation. Separate tasks mean separate contexts, and separate con
 
 Pochi supports this through task forking and subagents:
 
-* **[Forking a task](https://docs.getpochi.com/developer-updates/#-features-6)** creates a new task that starts from the current code state but does not inherit conversational noise. It’s ideal when you want to try a different approach or explore an alternative implementation without dragging prior reasoning along.
+* **[Forking a task](https://docs.getpochi.com/developer-updates/#-features-6)** creates a new task from a snapshot of the current workspace and conversation at the moment of the fork. The new task starts from that point with its own independent execution, and the conversation history is clipped to the fork boundary so it doesn’t carry later discussion or exploration. <br />
+
+  This makes it useful when you want to try a different approach or explore an alternative implementation without affecting the original task’s trajectory.
+
   <video
     controls
     style={{
