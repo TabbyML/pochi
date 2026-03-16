@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { blobStore } from "../node-blob-store";
+import { NodeBlobStore } from "../node-blob-store";
 import type { BlobStore } from "@getpochi/livekit";
+import os from "node:os";
+import path from "node:path";
+
 describe("NodeBlobStore", () => {
   let store: BlobStore;
 
   beforeEach(() => {
-    store = blobStore
+    store = new NodeBlobStore(path.join(os.tmpdir(), "pochi-test", "blobs"));
   });
 
   it("should put and get a blob", async () => {

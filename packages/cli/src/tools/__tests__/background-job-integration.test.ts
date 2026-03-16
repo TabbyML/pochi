@@ -6,7 +6,8 @@ import { AsyncSubTaskManager } from "../../lib/async-subtask-manager";
 import { catalog } from "@getpochi/livekit";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
-import { blobStore } from "../../node-blob-store";
+import { NodeBlobStore } from "../../node-blob-store";
+import os from "node:os";
 
 describe("executeToolCall with background jobs", () => {
 
@@ -20,6 +21,7 @@ describe("executeToolCall with background jobs", () => {
     });
     const asyncSubTaskManager = new AsyncSubTaskManager(store);
     const cwd = path.resolve(".");
+    const blobStore = new NodeBlobStore(path.join(os.tmpdir(), "pochi-test", "blobs"));
     
     // Mock the tool call
     const toolCall: any = {

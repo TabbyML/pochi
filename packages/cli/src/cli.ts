@@ -3,6 +3,8 @@
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -65,7 +67,7 @@ import {
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
-import { blobStore } from "./node-blob-store";
+import { NodeBlobStore } from "./node-blob-store";
 import { OutputRenderer } from "./output-renderer";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
@@ -172,6 +174,14 @@ const program = new Command()
       "Specify the path to the ffmpeg executable for browser session recording. Pochi will try to use the ffmpeg executable in the system path if this option is not specified. Browser session recording is disabled when no ffmpeg executable available.",
     ).hideHelp(),
   )
+  .addOption(
+    new Option(
+      "--blobs-dir <path>",
+      "Specify the path to be used as a storage directory for blobs. Defaults to `{os_tmpdir}/pochi/blobs`.",
+    )
+      .default(path.join(os.tmpdir(), "pochi", "blobs"))
+      .hideHelp(),
+  )
   .optionsGroup("Model:")
   .option(
     "-m, --model <model>",
@@ -198,6 +208,7 @@ const program = new Command()
     );
 
     const store = await createStore(uid);
+    const blobStore = new NodeBlobStore(options.blobsDir);
     const parts: Message["parts"] = await processAttachments(
       attachments,
       blobStore,
