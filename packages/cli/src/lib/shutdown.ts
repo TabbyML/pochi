@@ -1,4 +1,12 @@
-import type { LiveKitStore } from "@getpochi/livekit";
+export class ProcessAbortError extends Error {
+  constructor(
+    message: string,
+    readonly exitCode: number,
+  ) {
+    super(message);
+    this.name = "ProcessAbortError";
+  }
+}
 
 /**
  * Creates an AbortController with graceful shutdown handlers for SIGINT and SIGTERM.
@@ -8,16 +16,27 @@ import type { LiveKitStore } from "@getpochi/livekit";
 export function createAbortControllerWithGracefulShutdown(): AbortController {
   const abortController = new AbortController();
 
-  const handleShutdown = (signal: string, _exitCode: number) => {
-    return () => {
-      if (!abortController.signal.aborted) {
-        abortController.abort(new Error(`Process interrupted by ${signal}`));
+  const handleShutdown = (signal: "SIGINT" | "SIGTERM") => {
+    if (!abortController.signal.aborted) {
+      let exitCode = 1;
+      switch (signal) {
+        case "SIGINT":
+          exitCode = 128 + 2;
+          break;
+        case "SIGTERM":
+          exitCode = 128 + 15;
+          break;
+        default:
+          break;
       }
-    };
+      abortController.abort(
+        new ProcessAbortError(`Process interrupted by ${signal}`, exitCode),
+      );
+    }
   };
 
-  const sigintHandler = handleShutdown("SIGINT", 130);
-  const sigtermHandler = handleShutdown("SIGTERM", 143);
+  const sigintHandler = () => handleShutdown("SIGINT");
+  const sigtermHandler = () => handleShutdown("SIGTERM");
 
   process.on("SIGINT", sigintHandler);
   process.on("SIGTERM", sigtermHandler);
@@ -29,12 +48,4 @@ export function createAbortControllerWithGracefulShutdown(): AbortController {
   });
 
   return abortController;
-}
-
-export async function shutdownStoreAndExit(store: LiveKitStore, exitCode = 0) {
-  await store.shutdownPromise();
-
-  // FIXME: this is a hack to make sure the process exits
-  // mcpHub.dispose() is not working properly to close all subprocess, thus we have to do this.
-  process.exit(exitCode);
 }

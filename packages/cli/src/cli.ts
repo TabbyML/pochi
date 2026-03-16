@@ -61,8 +61,8 @@ import {
   replaceSlashCommandReferences,
 } from "./lib/match-slash-command";
 import {
+  ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
-  shutdownStoreAndExit,
 } from "./lib/shutdown";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
@@ -237,13 +237,27 @@ const program = new Command()
       setFfmpegPath(options.ffmpeg);
     }
 
-    const onSubTaskCreated = (runner: TaskRunner) => {
-      outputRenderer.renderSubTask(runner);
-    };
+    let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
+      undefined;
+    if (options.streamJson && options.outputResult) {
+      program.error(
+        "Cannot use --stream-json and --output-result at same time.",
+      );
+    }
+    if (options.streamJson === true) {
+      jsonOutputStream = process.stdout;
+    } else if (typeof options.streamJson === "string") {
+      jsonOutputStream = fs.createWriteStream(options.streamJson);
+    } else if (options.outputResult === true) {
+      jsonOutputStream = process.stdout;
+    } else if (typeof options.outputResult === "string") {
+      jsonOutputStream = fs.createWriteStream(options.outputResult);
+    }
 
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
     const mcpHub = options.mcp ? await initializeMcp(program) : undefined;
 
+    // FIXME(zhiming): the abort logic does not work as intent in many cases, need more investigation
     // Create AbortController for task cancellation with graceful shutdown
     const abortController = createAbortControllerWithGracefulShutdown();
 
@@ -266,7 +280,9 @@ const program = new Command()
       rg,
       maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
-      onSubTaskCreated,
+      onSubTaskCreated: (runner: TaskRunner) => {
+        outputRenderer.renderSubTask(runner);
+      },
       customAgents,
       skills,
       mcpHub,
@@ -286,24 +302,8 @@ const program = new Command()
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
-    let jsonRenderer: JsonRenderer | undefined = undefined;
 
-    let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
-      undefined;
-    if (options.streamJson && options.outputResult) {
-      program.error(
-        "Cannot use --stream-json and --output-result at same time.",
-      );
-    }
-    if (options.streamJson === true) {
-      jsonOutputStream = process.stdout;
-    } else if (typeof options.streamJson === "string") {
-      jsonOutputStream = fs.createWriteStream(options.streamJson);
-    } else if (options.outputResult === true) {
-      jsonOutputStream = process.stdout;
-    } else if (typeof options.outputResult === "string") {
-      jsonOutputStream = fs.createWriteStream(options.outputResult);
-    }
+    let jsonRenderer: JsonRenderer | undefined = undefined;
     if (jsonOutputStream) {
       jsonRenderer = new JsonRenderer(
         jsonOutputStream,
@@ -317,14 +317,38 @@ const program = new Command()
       );
     }
 
-    await runner.run();
+    let runtimeError: Error | undefined = undefined;
+    try {
+      await runner.run();
+    } catch (error) {
+      runtimeError = error instanceof Error ? error : new Error(String(error));
+    } finally {
+      // Cleanup resources
+      outputRenderer.shutdown();
+      await jsonRenderer?.shutdown();
+      mcpHub?.dispose();
+      browserSessionStore.dispose();
+      await store.shutdownPromise();
 
-    // Cleanup resources after task completion
-    outputRenderer.shutdown();
-    await jsonRenderer?.shutdown();
-    mcpHub?.dispose();
-    browserSessionStore.dispose();
-    await shutdownStoreAndExit(store);
+      if (runtimeError) {
+        program.error(runtimeError.message, {
+          code:
+            "code" in runtimeError && typeof runtimeError.code === "string"
+              ? runtimeError.code
+              : "C",
+          exitCode:
+            // FIXME(@zhiming): actually this does not work, as the caught error is always rethrown TaskError, never ProcessAbortError
+            runtimeError instanceof ProcessAbortError
+              ? runtimeError.exitCode
+              : 1,
+        });
+      } else {
+        // FIXME(@zhiming): address this comment moved from shutdown.ts
+        // > FIXME: this is a hack to make sure the process exits
+        // > mcpHub.dispose() is not working properly to close all subprocess, thus we have to do this.
+        process.exit();
+      }
+    }
   });
 
 const otherOptionsGroup = "Others:";

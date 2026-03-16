@@ -110,15 +110,12 @@ export const newTask =
     }
 
     const isAsync = !!runAsync && constants.EnableAsyncNewTask;
-
     const overrideOptions: { customAgent?: CustomAgent; maxSteps?: number } = {
       customAgent,
     };
-
     if (customAgent?.name === "browser") {
       overrideOptions.maxSteps = SubTaskBrowserAgentMaxSteps;
     }
-
     const subTaskRunner = options.createSubTaskRunner(
       taskId,
       isAsync,
@@ -129,20 +126,23 @@ export const newTask =
     if (isAsync) {
       // Start the subtask but don't wait for completion
       void Promise.resolve(subTaskRunner.run())
-        .then(() => {
-          return finalize?.();
-        })
         .catch(() => {
           // Ignore errors for Async tasks
+        })
+        .finally(() => {
+          return finalize?.();
         });
       return {
         result: taskId,
       };
     }
 
-    // Execute the sub-task (synchronous)
-    await subTaskRunner.run();
-    await finalize?.();
+    // Execute the sub-task (synchronous), rethrow any errors
+    try {
+      await subTaskRunner.run();
+    } finally {
+      await finalize?.();
+    }
 
     // Get the final state and extract result
     const finalState = subTaskRunner.state;
@@ -150,7 +150,6 @@ export const newTask =
 
     // FIXME(@zhiming): refactor to explicitly check the task state and reuse `extractTaskResult`
     let result: string | object = "Sub-task finished without result.";
-
     if (lastMessage?.role === "assistant") {
       for (const part of lastMessage.parts || []) {
         if (

@@ -298,8 +298,9 @@ export class TaskRunner {
       }
     } catch (e) {
       const error = toError(e);
-      logger.trace("Failed:", error);
+      logger.debug("Failed:", error);
       this.chatKit.markAsFailed(error);
+      throw error;
     } finally {
       this.backgroundJobManager.killAll();
       if (this.customAgent?.name === "browser") {
@@ -491,10 +492,10 @@ export class TaskRunner {
     if (task.status === "failed") {
       // Do not retry on abort — exit gracefully on first Ctrl+C
       if (task.error?.kind === "AbortError") {
-        return "finished";
+        throw task.error;
       }
       if (task.error?.kind === "APICallError" && !task.error.isRetryable) {
-        return "finished";
+        throw task.error;
       }
       logger.error(
         "Task is failed, trying to resend last message to resume it.",
