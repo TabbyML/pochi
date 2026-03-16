@@ -17,7 +17,7 @@ npx skills add <skill-source> --agent pochi
 npx skills add vercel-labs/agent-skills --skill pr-review --agent pochi
 ```
 
-This command automatically detects Pochi and installs the skill to `.pochi/skills` in your project.
+This command automatically detects Pochi and installs the skill to `.pochi/skills` in your project. Alternatively, you can place skills in `.agents/skills/` to share them with other AI coding agents.
 
 ## Create Skills
 
@@ -56,10 +56,18 @@ Each skill must start with YAML frontmatter containing at least a `name` and `de
 
 ## Discovery
 
-Pochi automatically discovers skills in:
+Pochi automatically discovers skills in the following locations (higher priority listed first):
 
-- **Project**: `.pochi/skills/` (shared with your team)
-- **Global**: `~/.pochi/skills/` (available across all projects)
+- **Project**: `.pochi/skills/` (shared with your team, Pochi-specific)
+- **Project**: `.agents/skills/` (shared with your team, cross-agent standard)
+- **Global**: `~/.pochi/skills/` (available across all projects, Pochi-specific)
+- **Global**: `~/.agents/skills/` (available across all projects, cross-agent standard)
+
+If two skills share the same name, the one from the higher-priority location takes precedence.
+
+### Cross-Agent Compatibility
+
+The `.agents/` directory is an emerging standard shared by multiple AI coding agents (e.g., Claude Code, Codex). By placing skills in `.agents/skills/`, you can define shared workflows once and have them available across different agents without duplicating files.
 
 ## Using Skills
 

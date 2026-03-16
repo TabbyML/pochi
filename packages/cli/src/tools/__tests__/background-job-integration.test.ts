@@ -6,6 +6,7 @@ import { AsyncSubTaskManager } from "../../lib/async-subtask-manager";
 import { catalog } from "@getpochi/livekit";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
+import { blobStore } from "../../node-blob-store";
 
 describe("executeToolCall with background jobs", () => {
 
@@ -45,6 +46,7 @@ describe("executeToolCall with background jobs", () => {
           readFile: async () => new Uint8Array(),
           writeFile: async () => {},
         },
+        blobStore,
       },
       cwd
     )) as any;

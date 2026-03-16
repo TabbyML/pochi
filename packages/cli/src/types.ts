@@ -1,5 +1,6 @@
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
+import type { BlobStore } from "@getpochi/livekit";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import type { BackgroundJobManager } from "./lib/background-job-manager";
@@ -17,6 +18,11 @@ export interface ToolCallOptions {
    * The file system interface for reading and writing files.
    */
   fileSystem: FileSystem;
+
+  /**
+   * Blob store for local file access
+   */
+  blobStore: BlobStore;
 
   /**
    * Available custom agents for tools that support them (e.g., newTask)
