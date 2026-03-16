@@ -326,6 +326,11 @@ const program = new Command()
       // Cleanup resources
       outputRenderer.shutdown();
       await jsonRenderer?.shutdown();
+      if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
+        await new Promise<void>((resolve) => {
+          jsonOutputStream.end(resolve);
+        });
+      }
       mcpHub?.dispose();
       browserSessionStore.dispose();
       await store.shutdownPromise();
