@@ -1,15 +1,11 @@
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import type { BlobStore } from "@getpochi/livekit";
 
-class NodeBlobStore implements BlobStore {
+export class NodeBlobStore implements BlobStore {
   readonly protocol = "store-blob:";
-  private readonly dir: string;
 
-  constructor() {
-    this.dir = path.join(os.tmpdir(), "pochi", "blobs");
-  }
+  constructor(private readonly dir: string) {}
 
   async put(
     data: Uint8Array,
@@ -63,5 +59,3 @@ class NodeBlobStore implements BlobStore {
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 }
-
-export const blobStore = new NodeBlobStore();

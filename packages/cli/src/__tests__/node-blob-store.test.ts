@@ -1,11 +1,20 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { blobStore } from "../node-blob-store";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { NodeBlobStore } from "../node-blob-store";
 import type { BlobStore } from "@getpochi/livekit";
+import os from "node:os";
+import path from "node:path";
+import fs from "node:fs/promises";
+
 describe("NodeBlobStore", () => {
   let store: BlobStore;
+  const testBlobStorage = path.join(os.tmpdir(), "pochi-test", "blobs");
 
-  beforeEach(() => {
-    store = blobStore
+  beforeEach(async () => {
+    store = new NodeBlobStore(testBlobStorage);
+  });
+
+  afterEach(async () => {
+    await fs.rm(testBlobStorage, { recursive: true, force: true });
   });
 
   it("should put and get a blob", async () => {
