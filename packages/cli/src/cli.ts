@@ -44,6 +44,7 @@ import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
 import { handleShellCompletion } from "./completion";
 import { JsonRenderer } from "./json-renderer";
+import { setFfmpegPath } from "./lib/ffmpeg-mjpeg-to-mp4";
 import {
   CompoundFileSystem,
   LocalFileSystem,
@@ -165,8 +166,13 @@ const program = new Command()
       "Specify a command that attempt-completion will run",
     ).hideHelp(),
   )
+  .addOption(
+    new Option(
+      "--ffmpeg <path>",
+      "Specify the path to the ffmpeg executable for browser session recording. Pochi will try to use the ffmpeg executable in the system path if this option is not specified. Browser session recording is disabled when no ffmpeg executable available.",
+    ).hideHelp(),
+  )
   .optionsGroup("Model:")
-
   .option(
     "-m, --model <model>",
     "Specify the model to be used for the task.",
@@ -214,6 +220,10 @@ const program = new Command()
           "• Or visit: https://github.com/BurntSushi/ripgrep#installation\n\n" +
           "Please install ripgrep and try again.",
       );
+    }
+
+    if (options.ffmpeg) {
+      setFfmpegPath(options.ffmpeg);
     }
 
     const onSubTaskCreated = (runner: TaskRunner) => {

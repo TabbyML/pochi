@@ -177,6 +177,7 @@ export class TaskRunner {
     this.toolCallOptions = {
       rg: options.rg,
       fileSystem: this.fileSystem,
+      blobStore: this.blobStore,
 
       customAgents: options.customAgents,
       skills: options.skills,

@@ -21,16 +21,24 @@ export class BrowserSessionStore implements Disposable {
     logger.trace("BrowserSessionStore disposed");
   }
 
-  async registerBrowserSession(taskId: string, parentId?: string) {
+  async registerBrowserSession(
+    taskId: string,
+    parentId?: string,
+    stream?: boolean,
+  ) {
     const browserSession: BrowserSession = {
       parentId,
     };
 
     // If we are in VSCode environment, we need to enable the websocket
-    if (isVSCodeEnvironment()) {
+    const enableStream = isVSCodeEnvironment() || stream;
+    if (enableStream) {
       const port = await getAvailablePort();
       browserSession.port = port;
-      browserSession.streamUrl = getCorsProxyUrl(`ws://localhost:${port}`);
+      const streamUrl = `ws://localhost:${port}`;
+      browserSession.streamUrl = isVSCodeEnvironment()
+        ? getCorsProxyUrl(streamUrl)
+        : streamUrl;
     }
 
     this.browserSessions.value = {
@@ -96,7 +104,7 @@ export class BrowserSessionStore implements Disposable {
     envs.AGENT_BROWSER_SESSION = taskId;
 
     // If we are in VSCode environment, we need to enable the websocket
-    if (isVSCodeEnvironment()) {
+    if (browserSession.port) {
       envs.AGENT_BROWSER_STREAM_PORT = String(browserSession.port);
     }
 
