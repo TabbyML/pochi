@@ -36,7 +36,10 @@ import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
-import type { ToolCallOptions } from "./types";
+import type {
+  CreateSubTaskRunnerOverrideOptions,
+  ToolCallOptions,
+} from "./types";
 
 export interface RunnerOptions {
   /**
@@ -188,19 +191,26 @@ export class TaskRunner {
       createSubTaskRunner: (
         taskId: string,
         runAsync: boolean,
-        customAgent?: CustomAgent,
+        overrideOptions?: CreateSubTaskRunnerOverrideOptions,
       ) => {
         // create sub task
         if (runAsync) {
           this.asyncSubTaskManager.registerTask(taskId);
         }
-
+        const definedOverrideOptions =
+          overrideOptions == null
+            ? undefined
+            : Object.fromEntries(
+                Object.entries(overrideOptions).filter(
+                  ([, value]) => value !== undefined,
+                ),
+              );
         const runner = new TaskRunner({
           ...options,
+          ...(definedOverrideOptions ?? {}),
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
-          customAgent,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 

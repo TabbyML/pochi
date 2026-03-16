@@ -15,6 +15,9 @@ import {
 } from "../lib/ffmpeg-mjpeg-to-mp4";
 import type { ToolCallOptions } from "../types";
 
+// @FIXME(@zhiming): extract to cli options
+const SubTaskBrowserAgentMaxSteps = 65535;
+
 /**
  * Creates the newTask tool for CLI runner with custom agent support.
  * Creates and executes sub-tasks autonomously.
@@ -107,10 +110,19 @@ export const newTask =
     }
 
     const isAsync = !!runAsync && constants.EnableAsyncNewTask;
+
+    const overrideOptions: { customAgent?: CustomAgent; maxSteps?: number } = {
+      customAgent,
+    };
+
+    if (customAgent?.name === "browser") {
+      overrideOptions.maxSteps = SubTaskBrowserAgentMaxSteps;
+    }
+
     const subTaskRunner = options.createSubTaskRunner(
       taskId,
       isAsync,
-      customAgent,
+      overrideOptions,
     );
 
     // Check if this is an async task
