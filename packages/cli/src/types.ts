@@ -40,7 +40,7 @@ export interface ToolCallOptions {
   createSubTaskRunner?: (
     taskId: string,
     runAsync: boolean,
-    customAgent?: CustomAgent,
+    overrideOptions?: CreateSubTaskRunnerOverrideOptions,
   ) => TaskRunner;
 
   /**
@@ -62,4 +62,10 @@ export interface ToolCallOptions {
    * Store for managing browser sessions
    */
   browserSessionStore?: BrowserSessionStore;
+}
+
+export interface CreateSubTaskRunnerOverrideOptions {
+  customAgent?: CustomAgent;
+  maxSteps?: number;
+  maxRetries?: number;
 }
