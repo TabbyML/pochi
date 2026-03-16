@@ -96,6 +96,21 @@ export class SkillManager implements vscode.Disposable {
         projectWatcher.onDidDelete(() => this.loadSkills());
 
         this.disposables.push(projectWatcher);
+
+        // Watch project-level .agents/skills directory
+        const projectAgentsSkillsPattern = new vscode.RelativePattern(
+          this.cwd,
+          ".agents/skills/*/SKILL.md",
+        );
+        const projectAgentsWatcher = vscode.workspace.createFileSystemWatcher(
+          projectAgentsSkillsPattern,
+        );
+
+        projectAgentsWatcher.onDidCreate(() => this.loadSkills());
+        projectAgentsWatcher.onDidChange(() => this.loadSkills());
+        projectAgentsWatcher.onDidDelete(() => this.loadSkills());
+
+        this.disposables.push(projectAgentsWatcher);
       }
     } catch (error) {
       logger.error("Failed to initialize project skills watcher", error);
@@ -119,6 +134,30 @@ export class SkillManager implements vscode.Disposable {
     } catch (error) {
       logger.error("Failed to initialize system skills watcher", error);
     }
+
+    try {
+      // Watch global ~/.agents/skills directory
+      const systemAgentsSkillsDir = path.join(
+        os.homedir(),
+        ".agents",
+        "skills",
+      );
+      const systemAgentsSkillsPattern = new vscode.RelativePattern(
+        systemAgentsSkillsDir,
+        "*/SKILL.md",
+      );
+      const systemAgentsWatcher = vscode.workspace.createFileSystemWatcher(
+        systemAgentsSkillsPattern,
+      );
+
+      systemAgentsWatcher.onDidCreate(() => this.loadSkills());
+      systemAgentsWatcher.onDidChange(() => this.loadSkills());
+      systemAgentsWatcher.onDidDelete(() => this.loadSkills());
+
+      this.disposables.push(systemAgentsWatcher);
+    } catch (error) {
+      logger.error("Failed to initialize global .agents/skills watcher", error);
+    }
   }
 
   private async loadSkills() {
@@ -130,11 +169,24 @@ export class SkillManager implements vscode.Disposable {
         })),
       ];
       if (this.cwd) {
-        const projectSkillsDir = path.join(this.cwd, ".pochi", "skills");
         const cwd = this.cwd;
+
+        const projectSkillsDir = path.join(cwd, ".pochi", "skills");
         const projectSkills = await readSkillsFromDir(projectSkillsDir);
         allSkills.push(
           ...projectSkills.map((x) => ({
+            ...x,
+            filePath: path.relative(cwd, x.filePath),
+          })),
+        );
+
+        // Load project-level .agents/skills (lower priority than .pochi/skills)
+        const projectAgentsSkillsDir = path.join(cwd, ".agents", "skills");
+        const projectAgentsSkills = await readSkillsFromDir(
+          projectAgentsSkillsDir,
+        );
+        allSkills.push(
+          ...projectAgentsSkills.map((x) => ({
             ...x,
             filePath: path.relative(cwd, x.filePath),
           })),
@@ -145,6 +197,19 @@ export class SkillManager implements vscode.Disposable {
       const systemSkills = await readSkillsFromDir(systemSkillsDir);
       allSkills.push(
         ...systemSkills.map((x) => ({
+          ...x,
+        })),
+      );
+
+      // Load global ~/.agents/skills (lower priority than ~/.pochi/skills)
+      const systemAgentsSkillsDir = path.join(
+        os.homedir(),
+        ".agents",
+        "skills",
+      );
+      const systemAgentsSkills = await readSkillsFromDir(systemAgentsSkillsDir);
+      allSkills.push(
+        ...systemAgentsSkills.map((x) => ({
           ...x,
         })),
       );
