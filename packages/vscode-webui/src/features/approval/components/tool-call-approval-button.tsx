@@ -117,7 +117,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
       const tool = tools[i];
       const runManually =
-        (!subtaskOffhand &&
+        (!subtask?.isNested &&
+          !subtaskOffhand &&
           // Async task cannot be run manually.
           !(tool.type === "tool-newTask" && tool.input?.runAsync)) ||
         // planner always run manually
@@ -151,6 +152,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     taskId,
     parentUid,
     builtinSubAgentInfo,
+    subtask?.isNested,
   ]);
 
   const onReject = useCallback(() => {

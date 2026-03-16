@@ -1,4 +1,5 @@
 import { toErrorMessage } from "@getpochi/common";
+import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolFunctionType } from "@getpochi/tools";
 import { type ToolUIPart, getToolName } from "ai";
@@ -48,6 +49,7 @@ export async function executeToolCall(
   abortSignal?: AbortSignal,
   contentType?: string[],
   envs?: Record<string, string>,
+  builtinSubAgentInfo?: BuiltinSubAgentInfo,
 ) {
   const toolName = getToolName(tool);
 
@@ -62,6 +64,7 @@ export async function executeToolCall(
         cwd,
         contentType,
         envs,
+        builtinSubAgentInfo,
       });
     } catch (e) {
       return {

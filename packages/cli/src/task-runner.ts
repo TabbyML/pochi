@@ -10,6 +10,7 @@ import {
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
+import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
@@ -567,6 +568,15 @@ export class TaskRunner {
         );
       }
 
+      let builtinSubAgentInfo: BuiltinSubAgentInfo | undefined;
+      if (this.customAgent?.name === "browser") {
+        builtinSubAgentInfo = { type: "browser", sessionId: this.taskId };
+      } else if (this.customAgent?.name === "planner") {
+        builtinSubAgentInfo = { type: "planner" };
+      } else if (this.customAgent?.name === "explore") {
+        builtinSubAgentInfo = { type: "explore" };
+      }
+
       const toolResult = await processContentOutput(
         this.blobStore,
         await executeToolCall(
@@ -576,6 +586,7 @@ export class TaskRunner {
           undefined,
           this.llm.contentType,
           envs,
+          builtinSubAgentInfo,
         ),
       );
 

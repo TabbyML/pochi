@@ -1,5 +1,6 @@
 import type { CustomAgent } from "@getpochi/tools";
 import { browser } from "./browser";
+import { explore } from "./explore";
 import { planner } from "./planner";
 import { reviewer } from "./reviewer";
 import { walkthrough } from "./walkthrough";
@@ -9,4 +10,5 @@ export const builtInAgents: CustomAgent[] = [
   browser,
   reviewer,
   walkthrough,
+  explore,
 ];
