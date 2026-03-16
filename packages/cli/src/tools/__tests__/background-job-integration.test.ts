@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 import { executeToolCall } from "../index";
 import { BackgroundJobManager } from "../../lib/background-job-manager";
 import * as path from "node:path";
+import * as fs from "node:fs/promises";
 import { AsyncSubTaskManager } from "../../lib/async-subtask-manager";
 import { catalog } from "@getpochi/livekit";
 import { makeAdapter } from "@livestore/adapter-node";
@@ -10,6 +11,11 @@ import { NodeBlobStore } from "../../node-blob-store";
 import os from "node:os";
 
 describe("executeToolCall with background jobs", () => {
+  const testBlobStorage = path.join(os.tmpdir(), "pochi-test", "blobs");
+
+  afterEach(async () => {
+    await fs.rm(testBlobStorage, { recursive: true, force: true });
+  });
 
   it("should pass backgroundJobManager to tool execution", async () => {
     const manager = new BackgroundJobManager();
@@ -21,7 +27,7 @@ describe("executeToolCall with background jobs", () => {
     });
     const asyncSubTaskManager = new AsyncSubTaskManager(store);
     const cwd = path.resolve(".");
-    const blobStore = new NodeBlobStore(path.join(os.tmpdir(), "pochi-test", "blobs"));
+    const blobStore = new NodeBlobStore(testBlobStorage);
     
     // Mock the tool call
     const toolCall: any = {

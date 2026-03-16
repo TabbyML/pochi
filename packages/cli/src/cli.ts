@@ -177,7 +177,7 @@ const program = new Command()
   .addOption(
     new Option(
       "--blobs-dir <path>",
-      "Specify the path to be used as a storage directory for blobs. Defaults to `{os_tmpdir}/pochi/blobs`.",
+      "Specify the path to be used as a storage directory for blobs.",
     )
       .default(path.join(os.tmpdir(), "pochi", "blobs"))
       .hideHelp(),
