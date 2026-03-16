@@ -111,7 +111,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
     for (const [i, lifecycle] of lifecycles.entries()) {
-      if (lifecycle.status !== "ready") {
+      if (lifecycle.status !== "init") {
         continue;
       }
 
@@ -156,14 +156,14 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const onReject = useCallback(() => {
     autoApproveGuard.current = "manual";
     for (const lifecycle of lifecycles) {
-      if (lifecycle.status !== "ready") {
+      if (lifecycle.status !== "init") {
         continue;
       }
       lifecycle.reject();
     }
   }, [lifecycles, autoApproveGuard]);
 
-  const isReady = lifecycles.every((x) => x.status === "ready");
+  const isReady = lifecycles.every((x) => x.status === "init");
   const isAutoApproved = useToolAutoApproval(
     pendingApproval,
     autoApproveGuard.current === "auto",

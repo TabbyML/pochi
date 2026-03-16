@@ -1,4 +1,4 @@
-import { getLogger, prompts } from "@getpochi/common";
+import { BuiltInSkillPath, getLogger, prompts } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { container } from "tsyringe";
 import { SkillManager } from "../lib/skill-manager";
@@ -30,8 +30,9 @@ export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
 
   return {
     result: prompts.createUseSkillResult(skill),
-    _meta: {
-      filePath: skill.filePath,
-    },
+    _meta:
+      skill.filePath === BuiltInSkillPath
+        ? undefined
+        : { filePath: skill.filePath },
   };
 };

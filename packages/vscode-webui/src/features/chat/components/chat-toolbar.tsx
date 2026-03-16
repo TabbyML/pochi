@@ -2,11 +2,9 @@ import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { DevModeButton } from "@/components/dev-mode-button";
 import { DiffSummary } from "@/components/diff-summary";
 import { ModelSelect } from "@/components/model-select";
-import { PreviewTool } from "@/components/preview-tool";
 import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
-
 import {
   HoverCard,
   HoverCardContent,
@@ -153,22 +151,17 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const blockingState = useBlockingOperations(blockingOperations);
 
-  const {
-    isExecuting,
-    isBusyCore,
-    isSubmitDisabled,
-    showStopButton,
-    showPreview,
-  } = useChatStatus({
-    isModelsLoading,
-    isModelValid: !!selectedModel,
-    isLoading,
-    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
-    isFilesEmpty: files.length === 0,
-    isReviewsEmpty: reviews.length === 0,
-    isUploadingAttachments,
-    blockingState,
-  });
+  const { isExecuting, isBusyCore, isSubmitDisabled, showStopButton } =
+    useChatStatus({
+      isModelsLoading,
+      isModelValid: !!selectedModel,
+      isLoading,
+      isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
+      isFilesEmpty: files.length === 0,
+      isReviewsEmpty: reviews.length === 0,
+      isUploadingAttachments,
+      blockingState,
+    });
 
   const compactEnabled = !(
     isLoading ||
@@ -413,8 +406,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-
-      {showPreview && <PreviewTool messages={messages} />}
     </>
   );
 };

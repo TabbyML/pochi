@@ -23,6 +23,8 @@ export { toErrorMessage } from "./error";
 export { builtInAgents } from "./agents";
 export { withTimeout } from "./async-utils";
 
+export { builtInSkills, BuiltInSkillPath } from "./skills";
+
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
   client: z.string(),

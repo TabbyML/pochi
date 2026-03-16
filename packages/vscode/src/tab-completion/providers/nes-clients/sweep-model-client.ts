@@ -24,6 +24,7 @@ import type { Fetcher, RequestBody } from "../fetchers";
 import type { TabCompletionProviderResponseItem } from "../types";
 import type { TabCompletionProviderClient } from "../types";
 import { postprocess } from "./post-process";
+import { getNotebookCellsContext } from "./utils";
 
 const WindowLines = 21;
 const MaxCodeSnippets = 5;
@@ -49,6 +50,11 @@ interface BaseSegments {
     original: string;
     modified: string;
     timestamp: number;
+  }[];
+
+  notebookCells?: {
+    filepath: string;
+    text: string;
   }[];
 }
 
@@ -148,6 +154,13 @@ export class NESSweepModelClient
       })
       .filter((diff): diff is NonNullable<typeof diff> => diff !== undefined);
 
+    const notebookCellsContext = getNotebookCellsContext(context);
+    if (notebookCellsContext) {
+      logger.trace("Used notebook cells context:", {
+        notebookCells: notebookCellsContext,
+      });
+    }
+
     return {
       filepath,
       startOffset,
@@ -155,6 +168,7 @@ export class NESSweepModelClient
       current,
       original,
       diffs,
+      notebookCells: notebookCellsContext,
     };
   }
 
@@ -377,5 +391,21 @@ function buildPrompt(
     }
   }
 
-  return codeSnippetParts.join("") + diffParts.join("") + mainPart;
+  const notebookCellParts: string[] = [];
+  for (const cell of baseSegments.notebookCells ?? []) {
+    let cellPart = "";
+    cellPart += `<|file_sep|>${cell.filepath}\n`;
+    cellPart += `${cell.text}\n`;
+    if (quota >= cellPart.length) {
+      notebookCellParts.push(cellPart);
+      quota -= cellPart.length;
+    }
+  }
+
+  return (
+    notebookCellParts.join("") +
+    codeSnippetParts.join("") +
+    diffParts.join("") +
+    mainPart
+  );
 }

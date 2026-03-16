@@ -1,4 +1,3 @@
-import type { PreviewReturnType } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -69,17 +68,6 @@ export interface VSCodeHostApi {
      */
     taskId?: string;
   }): Promise<Environment>;
-
-  previewToolCall(
-    toolName: string,
-    args: unknown,
-    options: {
-      toolCallId: string;
-      state: "partial-call" | "call" | "result";
-      abortSignal?: ThreadAbortSignalSerialization;
-      storeId: string;
-    },
-  ): Promise<PreviewReturnType>;
 
   /**
    * Execute a tool call.
