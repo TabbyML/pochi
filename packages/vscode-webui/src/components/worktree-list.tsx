@@ -406,7 +406,6 @@ function WorktreeSection({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => {
           setIsHovered(false);
-          setShowDeleteConfirm(false);
         }}
         data-testid="worktree-group-header"
       >
