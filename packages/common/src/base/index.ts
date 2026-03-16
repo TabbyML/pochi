@@ -21,6 +21,7 @@ export { WebsiteTaskCreateEvent } from "./event";
 export { toErrorMessage } from "./error";
 
 export { builtInAgents } from "./agents";
+export { withTimeout } from "./async-utils";
 
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
