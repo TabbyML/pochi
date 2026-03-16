@@ -136,20 +136,32 @@ export const newTask =
     const finalState = subTaskRunner.state;
     const lastMessage = finalState.messages.at(-1);
 
-    let result = "Sub-task completed";
+    // FIXME(@zhiming): refactor to explicitly check the task state and reuse `extractTaskResult`
+    let result: string | object = "Sub-task finished without result.";
+
     if (lastMessage?.role === "assistant") {
       for (const part of lastMessage.parts || []) {
-        if (part.type === "tool-attemptCompletion") {
-          if (part.input) {
-            result = (part.input as { result: string }).result;
-          }
+        if (
+          part.type === "tool-attemptCompletion" &&
+          (part.state === "input-available" ||
+            part.state === "output-available")
+        ) {
+          result = part.input.result;
+          break;
+        }
+
+        if (
+          part.type === "tool-askFollowupQuestion" &&
+          (part.state === "input-available" ||
+            part.state === "output-available")
+        ) {
+          result = part.input.question;
           break;
         }
       }
     }
 
     return {
-      result:
-        typeof result === "string" ? result : "Sub-task completed successfully",
+      result: typeof result === "string" ? result : JSON.stringify(result),
     };
   };
