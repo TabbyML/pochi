@@ -145,6 +145,7 @@ function Chat({ user, uid, info }: ChatProps) {
     taskId: uid,
     getters,
     isSubTask,
+    depth: subtask?.depth ?? 0,
     customAgent,
     abortSignal: chatAbortController.current.signal,
     sendAutomaticallyWhen: (x) => {

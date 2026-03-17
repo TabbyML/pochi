@@ -77,16 +77,7 @@ export function useLiveSubTask(
   const parentTask = store.useQuery(
     catalog.queries.makeTaskQuery(task?.parentId ?? ""),
   );
-  const taskDepth = useMemo(() => {
-    let d = 0;
-    if (task?.parentId) {
-      d = 1;
-      if (parentTask?.parentId) {
-        d = 2; // It's a nested subtask
-      }
-    }
-    return d;
-  }, [task?.parentId, parentTask?.parentId]);
+  const taskDepth = parentTask?.parentId ? 2 : 1;
 
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({

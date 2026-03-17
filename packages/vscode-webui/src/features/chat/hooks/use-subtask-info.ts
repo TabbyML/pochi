@@ -10,6 +10,7 @@ export interface SubtaskInfo {
   agent?: string;
   description?: string;
   isNested: boolean;
+  depth: number;
 }
 
 export type NewTaskTool = Extract<
@@ -42,6 +43,7 @@ export function useSubtaskInfo(
   if (!newtaskTool) return undefined;
 
   const isNested = !!parentTask?.parentId;
+  const depth = isNested ? 2 : 1;
 
   return {
     uid,
@@ -50,5 +52,6 @@ export function useSubtaskInfo(
     agent,
     description,
     isNested,
+    depth,
   };
 }
