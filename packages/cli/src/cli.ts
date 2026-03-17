@@ -41,6 +41,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 
+import { finished } from "node:stream/promises";
 import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
@@ -327,9 +328,8 @@ const program = new Command()
       outputRenderer.shutdown();
       await jsonRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
-        await new Promise<void>((resolve) => {
-          jsonOutputStream.end(resolve);
-        });
+        jsonOutputStream.end();
+        await finished(jsonOutputStream);
       }
       mcpHub?.dispose();
       browserSessionStore.dispose();
