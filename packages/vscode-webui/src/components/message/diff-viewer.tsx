@@ -173,6 +173,14 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ patch, filePath }) => {
               "--diffs-font-family": "JetBrains Mono, monospace",
               "--diffs-font-size": "11px",
               "--diffs-line-height": 1.5,
+              "--diffs-addition-color-override":
+                "var(--vscode-editorGutter-addedBackground)",
+              "--diffs-deletion-color-override":
+                "var(--vscode-editorGutter-deletedBackground)",
+              "--diffs-fg-number-addition-override":
+                "var(--vscode-editorGutter-addedBackground)",
+              "--diffs-fg-number-deletion-override":
+                "var(--vscode-editorGutter-deletedBackground)",
             } as React.CSSProperties
           }
         />
