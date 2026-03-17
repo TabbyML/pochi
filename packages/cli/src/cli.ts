@@ -5,6 +5,7 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { finished } from "node:stream/promises";
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -41,7 +42,6 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
 
-import { finished } from "node:stream/promises";
 import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
