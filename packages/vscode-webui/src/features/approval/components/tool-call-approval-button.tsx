@@ -92,7 +92,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       ? { type: subtask.agent, sessionId: taskId }
       : isSubTask && subtask?.agent === "planner"
         ? { type: subtask.agent }
-        : undefined;
+        : isSubTask && subtask?.agent === "explore"
+          ? { type: subtask.agent }
+          : undefined;
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
