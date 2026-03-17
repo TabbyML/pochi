@@ -149,6 +149,13 @@ export const selectClientTools = (
         createReview,
       };
     }
+    // FIXME planner subtask can still use newTask to call explore agent
+    if (options.agent?.name === "planner") {
+      return {
+        ...rest,
+        newTask,
+      };
+    }
     return rest;
   }
 
