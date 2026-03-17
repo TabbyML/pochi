@@ -27,8 +27,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSelectedModels } from "@/features/settings";
+import { useArchivedTasks } from "@/lib/hooks/use-archived-tasks";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { useDeletedWorktrees } from "@/lib/hooks/use-deleted-worktrees";
 import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useTaskArchived } from "@/lib/hooks/use-task-archived";
@@ -44,11 +44,10 @@ import {
   type GitWorktree,
   prefixWorktreeName,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { Task } from "@getpochi/livekit";
 import {
   Archive,
   Check,
-  ChevronDown,
-  ChevronRight,
   GitCompare,
   GitPullRequest,
   ListFilterIcon,
@@ -91,7 +90,6 @@ export function WorktreeList({
 }) {
   const { t } = useTranslation();
   const [showArchivedTasks, setShowArchivedTasks] = useState(false);
-  const [showDeletedWorktrees, setShowDeletedWorktrees] = useState(false);
   const { setTaskArchived, hasArchivableTasks } = useTaskArchived();
 
   // Archive all tasks older than 7 days across all worktrees (no cwd = all worktrees)
@@ -176,35 +174,13 @@ export function WorktreeList({
     return groups.filter((x) => !deletingWorktreePaths.has(x.path));
   }, [groups, deletingWorktreePaths]);
 
-  const deletedWorktrees = useDeletedWorktrees({
-    cwd,
-    excludeWorktrees: optimisticGroups,
-    isLoading: isLoadingWorktrees || isLoadingCurrentWorkspace,
-  });
-
-  const deletedGroups = useMemo(() => {
-    return R.pipe(
-      deletedWorktrees,
-      R.map((wt): WorktreeGroup => {
-        const name = getWorktreeNameFromWorktreePath(wt.path) || "unknown";
-
-        return {
-          path: wt.path,
-          name,
-          isMain: false,
-        };
-      }),
-    );
-  }, [deletedWorktrees]);
-
   // Check if there is only one group and it is the main group
   // If so, we don't need to set a max-height for the section
   const containsOnlyWorkspaceGroup =
     optimisticGroups.length === 1 &&
-    optimisticGroups[0].path === (workspacePath || cwd) &&
-    (!deletedGroups.length || !showDeletedWorktrees);
+    optimisticGroups[0].path === (workspacePath || cwd);
 
-  const hasActiveFilters = showArchivedTasks || showDeletedWorktrees;
+  const archivedTasks = useArchivedTasks();
 
   return (
     <div className="flex flex-col gap-1">
@@ -233,7 +209,7 @@ export function WorktreeList({
                     aria-label="filter-tasks-button"
                     data-testid="filter-tasks-dropdown"
                   >
-                    {hasActiveFilters ? (
+                    {showArchivedTasks ? (
                       <ListFilterPlusIcon className="size-4" />
                     ) : (
                       <ListFilterIcon className="size-4" />
@@ -254,13 +230,6 @@ export function WorktreeList({
                 data-testid="filter-archived-tasks"
               >
                 {t("tasksPage.archivedTasks")}
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={showDeletedWorktrees}
-                onCheckedChange={setShowDeletedWorktrees}
-                data-testid="filter-deleted-worktrees"
-              >
-                {t("tasksPage.deletedWorktrees")}
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -298,29 +267,10 @@ export function WorktreeList({
           containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
           isOpenMainWorktree={isOpenMainWorktree}
           isGitWorkspace={isGitWorkspace}
-          showArchived={showArchivedTasks}
         />
       ))}
-      {showDeletedWorktrees && deletedGroups.length > 0 && (
-        <>
-          <div className="flex items-center py-2">
-            <div className="h-px flex-1 bg-border" />
-            <Trash2 className="mx-2 size-3 text-muted-foreground" />
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          {deletedGroups.map((group) => (
-            <WorktreeSection
-              isLoadingWorktrees={isLoadingWorktrees}
-              key={group.path}
-              group={group}
-              gh={gh}
-              isDeleted
-              gitOriginUrl={gitOriginUrl}
-              showArchived={showArchivedTasks}
-            />
-          ))}
-        </>
+      {showArchivedTasks && archivedTasks.length > 0 && (
+        <ArchivedTasksSection tasks={archivedTasks} />
       )}
     </div>
   );
@@ -331,10 +281,8 @@ function WorktreeSection({
   onDeleteGroup,
   gitOriginUrl,
   containsOnlyWorkspaceGroup,
-  isDeleted,
   isOpenMainWorktree,
   isGitWorkspace,
-  showArchived,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
@@ -343,21 +291,16 @@ function WorktreeSection({
   gitOriginUrl?: string | null;
   containsOnlyWorkspaceGroup?: boolean;
   isOpenMainWorktree?: boolean;
-  isDeleted?: boolean;
   isGitWorkspace?: boolean;
-  showArchived?: boolean;
 }) {
   const { t } = useTranslation();
-  // Default expanded for existing worktrees, collapsed for deleted
-  const [isExpanded, setIsExpanded] = useState(!isDeleted);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTabs();
-  const effectiveShowArchived = isDeleted || showArchived;
   const { tasks, hasMore, loadMore } = usePaginatedTasks({
     cwd: group.path,
     pageSize: 15,
-    showArchived: effectiveShowArchived,
   });
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -411,46 +354,18 @@ function WorktreeSection({
       >
         {/* worktree name & branch */}
         <div className="flex h-6 items-center gap-2">
-          {isDeleted ? (
-            <CollapsibleTrigger asChild>
-              <div className="flex w-full flex-1 cursor-pointer select-none items-center gap-2 font-medium text-sm">
-                {isExpanded ? (
-                  <ChevronDown className="size-4 shrink-0" />
-                ) : (
-                  <ChevronRight className="size-4 shrink-0" />
-                )}
-                <span className="items-center truncate font-bold">
-                  {prefixWorktreeName(group.name)}
-                </span>
-              </div>
-            </CollapsibleTrigger>
-          ) : (
-            <span className="items-center truncate font-bold text-secondary-foreground/70">
-              {prefixWorktreeName(group.name)}
-            </span>
-          )}
+          <span className="items-center truncate font-bold text-secondary-foreground/70">
+            {prefixWorktreeName(group.name)}
+          </span>
 
-          <div
-            className={cn("mt-[1px] flex-1", {
-              hidden: isDeleted,
-            })}
-          >
-            {
-              pullRequest ? (
-                <PrStatusDisplay
-                  prNumber={pullRequest.id}
-                  prUrl={prUrl}
-                  prChecks={pullRequest.checks}
-                />
-              ) : null /*gitOriginUrl ? (
-              <CreatePrDropdown
-                worktreePath={group.path}
-                branch={group.branch}
-                gitOriginUrl={gitOriginUrl}
-                gh={gh}
+          <div className="mt-[1px] flex-1">
+            {pullRequest ? (
+              <PrStatusDisplay
+                prNumber={pullRequest.id}
+                prUrl={prUrl}
+                prChecks={pullRequest.checks}
               />
-            ) : null*/
-            }
+            ) : null}
           </div>
 
           <div
@@ -459,9 +374,6 @@ function WorktreeSection({
               !isHovered && !showDeleteConfirm
                 ? "pointer-events-none opacity-0"
                 : "opacity-100",
-              {
-                hidden: isDeleted,
-              },
             )}
           >
             <>
@@ -599,11 +511,7 @@ function WorktreeSection({
               {tasks.map((task) => {
                 return (
                   <div key={task.id} className="py-0.5">
-                    <TaskRow
-                      task={task}
-                      state={pochiTasks[task.id]}
-                      isDeleted={isDeleted}
-                    />
+                    <TaskRow task={task} state={pochiTasks[task.id]} />
                   </div>
                 );
               })}
@@ -621,6 +529,85 @@ function WorktreeSection({
         </ScrollArea>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+function ArchivedTasksSection({ tasks }: { tasks: readonly Task[] }) {
+  const { t } = useTranslation();
+  const pochiTasks = usePochiTabs();
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [limit, setLimit] = useState(15);
+
+  const paginatedTasks = tasks.slice(0, limit);
+  const hasMore = paginatedTasks.length < tasks.length;
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setLimit((prev) => prev + 15);
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore]);
+
+  return (
+    <>
+      <div className="flex items-center py-2">
+        <div className="h-px flex-1 bg-border" />
+        <Archive className="mx-2 size-3 text-muted-foreground" />
+        <div className="h-px flex-1 bg-border" />
+      </div>
+      <Collapsible
+        open={isExpanded}
+        onOpenChange={setIsExpanded}
+        className="mb-3"
+      >
+        <div className="px-1" data-testid="archived-tasks-section-header">
+          <div className="flex h-6 items-center gap-2">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full flex-1 cursor-pointer select-none items-center gap-1 font-bold text-secondary-foreground/70 text-sm"
+              >
+                <span className="truncate">{t("tasksPage.archivedTasks")}</span>
+              </button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
+        <CollapsibleContent>
+          <ScrollArea viewportClassname="px-1 py-1 max-h-[300px]">
+            {paginatedTasks.length > 0 || hasMore ? (
+              <>
+                {paginatedTasks.map((task) => (
+                  <div key={task.id} className="py-0.5">
+                    <TaskRow task={task} state={pochiTasks[task.id]} />
+                  </div>
+                ))}
+                {hasMore && (
+                  <div ref={loadMoreRef} className="flex justify-center py-2">
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="py-0.5 text-muted-foreground text-xs">
+                {t("tasksPage.emptyState.description")}
+              </div>
+            )}
+          </ScrollArea>
+        </CollapsibleContent>
+      </Collapsible>
+    </>
   );
 }
 
