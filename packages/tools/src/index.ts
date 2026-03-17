@@ -141,30 +141,19 @@ export const selectClientTools = (
 ) => {
   const clientTools = createClientTools(options);
 
+  let tools = clientTools;
+
   if (options?.isSubTask && !options.allowNestedSubtasks) {
-    const { newTask, ...rest } = clientTools;
-    if (options.agent?.name === "reviewer") {
-      return {
-        ...rest,
-        createReview,
-      };
-    }
-    // FIXME planner subtask can still use newTask to call explore agent
-    if (options.agent?.name === "planner") {
-      return {
-        ...rest,
-        newTask,
-      };
-    }
-    return rest;
+    const { newTask, ...rest } = tools;
+    tools = rest as ClientTools;
   }
 
   if (options?.isSubTask && options.agent?.name === "reviewer") {
     return {
-      ...clientTools,
+      ...tools,
       createReview,
     };
   }
 
-  return clientTools;
+  return tools;
 };
