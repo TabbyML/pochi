@@ -39,11 +39,14 @@ export const WebhookEventPayload = z.object({
     result: z
       .object({
         completion: z.string().optional(),
-        followup: z
-          .object({
-            question: z.string(),
-            choices: z.array(z.string()).optional(),
-          })
+        followups: z
+          .array(
+            z.object({
+              question: z.string(),
+              header: z.string().optional(),
+              choices: z.array(z.string()).optional(),
+            }),
+          )
           .optional(),
       })
       .optional(),
