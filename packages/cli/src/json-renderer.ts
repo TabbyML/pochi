@@ -44,6 +44,7 @@ export class JsonRenderer {
       this.outputResult();
     } else {
       await this.outputMessages(this.state.signal.messages.value);
+      await this.outputFilesData();
     }
   }
 
@@ -79,6 +80,17 @@ export class JsonRenderer {
         this.stream.write(`${JSON.stringify(outputMessage)}\n`);
         this.outputMessageIds.add(message.id);
       }
+    }
+  }
+
+  private async outputFilesData() {
+    const files = this.store.query(catalog.queries.makeStoreFilesQuery());
+    if (files.length > 0) {
+      const data = {
+        type: "files",
+        files,
+      };
+      this.stream.write(`${JSON.stringify(data)}\n`);
     }
   }
 }

@@ -5,6 +5,7 @@ import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { finished } from "node:stream/promises";
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import * as commander from "commander";
@@ -326,6 +327,10 @@ const program = new Command()
       // Cleanup resources
       outputRenderer.shutdown();
       await jsonRenderer?.shutdown();
+      if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
+        jsonOutputStream.end();
+        await finished(jsonOutputStream);
+      }
       mcpHub?.dispose();
       browserSessionStore.dispose();
       await store.shutdownPromise();
