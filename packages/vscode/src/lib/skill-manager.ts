@@ -7,7 +7,7 @@ import {
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { computed, signal } from "@preact/signals-core";
-import { uniqueBy } from "remeda";
+import { funnel, uniqueBy } from "remeda";
 import { Lifecycle, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -81,84 +81,66 @@ export class SkillManager implements vscode.Disposable {
     return this.workspaceScope.cwd;
   }
 
+  /**
+   * Creates watchers for a skills directory and pushes them to disposables.
+   * Two watchers are created:
+   * 1. "*\/SKILL.md" — fires on file create/change/delete
+   * 2. "*" — fires on skill folder create/delete (directory removal does not
+   *    propagate a delete event to contained files on all platforms, so this
+   *    is required to reliably catch folder deletions)
+   */
+  private watchSkillsDir(dir: string) {
+    const base = vscode.Uri.file(dir);
+
+    const fileWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(base, "*/SKILL.md"),
+    );
+    fileWatcher.onDidCreate(() => this.scheduleReload.call());
+    fileWatcher.onDidChange(() => this.scheduleReload.call());
+    fileWatcher.onDidDelete(() => this.scheduleReload.call());
+    this.disposables.push(fileWatcher);
+
+    const dirWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(base, "*"),
+    );
+    dirWatcher.onDidCreate(() => this.scheduleReload.call());
+    dirWatcher.onDidDelete(() => this.scheduleReload.call());
+    this.disposables.push(dirWatcher);
+  }
+
   private initWatchers() {
     try {
       if (this.cwd) {
-        const projectSkillsPattern = new vscode.RelativePattern(
-          this.cwd,
-          ".pochi/skills/*/SKILL.md",
-        );
-        const projectWatcher =
-          vscode.workspace.createFileSystemWatcher(projectSkillsPattern);
-
-        projectWatcher.onDidCreate(() => this.loadSkills());
-        projectWatcher.onDidChange(() => this.loadSkills());
-        projectWatcher.onDidDelete(() => this.loadSkills());
-
-        this.disposables.push(projectWatcher);
-
-        // Watch project-level .agents/skills directory
-        const projectAgentsSkillsPattern = new vscode.RelativePattern(
-          this.cwd,
-          ".agents/skills/*/SKILL.md",
-        );
-        const projectAgentsWatcher = vscode.workspace.createFileSystemWatcher(
-          projectAgentsSkillsPattern,
-        );
-
-        projectAgentsWatcher.onDidCreate(() => this.loadSkills());
-        projectAgentsWatcher.onDidChange(() => this.loadSkills());
-        projectAgentsWatcher.onDidDelete(() => this.loadSkills());
-
-        this.disposables.push(projectAgentsWatcher);
+        this.watchSkillsDir(path.join(this.cwd, ".pochi", "skills"));
+        this.watchSkillsDir(path.join(this.cwd, ".agents", "skills"));
       }
     } catch (error) {
       logger.error("Failed to initialize project skills watcher", error);
     }
 
     try {
-      // Watch system .pochi/skills directory
-      const systemSkillsDir = path.join(os.homedir(), ".pochi", "skills");
-      const systemSkillsPattern = new vscode.RelativePattern(
-        systemSkillsDir,
-        "*/SKILL.md",
-      );
-      const systemWatcher =
-        vscode.workspace.createFileSystemWatcher(systemSkillsPattern);
-
-      systemWatcher.onDidCreate(() => this.loadSkills());
-      systemWatcher.onDidChange(() => this.loadSkills());
-      systemWatcher.onDidDelete(() => this.loadSkills());
-
-      this.disposables.push(systemWatcher);
+      this.watchSkillsDir(path.join(os.homedir(), ".pochi", "skills"));
     } catch (error) {
       logger.error("Failed to initialize system skills watcher", error);
     }
 
     try {
-      // Watch global ~/.agents/skills directory
-      const systemAgentsSkillsDir = path.join(
-        os.homedir(),
-        ".agents",
-        "skills",
-      );
-      const systemAgentsSkillsPattern = new vscode.RelativePattern(
-        systemAgentsSkillsDir,
-        "*/SKILL.md",
-      );
-      const systemAgentsWatcher = vscode.workspace.createFileSystemWatcher(
-        systemAgentsSkillsPattern,
-      );
-
-      systemAgentsWatcher.onDidCreate(() => this.loadSkills());
-      systemAgentsWatcher.onDidChange(() => this.loadSkills());
-      systemAgentsWatcher.onDidDelete(() => this.loadSkills());
-
-      this.disposables.push(systemAgentsWatcher);
+      this.watchSkillsDir(path.join(os.homedir(), ".agents", "skills"));
     } catch (error) {
       logger.error("Failed to initialize global .agents/skills watcher", error);
     }
   }
+
+  /**
+   * Debounced reload — coalesces rapid successive watcher events (e.g. when
+   * a directory is deleted along with its contents) into a single scan after
+   * a short settle delay. The delay also ensures the FS has fully committed
+   * the change before we re-read it.
+   */
+  private readonly scheduleReload = funnel(() => this.loadSkills(), {
+    triggerAt: "end",
+    minQuietPeriodMs: 200,
+  });
 
   private async loadSkills() {
     try {
@@ -227,6 +209,7 @@ export class SkillManager implements vscode.Disposable {
   }
 
   dispose() {
+    this.scheduleReload.cancel();
     for (const d of this.disposables) {
       d.dispose();
     }
