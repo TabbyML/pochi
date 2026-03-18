@@ -151,6 +151,7 @@
     },
     "autoApprove": {
       "title": "自動承認",
+      "approvals": "承認",
       "disabled": "無効",
       "noActionsSelected": "アクションが選択されていません",
       "readFiles": "ファイルを読む",

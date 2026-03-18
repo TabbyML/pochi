@@ -37,6 +37,7 @@ interface ChatInputFormProps {
   lastCheckpointHash?: string;
   onTogglePlanMode?: () => void;
   isPlanMode?: boolean;
+  className?: string;
 }
 
 export interface ChatInputFormHandle {
@@ -68,6 +69,7 @@ export const ChatInputForm = forwardRef<
     lastCheckpointHash,
     children,
     onTogglePlanMode,
+    className,
   },
   ref,
 ) {
@@ -98,6 +100,7 @@ export const ChatInputForm = forwardRef<
       isSubTask={isSubTask}
       onFocus={onFocus}
       onTogglePlanMode={onTogglePlanMode}
+      className={className}
     >
       <div className="mt-1 flex select-none flex-wrap items-center gap-1.5 pl-2">
         <ActiveSelectionBadge

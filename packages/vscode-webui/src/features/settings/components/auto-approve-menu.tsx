@@ -21,6 +21,7 @@ import {
   SquareChevronRightIcon,
   Terminal,
 } from "lucide-react";
+import type React from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApprove } from "../hooks/use-auto-approve";
@@ -37,11 +38,13 @@ interface CoreActionSetting {
 interface AutoApproveMenuProps {
   isSubTask: boolean;
   mcpConfigOverride?: McpConfigOverride;
+  trigger?: React.ReactNode;
 }
 
 export function AutoApproveMenu({
   isSubTask,
   mcpConfigOverride,
+  trigger,
 }: AutoApproveMenuProps) {
   const { t } = useTranslation();
   const {
@@ -178,45 +181,47 @@ export function AutoApproveMenu({
   return (
     <Popover onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <div
-          className={cn(
-            "relative flex cursor-pointer select-none items-center justify-between py-2.5",
-          )}
-        >
-          <div className="flex w-full overflow-x-hidden">
-            <label
-              htmlFor="auto-approve-main-checkbox-trigger-dialog"
-              className="flex shrink-0 cursor-pointer items-center pr-3 pl-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Checkbox
-                id="auto-approve-main-checkbox-trigger-dialog"
-                checked={autoApproveActive}
-                onCheckedChange={(checked) => {
-                  updateAutoApproveActive(!!checked);
-                }}
-              />
-            </label>
-            <div className="flex flex-1 flex-nowrap items-center gap-1 overflow-hidden font-medium hover:text-foreground/80">
-              <div className="flex-1 truncate">
-                <span className="whitespace-nowrap">
-                  {t("settings.autoApprove.title")}:
-                </span>
-                {autoApproveActive && enabledOptionsSummary.length > 0 ? (
-                  <span className="ml-1">
-                    {enabledOptionsSummary.join(", ")}
+        {trigger ?? (
+          <div
+            className={cn(
+              "relative flex cursor-pointer select-none items-center justify-between py-2.5",
+            )}
+          >
+            <div className="flex w-full overflow-x-hidden">
+              <label
+                htmlFor="auto-approve-main-checkbox-trigger-dialog"
+                className="flex shrink-0 cursor-pointer items-center pr-3 pl-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  id="auto-approve-main-checkbox-trigger-dialog"
+                  checked={autoApproveActive}
+                  onCheckedChange={(checked) => {
+                    updateAutoApproveActive(!!checked);
+                  }}
+                />
+              </label>
+              <div className="flex flex-1 flex-nowrap items-center gap-1 overflow-hidden font-medium hover:text-foreground/80">
+                <div className="flex-1 truncate">
+                  <span className="whitespace-nowrap">
+                    {t("settings.autoApprove.title")}:
                   </span>
-                ) : (
-                  <span className="ml-1 text-[var(--vscode-descriptionForeground)]">
-                    {autoApproveActive
-                      ? t("settings.autoApprove.noActionsSelected")
-                      : t("settings.autoApprove.disabled")}
-                  </span>
-                )}
+                  {autoApproveActive && enabledOptionsSummary.length > 0 ? (
+                    <span className="ml-1">
+                      {enabledOptionsSummary.join(", ")}
+                    </span>
+                  ) : (
+                    <span className="ml-1 text-[var(--vscode-descriptionForeground)]">
+                      {autoApproveActive
+                        ? t("settings.autoApprove.noActionsSelected")
+                        : t("settings.autoApprove.disabled")}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </PopoverTrigger>
       <PopoverContent
         className="[@media(min-width:400px)]:w-[400px]"

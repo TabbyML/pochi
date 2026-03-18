@@ -150,6 +150,7 @@
     },
     "autoApprove": {
       "title": "自动批准",
+      "approvals": "权限",
       "disabled": "已禁用",
       "noActionsSelected": "未选择任何操作",
       "readFiles": "读取文件",

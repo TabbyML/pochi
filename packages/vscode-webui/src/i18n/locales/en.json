@@ -150,6 +150,7 @@
     },
     "autoApprove": {
       "title": "Auto-approve",
+      "approvals": "Approvals",
       "disabled": "Disabled",
       "noActionsSelected": "No actions selected",
       "readFiles": "Read files",
