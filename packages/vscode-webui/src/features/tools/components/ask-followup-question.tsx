@@ -15,7 +15,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  CornerDownLeft,
   Info,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -97,7 +96,7 @@ function buildPromptLines(
       if (!isAnswered(sel)) return null; // skip dismissed / unanswered questions
       const labels = getAnswerLabels(sel, q.options, q.multiSelect);
       const answerLines = labels.map((l) => `- ${l}`).join("\n");
-      return `**[${q.header}]** ${q.question}\n${answerLines}`;
+      return `${q.question}\n${answerLines}`;
     })
     .filter((line): line is string => line !== null)
     .join("\n\n");
@@ -141,10 +140,7 @@ function QuestionSummary({
             {/* All options */}
             <div className="flex flex-col gap-0.5">
               {q.options.map((opt, oi) => (
-                <span
-                  key={oi}
-                  className={cn("text-sm", "font-medium text-foreground")}
-                >
+                <span key={oi} className="font-medium text-foreground text-sm">
                   {oi + 1}. {opt.label}
                 </span>
               ))}
@@ -192,12 +188,14 @@ function OptionRow({
       type="button"
       disabled={!isInteractive}
       className={cn(
-        "group flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors",
+        "group flex w-full items-center gap-3 border-l-2 py-1.5 pr-3 text-left transition-colors",
+        isFocused ? "pl-[10px]" : "pl-3",
         isSelected
           ? "bg-muted"
           : isFocused
             ? "bg-muted/60"
             : "hover:bg-muted/30",
+        isFocused ? "border-l-foreground/40" : "border-l-transparent",
         !isInteractive && "cursor-not-allowed opacity-60",
       )}
       onClick={onSelect}
@@ -230,8 +228,8 @@ function OptionRow({
       <span className="flex min-w-0 flex-1 items-center gap-1.5">
         <span
           className={cn(
-            "font-semibold text-sm",
-            active ? "text-foreground" : "text-muted-foreground",
+            "font-medium text-sm",
+            active ? "font-semibold text-foreground" : "text-muted-foreground",
           )}
         >
           {opt.label}
@@ -289,8 +287,8 @@ function OptionRow({
         </span>
       )}
 
-      {/* Keyboard hint for single-select focused row */}
-      {isFocused && !multiSelect && (
+      {/* Keyboard navigation hint for focused row */}
+      {isFocused && (
         <span className="flex shrink-0 items-center gap-0.5 text-muted-foreground/50">
           <ArrowUp className="h-3.5 w-3.5" />
           <ArrowDown className="h-3.5 w-3.5" />
@@ -373,8 +371,10 @@ function OtherRow({
   return (
     <div
       className={cn(
-        "flex w-full items-center gap-3 px-3 py-1.5 transition-colors",
+        "flex w-full items-center gap-3 border-l-2 py-1.5 pr-3 transition-colors",
+        isFocused ? "pl-[10px]" : "pl-3",
         isOpen ? "bg-muted" : isFocused ? "bg-muted/60" : "hover:bg-muted/30",
+        isFocused ? "border-l-foreground/40" : "border-l-transparent",
         !isInteractive && "opacity-60",
       )}
       onMouseEnter={onMouseEnter}
@@ -446,7 +446,7 @@ function OtherRow({
             "flex-1 text-left text-sm transition-colors",
             isOpen || isFocused
               ? "font-semibold text-foreground"
-              : "font-normal text-muted-foreground",
+              : "font-medium text-muted-foreground",
             !isInteractive && "cursor-not-allowed",
           )}
           onClick={() => {
@@ -540,7 +540,7 @@ function QuestionCard({
           {question.question}
         </MessageMarkdown>
         {totalPages > 1 && (
-          <div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
+          <div className="flex shrink-0 items-center gap-1 font-medium text-muted-foreground text-xs">
             <button
               type="button"
               disabled={currentPage === 0}
@@ -625,7 +625,9 @@ function QuestionCard({
           onClick={onDismiss}
         >
           {t("toolInvocation.dismiss")}
-          <kbd className="font-mono text-xs opacity-70">{"ESC"}</kbd>
+          <div className="rounded bg-muted px-1 py-1 font-mono text-[8px] leading-none">
+            {"ESC"}
+          </div>
         </button>
 
         {!isLastPage ? (
@@ -636,7 +638,9 @@ function QuestionCard({
             onClick={onAdvance}
           >
             {t("toolInvocation.next")}
-            <CornerDownLeft className="h-3 w-3" />
+            <div className="rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-xs leading-none">
+              {"↵"}
+            </div>
           </Button>
         ) : (
           <Button
@@ -646,7 +650,9 @@ function QuestionCard({
             onClick={onSubmit}
           >
             {t("toolInvocation.submit")}
-            <CornerDownLeft className="h-3 w-3" />
+            <div className="rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-xs leading-none">
+              {"↵"}
+            </div>
           </Button>
         )}
       </div>
@@ -667,8 +673,8 @@ export const AskFollowupQuestionTool: React.FC<
     !isLoading && isLastPart && toolCall.state === "input-available";
 
   const [selections, setSelections] = useState<SelectionState[]>(() =>
-    questionList.map(() => ({
-      optionIndices: [],
+    questionList.map((q) => ({
+      optionIndices: q.multiSelect ? [] : [0],
       custom: "",
     })),
   );
@@ -682,9 +688,9 @@ export const AskFollowupQuestionTool: React.FC<
     setSelections((prev) => {
       if (prev.length >= questionList.length) return prev;
       return questionList.map(
-        (_q, i) =>
+        (q, i) =>
           prev[i] ?? {
-            optionIndices: [],
+            optionIndices: q.multiSelect ? [] : [0],
             custom: "",
           },
       );
@@ -720,10 +726,10 @@ export const AskFollowupQuestionTool: React.FC<
     selectionsRef.current = selections;
   });
 
-  // Reset focused index and re-focus container on page change
+  // Reset focused index to first item and re-focus container on page change
   // biome-ignore lint/correctness/useExhaustiveDependencies: currentPage is the trigger; body intentionally uses no deps
   useEffect(() => {
-    setFocusedIndex(-1);
+    setFocusedIndex(0);
     containerRef.current?.focus();
   }, [currentPage]);
 
@@ -861,6 +867,14 @@ export const AskFollowupQuestionTool: React.FC<
           e.preventDefault();
           confirmFocused();
           break;
+        case "ArrowLeft":
+          e.preventDefault();
+          setCurrentPage((p) => Math.max(0, p - 1));
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
+          break;
         case "Escape":
           e.preventDefault();
           if (currentPage === totalPages - 1) handleDismiss();
@@ -913,7 +927,11 @@ export const AskFollowupQuestionTool: React.FC<
 
   if (toolCall.state === "input-streaming") return null;
 
-  if (toolCall.state === "output-available" || submitted) {
+  if (
+    toolCall.state === "output-available" ||
+    toolCall.state === "output-error" ||
+    submitted
+  ) {
     return (
       <QuestionSummary
         tool={toolCall}
