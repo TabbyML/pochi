@@ -58,7 +58,7 @@ function normalizeQuestion(value: unknown): FollowupQuestion | undefined {
   };
 }
 
-export function extractFollowupQuestions(input: unknown): FollowupQuestion[] {
+function extractFollowupQuestions(input: unknown): FollowupQuestion[] {
   const record = asRecord(input);
   const questions = Array.isArray(record?.questions) ? record.questions : [];
 
@@ -67,9 +67,9 @@ export function extractFollowupQuestions(input: unknown): FollowupQuestion[] {
     .filter((question): question is FollowupQuestion => question !== undefined);
 }
 
-export function formatFollowupQuestions(input: unknown): string | undefined {
+export function formatFollowupQuestions(input: unknown): string {
   const questions = extractFollowupQuestions(input);
-  if (questions.length === 0) return undefined;
+  if (questions.length === 0) return "";
 
   return questions
     .map((question) => formatFollowupQuestion(question))
