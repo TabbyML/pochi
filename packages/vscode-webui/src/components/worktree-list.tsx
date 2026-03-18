@@ -61,6 +61,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { VscGitMerge } from "react-icons/vsc";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
@@ -522,6 +523,25 @@ function WorktreeSection({
                   {t("tasksPage.openWorktreeInTerminal")}
                 </TooltipContent>
               </Tooltip>
+              {group.isMain && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      asChild
+                    >
+                      <a href="command:git.migrateWorktreeChanges">
+                        <VscGitMerge className="size-4" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("tasksPage.migrateWorktreeChanges")}
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {!group.isMain && isOpenMainWorktree && (
                 <Popover
                   open={showDeleteConfirm}

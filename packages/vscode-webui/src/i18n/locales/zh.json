@@ -249,6 +249,7 @@
     "tasksCount": "{{count}} 个任务",
     "openWorktreeDiff": "查看更改",
     "openWorktreeInTerminal": "在终端中打开工作树",
+    "migrateWorktreeChanges": "迁移工作树更改",
     "deleteWorktree": "删除工作树",
     "deleteWorktreeTitle": "删除工作树",
     "deleteWorktreeConfirm": "确定要删除工作树 \"{{name}}\" 吗？",
