@@ -24,6 +24,8 @@ export { builtInAgents } from "./agents";
 
 export { builtInSkills, BuiltInSkillPath } from "./skills";
 
+export { withTimeout } from "./async-utils";
+
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
   client: z.string(),

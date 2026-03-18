@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { constants, type GitStatus, getLogger } from "../base";
+import { constants, type GitStatus, getLogger, withTimeout } from "../base";
 import { parseGitOriginUrl } from "../git-utils";
 
 export interface GitStatusReaderOptions {
@@ -195,16 +195,11 @@ export class GitStatusReader {
         path: this.cwd,
       });
 
-      const timeoutPromise = new Promise<undefined>((resolve) => {
-        setTimeout(() => {
-          logger.warn(
-            `readGitStatus timed out after ${ReadGitStatusTimeoutMs}ms, returning undefined`,
-          );
-          resolve(undefined);
-        }, ReadGitStatusTimeoutMs);
-      });
-
-      return await Promise.race([this.readGitStatusImpl(), timeoutPromise]);
+      return await withTimeout(
+        this.readGitStatusImpl(),
+        ReadGitStatusTimeoutMs,
+        `readGitStatus timed out after ${ReadGitStatusTimeoutMs}ms, returning undefined`,
+      );
     } catch (error) {
       logger.error("Error reading Git status", error);
       return undefined;
