@@ -27,7 +27,7 @@ To reduce this operational overhead, we started experimenting with Pochi to see 
 
 The first workflow we built with Pochi became [**DocFlow**](https://github.com/mufassirkazi/docflow)**,** a small CLI that automates documentation publishing by converting Lark, Notion, or Google Docs documents into Markdown for our documentation site.
 
-![docflow-mermaid-chart](./images/docflow-mermaid-chart.png)
+![Docflow Mermaid Chart](./images/docflow-mermaid-chart.png)
 
 Our documentation content is typically written in Lark for collaboration and feedback, while the site itself is built with Next.js and expects Markdown/MDX files with properly hosted assets. DocFlow fetches the document through Lark API and converts the block-based content into a structured AST. From there, it generates Markdown while preserving elements such as headings, code blocks, images, and videos.
 
@@ -64,7 +64,7 @@ Content Syndicator automates this process. It fetches the article from Lark, con
 
 Video blocks require a different workflow. Videos embedded in Lark documents are uploaded to YouTube using the YouTube API, and the generated embed links are inserted into the article. These embeds work across Dev.to and Hashnode, and can also be reused when importing the article into Medium.
 
-![content Syndicator Mermaid Chart](./images/content-syndicator-mermaid-chart.png)
+![Content Syndicator Mermaid Chart](./images/content-syndicator-mermaid-chart.png)
 
 
 ```
