@@ -37,7 +37,6 @@ import {
   ChevronDownIcon,
   PaperclipIcon,
   SendHorizonal,
-  ShieldIcon,
   StopCircleIcon,
 } from "lucide-react";
 import type React from "react";
@@ -373,7 +372,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 )}
                 aria-label={t("settings.autoApprove.approvals")}
               >
-                <ShieldIcon className="size-3.5 shrink-0" />
                 <span className="truncate whitespace-nowrap transition-colors duration-200">
                   {t("settings.autoApprove.approvals")}
                 </span>
@@ -540,7 +538,6 @@ export function ChatToolBarSkeleton() {
                 className="button-focus h-6 gap-1 px-1.5 text-xs"
                 aria-label={t("settings.autoApprove.approvals")}
               >
-                <ShieldIcon className="size-3.5 shrink-0" />
                 <span className="truncate whitespace-nowrap transition-colors duration-200">
                   {t("settings.autoApprove.approvals")}
                 </span>
