@@ -320,7 +320,8 @@
     "recommended": "Recommended",
     "dismiss": "Dismiss",
     "next": "Next",
-    "askingQuestion": "Asking question"
+    "askingQuestion": "Asking question",
+    "skipped": "Skipped"
   },
   "reasoning": {
     "thinking": "Thinking ...",

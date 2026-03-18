@@ -93,12 +93,14 @@ function buildPromptLines(
   return questionList
     .map((q, i) => {
       const sel = selections[i] ?? { optionIndices: [], custom: "" };
-      if (!isAnswered(sel)) return null; // skip dismissed / unanswered questions
+      if (!isAnswered(sel)) {
+        // Include dismissed questions so the AI has full context
+        return `${q.question}\n- (skipped)`;
+      }
       const labels = getAnswerLabels(sel, q.options, q.multiSelect);
       const answerLines = labels.map((l) => `- ${l}`).join("\n");
       return `${q.question}\n${answerLines}`;
     })
-    .filter((line): line is string => line !== null)
     .join("\n\n");
 }
 
@@ -113,6 +115,7 @@ function QuestionSummary({
   tool,
   isExecuting,
   questionList,
+  selections,
 }: QuestionSummaryProps) {
   const { t } = useTranslation();
 
@@ -126,6 +129,11 @@ function QuestionSummary({
   const detail = (
     <div className="flex flex-col gap-3 pl-6">
       {questionList.map((q, i) => {
+        const sel = selections[i] ?? { optionIndices: [], custom: "" };
+        const answered = isAnswered(sel);
+        const answerLabels = answered
+          ? getAnswerLabels(sel, q.options, q.multiSelect)
+          : [];
         return (
           <div key={tool.toolCallId + i} className="flex flex-col gap-1.5">
             {/* Label + question */}
@@ -137,13 +145,22 @@ function QuestionSummary({
                 {q.question}
               </MessageMarkdown>
             </div>
-            {/* All options */}
+            {/* Selected answer(s) or skipped indicator */}
             <div className="flex flex-col gap-0.5">
-              {q.options.map((opt, oi) => (
-                <span key={oi} className="font-medium text-foreground text-sm">
-                  {oi + 1}. {opt.label}
+              {answered ? (
+                answerLabels.map((label, li) => (
+                  <span
+                    key={li}
+                    className="font-medium text-foreground text-sm"
+                  >
+                    {label}
+                  </span>
+                ))
+              ) : (
+                <span className="text-muted-foreground text-sm italic">
+                  {t("toolInvocation.skipped")}
                 </span>
-              ))}
+              )}
             </div>
           </div>
         );
@@ -470,6 +487,33 @@ function OtherRow({
   );
 }
 
+const isMac =
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+
+const KbdReturn = "↵";
+const KbdMeta = isMac ? "⌘" : "Ctrl";
+
+function KbdHint({ multiSelect }: { multiSelect: boolean }) {
+  if (multiSelect) {
+    return (
+      <span className="flex items-center gap-0.5">
+        <span className="rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-xs leading-none">
+          {KbdMeta}
+        </span>
+        <span className="rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-xs leading-none">
+          {KbdReturn}
+        </span>
+      </span>
+    );
+  }
+  return (
+    <span className="rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-xs leading-none">
+      {KbdReturn}
+    </span>
+  );
+}
+
 interface QuestionCardProps {
   question: Question;
   selection: SelectionState;
@@ -638,9 +682,7 @@ function QuestionCard({
             onClick={onAdvance}
           >
             {t("toolInvocation.next")}
-            <div className="rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-xs leading-none">
-              {"↵"}
-            </div>
+            <KbdHint multiSelect={question.multiSelect} />
           </Button>
         ) : (
           <Button
@@ -650,9 +692,7 @@ function QuestionCard({
             onClick={onSubmit}
           >
             {t("toolInvocation.submit")}
-            <div className="rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-xs leading-none">
-              {"↵"}
-            </div>
+            <KbdHint multiSelect={question.multiSelect} />
           </Button>
         )}
       </div>
@@ -769,14 +809,20 @@ export const AskFollowupQuestionTool: React.FC<
 
   const handleDismiss = useCallback(() => {
     if (!isInteractive) return;
+    // Use selectionsRef to avoid stale closure: each dismiss clears the current
+    // page's selection and the ref always holds the latest committed state,
+    // so sequential dismisses across pages all start from the correct baseline.
+    const cleared = [...selectionsRef.current];
+    cleared[currentPage] = { optionIndices: [], custom: "" };
+    setSelections(cleared);
     if (currentPage < totalPages - 1) {
       // Skip this question and move to the next
       setCurrentPage((p) => p + 1);
     } else {
-      // Last question: submit with whatever was answered so far
-      doSubmit(selections);
+      // Last question: submit without this question's answer
+      doSubmit(cleared);
     }
-  }, [isInteractive, currentPage, totalPages, selections, doSubmit]);
+  }, [isInteractive, currentPage, totalPages, doSubmit]);
 
   const selectOption = useCallback(
     (oi: number) => {
@@ -854,6 +900,7 @@ export const AskFollowupQuestionTool: React.FC<
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (!isInteractive) return;
+      const isMultiSelect = currentQuestion?.multiSelect ?? false;
       switch (e.key) {
         case "ArrowUp":
           e.preventDefault();
@@ -865,7 +912,14 @@ export const AskFollowupQuestionTool: React.FC<
           break;
         case "Enter":
           e.preventDefault();
-          confirmFocused();
+          if (isMultiSelect && (e.metaKey || e.ctrlKey)) {
+            // Cmd+Enter / Ctrl+Enter: advance or submit for multi-select
+            if (isAnswered(currentSelection)) {
+              advanceOrSubmit();
+            }
+          } else {
+            confirmFocused();
+          }
           break;
         case "ArrowLeft":
           e.preventDefault();
@@ -877,8 +931,7 @@ export const AskFollowupQuestionTool: React.FC<
           break;
         case "Escape":
           e.preventDefault();
-          if (currentPage === totalPages - 1) handleDismiss();
-          else setCurrentPage((p) => p + 1);
+          handleDismiss();
           break;
       }
     },
@@ -886,9 +939,11 @@ export const AskFollowupQuestionTool: React.FC<
       isInteractive,
       totalRows,
       confirmFocused,
-      currentPage,
       totalPages,
       handleDismiss,
+      currentQuestion,
+      currentSelection,
+      advanceOrSubmit,
     ],
   );
 

@@ -317,7 +317,8 @@
     "recommended": "推荐",
     "dismiss": "忽略",
     "next": "下一步",
-    "askingQuestion": "提问中"
+    "askingQuestion": "提问中",
+    "skipped": "已跳过"
   },
   "reasoning": {
     "thinking": "思考中 ...",

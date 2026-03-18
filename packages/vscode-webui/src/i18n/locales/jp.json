@@ -319,7 +319,8 @@
     "recommended": "おすすめ",
     "dismiss": "閉じる",
     "next": "次へ",
-    "askingQuestion": "質問中"
+    "askingQuestion": "質問中",
+    "skipped": "スキップ済み"
   },
   "reasoning": {
     "thinking": "考え中 ...",
