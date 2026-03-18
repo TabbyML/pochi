@@ -16,19 +16,10 @@ export const executeCommand =
   (): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
     { command, cwd = ".", timeout = 120 },
-    { abortSignal, cwd: workspaceDir, envs, builtinSubAgentInfo },
+    { abortSignal, cwd: workspaceDir, envs },
   ) => {
     if (!command) {
       throw new Error("Command is required to execute.");
-    }
-
-    if (builtinSubAgentInfo?.type === "explore") {
-      const isReadOnly = isReadOnlyCommand(command);
-      if (!isReadOnly) {
-        throw new Error(
-          `Command execution rejected: '${command}'. The 'explore' agent is restricted to read-only commands (e.g., git log, grep, cat, ls, find). Mutating commands are not allowed.`,
-        );
-      }
     }
 
     let resolvedCwd: string;
@@ -145,68 +136,4 @@ function processCommandOutput(
     : fullOutput;
 
   return { output, isTruncated };
-}
-
-function isReadOnlyCommand(command: string): boolean {
-  // A basic check to ensure the command only uses allowed read-only utilities.
-  // This isn't foolproof but serves as a strong guardrail for the LLM.
-  const allowedCommands = [
-    "git",
-    "grep",
-    "rg",
-    "cat",
-    "ls",
-    "find",
-    "head",
-    "tail",
-    "less",
-    "more",
-    "wc",
-    "awk",
-    "sed",
-    "echo",
-    "pwd",
-    "tree",
-    "stat",
-    "file",
-  ];
-
-  // Check if it contains obvious mutating operators
-  if (/[><|&;]/.test(command)) {
-    // Allow simple piping like `ls | grep` if we want, but for strict read-only it's safer to just check the base commands.
-    // Let's parse out the first word of each piped command.
-    const parts = command.split(/[|&;]/).map((p) => p.trim());
-    return parts.every((part) => {
-      if (!part) return true;
-      const baseCmd = part.split(/\s+/)[0];
-      return allowedCommands.includes(baseCmd);
-    });
-  }
-
-  const baseCmd = command.trim().split(/\s+/)[0];
-  if (!allowedCommands.includes(baseCmd)) {
-    return false;
-  }
-
-  // Specifically for git, block non-read operations
-  if (baseCmd === "git") {
-    const gitSubCmd = command.trim().split(/\s+/)[1];
-    const readonlyGitCmds = [
-      "log",
-      "diff",
-      "status",
-      "show",
-      "branch",
-      "grep",
-      "ls-files",
-      "ls-tree",
-      "rev-parse",
-      "blame",
-    ];
-    if (gitSubCmd && !readonlyGitCmds.includes(gitSubCmd)) {
-      return false;
-    }
-  }
-
-  return true;
 }

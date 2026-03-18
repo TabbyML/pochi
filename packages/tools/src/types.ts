@@ -12,9 +12,5 @@ export type ToolFunctionType<T extends Tool> = (
     cwd: string;
     contentType?: string[];
     envs?: Record<string, string>;
-    builtinSubAgentInfo?: {
-      type: string;
-      sessionId?: string;
-    };
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;

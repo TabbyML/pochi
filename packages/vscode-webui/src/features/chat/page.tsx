@@ -84,8 +84,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   useKeepTaskEditor(task);
   const subtask = useSubtaskInfo(uid, task?.parentId);
-  console.log(uid);
-  console.log(subtask);
   const isSubTask = !!subtask;
 
   // inherit autoApproveSettings from parent task

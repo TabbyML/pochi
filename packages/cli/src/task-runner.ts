@@ -586,7 +586,6 @@ export class TaskRunner {
           undefined,
           this.llm.contentType,
           envs,
-          builtinSubAgentInfo,
         ),
       );
 
