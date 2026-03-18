@@ -10,7 +10,6 @@ import {
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
-import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
@@ -88,6 +87,12 @@ export interface RunnerOptions {
   isSubTask?: boolean;
 
   /**
+   * Sub-task nesting depth.
+   * Root task depth is 0; each nested sub-task increments by 1.
+   */
+  depth?: number;
+
+  /**
    * Custom agent to use for this task
    */
   customAgent?: CustomAgent;
@@ -144,6 +149,7 @@ export class TaskRunner {
   private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
+  private depth: number;
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
@@ -175,6 +181,7 @@ export class TaskRunner {
     this.backgroundJobManager = new BackgroundJobManager();
     this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
     this.customAgent = options.customAgent;
+    this.depth = options.depth ?? 0;
 
     this.fileSystem = options.filesystem;
 
@@ -212,6 +219,7 @@ export class TaskRunner {
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
+          depth: this.depth + 1,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -228,6 +236,7 @@ export class TaskRunner {
       blobStore: this.blobStore,
       chatClass: Chat,
       isSubTask: options.isSubTask,
+      depth: this.depth,
       customAgent: options.customAgent,
 
       outputSchema: options.outputSchema,
@@ -566,15 +575,6 @@ export class TaskRunner {
         envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
           this.taskId,
         );
-      }
-
-      let builtinSubAgentInfo: BuiltinSubAgentInfo | undefined;
-      if (this.customAgent?.name === "browser") {
-        builtinSubAgentInfo = { type: "browser", sessionId: this.taskId };
-      } else if (this.customAgent?.name === "planner") {
-        builtinSubAgentInfo = { type: "planner" };
-      } else if (this.customAgent?.name === "explore") {
-        builtinSubAgentInfo = { type: "explore" };
       }
 
       const toolResult = await processContentOutput(
