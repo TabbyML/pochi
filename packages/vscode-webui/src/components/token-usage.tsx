@@ -265,7 +265,7 @@ export function TokenUsage({
                 <TooltipTrigger asChild>
                   <div className="inline-block">
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
                       className="text-xs"
                       onClick={() => {
@@ -288,7 +288,7 @@ export function TokenUsage({
                 <TooltipTrigger asChild>
                   <div className="inline-block">
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
                       className="text-xs"
                       onClick={() => {
