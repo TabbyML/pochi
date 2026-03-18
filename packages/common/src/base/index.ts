@@ -20,6 +20,8 @@ export { WebsiteTaskCreateEvent } from "./event";
 
 export { toErrorMessage } from "./error";
 
+export { withTimeout } from "./async-utils";
+
 export { builtInAgents } from "./agents";
 
 export { builtInSkills, BuiltInSkillPath } from "./skills";
