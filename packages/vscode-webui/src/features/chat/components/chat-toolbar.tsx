@@ -68,6 +68,7 @@ interface ChatToolbarProps {
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
+  storeId?: string;
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
 }
@@ -84,6 +85,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   todosRef,
   onUpdateIsPublicShared,
   taskId,
+  storeId,
   isRepairingMermaid = false,
   mcpConfigOverride,
 }) => {
@@ -267,6 +269,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <CompleteSubtaskButton
             showCompleteButton={showCompleteSubtaskButton}
             subtask={subtask}
+            storeId={storeId}
           />
           <ApprovalButton
             pendingApproval={pendingApproval}
@@ -460,6 +463,7 @@ export function ChatToolBarSkeleton() {
           <CompleteSubtaskButton
             showCompleteButton={false}
             subtask={undefined}
+            storeId={undefined}
           />
           <ApprovalButton
             pendingApproval={undefined}

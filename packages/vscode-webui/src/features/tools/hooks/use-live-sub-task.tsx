@@ -71,6 +71,14 @@ export function useLiveSubTask(
   const uid = tool.input?._meta?.uid!;
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+
+  // Determine task depth by checking its parent hierarchy.
+  // Since MaxSubTaskDepth is 2, we only need to check up to the grandparent.
+  const parentTask = store.useQuery(
+    catalog.queries.makeTaskQuery(task?.parentId ?? ""),
+  );
+  const taskDepth = parentTask?.parentId ? 2 : 1;
+
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({
     todos: todosRef,
@@ -87,6 +95,7 @@ export function useLiveSubTask(
 
     getters,
     isSubTask: true,
+    depth: taskDepth,
     customAgent,
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
@@ -136,7 +145,9 @@ export function useLiveSubTask(
             ? {
                 type: "planner",
               }
-            : undefined;
+            : tool.input?.agentType === "explore"
+              ? { type: "explore" }
+              : undefined;
 
       const result = await vscodeHost.executeToolCall(
         toolCall.toolName,

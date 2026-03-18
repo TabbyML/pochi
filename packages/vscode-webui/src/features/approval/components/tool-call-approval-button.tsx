@@ -92,7 +92,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       ? { type: subtask.agent, sessionId: taskId }
       : isSubTask && subtask?.agent === "planner"
         ? { type: subtask.agent }
-        : undefined;
+        : isSubTask && subtask?.agent === "explore"
+          ? { type: subtask.agent }
+          : undefined;
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
@@ -117,7 +119,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
       const tool = tools[i];
       const runManually =
-        (!subtaskOffhand &&
+        (!subtask?.isNested &&
+          !subtaskOffhand &&
           // Async task cannot be run manually.
           !(tool.type === "tool-newTask" && tool.input?.runAsync)) ||
         // planner always run manually
@@ -151,6 +154,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     taskId,
     parentUid,
     builtinSubAgentInfo,
+    subtask?.isNested,
   ]);
 
   const onReject = useCallback(() => {
