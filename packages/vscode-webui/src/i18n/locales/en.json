@@ -250,6 +250,7 @@
     "tasksCount": "{{count}} tasks",
     "openWorktreeDiff": "Review changes",
     "openWorktreeInTerminal": "Open worktree in terminal",
+    "migrateWorktreeChanges": "Migrate worktree changes",
     "deleteWorktree": "Delete worktree",
     "deleteWorktreeTitle": "Delete worktree",
     "deleteWorktreeConfirm": "Are you sure you want to delete the worktree \"{{name}}\"?",
