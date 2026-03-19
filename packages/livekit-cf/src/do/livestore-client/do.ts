@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { WebhookDelivery } from "@/lib/webhook-delivery";
 import type { ClientDoCallback, Env, User } from "@/types";
 import { catalog } from "@getpochi/livekit";
+import type { AskFollowupQuestionInput } from "@getpochi/tools";
 import { createStoreDoPromise } from "@livestore/adapter-cloudflare";
 import { type Store, nanoid } from "@livestore/livestore";
 import { handleSyncUpdateRpc } from "@livestore/sync-cf/client";
@@ -142,7 +143,7 @@ export class LiveStoreClientDO
           const shareId = task.shareId || `p-${task.id.replaceAll("-", "")}`;
 
           let completion: string | undefined = undefined;
-          let followup = undefined;
+          let questions = undefined;
           if (task.status === "completed") {
             const messages = store.query(
               catalog.queries.makeMessagesQuery(task.id),
@@ -170,13 +171,13 @@ export class LiveStoreClientDO
                     part.type === "tool-askFollowupQuestion" &&
                     part.state === "input-available"
                   ) {
-                    followup = part.input as
-                      | { question: string; followUp?: string[] }
-                      | undefined;
+                    const input = part.input as AskFollowupQuestionInput;
+                    questions =
+                      input.questions.length > 0 ? input.questions : undefined;
                     break;
                   }
                 }
-                if (completion !== undefined || followup !== undefined) break;
+                if (completion !== undefined || questions !== undefined) break;
               }
             }
           }
@@ -185,12 +186,7 @@ export class LiveStoreClientDO
               { ...task, shareId },
               {
                 completion,
-                followup: followup
-                  ? {
-                      question: followup.question,
-                      choices: followup.followUp,
-                    }
-                  : undefined,
+                questions,
               },
             )
             .catch(console.error);

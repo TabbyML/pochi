@@ -112,6 +112,46 @@ describe('formatters', () => {
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
     });
+
+    it('should remove empty reasoning parts without providerMetadata', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'reasoning', text: '' },
+            { type: 'text', text: 'Response' },
+          ],
+        },
+      ];
+      const formatted = formatters.llm(clone(messages));
+      const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
+      expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(false);
+    });
+
+    it('should keep empty reasoning parts that have providerMetadata (e.g. OpenAI itemId)', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'reasoning',
+              text: '',
+              providerMetadata: { openai: { itemId: 'rs_abc123' } },
+            },
+            {
+              type: 'text',
+              text: 'Response',
+              providerMetadata: { openai: { itemId: 'msg_abc123' } },
+            },
+          ],
+        },
+      ];
+      const formatted = formatters.llm(clone(messages));
+      const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
+      expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
+    });
   });
 
   describe('formatters.storage', () => {

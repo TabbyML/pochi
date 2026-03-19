@@ -151,6 +151,7 @@
     },
     "autoApprove": {
       "title": "自動承認",
+      "approvals": "権限",
       "disabled": "無効",
       "noActionsSelected": "アクションが選択されていません",
       "readFiles": "ファイルを読む",
@@ -251,6 +252,7 @@
     "tasksCount": "{{count}} 件のタスク",
     "openWorktreeDiff": "変更を確認",
     "openWorktreeInTerminal": "ターミナルでワークツリーを開く",
+    "migrateWorktreeChanges": "ワークツリーの変更を移行",
     "deleteWorktree": "ワークツリーを削除",
     "deleteWorktreeTitle": "ワークツリーを削除",
     "deleteWorktreeConfirm": "ワークツリー \"{{name}}\" を削除してもよろしいですか？",
@@ -313,7 +315,14 @@
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
     "updatingToDos": "TODOを更新中",
     "editing": "編集しています ",
-    "moreTools": "、他{{count}}個のツール"
+    "moreTools": "、他{{count}}個のツール",
+    "other": "その他",
+    "submit": "送信",
+    "recommended": "おすすめ",
+    "dismiss": "閉じる",
+    "next": "次へ",
+    "askingQuestion": "質問中",
+    "skipped": "スキップ済み"
   },
   "reasoning": {
     "thinking": "考え中 ...",
@@ -468,7 +477,8 @@
   "pagination": {
     "previous": "前へ",
     "next": "次へ",
-    "morePages": "その他のページ"
+    "morePages": "その他のページ",
+    "pageOf": "{{current}} / {{total}}"
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} ファイル変更",

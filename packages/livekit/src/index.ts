@@ -15,7 +15,11 @@ export type { BlobStore } from "./blob-store";
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
   extractTaskResult,
+  formatFollowupQuestions,
   getTaskErrorMessage,
   mapTaskStatusToBackgroundStatus,
 } from "./task-utils";
-export type { BackgroundJobStatus, TaskStatusLike } from "./task-utils";
+export type {
+  BackgroundJobStatus,
+  TaskStatusLike,
+} from "./task-utils";

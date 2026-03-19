@@ -1,3 +1,4 @@
+import type { AskFollowupQuestionInput, Question } from "@getpochi/tools";
 import { defaultCatalog as catalog } from "./livestore";
 import type { LiveKitStore, Message } from "./types";
 
@@ -9,6 +10,21 @@ export type TaskStatusLike =
   | "pending-model";
 
 export type BackgroundJobStatus = "idle" | "running" | "completed";
+
+function formatQuestion({ question, header, options }: Question) {
+  const title = header ? `[${header}] ${question}` : question;
+  if (!options?.length) return title;
+
+  return `${title}\n${options.map((o) => `- ${o.label}`).join("\n")}`;
+}
+
+export function formatFollowupQuestions(
+  input: AskFollowupQuestionInput,
+): string {
+  if (input.questions.length === 0) return "";
+
+  return input.questions.map((q) => formatQuestion(q)).join("\n\n");
+}
 
 /**
  * Map a task status to the background-job-style status used by tools/UI.
@@ -41,7 +57,10 @@ export function getTaskErrorMessage(error: unknown): string | undefined {
  * Extract the last step's attemptCompletion / askFollowupQuestion result.
  * Throws when no messages exist for the task.
  */
-export function extractTaskResult(store: LiveKitStore, uid: string) {
+export function extractTaskResult(
+  store: LiveKitStore,
+  uid: string,
+): string | undefined {
   const lastMessage = store
     .query(catalog.queries.makeMessagesQuery(uid))
     .map((x) => x.data as Message)
@@ -66,7 +85,7 @@ export function extractTaskResult(store: LiveKitStore, uid: string) {
       part.type === "tool-askFollowupQuestion" &&
       (part.state === "input-available" || part.state === "output-available")
     ) {
-      return part.input.question;
+      return formatFollowupQuestions(part.input);
     }
   }
 }

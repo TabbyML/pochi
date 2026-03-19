@@ -234,7 +234,19 @@ function extractCompactMessages(messages: UIMessage[]) {
 function removeEmptyTextParts(messages: UIMessage[]) {
   return messages.map((message) => {
     message.parts = message.parts.filter((part) => {
-      if (part.type === "text" || part.type === "reasoning") {
+      if (part.type === "text") {
+        return part.text.trim().length > 0;
+      }
+      if (part.type === "reasoning") {
+        // Keep reasoning parts that have providerMetadata (e.g. OpenAI itemId),
+        // because they need to be included as item_reference in subsequent API calls,
+        // even if their text content is empty.
+        if (
+          part.providerMetadata &&
+          Object.keys(part.providerMetadata).length > 0
+        ) {
+          return true;
+        }
         return part.text.trim().length > 0;
       }
       return true;

@@ -1059,7 +1059,21 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   deleteWorktree = async (worktreePath: string): Promise<boolean> => {
-    return await this.worktreeManager.deleteWorktree(worktreePath);
+    const success = await this.worktreeManager.deleteWorktree(worktreePath);
+    if (success) {
+      // Auto-archive all tasks belonging to the deleted worktree
+      const tasks = this.taskHistoryStore.tasks.value;
+      const updates: Record<string, boolean> = {};
+      for (const [taskId, task] of Object.entries(tasks)) {
+        if (task.parentId === null && task.cwd === worktreePath) {
+          updates[taskId] = true;
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        await this.taskStateStore.setArchived(updates);
+      }
+    }
+    return success;
   };
 
   queryGithubIssues = async (query?: string): Promise<GithubIssue[]> => {

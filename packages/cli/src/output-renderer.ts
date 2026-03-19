@@ -237,15 +237,30 @@ function renderToolPart(
 
   // Interactive tools
   if (part.type === "tool-askFollowupQuestion") {
-    const { question, followUp } = part.input || {};
-    const followUpText = Array.isArray(followUp)
-      ? followUp
-          .map((option, i) => `${chalk.dim(`   ${i + 1}.`)} ${option}`)
-          .join("\n")
+    const { questions } = part.input || {};
+    const questionsText = Array.isArray(questions)
+      ? questions
+          .map((q) => {
+            if (!q) return "";
+            const header = q.header ? `[${q.header}] ` : "";
+            const optionsText = Array.isArray(q.options)
+              ? q.options
+                  .map((opt, i: number) =>
+                    opt
+                      ? `${chalk.dim(`   ${i + 1}.`)} ${opt.label ?? ""}`
+                      : "",
+                  )
+                  .filter(Boolean)
+                  .join("\n")
+              : "";
+            return `${chalk.bold(chalk.yellow(`❓ ${header}${q.question ?? ""}`))}${optionsText ? `\n${optionsText}` : ""}`;
+          })
+          .filter(Boolean)
+          .join("\n\n")
       : "";
 
     return {
-      text: `${chalk.bold(chalk.yellow(`❓ ${question}`))}\n${followUpText}`,
+      text: questionsText,
       stop: "stopAndPersist",
       error: errorText,
     };

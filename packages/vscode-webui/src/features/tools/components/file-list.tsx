@@ -28,7 +28,7 @@ export const FileList: React.FC<{
       {matches.map((match, index) => (
         <div
           key={match.file + (match.line ?? "") + index}
-          className={`cursor-pointer truncate rounded py-0.5 ${activeIndex === index ? "bg-secondary" : "hover:bg-secondary/50"}`}
+          className={`cursor-pointer truncate rounded py-0.5 ${activeIndex === index ? "bg-accent" : "hover:bg-accent/50"}`}
           title={match.context}
           onClick={() => {
             setActiveIndex(index);
@@ -41,7 +41,7 @@ export const FileList: React.FC<{
           tabIndex={0}
         >
           <span
-            className={`truncate px-1 font-semibold ${activeIndex === index ? "text-secondary-foreground" : "text-foreground"}`}
+            className={`truncate px-1 font-semibold ${activeIndex === index ? "text-accent-foreground" : "text-foreground"}`}
           >
             <FileIcon
               path={match.file}
@@ -54,7 +54,7 @@ export const FileList: React.FC<{
                 {getBaseName(match.file)}
                 {match.line && (
                   <span
-                    className={`truncate ${activeIndex === index ? "text-secondary-foreground/70" : "text-foreground/70"}`}
+                    className={`truncate ${activeIndex === index ? "text-accent-foreground/70" : "text-foreground/70"}`}
                   >
                     :{match.line}
                   </span>
@@ -67,8 +67,8 @@ export const FileList: React.FC<{
             className={cn(
               activeIndex === index
                 ? showBaseName
-                  ? "text-secondary-foreground/70"
-                  : "text-secondary-foreground"
+                  ? "text-accent-foreground/70"
+                  : "text-accent-foreground"
                 : showBaseName
                   ? "text-foreground/70"
                   : "text-foreground",
