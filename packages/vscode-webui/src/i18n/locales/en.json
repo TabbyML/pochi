@@ -316,7 +316,14 @@
     "editing": "Editing ",
     "usingSkill": "Using skill",
     "moreTools_one": ", and {{count}} more tool",
-    "moreTools_other": ", and {{count}} more tools"
+    "moreTools_other": ", and {{count}} more tools",
+    "other": "Other",
+    "submit": "Submit",
+    "recommended": "Recommended",
+    "dismiss": "Dismiss",
+    "next": "Next",
+    "askingQuestion": "Asking question",
+    "skipped": "Skipped"
   },
   "reasoning": {
     "thinking": "Thinking ...",
@@ -466,7 +473,8 @@
   "pagination": {
     "previous": "Previous",
     "next": "Next",
-    "morePages": "More pages"
+    "morePages": "More pages",
+    "pageOf": "{{current}} of {{total}}"
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} file changed",

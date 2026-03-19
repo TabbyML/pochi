@@ -2,6 +2,7 @@ import type {
   LanguageModelV2CallOptions,
   LanguageModelV2Prompt,
 } from "@ai-sdk/provider";
+import { QuestionSchema } from "@getpochi/tools";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { hc } from "hono/client";
@@ -39,12 +40,7 @@ export const WebhookEventPayload = z.object({
     result: z
       .object({
         completion: z.string().optional(),
-        followup: z
-          .object({
-            question: z.string(),
-            choices: z.array(z.string()).optional(),
-          })
-          .optional(),
+        questions: z.array(QuestionSchema).optional(),
       })
       .optional(),
   }),

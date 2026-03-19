@@ -315,7 +315,14 @@
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
     "updatingToDos": "TODOを更新中",
     "editing": "編集しています ",
-    "moreTools": "、他{{count}}個のツール"
+    "moreTools": "、他{{count}}個のツール",
+    "other": "その他",
+    "submit": "送信",
+    "recommended": "おすすめ",
+    "dismiss": "閉じる",
+    "next": "次へ",
+    "askingQuestion": "質問中",
+    "skipped": "スキップ済み"
   },
   "reasoning": {
     "thinking": "考え中 ...",
@@ -470,7 +477,8 @@
   "pagination": {
     "previous": "前へ",
     "next": "次へ",
-    "morePages": "その他のページ"
+    "morePages": "その他のページ",
+    "pageOf": "{{current}} / {{total}}"
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} ファイル変更",

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { constants } from "@getpochi/common";
+import { formatFollowupQuestions } from "@getpochi/livekit";
 import type {
   ClientTools,
   CustomAgent,
@@ -166,7 +167,7 @@ export const newTask =
           (part.state === "input-available" ||
             part.state === "output-available")
         ) {
-          result = part.input.question;
+          result = formatFollowupQuestions(part.input);
           break;
         }
       }

@@ -212,36 +212,68 @@ const writeToFileProps4: WriteToFileProp["tool"] = {
 };
 
 const askFollowupQuestionProps: AskFollowupQuestionProp["tool"] = {
-  state: "output-available",
+  state: "input-available",
 
   toolCallId: "tool_ask_followup_1",
   type: "tool-askFollowupQuestion",
   input: {
-    question: "Which color theme would you like for the new button?",
-    followUp: ["Primary", "Secondary", "Destructive"],
+    questions: [
+      {
+        question: "Which color theme would you like for the new button?",
+        header: "Color theme",
+        options: [
+          {
+            label: "Primary (Recommended)",
+            description: "Uses the primary brand color for the button.",
+          },
+          {
+            label: "Secondary",
+            description: "A softer, secondary color variant.",
+          },
+          {
+            label: "Destructive",
+            description: "Red/danger style for destructive actions.",
+          },
+        ],
+        multiSelect: false,
+      },
+    ],
   },
-  output: {
-    success: true,
-  },
+  output: undefined,
 };
+
 const askFollowupQuestionProps2: AskFollowupQuestionProp["tool"] = {
-  state: "output-available",
+  state: "input-available",
 
   toolCallId: "tool_ask_followup_2",
   type: "tool-askFollowupQuestion",
   input: {
-    question:
-      "How would you like to incorporate the MIT license into your README.md?",
-    followUp: [
-      "Replace existing license information with a standard MIT license.",
-      "Add a standard MIT license as an additional license.",
-      "I have a specific MIT license text to use.",
-      "I want to apply the MIT license to a specific part of the project.",
+    questions: [
+      {
+        question:
+          "How would you like to incorporate the MIT license into your README.md?",
+        header: "License",
+        options: [
+          {
+            label: "Replace existing",
+            description:
+              "Replace existing license information with a standard MIT license.",
+          },
+          {
+            label: "Add alongside",
+            description: "Add a standard MIT license as an additional license.",
+          },
+          {
+            label: "Partial apply",
+            description:
+              "Apply the MIT license to a specific part of the project.",
+          },
+        ],
+        multiSelect: false,
+      },
     ],
   },
-  output: {
-    success: true,
-  },
+  output: undefined,
 };
 
 const askFollowupQuestionProps3: AskFollowupQuestionProp["tool"] = {
@@ -250,16 +282,50 @@ const askFollowupQuestionProps3: AskFollowupQuestionProp["tool"] = {
   toolCallId: "tool_ask_followup_3",
   type: "tool-askFollowupQuestion",
   input: {
-    question: `I noticed that the file \`src/components/Button.tsx\` has some accessibility issues.
+    questions: [
+      {
+        question: `I noticed that the file \`src/components/Button.tsx\` has some accessibility issues.
 Specifically:
 - Missing \`aria-label\` on the button.
 - Contrast ratio is too low for the disabled state.
 
 Would you like me to fix these issues while I'm editing the file?`,
-    followUp: [
-      "Yes, fix both issues",
-      "Only fix the aria-label",
-      "No, leave it as is",
+        header: "A11y fixes",
+        options: [
+          {
+            label: "Fix both (Recommended)",
+            description: "Fix both the aria-label and the contrast ratio.",
+          },
+          {
+            label: "aria-label only",
+            description: "Only fix the missing aria-label attribute.",
+          },
+          {
+            label: "Leave as is",
+            description: "Skip fixing accessibility issues.",
+          },
+        ],
+        multiSelect: false,
+      },
+      {
+        question: "Which features should we enable for the new component?",
+        header: "Features",
+        options: [
+          {
+            label: "Dark mode",
+            description: "Add dark mode support.",
+          },
+          {
+            label: "Animations",
+            description: "Add CSS transition animations.",
+          },
+          {
+            label: "Tooltips",
+            description: "Add hover tooltips.",
+          },
+        ],
+        multiSelect: true,
+      },
     ],
   },
   output: {
