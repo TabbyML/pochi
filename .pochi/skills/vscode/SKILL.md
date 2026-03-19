@@ -11,8 +11,8 @@ Open a dedicated VS Code instance with the Pochi extension loaded in development
 
 1. **Launch** a fresh VS Code instance with the extension under development and CDP enabled
 2. **Connect** agent-browser to the CDP port
-3. **Snapshot** to discover interactive elements in the workbench frame
-4. **Interact** using element refs or pixel coordinates (for sandboxed webviews)
+3. **Snapshot** to discover interactive elements — iframe content (including the Pochi webview) is traversed automatically since v0.21.0
+4. **Interact** using element refs from the snapshot; fall back to pixel-coordinate mouse clicks if an element is not in the snapshot
 5. **Re-snapshot** after navigation or state changes
 
 ## Launching VS Code for Extension Development
@@ -59,7 +59,7 @@ agent-browser --cdp 9223 snapshot -i
 
 ## Tab / WebView Management
 
-VS Code only exposes its main workbench as a `page`-type CDP target. The Pochi extension panel is a `vscode-webview://`-origin iframe that is **not** reachable via `agent-browser tab`. Use `agent-browser tab` only to confirm the single workbench target:
+VS Code only exposes its main workbench as a `page`-type CDP target. The Pochi extension panel is a `vscode-webview://`-origin iframe. Use `agent-browser tab` only to confirm the single workbench target:
 
 ```bash
 # List available targets (typically just one: the workbench page)
@@ -85,13 +85,19 @@ agent-browser screenshot pochi-open.png
 
 ## Interacting with the Pochi Panel (Sandboxed Webview)
 
-The Pochi webview is a `vscode-webview://`-origin iframe. Its contents **cannot** be inspected or interacted with via `agent-browser snapshot`, `agent-browser frame`, or `agent-browser eval` due to two compounding limitations:
+As of **agent-browser v0.21.0**, iframe support is built-in — `snapshot`, `click`, `fill`, and all other interaction commands **automatically traverse into iframe content** without any special `frame` command. This means the Pochi webview panel can now be inspected and interacted with directly:
 
-1. **`agent-browser frame` is currently broken** ([issue #50](https://github.com/vercel-labs/agent-browser/issues/50), [issue #318](https://github.com/vercel-labs/agent-browser/issues/318)): the command sets an internal `activeFrame` but all subsequent action handlers (`snapshot`, `eval`, `screenshot`, etc.) still operate on the parent page. Community PRs fixing this exist but are not yet merged.
+```bash
+agent-browser connect 9223
+agent-browser snapshot -i          # includes elements inside the Pochi webview iframe
+agent-browser click e42            # click an element inside the iframe by ref
+agent-browser fill e43 "hello"     # fill a textarea inside the iframe
+agent-browser screenshot pochi-panel.png
+```
 
-2. **VS Code webview origin isolation**: Even if `frame` were fixed, the Pochi content is rendered inside a `vscode-webview://` origin iframe that is not part of the page's Playwright frame tree. `contentFrame()` returns the workbench's own frame, not the Pochi React app.
+> **Note on VS Code webview origin isolation:** The Pochi panel runs inside a `vscode-webview://`-origin iframe. Agent-browser's iframe traversal works at the CDP level and is not blocked by same-origin restrictions, so `snapshot` will include Pochi's React UI elements.
 
-The only reliable way to interact with the Pochi panel is via **screenshots + pixel-coordinate mouse clicks**:
+If elements inside the webview are still not appearing in the snapshot (e.g. due to the panel not being fully rendered), fall back to **screenshots + pixel-coordinate mouse clicks**:
 
 ```bash
 # Take a screenshot to see current state and determine coordinates
@@ -105,8 +111,6 @@ agent-browser mouse up
 # Take another screenshot to confirm the interaction
 agent-browser screenshot pochi-panel-after.png
 ```
-
-> **When `agent-browser frame` gets fixed upstream**, same-origin iframes will work. For VS Code webviews the origin isolation will still apply and screenshots + coordinates will remain the approach.
 
 ## Common Patterns
 
@@ -141,6 +145,19 @@ agent-browser connect 9223
 agent-browser snapshot -i | grep -i pochi   # find the Pochi tab ref
 agent-browser click e17                      # click the Pochi activity bar tab
 agent-browser screenshot pochi-open.png
+
+# After opening the panel, snapshot again — iframe content is now traversed automatically
+agent-browser snapshot -i                    # should include Pochi webview elements
+```
+
+### Type a Message into the Pochi Chat
+
+```bash
+agent-browser connect 9223
+# Find the chat input ref inside the webview (traversed automatically in v0.21.0+)
+agent-browser snapshot -i | grep -i "ask\|input\|textarea"
+agent-browser fill e55 "Hello from agent-browser"   # fill the chat input
+agent-browser screenshot pochi-chat.png
 ```
 
 ### Named Session (multi-window)
@@ -179,15 +196,10 @@ This is expected. VS Code exposes only the main workbench window as a `page`-typ
 
 ### Pochi panel elements not in snapshot
 
-The Pochi webview is a sandboxed iframe — its DOM is not accessible via `agent-browser snapshot`. Use `agent-browser mouse move/down/up` at the coordinates of the element to interact with it, and `agent-browser screenshot` to verify the result.
-
-### `agent-browser frame` doesn't expose Pochi webview contents
-
-Two reasons:
-1. **`agent-browser frame` is a known-broken feature** ([issue #50](https://github.com/vercel-labs/agent-browser/issues/50), [issue #318](https://github.com/vercel-labs/agent-browser/issues/318)): `frame <sel>` reports success but `snapshot`, `eval`, and all other commands continue to operate on the parent page — the `activeFrame` is never used by action handlers. This is a bug in agent-browser; fix PRs are open but not yet merged.
-2. **VS Code webview origin isolation**: Even if the bug were fixed, VS Code renders extension panels in `vscode-webview://`-origin iframes. `contentFrame()` returns the workbench frame (same-origin outer page), not the Pochi React app running inside it.
-
-Use screenshots + pixel-coordinate `mouse move/down/up` to interact with the Pochi panel.
+As of agent-browser v0.21.0, `snapshot` automatically traverses into iframes. If Pochi webview elements are still missing:
+- Ensure the Pochi panel is fully open and visible before snapshotting
+- Try `agent-browser snapshot -i -C` to include cursor-interactive elements
+- As a fallback, use `agent-browser screenshot` to get coordinates and interact via `agent-browser mouse move/down/up`
 
 ### Elements not appearing in snapshot
 
