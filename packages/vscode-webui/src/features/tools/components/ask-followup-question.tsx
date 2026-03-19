@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useSendMessage } from "@/features/chat";
 import { cn } from "@/lib/utils";
+import type { Question, QuestionOption } from "@getpochi/tools";
 import {
   ArrowDown,
   ArrowUp,
@@ -33,18 +34,6 @@ interface SelectionState {
   custom: string;
 }
 
-interface QuestionOption {
-  label: string;
-  description: string;
-}
-
-interface Question {
-  question: string;
-  header: string;
-  options: QuestionOption[];
-  multiSelect: boolean;
-}
-
 function isAnswered(s: SelectionState): boolean {
   return s.optionIndices.length > 0 || s.custom.trim().length > 0;
 }
@@ -66,24 +55,6 @@ function getAnswerLabels(
   // Single-select: custom takes full priority
   if (state.custom.trim().length > 0) return [state.custom.trim()];
   return optionLabels;
-}
-
-function normalizeQuestion(q: unknown): Question | undefined {
-  if (!q || typeof q !== "object") return undefined;
-  const raw = q as Record<string, unknown>;
-  const question = typeof raw.question === "string" ? raw.question : "";
-  const header = typeof raw.header === "string" ? raw.header : "";
-  const multiSelect =
-    typeof raw.multiSelect === "boolean" ? raw.multiSelect : false;
-  const rawOptions = Array.isArray(raw.options) ? raw.options : [];
-  const options: QuestionOption[] = rawOptions
-    .filter((o): o is Record<string, unknown> => !!o && typeof o === "object")
-    .map((o) => ({
-      label: typeof o.label === "string" ? o.label : "",
-      description: typeof o.description === "string" ? o.description : "",
-    }));
-  if (!question || options.length === 0) return undefined;
-  return { question, header, options, multiSelect };
 }
 
 function buildPromptLines(
@@ -705,9 +676,10 @@ export const AskFollowupQuestionTool: React.FC<
 > = ({ tool: toolCall, isLoading, isLastPart, isExecuting }) => {
   const sendMessage = useSendMessage();
 
-  const questionList: Question[] = (toolCall.input?.questions ?? [])
-    .map(normalizeQuestion)
-    .filter((q): q is Question => q !== undefined);
+  const questionList: Question[] =
+    toolCall.state !== "input-streaming"
+      ? (toolCall.input?.questions ?? [])
+      : [];
 
   const isInteractive =
     !isLoading && isLastPart && toolCall.state === "input-available";

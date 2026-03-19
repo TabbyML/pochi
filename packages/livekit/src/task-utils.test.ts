@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   extractTaskResult,
-  extractWebhookFollowups,
   formatFollowupQuestions,
 } from "./task-utils";
 
@@ -14,11 +13,13 @@ describe("formatFollowupQuestions", () => {
             header: "Theme",
             question: "Which color theme would you like?",
             options: [{ label: "Primary" }, { label: "Secondary" }],
+            multiSelect: false,
           },
           {
             header: "Motion",
             question: "Should we add animations?",
             options: [{ label: "Yes" }, { label: "No" }],
+            multiSelect: false,
           },
         ],
       }),
@@ -28,37 +29,7 @@ describe("formatFollowupQuestions", () => {
   });
 });
 
-describe("extractWebhookFollowups", () => {
-  it("returns all structured follow-up questions for webhook consumers", () => {
-    expect(
-      extractWebhookFollowups({
-        questions: [
-          {
-            header: "Theme",
-            question: "Which color theme would you like?",
-            options: [{ label: "Primary" }, { label: "Secondary" }],
-          },
-          {
-            header: "Motion",
-            question: "Should we add animations?",
-            options: [{ label: "Yes" }, { label: "No" }],
-          },
-        ],
-      }),
-    ).toEqual([
-      {
-        header: "Theme",
-        question: "Which color theme would you like?",
-        choices: ["Primary", "Secondary"],
-      },
-      {
-        header: "Motion",
-        question: "Should we add animations?",
-        choices: ["Yes", "No"],
-      },
-    ]);
-  });
-});
+
 
 describe("extractTaskResult", () => {
   it("returns the full formatted follow-up payload", () => {
@@ -77,11 +48,13 @@ describe("extractTaskResult", () => {
                       header: "Theme",
                       question: "Which color theme would you like?",
                       options: [{ label: "Primary" }, { label: "Secondary" }],
+                      multiSelect: false,
                     },
                     {
                       header: "Motion",
                       question: "Should we add animations?",
                       options: [{ label: "Yes" }, { label: "No" }],
+                      multiSelect: false,
                     },
                   ],
                 },

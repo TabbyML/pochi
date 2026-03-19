@@ -1,4 +1,5 @@
-import type { FollowupQuestion, Task } from "@getpochi/livekit";
+import type { Task } from "@getpochi/livekit";
+import type { Question } from "@getpochi/tools";
 import type { WebhookEventPayload } from "@getpochi/vendor-pochi/edge";
 
 export class WebhookDelivery {
@@ -12,7 +13,7 @@ export class WebhookDelivery {
     task: Task,
     result?: {
       completion?: string;
-      followups?: FollowupQuestion[];
+      questions?: Question[];
     },
   ) {
     const payload: WebhookEventPayload = {

@@ -14,7 +14,6 @@ export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
-  extractWebhookFollowups,
   extractTaskResult,
   formatFollowupQuestions,
   getTaskErrorMessage,
@@ -22,6 +21,5 @@ export {
 } from "./task-utils";
 export type {
   BackgroundJobStatus,
-  FollowupQuestion,
   TaskStatusLike,
 } from "./task-utils";

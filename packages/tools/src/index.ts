@@ -22,6 +22,12 @@ import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
 export type { ToolFunctionType } from "./types";
+export type {
+  AskFollowupQuestionInput,
+  Question,
+  QuestionOption,
+} from "./ask-followup-question";
+export { QuestionSchema } from "./ask-followup-question";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";

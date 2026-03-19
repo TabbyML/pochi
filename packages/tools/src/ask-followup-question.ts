@@ -10,12 +10,13 @@ const QuestionOptionSchema = z.object({
     ),
   description: z
     .string()
+    .optional()
     .describe(
       "Explanation of what this option means or what will happen if chosen. Useful for providing context about trade-offs or implications.",
     ),
 });
 
-const QuestionSchema = z.object({
+export const QuestionSchema = z.object({
   question: z
     .string()
     .describe(
@@ -76,3 +77,7 @@ ${NoOtherToolsReminderPrompt}
 };
 
 export const askFollowupQuestion = defineClientTool(toolDef);
+
+export type AskFollowupQuestionInput = z.infer<typeof toolDef.inputSchema>;
+export type Question = AskFollowupQuestionInput["questions"][number];
+export type QuestionOption = Question["options"][number];
