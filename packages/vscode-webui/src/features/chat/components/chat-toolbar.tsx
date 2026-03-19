@@ -17,8 +17,11 @@ import {
   type useApprovalAndRetry,
 } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
-import { useSelectedModels } from "@/features/settings";
-import { AutoApproveMenu } from "@/features/settings";
+import {
+  AutoApproveMenu,
+  useAutoApprove,
+  useSelectedModels,
+} from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
@@ -30,7 +33,12 @@ import { constants } from "@getpochi/common";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  PaperclipIcon,
+  SendHorizonal,
+  StopCircleIcon,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -115,6 +123,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     reload: reloadModels,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask });
+
+  const { autoApproveActive } = useAutoApprove({ isSubTask });
 
   // Use the unified attachment upload hook
   const {
@@ -287,7 +297,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       </div>
       {(todos.length > 0 ||
         useTaskChangedFilesHelpers.visibleChangedFiles.length > 0) && (
-        <div className={cn("mt-1.5 rounded-sm border border-border")}>
+        <div
+          className={cn(
+            "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
+          )}
+        >
           {todos.length > 0 && (
             <TodoList todos={todos}>
               <TodoList.Header />
@@ -302,10 +316,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       )}
-      <AutoApproveMenu
-        isSubTask={isSubTask}
-        mcpConfigOverride={mcpConfigOverride}
-      />
       {files.length > 0 && (
         <AttachmentPreviewList
           files={files}
@@ -332,6 +342,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         reviews={reviews}
         taskId={taskId}
         lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
+        className={cn({
+          "rounded-t-none":
+            todos.length > 0 ||
+            useTaskChangedFilesHelpers.visibleChangedFiles.length > 0,
+        })}
       />
 
       {/* Hidden file input for image uploads */}
@@ -346,6 +361,27 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
       <div className={FooterContainerClassName}>
         <div className={FooterLeftClassName}>
+          <AutoApproveMenu
+            isSubTask={isSubTask}
+            mcpConfigOverride={mcpConfigOverride}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "button-focus !gap-0.5 !px-1 h-6 font-normal",
+                  autoApproveActive && "text-foreground",
+                )}
+                aria-label={t("settings.autoApprove.approvals")}
+              >
+                <span className="truncate whitespace-nowrap transition-colors duration-200">
+                  {t("settings.autoApprove.approvals")}
+                </span>
+                <ChevronDownIcon className="size-4 shrink-0 transition-colors duration-200" />
+              </Button>
+            }
+          />
           <ModelSelect
             value={selectedModel || selectedModelFromStore}
             models={groupedModels}
@@ -455,6 +491,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
 
 export function ChatToolBarSkeleton() {
   const { input, setInput } = useChatInputState();
+  const { t } = useTranslation();
   return (
     <>
       <div className={PopupContainerClassName}>
@@ -478,7 +515,6 @@ export function ChatToolBarSkeleton() {
         </div>
       </div>
 
-      <AutoApproveMenu isSubTask={false} />
       <ChatInputForm
         input={input}
         setInput={setInput}
@@ -496,6 +532,23 @@ export function ChatToolBarSkeleton() {
 
       <div className={FooterContainerClassName}>
         <div className={FooterLeftClassName}>
+          <AutoApproveMenu
+            isSubTask={false}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="button-focus h-6 gap-1 px-1.5 text-xs"
+                aria-label={t("settings.autoApprove.approvals")}
+              >
+                <span className="truncate whitespace-nowrap transition-colors duration-200">
+                  {t("settings.autoApprove.approvals")}
+                </span>
+                <ChevronDownIcon className="size-4 shrink-0 transition-colors duration-200" />
+              </Button>
+            }
+          />
           <ModelSelect
             isLoading={true}
             value={undefined}

@@ -119,6 +119,7 @@ interface FormEditorProps {
   messageContent?: string;
   isSubTask: boolean;
   onTogglePlanMode?: () => void;
+  className?: string;
 }
 
 export function FormEditor({
@@ -139,6 +140,7 @@ export function FormEditor({
   messageContent = "",
   isSubTask,
   onTogglePlanMode,
+  className,
 }: FormEditorProps) {
   const { t } = useTranslation();
   const { updateSelectedModelId, models } = useSelectedModels({ isSubTask });
@@ -643,6 +645,7 @@ export function FormEditor({
           "form-editor-loading": isLoading,
           "bg-zinc-50 dark:bg-zinc-950": isDragOver,
         },
+        className,
       )}
       onClick={(e) => {
         e.stopPropagation();

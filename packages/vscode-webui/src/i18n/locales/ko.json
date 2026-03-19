@@ -150,6 +150,7 @@
     },
     "autoApprove": {
       "title": "자동 승인",
+      "approvals": "권한",
       "disabled": "비활성화됨",
       "noActionsSelected": "선택된 작업 없음",
       "readFiles": "파일 읽기",
