@@ -1,6 +1,6 @@
 {
   "name": "@getpochi/cli",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "devDependencies": {
     "@commander-js/extra-typings": "^14.0.0",
     "@getpochi/common": "workspace:*",
