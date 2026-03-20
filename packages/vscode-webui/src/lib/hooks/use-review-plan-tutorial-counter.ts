@@ -15,7 +15,7 @@ const vscodeStorage: StateStorage = {
       const value = await vscodeHost.getGlobalState(name);
       return value ? JSON.stringify(value) : null;
     } catch (error) {
-      logger.error(`Failed to get item: ${name}`, error);
+      logger.warn(`Failed to get item: ${name}`, error);
       return null;
     }
   },
@@ -24,14 +24,14 @@ const vscodeStorage: StateStorage = {
       const parsed = JSON.parse(value);
       await vscodeHost.setGlobalState(name, parsed);
     } catch (error) {
-      logger.error(`Failed to set item: ${name}`, error);
+      logger.warn(`Failed to set item: ${name}`, error);
     }
   },
   removeItem: async (name: string): Promise<void> => {
     try {
       await vscodeHost.setGlobalState(name, undefined);
     } catch (error) {
-      logger.error(`Failed to remove item: ${name}`, error);
+      logger.warn(`Failed to remove item: ${name}`, error);
     }
   },
 };
