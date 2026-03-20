@@ -71,40 +71,52 @@ export class CustomAgentManager implements vscode.Disposable {
   }
 
   private initWatchers() {
+    const watchDir = (base: string, prefix: string, pattern: string) => {
+      const baseUri = vscode.Uri.file(base);
+
+      const fileWatcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(baseUri, pattern),
+      );
+      fileWatcher.onDidCreate(() => this.loadAgents());
+      fileWatcher.onDidChange(() => this.loadAgents());
+      fileWatcher.onDidDelete(() => this.loadAgents());
+      this.disposables.push(fileWatcher);
+
+      const dirWatcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(baseUri, `${prefix}/*`),
+      );
+      dirWatcher.onDidCreate(() => this.loadAgents());
+      dirWatcher.onDidDelete(() => this.loadAgents());
+      this.disposables.push(dirWatcher);
+
+      const parentWatcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(baseUri, prefix),
+      );
+      parentWatcher.onDidCreate(() => this.loadAgents());
+      parentWatcher.onDidDelete(() => this.loadAgents());
+      this.disposables.push(parentWatcher);
+
+      const rootDir = prefix.split("/")[0];
+      if (rootDir && rootDir !== prefix) {
+        const rootWatcher = vscode.workspace.createFileSystemWatcher(
+          new vscode.RelativePattern(baseUri, rootDir),
+        );
+        rootWatcher.onDidCreate(() => this.loadAgents());
+        rootWatcher.onDidDelete(() => this.loadAgents());
+        this.disposables.push(rootWatcher);
+      }
+    };
+
     try {
       if (this.cwd) {
-        const projectAgentsPattern = new vscode.RelativePattern(
-          this.cwd,
-          ".pochi/agents/**/*.md",
-        );
-        const projectWatcher =
-          vscode.workspace.createFileSystemWatcher(projectAgentsPattern);
-
-        projectWatcher.onDidCreate(() => this.loadAgents());
-        projectWatcher.onDidChange(() => this.loadAgents());
-        projectWatcher.onDidDelete(() => this.loadAgents());
-
-        this.disposables.push(projectWatcher);
+        watchDir(this.cwd, ".pochi/agents", ".pochi/agents/**/*.md");
       }
     } catch (error) {
       logger.error("Failed to initialize project agents watcher", error);
     }
 
     try {
-      // Watch system .pochi/agents directory
-      const systemAgentsDir = path.join(os.homedir(), ".pochi", "agents");
-      const systemAgentsPattern = new vscode.RelativePattern(
-        systemAgentsDir,
-        "**/*.md",
-      );
-      const systemWatcher =
-        vscode.workspace.createFileSystemWatcher(systemAgentsPattern);
-
-      systemWatcher.onDidCreate(() => this.loadAgents());
-      systemWatcher.onDidChange(() => this.loadAgents());
-      systemWatcher.onDidDelete(() => this.loadAgents());
-
-      this.disposables.push(systemWatcher);
+      watchDir(os.homedir(), ".pochi/agents", ".pochi/agents/**/*.md");
     } catch (error) {
       logger.error("Failed to initialize system agents watcher", error);
     }

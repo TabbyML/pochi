@@ -82,18 +82,20 @@ export class SkillManager implements vscode.Disposable {
   }
 
   /**
-   * Creates watchers for a skills directory and pushes them to disposables.
-   * Two watchers are created:
-   * 1. "*\/SKILL.md" — fires on file create/change/delete
-   * 2. "*" — fires on skill folder create/delete (directory removal does not
-   *    propagate a delete event to contained files on all platforms, so this
-   *    is required to reliably catch folder deletions)
+   * Creates watchers for a skills directory anchored at a base directory.
+   * Three watchers are created:
+   * 1. "{prefix}/STAR/SKILL.md" - fires on file create/change/delete
+   * 2. "{prefix}/STAR" - fires on skill folder create/delete (directory
+   *    removal does not propagate a delete event to contained files on all
+   *    platforms, so this is required to reliably catch folder deletions)
+   * 3. "{prefix}" - fires on the skills parent directory itself being
+   *    created/deleted (e.g. when the entire .pochi folder is removed)
    */
-  private watchSkillsDir(dir: string) {
-    const base = vscode.Uri.file(dir);
+  private watchSkillsDir(base: string, prefix: string) {
+    const baseUri = vscode.Uri.file(base);
 
     const fileWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(base, "*/SKILL.md"),
+      new vscode.RelativePattern(baseUri, `${prefix}/*/SKILL.md`),
     );
     fileWatcher.onDidCreate(() => this.scheduleReload.call());
     fileWatcher.onDidChange(() => this.scheduleReload.call());
@@ -101,31 +103,52 @@ export class SkillManager implements vscode.Disposable {
     this.disposables.push(fileWatcher);
 
     const dirWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(base, "*"),
+      new vscode.RelativePattern(baseUri, `${prefix}/*`),
     );
     dirWatcher.onDidCreate(() => this.scheduleReload.call());
     dirWatcher.onDidDelete(() => this.scheduleReload.call());
     this.disposables.push(dirWatcher);
+
+    // Watch the skills directory itself so that deleting a parent directory
+    // (e.g. the entire .pochi folder) also triggers a reload.
+    const parentWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(baseUri, prefix),
+    );
+    parentWatcher.onDidCreate(() => this.scheduleReload.call());
+    parentWatcher.onDidDelete(() => this.scheduleReload.call());
+    this.disposables.push(parentWatcher);
+
+    // Watch the root directory of the skills path (e.g. .pochi or .agents)
+    // to catch when the entire folder is deleted.
+    const rootDir = prefix.split("/")[0];
+    if (rootDir && rootDir !== prefix) {
+      const rootWatcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(baseUri, rootDir),
+      );
+      rootWatcher.onDidCreate(() => this.scheduleReload.call());
+      rootWatcher.onDidDelete(() => this.scheduleReload.call());
+      this.disposables.push(rootWatcher);
+    }
   }
 
   private initWatchers() {
     try {
       if (this.cwd) {
-        this.watchSkillsDir(path.join(this.cwd, ".pochi", "skills"));
-        this.watchSkillsDir(path.join(this.cwd, ".agents", "skills"));
+        this.watchSkillsDir(this.cwd, ".pochi/skills");
+        this.watchSkillsDir(this.cwd, ".agents/skills");
       }
     } catch (error) {
       logger.error("Failed to initialize project skills watcher", error);
     }
 
     try {
-      this.watchSkillsDir(path.join(os.homedir(), ".pochi", "skills"));
+      this.watchSkillsDir(os.homedir(), ".pochi/skills");
     } catch (error) {
       logger.error("Failed to initialize system skills watcher", error);
     }
 
     try {
-      this.watchSkillsDir(path.join(os.homedir(), ".agents", "skills"));
+      this.watchSkillsDir(os.homedir(), ".agents/skills");
     } catch (error) {
       logger.error("Failed to initialize global .agents/skills watcher", error);
     }
