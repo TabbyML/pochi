@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { constants } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import { formatFollowupQuestions } from "@getpochi/livekit";
 import type {
   ClientTools,
@@ -15,6 +16,8 @@ import {
   startMjpegToMp4Converter,
 } from "../lib/ffmpeg-mjpeg-to-mp4";
 import type { ToolCallOptions } from "../types";
+
+const logger = getLogger("newTask");
 
 // @FIXME(@zhiming): extract to cli options
 const SubTaskBrowserAgentMaxSteps = 65535;
@@ -76,14 +79,19 @@ export const newTask =
         });
         rws.binaryType = "arraybuffer";
 
+        rws.addEventListener("open", () => {
+          logger.debug("Browser stream webSocket connected.");
+        });
+
         rws.addEventListener("message", (e) => {
           if (e.type === "message") {
             try {
               const data = JSON.parse(e.data);
               if (data.type === "frame") {
+                const now = Date.now() / 1000;
                 rec.handleFrame({
                   data: data.data,
-                  ts: data.metadata.timestamp,
+                  ts: data.metadata.timestamp || now,
                 });
               }
             } catch (e) {
