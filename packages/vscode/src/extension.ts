@@ -118,7 +118,16 @@ function createWorkspaceConfigWatcher(cwd: string | undefined) {
       setPochiConfigWorkspacePath(undefined);
     });
 
-    return configWatcher;
+    const rootDir = pochiConfigRelativePath.split("/")[0];
+    const rootWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(cwd, rootDir),
+    );
+    rootWatcher.onDidDelete(() => {
+      logger.debug(`Workspace ${rootDir} directory deleted.`);
+      setPochiConfigWorkspacePath(undefined);
+    });
+
+    return vscode.Disposable.from(configWatcher, rootWatcher);
   }
 
   return {
