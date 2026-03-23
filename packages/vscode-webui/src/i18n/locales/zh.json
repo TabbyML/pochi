@@ -319,7 +319,8 @@
     "recommended": "推荐",
     "dismiss": "忽略",
     "next": "下一步",
-    "askingQuestion": "提问中",
+    "askingQuestion_one": "提问中",
+    "askingQuestion_other": "提问中",
     "skipped": "已跳过"
   },
   "reasoning": {
