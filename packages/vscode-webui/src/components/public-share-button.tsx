@@ -141,7 +141,10 @@ ${environmentInfo}
           <Share2Icon className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent
+        align="end"
+        className="dropdown-menu animate-in overflow-hidden rounded-md border bg-background p-1 text-popover-foreground shadow"
+      >
         <DropdownMenuItem
           onClick={handleUpdatePublicShare}
           disabled={!shareId}
