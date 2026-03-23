@@ -79,63 +79,47 @@ interface QuestionSummaryProps {
   tool: ToolProps<"askFollowupQuestion">["tool"];
   isExecuting: boolean;
   questionList: Question[];
-  selections: SelectionState[];
 }
 
 function QuestionSummary({
   tool,
   isExecuting,
   questionList,
-  selections,
 }: QuestionSummaryProps) {
   const { t } = useTranslation();
 
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2">{t("toolInvocation.askingQuestion")}</span>
+      <span className="ml-2">
+        {t("toolInvocation.askingQuestion", { count: questionList.length })}
+      </span>
     </>
   );
 
   const detail = (
     <div className="flex flex-col gap-3 pl-6">
-      {questionList.map((q, i) => {
-        const sel = selections[i] ?? { optionIndices: [], custom: "" };
-        const answered = isAnswered(sel);
-        const answerLabels = answered
-          ? getAnswerLabels(sel, q.options, q.multiSelect)
-          : [];
-        return (
-          <div key={tool.toolCallId + i} className="flex flex-col gap-1.5">
-            {/* Label + question */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className="shrink-0 font-medium text-xs">
-                {q.header}
-              </Badge>
-              <MessageMarkdown className="text-foreground text-sm">
-                {q.question}
-              </MessageMarkdown>
-            </div>
-            {/* Selected answer(s) or skipped indicator */}
-            <div className="flex flex-col gap-0.5">
-              {answered ? (
-                answerLabels.map((label, li) => (
-                  <span
-                    key={li}
-                    className="font-medium text-foreground text-sm"
-                  >
-                    {label}
-                  </span>
-                ))
-              ) : (
-                <span className="text-muted-foreground text-sm italic">
-                  {t("toolInvocation.skipped")}
-                </span>
-              )}
-            </div>
+      {questionList.map((q, i) => (
+        <div key={tool.toolCallId + i} className="flex flex-col gap-1.5">
+          {/* Label + question */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className="shrink-0 font-medium text-xs">
+              {q.header}
+            </Badge>
+            <MessageMarkdown className="text-foreground text-sm">
+              {q.question}
+            </MessageMarkdown>
           </div>
-        );
-      })}
+          {/* All options */}
+          <ul className="flex list-disc flex-col gap-0.5 pl-4">
+            {q.options.map((opt, oi) => (
+              <li key={oi} className="text-muted-foreground text-sm">
+                {opt.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 
@@ -217,7 +201,7 @@ function OptionRow({
         <span
           className={cn(
             "font-medium text-sm",
-            active ? "font-semibold text-foreground" : "text-muted-foreground",
+            active ? "text-foreground" : "text-muted-foreground",
           )}
         >
           {opt.label}
@@ -359,7 +343,7 @@ function OtherRow({
   return (
     <div
       className={cn(
-        "flex w-full items-center gap-3 border-l-2 py-1.5 pr-3 transition-colors",
+        "flex h-8 w-full items-center gap-3 border-l-2 pr-3 transition-colors",
         isFocused ? "pl-[10px]" : "pl-3",
         isOpen ? "bg-muted" : isFocused ? "bg-muted/60" : "hover:bg-muted/30",
         isFocused ? "border-l-foreground/40" : "border-l-transparent",
@@ -401,7 +385,7 @@ function OtherRow({
       {showInput ? (
         <Input
           ref={inputRef}
-          className="h-7 flex-1 text-sm"
+          className="h-6 flex-1 border-none bg-transparent px-0 text-sm shadow-none outline-none focus-visible:ring-0"
           placeholder="Type your answer..."
           value={value === " " ? "" : value}
           onChange={(e) => onChange(e.target.value)}
@@ -431,10 +415,10 @@ function OtherRow({
           type="button"
           disabled={!isInteractive}
           className={cn(
-            "flex-1 text-left text-sm transition-colors",
+            "flex-1 text-left font-medium text-sm transition-colors",
             isOpen || isFocused
-              ? "font-semibold text-foreground"
-              : "font-medium text-muted-foreground",
+              ? "text-foreground"
+              : "text-muted-foreground/50",
             !isInteractive && "cursor-not-allowed",
           )}
           onClick={() => {
@@ -964,7 +948,6 @@ export const AskFollowupQuestionTool: React.FC<
         tool={toolCall}
         isExecuting={isExecuting ?? false}
         questionList={questionList}
-        selections={selections}
       />
     );
   }

@@ -151,6 +151,10 @@ const program = new Command()
     parseNonNegativeInt,
     60000,
   )
+  .option(
+    "--agent <name>",
+    "Run the task as a sub-agent using the specified custom agent. This applies the agent's system prompt and tool restrictions, matching the behavior of sub-tasks created via the newTask tool.",
+  )
   .addOption(
     new Option(
       "--experimental-output-schema <schema>",
@@ -198,6 +202,21 @@ const program = new Command()
     // Load custom agents and skills
     const customAgents = await loadAgents(process.cwd());
     const skills = await loadSkills(process.cwd());
+
+    // Resolve the --agent flag to a custom agent
+    let selectedAgent: (typeof customAgents)[number] | undefined;
+    if (options.agent) {
+      const agentName = options.agent;
+      selectedAgent = customAgents.find(
+        (a) => a.name.toLowerCase() === agentName.toLowerCase(),
+      );
+      if (!selectedAgent) {
+        const available = customAgents.map((a) => `  • ${a.name}`).join("\n");
+        return program.error(
+          `Agent '${agentName}' not found.\n\nAvailable agents:\n${available || "  (none)"}`,
+        );
+      }
+    }
 
     const { uid, prompt, attachments } = await parseTaskInput(
       options,
@@ -288,6 +307,8 @@ const program = new Command()
       skills,
       mcpHub,
       abortSignal: abortController.signal,
+      isSubTask: selectedAgent !== undefined,
+      customAgent: selectedAgent,
       outputSchema: options.experimentalOutputSchema
         ? parseOutputSchema(options.experimentalOutputSchema)
         : undefined,

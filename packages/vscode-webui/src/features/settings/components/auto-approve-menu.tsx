@@ -226,6 +226,7 @@ export function AutoApproveMenu({
       <PopoverContent
         className="[@media(min-width:400px)]:w-[400px]"
         side="top"
+        align="end"
       >
         <div className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:grid-cols-2">
           {coreActionSettings
