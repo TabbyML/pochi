@@ -320,7 +320,8 @@
     "recommended": "추천",
     "dismiss": "닫기",
     "next": "다음",
-    "askingQuestion": "질문 중",
+    "askingQuestion_one": "질문 중",
+    "askingQuestion_other": "질문 중",
     "skipped": "건너뜀"
   },
   "reasoning": {

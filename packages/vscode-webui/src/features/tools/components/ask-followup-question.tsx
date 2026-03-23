@@ -79,63 +79,47 @@ interface QuestionSummaryProps {
   tool: ToolProps<"askFollowupQuestion">["tool"];
   isExecuting: boolean;
   questionList: Question[];
-  selections: SelectionState[];
 }
 
 function QuestionSummary({
   tool,
   isExecuting,
   questionList,
-  selections,
 }: QuestionSummaryProps) {
   const { t } = useTranslation();
 
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2">{t("toolInvocation.askingQuestion")}</span>
+      <span className="ml-2">
+        {t("toolInvocation.askingQuestion", { count: questionList.length })}
+      </span>
     </>
   );
 
   const detail = (
     <div className="flex flex-col gap-3 pl-6">
-      {questionList.map((q, i) => {
-        const sel = selections[i] ?? { optionIndices: [], custom: "" };
-        const answered = isAnswered(sel);
-        const answerLabels = answered
-          ? getAnswerLabels(sel, q.options, q.multiSelect)
-          : [];
-        return (
-          <div key={tool.toolCallId + i} className="flex flex-col gap-1.5">
-            {/* Label + question */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className="shrink-0 font-medium text-xs">
-                {q.header}
-              </Badge>
-              <MessageMarkdown className="text-foreground text-sm">
-                {q.question}
-              </MessageMarkdown>
-            </div>
-            {/* Selected answer(s) or skipped indicator */}
-            <div className="flex flex-col gap-0.5">
-              {answered ? (
-                answerLabels.map((label, li) => (
-                  <span
-                    key={li}
-                    className="font-medium text-foreground text-sm"
-                  >
-                    {label}
-                  </span>
-                ))
-              ) : (
-                <span className="text-muted-foreground text-sm italic">
-                  {t("toolInvocation.skipped")}
-                </span>
-              )}
-            </div>
+      {questionList.map((q, i) => (
+        <div key={tool.toolCallId + i} className="flex flex-col gap-1.5">
+          {/* Label + question */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className="shrink-0 font-medium text-xs">
+              {q.header}
+            </Badge>
+            <MessageMarkdown className="text-foreground text-sm">
+              {q.question}
+            </MessageMarkdown>
           </div>
-        );
-      })}
+          {/* All options */}
+          <ul className="flex list-disc flex-col gap-0.5 pl-4">
+            {q.options.map((opt, oi) => (
+              <li key={oi} className="text-muted-foreground text-sm">
+                {opt.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 
@@ -964,7 +948,6 @@ export const AskFollowupQuestionTool: React.FC<
         tool={toolCall}
         isExecuting={isExecuting ?? false}
         questionList={questionList}
-        selections={selections}
       />
     );
   }
