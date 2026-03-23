@@ -268,6 +268,7 @@ export function WorktreeList({
           containsOnlyWorkspaceGroup={containsOnlyWorkspaceGroup}
           isOpenMainWorktree={isOpenMainWorktree}
           isGitWorkspace={isGitWorkspace}
+          showArchivedTasks={showArchivedTasks}
         />
       ))}
       {showArchivedTasks && archivedTasks.length > 0 && (
@@ -284,6 +285,7 @@ function WorktreeSection({
   containsOnlyWorkspaceGroup,
   isOpenMainWorktree,
   isGitWorkspace,
+  showArchivedTasks,
 }: {
   group: WorktreeGroup;
   isLoadingWorktrees: boolean;
@@ -293,6 +295,7 @@ function WorktreeSection({
   containsOnlyWorkspaceGroup?: boolean;
   isOpenMainWorktree?: boolean;
   isGitWorkspace?: boolean;
+  showArchivedTasks: boolean;
 }) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
@@ -522,7 +525,9 @@ function WorktreeSection({
         <ScrollArea
           viewportClassname={cn("px-1 py-1", {
             "max-h-[180px]": !group.isMain && !containsOnlyWorkspaceGroup,
-            "max-h-[60cqh]": group.isMain && !containsOnlyWorkspaceGroup,
+            "max-h-[60cqh]":
+              group.isMain &&
+              (!containsOnlyWorkspaceGroup || showArchivedTasks),
             // When there is only one workspace group, we let it grow naturally without max-height constraint
           })}
         >
