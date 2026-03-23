@@ -58,6 +58,7 @@ export function createPochiModel({
             model: modelId,
             options: {
               prompt: convertFilePartDataToBase64(prompt),
+              providerOptions,
               ...options,
             },
           },
@@ -99,6 +100,7 @@ export function createPochiModel({
           prompt: convertFilePartDataToBase64(prompt),
           stopSequences,
           tools,
+          providerOptions,
         },
       };
       const resp = await apiClient.api.chat.stream.$post(
