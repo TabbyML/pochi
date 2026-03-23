@@ -217,7 +217,7 @@ function OptionRow({
         <span
           className={cn(
             "font-medium text-sm",
-            active ? "font-semibold text-foreground" : "text-muted-foreground",
+            active ? "text-foreground" : "text-muted-foreground",
           )}
         >
           {opt.label}
@@ -359,7 +359,7 @@ function OtherRow({
   return (
     <div
       className={cn(
-        "flex w-full items-center gap-3 border-l-2 py-1.5 pr-3 transition-colors",
+        "flex h-8 w-full items-center gap-3 border-l-2 pr-3 transition-colors",
         isFocused ? "pl-[10px]" : "pl-3",
         isOpen ? "bg-muted" : isFocused ? "bg-muted/60" : "hover:bg-muted/30",
         isFocused ? "border-l-foreground/40" : "border-l-transparent",
@@ -401,7 +401,7 @@ function OtherRow({
       {showInput ? (
         <Input
           ref={inputRef}
-          className="h-7 flex-1 text-sm"
+          className="h-6 flex-1 border-none bg-transparent px-0 text-sm shadow-none outline-none focus-visible:ring-0"
           placeholder="Type your answer..."
           value={value === " " ? "" : value}
           onChange={(e) => onChange(e.target.value)}
@@ -431,10 +431,10 @@ function OtherRow({
           type="button"
           disabled={!isInteractive}
           className={cn(
-            "flex-1 text-left text-sm transition-colors",
+            "flex-1 text-left font-medium text-sm transition-colors",
             isOpen || isFocused
-              ? "font-semibold text-foreground"
-              : "font-medium text-muted-foreground",
+              ? "text-foreground"
+              : "text-muted-foreground/50",
             !isInteractive && "cursor-not-allowed",
           )}
           onClick={() => {
