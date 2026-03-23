@@ -89,6 +89,7 @@ export class LayoutManager implements vscode.Disposable {
           } else if (prevEnabled && !enabled) {
             this.disposeListeners();
             this.fsm.stop();
+            executeVSCodeCommand("workbench.action.resetViewLocations");
           }
         }),
       },
