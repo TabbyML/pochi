@@ -435,7 +435,7 @@ function WorktreeSection({
                   {t("tasksPage.openWorktreeInTerminal")}
                 </TooltipContent>
               </Tooltip>
-              {group.isMain && (
+              {group.isMain && !containsOnlyWorkspaceGroup && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
