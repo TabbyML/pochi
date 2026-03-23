@@ -314,7 +314,7 @@
     "updatingToDos": "更新待办事项中",
     "editing": "正在编辑 ",
     "moreTools": "，以及另外 {{count}} 个工具",
-    "other": "其他",
+    "other": "其他，告诉 Pochi...",
     "submit": "提交",
     "recommended": "推荐",
     "dismiss": "忽略",
