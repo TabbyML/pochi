@@ -55,9 +55,11 @@ export function TaskRow({
         storeId,
       });
 
-      showFileChanges();
+      if (!archived) {
+        showFileChanges();
+      }
     }
-  }, [task.cwd, task.id, storeId, showFileChanges]);
+  }, [task.cwd, task.id, storeId, showFileChanges, archived]);
 
   const handleArchiveClick = useCallback(
     (e: React.MouseEvent) => {
