@@ -54,6 +54,9 @@ Usage notes:
     );
     if (response.ok) {
       const { results } = (await response.json()) as SearchResults;
+      if (results.length === 0) {
+        throw new Error("No results found");
+      }
       return {
         content: results.map((result) => ({
           type: "text",

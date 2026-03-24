@@ -102,6 +102,9 @@ async function ensureOutputSchema(
           version: globalThis.POCHI_CLIENT,
           useCase: "output-schema",
         },
+        anthropic: {
+          thinking: { type: "disabled" },
+        },
       },
       model,
       schema,

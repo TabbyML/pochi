@@ -89,6 +89,7 @@ export class LayoutManager implements vscode.Disposable {
           } else if (prevEnabled && !enabled) {
             this.disposeListeners();
             this.fsm.stop();
+            executeVSCodeCommand("workbench.action.resetViewLocations");
           }
         }),
       },
@@ -312,6 +313,40 @@ export class LayoutManager implements vscode.Disposable {
       type: "start-apply",
       trigger: "manual",
       ...options,
+    });
+  }
+
+  /**
+   * Returns a promise that resolves when the layout reaches `pochi-layout` state.
+   * If the layout is already in `pochi-layout` state, resolves immediately.
+   * If not enabled, resolves immediately.
+   * Falls back after `timeoutMs` if the layout never reaches `pochi-layout`.
+   */
+  waitForPochiLayout(timeoutMs = 10000): Promise<void> {
+    if (!this.enabled) {
+      return Promise.resolve();
+    }
+    if (this.fsm.state.value === "pochi-layout") {
+      return Promise.resolve();
+    }
+    this.fsm.send({
+      type: "start-apply",
+      trigger: "manual",
+    });
+    return new Promise<void>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        unsubscribe();
+        resolve();
+      }, timeoutMs);
+      const { unsubscribe } = this.fsm.subscribe((state) => {
+        if (state.value === "pochi-layout") {
+          clearTimeout(timeoutId);
+          unsubscribe();
+          resolve();
+        }
+        // For `non-pochi-layout` and `initial` states, keep waiting until timeout.
+        // The tab opening will trigger the layout to apply shortly.
+      });
     });
   }
 

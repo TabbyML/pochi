@@ -317,12 +317,13 @@
     "usingSkill": "Using skill",
     "moreTools_one": ", and {{count}} more tool",
     "moreTools_other": ", and {{count}} more tools",
-    "other": "Other",
+    "other": "Other, tell Pochi...",
     "submit": "Submit",
     "recommended": "Recommended",
     "dismiss": "Dismiss",
     "next": "Next",
-    "askingQuestion": "Asking question",
+    "askingQuestion_one": "Asking question",
+    "askingQuestion_other": "Asking questions",
     "skipped": "Skipped"
   },
   "reasoning": {

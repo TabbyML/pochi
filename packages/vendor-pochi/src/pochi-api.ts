@@ -15,6 +15,9 @@ export const ModelGatewayRequest = z.object({
     prompt: z.custom<LanguageModelV2Prompt>(),
     stopSequences: z.array(z.string()).optional(),
     tools: z.custom<LanguageModelV2CallOptions["tools"]>(),
+    providerOptions: z
+      .custom<LanguageModelV2CallOptions["providerOptions"]>()
+      .optional(),
   }),
 });
 export type ModelGatewayRequest = z.infer<typeof ModelGatewayRequest>;

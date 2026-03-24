@@ -33,15 +33,11 @@ import { constants } from "@getpochi/common";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import {
-  ChevronDownIcon,
-  PaperclipIcon,
-  SendHorizonal,
-  StopCircleIcon,
-} from "lucide-react";
+import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TbShieldCog } from "react-icons/tb";
 import {
   type BlockingOperation,
   useBlockingOperations,
@@ -361,27 +357,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
       <div className={FooterContainerClassName}>
         <div className={FooterLeftClassName}>
-          <AutoApproveMenu
-            isSubTask={isSubTask}
-            mcpConfigOverride={mcpConfigOverride}
-            trigger={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "button-focus !gap-0.5 !px-1 h-6 font-normal",
-                  autoApproveActive && "text-foreground",
-                )}
-                aria-label={t("settings.autoApprove.approvals")}
-              >
-                <span className="truncate whitespace-nowrap transition-colors duration-200">
-                  {t("settings.autoApprove.approvals")}
-                </span>
-                <ChevronDownIcon className="size-4 shrink-0 transition-colors duration-200" />
-              </Button>
-            }
-          />
           <ModelSelect
             value={selectedModel || selectedModelFromStore}
             models={groupedModels}
@@ -404,6 +379,24 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             />
           )}
           <DevModeButton messages={messages} todos={todos} />
+          <AutoApproveMenu
+            isSubTask={isSubTask}
+            mcpConfigOverride={mcpConfigOverride}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "button-focus h-6 w-6 p-0",
+                  autoApproveActive && "text-foreground",
+                )}
+                aria-label={t("settings.autoApprove.approvals")}
+              >
+                <TbShieldCog className="size-4 shrink-0 transition-colors duration-200" />
+              </Button>
+            }
+          />
           {!isSubTask && (
             <PublicShareButton
               task={task}
@@ -491,7 +484,6 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
 
 export function ChatToolBarSkeleton() {
   const { input, setInput } = useChatInputState();
-  const { t } = useTranslation();
   return (
     <>
       <div className={PopupContainerClassName}>
@@ -532,23 +524,6 @@ export function ChatToolBarSkeleton() {
 
       <div className={FooterContainerClassName}>
         <div className={FooterLeftClassName}>
-          <AutoApproveMenu
-            isSubTask={false}
-            trigger={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="button-focus h-6 gap-1 px-1.5 text-xs"
-                aria-label={t("settings.autoApprove.approvals")}
-              >
-                <span className="truncate whitespace-nowrap transition-colors duration-200">
-                  {t("settings.autoApprove.approvals")}
-                </span>
-                <ChevronDownIcon className="size-4 shrink-0 transition-colors duration-200" />
-              </Button>
-            }
-          />
           <ModelSelect
             isLoading={true}
             value={undefined}

@@ -27,6 +27,9 @@ export const makeRepairToolCall: (
           version: globalThis.POCHI_CLIENT,
           useCase: "repair-tool-call",
         },
+        anthropic: {
+          thinking: { type: "disabled" },
+        },
       },
       model,
       schema: tool.inputSchema,
