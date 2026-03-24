@@ -329,6 +329,10 @@ export class LayoutManager implements vscode.Disposable {
     if (this.fsm.state.value === "pochi-layout") {
       return Promise.resolve();
     }
+    this.fsm.send({
+      type: "start-apply",
+      trigger: "manual",
+    });
     return new Promise<void>((resolve) => {
       const timeoutId = setTimeout(() => {
         unsubscribe();
