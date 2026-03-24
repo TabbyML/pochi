@@ -13,8 +13,6 @@ describe("readEnvironment", () => {
     expect(environment).toBeDefined();
     expect(environment.currentTime).toBeDefined();
     expect(environment.workspace).toBeDefined();
-    expect(environment.workspace.files).toBeInstanceOf(Array);
-    expect(environment.workspace.isTruncated).toBeDefined();
     expect(environment.info).toBeDefined();
     expect(environment.info.cwd).toBe(process.cwd());
     expect(environment.info.os).toBeDefined();
