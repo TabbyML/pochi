@@ -154,7 +154,7 @@ export class OutputRenderer {
   }
 }
 
-function renderToolPart(
+export function renderToolPart(
   part: ToolUIPart<UITools>,
   attemptCompletionSchemaOverride = false,
 ): {
@@ -262,6 +262,15 @@ function renderToolPart(
     return {
       text: questionsText,
       stop: "stopAndPersist",
+      error: errorText,
+    };
+  }
+
+  if (part.type === "tool-useSkill") {
+    const { skill = "unknown" } = part.input || {};
+    return {
+      text: `🧩 Using skill ${chalk.bold(skill)}`,
+      stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
   }
