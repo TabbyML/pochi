@@ -154,7 +154,7 @@ export class OutputRenderer {
   }
 }
 
-export function renderToolPart(
+function renderToolPart(
   part: ToolUIPart<UITools>,
   attemptCompletionSchemaOverride = false,
 ): {
