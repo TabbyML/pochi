@@ -266,6 +266,15 @@ function renderToolPart(
     };
   }
 
+  if (part.type === "tool-useSkill") {
+    const { skill = "unknown" } = part.input || {};
+    return {
+      text: `🧩 Using skill ${chalk.bold(skill)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
   if (part.type === "tool-todoWrite") {
     const { todos = [] } = part.input || {};
     return {
