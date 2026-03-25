@@ -140,6 +140,8 @@ import { GithubPullRequestState } from "../github/github-pull-request-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GlobalStateSignals } from "../global-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { LayoutManager } from "../layout/layout-manager";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ReviewController } from "../review-controller";
@@ -189,6 +191,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
     private readonly forkTaskStatus: ForkTaskStatus,
+    private readonly layoutManager: LayoutManager,
   ) {}
 
   private get cwd() {
@@ -924,9 +927,31 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       keepEditor?: boolean;
       preserveFocus?: boolean;
       preview?: boolean;
+      showFileChanges?: boolean;
     },
   ): Promise<void> => {
-    await PochiTaskEditorProvider.openTaskEditor(params, options);
+    const isPochiLayoutEnabled =
+      !!this.pochiConfiguration.advancedSettings.value.pochiLayout?.enabled;
+    await PochiTaskEditorProvider.openTaskEditor(params, {
+      ...options,
+      preview: isPochiLayoutEnabled ? options?.preview : false,
+    });
+
+    if (options?.showFileChanges && params.type === "open-task" && params.uid) {
+      const taskId = params.uid;
+      if (isPochiLayoutEnabled) {
+        // Wait for the layout to be fully applied before showing file changes
+        await this.layoutManager.waitForPochiLayout();
+      }
+      if (this.cwd) {
+        await this.taskChangedFilesManager.showChangedFiles(
+          taskId,
+          this.cwd,
+          undefined,
+          this.checkpointService,
+        );
+      }
+    }
   };
 
   sendTaskNotification = async (
@@ -1059,7 +1084,21 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   deleteWorktree = async (worktreePath: string): Promise<boolean> => {
-    return await this.worktreeManager.deleteWorktree(worktreePath);
+    const success = await this.worktreeManager.deleteWorktree(worktreePath);
+    if (success) {
+      // Auto-archive all tasks belonging to the deleted worktree
+      const tasks = this.taskHistoryStore.tasks.value;
+      const updates: Record<string, boolean> = {};
+      for (const [taskId, task] of Object.entries(tasks)) {
+        if (task.parentId === null && task.cwd === worktreePath) {
+          updates[taskId] = true;
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        await this.taskStateStore.setArchived(updates);
+      }
+    }
+    return success;
   };
 
   queryGithubIssues = async (query?: string): Promise<GithubIssue[]> => {

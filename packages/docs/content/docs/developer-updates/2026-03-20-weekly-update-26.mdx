@@ -1,0 +1,29 @@
+---
+title: Weekly Update #26
+---
+
+# Weekly Update #26
+
+### TL;DR
+
+This week we spent time stepping back and identifying key areas where Pochi can be improved, along with fixing a few reliability issues that were getting in the way.
+
+Here’s a preview of what’s currently in progress and expected to land in the next release 👇
+
+
+
+### 🔥 Preview
+
+
+**Workflow & UX improvements**
+- **Multi-step follow-up questions:** Agents will be able to ask structured, multi-question prompts (with progress, single/multi-select inputs) to gather better context before execution.  **[#1323](https://github.com/TabbyML/pochi/issues/1323)**
+- **Cleaner task archiving:** Tasks will auto-archive when worktrees are deleted and appear in a single unified view, making it easier to find past work.  **[#1346](https://github.com/TabbyML/pochi/issues/1346)**
+- **Background subtask execution:** Subtasks will run asynchronously in separate tabs without blocking the parent task, enabling smoother parallel workflows.  **[#1354](https://github.com/TabbyML/pochi/issues/1354)**
+- **Built-in explore agent:** We’re making the explore agent a built-in part of Pochi for navigating and understanding codebases, designed for safe, read-only exploration and better planning workflows.  **[#1350](https://github.com/TabbyML/pochi/issues/1350)**
+- **Support for `.agents/skills`:** Skills can be shared across tools via the .agents/skills directory, aligning with emerging cross-agent conventions.  **[#1349](https://github.com/TabbyML/pochi/issues/1349)**
+- **Live updates for skills:** Changes to skills will reflect instantly in settings without requiring a reload.  **[#1352](https://github.com/TabbyML/pochi/issues/1352)**
+- **Improved permission controls:** Auto-approve settings will move into a compact input bar button, reducing clutter and improving accessibility.  **[#1347](https://github.com/TabbyML/pochi/issues/1347)**
+
+**Bug fixes**
+- **Subagents no longer get stuck under load:** We’re improving handling of parallel tool calls so agents continue making progress even under high concurrency.  **[#1345](https://github.com/TabbyML/pochi/issues/1345)**
+- **Improved dark theme rendering:** We’re also fixing an issue where parts of the Pochi webview could become hard to see or blend into the background when using newer VS Code dark themes.  **[#1351](https://github.com/TabbyML/pochi/issues/1351)**

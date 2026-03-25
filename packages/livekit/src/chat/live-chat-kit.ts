@@ -107,6 +107,8 @@ export type LiveChatKitOptions<T> = {
 
   isSubTask?: boolean;
 
+  depth?: number;
+
   store: LiveKitStore;
 
   blobStore: BlobStore;
@@ -191,6 +193,7 @@ export class LiveChatKit<
     onOverrideMessages,
     getters,
     isSubTask,
+    depth,
     customAgent,
     outputSchema,
     attemptCompletionSchema,
@@ -210,6 +213,7 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
+      depth,
       customAgent,
       outputSchema,
       attemptCompletionSchema,

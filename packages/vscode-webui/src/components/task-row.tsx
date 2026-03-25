@@ -8,7 +8,6 @@ import { EditSummary } from "@/features/tools";
 import { ToolCallLite } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskArchived } from "@/lib/hooks/use-task-archived";
-import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
@@ -32,9 +31,6 @@ export function TaskRow({
   const { jwt } = usePochiCredentials();
   const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
-
-  const { showFileChanges } = useTaskChangedFiles(task.id, []);
-
   const { isTaskArchived, setTaskArchived } = useTaskArchived();
 
   const archived = useMemo(
@@ -48,16 +44,19 @@ export function TaskRow({
 
   const openTaskInPanel = useCallback(async () => {
     if (task.cwd) {
-      vscodeHost.openTaskInPanel({
-        type: "open-task",
-        cwd: task.cwd,
-        uid: task.id,
-        storeId,
-      });
-
-      showFileChanges();
+      vscodeHost.openTaskInPanel(
+        {
+          type: "open-task",
+          cwd: task.cwd,
+          uid: task.id,
+          storeId,
+        },
+        {
+          showFileChanges: !archived,
+        },
+      );
     }
-  }, [task.cwd, task.id, storeId, showFileChanges]);
+  }, [task.cwd, task.id, storeId, archived]);
 
   const handleArchiveClick = useCallback(
     (e: React.MouseEvent) => {

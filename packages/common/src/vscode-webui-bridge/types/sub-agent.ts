@@ -5,4 +5,7 @@ export type BuiltinSubAgentInfo =
     }
   | {
       type: "planner";
+    }
+  | {
+      type: "explore";
     };

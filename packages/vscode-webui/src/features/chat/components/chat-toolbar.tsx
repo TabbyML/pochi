@@ -17,8 +17,11 @@ import {
   type useApprovalAndRetry,
 } from "@/features/approval";
 import { useAutoApproveGuard } from "@/features/chat";
-import { useSelectedModels } from "@/features/settings";
-import { AutoApproveMenu } from "@/features/settings";
+import {
+  AutoApproveMenu,
+  useAutoApprove,
+  useSelectedModels,
+} from "@/features/settings";
 import { TodoList, useTodos } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
@@ -34,6 +37,7 @@ import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TbShieldCog } from "react-icons/tb";
 import {
   type BlockingOperation,
   useBlockingOperations,
@@ -68,6 +72,7 @@ interface ChatToolbarProps {
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
+  storeId?: string;
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
 }
@@ -84,6 +89,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   todosRef,
   onUpdateIsPublicShared,
   taskId,
+  storeId,
   isRepairingMermaid = false,
   mcpConfigOverride,
 }) => {
@@ -113,6 +119,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     reload: reloadModels,
     updateSelectedModelId,
   } = useSelectedModels({ isSubTask });
+
+  const { autoApproveActive } = useAutoApprove({ isSubTask });
 
   // Use the unified attachment upload hook
   const {
@@ -267,6 +275,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <CompleteSubtaskButton
             showCompleteButton={showCompleteSubtaskButton}
             subtask={subtask}
+            storeId={storeId}
           />
           <ApprovalButton
             pendingApproval={pendingApproval}
@@ -284,7 +293,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       </div>
       {(todos.length > 0 ||
         useTaskChangedFilesHelpers.visibleChangedFiles.length > 0) && (
-        <div className={cn("mt-1.5 rounded-sm border border-border")}>
+        <div
+          className={cn(
+            "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
+          )}
+        >
           {todos.length > 0 && (
             <TodoList todos={todos}>
               <TodoList.Header />
@@ -299,10 +312,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       )}
-      <AutoApproveMenu
-        isSubTask={isSubTask}
-        mcpConfigOverride={mcpConfigOverride}
-      />
       {files.length > 0 && (
         <AttachmentPreviewList
           files={files}
@@ -329,6 +338,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         reviews={reviews}
         taskId={taskId}
         lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
+        className={cn({
+          "rounded-t-none":
+            todos.length > 0 ||
+            useTaskChangedFilesHelpers.visibleChangedFiles.length > 0,
+        })}
       />
 
       {/* Hidden file input for image uploads */}
@@ -365,6 +379,24 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             />
           )}
           <DevModeButton messages={messages} todos={todos} />
+          <AutoApproveMenu
+            isSubTask={isSubTask}
+            mcpConfigOverride={mcpConfigOverride}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "button-focus h-6 w-6 p-0",
+                  autoApproveActive && "text-foreground",
+                )}
+                aria-label={t("settings.autoApprove.approvals")}
+              >
+                <TbShieldCog className="size-4 shrink-0 transition-colors duration-200" />
+              </Button>
+            }
+          />
           {!isSubTask && (
             <PublicShareButton
               task={task}
@@ -460,6 +492,7 @@ export function ChatToolBarSkeleton() {
           <CompleteSubtaskButton
             showCompleteButton={false}
             subtask={undefined}
+            storeId={undefined}
           />
           <ApprovalButton
             pendingApproval={undefined}
@@ -474,7 +507,6 @@ export function ChatToolBarSkeleton() {
         </div>
       </div>
 
-      <AutoApproveMenu isSubTask={false} />
       <ChatInputForm
         input={input}
         setInput={setInput}

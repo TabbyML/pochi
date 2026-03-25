@@ -70,8 +70,8 @@ type Options = {
   videoBitrate?: string; // e.g. "2500k"
 
   // Video dimensions
-  width?: number;
-  height?: number;
+  width?: number; // 1280
+  height?: number; // 720
 };
 
 export function startMjpegToMp4Converter(
@@ -85,8 +85,8 @@ export function startMjpegToMp4Converter(
     preset = "veryfast",
     crf = 23,
     videoBitrate,
-    width,
-    height,
+    width = 1280,
+    height = 720,
   } = opts;
 
   // Feed ffmpeg a stream of JPEG images (MJPEG) via stdin.
@@ -104,16 +104,19 @@ export function startMjpegToMp4Converter(
     .inputFormat("mjpeg")
     .inputOptions([`-r ${nominalFps}`])
     .outputOptions([
-      "-vsync vfr",
       "-pix_fmt yuv420p",
       "-movflags +faststart",
       `-preset ${preset}`,
       `-crf ${crf}`,
+      "-an", // no audio
       ...(videoBitrate ? [`-b:v ${videoBitrate}`] : []),
-      ...(width && height ? [`-vf scale=${width}:${height}`] : []),
     ])
     .videoCodec("libx264")
+    .fps(nominalFps)
     .format("mp4")
+    .videoFilter(
+      `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black`,
+    )
     .output(outputPath);
 
   // Logging
@@ -139,7 +142,7 @@ export function startMjpegToMp4Converter(
     const ts = frame.ts;
     const jpeg = decodeBase64JpegToBuffer(frame.data);
 
-    if (prevTs && pendingJpeg) {
+    if (prevTs !== null && pendingJpeg) {
       // Duration for pending frame = time until current frame
       const rawDurSec = ts - prevTs;
       const durMs = Math.min(rawDurSec * 1000, maxGapMs);

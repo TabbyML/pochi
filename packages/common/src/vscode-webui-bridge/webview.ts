@@ -318,6 +318,11 @@ export interface VSCodeHostApi {
       keepEditor?: boolean;
       preserveFocus?: boolean;
       preview?: boolean;
+      /**
+       * If true, show the file changes diff view after opening the task panel.
+       * When pochi layout is enabled, waits for the layout to be applied first.
+       */
+      showFileChanges?: boolean;
     },
   ): Promise<void>;
 

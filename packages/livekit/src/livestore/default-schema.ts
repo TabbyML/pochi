@@ -466,7 +466,11 @@ const materializers = State.SQLite.materializers(events, {
     ),
   "v1.ForkTaskInited": ({ tasks, messages, files }) => [
     ...tasks.map((task) =>
-      tables.tasks.insert({ ...task, updatedAt: task.createdAt }),
+      tables.tasks.insert({
+        ...task,
+        shareId: task.parentId ? undefined : `p-${task.id.replaceAll("-", "")}`,
+        updatedAt: task.createdAt,
+      }),
     ),
     ...messages.map((message) => tables.messages.insert(message)),
     ...files.map((file) => tables.files.insert(file)),

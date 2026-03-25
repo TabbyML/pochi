@@ -150,6 +150,7 @@
     },
     "autoApprove": {
       "title": "自动批准",
+      "approvals": "权限",
       "disabled": "已禁用",
       "noActionsSelected": "未选择任何操作",
       "readFiles": "读取文件",
@@ -249,6 +250,7 @@
     "tasksCount": "{{count}} 个任务",
     "openWorktreeDiff": "查看更改",
     "openWorktreeInTerminal": "在终端中打开工作树",
+    "migrateWorktreeChanges": "迁移工作树更改",
     "deleteWorktree": "删除工作树",
     "deleteWorktreeTitle": "删除工作树",
     "deleteWorktreeConfirm": "确定要删除工作树 \"{{name}}\" 吗？",
@@ -311,7 +313,15 @@
     "backgroundExecuting": "正在后台执行命令",
     "updatingToDos": "更新待办事项中",
     "editing": "正在编辑 ",
-    "moreTools": "，以及另外 {{count}} 个工具"
+    "moreTools": "，以及另外 {{count}} 个工具",
+    "other": "其他，告诉 Pochi...",
+    "submit": "提交",
+    "recommended": "推荐",
+    "dismiss": "忽略",
+    "next": "下一步",
+    "askingQuestion_one": "提问中",
+    "askingQuestion_other": "提问中",
+    "skipped": "已跳过"
   },
   "reasoning": {
     "thinking": "思考中 ...",
@@ -466,7 +476,8 @@
   "pagination": {
     "previous": "上一页",
     "next": "下一页",
-    "morePages": "更多页面"
+    "morePages": "更多页面",
+    "pageOf": "{{current}} / {{total}}"
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} 个文件已更改",

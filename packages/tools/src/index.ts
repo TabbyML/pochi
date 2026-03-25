@@ -22,6 +22,12 @@ import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
 export type { ToolFunctionType } from "./types";
+export type {
+  AskFollowupQuestionInput,
+  Question,
+  QuestionOption,
+} from "./ask-followup-question";
+export { QuestionSchema } from "./ask-followup-question";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { readBackgroundJobOutput } from "./read-background-job-output";
@@ -136,20 +142,24 @@ export type ClientTools = ReturnType<typeof createClientTools> & {
 export const selectClientTools = (
   options: {
     isSubTask: boolean;
+    allowNestedSubtasks?: boolean;
   } & CreateToolOptions,
 ) => {
   const clientTools = createClientTools(options);
 
-  if (options?.isSubTask) {
-    const { newTask, ...rest } = clientTools;
-    if (options.agent?.name === "reviewer") {
-      return {
-        ...rest,
-        createReview,
-      };
-    }
-    return rest;
+  let tools = clientTools;
+
+  if (options?.isSubTask && !options.allowNestedSubtasks) {
+    const { newTask, ...rest } = tools;
+    tools = rest as ClientTools;
   }
 
-  return clientTools;
+  if (options?.isSubTask && options.agent?.name === "reviewer") {
+    return {
+      ...tools,
+      createReview,
+    };
+  }
+
+  return tools;
 };

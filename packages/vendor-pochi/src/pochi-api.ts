@@ -2,6 +2,7 @@ import type {
   LanguageModelV2CallOptions,
   LanguageModelV2Prompt,
 } from "@ai-sdk/provider";
+import { QuestionSchema } from "@getpochi/tools";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { hc } from "hono/client";
@@ -14,6 +15,9 @@ export const ModelGatewayRequest = z.object({
     prompt: z.custom<LanguageModelV2Prompt>(),
     stopSequences: z.array(z.string()).optional(),
     tools: z.custom<LanguageModelV2CallOptions["tools"]>(),
+    providerOptions: z
+      .custom<LanguageModelV2CallOptions["providerOptions"]>()
+      .optional(),
   }),
 });
 export type ModelGatewayRequest = z.infer<typeof ModelGatewayRequest>;
@@ -39,12 +43,7 @@ export const WebhookEventPayload = z.object({
     result: z
       .object({
         completion: z.string().optional(),
-        followup: z
-          .object({
-            question: z.string(),
-            choices: z.array(z.string()).optional(),
-          })
-          .optional(),
+        questions: z.array(QuestionSchema).optional(),
       })
       .optional(),
   }),

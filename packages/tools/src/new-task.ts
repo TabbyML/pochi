@@ -34,11 +34,11 @@ export const overrideCustomAgentTools = (
   }
 
   const toAddTools = ["todoWrite", "attemptCompletion", "useSkill"];
-  const toDeleteTools = ["newTask"];
+  const toDeleteTools: string[] = [];
 
   // planner auto jump into manual run node, so it's ok to utilize askFollowupQuestion
   if (customAgent.name !== "planner") {
-    toDeleteTools.push("askFollowupQuestion");
+    toDeleteTools.push("newTask", "askFollowupQuestion");
   }
 
   const updatedTools = customAgent.tools.filter(

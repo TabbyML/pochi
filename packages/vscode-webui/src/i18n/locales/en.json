@@ -150,6 +150,7 @@
     },
     "autoApprove": {
       "title": "Auto-approve",
+      "approvals": "Permissions",
       "disabled": "Disabled",
       "noActionsSelected": "No actions selected",
       "readFiles": "Read files",
@@ -250,6 +251,7 @@
     "tasksCount": "{{count}} tasks",
     "openWorktreeDiff": "Review changes",
     "openWorktreeInTerminal": "Open worktree in terminal",
+    "migrateWorktreeChanges": "Migrate worktree changes",
     "deleteWorktree": "Delete worktree",
     "deleteWorktreeTitle": "Delete worktree",
     "deleteWorktreeConfirm": "Are you sure you want to delete the worktree \"{{name}}\"?",
@@ -314,7 +316,15 @@
     "editing": "Editing ",
     "usingSkill": "Using skill",
     "moreTools_one": ", and {{count}} more tool",
-    "moreTools_other": ", and {{count}} more tools"
+    "moreTools_other": ", and {{count}} more tools",
+    "other": "Other, tell Pochi...",
+    "submit": "Submit",
+    "recommended": "Recommended",
+    "dismiss": "Dismiss",
+    "next": "Next",
+    "askingQuestion_one": "Asking question",
+    "askingQuestion_other": "Asking questions",
+    "skipped": "Skipped"
   },
   "reasoning": {
     "thinking": "Thinking ...",
@@ -464,7 +474,8 @@
   "pagination": {
     "previous": "Previous",
     "next": "Next",
-    "morePages": "More pages"
+    "morePages": "More pages",
+    "pageOf": "{{current}} of {{total}}"
   },
   "diffSummary": {
     "filesChanged_one": "{{count}} file changed",
