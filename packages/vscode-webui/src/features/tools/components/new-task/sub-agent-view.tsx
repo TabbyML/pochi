@@ -64,7 +64,7 @@ export function SubAgentView({
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
       <div
         className={cn(
-          "flex items-center gap-2 border-b bg-muted/30 px-3 py-2 font-medium text-muted-foreground text-xs",
+          "flex items-start gap-2 border-b bg-muted/30 px-3 py-2 font-medium text-muted-foreground text-xs",
           uid && taskSource?.parentId && isVSCodeEnvironment()
             ? "group cursor-pointer transition-colors hover:bg-muted hover:text-foreground"
             : "",
@@ -88,17 +88,22 @@ export function SubAgentView({
         <StatusIcon
           tool={tool}
           isExecuting={isExecuting}
-          className="align-baseline"
+          className="mt-1 self-start leading-none"
           iconClassName="size-3.5"
         />
-        <Badge variant="secondary" className={cn("my-0.5 py-0")}>
-          {toolTitle}
-        </Badge>
-        {description && (
-          <span className="min-w-0 truncate text-muted-foreground group-hover:underline">
-            {description}
-          </span>
-        )}
+        <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
+          <Badge
+            variant="secondary"
+            className={cn("mr-2 inline-flex py-0 align-middle")}
+          >
+            {toolTitle}
+          </Badge>
+          {description && (
+            <span className="break-words align-middle group-hover:underline">
+              {description}
+            </span>
+          )}
+        </div>
         <div className="ml-auto flex items-center gap-2">
           {headerActions && (
             <div onClick={(e) => e.stopPropagation()}>{headerActions}</div>

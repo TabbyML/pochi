@@ -75,14 +75,23 @@ function AsyncTaskToolView(
 
   const title = (
     <>
-      <div className="flex min-w-0 items-center gap-2">
-        <StatusIcon tool={tool} isExecuting={isExecuting} />
-        <Badge variant="secondary" className={cn("my-0.5 py-0")}>
-          {toolTitle}
-        </Badge>
-        {description && (
-          <span className="min-w-0 text-muted-foreground">{description}</span>
-        )}
+      <div className="flex min-w-0 flex-1 items-start gap-2">
+        <StatusIcon
+          tool={tool}
+          isExecuting={isExecuting}
+          className="mt-1 self-start leading-none"
+        />
+        <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
+          <Badge
+            variant="secondary"
+            className={cn("mr-2 inline-flex py-0 align-middle")}
+          >
+            {toolTitle}
+          </Badge>
+          {description && (
+            <span className="break-words align-middle">{description}</span>
+          )}
+        </div>
       </div>
       <Button
         variant="ghost"
@@ -99,7 +108,7 @@ function AsyncTaskToolView(
   return (
     <ExpandableToolContainer
       title={title}
-      titleClassname="flex w-full items-center justify-between"
+      titleClassname="flex w-full items-start justify-between gap-2"
     />
   );
 }
@@ -160,33 +169,42 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   }
 
   const title = (
-    <div className="flex min-w-0 items-center gap-2">
-      <StatusIcon tool={tool} isExecuting={isExecuting} />
-      <Badge variant="secondary" className={cn("my-0.5 py-0")}>
-        {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
-          <span
-            onClick={() => {
-              navigate({
-                to: "/task",
-                search: {
-                  uid,
-                  storeId: store.storeId,
-                },
-                replace: true,
-                viewTransition: true,
-              });
-            }}
-            className="cursor-pointer hover:underline"
-          >
-            {toolTitle}
-          </span>
-        ) : (
-          <>{toolTitle}</>
+    <div className="flex min-w-0 items-start gap-2">
+      <StatusIcon
+        tool={tool}
+        isExecuting={isExecuting}
+        className="mt-1 self-start leading-none"
+      />
+      <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
+        <Badge
+          variant="secondary"
+          className={cn("mr-2 inline-flex py-0 align-middle")}
+        >
+          {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
+            <span
+              onClick={() => {
+                navigate({
+                  to: "/task",
+                  search: {
+                    uid,
+                    storeId: store.storeId,
+                  },
+                  replace: true,
+                  viewTransition: true,
+                });
+              }}
+              className="cursor-pointer hover:underline"
+            >
+              {toolTitle}
+            </span>
+          ) : (
+            <>{toolTitle}</>
+          )}
+        </Badge>
+        {description && (
+          <span className="break-words align-middle">{description}</span>
         )}
-      </Badge>
-      {description && (
-        <span className="min-w-0 text-muted-foreground">{description}</span>
-      )}
+      </div>
     </div>
   );
 
