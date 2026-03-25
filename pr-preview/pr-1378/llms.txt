@@ -3526,6 +3526,39 @@ Let's dive in!
   All browser agent sessions are now handled correctly, ensuring recordings are finalized and saved even when multiple agents run simultaneously. **[#1327](https://github.com/TabbyML/pochi/issues/1327)**
 
 
+# Weekly Update
+URL: /developer-updates/2026-03-20-weekly-update-26
+
+***
+
+## title: Weekly Update #26
+
+# Weekly Update #26
+
+### TL;DR
+
+This week we spent time stepping back and identifying key areas where Pochi can be improved, along with fixing a few reliability issues that were getting in the way.
+
+Here’s a preview of what’s currently in progress and expected to land in the next release 👇
+
+### 🔥 Preview
+
+**Workflow & UX improvements**
+
+* **Multi-step follow-up questions:** Agents will be able to ask structured, multi-question prompts (with progress, single/multi-select inputs) to gather better context before execution.  **[#1323](https://github.com/TabbyML/pochi/issues/1323)**
+* **Cleaner task archiving:** Tasks will auto-archive when worktrees are deleted and appear in a single unified view, making it easier to find past work.  **[#1346](https://github.com/TabbyML/pochi/issues/1346)**
+* **Background subtask execution:** Subtasks will run asynchronously in separate tabs without blocking the parent task, enabling smoother parallel workflows.  **[#1354](https://github.com/TabbyML/pochi/issues/1354)**
+* **Built-in explore agent:** We’re making the explore agent a built-in part of Pochi for navigating and understanding codebases, designed for safe, read-only exploration and better planning workflows.  **[#1350](https://github.com/TabbyML/pochi/issues/1350)**
+* **Support for `.agents/skills`:** Skills can be shared across tools via the .agents/skills directory, aligning with emerging cross-agent conventions.  **[#1349](https://github.com/TabbyML/pochi/issues/1349)**
+* **Live updates for skills:** Changes to skills will reflect instantly in settings without requiring a reload.  **[#1352](https://github.com/TabbyML/pochi/issues/1352)**
+* **Improved permission controls:** Auto-approve settings will move into a compact input bar button, reducing clutter and improving accessibility.  **[#1347](https://github.com/TabbyML/pochi/issues/1347)**
+
+**Bug fixes**
+
+* **Subagents no longer get stuck under load:** We’re improving handling of parallel tool calls so agents continue making progress even under high concurrency.  **[#1345](https://github.com/TabbyML/pochi/issues/1345)**
+* **Improved dark theme rendering:** We’re also fixing an issue where parts of the Pochi webview could become hard to see or blend into the background when using newer VS Code dark themes.  **[#1351](https://github.com/TabbyML/pochi/issues/1351)**
+
+
 # Reusable skills. Stop repeating prompts.
 URL: /developer-updates/agent-skills
 Turn repeated instructions into reusable capabilities
@@ -3662,11 +3695,6 @@ While building these tools, we used Pochi to explore the Lark API, scaffold the 
 What started as small automation scripts eventually evolved into reusable internal tools that now support our developer content publishing process.
 
 These workflows were never meant to be general-purpose tools. They were built specifically for our own publishing pipeline and the way our team works. The interesting part was how quickly Pochi made it possible to build something tailored exactly to our needs.
-
-If you're curious about how these workflows were built, you can view the full Pochi task walkthroughs that show the prompts and iterations used during development:
-
-* [**DocFlow walkthrough**](https://app.getpochi.com/share/p-929ac541810e4bedaac026822ab95ecb)
-* [**Content Syndicator walkthrough**](https://app.getpochi.com/share/p-ac8d39afa87e463bac0eb68e6a70ae3c)
 
 ## The Bigger Picture
 
@@ -4042,7 +4070,7 @@ Here you will find highlights on features, enhancements, and bug fixes, plus ins
 
 ## [10x Content Publishing Flow with Pochi](./automate-content-publishing-with-pochi)
 
-#### March 18, 2026
+#### March 25, 2026
 
 # 10x Content Publishing Flow with Pochi
 
@@ -4134,11 +4162,6 @@ What started as small automation scripts eventually evolved into reusable intern
 
 These workflows were never meant to be general-purpose tools. They were built specifically for our own publishing pipeline and the way our team works. The interesting part was how quickly Pochi made it possible to build something tailored exactly to our needs.
 
-If you're curious about how these workflows were built, you can view the full Pochi task walkthroughs that show the prompts and iterations used during development:
-
-* [**DocFlow walkthrough**](https://app.getpochi.com/share/p-929ac541810e4bedaac026822ab95ecb)
-* [**Content Syndicator walkthrough**](https://app.getpochi.com/share/p-ac8d39afa87e463bac0eb68e6a70ae3c)
-
 ## The Bigger Picture
 
 What changed for us was how we approached the problem. Instead of looking for the right tool or filing a ticket, we started treating gaps in our workflow as things we could solve ourselves.
@@ -4150,6 +4173,37 @@ In our case, it started with content publishing. Today, the same approach can be
 This is also why the idea of the **GTM engineer** is becoming increasingly popular. People closest to the workflow can build and iterate the tools they need themselves without waiting for dedicated engineering support.
 
 With Pochi, you can reimagine your workflows, unlock new efficiencies, and create the tools your team has always needed starting today.
+
+***
+
+## [Weekly Update #26](./2026-03-20-weekly-update-26)
+
+#### March 20, 2026
+
+# Weekly Update #26
+
+### TL;DR
+
+This week we spent time stepping back and identifying key areas where Pochi can be improved, along with fixing a few reliability issues that were getting in the way.
+
+Here’s a preview of what’s currently in progress and expected to land in the next release 👇
+
+### 🔥 Preview
+
+**Workflow & UX improvements**
+
+* **Multi-step follow-up questions:** Agents will be able to ask structured, multi-question prompts (with progress, single/multi-select inputs) to gather better context before execution.  **[#1323](https://github.com/TabbyML/pochi/issues/1323)**
+* **Cleaner task archiving:** Tasks will auto-archive when worktrees are deleted and appear in a single unified view, making it easier to find past work.  **[#1346](https://github.com/TabbyML/pochi/issues/1346)**
+* **Background subtask execution:** Subtasks will run asynchronously in separate tabs without blocking the parent task, enabling smoother parallel workflows.  **[#1354](https://github.com/TabbyML/pochi/issues/1354)**
+* **Built-in explore agent:** We’re making the explore agent a built-in part of Pochi for navigating and understanding codebases, designed for safe, read-only exploration and better planning workflows.  **[#1350](https://github.com/TabbyML/pochi/issues/1350)**
+* **Support for `.agents/skills`:** Skills can be shared across tools via the .agents/skills directory, aligning with emerging cross-agent conventions.  **[#1349](https://github.com/TabbyML/pochi/issues/1349)**
+* **Live updates for skills:** Changes to skills will reflect instantly in settings without requiring a reload.  **[#1352](https://github.com/TabbyML/pochi/issues/1352)**
+* **Improved permission controls:** Auto-approve settings will move into a compact input bar button, reducing clutter and improving accessibility.  **[#1347](https://github.com/TabbyML/pochi/issues/1347)**
+
+**Bug fixes**
+
+* **Subagents no longer get stuck under load:** We’re improving handling of parallel tool calls so agents continue making progress even under high concurrency.  **[#1345](https://github.com/TabbyML/pochi/issues/1345)**
+* **Improved dark theme rendering:** We’re also fixing an issue where parts of the Pochi webview could become hard to see or blend into the background when using newer VS Code dark themes.  **[#1351](https://github.com/TabbyML/pochi/issues/1351)**
 
 ***
 
