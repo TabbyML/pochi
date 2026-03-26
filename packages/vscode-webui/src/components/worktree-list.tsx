@@ -60,7 +60,6 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { VscGitMerge } from "react-icons/vsc";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
@@ -420,26 +419,6 @@ function WorktreeSection({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {group.isMain && !containsOnlyWorkspaceGroup && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      asChild
-                    >
-                      <a href="command:git.migrateWorktreeChanges">
-                        <VscGitMerge className="size-4" />
-                      </a>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("tasksPage.migrateWorktreeChanges")}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
               <div className="relative inline-flex">
                 <DropdownMenu
                   open={isActionsMenuOpen}
@@ -477,6 +456,16 @@ function WorktreeSection({
                         {t("tasksPage.openWorktreeInTerminal")}
                       </a>
                     </DropdownMenuItem>
+                    {group.isMain && !containsOnlyWorkspaceGroup && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <a href="command:git.migrateWorktreeChanges">
+                            {t("tasksPage.migrateWorktreeChanges")}
+                          </a>
+                        </DropdownMenuItem>
+                      </>
+                    )}
 
                     {!group.isMain && isOpenMainWorktree && (
                       <>
