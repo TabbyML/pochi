@@ -10,7 +10,7 @@ import type { NodeChatState } from "../livekit/chat.node";
 import type { StreamRenderer } from "./types";
 import { inlineSubTask, mapStoreBlob } from "./utils";
 
-export class ExperimentalTrajectoryStreamRenderer implements StreamRenderer {
+export class TrajectoryStreamRenderer implements StreamRenderer {
   private emittedParts = new Map<string, unknown>();
   private emittedMetadata = new Set<string>();
   private unsubscribe: (() => void) | undefined;

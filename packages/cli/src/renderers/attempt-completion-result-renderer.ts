@@ -2,17 +2,17 @@ import { isToolUIPart } from "ai";
 import type { NodeChatState } from "../livekit/chat.node";
 import type { StreamRenderer } from "./types";
 
-export interface ResultRendererOptions {
+export interface AttemptCompletionResultRendererOptions {
   attemptCompletionSchemaOverride?: boolean;
 }
 
-export class ResultRenderer implements StreamRenderer {
+export class AttemptCompletionResultRenderer implements StreamRenderer {
   private attemptCompletionSchemaOverride: boolean;
 
   constructor(
     private readonly stream: NodeJS.WritableStream,
     private readonly state: NodeChatState,
-    options: ResultRendererOptions = {},
+    options: AttemptCompletionResultRendererOptions = {},
   ) {
     this.attemptCompletionSchemaOverride =
       !!options.attemptCompletionSchemaOverride;
