@@ -71,6 +71,7 @@ import { NodeBlobStore } from "./node-blob-store";
 import {
   ExperimentalTrajectoryStreamRenderer,
   JsonRenderer,
+  ResultRenderer,
   type StreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
@@ -353,16 +354,16 @@ const program = new Command()
           blobStore,
           runner.state,
         );
+      } else if (options.outputResult) {
+        streamRenderer = new ResultRenderer(jsonOutputStream, runner.state, {
+          attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
+        });
       } else {
         streamRenderer = new JsonRenderer(
           jsonOutputStream,
           store,
           blobStore,
           runner.state,
-          {
-            mode: options.outputResult ? "result-only" : "full",
-            attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
-          },
         );
       }
     }
