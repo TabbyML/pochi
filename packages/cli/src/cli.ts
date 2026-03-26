@@ -46,7 +46,6 @@ import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
 import { handleShellCompletion } from "./completion";
-import { JsonRenderer } from "./json-renderer";
 import { setFfmpegPath } from "./lib/ffmpeg-mjpeg-to-mp4";
 import {
   CompoundFileSystem,
@@ -69,7 +68,12 @@ import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { NodeBlobStore } from "./node-blob-store";
-import { OutputRenderer } from "./output-renderer";
+import {
+  ExperimentalTrajectoryStreamRenderer,
+  JsonRenderer,
+  type StreamRenderer,
+} from "./renderers";
+import { OutputRenderer } from "./renderers";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
@@ -132,6 +136,10 @@ const program = new Command()
   .option(
     "-x, --output-result [filepath]",
     "Output the result from attemptCompletion. This is useful for scripts that need to capture the final result. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
+  )
+  .option(
+    "--experimental-stream-trajectory [filepath]",
+    "Stream message parts whenever signal.messages updates. Cannot be used with --stream-json or --output-result.",
   )
   .option(
     "--max-steps <number>",
@@ -259,9 +267,14 @@ const program = new Command()
 
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
       undefined;
-    if (options.streamJson && options.outputResult) {
+    if (
+      (options.streamJson ? 1 : 0) +
+        (options.outputResult ? 1 : 0) +
+        (options.experimentalStreamTrajectory ? 1 : 0) >
+      1
+    ) {
       program.error(
-        "Cannot use --stream-json and --output-result at same time.",
+        "Cannot use more than one of --stream-json, --output-result, or --experimental-stream-trajectory at the same time.",
       );
     }
     if (options.streamJson === true) {
@@ -272,6 +285,12 @@ const program = new Command()
       jsonOutputStream = process.stdout;
     } else if (typeof options.outputResult === "string") {
       jsonOutputStream = fs.createWriteStream(options.outputResult);
+    } else if (options.experimentalStreamTrajectory === true) {
+      jsonOutputStream = process.stdout;
+    } else if (typeof options.experimentalStreamTrajectory === "string") {
+      jsonOutputStream = fs.createWriteStream(
+        options.experimentalStreamTrajectory,
+      );
     }
 
     // Create MCP Hub for accessing MCP server tools (only if MCP is enabled)
@@ -325,18 +344,27 @@ const program = new Command()
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
 
-    let jsonRenderer: JsonRenderer | undefined = undefined;
+    let streamRenderer: StreamRenderer | undefined = undefined;
     if (jsonOutputStream) {
-      jsonRenderer = new JsonRenderer(
-        jsonOutputStream,
-        store,
-        blobStore,
-        runner.state,
-        {
-          mode: options.outputResult ? "result-only" : "full",
-          attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
-        },
-      );
+      if (options.experimentalStreamTrajectory) {
+        streamRenderer = new ExperimentalTrajectoryStreamRenderer(
+          jsonOutputStream,
+          store,
+          blobStore,
+          runner.state,
+        );
+      } else {
+        streamRenderer = new JsonRenderer(
+          jsonOutputStream,
+          store,
+          blobStore,
+          runner.state,
+          {
+            mode: options.outputResult ? "result-only" : "full",
+            attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
+          },
+        );
+      }
     }
 
     let runtimeError: Error | undefined = undefined;
@@ -347,7 +375,7 @@ const program = new Command()
     } finally {
       // Cleanup resources
       outputRenderer.shutdown();
-      await jsonRenderer?.shutdown();
+      await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
         jsonOutputStream.end();
         await finished(jsonOutputStream);
