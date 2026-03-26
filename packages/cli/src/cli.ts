@@ -69,9 +69,9 @@ import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { NodeBlobStore } from "./node-blob-store";
 import {
-  ExperimentalTrajectoryStreamRenderer,
+  AttemptCompletionResultRenderer,
+  TrajectoryStreamRenderer,
   JsonRenderer,
-  ResultRenderer,
   type StreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
@@ -132,15 +132,15 @@ const program = new Command()
   .optionsGroup("Options:")
   .option(
     "--stream-json [filepath]",
-    "Stream the output in JSON format. This is useful for parsing the output in scripts. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --output-result.",
+    "Stream the output in JSON format. This is useful for parsing the output in scripts. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --experimental-output-attempt-completion-result.",
   )
   .option(
-    "-x, --output-result [filepath]",
-    "Output the result from attemptCompletion. This is useful for scripts that need to capture the final result. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
+    "--experimental-output-attempt-completion-result [filepath]",
+    "Output only the result returned by attemptCompletion tool. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
   )
   .option(
     "--experimental-stream-trajectory [filepath]",
-    "Stream message parts whenever signal.messages updates. Cannot be used with --stream-json or --output-result.",
+    "Stream message parts whenever signal.messages updates. Cannot be used with --stream-json or --experimental-output-attempt-completion-result.",
   )
   .option(
     "--max-steps <number>",
@@ -270,22 +270,26 @@ const program = new Command()
       undefined;
     if (
       (options.streamJson ? 1 : 0) +
-        (options.outputResult ? 1 : 0) +
+        (options.experimentalOutputAttemptCompletionResult ? 1 : 0) +
         (options.experimentalStreamTrajectory ? 1 : 0) >
       1
     ) {
       program.error(
-        "Cannot use more than one of --stream-json, --output-result, or --experimental-stream-trajectory at the same time.",
+        "Cannot use more than one of --stream-json, --experimental-output-attempt-completion-result, or --experimental-stream-trajectory at the same time.",
       );
     }
     if (options.streamJson === true) {
       jsonOutputStream = process.stdout;
     } else if (typeof options.streamJson === "string") {
       jsonOutputStream = fs.createWriteStream(options.streamJson);
-    } else if (options.outputResult === true) {
+    } else if (options.experimentalOutputAttemptCompletionResult === true) {
       jsonOutputStream = process.stdout;
-    } else if (typeof options.outputResult === "string") {
-      jsonOutputStream = fs.createWriteStream(options.outputResult);
+    } else if (
+      typeof options.experimentalOutputAttemptCompletionResult === "string"
+    ) {
+      jsonOutputStream = fs.createWriteStream(
+        options.experimentalOutputAttemptCompletionResult,
+      );
     } else if (options.experimentalStreamTrajectory === true) {
       jsonOutputStream = process.stdout;
     } else if (typeof options.experimentalStreamTrajectory === "string") {
@@ -348,16 +352,20 @@ const program = new Command()
     let streamRenderer: StreamRenderer | undefined = undefined;
     if (jsonOutputStream) {
       if (options.experimentalStreamTrajectory) {
-        streamRenderer = new ExperimentalTrajectoryStreamRenderer(
+        streamRenderer = new TrajectoryStreamRenderer(
           jsonOutputStream,
           store,
           blobStore,
           runner.state,
         );
-      } else if (options.outputResult) {
-        streamRenderer = new ResultRenderer(jsonOutputStream, runner.state, {
-          attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
-        });
+      } else if (options.experimentalOutputAttemptCompletionResult) {
+        streamRenderer = new AttemptCompletionResultRenderer(
+          jsonOutputStream,
+          runner.state,
+          {
+            attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
+          },
+        );
       } else {
         streamRenderer = new JsonRenderer(
           jsonOutputStream,
