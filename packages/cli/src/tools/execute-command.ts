@@ -12,6 +12,29 @@ import {
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
+export class ExecuteCommandError extends Error {
+  public code: number;
+  public stdout: string;
+  public stderr: string;
+
+  constructor({
+    message,
+    code,
+    stdout,
+    stderr,
+  }: { message: string; code: number; stdout: string; stderr: string }) {
+    super(message);
+    this.name = "ExecuteCommandError";
+    this.code = code;
+    this.stdout = stdout;
+    this.stderr = stderr;
+  }
+
+  asOutput() {
+    return processCommandOutput(this.stdout, this.stderr, this.message);
+  }
+}
+
 export const executeCommand =
   (): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
@@ -30,11 +53,7 @@ export const executeCommand =
     }
 
     try {
-      const {
-        code,
-        stdout = "",
-        stderr = "",
-      } = await execWithExitCode(timeout, command, {
+      const { stdout = "", stderr = "" } = await execWithExitCode(command, {
         shell: getShellPath(),
         timeout: timeout * 1000, // Convert to milliseconds
         cwd: resolvedCwd,
@@ -42,22 +61,15 @@ export const executeCommand =
         env: { ...process.env, ...envs, ...getTerminalEnv() },
       });
 
-      const { output, isTruncated } = processCommandOutput(
-        stdout,
-        stderr,
-        code,
-      );
-
-      return {
-        output,
-        isTruncated,
-      };
+      return processCommandOutput(stdout, stderr);
     } catch (error) {
-      if (error instanceof Error) {
-        // Handle abort signal
-        if (error.name === "AbortError") {
-          throw new Error("Command execution was aborted");
-        }
+      if (error instanceof ExecuteCommandError) {
+        throw error;
+      }
+
+      // Handle abort signal
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Command execution was aborted");
       }
 
       // Handle other execution errors
@@ -78,11 +90,10 @@ function isExecException(error: unknown): error is ExecException {
 }
 
 async function execWithExitCode(
-  timeout: number,
   command: string,
   options: ExecOptionsWithStringEncoding,
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  return await new Promise<{ stdout: string; stderr: string; code: number }>(
+): Promise<{ stdout: string; stderr: string; code: 0 }> {
+  return await new Promise<{ stdout: string; stderr: string; code: 0 }>(
     (resolve, reject) => {
       const child = exec(command, options, (err, stdout = "", stderr = "") => {
         if (!err) {
@@ -95,20 +106,31 @@ async function execWithExitCode(
         }
 
         if (isExecException(err)) {
-          if (err.signal === "SIGTERM" && err.killed) {
+          if (
+            err.signal === "SIGTERM" &&
+            err.killed &&
+            options.timeout &&
+            options.timeout > 0
+          ) {
             reject(
-              new Error(
-                `Command execution timed out after ${timeout} seconds.`,
-              ),
+              new ExecuteCommandError({
+                message: `Command execution timed out after ${options.timeout / 1000} seconds.`,
+                stdout: err.stdout ?? stdout ?? "",
+                stderr: err.stderr ?? stderr ?? "",
+                code: err.code ?? 1,
+              }),
             );
             return;
           }
 
-          resolve({
-            stdout: err.stdout || "",
-            stderr: err.stderr || "",
-            code: err.code || 1,
-          });
+          reject(
+            new ExecuteCommandError({
+              message: `Command exited with code ${err.code ?? 1}`,
+              stdout: err.stdout ?? stdout ?? "",
+              stderr: err.stderr ?? stderr ?? "",
+              code: err.code ?? 1,
+            }),
+          );
           return;
         }
 
@@ -124,16 +146,21 @@ async function execWithExitCode(
 function processCommandOutput(
   stdout: string,
   stderr: string,
-  code: number,
-): { output: string; isTruncated: boolean } {
-  let fullOutput = fixExecuteCommandOutput(stdout + stderr);
-  if (code !== 0) {
-    fullOutput += `\nCommand exited with code ${code}`;
-  }
+  errorMessage?: string,
+): { output: string; isTruncated: boolean; error?: string } {
+  const fullOutput = fixExecuteCommandOutput(stdout + stderr);
   const isTruncated = fullOutput.length > MaxTerminalOutputSize;
   const output = isTruncated
     ? fullOutput.slice(-MaxTerminalOutputSize)
     : fullOutput;
+
+  if (errorMessage) {
+    return {
+      output,
+      isTruncated,
+      error: errorMessage,
+    };
+  }
 
   return { output, isTruncated };
 }

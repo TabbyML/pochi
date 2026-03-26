@@ -5,7 +5,7 @@ import { type ToolUIPart, getToolName } from "ai";
 import type { ToolCallOptions } from "../types";
 import { applyDiff } from "./apply-diff";
 import { editNotebook } from "./edit-notebook";
-import { executeCommand } from "./execute-command";
+import { ExecuteCommandError, executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { killBackgroundJob } from "./kill-background-job";
 import { listFiles } from "./list-files";
@@ -64,6 +64,10 @@ export async function executeToolCall(
         envs,
       });
     } catch (e) {
+      if (e instanceof ExecuteCommandError) {
+        return e.asOutput();
+      }
+
       return {
         error: toErrorMessage(e),
       };

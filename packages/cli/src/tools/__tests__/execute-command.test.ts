@@ -59,11 +59,11 @@ describe("executeCommand", () => {
   });
 
   it("should handle command errors", async () => {
-    const result = await executeCommand()(
+    const promise = executeCommand()(
         { command: "nonexistentcommand" },
         mockToolExecutionOptions,
       );
-    expect(result.output).toMatch(/command not found|Command exited with code/);
+    await expect(promise).rejects.toThrow(/command not found|Command exited with code/);
   });
 
   it("should indicate when output is truncated", async () => {
@@ -109,11 +109,11 @@ describe("executeCommand", () => {
   });
 
   it("should handle generic errors correctly with proper formatting", async () => {
-    const result = await executeCommand()(
+    const promise = executeCommand()(
       { command: "invalidcommandthatdoesnotexist" },
       mockToolExecutionOptions,
     )
-    expect(result.output).toMatch(/command not found|Command exited with code/);
+    await expect(promise).rejects.toThrow(/command not found|Command exited with code/);
   });
 
   it("should set GIT_COMMITTER environment variables", async () => {
