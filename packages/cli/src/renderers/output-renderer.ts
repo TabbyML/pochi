@@ -11,9 +11,9 @@ import {
   type ListrTaskObject,
   type ObservableLike,
 } from "listr2";
-import { type Spinner, createSpinner } from "./lib/spinner";
-import type { NodeChatState } from "./livekit/chat.node";
-import type { TaskRunner } from "./task-runner";
+import { type Spinner, createSpinner } from "../lib/spinner";
+import type { NodeChatState } from "../livekit/chat.node";
+import type { TaskRunner } from "../task-runner";
 
 export class OutputRenderer {
   private renderingSubTask = false;
