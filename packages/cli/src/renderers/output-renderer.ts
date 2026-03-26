@@ -11,9 +11,9 @@ import {
   type ListrTaskObject,
   type ObservableLike,
 } from "listr2";
-import { type Spinner, createSpinner } from "./lib/spinner";
-import type { NodeChatState } from "./livekit/chat.node";
-import type { TaskRunner } from "./task-runner";
+import { type Spinner, createSpinner } from "../lib/spinner";
+import type { NodeChatState } from "../livekit/chat.node";
+import type { TaskRunner } from "../task-runner";
 
 export class OutputRenderer {
   private renderingSubTask = false;
@@ -262,6 +262,15 @@ function renderToolPart(
     return {
       text: questionsText,
       stop: "stopAndPersist",
+      error: errorText,
+    };
+  }
+
+  if (part.type === "tool-useSkill") {
+    const { skill = "unknown" } = part.input || {};
+    return {
+      text: `🧩 Using skill ${chalk.bold(skill)}`,
+      stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
   }
