@@ -226,17 +226,15 @@ export class ManagedToolCallLifeCycle
     if (runAsync && isVSCodeEnvironment()) {
       const cwd = window.POCHI_TASK_INFO?.cwd;
       if (cwd) {
-        setTimeout(() => {
-          void vscodeHost.openTaskInPanel(
-            {
-              type: "open-task",
-              uid,
-              cwd,
-              storeId: this.store.storeId,
-            },
-            { preserveFocus: true, preview: false },
-          );
-        }, 0);
+        void vscodeHost.openTaskInPanel(
+          {
+            type: "open-task",
+            uid,
+            cwd,
+            storeId: this.store.storeId,
+          },
+          { preserveFocus: true, preview: false },
+        );
       }
     }
 
