@@ -70,9 +70,9 @@ import { registerModelCommand } from "./model";
 import { NodeBlobStore } from "./node-blob-store";
 import {
   AttemptCompletionResultRenderer,
-  TrajectoryStreamRenderer,
   JsonRenderer,
   type StreamRenderer,
+  TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
 import { TaskRunner } from "./task-runner";
