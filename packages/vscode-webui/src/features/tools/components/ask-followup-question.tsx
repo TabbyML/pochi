@@ -1,7 +1,8 @@
 import { MessageMarkdown } from "@/components/message";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,8 @@ import type { ToolProps } from "./types";
 interface SelectionState {
   /** Indices into question.options[] that are currently selected */
   optionIndices: number[];
+  /** Whether the custom "Other" input is currently selected */
+  isCustomSelected: boolean;
   /**
    * Non-empty when user typed custom "Other" text.
    * Uses " " (single space) as sentinel when input is open but empty.
@@ -35,7 +38,10 @@ interface SelectionState {
 }
 
 function isAnswered(s: SelectionState): boolean {
-  return s.optionIndices.length > 0 || s.custom.trim().length > 0;
+  return (
+    s.optionIndices.length > 0 ||
+    (s.isCustomSelected && s.custom.trim().length > 0)
+  );
 }
 
 function getAnswerLabels(
@@ -48,12 +54,14 @@ function getAnswerLabels(
     .filter((l): l is string => Boolean(l));
   if (multiSelect) {
     // In multi-select, custom text and option selections coexist
-    return state.custom.trim().length > 0
+    return state.isCustomSelected && state.custom.trim().length > 0
       ? [...optionLabels, state.custom.trim()]
       : optionLabels;
   }
-  // Single-select: custom takes full priority
-  if (state.custom.trim().length > 0) return [state.custom.trim()];
+  // Single-select: custom takes full priority when it's selected
+  if (state.isCustomSelected && state.custom.trim().length > 0) {
+    return [state.custom.trim()];
+  }
   return optionLabels;
 }
 
@@ -63,7 +71,11 @@ function buildPromptLines(
 ): string {
   return questionList
     .map((q, i) => {
-      const sel = selections[i] ?? { optionIndices: [], custom: "" };
+      const sel = selections[i] ?? {
+        optionIndices: [],
+        isCustomSelected: false,
+        custom: "",
+      };
       if (!isAnswered(sel)) {
         // Include dismissed questions so the AI has full context
         return `${q.question}\n- (skipped)`;
@@ -276,7 +288,7 @@ interface OtherRowProps {
   isFocused: boolean;
   isInteractive: boolean;
   multiSelect: boolean;
-  inputRef: React.RefObject<HTMLInputElement | null>;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
   value: string;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onOpen: () => void;
@@ -335,7 +347,13 @@ function OtherRow({
 
   // Auto-focus the input when entering edit mode.
   useEffect(() => {
-    if (isEditing) inputRef.current?.focus();
+    if (isEditing) {
+      inputRef.current?.focus();
+      if (inputRef.current) {
+        inputRef.current.style.height = "0px";
+        inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+      }
+    }
   }, [isEditing, inputRef]);
 
   const showInput = isEditing && isInteractive;
@@ -343,7 +361,7 @@ function OtherRow({
   return (
     <div
       className={cn(
-        "flex h-8 w-full items-center gap-3 border-l-2 pr-3 transition-colors",
+        "flex min-h-8 w-full items-center gap-3 border-l-2 py-1.5 pr-3 transition-colors",
         isFocused ? "pl-[10px]" : "pl-3",
         isOpen ? "bg-muted" : isFocused ? "bg-muted/60" : "hover:bg-muted/30",
         isFocused ? "border-l-foreground/40" : "border-l-transparent",
@@ -383,42 +401,58 @@ function OtherRow({
       )}
 
       {showInput ? (
-        <Input
-          ref={inputRef}
-          className="h-6 flex-1 border-none bg-transparent px-0 text-sm shadow-none outline-none focus-visible:ring-0"
-          placeholder="Type your answer..."
-          value={value === " " ? "" : value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              e.stopPropagation();
-              if (value.trim().length > 0) {
-                if (multiSelect) {
-                  // Commit: hide input, keep text, stay on question
-                  setIsEditing(false);
-                  containerRef.current?.focus();
-                } else {
-                  onSubmit();
+        <ScrollArea className="max-h-32 flex-1">
+          <Textarea
+            ref={inputRef}
+            className="min-h-5 w-full resize-none overflow-hidden border-none bg-transparent px-0 py-0 font-medium text-sm leading-5 shadow-none outline-none focus-visible:ring-0 dark:bg-transparent"
+            placeholder="Type your answer..."
+            value={value === " " ? "" : value}
+            onChange={(e) => {
+              onChange(e.target.value);
+              e.target.style.height = "0px";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                if (value.trim().length > 0) {
+                  if (multiSelect) {
+                    // Commit: hide input, keep text, stay on question
+                    setIsEditing(false);
+                    containerRef.current?.focus();
+                  } else {
+                    onSubmit();
+                  }
                 }
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+                containerRef.current?.focus();
+              } else if (
+                e.key === "ArrowLeft" ||
+                e.key === "ArrowRight" ||
+                e.key === "ArrowUp" ||
+                e.key === "ArrowDown"
+              ) {
+                e.stopPropagation();
               }
-            } else if (e.key === "Escape") {
-              e.preventDefault();
-              e.stopPropagation();
-              onClose();
-              containerRef.current?.focus();
-            }
-          }}
-        />
+            }}
+            rows={1}
+          />
+        </ScrollArea>
       ) : (
         <button
           type="button"
           disabled={!isInteractive}
           className={cn(
             "flex-1 text-left font-medium text-sm transition-colors",
-            isOpen || isFocused
+            isFocused
               ? "text-foreground"
-              : "text-muted-foreground/50",
+              : isOpen
+                ? "text-muted-foreground"
+                : "text-muted-foreground/50",
             !isInteractive && "cursor-not-allowed",
           )}
           onClick={() => {
@@ -433,9 +467,7 @@ function OtherRow({
             }
           }}
         >
-          {isOpen && value.trim().length > 0
-            ? value.trim()
-            : t("toolInvocation.other")}
+          {value.trim().length > 0 ? value.trim() : t("toolInvocation.other")}
         </button>
       )}
     </div>
@@ -478,7 +510,7 @@ interface QuestionCardProps {
   currentPage: number;
   totalPages: number;
   containerRef: React.RefObject<HTMLDivElement | null>;
-  otherInputRef: React.RefObject<HTMLInputElement | null>;
+  otherInputRef: React.RefObject<HTMLTextAreaElement | null>;
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   onSelectOption: (oi: number) => void;
   onFocus: (idx: number) => void;
@@ -523,7 +555,7 @@ function QuestionCard({
   const { t } = useTranslation();
   const totalRows = question.options.length + 1;
   const isOtherFocused = focusedIndex === totalRows - 1;
-  const isOtherOpen = selection.custom.length > 0;
+  const isOtherOpen = selection.isCustomSelected;
   const isCurrentAnswered = isAnswered(selection);
 
   return (
@@ -671,6 +703,7 @@ export const AskFollowupQuestionTool: React.FC<
   const [selections, setSelections] = useState<SelectionState[]>(() =>
     questionList.map((q) => ({
       optionIndices: q.multiSelect ? [] : [0],
+      isCustomSelected: false,
       custom: "",
     })),
   );
@@ -687,6 +720,7 @@ export const AskFollowupQuestionTool: React.FC<
         (q, i) =>
           prev[i] ?? {
             optionIndices: q.multiSelect ? [] : [0],
+            isCustomSelected: false,
             custom: "",
           },
       );
@@ -698,16 +732,17 @@ export const AskFollowupQuestionTool: React.FC<
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const otherInputRef = useRef<HTMLInputElement>(null);
+  const otherInputRef = useRef<HTMLTextAreaElement>(null);
 
   const totalPages = questionList.length;
   const currentQuestion = questionList[currentPage];
   const currentSelection = selections[currentPage] ?? {
     optionIndices: [],
+    isCustomSelected: false,
     custom: "",
   };
   const totalRows = (currentQuestion?.options.length ?? 0) + 1;
-  const isOtherOpen = currentSelection.custom.length > 0;
+  const isOtherOpen = currentSelection.isCustomSelected;
 
   // Auto-focus card when interactive (after chat input's autoFocus)
   useEffect(() => {
@@ -733,7 +768,13 @@ export const AskFollowupQuestionTool: React.FC<
     (qi: number, updater: (prev: SelectionState) => SelectionState) => {
       setSelections((prev) => {
         const next = [...prev];
-        next[qi] = updater(next[qi] ?? { optionIndices: [], custom: "" });
+        next[qi] = updater(
+          next[qi] ?? {
+            optionIndices: [],
+            isCustomSelected: false,
+            custom: "",
+          },
+        );
         return next;
       });
     },
@@ -769,7 +810,11 @@ export const AskFollowupQuestionTool: React.FC<
     // page's selection and the ref always holds the latest committed state,
     // so sequential dismisses across pages all start from the correct baseline.
     const cleared = [...selectionsRef.current];
-    cleared[currentPage] = { optionIndices: [], custom: "" };
+    cleared[currentPage] = {
+      optionIndices: [],
+      isCustomSelected: false,
+      custom: "",
+    };
     setSelections(cleared);
     if (currentPage < totalPages - 1) {
       // Skip this question and move to the next
@@ -790,12 +835,18 @@ export const AskFollowupQuestionTool: React.FC<
             optionIndices: already
               ? prev.optionIndices.filter((i) => i !== oi)
               : [...prev.optionIndices, oi],
+            isCustomSelected: prev.isCustomSelected,
             custom: prev.custom, // preserve Other input in multi-select
           };
         });
         setFocusedIndex(oi);
       } else {
-        const newSel: SelectionState = { optionIndices: [oi], custom: "" };
+        const prev = selections[currentPage];
+        const newSel: SelectionState = {
+          optionIndices: [oi],
+          isCustomSelected: false,
+          custom: prev?.custom ?? "",
+        };
         const updated = [...selections];
         updated[currentPage] = newSel;
         setSelections(updated);
@@ -820,11 +871,15 @@ export const AskFollowupQuestionTool: React.FC<
     if (isOtherFocused) {
       if (isOtherOpen && currentQuestion.multiSelect) {
         // Toggle off in multi-select
-        updateSelection(currentPage, (prev) => ({ ...prev, custom: "" }));
+        updateSelection(currentPage, (prev) => ({
+          ...prev,
+          isCustomSelected: false,
+        }));
       } else if (!isOtherOpen) {
         updateSelection(currentPage, (prev) => ({
           optionIndices: currentQuestion.multiSelect ? prev.optionIndices : [],
-          custom: " ",
+          isCustomSelected: true,
+          custom: prev.custom.trim().length > 0 ? prev.custom : " ",
         }));
       }
       return;
@@ -836,6 +891,7 @@ export const AskFollowupQuestionTool: React.FC<
           optionIndices: already
             ? prev.optionIndices.filter((i) => i !== focusedIndex)
             : [...prev.optionIndices, focusedIndex],
+          isCustomSelected: prev.isCustomSelected,
           custom: prev.custom, // preserve Other input in multi-select
         };
       });
@@ -974,6 +1030,7 @@ export const AskFollowupQuestionTool: React.FC<
       onUpdateOther={(val) =>
         updateSelection(currentPage, (prev) => ({
           optionIndices: currentQuestion.multiSelect ? prev.optionIndices : [],
+          isCustomSelected: true,
           custom: val || " ",
         }))
       }
@@ -981,13 +1038,14 @@ export const AskFollowupQuestionTool: React.FC<
         setFocusedIndex(totalRows - 1);
         updateSelection(currentPage, (prev) => ({
           optionIndices: currentQuestion.multiSelect ? prev.optionIndices : [],
-          custom: " ",
+          isCustomSelected: true,
+          custom: prev.custom.trim().length > 0 ? prev.custom : " ",
         }));
       }}
       onCloseOther={() =>
         updateSelection(currentPage, (prev) => ({
           ...prev,
-          custom: "",
+          isCustomSelected: false,
         }))
       }
       onPrevPage={() => setCurrentPage((p) => Math.max(0, p - 1))}
