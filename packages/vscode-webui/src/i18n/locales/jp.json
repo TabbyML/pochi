@@ -251,6 +251,7 @@
     "deleted": "削除済み",
     "tasksCount": "{{count}} 件のタスク",
     "openWorktreeDiff": "変更を確認",
+    "openWorktreeInNewWindow": "新しいウィンドウでワークツリーを開く",
     "openWorktreeInTerminal": "ターミナルでワークツリーを開く",
     "migrateWorktreeChanges": "ワークツリーの変更を移行",
     "deleteWorktree": "ワークツリーを削除",

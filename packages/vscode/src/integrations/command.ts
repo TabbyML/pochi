@@ -677,6 +677,19 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand(
+        "pochi.worktree.openInNewWindow",
+        async (worktreePath: string) => {
+          if (worktreePath) {
+            await vscode.commands.executeCommand(
+              "vscode.openFolder",
+              vscode.Uri.file(worktreePath),
+              { forceNewWindow: true },
+            );
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
         "pochi.worktree.newTask",
         async (worktreePath: string) => {
           if (worktreePath) {

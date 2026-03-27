@@ -9,6 +9,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -18,8 +19,8 @@ import {
 } from "@/components/ui/hover-card";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from "@/components/ui/popover";
 import {
   Tooltip,
@@ -53,6 +54,7 @@ import {
   ListFilterIcon,
   ListFilterPlusIcon,
   Loader2,
+  MoreHorizontalIcon,
   Plus,
   Terminal,
   Trash2,
@@ -60,7 +62,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { VscGitMerge } from "react-icons/vsc";
+import { VscGitMerge, VscRepo } from "react-icons/vsc";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
@@ -300,6 +302,7 @@ function WorktreeSection({
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const pochiTasks = usePochiTabs();
   const { tasks, hasMore, loadMore } = usePaginatedTasks({
@@ -419,68 +422,96 @@ function WorktreeSection({
                   </TooltipContent>
                 </Tooltip>
               )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    asChild
-                  >
-                    <a
-                      href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
-                    >
-                      <Terminal className="size-4" />
-                    </a>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("tasksPage.openWorktreeInTerminal")}
-                </TooltipContent>
-              </Tooltip>
-              {group.isMain && !containsOnlyWorkspaceGroup && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
+              <div className="relative inline-flex">
+                <DropdownMenu
+                  open={isActionsMenuOpen}
+                  onOpenChange={setIsActionsMenuOpen}
+                >
+                  <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0"
-                      asChild
+                      aria-label="worktree-more-actions"
                     >
-                      <a href="command:git.migrateWorktreeChanges">
-                        <VscGitMerge className="size-4" />
-                      </a>
+                      <MoreHorizontalIcon className="size-4" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("tasksPage.migrateWorktreeChanges")}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {!group.isMain && isOpenMainWorktree && (
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent
+                    align="end"
+                    className="bg-background"
+                    onCloseAutoFocus={(e) => e.preventDefault()}
+                  >
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                        className="flex items-center gap-2"
+                      >
+                        <Terminal className="size-4" />
+                        <span>{t("tasksPage.openWorktreeInTerminal")}</span>
+                      </a>
+                    </DropdownMenuItem>
+                    {!group.isMain && isOpenMainWorktree && (
+                      <DropdownMenuItem asChild>
+                        <a
+                          href={`command:pochi.worktree.openInNewWindow?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                          className="flex items-center gap-2"
+                        >
+                          <VscRepo className="size-4" />
+                          <span>{t("tasksPage.openWorktreeInNewWindow")}</span>
+                        </a>
+                      </DropdownMenuItem>
+                    )}
+                    {group.isMain && !containsOnlyWorkspaceGroup && (
+                      <DropdownMenuItem asChild>
+                        <a
+                          href="command:git.migrateWorktreeChanges"
+                          className="flex items-center gap-2"
+                        >
+                          <VscGitMerge className="size-4" />
+                          <span>{t("tasksPage.migrateWorktreeChanges")}</span>
+                        </a>
+                      </DropdownMenuItem>
+                    )}
+
+                    {!group.isMain && isOpenMainWorktree && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="flex items-center gap-2"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            setIsActionsMenuOpen(false);
+                            // Open confirm after dropdown fully closes to avoid modal layer conflicts.
+                            window.setTimeout(
+                              () => setShowDeleteConfirm(true),
+                              0,
+                            );
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                          <span>{t("tasksPage.deleteWorktree")}</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <Popover
+                  modal
                   open={showDeleteConfirm}
                   onOpenChange={setShowDeleteConfirm}
                 >
-                  <Tooltip>
-                    <PopoverTrigger asChild>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                    </PopoverTrigger>
-                    <TooltipContent>
-                      {t("tasksPage.deleteWorktree")}
-                    </TooltipContent>
-                  </Tooltip>
-                  <PopoverContent className="w-80" sideOffset={0}>
+                  <PopoverAnchor asChild>
+                    <span className="pointer-events-none absolute top-0 right-0 h-6 w-6" />
+                  </PopoverAnchor>
+                  <PopoverContent
+                    className="w-80"
+                    side="bottom"
+                    align="end"
+                    sideOffset={8}
+                  >
                     <div className="flex flex-col gap-3">
                       <div className="space-y-2">
                         <h4 className="font-medium leading-none">
@@ -496,7 +527,10 @@ function WorktreeSection({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setShowDeleteConfirm(false)}
+                          onClick={() => {
+                            setShowDeleteConfirm(false);
+                            setIsActionsMenuOpen(false);
+                          }}
                         >
                           {t("tasksPage.cancel")}
                         </Button>
@@ -505,6 +539,7 @@ function WorktreeSection({
                           size="sm"
                           type="button"
                           onClick={() => {
+                            setIsActionsMenuOpen(false);
                             setShowDeleteConfirm(false);
                             onDeleteGroup?.(group.path);
                           }}
@@ -515,7 +550,7 @@ function WorktreeSection({
                     </div>
                   </PopoverContent>
                 </Popover>
-              )}
+              </div>
             </>
           </div>
         </div>
