@@ -10,7 +10,12 @@ const destBaseDir = path.resolve(
 // Ensure destination directory exists
 fs.mkdirSync(destBaseDir, { recursive: true });
 
-const filesToCopy = ["index.js", "index.css", "wa-sqlite.wasm"];
+const filesToCopy = [
+  "index.js",
+  "index.css",
+  "wa-sqlite.wasm",
+  "make-shared-worker.js",
+];
 
 // Copy fixed-name files
 for (const file of filesToCopy) {

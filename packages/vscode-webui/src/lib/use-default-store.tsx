@@ -11,10 +11,15 @@ import { createContext, useContext } from "react";
 import LiveStoreWorker from "../livestore.default.worker.ts?worker&inline";
 
 function LiveStoreSharedWorker(options: { name: string }) {
-  return new SharedWorker(new URL(LiveStoreSharedWorkerUrl, import.meta.url), {
-    name: options.name,
-    type: "module",
-  });
+  const isProd = import.meta.env.PROD;
+  const scriptUrl =
+    isProd && window.__liveStoreSharedWorkerUrl
+      ? window.__liveStoreSharedWorkerUrl
+      : LiveStoreSharedWorkerUrl;
+  return new SharedWorker(
+    scriptUrl,
+    isProd ? { name: options.name } : { name: options.name, type: "module" },
+  );
 }
 
 const adapter = makePersistedAdapter({

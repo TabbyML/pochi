@@ -37,6 +37,7 @@ const router = createRouter({
 
 declare global {
   interface Window {
+    __liveStoreSharedWorkerUrl?: string;
     router: typeof router;
   }
 }
