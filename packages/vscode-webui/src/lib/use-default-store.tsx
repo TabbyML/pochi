@@ -3,17 +3,30 @@ import {
   makeInMemoryAdapter,
   makePersistedAdapter,
 } from "@livestore/adapter-web";
-import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker&inline";
+import LiveStoreSharedWorkerUrl from "@livestore/adapter-web/shared-worker?sharedworker&url";
 import type { Store, StoreRegistry } from "@livestore/livestore";
 import { type ReactApi, storeOptions, useStore } from "@livestore/react";
 import type React from "react";
 import { createContext, useContext } from "react";
 import LiveStoreWorker from "../livestore.default.worker.ts?worker&inline";
 
+function LiveStoreSharedWorker(options: { name: string }) {
+  return new SharedWorker(new URL(LiveStoreSharedWorkerUrl, import.meta.url), {
+    name: options.name,
+    type: "module",
+  });
+}
+
 const adapter = makePersistedAdapter({
   storage: { type: "opfs" },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
+  experimental: {
+    // Avoid window-context OPFS file reads during boot. In VS Code webviews
+    // those reads can fail with NotReadableError while the leader worker holds
+    // access handles, so we always recreate from the leader snapshot instead.
+    disableFastPath: true,
+  },
 });
 
 const inMemoryAdapter = makeInMemoryAdapter();

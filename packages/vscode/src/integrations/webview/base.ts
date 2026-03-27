@@ -155,7 +155,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         `style-src ${webview.cspSource} 'unsafe-inline'`,
         `font-src ${webview.cspSource} data:`,
         `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://*.vscode-cdn.net https://* http://*:* ws://localhost:* data: blob:`,
-        "worker-src data: blob:",
+        `worker-src ${webview.cspSource} data: blob:`,
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 
@@ -226,7 +226,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${webview.cspSource} data:`,
       `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
-      `worker-src ${devWebUIHttpBaseUrl} blob:`,
+      `worker-src ${webview.cspSource} ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} data: blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 
