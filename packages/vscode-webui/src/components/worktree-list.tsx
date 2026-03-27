@@ -56,10 +56,13 @@ import {
   Loader2,
   MoreHorizontalIcon,
   Plus,
+  Terminal,
+  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { VscGitMerge, VscRepo } from "react-icons/vsc";
 import * as R from "remeda";
 import { TaskRow } from "./task-row";
 import { ScrollArea } from "./ui/scroll-area";
@@ -440,39 +443,43 @@ function WorktreeSection({
                     className="bg-background"
                     onCloseAutoFocus={(e) => e.preventDefault()}
                   >
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                        className="flex items-center gap-2"
+                      >
+                        <Terminal className="size-4" />
+                        <span>{t("tasksPage.openWorktreeInTerminal")}</span>
+                      </a>
+                    </DropdownMenuItem>
                     {!group.isMain && isOpenMainWorktree && (
                       <DropdownMenuItem asChild>
                         <a
                           href={`command:pochi.worktree.openInNewWindow?${encodeURIComponent(JSON.stringify([group.path]))}`}
+                          className="flex items-center gap-2"
                         >
-                          {t("tasksPage.openWorktreeInNewWindow")}
+                          <VscRepo className="size-4" />
+                          <span>{t("tasksPage.openWorktreeInNewWindow")}</span>
                         </a>
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem asChild>
-                      <a
-                        href={`command:pochi.worktree.openTerminal?${encodeURIComponent(JSON.stringify([group.path]))}`}
-                      >
-                        {t("tasksPage.openWorktreeInTerminal")}
-                      </a>
-                    </DropdownMenuItem>
                     {group.isMain && !containsOnlyWorkspaceGroup && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <a href="command:git.migrateWorktreeChanges">
-                            {t("tasksPage.migrateWorktreeChanges")}
-                          </a>
-                        </DropdownMenuItem>
-                      </>
+                      <DropdownMenuItem asChild>
+                        <a
+                          href="command:git.migrateWorktreeChanges"
+                          className="flex items-center gap-2"
+                        >
+                          <VscGitMerge className="size-4" />
+                          <span>{t("tasksPage.migrateWorktreeChanges")}</span>
+                        </a>
+                      </DropdownMenuItem>
                     )}
 
                     {!group.isMain && isOpenMainWorktree && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          variant="destructive"
-                          className="!text-foreground"
+                          className="flex items-center gap-2"
                           onSelect={(e) => {
                             e.preventDefault();
                             setIsActionsMenuOpen(false);
@@ -483,7 +490,8 @@ function WorktreeSection({
                             );
                           }}
                         >
-                          {t("tasksPage.deleteWorktree")}
+                          <Trash2 className="size-4" />
+                          <span>{t("tasksPage.deleteWorktree")}</span>
                         </DropdownMenuItem>
                       </>
                     )}
