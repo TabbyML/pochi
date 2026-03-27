@@ -11,7 +11,6 @@ export function createEnvironmentPrompt(
   const sections = [
     getSystemInfo(environment),
     getUserInfo(user),
-    getWorkspaceFiles(environment.workspace, environment.info),
     getCurrentOpenedFiles(environment.workspace),
     getVisibleTerminals(environment.workspace),
     getGitStatus(environment.workspace.gitStatus),
@@ -68,18 +67,6 @@ function getUserInfo(user: User | undefined) {
   }
 
   return "";
-}
-
-function getWorkspaceFiles(
-  workspace: Environment["workspace"],
-  info: Environment["info"],
-) {
-  const { files, isTruncated } = workspace;
-  const filesList = files.join("\n");
-  const truncatedMessage = isTruncated
-    ? "\n(Note: The list of files is truncated. Use listFiles tool to explore if needed)"
-    : "";
-  return `# Current Working Directory (${info.cwd}) Files\n${filesList}${truncatedMessage}`;
 }
 
 function getCurrentOpenedFiles(workspace: Environment["workspace"]) {

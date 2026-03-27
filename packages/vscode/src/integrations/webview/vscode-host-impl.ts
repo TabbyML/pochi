@@ -62,10 +62,8 @@ import type { McpStatus } from "@getpochi/common/mcp-utils";
 import { McpHub } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
-  getWorkspaceExcludePatterns,
   ignoreWalk,
   isPlainTextFile,
-  listWorkspaceFiles,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
@@ -283,18 +281,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }): Promise<Environment> => {
     const isSubTask = options.isSubTask ?? false;
     const webviewKind = options.webviewKind;
-    const extraIgnorePatterns = this.cwd
-      ? await getWorkspaceExcludePatterns(this.cwd)
-      : [];
-    const { files, isTruncated } = this.cwd
-      ? await listWorkspaceFiles({
-          cwd: this.cwd,
-          recursive: true,
-          maxItems: 500,
-          extraIgnorePatterns,
-        })
-      : { files: [], isTruncated: false };
-
     const customRules =
       !isSubTask && this.cwd ? await collectCustomRules(this.cwd) : undefined;
 
@@ -317,8 +303,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const environment: Environment = {
       currentTime: new Date().toString(),
       workspace: {
-        files,
-        isTruncated,
         gitStatus,
         activeTabs: this.editorContextState.activeTabs.value.map((tab) => ({
           filepath: asRelativePath(tab.filepath, this.cwd ?? ""),

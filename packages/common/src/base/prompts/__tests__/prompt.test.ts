@@ -23,8 +23,6 @@ test("environment", () => {
     createEnvironmentPrompt({
         currentTime: "2021-01-01T00:00:00.000Z",
         workspace: {
-          files: ["index.ts", "package.json", "tsconfig.json", "README.md"],
-          isTruncated: false,
           activeTabs: ["README.md", "tsconfig.json", "package.json"],
 
           gitStatus: {
