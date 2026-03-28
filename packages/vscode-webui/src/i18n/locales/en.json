@@ -250,6 +250,7 @@
     "deleted": "Deleted",
     "tasksCount": "{{count}} tasks",
     "openWorktreeDiff": "Review changes",
+    "openWorktreeInNewWindow": "Open worktree in new window",
     "openWorktreeInTerminal": "Open worktree in terminal",
     "migrateWorktreeChanges": "Migrate worktree changes",
     "deleteWorktree": "Delete worktree",

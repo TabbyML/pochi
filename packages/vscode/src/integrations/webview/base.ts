@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { AuthEvents } from "@/lib/auth-events";
 import { asRelativePath } from "@/lib/fs";
 import { getNonce } from "@/lib/get-nonce";
@@ -24,6 +25,29 @@ import type { PochiConfiguration } from "../configuration";
 import type { VSCodeHostImpl } from "./vscode-host-impl";
 
 const logger = getLogger("WebviewBase");
+let liveStoreSharedWorkerDataUrl: string | undefined;
+
+function getLiveStoreSharedWorkerDataUrl(extensionUri: vscode.Uri): string {
+  if (liveStoreSharedWorkerDataUrl) {
+    return liveStoreSharedWorkerDataUrl;
+  }
+
+  const sharedWorkerScriptPath = vscode.Uri.joinPath(
+    extensionUri,
+    "assets",
+    "webview-ui",
+    "dist",
+    "make-shared-worker.js",
+  );
+
+  // SharedWorkers are keyed by script URL, so this data URL must stay stable
+  // across webviews to preserve reuse across tabs/panels.
+  liveStoreSharedWorkerDataUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(
+    readFileSync(sharedWorkerScriptPath.fsPath, "utf8"),
+  )}`;
+
+  return liveStoreSharedWorkerDataUrl;
+}
 
 /**
  * Path segments for the logo resource
@@ -109,6 +133,9 @@ export abstract class WebviewBase implements vscode.Disposable {
     </script>`;
 
     if (isProd) {
+      const sharedWorkerDataUrl = getLiveStoreSharedWorkerDataUrl(
+        this.context.extensionUri,
+      );
       const sqliteWasmUri = getUri(webview, this.context.extensionUri, [
         "assets",
         "webview-ui",
@@ -128,6 +155,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         }
         return path;
       }
+      window.__liveStoreSharedWorkerUrl = ${JSON.stringify(sharedWorkerDataUrl)};
       window.__workerAssetsPathScript = 'self.__assetsPath = (path) => { if (path === "wa-sqlite.wasm") { return "${sqliteWasmUri}"; }};';
       </script>`;
 
@@ -155,7 +183,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         `style-src ${webview.cspSource} 'unsafe-inline'`,
         `font-src ${webview.cspSource} data:`,
         `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://*.vscode-cdn.net https://* http://*:* ws://localhost:* data: blob:`,
-        "worker-src data: blob:",
+        `worker-src ${webview.cspSource} data: blob:`,
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 
@@ -226,7 +254,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${webview.cspSource} data:`,
       `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
-      `worker-src ${devWebUIHttpBaseUrl} blob:`,
+      `worker-src ${webview.cspSource} ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} data: blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 

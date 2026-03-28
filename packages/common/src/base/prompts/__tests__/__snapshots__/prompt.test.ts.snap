@@ -13,12 +13,6 @@ Current Time: 2021-01-01T00:00:00.000Z
 - Name: Pochi
 - Email: noreply@getpochi.com
 
-# Current Working Directory (/home/user/project) Files
-index.ts
-package.json
-tsconfig.json
-README.md
-
 # Active File Tabs in Editor
 Here are the open file tabs in the editor. If a user mentions "this" or "that" without an active selection, they are likely referring active tab (if exists) below:
 README.md
@@ -86,7 +80,8 @@ It is critical that you mark todos as completed as soon as you are done with a t
 RULES
 
 - User messages may include <system-reminder> tags. <system-reminder> tags contain useful information and reminders. They are NOT part of the user's provided input or the tool result. You shall pay close attention to information in these tags and use it to inform you actions.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory will be included in <system-reminder> tag. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the listFiles tool. If you pass 'true' for the recursive parameter, it will list files recursively.
+- For simple, directed codebase searches (project structure, specific files/classes/functions), use the listFiles tool. If you pass 'true' for the recursive parameter, it will list files recursively. Use globFiles when you need to match files by pattern.
+- For broader codebase exploration and deep research, use the newTask tool with agentType="explore". Use this only when simple, directed searches prove insufficient or when your task will clearly require more than three queries.
 - All file paths used by tools must be relative to current working directory, do not use the ~ character or $HOME to refer to the home directory in file paths used by tools.
 - You can use \`pochi://\` URI schema to access the Pochi virtual file system. This allows you to read and write files that are stored in Pochi's internal storage.
 - Be sure to consider the type of project (e.g. Python, JavaScript, web application) when determining the appropriate structure and files to include. Also consider what files may be most relevant to accomplishing the task, for example looking at a project's manifest file would help you understand the project's dependencies, which you could incorporate into any code you write.
@@ -143,7 +138,8 @@ It is critical that you mark todos as completed as soon as you are done with a t
 RULES
 
 - User messages may include <system-reminder> tags. <system-reminder> tags contain useful information and reminders. They are NOT part of the user's provided input or the tool result. You shall pay close attention to information in these tags and use it to inform you actions.
-- When the user initially gives you a task, a recursive list of all filepaths in the current working directory will be included in <system-reminder> tag. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current working directory, you can use the listFiles tool. If you pass 'true' for the recursive parameter, it will list files recursively.
+- For simple, directed codebase searches (project structure, specific files/classes/functions), use the listFiles tool. If you pass 'true' for the recursive parameter, it will list files recursively. Use globFiles when you need to match files by pattern.
+- For broader codebase exploration and deep research, use the newTask tool with agentType="explore". Use this only when simple, directed searches prove insufficient or when your task will clearly require more than three queries.
 - All file paths used by tools must be relative to current working directory, do not use the ~ character or $HOME to refer to the home directory in file paths used by tools.
 - You can use \`pochi://\` URI schema to access the Pochi virtual file system. This allows you to read and write files that are stored in Pochi's internal storage.
 - Be sure to consider the type of project (e.g. Python, JavaScript, web application) when determining the appropriate structure and files to include. Also consider what files may be most relevant to accomplishing the task, for example looking at a project's manifest file would help you understand the project's dependencies, which you could incorporate into any code you write.

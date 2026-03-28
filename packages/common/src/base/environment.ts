@@ -5,8 +5,6 @@ export const Environment = z.object({
   currentTime: z.string().describe("The current time."),
   workspace: z
     .object({
-      files: z.array(z.string()).describe("List of files in the workspace."),
-      isTruncated: z.boolean().describe("Whether the file list is truncated."),
       activeTabs: z
         .union([
           z.array(z.string()),

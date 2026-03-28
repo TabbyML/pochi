@@ -57,6 +57,27 @@ export class PochiPanel {
   }
 
   /**
+   * Wait for at least one user message to appear in the task panel.
+   * This confirms the task panel is properly displaying the conversation.
+   */
+  async waitForUserMessage(timeout = 30000) {
+    const userMessage = $('[aria-label="chat-message-user"]');
+    await userMessage.waitForExist({
+      timeout,
+      timeoutMsg: "User message did not appear in task panel",
+    });
+  }
+
+  /**
+   * Get the text content of the first user message displayed in the task panel.
+   */
+  async getUserMessageText(): Promise<string> {
+    const userMessage = $('[aria-label="chat-message-user"]');
+    await userMessage.waitForExist({ timeout: 10000 });
+    return userMessage.getText();
+  }
+
+  /**
    * Wait for at least one assistant message to appear.
    * This indicates the request was successful.
    */
