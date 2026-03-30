@@ -1,3 +1,6 @@
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import { PassThrough } from "node:stream";
 import { getLogger } from "@getpochi/common";
 import ffmpeg from "fluent-ffmpeg";
@@ -61,9 +64,6 @@ type Options = {
   maxGapMs?: number;
   finalFrameDurationMs?: number;
 
-  // Nominal frame rate used for timing when we repeat frames.
-  nominalFps?: number;
-
   // H.264 encode settings
   preset?: string; // "veryfast"
   crf?: number; // 23
@@ -78,6 +78,19 @@ export function startMjpegToMp4Converter(
   outputPath: string,
   opts: Options = {},
 ): Converter {
+  if (process.env.POCHI_FFMPEG_USE_PIPE) {
+    return pipeBasedConverterImpl(outputPath, opts);
+  }
+  return diskBasedConverterImpl(outputPath, opts);
+}
+
+function pipeBasedConverterImpl(
+  outputPath: string,
+  opts: Options & {
+    // Nominal frame rate used for timing when we repeat frames.
+    nominalFps?: number;
+  } = {},
+): Converter {
   const {
     maxGapMs = 10_000,
     finalFrameDurationMs = 1_000,
@@ -85,8 +98,8 @@ export function startMjpegToMp4Converter(
     preset = "veryfast",
     crf = 23,
     videoBitrate,
-    width = 1280,
-    height = 720,
+    width = 854,
+    height = 480,
   } = opts;
 
   // Feed ffmpeg a stream of JPEG images (MJPEG) via stdin.
@@ -189,6 +202,124 @@ export function startMjpegToMp4Converter(
       command.once("error", onError);
     });
   }
+  return { handleFrame, stop };
+}
+
+function diskBasedConverterImpl(outputPath: string, opts: Options = {}) {
+  const {
+    maxGapMs = 10_000,
+    finalFrameDurationMs = 1_000,
+    preset = "veryfast",
+    crf = 23,
+    videoBitrate,
+    width = 854,
+    height = 480,
+  } = opts;
+
+  let workDir: string | undefined;
+  const frames: { filename: string; duration?: number }[] = [];
+  let prevTs: number | null = null;
+  let lastFrameFilename: string | null = null;
+
+  async function handleFrame(frame: TimestampedFrame) {
+    if (!workDir) {
+      workDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-mjpeg2mp4-"));
+    }
+    const idx = frames.length;
+    const filename = path.join(
+      workDir,
+      `frame_${String(idx).padStart(6, "0")}.jpg`,
+    );
+    await fs.writeFile(filename, decodeBase64JpegToBuffer(frame.data));
+    logger.debug(`Saved frame ${idx}: ${frame.ts}`);
+
+    if (prevTs !== null) {
+      // Clamp the inter-frame duration to maxGapMs
+      let dt = (frame.ts - prevTs) * 1000;
+      dt = Math.max(dt, 1); // at least 1ms
+      dt = Math.min(dt, maxGapMs);
+      const duration = dt / 1000;
+      if (lastFrameFilename) {
+        frames[frames.length - 1].duration = duration;
+      }
+    }
+    frames.push({ filename });
+    prevTs = frame.ts;
+    lastFrameFilename = filename;
+  }
+
+  async function stop() {
+    if (!workDir) {
+      logger.debug("Work dir not created.");
+      return;
+    }
+
+    if (frames.length === 0) {
+      logger.debug("No frames to process.");
+      return;
+    }
+
+    // For final frame: use configured duration (default 1 second)
+    const lastIdx = frames.length - 1;
+    const finalDurSec = Math.max(0.001, finalFrameDurationMs / 1000);
+
+    if (frames[lastIdx].duration === undefined) {
+      frames[lastIdx].duration = finalDurSec;
+    }
+
+    // Write ffconcat file
+    const concatFilePath = path.join(workDir, "frames.ffconcat");
+    let concatTxt = "ffconcat version 1.0\n";
+    for (const f of frames) {
+      concatTxt += `file '${f.filename}'\n`;
+      if ("duration" in f && f.duration) {
+        concatTxt += `duration ${f.duration}\n`;
+      }
+    }
+    // Re-add last frame for concat's last frame duration semantics
+    concatTxt += `file '${frames[lastIdx].filename}'\n`;
+    await fs.writeFile(concatFilePath, concatTxt);
+
+    // Run ffmpeg on concat
+    await new Promise<void>((resolve, reject) => {
+      const command = ffmpeg()
+        .input(concatFilePath)
+        .inputOptions(["-safe 0", "-f concat"])
+        .outputOptions([
+          "-pix_fmt yuv420p",
+          "-movflags +faststart",
+          `-preset ${preset}`,
+          `-crf ${crf}`,
+          "-an",
+          ...(videoBitrate ? [`-b:v ${videoBitrate}`] : []),
+        ])
+        .videoCodec("libx264")
+        .format("mp4")
+        .videoFilter(
+          `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black`,
+        )
+        .output(outputPath)
+        .on("start", (cmd) => logger.debug("[ffmpeg] start:", cmd))
+        .on("stderr", (line) => logger.debug("[ffmpeg] stderr:", line))
+        .on("error", (err) => {
+          logger.debug("[ffmpeg] error:", err);
+          reject(err);
+        })
+        .on("end", () => {
+          logger.debug("[ffmpeg] end");
+          resolve();
+        });
+      command.run();
+    });
+
+    // Cleanup tempdir
+    try {
+      await fs.rm(workDir, { recursive: true, force: true });
+    } catch (err) {
+      logger.debug(`Failed to remove tmp dir ${workDir}:`, err);
+    }
+  }
+
   return { handleFrame, stop };
 }
 

@@ -69,6 +69,7 @@ export {
 export { ActiveSelection, BashOutputs, UserEdits } from "./types/message";
 export type { VSCodeSettings } from "./types/vscode-settings";
 export {
+  buildTaskScopedMcpInfo,
   buildInstructionsFromConnections,
   buildToolsetFromConnections,
 } from "./mcp-util";
