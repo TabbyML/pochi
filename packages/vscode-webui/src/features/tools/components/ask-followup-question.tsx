@@ -177,8 +177,8 @@ function OptionRow({
         isSelected
           ? "bg-muted"
           : isFocused
-            ? "bg-muted/60"
-            : "hover:bg-muted/30",
+            ? "bg-muted/80"
+            : "hover:bg-muted/50",
         isFocused ? "border-l-foreground/40" : "border-l-transparent",
         !isInteractive && "cursor-not-allowed opacity-60",
       )}
@@ -363,7 +363,7 @@ function OtherRow({
       className={cn(
         "flex min-h-8 w-full items-center gap-3 border-l-2 py-1.5 pr-3 transition-colors",
         isFocused ? "pl-[10px]" : "pl-3",
-        isOpen ? "bg-muted" : isFocused ? "bg-muted/60" : "hover:bg-muted/30",
+        isOpen ? "bg-muted" : isFocused ? "bg-muted/80" : "hover:bg-muted/50",
         isFocused ? "border-l-foreground/40" : "border-l-transparent",
         !isInteractive && "opacity-60",
       )}
