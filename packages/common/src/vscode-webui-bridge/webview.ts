@@ -409,14 +409,6 @@ export interface VSCodeHostApi {
     updateLang: (lang: string) => Promise<void>;
   }>;
 
-  readForkTaskStatus(): Promise<{
-    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
-    setForkTaskStatus: (
-      uid: string,
-      status: "inProgress" | "ready",
-    ) => Promise<void>;
-  }>;
-
   /**
    * Read and manage changed files for a task.
    * Returns serialized signals for changed files and visible changed files,

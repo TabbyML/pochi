@@ -387,18 +387,6 @@ const VSCodeHostStub = {
     };
   },
 
-  readForkTaskStatus: async (): Promise<{
-    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
-    setForkTaskStatus: () => Promise<void>;
-  }> => {
-    return {
-      status: {} as ThreadSignalSerialization<
-        Record<string, "inProgress" | "ready">
-      >,
-      setForkTaskStatus: () => Promise.resolve(),
-    };
-  },
-
   readTaskChangedFiles: async (
     _taskId: string,
   ): Promise<{

@@ -389,7 +389,7 @@ export class LiveChatKit<
   };
 
   fork = (
-    targetStore: LiveKitStore,
+    sourceStore: LiveKitStore,
     forkTaskParams: {
       taskId: string;
       title: string | undefined;
@@ -402,22 +402,23 @@ export class LiveChatKit<
       messages: messagesQuery,
       files: filesQuery,
     } = makeAllDataQuery();
-    const tasks = this.store.query(tasksQuery);
-    const messages = this.store.query(messagesQuery);
-    const files = this.store.query(filesQuery);
+    const tasks = sourceStore.query(tasksQuery);
+    const messages = sourceStore.query(messagesQuery);
+    const files = sourceStore.query(filesQuery);
 
     const data = prepareForkTaskData({
       tasks,
       messages,
       files,
-      oldTaskId: this.taskId,
+      oldTaskId: forkTaskParams.taskId,
       commitId: forkTaskParams.commitId,
       messageId: forkTaskParams.messageId,
-      newTaskId: forkTaskParams.taskId,
+      newTaskId: this.taskId,
       newTaskTitle: forkTaskParams.title,
     });
 
-    targetStore.commit(events.forkTaskInited(data));
+    this.store.commit(events.forkTaskInited(data));
+    this.chat.messages = this.messages;
   };
 
   private readonly onStart: OnStartCallback = async ({
