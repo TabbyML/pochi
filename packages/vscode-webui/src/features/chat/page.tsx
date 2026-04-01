@@ -29,6 +29,7 @@ import {
   useSettingsStore,
 } from "../settings";
 import { ChatArea } from "./components/chat-area";
+import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
@@ -69,6 +70,8 @@ interface ChatProps {
 
 function Chat({ user, uid, info }: ChatProps) {
   const store = useDefaultStore();
+  const storeRegistry = useStoreRegistry();
+  const { jwt } = usePochiCredentials();
 
   const { t } = useTranslation();
   const todosRef = useRef<Todo[] | undefined>(undefined);
@@ -226,9 +229,11 @@ function Chat({ user, uid, info }: ChatProps) {
     }
   }, [pendingApproval, task]);
 
-  useChatInitialization({
+  const { isInitializing } = useChatInitialization({
     chatKit,
     info,
+    storeRegistry,
+    jwt,
     t,
     setMcpConfigOverride,
     isMcpConfigLoading,
@@ -275,16 +280,16 @@ function Chat({ user, uid, info }: ChatProps) {
       isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
   });
 
-  const { jwt } = usePochiCredentials();
-  const storeRegistry = useStoreRegistry();
-
   const { forkTask } = useForkTask({
     task,
-    chatKit,
-    storeRegistry,
+    store,
     jwt,
     t,
   });
+
+  if (isInitializing) {
+    return <ChatSkeleton />;
+  }
 
   return (
     <div className={ChatContainerClassName}>
