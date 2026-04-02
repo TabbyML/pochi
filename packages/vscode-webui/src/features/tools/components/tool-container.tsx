@@ -40,11 +40,12 @@ export const ExpandIcon: React.FC<{
       )}
       onClick={onClick}
     >
-      {isExpanded ? (
-        <ChevronRight className="size-3 rotate-90" />
-      ) : (
-        <ChevronRight className="size-3 rotate-180" />
-      )}
+      <ChevronRight
+        className={cn(
+          "size-3 transition-transform",
+          isExpanded ? "rotate-90" : "rotate-0",
+        )}
+      />
     </span>
   );
 };

@@ -1,14 +1,17 @@
+import { TaskThread } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
+import { FixedStateChatContextProvider } from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import type { UITools } from "@getpochi/livekit";
 import { type ToolUIPart, isToolUIPart } from "ai";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
+import { ExpandIcon } from "../tool-container";
 
 interface SubAgentViewProps {
   uid?: string;
@@ -18,7 +21,10 @@ interface SubAgentViewProps {
   headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
+  toolCallStatusRegistryRef?: NewTaskToolViewProps["toolCallStatusRegistryRef"];
+  assistantName?: string;
   showToolCall?: boolean;
+  showTaskThread?: boolean;
 }
 
 export function SubAgentView({
@@ -29,17 +35,24 @@ export function SubAgentView({
   headerActions,
   footerActions,
   taskSource,
+  toolCallStatusRegistryRef,
+  assistantName = tool.input?.agentType ?? "Pochi",
   showToolCall,
+  showTaskThread = true,
 }: SubAgentViewProps) {
   const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
+  const [showFooterTaskThread, setShowFooterTaskThread] = useState(false);
   const showToolCallLite =
     showToolCall &&
     isExecuting &&
     taskSource &&
     taskSource.messages.length > 1 &&
     !!lastToolCallRef.current;
+  const canShowFooterTaskThread =
+    showTaskThread && !!taskSource && taskSource.messages.length > 1;
 
-  const showFooter = showToolCallLite || footerActions;
+  const showFooter =
+    showToolCallLite || footerActions || canShowFooterTaskThread;
   const navigate = useNavigate();
   const store = useDefaultStore();
   const toolTitle = tool.input?.agentType;
@@ -114,55 +127,66 @@ export function SubAgentView({
       {children}
 
       {showFooter && (
-        <div
-          className={cn(
-            "flex items-center gap-2 overflow-x-hidden border-t bg-muted/30 p-2 text-muted-foreground",
-            showToolCallLite &&
-              uid &&
-              taskSource?.parentId &&
-              isVSCodeEnvironment() &&
-              "cursor-pointer transition-colors hover:bg-muted hover:text-foreground",
-          )}
-          onClick={
-            showToolCallLite &&
-            uid &&
-            taskSource?.parentId &&
-            isVSCodeEnvironment()
-              ? () => {
-                  navigate({
-                    to: "/task",
-                    search: {
-                      uid,
-                      storeId: store.storeId,
-                    },
-                    replace: true,
-                    viewTransition: true,
-                  });
+        <>
+          <div className="flex items-center gap-2 overflow-x-hidden border-t bg-muted/30 px-2 py-1.5 text-muted-foreground">
+            {(canShowFooterTaskThread || showToolCallLite) && (
+              <div
+                className={cn(
+                  "flex min-w-0 items-center gap-2 overflow-hidden rounded-sm px-1.5 py-1",
+                  canShowFooterTaskThread &&
+                    "cursor-pointer transition-colors hover:bg-muted hover:text-foreground",
+                )}
+                onClick={
+                  canShowFooterTaskThread
+                    ? () => {
+                        setShowFooterTaskThread((value) => !value);
+                      }
+                    : undefined
                 }
-              : undefined
-          }
-        >
-          {showToolCallLite && lastToolCallRef.current && (
-            <div className="flex flex-1 items-center">
-              <div className="animated-gradient-text truncate py-0.5 text-xs">
-                <ToolCallLite
-                  tools={[lastToolCallRef.current]}
-                  requiresApproval={false}
-                  showCommandDetails
-                  showStatusIcon={false}
-                />
+              >
+                {canShowFooterTaskThread && (
+                  <div className="flex items-center">
+                    <ExpandIcon
+                      isExpanded={showFooterTaskThread}
+                      className="opacity-100"
+                    />
+                  </div>
+                )}
+                {showToolCallLite && lastToolCallRef.current && (
+                  <div className="animated-gradient-text truncate text-xs">
+                    <ToolCallLite
+                      tools={[lastToolCallRef.current]}
+                      requiresApproval={false}
+                      showCommandDetails
+                      showStatusIcon={false}
+                    />
+                  </div>
+                )}
               </div>
+            )}
+            {footerActions && (
+              <div className="ml-auto flex shrink-0 items-center gap-2 px-1">
+                {footerActions}
+              </div>
+            )}
+          </div>
+
+          {canShowFooterTaskThread && showFooterTaskThread && taskSource && (
+            <div className="p-1">
+              <FixedStateChatContextProvider
+                toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+              >
+                <TaskThread
+                  source={{ ...taskSource, isLoading: false }}
+                  showMessageList={true}
+                  showTodos={false}
+                  scrollAreaClassName="border-none"
+                  assistant={{ name: assistantName }}
+                />
+              </FixedStateChatContextProvider>
             </div>
           )}
-          {footerActions && (
-            <div
-              className="ml-auto flex items-center gap-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {footerActions}
-            </div>
-          )}
-        </div>
+        </>
       )}
     </div>
   );

@@ -29,6 +29,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
       tool={tool}
       isExecuting={isExecuting}
       taskSource={taskSource}
+      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       showToolCall
     >
       {!isExecuting && videoUrl ? (
