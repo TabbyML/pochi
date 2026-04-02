@@ -132,9 +132,8 @@ export function SubAgentView({
             {(canShowFooterTaskThread || showToolCallLite) && (
               <div
                 className={cn(
-                  "flex min-w-0 items-center gap-2 overflow-hidden rounded-sm px-1.5 py-1",
-                  canShowFooterTaskThread &&
-                    "cursor-pointer transition-colors hover:bg-muted hover:text-foreground",
+                  "group flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-sm px-1.5 py-1",
+                  canShowFooterTaskThread && "cursor-pointer",
                 )}
                 onClick={
                   canShowFooterTaskThread
@@ -145,15 +144,21 @@ export function SubAgentView({
                 }
               >
                 {canShowFooterTaskThread && (
-                  <div className="flex items-center">
+                  <div className="flex shrink-0 items-center">
                     <ExpandIcon
                       isExpanded={showFooterTaskThread}
-                      className="opacity-100"
+                      className="cursor-pointer opacity-100 transition-colors hover:bg-secondary hover:text-foreground"
                     />
                   </div>
                 )}
                 {showToolCallLite && lastToolCallRef.current && (
-                  <div className="animated-gradient-text truncate text-xs">
+                  <div
+                    className={cn(
+                      "animated-gradient-text min-w-0 flex-1 truncate text-xs",
+                      canShowFooterTaskThread &&
+                        "group-hover:underline group-hover:underline-offset-2",
+                    )}
+                  >
                     <ToolCallLite
                       tools={[lastToolCallRef.current]}
                       requiresApproval={false}

@@ -96,15 +96,17 @@ export function ToolCallLite({
   }
 
   return detail ? (
-    <div className="flex flex-nowrap items-center overflow-x-hidden whitespace-nowrap">
+    <div className="flex w-full min-w-0 flex-nowrap items-center overflow-hidden whitespace-nowrap">
       {!showStatusIcon ? null : requiresApproval ? (
         <Pause className="size-3.5 shrink-0" />
       ) : (
         <Loader2 className="size-3.5 shrink-0 animate-spin" />
       )}
-      <div className="flex flex-nowrap items-center truncate">{detail}</div>
+      <div className="flex min-w-0 flex-1 flex-nowrap items-center overflow-hidden truncate">
+        {detail}
+      </div>
       {!requiresApproval && tools.length > 1 && (
-        <span>
+        <span className="shrink-0">
           {t("toolInvocation.moreTools", { count: tools.length - 1 })}
         </span>
       )}
