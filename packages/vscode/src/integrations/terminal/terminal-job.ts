@@ -106,7 +106,6 @@ export class TerminalJob implements vscode.Disposable {
       }
     } finally {
       this.outputManager.finalize(executionError);
-      this.terminal.dispose();
       this.dispose();
     }
   }
