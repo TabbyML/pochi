@@ -134,21 +134,21 @@ export class SkillManager implements vscode.Disposable {
   private initWatchers() {
     try {
       if (this.cwd) {
-        this.watchSkillsDir(this.cwd, ".pochi/skills");
-        this.watchSkillsDir(this.cwd, ".agents/skills");
+        this.watchSkillsDir(path.join(this.cwd, ".pochi"), "skills");
+        this.watchSkillsDir(path.join(this.cwd, ".agents"), "skills");
       }
     } catch (error) {
       logger.error("Failed to initialize project skills watcher", error);
     }
 
     try {
-      this.watchSkillsDir(os.homedir(), ".pochi/skills");
+      this.watchSkillsDir(path.join(os.homedir(), ".pochi"), "skills");
     } catch (error) {
       logger.error("Failed to initialize system skills watcher", error);
     }
 
     try {
-      this.watchSkillsDir(os.homedir(), ".agents/skills");
+      this.watchSkillsDir(path.join(os.homedir(), ".agents"), "skills");
     } catch (error) {
       logger.error("Failed to initialize global .agents/skills watcher", error);
     }
