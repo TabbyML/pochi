@@ -125,9 +125,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const allowNestedSubtasks =
       !this.isSubTask ||
-      (this.customAgent?.name === "planner" &&
-        this.depth !== undefined &&
-        this.depth < constants.MaxSubTaskDepth);
+      (this.depth !== undefined &&
+        this.depth < constants.MaxSubTaskDepth &&
+        (this.customAgent?.name === "planner" ||
+          this.customAgent?.tools?.includes("newTask")));
 
     if (allowNestedSubtasks) {
       middlewares.push(
