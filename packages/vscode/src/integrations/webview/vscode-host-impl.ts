@@ -272,14 +272,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
    * @param options.taskId - The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
    */
   readEnvironment = async (options: {
-    isSubTask?: boolean;
+    omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     taskId?: string;
   }): Promise<Environment> => {
-    const isSubTask = options.isSubTask ?? false;
     const webviewKind = options.webviewKind;
     const customRules =
-      !isSubTask && this.cwd ? await collectCustomRules(this.cwd) : undefined;
+      this.cwd && !options.omitCustomRules
+        ? await collectCustomRules(this.cwd)
+        : undefined;
 
     const systemInfo = getSystemInfo(this.cwd);
 

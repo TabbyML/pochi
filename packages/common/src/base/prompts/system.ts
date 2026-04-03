@@ -26,7 +26,7 @@ When the user directly asks about Pochi (eg 'can Pochi do...', 'does Pochi have.
 
 ${getTodoListPrompt()}
 ${getRulesPrompt()}
-${customAgent ? "" : getCustomRulesPrompt(customRules)}
+${customAgent?.omitPochiMd === true ? "" : getCustomRulesPrompt(customRules)}
 ${getMcpInstructionsPrompt(mcpInstructions)}
 `.trim();
 }

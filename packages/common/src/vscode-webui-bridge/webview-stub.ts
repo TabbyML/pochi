@@ -61,7 +61,7 @@ const VSCodeHostStub = {
     return Promise.resolve();
   },
   readEnvironment: (_options: {
-    isSubTask?: boolean;
+    omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     taskId?: string;
   }): Promise<Environment> => {
