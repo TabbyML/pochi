@@ -29,41 +29,48 @@ export function BrowserView(props: NewTaskToolViewProps) {
       tool={tool}
       isExecuting={isExecuting}
       taskSource={taskSource}
+      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       showToolCall
     >
-      {!isExecuting && videoUrl ? (
-        // biome-ignore lint/a11y/useMediaCaption: No audio track available
-        <video
-          src={videoUrl}
-          controls
-          playsInline
-          className="aspect-video h-full w-full object-contain"
-        />
-      ) : frame ? (
-        <img
-          src={`data:image/jpeg;base64,${frame}`}
-          alt="Browser view"
-          className="aspect-video h-full w-full object-contain"
-        />
-      ) : taskSource && taskSource.messages.length > 1 ? (
-        <FixedStateChatContextProvider
-          toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-        >
-          <TaskThread
-            source={taskSource}
-            showMessageList={true}
-            showTodos={false}
-            scrollAreaClassName="aspect-video border-none w-full h-full max-h-full my-0"
-            assistant={{ name: "Browser" }}
+      <div className="aspect-video w-full overflow-hidden">
+        {!isExecuting && videoUrl ? (
+          // biome-ignore lint/a11y/useMediaCaption: No audio track available
+          <video
+            src={videoUrl}
+            controls
+            playsInline
+            className="h-full w-full object-contain"
           />
-        </FixedStateChatContextProvider>
-      ) : (
-        <div className="flex aspect-video h-full w-full items-center justify-center p-3 text-muted-foreground">
-          <span className="text-base">
-            {isExecuting ? t("browserView.executing") : t("browserView.paused")}
-          </span>
-        </div>
-      )}
+        ) : frame ? (
+          <img
+            src={`data:image/jpeg;base64,${frame}`}
+            alt="Browser view"
+            className="h-full w-full object-contain"
+          />
+        ) : taskSource && taskSource.messages.length > 1 ? (
+          <div className="h-full w-full">
+            <FixedStateChatContextProvider
+              toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+            >
+              <TaskThread
+                source={taskSource}
+                showMessageList={true}
+                showTodos={false}
+                scrollAreaClassName="border-none h-full w-full my-0"
+                assistant={{ name: "Browser" }}
+              />
+            </FixedStateChatContextProvider>
+          </div>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center p-3 text-muted-foreground">
+            <span className="text-base">
+              {isExecuting
+                ? t("browserView.executing")
+                : t("browserView.paused")}
+            </span>
+          </div>
+        )}
+      </div>
     </SubAgentView>
   );
 }

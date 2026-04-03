@@ -23,6 +23,8 @@ export function WalkthroughView(props: NewTaskToolViewProps) {
       tool={tool}
       isExecuting={isExecuting}
       taskSource={taskSource}
+      toolCallStatusRegistryRef={toolCallStatusRegistryRef}
+      showToolCall
       headerActions={
         isVSCodeEnvironment() &&
         file && (
