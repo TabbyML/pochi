@@ -118,7 +118,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask,
-    omitCustomRules: isSubTask && customAgent?.omitPochiMd === true,
+    omitCustomRules: isSubTask && customAgent?.omitAgentMd === true,
     mcpConfigOverride,
     taskId: uid,
   });

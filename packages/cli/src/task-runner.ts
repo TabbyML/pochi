@@ -247,7 +247,11 @@ export class TaskRunner {
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({
-          ...(await readEnvironment({ cwd: options.cwd })),
+          ...(await readEnvironment({
+            cwd: options.cwd,
+            omitCustomRules:
+              options.isSubTask && options.customAgent?.omitAgentMd === true,
+          })),
           todos: this.todos,
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],

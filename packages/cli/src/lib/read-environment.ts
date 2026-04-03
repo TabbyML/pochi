@@ -10,14 +10,18 @@ import type { RunnerOptions } from "../task-runner";
  * Read the environment for the task runner
  */
 export const readEnvironment = async (
-  context: Pick<RunnerOptions, "cwd">,
+  context: Pick<RunnerOptions, "cwd"> & {
+    omitCustomRules?: boolean;
+  },
 ): Promise<Environment> => {
-  const { cwd } = context;
+  const { cwd, omitCustomRules } = context;
 
   const readFileContent = async (filePath: string) =>
     await fs.readFile(filePath, "utf-8");
 
-  const customRules = await collectCustomRules(cwd, readFileContent);
+  const customRules = omitCustomRules
+    ? undefined
+    : await collectCustomRules(cwd, readFileContent);
   const systemInfo = getSystemInfo(cwd);
   const gitStatusReader = new GitStatusReader({ cwd });
   const gitStatus = await gitStatusReader.readGitStatus();

@@ -21,11 +21,11 @@ export const CustomAgent = z.object({
     .string()
     .optional()
     .describe("The model to use for the custom agent."),
-  omitPochiMd: z
+  omitAgentMd: z
     .boolean()
     .optional()
     .describe(
-      "Whether to omit workspace custom rules such as AGENTS.md and README.pochi.md from the agent system prompt.",
+      "Whether to omit workspace agent markdown such as AGENTS.md and README.pochi.md from the agent system prompt.",
     ),
 });
 

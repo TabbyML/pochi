@@ -34,7 +34,7 @@ test("custom agent can omit custom rules", () => {
       name: "planner",
       description: "planner agent",
       systemPrompt: "Custom agent prompt",
-      omitPochiMd: true,
+      omitAgentMd: true,
     }),
   ).not.toContain("USER'S CUSTOM INSTRUCTIONS");
 });

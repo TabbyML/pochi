@@ -17,7 +17,7 @@ const CustomAgentFrontmatter = z.object({
   description: z.string(),
   model: z.string().optional(),
   tools: z.union([z.string(), z.array(z.string())]).optional(),
-  omitPochiMd: z.boolean().optional(),
+  omitAgentMd: z.boolean().optional(),
 });
 
 /**
@@ -112,6 +112,6 @@ export async function parseAgentFile(
     description: frontmatterData.description,
     systemPrompt,
     model: frontmatterData.model,
-    omitPochiMd: frontmatterData.omitPochiMd,
+    omitAgentMd: frontmatterData.omitAgentMd,
   } satisfies ValidCustomAgentFile;
 }
