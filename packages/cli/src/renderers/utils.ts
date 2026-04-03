@@ -9,7 +9,11 @@ export async function inlineSubTask(
   message: Message,
 ): Promise<Message> {
   const partsWithSubtasks = message.parts.map((part) => {
-    if (part.type === "tool-newTask" && part.state !== "input-streaming") {
+    if (
+      part.type === "tool-newTask" &&
+      part.state !== "input-streaming" &&
+      part.input
+    ) {
       const input = part.input as InferToolInput<ClientTools["newTask"]>;
       const subtaskId = input._meta?.uid;
       if (subtaskId) {

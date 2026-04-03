@@ -511,6 +511,12 @@ export class TaskRunner {
         "Task is failed, trying to resend last message to resume it.",
         task.error,
       );
+      const processed = prepareLastMessageForRetry(message);
+      if (processed) {
+        this.chat.appendOrReplaceMessage(processed);
+      } else {
+        // skip, the last message is ready to be resent
+      }
       return "retry";
     }
 
