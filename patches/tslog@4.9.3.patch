@@ -1,5 +1,24 @@
+diff --git a/node_modules/tslog/.bun-tag-1ed9e43cdc5f8e36 b/.bun-tag-1ed9e43cdc5f8e36
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/tslog/.bun-tag-2dcf504ea2d071b1 b/.bun-tag-2dcf504ea2d071b1
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/cjs/runtime/nodejs/index.js b/dist/cjs/runtime/nodejs/index.js
+index 855da846a2c85e316838d550b8b743962ee3e013..75467afc8e957a826319b406d0767bd6fc91b1a9 100644
+--- a/dist/cjs/runtime/nodejs/index.js
++++ b/dist/cjs/runtime/nodejs/index.js
+@@ -37,7 +37,7 @@ function getCallerStackFrame(stackDepthLevel, error = Error()) {
+ }
+ exports.getCallerStackFrame = getCallerStackFrame;
+ function getErrorTrace(error) {
+-    return error?.stack?.split("\n")?.reduce((result, line) => {
++    return (error?.stack?.split("\n") ?? []).reduce((result, line) => {
+         if (line.includes("    at ")) {
+             result.push(stackLineToStackFrame(line));
+         }
 diff --git a/dist/esm/runtime/nodejs/index.js b/dist/esm/runtime/nodejs/index.js
-index f25f17cf956694896d0c326f212c75507dd2b1d4..fef47062d503212eabb1b2929f7f6498095d9bc8 100644
+index f25f17cf956694896d0c326f212c75507dd2b1d4..15522f54a3f563e99b864ae60c74ca7169a996a1 100644
 --- a/dist/esm/runtime/nodejs/index.js
 +++ b/dist/esm/runtime/nodejs/index.js
 @@ -2,6 +2,9 @@ import { hostname } from "os";
@@ -12,3 +31,12 @@ index f25f17cf956694896d0c326f212c75507dd2b1d4..fef47062d503212eabb1b2929f7f6498
  export default {
      getCallerStackFrame,
      getErrorTrace,
+@@ -32,7 +35,7 @@ export function getCallerStackFrame(stackDepthLevel, error = Error()) {
+     return stackLineToStackFrame(error?.stack?.split("\n")?.filter((thisLine) => thisLine.includes("    at "))?.[stackDepthLevel]);
+ }
+ export function getErrorTrace(error) {
+-    return error?.stack?.split("\n")?.reduce((result, line) => {
++    return (error?.stack?.split("\n") ?? []).reduce((result, line) => {
+         if (line.includes("    at ")) {
+             result.push(stackLineToStackFrame(line));
+         }
