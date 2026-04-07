@@ -46,4 +46,15 @@ describe("readEnvironment", () => {
     // Task runner should not have active tabs or selection like VSCode
     expect(environment.workspace.activeTabs).toBeUndefined();
   });
+
+  it("should omit custom rules when requested", async () => {
+    const context: Pick<RunnerOptions, "cwd"> & { omitCustomRules?: boolean } = {
+      cwd: process.cwd(),
+      omitCustomRules: true,
+    };
+
+    const environment = await readEnvironment(context);
+
+    expect(environment.info.customRules).toBeUndefined();
+  });
 });

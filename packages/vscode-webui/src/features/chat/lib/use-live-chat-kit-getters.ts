@@ -26,12 +26,14 @@ import { useCallback } from "react";
 export function useLiveChatKitGetters({
   todos,
   isSubTask,
+  omitCustomRules,
   modelOverride,
   mcpConfigOverride,
   taskId,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   isSubTask: boolean;
+  omitCustomRules?: boolean;
   modelOverride?: DisplayModel;
   /** Per-task MCP tool configuration. If provided, filters the global toolset. */
   mcpConfigOverride?: McpConfigOverride | null;
@@ -54,7 +56,7 @@ export function useLiveChatKitGetters({
 
   const getEnvironment = useCallback(async () => {
     const environment = await vscodeHost.readEnvironment({
-      isSubTask,
+      omitCustomRules,
       webviewKind: globalThis.POCHI_WEBVIEW_KIND,
       taskId: taskId || undefined,
     });
@@ -63,7 +65,7 @@ export function useLiveChatKitGetters({
       todos: todos.current,
       ...environment,
     } satisfies Environment;
-  }, [todos, isSubTask, taskId]);
+  }, [todos, omitCustomRules, taskId]);
 
   return {
     // biome-ignore lint/correctness/useExhaustiveDependencies(llm.current): llm is ref.

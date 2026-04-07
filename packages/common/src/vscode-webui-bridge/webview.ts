@@ -61,7 +61,7 @@ export interface VSCodeHostApi {
   setGlobalState(key: string, value: unknown): Promise<void>;
 
   readEnvironment(options: {
-    isSubTask?: boolean;
+    omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     /**
      * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
