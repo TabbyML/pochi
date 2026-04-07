@@ -18,9 +18,10 @@ export class JsonRenderer implements StreamRenderer {
   ) {
     this.unsubscribe = this.state.signal.messages.subscribe(
       async (messages) => {
-        if (messages.length > this.lastMessageCount) {
+        const messageCount = messages.length;
+        if (messageCount > this.lastMessageCount) {
+          this.lastMessageCount = Math.max(this.lastMessageCount, messageCount);
           await this.outputMessages(messages.slice(0, -1));
-          this.lastMessageCount = messages.length;
         }
       },
     );
