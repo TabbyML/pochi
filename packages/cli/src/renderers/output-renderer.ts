@@ -17,6 +17,8 @@ import type { TaskRunner } from "../task-runner";
 
 export class OutputRenderer {
   private renderingSubTask = false;
+  private unsubscribe: (() => void) | undefined;
+
   constructor(
     private readonly stream: NodeJS.WritableStream,
     private readonly state: NodeChatState,
@@ -24,7 +26,7 @@ export class OutputRenderer {
       attemptCompletionSchemaOverride?: boolean;
     } = {},
   ) {
-    this.state.signal.messages.subscribe((messages) => {
+    this.unsubscribe = this.state.signal.messages.subscribe((messages) => {
       this.renderLastMessage(messages);
     });
   }
@@ -149,6 +151,10 @@ export class OutputRenderer {
   }
 
   shutdown() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = undefined;
+    }
     this.spinner?.stopAndPersist();
     this.spinner = undefined;
   }

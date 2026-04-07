@@ -22,65 +22,64 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     private readonly state: NodeChatState,
   ) {
     this.unsubscribe = this.state.signal.messages.subscribe(
-      runExclusive.build(async (messages: Message[]) => {
+      async (messages: Message[]) => {
         await this.outputTrajectory(messages);
-      }),
+      },
     );
   }
 
-  private async outputTrajectory(messages: Message[], isFinalFlush = false) {
-    for (let msgIdx = 0; msgIdx < messages.length; msgIdx++) {
-      const message = messages[msgIdx];
-      const isFinalized = isFinalFlush || msgIdx < messages.length - 1;
+  private outputTrajectory = runExclusive.build(
+    async (messages: Message[], isFinalFlush = false) => {
+      for (let msgIdx = 0; msgIdx < messages.length; msgIdx++) {
+        const message = messages[msgIdx];
+        const isFinalized = isFinalFlush || msgIdx < messages.length - 1;
 
-      const outputMessage = await inlineSubTask(this.store, message);
+        const outputMessage = await inlineSubTask(this.store, message);
 
-      for (let i = 0; i < outputMessage.parts.length; i++) {
-        const part = outputMessage.parts[i];
+        for (let i = 0; i < outputMessage.parts.length; i++) {
+          const part = outputMessage.parts[i];
 
-        const partId = `${message.id}:${i}`;
+          const partId = `${message.id}:${i}`;
 
-        const resolvedPart = await mapStoreBlob(this.blobStore, part);
+          const resolvedPart = await mapStoreBlob(this.blobStore, part);
 
-        const cachedPart = this.emittedParts.get(partId);
-        if (!R.isDeepEqual(cachedPart, resolvedPart)) {
-          const outputData = {
-            type: "message-part",
-            messageId: message.id,
-            role: message.role,
-            index: i,
-            part: resolvedPart,
-          };
-          this.stream.write(`${JSON.stringify(outputData)}\n`);
-          this.emittedParts.set(partId, R.clone(resolvedPart));
+          const cachedPart = this.emittedParts.get(partId);
+          if (!R.isDeepEqual(cachedPart, resolvedPart)) {
+            const outputData = {
+              type: "message-part",
+              messageId: message.id,
+              role: message.role,
+              index: i,
+              part: resolvedPart,
+            };
+            this.stream.write(`${JSON.stringify(outputData)}\n`);
+            this.emittedParts.set(partId, R.clone(resolvedPart));
+          }
+        }
+
+        if (isFinalized && !this.emittedMetadata.has(message.id)) {
+          if (outputMessage.metadata !== undefined) {
+            const outputData = {
+              type: "message-metadata",
+              messageId: message.id,
+              role: message.role,
+              metadata: outputMessage.metadata,
+            };
+            this.stream.write(`${JSON.stringify(outputData)}\n`);
+          }
+          this.emittedMetadata.add(message.id);
         }
       }
-
-      if (isFinalized && !this.emittedMetadata.has(message.id)) {
-        if (outputMessage.metadata !== undefined) {
-          const outputData = {
-            type: "message-metadata",
-            messageId: message.id,
-            role: message.role,
-            metadata: outputMessage.metadata,
-          };
-          this.stream.write(`${JSON.stringify(outputData)}\n`);
-        }
-        this.emittedMetadata.add(message.id);
-      }
-    }
-  }
+    },
+  );
 
   async shutdown() {
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = undefined;
     }
-    // Final flush of messages
-    await runExclusive.build(async () => {
-      await this.outputTrajectory(this.state.signal.messages.value, true);
-      await this.outputFilesData();
-    })();
+    await this.outputTrajectory(this.state.signal.messages.value, true);
+    await this.outputFilesData();
   }
 
   private async outputFilesData() {
