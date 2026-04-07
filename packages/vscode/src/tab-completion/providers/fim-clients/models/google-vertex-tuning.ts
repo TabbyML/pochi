@@ -1,7 +1,7 @@
 import type { TabCompletionFIMProviderSettings } from "@/integrations/configuration";
 import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { createVertexModel } from "@getpochi/common/google-vertex-utils";
 import { type CallSettings, type Prompt, generateText } from "ai";
 import type * as vscode from "vscode";
@@ -22,7 +22,7 @@ export type GoogleVertexTuningProviderConfig = Extract<
 >;
 
 export class FIMGoogleVertexTuningModel implements FIMCompletionModel {
-  private readonly model: LanguageModelV2 | undefined;
+  private readonly model: LanguageModelV3 | undefined;
   private readonly systemPrompt: string;
   private readonly promptTemplate: string;
 
