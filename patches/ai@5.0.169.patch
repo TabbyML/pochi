@@ -1,0 +1,27 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 30c117850407afcda448f5a9308aab6ea1f6ef64..1d61bb8dccd514ea4bb85ace7922ebd51621f0c3 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -9369,6 +9369,13 @@ var AbstractChat = class {
+     var _a16, _b, _c, _d;
+     this.setStatus({ status: "submitted", error: void 0 });
+     const lastMessage = this.lastMessage;
++    const abortController = new AbortController();
++    this.activeResponse = {
++      abortController
++    };
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal
++    });
+     let isAbort = false;
+     let isDisconnect = false;
+     let isError = false;
+@@ -9378,7 +9385,7 @@ var AbstractChat = class {
+           lastMessage: this.state.snapshot(lastMessage),
+           messageId: this.generateId()
+         }),
+-        abortController: new AbortController()
++        abortController
+       };
+       activeResponse.abortController.signal.addEventListener("abort", () => {
+         isAbort = true;

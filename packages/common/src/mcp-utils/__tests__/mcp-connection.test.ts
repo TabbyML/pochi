@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { experimental_createMCPClient as createClient, type ToolCallOptions } from "ai";
+import { experimental_createMCPClient as createClient } from "@ai-sdk/mcp";
+import { type ToolCallOptions } from "ai";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getLogger } from "../../base";
@@ -47,7 +48,7 @@ vi.mock("@xstate/fsm", () => ({
   interpret: vi.fn(() => fsmMock),
 }));
 
-vi.mock("ai", () => ({
+vi.mock("@ai-sdk/mcp", () => ({
   experimental_createMCPClient: vi.fn(),
 }));
 
