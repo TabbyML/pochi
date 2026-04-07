@@ -9,6 +9,7 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
+import { FileStateCache } from "@getpochi/common/tool-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
@@ -188,6 +189,7 @@ export class TaskRunner {
     this.toolCallOptions = {
       rg: options.rg,
       fileSystem: this.fileSystem,
+      fileStateCache: new FileStateCache(),
       blobStore: this.blobStore,
 
       customAgents: options.customAgents,
@@ -243,6 +245,10 @@ export class TaskRunner {
       attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
+
+      onCompact: () => {
+        this.toolCallOptions.fileStateCache.clear();
+      },
 
       getters: {
         getLLM: () => options.llm,

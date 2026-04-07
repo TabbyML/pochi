@@ -134,6 +134,13 @@ export type LiveChatKitOptions<T> = {
     },
   ) => void;
 
+  /**
+   * Called after a successful compaction (inline or explicit).
+   * Use this to clear caches (e.g. FileStateCache) that depend on
+   * conversation context that was discarded during compaction.
+   */
+  onCompact?: () => void;
+
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
   attemptCompletionSchema?: z.ZodAny;
@@ -191,6 +198,7 @@ export class LiveChatKit<
     blobStore,
     chatClass,
     onOverrideMessages,
+    onCompact,
     getters,
     isSubTask,
     depth,
@@ -260,6 +268,7 @@ export class LiveChatKit<
             abortSignal,
             inline: true,
           });
+          onCompact?.();
         } catch (err) {
           logger.error("Failed to compact task", err);
           throw err;
@@ -295,6 +304,7 @@ export class LiveChatKit<
       if (!summary) {
         throw new Error("Failed to compact task");
       }
+      onCompact?.();
       return summary;
     };
 

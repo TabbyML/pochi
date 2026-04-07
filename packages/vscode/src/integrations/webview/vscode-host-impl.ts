@@ -11,6 +11,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
+import { getFileStateCache } from "@/lib/file-state-cache-registry";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -341,6 +342,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     PochiFileSystemProvider.closePochiTabs(uid);
   };
 
+  clearFileStateCache = async (taskId: string): Promise<void> => {
+    const cache = getFileStateCache(taskId);
+    cache.clear();
+  };
+
   readActiveSelection = async (): Promise<
     ThreadSignalSerialization<FileSelection | undefined>
   > => {
@@ -446,6 +452,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
       storeId: string;
+      taskId: string;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -489,6 +496,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         contentType: options.contentType,
         envs,
         executeCommandWhitelist: options.executeCommandWhitelist,
+        fileStateCache: getFileStateCache(options.taskId),
       }),
     );
 

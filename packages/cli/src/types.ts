@@ -1,5 +1,6 @@
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
+import type { FileStateCache } from "@getpochi/common/tool-utils";
 import type { BlobStore } from "@getpochi/livekit";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { AsyncSubTaskManager } from "./lib/async-subtask-manager";
@@ -18,6 +19,12 @@ export interface ToolCallOptions {
    * The file system interface for reading and writing files.
    */
   fileSystem: FileSystem;
+
+  /**
+   * LRU cache tracking file content the model has "seen".
+   * Used for read deduplication and edit/write staleness guards.
+   */
+  fileStateCache: FileStateCache;
 
   /**
    * Blob store for local file access

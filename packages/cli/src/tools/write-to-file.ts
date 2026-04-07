@@ -1,4 +1,8 @@
 import { fixCodeGenerationOutput } from "@getpochi/common/message-utils";
+import {
+  getFileModificationTime,
+  withFileStateCacheGuard,
+} from "@getpochi/common/tool-utils";
 
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
@@ -10,9 +14,23 @@ import type { ToolCallOptions } from "../types";
 export const writeToFile =
   ({
     fileSystem,
+    fileStateCache,
   }: ToolCallOptions): ToolFunctionType<ClientTools["writeToFile"]> =>
-  async ({ path, content }) => {
-    const processedContent = fixCodeGenerationOutput(content);
-    await fileSystem.writeFile(path, processedContent);
-    return { success: true };
+  async ({ path, content }, { cwd }) => {
+    return withFileStateCacheGuard({
+      cache: fileStateCache,
+      path,
+      cwd,
+      getMtime: getFileModificationTime,
+      operation: "writing",
+      doWork: async () => {
+        const processedContent = fixCodeGenerationOutput(content);
+        await fileSystem.writeFile(path, processedContent);
+
+        return {
+          result: { success: true as const },
+          newContent: processedContent,
+        };
+      },
+    });
   };

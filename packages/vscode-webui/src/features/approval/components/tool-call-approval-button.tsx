@@ -145,6 +145,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         contentType: selectedModel?.contentType,
         builtinSubAgentInfo,
         executeCommandWhitelist,
+        taskId,
       });
 
       const uid = parentUid || taskId;

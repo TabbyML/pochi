@@ -63,3 +63,19 @@ export const asRelativePath = (
   }
   return path.relative(cwd, uri.fsPath);
 };
+
+/**
+ * Get the modification time of a file via vscode.workspace.fs.
+ * Returns Math.floor(mtime) or undefined if the file doesn't exist.
+ *
+ */
+export async function getVscodeFileMtime(
+  resolvedPath: string,
+): Promise<number | undefined> {
+  try {
+    const stat = await vscode.workspace.fs.stat(vscode.Uri.file(resolvedPath));
+    return Math.floor(stat.mtime);
+  } catch {
+    return undefined;
+  }
+}
