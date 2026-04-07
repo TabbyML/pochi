@@ -51,11 +51,11 @@ Agent with array-style tools.`;
     ]);
   });
 
-  it("should parse omitAgentMd from frontmatter", async () => {
+  it("should parse omitAgentsMd from frontmatter", async () => {
     const content = `---
 name: no-rules-agent
 description: Agent that opts out of workspace rules
-omitAgentMd: true
+omitAgentsMd: true
 ---
 
 Agent content.`;
@@ -65,7 +65,7 @@ Agent content.`;
     );
 
     const validResult = result as ValidCustomAgentFile;
-    expect(validResult.omitAgentMd).toBe(true);
+    expect(validResult.omitAgentsMd).toBe(true);
   });
 
   it("should return an error for invalid frontmatter", async () => {

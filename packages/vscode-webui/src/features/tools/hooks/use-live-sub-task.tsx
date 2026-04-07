@@ -83,7 +83,7 @@ export function useLiveSubTask(
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: true,
-    omitCustomRules: customAgent?.omitAgentMd === true,
+    omitCustomRules: customAgent?.omitAgentsMd === true,
     modelOverride: customAgentModel,
   });
 

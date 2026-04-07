@@ -250,7 +250,7 @@ export class TaskRunner {
           ...(await readEnvironment({
             cwd: options.cwd,
             omitCustomRules:
-              options.isSubTask && options.customAgent?.omitAgentMd === true,
+              options.isSubTask && options.customAgent?.omitAgentsMd === true,
           })),
           todos: this.todos,
         }),
