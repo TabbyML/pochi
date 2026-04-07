@@ -2,10 +2,10 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { jsonSchema } from "@ai-sdk/provider-utils";
 import {
   NoSuchToolError,
+  Output,
   type Tool,
   type ToolCallRepairFunction,
   generateText,
-  Output,
 } from "ai";
 
 export const makeRepairToolCall: (
