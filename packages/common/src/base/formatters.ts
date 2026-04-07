@@ -20,13 +20,14 @@ function resolvePendingToolCalls(
           part.state !== "output-error"
         ) {
           const isSuccess = isAutoSuccessToolPart(part);
+          const { approval: _approval, ...resolvedPart } = part;
           return {
-            ...part,
+            ...resolvedPart,
             state: "output-available",
             output: isSuccess
               ? { success: true }
               : { error: "User cancelled the tool call." },
-          } satisfies UIMessage["parts"][number];
+          } as UIMessage["parts"][number];
         }
         return part;
       });

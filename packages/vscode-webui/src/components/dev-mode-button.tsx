@@ -64,8 +64,8 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     });
     return JSON.stringify(x, null, 2);
   };
-  const getCoreMessagesContent = () => {
-    const coreMessages = convertToModelMessages(messages, {
+  const getCoreMessagesContent = async () => {
+    const coreMessages = await convertToModelMessages(messages, {
       ignoreIncompleteToolCalls: true,
     });
     return JSON.stringify(coreMessages, null, 2);

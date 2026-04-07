@@ -1,4 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
 import { transformToCodexFormat } from "./transformers";
@@ -68,11 +69,11 @@ function createCodexFetch(getCredentials: () => Promise<unknown>) {
 export function createCodexModel({
   modelId,
   getCredentials,
-}: CreateModelOptions) {
+}: CreateModelOptions): LanguageModelV3 {
   return wrapLanguageModel({
     model: createCodexResponsesModel(modelId, getCredentials),
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         return params;
       },
@@ -124,7 +125,7 @@ function createProxyFetch(getCredentials: () => Promise<unknown>) {
 export function createEdgeCodexModel({
   modelId,
   getCredentials,
-}: CreateModelOptions) {
+}: CreateModelOptions): LanguageModelV3 {
   const customFetch = createProxyFetch(getCredentials);
   return wrapLanguageModel({
     model: createOpenAI({
@@ -133,7 +134,7 @@ export function createEdgeCodexModel({
       fetch: customFetch as typeof fetch,
     }).responses(modelId || "gpt-5"),
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         return params;
       },

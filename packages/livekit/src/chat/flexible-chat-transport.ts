@@ -218,7 +218,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
-      convertToModelMessages(
+      await convertToModelMessages(
         formatters.llm(preparedMessages),
         // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
         { tools },
@@ -341,7 +341,7 @@ function handleReadFileOutput(
 ) {
   return tool({
     ...readFile,
-    toModelOutput: (output) => {
+    toModelOutput: ({ output }) => {
       if (output.type === "media") {
         const blob = findBlob(blobStore, new URL(output.data), output.mimeType);
         if (!blob) {

@@ -1,6 +1,6 @@
 import type {
-  LanguageModelV2CallOptions,
-  LanguageModelV2Prompt,
+  LanguageModelV3CallOptions,
+  LanguageModelV3Prompt,
 } from "@ai-sdk/provider";
 import { QuestionSchema } from "@getpochi/tools";
 import { zValidator } from "@hono/zod-validator";
@@ -12,11 +12,11 @@ export const ModelGatewayRequest = z.object({
   model: z.string().optional().describe("Model to use for this request."),
   modelEndpointId: z.string().optional(),
   callOptions: z.object({
-    prompt: z.custom<LanguageModelV2Prompt>(),
+    prompt: z.custom<LanguageModelV3Prompt>(),
     stopSequences: z.array(z.string()).optional(),
-    tools: z.custom<LanguageModelV2CallOptions["tools"]>(),
+    tools: z.custom<LanguageModelV3CallOptions["tools"]>(),
     providerOptions: z
-      .custom<LanguageModelV2CallOptions["providerOptions"]>()
+      .custom<LanguageModelV3CallOptions["providerOptions"]>()
       .optional(),
   }),
 });

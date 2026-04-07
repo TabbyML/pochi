@@ -1,6 +1,6 @@
 import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { EventSourceParserStream } from "@ai-sdk/provider-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
@@ -9,7 +9,7 @@ import type { GeminiCredentials } from "./types";
 export function createGeminiCliModel({
   modelId,
   getCredentials,
-}: CreateModelOptions): LanguageModelV2 {
+}: CreateModelOptions): LanguageModelV3 {
   const vertexModel = createVertexWithoutCredentials({
     project: "default",
     location: "global",
@@ -25,13 +25,13 @@ export function createGeminiCliModel({
   return wrapLanguageModel({
     model: vertexModel,
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         return {
           ...params,
           maxOutputTokens: 32768,
           providerOptions: {
-            google: {
+            vertex: {
               thinkingConfig: {
                 includeThoughts: true,
                 thinkingBudget: 4096,

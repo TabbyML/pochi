@@ -27,7 +27,7 @@ export function createOpenAIModel(
   return wrapLanguageModel({
     model: openai(llm.modelId),
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         params.maxOutputTokens = llm.maxOutputTokens;
         return params;

@@ -1,6 +1,5 @@
 export { McpTool } from "./mcp-tools";
 import {
-  type ToolUIPart,
   type UIDataTypes,
   type UIMessagePart,
   type UITools,
@@ -71,7 +70,9 @@ export function isAutoSuccessToolName(name: string): boolean {
   );
 }
 
-export function isAutoSuccessToolPart(part: ToolUIPart): boolean {
+export function isAutoSuccessToolPart(
+  part: UIMessagePart<UIDataTypes, UITools>,
+): boolean {
   if (!isToolUIPart(part)) return false;
   return isAutoSuccessToolName(getToolName(part));
 }

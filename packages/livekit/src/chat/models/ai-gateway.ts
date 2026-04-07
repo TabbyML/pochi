@@ -12,7 +12,7 @@ export function createAiGatewayModel(
   return wrapLanguageModel({
     model: gateway(llm.modelId),
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         params.maxOutputTokens = llm.maxOutputTokens;
         return params;
