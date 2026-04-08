@@ -9,6 +9,7 @@ import {
   type McpTool,
   type Skill,
   getAllowedToolNames,
+  getToolArgs,
   overrideCustomAgentTools,
   selectClientTools,
 } from "@getpochi/tools";
@@ -123,10 +124,21 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const model = createModel({ llm });
     const middlewares = [];
+    const enabledToolNames = getAllowedToolNames(this.customAgent?.tools);
+    const allowedNewTaskAgentTypes = getToolArgs(
+      this.customAgent?.tools,
+      "newTask",
+    );
+    const hasValidNewTaskWhitelist =
+      !allowedNewTaskAgentTypes ||
+      allowedNewTaskAgentTypes.some((name) =>
+        (customAgents ?? []).some((agent) => agent.name === name),
+      );
 
     const allowNestedSubtasks =
       !this.isSubTask ||
-      (this.customAgent?.name === "planner" &&
+      (enabledToolNames.has("newTask") &&
+        hasValidNewTaskWhitelist &&
         this.depth !== undefined &&
         this.depth < constants.MaxSubTaskDepth);
 
@@ -137,6 +149,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           environment?.info.cwd,
           chatId,
           customAgents,
+          this.customAgent,
         ),
       );
     }
@@ -159,7 +172,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
-    const enabledToolNames = getAllowedToolNames(this.customAgent?.tools);
 
     const tools = pickBy(
       {

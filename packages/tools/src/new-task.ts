@@ -70,6 +70,23 @@ ${(customAgents ?? [])
 `;
 }
 
+function makeAgentTypeSchema(allowedAgentTypes?: string[]) {
+  if (!allowedAgentTypes || allowedAgentTypes.length === 0) {
+    return z
+      .string()
+      .optional()
+      .describe("The type of the specialized agent to use for the task.");
+  }
+
+  const [first, ...rest] = allowedAgentTypes;
+  return z
+    .enum([first, ...rest])
+    .optional()
+    .describe(
+      `The agent to use for the task. Allowed agents: ${allowedAgentTypes.join(", ")}.`,
+    );
+}
+
 export const inputSchema = z.object({
   description: z.string().describe("A short description of the task."),
   prompt: z
@@ -95,7 +112,10 @@ export const inputSchema = z.object({
     .optional(),
 });
 
-export const createNewTaskTool = (customAgents?: CustomAgent[]) =>
+export const createNewTaskTool = (
+  customAgents?: CustomAgent[],
+  allowedAgentTypes?: string[],
+) =>
   defineClientTool({
     description:
       `Launch a new agent to handle complex, multi-step tasks autonomously.
@@ -120,7 +140,9 @@ Usage notes:
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
       `.trim(),
-    inputSchema,
+    inputSchema: inputSchema.extend({
+      agentType: makeAgentTypeSchema(allowedAgentTypes),
+    }),
     outputSchema: z.object({
       result: z
         .string()

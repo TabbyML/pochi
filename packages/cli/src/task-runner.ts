@@ -570,6 +570,10 @@ export class TaskRunner {
       this.customAgent?.tools,
       "executeCommand",
     );
+    const newTaskAgentTypeWhitelist = getToolArgs(
+      this.customAgent?.tools,
+      "newTask",
+    );
     for (const toolCall of message.parts.filter(isToolUIPart)) {
       if (toolCall.state !== "input-available") continue;
       const toolName = getToolName(toolCall);
@@ -601,6 +605,7 @@ export class TaskRunner {
           this.llm.contentType,
           envs,
           executeCommandWhitelist,
+          newTaskAgentTypeWhitelist,
         ),
       );
 
