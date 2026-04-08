@@ -34,6 +34,7 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
+import { getToolArgs } from "./utils";
 import { writeToFile } from "./write-to-file";
 
 export {
@@ -123,7 +124,10 @@ const createCliTools = (options?: CreateToolOptions) => ({
   todoWrite,
   writeToFile,
   editNotebook,
-  newTask: createNewTaskTool(options?.customAgents),
+  newTask: createNewTaskTool(
+    options?.customAgents,
+    getToolArgs(options?.agent?.tools, "newTask"),
+  ),
 });
 
 export interface CreateToolOptions {

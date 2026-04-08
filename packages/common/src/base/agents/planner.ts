@@ -19,7 +19,7 @@ Examples of user requests this agent shall trigger:
     "searchFiles",
     "writeToFile",
     "askFollowupQuestion",
-    "newTask",
+    "newTask(explore)",
   ],
   systemPrompt: `
 You are the **Principal Technical Architect**. Your mission is to analyze requirements, architect robust solutions, and deliver a precise implementation strategy without modifying the codebase.
