@@ -45,7 +45,6 @@ export type ToolFunctionType<T extends Tool> = (
     contentType?: string[];
     envs?: Record<string, string>;
     executeCommandWhitelist?: string[];
-    /** File state cache injected by the host for read deduplication and staleness detection. */
     fileStateCache?: IFileStateCache;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;

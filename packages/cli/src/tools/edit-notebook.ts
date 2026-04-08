@@ -38,7 +38,10 @@ export const editNotebook =
 
           await fileSystem.writeFile(filePath, serialized);
 
-          return { result: { success: true as const }, newContent: serialized };
+          return {
+            result: { success: true as const },
+            fileCacheContent: serialized,
+          };
         },
       });
     } catch (error) {

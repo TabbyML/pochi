@@ -1,7 +1,6 @@
 import * as fs from "node:fs/promises";
 import {
   editNotebookCell,
-  getFileStateCacheFromOptions,
   parseNotebook,
   serializeNotebook,
   validateNotebookPath,
@@ -27,12 +26,11 @@ export const editNotebook: ToolFunctionType<
 > = async ({ path: filePath, cellId, content }, options) => {
   try {
     const { cwd } = options;
-    const fileStateCache = getFileStateCacheFromOptions(options.fileStateCache);
 
     validateNotebookPath(filePath);
 
     return await withFileStateCacheGuard({
-      cache: fileStateCache,
+      cache: options.fileStateCache,
       path: filePath,
       cwd,
       getMtime: getNodeFileMtime,
@@ -45,7 +43,10 @@ export const editNotebook: ToolFunctionType<
 
         await fs.writeFile(resolvedPath, serialized, "utf-8");
 
-        return { result: { success: true as const }, newContent: serialized };
+        return {
+          result: { success: true as const },
+          fileCacheContent: serialized,
+        };
       },
     });
   } catch (error) {

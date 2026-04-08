@@ -1,16 +1,39 @@
 import { FileStateCache } from "@getpochi/common/tool-utils";
+import { injectable, singleton } from "tsyringe";
+import type * as vscode from "vscode";
 
-const caches = new Map<string, FileStateCache>();
+@injectable()
+@singleton()
+export class FileStateCacheRegistry implements vscode.Disposable {
+  private readonly caches = new Map<string, FileStateCache>();
 
-export function getFileStateCache(taskId: string): FileStateCache {
-  let cache = caches.get(taskId);
-  if (!cache) {
-    cache = new FileStateCache();
-    caches.set(taskId, cache);
+  get(taskId: string): FileStateCache {
+    let cache = this.caches.get(taskId);
+    if (!cache) {
+      cache = new FileStateCache();
+      this.caches.set(taskId, cache);
+    }
+    return cache;
   }
-  return cache;
-}
 
-export function deleteFileStateCache(taskId: string): void {
-  caches.delete(taskId);
+  clear(taskId: string): void {
+    this.caches.get(taskId)?.clear();
+  }
+
+  delete(taskId: string): void {
+    const cache = this.caches.get(taskId);
+    cache?.clear();
+    this.caches.delete(taskId);
+  }
+
+  has(taskId: string): boolean {
+    return this.caches.has(taskId);
+  }
+
+  dispose(): void {
+    for (const cache of this.caches.values()) {
+      cache.clear();
+    }
+    this.caches.clear();
+  }
 }

@@ -34,10 +34,10 @@ export const readFile =
         const isPlainTextFile = isPlainText(fileBuffer);
 
         if (isBinaryRequest && !isPlainTextFile) {
-          // Media/binary files are never cached, so fileContent is unused.
+          // Media/binary files are never cached, so fileCacheContent is unused.
           return {
             result: readMediaFile(resolvedPath, fileBuffer, contentType),
-            fileContent: "",
+            fileCacheContent: "",
           };
         }
 
@@ -54,7 +54,7 @@ export const readFile =
           addLineNumbers,
         });
 
-        return { result, fileContent };
+        return { result, fileCacheContent: fileContent };
       },
     });
 

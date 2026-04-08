@@ -2,24 +2,13 @@ import * as path from "node:path";
 import type { IFileState, IFileStateCache } from "@getpochi/tools";
 import { resolvePath } from "./fs";
 
-/**
- * Stub message returned when a file has not changed since the model last read it.
- * This is returned as a normal TextOutput (content string) to avoid adding a new
- * output schema type. The message itself tells the model to refer to the earlier
- * Read result in the conversation.
- */
 export const FILE_UNCHANGED_STUB =
   "File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.";
 
-/**
- * Re-export `IFileState` from `@getpochi/tools` as `FileState` for backwards
- * compatibility with code that imports from `@getpochi/common`.
- */
-export type FileState = IFileState;
-
-// Re-export the canonical interface so consumers of common don't need
-// to add a direct dependency on @getpochi/tools just for this type.
-export type { IFileState, IFileStateCache };
+type FileCacheCallbackResult<T> = {
+  result: T;
+  fileCacheContent: string;
+};
 
 /** Default maximum number of entries in the cache */
 const DEFAULT_MAX_ENTRIES = 100;
@@ -45,18 +34,8 @@ const DEFAULT_MAX_SIZE_BYTES = 25 * 1024 * 1024;
  * The cache uses an LRU eviction policy with both entry-count and byte-size limits.
  */
 export class FileStateCache {
-  private readonly entries: Map<string, FileState> = new Map();
-  private readonly maxEntries: number;
-  private readonly maxSizeBytes: number;
+  private readonly entries: Map<string, IFileState> = new Map();
   private currentSizeBytes = 0;
-
-  constructor(
-    maxEntries: number = DEFAULT_MAX_ENTRIES,
-    maxSizeBytes: number = DEFAULT_MAX_SIZE_BYTES,
-  ) {
-    this.maxEntries = maxEntries;
-    this.maxSizeBytes = maxSizeBytes;
-  }
 
   /**
    * Normalize the file path used as cache key.
@@ -67,7 +46,7 @@ export class FileStateCache {
     return path.normalize(key);
   }
 
-  get(key: string): FileState | undefined {
+  get(key: string): IFileState | undefined {
     const normalized = this.normalizeKey(key);
     const entry = this.entries.get(normalized);
     if (!entry) return undefined;
@@ -78,7 +57,7 @@ export class FileStateCache {
     return entry;
   }
 
-  set(key: string, value: FileState): void {
+  set(key: string, value: IFileState): void {
     const normalized = this.normalizeKey(key);
 
     // If key already exists, subtract its old size
@@ -89,6 +68,11 @@ export class FileStateCache {
     }
 
     const newSize = Buffer.byteLength(value.content);
+
+    // Skip caching oversized entries because they can never fit within the cap.
+    if (newSize > DEFAULT_MAX_SIZE_BYTES) {
+      return;
+    }
 
     // Evict LRU entries until we have room
     this.evict(newSize);
@@ -128,11 +112,11 @@ export class FileStateCache {
     yield* this.entries.keys();
   }
 
-  *values(): IterableIterator<FileState> {
+  *values(): IterableIterator<IFileState> {
     yield* this.entries.values();
   }
 
-  *[Symbol.iterator](): IterableIterator<[string, FileState]> {
+  *[Symbol.iterator](): IterableIterator<[string, IFileState]> {
     yield* this.entries;
   }
 
@@ -142,12 +126,12 @@ export class FileStateCache {
    */
   private evict(newBytes: number): void {
     // Evict while over entry count limit (reserve 1 slot for the new entry)
-    while (this.entries.size >= this.maxEntries) {
+    while (this.entries.size >= DEFAULT_MAX_ENTRIES) {
       this.evictOldest();
     }
     // Evict while over byte size limit
     while (
-      this.currentSizeBytes + newBytes > this.maxSizeBytes &&
+      this.currentSizeBytes + newBytes > DEFAULT_MAX_SIZE_BYTES &&
       this.entries.size > 0
     ) {
       this.evictOldest();
@@ -165,31 +149,6 @@ export class FileStateCache {
       this.entries.delete(oldest.value);
     }
   }
-}
-
-/**
- * Helper to extract a typed IFileStateCache from an opaque value.
- * Used by VSCode tools where the cache is injected as `options.fileStateCache`.
- * When the value is already typed as `IFileStateCache | undefined` (from
- * `@getpochi/tools`), this is a pass-through. When it's `unknown` (legacy
- * callers), it validates via `instanceof`.
- */
-export function getFileStateCacheFromOptions(
-  value: IFileStateCache | undefined,
-): IFileStateCache | undefined {
-  if (!value) return undefined;
-  // If it's already a FileStateCache instance or any object that satisfies
-  // IFileStateCache, return it. For safety, validate that it has the expected
-  // methods (duck-type check for non-typed callers).
-  if (
-    typeof value === "object" &&
-    "get" in value &&
-    "set" in value &&
-    "clear" in value
-  ) {
-    return value;
-  }
-  return undefined;
 }
 
 /**
@@ -263,7 +222,7 @@ export async function updateCacheAfterWrite(
  * @param opts.getMtime     - Platform-specific function to get current file mtime
  * @param opts.operation    - "editing" or "writing" — used in the staleness error message
  * @param opts.doWork       - Callback that performs the actual edit/write. Receives the resolved
- *                            absolute path and returns `{ result, newContent }`.
+ *                            absolute path and returns `{ result, fileCacheContent }`.
  * @returns The `result` value produced by `doWork`
  */
 export async function withFileStateCacheGuard<T>(opts: {
@@ -272,7 +231,7 @@ export async function withFileStateCacheGuard<T>(opts: {
   cwd: string;
   getMtime: (path: string) => Promise<number | undefined>;
   operation: "editing" | "writing";
-  doWork: (resolvedPath: string) => Promise<{ result: T; newContent: string }>;
+  doWork: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
 }): Promise<T> {
   const { cache, path: inputPath, cwd, getMtime, operation, doWork } = opts;
 
@@ -284,11 +243,16 @@ export async function withFileStateCacheGuard<T>(opts: {
     await checkStaleness(cache, resolvedPath, getMtime, operation);
   }
 
-  const { result, newContent } = await doWork(resolvedPath);
+  const { result, fileCacheContent } = await doWork(resolvedPath);
 
   // --- Update cache with new content ---
   if (!isVirtual && cache) {
-    await updateCacheAfterWrite(cache, resolvedPath, newContent, getMtime);
+    await updateCacheAfterWrite(
+      cache,
+      resolvedPath,
+      fileCacheContent,
+      getMtime,
+    );
   }
 
   return result;
@@ -319,7 +283,7 @@ export function isVirtualPath(path: string): boolean {
  * @param opts.isBinaryRequest - Whether this is a binary/media read (skips caching)
  * @param opts.getMtime       - Platform-specific function to get current file mtime
  * @param opts.doRead         - Callback that performs the actual file read. Receives the resolved
- *                              absolute path. Returns the result to pass back to the model.
+ *                              absolute path. Returns the result plus the content to store in cache.
  * @returns The read result — either a deduplicated sentinel or the result of `doRead`
  */
 export async function withReadFileCache<T>(opts: {
@@ -330,7 +294,7 @@ export async function withReadFileCache<T>(opts: {
   endLine: number | undefined;
   isBinaryRequest: boolean;
   getMtime: (path: string) => Promise<number | undefined>;
-  doRead: (resolvedPath: string) => Promise<{ result: T; fileContent: string }>;
+  doRead: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
 }): Promise<{ result: T; deduplicated: false } | { deduplicated: true }> {
   const {
     cache,
@@ -367,7 +331,7 @@ export async function withReadFileCache<T>(opts: {
     }
   }
 
-  const { result, fileContent } = await doRead(resolvedPath);
+  const { result, fileCacheContent } = await doRead(resolvedPath);
 
   // --- Populate cache ---
   // Store what the model has "seen" so that future reads can dedup,
@@ -376,7 +340,7 @@ export async function withReadFileCache<T>(opts: {
     const mtimeMs = await getMtime(resolvedPath);
     if (mtimeMs !== undefined) {
       cache.set(resolvedPath, {
-        content: fileContent,
+        content: fileCacheContent,
         timestamp: mtimeMs,
         startLine,
         endLine,

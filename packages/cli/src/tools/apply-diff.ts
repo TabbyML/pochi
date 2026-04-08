@@ -38,7 +38,7 @@ export const applyDiff =
 
         return {
           result: { success: true as const },
-          newContent: updatedContent,
+          fileCacheContent: updatedContent,
         };
       },
     });

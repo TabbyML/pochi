@@ -126,6 +126,7 @@ export class PochiWebviewPanel
     for (const [uid, panel] of PochiWebviewPanel.panels) {
       if (panel === this) {
         PochiWebviewPanel.panels.delete(uid);
+        this.vscodeHost.deleteFileStateCache(uid);
         // When the webview panel is disposed (e.g. task is closed),
         // we must also close any open editor tabs (pochi:// scheme) associated with this task.
         PochiFileSystemProvider.closePochiTabs(uid);

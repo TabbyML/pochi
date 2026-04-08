@@ -3,7 +3,6 @@ import { getLogger } from "@/lib/logger";
 import { writeTextDocument } from "@/lib/write-text-document";
 import { parseDiffAndApply } from "@getpochi/common/diff-utils";
 import {
-  getFileStateCacheFromOptions,
   validateTextFile,
   withFileStateCacheGuard,
 } from "@getpochi/common/tool-utils";
@@ -17,10 +16,9 @@ export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
   options,
 ) => {
   const { abortSignal, cwd } = options;
-  const fileStateCache = getFileStateCacheFromOptions(options.fileStateCache);
 
   return withFileStateCacheGuard({
-    cache: fileStateCache,
+    cache: options.fileStateCache,
     path,
     cwd,
     getMtime: getVscodeFileMtime,
@@ -51,7 +49,7 @@ export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
 
       return {
         result: { success: true as const, ...edits },
-        newContent: updatedContent,
+        fileCacheContent: updatedContent,
       };
     },
   });

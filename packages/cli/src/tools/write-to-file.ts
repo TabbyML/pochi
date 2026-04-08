@@ -29,7 +29,7 @@ export const writeToFile =
 
         return {
           result: { success: true as const },
-          newContent: processedContent,
+          fileCacheContent: processedContent,
         };
       },
     });

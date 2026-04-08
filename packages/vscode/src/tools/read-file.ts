@@ -1,7 +1,6 @@
 import { getVscodeFileMtime } from "@/lib/fs";
 import {
   FILE_UNCHANGED_STUB,
-  getFileStateCacheFromOptions,
   isPlainText,
   isVirtualPath,
   readMediaFile,
@@ -20,12 +19,11 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
   options,
 ) => {
   const { cwd, contentType } = options;
-  const fileStateCache = getFileStateCacheFromOptions(options.fileStateCache);
 
   const isBinaryRequest = !!(contentType && contentType.length > 0);
 
   const cacheResult = await withReadFileCache<ReadFileOutput>({
-    cache: fileStateCache,
+    cache: options.fileStateCache,
     path,
     cwd,
     startLine,
@@ -43,7 +41,7 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
       if (isBinaryRequest && !isPlainTextFile) {
         return {
           result: readMediaFile(resolvedPath, fileBuffer, contentType),
-          fileContent: "",
+          fileCacheContent: "",
         };
       }
 
@@ -60,7 +58,7 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
         addLineNumbers,
       });
 
-      return { result, fileContent };
+      return { result, fileCacheContent: fileContent };
     },
   });
 

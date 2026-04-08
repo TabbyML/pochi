@@ -11,7 +11,7 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import { getFileStateCache } from "@/lib/file-state-cache-registry";
+import type { FileStateCacheRegistry } from "@/lib/file-state-cache-registry";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -185,6 +185,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
     private readonly taskChangedFilesManager: TaskChangedFilesManager,
+    private readonly fileStateCacheRegistry: FileStateCacheRegistry,
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
     private readonly layoutManager: LayoutManager,
@@ -343,9 +344,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   clearFileStateCache = async (taskId: string): Promise<void> => {
-    const cache = getFileStateCache(taskId);
-    cache.clear();
+    this.fileStateCacheRegistry.clear(taskId);
   };
+
+  deleteFileStateCache(taskId: string): void {
+    this.fileStateCacheRegistry.delete(taskId);
+  }
 
   readActiveSelection = async (): Promise<
     ThreadSignalSerialization<FileSelection | undefined>
@@ -496,7 +500,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         contentType: options.contentType,
         envs,
         executeCommandWhitelist: options.executeCommandWhitelist,
-        fileStateCache: getFileStateCache(options.taskId),
+        fileStateCache: this.fileStateCacheRegistry.get(options.taskId),
       }),
     );
 
@@ -1088,6 +1092,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
       if (Object.keys(updates).length > 0) {
         await this.taskStateStore.setArchived(updates);
+        for (const taskId of Object.keys(updates)) {
+          this.deleteFileStateCache(taskId);
+        }
       }
     }
     return success;
@@ -1217,6 +1224,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           await this.taskStateStore.setArchived({
             [params.taskId]: params.archived,
           });
+          if (params.archived) {
+            this.deleteFileStateCache(params.taskId);
+          }
         } else if (params.type === "batch") {
           const tasks = this.taskHistoryStore.tasks.value;
           const updates: Record<string, boolean> = {};
@@ -1232,6 +1242,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
           if (Object.keys(updates).length > 0) {
             await this.taskStateStore.setArchived(updates);
+            for (const taskId of Object.keys(updates)) {
+              this.deleteFileStateCache(taskId);
+            }
           }
         }
       },
