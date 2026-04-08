@@ -80,17 +80,22 @@ export async function parseAgentFile(
 
   const frontmatterData = parseResult.data;
   const toolsRaw = frontmatterData.tools;
-  let tools: string[] | undefined;
+  let tools:
+    | {
+        name: string;
+        args?: string[];
+      }[]
+    | undefined;
   if (typeof toolsRaw === "string") {
     const toolsRawStr = toolsRaw.trim();
     tools =
       toolsRawStr.length > 0
-        ? toolsRawStr.split(",").map((tool) => tool.trim())
+        ? splitTools(toolsRawStr).map((tool) => parseToolSpec(tool))
         : [];
   } else if (Array.isArray(toolsRaw)) {
     tools = toolsRaw
-      .map((tool) => tool.trim())
-      .filter((tool) => tool.length > 0);
+      .map((tool) => parseToolSpec(tool))
+      .filter((tool) => tool.name.length > 0);
   }
 
   const agentName = frontmatterData.name || defaultName;
@@ -114,4 +119,55 @@ export async function parseAgentFile(
     model: frontmatterData.model,
     omitAgentsMd: frontmatterData.omitAgentsMd,
   } satisfies ValidCustomAgentFile;
+}
+
+function splitTools(input: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (ch === "(") {
+      depth++;
+      continue;
+    }
+    if (ch === ")") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (ch === "," && depth === 0) {
+      const token = input.slice(start, i).trim();
+      if (token.length > 0) {
+        parts.push(token);
+      }
+      start = i + 1;
+    }
+  }
+
+  const tail = input.slice(start).trim();
+  if (tail.length > 0) {
+    parts.push(tail);
+  }
+
+  return parts;
+}
+
+function parseToolSpec(tool: string): { name: string; args?: string[] } {
+  const trimmed = tool.trim();
+  if (!trimmed) {
+    return { name: "" };
+  }
+
+  const match = trimmed.match(/^([a-zA-Z][\w-]*)\((.*)\)$/);
+  if (!match) {
+    return { name: trimmed };
+  }
+
+  const args = match[2]
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0);
+
+  return args.length > 0 ? { name: match[1], args } : { name: match[1] };
 }

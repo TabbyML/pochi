@@ -2,7 +2,7 @@ import type { UIMessage } from "ai";
 import { z } from "zod";
 import type { Todo } from "./todo-write";
 import { defineClientTool } from "./types";
-import { parseToolSpec } from "./utils";
+import { normalizeToolSpecs, parseToolSpec } from "./utils";
 
 export type SubTask = {
   clientTaskId: string;
@@ -14,7 +14,15 @@ export const CustomAgent = z.object({
   name: z.string().describe("The name of the custom agent."),
   description: z.string().describe("A brief description of the custom agent."),
   tools: z
-    .array(z.string())
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          name: z.string(),
+          args: z.array(z.string()).optional(),
+        }),
+      ]),
+    )
     .optional()
     .describe("List of tools the agent can use."),
   systemPrompt: z.string().describe("The system prompt for the custom agent."),
@@ -48,13 +56,15 @@ export const overrideCustomAgentTools = (
     toDeleteTools.push("newTask", "askFollowupQuestion");
   }
 
-  const updatedTools = customAgent.tools.filter((tool) => {
+  const normalizedTools = normalizeToolSpecs(customAgent.tools) ?? [];
+  const updatedTools = normalizedTools.filter((tool) => {
     const parsed = parseToolSpec(tool);
     return (
       !toDeleteTools.includes(parsed.name) && !toAddTools.includes(parsed.name)
     );
   });
-  return { ...customAgent, tools: [...updatedTools, ...toAddTools] };
+  const normalizedAddedTools = normalizeToolSpecs(toAddTools) ?? [];
+  return { ...customAgent, tools: [...updatedTools, ...normalizedAddedTools] };
 };
 
 function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {

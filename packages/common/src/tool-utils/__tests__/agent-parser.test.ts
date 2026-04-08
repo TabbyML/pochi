@@ -20,7 +20,10 @@ You are a test agent for verification purposes.`;
     expect(result.name).toBe("test-agent");
     const validResult = result as ValidCustomAgentFile;
     expect(validResult.description).toBe("A test agent");
-    expect(validResult.tools).toEqual(["readFile", "writeToFile"]);
+    expect(validResult.tools).toEqual([
+      { name: "readFile" },
+      { name: "writeToFile" },
+    ]);
     expect(validResult.systemPrompt).toContain(
       "You are a test agent for verification purposes.",
     );
@@ -45,9 +48,30 @@ Agent with array-style tools.`;
     expect(result).toBeDefined();
     const validResult = result as ValidCustomAgentFile;
     expect(validResult.tools).toEqual([
-      "readFile",
-      "writeToFile",
-      "executeCommand",
+      { name: "readFile" },
+      { name: "writeToFile" },
+      { name: "executeCommand" },
+    ]);
+  });
+
+  it("should keep scoped tool syntax intact in string tools", async () => {
+    const content = `---
+name: scoped-tools-agent
+description: Agent with scoped tool args in string format
+tools: readFile, executeCommand(agent-browser,npm), newTask(explore)
+---
+
+Agent with scoped tools.`;
+
+    const result = await parseAgentFile("scoped-tools-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.tools).toEqual([
+      { name: "readFile" },
+      { name: "executeCommand", args: ["agent-browser", "npm"] },
+      { name: "newTask", args: ["explore"] },
     ]);
   });
 

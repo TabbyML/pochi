@@ -149,6 +149,10 @@ export function useLiveSubTask(
             : tool.input?.agentType === "explore"
               ? { type: "explore" }
               : undefined;
+      const executeCommandWhitelist = getToolArgs(
+        customAgent?.tools,
+        "executeCommand",
+      );
 
       const result = await vscodeHost.executeToolCall(
         toolCall.toolName,
@@ -160,10 +164,7 @@ export function useLiveSubTask(
           ),
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
-          executeCommandWhitelist: getToolArgs(
-            customAgent?.tools,
-            "executeCommand",
-          ),
+          executeCommandWhitelist,
           storeId: store.storeId,
         },
       );

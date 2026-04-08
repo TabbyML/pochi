@@ -44,8 +44,10 @@ export {
 } from "./new-task";
 export {
   type ParsedToolSpec,
+  type ToolSpecInput,
   getAllowedToolNames,
   getToolArgs,
+  normalizeToolSpecs,
   parseToolSpec,
 } from "./utils";
 export { Skill } from "./use-skill";
