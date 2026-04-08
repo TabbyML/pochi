@@ -8,6 +8,7 @@ import {
   type CustomAgent,
   type McpTool,
   type Skill,
+  getAllowedToolNames,
   overrideCustomAgentTools,
   selectClientTools,
 } from "@getpochi/tools";
@@ -158,6 +159,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
+    const enabledToolNames = getAllowedToolNames(this.customAgent?.tools);
 
     const tools = pickBy(
       {
@@ -175,7 +177,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
       (_val, key) => {
         if (this.customAgent?.tools) {
-          return this.customAgent.tools.includes(key);
+          return enabledToolNames.has(key);
         }
         return true;
       },

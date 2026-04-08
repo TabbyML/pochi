@@ -4,7 +4,7 @@ export const browser: CustomAgent = {
   name: "browser",
   description:
     "Web browser automation agent for navigating websites, interacting with pages, and extracting information. Uses agent-browser CLI for headless browser control.",
-  tools: ["executeCommand"],
+  tools: ["executeCommand(agent-browser,npm)"],
   systemPrompt: `
 You are a web browser automation agent. You control a headless browser using the agent-browser CLI.
 

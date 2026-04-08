@@ -19,7 +19,7 @@ export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
   { command, cwd = ".", timeout },
-  { abortSignal, cwd: workspaceDir, envs },
+  { abortSignal, cwd: workspaceDir, envs, executeCommandWhitelist },
 ) => {
   const defaultTimeout = 120;
   if (!command) {
@@ -30,6 +30,10 @@ export const executeCommand: ToolFunctionType<
     cwd = path.normalize(cwd);
   } else {
     cwd = path.normalize(path.join(workspaceDir, cwd));
+  }
+
+  if (executeCommandWhitelist && executeCommandWhitelist.length > 0) {
+    validateCommandWhitelist(command, executeCommandWhitelist);
   }
 
   const output = signal<ExecuteCommandResult>({
@@ -76,6 +80,36 @@ export const executeCommand: ToolFunctionType<
   // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
   return { output: ThreadSignal.serialize(output) as any };
 };
+
+function validateCommandWhitelist(command: string, whitelist: string[]) {
+  const segments = command
+    .split(/&&|\|\||\||;/)
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0);
+
+  for (const segment of segments) {
+    const token = extractCommandToken(segment);
+    if (!token || !whitelist.includes(token)) {
+      throw new Error(
+        `Command not allowed. Allowed commands: ${whitelist.join(", ")}.`,
+      );
+    }
+  }
+}
+
+function extractCommandToken(command: string): string | undefined {
+  const trimmed = command.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const match = trimmed.match(/^([^\s]+)/);
+  if (!match) {
+    return undefined;
+  }
+
+  return match[1].replace(/^['"]|['"]$/g, "");
+}
 
 async function executeCommandImpl({
   command,

@@ -42,6 +42,12 @@ export {
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
+export {
+  type ParsedToolSpec,
+  getAllowedToolNames,
+  getToolArgs,
+  parseToolSpec,
+} from "./utils";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 

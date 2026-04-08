@@ -177,4 +177,40 @@ describe("executeCommand", () => {
     expect(result.output).toBe("");
     expect(durationMs).toBeLessThan(1500);
   });
+
+  it("should allow commands in executeCommand whitelist", async () => {
+    const result = await executeCommand()(
+      { command: "echo whitelist-ok" },
+      {
+        ...mockToolExecutionOptions,
+        executeCommandWhitelist: ["echo"],
+      },
+    );
+
+    expect(result.output).toContain("whitelist-ok");
+  });
+
+  it("should reject commands not in executeCommand whitelist", async () => {
+    await expect(
+      executeCommand()(
+        { command: "pwd" },
+        {
+          ...mockToolExecutionOptions,
+          executeCommandWhitelist: ["echo"],
+        },
+      ),
+    ).rejects.toThrow("Command is not allowed by executeCommand whitelist");
+  });
+
+  it("should reject chained commands with non-whitelisted segments", async () => {
+    await expect(
+      executeCommand()(
+        { command: "echo ok && pwd" },
+        {
+          ...mockToolExecutionOptions,
+          executeCommandWhitelist: ["echo"],
+        },
+      ),
+    ).rejects.toThrow("Command is not allowed by executeCommand whitelist");
+  });
 });

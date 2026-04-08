@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import { z } from "zod";
 import type { Todo } from "./todo-write";
 import { defineClientTool } from "./types";
+import { parseToolSpec } from "./utils";
 
 export type SubTask = {
   clientTaskId: string;
@@ -47,9 +48,12 @@ export const overrideCustomAgentTools = (
     toDeleteTools.push("newTask", "askFollowupQuestion");
   }
 
-  const updatedTools = customAgent.tools.filter(
-    (tool) => !toDeleteTools.includes(tool) && !toAddTools.includes(tool),
-  );
+  const updatedTools = customAgent.tools.filter((tool) => {
+    const parsed = parseToolSpec(tool);
+    return (
+      !toDeleteTools.includes(parsed.name) && !toAddTools.includes(parsed.name)
+    );
+  });
   return { ...customAgent, tools: [...updatedTools, ...toAddTools] };
 };
 
