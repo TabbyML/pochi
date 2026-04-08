@@ -27,17 +27,15 @@ export const readFile =
       cwd,
       startLine,
       endLine,
-      isBinaryRequest,
       getMtime: getFileModificationTime,
       doRead: async (resolvedPath) => {
         const fileBuffer = await fileSystem.readFile(path);
         const isPlainTextFile = isPlainText(fileBuffer);
 
         if (isBinaryRequest && !isPlainTextFile) {
-          // Media/binary files are never cached, so fileCacheContent is unused.
           return {
             result: readMediaFile(resolvedPath, fileBuffer, contentType),
-            fileCacheContent: "",
+            fileCacheContent: null,
           };
         }
 

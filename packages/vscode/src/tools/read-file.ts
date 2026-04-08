@@ -1,4 +1,5 @@
 import { getVscodeFileMtime } from "@/lib/fs";
+import { getLogger } from "@/lib/logger";
 import {
   FILE_UNCHANGED_STUB,
   isPlainText,
@@ -12,6 +13,8 @@ import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { InferToolOutput } from "ai";
 import * as vscode from "vscode";
 
+const logger = getLogger("readFile");
+
 type ReadFileOutput = InferToolOutput<ClientTools["readFile"]>;
 
 export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
@@ -22,13 +25,16 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
 
   const isBinaryRequest = !!(contentType && contentType.length > 0);
 
+  logger.debug(
+    `readFile: path="${path}" startLine=${startLine} endLine=${endLine} fileStateCache=${options.fileStateCache ? "present" : "MISSING"}`,
+  );
+
   const cacheResult = await withReadFileCache<ReadFileOutput>({
     cache: options.fileStateCache,
     path,
     cwd,
     startLine,
     endLine,
-    isBinaryRequest,
     getMtime: getVscodeFileMtime,
     doRead: async (resolvedPath) => {
       const fileUri = isVirtualPath(resolvedPath)
@@ -41,7 +47,7 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
       if (isBinaryRequest && !isPlainTextFile) {
         return {
           result: readMediaFile(resolvedPath, fileBuffer, contentType),
-          fileCacheContent: "",
+          fileCacheContent: null,
         };
       }
 
@@ -63,8 +69,10 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
   });
 
   if (cacheResult.deduplicated) {
+    logger.debug(`readFile: returning FILE_UNCHANGED_STUB for "${path}"`);
     return { content: FILE_UNCHANGED_STUB, isTruncated: false };
   }
 
+  logger.debug(`readFile: returning fresh content for "${path}"`);
   return cacheResult.result;
 };

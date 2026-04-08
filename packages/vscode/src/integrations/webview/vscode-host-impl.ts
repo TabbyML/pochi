@@ -11,7 +11,8 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-import type { FileStateCacheRegistry } from "@/lib/file-state-cache-registry";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { FileStateCacheRegistry } from "@/lib/file-state-cache-registry";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -491,6 +492,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.storeId,
       options.builtinSubAgentInfo,
     );
+    const fileStateCache = this.fileStateCacheRegistry.get(options.taskId);
+    logger.debug(
+      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
+    );
     const result = await safeCall(
       tool(resolvedArgs, {
         abortSignal,
@@ -500,7 +505,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         contentType: options.contentType,
         envs,
         executeCommandWhitelist: options.executeCommandWhitelist,
-        fileStateCache: this.fileStateCacheRegistry.get(options.taskId),
+        fileStateCache,
       }),
     );
 

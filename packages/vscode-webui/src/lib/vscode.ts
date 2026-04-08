@@ -110,6 +110,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "deleteWorktree",
         "readPochiTabs",
         "closePochiTabs",
+        "clearFileStateCache",
         "queryGithubIssues",
         "readGitBranches",
         "readReviews",

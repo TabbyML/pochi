@@ -18,10 +18,12 @@ export interface IFileState {
   content: string;
   /** File modification time in milliseconds (Math.floor of mtimeMs) */
   timestamp: number;
-  /** 1-indexed start line from Read, undefined for Edit/Write updates */
+  /** 1-indexed start line from Read, undefined for full-file reads or Edit/Write updates */
   startLine: number | undefined;
-  /** 1-indexed end line (inclusive) from Read, undefined for Edit/Write updates */
+  /** 1-indexed end line (inclusive) from Read, undefined for full-file reads or Edit/Write updates */
   endLine: number | undefined;
+  /** True for entries created by write/edit tools; absent or false for read entries */
+  fromWrite?: boolean;
 }
 
 /**

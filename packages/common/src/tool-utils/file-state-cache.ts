@@ -1,13 +1,17 @@
 import * as path from "node:path";
 import type { IFileState, IFileStateCache } from "@getpochi/tools";
+import { getLogger } from "../base/logger";
 import { resolvePath } from "./fs";
+
+const logger = getLogger("FileStateCache");
 
 export const FILE_UNCHANGED_STUB =
   "File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.";
 
 type FileCacheCallbackResult<T> = {
   result: T;
-  fileCacheContent: string;
+  /** Content to store in cache. Pass null to skip caching (e.g. actual binary content). */
+  fileCacheContent: string | null;
 };
 
 /** Default maximum number of entries in the cache */
@@ -202,6 +206,7 @@ export async function updateCacheAfterWrite(
       timestamp: newMtime,
       startLine: undefined,
       endLine: undefined,
+      fromWrite: true,
     });
   }
 }
@@ -246,7 +251,7 @@ export async function withFileStateCacheGuard<T>(opts: {
   const { result, fileCacheContent } = await doWork(resolvedPath);
 
   // --- Update cache with new content ---
-  if (!isVirtual && cache) {
+  if (!isVirtual && cache && fileCacheContent !== null) {
     await updateCacheAfterWrite(
       cache,
       resolvedPath,
@@ -280,10 +285,10 @@ export function isVirtualPath(path: string): boolean {
  * @param opts.cwd            - Working directory used to resolve relative paths
  * @param opts.startLine      - 1-indexed start line requested by the model
  * @param opts.endLine        - 1-indexed end line requested by the model
- * @param opts.isBinaryRequest - Whether this is a binary/media read (skips caching)
  * @param opts.getMtime       - Platform-specific function to get current file mtime
  * @param opts.doRead         - Callback that performs the actual file read. Receives the resolved
  *                              absolute path. Returns the result plus the content to store in cache.
+ *                              If `skipCache` is true the result is not cached (e.g. actual binary).
  * @returns The read result — either a deduplicated sentinel or the result of `doRead`
  */
 export async function withReadFileCache<T>(opts: {
@@ -292,7 +297,6 @@ export async function withReadFileCache<T>(opts: {
   cwd: string;
   startLine: number | undefined;
   endLine: number | undefined;
-  isBinaryRequest: boolean;
   getMtime: (path: string) => Promise<number | undefined>;
   doRead: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
 }): Promise<{ result: T; deduplicated: false } | { deduplicated: true }> {
@@ -302,14 +306,17 @@ export async function withReadFileCache<T>(opts: {
     cwd,
     startLine,
     endLine,
-    isBinaryRequest,
     getMtime,
     doRead,
   } = opts;
 
   const isVirtual = isVirtualPath(inputPath);
   const resolvedPath = isVirtual ? inputPath : resolvePath(inputPath, cwd);
-  const shouldCache = !isVirtual && !isBinaryRequest && cache;
+  const shouldCache = !isVirtual && cache;
+
+  logger.debug(
+    `withReadFileCache: path="${inputPath}" resolvedPath="${resolvedPath}" isVirtual=${isVirtual} cacheExists=${!!cache} shouldCache=${!!shouldCache} startLine=${startLine} endLine=${endLine}`,
+  );
 
   // --- Read deduplication ---
   // If we've already read this exact file + range and it hasn't been
@@ -318,14 +325,21 @@ export async function withReadFileCache<T>(opts: {
   // the full content (saves tokens).
   if (shouldCache) {
     const existingState = cache.get(resolvedPath);
+    logger.debug(
+      `withReadFileCache: existingState=${existingState ? `{startLine=${existingState.startLine}, endLine=${existingState.endLine}, timestamp=${existingState.timestamp}}` : "undefined"}`,
+    );
     if (
       existingState &&
-      existingState.startLine !== undefined &&
+      !existingState.fromWrite &&
       existingState.startLine === startLine &&
       existingState.endLine === endLine
     ) {
       const mtimeMs = await getMtime(resolvedPath);
+      logger.debug(
+        `withReadFileCache: range match, currentMtime=${mtimeMs} cachedMtime=${existingState.timestamp} match=${mtimeMs === existingState.timestamp}`,
+      );
       if (mtimeMs !== undefined && mtimeMs === existingState.timestamp) {
+        logger.debug(`withReadFileCache: DEDUPLICATED for "${resolvedPath}"`);
         return { deduplicated: true };
       }
     }
@@ -336,8 +350,13 @@ export async function withReadFileCache<T>(opts: {
   // --- Populate cache ---
   // Store what the model has "seen" so that future reads can dedup,
   // and edit/write tools can detect external modifications.
-  if (shouldCache) {
+  // fileCacheContent === null means the doRead served actual binary content —
+  // nothing the model "sees" as text, so skip caching.
+  if (shouldCache && fileCacheContent !== null) {
     const mtimeMs = await getMtime(resolvedPath);
+    logger.debug(
+      `withReadFileCache: populating cache for "${resolvedPath}" mtime=${mtimeMs} contentLen=${fileCacheContent.length}`,
+    );
     if (mtimeMs !== undefined) {
       cache.set(resolvedPath, {
         content: fileCacheContent,
