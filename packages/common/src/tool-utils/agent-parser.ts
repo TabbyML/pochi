@@ -80,22 +80,14 @@ export async function parseAgentFile(
 
   const frontmatterData = parseResult.data;
   const toolsRaw = frontmatterData.tools;
-  let tools:
-    | {
-        name: string;
-        args?: string[];
-      }[]
-    | undefined;
+  let tools: string[] | undefined;
   if (typeof toolsRaw === "string") {
     const toolsRawStr = toolsRaw.trim();
-    tools =
-      toolsRawStr.length > 0
-        ? splitTools(toolsRawStr).map((tool) => parseToolSpec(tool))
-        : [];
+    tools = toolsRawStr.length > 0 ? splitTools(toolsRawStr) : [];
   } else if (Array.isArray(toolsRaw)) {
     tools = toolsRaw
-      .map((tool) => parseToolSpec(tool))
-      .filter((tool) => tool.name.length > 0);
+      .map((tool) => tool.trim())
+      .filter((tool) => tool.length > 0);
   }
 
   const agentName = frontmatterData.name || defaultName;
@@ -151,23 +143,4 @@ function splitTools(input: string): string[] {
   }
 
   return parts;
-}
-
-function parseToolSpec(tool: string): { name: string; args?: string[] } {
-  const trimmed = tool.trim();
-  if (!trimmed) {
-    return { name: "" };
-  }
-
-  const match = trimmed.match(/^([a-zA-Z][\w-]*)\((.*)\)$/);
-  if (!match) {
-    return { name: trimmed };
-  }
-
-  const args = match[2]
-    .split(",")
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0);
-
-  return args.length > 0 ? { name: match[1], args } : { name: match[1] };
 }

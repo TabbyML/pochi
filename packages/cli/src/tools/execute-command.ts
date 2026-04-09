@@ -10,7 +10,11 @@ import {
   fixExecuteCommandOutput,
   getShellPath,
 } from "@getpochi/common/tool-utils";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import {
+  type ClientTools,
+  type ToolFunctionType,
+  validateExecuteCommandWhitelist,
+} from "@getpochi/tools";
 
 export class ExecuteCommandError extends Error {
   public code: number;
@@ -53,7 +57,7 @@ export const executeCommand =
     }
 
     if (executeCommandWhitelist && executeCommandWhitelist.length > 0) {
-      validateCommandWhitelist(command, executeCommandWhitelist);
+      validateExecuteCommandWhitelist(command, executeCommandWhitelist);
     }
 
     try {
@@ -82,36 +86,6 @@ export const executeCommand =
       throw new Error(errorMessage);
     }
   };
-
-function validateCommandWhitelist(command: string, whitelist: string[]) {
-  const segments = command
-    .split(/&&|\|\||\||;/)
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0);
-
-  for (const segment of segments) {
-    const token = extractCommandToken(segment);
-    if (!token || !whitelist.includes(token)) {
-      throw new Error(
-        `Command is not allowed by executeCommand whitelist. Allowed commands: ${whitelist.join(", ")}`,
-      );
-    }
-  }
-}
-
-function extractCommandToken(command: string): string | undefined {
-  const trimmed = command.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const match = trimmed.match(/^([^\s]+)/);
-  if (!match) {
-    return undefined;
-  }
-
-  return match[1].replace(/^['"]|['"]$/g, "");
-}
 
 function isExecException(error: unknown): error is ExecException {
   return (

@@ -64,7 +64,7 @@ export function normalizeToolSpecs(
 
 /**
  * Get merged args for a tool name; undefined means unrestricted access.
- * getToolArgs(["executeCommand(agent-browser,npm)"], "executeCommand") // => ["agent-browser", "npm"]
+ * getToolArgs(["executeCommand(agent-browser)", "executeCommand(npm)"], "executeCommand") // => ["agent-browser", "npm"]
  */
 export function getToolArgs(
   tools: ToolSpecInput[] | undefined,
@@ -73,17 +73,23 @@ export function getToolArgs(
   let hasUnrestrictedTool = false;
   const allowed = new Set<string>();
 
-  for (const parsed of parsedSpecs(tools)) {
+  for (const tool of tools ?? []) {
+    const parsed = parseToolSpec(tool);
     if (parsed.name !== toolName) {
       continue;
     }
 
-    if (parsed.args.length === 0) {
+    const args =
+      toolName === "executeCommand"
+        ? getExecuteCommandArgs(tool, parsed)
+        : parsed.args;
+
+    if (args.length === 0) {
       hasUnrestrictedTool = true;
       continue;
     }
 
-    for (const arg of parsed.args) {
+    for (const arg of args) {
       allowed.add(arg);
     }
   }
@@ -99,4 +105,94 @@ export function getAllowedToolNames(
   tools: ToolSpecInput[] | undefined,
 ): Set<string> {
   return new Set(parsedSpecs(tools).map((x) => x.name));
+}
+
+function splitCommandSegments(command: string): string[] {
+  return command
+    .split(/&&|\|\||\||;/)
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0);
+}
+
+function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeWhitespace(input: string): string {
+  return input.trim().replace(/\s+/g, " ");
+}
+
+function extractCommandToken(command: string): string | undefined {
+  const trimmed = normalizeWhitespace(command);
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const firstSpace = trimmed.indexOf(" ");
+  return firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);
+}
+
+function matchSegmentPattern(segment: string, pattern: string): boolean {
+  const normalizedSegment = normalizeWhitespace(segment);
+  const normalizedPattern = normalizeWhitespace(pattern);
+
+  if (!normalizedPattern) {
+    return false;
+  }
+
+  if (normalizedPattern.includes("*")) {
+    const regex = new RegExp(
+      `^${escapeRegex(normalizedPattern).replace(/\\\*/g, ".*")}$`,
+    );
+    return regex.test(normalizedSegment);
+  }
+
+  if (!normalizedPattern.includes(" ")) {
+    // Backward-compatible mode: single-token pattern matches command token.
+    return extractCommandToken(normalizedSegment) === normalizedPattern;
+  }
+
+  // Multi-token pattern without wildcard means exact command-segment match.
+  return normalizedSegment === normalizedPattern;
+}
+
+export function validateExecuteCommandWhitelist(
+  command: string,
+  whitelist: string[],
+): void {
+  const segments = splitCommandSegments(command);
+
+  for (const segment of segments) {
+    const matched = whitelist.some((pattern) =>
+      matchSegmentPattern(segment, pattern),
+    );
+
+    if (!matched) {
+      throw new Error(
+        `Command is not allowed by the configured command rules. Allowed command patterns: ${whitelist.join(", ")}`,
+      );
+    }
+  }
+}
+
+function getExecuteCommandArgs(
+  tool: ToolSpecInput,
+  parsed: ParsedToolSpec,
+): string[] {
+  if (typeof tool !== "string") {
+    return parsed.args.length > 0 ? [parsed.args.join(",")] : [];
+  }
+
+  const trimmed = tool.trim();
+  if (trimmed === "executeCommand") {
+    return [];
+  }
+
+  const match = trimmed.match(/^executeCommand\((.*)\)$/);
+  if (!match) {
+    return parsed.args;
+  }
+
+  const inner = match[1].trim();
+  return inner.length > 0 ? [inner] : [];
 }

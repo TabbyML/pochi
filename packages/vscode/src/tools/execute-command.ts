@@ -4,7 +4,11 @@ import { waitForWebviewSubscription } from "@/integrations/terminal/utils";
 import { getLogger } from "@getpochi/common";
 import { getShellPath } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import {
+  type ClientTools,
+  type ToolFunctionType,
+  validateExecuteCommandWhitelist,
+} from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
 import { ThreadSignal } from "@quilted/threads/signals";
 import { executeCommandWithNode } from "../integrations/terminal/execute-command-with-node";
@@ -33,7 +37,7 @@ export const executeCommand: ToolFunctionType<
   }
 
   if (executeCommandWhitelist && executeCommandWhitelist.length > 0) {
-    validateCommandWhitelist(command, executeCommandWhitelist);
+    validateExecuteCommandWhitelist(command, executeCommandWhitelist);
   }
 
   const output = signal<ExecuteCommandResult>({
@@ -80,36 +84,6 @@ export const executeCommand: ToolFunctionType<
   // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
   return { output: ThreadSignal.serialize(output) as any };
 };
-
-function validateCommandWhitelist(command: string, whitelist: string[]) {
-  const segments = command
-    .split(/&&|\|\||\||;/)
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0);
-
-  for (const segment of segments) {
-    const token = extractCommandToken(segment);
-    if (!token || !whitelist.includes(token)) {
-      throw new Error(
-        `Command not allowed. Allowed commands: ${whitelist.join(", ")}.`,
-      );
-    }
-  }
-}
-
-function extractCommandToken(command: string): string | undefined {
-  const trimmed = command.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const match = trimmed.match(/^([^\s]+)/);
-  if (!match) {
-    return undefined;
-  }
-
-  return match[1].replace(/^['"]|['"]$/g, "");
-}
 
 async function executeCommandImpl({
   command,

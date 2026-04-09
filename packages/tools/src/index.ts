@@ -49,6 +49,7 @@ export {
   getToolArgs,
   normalizeToolSpecs,
   parseToolSpec,
+  validateExecuteCommandWhitelist,
 } from "./utils";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
