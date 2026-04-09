@@ -61,7 +61,7 @@ const VSCodeHostStub = {
     return Promise.resolve();
   },
   readEnvironment: (_options: {
-    isSubTask?: boolean;
+    omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     taskId?: string;
   }): Promise<Environment> => {
@@ -384,18 +384,6 @@ const VSCodeHostStub = {
     return {
       value: {} as ThreadSignalSerialization<string>,
       updateLang: (_lang: string) => Promise.resolve(),
-    };
-  },
-
-  readForkTaskStatus: async (): Promise<{
-    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
-    setForkTaskStatus: () => Promise<void>;
-  }> => {
-    return {
-      status: {} as ThreadSignalSerialization<
-        Record<string, "inProgress" | "ready">
-      >,
-      setForkTaskStatus: () => Promise.resolve(),
     };
   },
 

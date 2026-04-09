@@ -155,6 +155,7 @@ code {
   --background: var(--vscode-editor-background);
   --foreground: var(--vscode-foreground);
 
+  --muted: var(--vscode-editor-inactiveSelectionBackground);
   --muted-foreground: var(--vscode-descriptionForeground);
 
   --card: var(--vscode-toolbar-hoverBackground);
@@ -167,8 +168,8 @@ code {
   --primary: var(--vscode-button-background);
   --primary-foreground: var(--vscode-button-foreground);
 
-  --secondary: var(--vscode-button-secondaryBackground);
-  --secondary-foreground: var(--vscode-button-secondaryForeground);
+  --secondary: var(--vscode-list-hoverBackground);
+  --secondary-foreground: var(--vscode-foreground);
 
   --popover: var(--vscode-dropdown-background);
   --popover-foreground: var(--vscode-dropdown-foreground);

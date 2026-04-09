@@ -124,7 +124,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readContextWindowUsage",
         "readTaskArchived",
         "readLang",
-        "readForkTaskStatus",
         "readTaskChangedFiles",
       ],
       exports: {

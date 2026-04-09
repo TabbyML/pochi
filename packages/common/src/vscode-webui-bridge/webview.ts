@@ -61,7 +61,7 @@ export interface VSCodeHostApi {
   setGlobalState(key: string, value: unknown): Promise<void>;
 
   readEnvironment(options: {
-    isSubTask?: boolean;
+    omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     /**
      * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
@@ -407,14 +407,6 @@ export interface VSCodeHostApi {
   readLang(): Promise<{
     value: ThreadSignalSerialization<string>;
     updateLang: (lang: string) => Promise<void>;
-  }>;
-
-  readForkTaskStatus(): Promise<{
-    status: ThreadSignalSerialization<Record<string, "inProgress" | "ready">>;
-    setForkTaskStatus: (
-      uid: string,
-      status: "inProgress" | "ready",
-    ) => Promise<void>;
   }>;
 
   /**

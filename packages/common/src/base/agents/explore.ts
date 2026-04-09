@@ -2,6 +2,7 @@ import type { CustomAgent } from "@getpochi/tools";
 
 export const explore: CustomAgent = {
   name: "explore",
+  omitAgentsMd: true,
   description: `
 Use this agent to explore the codebase when you need to: understand project structure, find where features are implemented, locate specific functions or classes, analyze code patterns, investigate how something works, search for examples or usage, or gather information before making changes.
 

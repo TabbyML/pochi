@@ -51,6 +51,23 @@ Agent with array-style tools.`;
     ]);
   });
 
+  it("should parse omitAgentsMd from frontmatter", async () => {
+    const content = `---
+name: no-rules-agent
+description: Agent that opts out of workspace rules
+omitAgentsMd: true
+---
+
+Agent content.`;
+
+    const result = await parseAgentFile("no-rules-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.omitAgentsMd).toBe(true);
+  });
+
   it("should return an error for invalid frontmatter", async () => {
     const content = `---
 name: missing-description

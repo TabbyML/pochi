@@ -94,7 +94,11 @@ export function getOrLoadTaskStore({
   storeRegistry,
   storeId,
   jwt,
-}: { storeRegistry: StoreRegistry; storeId: string; jwt: string | null }) {
+}: {
+  storeRegistry: StoreRegistry;
+  storeId: string;
+  jwt: string | null;
+}) {
   return storeRegistry.getOrLoadPromise({
     storeId,
     schema: catalog.schema,

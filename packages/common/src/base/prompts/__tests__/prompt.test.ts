@@ -18,6 +18,27 @@ test("snapshot", () => {
   ).toMatchSnapshot();
 });
 
+test("custom agent includes custom rules by default", () => {
+  expect(
+    createSystemPrompt(`# Rules from (abc)`, {
+      name: "browser",
+      description: "browser agent",
+      systemPrompt: "Custom agent prompt",
+    }),
+  ).toContain("USER'S CUSTOM INSTRUCTIONS");
+});
+
+test("custom agent can omit custom rules", () => {
+  expect(
+    createSystemPrompt(`# Rules from (abc)`, {
+      name: "planner",
+      description: "planner agent",
+      systemPrompt: "Custom agent prompt",
+      omitAgentsMd: true,
+    }),
+  ).not.toContain("USER'S CUSTOM INSTRUCTIONS");
+});
+
 test("environment", () => {
   expect(
     createEnvironmentPrompt({

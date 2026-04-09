@@ -3,7 +3,6 @@ import "@/components/prompt-form/prompt-form.css";
 import { GlobalStoreInitializer } from "@/components/global-store-initializer";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatPage, ChatSkeleton } from "@/features/chat";
-import { useForkTaskStatus } from "@/lib/hooks/use-fork-task-status";
 import { useModelList } from "@/lib/hooks/use-model-list";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
@@ -75,24 +74,8 @@ function RouteComponent() {
   return (
     <Suspense fallback={<ChatSkeleton />}>
       <DefaultStoreOptionsProvider storeId={storeId} jwt={jwt}>
-        {info?.type === "fork-task" ? (
-          <ForkTaskQueryWrapper uid={uid}>{chatPage}</ForkTaskQueryWrapper>
-        ) : (
-          chatPage
-        )}
+        {chatPage}
       </DefaultStoreOptionsProvider>
     </Suspense>
   );
-}
-
-function ForkTaskQueryWrapper({
-  uid,
-  children,
-}: {
-  uid: string;
-  children: React.ReactNode;
-}) {
-  // All useStore and queries must run after forkTask status is ready
-  const forkTaskStatus = useForkTaskStatus();
-  return forkTaskStatus[uid] === "ready" ? children : <ChatSkeleton />;
 }

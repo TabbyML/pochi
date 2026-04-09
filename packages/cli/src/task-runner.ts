@@ -247,7 +247,11 @@ export class TaskRunner {
       getters: {
         getLLM: () => options.llm,
         getEnvironment: async () => ({
-          ...(await readEnvironment({ cwd: options.cwd })),
+          ...(await readEnvironment({
+            cwd: options.cwd,
+            omitCustomRules:
+              options.isSubTask && options.customAgent?.omitAgentsMd === true,
+          })),
           todos: this.todos,
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
@@ -511,6 +515,12 @@ export class TaskRunner {
         "Task is failed, trying to resend last message to resume it.",
         task.error,
       );
+      const processed = prepareLastMessageForRetry(message);
+      if (processed) {
+        this.chat.appendOrReplaceMessage(processed);
+      } else {
+        // skip, the last message is ready to be resent
+      }
       return "retry";
     }
 

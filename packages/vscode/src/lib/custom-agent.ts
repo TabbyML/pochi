@@ -109,14 +109,14 @@ export class CustomAgentManager implements vscode.Disposable {
 
     try {
       if (this.cwd) {
-        watchDir(this.cwd, ".pochi/agents", ".pochi/agents/**/*.md");
+        watchDir(path.join(this.cwd, ".pochi"), "agents", "agents/**/*.md");
       }
     } catch (error) {
       logger.error("Failed to initialize project agents watcher", error);
     }
 
     try {
-      watchDir(os.homedir(), ".pochi/agents", ".pochi/agents/**/*.md");
+      watchDir(path.join(os.homedir(), ".pochi"), "agents", "agents/**/*.md");
     } catch (error) {
       logger.error("Failed to initialize system agents watcher", error);
     }

@@ -11,8 +11,6 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { ForkTaskStatus } from "@/lib/fork-task-status";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -188,7 +186,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly taskChangedFilesManager: TaskChangedFilesManager,
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
-    private readonly forkTaskStatus: ForkTaskStatus,
     private readonly layoutManager: LayoutManager,
   ) {}
 
@@ -275,14 +272,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
    * @param options.taskId - The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
    */
   readEnvironment = async (options: {
-    isSubTask?: boolean;
+    omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     taskId?: string;
   }): Promise<Environment> => {
-    const isSubTask = options.isSubTask ?? false;
     const webviewKind = options.webviewKind;
     const customRules =
-      !isSubTask && this.cwd ? await collectCustomRules(this.cwd) : undefined;
+      this.cwd && !options.omitCustomRules
+        ? await collectCustomRules(this.cwd)
+        : undefined;
 
     const systemInfo = getSystemInfo(this.cwd);
 
@@ -1233,13 +1231,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readLang = async () => ({
     value: ThreadSignal.serialize(this.lang.currentLang),
     updateLang: this.lang.updateLang,
-  });
-
-  readForkTaskStatus = async () => ({
-    status: ThreadSignal.serialize(this.forkTaskStatus.status),
-    setForkTaskStatus: async (uid: string, status: "inProgress" | "ready") => {
-      this.forkTaskStatus.setStatus(uid, status);
-    },
   });
 
   readTaskChangedFiles = async (taskId: string) => {

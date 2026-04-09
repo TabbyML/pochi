@@ -1,4 +1,4 @@
-import "./i18n/config";
+import i18n from "./i18n/config";
 import "./styles.css";
 import { StrictMode, useEffect } from "react";
 import ReactDOM from "react-dom/client";
@@ -45,6 +45,15 @@ function App() {
 // Render the app
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
+  const hash = window.location.hash.substring(1);
+  if (hash) {
+    const hashParams = new URLSearchParams(hash);
+    const langParam = hashParams.get("lang");
+    if (langParam) {
+      i18n.changeLanguage(langParam);
+    }
+  }
+
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
