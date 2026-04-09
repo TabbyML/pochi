@@ -24,7 +24,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
+import { type Todo, getToolArgs } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -149,6 +149,10 @@ export function useLiveSubTask(
             : tool.input?.agentType === "explore"
               ? { type: "explore" }
               : undefined;
+      const executeCommandWhitelist = getToolArgs(
+        customAgent?.tools,
+        "executeCommand",
+      );
 
       const result = await vscodeHost.executeToolCall(
         toolCall.toolName,
@@ -160,6 +164,7 @@ export function useLiveSubTask(
           ),
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
+          executeCommandWhitelist,
           storeId: store.storeId,
         },
       );

@@ -51,6 +51,102 @@ Agent with array-style tools.`;
     ]);
   });
 
+  it("should keep scoped tool syntax intact in string tools", async () => {
+    const content = `---
+name: scoped-tools-agent
+description: Agent with scoped tool args in string format
+tools: readFile, executeCommand(agent-browser), executeCommand(npm), newTask(explore,plan)
+---
+
+Agent with scoped tools.`;
+
+    const result = await parseAgentFile("scoped-tools-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.tools).toEqual([
+      "readFile",
+      "executeCommand(agent-browser)",
+      "executeCommand(npm)",
+      "newTask(explore,plan)",
+    ]);
+  });
+
+  it("should parse multiple string tools with merged executeCommand entries", async () => {
+    const content = `---
+name: multi-string-tools-agent
+description: Agent with many string tools
+tools: readFile, writeToFile, executeCommand(agent-browser *), executeCommand(git status), newTask(explore,plan), listFiles
+---
+
+Agent with many tools in string form.`;
+
+    const result = await parseAgentFile("multi-string-tools-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.tools).toEqual([
+      "readFile",
+      "writeToFile",
+      "executeCommand(agent-browser *)",
+      "executeCommand(git status)",
+      "newTask(explore,plan)",
+      "listFiles",
+    ]);
+  });
+
+  it("should parse merged executeCommand declarations in one tools string", async () => {
+    const content = `---
+name: execute-command-merged-agent
+description: Agent with merged executeCommand entries
+tools: executeCommand(agent-browser), executeCommand(npm), newTask(explore)
+---
+
+Agent with merged executeCommand declarations.`;
+
+    const result = await parseAgentFile("execute-command-merged-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.tools).toEqual([
+      "executeCommand(agent-browser)",
+      "executeCommand(npm)",
+      "newTask(explore)",
+    ]);
+  });
+
+  it("should parse multiple array tools and trim empty entries", async () => {
+    const content = `---
+name: multi-array-tools-agent
+description: Agent with many array tools
+tools:
+  - readFile
+  - " executeCommand(agent-browser *) "
+  - " executeCommand(git status) "
+  - ""
+  - " newTask(explore, plan) "
+  - writeToFile
+---
+
+Agent with many tools in array form.`;
+
+    const result = await parseAgentFile("multi-array-tools-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.tools).toEqual([
+      "readFile",
+      "executeCommand(agent-browser *)",
+      "executeCommand(git status)",
+      "newTask(explore, plan)",
+      "writeToFile",
+    ]);
+  });
+
   it("should parse omitAgentsMd from frontmatter", async () => {
     const content = `---
 name: no-rules-agent

@@ -20,7 +20,7 @@ import {
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import type { CustomAgent, Skill } from "@getpochi/tools";
+import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
 import {
   type ToolUIPart,
   getToolName,
@@ -566,6 +566,10 @@ export class TaskRunner {
 
   private async processToolCalls(message: Message) {
     logger.trace("Processing tool calls in the last message.");
+    const executeCommandWhitelist = getToolArgs(
+      this.customAgent?.tools,
+      "executeCommand",
+    );
     for (const toolCall of message.parts.filter(isToolUIPart)) {
       if (toolCall.state !== "input-available") continue;
       const toolName = getToolName(toolCall);
@@ -596,6 +600,7 @@ export class TaskRunner {
           undefined,
           this.llm.contentType,
           envs,
+          executeCommandWhitelist,
         ),
       );
 
