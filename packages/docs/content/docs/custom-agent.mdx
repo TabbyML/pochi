@@ -45,7 +45,7 @@ The frontmatter provides metadata for the custom agent:
 
 ### Tool-specific rules
 
-Rule entries follow the format `tool` or `tool(specifier)`, and tool-specific rules are currently supported for `executeCommand` and `newTask`.
+Rule entries follow the format `tool` or `tool(specifier)`, and tool-specific rules are supported for `executeCommand`.
 
 #### Command Execution Restrictions
 
@@ -67,24 +67,6 @@ tools:
   - readFile
   - executeCommand(agent-browser)
   - executeCommand(npm run *)
----
-```
-
-#### Subagent Restrictions
-
-Use `newTask(AgentName)` rules to restrict which subagents Pochi can use.
-
-- `newTask(explore)` means the allowed subagent is `explore`.
-- `newTask(explore,plan)` means the allowed subagents are `explore` and `plan`.
-
-Example:
-
-```markdown
----
-description: Planning-focused agent
-tools:
-  - readFile
-  - newTask(explore,plan)
 ---
 ```
 
