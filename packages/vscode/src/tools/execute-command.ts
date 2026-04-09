@@ -2,7 +2,10 @@ import * as path from "node:path";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
 import { waitForWebviewSubscription } from "@/integrations/terminal/utils";
 import { getLogger } from "@getpochi/common";
-import { getShellPath } from "@getpochi/common/tool-utils";
+import {
+  getShellPath,
+  maybePersistToolResult,
+} from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
@@ -19,7 +22,7 @@ export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
   { command, cwd = ".", timeout },
-  { abortSignal, cwd: workspaceDir, envs },
+  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
 ) => {
   const defaultTimeout = 120;
   if (!command) {
@@ -53,11 +56,17 @@ export const executeCommand: ToolFunctionType<
         };
       },
     })
-      .then(({ output: commandOutput, isTruncated }) => {
+      .then(async ({ output: commandOutput, isTruncated }) => {
+        const persisted = (await maybePersistToolResult(
+          "executeCommand",
+          toolCallId,
+          taskId ?? "",
+          { output: commandOutput, isTruncated },
+        )) as { output: string; isTruncated: boolean };
         output.value = {
-          content: commandOutput,
+          content: persisted.output,
           status: "completed",
-          isTruncated,
+          isTruncated: persisted.isTruncated,
         };
       })
       .catch((error) => {

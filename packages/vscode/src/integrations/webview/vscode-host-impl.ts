@@ -58,10 +58,12 @@ import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
   GitStatusReader,
   ignoreWalk,
   isPlainTextFile,
+  maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
@@ -479,7 +481,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.storeId,
       options.builtinSubAgentInfo,
     );
-    const result = await safeCall(
+    const { taskId } = decodeStoreId(options.storeId);
+    const rawResult = await safeCall(
       tool(resolvedArgs, {
         abortSignal,
         messages: [],
@@ -487,7 +490,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         cwd: this.cwd,
         contentType: options.contentType,
         envs,
+        taskId,
       }),
+    );
+
+    const result = await maybePersistToolResult(
+      toolName,
+      options.toolCallId,
+      taskId,
+      rawResult,
     );
 
     const status = abortSignal.aborted

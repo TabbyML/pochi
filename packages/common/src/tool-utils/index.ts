@@ -40,3 +40,5 @@ export {
 } from "./notebook-utils";
 export { readMediaFile } from "./media";
 export { getWorkspaceExcludePatterns } from "./workspace-exclude-patterns";
+export { maybePersistToolResult } from "./tool-result-persistence";
+export { getTaskDataDir } from "./pochi-paths";

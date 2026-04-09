@@ -1,7 +1,9 @@
+import fs from "node:fs/promises";
 import { TextDecoder, TextEncoder } from "node:util";
 import { isFileExists } from "@/lib/fs";
 import { taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
+import { getTaskDataDir } from "@getpochi/common/tool-utils";
 import { signal } from "@preact/signals-core";
 import { funnel } from "remeda";
 import { inject, injectable, singleton } from "tsyringe";
@@ -97,6 +99,7 @@ export class TaskHistoryStore implements vscode.Disposable {
 
     const validTasks: Record<string, EncodedTask> = {};
     let hasStaleTasks = false;
+    const removedTaskIds: string[] = [];
 
     for (const [id, task] of Object.entries(tasks)) {
       // Remove tasks older than 3 months
@@ -105,6 +108,7 @@ export class TaskHistoryStore implements vscode.Disposable {
           `Removing stale task: ${id}, last updated at: ${new Date(task.updatedAt).toISOString()}`,
         );
         hasStaleTasks = true;
+        removedTaskIds.push(id);
         continue;
       }
 
@@ -116,6 +120,7 @@ export class TaskHistoryStore implements vscode.Disposable {
             `Removing task with deleted worktree: ${id}, cwd: ${task.cwd}, last updated at: ${new Date(task.updatedAt).toISOString()}`,
           );
           hasStaleTasks = true;
+          removedTaskIds.push(id);
           continue;
         }
       }
@@ -127,6 +132,11 @@ export class TaskHistoryStore implements vscode.Disposable {
 
     if (hasStaleTasks) {
       await this.writeTasksToDisk();
+      await Promise.allSettled(
+        removedTaskIds.map((id) =>
+          fs.rm(getTaskDataDir(id), { recursive: true, force: true }),
+        ),
+      );
     }
   }
 
