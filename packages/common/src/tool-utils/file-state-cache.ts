@@ -175,12 +175,14 @@ export async function checkStaleness(
   if (!cachedState) return;
 
   const currentMtime = await getMtime(resolvedPath);
-  if (currentMtime !== undefined && currentMtime !== cachedState.timestamp) {
-    const verb = operation === "editing" ? "editing" : "writing";
-    throw new Error(
-      `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${currentMtime}). Please read the file again before ${verb}.`,
-    );
-  }
+  if (currentMtime === cachedState.timestamp) return;
+
+  const verb = operation === "editing" ? "editing" : "writing";
+  const actualMtime =
+    currentMtime === undefined ? "missing" : String(currentMtime);
+  throw new Error(
+    `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${actualMtime}). Please read the file again before ${verb}.`,
+  );
 }
 
 /**

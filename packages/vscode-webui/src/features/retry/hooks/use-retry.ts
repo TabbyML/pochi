@@ -10,10 +10,13 @@ export function useRetry({
   setMessages,
   sendMessage,
   regenerate,
+  clearFileStateCache,
 }: Pick<
   UseChatHelpers<Message>,
   "messages" | "sendMessage" | "regenerate" | "setMessages"
->) {
+> & {
+  clearFileStateCache?: () => Promise<void>;
+}) {
   const retryRequest = useCallback(
     async (error: Error) => {
       if (messages.length === 0) {
@@ -38,6 +41,9 @@ export function useRetry({
 
       const lastMessageForRetry = prepareLastMessageForRetry(lastMessage);
       if (lastMessageForRetry != null) {
+        if (clearFileStateCache) {
+          await clearFileStateCache();
+        }
         setMessages([...messages.slice(0, -1), lastMessageForRetry]);
         return sendMessage(undefined);
       }
@@ -46,7 +52,7 @@ export function useRetry({
         messageId: lastMessage.id,
       });
     },
-    [messages, setMessages, sendMessage, regenerate],
+    [messages, setMessages, sendMessage, regenerate, clearFileStateCache],
   );
 
   return retryRequest;

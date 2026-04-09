@@ -204,6 +204,7 @@ function Chat({ user, uid, info }: ChatProps) {
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
     isSubTask,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
 
   const { pendingApproval, retry } = approvalAndRetry;

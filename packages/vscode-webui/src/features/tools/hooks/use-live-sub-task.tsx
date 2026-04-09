@@ -248,6 +248,7 @@ export function useLiveSubTask(
     setMessages,
     sendMessage,
     regenerate,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
   const retry = useCallback(
     (error?: Error) => {
