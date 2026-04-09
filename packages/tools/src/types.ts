@@ -13,5 +13,6 @@ export type ToolFunctionType<T extends Tool> = (
     contentType?: string[];
     envs?: Record<string, string>;
     executeCommandWhitelist?: string[];
+    newTaskAgentTypeWhitelist?: string[];
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;
