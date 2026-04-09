@@ -318,6 +318,33 @@ The frontmatter provides metadata for the custom agent:
 * `description` (required): A short description of what the agent does. This is used to help Pochi decide when to use your agent.
 * `tools` (optional): A list of tools that the agent is allowed to use. This can be a comma-separated string (e.g., `tool-1, tool-2`) or a YAML array. If omitted, the agent inherits all available tools.
 
+### Tool-specific rules
+
+Rule entries follow the format `tool` or `tool(specifier)`, and tool-specific rules are supported for `executeCommand`.
+
+#### Command Execution Restrictions
+
+Use one declaration per command rule/pattern.
+
+* `executeCommand(npm)` allows commands whose first token is `npm`.
+* `executeCommand(npm *)` allows command segments matching the pattern `npm *`.
+* `executeCommand(npm run test)` allows command segments matching exactly `npm run test`.
+* `executeCommand(npm run test *)` allows command segments matching the pattern `npm run test *`.
+
+If you need multiple command patterns, add multiple `executeCommand(...)` entries.
+
+Example:
+
+```markdown
+---
+description: Browser automation and package scripts
+tools:
+  - readFile
+  - executeCommand(agent-browser)
+  - executeCommand(npm run *)
+---
+```
+
 ### System Prompt
 
 The content of the file after the frontmatter is the system prompt for the agent. This prompt should define the agent's role, capabilities, and how it should behave.
