@@ -151,6 +151,9 @@ function Chat({ user, uid, info }: ChatProps) {
     depth: subtask?.depth ?? 0,
     customAgent,
     abortSignal: chatAbortController.current.signal,
+    onCompact: () => {
+      vscodeHost.clearFileStateCache(uid);
+    },
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
         return false;
@@ -201,6 +204,7 @@ function Chat({ user, uid, info }: ChatProps) {
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
     isSubTask,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
 
   const { pendingApproval, retry } = approvalAndRetry;

@@ -1,24 +1,45 @@
 import { parseDiffAndApply } from "@getpochi/common/diff-utils";
-import { validateTextFile } from "@getpochi/common/tool-utils";
+import {
+  getFileModificationTime,
+  validateTextFile,
+  withFileStateCacheGuard,
+} from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
 export const applyDiff =
   ({
     fileSystem,
+    fileStateCache,
   }: ToolCallOptions): ToolFunctionType<ClientTools["applyDiff"]> =>
-  async ({ path, searchContent, replaceContent, expectedReplacements }) => {
-    const fileBuffer = await fileSystem.readFile(path);
-    validateTextFile(fileBuffer);
-    const fileContent = fileBuffer.toString();
+  async (
+    { path, searchContent, replaceContent, expectedReplacements },
+    { cwd },
+  ) => {
+    return withFileStateCacheGuard({
+      cache: fileStateCache,
+      path,
+      cwd,
+      getMtime: getFileModificationTime,
+      operation: "editing",
+      doWork: async () => {
+        const fileBuffer = await fileSystem.readFile(path);
+        validateTextFile(fileBuffer);
+        const fileContent = fileBuffer.toString();
 
-    const updatedContent = await parseDiffAndApply(
-      fileContent,
-      searchContent,
-      replaceContent,
-      expectedReplacements,
-    );
+        const updatedContent = await parseDiffAndApply(
+          fileContent,
+          searchContent,
+          replaceContent,
+          expectedReplacements,
+        );
 
-    await fileSystem.writeFile(path, updatedContent);
-    return { success: true };
+        await fileSystem.writeFile(path, updatedContent);
+
+        return {
+          result: { success: true as const },
+          fileCacheContent: updatedContent,
+        };
+      },
+    });
   };

@@ -11,7 +11,7 @@ index 3458a90e9185d6baae1c1402123b71a6164ae9d3..0d47d4fc562b0d63339c4f363b42350d
  Default Google Vertex AI provider instance.
   */
  declare const vertex: GoogleVertexProvider;
- 
+
 -export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, vertex };
 +export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, createVertexWithoutCredentials, vertex };
 diff --git a/dist/edge/index.d.ts b/dist/edge/index.d.ts
@@ -27,7 +27,7 @@ index 3458a90e9185d6baae1c1402123b71a6164ae9d3..0d47d4fc562b0d63339c4f363b42350d
  Default Google Vertex AI provider instance.
   */
  declare const vertex: GoogleVertexProvider;
- 
+
 -export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, vertex };
 +export { type GoogleVertexProvider, type GoogleVertexProviderSettings, createVertex, createVertexWithoutCredentials, vertex };
 diff --git a/dist/edge/index.js b/dist/edge/index.js

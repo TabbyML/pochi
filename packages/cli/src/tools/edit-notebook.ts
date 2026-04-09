@@ -1,8 +1,10 @@
 import {
   editNotebookCell,
+  getFileModificationTime,
   parseNotebook,
   serializeNotebook,
   validateNotebookPath,
+  withFileStateCacheGuard,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
@@ -14,25 +16,34 @@ import type { ToolCallOptions } from "../types";
 export const editNotebook =
   ({
     fileSystem,
+    fileStateCache,
   }: ToolCallOptions): ToolFunctionType<ClientTools["editNotebook"]> =>
-  async ({ path: filePath, cellId, content }) => {
+  async ({ path: filePath, cellId, content }, { cwd }) => {
     try {
-      // validateNotebookPath checks extension .ipynb.
-      // It assumes path is string.
-      // If VFS, we might skip validation or validate on the URI.
-      // validateNotebookPath throws if not .ipynb
       validateNotebookPath(filePath);
 
-      const fileBuffer = await fileSystem.readFile(filePath);
-      const fileContent = new TextDecoder().decode(fileBuffer);
+      return await withFileStateCacheGuard({
+        cache: fileStateCache,
+        path: filePath,
+        cwd,
+        getMtime: getFileModificationTime,
+        operation: "editing",
+        doWork: async () => {
+          const fileBuffer = await fileSystem.readFile(filePath);
+          const fileContent = new TextDecoder().decode(fileBuffer);
 
-      const notebook = parseNotebook(fileContent);
-      const updatedNotebook = editNotebookCell(notebook, cellId, content);
-      const serialized = serializeNotebook(updatedNotebook);
+          const notebook = parseNotebook(fileContent);
+          const updatedNotebook = editNotebookCell(notebook, cellId, content);
+          const serialized = serializeNotebook(updatedNotebook);
 
-      await fileSystem.writeFile(filePath, serialized);
+          await fileSystem.writeFile(filePath, serialized);
 
-      return { success: true };
+          return {
+            result: { success: true as const },
+            fileCacheContent: serialized,
+          };
+        },
+      });
     } catch (error) {
       return { success: false };
     }

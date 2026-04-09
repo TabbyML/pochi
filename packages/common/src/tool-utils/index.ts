@@ -7,6 +7,7 @@ export {
   resolvePath,
   isFileExists,
   isPlainText,
+  getFileModificationTime,
 } from "./fs";
 export { listFiles, listWorkspaceFiles } from "./list-files";
 export { globFiles } from "./glob-files";
@@ -40,5 +41,14 @@ export {
 } from "./notebook-utils";
 export { readMediaFile } from "./media";
 export { getWorkspaceExcludePatterns } from "./workspace-exclude-patterns";
+export {
+  FileStateCache,
+  FILE_UNCHANGED_STUB,
+  checkStaleness,
+  updateCacheAfterWrite,
+  withFileStateCacheGuard,
+  withReadFileCache,
+  isVirtualPath,
+} from "./file-state-cache";
 export { maybePersistToolResult } from "./tool-result-persistence";
 export { getTaskDataDir } from "./pochi-paths";

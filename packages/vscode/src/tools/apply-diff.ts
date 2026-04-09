@@ -1,8 +1,11 @@
-import { ensureFileDirectoryExists } from "@/lib/fs";
+import { ensureFileDirectoryExists, getVscodeFileMtime } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { writeTextDocument } from "@/lib/write-text-document";
 import { parseDiffAndApply } from "@getpochi/common/diff-utils";
-import { resolvePath, validateTextFile } from "@getpochi/common/tool-utils";
+import {
+  validateTextFile,
+  withFileStateCacheGuard,
+} from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import * as vscode from "vscode";
 
@@ -10,25 +13,44 @@ const logger = getLogger("applyDiffTool");
 
 export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
   { path, searchContent, replaceContent, expectedReplacements },
-  { abortSignal, cwd },
+  options,
 ) => {
-  const resolvedPath = resolvePath(path, cwd);
-  const fileUri = vscode.Uri.file(resolvedPath);
-  await ensureFileDirectoryExists(fileUri);
+  const { abortSignal, cwd } = options;
 
-  const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
-  validateTextFile(fileBuffer);
+  return withFileStateCacheGuard({
+    cache: options.fileStateCache,
+    path,
+    cwd,
+    getMtime: getVscodeFileMtime,
+    operation: "editing",
+    doWork: async (resolvedPath) => {
+      const fileUri = vscode.Uri.file(resolvedPath);
+      await ensureFileDirectoryExists(fileUri);
 
-  const fileContent = fileBuffer.toString();
+      const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
+      validateTextFile(fileBuffer);
 
-  const updatedContent = await parseDiffAndApply(
-    fileContent,
-    searchContent,
-    replaceContent,
-    expectedReplacements,
-  );
+      const fileContent = fileBuffer.toString();
 
-  const edits = await writeTextDocument(path, updatedContent, cwd, abortSignal);
-  logger.info(`Successfully applied diff to ${path}`);
-  return { success: true, ...edits };
+      const updatedContent = await parseDiffAndApply(
+        fileContent,
+        searchContent,
+        replaceContent,
+        expectedReplacements,
+      );
+
+      const edits = await writeTextDocument(
+        path,
+        updatedContent,
+        cwd,
+        abortSignal,
+      );
+      logger.info(`Successfully applied diff to ${path}`);
+
+      return {
+        result: { success: true as const, ...edits },
+        fileCacheContent: updatedContent,
+      };
+    },
+  });
 };

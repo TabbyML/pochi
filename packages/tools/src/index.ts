@@ -21,7 +21,7 @@ import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
-export type { ToolFunctionType } from "./types";
+export type { ToolFunctionType, IFileStateCache, IFileState } from "./types";
 export type {
   AskFollowupQuestionInput,
   Question,

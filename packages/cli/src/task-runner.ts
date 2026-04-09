@@ -9,7 +9,10 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-import { maybePersistToolResult } from "@getpochi/common/tool-utils";
+import {
+  FileStateCache,
+  maybePersistToolResult,
+} from "@getpochi/common/tool-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
@@ -197,6 +200,7 @@ export class TaskRunner {
     this.toolCallOptions = {
       rg: options.rg,
       fileSystem: this.fileSystem,
+      fileStateCache: new FileStateCache(),
       blobStore: this.blobStore,
 
       customAgents: options.customAgents,
@@ -252,6 +256,10 @@ export class TaskRunner {
       attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
+
+      onCompact: () => {
+        this.toolCallOptions.fileStateCache.clear();
+      },
 
       getters: {
         getLLM: () => options.llm,
@@ -405,6 +413,13 @@ export class TaskRunner {
     return results.length > 0 ? results.join("\n\n") : undefined;
   }
 
+  private replaceLastMessageForRetry(message: Message): void {
+    // The retry path may drop the original readFile tool_result from history.
+    // Clear the cache so later reads cannot deduplicate against discarded context.
+    this.toolCallOptions.fileStateCache.clear();
+    this.chat.appendOrReplaceMessage(message);
+  }
+
   /**
    * @returns
    *  - "finished" if the task is finished and no more steps are needed.
@@ -526,7 +541,7 @@ export class TaskRunner {
       );
       const processed = prepareLastMessageForRetry(message);
       if (processed) {
-        this.chat.appendOrReplaceMessage(processed);
+        this.replaceLastMessageForRetry(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -552,7 +567,7 @@ export class TaskRunner {
       );
       const processed = prepareLastMessageForRetry(message);
       if (processed) {
-        this.chat.appendOrReplaceMessage(processed);
+        this.replaceLastMessageForRetry(processed);
       } else {
         // skip, the last message is ready to be resent
       }

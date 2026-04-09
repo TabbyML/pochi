@@ -11,6 +11,8 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { FileStateCacheRegistry } from "@/lib/file-state-cache-registry";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -58,7 +60,6 @@ import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -186,6 +187,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
     private readonly taskChangedFilesManager: TaskChangedFilesManager,
+    private readonly fileStateCacheRegistry: FileStateCacheRegistry,
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
     private readonly layoutManager: LayoutManager,
@@ -343,6 +345,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     PochiFileSystemProvider.closePochiTabs(uid);
   };
 
+  clearFileStateCache = async (taskId: string): Promise<void> => {
+    this.fileStateCacheRegistry.clear(taskId);
+  };
+
+  deleteFileStateCache(taskId: string): void {
+    this.fileStateCacheRegistry.delete(taskId);
+  }
+
   readActiveSelection = async (): Promise<
     ThreadSignalSerialization<FileSelection | undefined>
   > => {
@@ -449,6 +459,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       executeCommandWhitelist?: string[];
       newTaskAgentTypeWhitelist?: string[];
       storeId: string;
+      taskId: string;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -483,7 +494,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.storeId,
       options.builtinSubAgentInfo,
     );
-    const { taskId } = decodeStoreId(options.storeId);
+    const taskId = options.taskId;
+    const fileStateCache = this.fileStateCacheRegistry.get(options.taskId);
+    logger.debug(
+      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
+    );
     const rawResult = await safeCall(
       tool(resolvedArgs, {
         abortSignal,
@@ -494,6 +509,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         envs,
         taskId,
         executeCommandWhitelist: options.executeCommandWhitelist,
+        fileStateCache,
         newTaskAgentTypeWhitelist: options.newTaskAgentTypeWhitelist,
       }),
     );
@@ -1093,6 +1109,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
       if (Object.keys(updates).length > 0) {
         await this.taskStateStore.setArchived(updates);
+        for (const taskId of Object.keys(updates)) {
+          this.deleteFileStateCache(taskId);
+        }
       }
     }
     return success;
@@ -1222,6 +1241,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           await this.taskStateStore.setArchived({
             [params.taskId]: params.archived,
           });
+          if (params.archived) {
+            this.deleteFileStateCache(params.taskId);
+          }
         } else if (params.type === "batch") {
           const tasks = this.taskHistoryStore.tasks.value;
           const updates: Record<string, boolean> = {};
@@ -1237,6 +1259,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
           if (Object.keys(updates).length > 0) {
             await this.taskStateStore.setArchived(updates);
+            for (const taskId of Object.keys(updates)) {
+              this.deleteFileStateCache(taskId);
+            }
           }
         }
       },

@@ -106,7 +106,7 @@ export interface ToolCallLifeCycle {
   /**
    * Execute the tool call with given arguments and options.
    * @param args - Tool call arguments
-   * @param options - Execution options including model selection
+   * @param options - Execution options including model selection and taskId
    */
   execute(
     args: unknown,
@@ -114,6 +114,7 @@ export interface ToolCallLifeCycle {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
+      taskId?: string;
       newTaskAgentTypeWhitelist?: string[];
     },
   ): void;
@@ -180,6 +181,7 @@ export class ManagedToolCallLifeCycle
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
+      taskId?: string;
       newTaskAgentTypeWhitelist?: string[];
     },
   ) {
@@ -201,6 +203,7 @@ export class ManagedToolCallLifeCycle
         executeCommandWhitelist: options?.executeCommandWhitelist,
         newTaskAgentTypeWhitelist: options?.newTaskAgentTypeWhitelist,
         storeId: this.store.storeId,
+        taskId: options?.taskId ?? "",
       });
     }
 

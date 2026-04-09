@@ -98,6 +98,9 @@ export function useLiveSubTask(
     isSubTask: true,
     depth: taskDepth,
     customAgent,
+    onCompact: () => {
+      vscodeHost.clearFileStateCache(uid);
+    },
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
         lifecycle.streamingResult,
@@ -171,6 +174,7 @@ export function useLiveSubTask(
           executeCommandWhitelist,
           newTaskAgentTypeWhitelist,
           storeId: store.storeId,
+          taskId: uid,
         },
       );
 
@@ -249,6 +253,7 @@ export function useLiveSubTask(
     setMessages,
     sendMessage,
     regenerate,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
   const retry = useCallback(
     (error?: Error) => {
