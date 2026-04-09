@@ -113,6 +113,7 @@ export interface ToolCallLifeCycle {
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
     },
   ): void;
 
@@ -177,6 +178,7 @@ export class ManagedToolCallLifeCycle
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
     },
   ) {
     const abortController = new AbortController();
@@ -194,6 +196,7 @@ export class ManagedToolCallLifeCycle
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
         builtinSubAgentInfo: options?.builtinSubAgentInfo,
+        executeCommandWhitelist: options?.executeCommandWhitelist,
         storeId: this.store.storeId,
       });
     }

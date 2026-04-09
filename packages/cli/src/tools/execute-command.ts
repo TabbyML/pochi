@@ -10,7 +10,11 @@ import {
   fixExecuteCommandOutput,
   getShellPath,
 } from "@getpochi/common/tool-utils";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import {
+  type ClientTools,
+  type ToolFunctionType,
+  validateExecuteCommandWhitelist,
+} from "@getpochi/tools";
 
 export class ExecuteCommandError extends Error {
   public code: number;
@@ -39,7 +43,7 @@ export const executeCommand =
   (): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
     { command, cwd = ".", timeout = 120 },
-    { abortSignal, cwd: workspaceDir, envs },
+    { abortSignal, cwd: workspaceDir, envs, executeCommandWhitelist },
   ) => {
     if (!command) {
       throw new Error("Command is required to execute.");
@@ -50,6 +54,10 @@ export const executeCommand =
       resolvedCwd = path.normalize(cwd);
     } else {
       resolvedCwd = path.normalize(path.join(workspaceDir, cwd));
+    }
+
+    if (executeCommandWhitelist && executeCommandWhitelist.length > 0) {
+      validateExecuteCommandWhitelist(command, executeCommandWhitelist);
     }
 
     try {
