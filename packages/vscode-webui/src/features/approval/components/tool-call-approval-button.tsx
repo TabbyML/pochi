@@ -123,8 +123,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           !subtaskOffhand &&
           // Async task cannot be run manually.
           !(tool.type === "tool-newTask" && tool.input?.runAsync)) ||
-        // planner always run manually
-        (tool.type === "tool-newTask" && tool.input?.agentType === "planner");
+        // planner and guide agents always run manually
+        (tool.type === "tool-newTask" &&
+          (tool.input?.agentType === "planner" ||
+            tool.input?.agentType === "guide"));
       if (tool.type === "tool-newTask" && runManually) {
         const subtaskUid = tool.input?._meta?.uid;
         if (subtaskUid) {
