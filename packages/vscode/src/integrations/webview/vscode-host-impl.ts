@@ -64,6 +64,7 @@ import {
   GitStatusReader,
   ignoreWalk,
   isPlainTextFile,
+  maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
@@ -456,6 +457,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
+      newTaskAgentTypeWhitelist?: string[];
       storeId: string;
       taskId: string;
     },
@@ -492,11 +494,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.storeId,
       options.builtinSubAgentInfo,
     );
+    const taskId = options.taskId;
     const fileStateCache = this.fileStateCacheRegistry.get(options.taskId);
     logger.debug(
       `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
     );
-    const result = await safeCall(
+    const rawResult = await safeCall(
       tool(resolvedArgs, {
         abortSignal,
         messages: [],
@@ -504,9 +507,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         cwd: this.cwd,
         contentType: options.contentType,
         envs,
+        taskId,
         executeCommandWhitelist: options.executeCommandWhitelist,
         fileStateCache,
+        newTaskAgentTypeWhitelist: options.newTaskAgentTypeWhitelist,
       }),
+    );
+
+    const result = await maybePersistToolResult(
+      toolName,
+      options.toolCallId,
+      taskId,
+      rawResult,
     );
 
     const status = abortSignal.aborted

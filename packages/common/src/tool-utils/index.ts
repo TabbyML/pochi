@@ -50,3 +50,5 @@ export {
   withReadFileCache,
   isVirtualPath,
 } from "./file-state-cache";
+export { maybePersistToolResult } from "./tool-result-persistence";
+export { getTaskDataDir } from "./pochi-paths";

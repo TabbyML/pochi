@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts } from "@getpochi/common";
+import { builtInAgents, getLogger, prompts } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -9,7 +9,10 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-import { FileStateCache } from "@getpochi/common/tool-utils";
+import {
+  FileStateCache,
+  maybePersistToolResult,
+} from "@getpochi/common/tool-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
@@ -21,7 +24,12 @@ import {
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  type Skill,
+  getToolArgs,
+  overrideCustomAgentTools,
+} from "@getpochi/tools";
 import {
   type ToolUIPart,
   getToolName,
@@ -181,7 +189,10 @@ export class TaskRunner {
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
     this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
-    this.customAgent = options.customAgent;
+    this.customAgent = overrideCustomAgentTools(
+      options.customAgent,
+      builtInAgents.map((x) => x.name),
+    );
     this.depth = options.depth ?? 0;
 
     this.fileSystem = options.filesystem;
@@ -583,6 +594,10 @@ export class TaskRunner {
       this.customAgent?.tools,
       "executeCommand",
     );
+    const newTaskAgentTypeWhitelist = getToolArgs(
+      this.customAgent?.tools,
+      "newTask",
+    );
     for (const toolCall of message.parts.filter(isToolUIPart)) {
       if (toolCall.state !== "input-available") continue;
       const toolName = getToolName(toolCall);
@@ -614,7 +629,15 @@ export class TaskRunner {
           this.llm.contentType,
           envs,
           executeCommandWhitelist,
+          newTaskAgentTypeWhitelist,
         ),
+      );
+
+      const persistedToolResult = await maybePersistToolResult(
+        toolName,
+        toolCall.toolCallId,
+        this.taskId,
+        toolResult,
       );
 
       await this.chatKit.chat.addToolResult({
@@ -622,7 +645,7 @@ export class TaskRunner {
         tool: toolName,
         toolCallId: toolCall.toolCallId,
         // @ts-expect-error
-        output: toolResult,
+        output: persistedToolResult,
       });
 
       logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);

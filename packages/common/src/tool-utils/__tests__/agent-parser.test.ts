@@ -55,7 +55,7 @@ Agent with array-style tools.`;
     const content = `---
 name: scoped-tools-agent
 description: Agent with scoped tool args in string format
-tools: readFile, executeCommand(agent-browser), executeCommand(npm), newTask(explore,plan)
+tools: readFile, executeCommand(agent-browser), executeCommand(npm), searchFiles
 ---
 
 Agent with scoped tools.`;
@@ -69,7 +69,7 @@ Agent with scoped tools.`;
       "readFile",
       "executeCommand(agent-browser)",
       "executeCommand(npm)",
-      "newTask(explore,plan)",
+      "searchFiles",
     ]);
   });
 
@@ -77,7 +77,7 @@ Agent with scoped tools.`;
     const content = `---
 name: multi-string-tools-agent
 description: Agent with many string tools
-tools: readFile, writeToFile, executeCommand(agent-browser *), executeCommand(git status), newTask(explore,plan), listFiles
+tools: readFile, writeToFile, executeCommand(agent-browser *), executeCommand(git status), listFiles
 ---
 
 Agent with many tools in string form.`;
@@ -92,7 +92,6 @@ Agent with many tools in string form.`;
       "writeToFile",
       "executeCommand(agent-browser *)",
       "executeCommand(git status)",
-      "newTask(explore,plan)",
       "listFiles",
     ]);
   });
@@ -101,7 +100,7 @@ Agent with many tools in string form.`;
     const content = `---
 name: execute-command-merged-agent
 description: Agent with merged executeCommand entries
-tools: executeCommand(agent-browser), executeCommand(npm), newTask(explore)
+tools: executeCommand(agent-browser), executeCommand(npm), readFile
 ---
 
 Agent with merged executeCommand declarations.`;
@@ -114,7 +113,7 @@ Agent with merged executeCommand declarations.`;
     expect(validResult.tools).toEqual([
       "executeCommand(agent-browser)",
       "executeCommand(npm)",
-      "newTask(explore)",
+      "readFile",
     ]);
   });
 
@@ -127,7 +126,7 @@ tools:
   - " executeCommand(agent-browser *) "
   - " executeCommand(git status) "
   - ""
-  - " newTask(explore, plan) "
+  - " searchFiles "
   - writeToFile
 ---
 
@@ -142,7 +141,7 @@ Agent with many tools in array form.`;
       "readFile",
       "executeCommand(agent-browser *)",
       "executeCommand(git status)",
-      "newTask(explore, plan)",
+      "searchFiles",
       "writeToFile",
     ]);
   });
