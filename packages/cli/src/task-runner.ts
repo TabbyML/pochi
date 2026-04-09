@@ -9,6 +9,7 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
+import { maybePersistToolResult } from "@getpochi/common/tool-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
@@ -617,12 +618,19 @@ export class TaskRunner {
         ),
       );
 
+      const persistedToolResult = await maybePersistToolResult(
+        toolName,
+        toolCall.toolCallId,
+        this.taskId,
+        toolResult,
+      );
+
       await this.chatKit.chat.addToolResult({
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,
         // @ts-expect-error
-        output: toolResult,
+        output: persistedToolResult,
       });
 
       logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);

@@ -11,14 +11,14 @@ describe("OutputTruncator", () => {
   });
 
   it("should truncate lines exceeding the maximum size", () => {
-    // Create lines that will exceed the limit (MaxTerminalOutputSize is 30,000)
+    // Create lines that will exceed the limit (MaxTerminalOutputSize is 500,000)
     const lines = [
-      "a".repeat(8000), // 8000 bytes
-      "b".repeat(8000), // 8000 bytes
-      "c".repeat(8000), // 8000 bytes
-      "d".repeat(8000), // 8000 bytes
+      "a".repeat(130000), // 130000 bytes
+      "b".repeat(130000), // 130000 bytes
+      "c".repeat(130000), // 130000 bytes
+      "d".repeat(130000), // 130000 bytes
     ];
-    // Total: 32000 bytes (exceeds 30000)
+    // Total: 520000 bytes (exceeds 500000)
 
     const result = truncator.truncateChunks(lines);
 
@@ -53,7 +53,7 @@ describe("OutputTruncator", () => {
   });
 
   it("should handle single line that exceeds limit", () => {
-    const lines = ["x".repeat(35000)]; // Single line exceeding limit (35000 > 30000)
+    const lines = ["x".repeat(510000)]; // Single line exceeding limit (510000 > 500000)
 
     const result = truncator.truncateChunks(lines);
 
@@ -71,7 +71,7 @@ describe("OutputTruncator", () => {
     ];
     
     // Force truncation by making lines large
-    const largeLines = lines.map(line => line + "x".repeat(10000));
+    const largeLines = lines.map(line => line + "x".repeat(170000));
 
     const result = truncator.truncateChunks(largeLines);
 

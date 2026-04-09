@@ -2,7 +2,10 @@ import * as path from "node:path";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
 import { waitForWebviewSubscription } from "@/integrations/terminal/utils";
 import { getLogger } from "@getpochi/common";
-import { getShellPath } from "@getpochi/common/tool-utils";
+import {
+  getShellPath,
+  maybePersistToolResult,
+} from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import {
   type ClientTools,
@@ -19,11 +22,24 @@ import {
 
 const logger = getLogger("ExecuteCommand");
 
+type CompletedCommandOutput = {
+  output: string;
+  isTruncated: boolean;
+  error?: string;
+};
+
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
   { command, cwd = ".", timeout },
-  { abortSignal, cwd: workspaceDir, envs, executeCommandWhitelist },
+  {
+    abortSignal,
+    cwd: workspaceDir,
+    envs,
+    toolCallId,
+    taskId,
+    executeCommandWhitelist,
+  },
 ) => {
   const defaultTimeout = 120;
   if (!command) {
@@ -46,6 +62,24 @@ export const executeCommand: ToolFunctionType<
     isTruncated: false,
   });
 
+  const persistCompletedOutput = async (
+    result: CompletedCommandOutput,
+  ): Promise<ExecuteCommandResult> => {
+    const persisted = (await maybePersistToolResult(
+      "executeCommand",
+      toolCallId,
+      taskId ?? "",
+      result,
+    )) as CompletedCommandOutput;
+
+    return {
+      content: persisted.output,
+      status: "completed",
+      isTruncated: persisted.isTruncated,
+      ...(persisted.error ? { error: persisted.error } : {}),
+    };
+  };
+
   waitForWebviewSubscription().then(() =>
     executeCommandImpl({
       command,
@@ -61,19 +95,18 @@ export const executeCommand: ToolFunctionType<
         };
       },
     })
-      .then(({ output: commandOutput, isTruncated }) => {
-        output.value = {
-          content: commandOutput,
-          status: "completed",
+      .then(async ({ output: commandOutput, isTruncated }) => {
+        output.value = await persistCompletedOutput({
+          output: commandOutput,
           isTruncated,
-        };
+        });
       })
-      .catch((error) => {
-        output.value = {
-          ...output.value,
-          status: "completed",
+      .catch(async (error) => {
+        output.value = await persistCompletedOutput({
+          output: output.value.content,
+          isTruncated: output.value.isTruncated,
           error: error.message,
-        };
+        });
       }),
   );
 
