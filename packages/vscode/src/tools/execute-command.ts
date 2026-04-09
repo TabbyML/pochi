@@ -22,6 +22,12 @@ import {
 
 const logger = getLogger("ExecuteCommand");
 
+type CompletedCommandOutput = {
+  output: string;
+  isTruncated: boolean;
+  error?: string;
+};
+
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
@@ -56,6 +62,24 @@ export const executeCommand: ToolFunctionType<
     isTruncated: false,
   });
 
+  const persistCompletedOutput = async (
+    result: CompletedCommandOutput,
+  ): Promise<ExecuteCommandResult> => {
+    const persisted = (await maybePersistToolResult(
+      "executeCommand",
+      toolCallId,
+      taskId ?? "",
+      result,
+    )) as CompletedCommandOutput;
+
+    return {
+      content: persisted.output,
+      status: "completed",
+      isTruncated: persisted.isTruncated,
+      ...(persisted.error ? { error: persisted.error } : {}),
+    };
+  };
+
   waitForWebviewSubscription().then(() =>
     executeCommandImpl({
       command,
@@ -72,24 +96,17 @@ export const executeCommand: ToolFunctionType<
       },
     })
       .then(async ({ output: commandOutput, isTruncated }) => {
-        const persisted = (await maybePersistToolResult(
-          "executeCommand",
-          toolCallId,
-          taskId ?? "",
-          { output: commandOutput, isTruncated },
-        )) as { output: string; isTruncated: boolean };
-        output.value = {
-          content: persisted.output,
-          status: "completed",
-          isTruncated: persisted.isTruncated,
-        };
+        output.value = await persistCompletedOutput({
+          output: commandOutput,
+          isTruncated,
+        });
       })
-      .catch((error) => {
-        output.value = {
-          ...output.value,
-          status: "completed",
+      .catch(async (error) => {
+        output.value = await persistCompletedOutput({
+          output: output.value.content,
+          isTruncated: output.value.isTruncated,
           error: error.message,
-        };
+        });
       }),
   );
 
