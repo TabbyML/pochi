@@ -80,7 +80,9 @@ describe("executeCommand Tool", () => {
         },
       ]);
 
-      assert.deepStrictEqual((result.output as { value: unknown }).value, {
+      const serializedOutput = result.output as unknown as { value: unknown };
+
+      assert.deepStrictEqual(serializedOutput.value, {
         content: "persisted preview",
         status: "completed",
         isTruncated: true,
