@@ -74,6 +74,8 @@ const VSCodeHostStub = {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
+      newTaskAgentTypeWhitelist?: string[];
       storeId: string;
     },
   ): Promise<unknown> => {

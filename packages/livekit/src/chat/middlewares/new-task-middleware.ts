@@ -4,7 +4,11 @@ import type {
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
 import { constants } from "@getpochi/common";
-import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  getToolArgs,
+  newTaskInputSchema,
+} from "@getpochi/tools";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/default-schema";
 import type { LiveKitStore } from "../../types";
@@ -14,7 +18,10 @@ export function createNewTaskMiddleware(
   cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],
+  currentAgent?: CustomAgent,
 ): LanguageModelV2Middleware {
+  const allowedNewTaskAgentTypes = getToolArgs(currentAgent?.tools, "newTask");
+
   return {
     middlewareVersion: "v2",
     transformParams: async ({ params }) => {
@@ -77,6 +84,22 @@ export function createNewTaskMiddleware(
               }
 
               const args = parsedResult.value;
+
+              if (
+                allowedNewTaskAgentTypes &&
+                allowedNewTaskAgentTypes.length > 0 &&
+                (!args.agentType ||
+                  !allowedNewTaskAgentTypes.includes(args.agentType))
+              ) {
+                throw new InvalidToolInputError({
+                  toolName: chunk.toolName,
+                  toolInput: chunk.input,
+                  cause: new Error(
+                    `Agent is not supported. Allowed agents: ${allowedNewTaskAgentTypes.join(", ")}`,
+                  ),
+                });
+              }
+
               const agent = customAgents?.find(
                 (a) => a.name === args.agentType,
               );

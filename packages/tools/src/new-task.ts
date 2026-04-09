@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import { z } from "zod";
 import type { Todo } from "./todo-write";
 import { defineClientTool } from "./types";
+import { parseToolSpec } from "./utils";
 
 export type SubTask = {
   clientTaskId: string;
@@ -33,6 +34,7 @@ export type CustomAgent = z.infer<typeof CustomAgent>;
 
 export const overrideCustomAgentTools = (
   customAgent: CustomAgent | undefined,
+  builtInAgentNames?: readonly string[],
 ): CustomAgent | undefined => {
   if (!customAgent) return undefined;
   if (!customAgent.tools || customAgent.tools.length === 0) {
@@ -41,16 +43,24 @@ export const overrideCustomAgentTools = (
 
   const toAddTools = ["todoWrite", "attemptCompletion", "useSkill"];
   const toDeleteTools: string[] = [];
+  const isBuiltInAgent = (builtInAgentNames ?? []).includes(customAgent.name);
+
+  if (!isBuiltInAgent) {
+    toDeleteTools.push("newTask");
+  }
 
   // planner auto jump into manual run node, so it's ok to utilize askFollowupQuestion
   // guide needs askFollowupQuestion to confirm config changes
   if (customAgent.name !== "planner" && customAgent.name !== "guide") {
-    toDeleteTools.push("newTask", "askFollowupQuestion");
+    toDeleteTools.push("askFollowupQuestion");
   }
 
-  const updatedTools = customAgent.tools.filter(
-    (tool) => !toDeleteTools.includes(tool) && !toAddTools.includes(tool),
-  );
+  const updatedTools = customAgent.tools.filter((tool) => {
+    const parsed = parseToolSpec(tool);
+    return (
+      !toDeleteTools.includes(parsed.name) && !toAddTools.includes(parsed.name)
+    );
+  });
   return { ...customAgent, tools: [...updatedTools, ...toAddTools] };
 };
 
@@ -65,6 +75,23 @@ ${(customAgents ?? [])
   .map((agent) => `### ${agent.name}\n${agent.description.trim()}`)
   .join("\n\n")}
 `;
+}
+
+function makeAgentTypeSchema(allowedAgentTypes?: string[]) {
+  if (!allowedAgentTypes || allowedAgentTypes.length === 0) {
+    return z
+      .string()
+      .optional()
+      .describe("The type of the specialized agent to use for the task.");
+  }
+
+  const uniqueAllowedAgentTypes = [...new Set(allowedAgentTypes)];
+  return z
+    .enum(uniqueAllowedAgentTypes as [string, ...string[]])
+    .optional()
+    .describe(
+      `The agent to use for the task. Allowed agents: ${allowedAgentTypes.join(", ")}.`,
+    );
 }
 
 export const inputSchema = z.object({
@@ -92,7 +119,10 @@ export const inputSchema = z.object({
     .optional(),
 });
 
-export const createNewTaskTool = (customAgents?: CustomAgent[]) =>
+export const createNewTaskTool = (
+  customAgents?: CustomAgent[],
+  allowedAgentTypes?: string[],
+) =>
   defineClientTool({
     description:
       `Launch a new agent to handle complex, multi-step tasks autonomously.
@@ -117,7 +147,9 @@ Usage notes:
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
       `.trim(),
-    inputSchema,
+    inputSchema: inputSchema.extend({
+      agentType: makeAgentTypeSchema(allowedAgentTypes),
+    }),
     outputSchema: z.object({
       result: z
         .string()

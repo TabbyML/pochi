@@ -444,6 +444,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
+      newTaskAgentTypeWhitelist?: string[];
       storeId: string;
     },
   ) => {
@@ -487,6 +489,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         cwd: this.cwd,
         contentType: options.contentType,
         envs,
+        executeCommandWhitelist: options.executeCommandWhitelist,
+        newTaskAgentTypeWhitelist: options.newTaskAgentTypeWhitelist,
       }),
     );
 

@@ -1,10 +1,11 @@
+import { experimental_createMCPClient as createClient } from "@ai-sdk/mcp";
 import {
   StdioClientTransport,
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createMachine, interpret } from "@xstate/fsm";
-import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
+import type { ToolSet } from "ai";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 

@@ -13,11 +13,13 @@ import {
   useSubtaskOffhand,
   useToolAutoApproval,
 } from "@/features/settings";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
+import { getToolArgs } from "@getpochi/tools";
 import { getToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
@@ -87,6 +89,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
   const store = useDefaultStore();
+  const { customAgent } = useCustomAgent(subtask?.agent);
   const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
     isSubTask && subtask?.agent === "browser" && taskId
       ? { type: subtask.agent, sessionId: taskId }
@@ -95,6 +98,11 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         : isSubTask && subtask?.agent === "explore"
           ? { type: subtask.agent }
           : undefined;
+  const executeCommandWhitelist = getToolArgs(
+    customAgent?.tools,
+    "executeCommand",
+  );
+  const newTaskAgentTypeWhitelist = getToolArgs(customAgent?.tools, "newTask");
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
@@ -139,6 +147,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
         builtinSubAgentInfo,
+        executeCommandWhitelist,
+        newTaskAgentTypeWhitelist,
       });
 
       const uid = parentUid || taskId;
@@ -156,6 +166,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     taskId,
     parentUid,
     builtinSubAgentInfo,
+    executeCommandWhitelist,
+    newTaskAgentTypeWhitelist,
     subtask?.isNested,
   ]);
 

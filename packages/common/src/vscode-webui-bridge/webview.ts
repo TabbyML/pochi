@@ -86,6 +86,8 @@ export interface VSCodeHostApi {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
+      newTaskAgentTypeWhitelist?: string[];
       storeId: string;
     },
   ): Promise<unknown>;

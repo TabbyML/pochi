@@ -1,6 +1,11 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment, PochiProviderOptions } from "@getpochi/common";
-import { constants, formatters, prompts } from "@getpochi/common";
+import {
+  constants,
+  builtInAgents,
+  formatters,
+  prompts,
+} from "@getpochi/common";
 import * as R from "remeda";
 
 import {
@@ -8,6 +13,8 @@ import {
   type CustomAgent,
   type McpTool,
   type Skill,
+  getAllowedToolNames,
+  getToolArgs,
   overrideCustomAgentTools,
   selectClientTools,
 } from "@getpochi/tools";
@@ -88,7 +95,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.depth = options.depth;
     this.store = options.store;
     this.blobStore = options.blobStore;
-    this.customAgent = overrideCustomAgentTools(options.customAgent);
+    this.customAgent = overrideCustomAgentTools(
+      options.customAgent,
+      builtInAgents.map((x) => x.name),
+    );
     this.outputSchema = options.outputSchema;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
   }
@@ -122,10 +132,21 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const model = createModel({ llm });
     const middlewares = [];
+    const enabledToolNames = getAllowedToolNames(this.customAgent?.tools);
+    const allowedNewTaskAgentTypes = getToolArgs(
+      this.customAgent?.tools,
+      "newTask",
+    );
+    const hasValidNewTaskWhitelist =
+      !allowedNewTaskAgentTypes ||
+      allowedNewTaskAgentTypes.some((name) =>
+        (customAgents ?? []).some((agent) => agent.name === name),
+      );
 
     const allowNestedSubtasks =
       !this.isSubTask ||
-      (this.customAgent?.name === "planner" &&
+      (enabledToolNames.has("newTask") &&
+        hasValidNewTaskWhitelist &&
         this.depth !== undefined &&
         this.depth < constants.MaxSubTaskDepth);
 
@@ -136,6 +157,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           environment?.info.cwd,
           chatId,
           customAgents,
+          this.customAgent,
         ),
       );
     }
@@ -175,7 +197,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
       (_val, key) => {
         if (this.customAgent?.tools) {
-          return this.customAgent.tools.includes(key);
+          return enabledToolNames.has(key);
         }
         return true;
       },
