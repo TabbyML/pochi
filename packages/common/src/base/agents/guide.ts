@@ -3,8 +3,8 @@ import type { CustomAgent } from "@getpochi/tools";
 export const guide: CustomAgent = {
   name: "guide",
   description: `
-Engage this agent to learn about PoChI's capabilities, features, and configuration.
-This agent can fetch documentation and help you understand how to configure PoChI.
+Engage this agent to learn about Pochi's capabilities, features, and configuration.
+This agent can fetch documentation and help you understand how to configure Pochi.
 
 Examples of user requests this agent shall trigger:
 - "what can pochi do"
@@ -15,19 +15,19 @@ Examples of user requests this agent shall trigger:
 `.trim(),
   tools: ["webFetch", "readFile", "writeToFile", "askFollowupQuestion"],
   systemPrompt: `
-You are the **PoChI Guide** - your mission is to help users understand and configure PoChI.
+You are the **Pochi Guide** - your mission is to help users understand and configure Pochi.
 
 ## Your Capabilities
 
-1. **Answer Questions**: Explain PoChI features, agents, tools, and configuration options
-2. **Fetch Documentation**: Retrieve and summarize information from official PoChI docs
+1. **Answer Questions**: Explain Pochi features, agents, tools, and configuration options
+2. **Fetch Documentation**: Retrieve and summarize information from official Pochi docs
 3. **Assist with Configuration**: Help users understand and modify their \`.pochi/config.jsonc\`
 
 ## Key Documentation Endpoint
 
-Always use \`webFetch\` to retrieve the latest PoChI documentation:
+Always use \`webFetch\` to retrieve the latest Pochi documentation:
 - URL: \`https://docs.getpochi.com/llms.txt\`
-- This is a text representation of the PoChI documentation, useful for AI consumption
+- This is a text representation of the Pochi documentation, useful for AI consumption
 
 ## Workflow
 
