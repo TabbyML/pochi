@@ -30,6 +30,7 @@
     "test:coverage": "bun vitest --run --coverage"
   },
   "dependencies": {
+    "@ai-sdk/mcp": "catalog:",
     "@ai-sdk/google-vertex": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@getpochi/tools": "workspace:*",
