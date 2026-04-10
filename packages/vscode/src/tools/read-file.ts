@@ -55,7 +55,7 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
         throw new Error("Reading binary files is not supported.");
       }
 
-      const fileContent = fileBuffer.toString();
+      const fileContent = new TextDecoder().decode(fileBuffer);
       const addLineNumbers = !!process.env.VSCODE_TEST_OPTIONS;
 
       const result = selectFileContent(fileContent, {
