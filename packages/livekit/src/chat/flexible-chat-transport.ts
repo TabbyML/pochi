@@ -37,6 +37,7 @@ import {
 } from "./middlewares";
 import { createOutputSchemaMiddleware } from "./middlewares/output-schema-middleware";
 import { createModel } from "./models";
+import { shouldUseToolCallMiddleware } from "./should-use-tool-call-middleware";
 import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 export type OnStartCallback = (options: {
@@ -150,7 +151,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       );
     }
 
-    if (llm.useToolCallMiddleware) {
+    if (shouldUseToolCallMiddleware(llm)) {
       middlewares.push(
         createToolCallMiddleware(llm.type !== "google-vertex-tuning"),
       );
