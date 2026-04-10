@@ -30,7 +30,7 @@ export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
       const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
       validateTextFile(fileBuffer);
 
-      const fileContent = fileBuffer.toString();
+      const fileContent = new TextDecoder().decode(fileBuffer);
 
       const updatedContent = await parseDiffAndApply(
         fileContent,
