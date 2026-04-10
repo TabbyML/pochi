@@ -1,10 +1,10 @@
-import { writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const REFERENCE_DIR = join(
   import.meta.dirname,
   "..",
-  "src/base/agents/guide/reference"
+  "src/base/agents/guide/reference",
 );
 
 const URLS = {
@@ -16,7 +16,7 @@ async function fetchText(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch ${url}: ${response.status} ${response.statusText}`
+      `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
     );
   }
   return response.text();
@@ -58,14 +58,12 @@ export const configSchema = ${JSON.stringify(configSchemaMarkdown)};
   writeFileSync(join(REFERENCE_DIR, "llms-txt.ts"), llmsTxtContent, "utf-8");
   console.log(`  Saved to ${join(REFERENCE_DIR, "llms-txt.ts")}`);
 
-  writeFileSync(join(REFERENCE_DIR, "config-schema.ts"), configSchemaContent, "utf-8");
+  writeFileSync(
+    join(REFERENCE_DIR, "config-schema.ts"),
+    configSchemaContent,
+    "utf-8",
+  );
   console.log(`  Saved to ${join(REFERENCE_DIR, "config-schema.ts")}`);
-
-  // Clean up old files
-  const { unlinkSync } = await import("node:fs");
-  for (const file of ["docs.ts", "schema.ts", "docs.md", "schema.md"]) {
-    try { unlinkSync(join(REFERENCE_DIR, file)); } catch {}
-  }
 
   console.log("Done!");
 }

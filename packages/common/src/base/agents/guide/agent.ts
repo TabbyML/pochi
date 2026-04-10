@@ -1,7 +1,7 @@
 import type { CustomAgent } from "@getpochi/tools";
 import { SocialLinks } from "../../social";
-import { llmsTxt } from "./reference/llms-txt";
 import { configSchema } from "./reference/config-schema";
+import { llmsTxt } from "./reference/llms-txt";
 
 export const guide: CustomAgent = {
   name: "guide",
