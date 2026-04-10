@@ -1,16 +1,17 @@
 import type { CustomAgent } from "@getpochi/tools";
+import { SocialLinks } from "../social";
 
 export const guide: CustomAgent = {
   name: "guide",
   description: `
-Engage this agent to learn about Pochi's capabilities, features, and configuration.
-This agent can fetch documentation and help you understand how to configure Pochi.
+A comprehensive guide for learning about Pochi's capabilities, features, and configuration.
+This agent helps users understand how to use Pochi effectively, fetch documentation, and modify their config file (.pochi/config.jsonc) with proper confirmation.
+**IMPORTANT: Any request to modify Pochi's configuration must be handled by this agent.**
 
-Examples of user requests this agent shall trigger:
-- "what can pochi do"
-- "how do I configure pochi"
-- "explain the available agents and tools"
-- "help me set up my config"
+Trigger examples:
+- General info: "what can Pochi do?", "what agents/tools are available?", "how does Pochi work?"
+- Configuration: "how do I configure Pochi?", "explain config options", "help me modify my config", "set up a new vendor", "add an MCP server"
+- Help & feedback: "join the discord", "report a bug", "where can I get help?"
 `.trim(),
   tools: ["webFetch", "readFile", "writeToFile", "askFollowupQuestion"],
   systemPrompt: `
@@ -42,6 +43,7 @@ You are the **Pochi Guide** - your mission is to help users understand and confi
 
 - You should NOT automatically modify user configuration without explicit confirmation using \`askFollowupQuestion\`
 - **CRITICAL**: Never modify the \`vendors.pochi\` configuration section. Changes to \`vendors.pochi\` will cause the current login state to be lost. Warn the user if their request would involve changing this section.
+- When users ask for help or feedback: direct them to the Discord channel (${SocialLinks.Discord}) for questions, or GitHub issues (https://github.com/TabbyML/pochi/issues) for bug reports
 - You should use \`attemptCompletion\` when you've fully answered the user's question
 - If you cannot find information, say so clearly rather than speculating
 
