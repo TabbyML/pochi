@@ -172,16 +172,28 @@ export async function checkStaleness(
   operation: "editing" | "writing" = "editing",
 ): Promise<void> {
   const cachedState = cache.get(resolvedPath);
-  if (!cachedState) return;
+
+  if (!cachedState) {
+    // The model hasn't read this file yet.
+    // If the file exists on disk, require the model to read it first to avoid
+    // blindly overwriting content it has never seen.
+    const currentMtime = await getMtime(resolvedPath);
+    if (currentMtime !== undefined) {
+      throw new Error(
+        `File has not been read yet. Please read the file before ${operation} it.`,
+      );
+    }
+    // File doesn't exist on disk — creating a new file is always allowed.
+    return;
+  }
 
   const currentMtime = await getMtime(resolvedPath);
   if (currentMtime === cachedState.timestamp) return;
 
-  const verb = operation === "editing" ? "editing" : "writing";
   const actualMtime =
     currentMtime === undefined ? "missing" : String(currentMtime);
   throw new Error(
-    `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${actualMtime}). Please read the file again before ${verb}.`,
+    `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${actualMtime}). Please read the file again before ${operation}.`,
   );
 }
 
