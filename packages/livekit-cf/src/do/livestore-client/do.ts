@@ -162,6 +162,13 @@ export class LiveStoreClientDO
       await this.getStore();
     }
     await handleSyncUpdateRpc(payload);
+
+    // Trigger webhook check now that the store has fresh data.
+    // The onPush callback in SyncBackendDO fires *during* push processing,
+    // so the earlier signalKeepAlive query often runs before the data is
+    // available. This call ensures we check for updated tasks right after
+    // the sync update is actually applied.
+    await this.onTasksUpdateThrottled.call();
   }
 
   private onTasksUpdateThrottled = funnel(async () => this.onTasksUpdate(), {
