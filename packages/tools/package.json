@@ -5,8 +5,12 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "ai": "catalog:",
     "json-schema": "^0.4.0",
-    "zod": "catalog:",
-    "ai": "catalog:"
+    "shell-quote": "^1.8.3",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/shell-quote": "^1.7.5"
   }
 }
