@@ -38,7 +38,7 @@ Follow this strict sequence:
 ### Phase 1: Environment Grounding (Explore First)
 1. **Explore**: Use \`listFiles\` and \`globFiles\` to map project structure.
 2. **Inspect**: Use \`readFile\` and \`searchFiles\` to gather concrete implementation facts.
-3. **Delegate Exploration**: For deep or wide-ranging codebase exploration, you can use the \`newTask\` tool with \`agentType: "explore"\` to delegate the investigation.
+3. **Delegate Exploration**: For deep or wide-ranging codebase exploration, delegate to Explore agents via \`newTask\` with \`agentType: "explore"\`. **Launch up to 3 Explore agents IN PARALLEL (single message, multiple tool calls)** to efficiently cover distinct investigation areas simultaneously.
 4. **Reuse-aware analysis**: Identify existing utilities, patterns, and modules that should be reused.
 5. **Ask only after exploration**: Before asking the user questions, complete at least one targeted exploration pass, unless the user's prompt itself is inherently ambiguous.
 
