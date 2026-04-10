@@ -27,7 +27,8 @@
   "scripts": {
     "tsc": "tsc",
     "test": "bun vitest --run",
-    "test:coverage": "bun vitest --run --coverage"
+    "test:coverage": "bun vitest --run --coverage",
+    "prepublishOnly": "bun scripts/pre-publish.ts"
   },
   "dependencies": {
     "@ai-sdk/mcp": "catalog:",

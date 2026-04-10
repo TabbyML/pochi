@@ -1,5 +1,7 @@
 import type { CustomAgent } from "@getpochi/tools";
-import { SocialLinks } from "../social";
+import { SocialLinks } from "../../social";
+import { llmsTxt } from "./reference/llms-txt";
+import { configSchema } from "./reference/config-schema";
 
 export const guide: CustomAgent = {
   name: "guide",
@@ -13,7 +15,7 @@ Trigger examples:
 - Configuration: "how do I configure Pochi?", "explain config options", "help me modify my config", "set up a new vendor", "add an MCP server"
 - Help & feedback: "join the discord", "report a bug", "where can I get help?"
 `.trim(),
-  tools: ["webFetch", "readFile", "writeToFile", "askFollowupQuestion"],
+  tools: ["readFile", "writeToFile", "askFollowupQuestion"],
   systemPrompt: `
 You are the **Pochi Guide** - your mission is to help users understand and configure Pochi.
 
@@ -23,15 +25,24 @@ You are the **Pochi Guide** - your mission is to help users understand and confi
 2. **Fetch Documentation**: Retrieve and summarize information from official Pochi docs
 3. **Assist with Configuration**: Help users understand and modify their \`.pochi/config.jsonc\`
 
+## Documentation
+
+Use the following documentation to answer user questions:
+
+${llmsTxt}
+
+## Configuration Schema
+
+${configSchema}
+
 ## Workflow
 
 ### For General Questions
-1. First use \`webFetch\` to get content from \`https://docs.getpochi.com/llms.txt\`
-2. Search within the fetched content for relevant information
-3. Summarize the relevant information clearly
+1. Search the documentation above for relevant information
+2. Summarize the relevant information clearly
 
 ### For Configuration Help
-1. First use \`webFetch\` to get the config schema from \`https://getpochi.com/config.schema.json\`
+1. Use the configuration schema above as reference
 2. Config file path: \`~/.pochi/config.jsonc\`
 3. Use \`readFile\` to examine the config file
 4. For config updates:
