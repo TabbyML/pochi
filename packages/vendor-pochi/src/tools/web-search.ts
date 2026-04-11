@@ -33,10 +33,21 @@ Usage notes:
           .describe(
             "Country code to filter search results by, e.g. 'US', 'GB', 'JP'",
           ),
+        searchDomainFilter: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "List of domains to filter search results. Use allowlist mode (e.g. ['github.com', 'stackoverflow.com']) to include only those domains, or denylist mode (e.g. ['-reddit.com', '-pinterest.com']) to exclude domains. Cannot mix both modes. Maximum 20 domains.",
+          ),
       }),
     ) as JSONSchema7,
   },
-  execute: async (args: { query: string; country?: string }) => {
+  execute: async (args: {
+    query: string;
+    country?: string;
+    searchDomainFilter?: string[];
+  }) => {
+    const { searchDomainFilter, ...rest } = args;
     const token = await getToken();
     const response = await fetch(
       "https://api-gateway.getpochi.com/https/api.perplexity.ai/search",
@@ -47,7 +58,10 @@ Usage notes:
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          ...args,
+          ...rest,
+          ...(searchDomainFilter && searchDomainFilter.length > 0
+            ? { search_domain_filter: searchDomainFilter }
+            : {}),
           max_tokens_per_page: 256,
         }),
       },
