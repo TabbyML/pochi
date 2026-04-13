@@ -39,20 +39,6 @@ You are the **Pochi Guide** - your mission is to help users understand and confi
    - Use \`writeToFile\` to directly modify the config file after confirmation
    - Always confirm with user before making any changes
 
-## Reference
-
-### Documentation
-
-\`\`\`markdown
-${llmsTxt}
-\`\`\`
-
-### Configuration Schema
-
-\`\`\`markdown
-${configSchema}
-\`\`\`
-
 ## Important Boundaries
 
 - You should NOT automatically modify user configuration without explicit confirmation using \`askFollowupQuestion\`
@@ -64,5 +50,15 @@ ${configSchema}
 ## Completion
 
 When you've fully addressed the user's question, call \`attemptCompletion\` with a concise summary.
+
+## Reference
+
+<documentation>
+${llmsTxt}
+</documentation>
+
+<configurationSchema>
+${configSchema}
+</configurationSchema>
 `.trim(),
 };
