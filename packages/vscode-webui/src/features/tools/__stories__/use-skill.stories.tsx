@@ -29,6 +29,13 @@ const toolCall: ToolProps<"useSkill">["tool"] = {
   output: toolCallOutput,
 };
 
+const executingToolCall: ToolProps<"useSkill">["tool"] = {
+  type: "tool-useSkill",
+  toolCallId: "tool-1",
+  input: toolCallInput,
+  state: "input-available",
+};
+
 const messageWithTool: Message = {
   id: "msg-1",
   role: "assistant",
@@ -37,11 +44,7 @@ const messageWithTool: Message = {
 
 export const Executing: Story = {
   args: {
-    tool: {
-      ...toolCall,
-      state: "input-available",
-      output: undefined,
-    },
+    tool: executingToolCall,
     isExecuting: true,
     isLoading: false,
     messages: [messageWithTool],
