@@ -54,6 +54,8 @@ export type WebhookEventPayload = z.infer<typeof WebhookEventPayload>;
 const stub = new Hono()
   .post("/api/chat/stream", zValidator("json", ModelGatewayRequest))
   .post("/api/chat", zValidator("json", z.any()))
+  .post("/api/chat/v6/stream", zValidator("json", ModelGatewayRequest))
+  .post("/api/chat/v6", zValidator("json", z.any()))
   .get("/api/models", async (c) => c.json([] as ListModelsResponse));
 
 export type PochiApi = typeof stub;

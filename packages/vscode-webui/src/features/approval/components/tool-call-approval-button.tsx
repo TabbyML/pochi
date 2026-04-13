@@ -20,7 +20,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { getToolArgs } from "@getpochi/tools";
-import { getToolName } from "ai";
+import { getStaticToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
@@ -50,7 +50,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         ? [
             pendingApproval.tools.map((tool) =>
               getToolCallLifeCycle({
-                toolName: getToolName(tool),
+                toolName: getStaticToolName(tool),
                 toolCallId: tool.toolCallId,
               }),
             ),
@@ -59,7 +59,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         : [
             [
               getToolCallLifeCycle({
-                toolName: getToolName(pendingApproval.tool),
+                toolName: getStaticToolName(pendingApproval.tool),
                 toolCallId: pendingApproval.tool.toolCallId,
               }),
             ],

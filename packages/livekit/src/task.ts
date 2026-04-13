@@ -5,7 +5,7 @@ import {
   type FinishReason,
   InvalidToolInputError,
   NoSuchToolError,
-  isToolUIPart,
+  isStaticToolUIPart,
 } from "ai";
 import type { tables } from "./livestore/default-schema";
 import type { Message, Task } from "./types";
@@ -34,7 +34,7 @@ export function toTaskStatus(
       return "completed";
     }
 
-    if (isToolUIPart(part)) {
+    if (isStaticToolUIPart(part)) {
       hasToolCall = true;
     }
   }

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
-import { type ToolUIPart, getToolName } from "ai";
+import { type ToolUIPart, getStaticToolName } from "ai";
 import { Loader2, Pause } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -353,7 +353,7 @@ const NewTaskTool = ({ tool }: ToolCallLiteViewProps<"newTask">) => {
 // biome-ignore lint/suspicious/noExplicitAny: MCP matches any.
 const McpTool = ({ tool }: ToolCallLiteViewProps<any>) => {
   const { t } = useTranslation();
-  const toolName = getToolName(tool);
+  const toolName = getStaticToolName(tool);
 
   return (
     <>

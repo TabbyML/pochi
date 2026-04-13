@@ -1,7 +1,7 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { type Message, catalog, extractTaskResult } from "@getpochi/livekit";
-import { getToolName } from "ai";
+import { getStaticToolName } from "ai";
 import { useEffect, useMemo } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 import type { SubtaskInfo } from "./use-subtask-info";
@@ -66,7 +66,7 @@ export const useAddSubtaskResult = ({
     const subtaskUid = toolPart.input?._meta?.uid;
     if (!subtaskUid) return;
     const lifecycle = getToolCallLifeCycle({
-      toolName: getToolName(toolPart),
+      toolName: getStaticToolName(toolPart),
       toolCallId: toolPart.toolCallId,
     });
     if (lifecycle.status === "init") {

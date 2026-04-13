@@ -52,7 +52,7 @@ export function createPochiModel({
       }
 
       const apiClient = createApiClient(getCredentials);
-      const resp = await apiClient.api.chat.$post(
+      const resp = await apiClient.api.chat.v6.$post(
         {
           json: {
             model: modelId,
@@ -103,7 +103,7 @@ export function createPochiModel({
           providerOptions,
         },
       };
-      const resp = await apiClient.api.chat.stream.$post(
+      const resp = await apiClient.api.chat.v6.stream.$post(
         {
           json: data,
         },
@@ -138,7 +138,7 @@ export function createPochiModel({
         throw new APICallError({
           message,
           statusCode: resp.status,
-          url: apiClient.api.chat.stream.$url().toString(),
+          url: apiClient.api.chat.v6.stream.$url().toString(),
           requestBodyValues: data,
           responseHeaders,
         });

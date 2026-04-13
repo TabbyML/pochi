@@ -30,7 +30,10 @@ import {
   type ThreadSignalSerialization,
   threadSignal,
 } from "@quilted/threads/signals";
-import { getToolName, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import {
+  getStaticToolName,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../components/types";
 
@@ -39,7 +42,7 @@ export function useLiveSubTask(
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): (TaskThreadSource & { parentId: string }) | undefined {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
-    toolName: getToolName(tool),
+    toolName: getStaticToolName(tool),
     toolCallId: tool.toolCallId,
   });
 

@@ -1,6 +1,6 @@
 import {
   type UIMessage,
-  isToolUIPart,
+  isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 export function isAssistantMessageWithNoToolCalls(message: UIMessage): boolean {
@@ -14,7 +14,7 @@ export function isAssistantMessageWithNoToolCalls(message: UIMessage): boolean {
 
   const lastStepToolInvocations = message.parts
     .slice(lastStepStartIndex + 1)
-    .filter(isToolUIPart);
+    .filter(isStaticToolUIPart);
 
   return message.parts.length > 0 && lastStepToolInvocations.length === 0;
 }
@@ -27,7 +27,7 @@ export function isAssistantMessageWithPartialToolCalls(lastMessage: UIMessage) {
   return (
     lastMessage.role === "assistant" &&
     lastMessage.parts.some(
-      (part) => isToolUIPart(part) && part.state === "input-streaming",
+      (part) => isStaticToolUIPart(part) && part.state === "input-streaming",
     )
   );
 }

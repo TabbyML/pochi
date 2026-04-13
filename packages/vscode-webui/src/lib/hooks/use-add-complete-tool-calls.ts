@@ -2,7 +2,7 @@ import { type ToolCallLifeCycle, useToolCallLifeCycle } from "@/features/chat";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
-import { isToolUIPart } from "ai";
+import { isStaticToolUIPart } from "ai";
 import { useEffect } from "react";
 
 const logger = getLogger("UseAddCompleteToolCalls");
@@ -19,7 +19,7 @@ function isToolStateCall(message: Message, toolCallId: string): boolean {
   }
 
   for (const part of message.parts) {
-    if (isToolUIPart(part) && part.toolCallId === toolCallId) {
+    if (isStaticToolUIPart(part) && part.toolCallId === toolCallId) {
       return part.state === "input-available";
     }
   }

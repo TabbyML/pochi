@@ -6,7 +6,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import type { UITools } from "@getpochi/livekit";
-import { type ToolUIPart, isToolUIPart } from "ai";
+import { type ToolUIPart, isStaticToolUIPart } from "ai";
 import { useEffect, useRef, useState } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
@@ -65,7 +65,7 @@ export function SubAgentView({
     }
     const lastToolCall = lastMessage.parts.findLast(
       (part): part is ToolUIPart<UITools> => {
-        return isToolUIPart(part);
+        return isStaticToolUIPart(part);
       },
     );
     if (lastToolCall) {
