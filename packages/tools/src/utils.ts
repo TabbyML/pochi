@@ -1,3 +1,5 @@
+import { parse } from "shell-quote";
+
 export type ParsedToolSpec = {
   name: string;
   args: string[];
@@ -108,10 +110,26 @@ export function getAllowedToolNames(
 }
 
 function splitCommandSegments(command: string): string[] {
-  return command
-    .split(/&&|\|\||\||;/)
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0);
+  const parsed = parse(command);
+  const segments: string[] = [];
+  let currentSegment: string[] = [];
+
+  for (const token of parsed) {
+    if (typeof token === "object" && "op" in token) {
+      if (currentSegment.length > 0) {
+        segments.push(currentSegment.join(" "));
+        currentSegment = [];
+      }
+    } else {
+      currentSegment.push(String(token));
+    }
+  }
+
+  if (currentSegment.length > 0) {
+    segments.push(currentSegment.join(" "));
+  }
+
+  return segments.map((x) => x.trim()).filter((x) => x.length > 0);
 }
 
 function escapeRegex(input: string): string {

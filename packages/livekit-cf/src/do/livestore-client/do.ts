@@ -37,36 +37,8 @@ export class LiveStoreClientDO
     await this.state.storage.put("user", user);
   }
 
-  /**
-   * Restore in-memory state (storeId, webhook) from durable storage.
-   * Called on any entry point that may run after hibernate wakeup.
-   */
-  private async ensureStateRestored(): Promise<void> {
-    if (!this.storeId) {
-      const persisted = await this.state.storage.get<string>("storeId");
-      if (persisted) {
-        this.storeId = persisted;
-      }
-    }
-    if (
-      this.storeId &&
-      this.env.WEBHOOK_URL &&
-      this.env.WEBHOOK_SECRET &&
-      !this.webhook
-    ) {
-      this.webhook = new WebhookDelivery(
-        this.storeId,
-        this.env.WEBHOOK_URL,
-        this.env.WEBHOOK_SECRET,
-      );
-    }
-  }
-
   async signalKeepAlive(storeId: string): Promise<void> {
     this.storeId = storeId;
-    // Persist storeId so it survives hibernate/wakeup
-    await this.state.storage.put("storeId", storeId);
-
     if (this.env.WEBHOOK_URL && this.env.WEBHOOK_SECRET && !this.webhook) {
       this.webhook = new WebhookDelivery(
         this.storeId,
@@ -81,8 +53,6 @@ export class LiveStoreClientDO
   }
 
   async fetch(request: Request): Promise<Response> {
-    // Restore state from durable storage in case this fetch arrives after hibernate
-    await this.ensureStateRestored();
     return app.fetch(request, {
       getStore: async () => {
         return this.getStore();
@@ -90,9 +60,8 @@ export class LiveStoreClientDO
       getOwner: async () => {
         return await this.state.storage.get<User>("user");
       },
-      setStoreId: async (storeId: string) => {
+      setStoreId: (storeId: string) => {
         this.storeId = storeId;
-        await this.state.storage.put("storeId", storeId);
       },
       forceUpdateTasks: async () => {
         return (await this.onTasksUpdate(true)) || 0;
@@ -143,24 +112,10 @@ export class LiveStoreClientDO
   }
 
   alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
-    // Use ctx.waitUntil so Cloudflare does not kill the worker before the
-    // async work finishes, even if alarm() itself returns quickly.
-    this.ctx.waitUntil(
-      (async () => {
-        await this.ensureStateRestored();
-        await this.onTasksUpdateThrottled.call();
-      })(),
-    );
+    this.onTasksUpdateThrottled.call();
   }
 
   async syncUpdateRpc(payload: unknown) {
-    // Restore storeId/webhook in case this RPC arrives after a hibernate wakeup
-    // where cachedStore is still undefined.
-    await this.ensureStateRestored();
-    if (this.storeId && !this.cachedStore) {
-      // Warm up the store so handleSyncUpdateRpc can find it
-      await this.getStore();
-    }
     await handleSyncUpdateRpc(payload);
   }
 

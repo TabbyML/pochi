@@ -25,7 +25,7 @@ export const applyDiff =
       doWork: async () => {
         const fileBuffer = await fileSystem.readFile(path);
         validateTextFile(fileBuffer);
-        const fileContent = fileBuffer.toString();
+        const fileContent = new TextDecoder().decode(fileBuffer);
 
         const updatedContent = await parseDiffAndApply(
           fileContent,
