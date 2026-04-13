@@ -50,7 +50,8 @@ export const overrideCustomAgentTools = (
   }
 
   // planner auto jump into manual run node, so it's ok to utilize askFollowupQuestion
-  if (customAgent.name !== "planner") {
+  // guide needs askFollowupQuestion to confirm config changes
+  if (customAgent.name !== "planner" && customAgent.name !== "guide") {
     toDeleteTools.push("askFollowupQuestion");
   }
 
