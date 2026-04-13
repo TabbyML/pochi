@@ -12,7 +12,7 @@ This agent helps users understand how to use Pochi effectively, fetch documentat
 
 Trigger examples:
 - General info: "what can Pochi do?", "what agents/tools are available?", "how does Pochi work?"
-- Configuration: "how do I configure Pochi?", "explain config options", "help me modify my config", "set up a new vendor", "add an MCP server"
+- Configuration: "how do I configure Pochi?", "explain config options", "help me modify my config", "set up a new provider", "add an MCP server"
 - Help & feedback: "join the discord", "report a bug", "where can I get help?"
 `.trim(),
   tools: ["readFile", "writeToFile", "askFollowupQuestion"],
