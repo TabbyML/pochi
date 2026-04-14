@@ -202,7 +202,7 @@ export function useLiveSubTask(
             if (output.error) {
               result.error = output.error;
             }
-            addToolResult({
+            addToolOutput({
               // @ts-expect-error
               tool: toolCall.toolName,
               toolCallId: toolCall.toolCallId,
@@ -228,7 +228,7 @@ export function useLiveSubTask(
         isExecuting: false,
       });
 
-      addToolResult({
+      addToolOutput({
         // @ts-expect-error
         tool: toolCall.toolName,
         toolCallId: toolCall.toolCallId,
@@ -244,7 +244,7 @@ export function useLiveSubTask(
     error,
     setMessages,
     sendMessage,
-    addToolResult,
+    addToolOutput,
     regenerate,
   } = useChat({
     chat: chatKit.chat,

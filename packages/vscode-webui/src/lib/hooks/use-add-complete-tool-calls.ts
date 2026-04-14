@@ -10,7 +10,7 @@ const logger = getLogger("UseAddCompleteToolCalls");
 interface UseAddCompleteToolCallsProps {
   messages: Message[];
   enable: boolean;
-  addToolResult: Chat<Message>["addToolResult"];
+  addToolOutput: Chat<Message>["addToolOutput"];
 }
 
 function isToolStateCall(message: Message, toolCallId: string): boolean {
@@ -31,7 +31,7 @@ export function useAddCompleteToolCalls({
   messages,
   enable,
   // setMessages,
-  addToolResult,
+  addToolOutput,
 }: UseAddCompleteToolCallsProps): void {
   const { completeToolCalls } = useToolCallLifeCycle();
 
@@ -53,7 +53,7 @@ export function useAddCompleteToolCalls({
           },
           "Tool call completed",
         );
-        addToolResult({
+        addToolOutput({
           // @ts-expect-error
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
@@ -62,7 +62,7 @@ export function useAddCompleteToolCalls({
         toolCall.dispose();
       }
     }
-  }, [enable, completeToolCalls, messages, addToolResult]);
+  }, [enable, completeToolCalls, messages, addToolOutput]);
 }
 
 function assertUnreachable(_x: never): never {

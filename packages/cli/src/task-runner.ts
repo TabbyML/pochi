@@ -642,7 +642,7 @@ export class TaskRunner {
         toolResult,
       );
 
-      await this.chatKit.chat.addToolResult({
+      await this.chatKit.chat.addToolOutput({
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,
