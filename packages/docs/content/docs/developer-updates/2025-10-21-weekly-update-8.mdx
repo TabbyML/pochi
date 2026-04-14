@@ -36,31 +36,18 @@ For example:
 - **Extended Multimedia Support in `readFile` Tool:**  The `readFile` tool now supports reading multimedia files, including images, audio, and video, for multimodal models. Pochi automatically detects file types and encodes the content in `base64` for models that can interpret visual and auditory data. **[#539](https://github.com/TabbyML/pochi/issues/539)**, **[#569](https://github.com/TabbyML/pochi/issues/569)**
 
 
-<div
-className="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg"
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1q-ghZRyqMIhuOFA-k5E8xRbYRvdXZdSC/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="`readfile`tool demo"
-  />
-</div>
+
+  <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/readfile-multimodal-update-8.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
 
 - **Added Linux ARM64 Release:** Pochi is now available for Linux ARM64 systems, improving compatibility for developers running on Raspberry Pi or ARM-based environments. **[#543](https://github.com/TabbyML/pochi/issues/543)**
