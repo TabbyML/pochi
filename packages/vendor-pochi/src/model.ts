@@ -1,7 +1,7 @@
 import {
   APICallError,
-  type LanguageModelV2,
-  type LanguageModelV2Prompt,
+  type LanguageModelV3,
+  type LanguageModelV3Prompt,
 } from "@ai-sdk/provider";
 import {
   EventSourceParserStream,
@@ -19,9 +19,9 @@ import type { PochiApi, PochiApiClient } from "./pochi-api";
 export function createPochiModel({
   modelId,
   getCredentials,
-}: CreateModelOptions): LanguageModelV2 {
+}: CreateModelOptions): LanguageModelV3 {
   return {
-    specificationVersion: "v2",
+    specificationVersion: "v3",
     provider: "pochi",
     modelId: modelId || "<default>",
     supportedUrls: modelId.includes("google")
@@ -52,7 +52,7 @@ export function createPochiModel({
       }
 
       const apiClient = createApiClient(getCredentials);
-      const resp = await apiClient.api.chat.$post(
+      const resp = await apiClient.api.chat.v6.$post(
         {
           json: {
             model: modelId,
@@ -71,7 +71,7 @@ export function createPochiModel({
         },
       );
       const data = (await resp.json()) as Awaited<
-        ReturnType<LanguageModelV2["doGenerate"]>
+        ReturnType<LanguageModelV3["doGenerate"]>
       >;
       return data;
     },
@@ -103,7 +103,7 @@ export function createPochiModel({
           providerOptions,
         },
       };
-      const resp = await apiClient.api.chat.stream.$post(
+      const resp = await apiClient.api.chat.v6.stream.$post(
         {
           json: data,
         },
@@ -138,7 +138,7 @@ export function createPochiModel({
         throw new APICallError({
           message,
           statusCode: resp.status,
-          url: apiClient.api.chat.stream.$url().toString(),
+          url: apiClient.api.chat.v6.stream.$url().toString(),
           requestBodyValues: data,
           responseHeaders,
         });
@@ -159,7 +159,7 @@ export function createPochiModel({
         );
       return { stream };
     },
-  } satisfies LanguageModelV2;
+  } satisfies LanguageModelV3;
 }
 
 function createApiClient(
@@ -181,8 +181,8 @@ function createApiClient(
 }
 
 function convertFilePartDataToBase64(
-  prompt: LanguageModelV2Prompt,
-): LanguageModelV2Prompt {
+  prompt: LanguageModelV3Prompt,
+): LanguageModelV3Prompt {
   return prompt.map((message) => {
     if (message.role === "system") {
       return message;
@@ -199,5 +199,5 @@ function convertFilePartDataToBase64(
         return part;
       }),
     };
-  }) as LanguageModelV2Prompt;
+  }) as LanguageModelV3Prompt;
 }

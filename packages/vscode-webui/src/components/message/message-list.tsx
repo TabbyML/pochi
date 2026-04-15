@@ -22,7 +22,7 @@ import {
   type FileUIPart,
   type TextUIPart,
   type ToolUIPart,
-  isToolUIPart,
+  isStaticToolUIPart,
 } from "ai";
 import { useEffect, useMemo } from "react";
 import { CheckpointUI } from "../checkpoint-ui";
@@ -334,7 +334,7 @@ function Part({
     return null;
   }
 
-  if (isToolUIPart(part)) {
+  if (isStaticToolUIPart(part)) {
     return (
       <ToolInvocationPart
         className={paddingClass}
@@ -439,7 +439,7 @@ const getToolCallCheckpoint = (
   const allParts = messages.flatMap((msg) => msg.parts);
 
   const currentIndex = allParts.findIndex(
-    (p) => isToolUIPart(p) && p.toolCallId === part.toolCallId,
+    (p) => isStaticToolUIPart(p) && p.toolCallId === part.toolCallId,
   );
 
   const beforeCheckpoint = allParts

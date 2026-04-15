@@ -1,7 +1,7 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { createRegistry } from "./registry";
 
-type CreateModelFunction = (opts: CreateModelOptions) => LanguageModelV2;
+type CreateModelFunction = (opts: CreateModelOptions) => LanguageModelV3;
 
 export type CreateModelOptions = {
   // identifier for the model,

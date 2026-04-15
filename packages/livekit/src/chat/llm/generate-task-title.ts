@@ -1,4 +1,4 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
@@ -13,7 +13,7 @@ interface GenerateTaskTitleOptions {
   taskId: string;
   title: string | null;
   messages: Message[];
-  getModel: () => LanguageModelV2;
+  getModel: () => LanguageModelV3;
   abortSignal?: AbortSignal;
 }
 
@@ -98,7 +98,7 @@ function isTitleGeneratedByLlm(
 async function generateTitle(
   blobStore: BlobStore,
   taskId: string,
-  model: LanguageModelV2,
+  model: LanguageModelV3,
   inputMessages: Message[],
   abortSignal: AbortSignal | undefined,
 ) {
@@ -125,7 +125,7 @@ async function generateTitle(
       },
     },
     model,
-    prompt: convertToModelMessages(
+    prompt: await convertToModelMessages(
       formatters.llm(messages, { removeSystemReminder: true }),
     ),
     experimental_download: makeDownloadFunction(blobStore),

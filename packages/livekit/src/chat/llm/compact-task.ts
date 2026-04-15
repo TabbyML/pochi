@@ -1,4 +1,4 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
@@ -17,7 +17,7 @@ export async function compactTask({
 }: {
   blobStore: BlobStore;
   taskId: string;
-  model: LanguageModelV2;
+  model: LanguageModelV3;
   messages: Message[];
   abortSignal?: AbortSignal;
   inline?: boolean;
@@ -54,7 +54,7 @@ export async function compactTask({
 async function createSummary(
   blobStore: BlobStore,
   taskId: string,
-  model: LanguageModelV2,
+  model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
 ) {
@@ -81,7 +81,7 @@ async function createSummary(
       },
     },
     model,
-    prompt: convertToModelMessages(
+    prompt: await convertToModelMessages(
       formatters.llm(messages, {
         removeSystemReminder: true,
       }),

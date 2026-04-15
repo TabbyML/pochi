@@ -9,7 +9,7 @@ import { useSendMessage } from "@/features/chat";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { prompts } from "@getpochi/common";
-import { isToolUIPart } from "ai";
+import { isStaticToolUIPart } from "ai";
 import { Check, Footprints, GitPullRequest } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,7 +38,7 @@ export const AttemptCompletionTool: React.FC<
 
     // Check if tool is in last message
     const partIndex = lastMessage.parts.findIndex(
-      (p) => isToolUIPart(p) && p.toolCallId === toolCall.toolCallId,
+      (p) => isStaticToolUIPart(p) && p.toolCallId === toolCall.toolCallId,
     );
 
     if (partIndex === -1) return false;

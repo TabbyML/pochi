@@ -25,7 +25,7 @@ import {
   type ModelMessage,
   type UIMessageChunk,
   convertToModelMessages,
-  isToolUIPart,
+  isStaticToolUIPart,
   streamText,
   tool,
   wrapLanguageModel,
@@ -218,7 +218,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
-      convertToModelMessages(
+      await convertToModelMessages(
         formatters.llm(preparedMessages),
         // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
         { tools },
@@ -259,6 +259,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         if (part.type === "finish") {
           return {
             kind: "assistant",
+            // The client only consumes the aggregated total token count here.
+            // Detailed usage shape differences are a server/protocol concern.
             totalTokens:
               part.totalUsage.totalTokens || estimateTotalTokens(messages),
             finishReason: part.finishReason,
@@ -307,7 +309,7 @@ function estimateTotalTokens(messages: Message[]): number {
         totalTokens += estimateTokens(part.text);
       } else if (part.type === "file") {
         totalTokens += ImageEstimatedTokens;
-      } else if (isToolUIPart(part)) {
+      } else if (isStaticToolUIPart(part)) {
         totalTokens += estimateTokens(JSON.stringify(part));
       }
     }
@@ -341,7 +343,7 @@ function handleReadFileOutput(
 ) {
   return tool({
     ...readFile,
-    toModelOutput: (output) => {
+    toModelOutput: ({ output }) => {
       if (output.type === "media") {
         const blob = findBlob(blobStore, new URL(output.data), output.mimeType);
         if (!blob) {

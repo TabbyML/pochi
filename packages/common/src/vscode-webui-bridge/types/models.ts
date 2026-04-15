@@ -1,4 +1,4 @@
-import type { LanguageModelV2Prompt } from "@ai-sdk/provider";
+import type { LanguageModelV3Prompt } from "@ai-sdk/provider";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 
 export interface VSCodeLmModel {
@@ -11,7 +11,7 @@ export interface VSCodeLmModel {
 
 export interface VSCodeLmRequestOptions {
   model: Omit<VSCodeLmModel, "contextWindow">;
-  prompt: LanguageModelV2Prompt;
+  prompt: LanguageModelV3Prompt;
   stopSequences?: string[];
   abortSignal?: ThreadAbortSignalSerialization;
 }

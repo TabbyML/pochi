@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { QwenCoderCredentials } from "./types";
@@ -13,7 +13,7 @@ const ModelIdMap: Record<string, string> = {
 export function createQwenModel({
   modelId,
   getCredentials,
-}: CreateModelOptions): LanguageModelV2 {
+}: CreateModelOptions): LanguageModelV3 {
   const actualModelId = ModelIdMap[modelId] || modelId;
   const qwenModel = createOpenAICompatible({
     name: "OpenAI",
@@ -26,7 +26,7 @@ export function createQwenModel({
   return wrapLanguageModel({
     model: qwenModel,
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         return {
           ...params,

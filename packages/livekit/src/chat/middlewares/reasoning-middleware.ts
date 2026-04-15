@@ -1,19 +1,19 @@
 import type {
-  LanguageModelV2Middleware,
-  LanguageModelV2StreamPart,
+  LanguageModelV3Middleware,
+  LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { getPotentialStartIndex } from "./utils";
 
 export function createReasoningMiddleware(
   tag = "think",
-): LanguageModelV2Middleware {
+): LanguageModelV3Middleware {
   const tagStart = `<${tag}>`;
   const tagEnd = `</${tag}>`;
   let countReasoning = 0;
   let textId = "";
   let buffer = "";
   let pendingTextStart:
-    | Extract<LanguageModelV2StreamPart, { type: "text-start" }>
+    | Extract<LanguageModelV3StreamPart, { type: "text-start" }>
     | undefined = undefined;
   let isFirstReasoning = true;
   let isReasoning = false;
@@ -23,13 +23,13 @@ export function createReasoningMiddleware(
   }
 
   return {
-    middlewareVersion: "v2",
+    specificationVersion: "v3",
     wrapStream: async ({ doStream }) => {
       const { stream, ...rest } = await doStream();
       const transformedStream = stream.pipeThrough(
         new TransformStream<
-          LanguageModelV2StreamPart,
-          LanguageModelV2StreamPart
+          LanguageModelV3StreamPart,
+          LanguageModelV3StreamPart
         >({
           transform(chunk, controller) {
             if (chunk.type === "text-start") {

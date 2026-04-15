@@ -32,8 +32,8 @@ import {
 } from "@getpochi/tools";
 import {
   type ToolUIPart,
-  getToolName,
-  isToolUIPart,
+  getStaticToolName,
+  isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import type z from "zod/v4";
@@ -455,7 +455,9 @@ export class TaskRunner {
 
       if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
         const attemptCompletionPart = lastMessage.parts?.find(
-          (p) => isToolUIPart(p) && getToolName(p) === "attemptCompletion",
+          (p) =>
+            isStaticToolUIPart(p) &&
+            getStaticToolName(p) === "attemptCompletion",
         );
 
         if (attemptCompletionPart) {
@@ -598,9 +600,9 @@ export class TaskRunner {
       this.customAgent?.tools,
       "newTask",
     );
-    for (const toolCall of message.parts.filter(isToolUIPart)) {
+    for (const toolCall of message.parts.filter(isStaticToolUIPart)) {
       if (toolCall.state !== "input-available") continue;
-      const toolName = getToolName(toolCall);
+      const toolName = getStaticToolName(toolCall);
       logger.trace(
         `Found tool call: ${toolName} with args: ${JSON.stringify(
           toolCall.input,
@@ -640,7 +642,7 @@ export class TaskRunner {
         toolResult,
       );
 
-      await this.chatKit.chat.addToolResult({
+      await this.chatKit.chat.addToolOutput({
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,

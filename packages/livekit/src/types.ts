@@ -1,7 +1,4 @@
-import type {
-  LanguageModelV2,
-  LanguageModelV2FinishReason,
-} from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
 import type {
@@ -12,7 +9,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
-import type { InferUITools, UIMessage } from "ai";
+import type { FinishReason, InferUITools, UIMessage } from "ai";
 import z from "zod/v4";
 import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
@@ -21,7 +18,7 @@ export type Metadata =
   | {
       kind: "assistant";
       totalTokens: number;
-      finishReason: LanguageModelV2FinishReason;
+      finishReason: FinishReason;
       systemPromptTokens?: number;
       toolsTokens?: number;
     }
@@ -145,7 +142,7 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
-      getModel: z.custom<() => LanguageModelV2>(),
+      getModel: z.custom<() => LanguageModelV3>(),
       contentType: z
         .array(z.string())
         .optional()

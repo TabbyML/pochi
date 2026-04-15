@@ -1,4 +1,4 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { formatters, getLogger, prompts } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
 import { events } from "../../livestore/default-schema";
@@ -17,7 +17,7 @@ export async function repairMermaid({
 }: {
   store: LiveKitStore;
   taskId: string;
-  model: LanguageModelV2;
+  model: LanguageModelV3;
   messages: Message[];
   chart: string;
   error: string;
@@ -150,7 +150,7 @@ export async function repairMermaid({
 
 async function generateFixedMermaid(
   taskId: string,
-  model: LanguageModelV2,
+  model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   chart: string,
   error: string,
@@ -177,7 +177,7 @@ async function generateFixedMermaid(
       },
     },
     model,
-    prompt: convertToModelMessages(
+    prompt: await convertToModelMessages(
       formatters.llm(messages, {
         removeSystemReminder: true,
       }),

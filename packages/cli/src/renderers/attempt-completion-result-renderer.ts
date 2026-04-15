@@ -1,4 +1,4 @@
-import { isToolUIPart } from "ai";
+import { isStaticToolUIPart } from "ai";
 import type { NodeChatState } from "../livekit/chat.node";
 import type { StreamRenderer } from "./types";
 
@@ -24,7 +24,10 @@ export class AttemptCompletionResultRenderer implements StreamRenderer {
 
     if (lastMessage?.role === "assistant") {
       for (const part of lastMessage.parts || []) {
-        if (isToolUIPart(part) && part.type === "tool-attemptCompletion") {
+        if (
+          isStaticToolUIPart(part) &&
+          part.type === "tool-attemptCompletion"
+        ) {
           if (part.input) {
             const input = part.input as Record<string, unknown>;
             if (this.attemptCompletionSchemaOverride) {

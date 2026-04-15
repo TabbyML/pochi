@@ -1,5 +1,10 @@
 import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
-import { type ToolUIPart, type UIMessage, getToolName, isToolUIPart } from "ai";
+import {
+  type ToolUIPart,
+  type UIMessage,
+  getStaticToolName,
+  isStaticToolUIPart,
+} from "ai";
 import { clone } from "remeda";
 import { KnownTags } from "./constants";
 import { prompts } from "./prompts";
@@ -15,18 +20,19 @@ function resolvePendingToolCalls(
     ) {
       const parts = message.parts.map((part) => {
         if (
-          isToolUIPart(part) &&
+          isStaticToolUIPart(part) &&
           part.state !== "output-available" &&
           part.state !== "output-error"
         ) {
           const isSuccess = isAutoSuccessToolPart(part);
+          const { approval: _approval, ...resolvedPart } = part;
           return {
-            ...part,
+            ...resolvedPart,
             state: "output-available",
             output: isSuccess
               ? { success: true }
               : { error: "User cancelled the tool call." },
-          } satisfies UIMessage["parts"][number];
+          } as UIMessage["parts"][number];
         }
         return part;
       });
@@ -78,7 +84,7 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
           x.type === "text" ||
           x.type === "data-reviews" ||
           x.type === "data-bash-outputs" ||
-          isToolUIPart(x),
+          isStaticToolUIPart(x),
       )
     ) {
       return true;
@@ -113,7 +119,7 @@ function removeMessagesWithoutTextOrToolCall(
 ): UIMessage[] {
   return messages.filter((message) => {
     return message.parts.some((part) => {
-      return part.type === "text" || isToolUIPart(part);
+      return part.type === "text" || isStaticToolUIPart(part);
     });
   });
 }
@@ -122,7 +128,7 @@ function removeToolCallArgumentMetadata(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
       if (
-        isToolUIPart(part) &&
+        isStaticToolUIPart(part) &&
         typeof part.input === "object" &&
         part.input &&
         "_meta" in part.input
@@ -142,7 +148,7 @@ function removeToolCallArgumentTransientData(
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
       if (
-        isToolUIPart(part) &&
+        isStaticToolUIPart(part) &&
         typeof part.input === "object" &&
         part.input &&
         "_transient" in part.input
@@ -160,7 +166,7 @@ function removeToolCallResultMetadata(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
       if (
-        isToolUIPart(part) &&
+        isStaticToolUIPart(part) &&
         part.state === "output-available" &&
         typeof part.output === "object" &&
         part.output &&
@@ -179,7 +185,7 @@ function removeToolCallResultTransientData(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
       if (
-        isToolUIPart(part) &&
+        isStaticToolUIPart(part) &&
         part.state === "output-available" &&
         typeof part.output === "object" &&
         part.output &&
@@ -198,8 +204,8 @@ function removeInvalidCharForStorage(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
       if (
-        isToolUIPart(part) &&
-        getToolName(part) === "executeCommand" &&
+        isStaticToolUIPart(part) &&
+        getStaticToolName(part) === "executeCommand" &&
         part.state === "output-available"
       ) {
         const output = part.output;
@@ -273,9 +279,9 @@ function refineDetectedNewPromblems(messages: UIMessage[]) {
     >
   > & { state: "output-available" } => {
     return (
-      isToolUIPart(part) &&
-      (getToolName(part) === "writeToFile" ||
-        getToolName(part) === "applyDiff") &&
+      isStaticToolUIPart(part) &&
+      (getStaticToolName(part) === "writeToFile" ||
+        getStaticToolName(part) === "applyDiff") &&
       part.state === "output-available" &&
       typeof part.output === "object" &&
       part.output !== null

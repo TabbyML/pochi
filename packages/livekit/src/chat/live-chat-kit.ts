@@ -5,7 +5,7 @@ import {
   type ChatInit,
   type ChatOnErrorCallback,
   type ChatOnFinishCallback,
-  isToolUIPart,
+  isStaticToolUIPart,
 } from "ai";
 import type z from "zod/v4";
 import type { BlobStore } from "../blob-store";
@@ -489,6 +489,7 @@ export class LiveChatKit<
     message: originalMessage,
     isAbort,
     isError,
+    finishReason: streamFinishReason,
   }) => {
     const abortError = new Error("Transport is aborted");
     abortError.name = "AbortError";
@@ -507,7 +508,8 @@ export class LiveChatKit<
       return this.onError(abortError);
     }
 
-    const status = toTaskStatus(message, message.metadata?.finishReason);
+    const finishReason = streamFinishReason ?? message.metadata?.finishReason;
+    const status = toTaskStatus(message, finishReason);
 
     let contextWindowUsage: ContextWindowUsage | undefined = undefined;
     if (message.metadata?.kind === "assistant") {
@@ -634,7 +636,7 @@ function estimateTokenBreakdown(messages: Message[]) {
         messagesTokens += estimateTokens(contentStr);
       } else if (part.type === "file") {
         filesTokens += ImageEstimatedTokens;
-      } else if (isToolUIPart(part)) {
+      } else if (isStaticToolUIPart(part)) {
         messagesTokens += estimateTokens(JSON.stringify(part.input || {}));
         if (part.state === "output-available" && part.output) {
           const output = (part as unknown as { output: unknown }).output;
