@@ -106,6 +106,36 @@ describe('formatters', () => {
     });
   });
 
+  describe('resolvePendingToolCalls', () => {
+    it('should replace null input with empty object when resolving input-streaming tool parts', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'tool-executeCommand',
+              toolCallId: 'call-1',
+              state: 'input-streaming',
+              input: null,
+            } as any,
+          ],
+        },
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'hello' }],
+        },
+      ];
+      const formatted = formatters.llm(messages);
+      const toolPart = formatted[0].parts[0] as any;
+      expect(toolPart.state).toBe('output-available');
+      // input must not be null - Anthropic API requires tool_use.input to be a non-null object
+      expect(toolPart.input).not.toBeNull();
+      expect(toolPart.input).toEqual({});
+    });
+  });
+
   describe('formatters.llm', () => {
     it('should keep reasoning parts by default', () => {
       const formatted = formatters.llm(clone(baseMessages));

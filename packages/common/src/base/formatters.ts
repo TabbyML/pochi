@@ -28,6 +28,9 @@ function resolvePendingToolCalls(
           const { approval: _approval, ...resolvedPart } = part;
           return {
             ...resolvedPart,
+            // When input is null (input-streaming state), replace with empty object
+            // to satisfy API requirements (e.g. Anthropic requires tool_use.input to be non-null)
+            input: part.input ?? {},
             state: "output-available",
             output: isSuccess
               ? { success: true }
