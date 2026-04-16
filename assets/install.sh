@@ -182,7 +182,7 @@ print_shell_setup_instructions() {
   eprintf ""
   eprintf "    fish ~/.config/fish/config.fish:"
   eprintf ""
-  eprintf "        export PATH=\"$bin_dir:\$PATH\""
+  eprintf "        fish_add_path \"$bin_dir\""
   eprintf "        pochi --completion --fish | source"
   eprintf ""
 }
@@ -292,11 +292,16 @@ get_latest_version() {
   local version
   version=$(curl -s https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d '"' -f 4)
   if [ -z "$version" ]; then
-    version=$(git ls-remote --tags --refs https://github.com/TabbyML/pochi.git "cli@*" |
-      awk '{print $2}' |
-      sed 's|refs/tags/||' |
-      sort -V |
-      tail -n1)
+    if command -v git >/dev/null 2>&1; then
+      version=$(git ls-remote --tags --refs https://github.com/TabbyML/pochi.git "cli@*" |
+        awk '{print $2}' |
+        sed 's|refs/tags/||' |
+        sort -V |
+        tail -n1)
+    fi
+  fi
+  if [ -z "$version" ]; then
+    version="cli@0.6.7" # UPDATED_BY_CI
   fi
   echo "$version"
 }

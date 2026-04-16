@@ -1,0 +1,30 @@
+name: Update Latest CLI Release in install.sh
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-fallback:
+    if: startsWith(github.event.release.tag_name, 'cli@')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Update fallback version in install.sh
+        run: |
+          NEW_VERSION="${{ github.event.release.tag_name }}"
+          sed -i "s/version=\"cli@[^\"]*\" # UPDATED_BY_CI/version=\"$NEW_VERSION\" # UPDATED_BY_CI/g" assets/install.sh
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          commit-message: "chore(install): update latest cli version to ${{ github.event.release.tag_name }}"
+          title: "chore(install): update latest cli version to ${{ github.event.release.tag_name }}"
+          body: "Automatically generated PR to update the latest CLI version in `assets/install.sh` to `${{ github.event.release.tag_name }}`."
+          branch: "chore/update-cli-version-${{ github.event.release.tag_name }}"
+          base: main
