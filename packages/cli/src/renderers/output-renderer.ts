@@ -2,7 +2,7 @@ import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
-import { type ToolUIPart, getToolName, isToolUIPart } from "ai";
+import { type ToolUIPart, getStaticToolName, isStaticToolUIPart } from "ai";
 import chalk from "chalk";
 import {
   Listr,
@@ -69,7 +69,7 @@ export class OutputRenderer {
         !(
           part.type === "text" ||
           part.type === "reasoning" ||
-          isToolUIPart(part)
+          isStaticToolUIPart(part)
         )
       ) {
         this.pendingPartIndex++;
@@ -91,7 +91,9 @@ export class OutputRenderer {
         this.spinner.prefixText = text;
 
         if (
-          (isAutoSuccessToolPart(part) && part.state === "input-available") ||
+          (isStaticToolUIPart(part) &&
+            isAutoSuccessToolPart(part) &&
+            part.state === "input-available") ||
           part.state === "output-available" ||
           part.state === "output-error"
         ) {
@@ -325,7 +327,7 @@ function renderToolPart(
   }
 
   return {
-    text: `🛠️ Tool ${getToolName(part)}`,
+    text: `🛠️ Tool ${getStaticToolName(part)}`,
     stop: hasError ? "fail" : "succeed",
     error: errorText,
   };
@@ -505,7 +507,7 @@ function renderSubtaskMessages(messages: Message[]): string {
   let output = "";
   for (const x of messages) {
     for (const p of x.parts) {
-      if (isToolUIPart(p) && !isUserInputToolPart(p)) {
+      if (isStaticToolUIPart(p) && !isUserInputToolPart(p)) {
         const { text } = renderToolPart(p);
         const lines = text.split("\n");
         for (const line of lines) {

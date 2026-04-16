@@ -49,7 +49,7 @@ function parseMcpTool(
   return tool({
     description: mcpTool.description,
     inputSchema: jsonSchema(mcpTool.inputSchema.jsonSchema),
-    toModelOutput: (output) => {
+    toModelOutput: ({ output }) => {
       if (typeof output === "string") {
         return {
           type: "text",

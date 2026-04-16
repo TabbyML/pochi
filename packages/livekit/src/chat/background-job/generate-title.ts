@@ -1,4 +1,4 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { getLogger } from "@getpochi/common";
 import type { BlobStore } from "../../blob-store";
 import { makeTaskQuery } from "../../livestore/default-queries";
@@ -15,7 +15,7 @@ interface GenerateTitleJob {
   store: LiveKitStore;
   blobStore: BlobStore;
   messages: Message[];
-  getModel: () => LanguageModelV2;
+  getModel: () => LanguageModelV3;
   waitUntil?: (promise: Promise<unknown>) => void;
 }
 

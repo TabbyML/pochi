@@ -3,7 +3,7 @@ import type {
   InferToolInput,
   InferToolOutput,
   Tool,
-  ToolCallOptions,
+  ToolExecutionOptions,
 } from "ai";
 
 /**
@@ -42,7 +42,7 @@ export interface IFileStateCache {
 
 export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
-  options: ToolCallOptions & {
+  options: ToolExecutionOptions & {
     cwd: string;
     contentType?: string[];
     envs?: Record<string, string>;

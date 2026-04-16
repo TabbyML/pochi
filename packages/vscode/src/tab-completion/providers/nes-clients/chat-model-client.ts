@@ -1,6 +1,6 @@
 import { logToFileObject } from "@/lib/file-logger";
 import { getLogger } from "@/lib/logger";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { type CallSettings, type Prompt, generateText } from "ai";
 import { createPatch } from "diff";
 import { container } from "tsyringe";
@@ -67,7 +67,7 @@ export class NESChatModelClient
 {
   constructor(
     public readonly id: string,
-    private readonly model: LanguageModelV2,
+    private readonly model: LanguageModelV3,
   ) {}
 
   collectBaseSegments(context: TabCompletionContext): BaseSegments | undefined {

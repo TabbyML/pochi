@@ -172,31 +172,17 @@ Here, you simply need to put a comment starting with `/pochi` to see your workfl
 
 ```
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1DC71yPU5ZzhnA2Au7_ZArgvNHgEET3tn/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Pochi review code"
-  />
-</div>
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/pochi-review-step1-gh-actions-tut.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 You can see Pochi comments on things like no input validation / error handling in backend, data management issues and more. This is exactly the kind of review we wanted in the first place. 
 
@@ -208,31 +194,18 @@ Now that we got Pochi to review the code and point out the flaws, wouldn't it be
 
 ```
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1_ZHh30s2XSOQEF-YQaoTYwRrNCHQ2WEc/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Pochi fix code"
-  />
-</div>
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/pochi-fixes-step1-github-actions.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 
 ## Use Case 2: Automate Reviews Based on Events
@@ -271,31 +244,20 @@ When generating the token, check the following scopes:
 
 Click on Generate and copy the token. 
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/16qhfQOnlCT_UVppU-jhYRe96BvLEquYS/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Pochi fix code"
-  />
-</div>
+
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/creating-pat-token-gh-actions-tut.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
 
 
 Then, in your repository, go to Settings → Secrets → Actions → New repository secret. Name the secret `CUSTOM_GITHUB_TOKEN` and paste your PAT as the value.
@@ -380,31 +342,19 @@ We’ll also make a tiny UI change on the frontend side. In your `src/components
 
 Now you can propose the changes as a PR. 
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1ajCZRuYQZ6K3IQcCWf5ItJ3Hi9qy2UGl/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Summarize PR with PAT token"
-  />
-</div>
+
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/summarise-with-pat-gh-actions-tutorial.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 As you can see Pochi summarises the changes for us. We can further extend this workflow's capabilities by adding a new job that can issue design / architectural notes for any new issue that is created in your repository. To do that, add the following to your  `auto-comments.yml` file. 
 
@@ -428,31 +378,18 @@ issue_design_note:
 
 When you create a new issue Pochi, fill in your title and description, being as clear as possible and Pochi will comment out draft design notes to help you with your implementation.  Below is a example execution:
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1TRnTrUtRBwfpFAVB5x71ft-Vw2JmQj6A/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Issue design suggestions"
-  />
-</div>
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/create-issue-suggestion-gh-actions-tut.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 At this stage, Pochi no longer needs you to type out commands. It can react automatically to PRs, commits, and issues, acting like a proactive AI teammate.
 
@@ -692,60 +629,32 @@ To test this out, once you open a PR, you need to comment:
 
 We ran this workflow on a sample task management project. The demo below is the part where changes were required:
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1crpQAKkx1e0LjfVwgDayOVFr1hSeL7Us/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Gatekeeper failed"
-  />
-</div>
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/gatekeeper-bad-review-gh-actions-tut.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 Here is a demo showing when changes were approved:
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1aM8GD9qNmoBWV4R0RLgY8TRUYRwW2VQq/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Gatekeeper passed"
-  />
-</div>
-
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/pr-gatekeeper-good-review-gh-actions.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 This demonstration showcased how Pochi integrates directly into your CI/CD. It doesn't just review your PRs, it also acts as a gatekeeper, determining whether your code can proceed through the pipeline. You can easily wire this into your existing test suites and deployment targets. 
 
@@ -875,32 +784,18 @@ jobs:
 
 Now, add some `// TODO: improve validation` lines in `src/server.ts`. Commit the code, then go to Actions → Pochi Continuous Agent → Run workflow. You’ll see Pochi create new issues from the TODOs it scanned in your codebase.
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1UkJJq9Pmx-Kz8EBnQGdGUo_Bd4HbPAYC/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Cron job"
-  />
-</div>
 
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/todocron -job-gh-actions-tut.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 Although we triggered it manually for the demo, Pochi can run automatically without waiting for a command. It can proactively maintain the repository by acting as a continuous background agent. 
 

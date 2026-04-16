@@ -95,7 +95,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { messages, sendMessage, addToolResult, status } = chat;
+  const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
 
@@ -231,7 +231,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
-    addToolResult: addToolResult,
+    addToolOutput,
   });
 
   const compactOptions = {

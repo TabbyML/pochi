@@ -14,7 +14,7 @@ export function createAnthropicModel(
   return wrapLanguageModel({
     model: anthropic(llm.modelId),
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         params.maxOutputTokens = llm.maxOutputTokens;
         return params;

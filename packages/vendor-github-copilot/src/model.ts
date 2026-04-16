@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { GithubCopilotCredentials } from "./types";
@@ -10,7 +10,7 @@ const COPILOT_CHAT_URL = "https://api.individual.githubcopilot.com";
 export function createCopilotModel({
   modelId,
   getCredentials,
-}: CreateModelOptions): LanguageModelV2 {
+}: CreateModelOptions): LanguageModelV3 {
   const copilotModel = createOpenAICompatible({
     name: "OpenAI",
     baseURL: COPILOT_CHAT_URL,
@@ -22,7 +22,7 @@ export function createCopilotModel({
   return wrapLanguageModel({
     model: copilotModel,
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         return {
           ...params,

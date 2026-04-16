@@ -7,7 +7,12 @@ import {
   ToolsByPermission,
   isUserInputToolPart,
 } from "@getpochi/tools";
-import { type ToolUIPart, type UITools, getToolName, isToolUIPart } from "ai";
+import {
+  type ToolUIPart,
+  type UITools,
+  getStaticToolName,
+  isStaticToolUIPart,
+} from "ai";
 import type { AutoApprove } from "../store";
 import { useAutoApprove } from "./use-auto-approve";
 
@@ -39,7 +44,7 @@ export const getPendingToolcallApproval = (
   const tools = [];
   for (const part of message.parts) {
     if (
-      isToolUIPart(part) &&
+      isStaticToolUIPart(part) &&
       part.state === "input-available" &&
       !isUserInputToolPart(part)
     ) {
@@ -49,7 +54,7 @@ export const getPendingToolcallApproval = (
 
   if (tools.length === 1) {
     return {
-      name: getToolName(tools[0]) as ToolName,
+      name: getStaticToolName(tools[0]) as ToolName,
       tool: tools[0],
     };
   }
@@ -75,7 +80,7 @@ export const isToolAutoApproved = ({
   pendingApproval: PendingToolCallApproval;
 }) => {
   const isToolApproved = (tool: ToolUIPart<UITools>) => {
-    const toolName = getToolName(tool);
+    const toolName = getStaticToolName(tool);
     if (ToolsByPermission.default.includes(toolName)) {
       return true;
     }

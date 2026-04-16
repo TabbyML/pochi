@@ -1,11 +1,10 @@
 export { McpTool } from "./mcp-tools";
 import {
-  type ToolUIPart,
   type UIDataTypes,
   type UIMessagePart,
   type UITools,
-  getToolName,
-  isToolUIPart,
+  getStaticToolName,
+  isStaticToolUIPart,
 } from "ai";
 import type { z } from "zod/v4";
 import { applyDiff } from "./apply-diff";
@@ -60,8 +59,8 @@ export function isUserInputToolName(name: string): boolean {
 }
 
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
-  if (!isToolUIPart(part)) return false;
-  return isUserInputToolName(getToolName(part));
+  if (!isStaticToolUIPart(part)) return false;
+  return isUserInputToolName(getStaticToolName(part));
 }
 
 export function isAutoSuccessToolName(name: string): boolean {
@@ -71,9 +70,11 @@ export function isAutoSuccessToolName(name: string): boolean {
   );
 }
 
-export function isAutoSuccessToolPart(part: ToolUIPart): boolean {
-  if (!isToolUIPart(part)) return false;
-  return isAutoSuccessToolName(getToolName(part));
+export function isAutoSuccessToolPart(
+  part: UIMessagePart<UIDataTypes, UITools>,
+): boolean {
+  if (!isStaticToolUIPart(part)) return false;
+  return isAutoSuccessToolName(getStaticToolName(part));
 }
 
 export type ToolName = keyof ClientTools;

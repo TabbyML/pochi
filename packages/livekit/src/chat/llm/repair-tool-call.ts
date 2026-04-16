@@ -1,15 +1,16 @@
-import type { LanguageModelV2 } from "@ai-sdk/provider";
-import { createClientTools } from "@getpochi/tools";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
+import { jsonSchema } from "@ai-sdk/provider-utils";
 import {
   NoSuchToolError,
+  Output,
   type Tool,
   type ToolCallRepairFunction,
-  generateObject,
+  generateText,
 } from "ai";
 
 export const makeRepairToolCall: (
   taskId: string,
-  model: LanguageModelV2,
+  model: LanguageModelV3,
 ) => ToolCallRepairFunction<Record<string, Tool>> =
   (taskId, model) =>
   async ({ toolCall, inputSchema, error }) => {
@@ -17,10 +18,11 @@ export const makeRepairToolCall: (
       return null; // do not attempt to fix invalid tool names
     }
 
-    const tools = createClientTools();
-    const tool = tools[toolCall.toolName as keyof typeof tools];
+    const toolSchema = jsonSchema(
+      await inputSchema({ toolName: toolCall.toolName }),
+    );
 
-    const { object: repairedArgs } = await generateObject({
+    const { output: repairedArgs } = await generateText({
       providerOptions: {
         pochi: {
           taskId,
@@ -32,12 +34,14 @@ export const makeRepairToolCall: (
         },
       },
       model,
-      schema: tool.inputSchema,
+      output: Output.object({
+        schema: toolSchema,
+      }),
       prompt: [
         `The model tried to call the tool "${toolCall.toolName}" with the following inputs:`,
         JSON.stringify(toolCall.input),
         "The tool accepts the following schema:",
-        JSON.stringify(inputSchema(toolCall)),
+        JSON.stringify(await inputSchema({ toolName: toolCall.toolName })),
         "Please fix the inputs.",
       ].join("\n"),
     });
