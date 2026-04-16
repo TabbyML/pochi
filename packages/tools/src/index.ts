@@ -152,24 +152,20 @@ export type ClientTools = ReturnType<typeof createClientTools> & {
 export const selectClientTools = (
   options: {
     isSubTask: boolean;
-    allowNestedSubtasks?: boolean;
   } & CreateToolOptions,
 ) => {
   const clientTools = createClientTools(options);
 
-  let tools = clientTools;
-
-  if (options?.isSubTask && !options.allowNestedSubtasks) {
-    const { newTask, ...rest } = tools;
-    tools = rest as ClientTools;
+  if (options?.isSubTask) {
+    const { newTask, ...rest } = clientTools;
+    if (options.agent?.name === "reviewer") {
+      return {
+        ...rest,
+        createReview,
+      };
+    }
+    return rest;
   }
 
-  if (options?.isSubTask && options.agent?.name === "reviewer") {
-    return {
-      ...tools,
-      createReview,
-    };
-  }
-
-  return tools;
+  return clientTools;
 };

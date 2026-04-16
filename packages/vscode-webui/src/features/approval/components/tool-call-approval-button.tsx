@@ -93,11 +93,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
     isSubTask && subtask?.agent === "browser" && taskId
       ? { type: subtask.agent, sessionId: taskId }
-      : isSubTask && subtask?.agent === "planner"
+      : isSubTask &&
+          (subtask?.agent === "planner" || subtask?.agent === "explore")
         ? { type: subtask.agent }
-        : isSubTask && subtask?.agent === "explore"
-          ? { type: subtask.agent }
-          : undefined;
+        : undefined;
   const executeCommandWhitelist = getToolArgs(
     customAgent?.tools,
     "executeCommand",
@@ -126,8 +125,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
       const tool = tools[i];
       const runManually =
-        (!subtask?.isNested &&
-          !subtaskOffhand &&
+        (!subtaskOffhand &&
           // Async task cannot be run manually.
           !(tool.type === "tool-newTask" && tool.input?.runAsync)) ||
         // planner and guide agents always run manually
@@ -166,7 +164,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     parentUid,
     builtinSubAgentInfo,
     executeCommandWhitelist,
-    subtask?.isNested,
   ]);
 
   const onReject = useCallback(() => {
