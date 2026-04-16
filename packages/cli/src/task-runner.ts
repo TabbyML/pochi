@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { builtInAgents, getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -24,12 +24,7 @@ import {
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import {
-  type CustomAgent,
-  type Skill,
-  getToolArgs,
-  overrideCustomAgentTools,
-} from "@getpochi/tools";
+import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
 import {
   type ToolUIPart,
   getStaticToolName,
@@ -96,12 +91,6 @@ export interface RunnerOptions {
   isSubTask?: boolean;
 
   /**
-   * Sub-task nesting depth.
-   * Root task depth is 0; each nested sub-task increments by 1.
-   */
-  depth?: number;
-
-  /**
    * Custom agent to use for this task
    */
   customAgent?: CustomAgent;
@@ -158,7 +147,6 @@ export class TaskRunner {
   private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
-  private depth: number;
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
@@ -189,11 +177,7 @@ export class TaskRunner {
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
     this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
-    this.customAgent = overrideCustomAgentTools(
-      options.customAgent,
-      builtInAgents.map((x) => x.name),
-    );
-    this.depth = options.depth ?? 0;
+    this.customAgent = options.customAgent;
 
     this.fileSystem = options.filesystem;
 
@@ -232,7 +216,6 @@ export class TaskRunner {
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
-          depth: this.depth + 1,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -249,7 +232,6 @@ export class TaskRunner {
       blobStore: this.blobStore,
       chatClass: Chat,
       isSubTask: options.isSubTask,
-      depth: this.depth,
       customAgent: options.customAgent,
 
       outputSchema: options.outputSchema,
@@ -596,10 +578,6 @@ export class TaskRunner {
       this.customAgent?.tools,
       "executeCommand",
     );
-    const newTaskAgentTypeWhitelist = getToolArgs(
-      this.customAgent?.tools,
-      "newTask",
-    );
     for (const toolCall of message.parts.filter(isStaticToolUIPart)) {
       if (toolCall.state !== "input-available") continue;
       const toolName = getStaticToolName(toolCall);
@@ -631,7 +609,6 @@ export class TaskRunner {
           this.llm.contentType,
           envs,
           executeCommandWhitelist,
-          newTaskAgentTypeWhitelist,
         ),
       );
 

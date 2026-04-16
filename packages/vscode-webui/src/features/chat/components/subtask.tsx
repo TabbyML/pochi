@@ -40,10 +40,7 @@ export const SubtaskHeader: React.FC<{
         // Use navigate for sync tasks
         navigate({
           to: "/task",
-          search: {
-            uid: subtask.parentUid,
-            storeId: store.storeId,
-          },
+          search: { uid: subtask.parentUid },
           replace: true,
           viewTransition: true,
         });
@@ -64,8 +61,7 @@ export const SubtaskHeader: React.FC<{
 export const CompleteSubtaskButton: React.FC<{
   subtask: SubtaskInfo | undefined;
   showCompleteButton: boolean;
-  storeId?: string;
-}> = ({ subtask, showCompleteButton, storeId }) => {
+}> = ({ subtask, showCompleteButton }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -77,12 +73,11 @@ export const CompleteSubtaskButton: React.FC<{
       to: "/task",
       search: {
         uid: subtask.parentUid,
-        ...(storeId ? { storeId } : {}),
       },
       replace: true,
       viewTransition: true,
     });
-  }, [navigate, subtask, showCompleteButton, storeId]);
+  }, [navigate, subtask, showCompleteButton]);
 
   if (!subtask || !showCompleteButton) {
     return null;

@@ -1,11 +1,6 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment, PochiProviderOptions } from "@getpochi/common";
-import {
-  constants,
-  builtInAgents,
-  formatters,
-  prompts,
-} from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
 
 import {
@@ -14,7 +9,6 @@ import {
   type McpTool,
   type Skill,
   getAllowedToolNames,
-  getToolArgs,
   overrideCustomAgentTools,
   selectClientTools,
 } from "@getpochi/tools";
@@ -68,7 +62,6 @@ export type ChatTransportOptions = {
   onStart?: OnStartCallback;
   getters: PrepareRequestGetters;
   isSubTask?: boolean;
-  depth?: number;
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
@@ -80,7 +73,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
-  private readonly depth?: number;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
@@ -92,13 +84,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
-    this.depth = options.depth;
     this.store = options.store;
     this.blobStore = options.blobStore;
-    this.customAgent = overrideCustomAgentTools(
-      options.customAgent,
-      builtInAgents.map((x) => x.name),
-    );
+    this.customAgent = overrideCustomAgentTools(options.customAgent);
     this.outputSchema = options.outputSchema;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
   }
@@ -132,32 +120,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const model = createModel({ llm });
     const middlewares = [];
-    const enabledToolNames = getAllowedToolNames(this.customAgent?.tools);
-    const allowedNewTaskAgentTypes = getToolArgs(
-      this.customAgent?.tools,
-      "newTask",
-    );
-    const hasValidNewTaskWhitelist =
-      !allowedNewTaskAgentTypes ||
-      allowedNewTaskAgentTypes.some((name) =>
-        (customAgents ?? []).some((agent) => agent.name === name),
-      );
 
-    const allowNestedSubtasks =
-      !this.isSubTask ||
-      (enabledToolNames.has("newTask") &&
-        hasValidNewTaskWhitelist &&
-        this.depth !== undefined &&
-        this.depth < constants.MaxSubTaskDepth);
-
-    if (allowNestedSubtasks) {
+    if (!this.isSubTask) {
       middlewares.push(
         createNewTaskMiddleware(
           this.store,
           environment?.info.cwd,
           chatId,
           customAgents,
-          this.customAgent,
         ),
       );
     }
@@ -180,12 +150,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
+    const enabledToolNames = getAllowedToolNames(this.customAgent?.tools);
 
     const tools = pickBy(
       {
         ...selectClientTools({
           isSubTask: !!this.isSubTask,
-          allowNestedSubtasks,
           customAgents,
           contentType: llm.contentType,
           skills,

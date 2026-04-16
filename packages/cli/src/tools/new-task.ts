@@ -28,24 +28,13 @@ const SubTaskBrowserAgentMaxSteps = 65535;
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async (
-    { _meta, agentType, runAsync },
-    { toolCallId, newTaskAgentTypeWhitelist },
-  ) => {
+  async ({ _meta, agentType, runAsync }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
       throw new Error(
         "createSubTaskRunner function is required for sub-task execution",
       );
-    }
-
-    if (newTaskAgentTypeWhitelist && newTaskAgentTypeWhitelist.length > 0) {
-      if (!agentType || !newTaskAgentTypeWhitelist.includes(agentType)) {
-        throw new Error(
-          `Agent is not supported. Allowed agents: ${newTaskAgentTypeWhitelist.join(", ")}`,
-        );
-      }
     }
 
     // Find the custom agent if agentType is specified

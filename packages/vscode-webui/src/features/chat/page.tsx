@@ -87,6 +87,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   useKeepTaskEditor(task);
   const subtask = useSubtaskInfo(uid, task?.parentId);
+
   const isSubTask = !!subtask;
 
   // inherit autoApproveSettings from parent task
@@ -148,7 +149,6 @@ function Chat({ user, uid, info }: ChatProps) {
     taskId: uid,
     getters,
     isSubTask,
-    depth: subtask?.depth ?? 0,
     customAgent,
     abortSignal: chatAbortController.current.signal,
     onCompact: () => {
@@ -332,7 +332,6 @@ function Chat({ user, uid, info }: ChatProps) {
           displayError={displayError}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           taskId={uid}
-          storeId={store.storeId}
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
         />

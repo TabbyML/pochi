@@ -33,7 +33,6 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
-import { getToolArgs } from "./utils";
 import { writeToFile } from "./write-to-file";
 
 export {
@@ -125,10 +124,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
   todoWrite,
   writeToFile,
   editNotebook,
-  newTask: createNewTaskTool(
-    options?.customAgents,
-    getToolArgs(options?.agent?.tools, "newTask"),
-  ),
+  newTask: createNewTaskTool(options?.customAgents),
 });
 
 export interface CreateToolOptions {
@@ -156,24 +152,20 @@ export type ClientTools = ReturnType<typeof createClientTools> & {
 export const selectClientTools = (
   options: {
     isSubTask: boolean;
-    allowNestedSubtasks?: boolean;
   } & CreateToolOptions,
 ) => {
   const clientTools = createClientTools(options);
 
-  let tools = clientTools;
-
-  if (options?.isSubTask && !options.allowNestedSubtasks) {
-    const { newTask, ...rest } = tools;
-    tools = rest as ClientTools;
+  if (options?.isSubTask) {
+    const { newTask, ...rest } = clientTools;
+    if (options.agent?.name === "reviewer") {
+      return {
+        ...rest,
+        createReview,
+      };
+    }
+    return rest;
   }
 
-  if (options?.isSubTask && options.agent?.name === "reviewer") {
-    return {
-      ...tools,
-      createReview,
-    };
-  }
-
-  return tools;
+  return clientTools;
 };
