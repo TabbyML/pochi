@@ -457,7 +457,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
-      newTaskAgentTypeWhitelist?: string[];
       storeId: string;
       taskId: string;
     },
@@ -510,7 +509,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         taskId,
         executeCommandWhitelist: options.executeCommandWhitelist,
         fileStateCache,
-        newTaskAgentTypeWhitelist: options.newTaskAgentTypeWhitelist,
       }),
     );
 

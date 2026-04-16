@@ -49,6 +49,5 @@ export type ToolFunctionType<T extends Tool> = (
     taskId?: string;
     executeCommandWhitelist?: string[];
     fileStateCache?: IFileStateCache;
-    newTaskAgentTypeWhitelist?: string[];
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;

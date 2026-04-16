@@ -115,7 +115,6 @@ export interface ToolCallLifeCycle {
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
       taskId?: string;
-      newTaskAgentTypeWhitelist?: string[];
     },
   ): void;
 
@@ -182,7 +181,6 @@ export class ManagedToolCallLifeCycle
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
       taskId?: string;
-      newTaskAgentTypeWhitelist?: string[];
     },
   ) {
     const abortController = new AbortController();
@@ -201,7 +199,6 @@ export class ManagedToolCallLifeCycle
         contentType: options?.contentType,
         builtinSubAgentInfo: options?.builtinSubAgentInfo,
         executeCommandWhitelist: options?.executeCommandWhitelist,
-        newTaskAgentTypeWhitelist: options?.newTaskAgentTypeWhitelist,
         storeId: this.store.storeId,
         taskId: options?.taskId ?? "",
       });

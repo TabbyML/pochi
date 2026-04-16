@@ -17,8 +17,6 @@ export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
 
 export const EnableAsyncNewTask = false;
 
-export const MaxSubTaskDepth = 2;
-
 /**
  * Timeout (ms) for any single git operation.
  * Used across all git invocations (simple-git block timeout, exec timeout)

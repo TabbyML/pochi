@@ -14,7 +14,6 @@ export function useAutoApprove({
     updateSubtaskAutoApproveActive,
     updateSubtaskAutoApproveSettings,
   } = useSettingsStore();
-
   return {
     autoApproveActive:
       (isSubTask ? subtaskAutoApproveActive : autoApproveActive) &&
