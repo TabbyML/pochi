@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { builtInAgents, getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -24,12 +24,7 @@ import {
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import {
-  type CustomAgent,
-  type Skill,
-  getToolArgs,
-  overrideCustomAgentTools,
-} from "@getpochi/tools";
+import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
 import {
   type ToolUIPart,
   getStaticToolName,
@@ -189,10 +184,7 @@ export class TaskRunner {
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
     this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
-    this.customAgent = overrideCustomAgentTools(
-      options.customAgent,
-      builtInAgents.map((x) => x.name),
-    );
+    this.customAgent = options.customAgent;
     this.depth = options.depth ?? 0;
 
     this.fileSystem = options.filesystem;
@@ -596,10 +588,6 @@ export class TaskRunner {
       this.customAgent?.tools,
       "executeCommand",
     );
-    const newTaskAgentTypeWhitelist = getToolArgs(
-      this.customAgent?.tools,
-      "newTask",
-    );
     for (const toolCall of message.parts.filter(isStaticToolUIPart)) {
       if (toolCall.state !== "input-available") continue;
       const toolName = getStaticToolName(toolCall);
@@ -631,7 +619,6 @@ export class TaskRunner {
           this.llm.contentType,
           envs,
           executeCommandWhitelist,
-          newTaskAgentTypeWhitelist,
         ),
       );
 

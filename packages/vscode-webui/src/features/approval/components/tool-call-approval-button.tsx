@@ -102,7 +102,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     customAgent?.tools,
     "executeCommand",
   );
-  const newTaskAgentTypeWhitelist = getToolArgs(customAgent?.tools, "newTask");
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
@@ -149,7 +148,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         builtinSubAgentInfo,
         executeCommandWhitelist,
         taskId,
-        newTaskAgentTypeWhitelist,
       });
 
       const uid = parentUid || taskId;
@@ -168,7 +166,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     parentUid,
     builtinSubAgentInfo,
     executeCommandWhitelist,
-    newTaskAgentTypeWhitelist,
     subtask?.isNested,
   ]);
 

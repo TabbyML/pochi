@@ -87,7 +87,6 @@ export interface VSCodeHostApi {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
       executeCommandWhitelist?: string[];
-      newTaskAgentTypeWhitelist?: string[];
       storeId: string;
       taskId: string;
     },

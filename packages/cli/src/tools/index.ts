@@ -49,7 +49,6 @@ export async function executeToolCall(
   contentType?: string[],
   envs?: Record<string, string>,
   executeCommandWhitelist?: string[],
-  newTaskAgentTypeWhitelist?: string[],
 ) {
   const toolName = getStaticToolName(tool);
 
@@ -65,7 +64,6 @@ export async function executeToolCall(
         contentType,
         envs,
         executeCommandWhitelist,
-        newTaskAgentTypeWhitelist,
       });
     } catch (e) {
       if (e instanceof ExecuteCommandError) {
