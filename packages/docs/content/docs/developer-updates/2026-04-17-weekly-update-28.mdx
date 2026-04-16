@@ -15,13 +15,13 @@ More below!
 
 ### 🚀 Features
 
-- **Product Guide Agent:** Pochi now has a dedicated `guide` agent built for product questions — ask *"what can Pochi do?"* or *"set up a new GLM vendor"* and it fetches live docs from [docs.getpochi.com](https://docs.getpochi.com) and answers directly in context.
+- **Product Guide Agent:** Pochi now has a dedicated `guide` agent built for product questions - ask *"what can Pochi do?"* or *"set up a new GLM vendor"* and it fetches live docs from [docs.getpochi.com](https://docs.getpochi.com) and answers directly in context.
 
   Before this, product questions went to the main agent, which would burn context pulling from external docs or redirect you entirely. The guide agent handles documentation and configuration questions in one place, keeping your main agent focused on the actual task.
 
-  Works for anything in the Pochi docs — features, config, vendor setup. No extra setup needed. **[#1449](https://github.com/TabbyML/pochi/issues/1449)**
+  Works for anything in the Pochi docs - features, config, vendor setup. No extra setup needed. **[#1449](https://github.com/TabbyML/pochi/issues/1449)**
 
-  {/* VIDEO PLACEHOLDER — replace with CDN URL once uploaded
+  {/* VIDEO PLACEHOLDER - replace with CDN URL once uploaded
   <video
         controls
         style={{
@@ -51,19 +51,19 @@ More below!
 
   Teams can now deploy agents in restricted environments without worrying about what they'll touch. **[#1445](https://github.com/TabbyML/pochi/issues/1445)**
 
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Agent blocked from running git diff — only npm commands are allowed via executeCommand whitelist](./images/command-whitelist-042.png)</div>
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Agent blocked from running git diff - only npm commands are allowed via executeCommand whitelist](./images/command-whitelist-042.png)</div>
 
 
 - **Explore Agent Parallelization:** The Explore agent now runs searches, reads, and greps simultaneously rather than sequentially.
 
-  On large codebases or monorepos, exploration used to mean a long chain of sequential round trips — every grep waiting on the last one. That latency stacks up fast.
+  On large codebases or monorepos, exploration used to mean a long chain of sequential round trips - every grep waiting on the last one. That latency stacks up fast.
 
   Nothing to configure. It just runs faster. **[#1452](https://github.com/TabbyML/pochi/issues/1452)**
 
 
 - **Large Tool Output Handling:** Tool results over 50KB now save to a temporary file. The agent receives a preview (~2000 characters) and the file path, with full content available on demand.
 
-  Build logs, search results, verbose command output — these used to land directly in the context window, eating tokens and degrading response quality on long sessions.
+  Build logs, search results, verbose command output - these used to land directly in the context window, eating tokens and degrading response quality on long sessions.
 
   This keeps workflows responsive even when commands produce verbose output. **[#1447](https://github.com/TabbyML/pochi/issues/1447)**
 
@@ -77,4 +77,4 @@ More below!
 
 - **Edit Safety for Unread Files:** Pochi now blocks writes to files that haven't been read first. Try to edit or overwrite a file the agent hasn't seen, and it throws an explicit error.
 
-  The failure mode it prevents: an agent overwrites a file based on stale assumptions — no warning, no recovery. In iterative workflows, that's a hard-to-debug loss. **[#1441](https://github.com/TabbyML/pochi/issues/1441)**
+  The failure mode it prevents: an agent overwrites a file based on stale assumptions - no warning, no recovery. In iterative workflows, that's a hard-to-debug loss. **[#1441](https://github.com/TabbyML/pochi/issues/1441)**
