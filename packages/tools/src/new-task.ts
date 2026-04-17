@@ -2,7 +2,6 @@ import type { UIMessage } from "ai";
 import { z } from "zod";
 import type { Todo } from "./todo-write";
 import { defineClientTool } from "./types";
-import { parseToolSpec } from "./utils";
 
 export type SubTask = {
   clientTaskId: string;
@@ -31,32 +30,6 @@ export const CustomAgent = z.object({
 });
 
 export type CustomAgent = z.infer<typeof CustomAgent>;
-
-export const overrideCustomAgentTools = (
-  customAgent: CustomAgent | undefined,
-): CustomAgent | undefined => {
-  if (!customAgent) return undefined;
-  if (!customAgent.tools || customAgent.tools.length === 0) {
-    return { ...customAgent, tools: undefined };
-  }
-
-  const toAddTools = ["todoWrite", "attemptCompletion", "useSkill"];
-  const toDeleteTools = ["newTask"];
-
-  // planner auto jump into manual run node, so it's ok to utilize askFollowupQuestion
-  // guide needs askFollowupQuestion to confirm config changes
-  if (customAgent.name !== "planner" && customAgent.name !== "guide") {
-    toDeleteTools.push("askFollowupQuestion");
-  }
-
-  const updatedTools = customAgent.tools.filter((tool) => {
-    const parsed = parseToolSpec(tool);
-    return (
-      !toDeleteTools.includes(parsed.name) && !toAddTools.includes(parsed.name)
-    );
-  });
-  return { ...customAgent, tools: [...updatedTools, ...toAddTools] };
-};
 
 function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
   if (!customAgents || customAgents.length === 0)
