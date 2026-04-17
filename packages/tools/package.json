@@ -1,6 +1,9 @@
 {
   "name": "@getpochi/tools",
   "version": "0.1.1",
+  "scripts": {
+    "test": "bun vitest --run"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
