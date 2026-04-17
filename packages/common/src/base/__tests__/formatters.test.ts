@@ -15,6 +15,7 @@ vi.mock('@getpochi/tools', async (importOriginal) => {
 vi.mock('../prompts', () => ({
   prompts: {
     isSystemReminder: (text: string) => text.includes('<system-reminder>'),
+    isForkDirective: (text: string) => text.includes('<fork-directive>'),
     isCompact: (text: string) => text.includes('<compact>'),
   },
 }));
@@ -67,6 +68,11 @@ const baseMessages: UIMessage[] = [
   {
     id: 'user-3',
     role: 'user',
+    parts: [{ type: 'text', text: '<fork-directive>hidden</fork-directive>' }],
+  },
+  {
+    id: 'user-4',
+    role: 'user',
     parts: [], // Empty message
   },
 ];
@@ -83,6 +89,11 @@ describe('formatters', () => {
     it('should remove system reminder messages', () => {
       const formatted = formatters.ui(clone(baseMessages));
       expect(formatted.find((m) => m.id === 'user-2')).toBeUndefined();
+    });
+
+    it('should remove fork directive messages', () => {
+      const formatted = formatters.ui(clone(baseMessages));
+      expect(formatted.find((m) => m.id === 'user-3')).toBeUndefined();
     });
 
     it('should resolve pending tool calls and combine messages', () => {
@@ -187,7 +198,7 @@ describe('formatters', () => {
   describe('formatters.storage', () => {
     it('should remove empty messages', () => {
       const formatted = formatters.storage(clone(baseMessages));
-      expect(formatted.find((m) => m.id === 'user-3')).toBeUndefined();
+      expect(formatted.find((m) => m.id === 'user-4')).toBeUndefined();
     });
 
     it('should remove invalid characters from executeCommand output', () => {

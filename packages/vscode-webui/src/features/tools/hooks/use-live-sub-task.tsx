@@ -18,9 +18,9 @@ import { useDefaultStore } from "@/lib/use-default-store";
 
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import type {
-  BuiltinSubAgentInfo,
-  ExecuteCommandResult,
+import {
+  type ExecuteCommandResult,
+  getBuiltinSubAgentInfo,
 } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -133,19 +133,10 @@ export function useLiveSubTask(
       toolCallStatusRegistry.set(toolCall, {
         isExecuting: true,
       });
-      const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
-        tool.input?.agentType === "browser"
-          ? {
-              type: tool.input.agentType,
-              sessionId: uid,
-            }
-          : tool.input?.agentType === "planner"
-            ? {
-                type: "planner",
-              }
-            : tool.input?.agentType === "explore"
-              ? { type: "explore" }
-              : undefined;
+      const builtinSubAgentInfo = getBuiltinSubAgentInfo(
+        tool.input?.agentType,
+        uid,
+      );
       const executeCommandWhitelist = getToolArgs(
         customAgent?.tools,
         "executeCommand",

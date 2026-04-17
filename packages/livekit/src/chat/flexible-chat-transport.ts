@@ -125,6 +125,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           environment?.info.cwd,
           chatId,
           customAgents,
+          messages,
         ),
       );
     }

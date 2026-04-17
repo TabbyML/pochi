@@ -22,7 +22,7 @@ export { toErrorMessage } from "./error";
 
 export { withTimeout } from "./async-utils";
 
-export { builtInAgents } from "./agents";
+export { builtInAgents, buildForkMessages, isInForkChild } from "./agents";
 
 export { builtInSkills, BuiltInSkillPath } from "./skills";
 
