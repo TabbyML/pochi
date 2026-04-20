@@ -86,7 +86,9 @@ export interface VSCodeHostApi {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
       storeId: string;
+      taskId: string;
     },
   ): Promise<unknown>;
 
@@ -125,6 +127,13 @@ export interface VSCodeHostApi {
    * @param uid - Optional task id to filter tabs to close.
    */
   closePochiTabs(uid?: string): Promise<void>;
+
+  /**
+   * Clear the file state cache for the given task ID.
+   * Called after compaction to prevent stale "file unchanged" stubs
+   * from being returned for content that was compacted away.
+   */
+  clearFileStateCache(taskId: string): Promise<void>;
 
   readActiveSelection(): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>

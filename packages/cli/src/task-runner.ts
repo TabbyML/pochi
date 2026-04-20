@@ -9,6 +9,10 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
+import {
+  FileStateCache,
+  maybePersistToolResult,
+} from "@getpochi/common/tool-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
@@ -20,11 +24,11 @@ import {
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import type { CustomAgent, Skill } from "@getpochi/tools";
+import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
 import {
   type ToolUIPart,
-  getToolName,
-  isToolUIPart,
+  getStaticToolName,
+  isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import type z from "zod/v4";
@@ -87,12 +91,6 @@ export interface RunnerOptions {
   isSubTask?: boolean;
 
   /**
-   * Sub-task nesting depth.
-   * Root task depth is 0; each nested sub-task increments by 1.
-   */
-  depth?: number;
-
-  /**
    * Custom agent to use for this task
    */
   customAgent?: CustomAgent;
@@ -149,7 +147,6 @@ export class TaskRunner {
   private llm: LLMRequestData;
   private toolCallOptions: ToolCallOptions;
   private stepCount: StepCount;
-  private depth: number;
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
@@ -181,13 +178,13 @@ export class TaskRunner {
     this.backgroundJobManager = new BackgroundJobManager();
     this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
     this.customAgent = options.customAgent;
-    this.depth = options.depth ?? 0;
 
     this.fileSystem = options.filesystem;
 
     this.toolCallOptions = {
       rg: options.rg,
       fileSystem: this.fileSystem,
+      fileStateCache: new FileStateCache(),
       blobStore: this.blobStore,
 
       customAgents: options.customAgents,
@@ -219,7 +216,6 @@ export class TaskRunner {
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
-          depth: this.depth + 1,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -236,13 +232,16 @@ export class TaskRunner {
       blobStore: this.blobStore,
       chatClass: Chat,
       isSubTask: options.isSubTask,
-      depth: this.depth,
       customAgent: options.customAgent,
 
       outputSchema: options.outputSchema,
       attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
+
+      onCompact: () => {
+        this.toolCallOptions.fileStateCache.clear();
+      },
 
       getters: {
         getLLM: () => options.llm,
@@ -294,8 +293,6 @@ export class TaskRunner {
   }
 
   async run(): Promise<void> {
-    logger.debug("Starting TaskRunner...");
-
     try {
       logger.trace("Start step loop.");
       this.stepCount.reset();
@@ -396,6 +393,13 @@ export class TaskRunner {
     return results.length > 0 ? results.join("\n\n") : undefined;
   }
 
+  private replaceLastMessageForRetry(message: Message): void {
+    // The retry path may drop the original readFile tool_result from history.
+    // Clear the cache so later reads cannot deduplicate against discarded context.
+    this.toolCallOptions.fileStateCache.clear();
+    this.chat.appendOrReplaceMessage(message);
+  }
+
   /**
    * @returns
    *  - "finished" if the task is finished and no more steps are needed.
@@ -431,7 +435,9 @@ export class TaskRunner {
 
       if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
         const attemptCompletionPart = lastMessage.parts?.find(
-          (p) => isToolUIPart(p) && getToolName(p) === "attemptCompletion",
+          (p) =>
+            isStaticToolUIPart(p) &&
+            getStaticToolName(p) === "attemptCompletion",
         );
 
         if (attemptCompletionPart) {
@@ -517,7 +523,7 @@ export class TaskRunner {
       );
       const processed = prepareLastMessageForRetry(message);
       if (processed) {
-        this.chat.appendOrReplaceMessage(processed);
+        this.replaceLastMessageForRetry(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -543,7 +549,7 @@ export class TaskRunner {
       );
       const processed = prepareLastMessageForRetry(message);
       if (processed) {
-        this.chat.appendOrReplaceMessage(processed);
+        this.replaceLastMessageForRetry(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -566,9 +572,13 @@ export class TaskRunner {
 
   private async processToolCalls(message: Message) {
     logger.trace("Processing tool calls in the last message.");
-    for (const toolCall of message.parts.filter(isToolUIPart)) {
+    const executeCommandWhitelist = getToolArgs(
+      this.customAgent?.tools,
+      "executeCommand",
+    );
+    for (const toolCall of message.parts.filter(isStaticToolUIPart)) {
       if (toolCall.state !== "input-available") continue;
-      const toolName = getToolName(toolCall);
+      const toolName = getStaticToolName(toolCall);
       logger.trace(
         `Found tool call: ${toolName} with args: ${JSON.stringify(
           toolCall.input,
@@ -596,15 +606,23 @@ export class TaskRunner {
           undefined,
           this.llm.contentType,
           envs,
+          executeCommandWhitelist,
         ),
       );
 
-      await this.chatKit.chat.addToolResult({
+      const persistedToolResult = await maybePersistToolResult(
+        toolName,
+        toolCall.toolCallId,
+        this.taskId,
+        toolResult,
+      );
+
+      await this.chatKit.chat.addToolOutput({
         // @ts-expect-error
         tool: toolName,
         toolCallId: toolCall.toolCallId,
         // @ts-expect-error
-        output: toolResult,
+        output: persistedToolResult,
       });
 
       logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);

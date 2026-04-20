@@ -106,13 +106,15 @@ export interface ToolCallLifeCycle {
   /**
    * Execute the tool call with given arguments and options.
    * @param args - Tool call arguments
-   * @param options - Execution options including model selection
+   * @param options - Execution options including model selection and taskId
    */
   execute(
     args: unknown,
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
+      taskId?: string;
     },
   ): void;
 
@@ -177,6 +179,8 @@ export class ManagedToolCallLifeCycle
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
+      taskId?: string;
     },
   ) {
     const abortController = new AbortController();
@@ -194,7 +198,9 @@ export class ManagedToolCallLifeCycle
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
         builtinSubAgentInfo: options?.builtinSubAgentInfo,
+        executeCommandWhitelist: options?.executeCommandWhitelist,
         storeId: this.store.storeId,
+        taskId: options?.taskId ?? "",
       });
     }
 

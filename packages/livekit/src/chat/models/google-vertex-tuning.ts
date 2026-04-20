@@ -11,7 +11,7 @@ export function createGoogleVertexTuningModel(
   return wrapLanguageModel({
     model: vertexModel,
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         return {
           ...params,

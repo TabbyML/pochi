@@ -9,8 +9,6 @@ export interface SubtaskInfo {
   manualRun: boolean;
   agent?: string;
   description?: string;
-  isNested: boolean;
-  depth: number;
 }
 
 export type NewTaskTool = Extract<
@@ -26,9 +24,6 @@ export function useSubtaskInfo(
   const parentTaskMessages = store.useQuery(
     catalog.queries.makeMessagesQuery(parentUid ?? ""),
   );
-  const parentTask = store.useQuery(
-    catalog.queries.makeTaskQuery(parentUid ?? ""),
-  );
   const newtaskTool = parentTaskMessages
     .flatMap((m) => (m.data as Message).parts)
     .find((p) => p.type === "tool-newTask" && p.input?._meta?.uid === uid) as
@@ -42,16 +37,11 @@ export function useSubtaskInfo(
   if (!parentUid) return undefined;
   if (!newtaskTool) return undefined;
 
-  const isNested = !!parentTask?.parentId;
-  const depth = isNested ? 2 : 1;
-
   return {
     uid,
     parentUid: parentUid,
-    manualRun: isSubTask && !isNested && subtaskOffhand === false,
+    manualRun: isSubTask && subtaskOffhand === false,
     agent,
     description,
-    isNested,
-    depth,
   };
 }

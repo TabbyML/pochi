@@ -1,10 +1,10 @@
+import { createMCPClient as createClient } from "@ai-sdk/mcp";
 import {
   StdioClientTransport,
   getDefaultEnvironment,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createMachine, interpret } from "@xstate/fsm";
-import { type ToolSet, experimental_createMCPClient as createClient } from "ai";
 import { getLogger } from "../base";
 import type { McpServerConfig } from "../configuration/index.js";
 
@@ -26,6 +26,7 @@ import {
 type Disposable = { dispose(): void };
 
 type McpClient = Awaited<ReturnType<typeof createClient>>;
+type McpToolSet = Awaited<ReturnType<McpClient["tools"]>>;
 
 interface McpClientWithInstructions extends McpClient {
   instructions?: string;
@@ -34,7 +35,7 @@ interface McpClientWithInstructions extends McpClient {
 type FsmContext = {
   startingAbortController?: AbortController;
   client?: McpClient;
-  toolset?: ToolSet;
+  toolset?: McpToolSet;
   instructions?: string;
   error?: string;
   autoReconnectTimer?: ReturnType<typeof setTimeout>;
@@ -56,7 +57,7 @@ type StopEvent = {
 type ConnectedEvent = {
   type: "connected";
   client: McpClient;
-  toolset: ToolSet;
+  toolset: McpToolSet;
   instructions?: string;
 };
 
@@ -273,7 +274,8 @@ export class McpConnection implements Disposable {
             disabled: this.isToolDisabled(name),
             description: tool.description,
             inputSchema: {
-              jsonSchema: tool.inputSchema.jsonSchema,
+              jsonSchema: tool.inputSchema
+                .jsonSchema as McpToolStatus["inputSchema"]["jsonSchema"],
             },
             execute: async (args, options) => {
               try {

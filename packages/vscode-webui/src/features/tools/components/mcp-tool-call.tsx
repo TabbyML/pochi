@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useStoreBlobUrl } from "@/lib/store-blob";
-import { getToolName } from "ai";
+import { getStaticToolName } from "ai";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { HighlightedText } from "./highlight-text";
@@ -56,7 +56,7 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
   isExecuting,
 }) => {
   const { t } = useTranslation();
-  const toolName = getToolName(tool);
+  const toolName = getStaticToolName(tool);
   const { input } = tool;
   const [previewImageLink, setPreviewImageLink] = useState(true);
 

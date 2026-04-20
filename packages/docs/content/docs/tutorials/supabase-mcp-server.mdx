@@ -420,31 +420,19 @@ Open the Inspector in your browser (it launches a local port).
 ```
 You should see the correct response which includes the Supabase database query result and a Vega Lite JSON spec. 
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1tqM2tglxVkw3gNUR0TYJiPWgOmfezS1d/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Testing MCP Server in MCP Inspector"
-  />
-</div>
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/pochi-mcp-inspector-tuts.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+
 
 #### Enable your MCP server
 
@@ -452,31 +440,18 @@ Now that your MCP server is verified, you can enable it inside Pochi to use it i
 
 Look for the MCP server named `my-supabase-mcp` and toggle it ON (enabled). You should see a green dot to indicate its connected.
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1txzxWQ5R0fRZVSme1UtCRb77WguU0O6H/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Enable MCP Server in Pochi"
-  />
-</div>
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/enable toggle-supabase-tutorial.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 
 ### Step 6: Executing the MCP server in Pochi
@@ -489,31 +464,17 @@ Prompt used:
 
 Here’s the final working demo:
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1enHFWwNik28f8oWMKtMY5QVCuMd7lbSZ/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Executing MCP Server in Pochi"
-  />
-</div>
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/mcp-server-output-supabase-tutorial.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 You can also paste in the Vega - Lite JSON spec you receive in response into the Vega Editor and get a chart response of the requested query:
 
@@ -531,31 +492,18 @@ pochi -p "What are the total sales for Europe region?"
 
 Behind the scenes, the Pochi CLI works the same way as the VS Code extension: it connects to your MCP server via `stdio`, calls the `queryDatabas`e tool, and streams the results back into your terminal. 
 
-<div
-  style={{
-    position: "relative",
-    paddingBottom: "53.7%",
-    marginBottom: 20,
-    height: 0,
-    overflow: "hidden",
-    maxWidth: "100%",
-  }}
->
-  <iframe
-    src="https://drive.google.com/file/d/1V8Ut_XXM9sRdSPHhoGVhMMnJHkxeaYFp/preview"
-    style={{
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      border: "none",
-      borderRadius: "8px",
-    }}
-    allowFullScreen
-    title="Executing MCP server via CLI"
-  />
-</div>
+
+ <video
+        controls
+        style={{
+        width: "100%",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        }}
+    >
+        <source src="https://assets.docs.getpochi.com/cli-via-pochi-supabase-tutorial.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
 
 Invoking via the CLI helps if you spend most of your time in the shell or on remote servers. It also works great over SSH, in Docker containers, or CI/CD pipelines where you don’t have an editor UI. Moreover, you can use in automation workflows by wrapping `pochi -p` commands in scripts to periodically check metrics.
 

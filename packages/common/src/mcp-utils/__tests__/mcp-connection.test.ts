@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { experimental_createMCPClient as createClient, type ToolCallOptions } from "ai";
+import { createMCPClient as createClient } from "@ai-sdk/mcp";
+import { type ToolExecutionOptions } from "ai";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { getLogger } from "../../base";
@@ -47,8 +48,8 @@ vi.mock("@xstate/fsm", () => ({
   interpret: vi.fn(() => fsmMock),
 }));
 
-vi.mock("ai", () => ({
-  experimental_createMCPClient: vi.fn(),
+vi.mock("@ai-sdk/mcp", () => ({
+  createMCPClient: vi.fn(),
 }));
 
 vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
@@ -79,7 +80,7 @@ const mockedShouldRestartDueToConfigChanged =
 describe("McpConnection", () => {
   let onStatusChanged: Mock;
   const stdioConfig = { command: "node", args: ["server.js"] };
-  const mockToolCallOptions: ToolCallOptions = {
+  const mockToolCallOptions: ToolExecutionOptions = {
     toolCallId: "test-call-id",
     messages: [],
   };

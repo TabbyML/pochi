@@ -1,11 +1,11 @@
 export { McpTool } from "./mcp-tools";
 import {
-  type ToolUIPart,
+  type Tool,
   type UIDataTypes,
   type UIMessagePart,
   type UITools,
-  getToolName,
-  isToolUIPart,
+  getStaticToolName,
+  isStaticToolUIPart,
 } from "ai";
 import type { z } from "zod/v4";
 import { applyDiff } from "./apply-diff";
@@ -21,7 +21,7 @@ import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
-export type { ToolFunctionType } from "./types";
+export type { ToolFunctionType, IFileStateCache, IFileState } from "./types";
 export type {
   AskFollowupQuestionInput,
   Question,
@@ -34,14 +34,23 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
+import { parseToolSpec } from "./utils";
 import { writeToFile } from "./write-to-file";
 
 export {
   CustomAgent,
-  overrideCustomAgentTools,
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
+export {
+  type ParsedToolSpec,
+  type ToolSpecInput,
+  getAllowedToolNames,
+  getToolArgs,
+  normalizeToolSpecs,
+  parseToolSpec,
+  validateExecuteCommandWhitelist,
+} from "./utils";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 
@@ -50,8 +59,8 @@ export function isUserInputToolName(name: string): boolean {
 }
 
 export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
-  if (!isToolUIPart(part)) return false;
-  return isUserInputToolName(getToolName(part));
+  if (!isStaticToolUIPart(part)) return false;
+  return isUserInputToolName(getStaticToolName(part));
 }
 
 export function isAutoSuccessToolName(name: string): boolean {
@@ -61,9 +70,11 @@ export function isAutoSuccessToolName(name: string): boolean {
   );
 }
 
-export function isAutoSuccessToolPart(part: ToolUIPart): boolean {
-  if (!isToolUIPart(part)) return false;
-  return isAutoSuccessToolName(getToolName(part));
+export function isAutoSuccessToolPart(
+  part: UIMessagePart<UIDataTypes, UITools>,
+): boolean {
+  if (!isStaticToolUIPart(part)) return false;
+  return isAutoSuccessToolName(getStaticToolName(part));
 }
 
 export type ToolName = keyof ClientTools;
@@ -99,7 +110,15 @@ export const ToolsByPermission = {
 
 export const ServerToolApproved = "<server-tool-approved>";
 
-const createCliTools = (options?: CreateToolOptions) => ({
+export interface CreateClientToolOptions {
+  customAgents?: CustomAgent[];
+  skills?: Skill[];
+  contentType?: string[];
+  attemptCompletionSchema?: z.ZodAny;
+  agent?: CustomAgent;
+}
+
+const createCliTools = (options?: CreateClientToolOptions) => ({
   applyDiff,
   askFollowupQuestion,
   attemptCompletion: createAttemptCompletionTool(
@@ -117,15 +136,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
   newTask: createNewTaskTool(options?.customAgents),
 });
 
-export interface CreateToolOptions {
-  customAgents?: CustomAgent[];
-  skills?: Skill[];
-  contentType?: string[];
-  attemptCompletionSchema?: z.ZodAny;
-  agent?: CustomAgent;
-}
-
-export const createClientTools = (options?: CreateToolOptions) => {
+export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
     ...createCliTools(options),
     startBackgroundJob,
@@ -139,27 +150,87 @@ export type ClientTools = ReturnType<typeof createClientTools> & {
   createReview: createReview;
 };
 
-export const selectClientTools = (
-  options: {
-    isSubTask: boolean;
-    allowNestedSubtasks?: boolean;
-  } & CreateToolOptions,
-) => {
-  const clientTools = createClientTools(options);
+type ToolMap = Record<string, Tool>;
 
-  let tools = clientTools;
+type AgentTools = ToolMap &
+  Partial<
+    ReturnType<typeof createClientTools> & {
+      createReview: createReview;
+    }
+  >;
 
-  if (options?.isSubTask && !options.allowNestedSubtasks) {
-    const { newTask, ...rest } = tools;
-    tools = rest as ClientTools;
+type SelectAgentToolsOptions = {
+  isSubTask: boolean;
+  mcpTools?: ToolMap;
+} & CreateClientToolOptions;
+
+const RequiredAgentTools = ["todoWrite", "attemptCompletion", "useSkill"];
+
+function isAgentToolDisabled(
+  agentName: string,
+  toolName: string,
+  isSubTask: boolean,
+): boolean {
+  if (isSubTask && toolName === "newTask") return true;
+
+  const canAskFollowupQuestion =
+    agentName === "planner" || agentName === "guide";
+  return toolName === "askFollowupQuestion" && !canAskFollowupQuestion;
+}
+
+function getAgentToolAllowList(
+  agent: CustomAgent | undefined,
+  isSubTask: boolean,
+): Set<string> | undefined {
+  /**
+   * if no agent or no tools specified, we don't filter any tools.
+   * TODO(zhanba): for subagent with no tools specified, we should inherit the parent agent's tools instead of allowing all tools.
+   */
+  if (!agent?.tools?.length) {
+    return undefined;
   }
 
-  if (options?.isSubTask && options.agent?.name === "reviewer") {
-    return {
-      ...tools,
-      createReview,
-    };
+  const allowed = new Set<string>();
+
+  for (const tool of agent.tools) {
+    const { name } = parseToolSpec(tool);
+    if (isAgentToolDisabled(agent.name, name, isSubTask)) continue;
+    if (RequiredAgentTools.includes(name)) continue;
+    allowed.add(name);
   }
 
-  return tools;
+  for (const name of RequiredAgentTools) {
+    allowed.add(name);
+  }
+
+  return allowed;
+}
+
+function filterTools(
+  tools: AgentTools,
+  allowList: Set<string> | undefined,
+): AgentTools {
+  if (!allowList) return tools;
+
+  return Object.fromEntries(
+    Object.entries(tools).filter(([name]) => allowList.has(name)),
+  ) as AgentTools;
+}
+
+export const selectAgentTools = (
+  options: SelectAgentToolsOptions,
+): AgentTools => {
+  const { agent, mcpTools, isSubTask, ...toolOptions } = options;
+  const allowList = getAgentToolAllowList(agent, options.isSubTask);
+
+  const avaliableTools: AgentTools = {
+    ...createClientTools(toolOptions),
+    ...(mcpTools ?? {}),
+  };
+
+  if (agent?.name === "reviewer") {
+    avaliableTools.createReview = createReview;
+  }
+
+  return filterTools(avaliableTools, allowList);
 };

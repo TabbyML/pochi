@@ -1,7 +1,7 @@
 import { toErrorMessage } from "@getpochi/common";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolFunctionType } from "@getpochi/tools";
-import { type ToolUIPart, getToolName } from "ai";
+import { type ToolUIPart, getStaticToolName } from "ai";
 import type { ToolCallOptions } from "../types";
 import { applyDiff } from "./apply-diff";
 import { editNotebook } from "./edit-notebook";
@@ -48,8 +48,9 @@ export async function executeToolCall(
   abortSignal?: AbortSignal,
   contentType?: string[],
   envs?: Record<string, string>,
+  executeCommandWhitelist?: string[],
 ) {
-  const toolName = getToolName(tool);
+  const toolName = getStaticToolName(tool);
 
   // First, try to find the tool in the built-in tool map
   const toolFunction = ToolMap[toolName];
@@ -62,6 +63,7 @@ export async function executeToolCall(
         cwd,
         contentType,
         envs,
+        executeCommandWhitelist,
       });
     } catch (e) {
       if (e instanceof ExecuteCommandError) {

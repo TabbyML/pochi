@@ -5,7 +5,7 @@ import type { CfTypes } from "@livestore/sync-cf/cf-worker";
 
 export type Env = {
   getStore: () => Promise<Store<typeof catalog.schema>>;
-  setStoreId: (storeId: string) => void | Promise<void>;
+  setStoreId: (storeId: string) => void;
   getOwner: () => Promise<User | undefined>;
   forceUpdateTasks: () => Promise<number>;
   ASSETS: CfTypes.Fetcher;

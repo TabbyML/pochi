@@ -83,10 +83,7 @@ export async function parseAgentFile(
   let tools: string[] | undefined;
   if (typeof toolsRaw === "string") {
     const toolsRawStr = toolsRaw.trim();
-    tools =
-      toolsRawStr.length > 0
-        ? toolsRawStr.split(",").map((tool) => tool.trim())
-        : [];
+    tools = toolsRawStr.length > 0 ? splitTools(toolsRawStr) : [];
   } else if (Array.isArray(toolsRaw)) {
     tools = toolsRaw
       .map((tool) => tool.trim())
@@ -114,4 +111,36 @@ export async function parseAgentFile(
     model: frontmatterData.model,
     omitAgentsMd: frontmatterData.omitAgentsMd,
   } satisfies ValidCustomAgentFile;
+}
+
+function splitTools(input: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (ch === "(") {
+      depth++;
+      continue;
+    }
+    if (ch === ")") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (ch === "," && depth === 0) {
+      const token = input.slice(start, i).trim();
+      if (token.length > 0) {
+        parts.push(token);
+      }
+      start = i + 1;
+    }
+  }
+
+  const tail = input.slice(start).trim();
+  if (tail.length > 0) {
+    parts.push(tail);
+  }
+
+  return parts;
 }

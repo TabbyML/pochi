@@ -13,12 +13,14 @@ import {
   useSubtaskOffhand,
   useToolAutoApproval,
 } from "@/features/settings";
+import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
-import { getToolName } from "ai";
+import { getToolArgs } from "@getpochi/tools";
+import { getStaticToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
@@ -48,7 +50,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         ? [
             pendingApproval.tools.map((tool) =>
               getToolCallLifeCycle({
-                toolName: getToolName(tool),
+                toolName: getStaticToolName(tool),
                 toolCallId: tool.toolCallId,
               }),
             ),
@@ -57,7 +59,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         : [
             [
               getToolCallLifeCycle({
-                toolName: getToolName(pendingApproval.tool),
+                toolName: getStaticToolName(pendingApproval.tool),
                 toolCallId: pendingApproval.tool.toolCallId,
               }),
             ],
@@ -87,14 +89,18 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     ToolAbortText[pendingApproval.name] || t("toolInvocation.stop");
 
   const store = useDefaultStore();
+  const { customAgent } = useCustomAgent(subtask?.agent);
   const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
     isSubTask && subtask?.agent === "browser" && taskId
       ? { type: subtask.agent, sessionId: taskId }
-      : isSubTask && subtask?.agent === "planner"
+      : isSubTask &&
+          (subtask?.agent === "planner" || subtask?.agent === "explore")
         ? { type: subtask.agent }
-        : isSubTask && subtask?.agent === "explore"
-          ? { type: subtask.agent }
-          : undefined;
+        : undefined;
+  const executeCommandWhitelist = getToolArgs(
+    customAgent?.tools,
+    "executeCommand",
+  );
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
@@ -119,12 +125,13 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
       const tool = tools[i];
       const runManually =
-        (!subtask?.isNested &&
-          !subtaskOffhand &&
+        (!subtaskOffhand &&
           // Async task cannot be run manually.
           !(tool.type === "tool-newTask" && tool.input?.runAsync)) ||
-        // planner always run manually
-        (tool.type === "tool-newTask" && tool.input?.agentType === "planner");
+        // planner and guide agents always run manually
+        (tool.type === "tool-newTask" &&
+          (tool.input?.agentType === "planner" ||
+            tool.input?.agentType === "guide"));
       if (tool.type === "tool-newTask" && runManually) {
         const subtaskUid = tool.input?._meta?.uid;
         if (subtaskUid) {
@@ -137,6 +144,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       lifecycle.execute(tools[i].input, {
         contentType: selectedModel?.contentType,
         builtinSubAgentInfo,
+        executeCommandWhitelist,
+        taskId,
       });
 
       const uid = parentUid || taskId;
@@ -154,7 +163,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     taskId,
     parentUid,
     builtinSubAgentInfo,
-    subtask?.isNested,
+    executeCommandWhitelist,
   ]);
 
   const onReject = useCallback(() => {

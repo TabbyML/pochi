@@ -1,6 +1,6 @@
 import type {
-  LanguageModelV2Middleware,
-  LanguageModelV2StreamPart,
+  LanguageModelV3Middleware,
+  LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
 import { constants } from "@getpochi/common";
@@ -14,9 +14,9 @@ export function createNewTaskMiddleware(
   cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],
-): LanguageModelV2Middleware {
+): LanguageModelV3Middleware {
   return {
-    middlewareVersion: "v2",
+    specificationVersion: "v3",
     transformParams: async ({ params }) => {
       const tools = params.tools;
       if (!tools) return params;
@@ -43,8 +43,8 @@ export function createNewTaskMiddleware(
       let toolCallId = "";
       const transformedStream = stream.pipeThrough(
         new TransformStream<
-          LanguageModelV2StreamPart,
-          LanguageModelV2StreamPart
+          LanguageModelV3StreamPart,
+          LanguageModelV3StreamPart
         >({
           async transform(chunk, controller) {
             if (

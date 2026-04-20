@@ -74,7 +74,9 @@ const VSCodeHostStub = {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
       storeId: string;
+      taskId: string;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
@@ -107,6 +109,9 @@ const VSCodeHostStub = {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
   closePochiTabs: (_uid?: string): Promise<void> => {
+    return Promise.resolve();
+  },
+  clearFileStateCache: (_taskId: string): Promise<void> => {
     return Promise.resolve();
   },
   readActiveSelection: (): Promise<

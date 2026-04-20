@@ -1,15 +1,15 @@
 import type {
-  LanguageModelV2Middleware,
-  LanguageModelV2Prompt,
-  LanguageModelV2StreamPart,
-  LanguageModelV2ToolResultPart,
+  LanguageModelV3Middleware,
+  LanguageModelV3Prompt,
+  LanguageModelV3StreamPart,
+  LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider";
 import { generateId } from "ai";
 import { getPotentialStartIndex } from "./utils";
 
 export function createToolCallMiddleware(
   useStopWordStream: boolean,
-): LanguageModelV2Middleware {
+): LanguageModelV3Middleware {
   // Set defaults with validated config
   const toolCallEndTag = "</api-request>";
   const toolResponseTagTemplate = (name: string) =>
@@ -25,7 +25,7 @@ export function createToolCallMiddleware(
   const toolSectionEndTag = "</api-section>";
 
   return {
-    middlewareVersion: "v2",
+    specificationVersion: "v3",
     async transformParams({ params }) {
       const processedPrompt = params.prompt.map((message) => {
         if (message.role === "assistant") {
@@ -43,16 +43,16 @@ export function createToolCallMiddleware(
         }
 
         return message;
-      }) as LanguageModelV2Prompt;
+      }) as LanguageModelV3Prompt;
 
-      // Appropriate fixes are needed as they are disappearing in LanguageModelV2
+      // Keep the existing XML-based tool-injection behavior while using V3 prompt types.
       const originalToolDefinitions = params.tools || [];
 
       const toolSystemPrompt = toolSystemPromptTemplate(
         JSON.stringify(originalToolDefinitions, null, 2),
       );
 
-      const promptWithTools: LanguageModelV2Prompt =
+      const promptWithTools: LanguageModelV3Prompt =
         processedPrompt[0]?.role === "system"
           ? [
               {
@@ -117,7 +117,7 @@ function createToolCallStream(
   toolCallStartPrefix: string,
   toolCallEndTag: string,
   toolSectionStartTag: string,
-): TransformStream<LanguageModelV2StreamPart, LanguageModelV2StreamPart> {
+): TransformStream<LanguageModelV3StreamPart, LanguageModelV3StreamPart> {
   let isFirstToolCall = true;
   let isFirstText = true;
   let afterSwitch = false;
@@ -128,7 +128,7 @@ function createToolCallStream(
 
   let textId = "";
   let pendingTextStart:
-    | Extract<LanguageModelV2StreamPart, { type: "text-start" }>
+    | Extract<LanguageModelV3StreamPart, { type: "text-start" }>
     | undefined = undefined;
   const streamingToolCalls: StreamingToolCall[] = [];
 
@@ -340,7 +340,7 @@ function createToolCallStream(
 }
 
 function processAssistant(
-  message: Extract<LanguageModelV2Prompt[number], { role: "assistant" }>,
+  message: Extract<LanguageModelV3Prompt[number], { role: "assistant" }>,
 ) {
   const toolCalls = message.content
     .filter(
@@ -368,19 +368,24 @@ ${toolCalls.join("\n")}
 }
 
 function processToolResult(
-  tool: Extract<LanguageModelV2Prompt[number], { role: "tool" }>,
+  tool: Extract<LanguageModelV3Prompt[number], { role: "tool" }>,
   toolResponseTagTemplate: (name: string) => string,
   toolResponseEndTag: string,
 ) {
   const content: Extract<
-    LanguageModelV2Prompt[number],
+    LanguageModelV3Prompt[number],
     { role: "user" }
   >["content"] = [];
 
-  for (const x of tool.content) {
+  const toolResults = tool.content.filter(
+    (x): x is Extract<typeof x, { type: "tool-result" }> =>
+      x.type === "tool-result",
+  );
+
+  for (const x of toolResults) {
     if (x.output && x.output.type === "content") {
       for (const part of x.output.value || []) {
-        if (part.type === "media") {
+        if (part.type === "file-data" || part.type === "image-data") {
           content.push({
             type: "file",
             mediaType: part.mediaType,
@@ -393,7 +398,7 @@ function processToolResult(
     } else {
       content.push({
         type: "text",
-        text: `${toolResponseTagTemplate(x.toolName)}${convertToolCallOutput(x.output)}${toolResponseEndTag}`,
+        text: `${toolResponseTagTemplate(x.toolName)}${convertToolCallOutput(x.output as LegacyToolResultOutput)}${toolResponseEndTag}`,
       });
     }
   }
@@ -478,17 +483,17 @@ For each api request respone, you are only allowed to return the arguments in JS
 
 function createStopWordStream(
   stop: string,
-): TransformStream<LanguageModelV2StreamPart, LanguageModelV2StreamPart> {
+): TransformStream<LanguageModelV3StreamPart, LanguageModelV3StreamPart> {
   let buffer = "";
   let stopped = false;
   let pendingTextStart:
-    | Extract<LanguageModelV2StreamPart, { type: "text-start" }>
+    | Extract<LanguageModelV3StreamPart, { type: "text-start" }>
     | undefined;
   let textId = "";
 
   const publish = (
     text: string,
-    controller: TransformStreamDefaultController<LanguageModelV2StreamPart>,
+    controller: TransformStreamDefaultController<LanguageModelV3StreamPart>,
   ) => {
     if (text.length === 0) return;
     if (pendingTextStart) {
@@ -568,9 +573,7 @@ function convertToolCallInput(x: unknown) {
   return JSON.stringify(x);
 }
 
-function convertToolCallOutput(
-  x: Exclude<LanguageModelV2ToolResultPart["output"], { type: "content" }>,
-) {
+function convertToolCallOutput(x: LegacyToolResultOutput) {
   if (x.type === "json") {
     return JSON.stringify(x.value);
   }
@@ -587,6 +590,11 @@ function convertToolCallOutput(
 
   assertUnreachable(x);
 }
+
+type LegacyToolResultOutput = Extract<
+  Exclude<LanguageModelV3ToolResultPart["output"], { type: "content" }>,
+  { type: "json" | "text" | "error-text" | "error-json" }
+>;
 
 function assertUnreachable(x: never): never {
   throw new Error(`Unreachable case: ${x}`);

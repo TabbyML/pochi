@@ -11,6 +11,8 @@ import {
   getSystemInfo,
   getWorkspaceRulesFileUri,
 } from "@/lib/env";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { FileStateCacheRegistry } from "@/lib/file-state-cache-registry";
 import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -62,6 +64,7 @@ import {
   GitStatusReader,
   ignoreWalk,
   isPlainTextFile,
+  maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
@@ -184,6 +187,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
     private readonly taskChangedFilesManager: TaskChangedFilesManager,
+    private readonly fileStateCacheRegistry: FileStateCacheRegistry,
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
     private readonly layoutManager: LayoutManager,
@@ -341,6 +345,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     PochiFileSystemProvider.closePochiTabs(uid);
   };
 
+  clearFileStateCache = async (taskId: string): Promise<void> => {
+    this.fileStateCacheRegistry.clear(taskId);
+  };
+
+  deleteFileStateCache(taskId: string): void {
+    this.fileStateCacheRegistry.delete(taskId);
+  }
+
   readActiveSelection = async (): Promise<
     ThreadSignalSerialization<FileSelection | undefined>
   > => {
@@ -444,7 +456,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
+      executeCommandWhitelist?: string[];
       storeId: string;
+      taskId: string;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -479,7 +493,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.storeId,
       options.builtinSubAgentInfo,
     );
-    const result = await safeCall(
+    const taskId = options.taskId;
+    const fileStateCache = this.fileStateCacheRegistry.get(options.taskId);
+    logger.debug(
+      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
+    );
+    const rawResult = await safeCall(
       tool(resolvedArgs, {
         abortSignal,
         messages: [],
@@ -487,7 +506,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         cwd: this.cwd,
         contentType: options.contentType,
         envs,
+        taskId,
+        executeCommandWhitelist: options.executeCommandWhitelist,
+        fileStateCache,
       }),
+    );
+
+    const result = await maybePersistToolResult(
+      toolName,
+      options.toolCallId,
+      taskId,
+      rawResult,
     );
 
     const status = abortSignal.aborted
@@ -1078,6 +1107,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
       if (Object.keys(updates).length > 0) {
         await this.taskStateStore.setArchived(updates);
+        for (const taskId of Object.keys(updates)) {
+          this.deleteFileStateCache(taskId);
+        }
       }
     }
     return success;
@@ -1207,6 +1239,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           await this.taskStateStore.setArchived({
             [params.taskId]: params.archived,
           });
+          if (params.archived) {
+            this.deleteFileStateCache(params.taskId);
+          }
         } else if (params.type === "batch") {
           const tasks = this.taskHistoryStore.tasks.value;
           const updates: Record<string, boolean> = {};
@@ -1222,6 +1257,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
           if (Object.keys(updates).length > 0) {
             await this.taskStateStore.setArchived(updates);
+            for (const taskId of Object.keys(updates)) {
+              this.deleteFileStateCache(taskId);
+            }
           }
         }
       },

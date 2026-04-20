@@ -24,13 +24,16 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
+import { type Todo, getToolArgs } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
   threadSignal,
 } from "@quilted/threads/signals";
-import { getToolName, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import {
+  getStaticToolName,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ToolProps } from "../components/types";
 
@@ -39,7 +42,7 @@ export function useLiveSubTask(
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): (TaskThreadSource & { parentId: string }) | undefined {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
-    toolName: getToolName(tool),
+    toolName: getStaticToolName(tool),
     toolCallId: tool.toolCallId,
   });
 
@@ -71,14 +74,6 @@ export function useLiveSubTask(
   const uid = tool.input?._meta?.uid!;
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
-
-  // Determine task depth by checking its parent hierarchy.
-  // Since MaxSubTaskDepth is 2, we only need to check up to the grandparent.
-  const parentTask = store.useQuery(
-    catalog.queries.makeTaskQuery(task?.parentId ?? ""),
-  );
-  const taskDepth = parentTask?.parentId ? 2 : 1;
-
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const getters = useLiveChatKitGetters({
     todos: todosRef,
@@ -96,8 +91,10 @@ export function useLiveSubTask(
 
     getters,
     isSubTask: true,
-    depth: taskDepth,
     customAgent,
+    onCompact: () => {
+      vscodeHost.clearFileStateCache(uid);
+    },
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
         lifecycle.streamingResult,
@@ -149,6 +146,10 @@ export function useLiveSubTask(
             : tool.input?.agentType === "explore"
               ? { type: "explore" }
               : undefined;
+      const executeCommandWhitelist = getToolArgs(
+        customAgent?.tools,
+        "executeCommand",
+      );
 
       const result = await vscodeHost.executeToolCall(
         toolCall.toolName,
@@ -160,7 +161,9 @@ export function useLiveSubTask(
           ),
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
+          executeCommandWhitelist,
           storeId: store.storeId,
+          taskId: uid,
         },
       );
 
@@ -185,7 +188,7 @@ export function useLiveSubTask(
             if (output.error) {
               result.error = output.error;
             }
-            addToolResult({
+            addToolOutput({
               // @ts-expect-error
               tool: toolCall.toolName,
               toolCallId: toolCall.toolCallId,
@@ -211,7 +214,7 @@ export function useLiveSubTask(
         isExecuting: false,
       });
 
-      addToolResult({
+      addToolOutput({
         // @ts-expect-error
         tool: toolCall.toolName,
         toolCallId: toolCall.toolCallId,
@@ -227,7 +230,7 @@ export function useLiveSubTask(
     error,
     setMessages,
     sendMessage,
-    addToolResult,
+    addToolOutput,
     regenerate,
   } = useChat({
     chat: chatKit.chat,
@@ -239,6 +242,7 @@ export function useLiveSubTask(
     setMessages,
     sendMessage,
     regenerate,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
   const retry = useCallback(
     (error?: Error) => {

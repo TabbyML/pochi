@@ -2,7 +2,7 @@ import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { useToolCallLifeCycle } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import type { Message, UITools } from "@getpochi/livekit";
-import { type ToolUIPart, getToolName } from "ai";
+import { type ToolUIPart, getStaticToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
 import { AskFollowupQuestionTool } from "./ask-followup-question";
 import { AttemptCompletionTool } from "./attempt-completion";
@@ -41,7 +41,7 @@ export function ToolInvocationPart({
   isSubTask?: boolean;
   isLastPart?: boolean;
 }) {
-  const toolName = getToolName(tool);
+  const toolName = getStaticToolName(tool);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName,
     toolCallId: tool.toolCallId,

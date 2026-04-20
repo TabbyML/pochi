@@ -31,28 +31,6 @@ export const CustomAgent = z.object({
 
 export type CustomAgent = z.infer<typeof CustomAgent>;
 
-export const overrideCustomAgentTools = (
-  customAgent: CustomAgent | undefined,
-): CustomAgent | undefined => {
-  if (!customAgent) return undefined;
-  if (!customAgent.tools || customAgent.tools.length === 0) {
-    return { ...customAgent, tools: undefined };
-  }
-
-  const toAddTools = ["todoWrite", "attemptCompletion", "useSkill"];
-  const toDeleteTools: string[] = [];
-
-  // planner auto jump into manual run node, so it's ok to utilize askFollowupQuestion
-  if (customAgent.name !== "planner") {
-    toDeleteTools.push("newTask", "askFollowupQuestion");
-  }
-
-  const updatedTools = customAgent.tools.filter(
-    (tool) => !toDeleteTools.includes(tool) && !toAddTools.includes(tool),
-  );
-  return { ...customAgent, tools: [...updatedTools, ...toAddTools] };
-};
-
 function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
   if (!customAgents || customAgents.length === 0)
     return "No custom agents are available. You shall always leave the agentType parameter empty to use the default agent.";

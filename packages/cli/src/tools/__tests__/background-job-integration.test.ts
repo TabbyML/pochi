@@ -8,6 +8,7 @@ import { catalog } from "@getpochi/livekit";
 import { makeAdapter } from "@livestore/adapter-node";
 import { createStorePromise } from "@livestore/livestore";
 import { NodeBlobStore } from "../../node-blob-store";
+import { FileStateCache } from "@getpochi/common/tool-utils";
 import os from "node:os";
 
 describe("executeToolCall with background jobs", () => {
@@ -55,6 +56,7 @@ describe("executeToolCall with background jobs", () => {
           writeFile: async () => {},
         },
         blobStore,
+        fileStateCache: new FileStateCache(),
       },
       cwd
     )) as any;

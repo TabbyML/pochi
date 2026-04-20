@@ -1,0 +1,24 @@
+diff --git a/dist/index.js b/dist/index.js
+index 3127c4781a70642f2a98abba56082f52c2646a4a..849b38e2d5099c50dd406483f597baae25beeb78 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1634,6 +1634,7 @@ var DefaultMCPClient = class {
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       await this.notification({
+         method: "notifications/initialized"
+       });
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 20ede4e4818ff1ef2ac79b3e0bd3b43f7962b147..ab50093ce2e6b1fcc2c4b8358105ff83cbd17858 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1606,6 +1606,7 @@ var DefaultMCPClient = class {
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       await this.notification({
+         method: "notifications/initialized"
+       });

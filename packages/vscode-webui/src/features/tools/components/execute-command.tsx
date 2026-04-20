@@ -1,5 +1,5 @@
 import { useToolCallLifeCycle } from "@/features/chat";
-import { getToolName } from "ai";
+import { getStaticToolName } from "ai";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { CommandExecutionPanel } from "./command-execution-panel";
@@ -14,7 +14,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
 }) => {
   const { t } = useTranslation();
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
-    toolName: getToolName(tool),
+    toolName: getStaticToolName(tool),
     toolCallId: tool.toolCallId,
   });
   const abortTool = useCallback(() => {

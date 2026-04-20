@@ -5,7 +5,7 @@ import {
   type ChatInit,
   type ChatOnErrorCallback,
   type ChatOnFinishCallback,
-  isToolUIPart,
+  isStaticToolUIPart,
 } from "ai";
 import type z from "zod/v4";
 import type { BlobStore } from "../blob-store";
@@ -107,8 +107,6 @@ export type LiveChatKitOptions<T> = {
 
   isSubTask?: boolean;
 
-  depth?: number;
-
   store: LiveKitStore;
 
   blobStore: BlobStore;
@@ -133,6 +131,13 @@ export type LiveChatKitOptions<T> = {
       contextWindowUsage?: ContextWindowUsage;
     },
   ) => void;
+
+  /**
+   * Called after a successful compaction (inline or explicit).
+   * Use this to clear caches (e.g. FileStateCache) that depend on
+   * conversation context that was discarded during compaction.
+   */
+  onCompact?: () => void;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -191,9 +196,9 @@ export class LiveChatKit<
     blobStore,
     chatClass,
     onOverrideMessages,
+    onCompact,
     getters,
     isSubTask,
-    depth,
     customAgent,
     outputSchema,
     attemptCompletionSchema,
@@ -213,7 +218,6 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
-      depth,
       customAgent,
       outputSchema,
       attemptCompletionSchema,
@@ -260,6 +264,7 @@ export class LiveChatKit<
             abortSignal,
             inline: true,
           });
+          onCompact?.();
         } catch (err) {
           logger.error("Failed to compact task", err);
           throw err;
@@ -295,6 +300,7 @@ export class LiveChatKit<
       if (!summary) {
         throw new Error("Failed to compact task");
       }
+      onCompact?.();
       return summary;
     };
 
@@ -479,6 +485,7 @@ export class LiveChatKit<
     message: originalMessage,
     isAbort,
     isError,
+    finishReason: streamFinishReason,
   }) => {
     const abortError = new Error("Transport is aborted");
     abortError.name = "AbortError";
@@ -497,7 +504,8 @@ export class LiveChatKit<
       return this.onError(abortError);
     }
 
-    const status = toTaskStatus(message, message.metadata?.finishReason);
+    const finishReason = streamFinishReason ?? message.metadata?.finishReason;
+    const status = toTaskStatus(message, finishReason);
 
     let contextWindowUsage: ContextWindowUsage | undefined = undefined;
     if (message.metadata?.kind === "assistant") {
@@ -624,7 +632,7 @@ function estimateTokenBreakdown(messages: Message[]) {
         messagesTokens += estimateTokens(contentStr);
       } else if (part.type === "file") {
         filesTokens += ImageEstimatedTokens;
-      } else if (isToolUIPart(part)) {
+      } else if (isStaticToolUIPart(part)) {
         messagesTokens += estimateTokens(JSON.stringify(part.input || {}));
         if (part.state === "output-available" && part.output) {
           const output = (part as unknown as { output: unknown }).output;

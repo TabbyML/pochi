@@ -1,6 +1,5 @@
 import type { CustomAgent } from "@getpochi/tools";
 import type { Environment } from "../environment";
-import { SocialLinks } from "../social";
 
 type CustomRules = Environment["info"]["customRules"];
 
@@ -15,11 +14,6 @@ export function createSystemPrompt(
 
 IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are for helping the user with programming. You may use URLs provided by the user in their messages or local files.
 
-If the user asks for help or wants to give feedback inform them of the following:
-- Join the discord channel at ${SocialLinks.Discord} to ask questions and get help
-- To report bugs, users should report the issue at https://github.com/TabbyML/pochi/issues
-
-When the user directly asks about Pochi (eg 'can Pochi do...', 'does Pochi have...') or asks in second person (eg 'are you able...', 'can you do...'), first use curl to gather information to answer the question from Pochi docs at https://docs.getpochi.com/llms.txt
 `.trim();
 
   return `${agentSystemPrompt.trim()}

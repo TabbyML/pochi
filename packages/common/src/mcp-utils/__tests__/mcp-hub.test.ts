@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { signal, type Signal } from "@preact/signals-core";
 import type { McpTool } from "@getpochi/tools";
-import type { ToolCallOptions } from "ai";
+import type { ToolExecutionOptions } from "ai";
 import { McpHub } from "../mcp-hub";
 import type { McpServerConfig } from "../../configuration/index.js";
 import { McpConnection } from "../mcp-connection";
@@ -48,7 +48,7 @@ describe("McpHub", () => {
     updateConfig: Mock;
     dispose: Mock;
   };
-  const mockToolCallOptions: ToolCallOptions = {
+  const mockToolCallOptions: ToolExecutionOptions = {
     toolCallId: "test-call-id",
     messages: [],
   };

@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { TabbyCredentials } from "./types";
@@ -7,7 +7,7 @@ import type { TabbyCredentials } from "./types";
 export function createTabbyModel({
   modelId,
   getCredentials,
-}: CreateModelOptions): LanguageModelV2 {
+}: CreateModelOptions): LanguageModelV3 {
   const tabbyModel = createOpenAICompatible({
     name: "Tabby",
     baseURL: "http://placeholder.local/v1", // Will be replaced by custom fetch
@@ -19,7 +19,7 @@ export function createTabbyModel({
   return wrapLanguageModel({
     model: tabbyModel,
     middleware: {
-      middlewareVersion: "v2",
+      specificationVersion: "v3",
       async transformParams({ params }) {
         // Transform max_tokens to max_completion_tokens for newer models
         const { maxOutputTokens, ...rest } = params;

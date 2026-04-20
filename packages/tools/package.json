@@ -1,12 +1,19 @@
 {
   "name": "@getpochi/tools",
   "version": "0.1.1",
+  "scripts": {
+    "test": "bun vitest --run"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "ai": "catalog:",
     "json-schema": "^0.4.0",
-    "zod": "catalog:",
-    "ai": "catalog:"
+    "shell-quote": "^1.8.3",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/shell-quote": "^1.7.5"
   }
 }

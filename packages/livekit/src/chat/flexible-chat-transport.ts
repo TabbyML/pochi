@@ -1,6 +1,6 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import type { Environment, PochiProviderOptions } from "@getpochi/common";
-import { constants, formatters, prompts } from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
 
 import {
@@ -8,8 +8,7 @@ import {
   type CustomAgent,
   type McpTool,
   type Skill,
-  overrideCustomAgentTools,
-  selectClientTools,
+  selectAgentTools,
 } from "@getpochi/tools";
 import {
   APICallError,
@@ -18,12 +17,11 @@ import {
   type ModelMessage,
   type UIMessageChunk,
   convertToModelMessages,
-  isToolUIPart,
+  isStaticToolUIPart,
   streamText,
   tool,
   wrapLanguageModel,
 } from "ai";
-import { pickBy } from "remeda";
 import type z from "zod/v4";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
@@ -61,7 +59,6 @@ export type ChatTransportOptions = {
   onStart?: OnStartCallback;
   getters: PrepareRequestGetters;
   isSubTask?: boolean;
-  depth?: number;
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
@@ -73,7 +70,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
-  private readonly depth?: number;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
@@ -85,10 +81,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
-    this.depth = options.depth;
     this.store = options.store;
     this.blobStore = options.blobStore;
-    this.customAgent = overrideCustomAgentTools(options.customAgent);
+    this.customAgent = options.customAgent;
     this.outputSchema = options.outputSchema;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
   }
@@ -123,13 +118,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const model = createModel({ llm });
     const middlewares = [];
 
-    const allowNestedSubtasks =
-      !this.isSubTask ||
-      (this.customAgent?.name === "planner" &&
-        this.depth !== undefined &&
-        this.depth < constants.MaxSubTaskDepth);
-
-    if (allowNestedSubtasks) {
+    if (!this.isSubTask) {
       middlewares.push(
         createNewTaskMiddleware(
           this.store,
@@ -159,27 +148,15 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
 
-    const tools = pickBy(
-      {
-        ...selectClientTools({
-          isSubTask: !!this.isSubTask,
-          allowNestedSubtasks,
-          customAgents,
-          contentType: llm.contentType,
-          skills,
-          attemptCompletionSchema: this.attemptCompletionSchema,
-          agent: this.customAgent,
-        }),
-        ...(mcpTools || {}),
-      },
-
-      (_val, key) => {
-        if (this.customAgent?.tools) {
-          return this.customAgent.tools.includes(key);
-        }
-        return true;
-      },
-    );
+    const tools = selectAgentTools({
+      agent: this.customAgent,
+      isSubTask: !!this.isSubTask,
+      customAgents,
+      contentType: llm.contentType,
+      skills,
+      attemptCompletionSchema: this.attemptCompletionSchema,
+      mcpTools,
+    });
     if (tools.readFile) {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
@@ -196,7 +173,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
-      convertToModelMessages(
+      await convertToModelMessages(
         formatters.llm(preparedMessages),
         // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
         { tools },
@@ -237,6 +214,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         if (part.type === "finish") {
           return {
             kind: "assistant",
+            // The client only consumes the aggregated total token count here.
+            // Detailed usage shape differences are a server/protocol concern.
             totalTokens:
               part.totalUsage.totalTokens || estimateTotalTokens(messages),
             finishReason: part.finishReason,
@@ -285,7 +264,7 @@ function estimateTotalTokens(messages: Message[]): number {
         totalTokens += estimateTokens(part.text);
       } else if (part.type === "file") {
         totalTokens += ImageEstimatedTokens;
-      } else if (isToolUIPart(part)) {
+      } else if (isStaticToolUIPart(part)) {
         totalTokens += estimateTokens(JSON.stringify(part));
       }
     }
@@ -319,7 +298,7 @@ function handleReadFileOutput(
 ) {
   return tool({
     ...readFile,
-    toModelOutput: (output) => {
+    toModelOutput: ({ output }) => {
       if (output.type === "media") {
         const blob = findBlob(blobStore, new URL(output.data), output.mimeType);
         if (!blob) {

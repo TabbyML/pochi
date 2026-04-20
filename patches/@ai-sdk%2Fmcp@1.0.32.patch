@@ -1,0 +1,44 @@
+diff --git a/dist/index.d.mts b/dist/index.d.mts
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -473,6 +473,7 @@
+ }
+ declare function createMCPClient(config: MCPClientConfig): Promise<MCPClient>;
+ interface MCPClient {
++    instructions?: string;
+     tools<TOOL_SCHEMAS extends ToolSchemas = 'automatic'>(options?: {
+         schemas?: TOOL_SCHEMAS;
+     }): Promise<McpToolSet<TOOL_SCHEMAS>>;
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -473,6 +473,7 @@
+ }
+ declare function createMCPClient(config: MCPClientConfig): Promise<MCPClient>;
+ interface MCPClient {
++    instructions?: string;
+     tools<TOOL_SCHEMAS extends ToolSchemas = 'automatic'>(options?: {
+         schemas?: TOOL_SCHEMAS;
+     }): Promise<McpToolSet<TOOL_SCHEMAS>>;
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1715,6 +1715,7 @@
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       await this.notification({
+         method: "notifications/initialized"
+       });
+diff --git a/dist/index.mjs b/dist/index.mjs
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1689,6 +1689,7 @@
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       await this.notification({
+         method: "notifications/initialized"
+       });
