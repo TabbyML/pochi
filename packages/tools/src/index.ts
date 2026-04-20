@@ -64,6 +64,7 @@ export {
   isSafeToBatchToolCall,
   partitionToolCalls,
 } from "./batch-utils";
+export type { ScheduledToolCallResult } from "./batch-utils";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";

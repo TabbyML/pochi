@@ -22,6 +22,20 @@ export class BatchExecutionError<T> extends Error {
   }
 }
 
+export type ScheduledToolCallResult =
+  | {
+      kind: "success";
+    }
+  | {
+      kind: "error";
+      error: string;
+      shouldStopOnError?: boolean;
+    }
+  | {
+      kind: "cancelled";
+      reason: "user-abort" | "user-reject" | "previous-tool-call-failed";
+    };
+
 /** Tool names that are inherently side-effect-free. */
 const ReadonlyToolNames = new Set<string>(ToolsByPermission.read);
 

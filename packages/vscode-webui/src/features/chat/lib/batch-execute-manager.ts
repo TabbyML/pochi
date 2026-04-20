@@ -1,14 +1,20 @@
 import {
   BatchExecutionError,
   type CustomAgent,
+  type ScheduledToolCallResult,
   executePartitionedToolCalls,
   isReadonlyToolCall,
   partitionToolCalls,
 } from "@getpochi/tools";
-import type {
-  QueueCancelReason,
-  ScheduledToolCall,
-} from "./scheduled-tool-call";
+
+export type QueueCancelReason = "user-abort" | "previous-tool-call-failed";
+
+export type ScheduledToolCall = {
+  toolName: string;
+  input: unknown;
+  run: () => Promise<ScheduledToolCallResult>;
+  cancel: (reason: QueueCancelReason) => void;
+};
 
 /** Maximum concurrent executions within one concurrent batch. */
 const MaxConcurrency = 10;

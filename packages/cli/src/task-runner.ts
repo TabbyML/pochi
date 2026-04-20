@@ -25,6 +25,7 @@ import {
 import { LiveChatKit } from "@getpochi/livekit/node";
 import {
   BatchExecutionError,
+  type ScheduledToolCallResult,
   executePartitionedToolCalls,
   isReadonlyToolCall,
   partitionToolCalls,
@@ -42,7 +43,6 @@ import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
-import type { ScheduledToolCallResult } from "./lib/scheduled-tool-call";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
@@ -620,7 +620,7 @@ export class TaskRunner {
             abortSignal,
           );
 
-          if (result.kind === "error" && result.shouldStopQueue) {
+          if (result.kind === "error" && result.shouldStopOnError) {
             // Side-effecting tool calls act as serial barriers in the CLI.
             // If one fails, the remaining queued tool calls are cancelled.
             throw new Error(result.error);
@@ -663,8 +663,7 @@ export class TaskRunner {
   }
 
   private async runScheduledToolCall(
-    // biome-ignore lint/suspicious/noExplicitAny: ToolUIPart<UITools> is parameterized
-    toolCall: any,
+    toolCall: ToolUIPart<UITools>,
     executeCommandWhitelist: string[] | undefined,
     abortSignal?: AbortSignal,
   ): Promise<ScheduledToolCallResult> {
@@ -700,7 +699,6 @@ export class TaskRunner {
     );
 
     await this.chatKit.chat.addToolOutput({
-      // @ts-expect-error
       tool: toolName,
       toolCallId: toolCall.toolCallId,
       // @ts-expect-error
@@ -714,7 +712,7 @@ export class TaskRunner {
       return {
         kind: "error",
         error: toolError,
-        shouldStopQueue: !isReadonlyToolCall(
+        shouldStopOnError: !isReadonlyToolCall(
           toolName,
           toolCall.input,
           this.toolCallOptions.customAgents,

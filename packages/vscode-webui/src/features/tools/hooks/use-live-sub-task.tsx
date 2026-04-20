@@ -28,7 +28,6 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { normalizeQueueCancelReason } from "../../chat/lib/scheduled-tool-call";
 import { createExecutorToolCallAdapter } from "../../chat/lib/scheduled-tool-call-adapters";
 import type { ToolProps } from "../components/types";
 
@@ -68,7 +67,9 @@ export function useLiveSubTask(
       abortController.current.abort(abortSignal.reason);
       batchExecuteManager.abort(
         uid,
-        normalizeQueueCancelReason(abortSignal.reason),
+        abortSignal.reason === "previous-tool-call-failed"
+          ? "previous-tool-call-failed"
+          : "user-abort",
       );
     };
     abortSignal.addEventListener("abort", onAbort);
