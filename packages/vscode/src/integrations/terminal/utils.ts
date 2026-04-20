@@ -61,20 +61,6 @@ export async function* createBackgroundOutputStream(
 }
 
 /**
- * Initial delay before starting command execution to ensure webview subscription
- */
-const WebviewSubscriptionDelayMs = 250;
-
-/**
- * Waits for webview subscription to prevent early garbage collection
- */
-export const waitForWebviewSubscription = async (): Promise<void> => {
-  await new Promise((resolve) =>
-    setTimeout(resolve, WebviewSubscriptionDelayMs),
-  );
-};
-
-/**
  * Error class for command execution failures
  */
 export class ExecutionError extends Error {

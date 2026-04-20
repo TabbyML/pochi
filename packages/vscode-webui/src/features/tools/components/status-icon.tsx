@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsDevMode } from "@/features/settings";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
+import { getToolPartError } from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
 import type { ToolUIPart } from "ai";
 import {
@@ -35,20 +36,7 @@ export function StatusIcon({
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
-  let error: string | undefined;
-  if (
-    tool.state === "output-available" &&
-    typeof tool.output === "object" &&
-    tool.output !== null &&
-    "error" in tool.output &&
-    typeof tool.output.error === "string"
-  ) {
-    error = tool.output.error;
-  }
-
-  if (tool.state === "output-error") {
-    error = tool.errorText;
-  }
+  const error = getToolPartError(tool);
 
   const tooltipContent = [];
 

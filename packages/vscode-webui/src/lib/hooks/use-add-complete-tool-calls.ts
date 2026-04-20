@@ -88,6 +88,10 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
     case "user-reject":
       output.error = "User rejected the tool call";
       break;
+    case "previous-tool-call-failed":
+      output.error =
+        "Tool call was cancelled because a previous tool call failed.";
+      break;
     case "execute-finish":
       break;
     default:

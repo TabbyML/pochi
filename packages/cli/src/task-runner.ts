@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts, toErrorMessage } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -23,6 +23,12 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
+import {
+  BatchExecutionError,
+  executePartitionedToolCalls,
+  isReadonlyToolCall,
+  partitionToolCalls,
+} from "@getpochi/tools";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
 import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
 import {
@@ -36,6 +42,7 @@ import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
+import type { ScheduledToolCallResult } from "./lib/scheduled-tool-call";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
@@ -139,6 +146,12 @@ export interface RunnerOptions {
 }
 
 const logger = getLogger("TaskRunner");
+
+/**
+ * Maximum number of safe-to-batch tool calls to execute concurrently within a
+ * single microbatch in the CLI runner.
+ */
+const MaxToolCallConcurrency = 10;
 
 export class TaskRunner {
   private store: LiveKitStore;
@@ -576,60 +589,168 @@ export class TaskRunner {
       this.customAgent?.tools,
       "executeCommand",
     );
-    for (const toolCall of message.parts.filter(isStaticToolUIPart)) {
-      if (toolCall.state !== "input-available") continue;
-      const toolName = getStaticToolName(toolCall);
-      logger.trace(
-        `Found tool call: ${toolName} with args: ${JSON.stringify(
-          toolCall.input,
-        )}`,
-      );
 
-      const resolvedInput = resolveToolCallArgs(
-        toolCall.input,
-        this.store.storeId,
-      );
+    const toolCalls = message.parts
+      .filter(isStaticToolUIPart)
+      .filter((tc) => tc.state === "input-available");
 
-      let envs: Record<string, string> | undefined;
-      if (this.customAgent?.name === "browser") {
-        envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
-          this.taskId,
-        );
+    if (toolCalls.length === 0) {
+      logger.trace("No tool calls to process.");
+      return "next" as const;
+    }
+
+    // Partition tool calls into microbatches: consecutive safe-to-batch tool
+    // calls run concurrently; barrier tool calls run serially in their own batch.
+    const partitioned = partitionToolCalls(
+      toolCalls,
+      (toolCall) => ({
+        toolName: getStaticToolName(toolCall),
+        input: toolCall.input,
+      }),
+      this.toolCallOptions.customAgents,
+    );
+
+    try {
+      await executePartitionedToolCalls(partitioned, {
+        concurrencyLimit: MaxToolCallConcurrency,
+        execute: async (toolCall, abortSignal) => {
+          const result = await this.runScheduledToolCall(
+            toolCall,
+            executeCommandWhitelist,
+            abortSignal,
+          );
+
+          if (result.kind === "error" && result.shouldStopQueue) {
+            // Side-effecting tool calls act as serial barriers in the CLI.
+            // If one fails, the remaining queued tool calls are cancelled.
+            throw new Error(result.error);
+          }
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof BatchExecutionError)) {
+        throw error;
       }
 
-      const toolResult = await processContentOutput(
+      logger.warn(
+        `Batch tool call execution failed; ${error.pendingItems.length} pending tool call(s) will be cancelled.`,
+      );
+
+      for (const toolCall of error.pendingItems as ToolUIPart<UITools>[]) {
+        const toolName = getStaticToolName(toolCall);
+        const skippedOutput = {
+          error: "Tool call was cancelled because a previous tool call failed.",
+        };
+
+        const persistedToolResult = await maybePersistToolResult(
+          toolName,
+          toolCall.toolCallId,
+          this.taskId,
+          skippedOutput,
+        );
+
+        await this.chatKit.chat.addToolOutput({
+          tool: toolName,
+          toolCallId: toolCall.toolCallId,
+          // @ts-expect-error
+          output: persistedToolResult,
+        });
+      }
+    }
+
+    logger.trace("All tool calls processed in the last message.");
+    return "next" as const;
+  }
+
+  private async runScheduledToolCall(
+    // biome-ignore lint/suspicious/noExplicitAny: ToolUIPart<UITools> is parameterized
+    toolCall: any,
+    executeCommandWhitelist: string[] | undefined,
+    abortSignal?: AbortSignal,
+  ): Promise<ScheduledToolCallResult> {
+    const toolName = getStaticToolName(toolCall);
+    logger.trace(
+      `Found tool call: ${toolName} with args: ${JSON.stringify(toolCall.input)}`,
+    );
+
+    const resolvedInput = resolveToolCallArgs(
+      toolCall.input,
+      this.store.storeId,
+    );
+
+    let envs: Record<string, string> | undefined;
+    if (this.customAgent?.name === "browser") {
+      envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
+        this.taskId,
+      );
+    }
+
+    const toolResult = await this.executeToolCallItem(
+      { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+      envs,
+      executeCommandWhitelist,
+      abortSignal,
+    );
+
+    const persistedToolResult = await maybePersistToolResult(
+      toolName,
+      toolCall.toolCallId,
+      this.taskId,
+      toolResult,
+    );
+
+    await this.chatKit.chat.addToolOutput({
+      // @ts-expect-error
+      tool: toolName,
+      toolCallId: toolCall.toolCallId,
+      // @ts-expect-error
+      output: persistedToolResult,
+    });
+
+    logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);
+
+    const toolError = getToolExecutionError(toolResult);
+    if (toolError) {
+      return {
+        kind: "error",
+        error: toolError,
+        shouldStopQueue: !isReadonlyToolCall(
+          toolName,
+          toolCall.input,
+          this.toolCallOptions.customAgents,
+        ),
+      };
+    }
+
+    return {
+      kind: "success",
+    };
+  }
+
+  private async executeToolCallItem(
+    toolCall: ToolUIPart<UITools>,
+    envs: Record<string, string> | undefined,
+    executeCommandWhitelist: string[] | undefined,
+    abortSignal?: AbortSignal,
+  ): Promise<unknown> {
+    try {
+      return await processContentOutput(
         this.blobStore,
         await executeToolCall(
-          { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+          toolCall,
           this.toolCallOptions,
           this.cwd,
-          undefined,
+          abortSignal,
           this.llm.contentType,
           envs,
           executeCommandWhitelist,
         ),
       );
-
-      const persistedToolResult = await maybePersistToolResult(
-        toolName,
-        toolCall.toolCallId,
-        this.taskId,
-        toolResult,
-      );
-
-      await this.chatKit.chat.addToolOutput({
-        // @ts-expect-error
-        tool: toolName,
-        toolCallId: toolCall.toolCallId,
-        // @ts-expect-error
-        output: persistedToolResult,
-      });
-
-      logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);
+    } catch (error) {
+      return {
+        error: `Failed to execute tool: ${toErrorMessage(error)}`,
+      };
     }
-    logger.trace("All tool calls processed in the last message.");
-
-    return "next" as const;
   }
 
   // Helper method to run the command
@@ -720,4 +841,17 @@ function toError(e: unknown): Error {
     return new Error(e);
   }
   return new Error(JSON.stringify(e));
+}
+
+function getToolExecutionError(result: unknown): string | undefined {
+  if (typeof result !== "object" || result === null || !("error" in result)) {
+    return undefined;
+  }
+
+  const { error } = result;
+  if (error == null) {
+    return undefined;
+  }
+
+  return toErrorMessage(error);
 }

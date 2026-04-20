@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   type SubtaskInfo,
   useAutoApproveGuard,
+  useBatchExecuteManager,
   useToolCallLifeCycle,
 } from "@/features/chat";
 import {
@@ -20,7 +21,8 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { getToolArgs } from "@getpochi/tools";
-import { getStaticToolName } from "ai";
+import { getStaticToolName, getToolName } from "ai";
+import { createLifecycleToolCallAdapter } from "../../chat/lib/scheduled-tool-call-adapters";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
@@ -43,6 +45,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const navigate = useNavigate();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
+  const batchExecuteManager = useBatchExecuteManager();
   const { selectedModel } = useSelectedModels();
   const [lifecycles, tools] = useMemo(
     () =>
@@ -118,6 +121,15 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const { subtaskOffhand } = useSubtaskOffhand();
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
+
+    if (!taskId) {
+      throw new Error(
+        "ToolCallApprovalButton requires taskId to enqueue tool calls",
+      );
+    }
+
+    let hasManualRun = false;
+
     for (const [i, lifecycle] of lifecycles.entries()) {
       if (lifecycle.status !== "init") {
         continue;
@@ -138,21 +150,36 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           // For non-async tasks, use manual navigation
           manualRunSubtask(subtaskUid);
         }
-        return;
+        hasManualRun = true;
+        continue;
       }
 
-      lifecycle.execute(tools[i].input, {
-        contentType: selectedModel?.contentType,
-        builtinSubAgentInfo,
-        executeCommandWhitelist,
+      // Enqueue into the batch manager instead of calling execute() directly
+      batchExecuteManager.enqueue(
         taskId,
-      });
+        createLifecycleToolCallAdapter({
+          lifecycle,
+          toolName: getToolName(tool),
+          input: tool.input,
+          executeArgs: tool.input,
+          executeOptions: {
+            contentType: selectedModel?.contentType,
+            builtinSubAgentInfo,
+            executeCommandWhitelist,
+            taskId,
+          },
+        }),
+      );
+    }
 
+    if (!hasManualRun) {
       const uid = parentUid || taskId;
       if (uid) {
         vscodeHost.onTaskRunning(uid);
       }
     }
+
+    batchExecuteManager.processQueue(taskId);
   }, [
     tools,
     lifecycles,
@@ -164,6 +191,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     parentUid,
     builtinSubAgentInfo,
     executeCommandWhitelist,
+    batchExecuteManager,
   ]);
 
   const onReject = useCallback(() => {
@@ -214,7 +242,12 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     for (const lifecycle of lifecycles) {
       lifecycle.abort();
     }
-  }, [lifecycles]);
+    if (!taskId) {
+      return;
+    }
+    // Drop queued items that have not started yet.
+    batchExecuteManager.abort(taskId, "user-abort");
+  }, [lifecycles, batchExecuteManager, taskId]);
 
   const showAccept = !isAutoApproved && isReady;
 
@@ -232,12 +265,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }
 
   if (showAbort && abortText && isExecuting) {
-    /*
-    Only display the abort button if:
-    1. There's executing tool call
-    2. The abort text is provided
-    3. The showAbort flag is true (delayed for a bit to avoid flashing)
-    */
+    // Delay the stop button slightly to avoid a flash for short-lived executions.
     return <Button onClick={abort}>{abortText}</Button>;
   }
 
