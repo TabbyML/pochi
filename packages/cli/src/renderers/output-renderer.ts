@@ -17,6 +17,8 @@ import type { TaskRunner } from "../task-runner";
 
 export class OutputRenderer {
   private renderingSubTask = false;
+  private subTaskQueue: Promise<void> = Promise.resolve();
+  private pendingSubTasks = 0;
   private unsubscribe: (() => void) | undefined;
 
   constructor(
@@ -103,9 +105,9 @@ export class OutputRenderer {
             this.spinner[stop]();
           }
           this.nextSpinner(true);
-        } else {
-          break;
+          continue;
         }
+        break;
       }
 
       if (this.pendingPartIndex < lastMessage.parts.length - 1) {
@@ -119,19 +121,27 @@ export class OutputRenderer {
   }
 
   renderSubTask(runner: TaskRunner) {
+    this.pendingSubTasks++;
     this.renderingSubTask = true;
-    this.withoutSpinner(() => {
-      const listr = makeListr(
-        this.stream,
-        runner.taskId,
-        this.state,
-        runner.state,
-      );
+    this.subTaskQueue = this.subTaskQueue
+      .then(async () => {
+        await this.withoutSpinner(async () => {
+          const listr = makeListr(
+            this.stream,
+            runner.taskId,
+            this.state,
+            runner.state,
+          );
 
-      return listr.run();
-    }).finally(() => {
-      this.renderingSubTask = false;
-    });
+          await listr.run();
+        });
+      })
+      .finally(() => {
+        this.pendingSubTasks--;
+        if (this.pendingSubTasks === 0) {
+          this.renderingSubTask = false;
+        }
+      });
   }
 
   private nextSpinner(nextPendingPart = false) {
@@ -142,13 +152,18 @@ export class OutputRenderer {
   }
 
   private async withoutSpinner(callback: () => Promise<void>) {
-    this.spinner?.stop();
-    this.spinner = undefined;
+    const oldSpinner = this.spinner;
+    if (oldSpinner) {
+      oldSpinner.stop();
+      this.spinner = undefined;
+    }
 
     try {
       await callback();
     } finally {
-      this.nextSpinner();
+      if (oldSpinner) {
+        this.nextSpinner();
+      }
     }
   }
 
