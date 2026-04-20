@@ -85,6 +85,11 @@ const logger = getLogger("Pochi");
 globalThis.POCHI_CLIENT = `PochiCli/${packageJson.version}`;
 logger.debug(`pochi v${packageJson.version}`);
 
+// Setup fallback exit logging hook
+process.once("exit", (exitCode) => {
+  logger.debug(`Process exiting with code ${exitCode}`);
+});
+
 const parsePositiveInt = (input: string): number => {
   if (!input) {
     return program.error(
@@ -378,10 +383,14 @@ const program = new Command()
 
     let runtimeError: Error | undefined = undefined;
     try {
+      logger.debug("Starting task runner...");
       await runner.run();
+      logger.debug("Task runner finished successfully.");
     } catch (error) {
       runtimeError = error instanceof Error ? error : new Error(String(error));
+      logger.debug(`Task runner exit with error: ${runtimeError.message}.`);
     } finally {
+      logger.debug("Shutting down...");
       // Cleanup resources
       outputRenderer.shutdown();
       await streamRenderer?.shutdown();
@@ -393,6 +402,7 @@ const program = new Command()
       browserSessionStore.dispose();
       await store.shutdownPromise();
 
+      logger.debug("Shutdown completed. Process will exit.");
       if (runtimeError) {
         program.error(runtimeError.message, {
           code:

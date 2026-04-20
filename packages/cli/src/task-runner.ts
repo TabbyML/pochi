@@ -293,8 +293,6 @@ export class TaskRunner {
   }
 
   async run(): Promise<void> {
-    logger.debug("Starting TaskRunner...");
-
     try {
       logger.trace("Start step loop.");
       this.stepCount.reset();
