@@ -389,12 +389,20 @@ function makeListr(
               }
             };
 
-            const unsubscribe1 = subtask.signal.messages.subscribe(() => {
-              onUpdate(() => unsubscribe1());
+            // subscribe() invokes its callback synchronously before returning the
+            // unsubscribe fn, so the unsubscribe reference must resolve lazily.
+            // `const u = subscribe(...)` throws TDZ when the callback reads `u`.
+            // `let u; u = subscribe(...)` avoids TDZ but biome's useConst flags it
+            // because `u` is assigned exactly once. An object with a mutable
+            // property satisfies both: const binding + late-bound reference.
+            const ref1: { unsubscribe?: () => void } = {};
+            ref1.unsubscribe = subtask.signal.messages.subscribe(() => {
+              onUpdate(() => ref1.unsubscribe?.());
             });
 
-            const unsubscribe2 = task.signal.messages.subscribe(() => {
-              onUpdate(() => unsubscribe2());
+            const ref2: { unsubscribe?: () => void } = {};
+            ref2.unsubscribe = task.signal.messages.subscribe(() => {
+              onUpdate(() => ref2.unsubscribe?.());
             });
 
             return;
