@@ -28,3 +28,20 @@ export function getToolResultError(result: unknown): string | undefined {
 function getNonEmptyString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
+
+/**
+ * Returns a human-readable error message for a tool call that was cancelled
+ * before it could execute, based on the cancel reason.
+ */
+export function getToolCancelErrorMessage(
+  reason: "user-abort" | "user-reject" | "previous-tool-call-failed",
+): string {
+  switch (reason) {
+    case "user-abort":
+      return "User aborted the tool call";
+    case "user-reject":
+      return "User rejected the tool call";
+    case "previous-tool-call-failed":
+      return "Tool call was cancelled because a previous tool call failed.";
+  }
+}

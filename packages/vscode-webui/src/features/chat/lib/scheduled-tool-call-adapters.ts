@@ -1,4 +1,7 @@
-import { getToolResultError } from "@/lib/tool-call-error";
+import {
+  getToolCancelErrorMessage,
+  getToolResultError,
+} from "@/lib/tool-call-error";
 import { vscodeHost } from "@/lib/vscode";
 import type { useChat } from "@ai-sdk/react";
 import type {
@@ -46,10 +49,11 @@ type CreateExecutorToolCallAdapterOptions = {
   executeCommandWhitelist?: string[];
   addToolOutput: ReturnType<typeof useChat>["addToolOutput"];
   toolCallStatusRegistry: ToolCallStatusRegistry;
-  resolve: () => void;
-  reject: (error: Error) => void;
 };
 
+/**
+ * Main-task tool calls: waits for the `ToolCallLifeCycle` approval flow to complete before resolving.
+ */
 export function createLifecycleToolCallAdapter({
   lifecycle,
   toolName,
@@ -131,7 +135,10 @@ export function createLifecycleToolCallAdapter({
   };
 }
 
-export function createExecutorToolCallAdapter({
+/**
+ * Sub-task tool calls (`newTask`): directly executes via `vscodeHost` and reports results with `addToolOutput`.
+ */
+export function createSubTaskToolCallAdapter({
   toolCall,
   uid,
   storeId,
@@ -141,8 +148,6 @@ export function createExecutorToolCallAdapter({
   executeCommandWhitelist,
   addToolOutput,
   toolCallStatusRegistry,
-  resolve,
-  reject,
 }: CreateExecutorToolCallAdapterOptions): ScheduledToolCall {
   return {
     toolName: toolCall.toolName,
@@ -226,7 +231,6 @@ export function createExecutorToolCallAdapter({
             },
           );
 
-          resolve();
           if (executeCommandError) {
             return {
               kind: "error",
@@ -249,7 +253,6 @@ export function createExecutorToolCallAdapter({
           output: result,
         });
 
-        resolve();
         const error = getToolResultError(result);
         if (error) {
           return {
@@ -266,12 +269,24 @@ export function createExecutorToolCallAdapter({
           error instanceof Error
             ? error
             : new Error("Subtask batch execution failed");
-        reject(normalizedError);
+        toolCallStatusRegistry.set(toolCall, { isExecuting: false });
+        addToolOutput({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: { error: normalizedError.message },
+        });
         throw normalizedError;
       }
     },
-    cancel: (_reason: QueueCancelReason) => {
-      reject(new Error("Subtask batch queue aborted"));
+    cancel: (reason: QueueCancelReason) => {
+      toolCallStatusRegistry.set(toolCall, { isExecuting: false });
+      addToolOutput({
+        tool: toolCall.toolName,
+        toolCallId: toolCall.toolCallId,
+        output: {
+          error: getToolCancelErrorMessage(reason),
+        },
+      });
     },
   };
 }

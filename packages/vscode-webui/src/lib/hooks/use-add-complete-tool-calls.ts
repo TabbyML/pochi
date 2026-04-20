@@ -1,4 +1,5 @@
 import { type ToolCallLifeCycle, useToolCallLifeCycle } from "@/features/chat";
+import { getToolCancelErrorMessage } from "@/lib/tool-call-error";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
@@ -83,14 +84,9 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
   // Use an switch clause so new reason will be caught by type checker.
   switch (reason) {
     case "user-abort":
-      output.error = "User aborted the tool call";
-      break;
     case "user-reject":
-      output.error = "User rejected the tool call";
-      break;
     case "previous-tool-call-failed":
-      output.error =
-        "Tool call was cancelled because a previous tool call failed.";
+      output.error = getToolCancelErrorMessage(reason);
       break;
     case "execute-finish":
       break;

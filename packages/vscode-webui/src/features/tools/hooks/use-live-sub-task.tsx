@@ -28,7 +28,7 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createExecutorToolCallAdapter } from "../../chat/lib/scheduled-tool-call-adapters";
+import { createSubTaskToolCallAdapter } from "../../chat/lib/scheduled-tool-call-adapters";
 import type { ToolProps } from "../components/types";
 
 export function useLiveSubTask(
@@ -158,29 +158,29 @@ export function useLiveSubTask(
         throw new Error("Subtask batch queue aborted");
       }
 
-      await new Promise<void>((resolve, reject) => {
-        batchExecuteManager.enqueue(
+      batchExecuteManager.enqueue(
+        uid,
+        createSubTaskToolCallAdapter({
+          toolCall,
           uid,
-          createExecutorToolCallAdapter({
-            toolCall,
-            uid,
-            storeId: store.storeId,
-            abortSignal: abortController.current.signal,
-            contentType: customAgentModel?.contentType,
-            builtinSubAgentInfo,
-            executeCommandWhitelist,
-            addToolOutput,
-            toolCallStatusRegistry,
-            resolve,
-            reject,
-          }),
-          {
-            // Classify batches against the latest subtask agent view.
-            getCustomAgents: () => subtaskCustomAgentsRef.current,
-          },
-        );
+          storeId: store.storeId,
+          abortSignal: abortController.current.signal,
+          contentType: customAgentModel?.contentType,
+          builtinSubAgentInfo,
+          executeCommandWhitelist,
+          addToolOutput,
+          toolCallStatusRegistry,
+        }),
+        {
+          // Classify batches against the latest subtask agent view.
+          getCustomAgents: () => subtaskCustomAgentsRef.current,
+        },
+      );
+    },
+    onStreamFinish: () => {
+      if (!abortController.current.signal.aborted) {
         batchExecuteManager.processQueue(uid);
-      });
+      }
     },
   });
 
