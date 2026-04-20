@@ -28,10 +28,7 @@ Usage notes:
     jsonSchema: z.toJSONSchema(
       z.object({
         query: z
-          .union([
-            z.string().min(2),
-            z.array(z.string().min(2)).min(1).max(5),
-          ])
+          .union([z.string().min(2), z.array(z.string().min(2)).min(1).max(5)])
           .describe(
             "A single search query string, OR an array of up to 5 related query strings to batch in one request. Prefer a single string for focused lookups; use an array when you want to research several related facets in one call.",
           ),
