@@ -1,7 +1,25 @@
-import { buildForkMessages, getLogger } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 
 const logger = getLogger("CreateForkAgent");
+
+/**
+ * Build the init messages for a fork agent: all parent messages followed by
+ * a new user message containing the directive.
+ */
+function buildForkMessages(
+  parentMessages: Message[],
+  directive: string,
+): Message[] {
+  return [
+    ...parentMessages,
+    {
+      id: crypto.randomUUID(),
+      role: "user",
+      parts: [{ type: "text", text: directive }],
+    } as Message,
+  ];
+}
 
 export interface ForkAgentConfig {
   taskId: string;
