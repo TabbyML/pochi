@@ -30,7 +30,6 @@ type CreateLifecycleToolCallAdapterOptions = {
   lifecycle: ToolCallLifeCycle;
   toolName: string;
   input: unknown;
-  executeArgs: unknown;
   executeOptions: {
     contentType?: string[];
     builtinSubAgentInfo?: BuiltinSubAgentInfo;
@@ -56,7 +55,6 @@ export function createLifecycleToolCallAdapter({
   lifecycle,
   toolName,
   input,
-  executeArgs,
   executeOptions,
 }: CreateLifecycleToolCallAdapterOptions): ScheduledToolCall {
   return {
@@ -118,7 +116,7 @@ export function createLifecycleToolCallAdapter({
         });
 
         if (lifecycle.status === "init") {
-          lifecycle.execute(executeArgs, executeOptions);
+          lifecycle.execute(input, executeOptions);
         }
       });
     },

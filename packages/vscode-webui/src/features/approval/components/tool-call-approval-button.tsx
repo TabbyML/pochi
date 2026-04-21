@@ -157,7 +157,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           lifecycle,
           toolName: getToolName(tool),
           input: tool.input,
-          executeArgs: tool.input,
           executeOptions: {
             contentType: selectedModel?.contentType,
             builtinSubAgentInfo,
