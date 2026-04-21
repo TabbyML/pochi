@@ -22,11 +22,16 @@ CRITICAL REQUIREMENT - You MUST follow this:
 
 Usage notes:
   - Account for "Today's date" in <system-reminder>. For example, if <system-reminder> says "Today's date: 2025-07-01", and the user wants the latest docs, do not use 2024 in the search query. Use 2025.
+  - To research several related facets in one round-trip, pass "query" as an array of up to 5 query strings instead of a single string. Prefer a single string for focused lookups.
 `.trim(),
   inputSchema: {
     jsonSchema: z.toJSONSchema(
       z.object({
-        query: z.string().describe("The search query to perform"),
+        query: z
+          .union([z.string().min(2), z.array(z.string().min(2)).min(1).max(5)])
+          .describe(
+            "A single search query string, OR an array of up to 5 related query strings to batch in one request. Prefer a single string for focused lookups; use an array when you want to research several related facets in one call.",
+          ),
         country: z
           .string()
           .optional()
@@ -43,7 +48,7 @@ Usage notes:
     ) as JSONSchema7,
   },
   execute: async (args: {
-    query: string;
+    query: string | string[];
     country?: string;
     searchDomainFilter?: string[];
   }) => {
