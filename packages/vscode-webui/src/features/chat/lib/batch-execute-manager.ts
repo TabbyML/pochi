@@ -70,11 +70,6 @@ export class ToolCallQueue {
           batches,
           async (item, batchMode) => {
             const result = await item.run();
-            logger.debug("execute result", {
-              toolName: item.toolName,
-              batchMode,
-              resultKind: result.kind,
-            });
             // Serial-batched tool calls are barriers. If one errors, later
             // queued tool calls for this task are cancelled.
             if (result.kind === "error" && batchMode === "serial") {
