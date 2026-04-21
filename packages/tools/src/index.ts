@@ -57,14 +57,16 @@ export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 export {
   BatchExecutionError,
-  checkReadOnlyConstraints,
   executePartitionedToolCalls,
   getToolCallBatchMode,
-  isReadonlyToolCall,
   isSafeToBatchToolCall,
   partitionToolCalls,
-} from "./batch-utils";
-export type { ScheduledToolCallResult } from "./batch-utils";
+} from "./utils/batch-utils";
+export {
+  checkReadOnlyConstraints,
+  isReadonlyToolCall,
+} from "./utils/readonly-constraints-validation";
+export type { ScheduledToolCallResult } from "./utils/batch-utils";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";

@@ -608,15 +608,13 @@ export class TaskRunner {
       }),
       this.toolCallOptions.customAgents,
     );
-
     try {
-      await executePartitionedToolCalls(partitioned, {
-        concurrencyLimit: MaxToolCallConcurrency,
-        execute: async (toolCall, batchMode, abortSignal) => {
+      await executePartitionedToolCalls(
+        partitioned,
+        async (toolCall, batchMode) => {
           const result = await this.runScheduledToolCall(
             toolCall,
             executeCommandWhitelist,
-            abortSignal,
           );
 
           if (result.kind === "error" && batchMode === "serial") {
@@ -625,7 +623,8 @@ export class TaskRunner {
             throw new Error(result.error);
           }
         },
-      });
+        { concurrencyLimit: MaxToolCallConcurrency },
+      );
     } catch (error) {
       if (!(error instanceof BatchExecutionError)) {
         throw error;
@@ -664,7 +663,6 @@ export class TaskRunner {
   private async runScheduledToolCall(
     toolCall: ToolUIPart<UITools>,
     executeCommandWhitelist: string[] | undefined,
-    abortSignal?: AbortSignal,
   ): Promise<ScheduledToolCallResult> {
     const toolName = getStaticToolName(toolCall);
     logger.trace(
@@ -687,7 +685,6 @@ export class TaskRunner {
       { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
       envs,
       executeCommandWhitelist,
-      abortSignal,
     );
 
     const persistedToolResult = await maybePersistToolResult(
@@ -723,7 +720,6 @@ export class TaskRunner {
     toolCall: ToolUIPart<UITools>,
     envs: Record<string, string> | undefined,
     executeCommandWhitelist: string[] | undefined,
-    abortSignal?: AbortSignal,
   ): Promise<unknown> {
     try {
       return await processContentOutput(
@@ -732,7 +728,7 @@ export class TaskRunner {
           toolCall,
           this.toolCallOptions,
           this.cwd,
-          abortSignal,
+          undefined,
           this.llm.contentType,
           envs,
           executeCommandWhitelist,

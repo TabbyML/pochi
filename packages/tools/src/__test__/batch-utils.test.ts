@@ -1,14 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   BatchExecutionError,
-  checkReadOnlyConstraints,
   executePartitionedToolCalls,
   getToolCallBatchMode,
-  isReadonlyToolCall,
   isSafeToBatchToolCall,
   partitionToolCalls,
   runConcurrentBatch,
-} from "../batch-utils";
+  type ToolBatchMode,
+} from "../utils/batch-utils";
 
 describe("BatchExecutionError", () => {
   it("has the correct name", () => {
@@ -28,112 +27,6 @@ describe("BatchExecutionError", () => {
 
   it("is instanceof Error", () => {
     expect(new BatchExecutionError("", null, [])).toBeInstanceOf(Error);
-  });
-});
-
-describe("checkReadOnlyConstraints", () => {
-  it("returns false for empty or whitespace-only input", () => {
-    expect(checkReadOnlyConstraints("")).toBe(false);
-    expect(checkReadOnlyConstraints("   ")).toBe(false);
-  });
-
-  it("returns false for command substitution $()", () => {
-    expect(checkReadOnlyConstraints("echo $(cat /etc/passwd)")).toBe(false);
-  });
-
-  it("returns false for output redirect (>, >>)", () => {
-    expect(checkReadOnlyConstraints("echo hello > /tmp/out.txt")).toBe(false);
-    expect(checkReadOnlyConstraints("cat file.txt >> /tmp/out.txt")).toBe(false);
-  });
-
-  it("returns true for simple readonly commands", () => {
-    expect(checkReadOnlyConstraints("cat file.txt")).toBe(true);
-    expect(checkReadOnlyConstraints("find . -name '*.ts'")).toBe(true);
-  });
-
-  it("returns true for piped readonly commands", () => {
-    expect(checkReadOnlyConstraints("cat file.txt | grep 'foo'")).toBe(true);
-  });
-
-  it("returns false for always-stateful commands (rm, sudo)", () => {
-    expect(checkReadOnlyConstraints("rm -rf /tmp/foo")).toBe(false);
-    expect(checkReadOnlyConstraints("sudo cat /etc/shadow")).toBe(false);
-  });
-
-  it("returns false for git write operations", () => {
-    expect(checkReadOnlyConstraints("git commit -m 'test'")).toBe(false);
-  });
-
-  it("returns true for git read operations", () => {
-    expect(checkReadOnlyConstraints("git diff HEAD")).toBe(true);
-    expect(checkReadOnlyConstraints("git log --oneline -10")).toBe(true);
-  });
-
-  it("returns false for git branch <name> (creates branch)", () => {
-    expect(checkReadOnlyConstraints("git branch new-feature")).toBe(false);
-  });
-
-  it("returns true for git branch with no positional args (list)", () => {
-    expect(checkReadOnlyConstraints("git branch")).toBe(true);
-    expect(checkReadOnlyConstraints("git branch -v")).toBe(true);
-  });
-
-  it("returns false for sed -i (in-place edit)", () => {
-    expect(checkReadOnlyConstraints("sed -i 's/foo/bar/g' file.txt")).toBe(false);
-  });
-
-  it("returns true for sed without -i", () => {
-    expect(checkReadOnlyConstraints("sed 's/foo/bar/g' file.txt")).toBe(true);
-  });
-
-  it("returns false for curl (always in AlwaysStatefulCommands)", () => {
-    expect(checkReadOnlyConstraints("curl https://api.example.com/data")).toBe(false);
-  });
-
-  it("returns false when a pipe chain includes a stateful command", () => {
-    expect(checkReadOnlyConstraints("cat file.txt && rm -rf /tmp/work")).toBe(false);
-  });
-
-  it("returns false for unquoted variable expansion", () => {
-    expect(checkReadOnlyConstraints("cat $FILENAME")).toBe(false);
-  });
-});
-
-describe("isReadonlyToolCall", () => {
-  it("returns true for readFile", () => {
-    expect(isReadonlyToolCall("readFile", {})).toBe(true);
-  });
-
-  it("returns true for listFiles", () => {
-    expect(isReadonlyToolCall("listFiles", {})).toBe(true);
-  });
-
-  it("returns true for executeCommand with a readonly command", () => {
-    expect(
-      isReadonlyToolCall("executeCommand", { command: "cat README.md" }),
-    ).toBe(true);
-  });
-
-  it("returns false for executeCommand with a stateful command", () => {
-    expect(
-      isReadonlyToolCall("executeCommand", { command: "rm -rf /tmp" }),
-    ).toBe(false);
-  });
-
-  it("returns false for executeCommand with missing command field", () => {
-    expect(isReadonlyToolCall("executeCommand", {})).toBe(false);
-  });
-
-  it("returns false for writeToFile", () => {
-    expect(isReadonlyToolCall("writeToFile", {})).toBe(false);
-  });
-
-  it("returns false for applyDiff", () => {
-    expect(isReadonlyToolCall("applyDiff", {})).toBe(false);
-  });
-
-  it("returns false for unknown tool", () => {
-    expect(isReadonlyToolCall("someUnknownTool", {})).toBe(false);
   });
 });
 
@@ -293,7 +186,7 @@ describe("executePartitionedToolCalls", () => {
   it("resolves without executing anything for empty batches", async () => {
     const execute = vi.fn();
     await expect(
-      executePartitionedToolCalls([], { concurrencyLimit: 1, execute }),
+      executePartitionedToolCalls([], execute, { concurrencyLimit: 1 }),
     ).resolves.toBeUndefined();
     expect(execute).not.toHaveBeenCalled();
   });
@@ -303,12 +196,13 @@ describe("executePartitionedToolCalls", () => {
     const items = [item("writeToFile")];
     const batches = partitionToolCalls(items, getToolCall);
 
-    await executePartitionedToolCalls(batches, {
-      concurrencyLimit: 1,
-      execute: async (it) => {
+    await executePartitionedToolCalls(
+      batches,
+      async (it) => {
         executed.push((it as SimpleItem).toolName);
       },
-    });
+      { concurrencyLimit: 1 },
+    );
 
     expect(executed).toEqual(["writeToFile"]);
   });
@@ -322,35 +216,18 @@ describe("executePartitionedToolCalls", () => {
     ];
     const batches = partitionToolCalls(items, getToolCall);
 
-    await executePartitionedToolCalls(batches, {
-      concurrencyLimit: 10,
-      execute: async (it) => {
+    await executePartitionedToolCalls(
+      batches,
+      async (it) => {
         executed.push((it as SimpleItem).toolName);
       },
-    });
+      { concurrencyLimit: 10 },
+    );
 
     expect(executed).toHaveLength(3);
     expect(executed).toContain("readFile");
     expect(executed).toContain("listFiles");
     expect(executed).toContain("globFiles");
-  });
-
-  it("passes an AbortSignal to each execute call", async () => {
-    const receivedSignals: AbortSignal[] = [];
-    const items = [item("readFile"), item("writeToFile")];
-    const batches = partitionToolCalls(items, getToolCall);
-
-    await executePartitionedToolCalls(batches, {
-      concurrencyLimit: 5,
-      execute: async (_it, _batchMode, signal) => {
-        receivedSignals.push(signal);
-      },
-    });
-
-    expect(receivedSignals).toHaveLength(2);
-    for (const sig of receivedSignals) {
-      expect(sig).toBeInstanceOf(AbortSignal);
-    }
   });
 
   it("serial batch executes items sequentially (not overlapping)", async () => {
@@ -364,12 +241,13 @@ describe("executePartitionedToolCalls", () => {
     const items = [item("writeToFile"), item("applyDiff")];
     const batches = partitionToolCalls(items, getToolCall);
 
-    await executePartitionedToolCalls(batches, {
-      concurrencyLimit: 5,
-      execute: async (it) => {
+    await executePartitionedToolCalls(
+      batches,
+      async (it) => {
         await log((it as SimpleItem).toolName)();
       },
-    });
+      { concurrencyLimit: 5 },
+    );
 
     // serial means end of item-1 before start of item-2
     expect(order.indexOf("end:writeToFile")).toBeLessThan(
@@ -391,21 +269,22 @@ describe("executePartitionedToolCalls", () => {
 
     let caught: unknown;
     try {
-      await executePartitionedToolCalls(batches, {
-        concurrencyLimit: 1,
-        execute: async (it) => {
+      await executePartitionedToolCalls(
+        batches,
+        async (it) => {
           if ((it as (typeof items)[number]).id === "a") {
             throw new Error("item a failed");
           }
         },
-      });
+        { concurrencyLimit: 1 },
+      );
     } catch (e) {
       caught = e;
     }
 
     expect(caught).toBeInstanceOf(BatchExecutionError);
     const err = caught as BatchExecutionError<unknown>;
-    expect(err.pendingItems).toHaveLength(2); // b and c were not yet started
+    expect(err.pendingItems).toEqual([items[1], items[2]]);
   });
 
   it("includes items from later batches in pendingItems when an earlier batch fails", async () => {
@@ -423,22 +302,22 @@ describe("executePartitionedToolCalls", () => {
 
     let caught: unknown;
     try {
-      await executePartitionedToolCalls(batches, {
-        concurrencyLimit: 5,
-        execute: async (it) => {
+      await executePartitionedToolCalls(
+        batches,
+        async (it) => {
           if ((it as (typeof items)[number]).id === "a") {
             throw new Error("first item failed");
           }
         },
-      });
+        { concurrencyLimit: 5 },
+      );
     } catch (e) {
       caught = e;
     }
 
     expect(caught).toBeInstanceOf(BatchExecutionError);
     const err = caught as BatchExecutionError<unknown>;
-    // b (serial batch 2) + c (concurrent batch 3) are pending
-    expect(err.pendingItems).toHaveLength(2);
+    expect(err.pendingItems).toEqual([items[1], items[2]]);
   });
 
   it("respects concurrencyLimit when running a concurrent batch", async () => {
@@ -456,9 +335,9 @@ describe("executePartitionedToolCalls", () => {
     let maxActive = 0;
     let executeCount = 0;
 
-    await executePartitionedToolCalls(batches, {
-      concurrencyLimit: 2,
-      execute: async (_it, batchMode) => {
+    await executePartitionedToolCalls(
+      batches,
+      async (_it, batchMode) => {
         expect(batchMode).toBe("concurrent");
         executeCount++;
         active++;
@@ -466,10 +345,51 @@ describe("executePartitionedToolCalls", () => {
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
         active--;
       },
-    });
+      { concurrencyLimit: 2 },
+    );
 
     expect(executeCount).toBe(items.length);
     expect(maxActive).toBeLessThanOrEqual(2);
+  });
+
+  it("runs a single concurrent item through the concurrent path", async () => {
+    const batches = partitionToolCalls([item("readFile")], getToolCall);
+    const seenModes: ToolBatchMode[] = [];
+
+    await executePartitionedToolCalls(
+      batches,
+      async (_it, batchMode) => {
+        seenModes.push(batchMode);
+      },
+      { concurrencyLimit: 1 },
+    );
+
+    expect(seenModes).toEqual(["concurrent"]);
+  });
+
+  it("continues to later batches when a concurrent batch item fails", async () => {
+    const items = [
+      item("readFile"),
+      item("listFiles"),
+      item("writeToFile"),
+    ];
+    const batches = partitionToolCalls(items, getToolCall);
+    const executed: string[] = [];
+
+    await executePartitionedToolCalls(
+      batches,
+      async (it) => {
+        executed.push((it as SimpleItem).toolName);
+        if ((it as SimpleItem).toolName === "readFile") {
+          throw new Error("concurrent failed");
+        }
+      },
+      { concurrencyLimit: 2 },
+    );
+
+    expect(executed).toContain("readFile");
+    expect(executed).toContain("listFiles");
+    expect(executed).toContain("writeToFile");
   });
 });
 
@@ -479,7 +399,7 @@ describe("runConcurrentBatch", () => {
     const seen: number[] = [];
     const modes: string[] = [];
 
-    await runConcurrentBatch(items, 3, new AbortController().signal, async (it, mode) => {
+    await runConcurrentBatch(items, 3, async (it, mode) => {
       seen.push(it as number);
       modes.push(mode);
     });
@@ -493,7 +413,7 @@ describe("runConcurrentBatch", () => {
     let active = 0;
     let maxActive = 0;
 
-    await runConcurrentBatch(items, 2, new AbortController().signal, async () => {
+    await runConcurrentBatch(items, 2, async () => {
       active++;
       maxActive = Math.max(maxActive, active);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -505,11 +425,40 @@ describe("runConcurrentBatch", () => {
 
   it("rejects when execute throws", async () => {
     await expect(
-      runConcurrentBatch(["a", "b"], 2, new AbortController().signal, async (it) => {
+      runConcurrentBatch(["a", "b"], 2, async (it) => {
         if (it === "a") {
           throw new Error("boom");
         }
       }),
     ).rejects.toThrow("boom");
+  });
+
+  it("keeps processing remaining items before rejecting", async () => {
+    const seen: string[] = [];
+
+    await expect(
+      runConcurrentBatch(
+        ["a", "b", "c"],
+        2,
+        async (it) => {
+          seen.push(it as string);
+          if (it === "a") {
+            throw new Error("boom");
+          }
+        },
+      ),
+    ).rejects.toThrow("boom");
+
+    expect(seen).toEqual(expect.arrayContaining(["a", "b", "c"]));
+  });
+
+  it("still runs items when concurrencyLimit is 0", async () => {
+    const seen: number[] = [];
+
+    await runConcurrentBatch([1], 0, async (it) => {
+      seen.push(it as number);
+    });
+
+    expect(seen).toEqual([1]);
   });
 });

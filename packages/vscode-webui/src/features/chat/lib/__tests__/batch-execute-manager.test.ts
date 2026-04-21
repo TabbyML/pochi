@@ -184,6 +184,51 @@ describe("BatchExecuteManager – readonly tool error does NOT stop queue", () =
 
     expect(next.cancel).not.toHaveBeenCalled();
   });
+
+  it("does not cancel late-enqueued items when a concurrent batch item errors", async () => {
+    const manager = new BatchExecuteManager();
+
+    let resolveFirst!: () => void;
+    const erroringRun = vi.fn<() => Promise<ScheduledToolCallResult>>(
+      () =>
+        new Promise((resolve) => {
+          resolveFirst = () => resolve({ kind: "error", error: "read failed" });
+        }),
+    );
+
+    const erroring: ScheduledToolCall = {
+      toolName: "readFile",
+      input: {},
+      run: erroringRun,
+      cancel: vi.fn(),
+    };
+    const sameBatch = makeCall("listFiles");
+    const late = makeCall("executeCommand", { kind: "success" });
+
+    manager.enqueue("task1", erroring);
+    manager.enqueue("task1", sameBatch.call);
+    manager.processQueue("task1");
+
+    manager.enqueue("task1", late.call);
+    resolveFirst();
+
+    await vi.waitFor(() => {
+      expect(erroringRun).toHaveBeenCalledOnce();
+      expect(sameBatch.run).toHaveBeenCalledOnce();
+    });
+
+    expect(late.cancel).not.toHaveBeenCalled();
+    expect(late.run).not.toHaveBeenCalled();
+
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+    manager.processQueue("task1");
+
+    await vi.waitFor(() => {
+      expect(late.run).toHaveBeenCalledOnce();
+    });
+    expect(late.cancel).not.toHaveBeenCalled();
+  });
 });
 
 describe("BatchExecuteManager – abort", () => {

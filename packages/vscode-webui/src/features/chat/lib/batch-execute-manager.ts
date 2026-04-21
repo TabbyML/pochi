@@ -66,34 +66,36 @@ export class ToolCallQueue {
       );
 
       try {
-        await executePartitionedToolCalls(batches, {
-          concurrencyLimit: this.options.concurrencyLimit ?? MaxConcurrency,
-          execute: async (item, batchMode) => {
+        await executePartitionedToolCalls(
+          batches,
+          async (item, batchMode) => {
             const result = await item.run();
             logger.debug("execute result", {
               toolName: item.toolName,
               batchMode,
               resultKind: result.kind,
             });
-            // Serial-batched tool calls are barriers; if they error, cancel
-            // the remaining queued tool calls for this task.
+            // Serial-batched tool calls are barriers. If one errors, later
+            // queued tool calls for this task are cancelled.
             if (result.kind === "error" && batchMode === "serial") {
-              logger.warn("serial tool call error, throwing", {
+              logger.debug("serial tool call error, throwing", {
                 toolName: item.toolName,
                 error: result.error,
               });
               throw new Error(result.error);
             }
           },
-        });
+          { concurrencyLimit: this.options.concurrencyLimit ?? MaxConcurrency },
+        );
       } catch (error) {
         const pendingItems =
           error instanceof BatchExecutionError ? error.pendingItems : [];
-        logger.warn("processAll catch, cancelling items", {
+
+        logger.debug("processAll catch, cancelling items", {
           pendingItemsCount: pendingItems.length,
           queueCount: this.queue.length,
-          error,
         });
+
         this.cancelItems(
           pendingItems.concat(this.queue),
           "previous-tool-call-failed",
@@ -119,7 +121,7 @@ export class ToolCallQueue {
  * isolated from one another even though they share one manager instance.
  *
  * Within a queue, consecutive safe-to-batch calls run as one concurrent batch;
- * stateful calls stay serial barriers. If the active batch fails, the manager
+ * stateful calls stay serial barriers. If a serial barrier fails, the manager
  * cancels the remaining queued items for that same task through each item's
  * `cancel()` adapter.
  */
