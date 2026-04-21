@@ -70,9 +70,18 @@ class ToolCallQueue {
           concurrencyLimit: this.options.concurrencyLimit ?? MaxConcurrency,
           execute: async (item, batchMode) => {
             const result = await item.run();
+            logger.debug("execute result", {
+              toolName: item.toolName,
+              batchMode,
+              resultKind: result.kind,
+            });
             // Serial-batched tool calls are barriers; if they error, cancel
             // the remaining queued tool calls for this task.
             if (result.kind === "error" && batchMode === "serial") {
+              logger.warn("serial tool call error, throwing", {
+                toolName: item.toolName,
+                error: result.error,
+              });
               throw new Error(result.error);
             }
           },
@@ -80,6 +89,11 @@ class ToolCallQueue {
       } catch (error) {
         const pendingItems =
           error instanceof BatchExecutionError ? error.pendingItems : [];
+        logger.warn("processAll catch, cancelling items", {
+          pendingItemsCount: pendingItems.length,
+          queueCount: this.queue.length,
+          error,
+        });
         this.cancelItems(
           pendingItems.concat(this.queue),
           "previous-tool-call-failed",

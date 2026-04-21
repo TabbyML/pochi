@@ -94,8 +94,8 @@ export function createLifecycleToolCallAdapter({
 
       if (lifecycle.status === "dispose") {
         return Promise.resolve({
-          kind: "error",
-          error: "Tool call lifecycle disposed",
+          kind: "cancelled",
+          reason: "user-abort",
         });
       }
 
@@ -103,15 +103,16 @@ export function createLifecycleToolCallAdapter({
         const unsubComplete = lifecycle.on("complete", (state) => {
           unsubComplete();
           unsubDispose();
-          resolve(toResult(state));
+          const result = toResult(state);
+          resolve(result);
         });
 
         const unsubDispose = lifecycle.on("dispose", () => {
           unsubDispose();
           unsubComplete();
           resolve({
-            kind: "error",
-            error: "Tool call lifecycle disposed",
+            kind: "cancelled",
+            reason: "user-abort",
           });
         });
 
