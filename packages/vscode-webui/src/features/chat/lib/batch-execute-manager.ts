@@ -86,12 +86,6 @@ class ToolCallQueue {
       }
     } finally {
       this.processing = false;
-      if (this.queue.length > 0) {
-        this.processing = true;
-        this.processAll().catch(() => {
-          // Failures are surfaced through abort.
-        });
-      }
     }
   }
 

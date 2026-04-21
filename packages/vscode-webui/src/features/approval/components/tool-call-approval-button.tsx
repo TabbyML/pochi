@@ -122,12 +122,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
 
-    if (!taskId) {
-      throw new Error(
-        "ToolCallApprovalButton requires taskId to enqueue tool calls",
-      );
-    }
-
     let hasManualRun = false;
 
     for (const [i, lifecycle] of lifecycles.entries()) {
@@ -151,6 +145,11 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           manualRunSubtask(subtaskUid);
         }
         hasManualRun = true;
+        continue;
+      }
+
+      if (!taskId) {
+        // taskId is required to enqueue
         continue;
       }
 
@@ -179,7 +178,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       }
     }
 
-    batchExecuteManager.processQueue(taskId);
+    if (taskId) {
+      batchExecuteManager.processQueue(taskId);
+    }
   }, [
     tools,
     lifecycles,
