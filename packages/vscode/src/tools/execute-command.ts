@@ -131,7 +131,7 @@ export const executeCommand: ToolFunctionType<
   };
 
   return {
-    // biome-ignore lint/suspicious/noExplicitAny: executeCommand returns a serialized signal at runtime, which is narrower than ToolFunctionType's declared static output shape.
+    // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
     output: wrappedOutput as any,
   };
 };

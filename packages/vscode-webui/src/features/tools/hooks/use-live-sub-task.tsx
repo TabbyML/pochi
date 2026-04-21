@@ -65,12 +65,7 @@ export function useLiveSubTask(
     const { abortSignal } = streamingResult;
     const onAbort = () => {
       abortController.current.abort(abortSignal.reason);
-      batchExecuteManager.abort(
-        uid,
-        abortSignal.reason === "previous-tool-call-failed"
-          ? "previous-tool-call-failed"
-          : "user-abort",
-      );
+      batchExecuteManager.abort(uid, abortSignal.reason);
     };
     abortSignal.addEventListener("abort", onAbort);
     return () => {
@@ -155,7 +150,7 @@ export function useLiveSubTask(
       );
 
       if (abortController.current.signal.aborted) {
-        throw new Error("Subtask batch queue aborted");
+        return;
       }
 
       batchExecuteManager.enqueue(

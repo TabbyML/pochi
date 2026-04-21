@@ -43,5 +43,7 @@ export function getToolCancelErrorMessage(
       return "User rejected the tool call";
     case "previous-tool-call-failed":
       return "Tool call was cancelled because a previous tool call failed.";
+    default:
+      return "Tool call was cancelled";
   }
 }

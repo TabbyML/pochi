@@ -51,9 +51,7 @@ type CreateExecutorToolCallAdapterOptions = {
   toolCallStatusRegistry: ToolCallStatusRegistry;
 };
 
-/**
- * Main-task tool calls: waits for the `ToolCallLifeCycle` approval flow to complete before resolving.
- */
+/** Backed by a ToolCallLifeCycle; execution and cancellation delegate to the lifecycle. */
 export function createLifecycleToolCallAdapter({
   lifecycle,
   toolName,
@@ -135,9 +133,7 @@ export function createLifecycleToolCallAdapter({
   };
 }
 
-/**
- * Sub-task tool calls (`newTask`): directly executes via `vscodeHost` and reports results with `addToolOutput`.
- */
+/** For offhand-mode sub-tasks: directly executes via vscodeHost and reports results with addToolOutput. */
 export function createSubTaskToolCallAdapter({
   toolCall,
   uid,
@@ -155,7 +151,9 @@ export function createSubTaskToolCallAdapter({
     run: async () => {
       try {
         if (abortSignal.aborted) {
-          throw new Error("Subtask batch queue aborted");
+          throw new Error(
+            getToolCancelErrorMessage(abortSignal.reason as QueueCancelReason),
+          );
         }
 
         toolCallStatusRegistry.set(toolCall, {
