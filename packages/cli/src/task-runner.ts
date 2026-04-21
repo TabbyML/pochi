@@ -27,7 +27,6 @@ import {
   BatchExecutionError,
   type ScheduledToolCallResult,
   executePartitionedToolCalls,
-  isReadonlyToolCall,
   partitionToolCalls,
 } from "@getpochi/tools";
 import { type Todo, isUserInputToolPart } from "@getpochi/tools";
@@ -613,15 +612,15 @@ export class TaskRunner {
     try {
       await executePartitionedToolCalls(partitioned, {
         concurrencyLimit: MaxToolCallConcurrency,
-        execute: async (toolCall, abortSignal) => {
+        execute: async (toolCall, batchMode, abortSignal) => {
           const result = await this.runScheduledToolCall(
             toolCall,
             executeCommandWhitelist,
             abortSignal,
           );
 
-          if (result.kind === "error" && result.shouldStopOnError) {
-            // Side-effecting tool calls act as serial barriers in the CLI.
+          if (result.kind === "error" && batchMode === "serial") {
+            // Serial-batched tool calls act as barriers in the CLI.
             // If one fails, the remaining queued tool calls are cancelled.
             throw new Error(result.error);
           }
@@ -712,11 +711,6 @@ export class TaskRunner {
       return {
         kind: "error",
         error: toolError,
-        shouldStopOnError: !isReadonlyToolCall(
-          toolName,
-          toolCall.input,
-          this.toolCallOptions.customAgents,
-        ),
       };
     }
 

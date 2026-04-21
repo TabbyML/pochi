@@ -1,11 +1,13 @@
+import { getLogger } from "@getpochi/common";
 import {
   BatchExecutionError,
   type CustomAgent,
   type ScheduledToolCallResult,
   executePartitionedToolCalls,
-  isReadonlyToolCall,
   partitionToolCalls,
 } from "@getpochi/tools";
+
+const logger = getLogger("ToolCallQueue");
 
 export type QueueCancelReason = "user-abort" | "previous-tool-call-failed";
 
@@ -38,8 +40,10 @@ class ToolCallQueue {
   start() {
     if (this.processing) return;
     this.processing = true;
-    this.processAll().catch(() => {
-      // Failures are surfaced through abort.
+    this.processAll().catch((error) => {
+      if (!(error instanceof BatchExecutionError)) {
+        logger.error("Unexpected error in processAll", error);
+      }
     });
   }
 
@@ -64,11 +68,11 @@ class ToolCallQueue {
       try {
         await executePartitionedToolCalls(batches, {
           concurrencyLimit: this.options.concurrencyLimit ?? MaxConcurrency,
-          execute: async (item) => {
+          execute: async (item, batchMode) => {
             const result = await item.run();
-            // Side-effecting tool calls are serial barriers, so an error here
-            // cancels the remaining queued tool calls for this task.
-            if (result.kind === "error" && this.shouldStopOnError(item)) {
+            // Serial-batched tool calls are barriers; if they error, cancel
+            // the remaining queued tool calls for this task.
+            if (result.kind === "error" && batchMode === "serial") {
               throw new Error(result.error);
             }
           },
@@ -91,14 +95,6 @@ class ToolCallQueue {
     for (const item of items) {
       item.cancel(reason);
     }
-  }
-
-  private shouldStopOnError(item: ScheduledToolCall): boolean {
-    return !isReadonlyToolCall(
-      item.toolName,
-      item.input,
-      this.options.getCustomAgents?.(),
-    );
   }
 }
 

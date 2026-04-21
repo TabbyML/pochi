@@ -29,7 +29,6 @@ export type ScheduledToolCallResult =
   | {
       kind: "error";
       error: string;
-      shouldStopOnError?: boolean;
     }
   | {
       kind: "cancelled";
@@ -641,80 +640,27 @@ export function partitionToolCalls<T>(
 async function runConcurrentBatch<T>(
   items: T[],
   concurrencyLimit: number,
-  execute: (item: T, abortSignal: AbortSignal) => Promise<void>,
-  abortController: AbortController,
+  abortSignal: AbortSignal,
+  execute: (
+    item: T,
+    batchMode: ToolBatchMode,
+    abortSignal: AbortSignal,
+  ) => Promise<void>,
 ): Promise<void> {
-  if (concurrencyLimit < 1) {
-    throw new Error("concurrencyLimit must be at least 1");
-  }
-
   let nextIndex = 0;
-  let active = 0;
-  let firstError: unknown;
-  let settled = false;
 
-  return new Promise<void>((resolve, reject) => {
-    const finish = (callback: () => void) => {
-      if (settled) return;
-      settled = true;
-      callback();
-    };
-
-    const rejectWithPending = () => {
-      finish(() => {
-        reject(
-          new BatchExecutionError(
-            "Concurrent batch execution failed",
-            firstError,
-            items.slice(nextIndex),
-          ),
-        );
-      });
-    };
-
-    const tryNext = () => {
-      while (
-        active < concurrencyLimit &&
-        nextIndex < items.length &&
-        firstError === undefined
-      ) {
-        const item = items[nextIndex++];
-        active++;
-        execute(item, abortController.signal)
-          .catch((error) => {
-            if (firstError === undefined) {
-              firstError = error;
-              abortController.abort(error);
-            }
-          })
-          .finally(() => {
-            active--;
-
-            if (firstError !== undefined) {
-              if (active === 0) {
-                rejectWithPending();
-              }
-              return;
-            }
-
-            if (nextIndex >= items.length && active === 0) {
-              finish(resolve);
-              return;
-            }
-
-            tryNext();
-          });
+  const runWorker = async (): Promise<void> => {
+    while (nextIndex < items.length) {
+      const item = items[nextIndex++];
+      if (item !== undefined) {
+        await execute(item, "concurrent", abortSignal);
       }
+    }
+  };
 
-      if (firstError !== undefined && active === 0) {
-        rejectWithPending();
-      } else if (nextIndex >= items.length && active === 0) {
-        finish(resolve);
-      }
-    };
-
-    tryNext();
-  });
+  await Promise.all(
+    Array.from({ length: Math.min(concurrencyLimit, items.length) }, runWorker),
+  );
 }
 
 /**
@@ -728,7 +674,11 @@ export async function executePartitionedToolCalls<T>(
   batches: ToolBatch<T>[],
   options: {
     concurrencyLimit: number;
-    execute: (item: T, abortSignal: AbortSignal) => Promise<void>;
+    execute: (
+      item: T,
+      batchMode: ToolBatchMode,
+      abortSignal: AbortSignal,
+    ) => Promise<void>;
   },
 ): Promise<void> {
   const { concurrencyLimit, execute } = options;
@@ -743,8 +693,8 @@ export async function executePartitionedToolCalls<T>(
         await runConcurrentBatch(
           batch.items,
           concurrencyLimit,
+          abortController.signal,
           execute,
-          abortController,
         );
       } else {
         for (let itemIndex = 0; itemIndex < batch.items.length; itemIndex++) {
@@ -752,7 +702,7 @@ export async function executePartitionedToolCalls<T>(
           if (!item) continue;
 
           try {
-            await execute(item, abortController.signal);
+            await execute(item, batch.mode, abortController.signal);
           } catch (error) {
             abortController.abort(error);
             throw new BatchExecutionError(
