@@ -50,39 +50,37 @@ class ToolCallQueue {
 
   private async processAll(): Promise<void> {
     try {
-      while (this.queue.length > 0) {
-        const queue = this.queue.splice(0, this.queue.length);
-        const batches = partitionToolCalls(
-          queue,
-          (item) => ({
-            toolName: item.toolName,
-            input: item.input,
-          }),
-          this.options.getCustomAgents?.(),
-        );
+      const queue = this.queue;
+      this.queue = [];
+      const batches = partitionToolCalls(
+        queue,
+        (item) => ({
+          toolName: item.toolName,
+          input: item.input,
+        }),
+        this.options.getCustomAgents?.(),
+      );
 
-        try {
-          await executePartitionedToolCalls(batches, {
-            concurrencyLimit: this.options.concurrencyLimit ?? MaxConcurrency,
-            execute: async (item) => {
-              const result = await item.run();
-              // Side-effecting tool calls are serial barriers, so an error here
-              // cancels the remaining queued tool calls for this task.
-              if (result.kind === "error" && this.shouldStopOnError(item)) {
-                throw new Error(result.error);
-              }
-            },
-          });
-        } catch (error) {
-          const pendingItems =
-            error instanceof BatchExecutionError ? error.pendingItems : [];
-          this.cancelItems(
-            pendingItems.concat(this.queue),
-            "previous-tool-call-failed",
-          );
-          this.queue = [];
-          throw error;
-        }
+      try {
+        await executePartitionedToolCalls(batches, {
+          concurrencyLimit: this.options.concurrencyLimit ?? MaxConcurrency,
+          execute: async (item) => {
+            const result = await item.run();
+            // Side-effecting tool calls are serial barriers, so an error here
+            // cancels the remaining queued tool calls for this task.
+            if (result.kind === "error" && this.shouldStopOnError(item)) {
+              throw new Error(result.error);
+            }
+          },
+        });
+      } catch (error) {
+        const pendingItems =
+          error instanceof BatchExecutionError ? error.pendingItems : [];
+        this.cancelItems(
+          pendingItems.concat(this.queue),
+          "previous-tool-call-failed",
+        );
+        throw error;
       }
     } finally {
       this.processing = false;
