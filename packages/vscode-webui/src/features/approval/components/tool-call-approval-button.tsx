@@ -122,8 +122,6 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
 
-    let hasManualRun = false;
-
     for (const [i, lifecycle] of lifecycles.entries()) {
       if (lifecycle.status !== "init") {
         continue;
@@ -144,8 +142,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           // For non-async tasks, use manual navigation
           manualRunSubtask(subtaskUid);
         }
-        hasManualRun = true;
-        continue;
+        return;
       }
 
       if (!taskId) {
@@ -171,11 +168,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       );
     }
 
-    if (!hasManualRun) {
-      const uid = parentUid || taskId;
-      if (uid) {
-        vscodeHost.onTaskRunning(uid);
-      }
+    const uid = parentUid || taskId;
+    if (uid) {
+      vscodeHost.onTaskRunning(uid);
     }
 
     if (taskId) {
