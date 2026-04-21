@@ -637,7 +637,7 @@ export function partitionToolCalls<T>(
   return batches;
 }
 
-async function runConcurrentBatch<T>(
+export async function runConcurrentBatch<T>(
   items: T[],
   concurrencyLimit: number,
   abortSignal: AbortSignal,

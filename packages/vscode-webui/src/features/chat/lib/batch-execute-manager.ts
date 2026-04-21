@@ -21,13 +21,13 @@ export type ScheduledToolCall = {
 /** Maximum concurrent executions within one concurrent batch. */
 const MaxConcurrency = 10;
 
-type ToolCallQueueOptions = {
+export type ToolCallQueueOptions = {
   getCustomAgents?: () => CustomAgent[] | undefined;
   concurrencyLimit?: number;
 };
 
 /** FIFO queue for one `taskId`. */
-class ToolCallQueue {
+export class ToolCallQueue {
   private queue: ScheduledToolCall[] = [];
   private processing = false;
 

@@ -3,6 +3,7 @@ import {
   BatchExecuteManager,
   type QueueCancelReason,
   type ScheduledToolCall,
+  ToolCallQueue,
 } from "../batch-execute-manager";
 import type { ScheduledToolCallResult } from "@getpochi/tools";
 
@@ -116,6 +117,49 @@ describe("BatchExecuteManager – stateful tool error stops queue", () => {
     // The cancelled items were never run
     expect(pending1.run).not.toHaveBeenCalled();
     expect(pending2.run).not.toHaveBeenCalled();
+  });
+
+  it("also cancels items enqueued while processing when a stateful item fails", async () => {
+    const manager = new BatchExecuteManager();
+
+    let failFirst!: () => void;
+    const failingRun = vi.fn<() => Promise<ScheduledToolCallResult>>(
+      () =>
+        new Promise((resolve) => {
+          failFirst = () => resolve({ kind: "error", error: "write failed" });
+        }),
+    );
+
+    const failing: ScheduledToolCall = {
+      toolName: "writeToFile",
+      input: {},
+      run: failingRun,
+      cancel: vi.fn(),
+    };
+
+    const pendingFromBatch = makeCall("readFile");
+    const lateEnqueued = makeCall("executeCommand");
+
+    manager.enqueue("task1", failing);
+    manager.enqueue("task1", pendingFromBatch.call);
+    manager.processQueue("task1");
+
+    // Enqueued after processAll starts; this item lives in `this.queue`.
+    manager.enqueue("task1", lateEnqueued.call);
+
+    failFirst();
+
+    await vi.waitFor(() => {
+      expect(pendingFromBatch.cancel).toHaveBeenCalledWith(
+        "previous-tool-call-failed",
+      );
+      expect(lateEnqueued.cancel).toHaveBeenCalledWith(
+        "previous-tool-call-failed",
+      );
+    });
+
+    expect(pendingFromBatch.run).not.toHaveBeenCalled();
+    expect(lateEnqueued.run).not.toHaveBeenCalled();
   });
 });
 
@@ -317,5 +361,61 @@ describe("BatchExecuteManager – re-entrancy guard", () => {
 
     resolveFirst();
     await vi.waitFor(() => expect(slowRun).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("ToolCallQueue", () => {
+  it("clearPending cancels queued items without running them", async () => {
+    const queue = new ToolCallQueue();
+    const a = makeCall("readFile");
+    const b = makeCall("writeToFile");
+
+    queue.enqueue(a.call);
+    queue.enqueue(b.call);
+    queue.clearPending("user-abort");
+    queue.start();
+
+    await Promise.resolve();
+
+    expect(a.cancel).toHaveBeenCalledWith("user-abort");
+    expect(b.cancel).toHaveBeenCalledWith("user-abort");
+    expect(a.run).not.toHaveBeenCalled();
+    expect(b.run).not.toHaveBeenCalled();
+  });
+
+  it("cancels late-enqueued items when a serial item fails", async () => {
+    const queue = new ToolCallQueue();
+
+    let failFirst!: () => void;
+    const firstRun = vi.fn<() => Promise<ScheduledToolCallResult>>(
+      () =>
+        new Promise((resolve) => {
+          failFirst = () => resolve({ kind: "error", error: "first failed" });
+        }),
+    );
+
+    const first: ScheduledToolCall = {
+      toolName: "writeToFile",
+      input: {},
+      run: firstRun,
+      cancel: vi.fn(),
+    };
+    const pending = makeCall("readFile");
+    const late = makeCall("executeCommand");
+
+    queue.enqueue(first);
+    queue.enqueue(pending.call);
+    queue.start();
+
+    queue.enqueue(late.call);
+    failFirst();
+
+    await vi.waitFor(() => {
+      expect(pending.cancel).toHaveBeenCalledWith("previous-tool-call-failed");
+      expect(late.cancel).toHaveBeenCalledWith("previous-tool-call-failed");
+    });
+
+    expect(pending.run).not.toHaveBeenCalled();
+    expect(late.run).not.toHaveBeenCalled();
   });
 });

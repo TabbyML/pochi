@@ -7,6 +7,7 @@ import {
   isReadonlyToolCall,
   isSafeToBatchToolCall,
   partitionToolCalls,
+  runConcurrentBatch,
 } from "../batch-utils";
 
 describe("BatchExecutionError", () => {
@@ -438,5 +439,77 @@ describe("executePartitionedToolCalls", () => {
     const err = caught as BatchExecutionError<unknown>;
     // b (serial batch 2) + c (concurrent batch 3) are pending
     expect(err.pendingItems).toHaveLength(2);
+  });
+
+  it("respects concurrencyLimit when running a concurrent batch", async () => {
+    const items = [
+      item("readFile"),
+      item("listFiles"),
+      item("globFiles"),
+      item("readFile"),
+      item("listFiles"),
+      item("globFiles"),
+    ];
+    const batches = partitionToolCalls(items, getToolCall);
+
+    let active = 0;
+    let maxActive = 0;
+    let executeCount = 0;
+
+    await executePartitionedToolCalls(batches, {
+      concurrencyLimit: 2,
+      execute: async (_it, batchMode) => {
+        expect(batchMode).toBe("concurrent");
+        executeCount++;
+        active++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        active--;
+      },
+    });
+
+    expect(executeCount).toBe(items.length);
+    expect(maxActive).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("runConcurrentBatch", () => {
+  it("runs all items with batchMode='concurrent'", async () => {
+    const items = [1, 2, 3, 4];
+    const seen: number[] = [];
+    const modes: string[] = [];
+
+    await runConcurrentBatch(items, 3, new AbortController().signal, async (it, mode) => {
+      seen.push(it as number);
+      modes.push(mode);
+    });
+
+    expect(seen.sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
+    expect(modes.every((m) => m === "concurrent")).toBe(true);
+  });
+
+  it("never exceeds the configured concurrency", async () => {
+    const items = Array.from({ length: 8 }, (_, i) => i + 1);
+    let active = 0;
+    let maxActive = 0;
+
+    await runConcurrentBatch(items, 2, new AbortController().signal, async () => {
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      active--;
+    });
+
+    expect(maxActive).toBeLessThanOrEqual(2);
+  });
+
+  it("rejects when execute throws", async () => {
+    await expect(
+      runConcurrentBatch(["a", "b"], 2, new AbortController().signal, async (it) => {
+        if (it === "a") {
+          throw new Error("boom");
+        }
+      }),
+    ).rejects.toThrow("boom");
   });
 });
