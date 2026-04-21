@@ -124,6 +124,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "unregisterBrowserSession",
         "readMcpConfigOverride",
         "readContextWindowUsage",
+        "readTaskMemoryState",
+        "readAsyncAgentState",
         "readTaskArchived",
         "readLang",
         "readTaskChangedFiles",

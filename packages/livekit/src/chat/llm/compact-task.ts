@@ -8,8 +8,9 @@ import {
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
+import { makeStoreFileQuery } from "../../livestore/default-queries";
 import { makeDownloadFunction } from "../../store-blob";
-import type { Message } from "../../types";
+import type { LiveKitStore, Message } from "../../types";
 
 const logger = getLogger("compactTask");
 const PostCompactMaxFilesToRestore = 5;
@@ -24,6 +25,7 @@ export async function compactTask({
   recentFiles,
   abortSignal,
   inline,
+  store,
 }: {
   blobStore: BlobStore;
   taskId: string;
@@ -32,6 +34,7 @@ export async function compactTask({
   recentFiles?: RecentFileState[];
   abortSignal?: AbortSignal;
   inline?: boolean;
+  store?: LiveKitStore;
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
@@ -39,14 +42,28 @@ export async function compactTask({
   }
 
   try {
-    const text = prompts.inlineCompact(
-      await createSummary(
+    // Prefer task memory if available
+    let summaryText: string | undefined;
+    if (store) {
+      const memoryFile = store.query(makeStoreFileQuery("/memory.md"));
+      if (memoryFile?.content?.trim()) {
+        summaryText = memoryFile.content;
+      }
+    }
+
+    // Fall back to LLM-generated summary
+    if (!summaryText) {
+      summaryText = await createSummary(
         blobStore,
         taskId,
         model,
         abortSignal,
         messages.slice(0, -1),
-      ),
+      );
+    }
+
+    const text = prompts.inlineCompact(
+      summaryText,
       messages.length - 1,
       formatRecentFileContext(recentFiles),
     );

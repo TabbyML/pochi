@@ -108,3 +108,17 @@ export type TaskStates = Record<string, TaskState>;
 export type TaskArchivedParams =
   | { type: "single"; taskId: string; archived: boolean }
   | { type: "batch"; cwd?: string };
+
+export interface TaskMemoryState {
+  initialized: boolean;
+  lastExtractionTokens: number;
+  lastExtractionToolCalls: number;
+  isExtracting: boolean;
+  extractionCount: number;
+  activeTaskId?: string;
+}
+
+export interface AsyncAgentState {
+  allowedTools?: readonly string[];
+  parentTaskId?: string;
+}

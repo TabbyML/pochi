@@ -5,6 +5,7 @@ import type { Environment } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type {
+  AsyncAgentState,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -25,6 +26,7 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
+  TaskMemoryState,
   TaskStates,
   VSCodeHostApi,
   VSCodeSettings,
@@ -78,6 +80,7 @@ const VSCodeHostStub = {
       toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
+      fileStateCacheSourceTaskId?: string;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
@@ -372,6 +375,28 @@ const VSCodeHostStub = {
       value: {} as ThreadSignalSerialization<ContextWindowUsage | undefined>,
       setContextWindowUsage: (_contextWindowUsage: ContextWindowUsage) =>
         Promise.resolve(),
+    };
+  },
+  readTaskMemoryState: async (
+    _taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<TaskMemoryState | undefined>;
+    setTaskMemoryState: (state: TaskMemoryState) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<TaskMemoryState | undefined>,
+      setTaskMemoryState: (_state: TaskMemoryState) => Promise.resolve(),
+    };
+  },
+  readAsyncAgentState: async (
+    _taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<AsyncAgentState | undefined>;
+    setAsyncAgentState: (state: AsyncAgentState) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<AsyncAgentState | undefined>,
+      setAsyncAgentState: (_state: AsyncAgentState) => Promise.resolve(),
     };
   },
   readTaskArchived(): Promise<{

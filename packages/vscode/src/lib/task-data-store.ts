@@ -1,8 +1,10 @@
 import { getLogger } from "@getpochi/common";
 import type {
+  AsyncAgentState,
   ContextWindowUsage,
   McpConfigOverride,
   TaskChangedFile,
+  TaskMemoryState,
 } from "@getpochi/common/vscode-webui-bridge";
 import { computed, signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";
@@ -13,6 +15,8 @@ type TaskStateData = {
   archived?: boolean;
   changedFiles?: TaskChangedFile[];
   contextWindowUsage?: ContextWindowUsage;
+  taskMemoryState?: TaskMemoryState;
+  asyncAgentState?: AsyncAgentState;
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -173,5 +177,56 @@ export class TaskDataStore {
    */
   getContextWindowUsageSignal(taskId: string) {
     return computed(() => this.state.value[taskId]?.contextWindowUsage);
+  }
+
+  getTaskMemoryState(taskId: string): TaskMemoryState | undefined {
+    return this.getTaskState(taskId)?.taskMemoryState;
+  }
+
+  async setTaskMemoryState(
+    taskId: string,
+    taskMemoryState: TaskMemoryState,
+  ): Promise<void> {
+    const existing = this.getTaskState(taskId) || {};
+    await this.saveTaskState(taskId, { ...existing, taskMemoryState });
+  }
+
+  getTaskMemoryStateSignal(taskId: string) {
+    return computed(() => this.state.value[taskId]?.taskMemoryState);
+  }
+
+  getAsyncAgentState(taskId: string): AsyncAgentState | undefined {
+    const asyncAgentState = this.getTaskState(taskId)?.asyncAgentState;
+    logger.debug(
+      {
+        taskId,
+        hasAsyncAgentState: asyncAgentState !== undefined,
+        parentTaskId: asyncAgentState?.parentTaskId,
+        allowedTools: asyncAgentState?.allowedTools?.length,
+      },
+      "getAsyncAgentState",
+    );
+    return asyncAgentState;
+  }
+
+  async setAsyncAgentState(
+    taskId: string,
+    asyncAgentState: AsyncAgentState,
+  ): Promise<void> {
+    const existing = this.getTaskState(taskId) || {};
+    logger.debug(
+      {
+        taskId,
+        parentTaskId: asyncAgentState.parentTaskId,
+        allowedTools: asyncAgentState.allowedTools?.length,
+      },
+      "setAsyncAgentState",
+    );
+    await this.saveTaskState(taskId, { ...existing, asyncAgentState });
+  }
+
+  getAsyncAgentStateSignal(taskId: string) {
+    logger.debug({ taskId }, "getAsyncAgentStateSignal");
+    return computed(() => this.state.value[taskId]?.asyncAgentState);
   }
 }

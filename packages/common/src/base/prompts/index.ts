@@ -8,6 +8,10 @@ import { generateTitle } from "./generate-title";
 import { renderReviewComments } from "./review-comments";
 import { createSkillPrompt, createUseSkillResult } from "./skill";
 import { createSystemPrompt } from "./system";
+import {
+  buildMemoryExtractionDirective,
+  taskMemoryTemplate,
+} from "./task-memory";
 import { renderUserEdits } from "./user-edits";
 
 export const prompts = {
@@ -30,6 +34,10 @@ export const prompts = {
   renderBashOutputs,
   fixMermaidError,
   createUseSkillResult,
+  taskMemory: {
+    template: taskMemoryTemplate,
+    buildExtractionDirective: buildMemoryExtractionDirective,
+  },
 };
 
 function createSystemReminder(content: string) {

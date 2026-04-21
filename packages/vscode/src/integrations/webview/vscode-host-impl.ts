@@ -72,6 +72,7 @@ import {
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
+  type AsyncAgentState,
   type BuiltinSubAgentInfo,
   type CaptureEvent,
   type ChangedFileContent,
@@ -94,6 +95,7 @@ import {
   type SkillFile,
   type TaskArchivedParams,
   type TaskChangedFile,
+  type TaskMemoryState,
   type TaskStates,
   type VSCodeHostApi,
   type VSCodeSettings,
@@ -467,6 +469,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
+      fileStateCacheSourceTaskId?: string;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -512,9 +515,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.builtinSubAgentInfo,
     );
     const taskId = options.taskId;
-    const fileStateCache = this.fileStateCacheRegistry.get(options.taskId);
+    if (options.fileStateCacheSourceTaskId) {
+      this.fileStateCacheRegistry.copyIfAbsent(
+        options.fileStateCacheSourceTaskId,
+        taskId,
+      );
+    }
+    const fileStateCache = this.fileStateCacheRegistry.get(taskId);
     logger.debug(
-      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
+      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCacheSourceTaskId=${options.fileStateCacheSourceTaskId ?? "none"} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
     );
     const rawResult = await safeCall(
       tool(resolvedArgs, {
@@ -1233,6 +1242,46 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       ),
       setContextWindowUsage: (contextWindowUsage: ContextWindowUsage) =>
         this.taskStateStore.setContextWindowUsage(taskId, contextWindowUsage),
+    };
+  };
+
+  readTaskMemoryState = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<TaskMemoryState | undefined>;
+    setTaskMemoryState: (state: TaskMemoryState) => Promise<void>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getTaskMemoryStateSignal(taskId),
+      ),
+      setTaskMemoryState: (state: TaskMemoryState) =>
+        this.taskStateStore.setTaskMemoryState(taskId, state),
+    };
+  };
+
+  readAsyncAgentState = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<AsyncAgentState | undefined>;
+    setAsyncAgentState: (state: AsyncAgentState) => Promise<void>;
+  }> => {
+    logger.debug({ taskId }, "readAsyncAgentState");
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getAsyncAgentStateSignal(taskId),
+      ),
+      setAsyncAgentState: (state: AsyncAgentState) => {
+        logger.debug(
+          {
+            taskId,
+            parentTaskId: state.parentTaskId,
+            allowedTools: state.allowedTools?.length,
+          },
+          "readAsyncAgentState.setAsyncAgentState",
+        );
+        return this.taskStateStore.setAsyncAgentState(taskId, state);
+      },
     };
   };
 

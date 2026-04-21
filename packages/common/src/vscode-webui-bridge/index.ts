@@ -25,6 +25,8 @@ export type {
   McpConfigOverride,
   TaskArchivedParams,
   ContextWindowUsage,
+  TaskMemoryState,
+  AsyncAgentState,
 } from "./types/task";
 export type {
   VSCodeLmModel,

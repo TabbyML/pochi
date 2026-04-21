@@ -291,6 +291,7 @@ export class LiveChatKit<
             ),
             abortSignal,
             inline: true,
+            store: this.store,
           });
           await onCompact?.();
         } catch (err) {
@@ -324,6 +325,7 @@ export class LiveChatKit<
         model,
         messages,
         recentFiles: await readRecentFilesForCompact(getRecentFilesForCompact),
+        store: this.store,
       });
 
       if (!summary) {
