@@ -1,30 +1,49 @@
 name: Update Latest CLI Release in install.sh
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+  push:
+    tags:
+      - "cli@*"
 
 jobs:
   update-fallback:
-    if: startsWith(github.event.release.tag_name, 'cli@')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            LATEST_TAG=$(git tag -l "cli@*" --sort=-v:refname | grep -v -e '-alpha\.' -e '-beta\.' -e '-rc\.' | head -n 1)
+            echo "version=$LATEST_TAG" >> $GITHUB_OUTPUT
+          else
+            if echo "${{ github.ref_name }}" | grep -q -e '-alpha\.' -e '-beta\.' -e '-rc\.' ; then
+              echo "version=" >> $GITHUB_OUTPUT
+            else
+              echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            fi
+          fi
 
       - name: Update fallback version in install.sh
+        if: steps.get_version.outputs.version != ''
         run: |
-          NEW_VERSION="${{ github.event.release.tag_name }}"
+          NEW_VERSION="${{ steps.get_version.outputs.version }}"
           sed -i "s/version=\"cli@[^\"]*\" # UPDATED_BY_CI/version=\"$NEW_VERSION\" # UPDATED_BY_CI/g" assets/install.sh
 
       - name: Create Pull Request
+        if: steps.get_version.outputs.version != ''
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
-          commit-message: "chore(install): update latest cli version to ${{ github.event.release.tag_name }}"
-          title: "chore(install): update latest cli version to ${{ github.event.release.tag_name }}"
-          body: "Automatically generated PR to update the latest CLI version in `assets/install.sh` to `${{ github.event.release.tag_name }}`."
-          branch: "chore/update-cli-version-${{ github.event.release.tag_name }}"
+          commit-message: "chore(install): update latest cli version to ${{ steps.get_version.outputs.version }}"
+          title: "chore(install): update latest cli version to ${{ steps.get_version.outputs.version }}"
+          body: "Automatically generated PR to update the latest CLI version in `assets/install.sh` to `${{ steps.get_version.outputs.version }}`."
+          branch: "chore/update-cli-version-${{ steps.get_version.outputs.version }}"
           base: main
