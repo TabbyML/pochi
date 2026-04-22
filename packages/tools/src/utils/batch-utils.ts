@@ -1,20 +1,38 @@
+import { MaxToolCallConcurrency } from "../constants";
 import type { CustomAgent } from "../new-task";
-import {
-  checkReadOnlyConstraints,
-  isReadonlyToolCall,
-} from "./readonly-constraints-validation";
+import { isReadonlyToolCall } from "./readonly-constraints-validation";
 
-export type ToolCallBatch<T> =
+export type ToolCallBatch =
   | {
       isConcurrencySafe: true;
-      items: T[];
+      items: ScheduledToolCall[];
     }
   | {
       isConcurrencySafe: false;
-      items: [T];
+      items: [ScheduledToolCall];
     };
 
 export type QueueCancelReason = "user-abort" | "previous-tool-call-failed";
+
+export type ScheduledToolCallResult =
+  | {
+      kind: "success";
+    }
+  | {
+      kind: "error";
+      error: string;
+    }
+  | {
+      kind: "cancelled";
+      reason: QueueCancelReason;
+    };
+
+export type ScheduledToolCall = {
+  toolName: string;
+  input: unknown;
+  run: () => Promise<ScheduledToolCallResult>;
+  cancel: (reason: QueueCancelReason) => void;
+};
 
 export const BatchExecutionErrorMessages = {
   ABORTED: "batch-execution-aborted",
@@ -33,18 +51,6 @@ export class BatchExecutionError<T> extends Error {
   }
 }
 
-export type ScheduledToolCallResult =
-  | {
-      kind: "success";
-    }
-  | {
-      kind: "error";
-      error: string;
-    }
-  | {
-      kind: "cancelled";
-      reason: QueueCancelReason;
-    };
 function isSafeToBatchNewTask(
   input: Record<string, unknown>,
   customAgents: CustomAgent[] | undefined,
@@ -90,13 +96,16 @@ export function isSafeToBatchToolCall(
  *
  * Batches execute sequentially; batch N+1 only starts after N fully completes.
  */
-export function partitionToolCalls<T>(
-  items: T[],
-  getToolCall: (item: T) => { toolName: string; input: unknown },
+export function partitionToolCalls(
+  items: ScheduledToolCall[],
+  getToolCall: (item: ScheduledToolCall) => {
+    toolName: string;
+    input: unknown;
+  },
   customAgents?: CustomAgent[],
-): ToolCallBatch<T>[] {
-  const batches: ToolCallBatch<T>[] = [];
-  let currentConcurrentBatch: T[] = [];
+): ToolCallBatch[] {
+  const batches: ToolCallBatch[] = [];
+  let currentConcurrentBatch: ScheduledToolCall[] = [];
 
   for (const item of items) {
     const toolCall = getToolCall(item);
@@ -130,9 +139,8 @@ export function partitionToolCalls<T>(
   return batches;
 }
 
-export async function runConcurrentBatch<T>(
-  items: T[],
-  execute: (item: T, isConcurrencySafe: boolean) => Promise<void>,
+export async function runConcurrentBatch(
+  items: ScheduledToolCall[],
   options: {
     concurrencyLimit: number;
   },
@@ -146,7 +154,7 @@ export async function runConcurrentBatch<T>(
       const item = items[nextIndex++];
       if (item !== undefined) {
         try {
-          await execute(item, true);
+          await item.run();
         } catch {
           // Ignore concurrent-safe tool calls failures, do not block later items
           // in this batch or subsequent batches.
@@ -167,16 +175,10 @@ export async function runConcurrentBatch<T>(
  * - when a serial batch fails, later batches are skipped and reported as pending
  * - if `signal` is aborted before a batch starts, remaining items are reported as pending
  */
-export async function executePartitionedToolCalls<T>(
-  batches: ToolCallBatch<T>[],
-  execute: (item: T, isConcurrencySafe: boolean) => Promise<void>,
-  options: {
-    concurrencyLimit: number;
-    abortSignal?: AbortSignal;
-  },
+export async function executePartitionedToolCalls(
+  batches: ToolCallBatch[],
+  abortSignal?: AbortSignal,
 ): Promise<void> {
-  const { concurrencyLimit, abortSignal } = options;
-
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
     if (!batch) continue;
@@ -195,7 +197,9 @@ export async function executePartitionedToolCalls<T>(
     }
 
     if (batch.isConcurrencySafe) {
-      await runConcurrentBatch(batch.items, execute, { concurrencyLimit });
+      await runConcurrentBatch(batch.items, {
+        concurrencyLimit: MaxToolCallConcurrency,
+      });
       continue;
     }
 
@@ -203,7 +207,11 @@ export async function executePartitionedToolCalls<T>(
     if (!serialItem) continue;
 
     try {
-      await execute(serialItem, false);
+      const result = await serialItem.run();
+      if (result.kind === "error") {
+        // need to cancel the next batches
+        throw new Error();
+      }
     } catch (error) {
       const remainingItems = batches
         .slice(batchIndex + 1)
@@ -217,5 +225,3 @@ export async function executePartitionedToolCalls<T>(
     }
   }
 }
-
-export { checkReadOnlyConstraints, isReadonlyToolCall };

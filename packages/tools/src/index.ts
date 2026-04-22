@@ -69,6 +69,7 @@ export {
 export type {
   QueueCancelReason,
   ScheduledToolCallResult,
+  ScheduledToolCall,
 } from "./utils/batch-utils";
 
 export function isUserInputToolName(name: string): boolean {

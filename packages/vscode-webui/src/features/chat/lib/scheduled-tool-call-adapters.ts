@@ -9,16 +9,16 @@ import type {
   ExecuteCommandResult,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
-import type { ScheduledToolCallResult } from "@getpochi/tools";
+import type {
+  QueueCancelReason,
+  ScheduledToolCall,
+  ScheduledToolCallResult,
+} from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
   threadSignal,
 } from "@quilted/threads/signals";
-import type {
-  QueueCancelReason,
-  ScheduledToolCall,
-} from "./batch-execute-manager";
 import type { ToolCallStatusRegistry } from "./chat-state/fixed-state";
 import type { ToolCallLifeCycle } from "./tool-call-life-cycle";
 

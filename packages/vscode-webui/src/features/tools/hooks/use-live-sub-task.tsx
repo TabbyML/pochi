@@ -35,23 +35,17 @@ export function useLiveSubTask(
   { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
 ): (TaskThreadSource & { parentId: string }) | undefined {
-  const { getToolCallLifeCycle } = useToolCallLifeCycle();
-  const batchExecuteManager = useBatchExecuteManager();
-  const lifecycle = getToolCallLifeCycle({
+  const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getStaticToolName(tool),
     toolCallId: tool.toolCallId,
   });
+  const batchExecuteManager = useBatchExecuteManager();
 
   const { customAgent, customAgentModel } = useCustomAgent(
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
   );
   // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
   const uid = tool.input?._meta?.uid!;
-  const subtaskCustomAgentsRef = useRef(
-    customAgent ? [customAgent] : undefined,
-  );
-  subtaskCustomAgentsRef.current = customAgent ? [customAgent] : undefined;
-
   const abortController = useRef(new AbortController());
 
   useEffect(() => {
@@ -166,10 +160,6 @@ export function useLiveSubTask(
           addToolOutput,
           toolCallStatusRegistry,
         }),
-        {
-          // Classify batches against the latest subtask agent view.
-          getCustomAgents: () => subtaskCustomAgentsRef.current,
-        },
       );
     },
     onStreamFinish: () => {

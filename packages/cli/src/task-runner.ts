@@ -25,13 +25,13 @@ import {
 import { LiveChatKit } from "@getpochi/livekit/node";
 import {
   BatchExecutionError,
+  type ScheduledToolCall,
   type ScheduledToolCallResult,
   executePartitionedToolCalls,
   partitionToolCalls,
 } from "@getpochi/tools";
 import {
   type CustomAgent,
-  MaxToolCallConcurrency,
   type Skill,
   type Todo,
   getToolArgs,
@@ -598,33 +598,28 @@ export class TaskRunner {
       return "next" as const;
     }
 
+    const scheduledToolCalls: ScheduledToolCall[] = toolCalls.map(
+      (toolCall) => ({
+        input: toolCall.input,
+        toolName: toolCall.type,
+        run: async () => {
+          return this.runScheduledToolCall(toolCall, executeCommandWhitelist);
+        },
+        cancel: () => {},
+      }),
+    );
     // Partition tool calls into microbatches: consecutive safe-to-batch tool
     // calls run concurrently; barrier tool calls run serially in their own batch.
     const partitioned = partitionToolCalls(
-      toolCalls,
-      (toolCall) => ({
-        toolName: getStaticToolName(toolCall),
-        input: toolCall.input,
+      scheduledToolCalls,
+      (x) => ({
+        toolName: x.toolName,
+        input: x.input,
       }),
       this.toolCallOptions.customAgents,
     );
     try {
-      await executePartitionedToolCalls(
-        partitioned,
-        async (toolCall, isConcurrencySafe) => {
-          const result = await this.runScheduledToolCall(
-            toolCall,
-            executeCommandWhitelist,
-          );
-
-          if (result.kind === "error" && !isConcurrencySafe) {
-            // Non-concurrent-safe tool calls are serial barriers.
-            // If one fails, later queued tool calls will be cancelled.
-            throw new Error(result.error);
-          }
-        },
-        { concurrencyLimit: MaxToolCallConcurrency },
-      );
+      await executePartitionedToolCalls(partitioned);
     } catch (error) {
       if (!(error instanceof BatchExecutionError)) {
         throw error;

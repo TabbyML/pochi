@@ -4,21 +4,13 @@ import {
   BatchExecutionErrorMessages,
   type CustomAgent,
   MaxToolCallConcurrency,
-  type ScheduledToolCallResult,
+  type QueueCancelReason,
+  type ScheduledToolCall,
   executePartitionedToolCalls,
   partitionToolCalls,
 } from "@getpochi/tools";
 
 const logger = getLogger("ToolCallQueue");
-
-export type QueueCancelReason = "user-abort" | "previous-tool-call-failed";
-
-export type ScheduledToolCall = {
-  toolName: string;
-  input: unknown;
-  run: () => Promise<ScheduledToolCallResult>;
-  cancel: (reason: QueueCancelReason) => void;
-};
 
 export type ToolCallQueueOptions = {
   getCustomAgents?: () => CustomAgent[] | undefined;
@@ -68,7 +60,6 @@ export class ToolCallQueue {
   private async processAll(): Promise<void> {
     try {
       const queue = this.queue;
-      this.queue = [];
       const batches = partitionToolCalls(
         queue,
         (item) => ({
@@ -81,23 +72,7 @@ export class ToolCallQueue {
       try {
         await executePartitionedToolCalls(
           batches,
-          async (item, isConcurrencySafe) => {
-            const result = await item.run();
-            // Serial-batched tool calls are barriers. If one errors, later
-            // queued tool calls for this task should be cancelled.
-            if (result.kind === "error" && !isConcurrencySafe) {
-              logger.debug("serial tool call error, throwing", {
-                toolName: item.toolName,
-                error: result.error,
-              });
-              throw new Error(result.error);
-            }
-          },
-          {
-            concurrencyLimit:
-              this.options.concurrencyLimit ?? MaxToolCallConcurrency,
-            abortSignal: this.abortController?.signal,
-          },
+          this.abortController?.signal,
         );
       } catch (error) {
         const reason: QueueCancelReason =
@@ -142,12 +117,8 @@ export class BatchExecuteManager {
   }
 
   /** Enqueue a tool call into the queue for `taskId`. */
-  enqueue(
-    taskId: string,
-    item: ScheduledToolCall,
-    options?: ToolCallQueueOptions,
-  ) {
-    const queue = this.getOrCreateQueue(taskId, options);
+  enqueue(taskId: string, item: ScheduledToolCall) {
+    const queue = this.getOrCreateQueue(taskId);
     queue.enqueue(item);
   }
 

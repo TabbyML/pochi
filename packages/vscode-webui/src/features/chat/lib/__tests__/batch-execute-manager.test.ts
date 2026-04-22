@@ -1,11 +1,9 @@
 import { type Mock, describe, expect, it, vi } from "vitest";
 import {
   BatchExecuteManager,
-  type QueueCancelReason,
-  type ScheduledToolCall,
   ToolCallQueue,
 } from "../batch-execute-manager";
-import type { ScheduledToolCallResult } from "@getpochi/tools";
+import type { ScheduledToolCallResult, QueueCancelReason, ScheduledToolCall } from "@getpochi/tools";
 
 function makeCall(
   toolName: string,

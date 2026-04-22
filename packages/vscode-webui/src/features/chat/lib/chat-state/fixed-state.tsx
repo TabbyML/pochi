@@ -1,3 +1,5 @@
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
 import Emittery from "emittery";
 import {
   type ReactNode,
@@ -119,7 +121,11 @@ export function FixedStateChatContextProvider({
 
   const completeToolCalls: FixedStateToolCallLifeCycle[] = [];
 
-  const batchExecuteManager = useRef(new BatchExecuteManager()).current;
+  const { customAgents } = useCustomAgents(true);
+  const customAgentsRef = useLatest(customAgents);
+  const batchExecuteManager = useRef(
+    new BatchExecuteManager(() => customAgentsRef.current),
+  ).current;
 
   const value: ChatState = {
     autoApproveGuard,
