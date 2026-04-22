@@ -301,7 +301,7 @@ get_latest_version() {
     fi
   fi
   if [ -z "$version" ]; then
-    version="cli@0.6.7" # UPDATED_BY_CI
+    version="cli@0.6.8" # UPDATED_BY_CI
   fi
   echo "$version"
 }
