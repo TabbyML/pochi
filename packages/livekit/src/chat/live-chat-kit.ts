@@ -1,4 +1,5 @@
 import { getLogger } from "@getpochi/common";
+import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import {
@@ -33,6 +34,23 @@ import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
+
+type GetRecentFilesForCompact = () =>
+  | RecentFileState[]
+  | Promise<RecentFileState[]>;
+
+async function readRecentFilesForCompact(
+  getRecentFilesForCompact: GetRecentFilesForCompact | undefined,
+): Promise<RecentFileState[] | undefined> {
+  try {
+    return await getRecentFilesForCompact?.();
+  } catch (error) {
+    logger.warn(
+      "Failed to read recent files for compaction. Continue compacting without file restoration.",
+      error,
+    );
+  }
+}
 
 async function runSideEffectSafely({
   sideEffectName,
@@ -137,7 +155,13 @@ export type LiveChatKitOptions<T> = {
    * Use this to clear caches (e.g. FileStateCache) that depend on
    * conversation context that was discarded during compaction.
    */
-  onCompact?: () => void;
+  onCompact?: () => void | Promise<void>;
+
+  /**
+   * Returns recent file contents the model saw before compaction.
+   * They are appended to the compact block before the cache is cleared.
+   */
+  getRecentFilesForCompact?: GetRecentFilesForCompact;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -205,6 +229,7 @@ export class LiveChatKit<
     onStreamStart,
 
     onStreamFinish,
+    getRecentFilesForCompact,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -261,10 +286,13 @@ export class LiveChatKit<
             taskId: this.taskId,
             model,
             messages,
+            recentFiles: await readRecentFilesForCompact(
+              getRecentFilesForCompact,
+            ),
             abortSignal,
             inline: true,
           });
-          onCompact?.();
+          await onCompact?.();
         } catch (err) {
           logger.error("Failed to compact task", err);
           throw err;
@@ -295,12 +323,13 @@ export class LiveChatKit<
         taskId: this.taskId,
         model,
         messages,
+        recentFiles: await readRecentFilesForCompact(getRecentFilesForCompact),
       });
 
       if (!summary) {
         throw new Error("Failed to compact task");
       }
-      onCompact?.();
+      await onCompact?.();
       return summary;
     };
 

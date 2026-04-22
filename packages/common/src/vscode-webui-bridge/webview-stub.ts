@@ -114,6 +114,9 @@ const VSCodeHostStub = {
   clearFileStateCache: (_taskId: string): Promise<void> => {
     return Promise.resolve();
   },
+  readRecentFilesForCompact: (_taskId: string) => {
+    return Promise.resolve([]);
+  },
   readActiveSelection: (): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>
   > => {

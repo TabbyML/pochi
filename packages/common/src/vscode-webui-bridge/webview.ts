@@ -3,6 +3,7 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
+import type { RecentFileState } from "../tool-utils";
 import type {
   BuiltinSubAgentInfo,
   CaptureEvent,
@@ -134,6 +135,13 @@ export interface VSCodeHostApi {
    * from being returned for content that was compacted away.
    */
   clearFileStateCache(taskId: string): Promise<void>;
+
+  /**
+   * Read recent file state cache entries for the given task ID.
+   * Used by compaction to keep recently read file contents visible after
+   * the compacted conversation drops the original readFile tool results.
+   */
+  readRecentFilesForCompact(taskId: string): Promise<RecentFileState[]>;
 
   readActiveSelection(): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>

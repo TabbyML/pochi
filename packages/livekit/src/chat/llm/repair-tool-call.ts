@@ -1,5 +1,6 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { jsonSchema } from "@ai-sdk/provider-utils";
+import type { PochiProviderOptions } from "@getpochi/common";
 import {
   NoSuchToolError,
   Output,
@@ -26,9 +27,9 @@ export const makeRepairToolCall: (
       providerOptions: {
         pochi: {
           taskId,
-          version: globalThis.POCHI_CLIENT,
+          client: globalThis.POCHI_CLIENT,
           useCase: "repair-tool-call",
-        },
+        } satisfies PochiProviderOptions,
         anthropic: {
           thinking: { type: "disabled" },
         },
