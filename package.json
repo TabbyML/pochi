@@ -99,6 +99,7 @@
     "ai@5.0.169": "patches/ai@5.0.169.patch",
     "@ai-sdk/google-vertex@3.0.127": "patches/@ai-sdk%2Fgoogle-vertex@3.0.127.patch",
     "@ai-sdk/mcp@0.0.16": "patches/@ai-sdk%2Fmcp@0.0.16.patch",
-    "ai@6.0.146": "patches/ai@6.0.146.patch"
+    "ai@6.0.146": "patches/ai@6.0.146.patch",
+    "@livestore/common-cf@0.4.0-dev.22": "patches/@livestore%2Fcommon-cf@0.4.0-dev.22.patch"
   }
 }

@@ -4,6 +4,7 @@ export {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
   useAutoApproveGuard,
+  useBatchExecuteManager,
   useToolCallLifeCycle,
   useRetryCount,
 } from "./lib/chat-state";

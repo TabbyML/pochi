@@ -349,6 +349,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     this.fileStateCacheRegistry.clear(taskId);
   };
 
+  readRecentFilesForCompact = async (taskId: string) => {
+    return this.fileStateCacheRegistry.getRecentFiles(taskId);
+  };
+
   deleteFileStateCache(taskId: string): void {
     this.fileStateCacheRegistry.delete(taskId);
   }

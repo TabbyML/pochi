@@ -1,5 +1,10 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { formatters, getLogger, prompts } from "@getpochi/common";
+import {
+  type PochiProviderOptions,
+  formatters,
+  getLogger,
+  prompts,
+} from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
 import { makeDownloadFunction } from "../../store-blob";
@@ -120,9 +125,9 @@ async function generateTitle(
     providerOptions: {
       pochi: {
         taskId,
-        version: globalThis.POCHI_CLIENT,
+        client: globalThis.POCHI_CLIENT,
         useCase: "generate-task-title",
-      },
+      } satisfies PochiProviderOptions,
     },
     model,
     prompt: await convertToModelMessages(

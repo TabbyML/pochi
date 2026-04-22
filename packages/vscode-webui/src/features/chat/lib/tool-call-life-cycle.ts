@@ -46,7 +46,16 @@ export type StreamingResult =
       throws: (error: string) => void;
     };
 
-type CompleteReason = "execute-finish" | "user-reject" | "user-abort";
+export type CompleteReason =
+  | "execute-finish"
+  | "user-reject"
+  | "user-abort"
+  | "previous-tool-call-failed";
+
+type AbortReason = Extract<
+  CompleteReason,
+  "user-abort" | "previous-tool-call-failed"
+>;
 
 type AbortFunctionType = AbortController["abort"];
 
@@ -76,7 +85,7 @@ type ToolCallState =
       type: "dispose";
     };
 
-type ToolCallLifeCycleEvents = {
+export type ToolCallLifeCycleEvents = {
   [K in ToolCallState["type"]]: Extract<ToolCallState, { type: K }>;
 };
 
@@ -121,12 +130,21 @@ export interface ToolCallLifeCycle {
   /**
    * Abort the currently executing tool call.
    */
-  abort(): void;
+  abort(reason?: AbortReason, result?: unknown): void;
 
   /**
    * Reject the tool call, preventing execution.
    */
   reject(): void;
+
+  /**
+   * Subscribe to lifecycle state transition events.
+   * Returns an unsubscribe function.
+   */
+  on<K extends keyof ToolCallLifeCycleEvents>(
+    eventName: K,
+    listener: (eventData: ToolCallLifeCycleEvents[K]) => void,
+  ): () => void;
 
   addResult(result: unknown): void;
 }
@@ -255,7 +273,16 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  abort() {
+  abort(reason: AbortReason = "user-abort", result: unknown = {}) {
+    if (this.state.type === "init") {
+      this.transitTo("init", {
+        type: "complete",
+        result,
+        reason,
+      });
+      return;
+    }
+
     if (
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
@@ -263,8 +290,8 @@ export class ManagedToolCallLifeCycle
       this.state.abort();
       this.transitTo(["execute", "execute:streaming"], {
         type: "complete",
-        result: {},
-        reason: "user-abort",
+        result,
+        reason,
       });
     }
   }

@@ -1,7 +1,7 @@
 import { getVscodeFileMtime } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import {
-  FILE_UNCHANGED_STUB,
+  FileUnchangedStub,
   isPlainText,
   isVirtualPath,
   readMediaFile,
@@ -64,13 +64,17 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
         addLineNumbers,
       });
 
-      return { result, fileCacheContent: fileContent };
+      return {
+        result,
+        fileCacheContent: result.content,
+        fileCacheIsTruncated: result.isTruncated,
+      };
     },
   });
 
   if (cacheResult.deduplicated) {
-    logger.debug(`readFile: returning FILE_UNCHANGED_STUB for "${path}"`);
-    return { content: FILE_UNCHANGED_STUB, isTruncated: false };
+    logger.debug(`readFile: returning FileUnchangedStub for "${path}"`);
+    return { content: FileUnchangedStub, isTruncated: false };
   }
 
   logger.debug(`readFile: returning fresh content for "${path}"`);

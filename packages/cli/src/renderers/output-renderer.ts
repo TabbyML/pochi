@@ -17,6 +17,8 @@ import type { TaskRunner } from "../task-runner";
 
 export class OutputRenderer {
   private renderingSubTask = false;
+  private subTaskQueue: Promise<void> = Promise.resolve();
+  private pendingSubTasks = 0;
   private unsubscribe: (() => void) | undefined;
 
   constructor(
@@ -103,9 +105,9 @@ export class OutputRenderer {
             this.spinner[stop]();
           }
           this.nextSpinner(true);
-        } else {
-          break;
+          continue;
         }
+        break;
       }
 
       if (this.pendingPartIndex < lastMessage.parts.length - 1) {
@@ -119,19 +121,27 @@ export class OutputRenderer {
   }
 
   renderSubTask(runner: TaskRunner) {
+    this.pendingSubTasks++;
     this.renderingSubTask = true;
-    this.withoutSpinner(() => {
-      const listr = makeListr(
-        this.stream,
-        runner.taskId,
-        this.state,
-        runner.state,
-      );
+    this.subTaskQueue = this.subTaskQueue
+      .then(async () => {
+        await this.withoutSpinner(async () => {
+          const listr = makeListr(
+            this.stream,
+            runner.taskId,
+            this.state,
+            runner.state,
+          );
 
-      return listr.run();
-    }).finally(() => {
-      this.renderingSubTask = false;
-    });
+          await listr.run();
+        });
+      })
+      .finally(() => {
+        this.pendingSubTasks--;
+        if (this.pendingSubTasks === 0) {
+          this.renderingSubTask = false;
+        }
+      });
   }
 
   private nextSpinner(nextPendingPart = false) {
@@ -142,13 +152,18 @@ export class OutputRenderer {
   }
 
   private async withoutSpinner(callback: () => Promise<void>) {
-    this.spinner?.stop();
-    this.spinner = undefined;
+    const oldSpinner = this.spinner;
+    if (oldSpinner) {
+      oldSpinner.stop();
+      this.spinner = undefined;
+    }
 
     try {
       await callback();
     } finally {
-      this.nextSpinner();
+      if (oldSpinner) {
+        this.nextSpinner();
+      }
     }
   }
 
@@ -374,12 +389,20 @@ function makeListr(
               }
             };
 
-            const unsubscribe1 = subtask.signal.messages.subscribe(() => {
-              onUpdate(() => unsubscribe1());
+            // subscribe() invokes its callback synchronously before returning the
+            // unsubscribe fn, so the unsubscribe reference must resolve lazily.
+            // `const u = subscribe(...)` throws TDZ when the callback reads `u`.
+            // `let u; u = subscribe(...)` avoids TDZ but biome's useConst flags it
+            // because `u` is assigned exactly once. An object with a mutable
+            // property satisfies both: const binding + late-bound reference.
+            const ref1: { unsubscribe?: () => void } = {};
+            ref1.unsubscribe = subtask.signal.messages.subscribe(() => {
+              onUpdate(() => ref1.unsubscribe?.());
             });
 
-            const unsubscribe2 = task.signal.messages.subscribe(() => {
-              onUpdate(() => unsubscribe2());
+            const ref2: { unsubscribe?: () => void } = {};
+            ref2.unsubscribe = task.signal.messages.subscribe(() => {
+              onUpdate(() => ref2.unsubscribe?.());
             });
 
             return;

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   type SubtaskInfo,
   useAutoApproveGuard,
+  useBatchExecuteManager,
   useToolCallLifeCycle,
 } from "@/features/chat";
 import {
@@ -20,7 +21,8 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { getToolArgs } from "@getpochi/tools";
-import { getStaticToolName } from "ai";
+import { getStaticToolName, getToolName } from "ai";
+import { createBatchedToolCallFromLifecycle } from "../../chat/lib/batched-tool-call-adapters";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
@@ -43,6 +45,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const navigate = useNavigate();
   const autoApproveGuard = useAutoApproveGuard();
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
+  const batchExecuteManager = useBatchExecuteManager();
   const { selectedModel } = useSelectedModels();
   const [lifecycles, tools] = useMemo(
     () =>
@@ -118,6 +121,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const { subtaskOffhand } = useSubtaskOffhand();
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
+
     for (const [i, lifecycle] of lifecycles.entries()) {
       if (lifecycle.status !== "init") {
         continue;
@@ -141,17 +145,35 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         return;
       }
 
-      lifecycle.execute(tools[i].input, {
-        contentType: selectedModel?.contentType,
-        builtinSubAgentInfo,
-        executeCommandWhitelist,
-        taskId,
-      });
-
-      const uid = parentUid || taskId;
-      if (uid) {
-        vscodeHost.onTaskRunning(uid);
+      if (!taskId) {
+        // taskId is required to enqueue
+        continue;
       }
+
+      // Enqueue into the batch manager instead of calling execute() directly
+      batchExecuteManager.enqueue(
+        taskId,
+        createBatchedToolCallFromLifecycle({
+          lifecycle,
+          toolName: getToolName(tool),
+          input: tool.input,
+          executeOptions: {
+            contentType: selectedModel?.contentType,
+            builtinSubAgentInfo,
+            executeCommandWhitelist,
+            taskId,
+          },
+        }),
+      );
+    }
+
+    const uid = parentUid || taskId;
+    if (uid) {
+      vscodeHost.onTaskRunning(uid);
+    }
+
+    if (taskId) {
+      batchExecuteManager.processQueue(taskId);
     }
   }, [
     tools,
@@ -164,6 +186,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     parentUid,
     builtinSubAgentInfo,
     executeCommandWhitelist,
+    batchExecuteManager,
   ]);
 
   const onReject = useCallback(() => {
@@ -211,10 +234,14 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   // biome-ignore lint/correctness/useExhaustiveDependencies(autoApproveGuard): autoApproveGuard is a ref, so it won't change
   const abort = useCallback(() => {
     autoApproveGuard.current = "stop";
-    for (const lifecycle of lifecycles) {
-      lifecycle.abort();
+    if (!taskId) {
+      return;
     }
-  }, [lifecycles]);
+    // batchExecuteManager.abort cancels both in-flight items (by calling each
+    // item's cancel() adapter, which aborts the underlying lifecycle) and items
+    // still waiting in the queue — no need to abort lifecycles directly here.
+    batchExecuteManager.abort(taskId, "user-abort");
+  }, [batchExecuteManager, taskId]);
 
   const showAccept = !isAutoApproved && isReady;
 
@@ -232,12 +259,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }
 
   if (showAbort && abortText && isExecuting) {
-    /*
-    Only display the abort button if:
-    1. There's executing tool call
-    2. The abort text is provided
-    3. The showAbort flag is true (delayed for a bit to avoid flashing)
-    */
+    // Delay the stop button slightly to avoid a flash for short-lived executions.
     return <Button onClick={abort}>{abortText}</Button>;
   }
 

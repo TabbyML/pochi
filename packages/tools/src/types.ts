@@ -24,6 +24,8 @@ export interface IFileState {
   endLine: number | undefined;
   /** True for entries created by write/edit tools; absent or false for read entries */
   fromWrite?: boolean;
+  /** True when the readFile result sent to the model was truncated */
+  isTruncated?: boolean;
 }
 
 /**

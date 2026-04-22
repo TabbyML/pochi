@@ -1,6 +1,8 @@
 import type {
+  CompleteReason,
   StreamingResult,
   ToolCallLifeCycle,
+  ToolCallLifeCycleEvents,
 } from "./tool-call-life-cycle";
 
 export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
@@ -11,7 +13,7 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
     readonly streamingResult: StreamingResult | undefined,
   ) {}
 
-  get complete(): { result: unknown; reason: "execute-finish" | "user-abort" } {
+  get complete(): { result: unknown; reason: CompleteReason } {
     throw new Error(
       "Method 'get complete()' should not be called on FixedStateToolCallLifeCycle.",
     );
@@ -43,5 +45,13 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
     throw new Error(
       "Method 'addResult()' should not be called on FixedStateToolCallLifeCycle.",
     );
+  }
+
+  on<K extends keyof ToolCallLifeCycleEvents>(
+    _eventName: K,
+    _listener: (eventData: ToolCallLifeCycleEvents[K]) => void,
+  ): () => void {
+    // FixedStateToolCallLifeCycle has a frozen state; no events will be emitted.
+    return () => {};
   }
 }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { checkStaleness, FileStateCache, withFileStateCacheGuard } from "../file-state-cache";
+import {
+  checkStaleness,
+  FileStateCache,
+  withFileStateCacheGuard,
+} from "../file-state-cache";
 
 describe("FileStateCache", () => {
   it("skips caching entries larger than the configured byte limit", () => {
@@ -98,6 +102,37 @@ describe("FileStateCache", () => {
       checkStaleness(cache, "/tmp/new-file.txt", async () => undefined, "writing"),
     ).resolves.toBeUndefined();
   });
+
+  it("returns recent files in LRU order", () => {
+    const cache = new FileStateCache();
+    cache.set("/tmp/a.txt", {
+      content: "a",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+      isTruncated: true,
+    });
+    cache.set("/tmp/b.txt", {
+      content: "b",
+      timestamp: 2,
+      startLine: 1,
+      endLine: 1,
+    });
+    cache.set("/tmp/c.txt", {
+      content: "c",
+      timestamp: 3,
+      startLine: 1,
+      endLine: 1,
+    });
+
+    cache.get("/tmp/a.txt");
+
+    expect(cache.getRecentFiles(2).map((file) => file.path)).toEqual([
+      "/tmp/a.txt",
+      "/tmp/c.txt",
+    ]);
+    expect(cache.getRecentFiles(1)[0]?.isTruncated).toBe(true);
+  });
 });
 
 describe("withFileStateCacheGuard", () => {
@@ -112,7 +147,10 @@ describe("withFileStateCacheGuard", () => {
         cwd: "/tmp",
         getMtime,
         operation: "editing",
-        doWork: async () => ({ result: { success: true as const }, fileCacheContent: "new content" }),
+        doWork: async () => ({
+          result: { success: true as const },
+          fileCacheContent: "new content",
+        }),
       }),
     ).rejects.toThrow(
       "File has not been read yet. Please read the file before editing it.",
@@ -131,7 +169,10 @@ describe("withFileStateCacheGuard", () => {
         cwd: "/tmp",
         getMtime,
         operation: "writing",
-        doWork: async () => ({ result: { success: true as const }, fileCacheContent: "hello" }),
+        doWork: async () => ({
+          result: { success: true as const },
+          fileCacheContent: "hello",
+        }),
       }),
     ).resolves.toEqual({ success: true });
   });

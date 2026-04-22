@@ -35,6 +35,7 @@ export const PochiProviderOptions = z.object({
     z.literal("repair-tool-call"),
     z.literal("generate-task-title"),
     z.literal("compact-task"),
+    z.literal("repair-mermaid"),
   ]),
 });
 

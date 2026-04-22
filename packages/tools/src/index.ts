@@ -1,5 +1,8 @@
 export { McpTool } from "./mcp-tools";
+import { ToolsByPermission } from "./constants";
+export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
 import {
+  type Tool,
   type UIDataTypes,
   type UIMessagePart,
   type UITools,
@@ -33,11 +36,11 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
+import { parseToolSpec } from "./utils";
 import { writeToFile } from "./write-to-file";
 
 export {
   CustomAgent,
-  overrideCustomAgentTools,
   type SubTask,
   inputSchema as newTaskInputSchema,
 } from "./new-task";
@@ -52,6 +55,22 @@ export {
 } from "./utils";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
+export {
+  BatchExecutionErrorMessages,
+  BatchExecutionError,
+  executeToolCalls,
+  isSafeToBatchToolCall,
+  partitionToolCalls,
+} from "./utils/batch-utils";
+export {
+  checkReadOnlyConstraints,
+  isReadonlyToolCall,
+} from "./utils/readonly-constraints-validation";
+export type {
+  BatchedToolCallCancelReason as ToolCallCancelReason,
+  BatchedToolCallResult,
+  BatchedToolCall,
+} from "./utils/batch-utils";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";
@@ -78,38 +97,17 @@ export function isAutoSuccessToolPart(
 
 export type ToolName = keyof ClientTools;
 
-export const ToolsByPermission = {
-  read: [
-    ...([
-      "readFile",
-      "listFiles",
-      "globFiles",
-      "searchFiles",
-      "readBackgroundJobOutput",
-      "useSkill",
-    ] satisfies ToolName[]),
-
-    // Pochi offered-tools
-    "webFetch",
-    "webSearch",
-  ] as string[],
-  write: [
-    "writeToFile",
-    "applyDiff",
-    "editNotebook",
-  ] satisfies ToolName[] as string[],
-  execute: [
-    "executeCommand",
-    "startBackgroundJob",
-    "killBackgroundJob",
-    "newTask",
-  ] satisfies ToolName[] as string[],
-  default: ["todoWrite"] satisfies ToolName[] as string[],
-};
-
 export const ServerToolApproved = "<server-tool-approved>";
 
-const createCliTools = (options?: CreateToolOptions) => ({
+export interface CreateClientToolOptions {
+  customAgents?: CustomAgent[];
+  skills?: Skill[];
+  contentType?: string[];
+  attemptCompletionSchema?: z.ZodAny;
+  agent?: CustomAgent;
+}
+
+const createCliTools = (options?: CreateClientToolOptions) => ({
   applyDiff,
   askFollowupQuestion,
   attemptCompletion: createAttemptCompletionTool(
@@ -127,15 +125,7 @@ const createCliTools = (options?: CreateToolOptions) => ({
   newTask: createNewTaskTool(options?.customAgents),
 });
 
-export interface CreateToolOptions {
-  customAgents?: CustomAgent[];
-  skills?: Skill[];
-  contentType?: string[];
-  attemptCompletionSchema?: z.ZodAny;
-  agent?: CustomAgent;
-}
-
-export const createClientTools = (options?: CreateToolOptions) => {
+export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
     ...createCliTools(options),
     startBackgroundJob,
@@ -149,23 +139,87 @@ export type ClientTools = ReturnType<typeof createClientTools> & {
   createReview: createReview;
 };
 
-export const selectClientTools = (
-  options: {
-    isSubTask: boolean;
-  } & CreateToolOptions,
-) => {
-  const clientTools = createClientTools(options);
+type ToolMap = Record<string, Tool>;
 
-  if (options?.isSubTask) {
-    const { newTask, ...rest } = clientTools;
-    if (options.agent?.name === "reviewer") {
-      return {
-        ...rest,
-        createReview,
-      };
+type AgentTools = ToolMap &
+  Partial<
+    ReturnType<typeof createClientTools> & {
+      createReview: createReview;
     }
-    return rest;
+  >;
+
+type SelectAgentToolsOptions = {
+  isSubTask: boolean;
+  mcpTools?: ToolMap;
+} & CreateClientToolOptions;
+
+const RequiredAgentTools = ["todoWrite", "attemptCompletion", "useSkill"];
+
+function isAgentToolDisabled(
+  agentName: string,
+  toolName: string,
+  isSubTask: boolean,
+): boolean {
+  if (isSubTask && toolName === "newTask") return true;
+
+  const canAskFollowupQuestion =
+    agentName === "planner" || agentName === "guide";
+  return toolName === "askFollowupQuestion" && !canAskFollowupQuestion;
+}
+
+function getAgentToolAllowList(
+  agent: CustomAgent | undefined,
+  isSubTask: boolean,
+): Set<string> | undefined {
+  /**
+   * if no agent or no tools specified, we don't filter any tools.
+   * TODO(zhanba): for subagent with no tools specified, we should inherit the parent agent's tools instead of allowing all tools.
+   */
+  if (!agent?.tools?.length) {
+    return undefined;
   }
 
-  return clientTools;
+  const allowed = new Set<string>();
+
+  for (const tool of agent.tools) {
+    const { name } = parseToolSpec(tool);
+    if (isAgentToolDisabled(agent.name, name, isSubTask)) continue;
+    if (RequiredAgentTools.includes(name)) continue;
+    allowed.add(name);
+  }
+
+  for (const name of RequiredAgentTools) {
+    allowed.add(name);
+  }
+
+  return allowed;
+}
+
+function filterTools(
+  tools: AgentTools,
+  allowList: Set<string> | undefined,
+): AgentTools {
+  if (!allowList) return tools;
+
+  return Object.fromEntries(
+    Object.entries(tools).filter(([name]) => allowList.has(name)),
+  ) as AgentTools;
+}
+
+export const selectAgentTools = (
+  options: SelectAgentToolsOptions,
+): AgentTools => {
+  const { agent, mcpTools, isSubTask, ...toolOptions } = options;
+  const allowList = getAgentToolAllowList(agent, options.isSubTask);
+
+  const avaliableTools: AgentTools = {
+    ...createClientTools(toolOptions),
+    ...(mcpTools ?? {}),
+  };
+
+  if (agent?.name === "reviewer") {
+    avaliableTools.createReview = createReview;
+  }
+
+  return filterTools(avaliableTools, allowList);
 };

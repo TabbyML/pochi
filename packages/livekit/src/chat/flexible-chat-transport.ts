@@ -8,9 +8,7 @@ import {
   type CustomAgent,
   type McpTool,
   type Skill,
-  getAllowedToolNames,
-  overrideCustomAgentTools,
-  selectClientTools,
+  selectAgentTools,
 } from "@getpochi/tools";
 import {
   APICallError,
@@ -24,7 +22,6 @@ import {
   tool,
   wrapLanguageModel,
 } from "ai";
-import { pickBy } from "remeda";
 import type z from "zod/v4";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
@@ -86,7 +83,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.isSubTask = options.isSubTask;
     this.store = options.store;
     this.blobStore = options.blobStore;
-    this.customAgent = overrideCustomAgentTools(options.customAgent);
+    this.customAgent = options.customAgent;
     this.outputSchema = options.outputSchema;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
   }
@@ -150,28 +147,16 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
-    const enabledToolNames = getAllowedToolNames(this.customAgent?.tools);
 
-    const tools = pickBy(
-      {
-        ...selectClientTools({
-          isSubTask: !!this.isSubTask,
-          customAgents,
-          contentType: llm.contentType,
-          skills,
-          attemptCompletionSchema: this.attemptCompletionSchema,
-          agent: this.customAgent,
-        }),
-        ...(mcpTools || {}),
-      },
-
-      (_val, key) => {
-        if (this.customAgent?.tools) {
-          return enabledToolNames.has(key);
-        }
-        return true;
-      },
-    );
+    const tools = selectAgentTools({
+      agent: this.customAgent,
+      isSubTask: !!this.isSubTask,
+      customAgents,
+      contentType: llm.contentType,
+      skills,
+      attemptCompletionSchema: this.attemptCompletionSchema,
+      mcpTools,
+    });
     if (tools.readFile) {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
