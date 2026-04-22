@@ -1,3 +1,5 @@
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
 import Emittery from "emittery";
 import {
   type ReactNode,
@@ -7,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { BatchExecuteManager } from "../batch-execute-manager";
 import { FixedStateToolCallLifeCycle } from "../fixed-state-tool-call-life-cycle";
 import type { StreamingResult } from "../tool-call-life-cycle";
 import {
@@ -118,6 +121,12 @@ export function FixedStateChatContextProvider({
 
   const completeToolCalls: FixedStateToolCallLifeCycle[] = [];
 
+  const { customAgents } = useCustomAgents(true);
+  const customAgentsRef = useLatest(customAgents);
+  const batchExecuteManager = useRef(
+    new BatchExecuteManager(() => customAgentsRef.current),
+  ).current;
+
   const value: ChatState = {
     autoApproveGuard,
     abortController,
@@ -126,6 +135,7 @@ export function FixedStateChatContextProvider({
     completeToolCalls,
     retryCount: undefined,
     setRetryCount: () => {},
+    batchExecuteManager,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

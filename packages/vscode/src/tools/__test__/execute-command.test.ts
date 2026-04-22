@@ -3,6 +3,13 @@ import { describe, it } from "mocha";
 import proxyquire from "proxyquire";
 import sinon from "sinon";
 
+type SignalValue = {
+  content: string;
+  status: "idle" | "running" | "completed";
+  isTruncated: boolean;
+  error?: string;
+};
+
 describe("executeCommand Tool", () => {
   it("persists failed command output before completing", async () => {
     const clock = sinon.useFakeTimers();
@@ -23,9 +30,6 @@ describe("executeCommand Tool", () => {
       const { executeCommand } = proxyquire.noCallThru().load(
         "../execute-command",
         {
-          "@/integrations/terminal/utils": {
-            waitForWebviewSubscription: () => Promise.resolve(),
-          },
           "@getpochi/common": {
             getLogger: () => ({
               warn: sinon.stub(),
@@ -40,7 +44,17 @@ describe("executeCommand Tool", () => {
           },
           "@quilted/threads/signals": {
             ThreadSignal: {
-              serialize: (value: unknown) => value,
+              serialize: (signal: {
+                value: SignalValue;
+                subscribe: (subscriber: (value: SignalValue) => void) => () => void;
+              }) => ({
+                get value() {
+                  return signal.value;
+                },
+                start(subscriber: (value: SignalValue) => void) {
+                  return signal.subscribe(subscriber);
+                },
+              }),
             },
           },
           "../integrations/terminal/execute-command-with-node": {
@@ -64,8 +78,15 @@ describe("executeCommand Tool", () => {
         },
       );
 
-      await clock.tickAsync(100);
       const result = await resultPromise;
+      const values: unknown[] = [];
+      (
+        result.output as unknown as {
+          start: (subscriber: (value: SignalValue) => void) => () => void;
+        }
+      ).start((value) => {
+        values.push(value);
+      });
       await clock.runAllAsync();
 
       assert.ok(maybePersistToolResult.calledOnce);
@@ -80,9 +101,7 @@ describe("executeCommand Tool", () => {
         },
       ]);
 
-      const serializedOutput = result.output as unknown as { value: unknown };
-
-      assert.deepStrictEqual(serializedOutput.value, {
+      assert.deepStrictEqual(values.at(-1), {
         content: "persisted preview",
         status: "completed",
         isTruncated: true,

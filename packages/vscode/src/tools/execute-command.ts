@@ -1,6 +1,5 @@
 import * as path from "node:path";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
-import { waitForWebviewSubscription } from "@/integrations/terminal/utils";
 import { getLogger } from "@getpochi/common";
 import {
   getShellPath,
@@ -13,7 +12,10 @@ import {
   validateExecuteCommandWhitelist,
 } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
-import { ThreadSignal } from "@quilted/threads/signals";
+import {
+  ThreadSignal,
+  type ThreadSignalSerialization,
+} from "@quilted/threads/signals";
 import { executeCommandWithNode } from "../integrations/terminal/execute-command-with-node";
 import {
   PtySpawnError,
@@ -61,6 +63,7 @@ export const executeCommand: ToolFunctionType<
     status: "idle",
     isTruncated: false,
   });
+  let executionStarted = false;
 
   const persistCompletedOutput = async (
     result: CompletedCommandOutput,
@@ -80,7 +83,10 @@ export const executeCommand: ToolFunctionType<
     };
   };
 
-  waitForWebviewSubscription().then(() =>
+  const startExecution = () => {
+    if (executionStarted) return;
+    executionStarted = true;
+
     executeCommandImpl({
       command,
       cwd,
@@ -107,15 +113,27 @@ export const executeCommand: ToolFunctionType<
           isTruncated: output.value.isTruncated,
           error: error.message,
         });
-      }),
-  );
+      });
+  };
 
-  // Though stated in prompt that agent must run commands sequentially if needed (e.g git add . && git commit -m), in many cases model still generate two command in parallel.
-  // Add a small delay here to reduce the occurances of .git/index.lock conflicts.
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  const serializedOutput = ThreadSignal.serialize(output);
+  const wrappedOutput: ThreadSignalSerialization<ExecuteCommandResult> = {
+    ...serializedOutput,
+    start(
+      subscriber: (value: ExecuteCommandResult) => void,
+      options?: Parameters<typeof serializedOutput.start>[1],
+    ) {
+      const unsubscribe = serializedOutput.start(subscriber, options);
+      startExecution();
 
-  // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
-  return { output: ThreadSignal.serialize(output) as any };
+      return unsubscribe;
+    },
+  };
+
+  return {
+    // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
+    output: wrappedOutput as any,
+  };
 };
 
 async function executeCommandImpl({

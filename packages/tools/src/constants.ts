@@ -56,3 +56,32 @@ export const EditFileOutputSchema = z.object({
 
 export const NoOtherToolsReminderPrompt =
   "IMPORTANT: This tool CANNOT be used in combination with other tools (except todoWrite) in a single step. If you need to use other tools, you must do so in a separate step before calling this tool.";
+
+/**
+ * Permission-grouped tool name lists.
+ * Defined here (no dependency on generated types) so any module can safely
+ * import without creating circular dependencies with `index.ts`.
+ */
+export const ToolsByPermission = {
+  read: [
+    "readFile",
+    "listFiles",
+    "globFiles",
+    "searchFiles",
+    "readBackgroundJobOutput",
+    "useSkill",
+    // Pochi offered-tools
+    "webFetch",
+    "webSearch",
+  ] as string[],
+  write: ["writeToFile", "applyDiff", "editNotebook"] as string[],
+  execute: [
+    "executeCommand",
+    "startBackgroundJob",
+    "killBackgroundJob",
+    "newTask",
+  ] as string[],
+  default: ["todoWrite"] as string[],
+};
+
+export const MaxToolCallConcurrency = 10;

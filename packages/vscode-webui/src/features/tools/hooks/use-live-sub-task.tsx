@@ -2,6 +2,7 @@ import type { TaskThreadSource } from "@/components/task-thread";
 import {
   type ToolCallLifeCycle,
   type ToolCallStatusRegistry,
+  useBatchExecuteManager,
   useLiveChatKitGetters,
   useToolCallLifeCycle,
 } from "@/features/chat";
@@ -18,23 +19,16 @@ import { useDefaultStore } from "@/lib/use-default-store";
 
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import type {
-  BuiltinSubAgentInfo,
-  ExecuteCommandResult,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import { type Todo, getToolArgs } from "@getpochi/tools";
-import { ThreadAbortSignal } from "@quilted/threads";
-import {
-  type ThreadSignalSerialization,
-  threadSignal,
-} from "@quilted/threads/signals";
 import {
   getStaticToolName,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createSubtaskBatchedToolCall } from "../../chat/lib/batched-tool-call-adapters";
 import type { ToolProps } from "../components/types";
 
 export function useLiveSubTask(
@@ -45,11 +39,13 @@ export function useLiveSubTask(
     toolName: getStaticToolName(tool),
     toolCallId: tool.toolCallId,
   });
+  const batchExecuteManager = useBatchExecuteManager();
 
   const { customAgent, customAgentModel } = useCustomAgent(
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
   );
-
+  // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
+  const uid = tool.input?._meta?.uid!;
   const abortController = useRef(new AbortController());
 
   useEffect(() => {
@@ -63,15 +59,14 @@ export function useLiveSubTask(
     const { abortSignal } = streamingResult;
     const onAbort = () => {
       abortController.current.abort(abortSignal.reason);
+      batchExecuteManager.abort(uid, abortSignal.reason);
     };
     abortSignal.addEventListener("abort", onAbort);
     return () => {
       abortSignal.removeEventListener("abort", onAbort);
     };
-  }, [isExecuting, lifecycle.streamingResult]);
+  }, [batchExecuteManager, isExecuting, lifecycle.streamingResult, uid]);
 
-  // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
-  const uid = tool.input?._meta?.uid!;
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const todosRef = useRef<Todo[] | undefined>(undefined);
@@ -128,9 +123,6 @@ export function useLiveSubTask(
         return;
       }
 
-      toolCallStatusRegistry.set(toolCall, {
-        isExecuting: true,
-      });
       const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
         tool.input?.agentType === "browser"
           ? {
@@ -149,76 +141,29 @@ export function useLiveSubTask(
         "executeCommand",
       );
 
-      const result = await vscodeHost.executeToolCall(
-        toolCall.toolName,
-        toolCall.input,
-        {
-          toolCallId: toolCall.toolCallId,
-          abortSignal: ThreadAbortSignal.serialize(
-            abortController.current.signal,
-          ),
-          contentType: customAgentModel?.contentType,
-          builtinSubAgentInfo,
-          executeCommandWhitelist,
-          storeId: store.storeId,
-          taskId: uid,
-        },
-      );
-
-      if (
-        toolCall.toolName === "executeCommand" &&
-        typeof result === "object" &&
-        result !== null &&
-        "output" in result
-      ) {
-        const signal = threadSignal(
-          result.output as ThreadSignalSerialization<ExecuteCommandResult>,
-        );
-
-        const unsubscribe = signal.subscribe((output) => {
-          if (output.status === "completed") {
-            unsubscribe();
-            const result: Record<string, unknown> = {
-              output: output.content,
-              isTruncated: output.isTruncated ?? false,
-            };
-            // do not set error property if it is undefined
-            if (output.error) {
-              result.error = output.error;
-            }
-            addToolOutput({
-              // @ts-expect-error
-              tool: toolCall.toolName,
-              toolCallId: toolCall.toolCallId,
-              output: result,
-            });
-            toolCallStatusRegistry.set(toolCall, {
-              isExecuting: false,
-            });
-          } else {
-            toolCallStatusRegistry.set(toolCall, {
-              isExecuting: true,
-              streamingResult: {
-                toolName: "executeCommand",
-                output: signal.value,
-              },
-            });
-          }
-        });
+      if (abortController.current.signal.aborted) {
         return;
       }
 
-      toolCallStatusRegistry.set(toolCall, {
-        isExecuting: false,
-      });
-
-      addToolOutput({
-        // @ts-expect-error
-        tool: toolCall.toolName,
-        toolCallId: toolCall.toolCallId,
-        // @ts-expect-error
-        output: result,
-      });
+      batchExecuteManager.enqueue(
+        uid,
+        createSubtaskBatchedToolCall({
+          toolCall,
+          uid,
+          storeId: store.storeId,
+          abortSignal: abortController.current.signal,
+          contentType: customAgentModel?.contentType,
+          builtinSubAgentInfo,
+          executeCommandWhitelist,
+          addToolOutput,
+          toolCallStatusRegistry,
+        }),
+      );
+    },
+    onStreamFinish: () => {
+      if (!abortController.current.signal.aborted) {
+        batchExecuteManager.processQueue(uid);
+      }
     },
   });
 

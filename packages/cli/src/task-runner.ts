@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts, toErrorMessage } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -23,8 +23,19 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
-import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
+import {
+  BatchExecutionError,
+  type BatchedToolCall,
+  type BatchedToolCallResult,
+  executeToolCalls,
+} from "@getpochi/tools";
+import {
+  type CustomAgent,
+  type Skill,
+  type Todo,
+  getToolArgs,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import {
   type ToolUIPart,
   getStaticToolName,
@@ -576,31 +587,131 @@ export class TaskRunner {
       this.customAgent?.tools,
       "executeCommand",
     );
-    for (const toolCall of message.parts.filter(isStaticToolUIPart)) {
-      if (toolCall.state !== "input-available") continue;
-      const toolName = getStaticToolName(toolCall);
-      logger.trace(
-        `Found tool call: ${toolName} with args: ${JSON.stringify(
-          toolCall.input,
-        )}`,
-      );
 
-      const resolvedInput = resolveToolCallArgs(
-        toolCall.input,
-        this.store.storeId,
-      );
+    const toolCalls = message.parts
+      .filter(isStaticToolUIPart)
+      .filter((tc) => tc.state === "input-available");
 
-      let envs: Record<string, string> | undefined;
-      if (this.customAgent?.name === "browser") {
-        envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
-          this.taskId,
-        );
+    if (toolCalls.length === 0) {
+      logger.trace("No tool calls to process.");
+      return "next" as const;
+    }
+
+    const batchedToolCalls: BatchedToolCall[] = toolCalls.map((toolCall) => ({
+      input: toolCall.input,
+      toolName: getStaticToolName(toolCall),
+      run: async () => {
+        return this.runToolCall(toolCall, executeCommandWhitelist);
+      },
+      cancel: () => {},
+    }));
+    try {
+      await executeToolCalls({
+        toolCalls: batchedToolCalls,
+        customAgents: this.toolCallOptions.customAgents,
+      });
+    } catch (error) {
+      if (!(error instanceof BatchExecutionError)) {
+        throw error;
       }
 
-      const toolResult = await processContentOutput(
+      logger.debug(
+        `Batch tool call execution failed; ${error.pendingItems.length} pending tool call(s) will be cancelled.`,
+      );
+
+      // Mark cancelled tool calls with an error message so the LLM knows they weren't executed.
+      for (const toolCall of error.pendingItems as ToolUIPart<UITools>[]) {
+        const toolName = getStaticToolName(toolCall);
+        const skippedOutput = {
+          error: "Tool call was cancelled because a previous tool call failed.",
+        };
+
+        const persistedToolResult = await maybePersistToolResult(
+          toolName,
+          toolCall.toolCallId,
+          this.taskId,
+          skippedOutput,
+        );
+
+        await this.chatKit.chat.addToolOutput({
+          tool: toolName,
+          toolCallId: toolCall.toolCallId,
+          // @ts-expect-error
+          output: persistedToolResult,
+        });
+      }
+    }
+
+    logger.trace("All tool calls processed in the last message.");
+    return "next" as const;
+  }
+
+  private async runToolCall(
+    toolCall: ToolUIPart<UITools>,
+    executeCommandWhitelist: string[] | undefined,
+  ): Promise<BatchedToolCallResult> {
+    const toolName = getStaticToolName(toolCall);
+    logger.trace(
+      `Found tool call: ${toolName} with args: ${JSON.stringify(toolCall.input)}`,
+    );
+
+    const resolvedInput = resolveToolCallArgs(
+      toolCall.input,
+      this.store.storeId,
+    );
+
+    let envs: Record<string, string> | undefined;
+    if (this.customAgent?.name === "browser") {
+      envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
+        this.taskId,
+      );
+    }
+
+    const toolResult = await this.executeToolCallItem(
+      { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+      envs,
+      executeCommandWhitelist,
+    );
+
+    const persistedToolResult = await maybePersistToolResult(
+      toolName,
+      toolCall.toolCallId,
+      this.taskId,
+      toolResult,
+    );
+
+    await this.chatKit.chat.addToolOutput({
+      tool: toolName,
+      toolCallId: toolCall.toolCallId,
+      // @ts-expect-error
+      output: persistedToolResult,
+    });
+
+    logger.trace(`Tool call result: ${JSON.stringify(persistedToolResult)}`);
+
+    const toolError = getToolExecutionError(persistedToolResult);
+    if (toolError) {
+      return {
+        kind: "error",
+        error: toolError,
+      };
+    }
+
+    return {
+      kind: "success",
+    };
+  }
+
+  private async executeToolCallItem(
+    toolCall: ToolUIPart<UITools>,
+    envs: Record<string, string> | undefined,
+    executeCommandWhitelist: string[] | undefined,
+  ): Promise<unknown> {
+    try {
+      return await processContentOutput(
         this.blobStore,
         await executeToolCall(
-          { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+          toolCall,
           this.toolCallOptions,
           this.cwd,
           undefined,
@@ -609,27 +720,11 @@ export class TaskRunner {
           executeCommandWhitelist,
         ),
       );
-
-      const persistedToolResult = await maybePersistToolResult(
-        toolName,
-        toolCall.toolCallId,
-        this.taskId,
-        toolResult,
-      );
-
-      await this.chatKit.chat.addToolOutput({
-        // @ts-expect-error
-        tool: toolName,
-        toolCallId: toolCall.toolCallId,
-        // @ts-expect-error
-        output: persistedToolResult,
-      });
-
-      logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);
+    } catch (error) {
+      return {
+        error: `Failed to execute tool: ${toErrorMessage(error)}`,
+      };
     }
-    logger.trace("All tool calls processed in the last message.");
-
-    return "next" as const;
   }
 
   // Helper method to run the command
@@ -720,4 +815,17 @@ function toError(e: unknown): Error {
     return new Error(e);
   }
   return new Error(JSON.stringify(e));
+}
+
+function getToolExecutionError(result: unknown): string | undefined {
+  if (typeof result !== "object" || result === null || !("error" in result)) {
+    return undefined;
+  }
+
+  const { error } = result;
+  if (error == null) {
+    return undefined;
+  }
+
+  return toErrorMessage(error);
 }

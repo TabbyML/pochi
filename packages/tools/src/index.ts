@@ -1,4 +1,6 @@
 export { McpTool } from "./mcp-tools";
+import { ToolsByPermission } from "./constants";
+export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
 import {
   type Tool,
   type UIDataTypes,
@@ -53,6 +55,22 @@ export {
 } from "./utils";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
+export {
+  BatchExecutionErrorMessages,
+  BatchExecutionError,
+  executeToolCalls,
+  isSafeToBatchToolCall,
+  partitionToolCalls,
+} from "./utils/batch-utils";
+export {
+  checkReadOnlyConstraints,
+  isReadonlyToolCall,
+} from "./utils/readonly-constraints-validation";
+export type {
+  BatchedToolCallCancelReason as ToolCallCancelReason,
+  BatchedToolCallResult,
+  BatchedToolCall,
+} from "./utils/batch-utils";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";
@@ -78,35 +96,6 @@ export function isAutoSuccessToolPart(
 }
 
 export type ToolName = keyof ClientTools;
-
-export const ToolsByPermission = {
-  read: [
-    ...([
-      "readFile",
-      "listFiles",
-      "globFiles",
-      "searchFiles",
-      "readBackgroundJobOutput",
-      "useSkill",
-    ] satisfies ToolName[]),
-
-    // Pochi offered-tools
-    "webFetch",
-    "webSearch",
-  ] as string[],
-  write: [
-    "writeToFile",
-    "applyDiff",
-    "editNotebook",
-  ] satisfies ToolName[] as string[],
-  execute: [
-    "executeCommand",
-    "startBackgroundJob",
-    "killBackgroundJob",
-    "newTask",
-  ] satisfies ToolName[] as string[],
-  default: ["todoWrite"] satisfies ToolName[] as string[],
-};
 
 export const ServerToolApproved = "<server-tool-approved>";
 
