@@ -18,7 +18,7 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
+import { getBuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { getToolArgs } from "@getpochi/tools";
 import { getStaticToolName } from "ai";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -90,13 +90,9 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
 
   const store = useDefaultStore();
   const { customAgent } = useCustomAgent(subtask?.agent);
-  const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
-    isSubTask && subtask?.agent === "browser" && taskId
-      ? { type: subtask.agent, sessionId: taskId }
-      : isSubTask &&
-          (subtask?.agent === "planner" || subtask?.agent === "explore")
-        ? { type: subtask.agent }
-        : undefined;
+  const builtinSubAgentInfo = isSubTask
+    ? getBuiltinSubAgentInfo(subtask?.agent, taskId)
+    : undefined;
   const executeCommandWhitelist = getToolArgs(
     customAgent?.tools,
     "executeCommand",

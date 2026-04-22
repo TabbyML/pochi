@@ -78,7 +78,10 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
     if (message.role !== "user") return true;
     const parts = message.parts.filter((part) => {
       if (part.type !== "text") return true;
-      return !prompts.isSystemReminder(part.text);
+      return (
+        !prompts.isSystemReminder(part.text) &&
+        !prompts.isForkDirective(part.text)
+      );
     });
     message.parts = parts;
     if (

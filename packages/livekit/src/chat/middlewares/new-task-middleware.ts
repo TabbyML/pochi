@@ -3,17 +3,18 @@ import type {
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
-import { constants } from "@getpochi/common";
+import { constants, buildForkMessages } from "@getpochi/common";
 import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/default-schema";
-import type { LiveKitStore } from "../../types";
+import type { LiveKitStore, Message } from "../../types";
 
 export function createNewTaskMiddleware(
   store: LiveKitStore,
   cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],
+  parentMessages?: Message[],
 ): LanguageModelV3Middleware {
   return {
     specificationVersion: "v3",
@@ -93,12 +94,31 @@ export function createNewTaskMiddleware(
               }
 
               const uid = crypto.randomUUID();
+              const isFork = args.agentType === "fork";
               const runAsync =
                 (args.runAsync ?? false) && constants.EnableAsyncNewTask;
               args.runAsync = runAsync;
               args._meta = {
                 uid,
               };
+
+              // For fork agents, inherit parent conversation history
+              const initMessages =
+                isFork && parentMessages
+                  ? buildForkMessages(parentMessages, args.prompt)
+                  : [
+                      {
+                        id: crypto.randomUUID(),
+                        role: "user" as const,
+                        parts: [
+                          {
+                            type: "text" as const,
+                            text: args.prompt,
+                          },
+                        ],
+                      },
+                    ];
+
               store.commit(
                 events.taskInited({
                   id: uid,
@@ -106,18 +126,7 @@ export function createNewTaskMiddleware(
                   parentId: parentTaskId,
                   runAsync,
                   createdAt: new Date(),
-                  initMessages: [
-                    {
-                      id: crypto.randomUUID(),
-                      role: "user",
-                      parts: [
-                        {
-                          type: "text",
-                          text: args.prompt,
-                        },
-                      ],
-                    },
-                  ],
+                  initMessages,
                 }),
               );
 
