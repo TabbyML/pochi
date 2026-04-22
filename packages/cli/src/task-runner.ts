@@ -599,7 +599,7 @@ export class TaskRunner {
 
     const batchedToolCalls: BatchedToolCall[] = toolCalls.map((toolCall) => ({
       input: toolCall.input,
-      toolName: toolCall.type,
+      toolName: getStaticToolName(toolCall),
       run: async () => {
         return this.runToolCall(toolCall, executeCommandWhitelist);
       },
