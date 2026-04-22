@@ -2,12 +2,11 @@ import { getLogger } from "@getpochi/common";
 import {
   BatchExecutionError,
   BatchExecutionErrorMessages,
+  type BatchedToolCall,
   type CustomAgent,
   MaxToolCallConcurrency,
-  type QueueCancelReason,
-  type ScheduledToolCall,
-  executePartitionedToolCalls,
-  partitionToolCalls,
+  type ToolCallCancelReason,
+  executeToolCalls,
 } from "@getpochi/tools";
 
 const logger = getLogger("ToolCallQueue");
@@ -19,13 +18,13 @@ export type ToolCallQueueOptions = {
 
 /** FIFO queue for one `taskId`. */
 export class ToolCallQueue {
-  private queue: ScheduledToolCall[] = [];
+  private queue: BatchedToolCall[] = [];
   private processing = false;
   private abortController: AbortController | null = null;
 
   constructor(private readonly options: ToolCallQueueOptions = {}) {}
 
-  enqueue(item: ScheduledToolCall) {
+  enqueue(item: BatchedToolCall) {
     this.queue.push(item);
   }
 
@@ -45,13 +44,13 @@ export class ToolCallQueue {
     this.abortController = null;
   }
 
-  private cancelItems(items: ScheduledToolCall[], reason: QueueCancelReason) {
+  private cancelItems(items: BatchedToolCall[], reason: ToolCallCancelReason) {
     for (const item of items) {
       item.cancel(reason);
     }
   }
 
-  abort(reason: QueueCancelReason) {
+  abort(reason: ToolCallCancelReason) {
     this.abortController?.abort();
     this.cancelItems(this.queue, reason);
     this.clearQueue();
@@ -60,29 +59,22 @@ export class ToolCallQueue {
   private async processAll(): Promise<void> {
     try {
       const queue = this.queue;
-      const batches = partitionToolCalls(
-        queue,
-        (item) => ({
-          toolName: item.toolName,
-          input: item.input,
-        }),
-        this.options.getCustomAgents?.(),
-      );
 
       try {
-        await executePartitionedToolCalls(
-          batches,
-          this.abortController?.signal,
-        );
+        await executeToolCalls({
+          toolCalls: queue,
+          customAgents: this.options.getCustomAgents?.(),
+          abortSignal: this.abortController?.signal,
+        });
       } catch (error) {
-        const reason: QueueCancelReason =
+        const reason: ToolCallCancelReason =
           error instanceof BatchExecutionError &&
           error.message === BatchExecutionErrorMessages.FAILED
             ? "previous-tool-call-failed"
             : "user-abort";
 
         if (error instanceof BatchExecutionError) {
-          this.cancelItems(error.pendingItems as ScheduledToolCall[], reason);
+          this.cancelItems(error.pendingItems as BatchedToolCall[], reason);
         }
 
         this.abort(reason);
@@ -117,7 +109,7 @@ export class BatchExecuteManager {
   }
 
   /** Enqueue a tool call into the queue for `taskId`. */
-  enqueue(taskId: string, item: ScheduledToolCall) {
+  enqueue(taskId: string, item: BatchedToolCall) {
     const queue = this.getOrCreateQueue(taskId);
     queue.enqueue(item);
   }
@@ -128,7 +120,7 @@ export class BatchExecuteManager {
   }
 
   /** Abort queued tool calls for `taskId` by clearing pending items that have not started yet. */
-  abort(taskId: string, reason: QueueCancelReason = "user-abort") {
+  abort(taskId: string, reason: ToolCallCancelReason = "user-abort") {
     this.queues.get(taskId)?.abort(reason);
   }
 

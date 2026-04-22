@@ -3,20 +3,20 @@ import {
   BatchExecuteManager,
   ToolCallQueue,
 } from "../batch-execute-manager";
-import type { ScheduledToolCallResult, QueueCancelReason, ScheduledToolCall } from "@getpochi/tools";
+import type { BatchedToolCallResult, ToolCallCancelReason, BatchedToolCall } from "@getpochi/tools";
 
 function makeCall(
   toolName: string,
-  result: ScheduledToolCallResult = { kind: "success" },
+  result: BatchedToolCallResult = { kind: "success" },
 ): {
-  call: ScheduledToolCall;
-  run: Mock<() => Promise<ScheduledToolCallResult>>;
-  cancel: Mock<(reason: QueueCancelReason) => void>;
+  call: BatchedToolCall;
+  run: Mock<() => Promise<BatchedToolCallResult>>;
+  cancel: Mock<(reason: ToolCallCancelReason) => void>;
 } {
   const run = vi
-    .fn<() => Promise<ScheduledToolCallResult>>()
+    .fn<() => Promise<BatchedToolCallResult>>()
     .mockResolvedValue(result);
-  const cancel = vi.fn<(reason: QueueCancelReason) => void>();
+  const cancel = vi.fn<(reason: ToolCallCancelReason) => void>();
   return {
     call: { toolName, input: {}, run, cancel },
     run,
@@ -258,14 +258,14 @@ describe("BatchExecuteManager – re-entrancy guard", () => {
     const manager = new BatchExecuteManager();
 
     let resolveFirst!: () => void;
-    const slowRun = vi.fn<() => Promise<ScheduledToolCallResult>>(
+    const slowRun = vi.fn<() => Promise<BatchedToolCallResult>>(
       () =>
         new Promise((resolve) => {
           resolveFirst = () => resolve({ kind: "success" });
         }),
     );
 
-    const slowCall: ScheduledToolCall = {
+    const slowCall: BatchedToolCall = {
       toolName: "writeToFile",
       input: {},
       run: slowRun,

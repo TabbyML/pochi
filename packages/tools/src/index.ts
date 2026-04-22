@@ -58,7 +58,7 @@ export { attemptCompletionSchema } from "./attempt-completion";
 export {
   BatchExecutionErrorMessages,
   BatchExecutionError,
-  executePartitionedToolCalls,
+  executeToolCalls,
   isSafeToBatchToolCall,
   partitionToolCalls,
 } from "./utils/batch-utils";
@@ -67,9 +67,9 @@ export {
   isReadonlyToolCall,
 } from "./utils/readonly-constraints-validation";
 export type {
-  QueueCancelReason,
-  ScheduledToolCallResult,
-  ScheduledToolCall,
+  BatchedToolCallCancelReason as ToolCallCancelReason,
+  BatchedToolCallResult,
+  BatchedToolCall,
 } from "./utils/batch-utils";
 
 export function isUserInputToolName(name: string): boolean {

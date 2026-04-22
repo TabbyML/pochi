@@ -28,7 +28,7 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createSubTaskToolCallAdapter } from "../../chat/lib/scheduled-tool-call-adapters";
+import { createSubtaskBatchedToolCall } from "../../chat/lib/batched-tool-call-adapters";
 import type { ToolProps } from "../components/types";
 
 export function useLiveSubTask(
@@ -149,7 +149,7 @@ export function useLiveSubTask(
 
       batchExecuteManager.enqueue(
         uid,
-        createSubTaskToolCallAdapter({
+        createSubtaskBatchedToolCall({
           toolCall,
           uid,
           storeId: store.storeId,

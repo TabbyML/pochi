@@ -5,16 +5,18 @@ import { isReadonlyToolCall } from "./readonly-constraints-validation";
 export type ToolCallBatch =
   | {
       isConcurrencySafe: true;
-      items: ScheduledToolCall[];
+      items: BatchedToolCall[];
     }
   | {
       isConcurrencySafe: false;
-      items: [ScheduledToolCall];
+      items: [BatchedToolCall];
     };
 
-export type QueueCancelReason = "user-abort" | "previous-tool-call-failed";
+export type BatchedToolCallCancelReason =
+  | "user-abort"
+  | "previous-tool-call-failed";
 
-export type ScheduledToolCallResult =
+export type BatchedToolCallResult =
   | {
       kind: "success";
     }
@@ -24,14 +26,14 @@ export type ScheduledToolCallResult =
     }
   | {
       kind: "cancelled";
-      reason: QueueCancelReason;
+      reason: BatchedToolCallCancelReason;
     };
 
-export type ScheduledToolCall = {
+export type BatchedToolCall = {
   toolName: string;
   input: unknown;
-  run: () => Promise<ScheduledToolCallResult>;
-  cancel: (reason: QueueCancelReason) => void;
+  run: () => Promise<BatchedToolCallResult>;
+  cancel: (reason: BatchedToolCallCancelReason) => void;
 };
 
 export const BatchExecutionErrorMessages = {
@@ -97,21 +99,16 @@ export function isSafeToBatchToolCall(
  * Batches execute sequentially; batch N+1 only starts after N fully completes.
  */
 export function partitionToolCalls(
-  items: ScheduledToolCall[],
-  getToolCall: (item: ScheduledToolCall) => {
-    toolName: string;
-    input: unknown;
-  },
+  items: BatchedToolCall[],
   customAgents?: CustomAgent[],
 ): ToolCallBatch[] {
   const batches: ToolCallBatch[] = [];
-  let currentConcurrentBatch: ScheduledToolCall[] = [];
+  let currentConcurrentBatch: BatchedToolCall[] = [];
 
   for (const item of items) {
-    const toolCall = getToolCall(item);
     const isConcurrencySafe = isSafeToBatchToolCall(
-      toolCall.toolName,
-      toolCall.input,
+      item.toolName,
+      item.input,
       customAgents,
     );
 
@@ -140,7 +137,7 @@ export function partitionToolCalls(
 }
 
 export async function runConcurrentBatch(
-  items: ScheduledToolCall[],
+  items: BatchedToolCall[],
   options: {
     concurrencyLimit: number;
   },
@@ -167,18 +164,25 @@ export async function runConcurrentBatch(
 }
 
 /**
- * Run already-partitioned tool call batches in FIFO order.
+ * Partition and execute an ordered list of tool calls in FIFO order.
  *
- * - concurrent batches run multiple items together up to `concurrencyLimit`
- * - concurrent batch failures are isolated to that batch; later batches still run
- * - serial batches run one item at a time and act as barriers
- * - when a serial batch fails, later batches are skipped and reported as pending
- * - if `signal` is aborted before a batch starts, remaining items are reported as pending
+ * - consecutive safe-to-batch calls run concurrently up to `MaxToolCallConcurrency`
+ * - concurrent batch failures are isolated; later batches still run
+ * - each stateful call runs as a serial barrier
+ * - when a serial barrier fails, later items are skipped and reported as pending
+ * - if `abortSignal` is aborted before a batch starts, remaining items are reported as pending
  */
-export async function executePartitionedToolCalls(
-  batches: ToolCallBatch[],
-  abortSignal?: AbortSignal,
-): Promise<void> {
+export async function executeToolCalls({
+  toolCalls,
+  customAgents,
+  abortSignal,
+}: {
+  toolCalls: BatchedToolCall[];
+  customAgents?: CustomAgent[];
+  abortSignal?: AbortSignal;
+}): Promise<void> {
+  const batches = partitionToolCalls(toolCalls, customAgents);
+
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
     if (!batch) continue;

@@ -10,9 +10,9 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
 import type {
-  QueueCancelReason,
-  ScheduledToolCall,
-  ScheduledToolCallResult,
+  BatchedToolCall,
+  BatchedToolCallResult,
+  ToolCallCancelReason,
 } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
@@ -51,19 +51,19 @@ type CreateExecutorToolCallAdapterOptions = {
 };
 
 /** Backed by a ToolCallLifeCycle; execution and cancellation delegate to the lifecycle. */
-export function createLifecycleToolCallAdapter({
+export function createBatchedToolCallFromLifecycle({
   lifecycle,
   toolName,
   input,
   executeOptions,
-}: CreateLifecycleToolCallAdapterOptions): ScheduledToolCall {
+}: CreateLifecycleToolCallAdapterOptions): BatchedToolCall {
   return {
     toolName,
     input,
     run: () => {
       const toResult = (
         complete: ToolCallLifeCycle["complete"],
-      ): ScheduledToolCallResult => {
+      ): BatchedToolCallResult => {
         if (
           complete.reason === "user-abort" ||
           complete.reason === "previous-tool-call-failed"
@@ -98,7 +98,7 @@ export function createLifecycleToolCallAdapter({
         });
       }
 
-      return new Promise<ScheduledToolCallResult>((resolve) => {
+      return new Promise<BatchedToolCallResult>((resolve) => {
         const unsubComplete = lifecycle.on("complete", (state) => {
           unsubComplete();
           unsubDispose();
@@ -120,14 +120,14 @@ export function createLifecycleToolCallAdapter({
         }
       });
     },
-    cancel: (reason: QueueCancelReason) => {
+    cancel: (reason: ToolCallCancelReason) => {
       lifecycle.abort(reason);
     },
   };
 }
 
 /** For offhand-mode sub-tasks: directly executes via vscodeHost and reports results with addToolOutput. */
-export function createSubTaskToolCallAdapter({
+export function createSubtaskBatchedToolCall({
   toolCall,
   uid,
   storeId,
@@ -137,7 +137,7 @@ export function createSubTaskToolCallAdapter({
   executeCommandWhitelist,
   addToolOutput,
   toolCallStatusRegistry,
-}: CreateExecutorToolCallAdapterOptions): ScheduledToolCall {
+}: CreateExecutorToolCallAdapterOptions): BatchedToolCall {
   return {
     toolName: toolCall.toolName,
     input: toolCall.input,
@@ -145,7 +145,7 @@ export function createSubTaskToolCallAdapter({
       try {
         if (abortSignal.aborted) {
           throw new Error(
-            getToolCallErrorMessage(abortSignal.reason as QueueCancelReason),
+            getToolCallErrorMessage(abortSignal.reason as ToolCallCancelReason),
           );
         }
 
@@ -226,12 +226,12 @@ export function createSubTaskToolCallAdapter({
             return {
               kind: "error",
               error: executeCommandError,
-            } satisfies ScheduledToolCallResult;
+            } satisfies BatchedToolCallResult;
           }
 
           return {
             kind: "success",
-          } satisfies ScheduledToolCallResult;
+          } satisfies BatchedToolCallResult;
         }
 
         toolCallStatusRegistry.set(toolCall, {
@@ -249,12 +249,12 @@ export function createSubTaskToolCallAdapter({
           return {
             kind: "error",
             error,
-          } satisfies ScheduledToolCallResult;
+          } satisfies BatchedToolCallResult;
         }
 
         return {
           kind: "success",
-        } satisfies ScheduledToolCallResult;
+        } satisfies BatchedToolCallResult;
       } catch (error) {
         const normalizedError =
           error instanceof Error
@@ -269,7 +269,7 @@ export function createSubTaskToolCallAdapter({
         throw normalizedError;
       }
     },
-    cancel: (reason: QueueCancelReason) => {
+    cancel: (reason: ToolCallCancelReason) => {
       toolCallStatusRegistry.set(toolCall, { isExecuting: false });
       addToolOutput({
         tool: toolCall.toolName,

@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   BatchExecutionError,
-  executePartitionedToolCalls,
+  executeToolCalls,
   isSafeToBatchToolCall,
   partitionToolCalls,
   runConcurrentBatch,
-  type ScheduledToolCall,
+  type BatchedToolCall,
 } from "../utils/batch-utils";
 
 describe("BatchExecutionError", () => {
@@ -57,12 +57,7 @@ describe("isSafeToBatchToolCall", () => {
   });
 });
 
-const getToolCall = (item: ScheduledToolCall) => ({
-  toolName: item.toolName,
-  input: item.input,
-});
-
-function item(toolName: string, input: unknown = {}): ScheduledToolCall {
+function item(toolName: string, input: unknown = {}): BatchedToolCall {
   return {
     toolName,
     input,
@@ -73,12 +68,12 @@ function item(toolName: string, input: unknown = {}): ScheduledToolCall {
 
 describe("partitionToolCalls", () => {
   it("returns empty array for empty input", () => {
-    expect(partitionToolCalls([], getToolCall)).toEqual([]);
+    expect(partitionToolCalls([])).toEqual([]);
   });
 
   it("groups all consecutive concurrent-safe calls into one batch", () => {
     const items = [item("readFile"), item("listFiles"), item("globFiles")];
-    const batches = partitionToolCalls(items, getToolCall);
+    const batches = partitionToolCalls(items);
 
     expect(batches).toHaveLength(1);
     expect(batches[0]?.isConcurrencySafe).toBe(true);
@@ -87,7 +82,7 @@ describe("partitionToolCalls", () => {
 
   it("puts each serial (stateful) call in its own batch", () => {
     const items = [item("writeToFile"), item("applyDiff")];
-    const batches = partitionToolCalls(items, getToolCall);
+    const batches = partitionToolCalls(items);
 
     expect(batches).toHaveLength(2);
     expect(batches[0]?.isConcurrencySafe).toBe(false);
@@ -102,7 +97,7 @@ describe("partitionToolCalls", () => {
       item("readFile"),
       item("writeToFile"),
     ];
-    const batches = partitionToolCalls(items, getToolCall);
+    const batches = partitionToolCalls(items);
 
     expect(batches).toHaveLength(2);
     expect(batches[0]?.isConcurrencySafe).toBe(true);
@@ -117,7 +112,7 @@ describe("partitionToolCalls", () => {
       item("readFile"),
       item("listFiles"),
     ];
-    const batches = partitionToolCalls(items, getToolCall);
+    const batches = partitionToolCalls(items);
 
     expect(batches).toHaveLength(2);
     expect(batches[0]?.isConcurrencySafe).toBe(false);
@@ -131,7 +126,7 @@ describe("partitionToolCalls", () => {
       item("writeToFile"),
       item("listFiles"),
     ];
-    const batches = partitionToolCalls(items, getToolCall);
+    const batches = partitionToolCalls(items);
 
     expect(batches).toHaveLength(3);
     expect(batches[0]?.isConcurrencySafe).toBe(true);
@@ -143,7 +138,7 @@ describe("partitionToolCalls", () => {
   });
 
   it("handles a single concurrent item", () => {
-    const batches = partitionToolCalls([item("readFile")], getToolCall);
+    const batches = partitionToolCalls([item("readFile")]);
 
     expect(batches).toHaveLength(1);
     expect(batches[0]?.isConcurrencySafe).toBe(true);
@@ -151,7 +146,7 @@ describe("partitionToolCalls", () => {
   });
 
   it("handles a single serial item", () => {
-    const batches = partitionToolCalls([item("writeToFile")], getToolCall);
+    const batches = partitionToolCalls([item("writeToFile")]);
 
     expect(batches).toHaveLength(1);
     expect(batches[0]?.isConcurrencySafe).toBe(false);
@@ -161,18 +156,16 @@ describe("partitionToolCalls", () => {
   it("preserves item identity (same references, not copies)", () => {
     const a = item("readFile");
     const b = item("writeToFile");
-    const batches = partitionToolCalls([a, b], getToolCall);
+    const batches = partitionToolCalls([a, b]);
 
     expect(batches[0]?.items[0]).toBe(a);
     expect(batches[1]?.items[0]).toBe(b);
   });
 });
 
-describe("executePartitionedToolCalls", () => {
-  it("resolves without executing anything for empty batches", async () => {
-    await expect(
-      executePartitionedToolCalls([]),
-    ).resolves.toBeUndefined();
+describe("executeToolCalls", () => {
+  it("resolves without executing anything for empty items", async () => {
+    await expect(executeToolCalls({ toolCalls: [] })).resolves.toBeUndefined();
   });
 
   it("executes a single serial item", async () => {
@@ -186,9 +179,8 @@ describe("executePartitionedToolCalls", () => {
         },
       },
     ];
-    const batches = partitionToolCalls(items, getToolCall);
 
-    await executePartitionedToolCalls(batches);
+    await executeToolCalls({ toolCalls: items });
 
     expect(executed).toEqual(["writeToFile"]);
   });
@@ -218,9 +210,8 @@ describe("executePartitionedToolCalls", () => {
         },
       },
     ];
-    const batches = partitionToolCalls(items, getToolCall);
 
-    await executePartitionedToolCalls(batches);
+    await executeToolCalls({ toolCalls: items });
 
     expect(executed).toHaveLength(3);
     expect(executed).toContain("readFile");
@@ -241,9 +232,8 @@ describe("executePartitionedToolCalls", () => {
       { ...item("writeToFile"), run: log("writeToFile") },
       { ...item("applyDiff"), run: log("applyDiff") },
     ];
-    const batches = partitionToolCalls(items, getToolCall);
 
-    await executePartitionedToolCalls(batches);
+    await executeToolCalls({ toolCalls: items });
 
     // serial means end of item-1 before start of item-2
     expect(order.indexOf("end:writeToFile")).toBeLessThan(
@@ -263,11 +253,9 @@ describe("executePartitionedToolCalls", () => {
       item("writeToFile"),
     ];
 
-    const batches = partitionToolCalls(items, getToolCall);
-
     let caught: unknown;
     try {
-      await executePartitionedToolCalls(batches);
+      await executeToolCalls({ toolCalls: items });
     } catch (e) {
       caught = e;
     }
@@ -290,11 +278,9 @@ describe("executePartitionedToolCalls", () => {
       item("readFile"),
     ];
 
-    const batches = partitionToolCalls(items, getToolCall);
-
     let caught: unknown;
     try {
-      await executePartitionedToolCalls(batches);
+      await executeToolCalls({ toolCalls: items });
     } catch (e) {
       caught = e;
     }
@@ -304,17 +290,12 @@ describe("executePartitionedToolCalls", () => {
     expect(err.pendingItems).toEqual([items[1], items[2]]);
   });
 
-  it("respects concurrencyLimit when running a concurrent batch", async () => {
-    let active = 0;
-    let maxActive = 0;
+  it("runs all concurrent items and checks total execution count", async () => {
     let executeCount = 0;
 
     const runWithDelay = async () => {
       executeCount++;
-      active++;
-      maxActive = Math.max(maxActive, active);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
-      active--;
       return { kind: "success" as const };
     };
 
@@ -326,12 +307,8 @@ describe("executePartitionedToolCalls", () => {
       { ...item("listFiles"), run: runWithDelay },
       { ...item("globFiles"), run: runWithDelay },
     ];
-    const batches = partitionToolCalls(items, getToolCall);
 
-    // To test concurrency limit properly, we need to mock runConcurrentBatch or pass options
-    // Since executePartitionedToolCalls uses MaxToolCallConcurrency directly, we can't easily override it.
-    // So we just check that it runs them.
-    await executePartitionedToolCalls(batches);
+    await executeToolCalls({ toolCalls: items });
 
     expect(executeCount).toBe(items.length);
   });
@@ -361,9 +338,8 @@ describe("executePartitionedToolCalls", () => {
         },
       },
     ];
-    const batches = partitionToolCalls(items, getToolCall);
 
-    await executePartitionedToolCalls(batches);
+    await executeToolCalls({ toolCalls: items });
 
     expect(executed).toContain("readFile");
     expect(executed).toContain("listFiles");

@@ -1,4 +1,4 @@
-import type { QueueCancelReason } from "@getpochi/tools";
+import type { ToolCallCancelReason } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
 
 export function getToolPartError(tool: ToolUIPart): string | undefined {
@@ -35,7 +35,7 @@ function getNonEmptyString(value: unknown): string | undefined {
  * before it could execute, based on the cancel reason.
  */
 export function getToolCallErrorMessage(
-  reason: QueueCancelReason | "user-reject",
+  reason: ToolCallCancelReason | "user-reject",
 ): string {
   switch (reason) {
     case "user-abort":

@@ -22,7 +22,7 @@ import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { getToolArgs } from "@getpochi/tools";
 import { getStaticToolName, getToolName } from "ai";
-import { createLifecycleToolCallAdapter } from "../../chat/lib/scheduled-tool-call-adapters";
+import { createBatchedToolCallFromLifecycle } from "../../chat/lib/batched-tool-call-adapters";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
 interface ToolCallApprovalButtonProps {
@@ -153,7 +153,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       // Enqueue into the batch manager instead of calling execute() directly
       batchExecuteManager.enqueue(
         taskId,
-        createLifecycleToolCallAdapter({
+        createBatchedToolCallFromLifecycle({
           lifecycle,
           toolName: getToolName(tool),
           input: tool.input,

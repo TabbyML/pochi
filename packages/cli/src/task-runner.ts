@@ -25,10 +25,9 @@ import {
 import { LiveChatKit } from "@getpochi/livekit/node";
 import {
   BatchExecutionError,
-  type ScheduledToolCall,
-  type ScheduledToolCallResult,
-  executePartitionedToolCalls,
-  partitionToolCalls,
+  type BatchedToolCall,
+  type BatchedToolCallResult,
+  executeToolCalls,
 } from "@getpochi/tools";
 import {
   type CustomAgent,
@@ -598,28 +597,19 @@ export class TaskRunner {
       return "next" as const;
     }
 
-    const scheduledToolCalls: ScheduledToolCall[] = toolCalls.map(
-      (toolCall) => ({
-        input: toolCall.input,
-        toolName: toolCall.type,
-        run: async () => {
-          return this.runScheduledToolCall(toolCall, executeCommandWhitelist);
-        },
-        cancel: () => {},
-      }),
-    );
-    // Partition tool calls into microbatches: consecutive safe-to-batch tool
-    // calls run concurrently; barrier tool calls run serially in their own batch.
-    const partitioned = partitionToolCalls(
-      scheduledToolCalls,
-      (x) => ({
-        toolName: x.toolName,
-        input: x.input,
-      }),
-      this.toolCallOptions.customAgents,
-    );
+    const batchedToolCalls: BatchedToolCall[] = toolCalls.map((toolCall) => ({
+      input: toolCall.input,
+      toolName: toolCall.type,
+      run: async () => {
+        return this.runToolCall(toolCall, executeCommandWhitelist);
+      },
+      cancel: () => {},
+    }));
     try {
-      await executePartitionedToolCalls(partitioned);
+      await executeToolCalls({
+        toolCalls: batchedToolCalls,
+        customAgents: this.toolCallOptions.customAgents,
+      });
     } catch (error) {
       if (!(error instanceof BatchExecutionError)) {
         throw error;
@@ -656,10 +646,10 @@ export class TaskRunner {
     return "next" as const;
   }
 
-  private async runScheduledToolCall(
+  private async runToolCall(
     toolCall: ToolUIPart<UITools>,
     executeCommandWhitelist: string[] | undefined,
-  ): Promise<ScheduledToolCallResult> {
+  ): Promise<BatchedToolCallResult> {
     const toolName = getStaticToolName(toolCall);
     logger.trace(
       `Found tool call: ${toolName} with args: ${JSON.stringify(toolCall.input)}`,
