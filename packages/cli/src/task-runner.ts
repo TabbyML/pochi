@@ -630,7 +630,7 @@ export class TaskRunner {
         throw error;
       }
 
-      logger.warn(
+      logger.debug(
         `Batch tool call execution failed; ${error.pendingItems.length} pending tool call(s) will be cancelled.`,
       );
 
@@ -701,9 +701,9 @@ export class TaskRunner {
       output: persistedToolResult,
     });
 
-    logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);
+    logger.trace(`Tool call result: ${JSON.stringify(persistedToolResult)}`);
 
-    const toolError = getToolExecutionError(toolResult);
+    const toolError = getToolExecutionError(persistedToolResult);
     if (toolError) {
       return {
         kind: "error",
