@@ -4,6 +4,7 @@ import type {
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
+import type { PochiProviderOptions } from "@getpochi/common";
 import { attemptCompletionSchema } from "@getpochi/tools";
 import { InvalidToolInputError, Output, generateText } from "ai";
 import z from "zod/v4";
@@ -99,9 +100,9 @@ async function ensureOutputSchema(
       providerOptions: {
         pochi: {
           taskId,
-          version: globalThis.POCHI_CLIENT,
+          client: globalThis.POCHI_CLIENT,
           useCase: "output-schema",
-        },
+        } satisfies PochiProviderOptions,
         anthropic: {
           thinking: { type: "disabled" },
         },

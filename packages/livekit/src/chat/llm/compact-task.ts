@@ -1,5 +1,10 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { formatters, getLogger, prompts } from "@getpochi/common";
+import {
+  type PochiProviderOptions,
+  formatters,
+  getLogger,
+  prompts,
+} from "@getpochi/common";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
@@ -55,6 +60,7 @@ export async function compactTask({
     return text;
   } catch (err) {
     logger.warn("Failed to create summary", err);
+    throw err;
   }
 }
 
@@ -83,9 +89,9 @@ async function createSummary(
     providerOptions: {
       pochi: {
         taskId,
-        version: globalThis.POCHI_CLIENT,
+        client: globalThis.POCHI_CLIENT,
         useCase: "compact-task",
-      },
+      } satisfies PochiProviderOptions,
     },
     model,
     prompt: await convertToModelMessages(
