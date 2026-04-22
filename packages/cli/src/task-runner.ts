@@ -29,8 +29,14 @@ import {
   executePartitionedToolCalls,
   partitionToolCalls,
 } from "@getpochi/tools";
-import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  MaxToolCallConcurrency,
+  type Skill,
+  type Todo,
+  getToolArgs,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import {
   type ToolUIPart,
   getStaticToolName,
@@ -145,12 +151,6 @@ export interface RunnerOptions {
 }
 
 const logger = getLogger("TaskRunner");
-
-/**
- * Maximum number of safe-to-batch tool calls to execute concurrently within a
- * single microbatch in the CLI runner.
- */
-const MaxToolCallConcurrency = 10;
 
 export class TaskRunner {
   private store: LiveKitStore;
@@ -611,15 +611,15 @@ export class TaskRunner {
     try {
       await executePartitionedToolCalls(
         partitioned,
-        async (toolCall, batchMode) => {
+        async (toolCall, isConcurrencySafe) => {
           const result = await this.runScheduledToolCall(
             toolCall,
             executeCommandWhitelist,
           );
 
-          if (result.kind === "error" && batchMode === "serial") {
-            // Serial-batched tool calls act as barriers in the CLI.
-            // If one fails, the remaining queued tool calls are cancelled.
+          if (result.kind === "error" && !isConcurrencySafe) {
+            // Non-concurrent-safe tool calls are serial barriers.
+            // If one fails, later queued tool calls will be cancelled.
             throw new Error(result.error);
           }
         },
@@ -634,6 +634,7 @@ export class TaskRunner {
         `Batch tool call execution failed; ${error.pendingItems.length} pending tool call(s) will be cancelled.`,
       );
 
+      // Mark cancelled tool calls with an error message so the LLM knows they weren't executed.
       for (const toolCall of error.pendingItems as ToolUIPart<UITools>[]) {
         const toolName = getStaticToolName(toolCall);
         const skippedOutput = {

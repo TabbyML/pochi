@@ -1,7 +1,9 @@
 import { getLogger } from "@getpochi/common";
 import {
   BatchExecutionError,
+  BatchExecutionErrorMessages,
   type CustomAgent,
+  MaxToolCallConcurrency,
   type ScheduledToolCallResult,
   executePartitionedToolCalls,
   partitionToolCalls,
@@ -18,9 +20,6 @@ export type ScheduledToolCall = {
   cancel: (reason: QueueCancelReason) => void;
 };
 
-/** Maximum concurrent executions within one concurrent batch. */
-const MaxConcurrency = 10;
-
 export type ToolCallQueueOptions = {
   getCustomAgents?: () => CustomAgent[] | undefined;
   concurrencyLimit?: number;
@@ -30,6 +29,7 @@ export type ToolCallQueueOptions = {
 export class ToolCallQueue {
   private queue: ScheduledToolCall[] = [];
   private processing = false;
+  private abortController: AbortController | null = null;
 
   constructor(private readonly options: ToolCallQueueOptions = {}) {}
 
@@ -40,6 +40,7 @@ export class ToolCallQueue {
   start() {
     if (this.processing) return;
     this.processing = true;
+    this.abortController = new AbortController();
     this.processAll().catch((error) => {
       if (!(error instanceof BatchExecutionError)) {
         logger.error("Unexpected error in processAll", error);
@@ -47,9 +48,21 @@ export class ToolCallQueue {
     });
   }
 
-  clearPending(reason: QueueCancelReason) {
-    const queue = this.queue.splice(0, this.queue.length);
-    this.cancelItems(queue, reason);
+  private clearQueue() {
+    this.queue = [];
+    this.abortController = null;
+  }
+
+  private cancelItems(items: ScheduledToolCall[], reason: QueueCancelReason) {
+    for (const item of items) {
+      item.cancel(reason);
+    }
+  }
+
+  abort(reason: QueueCancelReason) {
+    this.abortController?.abort();
+    this.cancelItems(this.queue, reason);
+    this.clearQueue();
   }
 
   private async processAll(): Promise<void> {
@@ -68,11 +81,11 @@ export class ToolCallQueue {
       try {
         await executePartitionedToolCalls(
           batches,
-          async (item, batchMode) => {
+          async (item, isConcurrencySafe) => {
             const result = await item.run();
             // Serial-batched tool calls are barriers. If one errors, later
-            // queued tool calls for this task are cancelled.
-            if (result.kind === "error" && batchMode === "serial") {
+            // queued tool calls for this task should be cancelled.
+            if (result.kind === "error" && !isConcurrencySafe) {
               logger.debug("serial tool call error, throwing", {
                 toolName: item.toolName,
                 error: result.error,
@@ -80,31 +93,28 @@ export class ToolCallQueue {
               throw new Error(result.error);
             }
           },
-          { concurrencyLimit: this.options.concurrencyLimit ?? MaxConcurrency },
+          {
+            concurrencyLimit:
+              this.options.concurrencyLimit ?? MaxToolCallConcurrency,
+            abortSignal: this.abortController?.signal,
+          },
         );
       } catch (error) {
-        const pendingItems =
-          error instanceof BatchExecutionError ? error.pendingItems : [];
+        const reason: QueueCancelReason =
+          error instanceof BatchExecutionError &&
+          error.message === BatchExecutionErrorMessages.FAILED
+            ? "previous-tool-call-failed"
+            : "user-abort";
 
-        logger.debug("processAll catch, cancelling items", {
-          pendingItemsCount: pendingItems.length,
-          queueCount: this.queue.length,
-        });
+        if (error instanceof BatchExecutionError) {
+          this.cancelItems(error.pendingItems as ScheduledToolCall[], reason);
+        }
 
-        this.cancelItems(
-          pendingItems.concat(this.queue),
-          "previous-tool-call-failed",
-        );
-        throw error;
+        this.abort(reason);
       }
     } finally {
+      this.clearQueue();
       this.processing = false;
-    }
-  }
-
-  private cancelItems(items: ScheduledToolCall[], reason: QueueCancelReason) {
-    for (const item of items) {
-      item.cancel(reason);
     }
   }
 }
@@ -148,7 +158,7 @@ export class BatchExecuteManager {
 
   /** Abort queued tool calls for `taskId` by clearing pending items that have not started yet. */
   abort(taskId: string, reason: QueueCancelReason = "user-abort") {
-    this.queues.get(taskId)?.clearPending(reason);
+    this.queues.get(taskId)?.abort(reason);
   }
 
   private getOrCreateQueue(
@@ -160,7 +170,7 @@ export class BatchExecuteManager {
       queue = new ToolCallQueue({
         getCustomAgents:
           options?.getCustomAgents ?? this.getDefaultCustomAgents,
-        concurrencyLimit: options?.concurrencyLimit ?? MaxConcurrency,
+        concurrencyLimit: options?.concurrencyLimit ?? MaxToolCallConcurrency,
       });
       this.queues.set(taskId, queue);
     }

@@ -1,4 +1,5 @@
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
 import { type ReactNode, useRef, useState } from "react";
 import { BatchExecuteManager } from "../batch-execute-manager";
 import { useToolCallLifeCycles } from "../use-tool-call-life-cycles";
@@ -17,8 +18,7 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
   const { executingToolCalls, getToolCallLifeCycle, completeToolCalls } =
     useToolCallLifeCycles(abortController.current.signal);
   const { customAgents } = useCustomAgents(true);
-  const customAgentsRef = useRef(customAgents);
-  customAgentsRef.current = customAgents;
+  const customAgentsRef = useLatest(customAgents);
   const batchExecuteManager = useRef(
     new BatchExecuteManager(() => customAgentsRef.current),
   ).current;

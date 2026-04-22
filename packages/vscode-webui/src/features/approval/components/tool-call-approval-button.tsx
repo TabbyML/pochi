@@ -234,15 +234,14 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   // biome-ignore lint/correctness/useExhaustiveDependencies(autoApproveGuard): autoApproveGuard is a ref, so it won't change
   const abort = useCallback(() => {
     autoApproveGuard.current = "stop";
-    for (const lifecycle of lifecycles) {
-      lifecycle.abort();
-    }
     if (!taskId) {
       return;
     }
-    // Drop queued items that have not started yet.
+    // batchExecuteManager.abort cancels both in-flight items (by calling each
+    // item's cancel() adapter, which aborts the underlying lifecycle) and items
+    // still waiting in the queue — no need to abort lifecycles directly here.
     batchExecuteManager.abort(taskId, "user-abort");
-  }, [lifecycles, batchExecuteManager, taskId]);
+  }, [batchExecuteManager, taskId]);
 
   const showAccept = !isAutoApproved && isReady;
 

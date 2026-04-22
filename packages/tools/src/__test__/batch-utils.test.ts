@@ -2,11 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   BatchExecutionError,
   executePartitionedToolCalls,
-  getToolCallBatchMode,
   isSafeToBatchToolCall,
   partitionToolCalls,
   runConcurrentBatch,
-  type ToolBatchMode,
 } from "../utils/batch-utils";
 
 describe("BatchExecutionError", () => {
@@ -58,22 +56,6 @@ describe("isSafeToBatchToolCall", () => {
   });
 });
 
-describe("getToolCallBatchMode", () => {
-  it("returns 'concurrent' for a readonly tool", () => {
-    expect(getToolCallBatchMode("readFile", {})).toBe("concurrent");
-  });
-
-  it("returns 'serial' for a stateful tool", () => {
-    expect(getToolCallBatchMode("writeToFile", {})).toBe("serial");
-  });
-
-  it("returns 'concurrent' for newTask with runAsync: true", () => {
-    expect(getToolCallBatchMode("newTask", { runAsync: true })).toBe(
-      "concurrent",
-    );
-  });
-});
-
 type SimpleItem = { toolName: string; input: unknown };
 
 const getToolCall = (item: SimpleItem) => ({
@@ -95,7 +77,7 @@ describe("partitionToolCalls", () => {
     const batches = partitionToolCalls(items, getToolCall);
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]?.mode).toBe("concurrent");
+    expect(batches[0]?.isConcurrencySafe).toBe(true);
     expect(batches[0]?.items).toHaveLength(3);
   });
 
@@ -104,9 +86,9 @@ describe("partitionToolCalls", () => {
     const batches = partitionToolCalls(items, getToolCall);
 
     expect(batches).toHaveLength(2);
-    expect(batches[0]?.mode).toBe("serial");
+    expect(batches[0]?.isConcurrencySafe).toBe(false);
     expect(batches[0]?.items).toEqual([items[0]]);
-    expect(batches[1]?.mode).toBe("serial");
+    expect(batches[1]?.isConcurrencySafe).toBe(false);
     expect(batches[1]?.items).toEqual([items[1]]);
   });
 
@@ -119,9 +101,9 @@ describe("partitionToolCalls", () => {
     const batches = partitionToolCalls(items, getToolCall);
 
     expect(batches).toHaveLength(2);
-    expect(batches[0]?.mode).toBe("concurrent");
+    expect(batches[0]?.isConcurrencySafe).toBe(true);
     expect(batches[0]?.items).toHaveLength(2);
-    expect(batches[1]?.mode).toBe("serial");
+    expect(batches[1]?.isConcurrencySafe).toBe(false);
     expect(batches[1]?.items).toHaveLength(1);
   });
 
@@ -134,8 +116,8 @@ describe("partitionToolCalls", () => {
     const batches = partitionToolCalls(items, getToolCall);
 
     expect(batches).toHaveLength(2);
-    expect(batches[0]?.mode).toBe("serial");
-    expect(batches[1]?.mode).toBe("concurrent");
+    expect(batches[0]?.isConcurrencySafe).toBe(false);
+    expect(batches[1]?.isConcurrencySafe).toBe(true);
     expect(batches[1]?.items).toHaveLength(2);
   });
 
@@ -148,11 +130,11 @@ describe("partitionToolCalls", () => {
     const batches = partitionToolCalls(items, getToolCall);
 
     expect(batches).toHaveLength(3);
-    expect(batches[0]?.mode).toBe("concurrent");
+    expect(batches[0]?.isConcurrencySafe).toBe(true);
     expect(batches[0]?.items).toHaveLength(1);
-    expect(batches[1]?.mode).toBe("serial");
+    expect(batches[1]?.isConcurrencySafe).toBe(false);
     expect(batches[1]?.items).toHaveLength(1);
-    expect(batches[2]?.mode).toBe("concurrent");
+    expect(batches[2]?.isConcurrencySafe).toBe(true);
     expect(batches[2]?.items).toHaveLength(1);
   });
 
@@ -160,7 +142,7 @@ describe("partitionToolCalls", () => {
     const batches = partitionToolCalls([item("readFile")], getToolCall);
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]?.mode).toBe("concurrent");
+    expect(batches[0]?.isConcurrencySafe).toBe(true);
     expect(batches[0]?.items).toHaveLength(1);
   });
 
@@ -168,7 +150,7 @@ describe("partitionToolCalls", () => {
     const batches = partitionToolCalls([item("writeToFile")], getToolCall);
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]?.mode).toBe("serial");
+    expect(batches[0]?.isConcurrencySafe).toBe(false);
     expect(batches[0]?.items).toHaveLength(1);
   });
 
@@ -337,8 +319,8 @@ describe("executePartitionedToolCalls", () => {
 
     await executePartitionedToolCalls(
       batches,
-      async (_it, batchMode) => {
-        expect(batchMode).toBe("concurrent");
+      async (_it, isConcurrencySafe) => {
+        expect(isConcurrencySafe).toBe(true);
         executeCount++;
         active++;
         maxActive = Math.max(maxActive, active);
@@ -354,17 +336,17 @@ describe("executePartitionedToolCalls", () => {
 
   it("runs a single concurrent item through the concurrent path", async () => {
     const batches = partitionToolCalls([item("readFile")], getToolCall);
-    const seenModes: ToolBatchMode[] = [];
+    const seenFlags: boolean[] = [];
 
     await executePartitionedToolCalls(
       batches,
-      async (_it, batchMode) => {
-        seenModes.push(batchMode);
+      async (_it, isConcurrencySafe) => {
+        seenFlags.push(isConcurrencySafe);
       },
       { concurrencyLimit: 1 },
     );
 
-    expect(seenModes).toEqual(["concurrent"]);
+    expect(seenFlags).toEqual([true]);
   });
 
   it("continues to later batches when a concurrent batch item fails", async () => {
@@ -394,18 +376,18 @@ describe("executePartitionedToolCalls", () => {
 });
 
 describe("runConcurrentBatch", () => {
-  it("runs all items with batchMode='concurrent'", async () => {
+  it("runs all items with isConcurrencySafe=true", async () => {
     const items = [1, 2, 3, 4];
     const seen: number[] = [];
-    const modes: string[] = [];
+    const flags: boolean[] = [];
 
-    await runConcurrentBatch(items, 3, async (it, mode) => {
+    await runConcurrentBatch(items, async (it, isConcurrencySafe) => {
       seen.push(it as number);
-      modes.push(mode);
-    });
+      flags.push(isConcurrencySafe);
+    }, { concurrencyLimit: 3 });
 
     expect(seen.sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
-    expect(modes.every((m) => m === "concurrent")).toBe(true);
+    expect(flags.every(Boolean)).toBe(true);
   });
 
   it("never exceeds the configured concurrency", async () => {
@@ -413,41 +395,39 @@ describe("runConcurrentBatch", () => {
     let active = 0;
     let maxActive = 0;
 
-    await runConcurrentBatch(items, 2, async () => {
+    await runConcurrentBatch(items, async () => {
       active++;
       maxActive = Math.max(maxActive, active);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
       active--;
-    });
+    }, { concurrencyLimit: 2 });
 
     expect(maxActive).toBeLessThanOrEqual(2);
   });
 
-  it("rejects when execute throws", async () => {
+  it("does not reject when execute throws", async () => {
     await expect(
-      runConcurrentBatch(["a", "b"], 2, async (it) => {
+      runConcurrentBatch(["a", "b"], async (it) => {
         if (it === "a") {
           throw new Error("boom");
         }
-      }),
-    ).rejects.toThrow("boom");
+      }, { concurrencyLimit: 2 }),
+    ).resolves.toBeUndefined();
   });
 
-  it("keeps processing remaining items before rejecting", async () => {
+  it("keeps processing remaining items despite errors", async () => {
     const seen: string[] = [];
 
-    await expect(
-      runConcurrentBatch(
-        ["a", "b", "c"],
-        2,
-        async (it) => {
-          seen.push(it as string);
-          if (it === "a") {
-            throw new Error("boom");
-          }
-        },
-      ),
-    ).rejects.toThrow("boom");
+    await runConcurrentBatch(
+      ["a", "b", "c"],
+      async (it) => {
+        seen.push(it as string);
+        if (it === "a") {
+          throw new Error("boom");
+        }
+      },
+      { concurrencyLimit: 2 },
+    );
 
     expect(seen).toEqual(expect.arrayContaining(["a", "b", "c"]));
   });
@@ -455,9 +435,9 @@ describe("runConcurrentBatch", () => {
   it("still runs items when concurrencyLimit is 0", async () => {
     const seen: number[] = [];
 
-    await runConcurrentBatch([1], 0, async (it) => {
+    await runConcurrentBatch([1], async (it) => {
       seen.push(it as number);
-    });
+    }, { concurrencyLimit: 0 });
 
     expect(seen).toEqual([1]);
   });

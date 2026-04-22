@@ -1,6 +1,6 @@
 export { McpTool } from "./mcp-tools";
 import { ToolsByPermission } from "./constants";
-export { ToolsByPermission } from "./constants";
+export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
 import {
   type Tool,
   type UIDataTypes,
@@ -56,9 +56,9 @@ export {
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 export {
+  BatchExecutionErrorMessages,
   BatchExecutionError,
   executePartitionedToolCalls,
-  getToolCallBatchMode,
   isSafeToBatchToolCall,
   partitionToolCalls,
 } from "./utils/batch-utils";
@@ -66,7 +66,10 @@ export {
   checkReadOnlyConstraints,
   isReadonlyToolCall,
 } from "./utils/readonly-constraints-validation";
-export type { ScheduledToolCallResult } from "./utils/batch-utils";
+export type {
+  QueueCancelReason,
+  ScheduledToolCallResult,
+} from "./utils/batch-utils";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";

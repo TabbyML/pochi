@@ -4,12 +4,22 @@ import {
   isReadonlyToolCall,
 } from "./readonly-constraints-validation";
 
-export type ToolBatchMode = "concurrent" | "serial";
+export type ToolCallBatch<T> =
+  | {
+      isConcurrencySafe: true;
+      items: T[];
+    }
+  | {
+      isConcurrencySafe: false;
+      items: [T];
+    };
 
-export type ToolBatch<T> = {
-  mode: ToolBatchMode;
-  items: T[];
-};
+export type QueueCancelReason = "user-abort" | "previous-tool-call-failed";
+
+export const BatchExecutionErrorMessages = {
+  ABORTED: "batch-execution-aborted",
+  FAILED: "batch-execution-failed",
+} as const;
 
 export class BatchExecutionError<T> extends Error {
   readonly cause: unknown;
@@ -33,7 +43,7 @@ export type ScheduledToolCallResult =
     }
   | {
       kind: "cancelled";
-      reason: "user-abort" | "user-reject" | "previous-tool-call-failed";
+      reason: QueueCancelReason;
     };
 function isSafeToBatchNewTask(
   input: Record<string, unknown>,
@@ -72,16 +82,6 @@ export function isSafeToBatchToolCall(
   return false;
 }
 
-export function getToolCallBatchMode(
-  toolName: string,
-  input: unknown,
-  customAgents?: CustomAgent[],
-): ToolBatchMode {
-  return isSafeToBatchToolCall(toolName, input, customAgents)
-    ? "concurrent"
-    : "serial";
-}
-
 /**
  * Partition an ordered list of tool-call-backed items into microbatches:
  *
@@ -94,35 +94,35 @@ export function partitionToolCalls<T>(
   items: T[],
   getToolCall: (item: T) => { toolName: string; input: unknown },
   customAgents?: CustomAgent[],
-): ToolBatch<T>[] {
-  const batches: ToolBatch<T>[] = [];
+): ToolCallBatch<T>[] {
+  const batches: ToolCallBatch<T>[] = [];
   let currentConcurrentBatch: T[] = [];
 
   for (const item of items) {
     const toolCall = getToolCall(item);
-    const mode = getToolCallBatchMode(
+    const isConcurrencySafe = isSafeToBatchToolCall(
       toolCall.toolName,
       toolCall.input,
       customAgents,
     );
 
-    if (mode === "concurrent") {
+    if (isConcurrencySafe) {
       currentConcurrentBatch.push(item);
     } else {
       if (currentConcurrentBatch.length > 0) {
         batches.push({
-          mode: "concurrent",
+          isConcurrencySafe: true,
           items: currentConcurrentBatch,
         });
         currentConcurrentBatch = [];
       }
-      batches.push({ mode: "serial", items: [item] });
+      batches.push({ isConcurrencySafe: false, items: [item] });
     }
   }
 
   if (currentConcurrentBatch.length > 0) {
     batches.push({
-      mode: "concurrent",
+      isConcurrencySafe: true,
       items: currentConcurrentBatch,
     });
   }
@@ -132,31 +132,30 @@ export function partitionToolCalls<T>(
 
 export async function runConcurrentBatch<T>(
   items: T[],
-  concurrencyLimit: number,
-  execute: (item: T, batchMode: ToolBatchMode) => Promise<void>,
+  execute: (item: T, isConcurrencySafe: boolean) => Promise<void>,
+  options: {
+    concurrencyLimit: number;
+  },
 ): Promise<void> {
+  const { concurrencyLimit } = options;
   let nextIndex = 0;
   const workerCount = Math.min(Math.max(concurrencyLimit, 1), items.length);
-  let firstError: unknown;
 
   const runWorker = async (): Promise<void> => {
     while (nextIndex < items.length) {
       const item = items[nextIndex++];
       if (item !== undefined) {
         try {
-          await execute(item, "concurrent");
-        } catch (error) {
-          firstError ??= error;
+          await execute(item, true);
+        } catch {
+          // Ignore concurrent-safe tool calls failures, do not block later items
+          // in this batch or subsequent batches.
         }
       }
     }
   };
 
   await Promise.all(Array.from({ length: workerCount }, runWorker));
-
-  if (firstError !== undefined) {
-    throw firstError;
-  }
 }
 
 /**
@@ -166,57 +165,53 @@ export async function runConcurrentBatch<T>(
  * - concurrent batch failures are isolated to that batch; later batches still run
  * - serial batches run one item at a time and act as barriers
  * - when a serial batch fails, later batches are skipped and reported as pending
+ * - if `signal` is aborted before a batch starts, remaining items are reported as pending
  */
 export async function executePartitionedToolCalls<T>(
-  batches: ToolBatch<T>[],
-  execute: (item: T, batchMode: ToolBatchMode) => Promise<void>,
+  batches: ToolCallBatch<T>[],
+  execute: (item: T, isConcurrencySafe: boolean) => Promise<void>,
   options: {
     concurrencyLimit: number;
+    abortSignal?: AbortSignal;
   },
 ): Promise<void> {
-  const { concurrencyLimit } = options;
+  const { concurrencyLimit, abortSignal } = options;
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
     if (!batch) continue;
 
-    try {
-      if (batch.mode === "concurrent") {
-        await runConcurrentBatch(batch.items, concurrencyLimit, execute);
-      } else {
-        for (let itemIndex = 0; itemIndex < batch.items.length; itemIndex++) {
-          const item = batch.items[itemIndex];
-          if (!item) continue;
-
-          try {
-            await execute(item, batch.mode);
-          } catch (error) {
-            throw new BatchExecutionError(
-              "Serial batch execution failed",
-              error,
-              batch.items.slice(itemIndex + 1),
-            );
-          }
-        }
-      }
-    } catch (error) {
-      // Concurrent batches only contain side-effect-free tool calls, so one
-      // failure should not affect later tool-call batches.
-      if (batch.mode === "concurrent") {
-        continue;
-      }
-
-      const cause = error instanceof BatchExecutionError ? error.cause : error;
-      const pendingItems =
-        error instanceof BatchExecutionError ? error.pendingItems : [];
-
-      const remainingItems = pendingItems.concat(
-        ...batches.slice(batchIndex + 1).map((nextBatch) => nextBatch.items),
+    // Check before starting each new batch so an abort during execution
+    // of the current batch stops any further batches from being dispatched.
+    if (abortSignal?.aborted) {
+      const remainingItems = batches
+        .slice(batchIndex)
+        .flatMap((nextBatch) => nextBatch.items);
+      throw new BatchExecutionError(
+        BatchExecutionErrorMessages.ABORTED,
+        abortSignal.reason,
+        remainingItems,
       );
+    }
+
+    if (batch.isConcurrencySafe) {
+      await runConcurrentBatch(batch.items, execute, { concurrencyLimit });
+      continue;
+    }
+
+    const serialItem = batch.items[0];
+    if (!serialItem) continue;
+
+    try {
+      await execute(serialItem, false);
+    } catch (error) {
+      const remainingItems = batches
+        .slice(batchIndex + 1)
+        .flatMap((nextBatch) => nextBatch.items);
 
       throw new BatchExecutionError(
-        "Batch execution failed",
-        cause,
+        BatchExecutionErrorMessages.FAILED,
+        error,
         remainingItems,
       );
     }

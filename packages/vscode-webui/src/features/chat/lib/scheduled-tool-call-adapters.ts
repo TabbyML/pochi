@@ -1,5 +1,5 @@
 import {
-  getToolCancelErrorMessage,
+  getToolCallErrorMessage,
   getToolResultError,
 } from "@/lib/tool-call-error";
 import { vscodeHost } from "@/lib/vscode";
@@ -66,7 +66,6 @@ export function createLifecycleToolCallAdapter({
       ): ScheduledToolCallResult => {
         if (
           complete.reason === "user-abort" ||
-          complete.reason === "user-reject" ||
           complete.reason === "previous-tool-call-failed"
         ) {
           return {
@@ -122,12 +121,7 @@ export function createLifecycleToolCallAdapter({
       });
     },
     cancel: (reason: QueueCancelReason) => {
-      if (reason === "user-abort") {
-        lifecycle.abort();
-        return;
-      }
-
-      lifecycle.abort("previous-tool-call-failed");
+      lifecycle.abort(reason);
     },
   };
 }
@@ -151,7 +145,7 @@ export function createSubTaskToolCallAdapter({
       try {
         if (abortSignal.aborted) {
           throw new Error(
-            getToolCancelErrorMessage(abortSignal.reason as QueueCancelReason),
+            getToolCallErrorMessage(abortSignal.reason as QueueCancelReason),
           );
         }
 
@@ -281,7 +275,7 @@ export function createSubTaskToolCallAdapter({
         tool: toolCall.toolName,
         toolCallId: toolCall.toolCallId,
         output: {
-          error: getToolCancelErrorMessage(reason),
+          error: getToolCallErrorMessage(reason),
         },
       });
     },

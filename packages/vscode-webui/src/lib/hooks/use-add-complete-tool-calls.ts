@@ -1,5 +1,5 @@
 import { type ToolCallLifeCycle, useToolCallLifeCycle } from "@/features/chat";
-import { getToolCancelErrorMessage } from "@/lib/tool-call-error";
+import { getToolCallErrorMessage } from "@/lib/tool-call-error";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
@@ -86,7 +86,7 @@ function overrideResult(complete: ToolCallLifeCycle["complete"]) {
     case "user-abort":
     case "user-reject":
     case "previous-tool-call-failed":
-      output.error = getToolCancelErrorMessage(reason);
+      output.error = getToolCallErrorMessage(reason);
       break;
     case "execute-finish":
       break;
