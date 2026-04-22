@@ -44,9 +44,8 @@ export { getWorkspaceExcludePatterns } from "./workspace-exclude-patterns";
 export {
   FileStateCache,
   type RecentFileState,
-  FILE_UNCHANGED_STUB,
+  FileUnchangedStub,
   checkStaleness,
-  updateCacheAfterWrite,
   withFileStateCacheGuard,
   withReadFileCache,
   isVirtualPath,

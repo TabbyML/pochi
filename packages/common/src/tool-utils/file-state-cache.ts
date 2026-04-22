@@ -5,7 +5,7 @@ import { resolvePath } from "./fs";
 
 const logger = getLogger("FileStateCache");
 
-export const FILE_UNCHANGED_STUB =
+export const FileUnchangedStub =
   "File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.";
 
 type FileCacheCallbackResult<T> = {
@@ -237,7 +237,7 @@ export async function checkStaleness(
  * @param content - The new file content after edit/write
  * @param getMtime - Platform-specific function to get current file mtime
  */
-export async function updateCacheAfterWrite(
+async function updateCacheAfterWrite(
   cache: IFileStateCache,
   resolvedPath: string,
   content: string,
@@ -365,7 +365,7 @@ export async function withReadFileCache<T>(opts: {
   // --- Read deduplication ---
   // If we've already read this exact file + range and it hasn't been
   // modified on disk, return a "deduplicated" sentinel so the caller
-  // can return a lightweight FILE_UNCHANGED_STUB instead of re-sending
+  // can return a lightweight FileUnchangedStub instead of re-sending
   // the full content (saves tokens).
   if (shouldCache) {
     const existingState = cache.get(resolvedPath);
