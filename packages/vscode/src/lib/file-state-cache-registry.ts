@@ -1,4 +1,7 @@
-import { FileStateCache } from "@getpochi/common/tool-utils";
+import {
+  FileStateCache,
+  type RecentFileState,
+} from "@getpochi/common/tool-utils";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -18,6 +21,10 @@ export class FileStateCacheRegistry implements vscode.Disposable {
 
   clear(taskId: string): void {
     this.caches.get(taskId)?.clear();
+  }
+
+  getRecentFiles(taskId: string): RecentFileState[] {
+    return this.caches.get(taskId)?.getRecentFiles() ?? [];
   }
 
   delete(taskId: string): void {

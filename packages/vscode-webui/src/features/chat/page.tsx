@@ -151,9 +151,8 @@ function Chat({ user, uid, info }: ChatProps) {
     isSubTask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
-    onCompact: () => {
-      vscodeHost.clearFileStateCache(uid);
-    },
+    onCompact: () => vscodeHost.clearFileStateCache(uid),
+    getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
         return false;

@@ -64,7 +64,11 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
         addLineNumbers,
       });
 
-      return { result, fileCacheContent: fileContent };
+      return {
+        result,
+        fileCacheContent: result.content,
+        fileCacheIsTruncated: result.isTruncated,
+      };
     },
   });
 

@@ -43,6 +43,7 @@ export { readMediaFile } from "./media";
 export { getWorkspaceExcludePatterns } from "./workspace-exclude-patterns";
 export {
   FileStateCache,
+  type RecentFileState,
   FILE_UNCHANGED_STUB,
   checkStaleness,
   updateCacheAfterWrite,

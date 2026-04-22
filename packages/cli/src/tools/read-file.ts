@@ -52,7 +52,11 @@ export const readFile =
           addLineNumbers,
         });
 
-        return { result, fileCacheContent: fileContent };
+        return {
+          result,
+          fileCacheContent: result.content,
+          fileCacheIsTruncated: result.isTruncated,
+        };
       },
     });
 

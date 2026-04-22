@@ -111,6 +111,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readPochiTabs",
         "closePochiTabs",
         "clearFileStateCache",
+        "readRecentFilesForCompact",
         "queryGithubIssues",
         "readGitBranches",
         "readReviews",

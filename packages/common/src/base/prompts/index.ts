@@ -58,11 +58,16 @@ function isCompact(content: string) {
   return content.startsWith("<compact>") && content.endsWith("</compact>");
 }
 
-function inlineCompact(summary: string, messageCount: number) {
+function inlineCompact(
+  summary: string,
+  messageCount: number,
+  appendix?: string,
+) {
+  const appendixText = appendix ? `\n\n${appendix}` : "";
   return `<compact>
 Previous conversation summary (${messageCount} messages):
 ${summary}
-This section contains a summary of the conversation up to this point to save context. The full conversation history has been preserved but condensed for efficiency.
+This section contains a summary of the conversation up to this point to save context. The full conversation history has been preserved but condensed for efficiency.${appendixText}
 </compact>`;
 }
 

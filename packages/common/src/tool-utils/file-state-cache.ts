@@ -10,8 +10,19 @@ export const FILE_UNCHANGED_STUB =
 
 type FileCacheCallbackResult<T> = {
   result: T;
-  /** Content to store in cache. Pass null to skip caching (e.g. actual binary content). */
+  /** Model-visible content to store in cache. Pass null to skip caching (e.g. actual binary content). */
   fileCacheContent: string | null;
+  /** Whether the result sent to the model was truncated. */
+  fileCacheIsTruncated?: boolean;
+};
+
+export type RecentFileState = {
+  path: string;
+  content: string;
+  timestamp: number;
+  startLine: number | undefined;
+  endLine: number | undefined;
+  isTruncated?: boolean;
 };
 
 /** Default maximum number of entries in the cache */
@@ -118,6 +129,25 @@ export class FileStateCache {
 
   *values(): IterableIterator<IFileState> {
     yield* this.entries.values();
+  }
+
+  getRecentFiles(maxFiles = 5): RecentFileState[] {
+    const entries: Array<[string, IFileState]> = [];
+    this.entries.forEach((state, path) => {
+      entries.push([path, state]);
+    });
+
+    return entries
+      .reverse()
+      .slice(0, maxFiles)
+      .map(([path, state]) => ({
+        path,
+        content: state.content,
+        timestamp: state.timestamp,
+        startLine: state.startLine,
+        endLine: state.endLine,
+        isTruncated: state.isTruncated,
+      }));
   }
 
   *[Symbol.iterator](): IterableIterator<[string, IFileState]> {
@@ -359,7 +389,8 @@ export async function withReadFileCache<T>(opts: {
     }
   }
 
-  const { result, fileCacheContent } = await doRead(resolvedPath);
+  const { result, fileCacheContent, fileCacheIsTruncated } =
+    await doRead(resolvedPath);
 
   // --- Populate cache ---
   // Store what the model has "seen" so that future reads can dedup,
@@ -377,6 +408,7 @@ export async function withReadFileCache<T>(opts: {
         timestamp: mtimeMs,
         startLine,
         endLine,
+        isTruncated: fileCacheIsTruncated,
       });
     }
   }
