@@ -64,18 +64,16 @@ export class ToolCallQueue {
     this.abortController = null;
   }
 
-  private cancelItems(
+  private async cancelItems(
     items: BatchedToolCall[],
     reason: BatchedToolCallCancelReason,
-  ): void {
-    for (const item of items) {
-      item.cancel(reason);
-    }
+  ): Promise<void> {
+    await Promise.all(items.map((item) => item.cancel(reason)));
   }
 
-  abort(reason: BatchedToolCallCancelReason): void {
+  async abort(reason: BatchedToolCallCancelReason): Promise<void> {
     this.abortController?.abort();
-    this.cancelItems(this.queue, reason);
+    await this.cancelItems(this.queue, reason);
     this.clearQueue();
   }
 
@@ -98,7 +96,7 @@ export class ToolCallQueue {
 
         // At this point this.queue only contains items that haven't completed yet,
         // since completed items remove themselves via the enqueue wrapper.
-        this.abort(reason);
+        await this.abort(reason);
       }
     } finally {
       this.clearQueue();
