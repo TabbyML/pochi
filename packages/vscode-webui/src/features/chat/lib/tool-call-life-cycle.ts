@@ -287,7 +287,7 @@ export class ManagedToolCallLifeCycle
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
-      this.state.abort();
+      this.state.abort(reason);
       this.transitTo(["execute", "execute:streaming"], {
         type: "complete",
         result,
