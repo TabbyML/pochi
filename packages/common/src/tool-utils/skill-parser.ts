@@ -3,7 +3,7 @@ import { remark } from "remark";
 import remarkFrontmatter from "remark-frontmatter";
 import { remove } from "unist-util-remove";
 import { matter } from "vfile-matter";
-import z from "zod/v4";
+import z from "zod";
 import { builtInSkills, toErrorMessage } from "../base";
 import type {
   InvalidSkillFile,

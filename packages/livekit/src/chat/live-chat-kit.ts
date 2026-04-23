@@ -7,7 +7,7 @@ import {
   type ChatOnFinishCallback,
   isStaticToolUIPart,
 } from "ai";
-import type z from "zod/v4";
+import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import {
   makeAllDataQuery,

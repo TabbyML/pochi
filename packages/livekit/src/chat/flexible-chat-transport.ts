@@ -22,7 +22,7 @@ import {
   tool,
   wrapLanguageModel,
 } from "ai";
-import type z from "zod/v4";
+import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
 import type { LiveKitStore, Message, Metadata, RequestData } from "../types";

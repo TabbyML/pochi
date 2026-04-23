@@ -7,7 +7,7 @@ import {
   getStaticToolName,
   isStaticToolUIPart,
 } from "ai";
-import type { z } from "zod/v4";
+import type { z } from "zod";
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
 import { createAttemptCompletionTool } from "./attempt-completion";

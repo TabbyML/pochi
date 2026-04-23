@@ -1,4 +1,4 @@
-import z from "zod/v4";
+import z from "zod";
 import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
 import { VendorConfig } from "./vendor";

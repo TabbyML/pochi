@@ -31,7 +31,7 @@ import {
   isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import type z from "zod/v4";
+import type z from "zod";
 import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";

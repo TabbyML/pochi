@@ -1,6 +1,6 @@
 import type { Tool } from "ai";
 import { describe, expect, it } from "vitest";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { type CustomAgent, selectAgentTools } from "../index";
 
 const ClientToolNames = [
