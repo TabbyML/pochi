@@ -72,7 +72,7 @@ export class ToolCallQueue {
   }
 
   async abort(reason: BatchedToolCallCancelReason): Promise<void> {
-    this.abortController?.abort();
+    this.abortController?.abort(reason);
     await this.cancelItems(this.queue, reason);
     this.clearQueue();
   }
