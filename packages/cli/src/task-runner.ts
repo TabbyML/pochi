@@ -23,12 +23,7 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
-import {
-  BatchExecutionError,
-  type BatchedToolCall,
-  type BatchedToolCallResult,
-  executeToolCalls,
-} from "@getpochi/tools";
+import { type BatchedToolCallResult, ToolCallQueue } from "@getpochi/tools";
 import {
   type CustomAgent,
   type Skill,
@@ -597,50 +592,34 @@ export class TaskRunner {
       return "next" as const;
     }
 
-    const batchedToolCalls: BatchedToolCall[] = toolCalls.map((toolCall) => ({
-      input: toolCall.input,
-      toolName: getStaticToolName(toolCall),
-      run: async () => {
-        return this.runToolCall(toolCall, executeCommandWhitelist);
-      },
-      cancel: () => {},
-    }));
-    try {
-      await executeToolCalls({
-        toolCalls: batchedToolCalls,
-        customAgents: this.toolCallOptions.customAgents,
+    const queue = new ToolCallQueue({
+      getCustomAgents: () => this.toolCallOptions.customAgents,
+    });
+
+    for (const toolCall of toolCalls) {
+      queue.enqueue({
+        ...toolCall,
+        run: async () => this.runToolCall(toolCall, executeCommandWhitelist),
+        cancel: (reason) => {
+          const toolName = getStaticToolName(toolCall);
+          logger.debug(
+            `Tool call ${toolName} (${toolCall.toolCallId}) cancelled: ${reason}`,
+          );
+          this.chatKit.chat.addToolOutput({
+            // @ts-expect-error
+            tool: toolName,
+            toolCallId: toolCall.toolCallId,
+            output: {
+              // @ts-expect-error
+              error:
+                "Tool call was cancelled because a previous tool call failed.",
+            },
+          });
+        },
       });
-    } catch (error) {
-      if (!(error instanceof BatchExecutionError)) {
-        throw error;
-      }
-
-      logger.debug(
-        `Batch tool call execution failed; ${error.pendingItems.length} pending tool call(s) will be cancelled.`,
-      );
-
-      // Mark cancelled tool calls with an error message so the LLM knows they weren't executed.
-      for (const toolCall of error.pendingItems as ToolUIPart<UITools>[]) {
-        const toolName = getStaticToolName(toolCall);
-        const skippedOutput = {
-          error: "Tool call was cancelled because a previous tool call failed.",
-        };
-
-        const persistedToolResult = await maybePersistToolResult(
-          toolName,
-          toolCall.toolCallId,
-          this.taskId,
-          skippedOutput,
-        );
-
-        await this.chatKit.chat.addToolOutput({
-          tool: toolName,
-          toolCallId: toolCall.toolCallId,
-          // @ts-expect-error
-          output: persistedToolResult,
-        });
-      }
     }
+
+    await queue.start();
 
     logger.trace("All tool calls processed in the last message.");
     return "next" as const;

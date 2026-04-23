@@ -1,90 +1,11 @@
-import { getLogger } from "@getpochi/common";
 import {
-  BatchExecutionError,
-  BatchExecutionErrorMessages,
   type BatchedToolCall,
   type CustomAgent,
   MaxToolCallConcurrency,
   type ToolCallCancelReason,
-  executeToolCalls,
+  ToolCallQueue,
+  type ToolCallQueueOptions,
 } from "@getpochi/tools";
-
-const logger = getLogger("ToolCallQueue");
-
-export type ToolCallQueueOptions = {
-  getCustomAgents?: () => CustomAgent[] | undefined;
-  concurrencyLimit?: number;
-};
-
-/** FIFO queue for one `taskId`. */
-export class ToolCallQueue {
-  private queue: BatchedToolCall[] = [];
-  private processing = false;
-  private abortController: AbortController | null = null;
-
-  constructor(private readonly options: ToolCallQueueOptions = {}) {}
-
-  enqueue(item: BatchedToolCall) {
-    this.queue.push(item);
-  }
-
-  start() {
-    if (this.processing) return;
-    this.processing = true;
-    this.abortController = new AbortController();
-    this.processAll().catch((error) => {
-      if (!(error instanceof BatchExecutionError)) {
-        logger.error("Unexpected error in processAll", error);
-      }
-    });
-  }
-
-  private clearQueue() {
-    this.queue = [];
-    this.abortController = null;
-  }
-
-  private cancelItems(items: BatchedToolCall[], reason: ToolCallCancelReason) {
-    for (const item of items) {
-      item.cancel(reason);
-    }
-  }
-
-  abort(reason: ToolCallCancelReason) {
-    this.abortController?.abort();
-    this.cancelItems(this.queue, reason);
-    this.clearQueue();
-  }
-
-  private async processAll(): Promise<void> {
-    try {
-      const queue = this.queue;
-
-      try {
-        await executeToolCalls({
-          toolCalls: queue,
-          customAgents: this.options.getCustomAgents?.(),
-          abortSignal: this.abortController?.signal,
-        });
-      } catch (error) {
-        const reason: ToolCallCancelReason =
-          error instanceof BatchExecutionError &&
-          error.message === BatchExecutionErrorMessages.FAILED
-            ? "previous-tool-call-failed"
-            : "user-abort";
-
-        if (error instanceof BatchExecutionError) {
-          this.cancelItems(error.pendingItems as BatchedToolCall[], reason);
-        }
-
-        this.abort(reason);
-      }
-    } finally {
-      this.clearQueue();
-      this.processing = false;
-    }
-  }
-}
 
 /**
  * Chat-scoped microbatch manager keyed by `taskId`.

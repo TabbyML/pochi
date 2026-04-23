@@ -1,10 +1,10 @@
 import { type Mock, describe, expect, it, vi } from "vitest";
 import {
   BatchExecuteManager,
-  ToolCallQueue,
 } from "../batch-execute-manager";
-import type { BatchedToolCallResult, ToolCallCancelReason, BatchedToolCall } from "@getpochi/tools";
+import { type BatchedToolCallResult, type ToolCallCancelReason, type BatchedToolCall, ToolCallQueue } from "@getpochi/tools";
 
+let _callIdCounter = 0;
 function makeCall(
   toolName: string,
   result: BatchedToolCallResult = { kind: "success" },
@@ -18,7 +18,14 @@ function makeCall(
     .mockResolvedValue(result);
   const cancel = vi.fn<(reason: ToolCallCancelReason) => void>();
   return {
-    call: { toolName, input: {}, run, cancel },
+    call: {
+      type: `tool-${toolName}` as `tool-${string}`,
+      toolCallId: `tc-${++_callIdCounter}`,
+      input: {},
+      state: "input-available",
+      run,
+      cancel,
+    },
     run,
     cancel,
   };
@@ -266,8 +273,10 @@ describe("BatchExecuteManager – re-entrancy guard", () => {
     );
 
     const slowCall: BatchedToolCall = {
-      toolName: "writeToFile",
+      type: "tool-writeToFile",
+      toolCallId: `tc-${++_callIdCounter}`,
       input: {},
+      state: "input-available",
       run: slowRun,
       cancel: vi.fn(),
     };

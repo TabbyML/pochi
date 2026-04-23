@@ -1,16 +1,7 @@
+import { type ToolUIPart, type UITools, getStaticToolName } from "ai";
 import { MaxToolCallConcurrency } from "../constants";
 import type { CustomAgent } from "../new-task";
 import { isReadonlyToolCall } from "./readonly-constraints-validation";
-
-export type ToolCallBatch =
-  | {
-      isConcurrencySafe: true;
-      items: BatchedToolCall[];
-    }
-  | {
-      isConcurrencySafe: false;
-      items: [BatchedToolCall];
-    };
 
 export type BatchedToolCallCancelReason =
   | "user-abort"
@@ -29,27 +20,35 @@ export type BatchedToolCallResult =
       reason: BatchedToolCallCancelReason;
     };
 
-export type BatchedToolCall = {
-  toolName: string;
-  input: unknown;
+export type BatchedToolCall = ToolUIPart<UITools> & {
   run: () => Promise<BatchedToolCallResult>;
   cancel: (reason: BatchedToolCallCancelReason) => void;
 };
+
+export type ToolCallBatch =
+  | {
+      isConcurrencySafe: true;
+      items: BatchedToolCall[];
+    }
+  | {
+      isConcurrencySafe: false;
+      items: [BatchedToolCall];
+    };
 
 export const BatchExecutionErrorMessages = {
   ABORTED: "batch-execution-aborted",
   FAILED: "batch-execution-failed",
 } as const;
 
-export class BatchExecutionError<T> extends Error {
+export class BatchExecutionError extends Error {
   readonly cause: unknown;
-  readonly pendingItems: T[];
+  readonly failedToolCallId?: string;
 
-  constructor(message: string, cause: unknown, pendingItems: T[]) {
+  constructor(message: string, cause: unknown, failedToolCallId?: string) {
     super(message);
     this.name = "BatchExecutionError";
     this.cause = cause;
-    this.pendingItems = pendingItems;
+    this.failedToolCallId = failedToolCallId;
   }
 }
 
@@ -106,8 +105,9 @@ export function partitionToolCalls(
   let currentConcurrentBatch: BatchedToolCall[] = [];
 
   for (const item of items) {
+    const toolName = getStaticToolName(item);
     const isConcurrencySafe = isSafeToBatchToolCall(
-      item.toolName,
+      toolName,
       item.input,
       customAgents,
     );
@@ -190,13 +190,9 @@ export async function executeToolCalls({
     // Check before starting each new batch so an abort during execution
     // of the current batch stops any further batches from being dispatched.
     if (abortSignal?.aborted) {
-      const remainingItems = batches
-        .slice(batchIndex)
-        .flatMap((nextBatch) => nextBatch.items);
       throw new BatchExecutionError(
         BatchExecutionErrorMessages.ABORTED,
         abortSignal.reason,
-        remainingItems,
       );
     }
 
@@ -217,14 +213,10 @@ export async function executeToolCalls({
         throw new Error();
       }
     } catch (error) {
-      const remainingItems = batches
-        .slice(batchIndex + 1)
-        .flatMap((nextBatch) => nextBatch.items);
-
       throw new BatchExecutionError(
         BatchExecutionErrorMessages.FAILED,
         error,
-        remainingItems,
+        serialItem.toolCallId,
       );
     }
   }

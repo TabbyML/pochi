@@ -19,6 +19,7 @@ import {
   type ThreadSignalSerialization,
   threadSignal,
 } from "@quilted/threads/signals";
+import type { ToolUIPart, UITools } from "ai";
 import type { ToolCallStatusRegistry } from "./chat-state/fixed-state";
 import type { ToolCallLifeCycle } from "./tool-call-life-cycle";
 
@@ -27,9 +28,8 @@ type ToolCall = Parameters<
 >[0]["toolCall"];
 
 type CreateLifecycleToolCallAdapterOptions = {
+  toolCall: ToolUIPart<UITools>;
   lifecycle: ToolCallLifeCycle;
-  toolName: string;
-  input: unknown;
   executeOptions: {
     contentType?: string[];
     builtinSubAgentInfo?: BuiltinSubAgentInfo;
@@ -52,14 +52,12 @@ type CreateExecutorToolCallAdapterOptions = {
 
 /** Backed by a ToolCallLifeCycle; execution and cancellation delegate to the lifecycle. */
 export function createBatchedToolCallFromLifecycle({
+  toolCall,
   lifecycle,
-  toolName,
-  input,
   executeOptions,
 }: CreateLifecycleToolCallAdapterOptions): BatchedToolCall {
   return {
-    toolName,
-    input,
+    ...toolCall,
     run: () => {
       const toResult = (
         complete: ToolCallLifeCycle["complete"],
@@ -116,7 +114,7 @@ export function createBatchedToolCallFromLifecycle({
         });
 
         if (lifecycle.status === "init") {
-          lifecycle.execute(input, executeOptions);
+          lifecycle.execute(toolCall.input, executeOptions);
         }
       });
     },
@@ -139,8 +137,10 @@ export function createSubtaskBatchedToolCall({
   toolCallStatusRegistry,
 }: CreateExecutorToolCallAdapterOptions): BatchedToolCall {
   return {
-    toolName: toolCall.toolName,
+    type: `tool-${toolCall.toolName}` as `tool-${string}`,
+    toolCallId: toolCall.toolCallId,
     input: toolCall.input,
+    state: "input-available",
     run: async () => {
       try {
         if (abortSignal.aborted) {
