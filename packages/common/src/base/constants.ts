@@ -15,7 +15,7 @@ export const PochiTaskIdHeader = "x-pochi-task-id";
 export const PochiClientHeader = "x-pochi-client";
 export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
 
-export const EnableAsyncNewTask = true;
+export const EnableAsyncNewTask = false;
 
 /**
  * Timeout (ms) for any single git operation.
