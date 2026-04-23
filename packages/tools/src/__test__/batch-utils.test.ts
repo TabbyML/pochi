@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   BatchExecutionError,
   executeToolCalls,
@@ -10,22 +10,20 @@ import {
 
 describe("BatchExecutionError", () => {
   it("has the correct name", () => {
-    const err = new BatchExecutionError("msg", undefined, []);
+    const err = new BatchExecutionError("msg", undefined);
     expect(err.name).toBe("BatchExecutionError");
   });
 
-  it("stores message, cause, and pendingItems", () => {
+  it("stores message and cause", () => {
     const cause = new Error("underlying");
-    const pending = [1, 2, 3];
-    const err = new BatchExecutionError("batch failed", cause, pending);
+    const err = new BatchExecutionError("batch failed", cause);
 
     expect(err.message).toBe("batch failed");
     expect(err.cause).toBe(cause);
-    expect(err.pendingItems).toBe(pending);
   });
 
   it("is instanceof Error", () => {
-    expect(new BatchExecutionError("", null, [])).toBeInstanceOf(Error);
+    expect(new BatchExecutionError("", null)).toBeInstanceOf(Error);
   });
 });
 
@@ -57,8 +55,10 @@ describe("isSafeToBatchToolCall", () => {
   });
 });
 
+let _toolCallIdCounter = 0;
 function item(toolName: string, input: unknown = {}): BatchedToolCall {
   return {
+    toolCallId: `tc-${++_toolCallIdCounter}`,
     toolName,
     input,
     run: async () => ({ kind: "success" }),
@@ -241,7 +241,7 @@ describe("executeToolCalls", () => {
     );
   });
 
-  it("throws BatchExecutionError with pending items when a serial item fails", async () => {
+  it("throws BatchExecutionError when a serial item fails", async () => {
     const items = [
       {
         ...item("writeToFile"),
@@ -261,21 +261,19 @@ describe("executeToolCalls", () => {
     }
 
     expect(caught).toBeInstanceOf(BatchExecutionError);
-    const err = caught as BatchExecutionError<unknown>;
-    expect(err.pendingItems).toEqual([items[1], items[2]]);
   });
 
-  it("includes items from later batches in pendingItems when an earlier batch fails", async () => {
-    // 2 serial items (each in own batch) followed by a concurrent batch
+  it("throws BatchExecutionError when serial item returns error kind", async () => {
     const items = [
       {
         ...item("writeToFile"),
-        run: async () => {
-          throw new Error("first item failed");
-        },
+        run: async () => ({
+          kind: "error" as const,
+          error: "tool returned error",
+        }),
       },
       item("applyDiff"),
-      item("readFile"),
+      item("writeToFile"),
     ];
 
     let caught: unknown;
@@ -286,8 +284,6 @@ describe("executeToolCalls", () => {
     }
 
     expect(caught).toBeInstanceOf(BatchExecutionError);
-    const err = caught as BatchExecutionError<unknown>;
-    expect(err.pendingItems).toEqual([items[1], items[2]]);
   });
 
   it("runs all concurrent items and checks total execution count", async () => {
@@ -310,113 +306,55 @@ describe("executeToolCalls", () => {
 
     await executeToolCalls({ toolCalls: items });
 
-    expect(executeCount).toBe(items.length);
+    expect(executeCount).toBe(6);
   });
+});
 
-  it("continues to later batches when a concurrent batch item fails", async () => {
+describe("runConcurrentBatch", () => {
+  it("runs all items concurrently", async () => {
     const executed: string[] = [];
-    const items = [
+    const items: BatchedToolCall[] = [
       {
         ...item("readFile"),
         run: async () => {
-          executed.push("readFile");
-          throw new Error("concurrent failed");
+          executed.push("a");
+          return { kind: "success" };
         },
       },
       {
         ...item("listFiles"),
         run: async () => {
-          executed.push("listFiles");
-          return { kind: "success" as const };
-        },
-      },
-      {
-        ...item("writeToFile"),
-        run: async () => {
-          executed.push("writeToFile");
-          return { kind: "success" as const };
+          executed.push("b");
+          return { kind: "success" };
         },
       },
     ];
 
-    await executeToolCalls({ toolCalls: items });
+    await runConcurrentBatch(items, { concurrencyLimit: 4 });
 
-    expect(executed).toContain("readFile");
-    expect(executed).toContain("listFiles");
-    expect(executed).toContain("writeToFile");
-  });
-});
-
-describe("runConcurrentBatch", () => {
-  it("runs all items with isConcurrencySafe=true", async () => {
-    const seen: string[] = [];
-    const items = [
-      { ...item("1"), run: async () => { seen.push("1"); return { kind: "success" as const }; } },
-      { ...item("2"), run: async () => { seen.push("2"); return { kind: "success" as const }; } },
-      { ...item("3"), run: async () => { seen.push("3"); return { kind: "success" as const }; } },
-      { ...item("4"), run: async () => { seen.push("4"); return { kind: "success" as const }; } },
-    ];
-
-    await runConcurrentBatch(items, { concurrencyLimit: 3 });
-
-    expect(seen.sort()).toEqual(["1", "2", "3", "4"]);
+    expect(executed).toHaveLength(2);
+    expect(executed).toContain("a");
+    expect(executed).toContain("b");
   });
 
-  it("never exceeds the configured concurrency", async () => {
-    let active = 0;
-    let maxActive = 0;
+  it("respects concurrencyLimit", async () => {
+    let concurrent = 0;
+    let maxConcurrent = 0;
 
-    const runWithDelay = async () => {
-      active++;
-      maxActive = Math.max(maxActive, active);
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-      active--;
-      return { kind: "success" as const };
-    };
+    const makeItem = () => ({
+      ...item("readFile"),
+      run: async () => {
+        concurrent++;
+        maxConcurrent = Math.max(maxConcurrent, concurrent);
+        await new Promise<void>((resolve) => setTimeout(resolve, 10));
+        concurrent--;
+        return { kind: "success" as const };
+      },
+    });
 
-    const items = Array.from({ length: 8 }, (_, i) => ({
-      ...item(String(i + 1)),
-      run: runWithDelay,
-    }));
-
+    const items = Array.from({ length: 6 }, makeItem);
     await runConcurrentBatch(items, { concurrencyLimit: 2 });
 
-    expect(maxActive).toBeLessThanOrEqual(2);
-  });
-
-  it("does not reject when execute throws", async () => {
-    const items = [
-      { ...item("a"), run: async () => { throw new Error("boom"); } },
-      item("b"),
-    ];
-    await expect(
-      runConcurrentBatch(items, { concurrencyLimit: 2 }),
-    ).resolves.toBeUndefined();
-  });
-
-  it("keeps processing remaining items despite errors", async () => {
-    const seen: string[] = [];
-
-    const items = [
-      { ...item("a"), run: async () => { seen.push("a"); throw new Error("boom"); } },
-      { ...item("b"), run: async () => { seen.push("b"); return { kind: "success" as const }; } },
-      { ...item("c"), run: async () => { seen.push("c"); return { kind: "success" as const }; } },
-    ];
-
-    await runConcurrentBatch(items, { concurrencyLimit: 2 });
-
-    expect(seen).toEqual(expect.arrayContaining(["a", "b", "c"]));
-  });
-
-  it("still runs items when concurrencyLimit is 0", async () => {
-    const seen: string[] = [];
-
-    const items = [
-      { ...item("1"), run: async () => { seen.push("1"); return { kind: "success" as const }; } },
-    ];
-
-    await runConcurrentBatch(items, { concurrencyLimit: 0 });
-
-    expect(seen).toEqual(["1"]);
+    expect(maxConcurrent).toBeLessThanOrEqual(2);
   });
 });

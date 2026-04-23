@@ -2,16 +2,6 @@ import { MaxToolCallConcurrency } from "../constants";
 import type { CustomAgent } from "../new-task";
 import { isReadonlyToolCall } from "./readonly-constraints-validation";
 
-export type ToolCallBatch =
-  | {
-      isConcurrencySafe: true;
-      items: BatchedToolCall[];
-    }
-  | {
-      isConcurrencySafe: false;
-      items: [BatchedToolCall];
-    };
-
 export type BatchedToolCallCancelReason =
   | "user-abort"
   | "previous-tool-call-failed";
@@ -30,26 +20,35 @@ export type BatchedToolCallResult =
     };
 
 export type BatchedToolCall = {
+  toolCallId: string;
   toolName: string;
   input: unknown;
   run: () => Promise<BatchedToolCallResult>;
-  cancel: (reason: BatchedToolCallCancelReason) => void;
+  cancel: (reason: BatchedToolCallCancelReason) => void | Promise<void>;
 };
+
+export type ToolCallBatch =
+  | {
+      isConcurrencySafe: true;
+      items: BatchedToolCall[];
+    }
+  | {
+      isConcurrencySafe: false;
+      items: [BatchedToolCall];
+    };
 
 export const BatchExecutionErrorMessages = {
   ABORTED: "batch-execution-aborted",
   FAILED: "batch-execution-failed",
 } as const;
 
-export class BatchExecutionError<T> extends Error {
+export class BatchExecutionError extends Error {
   readonly cause: unknown;
-  readonly pendingItems: T[];
 
-  constructor(message: string, cause: unknown, pendingItems: T[]) {
+  constructor(message: string, cause: unknown) {
     super(message);
     this.name = "BatchExecutionError";
     this.cause = cause;
-    this.pendingItems = pendingItems;
   }
 }
 
@@ -190,13 +189,9 @@ export async function executeToolCalls({
     // Check before starting each new batch so an abort during execution
     // of the current batch stops any further batches from being dispatched.
     if (abortSignal?.aborted) {
-      const remainingItems = batches
-        .slice(batchIndex)
-        .flatMap((nextBatch) => nextBatch.items);
       throw new BatchExecutionError(
         BatchExecutionErrorMessages.ABORTED,
         abortSignal.reason,
-        remainingItems,
       );
     }
 
@@ -217,15 +212,7 @@ export async function executeToolCalls({
         throw new Error();
       }
     } catch (error) {
-      const remainingItems = batches
-        .slice(batchIndex + 1)
-        .flatMap((nextBatch) => nextBatch.items);
-
-      throw new BatchExecutionError(
-        BatchExecutionErrorMessages.FAILED,
-        error,
-        remainingItems,
-      );
+      throw new BatchExecutionError(BatchExecutionErrorMessages.FAILED, error);
     }
   }
 }
