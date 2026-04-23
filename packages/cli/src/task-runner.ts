@@ -598,14 +598,16 @@ export class TaskRunner {
 
     for (const toolCall of toolCalls) {
       queue.enqueue({
-        ...toolCall,
+        toolCallId: toolCall.toolCallId,
+        toolName: getStaticToolName(toolCall),
+        input: toolCall.input,
         run: async () => this.runToolCall(toolCall, executeCommandWhitelist),
-        cancel: (reason) => {
+        cancel: async (reason) => {
           const toolName = getStaticToolName(toolCall);
           logger.debug(
             `Tool call ${toolName} (${toolCall.toolCallId}) cancelled: ${reason}`,
           );
-          this.chatKit.chat.addToolOutput({
+          await this.chatKit.chat.addToolOutput({
             // @ts-expect-error
             tool: toolName,
             toolCallId: toolCall.toolCallId,

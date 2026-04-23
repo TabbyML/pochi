@@ -19,10 +19,9 @@ function makeCall(
   const cancel = vi.fn<(reason: ToolCallCancelReason) => void>();
   return {
     call: {
-      type: `tool-${toolName}` as `tool-${string}`,
       toolCallId: `tc-${++_callIdCounter}`,
+      toolName,
       input: {},
-      state: "input-available",
       run,
       cancel,
     },
@@ -273,10 +272,9 @@ describe("BatchExecuteManager – re-entrancy guard", () => {
     );
 
     const slowCall: BatchedToolCall = {
-      type: "tool-writeToFile",
       toolCallId: `tc-${++_callIdCounter}`,
+      toolName: "writeToFile",
       input: {},
-      state: "input-available",
       run: slowRun,
       cancel: vi.fn(),
     };

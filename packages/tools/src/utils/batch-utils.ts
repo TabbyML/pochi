@@ -1,4 +1,3 @@
-import { type ToolUIPart, type UITools, getStaticToolName } from "ai";
 import { MaxToolCallConcurrency } from "../constants";
 import type { CustomAgent } from "../new-task";
 import { isReadonlyToolCall } from "./readonly-constraints-validation";
@@ -20,9 +19,12 @@ export type BatchedToolCallResult =
       reason: BatchedToolCallCancelReason;
     };
 
-export type BatchedToolCall = ToolUIPart<UITools> & {
+export type BatchedToolCall = {
+  toolCallId: string;
+  toolName: string;
+  input: unknown;
   run: () => Promise<BatchedToolCallResult>;
-  cancel: (reason: BatchedToolCallCancelReason) => void;
+  cancel: (reason: BatchedToolCallCancelReason) => void | Promise<void>;
 };
 
 export type ToolCallBatch =
@@ -42,13 +44,11 @@ export const BatchExecutionErrorMessages = {
 
 export class BatchExecutionError extends Error {
   readonly cause: unknown;
-  readonly failedToolCallId?: string;
 
-  constructor(message: string, cause: unknown, failedToolCallId?: string) {
+  constructor(message: string, cause: unknown) {
     super(message);
     this.name = "BatchExecutionError";
     this.cause = cause;
-    this.failedToolCallId = failedToolCallId;
   }
 }
 
@@ -105,9 +105,8 @@ export function partitionToolCalls(
   let currentConcurrentBatch: BatchedToolCall[] = [];
 
   for (const item of items) {
-    const toolName = getStaticToolName(item);
     const isConcurrencySafe = isSafeToBatchToolCall(
-      toolName,
+      item.toolName,
       item.input,
       customAgents,
     );
@@ -213,11 +212,7 @@ export async function executeToolCalls({
         throw new Error();
       }
     } catch (error) {
-      throw new BatchExecutionError(
-        BatchExecutionErrorMessages.FAILED,
-        error,
-        serialItem.toolCallId,
-      );
+      throw new BatchExecutionError(BatchExecutionErrorMessages.FAILED, error);
     }
   }
 }

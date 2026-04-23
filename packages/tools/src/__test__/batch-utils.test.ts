@@ -14,13 +14,12 @@ describe("BatchExecutionError", () => {
     expect(err.name).toBe("BatchExecutionError");
   });
 
-  it("stores message, cause, and failedToolCallId", () => {
+  it("stores message and cause", () => {
     const cause = new Error("underlying");
-    const err = new BatchExecutionError("batch failed", cause, "tc-123");
+    const err = new BatchExecutionError("batch failed", cause);
 
     expect(err.message).toBe("batch failed");
     expect(err.cause).toBe(cause);
-    expect(err.failedToolCallId).toBe("tc-123");
   });
 
   it("is instanceof Error", () => {
@@ -59,10 +58,9 @@ describe("isSafeToBatchToolCall", () => {
 let _toolCallIdCounter = 0;
 function item(toolName: string, input: unknown = {}): BatchedToolCall {
   return {
-    type: `tool-${toolName}` as `tool-${string}`,
     toolCallId: `tc-${++_toolCallIdCounter}`,
+    toolName,
     input,
-    state: "input-available",
     run: async () => ({ kind: "success" }),
     cancel: () => {},
   };
@@ -243,15 +241,14 @@ describe("executeToolCalls", () => {
     );
   });
 
-  it("throws BatchExecutionError with failedToolCallId when a serial item fails", async () => {
-    const failingItem = {
-      ...item("writeToFile"),
-      run: async () => {
-        throw new Error("item a failed");
-      },
-    };
+  it("throws BatchExecutionError when a serial item fails", async () => {
     const items = [
-      failingItem,
+      {
+        ...item("writeToFile"),
+        run: async () => {
+          throw new Error("item a failed");
+        },
+      },
       item("applyDiff"),
       item("writeToFile"),
     ];
@@ -264,20 +261,17 @@ describe("executeToolCalls", () => {
     }
 
     expect(caught).toBeInstanceOf(BatchExecutionError);
-    const err = caught as BatchExecutionError;
-    expect(err.failedToolCallId).toBe(failingItem.toolCallId);
   });
 
-  it("throws BatchExecutionError with failedToolCallId when serial item returns error kind", async () => {
-    const failingItem = {
-      ...item("writeToFile"),
-      run: async () => ({
-        kind: "error" as const,
-        error: "tool returned error",
-      }),
-    };
+  it("throws BatchExecutionError when serial item returns error kind", async () => {
     const items = [
-      failingItem,
+      {
+        ...item("writeToFile"),
+        run: async () => ({
+          kind: "error" as const,
+          error: "tool returned error",
+        }),
+      },
       item("applyDiff"),
       item("writeToFile"),
     ];
@@ -290,8 +284,6 @@ describe("executeToolCalls", () => {
     }
 
     expect(caught).toBeInstanceOf(BatchExecutionError);
-    const err = caught as BatchExecutionError;
-    expect(err.failedToolCallId).toBe(failingItem.toolCallId);
   });
 
   it("runs all concurrent items and checks total execution count", async () => {

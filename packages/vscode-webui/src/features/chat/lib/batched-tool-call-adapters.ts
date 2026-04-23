@@ -19,7 +19,7 @@ import {
   type ThreadSignalSerialization,
   threadSignal,
 } from "@quilted/threads/signals";
-import type { ToolUIPart, UITools } from "ai";
+import { type ToolUIPart, type UITools, getStaticToolName } from "ai";
 import type { ToolCallStatusRegistry } from "./chat-state/fixed-state";
 import type { ToolCallLifeCycle } from "./tool-call-life-cycle";
 
@@ -57,7 +57,9 @@ export function createBatchedToolCallFromLifecycle({
   executeOptions,
 }: CreateLifecycleToolCallAdapterOptions): BatchedToolCall {
   return {
-    ...toolCall,
+    toolCallId: toolCall.toolCallId,
+    toolName: getStaticToolName(toolCall),
+    input: toolCall.input,
     run: () => {
       const toResult = (
         complete: ToolCallLifeCycle["complete"],
@@ -137,10 +139,9 @@ export function createSubtaskBatchedToolCall({
   toolCallStatusRegistry,
 }: CreateExecutorToolCallAdapterOptions): BatchedToolCall {
   return {
-    type: `tool-${toolCall.toolName}` as `tool-${string}`,
     toolCallId: toolCall.toolCallId,
+    toolName: toolCall.toolName,
     input: toolCall.input,
-    state: "input-available",
     run: async () => {
       try {
         if (abortSignal.aborted) {
