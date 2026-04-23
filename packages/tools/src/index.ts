@@ -62,6 +62,8 @@ export {
   isSafeToBatchToolCall,
   partitionToolCalls,
 } from "./utils/batch-utils";
+export { ToolCallQueue } from "./utils/tool-call-queue";
+export type { ToolCallQueueOptions } from "./utils/tool-call-queue";
 export {
   checkReadOnlyConstraints,
   isReadonlyToolCall,
