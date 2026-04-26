@@ -3,6 +3,7 @@ export {
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithPartialToolCalls,
+  isAssistantMessageWithInvalidToolCalls,
   prepareLastMessageForRetry,
   fixCodeGenerationOutput,
 } from "./assistant-message";

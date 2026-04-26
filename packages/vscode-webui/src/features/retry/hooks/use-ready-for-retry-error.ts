@@ -1,5 +1,6 @@
 import {
   isAssistantMessageWithEmptyParts,
+  isAssistantMessageWithInvalidToolCalls,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
 } from "@getpochi/common/message-utils";
@@ -38,6 +39,15 @@ export function getReadyForRetryError(messages: Message[]) {
   }
 
   if (isAssistantMessageWithPartialToolCalls(lastMessage)) {
+    return new ReadyForRetryError();
+  }
+
+  // Detect tool calls that ended in `output-error` with malformed input.
+  // These would otherwise be treated as "complete" by the AI SDK and replayed
+  // verbatim on every retry, causing the provider to keep rejecting the
+  // request. Returning a retry error here lets `prepareLastMessageForRetry`
+  // roll back the broken step before the next send.
+  if (isAssistantMessageWithInvalidToolCalls(lastMessage)) {
     return new ReadyForRetryError();
   }
 
