@@ -19,28 +19,31 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
-import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
-import { ThreadAbortSignal } from "@quilted/threads";
-import {
-  type ThreadSignalSerialization,
-  threadSignal,
-} from "@quilted/threads/signals";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { BatchExecuteManager } from "../lib/batch-execute-manager";
+import { createAsyncAgentBatchedToolCall } from "../lib/batched-tool-call-adapters";
 import { useLiveChatKitGetters } from "../lib/use-live-chat-kit-getters";
 
-const AsyncAgentMaxStep = 65535;
+const AsyncAgentMaxStep = 50;
 const AsyncAgentMaxRetry = 8;
+// After this many consecutive rejected (allow-list) tool calls we stop the agent
+// to avoid the model getting stuck in a loop calling forbidden tools.
+const AsyncAgentMaxToolRejections = 5;
 const logger = getLogger("AsyncAgentWorker");
 
 interface AsyncAgentWorkerProps {
   taskId: string;
+  batchExecuteManager: BatchExecuteManager;
 }
 
-export function AsyncAgentWorker({ taskId }: AsyncAgentWorkerProps) {
+export function AsyncAgentWorker({
+  taskId,
+  batchExecuteManager,
+}: AsyncAgentWorkerProps) {
   const { asyncAgentState, isLoading } = useAsyncAgentState(taskId);
 
   useEffect(() => {
@@ -63,6 +66,7 @@ export function AsyncAgentWorker({ taskId }: AsyncAgentWorkerProps) {
       taskId={taskId}
       allowedTools={asyncAgentState?.allowedTools}
       parentTaskId={asyncAgentState?.parentTaskId}
+      batchExecuteManager={batchExecuteManager}
     />
   );
 }
@@ -71,6 +75,7 @@ function AsyncAgentWorkerInner({
   taskId,
   allowedTools,
   parentTaskId,
+  batchExecuteManager,
 }: AsyncAgentWorkerProps & {
   allowedTools?: readonly string[];
   parentTaskId?: string;
@@ -83,10 +88,36 @@ function AsyncAgentWorkerInner({
   const abortController = useRef(new AbortController());
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const completedRef = useRef(false);
+  const toolRejectionCountRef = useRef(0);
+  // Refs that bridge values defined later in the component body into callbacks
+  // passed to `useLiveChatKit` (which is created before those values exist).
+  // This avoids accidental TDZ access if the callbacks ever ran synchronously.
+  const addToolOutputRef = useRef<((args: AddToolOutputArgs) => void) | null>(
+    null,
+  );
+  const chatStatusRef = useRef<string | null>(null);
   const allowedToolsSet = useMemo(
     () => (allowedTools ? new Set(allowedTools) : undefined),
     [allowedTools],
   );
+
+  const writeToolOutput = useCallback(
+    (toolName: string, toolCallId: string, output: unknown) => {
+      addToolOutputRef.current?.({
+        tool: toolName,
+        toolCallId,
+        output,
+      });
+    },
+    [],
+  );
+
+  // Wrap the latest `addToolOutput` (delivered via ref) so adapters can invoke
+  // it even though they're constructed inside `onToolCall` before
+  // `useChat`-bound `addToolOutput` exists in the closure.
+  const adapterAddToolOutput = useCallback((args: AddToolOutputArgs) => {
+    addToolOutputRef.current?.(args);
+  }, []);
 
   useEffect(() => {
     const signal = abortController.current.signal;
@@ -98,12 +129,34 @@ function AsyncAgentWorkerInner({
         },
         "Async agent aborted",
       );
+      // Cancel all queued / in-flight tool calls for this task so that the
+      // batch manager doesn't leave dangling subscriptions or pending items.
+      batchExecuteManager.abort(taskId, "user-abort");
     };
     signal.addEventListener("abort", onAbort);
     return () => {
       signal.removeEventListener("abort", onAbort);
     };
-  }, [taskId]);
+  }, [taskId, batchExecuteManager]);
+
+  // NOTE: Intentionally do NOT abort on unmount.
+  //
+  // Async agents are designed to be resumable: if the webview / page is
+  // closed mid-task, the next time it is opened `AsyncAgentRunner` will
+  // re-discover the task via `runnableTasks$` (status is still
+  // `pending-model` / `pending-tool`) and re-mount this worker, which will
+  // pick up from the last persisted message.
+  //
+  // Calling `abortController.abort()` here would propagate through the chat
+  // and trigger `markAsFailed({ kind: "AbortError" })`, taking the task out
+  // of `runnableTasks$` permanently. Letting the browser context tear down
+  // is sufficient to terminate in-flight work when the page actually closes;
+  // for React re-mounts (StrictMode, hot reload, etc.) the next mount will
+  // resume cleanly.
+  //
+  // In-flight `executeCommand` ThreadSignal subscriptions are still released
+  // through the worker's own abort paths (`failWorker`, max-retry,
+  // max-step, max-tool-rejection), so we don't leak in those scenarios.
 
   const getters = useLiveChatKitGetters({
     todos: todosRef,
@@ -125,26 +178,29 @@ function AsyncAgentWorkerInner({
         completedRef.current ||
         isModelsLoading ||
         !selectedModel ||
-        chatKit.chat.status === "error"
+        chatStatusRef.current === "error"
       ) {
         return false;
       }
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onStreamFinish: (data) => {
-      if (data.status !== "completed") {
-        return;
+      if (data.status === "completed") {
+        logger.debug(
+          {
+            taskId,
+            messageCount: data.messages.length,
+            messages: data.messages,
+          },
+          "Async agent completed with messages",
+        );
       }
 
-      console.log(data.messages);
-      logger.debug(
-        {
-          taskId,
-          messageCount: data.messages.length,
-          messages: data.messages,
-        },
-        "Async agent completed with messages",
-      );
+      // Kick off the queued tool calls (if any) so that batch-eligible items
+      // run concurrently while stateful items remain serial barriers.
+      if (!abortController.current.signal.aborted) {
+        batchExecuteManager.processQueue(taskId);
+      }
     },
     onToolCall: async ({ toolCall }) => {
       logger.debug(
@@ -185,153 +241,61 @@ function AsyncAgentWorkerInner({
       }
 
       if (allowedToolsSet && !allowedToolsSet.has(toolCall.toolName)) {
+        toolRejectionCountRef.current += 1;
         logger.warn(
           {
             taskId,
             toolName: toolCall.toolName,
             toolCallId: toolCall.toolCallId,
             allowedTools: allowedTools?.length,
+            rejectionCount: toolRejectionCountRef.current,
           },
           "Async agent tool call rejected by allow-list",
         );
-        addToolOutput({
-          // @ts-expect-error dynamic tool name
-          tool: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          output: {
-            output: `Tool ${toolCall.toolName} is not allowed for this async agent.`,
-          },
+        writeToolOutput(toolCall.toolName, toolCall.toolCallId, {
+          output: `Tool ${toolCall.toolName} is not allowed for this async agent.`,
         });
+
+        if (toolRejectionCountRef.current >= AsyncAgentMaxToolRejections) {
+          failWorkerRef.current?.(
+            `The async agent kept calling disallowed tools (${toolRejectionCountRef.current}). Stopping.`,
+          );
+        }
         return;
       }
 
-      try {
-        logger.debug(
-          {
-            taskId,
-            toolName: toolCall.toolName,
-            toolCallId: toolCall.toolCallId,
-            parentTaskId,
-          },
-          "Executing async agent tool call",
-        );
-        const result = await vscodeHost.executeToolCall(
-          toolCall.toolName,
-          toolCall.input,
-          {
-            toolCallId: toolCall.toolCallId,
-            abortSignal: ThreadAbortSignal.serialize(
-              abortController.current.signal,
-            ),
-            storeId: store.storeId,
-            taskId,
-            fileStateCacheSourceTaskId: parentTaskId,
-          },
-        );
+      // Reset the rejection counter once the model recovers and calls an
+      // allowed tool again.
+      toolRejectionCountRef.current = 0;
 
-        if (
-          toolCall.toolName === "executeCommand" &&
-          typeof result === "object" &&
-          result !== null &&
-          "output" in result
-        ) {
-          const signal = threadSignal(
-            result.output as ThreadSignalSerialization<ExecuteCommandResult>,
-          );
-
-          logger.debug(
-            {
-              taskId,
-              toolName: toolCall.toolName,
-              toolCallId: toolCall.toolCallId,
-            },
-            "Async agent executeCommand streaming result attached",
-          );
-
-          let lastStatus: ExecuteCommandResult["status"] | undefined;
-          const unsubscribe = signal.subscribe((output) => {
-            if (output.status !== lastStatus) {
-              lastStatus = output.status;
-              logger.debug(
-                {
-                  taskId,
-                  toolName: toolCall.toolName,
-                  toolCallId: toolCall.toolCallId,
-                  status: output.status,
-                },
-                "Async agent executeCommand status updated",
-              );
-            }
-
-            if (output.status !== "completed") {
-              return;
-            }
-
-            unsubscribe();
-            const finalResult: Record<string, unknown> = {
-              output: output.content,
-              isTruncated: output.isTruncated ?? false,
-            };
-            if (output.error) {
-              finalResult.error = output.error;
-            }
-            logger.debug(
-              {
-                taskId,
-                toolName: toolCall.toolName,
-                toolCallId: toolCall.toolCallId,
-                hasError: Boolean(output.error),
-                outputLength: output.content.length,
-                isTruncated: output.isTruncated ?? false,
-              },
-              "Async agent executeCommand completed",
-            );
-            addToolOutput({
-              // @ts-expect-error dynamic tool name
-              tool: toolCall.toolName,
-              toolCallId: toolCall.toolCallId,
-              output: finalResult,
-            });
-          });
-          return;
-        }
-
-        logger.debug(
-          {
-            taskId,
-            toolName: toolCall.toolName,
-            toolCallId: toolCall.toolCallId,
-            result: summarizeResult(result),
-          },
-          "Async agent tool call completed",
-        );
-        addToolOutput({
-          // @ts-expect-error dynamic tool name
-          tool: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          // @ts-expect-error dynamic result type
-          output: result,
-        });
-      } catch (error) {
-        logger.warn(
-          {
-            taskId,
-            toolName: toolCall.toolName,
-            toolCallId: toolCall.toolCallId,
-            error: formatLogValue(error),
-          },
-          "Async agent tool call failed",
-        );
-        addToolOutput({
-          // @ts-expect-error dynamic tool name
-          tool: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-          output: {
-            output:
-              error instanceof Error ? error.message : "Unknown error occurred",
-          },
-        });
+      if (abortController.current.signal.aborted) {
+        return;
       }
+
+      logger.debug(
+        {
+          taskId,
+          toolName: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          parentTaskId,
+        },
+        "Enqueueing async agent tool call",
+      );
+
+      // Defer execution to the BatchExecuteManager: consecutive safe-to-batch
+      // calls (read-only, runAsync newTask, startBackgroundJob) run as one
+      // concurrent batch; stateful calls remain serial barriers.
+      batchExecuteManager.enqueue(
+        taskId,
+        createAsyncAgentBatchedToolCall({
+          toolCall,
+          taskId,
+          parentTaskId,
+          storeId: store.storeId,
+          abortSignal: abortController.current.signal,
+          addToolOutput: adapterAddToolOutput,
+        }),
+      );
     },
   });
 
@@ -346,6 +310,18 @@ function AsyncAgentWorkerInner({
   } = useChat({
     chat: chatKit.chat,
   });
+
+  // Keep refs in sync so callbacks captured by `useLiveChatKit` always read
+  // the latest values without re-creating the chat kit.
+  useEffect(() => {
+    addToolOutputRef.current = addToolOutput as unknown as (
+      args: AddToolOutputArgs,
+    ) => void;
+  }, [addToolOutput]);
+
+  useEffect(() => {
+    chatStatusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
     logger.debug({ taskId }, "Async agent worker mounted");
@@ -364,11 +340,19 @@ function AsyncAgentWorkerInner({
     (message: string) => {
       logger.warn({ taskId, message }, "Failing async agent worker");
       completedRef.current = true;
-      abortController.current.abort(message);
+      if (!abortController.current.signal.aborted) {
+        abortController.current.abort(message);
+      }
       chatKit.markAsFailed(new Error(message));
     },
     [chatKit, taskId],
   );
+  // Bridge `failWorker` into the `onToolCall` closure (which is created via
+  // `useLiveChatKit` before `failWorker` exists).
+  const failWorkerRef = useRef(failWorker);
+  useEffect(() => {
+    failWorkerRef.current = failWorker;
+  }, [failWorker]);
 
   const retryImpl = useRetry({
     messages,
@@ -435,11 +419,17 @@ function AsyncAgentWorkerInner({
     [failWorker, retry, retryCount, taskId],
   );
 
+  // The retry pipeline:
+  // 1. `errorForRetry` becomes truthy when chat reports a recoverable error.
+  // 2. Debounce the error for 1s so transient flips don't trigger spurious retries.
+  // 3. After debounce, the second effect picks up `pendingErrorForRetry`,
+  //    immediately clears it (so this only fires once per error), and kicks off
+  //    `retryWithCount`.
   const errorForRetry = useMixinReadyForRetryError(messages, error);
   const [
     pendingErrorForRetry,
-    setPendingErrorForRetry,
-    setDebouncedPendingErrorForRetry,
+    debouncedSetPendingErrorForRetry,
+    setPendingErrorForRetryNow,
   ] = useDebounceState<Error | undefined>(undefined, 1000);
   useEffect(() => {
     if (
@@ -455,9 +445,9 @@ function AsyncAgentWorkerInner({
         },
         "Async agent error became ready for retry",
       );
-      setPendingErrorForRetry(errorForRetry);
+      debouncedSetPendingErrorForRetry(errorForRetry);
     }
-  }, [errorForRetry, setPendingErrorForRetry, status, taskId]);
+  }, [errorForRetry, debouncedSetPendingErrorForRetry, status, taskId]);
   useEffect(() => {
     if (
       completedRef.current ||
@@ -466,9 +456,9 @@ function AsyncAgentWorkerInner({
     ) {
       return;
     }
-    setDebouncedPendingErrorForRetry(undefined);
+    setPendingErrorForRetryNow(undefined);
     retryWithCount(pendingErrorForRetry);
-  }, [pendingErrorForRetry, retryWithCount, setDebouncedPendingErrorForRetry]);
+  }, [pendingErrorForRetry, retryWithCount, setPendingErrorForRetryNow]);
 
   useEffect(() => {
     if (status === "ready" && errorForRetry === undefined) {
@@ -509,6 +499,8 @@ function AsyncAgentWorkerInner({
   }, [currentStepCount, failWorker]);
 
   // Auto-start / resume the agent from its current last message.
+  // Only kicks in when the task already has at least one message, since async
+  // agents are initialized by their parent task before this worker mounts.
   const initStarted = useRef(false);
   useEffect(() => {
     if (
@@ -566,6 +558,14 @@ function AsyncAgentWorkerInner({
   return null;
 }
 
+// Loose type alias: the full `addToolOutput` signature in `useChat` is
+// over-constrained for our dynamic tool-call dispatch, so we widen it here.
+type AddToolOutputArgs = {
+  tool: string;
+  toolCallId: string;
+  output: unknown;
+};
+
 function formatLogValue(value: unknown): string | undefined {
   if (value === undefined) {
     return undefined;
@@ -581,18 +581,4 @@ function formatLogValue(value: unknown): string | undefined {
   } catch {
     return String(value);
   }
-}
-
-function summarizeResult(result: unknown): Record<string, unknown> {
-  if (result === null || typeof result !== "object") {
-    return { type: typeof result };
-  }
-
-  const objectResult = result as Record<string, unknown>;
-  return {
-    type: "object",
-    keys: Object.keys(objectResult),
-    hasOutput: "output" in objectResult,
-    hasError: "error" in objectResult,
-  };
 }

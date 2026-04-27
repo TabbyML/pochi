@@ -7,12 +7,15 @@ const logger = getLogger("CreateForkAgent");
  * Build the init messages for a fork agent: all parent messages followed by
  * a new user message containing the directive.
  */
-function buildForkMessages(
+export function buildForkMessages(
   parentMessages: Message[],
   directive: string,
 ): Message[] {
   return [
-    ...parentMessages,
+    ...parentMessages.map((message) => ({
+      ...structuredClone(message),
+      id: crypto.randomUUID(),
+    })),
     {
       id: crypto.randomUUID(),
       role: "user",

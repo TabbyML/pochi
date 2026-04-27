@@ -9,10 +9,13 @@
  * remounting this component will resume execution automatically.
  */
 
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { BatchExecuteManager } from "../lib/batch-execute-manager";
 import { AsyncAgentWorker } from "./async-agent-worker";
 
 const logger = getLogger("AsyncAgentRunner");
@@ -20,6 +23,12 @@ const logger = getLogger("AsyncAgentRunner");
 export function AsyncAgentRunner() {
   const store = useDefaultStore();
   const runnableTasks = store.useQuery(catalog.queries.runnableTasks$);
+
+  const { customAgents } = useCustomAgents(true);
+  const customAgentsRef = useLatest(customAgents);
+  const batchExecuteManager = useRef(
+    new BatchExecuteManager(() => customAgentsRef.current),
+  ).current;
 
   useEffect(() => {
     logger.debug(
@@ -36,7 +45,11 @@ export function AsyncAgentRunner() {
   return (
     <>
       {runnableTasks.map((task) => (
-        <AsyncAgentWorker key={task.id} taskId={task.id} />
+        <AsyncAgentWorker
+          key={task.id}
+          taskId={task.id}
+          batchExecuteManager={batchExecuteManager}
+        />
       ))}
     </>
   );

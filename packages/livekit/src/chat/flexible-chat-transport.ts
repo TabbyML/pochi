@@ -15,6 +15,7 @@ import {
   type ChatRequestOptions,
   type ChatTransport,
   type ModelMessage,
+  type SystemModelMessage,
   type UIMessageChunk,
   convertToModelMessages,
   isStaticToolUIPart,
@@ -148,6 +149,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
 
+    // Tool ordering should be deterministic
     const tools = selectAgentTools({
       agent: this.customAgent,
       isSubTask: !!this.isSubTask,
@@ -179,6 +181,23 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         { tools },
       ),
     )) as ModelMessage[];
+
+    // Mark cache breakpoints for Anthropic prompt caching. The provider order
+    // is `tools → system → messages`, so a breakpoint on the system block
+    // caches both tools and system, and a breakpoint on the last message
+    // caches the entire prefix up to (and including) that message.
+    const cacheControl = {
+      anthropic: { cacheControl: { type: "ephemeral" } },
+    } as const;
+
+    const systemMessage: SystemModelMessage = {
+      role: "system",
+      content: systemPrompt,
+      providerOptions: cacheControl,
+    };
+
+    const cachedModelMessages = withCacheBreakpointOnLastMessage(modelMessages);
+
     const stream = streamText({
       providerOptions: {
         pochi: {
@@ -187,8 +206,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           useCase: "agent",
         } satisfies PochiProviderOptions,
       },
-      system: systemPrompt,
-      messages: modelMessages,
+      system: systemMessage,
+      messages: cachedModelMessages,
       model: wrapLanguageModel({
         model,
         middleware: middlewares,
@@ -239,6 +258,34 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
 function prepareMessages(inputMessages: Message[]): Message[] {
   return convertDataReviewsToText(inputMessages);
+}
+
+/**
+ * Attach an Anthropic ephemeral cache breakpoint to the last message of the
+ * conversation. Combined with a breakpoint on the system block, this caches
+ * the entire request prefix (tools + system + message history). On the next
+ * request that adds new messages, the previous boundary becomes a cache hit.
+ *
+ * For fork agents this is what makes the parent task's prefix reusable: the
+ * fork's `[...parentMessages, newDirective]` will hit the cache up to the end
+ * of `parentMessages` (the last message at the time of the parent's request),
+ * even though the new directive itself is uncached.
+ */
+function withCacheBreakpointOnLastMessage(
+  messages: ModelMessage[],
+): ModelMessage[] {
+  if (messages.length === 0) return messages;
+  const lastIndex = messages.length - 1;
+  return messages.map((m, i) => {
+    if (i !== lastIndex) return m;
+    return {
+      ...m,
+      providerOptions: {
+        ...(m.providerOptions ?? {}),
+        anthropic: { cacheControl: { type: "ephemeral" } },
+      },
+    } as ModelMessage;
+  });
 }
 
 function isWellKnownReasoningModel(model?: string): boolean {

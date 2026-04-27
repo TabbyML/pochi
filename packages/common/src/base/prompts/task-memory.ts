@@ -29,8 +29,8 @@ _Specific outputs requested by user_
 _Step by step operations log_
 `;
 
-const MAX_SECTION_TOKENS = 2000;
-const TASK_MEMORY_FILE_URI = "pochi://-/memory.md";
+const MaxSectionTokens = 2000;
+const TaskMemoryFileUri = "pochi://-/memory.md";
 
 /**
  * Build the extraction directive that the fork agent receives.
@@ -42,11 +42,11 @@ export function buildMemoryExtractionDirective(
   const isUpdate = !!existingMemory?.trim();
 
   const currentNotesSection = isUpdate
-    ? `The file ${TASK_MEMORY_FILE_URI} has been read for you. Here are its current contents:
+    ? `The file ${TaskMemoryFileUri} has been read for you. Here are its current contents:
 <current_notes_content>
 ${existingMemory}
 </current_notes_content>`
-    : `The file ${TASK_MEMORY_FILE_URI} does not exist yet. You will create it from scratch using the template below:
+    : `The file ${TaskMemoryFileUri} does not exist yet. You will create it from scratch using the template below:
 <template>
 ${taskMemoryTemplate}
 </template>`;
@@ -57,7 +57,7 @@ Based on the user conversation above (EXCLUDING this note-taking instruction mes
 
 ${currentNotesSection}
 
-Your ONLY task is to use the writeToFile tool to ${isUpdate ? "update" : "create"} ${TASK_MEMORY_FILE_URI} with the session notes, then call attemptCompletion. Do not call any other tools except readFile if you need to check a file's content for accuracy.
+Your ONLY task is to use the writeToFile tool to ${isUpdate ? "update" : "create"} ${TaskMemoryFileUri} with the session notes, then call attemptCompletion. Do not call any other tools except readFile if you need to check a file's content for accuracy.
 
 CRITICAL RULES:
 - The file must maintain its exact structure with all sections and headers intact
@@ -69,9 +69,9 @@ CRITICAL RULES:
 - Skip updating a section if there are no substantial new insights to add — leave it blank
 - Write DETAILED, INFO-DENSE content — include file paths, function names, error messages, exact commands, technical details
 - For "Key Results", include the complete exact output the user requested
-- Keep each section under ~${MAX_SECTION_TOKENS} tokens — condense by cycling out less important details
+- Keep each section under ~${MaxSectionTokens} tokens — condense by cycling out less important details
 - IMPORTANT: Always update "Current State" to reflect the most recent work — this is critical for continuity after compaction
 - IMPORTANT: Always update "Worklog" with a terse log of what was done since the last extraction
 
-Use writeToFile with path ${TASK_MEMORY_FILE_URI} and the full updated content, then call attemptCompletion with a brief summary of what was updated.`;
+Use writeToFile with path ${TaskMemoryFileUri} and the full updated content, then call attemptCompletion with a brief summary of what was updated.`;
 }
