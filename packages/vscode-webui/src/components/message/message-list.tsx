@@ -17,14 +17,9 @@ import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
-import type { Message, UITools } from "@getpochi/livekit";
-import {
-  type FileUIPart,
-  type TextUIPart,
-  type ToolUIPart,
-  isStaticToolUIPart,
-} from "ai";
-import { useEffect, useMemo } from "react";
+import type { Message } from "@getpochi/livekit";
+import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
+import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI } from "../checkpoint-ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ActiveSelectionPart } from "./active-selection";
@@ -34,6 +29,11 @@ import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
 import { Reviews } from "./reviews";
 import { UserEditsPart } from "./user-edits";
+
+interface UserEditsCheckpoint {
+  origin: string | undefined;
+  modified: string | undefined;
+}
 
 export const MessageList: React.FC<{
   messages: Message[];
@@ -85,6 +85,14 @@ export const MessageList: React.FC<{
   const isExecuting = executingToolCalls.length > 0;
   const assistantName = assistant?.name ?? "Pochi";
   const latestCheckpoint = useLatestCheckpoint();
+  const toolCallCheckpoints = useMemo(
+    () => buildToolCallCheckpoints(renderMessages),
+    [renderMessages],
+  );
+  const userEditsCheckpoints = useMemo(
+    () => buildUserEditsCheckpoints(renderMessages),
+    [renderMessages],
+  );
   const lastCheckpointInMessage = useMemo(() => {
     return renderMessages
       .flatMap((msg) => msg.parts)
@@ -171,10 +179,8 @@ export const MessageList: React.FC<{
                       hideUserEditsActions={hideUserEditsActions}
                       latestCheckpoint={latestCheckpoint}
                       lastCheckpointInMessage={lastCheckpointInMessage}
-                      userEditsCheckpoint={getUserEditsCheckpoint(
-                        renderMessages,
-                        messageIndex,
-                      )}
+                      userEditsCheckpoint={userEditsCheckpoints[messageIndex]}
+                      toolCallCheckpoints={toolCallCheckpoints}
                     />
                   ))}
                 </div>
@@ -262,6 +268,7 @@ function Part({
   lastCheckpointInMessage,
   hideUserEditsActions,
   userEditsCheckpoint,
+  toolCallCheckpoints,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -279,18 +286,19 @@ function Part({
     origin: string | undefined;
     modified: string | undefined;
   };
+  toolCallCheckpoints: Map<string, ToolCallCheckpoint>;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
-    return <TextPartUI className={paddingClass} part={part} />;
+    return <MemoTextPartUI className={paddingClass} part={part} />;
   }
 
   if (part.type === "reasoning") {
     return (
-      <ReasoningPartUI
+      <MemoReasoningPartUI
         className={paddingClass}
         part={part}
-        isLoading={isLastPartInMessages}
+        isLoading={part.state === "streaming"}
       />
     );
   }
@@ -340,7 +348,7 @@ function Part({
         className={paddingClass}
         tool={part}
         isLoading={isLoading}
-        changes={getToolCallCheckpoint(part, messages)}
+        changes={toolCallCheckpoints.get(part.toolCallId)}
         messages={messages}
         isSubTask={isSubTask}
         isLastPart={isLastPartInMessages}
@@ -365,6 +373,20 @@ function TextPartUI({
 
   return <MessageMarkdown className={className}>{part.text}</MessageMarkdown>;
 }
+
+const MemoTextPartUI = memo(TextPartUI, (prev, next) => {
+  return prev.part.text === next.part.text;
+});
+MemoTextPartUI.displayName = "MemoTextPartUI";
+
+function ReasoningPartRenderer(props: Parameters<typeof ReasoningPartUI>[0]) {
+  return <ReasoningPartUI {...props} />;
+}
+
+const MemoReasoningPartUI = memo(ReasoningPartRenderer, (prev, next) => {
+  return prev.part.text === next.part.text;
+});
+MemoReasoningPartUI.displayName = "MemoReasoningPartUI";
 
 const SeparatorWithCheckpoint: React.FC<{
   messageIndex: number;
@@ -432,28 +454,48 @@ export interface ToolCallCheckpoint {
   modified?: string;
 }
 
-const getToolCallCheckpoint = (
-  part: ToolUIPart<UITools>,
-  messages: Message[],
-): ToolCallCheckpoint => {
-  const allParts = messages.flatMap((msg) => msg.parts);
+function buildToolCallCheckpoints(messages: Message[]) {
+  const toolCallCheckpoints = new Map<string, ToolCallCheckpoint>();
+  const partsInOrder: Array<Message["parts"][number]> = [];
+  let latestCheckpoint: string | undefined;
 
-  const currentIndex = allParts.findIndex(
-    (p) => isStaticToolUIPart(p) && p.toolCallId === part.toolCallId,
-  );
+  for (const message of messages) {
+    for (const part of message.parts) {
+      partsInOrder.push(part);
 
-  const beforeCheckpoint = allParts
-    .slice(0, currentIndex)
-    .findLast((p) => p.type === "data-checkpoint");
-  const afterCheckpoint = allParts
-    .slice(currentIndex + 1)
-    .find((p) => p.type === "data-checkpoint");
+      if (part.type === "data-checkpoint") {
+        latestCheckpoint = part.data.commit;
+        continue;
+      }
 
-  return {
-    origin: beforeCheckpoint?.data.commit,
-    modified: afterCheckpoint?.data.commit,
-  };
-};
+      if (isStaticToolUIPart(part)) {
+        toolCallCheckpoints.set(part.toolCallId, {
+          origin: latestCheckpoint,
+        });
+      }
+    }
+  }
+
+  let nextCheckpoint: string | undefined;
+
+  for (let index = partsInOrder.length - 1; index >= 0; index -= 1) {
+    const part = partsInOrder[index];
+
+    if (part.type === "data-checkpoint") {
+      nextCheckpoint = part.data.commit;
+      continue;
+    }
+
+    if (isStaticToolUIPart(part)) {
+      const checkpoint = toolCallCheckpoints.get(part.toolCallId);
+      if (checkpoint) {
+        checkpoint.modified = nextCheckpoint;
+      }
+    }
+  }
+
+  return toolCallCheckpoints;
+}
 
 function findCompactPart(message: Message): TextUIPart | undefined {
   for (const x of message.parts) {
@@ -492,27 +534,38 @@ function CompactPartToolTip({
   );
 }
 
-function getUserEditsCheckpoint(messages: Message[], index: number) {
-  const message = messages[index];
-  if (message.role !== "user") {
-    return;
+function buildUserEditsCheckpoints(messages: Message[]) {
+  const userEditsCheckpoints: Array<UserEditsCheckpoint | undefined> = [];
+  const checkpointHistory: string[] = [];
+
+  for (const [index, message] of messages.entries()) {
+    let hasUserEdits = false;
+
+    for (const part of message.parts) {
+      if (part.type === "data-checkpoint") {
+        checkpointHistory.push(part.data.commit);
+        continue;
+      }
+
+      if (part.type === "data-user-edits") {
+        hasUserEdits = true;
+      }
+    }
+
+    if (
+      message.role !== "user" ||
+      !hasUserEdits ||
+      checkpointHistory.length < 2
+    ) {
+      userEditsCheckpoints[index] = undefined;
+      continue;
+    }
+
+    userEditsCheckpoints[index] = {
+      origin: checkpointHistory.at(-2),
+      modified: checkpointHistory.at(-1),
+    };
   }
 
-  if (!message.parts.some((p) => p.type === "data-user-edits")) {
-    return;
-  }
-
-  const parts = messages
-    .filter((_m, i) => i <= index)
-    .flatMap((m) => m.parts)
-    .filter((p) => p.type === "data-checkpoint");
-
-  if (parts.length < 2) {
-    return;
-  }
-
-  return {
-    origin: parts.at(-2)?.data.commit,
-    modified: parts.at(-1)?.data.commit,
-  };
+  return userEditsCheckpoints;
 }
