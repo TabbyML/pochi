@@ -137,15 +137,11 @@ export function compileToolPolicies(
   const executeCommandRules = getToolRules(tools, "executeCommand");
   const policies: CompiledToolPolicies = {};
 
-  if (tools?.some((tool) => parseToolSpec(tool).name === "executeCommand")) {
-    policies.executeCommand = executeCommandRules
-      ? {
-          kind: "command-pattern",
-          patterns: executeCommandRules,
-        }
-      : {
-          kind: "unrestricted",
-        };
+  if (executeCommandRules) {
+    policies.executeCommand = {
+      kind: "command-pattern",
+      patterns: executeCommandRules,
+    };
   }
 
   for (const toolName of [
@@ -173,7 +169,7 @@ function compilePathToolPolicy(
 
   const rules = getToolRules(tools, toolName);
   if (!rules) {
-    return { kind: "unrestricted" } as const;
+    return undefined;
   }
 
   return {
@@ -268,12 +264,9 @@ export function validateExecuteCommandRules(
 
 export function validateCommandPatternPolicy(
   command: string,
-  policy:
-    | { kind: "unrestricted" }
-    | { kind: "command-pattern"; patterns: string[] }
-    | undefined,
+  policy: { kind: "command-pattern"; patterns: string[] } | undefined,
 ): void {
-  if (!policy || policy.kind === "unrestricted") {
+  if (!policy) {
     return;
   }
 
@@ -322,7 +315,6 @@ export function validateToolPolicy(
 function validatePathPatternPolicy(
   inputPath: string,
   policy:
-    | { kind: "unrestricted" }
     | {
         kind: "path-pattern";
         patterns: string[];
@@ -330,7 +322,7 @@ function validatePathPatternPolicy(
     | undefined,
   options: { cwd: string },
 ): void {
-  if (!policy || policy.kind === "unrestricted") {
+  if (!policy) {
     return;
   }
 

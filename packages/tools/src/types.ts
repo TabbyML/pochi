@@ -43,7 +43,6 @@ export interface IFileStateCache {
 }
 
 export type CompiledToolPolicy =
-  | { kind: "unrestricted" }
   | { kind: "command-pattern"; patterns: string[] }
   | {
       kind: "path-pattern";
@@ -51,33 +50,23 @@ export type CompiledToolPolicy =
     };
 
 export interface CompiledToolPolicies {
-  executeCommand?:
-    | { kind: "unrestricted" }
-    | { kind: "command-pattern"; patterns: string[] };
-  readFile?:
-    | { kind: "unrestricted" }
-    | {
-        kind: "path-pattern";
-        patterns: string[];
-      };
-  writeToFile?:
-    | { kind: "unrestricted" }
-    | {
-        kind: "path-pattern";
-        patterns: string[];
-      };
-  applyDiff?:
-    | { kind: "unrestricted" }
-    | {
-        kind: "path-pattern";
-        patterns: string[];
-      };
-  editNotebook?:
-    | { kind: "unrestricted" }
-    | {
-        kind: "path-pattern";
-        patterns: string[];
-      };
+  executeCommand?: { kind: "command-pattern"; patterns: string[] };
+  readFile?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  writeToFile?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  applyDiff?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  editNotebook?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
 }
 
 export type ToolFunctionType<T extends Tool> = (
