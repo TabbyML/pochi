@@ -16,7 +16,7 @@ Examples of questions this agent shall trigger:
     "globFiles",
     "listFiles",
     "searchFiles",
-    "executeCommand(npm)",
+    "executeCommand",
   ],
   systemPrompt: `
 You are the Explore agent, specialized in thoroughly examining codebases to answer questions, identify patterns, and provide comprehensive insights.

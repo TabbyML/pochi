@@ -11,7 +11,13 @@ Examples of user requests this agent shall trigger:
 - "create a walkthrough for the changes"
 - "explain the changes made in this task"
 `.trim(),
-  tools: ["readFile", "globFiles", "listFiles", "searchFiles", "writeToFile"],
+  tools: [
+    "readFile",
+    "globFiles",
+    "listFiles",
+    "searchFiles",
+    "writeToFile(pochi://-/walkthrough.md)",
+  ],
   systemPrompt: `
 You are the **Lead Technical Documenter**. Your mission is to analyze the changes made in the current task and create clear, concise, and educational walkthroughs for developers.
 
