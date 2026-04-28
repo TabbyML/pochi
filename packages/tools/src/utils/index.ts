@@ -144,6 +144,11 @@ export function compileToolPolicies(
     };
   }
 
+  const webFetchPolicy = compileWebFetchDomainPolicy(tools);
+  if (webFetchPolicy) {
+    policies.webFetch = webFetchPolicy;
+  }
+
   for (const toolName of [
     "readFile",
     "writeToFile",
@@ -157,6 +162,45 @@ export function compileToolPolicies(
   }
 
   return Object.keys(policies).length > 0 ? policies : undefined;
+}
+
+function compileWebFetchDomainPolicy(tools: ToolSpecInput[] | undefined) {
+  if (!tools?.some((tool) => parseToolSpec(tool).name === "webFetch")) {
+    return undefined;
+  }
+
+  const rules = getToolRules(tools, "webFetch");
+  if (!rules) {
+    return undefined;
+  }
+
+  return {
+    kind: "domain-pattern",
+    patterns: rules.map(parseWebFetchDomainRule),
+  } as const;
+}
+
+function parseWebFetchDomainRule(rule: string): string {
+  const trimmedRule = rule.trim();
+  const domainPrefix = "domain:";
+
+  if (!trimmedRule.toLowerCase().startsWith(domainPrefix)) {
+    throw new Error(
+      `Invalid webFetch rule "${rule}". Use webFetch(domain:example.com).`,
+    );
+  }
+
+  const domainPattern = normalizeDomainPattern(
+    trimmedRule.slice(domainPrefix.length),
+  );
+
+  if (!domainPattern) {
+    throw new Error(
+      `Invalid webFetch rule "${rule}". Use webFetch(domain:example.com).`,
+    );
+  }
+
+  return domainPattern;
 }
 
 function compilePathToolPolicy(
@@ -293,6 +337,20 @@ export function validateToolPolicy(
     return;
   }
 
+  if (toolName === "webFetch") {
+    const rawUrl =
+      typeof input === "object" && input !== null && "url" in input
+        ? (input as { url?: unknown }).url
+        : undefined;
+
+    if (typeof rawUrl !== "string") {
+      return;
+    }
+
+    validateDomainPatternPolicy(rawUrl, policies?.webFetch);
+    return;
+  }
+
   if (
     toolName === "readFile" ||
     toolName === "writeToFile" ||
@@ -341,6 +399,39 @@ function validatePathPatternPolicy(
   }
 }
 
+function validateDomainPatternPolicy(
+  inputUrl: string,
+  policy:
+    | {
+        kind: "domain-pattern";
+        patterns: string[];
+      }
+    | undefined,
+): void {
+  if (!policy) {
+    return;
+  }
+
+  let hostname: string;
+  try {
+    hostname = normalizeDomainPattern(new URL(inputUrl).hostname);
+  } catch {
+    return;
+  }
+
+  const matched = policy.patterns.some((pattern) =>
+    minimatch(hostname, normalizeDomainPattern(pattern), {
+      nocase: true,
+    }),
+  );
+
+  if (!matched) {
+    throw new Error(
+      `URL domain is not allowed by the configured webFetch domain rules. Allowed domain patterns: ${policy.patterns.join(", ")}`,
+    );
+  }
+}
+
 function normalizePathForRuleMatch(
   inputPath: string,
   options: { cwd: string },
@@ -371,4 +462,8 @@ function normalizeWorkspacePathForRuleMatch(
 
 function normalizePattern(input: string): string {
   return input.replace(/\\/g, "/");
+}
+
+function normalizeDomainPattern(input: string): string {
+  return input.trim().replace(/\.$/, "").toLowerCase();
 }
