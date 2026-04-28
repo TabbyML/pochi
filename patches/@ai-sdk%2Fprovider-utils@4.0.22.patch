@@ -1,0 +1,28 @@
+diff --git a/dist/index.js b/dist/index.js
+index 577fe6d5d7743515fb5d25e74e88def6b450f178..06fbd37f363d756a51a9a1d73efbe79cfd902870 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -2261,7 +2261,8 @@ function zod4Schema(zodSchema2, options) {
+       z4.toJSONSchema(zodSchema2, {
+         target: "draft-7",
+         io: "input",
+-        reused: useReferences ? "ref" : "inline"
++        reused: useReferences ? "ref" : "inline",
++        unrepresentable: 'any',
+       })
+     ),
+     {
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 72a9901a6c39b58da5f51ce833e28f5b3557dd16..1aad0b205b8dd2191023f7dac032c1ed71001643 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -2170,7 +2170,8 @@ function zod4Schema(zodSchema2, options) {
+       z4.toJSONSchema(zodSchema2, {
+         target: "draft-7",
+         io: "input",
+-        reused: useReferences ? "ref" : "inline"
++        reused: useReferences ? "ref" : "inline",
++        unrepresentable: 'any',
+       })
+     ),
+     {

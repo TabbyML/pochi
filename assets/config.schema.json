@@ -53,7 +53,7 @@
         "type": "string"
       },
       "additionalProperties": {
-        "anyOf": [
+        "oneOf": [
           {
             "type": "object",
             "properties": {
@@ -283,7 +283,7 @@
                 "const": "google-vertex-tuning"
               },
               "vertex": {
-                "anyOf": [
+                "oneOf": [
                   {
                     "type": "object",
                     "properties": {
@@ -344,8 +344,8 @@
                         "type": "string"
                       },
                       "timeout": {
-                        "description": "Timeout in milliseconds when requesting model api",
-                        "type": "number"
+                        "type": "number",
+                        "description": "Timeout in milliseconds when requesting model api"
                       }
                     },
                     "required": [

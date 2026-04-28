@@ -10,7 +10,7 @@ import type {
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { FinishReason, InferUITools, UIMessage } from "ai";
-import z from "zod/v4";
+import z from "zod";
 import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 

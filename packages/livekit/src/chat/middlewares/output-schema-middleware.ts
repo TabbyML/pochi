@@ -7,7 +7,7 @@ import { safeParseJSON } from "@ai-sdk/provider-utils";
 import type { PochiProviderOptions } from "@getpochi/common";
 import { attemptCompletionSchema } from "@getpochi/tools";
 import { InvalidToolInputError, Output, generateText } from "ai";
-import z from "zod/v4";
+import z from "zod";
 
 export function createOutputSchemaMiddleware(
   taskId: string,

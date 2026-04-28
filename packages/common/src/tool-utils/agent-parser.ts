@@ -2,7 +2,7 @@ import * as path from "node:path";
 import { remark } from "remark";
 import remarkFrontmatter from "remark-frontmatter";
 import { matter } from "vfile-matter";
-import z from "zod/v4";
+import z from "zod";
 import { builtInAgents, toErrorMessage } from "../base";
 import type { CustomAgentFile } from "../vscode-webui-bridge";
 import type {

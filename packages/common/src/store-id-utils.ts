@@ -1,6 +1,6 @@
 import { base58_to_binary, binary_to_base58 } from "base58-js";
 import * as jose from "jose";
-import z from "zod/v4";
+import z from "zod";
 
 export const StoreId = z.object({
   sub: z.string(),

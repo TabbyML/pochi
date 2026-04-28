@@ -9,7 +9,7 @@ import { finished } from "node:stream/promises";
 import { Command, Option } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import * as commander from "commander";
-import z from "zod/v4";
+import z from "zod";
 
 // Register the vendor
 import "@getpochi/vendor-tabby";
