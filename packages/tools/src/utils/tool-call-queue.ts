@@ -1,4 +1,3 @@
-import type { CustomAgent } from "../new-task";
 import {
   BatchExecutionError,
   BatchExecutionErrorMessages,
@@ -6,11 +5,6 @@ import {
   type BatchedToolCallCancelReason,
   executeToolCalls,
 } from "./batch-utils";
-
-export type ToolCallQueueOptions = {
-  getCustomAgents?: () => CustomAgent[] | undefined;
-  concurrencyLimit?: number;
-};
 
 /**
  * Queue for executing BatchedToolCalls sequentially (with internal concurrency
@@ -21,8 +15,6 @@ export class ToolCallQueue {
   private queue: BatchedToolCall[] = [];
   private processing = false;
   private abortController: AbortController | null = null;
-
-  constructor(private readonly options: ToolCallQueueOptions = {}) {}
 
   enqueue(item: BatchedToolCall) {
     const removeFromQueue = () => {
@@ -84,7 +76,6 @@ export class ToolCallQueue {
       try {
         await executeToolCalls({
           toolCalls: queue,
-          customAgents: this.options.getCustomAgents?.(),
           abortSignal: this.abortController?.signal,
         });
       } catch (error) {

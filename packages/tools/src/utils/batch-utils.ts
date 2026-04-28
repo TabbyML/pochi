@@ -1,5 +1,4 @@
 import { MaxToolCallConcurrency } from "../constants";
-import type { CustomAgent } from "../new-task";
 import { isReadonlyToolCall } from "./readonly-constraints-validation";
 
 export type BatchedToolCallCancelReason =
@@ -52,14 +51,6 @@ export class BatchExecutionError extends Error {
   }
 }
 
-function isSafeToBatchNewTask(
-  input: Record<string, unknown>,
-  customAgents: CustomAgent[] | undefined,
-): boolean {
-  if (input.runAsync === true) return true;
-  return isReadonlyToolCall("newTask", input, customAgents);
-}
-
 /**
  * Returns `true` if the tool call can share a concurrent microbatch without
  * becoming a barrier for subsequent batches.
@@ -67,22 +58,16 @@ function isSafeToBatchNewTask(
  * This is intentionally broader than `isReadonlyToolCall`:
  * - read-only tool calls are safe to batch;
  * - fire-and-forget tools like `startBackgroundJob` are also safe to batch;
- * - `newTask({ runAsync: true })` is safe to batch because completion only
- *   acknowledges task creation, not the background work itself.
+ * - `newTask` is safe to batch because completion acknowledges task creation,
+ *   while spawned work executes out-of-band.
  */
 export function isSafeToBatchToolCall(
   toolName: string,
   input: unknown,
-  customAgents?: CustomAgent[],
 ): boolean {
-  if (isReadonlyToolCall(toolName, input, customAgents)) return true;
+  if (toolName === "newTask") return true;
 
-  if (toolName === "newTask") {
-    return isSafeToBatchNewTask(
-      (input as Record<string, unknown>) ?? {},
-      customAgents,
-    );
-  }
+  if (isReadonlyToolCall(toolName, input)) return true;
 
   if (toolName === "startBackgroundJob") return true;
 
@@ -97,19 +82,12 @@ export function isSafeToBatchToolCall(
  *
  * Batches execute sequentially; batch N+1 only starts after N fully completes.
  */
-export function partitionToolCalls(
-  items: BatchedToolCall[],
-  customAgents?: CustomAgent[],
-): ToolCallBatch[] {
+export function partitionToolCalls(items: BatchedToolCall[]): ToolCallBatch[] {
   const batches: ToolCallBatch[] = [];
   let currentConcurrentBatch: BatchedToolCall[] = [];
 
   for (const item of items) {
-    const isConcurrencySafe = isSafeToBatchToolCall(
-      item.toolName,
-      item.input,
-      customAgents,
-    );
+    const isConcurrencySafe = isSafeToBatchToolCall(item.toolName, item.input);
 
     if (isConcurrencySafe) {
       currentConcurrentBatch.push(item);
@@ -173,14 +151,12 @@ export async function runConcurrentBatch(
  */
 export async function executeToolCalls({
   toolCalls,
-  customAgents,
   abortSignal,
 }: {
   toolCalls: BatchedToolCall[];
-  customAgents?: CustomAgent[];
   abortSignal?: AbortSignal;
 }): Promise<void> {
-  const batches = partitionToolCalls(toolCalls, customAgents);
+  const batches = partitionToolCalls(toolCalls);
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];

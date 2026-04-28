@@ -591,9 +591,7 @@ export class TaskRunner {
       return "next" as const;
     }
 
-    const queue = new ToolCallQueue({
-      getCustomAgents: () => this.toolCallOptions.customAgents,
-    });
+    const queue = new ToolCallQueue();
 
     for (const toolCall of toolCalls) {
       queue.enqueue({
