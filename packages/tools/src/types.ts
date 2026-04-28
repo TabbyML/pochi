@@ -59,6 +59,10 @@ export interface CompiledToolPolicies {
     kind: "domain-pattern";
     patterns: string[];
   };
+  webSearch?: {
+    kind: "domain-pattern";
+    patterns: string[];
+  };
   readFile?: {
     kind: "path-pattern";
     patterns: string[];
