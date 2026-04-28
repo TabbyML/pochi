@@ -36,9 +36,9 @@ describe("isSafeToBatchToolCall", () => {
     expect(isSafeToBatchToolCall("newTask", { runAsync: true })).toBe(true);
   });
 
-  it("returns false for newTask without runAsync", () => {
+  it("returns true for newTask without runAsync", () => {
     expect(isSafeToBatchToolCall("newTask", { agentType: "default" })).toBe(
-      false,
+      true,
     );
   });
 

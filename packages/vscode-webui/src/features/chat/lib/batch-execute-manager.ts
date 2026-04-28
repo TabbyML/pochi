@@ -1,10 +1,7 @@
 import {
   type BatchedToolCall,
-  type CustomAgent,
-  MaxToolCallConcurrency,
   type ToolCallCancelReason,
   ToolCallQueue,
-  type ToolCallQueueOptions,
 } from "@getpochi/tools";
 
 /**
@@ -20,14 +17,6 @@ import {
  */
 export class BatchExecuteManager {
   private readonly queues = new Map<string, ToolCallQueue>();
-  private readonly getDefaultCustomAgents: () => CustomAgent[] | undefined;
-
-  constructor(
-    customAgents?: CustomAgent[] | (() => CustomAgent[] | undefined),
-  ) {
-    this.getDefaultCustomAgents =
-      typeof customAgents === "function" ? customAgents : () => customAgents;
-  }
 
   /** Enqueue a tool call into the queue for `taskId`. */
   enqueue(taskId: string, item: BatchedToolCall) {
@@ -45,17 +34,10 @@ export class BatchExecuteManager {
     this.queues.get(taskId)?.abort(reason);
   }
 
-  private getOrCreateQueue(
-    taskId: string,
-    options?: ToolCallQueueOptions,
-  ): ToolCallQueue {
+  private getOrCreateQueue(taskId: string): ToolCallQueue {
     let queue = this.queues.get(taskId);
     if (!queue) {
-      queue = new ToolCallQueue({
-        getCustomAgents:
-          options?.getCustomAgents ?? this.getDefaultCustomAgents,
-        concurrencyLimit: options?.concurrencyLimit ?? MaxToolCallConcurrency,
-      });
+      queue = new ToolCallQueue();
       this.queues.set(taskId, queue);
     }
     return queue;
