@@ -12,6 +12,7 @@ import type { useLiveChatKit } from "@getpochi/livekit/react";
 import type {
   BatchedToolCall,
   BatchedToolCallResult,
+  CompiledToolPolicies,
   ToolCallCancelReason,
 } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -33,7 +34,7 @@ type CreateLifecycleToolCallAdapterOptions = {
   executeOptions: {
     contentType?: string[];
     builtinSubAgentInfo?: BuiltinSubAgentInfo;
-    executeCommandWhitelist?: string[];
+    toolPolicies?: CompiledToolPolicies;
     taskId?: string;
   };
 };
@@ -45,7 +46,7 @@ type CreateExecutorToolCallAdapterOptions = {
   abortSignal: AbortSignal;
   contentType?: string[];
   builtinSubAgentInfo?: BuiltinSubAgentInfo;
-  executeCommandWhitelist?: string[];
+  toolPolicies?: CompiledToolPolicies;
   addToolOutput: ReturnType<typeof useChat>["addToolOutput"];
   toolCallStatusRegistry: ToolCallStatusRegistry;
 };
@@ -134,7 +135,7 @@ export function createSubtaskBatchedToolCall({
   abortSignal,
   contentType,
   builtinSubAgentInfo,
-  executeCommandWhitelist,
+  toolPolicies,
   addToolOutput,
   toolCallStatusRegistry,
 }: CreateExecutorToolCallAdapterOptions): BatchedToolCall {
@@ -162,7 +163,7 @@ export function createSubtaskBatchedToolCall({
             abortSignal: ThreadAbortSignal.serialize(abortSignal),
             contentType,
             builtinSubAgentInfo,
-            executeCommandWhitelist,
+            toolPolicies,
             storeId,
             taskId: uid,
           },

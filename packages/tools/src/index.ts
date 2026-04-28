@@ -23,7 +23,13 @@ import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
-export type { ToolFunctionType, IFileStateCache, IFileState } from "./types";
+export type {
+  ToolFunctionType,
+  IFileStateCache,
+  IFileState,
+  CompiledToolPolicy,
+  CompiledToolPolicies,
+} from "./types";
 export type {
   AskFollowupQuestionInput,
   Question,
@@ -48,10 +54,13 @@ export {
   type ParsedToolSpec,
   type ToolSpecInput,
   getAllowedToolNames,
-  getToolArgs,
+  compileToolPolicies,
+  getToolRules,
   normalizeToolSpecs,
   parseToolSpec,
-  validateExecuteCommandWhitelist,
+  validateCommandPatternPolicy,
+  validateToolPolicy,
+  validateExecuteCommandRules,
 } from "./utils";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";

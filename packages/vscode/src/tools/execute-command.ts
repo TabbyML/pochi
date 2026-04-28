@@ -6,11 +6,7 @@ import {
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
-import {
-  type ClientTools,
-  type ToolFunctionType,
-  validateExecuteCommandWhitelist,
-} from "@getpochi/tools";
+import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
 import {
   ThreadSignal,
@@ -34,14 +30,7 @@ export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
   { command, cwd = ".", timeout },
-  {
-    abortSignal,
-    cwd: workspaceDir,
-    envs,
-    toolCallId,
-    taskId,
-    executeCommandWhitelist,
-  },
+  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
 ) => {
   const defaultTimeout = 120;
   if (!command) {
@@ -52,10 +41,6 @@ export const executeCommand: ToolFunctionType<
     cwd = path.normalize(cwd);
   } else {
     cwd = path.normalize(path.join(workspaceDir, cwd));
-  }
-
-  if (executeCommandWhitelist && executeCommandWhitelist.length > 0) {
-    validateExecuteCommandWhitelist(command, executeCommandWhitelist);
   }
 
   const output = signal<ExecuteCommandResult>({

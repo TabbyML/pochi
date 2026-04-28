@@ -42,6 +42,44 @@ export interface IFileStateCache {
   clear(): void;
 }
 
+export type CompiledToolPolicy =
+  | { kind: "unrestricted" }
+  | { kind: "command-pattern"; patterns: string[] }
+  | {
+      kind: "path-pattern";
+      patterns: string[];
+    };
+
+export interface CompiledToolPolicies {
+  executeCommand?:
+    | { kind: "unrestricted" }
+    | { kind: "command-pattern"; patterns: string[] };
+  readFile?:
+    | { kind: "unrestricted" }
+    | {
+        kind: "path-pattern";
+        patterns: string[];
+      };
+  writeToFile?:
+    | { kind: "unrestricted" }
+    | {
+        kind: "path-pattern";
+        patterns: string[];
+      };
+  applyDiff?:
+    | { kind: "unrestricted" }
+    | {
+        kind: "path-pattern";
+        patterns: string[];
+      };
+  editNotebook?:
+    | { kind: "unrestricted" }
+    | {
+        kind: "path-pattern";
+        patterns: string[];
+      };
+}
+
 export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
   options: ToolExecutionOptions & {
@@ -49,7 +87,6 @@ export type ToolFunctionType<T extends Tool> = (
     contentType?: string[];
     envs?: Record<string, string>;
     taskId?: string;
-    executeCommandWhitelist?: string[];
     fileStateCache?: IFileStateCache;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;

@@ -90,6 +90,17 @@ export async function parseAgentFile(
       .filter((tool) => tool.length > 0);
   }
 
+  const invalidTool = tools?.find((tool) => !isValidToolDeclaration(tool));
+  if (invalidTool) {
+    return {
+      name: defaultName,
+      filePath,
+      error: "validationError",
+      message: `Invalid tool declaration \"${invalidTool}\". Use one declaration per tool rule, for example: readFile(src/**), readFile(pochi://-/plan.md).`,
+      systemPrompt,
+    } satisfies InvalidCustomAgentFile;
+  }
+
   const agentName = frontmatterData.name || defaultName;
 
   if (builtInAgents.some((agent) => agent.name === agentName)) {
@@ -118,8 +129,8 @@ function splitTools(input: string): string[] {
   let depth = 0;
   let start = 0;
 
-  for (let i = 0; i < input.length; i++) {
-    const ch = input[i];
+  for (let index = 0; index < input.length; index++) {
+    const ch = input[index];
     if (ch === "(") {
       depth++;
       continue;
@@ -129,11 +140,11 @@ function splitTools(input: string): string[] {
       continue;
     }
     if (ch === "," && depth === 0) {
-      const token = input.slice(start, i).trim();
+      const token = input.slice(start, index).trim();
       if (token.length > 0) {
         parts.push(token);
       }
-      start = i + 1;
+      start = index + 1;
     }
   }
 
@@ -143,4 +154,40 @@ function splitTools(input: string): string[] {
   }
 
   return parts;
+}
+
+function isValidToolDeclaration(tool: string): boolean {
+  if (!tool.includes("(") && !tool.includes(")")) {
+    return true;
+  }
+
+  const openParenIndex = tool.indexOf("(");
+  if (openParenIndex <= 0 || tool.at(-1) !== ")") {
+    return false;
+  }
+
+  const scopedPart = tool.slice(openParenIndex + 1, -1);
+  if (scopedPart.includes(",")) {
+    return false;
+  }
+
+  let depth = 0;
+  for (let i = openParenIndex; i < tool.length; i++) {
+    const ch = tool[i];
+    if (ch === "(") {
+      depth++;
+      continue;
+    }
+    if (ch === ")") {
+      depth--;
+      if (depth < 0) {
+        return false;
+      }
+      if (depth === 0 && i !== tool.length - 1) {
+        return false;
+      }
+    }
+  }
+
+  return depth === 0;
 }

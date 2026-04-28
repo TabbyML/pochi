@@ -1,36 +1,43 @@
+import * as path from "node:path";
+import { minimatch } from "minimatch";
 import { parse } from "shell-quote";
+import type { CompiledToolPolicies } from "../types";
 
 export type ParsedToolSpec = {
   name: string;
-  args: string[];
+  rules: string[];
 };
 
 export type ToolSpecInput =
   | string
   | {
       name: string;
-      args?: string[];
+      rules?: string[];
     };
 
-function sanitizeArgs(args: string[] | undefined): string[] {
-  return (args ?? []).map((x) => x.trim()).filter((x) => x.length > 0);
+function sanitizeRules(rules: string[] | undefined): string[] {
+  return (rules ?? []).map((x) => x.trim()).filter((x) => x.length > 0);
 }
 
-function parsedSpecs(tools: ToolSpecInput[] | undefined): ParsedToolSpec[] {
+function parseToolSpecs(tools: ToolSpecInput[] | undefined): ParsedToolSpec[] {
   return (tools ?? [])
     .map((tool) => parseToolSpec(tool))
     .filter((tool) => tool.name.length > 0);
 }
 
 /**
- * Parse a tool declaration like "executeCommand(a,b)" into name and args.
- * parseToolSpec("newTask(explore)") // => { name: "newTask", args: ["explore"] }
+ * Parse a tool declaration such as "executeCommand(git status)".
+ *
+ * This helper only understands the top-level `toolName(rule)` shape used in
+ * custom agent tool configuration. String declarations may contain at most one
+ * rule value. If a caller needs multiple rule values, it should provide
+ * multiple declarations instead of `tool(a, b)`.
  */
 export function parseToolSpec(tool: ToolSpecInput): ParsedToolSpec {
   if (typeof tool !== "string") {
     return {
       name: tool.name.trim(),
-      args: sanitizeArgs(tool.args),
+      rules: sanitizeRules(tool.rules),
     };
   }
 
@@ -38,7 +45,7 @@ export function parseToolSpec(tool: ToolSpecInput): ParsedToolSpec {
   if (!trimmed) {
     return {
       name: "",
-      args: [],
+      rules: [],
     };
   }
 
@@ -46,29 +53,47 @@ export function parseToolSpec(tool: ToolSpecInput): ParsedToolSpec {
   if (!match) {
     return {
       name: trimmed,
-      args: [],
+      rules: [],
     };
   }
 
   return {
     name: match[1],
-    args: sanitizeArgs(match[2].split(",")),
+    rules: parseToolRules(trimmed, match[2]),
   };
+}
+
+function parseToolRules(tool: string, rawRule: string): string[] {
+  const rule = rawRule.trim();
+  if (!rule) {
+    return [];
+  }
+
+  if (rule.includes(",")) {
+    throw new Error(
+      `Invalid tool declaration "${tool}". Use one declaration per tool rule, for example: readFile(src/**), readFile(pochi://-/plan.md).`,
+    );
+  }
+
+  return [rule];
 }
 
 export function normalizeToolSpecs(
   tools: ToolSpecInput[] | undefined,
 ): ParsedToolSpec[] | undefined {
-  const normalized = parsedSpecs(tools);
+  const normalized = parseToolSpecs(tools);
 
   return normalized.length > 0 ? normalized : undefined;
 }
 
 /**
- * Get merged args for a tool name; undefined means unrestricted access.
- * getToolArgs(["executeCommand(agent-browser)", "executeCommand(npm)"], "executeCommand") // => ["agent-browser", "npm"]
+ * Collect the configured rules for a tool.
+ *
+ * Returning `undefined` means the tool is enabled without any policy
+ * restriction. Multiple rules can still be provided by repeating tool
+ * declarations or, for object-form specs, by passing multiple rules.
  */
-export function getToolArgs(
+export function getToolRules(
   tools: ToolSpecInput[] | undefined,
   toolName: string,
 ): string[] | undefined {
@@ -81,18 +106,15 @@ export function getToolArgs(
       continue;
     }
 
-    const args =
-      toolName === "executeCommand"
-        ? getExecuteCommandArgs(tool, parsed)
-        : parsed.args;
+    const rules = parsed.rules;
 
-    if (args.length === 0) {
+    if (rules.length === 0) {
       hasUnrestrictedTool = true;
       continue;
     }
 
-    for (const arg of args) {
-      allowed.add(arg);
+    for (const rule of rules) {
+      allowed.add(rule);
     }
   }
 
@@ -106,7 +128,58 @@ export function getToolArgs(
 export function getAllowedToolNames(
   tools: ToolSpecInput[] | undefined,
 ): Set<string> {
-  return new Set(parsedSpecs(tools).map((x) => x.name));
+  return new Set(parseToolSpecs(tools).map((x) => x.name));
+}
+
+export function compileToolPolicies(
+  tools: ToolSpecInput[] | undefined,
+): CompiledToolPolicies | undefined {
+  const executeCommandRules = getToolRules(tools, "executeCommand");
+  const policies: CompiledToolPolicies = {};
+
+  if (tools?.some((tool) => parseToolSpec(tool).name === "executeCommand")) {
+    policies.executeCommand = executeCommandRules
+      ? {
+          kind: "command-pattern",
+          patterns: executeCommandRules,
+        }
+      : {
+          kind: "unrestricted",
+        };
+  }
+
+  for (const toolName of [
+    "readFile",
+    "writeToFile",
+    "applyDiff",
+    "editNotebook",
+  ] as const) {
+    const policy = compilePathToolPolicy(tools, toolName);
+    if (policy) {
+      policies[toolName] = policy;
+    }
+  }
+
+  return Object.keys(policies).length > 0 ? policies : undefined;
+}
+
+function compilePathToolPolicy(
+  tools: ToolSpecInput[] | undefined,
+  toolName: "readFile" | "writeToFile" | "applyDiff" | "editNotebook",
+) {
+  if (!tools?.some((tool) => parseToolSpec(tool).name === toolName)) {
+    return undefined;
+  }
+
+  const rules = getToolRules(tools, toolName);
+  if (!rules) {
+    return { kind: "unrestricted" } as const;
+  }
+
+  return {
+    kind: "path-pattern",
+    patterns: rules,
+  } as const;
 }
 
 function splitCommandSegments(command: string): string[] {
@@ -174,43 +247,136 @@ function matchSegmentPattern(segment: string, pattern: string): boolean {
   return normalizedSegment === normalizedPattern;
 }
 
-export function validateExecuteCommandWhitelist(
+export function validateExecuteCommandRules(
   command: string,
-  whitelist: string[],
+  allowedPatterns: string[],
 ): void {
   const segments = splitCommandSegments(command);
 
   for (const segment of segments) {
-    const matched = whitelist.some((pattern) =>
+    const matched = allowedPatterns.some((pattern) =>
       matchSegmentPattern(segment, pattern),
     );
 
     if (!matched) {
       throw new Error(
-        `Command is not allowed by the configured command rules. Allowed command patterns: ${whitelist.join(", ")}`,
+        `Command is not allowed by the configured command rules. Allowed command patterns: ${allowedPatterns.join(", ")}`,
       );
     }
   }
 }
 
-function getExecuteCommandArgs(
-  tool: ToolSpecInput,
-  parsed: ParsedToolSpec,
-): string[] {
-  if (typeof tool !== "string") {
-    return parsed.args.length > 0 ? [parsed.args.join(",")] : [];
+export function validateCommandPatternPolicy(
+  command: string,
+  policy:
+    | { kind: "unrestricted" }
+    | { kind: "command-pattern"; patterns: string[] }
+    | undefined,
+): void {
+  if (!policy || policy.kind === "unrestricted") {
+    return;
   }
 
-  const trimmed = tool.trim();
-  if (trimmed === "executeCommand") {
-    return [];
+  validateExecuteCommandRules(command, policy.patterns);
+}
+
+export function validateToolPolicy(
+  toolName: string,
+  input: unknown,
+  policies: CompiledToolPolicies | undefined,
+  options: { cwd: string },
+): void {
+  if (toolName === "executeCommand") {
+    const command =
+      typeof input === "object" && input !== null && "command" in input
+        ? (input as { command?: unknown }).command
+        : undefined;
+
+    if (typeof command !== "string") {
+      return;
+    }
+
+    validateCommandPatternPolicy(command, policies?.executeCommand);
+    return;
   }
 
-  const match = trimmed.match(/^executeCommand\((.*)\)$/);
-  if (!match) {
-    return parsed.args;
+  if (
+    toolName === "readFile" ||
+    toolName === "writeToFile" ||
+    toolName === "applyDiff" ||
+    toolName === "editNotebook"
+  ) {
+    const rawPath =
+      typeof input === "object" && input !== null && "path" in input
+        ? (input as { path?: unknown }).path
+        : undefined;
+
+    if (typeof rawPath !== "string") {
+      return;
+    }
+
+    validatePathPatternPolicy(rawPath, policies?.[toolName], options);
+  }
+}
+
+function validatePathPatternPolicy(
+  inputPath: string,
+  policy:
+    | { kind: "unrestricted" }
+    | {
+        kind: "path-pattern";
+        patterns: string[];
+      }
+    | undefined,
+  options: { cwd: string },
+): void {
+  if (!policy || policy.kind === "unrestricted") {
+    return;
   }
 
-  const inner = match[1].trim();
-  return inner.length > 0 ? [inner] : [];
+  const pathForRuleMatch = normalizePathForRuleMatch(inputPath, options);
+  const matched = policy.patterns.some((pattern) => {
+    const normalizedPattern = normalizePattern(pattern);
+    return minimatch(pathForRuleMatch, normalizedPattern, {
+      nocase: true,
+    });
+  });
+
+  if (!matched) {
+    throw new Error(
+      `Path is not allowed by the configured path rules. Allowed path patterns: ${policy.patterns.join(", ")}`,
+    );
+  }
+}
+
+function normalizePathForRuleMatch(
+  inputPath: string,
+  options: { cwd: string },
+): string {
+  if (inputPath.startsWith("pochi://")) {
+    return normalizePattern(inputPath);
+  }
+
+  return normalizeWorkspacePathForRuleMatch(inputPath, options);
+}
+
+function normalizeWorkspacePathForRuleMatch(
+  inputPath: string,
+  options: { cwd: string },
+): string {
+  const resolvedPath = path.isAbsolute(inputPath)
+    ? path.resolve(inputPath)
+    : path.resolve(options.cwd, inputPath);
+  const relativePath = path.relative(options.cwd, resolvedPath);
+  const normalizedRelativePath = normalizePattern(relativePath);
+
+  if (normalizedRelativePath === "" || normalizedRelativePath === ".") {
+    return ".";
+  }
+
+  return normalizedRelativePath;
+}
+
+function normalizePattern(input: string): string {
+  return input.replace(/\\/g, "/");
 }

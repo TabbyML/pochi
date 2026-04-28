@@ -1,6 +1,10 @@
 import { toErrorMessage } from "@getpochi/common";
 import type { UITools } from "@getpochi/livekit";
-import type { ToolFunctionType } from "@getpochi/tools";
+import {
+  type CompiledToolPolicies,
+  type ToolFunctionType,
+  validateToolPolicy,
+} from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
 import type { ToolCallOptions } from "../types";
 import { applyDiff } from "./apply-diff";
@@ -48,7 +52,7 @@ export async function executeToolCall(
   abortSignal?: AbortSignal,
   contentType?: string[],
   envs?: Record<string, string>,
-  executeCommandWhitelist?: string[],
+  toolPolicies?: CompiledToolPolicies,
 ) {
   const toolName = getStaticToolName(tool);
 
@@ -56,6 +60,8 @@ export async function executeToolCall(
   const toolFunction = ToolMap[toolName];
   if (toolFunction) {
     try {
+      validateToolPolicy(toolName, tool.input, toolPolicies, { cwd });
+
       return await toolFunction(options)(tool.input, {
         messages: [],
         toolCallId: tool.toolCallId,
@@ -63,7 +69,6 @@ export async function executeToolCall(
         cwd,
         contentType,
         envs,
-        executeCommandWhitelist,
       });
     } catch (e) {
       if (e instanceof ExecuteCommandError) {

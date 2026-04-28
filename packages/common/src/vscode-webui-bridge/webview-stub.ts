@@ -1,3 +1,4 @@
+import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type { Environment } from "../base";
@@ -74,7 +75,7 @@ const VSCodeHostStub = {
       toolCallId: string;
       abortSignal: ThreadAbortSignalSerialization;
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
     },

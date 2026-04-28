@@ -10,6 +10,7 @@
   "dependencies": {
     "ai": "catalog:",
     "json-schema": "^0.4.0",
+    "minimatch": "catalog:",
     "shell-quote": "^1.8.3",
     "zod": "catalog:"
   },

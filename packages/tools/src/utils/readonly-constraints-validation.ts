@@ -1,5 +1,5 @@
 import { parse } from "shell-quote";
-import { getToolArgs, parseToolSpec } from ".";
+import { getToolRules, parseToolSpec } from ".";
 import { ToolsByPermission } from "../constants";
 import type { CustomAgent } from "../new-task";
 
@@ -395,9 +395,10 @@ function isReadonlyNewTask(
   const agent = customAgents?.find((a) => a.name === agentType);
   if (!agent || !agent.tools || agent.tools.length === 0) return false;
 
-  const executeCommandPatterns = getToolArgs(agent.tools, "executeCommand");
+  const executeCommandRules = getToolRules(agent.tools, "executeCommand");
   const isExecuteCommandReadonly =
-    executeCommandPatterns?.every((p) => checkReadOnlyConstraints(p)) ?? false;
+    executeCommandRules?.every((rule) => checkReadOnlyConstraints(rule)) ??
+    false;
 
   return agent.tools.every((toolSpec) => {
     const { name } = parseToolSpec(toolSpec);

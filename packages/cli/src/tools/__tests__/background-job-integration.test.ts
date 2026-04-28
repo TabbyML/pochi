@@ -11,6 +11,17 @@ import { NodeBlobStore } from "../../node-blob-store";
 import { FileStateCache } from "@getpochi/common/tool-utils";
 import os from "node:os";
 
+async function createAsyncTaskManager() {
+  const store = await createStorePromise({
+    adapter: makeAdapter({ storage: { type: "in-memory" } }),
+    schema: catalog.schema,
+    storeId: `test-${crypto.randomUUID()}`,
+    syncPayload: {},
+  });
+
+  return new AsyncSubTaskManager(store);
+}
+
 describe("executeToolCall with background jobs", () => {
   const testBlobStorage = path.join(os.tmpdir(), "pochi-test", "blobs");
 
@@ -134,5 +145,145 @@ describe("executeToolCall with background jobs", () => {
     const output = manager.readTaskOutput(taskId);
     expect(output?.status).toBe("completed");
     expect(output?.output).toBe(JSON.stringify(resultObject));
+  });
+
+  it("returns a tool error when file path policy validation fails", async () => {
+    const cwd = path.resolve(".");
+    const blobStore = new NodeBlobStore(testBlobStorage);
+
+    const toolCall: any = {
+      type: "tool-readFile",
+      toolCallId: "test-id",
+      toolName: "readFile",
+      input: {
+        path: "../secret.txt",
+      },
+    };
+
+    const result = (await executeToolCall(
+      toolCall,
+      {
+        rg: "rg",
+        backgroundJobManager: new BackgroundJobManager(),
+        asyncSubTaskManager: new AsyncSubTaskManager(
+          await createStorePromise({
+            adapter: makeAdapter({ storage: { type: "in-memory" } }),
+            schema: catalog.schema,
+            storeId: `test-${crypto.randomUUID()}`,
+            syncPayload: {},
+          }),
+        ),
+        fileSystem: {
+          readFile: async () => new Uint8Array(),
+          writeFile: async () => {},
+        },
+        blobStore,
+        fileStateCache: new FileStateCache(),
+      },
+      cwd,
+      undefined,
+      undefined,
+      undefined,
+      {
+        readFile: {
+          kind: "path-pattern",
+          patterns: ["src/**"],
+        },
+      },
+    )) as any;
+
+    expect(result.error).toContain(
+      "Path is not allowed by the configured path rules.",
+    );
+  });
+
+  it("allows file reads when the workspace path matches configured path rules", async () => {
+    const cwd = path.resolve(".");
+    const blobStore = new NodeBlobStore(testBlobStorage);
+    const readFile = async () => new TextEncoder().encode("hello from src");
+
+    const toolCall: any = {
+      type: "tool-readFile",
+      toolCallId: "test-id",
+      toolName: "readFile",
+      input: {
+        path: "src/index.ts",
+      },
+    };
+
+    const result = (await executeToolCall(
+      toolCall,
+      {
+        rg: "rg",
+        backgroundJobManager: new BackgroundJobManager(),
+        asyncSubTaskManager: await createAsyncTaskManager(),
+        fileSystem: {
+          readFile,
+          writeFile: async () => {},
+        },
+        blobStore,
+        fileStateCache: new FileStateCache(),
+      },
+      cwd,
+      undefined,
+      undefined,
+      undefined,
+      {
+        readFile: {
+          kind: "path-pattern",
+          patterns: ["src/**"],
+        },
+      },
+    )) as any;
+
+    expect(result).toEqual({
+      content: "hello from src",
+      isTruncated: false,
+    });
+  });
+
+  it("allows file reads when the virtual path matches configured path rules", async () => {
+    const cwd = path.resolve(".");
+    const blobStore = new NodeBlobStore(testBlobStorage);
+    const readFile = async () => new TextEncoder().encode("hello from pochi");
+
+    const toolCall: any = {
+      type: "tool-readFile",
+      toolCallId: "test-id",
+      toolName: "readFile",
+      input: {
+        path: "pochi://-/plan.md",
+      },
+    };
+
+    const result = (await executeToolCall(
+      toolCall,
+      {
+        rg: "rg",
+        backgroundJobManager: new BackgroundJobManager(),
+        asyncSubTaskManager: await createAsyncTaskManager(),
+        fileSystem: {
+          readFile,
+          writeFile: async () => {},
+        },
+        blobStore,
+        fileStateCache: new FileStateCache(),
+      },
+      cwd,
+      undefined,
+      undefined,
+      undefined,
+      {
+        readFile: {
+          kind: "path-pattern",
+          patterns: ["pochi://-/plan.md"],
+        },
+      },
+    )) as any;
+
+    expect(result).toEqual({
+      content: "hello from pochi",
+      isTruncated: false,
+    });
   });
 });

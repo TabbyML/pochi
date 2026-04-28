@@ -13,7 +13,7 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 
-import type { ClientTools } from "@getpochi/tools";
+import type { ClientTools, CompiledToolPolicies } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -122,7 +122,7 @@ export interface ToolCallLifeCycle {
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       taskId?: string;
     },
   ): void;
@@ -197,7 +197,7 @@ export class ManagedToolCallLifeCycle
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       taskId?: string;
     },
   ) {
@@ -216,7 +216,7 @@ export class ManagedToolCallLifeCycle
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
         builtinSubAgentInfo: options?.builtinSubAgentInfo,
-        executeCommandWhitelist: options?.executeCommandWhitelist,
+        toolPolicies: options?.toolPolicies,
         storeId: this.store.storeId,
         taskId: options?.taskId ?? "",
       });
