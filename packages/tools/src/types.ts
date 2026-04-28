@@ -45,12 +45,20 @@ export interface IFileStateCache {
 export type CompiledToolPolicy =
   | { kind: "command-pattern"; patterns: string[] }
   | {
+      kind: "domain-pattern";
+      patterns: string[];
+    }
+  | {
       kind: "path-pattern";
       patterns: string[];
     };
 
 export interface CompiledToolPolicies {
   executeCommand?: { kind: "command-pattern"; patterns: string[] };
+  webFetch?: {
+    kind: "domain-pattern";
+    patterns: string[];
+  };
   readFile?: {
     kind: "path-pattern";
     patterns: string[];

@@ -233,3 +233,70 @@ describe("path pattern policies", () => {
     ).toThrow();
   });
 });
+
+describe("webFetch domain policies", () => {
+  it("should compile domain pattern rules for webFetch", () => {
+    const policies = compileToolPolicies([
+      "webFetch(domain:example.com)",
+      "webFetch(domain:*.tabbyml.com)",
+    ]);
+
+    expect(policies?.webFetch).toEqual({
+      kind: "domain-pattern",
+      patterns: ["example.com", "*.tabbyml.com"],
+    });
+  });
+
+  it("should reject invalid webFetch rule declarations", () => {
+    expect(() => compileToolPolicies(["webFetch(example.com)"])).toThrow(
+      'Invalid webFetch rule "example.com". Use webFetch(domain:example.com).',
+    );
+  });
+
+  it("should allow webFetch URLs matching configured domain rules", () => {
+    const policies = compileToolPolicies([
+      "webFetch(domain:example.com)",
+      "webFetch(domain:*.tabbyml.com)",
+    ]);
+
+    expect(() =>
+      validateToolPolicy(
+        "webFetch",
+        {
+          url: "https://example.com/docs",
+        },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      validateToolPolicy(
+        "webFetch",
+        {
+          url: "https://api.tabbyml.com/v1/health",
+        },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+  });
+
+  it("should reject webFetch URLs outside configured domain rules", () => {
+    const policies = compileToolPolicies([
+      "webFetch(domain:example.com)",
+      "webFetch(domain:*.tabbyml.com)",
+    ]);
+
+    expect(() =>
+      validateToolPolicy(
+        "webFetch",
+        {
+          url: "https://google.com",
+        },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow("URL domain is not allowed by the configured webFetch domain rules.");
+  });
+});

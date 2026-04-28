@@ -198,6 +198,7 @@
       "dependencies": {
         "ai": "catalog:",
         "json-schema": "^0.4.0",
+        "minimatch": "catalog:",
         "shell-quote": "^1.8.3",
         "zod": "catalog:",
       },
@@ -481,7 +482,6 @@
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
     "@ai-sdk/provider-utils@4.0.22": "patches/@ai-sdk%2Fprovider-utils@4.0.22.patch",
     "streamdown@1.6.10": "patches/streamdown@1.6.10.patch",
-    "@livestore/common-cf@0.4.0-dev.22": "patches/@livestore%2Fcommon-cf@0.4.0-dev.22.patch",
     "jsonc-parser@3.3.1": "patches/jsonc-parser@3.3.1.patch",
     "@livestore/common-cf@0.4.0-dev.22": "patches/@livestore%2Fcommon-cf@0.4.0-dev.22.patch",
     "tslog@4.9.3": "patches/tslog@4.9.3.patch",
