@@ -1,3 +1,4 @@
+import type { ToolSpecInput } from "@getpochi/tools";
 import type { ActiveSelection } from "./message";
 
 export type FileUIPart = {
@@ -119,6 +120,6 @@ export interface TaskMemoryState {
 }
 
 export interface AsyncAgentState {
-  allowedTools?: readonly string[];
+  tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
 }

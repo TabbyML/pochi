@@ -202,7 +202,7 @@ export class TaskDataStore {
         taskId,
         hasAsyncAgentState: asyncAgentState !== undefined,
         parentTaskId: asyncAgentState?.parentTaskId,
-        allowedTools: asyncAgentState?.allowedTools?.length,
+        tools: asyncAgentState?.tools?.length,
       },
       "getAsyncAgentState",
     );
@@ -218,7 +218,7 @@ export class TaskDataStore {
       {
         taskId,
         parentTaskId: asyncAgentState.parentTaskId,
-        allowedTools: asyncAgentState.allowedTools?.length,
+        tools: asyncAgentState.tools?.length,
       },
       "setAsyncAgentState",
     );

@@ -21,7 +21,12 @@ import { useChat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
+import {
+  type Todo,
+  type ToolSpecInput,
+  compileToolPolicies,
+  getAllowedToolNames,
+} from "@getpochi/tools";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BatchExecuteManager } from "../lib/batch-execute-manager";
@@ -53,7 +58,7 @@ export function AsyncAgentWorker({
         isLoading,
         hasAsyncAgentState: asyncAgentState !== undefined,
         parentTaskId: asyncAgentState?.parentTaskId,
-        allowedTools: asyncAgentState?.allowedTools?.length,
+        tools: asyncAgentState?.tools?.length,
       },
       "Async agent state updated",
     );
@@ -64,7 +69,7 @@ export function AsyncAgentWorker({
   return (
     <AsyncAgentWorkerInner
       taskId={taskId}
-      allowedTools={asyncAgentState?.allowedTools}
+      tools={asyncAgentState?.tools}
       parentTaskId={asyncAgentState?.parentTaskId}
       batchExecuteManager={batchExecuteManager}
     />
@@ -73,11 +78,11 @@ export function AsyncAgentWorker({
 
 function AsyncAgentWorkerInner({
   taskId,
-  allowedTools,
+  tools,
   parentTaskId,
   batchExecuteManager,
 }: AsyncAgentWorkerProps & {
-  allowedTools?: readonly string[];
+  tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
 }) {
   const store = useDefaultStore();
@@ -97,8 +102,12 @@ function AsyncAgentWorkerInner({
   );
   const chatStatusRef = useRef<string | null>(null);
   const allowedToolsSet = useMemo(
-    () => (allowedTools ? new Set(allowedTools) : undefined),
-    [allowedTools],
+    () => (tools ? getAllowedToolNames([...tools]) : undefined),
+    [tools],
+  );
+  const toolPolicies = useMemo(
+    () => (tools ? compileToolPolicies([...tools]) : undefined),
+    [tools],
   );
 
   const writeToolOutput = useCallback(
@@ -247,7 +256,7 @@ function AsyncAgentWorkerInner({
             taskId,
             toolName: toolCall.toolName,
             toolCallId: toolCall.toolCallId,
-            allowedTools: allowedTools?.length,
+            allowedToolCount: allowedToolsSet.size,
             rejectionCount: toolRejectionCountRef.current,
           },
           "Async agent tool call rejected by allow-list",
@@ -293,6 +302,7 @@ function AsyncAgentWorkerInner({
           parentTaskId,
           storeId: store.storeId,
           abortSignal: abortController.current.signal,
+          toolPolicies,
           addToolOutput: adapterAddToolOutput,
         }),
       );

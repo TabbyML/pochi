@@ -1,5 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
+import { type ToolSpecInput, parseToolSpec } from "@getpochi/tools";
 
 const logger = getLogger("CreateForkAgent");
 
@@ -37,10 +38,10 @@ export interface CreateForkAgentOptions {
   parentMessages: Message[];
   parentCwd: string | undefined;
   directive: string;
-  allowedTools?: readonly string[];
+  tools?: readonly ToolSpecInput[];
   setAsyncAgentState?: (
     taskId: string,
-    state: { allowedTools?: readonly string[]; parentTaskId?: string },
+    state: { tools?: readonly ToolSpecInput[]; parentTaskId?: string },
   ) => Promise<void> | void;
 }
 
@@ -53,10 +54,7 @@ export async function createForkAgent(
     options.directive,
   ) as Message[];
 
-  if (
-    (options.allowedTools || options.parentTaskId) &&
-    !options.setAsyncAgentState
-  ) {
+  if ((options.tools || options.parentTaskId) && !options.setAsyncAgentState) {
     throw new Error("setAsyncAgentState is required for async agent state");
   }
 
@@ -68,23 +66,21 @@ export async function createForkAgent(
       parentCwd: options.parentCwd,
       parentMessages: options.parentMessages.length,
       initMessages: initMessages.length,
-      allowedTools: options.allowedTools?.length,
+      tools: options.tools?.length,
     },
     "Creating async fork agent",
   );
 
-  if (options.allowedTools || options.parentTaskId) {
+  if (options.tools || options.parentTaskId) {
     const asyncAgentState = {
       parentTaskId: options.parentTaskId,
-      allowedTools: options.allowedTools
-        ? Array.from(new Set([...options.allowedTools, "attemptCompletion"]))
-        : undefined,
+      tools: options.tools ? ensureAttemptCompletion(options.tools) : undefined,
     };
     logger.debug(
       {
         taskId,
         parentTaskId: asyncAgentState.parentTaskId,
-        allowedTools: asyncAgentState.allowedTools?.length,
+        tools: asyncAgentState.tools?.length,
       },
       "Persisting async fork agent state",
     );
@@ -111,4 +107,13 @@ export async function createForkAgent(
     cwd: options.parentCwd,
     label: options.label,
   };
+}
+
+function ensureAttemptCompletion(
+  tools: readonly ToolSpecInput[],
+): readonly ToolSpecInput[] {
+  const hasAttemptCompletion = tools.some(
+    (tool) => parseToolSpec(tool).name === "attemptCompletion",
+  );
+  return hasAttemptCompletion ? tools : [...tools, "attemptCompletion"];
 }

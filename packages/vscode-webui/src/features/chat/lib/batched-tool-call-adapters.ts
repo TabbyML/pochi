@@ -57,6 +57,7 @@ type CreateAsyncAgentToolCallAdapterOptions = {
   parentTaskId?: string;
   storeId: string;
   abortSignal: AbortSignal;
+  toolPolicies?: CompiledToolPolicies;
   addToolOutput: (args: {
     tool: string;
     toolCallId: string;
@@ -311,6 +312,7 @@ export function createAsyncAgentBatchedToolCall({
   parentTaskId,
   storeId,
   abortSignal,
+  toolPolicies,
   addToolOutput,
 }: CreateAsyncAgentToolCallAdapterOptions): BatchedToolCall {
   return {
@@ -331,6 +333,7 @@ export function createAsyncAgentBatchedToolCall({
           {
             toolCallId: toolCall.toolCallId,
             abortSignal: ThreadAbortSignal.serialize(abortSignal),
+            toolPolicies,
             storeId,
             taskId,
             fileStateCacheSourceTaskId: parentTaskId,

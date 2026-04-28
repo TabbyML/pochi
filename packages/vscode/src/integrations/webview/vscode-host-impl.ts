@@ -1276,7 +1276,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           {
             taskId,
             parentTaskId: state.parentTaskId,
-            allowedTools: state.allowedTools?.length,
+            tools: state.tools?.length,
           },
           "readAsyncAgentState.setAsyncAgentState",
         );

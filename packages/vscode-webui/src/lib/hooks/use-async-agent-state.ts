@@ -24,7 +24,7 @@ export const useAsyncAgentState = (taskId: string) => {
       {
         taskId,
         parentTaskId: state.parentTaskId,
-        allowedTools: state.allowedTools?.length,
+        tools: state.tools?.length,
       },
       "Setting async agent state",
     );
@@ -47,7 +47,7 @@ async function fetchAsyncAgentState(taskId: string) {
       taskId,
       hasAsyncAgentState: value.value !== undefined,
       parentTaskId: value.value?.parentTaskId,
-      allowedTools: value.value?.allowedTools?.length,
+      tools: value.value?.tools?.length,
     },
     "Fetched async agent state",
   );

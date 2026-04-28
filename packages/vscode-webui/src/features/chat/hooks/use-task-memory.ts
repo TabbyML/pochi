@@ -7,13 +7,17 @@ import type {
   TaskMemoryState,
 } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, catalog } from "@getpochi/livekit";
+import type { ToolSpecInput } from "@getpochi/tools";
 import { useCallback, useEffect } from "react";
 import { createForkAgent } from "../lib/create-fork-agent";
 
 const logger = getLogger("useTaskMemory");
 
 /** Tools the memory extraction fork agent is allowed to call */
-const TaskMemoryAllowedTools = ["writeToFile", "readFile"];
+const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
+  "readFile",
+  "writeToFile(pochi://-/memory.md)",
+];
 
 /** Statuses that mean the fork agent task is still running */
 const ActiveStatuses = new Set(["pending-model", "pending-tool"]);
@@ -173,7 +177,7 @@ export function useTaskMemory({
         parentMessages: data.messages,
         parentCwd,
         directive: prompts.taskMemory.buildExtractionDirective(existingMemory),
-        allowedTools: TaskMemoryAllowedTools,
+        tools: TaskMemoryAllowedTools,
         setAsyncAgentState: async (asyncTaskId, state) => {
           const result = await vscodeHost.readAsyncAgentState(asyncTaskId);
           await result.setAsyncAgentState(state);
