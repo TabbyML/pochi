@@ -1,4 +1,5 @@
 import { describe, expect, it, afterEach } from "vitest";
+import { validateToolPolicy } from "@getpochi/tools";
 import { executeToolCall } from "../index";
 import { BackgroundJobManager } from "../../lib/background-job-manager";
 import * as path from "node:path";
@@ -149,7 +150,6 @@ describe("executeToolCall with background jobs", () => {
 
   it("returns a tool error when file path policy validation fails", async () => {
     const cwd = path.resolve(".");
-    const blobStore = new NodeBlobStore(testBlobStorage);
 
     const toolCall: any = {
       type: "tool-readFile",
@@ -160,39 +160,19 @@ describe("executeToolCall with background jobs", () => {
       },
     };
 
-    const result = (await executeToolCall(
-      toolCall,
-      {
-        rg: "rg",
-        backgroundJobManager: new BackgroundJobManager(),
-        asyncSubTaskManager: new AsyncSubTaskManager(
-          await createStorePromise({
-            adapter: makeAdapter({ storage: { type: "in-memory" } }),
-            schema: catalog.schema,
-            storeId: `test-${crypto.randomUUID()}`,
-            syncPayload: {},
-          }),
-        ),
-        fileSystem: {
-          readFile: async () => new Uint8Array(),
-          writeFile: async () => {},
+    expect(() =>
+      validateToolPolicy(
+        "readFile",
+        toolCall.input,
+        {
+          readFile: {
+            kind: "path-pattern",
+            patterns: ["src/**"],
+          },
         },
-        blobStore,
-        fileStateCache: new FileStateCache(),
-      },
-      cwd,
-      undefined,
-      undefined,
-      undefined,
-      {
-        readFile: {
-          kind: "path-pattern",
-          patterns: ["src/**"],
-        },
-      },
-    )) as any;
-
-    expect(result.error).toContain(
+        { cwd },
+      ),
+    ).toThrow(
       "Path is not allowed by the configured path rules.",
     );
   });
@@ -211,6 +191,18 @@ describe("executeToolCall with background jobs", () => {
       },
     };
 
+    validateToolPolicy(
+      "readFile",
+      toolCall.input,
+      {
+        readFile: {
+          kind: "path-pattern",
+          patterns: ["src/**"],
+        },
+      },
+      { cwd },
+    );
+
     const result = (await executeToolCall(
       toolCall,
       {
@@ -225,15 +217,6 @@ describe("executeToolCall with background jobs", () => {
         fileStateCache: new FileStateCache(),
       },
       cwd,
-      undefined,
-      undefined,
-      undefined,
-      {
-        readFile: {
-          kind: "path-pattern",
-          patterns: ["src/**"],
-        },
-      },
     )) as any;
 
     expect(result).toEqual({
@@ -256,6 +239,18 @@ describe("executeToolCall with background jobs", () => {
       },
     };
 
+    validateToolPolicy(
+      "readFile",
+      toolCall.input,
+      {
+        readFile: {
+          kind: "path-pattern",
+          patterns: ["pochi://-/plan.md"],
+        },
+      },
+      { cwd },
+    );
+
     const result = (await executeToolCall(
       toolCall,
       {
@@ -270,15 +265,6 @@ describe("executeToolCall with background jobs", () => {
         fileStateCache: new FileStateCache(),
       },
       cwd,
-      undefined,
-      undefined,
-      undefined,
-      {
-        readFile: {
-          kind: "path-pattern",
-          patterns: ["pochi://-/plan.md"],
-        },
-      },
     )) as any;
 
     expect(result).toEqual({

@@ -661,7 +661,6 @@ export class TaskRunner {
     const toolResult = await this.executeToolCallItem(
       { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
       envs,
-      undefined,
     );
 
     const persistedToolResult = await maybePersistToolResult(
@@ -696,7 +695,6 @@ export class TaskRunner {
   private async executeToolCallItem(
     toolCall: ToolUIPart<UITools>,
     envs: Record<string, string> | undefined,
-    toolPolicies: CompiledToolPolicies | undefined,
   ): Promise<unknown> {
     try {
       return await processContentOutput(
@@ -708,7 +706,6 @@ export class TaskRunner {
           undefined,
           this.llm.contentType,
           envs,
-          toolPolicies,
         ),
       );
     } catch (error) {
