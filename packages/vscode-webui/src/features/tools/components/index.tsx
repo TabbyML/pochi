@@ -2,6 +2,7 @@ import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { useToolCallLifeCycle } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import type { Message, UITools } from "@getpochi/livekit";
+import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
 import { AskFollowupQuestionTool } from "./ask-followup-question";
@@ -24,6 +25,54 @@ import type { ToolProps } from "./types";
 import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
 
+type ToolInvocationPartBaseProps = {
+  tool: ToolUIPart<UITools>;
+  isLoading: boolean;
+  messages: Message[];
+  changes?: ToolCallCheckpoint;
+  isSubTask?: boolean;
+  isLastPart?: boolean;
+};
+
+type ToolRendererProps = ToolInvocationPartBaseProps & {
+  component?: React.FC<ToolProps<ToolName>>;
+  isExecuting: boolean;
+};
+
+type ToolInvocationPartProps = ToolInvocationPartBaseProps & {
+  className?: string;
+};
+
+function ToolInvocationRenderer({
+  component: C,
+  tool,
+  isExecuting,
+  isLoading,
+  messages,
+  changes,
+  isSubTask,
+  isLastPart,
+}: ToolRendererProps) {
+  return C ? (
+    <C
+      tool={tool}
+      isExecuting={isExecuting}
+      isLoading={isLoading}
+      changes={changes}
+      messages={messages}
+      isSubTask={isSubTask}
+      isLastPart={isLastPart}
+    />
+  ) : (
+    <McpToolCall
+      tool={tool}
+      isLoading={isLoading}
+      isExecuting={isExecuting}
+      messages={messages}
+    />
+  );
+}
+
 export function ToolInvocationPart({
   tool,
   isLoading,
@@ -32,15 +81,7 @@ export function ToolInvocationPart({
   changes,
   isSubTask,
   isLastPart,
-}: {
-  tool: ToolUIPart<UITools>;
-  isLoading: boolean;
-  messages: Message[];
-  className?: string;
-  changes?: ToolCallCheckpoint;
-  isSubTask?: boolean;
-  isLastPart?: boolean;
-}) {
+}: ToolInvocationPartProps) {
   const toolName = getStaticToolName(tool);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName,
@@ -51,24 +92,16 @@ export function ToolInvocationPart({
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      {C ? (
-        <C
-          tool={tool}
-          isExecuting={isExecuting}
-          isLoading={isLoading}
-          changes={changes}
-          messages={messages}
-          isSubTask={isSubTask}
-          isLastPart={isLastPart}
-        />
-      ) : (
-        <McpToolCall
-          tool={tool}
-          isLoading={isLoading}
-          isExecuting={isExecuting}
-          messages={messages}
-        />
-      )}
+      <ToolInvocationRenderer
+        component={C}
+        tool={tool}
+        isExecuting={isExecuting}
+        isLoading={isLoading}
+        changes={changes}
+        messages={messages}
+        isSubTask={isSubTask}
+        isLastPart={isLastPart}
+      />
     </div>
   );
 }

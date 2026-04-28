@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { parsePatchFiles, resolveThemes } from "@pierre/diffs";
 import { PatchDiff } from "@pierre/diffs/react";
 import { Columns2, Rows2, WrapText } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme-provider";
 import { CodeBlock } from "./code-block";
@@ -22,6 +22,24 @@ export interface DiffViewerProps {
 
 // Pre-resolve themes to avoid async loading on each render
 let themesResolved = false;
+const patchDiffUnsafeCSS = `
+  [data-separator="line-info"] {
+    height: 24px;
+  }`;
+const patchDiffStyle = {
+  "--diffs-font-family": "JetBrains Mono, monospace",
+  "--diffs-font-size": "11px",
+  "--diffs-line-height": 1.5,
+  "--diffs-addition-color-override":
+    "var(--vscode-editorGutter-addedBackground)",
+  "--diffs-deletion-color-override":
+    "var(--vscode-editorGutter-deletedBackground)",
+  "--diffs-fg-number-addition-override":
+    "var(--vscode-editorGutter-addedBackground)",
+  "--diffs-fg-number-deletion-override":
+    "var(--vscode-editorGutter-deletedBackground)",
+} as React.CSSProperties;
+
 const resolveThemesOnce = async () => {
   if (themesResolved) return;
   try {
@@ -32,7 +50,10 @@ const resolveThemesOnce = async () => {
   }
 };
 
-export const DiffViewer: React.FC<DiffViewerProps> = ({ patch, filePath }) => {
+export const DiffViewer = memo(function DiffViewer({
+  patch,
+  filePath,
+}: DiffViewerProps) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const [isReady, setIsReady] = useState(themesResolved);
@@ -57,13 +78,14 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ patch, filePath }) => {
     }
   }, []);
 
-  const options = useMemo(
+  const patchDiffOptions = useMemo(
     () => ({
       theme: theme === "dark" ? "dark-plus" : "light-plus",
       diffStyle,
       overflow: lineWrap ? ("wrap" as const) : ("scroll" as const),
       disableFileHeader: true,
       diffIndicators: "bars" as const,
+      unsafeCSS: patchDiffUnsafeCSS,
     }),
     [theme, diffStyle, lineWrap],
   );
@@ -161,32 +183,12 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ patch, filePath }) => {
       <div className="max-h-60 overflow-auto">
         <PatchDiff
           patch={patch}
-          options={{
-            ...options,
-            unsafeCSS: `
-            [data-separator="line-info"] {
-              height: 24px;
-            }`,
-          }}
-          style={
-            {
-              "--diffs-font-family": "JetBrains Mono, monospace",
-              "--diffs-font-size": "11px",
-              "--diffs-line-height": 1.5,
-              "--diffs-addition-color-override":
-                "var(--vscode-editorGutter-addedBackground)",
-              "--diffs-deletion-color-override":
-                "var(--vscode-editorGutter-deletedBackground)",
-              "--diffs-fg-number-addition-override":
-                "var(--vscode-editorGutter-addedBackground)",
-              "--diffs-fg-number-deletion-override":
-                "var(--vscode-editorGutter-deletedBackground)",
-            } as React.CSSProperties
-          }
+          options={patchDiffOptions}
+          style={patchDiffStyle}
         />
       </div>
     </div>
   );
-};
+});
 
 DiffViewer.displayName = "DiffViewer";
