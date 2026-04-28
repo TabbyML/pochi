@@ -9,8 +9,6 @@
  * remounting this component will resume execution automatically.
  */
 
-import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
-import { useLatest } from "@/lib/hooks/use-latest";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
@@ -24,11 +22,7 @@ export function AsyncAgentRunner() {
   const store = useDefaultStore();
   const runnableTasks = store.useQuery(catalog.queries.runnableTasks$);
 
-  const { customAgents } = useCustomAgents(true);
-  const customAgentsRef = useLatest(customAgents);
-  const batchExecuteManager = useRef(
-    new BatchExecuteManager(() => customAgentsRef.current),
-  ).current;
+  const batchExecuteManager = useRef(new BatchExecuteManager()).current;
 
   useEffect(() => {
     logger.debug(
