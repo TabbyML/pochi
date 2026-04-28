@@ -339,22 +339,102 @@ describe("webSearch domain policies", () => {
     ).not.toThrow();
   });
 
-  it("should allow missing searchDomainFilter when webSearch domain rules are configured", () => {
+  it("should not rewrite searchDomainFilter when rawDomainFilters is provided", () => {
     const policies = compileToolPolicies([
       "webSearch(domain:example.com)",
       "webSearch(domain:*.tabbyml.com)",
     ]);
 
+    const input: { query: string; searchDomainFilter?: unknown } = {
+      query: "latest release notes",
+      searchDomainFilter: ["example.com"],
+    };
+
     expect(() =>
       validateToolPolicy(
         "webSearch",
-        {
-          query: "latest release notes",
-        },
+        input,
         policies,
         { cwd: process.cwd() },
       ),
     ).not.toThrow();
+
+    expect(input.searchDomainFilter).toEqual(["example.com"]);
+  });
+
+  it("should inject agent-configured webSearch domains when searchDomainFilter is missing", () => {
+    const policies = compileToolPolicies([
+      "webSearch(domain:example.com)",
+      "webSearch(domain:*.tabbyml.com)",
+    ]);
+
+    const input: { query: string; searchDomainFilter?: unknown } = {
+      query: "latest release notes",
+    };
+
+    expect(() =>
+      validateToolPolicy(
+        "webSearch",
+        input,
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(input.searchDomainFilter).toEqual([
+      "example.com",
+      "*.tabbyml.com",
+    ]);
+  });
+
+  it("should inject agent allowlist for deny-only searchDomainFilter", () => {
+    const policies = compileToolPolicies([
+      "webSearch(domain:example.com)",
+      "webSearch(domain:*.tabbyml.com)",
+    ]);
+
+    const input: { query: string; searchDomainFilter?: unknown } = {
+      query: "latest release notes",
+      searchDomainFilter: ["-google.com"],
+    };
+
+    expect(() =>
+      validateToolPolicy(
+        "webSearch",
+        input,
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(input.searchDomainFilter).toEqual([
+      "example.com",
+      "*.tabbyml.com",
+      "-google.com",
+    ]);
+  });
+
+  it("should allow mixed allowlist and denylist entries", () => {
+    const policies = compileToolPolicies([
+      "webSearch(domain:example.com)",
+      "webSearch(domain:*.tabbyml.com)",
+    ]);
+
+    const input: { query: string; searchDomainFilter?: unknown } = {
+      query: "latest release notes",
+      searchDomainFilter: ["example.com", "-api.tabbyml.com"],
+    };
+
+    expect(() =>
+      validateToolPolicy(
+        "webSearch",
+        input,
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(input.searchDomainFilter).toEqual(["example.com", "-api.tabbyml.com"]);
   });
 
   it("should reject webSearch searchDomainFilter entries outside configured domain rules", () => {

@@ -188,7 +188,10 @@ function compileDomainToolPolicy(
   } as const;
 }
 
-function parseDomainRule(toolName: "webFetch" | "webSearch", rule: string): string {
+function parseDomainRule(
+  toolName: "webFetch" | "webSearch",
+  rule: string,
+): string {
   const trimmedRule = rule.trim();
   const domainPrefix = "domain:";
 
@@ -360,12 +363,32 @@ export function validateToolPolicy(
   }
 
   if (toolName === "webSearch") {
-    const rawDomainFilters =
-      typeof input === "object" && input !== null && "searchDomainFilter" in input
-        ? (input as { searchDomainFilter?: unknown }).searchDomainFilter
+    const webSearchInput =
+      typeof input === "object" && input !== null
+        ? (input as { searchDomainFilter?: unknown })
         : undefined;
+    const rawDomainFilters = webSearchInput?.searchDomainFilter;
 
-    validateWebSearchDomainPatternPolicy(rawDomainFilters, policies?.webSearch);
+    const effectiveDomainFilters = validateWebSearchDomainPatternPolicy(
+      rawDomainFilters,
+      policies?.webSearch,
+    );
+
+    const hasAllowlistEntries =
+      Array.isArray(rawDomainFilters) &&
+      rawDomainFilters.some(
+        (entry) =>
+          typeof entry === "string" &&
+          entry.trim().length > 0 &&
+          !entry.trim().startsWith("-"),
+      );
+
+    if (effectiveDomainFilters && webSearchInput && !hasAllowlistEntries) {
+      // Intentionally mutate when searchDomainFilter is missing or deny-only,
+      // so downstream executeToolCall includes agent-configured allowlist.
+      webSearchInput.searchDomainFilter = effectiveDomainFilters;
+    }
+
     return;
   }
 
@@ -396,13 +419,13 @@ function validateWebSearchDomainPatternPolicy(
         patterns: string[];
       }
     | undefined,
-): void {
+): string[] | undefined {
   if (!policy) {
-    return;
+    return undefined;
   }
 
   if (rawDomainFilters == null) {
-    return;
+    return [...policy.patterns];
   }
 
   if (!Array.isArray(rawDomainFilters)) {
@@ -410,20 +433,28 @@ function validateWebSearchDomainPatternPolicy(
   }
 
   if (rawDomainFilters.length === 0) {
-    return;
+    return [...policy.patterns];
   }
 
-  for (const entry of rawDomainFilters) {
+  const entries = rawDomainFilters.map((entry) => {
     if (typeof entry !== "string") {
       throw new Error("searchDomainFilter must be an array of domain strings.");
     }
 
-    if (entry.trim().startsWith("-")) {
+    const normalizedEntry = entry.trim();
+    if (!normalizedEntry) {
       throw new Error(
-        "searchDomainFilter denylist entries are not allowed when webSearch domain rules are configured.",
+        "searchDomainFilter must contain non-empty domain patterns.",
       );
     }
 
+    return normalizedEntry;
+  });
+
+  const allowEntries = entries.filter((entry) => !entry.startsWith("-"));
+  const denyEntries = entries.filter((entry) => entry.startsWith("-"));
+
+  for (const entry of allowEntries) {
     const normalizedDomain = normalizeDomainPattern(entry);
     if (!normalizedDomain) {
       throw new Error(
@@ -443,6 +474,12 @@ function validateWebSearchDomainPatternPolicy(
       );
     }
   }
+
+  if (allowEntries.length === 0) {
+    return [...new Set([...policy.patterns, ...denyEntries])];
+  }
+
+  return entries;
 }
 
 function validatePathPatternPolicy(
