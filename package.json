@@ -65,6 +65,7 @@
       "lucide-react": "^0.542.0",
       "jose": "^6.1.0",
       "jsonc-parser": "3.3.1",
+      "minimatch": "^10.0.1",
       "base58-js": "^3.0.3",
       "run-exclusive": "^2.2.19"
     }

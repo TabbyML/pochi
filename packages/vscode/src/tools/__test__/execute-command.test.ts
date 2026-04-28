@@ -40,7 +40,7 @@ describe("executeCommand Tool", () => {
             maybePersistToolResult,
           },
           "@getpochi/tools": {
-            validateExecuteCommandWhitelist: sinon.stub(),
+            validateExecuteCommandRules: sinon.stub(),
           },
           "@quilted/threads/signals": {
             ThreadSignal: {

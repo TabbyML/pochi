@@ -22,7 +22,7 @@ import { useChat } from "@ai-sdk/react";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import { type Todo, getToolArgs } from "@getpochi/tools";
+import { type Todo, compileToolPolicies } from "@getpochi/tools";
 import {
   getStaticToolName,
   lastAssistantMessageIsCompleteWithToolCalls,
@@ -136,10 +136,7 @@ export function useLiveSubTask(
             : tool.input?.agentType === "explore"
               ? { type: "explore" }
               : undefined;
-      const executeCommandWhitelist = getToolArgs(
-        customAgent?.tools,
-        "executeCommand",
-      );
+      const toolPolicies = compileToolPolicies(customAgent?.tools);
 
       if (abortController.current.signal.aborted) {
         return;
@@ -154,7 +151,7 @@ export function useLiveSubTask(
           abortSignal: abortController.current.signal,
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
-          executeCommandWhitelist,
+          toolPolicies,
           addToolOutput,
           toolCallStatusRegistry,
         }),

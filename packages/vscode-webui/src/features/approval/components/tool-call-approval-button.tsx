@@ -20,7 +20,7 @@ import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
-import { getToolArgs } from "@getpochi/tools";
+import { compileToolPolicies } from "@getpochi/tools";
 import { getStaticToolName } from "ai";
 import { createBatchedToolCallFromLifecycle } from "../../chat/lib/batched-tool-call-adapters";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
@@ -100,10 +100,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           (subtask?.agent === "planner" || subtask?.agent === "explore")
         ? { type: subtask.agent }
         : undefined;
-  const executeCommandWhitelist = getToolArgs(
-    customAgent?.tools,
-    "executeCommand",
-  );
+  const toolPolicies = compileToolPolicies(customAgent?.tools);
 
   const manualRunSubtask = useCallback(
     (subtaskUid: string) => {
@@ -159,7 +156,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
           executeOptions: {
             contentType: selectedModel?.contentType,
             builtinSubAgentInfo,
-            executeCommandWhitelist,
+            toolPolicies,
             taskId,
           },
         }),
@@ -184,7 +181,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     taskId,
     parentUid,
     builtinSubAgentInfo,
-    executeCommandWhitelist,
+    toolPolicies,
     batchExecuteManager,
   ]);
 

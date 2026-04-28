@@ -51,7 +51,7 @@
     "jose": "catalog:",
     "jsonc-parser": "catalog:",
     "mime": "^4.1.0",
-    "minimatch": "^10.0.1",
+    "minimatch": "catalog:",
     "rehype": "^13.0.2",
     "remark": "^15.0.1",
     "remark-frontmatter": "^5.0.0",

@@ -52,7 +52,11 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
-import type { Environment, GitStatus } from "@getpochi/common";
+import {
+  type Environment,
+  type GitStatus,
+  toErrorMessage,
+} from "@getpochi/common";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -97,8 +101,8 @@ import {
   getTaskDisplayTitle,
   resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { ToolFunctionType } from "@getpochi/tools";
-import { createClientTools } from "@getpochi/tools";
+import type { CompiledToolPolicies, ToolFunctionType } from "@getpochi/tools";
+import { createClientTools, validateToolPolicy } from "@getpochi/tools";
 import { computed } from "@preact/signals-core";
 import {
   ThreadAbortSignal,
@@ -460,7 +464,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
     },
@@ -492,6 +496,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.builtinSubAgentInfo,
     );
     const toolCallStart = Date.now();
+    try {
+      validateToolPolicy(toolName, args, options.toolPolicies, {
+        cwd: this.cwd,
+      });
+    } catch (error) {
+      return {
+        error: toErrorMessage(error),
+      };
+    }
+
     const resolvedArgs = resolveToolCallArgs(
       args,
       options.storeId,
@@ -511,7 +525,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         contentType: options.contentType,
         envs,
         taskId,
-        executeCommandWhitelist: options.executeCommandWhitelist,
         fileStateCache,
       }),
     );

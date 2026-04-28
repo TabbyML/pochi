@@ -1,4 +1,5 @@
 import { describe, expect, it, afterEach } from "vitest";
+import { validateToolPolicy } from "@getpochi/tools";
 import { executeToolCall } from "../index";
 import { BackgroundJobManager } from "../../lib/background-job-manager";
 import * as path from "node:path";
@@ -10,6 +11,17 @@ import { createStorePromise } from "@livestore/livestore";
 import { NodeBlobStore } from "../../node-blob-store";
 import { FileStateCache } from "@getpochi/common/tool-utils";
 import os from "node:os";
+
+async function createAsyncTaskManager() {
+  const store = await createStorePromise({
+    adapter: makeAdapter({ storage: { type: "in-memory" } }),
+    schema: catalog.schema,
+    storeId: `test-${crypto.randomUUID()}`,
+    syncPayload: {},
+  });
+
+  return new AsyncSubTaskManager(store);
+}
 
 describe("executeToolCall with background jobs", () => {
   const testBlobStorage = path.join(os.tmpdir(), "pochi-test", "blobs");
@@ -134,5 +146,130 @@ describe("executeToolCall with background jobs", () => {
     const output = manager.readTaskOutput(taskId);
     expect(output?.status).toBe("completed");
     expect(output?.output).toBe(JSON.stringify(resultObject));
+  });
+
+  it("returns a tool error when file path policy validation fails", async () => {
+    const cwd = path.resolve(".");
+
+    const toolCall: any = {
+      type: "tool-readFile",
+      toolCallId: "test-id",
+      toolName: "readFile",
+      input: {
+        path: "../secret.txt",
+      },
+    };
+
+    expect(() =>
+      validateToolPolicy(
+        "readFile",
+        toolCall.input,
+        {
+          readFile: {
+            kind: "path-pattern",
+            patterns: ["src/**"],
+          },
+        },
+        { cwd },
+      ),
+    ).toThrow(
+      "Path is not allowed by the configured path rules.",
+    );
+  });
+
+  it("allows file reads when the workspace path matches configured path rules", async () => {
+    const cwd = path.resolve(".");
+    const blobStore = new NodeBlobStore(testBlobStorage);
+    const readFile = async () => new TextEncoder().encode("hello from src");
+
+    const toolCall: any = {
+      type: "tool-readFile",
+      toolCallId: "test-id",
+      toolName: "readFile",
+      input: {
+        path: "src/index.ts",
+      },
+    };
+
+    validateToolPolicy(
+      "readFile",
+      toolCall.input,
+      {
+        readFile: {
+          kind: "path-pattern",
+          patterns: ["src/**"],
+        },
+      },
+      { cwd },
+    );
+
+    const result = (await executeToolCall(
+      toolCall,
+      {
+        rg: "rg",
+        backgroundJobManager: new BackgroundJobManager(),
+        asyncSubTaskManager: await createAsyncTaskManager(),
+        fileSystem: {
+          readFile,
+          writeFile: async () => {},
+        },
+        blobStore,
+        fileStateCache: new FileStateCache(),
+      },
+      cwd,
+    )) as any;
+
+    expect(result).toEqual({
+      content: "hello from src",
+      isTruncated: false,
+    });
+  });
+
+  it("allows file reads when the virtual path matches configured path rules", async () => {
+    const cwd = path.resolve(".");
+    const blobStore = new NodeBlobStore(testBlobStorage);
+    const readFile = async () => new TextEncoder().encode("hello from pochi");
+
+    const toolCall: any = {
+      type: "tool-readFile",
+      toolCallId: "test-id",
+      toolName: "readFile",
+      input: {
+        path: "pochi://-/plan.md",
+      },
+    };
+
+    validateToolPolicy(
+      "readFile",
+      toolCall.input,
+      {
+        readFile: {
+          kind: "path-pattern",
+          patterns: ["pochi://-/plan.md"],
+        },
+      },
+      { cwd },
+    );
+
+    const result = (await executeToolCall(
+      toolCall,
+      {
+        rg: "rg",
+        backgroundJobManager: new BackgroundJobManager(),
+        asyncSubTaskManager: await createAsyncTaskManager(),
+        fileSystem: {
+          readFile,
+          writeFile: async () => {},
+        },
+        blobStore,
+        fileStateCache: new FileStateCache(),
+      },
+      cwd,
+    )) as any;
+
+    expect(result).toEqual({
+      content: "hello from pochi",
+      isTruncated: false,
+    });
   });
 });

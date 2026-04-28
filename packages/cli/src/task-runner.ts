@@ -25,11 +25,13 @@ import {
 import { LiveChatKit } from "@getpochi/livekit/node";
 import { type BatchedToolCallResult, ToolCallQueue } from "@getpochi/tools";
 import {
+  type CompiledToolPolicies,
   type CustomAgent,
   type Skill,
   type Todo,
-  getToolArgs,
+  compileToolPolicies,
   isUserInputToolPart,
+  validateToolPolicy,
 } from "@getpochi/tools";
 import {
   type ToolUIPart,
@@ -578,10 +580,7 @@ export class TaskRunner {
 
   private async processToolCalls(message: Message) {
     logger.trace("Processing tool calls in the last message.");
-    const executeCommandWhitelist = getToolArgs(
-      this.customAgent?.tools,
-      "executeCommand",
-    );
+    const toolPolicies = compileToolPolicies(this.customAgent?.tools);
 
     const toolCalls = message.parts
       .filter(isStaticToolUIPart)
@@ -601,7 +600,7 @@ export class TaskRunner {
         toolCallId: toolCall.toolCallId,
         toolName: getStaticToolName(toolCall),
         input: toolCall.input,
-        run: async () => this.runToolCall(toolCall, executeCommandWhitelist),
+        run: async () => this.runToolCall(toolCall, toolPolicies),
         cancel: async (reason) => {
           const toolName = getStaticToolName(toolCall);
           logger.debug(
@@ -629,12 +628,23 @@ export class TaskRunner {
 
   private async runToolCall(
     toolCall: ToolUIPart<UITools>,
-    executeCommandWhitelist: string[] | undefined,
+    toolPolicies: CompiledToolPolicies | undefined,
   ): Promise<BatchedToolCallResult> {
     const toolName = getStaticToolName(toolCall);
     logger.trace(
       `Found tool call: ${toolName} with args: ${JSON.stringify(toolCall.input)}`,
     );
+
+    try {
+      validateToolPolicy(toolName, toolCall.input, toolPolicies, {
+        cwd: this.cwd,
+      });
+    } catch (error) {
+      return {
+        kind: "error",
+        error: toErrorMessage(error),
+      };
+    }
 
     const resolvedInput = resolveToolCallArgs(
       toolCall.input,
@@ -651,7 +661,6 @@ export class TaskRunner {
     const toolResult = await this.executeToolCallItem(
       { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
       envs,
-      executeCommandWhitelist,
     );
 
     const persistedToolResult = await maybePersistToolResult(
@@ -686,7 +695,6 @@ export class TaskRunner {
   private async executeToolCallItem(
     toolCall: ToolUIPart<UITools>,
     envs: Record<string, string> | undefined,
-    executeCommandWhitelist: string[] | undefined,
   ): Promise<unknown> {
     try {
       return await processContentOutput(
@@ -698,7 +706,6 @@ export class TaskRunner {
           undefined,
           this.llm.contentType,
           envs,
-          executeCommandWhitelist,
         ),
       );
     } catch (error) {
