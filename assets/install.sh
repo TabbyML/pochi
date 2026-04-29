@@ -21,7 +21,7 @@ download_release_from_repo() {
 }
 
 usage() {
-    cat >&2 <<END_USAGE
+  cat >&2 <<END_USAGE
 pochi-install: The installer for Pochi
 
 USAGE:
@@ -70,21 +70,22 @@ parse_os_info() {
   local arch="$(uname -m)"
 
   case "$uname_str" in
-    Linux)
-      if [ "$arch" == "x86_64" ]; then
-        echo "linux-x64"
-      elif [ "$arch" == "aarch64" ]; then
-        echo "linux-arm64"
-      else
-        error "Releases for architectures other than x64 and arm are not currently supported."
-        return 1
-      fi
-      ;;
-    Darwin)
-      echo "mac-arm64"
-      ;;
-    *)
+  Linux)
+    if [ "$arch" == "x86_64" ]; then
+      echo "linux-x64"
+    elif [ "$arch" == "aarch64" ]; then
+      echo "linux-arm64"
+    else
+      error "Releases for architectures other than x64 and arm are not currently supported."
       return 1
+    fi
+    ;;
+  Darwin)
+    echo "mac-arm64"
+    ;;
+  *)
+    return 1
+    ;;
   esac
   return 0
 }
@@ -93,14 +94,15 @@ parse_os_pretty() {
   local uname_str="$1"
 
   case "$uname_str" in
-    Linux)
-      echo "Linux"
-      ;;
-    Darwin)
-      echo "macOS"
-      ;;
-    *)
-      echo "$uname_str"
+  Linux)
+    echo "Linux"
+    ;;
+  Darwin)
+    echo "macOS"
+    ;;
+  *)
+    echo "$uname_str"
+    ;;
   esac
 }
 
@@ -113,8 +115,7 @@ create_tree() {
   #     bin/
 
   mkdir -p "$install_dir" && mkdir -p "$install_dir"/bin
-  if [ "$?" != 0 ]
-  then
+  if [ "$?" != 0 ]; then
     error "Could not create directory layout. Please make sure the target directory is writeable: $install_dir"
     exit 1
   fi
@@ -192,20 +193,19 @@ install_version() {
   local install_dir="$2"
 
   case "$version_to_install" in
-    latest)
-      local latest_version="latest"
-      info 'Installing' "latest version of Pochi ($latest_version)"
-      install_release "$latest_version" "$install_dir"
-      ;;
-    *)
-      # assume anything else is a specific version
-      info 'Installing' "Pochi version $version_to_install"
-      install_release "$version_to_install" "$install_dir"
-      ;;
+  latest)
+    local latest_version="latest"
+    info 'Installing' "latest version of Pochi ($latest_version)"
+    install_release "$latest_version" "$install_dir"
+    ;;
+  *)
+    # assume anything else is a specific version
+    info 'Installing' "Pochi version $version_to_install"
+    install_release "$version_to_install" "$install_dir"
+    ;;
   esac
 
-  if [ "$?" == 0 ]
-  then
+  if [ "$?" == 0 ]; then
     "$install_dir"/bin/pochi-code --version &>/dev/null # creates the default shims
     # Set up shell auto-completion
     print_shell_setup_instructions "$install_dir"
@@ -218,12 +218,13 @@ install_release() {
   local install_dir="$2"
 
   info 'Checking' "for existing Pochi installation"
-  if upgrade_is_ok "$version" "$install_dir"
-  then
-    download_archive="$(download_release "$version"; exit "$?")"
+  if upgrade_is_ok "$version" "$install_dir"; then
+    download_archive="$(
+      download_release "$version"
+      exit "$?"
+    )"
     exit_status="$?"
-    if [ "$exit_status" != 0 ]
-    then
+    if [ "$exit_status" != 0 ]; then
       error "Could not download Pochi version '$version'. See $(release_url) for a list of available releases"
       return "$exit_status"
     fi
@@ -273,24 +274,27 @@ version_to_install=""
 # parse command line options
 if [ $# -gt 0 ]; then
   case "$1" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    -*)
-      error "unknown option: '$1'"
-      usage
-      exit 1
-      ;;
-    *)
-      version_to_install="$1"
-      ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -*)
+    error "unknown option: '$1'"
+    usage
+    exit 1
+    ;;
+  *)
+    version_to_install="$1"
+    ;;
   esac
 fi
 
 get_latest_version() {
   local version
-  version=$(curl -s https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d '"' -f 4)
+  version=$(curl -s https://docs.getpochi.com/cli-latest-version.txt)
+  if [ -z "$version" ]; then
+    version=$(curl -s https://api.github.com/repos/TabbyML/pochi/releases | grep 'tag_name' | grep 'cli@' | head -1 | cut -d '"' -f 4)
+  fi
   if [ -z "$version" ]; then
     if command -v git >/dev/null 2>&1; then
       version=$(git ls-remote --tags --refs https://github.com/TabbyML/pochi.git "cli@*" |
@@ -299,9 +303,6 @@ get_latest_version() {
         sort -V |
         tail -n1)
     fi
-  fi
-  if [ -z "$version" ]; then
-    version="cli@0.6.8" # UPDATED_BY_CI
   fi
   echo "$version"
 }
