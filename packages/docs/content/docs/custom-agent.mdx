@@ -45,28 +45,63 @@ The frontmatter provides metadata for the custom agent:
 
 ### Tool-specific rules
 
-Rule entries follow the format `tool` or `tool(specifier)`, and tool-specific rules are supported for `executeCommand`.
+Rule entries follow the format `tool` or `tool(specifier)`. The following tools support specifier-based restrictions:
+
+- `executeCommand` — Command patterns, e.g. `executeCommand(npm run *)`
+- `readFile`, `writeToFile`, `applyDiff`, `editNotebook` — Path globs, e.g. `readFile(src/**)`
+- `webFetch` — Domain patterns, e.g. `webFetch(domain:*.example.com)`
+
+A tool declared without parentheses (e.g., `readFile`) has no restrictions. Use one declaration per rule — commas inside a specifier are not supported; add separate entries for multiple rules.
 
 #### Command Execution Restrictions
 
-Use one declaration per command rule/pattern.
+Restrict which shell commands the agent can run via `executeCommand`. The specifier is matched against each individual command segment (split on `;`, `&&`, `||`, `|`). If any segment does not match at least one allowed pattern, the tool call is rejected.
 
-- `executeCommand(npm)` allows commands whose first token is `npm`.
-- `executeCommand(npm *)` allows command segments matching the pattern `npm *`.
-- `executeCommand(npm run test)` allows command segments matching exactly `npm run test`.
-- `executeCommand(npm run test *)` allows command segments matching the pattern `npm run test *`.
+| Declaration | Behavior |
+|---|---|
+| `executeCommand` | No restrictions — allows any command |
+| `executeCommand(npm)` | Allows commands whose first token is `npm` |
+| `executeCommand(npm *)` | Allows command segments matching the pattern `npm *` |
+| `executeCommand(npm run test)` | Allows command segments matching exactly `npm run test` |
+| `executeCommand(npm run test *)` | Allows command segments matching the pattern `npm run test *` |
 
-If you need multiple command patterns, add multiple `executeCommand(...)` entries.
+#### Path-based File Restrictions
+
+Restrict which files the agent can read or modify using workspace-relative glob patterns. Applies to `readFile`, `writeToFile`, `applyDiff`, and `editNotebook`. Access to any path outside the specified patterns is rejected.
+
+| Declaration | Behavior |
+|---|---|
+| `readFile` | No restrictions — allows reading any file |
+| `readFile(src/**)` | Allows reading all files under `src/` |
+| `readFile(packages/**/*.md)` | Allows reading markdown files under `packages/` |
+| `writeToFile(.pochi/**)` | Allows writing only to files under `.pochi/` |
+| `writeToFile(logs/*.log)` | Allows writing only to log files under `logs/` |
+| `applyDiff(src/**)` | Allows applying diffs only to files under `src/` |
+| `editNotebook(docs/*.ipynb)` | Allows editing only notebook files under `docs/` |
+
+#### Domain-based Web Restrictions
+
+Restrict which domains the agent can fetch via `webFetch`. The specifier must start with `domain:`. URLs whose hostname does not match any allowed pattern are rejected.
+
+| Declaration | Behavior |
+|---|---|
+| `webFetch` | No restrictions — allows fetching any URL |
+| `webFetch(domain:example.com)` | Exact domain match (e.g., allows only `example.com`) |
+| `webFetch(domain:*.example.com)` | Glob match against subdomains (e.g., allows `api.example.com`, `docs.example.com`) |
 
 Example:
 
 ```markdown
 ---
-description: Browser automation and package scripts
+description: Code reviewer with restricted filesystem and network access
 tools:
-  - readFile
-  - executeCommand(agent-browser)
-  - executeCommand(npm run *)
+  - executeCommand(git diff)
+  - executeCommand(grep *)
+  - readFile(src/**)
+  - readFile(packages/**/*.md)
+  - writeToFile(.pochi/**)
+  - webFetch(domain:docs.example.com)
+  - webFetch(domain:*.getpochi.com)
 ---
 ```
 
