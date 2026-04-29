@@ -8,6 +8,10 @@ import { generateTitle } from "./generate-title";
 import { renderReviewComments } from "./review-comments";
 import { createSkillPrompt, createUseSkillResult } from "./skill";
 import { createSystemPrompt } from "./system";
+import {
+  buildMemoryExtractionDirective,
+  taskMemoryTemplate,
+} from "./task-memory";
 import { renderUserEdits } from "./user-edits";
 
 export const prompts = {
@@ -30,6 +34,10 @@ export const prompts = {
   renderBashOutputs,
   fixMermaidError,
   createUseSkillResult,
+  taskMemory: {
+    template: taskMemoryTemplate,
+    buildExtractionDirective: buildMemoryExtractionDirective,
+  },
 };
 
 function createSystemReminder(content: string) {
@@ -62,12 +70,16 @@ function inlineCompact(
   summary: string,
   messageCount: number,
   appendix?: string,
+  options?: { verbatimTail?: boolean },
 ) {
   const appendixText = appendix ? `\n\n${appendix}` : "";
+  const epilogue = options?.verbatimTail
+    ? "This section summarizes the older portion of the conversation. The most recent turns that follow this block have NOT been condensed — they are the original messages preserved verbatim. Use them as the source of truth for recent activity."
+    : "This section contains a summary of the conversation up to this point to save context. The full conversation history has been preserved but condensed for efficiency.";
   return `<compact>
 Previous conversation summary (${messageCount} messages):
 ${summary}
-This section contains a summary of the conversation up to this point to save context. The full conversation history has been preserved but condensed for efficiency.${appendixText}
+${epilogue}${appendixText}
 </compact>`;
 }
 

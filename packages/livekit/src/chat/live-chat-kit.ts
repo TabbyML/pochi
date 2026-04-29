@@ -18,7 +18,10 @@ import {
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { ContextWindowUsage } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ContextWindowUsage,
+  TaskMemoryState,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -34,10 +37,15 @@ import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
+/** Compaction waits up to this long for an in-flight task-memory extraction. */
+const TaskMemorySettleTimeoutMs = 5_000;
+const TaskMemorySettlePollIntervalMs = 200;
 
 type GetRecentFilesForCompact = () =>
   | RecentFileState[]
   | Promise<RecentFileState[]>;
+
+type GetTaskMemoryState = () => TaskMemoryState | undefined;
 
 async function readRecentFilesForCompact(
   getRecentFilesForCompact: GetRecentFilesForCompact | undefined,
@@ -48,6 +56,22 @@ async function readRecentFilesForCompact(
     logger.warn(
       "Failed to read recent files for compaction. Continue compacting without file restoration.",
       error,
+    );
+  }
+}
+
+/** Polls until no extraction is in progress or `timeoutMs` elapses. */
+async function settleTaskMemoryExtraction(
+  getTaskMemoryState: GetTaskMemoryState | undefined,
+  timeoutMs: number,
+): Promise<void> {
+  if (!getTaskMemoryState) return;
+  if (!getTaskMemoryState()?.isExtracting) return;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (!getTaskMemoryState()?.isExtracting) return;
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, TaskMemorySettlePollIntervalMs),
     );
   }
 }
@@ -163,6 +187,9 @@ export type LiveChatKitOptions<T> = {
    */
   getRecentFilesForCompact?: GetRecentFilesForCompact;
 
+  /** Latest `TaskMemoryState` snapshot — provides the verbatim boundary and the `isExtracting` flag. */
+  getTaskMemoryState?: GetTaskMemoryState;
+
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
   attemptCompletionSchema?: z.ZodAny;
@@ -230,6 +257,7 @@ export class LiveChatKit<
 
     onStreamFinish,
     getRecentFilesForCompact,
+    getTaskMemoryState,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -280,6 +308,11 @@ export class LiveChatKit<
         lastMessage.metadata.compact
       ) {
         try {
+          // Wait briefly so memory.md and boundary id are fresh.
+          await settleTaskMemoryExtraction(
+            getTaskMemoryState,
+            TaskMemorySettleTimeoutMs,
+          );
           const model = createModel({ llm: getters.getLLM() });
           await compactTask({
             blobStore: this.blobStore,
@@ -289,8 +322,11 @@ export class LiveChatKit<
             recentFiles: await readRecentFilesForCompact(
               getRecentFilesForCompact,
             ),
+            taskMemoryBoundaryMessageId:
+              getTaskMemoryState?.()?.lastExtractionMessageId,
             abortSignal,
             inline: true,
+            store: this.store,
           });
           await onCompact?.();
         } catch (err) {
@@ -317,6 +353,11 @@ export class LiveChatKit<
 
     this.compact = async () => {
       const { messages } = this.chat;
+      // Wait briefly so memory.md and boundary id are fresh.
+      await settleTaskMemoryExtraction(
+        getTaskMemoryState,
+        TaskMemorySettleTimeoutMs,
+      );
       const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
         blobStore: this.blobStore,
@@ -324,6 +365,9 @@ export class LiveChatKit<
         model,
         messages,
         recentFiles: await readRecentFilesForCompact(getRecentFilesForCompact),
+        taskMemoryBoundaryMessageId:
+          getTaskMemoryState?.()?.lastExtractionMessageId,
+        store: this.store,
       });
 
       if (!summary) {

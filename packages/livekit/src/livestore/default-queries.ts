@@ -30,6 +30,21 @@ export const makeSubTaskQuery = (taskId: string) =>
     deps: [taskId],
   });
 
+export const runnableTasks$ = queryDb(
+  () =>
+    tables.tasks.where({
+      runAsync: true,
+      parentId: null,
+      status: {
+        op: "IN",
+        value: ["pending-model", "pending-tool"],
+      },
+    }),
+  {
+    label: "runnableTasks",
+  },
+);
+
 export const makeStoreFileQuery = (filePath: string) =>
   queryDb(
     () => tables.files.where("filePath", "=", filePath).first(undefined),

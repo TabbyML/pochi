@@ -18,6 +18,13 @@ export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
 export const EnableAsyncNewTask = false;
 
 /**
+ * Task Memory thresholds — background extraction of session notes.
+ */
+export const TaskMemoryInitTokenThreshold = 10_000;
+export const TaskMemoryUpdateTokenIncrement = 5_000;
+export const TaskMemoryUpdateToolCallThreshold = 3;
+
+/**
  * Timeout (ms) for any single git operation.
  * Used across all git invocations (simple-git block timeout, exec timeout)
  * to prevent hangs when git itself is broken or unresponsive.

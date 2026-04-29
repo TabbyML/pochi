@@ -8,8 +8,9 @@ import {
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
+import { makeStoreFileQuery } from "../../livestore/default-queries";
 import { makeDownloadFunction } from "../../store-blob";
-import type { Message } from "../../types";
+import type { LiveKitStore, Message } from "../../types";
 
 const logger = getLogger("compactTask");
 const PostCompactMaxFilesToRestore = 5;
@@ -22,16 +23,21 @@ export async function compactTask({
   model,
   messages,
   recentFiles,
+  taskMemoryBoundaryMessageId,
   abortSignal,
   inline,
+  store,
 }: {
   blobStore: BlobStore;
   taskId: string;
   model: LanguageModelV3;
   messages: Message[];
   recentFiles?: RecentFileState[];
+  /** UUID of the last message covered by memory.md; messages after it are kept verbatim. */
+  taskMemoryBoundaryMessageId?: string;
   abortSignal?: AbortSignal;
   inline?: boolean;
+  store?: LiveKitStore;
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
@@ -39,29 +45,105 @@ export async function compactTask({
   }
 
   try {
-    const text = prompts.inlineCompact(
-      await createSummary(
+    // Prefer task memory if available
+    let summaryText: string | undefined;
+    let usedTaskMemory = false;
+    if (store) {
+      const memoryFile = store.query(makeStoreFileQuery("/memory.md"));
+      if (memoryFile?.content?.trim()) {
+        summaryText = memoryFile.content;
+        usedTaskMemory = true;
+      }
+    }
+
+    // Fall back to LLM-generated summary
+    if (!summaryText) {
+      summaryText = await createSummary(
         blobStore,
         taskId,
         model,
         abortSignal,
         messages.slice(0, -1),
-      ),
-      messages.length - 1,
-      formatRecentFileContext(recentFiles),
-    );
+      );
+    }
+
+    const recentFileContext = formatRecentFileContext(recentFiles);
+
     if (inline) {
-      lastMessage.parts.unshift({
-        type: "text",
-        text,
-      });
+      // Preferred: attach at the boundary so trailing messages survive verbatim.
+      const attachIndex = usedTaskMemory
+        ? findVerbatimAttachIndex(messages, taskMemoryBoundaryMessageId)
+        : undefined;
+      const attachMessage =
+        attachIndex !== undefined ? messages[attachIndex] : undefined;
+      if (attachIndex !== undefined && attachMessage) {
+        const text = prompts.inlineCompact(
+          summaryText,
+          attachIndex,
+          recentFileContext,
+          { verbatimTail: true },
+        );
+        attachMessage.parts.unshift({ type: "text", text });
+        logger.debug(
+          `Inline compact attached at index ${attachIndex}; preserving ${
+            messages.length - attachIndex
+          } trailing messages verbatim.`,
+        );
+        return;
+      }
+
+      // Fallback: attach at the trailing message; tail is dropped.
+      const text = prompts.inlineCompact(
+        summaryText,
+        messages.length - 1,
+        recentFileContext,
+      );
+      lastMessage.parts.unshift({ type: "text", text });
       return;
     }
-    return text;
+
+    // Non-inline: return the summary for callers seeding a fresh task.
+    return prompts.inlineCompact(
+      summaryText,
+      messages.length - 1,
+      recentFileContext,
+    );
   } catch (err) {
     logger.warn("Failed to create summary", err);
     throw err;
   }
+}
+
+/**
+ * Find the index at which to attach the compact block so trailing messages
+ * survive verbatim. Returns `undefined` when the boundary is missing,
+ * shadowed by a previous `<compact>` tag, or when the only reachable
+ * user-role message would be index 0 (which would keep the whole
+ * conversation verbatim and free no context).
+ */
+export function findVerbatimAttachIndex(
+  messages: Message[],
+  boundaryMessageId: string | undefined,
+): number | undefined {
+  if (!boundaryMessageId) return;
+
+  const boundary = messages.findIndex((m) => m?.id === boundaryMessageId);
+  if (boundary <= 0 || boundary >= messages.length - 1) return;
+
+  // Bail when an existing `<compact>` tag at or after the boundary would
+  // shadow the new one (the formatter honours the highest-index tag).
+  const previousCompactIndex = messages.findLastIndex((m) =>
+    m?.parts.some((p) => p.type === "text" && prompts.isCompact(p.text)),
+  );
+  if (previousCompactIndex >= boundary) return;
+
+  // Highest user-role index in `(floor, boundary]`. The floor ensures at
+  // least one curated message remains before the attach point.
+  const floor = Math.max(previousCompactIndex, 0);
+  const attachIndex = messages.findLastIndex(
+    (m, i) => i > floor && i <= boundary && m?.role === "user",
+  );
+  return attachIndex === -1 ? undefined : attachIndex;
 }
 
 async function createSummary(

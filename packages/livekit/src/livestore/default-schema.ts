@@ -224,7 +224,7 @@ export const events = {
     schema: Schema.Struct({
       taskId: Schema.String,
       filePath: Schema.Union(
-        Schema.Literal("/plan.md", "/walkthrough.md"),
+        Schema.Literal("/plan.md", "/walkthrough.md", "/memory.md"),
         Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
       ),
       content: Schema.String,
@@ -235,7 +235,7 @@ export const events = {
     name: "v1.WriteStoreFile",
     schema: Schema.Struct({
       filePath: Schema.Union(
-        Schema.Literal("/plan.md", "/walkthrough.md"),
+        Schema.Literal("/plan.md", "/walkthrough.md", "/memory.md"),
         Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
       ),
       content: Schema.String,

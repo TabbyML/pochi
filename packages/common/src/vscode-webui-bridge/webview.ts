@@ -6,6 +6,7 @@ import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type { RecentFileState } from "../tool-utils";
 import type {
+  AsyncAgentState,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -25,6 +26,7 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
+  TaskMemoryState,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -91,6 +93,7 @@ export interface VSCodeHostApi {
       toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
+      fileStateCacheSourceTaskId?: string;
     },
   ): Promise<unknown>;
 
@@ -410,6 +413,16 @@ export interface VSCodeHostApi {
     setContextWindowUsage: (
       contextWindowUsage: ContextWindowUsage,
     ) => Promise<void>;
+  }>;
+
+  readTaskMemoryState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<TaskMemoryState | undefined>;
+    setTaskMemoryState: (state: TaskMemoryState) => Promise<void>;
+  }>;
+
+  readAsyncAgentState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<AsyncAgentState | undefined>;
+    setAsyncAgentState: (state: AsyncAgentState) => Promise<void>;
   }>;
 
   /**

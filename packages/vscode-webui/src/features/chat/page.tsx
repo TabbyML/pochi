@@ -3,6 +3,7 @@ import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
@@ -28,6 +29,7 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
+import { AsyncAgentRunner } from "./components/async-agent-runner";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
@@ -44,6 +46,7 @@ import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
+import { useTaskMemory } from "./hooks/use-task-memory";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
@@ -143,6 +146,16 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveSettings,
   });
 
+  const { tryExtractTaskMemory, taskMemoryState, setTaskMemoryState } =
+    useTaskMemory({
+      isSubTask,
+      taskId: uid,
+      parentCwd: task?.cwd ?? undefined,
+    });
+  const tryExtractTaskMemoryRef = useLatest(tryExtractTaskMemory);
+  const taskMemoryStateRef = useLatest(taskMemoryState);
+  const setTaskMemoryStateRef = useLatest(setTaskMemoryState);
+
   const chatKit = useLiveChatKit({
     store,
     blobStore,
@@ -151,8 +164,18 @@ function Chat({ user, uid, info }: ChatProps) {
     isSubTask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
-    onCompact: () => vscodeHost.clearFileStateCache(uid),
+    onCompact: async () => {
+      await vscodeHost.clearFileStateCache(uid);
+      // Token usage drops at compact, so rebase the baseline against the
+      // post-compact view; tool-call count is monotonic and unaffected.
+      const setter = setTaskMemoryStateRef.current;
+      const current = taskMemoryStateRef.current;
+      if (setter && current) {
+        setter({ ...current, lastExtractionTokens: 0 });
+      }
+    },
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
+    getTaskMemoryState: () => taskMemoryStateRef.current,
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
         return false;
@@ -181,6 +204,7 @@ function Chat({ user, uid, info }: ChatProps) {
       if (data.contextWindowUsage) {
         setContextWindowUsage.current(data.contextWindowUsage);
       }
+      tryExtractTaskMemoryRef.current(data);
     },
   });
 
@@ -335,6 +359,7 @@ function Chat({ user, uid, info }: ChatProps) {
           mcpConfigOverride={mcpConfigOverride}
         />
       </div>
+      <AsyncAgentRunner />
     </div>
   );
 }

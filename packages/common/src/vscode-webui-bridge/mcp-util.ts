@@ -3,10 +3,21 @@ import * as R from "remeda";
 import type { McpServerConnection } from "../mcp-utils";
 import type { McpConfigOverride } from "./types/task";
 
+/**
+ * Sort entries of a Record alphabetically by key. Used to make the MCP
+ * server / tool enumeration order deterministic so the resulting prompt
+ * (system instructions + tools JSON) is byte-identical across requests
+ * regardless of MCP server registration order. This is required for stable
+ * Anthropic prompt-cache hits across parent/fork tasks, parallel tasks, and
+ * cross-session shared caches.
+ */
+const sortedEntries = <T>(record: Record<string, T>): [string, T][] =>
+  Object.entries(record).sort(([a], [b]) => a.localeCompare(b));
+
 export const buildInstructionsFromConnections = (
   connections: Record<string, McpServerConnection>,
 ) => {
-  return Object.entries(connections)
+  return sortedEntries(connections)
     .filter(([, conn]) => !!conn.instructions)
     .map(
       ([name, conn]) =>
@@ -18,16 +29,18 @@ export const buildInstructionsFromConnections = (
 export const buildToolsetFromConnections = (
   connections: Record<string, McpServerConnection>,
 ): Record<string, McpTool> => {
-  return R.mergeAll(
-    R.values(
-      R.pickBy(
-        connections,
-        (connection) => connection.status === "ready" && !!connection.tools,
-      ),
-    )
-      .map((connection) => R.pickBy(connection.tools, (tool) => !tool.disabled))
-      .map((tool) => R.mapValues(tool, (tool) => R.omit(tool, ["disabled"]))),
-  );
+  // Iterate connections in name-sorted order, and within each connection
+  // iterate its tools in name-sorted order, so the merged toolset has a
+  // deterministic key order.
+  const merged: Record<string, McpTool> = {};
+  for (const [, connection] of sortedEntries(connections)) {
+    if (connection.status !== "ready" || !connection.tools) continue;
+    for (const [toolName, tool] of sortedEntries(connection.tools)) {
+      if (tool.disabled) continue;
+      merged[toolName] = R.omit(tool, ["disabled"]) as McpTool;
+    }
+  }
+  return merged;
 };
 
 export const buildTaskScopedMcpInfo = (
