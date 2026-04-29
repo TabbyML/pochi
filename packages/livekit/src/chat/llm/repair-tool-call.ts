@@ -8,6 +8,7 @@ import {
   type ToolCallRepairFunction,
   generateText,
 } from "ai";
+import { sanitizeSchemaForStructuredOutput } from "./sanitize-schema";
 
 export const makeRepairToolCall: (
   taskId: string,
@@ -19,9 +20,8 @@ export const makeRepairToolCall: (
       return null; // do not attempt to fix invalid tool names
     }
 
-    const toolSchema = jsonSchema(
-      await inputSchema({ toolName: toolCall.toolName }),
-    );
+    const rawSchema = await inputSchema({ toolName: toolCall.toolName });
+    const toolSchema = jsonSchema(sanitizeSchemaForStructuredOutput(rawSchema));
 
     const { output: repairedArgs } = await generateText({
       providerOptions: {
@@ -42,7 +42,7 @@ export const makeRepairToolCall: (
         `The model tried to call the tool "${toolCall.toolName}" with the following inputs:`,
         JSON.stringify(toolCall.input),
         "The tool accepts the following schema:",
-        JSON.stringify(await inputSchema({ toolName: toolCall.toolName })),
+        JSON.stringify(rawSchema),
         "Please fix the inputs.",
       ].join("\n"),
     });
