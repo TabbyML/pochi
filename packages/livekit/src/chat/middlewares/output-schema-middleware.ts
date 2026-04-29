@@ -1,15 +1,13 @@
 import type {
-  JSONSchema7,
   LanguageModelV3,
   LanguageModelV3Middleware,
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
-import { jsonSchema, safeParseJSON } from "@ai-sdk/provider-utils";
+import { safeParseJSON } from "@ai-sdk/provider-utils";
 import type { PochiProviderOptions } from "@getpochi/common";
 import { attemptCompletionSchema } from "@getpochi/tools";
 import { InvalidToolInputError, Output, generateText } from "ai";
 import z from "zod";
-import { sanitizeSchemaForStructuredOutput } from "../llm/sanitize-schema";
 
 export function createOutputSchemaMiddleware(
   taskId: string,
@@ -98,12 +96,6 @@ async function ensureOutputSchema(
   content: string,
 ) {
   try {
-    const rawJsonSchema = z.toJSONSchema(schema);
-    const sanitizedSchema = jsonSchema(
-      sanitizeSchemaForStructuredOutput(
-        rawJsonSchema as unknown as JSONSchema7,
-      ),
-    );
     const { output: object } = await generateText({
       providerOptions: {
         pochi: {
@@ -116,10 +108,10 @@ async function ensureOutputSchema(
         },
       },
       model,
-      output: Output.object({ schema: sanitizedSchema }),
+      output: Output.object({ schema }),
       prompt: [
         "The model is trying to generate an object that conforms to the following schema:",
-        JSON.stringify(rawJsonSchema),
+        JSON.stringify(z.toJSONSchema(schema)),
         "The current input is:",
         content,
         "Please correct the input to match the schema. Ensure that all information from the original input is preserved in the corrected output.",
