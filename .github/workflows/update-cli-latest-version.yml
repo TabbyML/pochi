@@ -1,4 +1,4 @@
-name: Update Latest CLI Release in install.sh
+name: Update Latest CLI Release
 
 on:
   workflow_dispatch:
@@ -29,11 +29,11 @@ jobs:
             fi
           fi
 
-      - name: Update fallback version in install.sh
+      - name: Update docs static version file
         if: steps.get_version.outputs.version != ''
         run: |
           NEW_VERSION="${{ steps.get_version.outputs.version }}"
-          sed -i "s/version=\"cli@[^\"]*\" # UPDATED_BY_CI/version=\"$NEW_VERSION\" # UPDATED_BY_CI/g" assets/install.sh
+          echo "$NEW_VERSION" > packages/docs/public/cli-latest-version.txt
 
       - name: Create Pull Request
         if: steps.get_version.outputs.version != ''
@@ -44,6 +44,6 @@ jobs:
           author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
           commit-message: "chore(install): update latest cli version to ${{ steps.get_version.outputs.version }}"
           title: "chore(install): update latest cli version to ${{ steps.get_version.outputs.version }}"
-          body: "Automatically generated PR to update the latest CLI version in `assets/install.sh` to `${{ steps.get_version.outputs.version }}`."
+          body: "Automatically generated PR to update the latest CLI version in docs public directory to `${{ steps.get_version.outputs.version }}`."
           branch: "chore/update-cli-version-${{ steps.get_version.outputs.version }}"
           base: main
