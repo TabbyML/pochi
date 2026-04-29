@@ -44,6 +44,20 @@ describe("findVerbatimAttachIndex", () => {
     expect(findVerbatimAttachIndex(messages, "u0")).toBeUndefined();
   });
 
+  it("returns undefined when the only reachable user message is index 0", () => {
+    // Boundary lands on the first assistant message; walking back to
+    // index 0 would keep everything verbatim and free no context.
+    // Falling back to trailing-message attach is preferable.
+    const messages = [
+      userMsg("u0"),
+      assistantMsg("a0"),
+      assistantMsg("a1"),
+      userMsg("u1"),
+      assistantMsg("a2"),
+    ];
+    expect(findVerbatimAttachIndex(messages, "a0")).toBeUndefined();
+  });
+
   it("returns undefined when the boundary equals or exceeds the trailing index", () => {
     const messages = [userMsg("u0"), assistantMsg("a0"), userMsg("u1")];
     // boundary at the last index leaves no room for verbatim retention

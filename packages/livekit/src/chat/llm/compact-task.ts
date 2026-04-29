@@ -117,8 +117,9 @@ export async function compactTask({
 /**
  * Find the index at which to attach the compact block so trailing messages
  * survive verbatim. Returns `undefined` when the boundary is missing,
- * shadowed by a previous `<compact>` tag, or when no user-role message
- * exists between the previous compact and the boundary.
+ * shadowed by a previous `<compact>` tag, or when the only reachable
+ * user-role message would be index 0 (which would keep the whole
+ * conversation verbatim and free no context).
  */
 export function findVerbatimAttachIndex(
   messages: Message[],
@@ -127,28 +128,22 @@ export function findVerbatimAttachIndex(
   if (!boundaryMessageId) return;
 
   const boundary = messages.findIndex((m) => m?.id === boundaryMessageId);
-  const tail = messages.length - 1;
-  if (boundary <= 0 || boundary >= tail) return;
+  if (boundary <= 0 || boundary >= messages.length - 1) return;
 
-  // Floor at the latest pre-existing compact block, if any.
-  let previousCompactIndex = -1;
-  for (let i = tail - 1; i >= 0; i--) {
-    if (
-      messages[i]?.parts.some(
-        (p) => p.type === "text" && prompts.isCompact(p.text),
-      )
-    ) {
-      previousCompactIndex = i;
-      break;
-    }
-  }
+  // Bail when an existing `<compact>` tag at or after the boundary would
+  // shadow the new one (the formatter honours the highest-index tag).
+  const previousCompactIndex = messages.findLastIndex((m) =>
+    m?.parts.some((p) => p.type === "text" && prompts.isCompact(p.text)),
+  );
   if (previousCompactIndex >= boundary) return;
 
-  // Walk backwards from `boundary` to find a `user`-role message.
-  for (let i = boundary; i > previousCompactIndex; i--) {
-    if (messages[i]?.role === "user") return i;
-  }
-  return;
+  // Highest user-role index in `(floor, boundary]`. The floor ensures at
+  // least one curated message remains before the attach point.
+  const floor = Math.max(previousCompactIndex, 0);
+  const attachIndex = messages.findLastIndex(
+    (m, i) => i > floor && i <= boundary && m?.role === "user",
+  );
+  return attachIndex === -1 ? undefined : attachIndex;
 }
 
 async function createSummary(

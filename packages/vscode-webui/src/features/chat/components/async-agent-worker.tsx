@@ -51,19 +51,6 @@ export function AsyncAgentWorker({
 }: AsyncAgentWorkerProps) {
   const { asyncAgentState, isLoading } = useAsyncAgentState(taskId);
 
-  useEffect(() => {
-    logger.debug(
-      {
-        taskId,
-        isLoading,
-        hasAsyncAgentState: asyncAgentState !== undefined,
-        parentTaskId: asyncAgentState?.parentTaskId,
-        tools: asyncAgentState?.tools?.length,
-      },
-      "Async agent state updated",
-    );
-  }, [taskId, isLoading, asyncAgentState]);
-
   if (isLoading) return null;
 
   return (
@@ -131,13 +118,6 @@ function AsyncAgentWorkerInner({
   useEffect(() => {
     const signal = abortController.current.signal;
     const onAbort = () => {
-      logger.debug(
-        {
-          taskId,
-          reason: formatLogValue(signal.reason),
-        },
-        "Async agent aborted",
-      );
       // Cancel all queued / in-flight tool calls for this task so that the
       // batch manager doesn't leave dangling subscriptions or pending items.
       batchExecuteManager.abort(taskId, "user-abort");
@@ -195,13 +175,10 @@ function AsyncAgentWorkerInner({
     },
     onStreamFinish: (data) => {
       if (data.status === "completed") {
+        const conversation = summarizeMessages(data.messages);
         logger.debug(
-          {
-            taskId,
-            messageCount: data.messages.length,
-            messages: data.messages,
-          },
-          "Async agent completed with messages",
+          { taskId, messageCount: data.messages.length },
+          `✔ stream-finish (${data.messages.length} msgs)\n${conversation}`,
         );
       }
 
@@ -212,24 +189,7 @@ function AsyncAgentWorkerInner({
       }
     },
     onToolCall: async ({ toolCall }) => {
-      logger.debug(
-        {
-          taskId,
-          toolName: toolCall.toolName,
-          toolCallId: toolCall.toolCallId,
-        },
-        "Async agent tool call received",
-      );
-
       if (completedRef.current) {
-        logger.debug(
-          {
-            taskId,
-            toolName: toolCall.toolName,
-            toolCallId: toolCall.toolCallId,
-          },
-          "Ignoring async agent tool call after completion",
-        );
         return;
       }
 
@@ -239,12 +199,8 @@ function AsyncAgentWorkerInner({
       ) {
         completedRef.current = true;
         logger.debug(
-          {
-            taskId,
-            toolName: toolCall.toolName,
-            toolCallId: toolCall.toolCallId,
-          },
-          "Async agent completed by terminal tool call",
+          { taskId, toolName: toolCall.toolName },
+          `✔ terminal tool ${toolCall.toolName}`,
         );
         return;
       }
@@ -284,11 +240,10 @@ function AsyncAgentWorkerInner({
       logger.debug(
         {
           taskId,
-          toolName: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
-          parentTaskId,
+          input: summarizeToolPayload((toolCall as { input?: unknown }).input),
         },
-        "Enqueueing async agent tool call",
+        `→ tool ${toolCall.toolName}`,
       );
 
       // Defer execution to the BatchExecuteManager: consecutive safe-to-batch
@@ -333,13 +288,6 @@ function AsyncAgentWorkerInner({
     chatStatusRef.current = status;
   }, [status]);
 
-  useEffect(() => {
-    logger.debug({ taskId }, "Async agent worker mounted");
-    return () => {
-      logger.debug({ taskId }, "Async agent worker unmounted");
-    };
-  }, [taskId]);
-
   useTodos({
     initialTodos: task?.todos,
     messages,
@@ -378,28 +326,11 @@ function AsyncAgentWorkerInner({
         abortController.current.signal.aborted ||
         !(status === "ready" || status === "error")
       ) {
-        logger.debug(
-          {
-            taskId,
-            status,
-            completed: completedRef.current,
-            aborted: abortController.current.signal.aborted,
-          },
-          "Skipping async agent retry",
-        );
         return;
       }
-      logger.debug(
-        {
-          taskId,
-          status,
-          error: retryError ? formatLogValue(retryError) : undefined,
-        },
-        "Retrying async agent",
-      );
       void retryImpl(retryError ?? new ReadyForRetryError());
     },
-    [retryImpl, status, taskId],
+    [retryImpl, status],
   );
 
   const [retryCount, setRetryCount] = useState(0);
@@ -418,10 +349,9 @@ function AsyncAgentWorkerInner({
         {
           taskId,
           retryCount: retryCount + 1,
-          maxRetry: AsyncAgentMaxRetry,
           error: retryError ? formatLogValue(retryError) : undefined,
         },
-        "Scheduling async agent retry",
+        `↻ retry #${retryCount + 1}`,
       );
       setRetryCount((count) => count + 1);
       retry(retryError);
@@ -447,17 +377,9 @@ function AsyncAgentWorkerInner({
       errorForRetry &&
       (status === "ready" || status === "error")
     ) {
-      logger.debug(
-        {
-          taskId,
-          status,
-          error: formatLogValue(errorForRetry),
-        },
-        "Async agent error became ready for retry",
-      );
       debouncedSetPendingErrorForRetry(errorForRetry);
     }
-  }, [errorForRetry, debouncedSetPendingErrorForRetry, status, taskId]);
+  }, [errorForRetry, debouncedSetPendingErrorForRetry, status]);
   useEffect(() => {
     if (
       completedRef.current ||
@@ -472,15 +394,9 @@ function AsyncAgentWorkerInner({
 
   useEffect(() => {
     if (status === "ready" && errorForRetry === undefined) {
-      if (retryCount > 0) {
-        logger.debug(
-          { taskId, retryCount },
-          "Resetting async agent retry count",
-        );
-      }
       setRetryCount(0);
     }
-  }, [status, errorForRetry, retryCount, taskId]);
+  }, [status, errorForRetry]);
 
   const stepCount = useMemo(() => {
     return messages
@@ -490,17 +406,9 @@ function AsyncAgentWorkerInner({
   const [currentStepCount, setCurrentStepCount] = useState(0);
   useEffect(() => {
     if (stepCount > currentStepCount) {
-      logger.debug(
-        {
-          taskId,
-          stepCount,
-          previousStepCount: currentStepCount,
-        },
-        "Async agent advanced steps",
-      );
       setCurrentStepCount(stepCount);
     }
-  }, [stepCount, currentStepCount, taskId]);
+  }, [stepCount, currentStepCount]);
 
   useEffect(() => {
     if (currentStepCount > AsyncAgentMaxStep) {
@@ -530,13 +438,10 @@ function AsyncAgentWorkerInner({
       logger.debug(
         {
           taskId,
-          status,
-          taskStatus: task?.status,
           modelId: selectedModel.id,
           messageCount: messages.length,
-          stepCount: currentStepCount,
         },
-        "Starting async agent from current task state",
+        "▶ start async agent",
       );
       retry();
     }
@@ -549,21 +454,7 @@ function AsyncAgentWorkerInner({
     task?.status,
     task?.error,
     taskId,
-    currentStepCount,
   ]);
-
-  useEffect(() => {
-    logger.debug(
-      {
-        taskId,
-        chatStatus: status,
-        taskStatus: task?.status,
-        messageCount: messages.length,
-        error: error ? formatLogValue(error) : undefined,
-      },
-      "Async agent chat status updated",
-    );
-  }, [taskId, status, task?.status, messages.length, error]);
 
   return null;
 }
@@ -591,4 +482,124 @@ function formatLogValue(value: unknown): string | undefined {
   } catch {
     return String(value);
   }
+}
+
+const TextPreviewMaxLen = 160;
+const ToolInputPreviewMaxLen = 120;
+const ToolOutputPreviewMaxLen = 120;
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max)}…(+${text.length - max})`;
+}
+
+/** Collapse whitespace so previews stay on a single line. */
+function flattenWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Strip / collapse `<system-reminder>...</system-reminder>` blocks (and other
+ * Pochi-injected wrappers) from a user-visible text snippet so logs focus on
+ * what the user actually asked.
+ */
+function stripSystemBlocks(text: string): string {
+  return text
+    .replace(
+      /<system-reminder>[\s\S]*?<\/system-reminder>/g,
+      "<system-reminder/>",
+    )
+    .replace(/<environment_details>[\s\S]*?<\/environment_details>/g, "<env/>");
+}
+
+/**
+ * Render a value (object / string / etc.) into a single-line preview suitable
+ * for log output. JSON-encodes objects and truncates long payloads.
+ */
+function summarizeToolPayload(
+  value: unknown,
+  max = ToolInputPreviewMaxLen,
+): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string") {
+    return truncate(flattenWhitespace(value), max);
+  }
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    serialized = String(value);
+  }
+  return truncate(flattenWhitespace(serialized), max);
+}
+
+/**
+ * Walk the messages array and produce a flat, human-friendly summary that
+ * interleaves text turns with tool-call invocations and their outputs. Useful
+ * for tracing async-agent behavior in logs without dumping raw message JSON.
+ *
+ * Returns a single string (newline-joined) so that tslog renders it as one
+ * readable block rather than a JS array literal with escape sequences.
+ */
+function summarizeMessages(
+  messages: ReadonlyArray<{
+    role: string;
+    parts: ReadonlyArray<Record<string, unknown>>;
+  }>,
+): string {
+  const lines: string[] = [];
+  let stepIndex = 0;
+  for (const message of messages) {
+    const role = message.role;
+    for (const rawPart of message.parts) {
+      const part = rawPart as Record<string, unknown> & { type: string };
+      const type = part.type;
+      if (type === "step-start") {
+        stepIndex += 1;
+        lines.push(`-- step ${stepIndex} --`);
+        continue;
+      }
+      if (type === "text") {
+        const raw = typeof part.text === "string" ? part.text : "";
+        const cleaned = flattenWhitespace(stripSystemBlocks(raw));
+        if (!cleaned) continue;
+        lines.push(`[${role}] ${truncate(cleaned, TextPreviewMaxLen)}`);
+        continue;
+      }
+      if (type === "reasoning") {
+        const raw = typeof part.text === "string" ? part.text : "";
+        const cleaned = flattenWhitespace(raw);
+        if (!cleaned) continue;
+        lines.push(
+          `[${role}:reasoning] ${truncate(cleaned, TextPreviewMaxLen)}`,
+        );
+        continue;
+      }
+      if (typeof type === "string" && type.startsWith("tool-")) {
+        const toolName = type.slice("tool-".length);
+        const state =
+          typeof part.state === "string" ? (part.state as string) : "unknown";
+        const callId =
+          typeof part.toolCallId === "string"
+            ? (part.toolCallId as string)
+            : "";
+        const shortId = callId ? callId.slice(-6) : "";
+        const inputPreview = summarizeToolPayload(
+          part.input,
+          ToolInputPreviewMaxLen,
+        );
+        const outputKey =
+          "output" in part ? "output" : "result" in part ? "result" : undefined;
+        const outputPreview = outputKey
+          ? summarizeToolPayload(part[outputKey], ToolOutputPreviewMaxLen)
+          : undefined;
+        const header = `[${role}] ${toolName}${shortId ? `#${shortId}` : ""} (${state})`;
+        const segments = [header];
+        if (inputPreview) segments.push(`in=${inputPreview}`);
+        if (outputPreview) segments.push(`out=${outputPreview}`);
+        lines.push(segments.join(" "));
+      }
+    }
+  }
+  return lines.join("\n");
 }
