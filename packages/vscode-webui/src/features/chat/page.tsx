@@ -146,12 +146,15 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveSettings,
   });
 
-  const { tryExtractTaskMemory } = useTaskMemory({
-    isSubTask,
-    taskId: uid,
-    parentCwd: task?.cwd ?? undefined,
-  });
+  const { tryExtractTaskMemory, taskMemoryState, setTaskMemoryState } =
+    useTaskMemory({
+      isSubTask,
+      taskId: uid,
+      parentCwd: task?.cwd ?? undefined,
+    });
   const tryExtractTaskMemoryRef = useLatest(tryExtractTaskMemory);
+  const taskMemoryStateRef = useLatest(taskMemoryState);
+  const setTaskMemoryStateRef = useLatest(setTaskMemoryState);
 
   const chatKit = useLiveChatKit({
     store,
@@ -161,8 +164,18 @@ function Chat({ user, uid, info }: ChatProps) {
     isSubTask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
-    onCompact: () => vscodeHost.clearFileStateCache(uid),
+    onCompact: async () => {
+      await vscodeHost.clearFileStateCache(uid);
+      // Token usage drops at compact, so rebase the baseline against the
+      // post-compact view; tool-call count is monotonic and unaffected.
+      const setter = setTaskMemoryStateRef.current;
+      const current = taskMemoryStateRef.current;
+      if (setter && current) {
+        setter({ ...current, lastExtractionTokens: 0 });
+      }
+    },
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
+    getTaskMemoryState: () => taskMemoryStateRef.current,
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
         return false;
@@ -191,10 +204,6 @@ function Chat({ user, uid, info }: ChatProps) {
       if (data.contextWindowUsage) {
         setContextWindowUsage.current(data.contextWindowUsage);
       }
-      console.log(
-        "Task memory extraction attempt on stream finish with data:",
-        data,
-      );
       tryExtractTaskMemoryRef.current(data);
     },
   });

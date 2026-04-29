@@ -13,13 +13,13 @@ import { createForkAgent } from "../lib/create-fork-agent";
 
 const logger = getLogger("useTaskMemory");
 
-/** Tools the memory extraction fork agent is allowed to call */
+/** Tools the extraction fork agent may call. */
 const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
   "readFile",
   "writeToFile(pochi://-/memory.md)",
 ];
 
-/** Statuses that mean the fork agent task is still running */
+/** Fork-agent statuses that mean it is still running. */
 const ActiveStatuses = new Set(["pending-model", "pending-tool"]);
 const IdleTaskId = "__task_memory_idle__";
 
@@ -31,12 +31,17 @@ type ExtractionData = {
 type ExtractionMetrics = {
   tokens: number;
   toolCalls: number;
+  trailingMessageId: string | undefined;
+  trailingMessageHasOpenToolCall: boolean;
 };
 
 function getExtractionMetrics(data: ExtractionData): ExtractionMetrics {
+  const last = data.messages.at(-1);
   return {
     tokens: computeTotalTokens(data.contextWindowUsage),
     toolCalls: countToolCalls(data.messages),
+    trailingMessageId: last?.id,
+    trailingMessageHasOpenToolCall: lastMessageHasOpenToolCall(data.messages),
   };
 }
 
@@ -64,6 +69,18 @@ function countToolCalls(messages: Message[]): number {
   return count;
 }
 
+/** True if the trailing assistant turn has tool calls without output yet. */
+function lastMessageHasOpenToolCall(messages: Message[]): boolean {
+  const last = messages.at(-1);
+  if (!last || last.role !== "assistant") return false;
+  return last.parts.some((part) => {
+    if (!part.type.startsWith("tool-")) return false;
+    if (!("state" in part)) return false;
+    const state = (part as { state: string }).state;
+    return state !== "output-available" && state !== "output-error";
+  });
+}
+
 function shouldExtractTaskMemory(
   state: TaskMemoryState,
   metrics: ExtractionMetrics,
@@ -87,12 +104,17 @@ function toExtractingState(
   state: TaskMemoryState,
   metrics: ExtractionMetrics,
 ): TaskMemoryState {
+  // Skip the boundary when the snapshot is mid-tool-call to avoid
+  // slicing through a tool_use/tool_result pair on the next compaction.
   return {
     ...state,
     initialized: true,
     isExtracting: true,
     lastExtractionTokens: metrics.tokens,
     lastExtractionToolCalls: metrics.toolCalls,
+    pendingExtractionMessageId: metrics.trailingMessageHasOpenToolCall
+      ? undefined
+      : metrics.trailingMessageId,
   };
 }
 
@@ -108,7 +130,7 @@ export function useTaskMemory({
   const store = useDefaultStore();
   const { taskMemoryState, setTaskMemoryState } = useTaskMemoryState(taskId);
 
-  // Watch the active fork agent task for completion
+  // Watch the active fork-agent task for completion.
   const activeTaskId = taskMemoryState.activeTaskId;
   const activeTask = store.useQuery(
     catalog.queries.makeTaskQuery(activeTaskId ?? IdleTaskId),
@@ -125,13 +147,19 @@ export function useTaskMemory({
 
     if (activeTask && ActiveStatuses.has(activeTask.status)) return;
 
-    // The active task is no longer running, so we mark extraction as complete
+    // Extraction finished — on success, promote the pending boundary id.
+    const succeeded = !!activeTask;
     setTaskMemoryState({
       ...taskMemoryState,
       isExtracting: false,
-      extractionCount: activeTask
+      extractionCount: succeeded
         ? taskMemoryState.extractionCount + 1
         : taskMemoryState.extractionCount,
+      lastExtractionMessageId: succeeded
+        ? (taskMemoryState.pendingExtractionMessageId ??
+          taskMemoryState.lastExtractionMessageId)
+        : taskMemoryState.lastExtractionMessageId,
+      pendingExtractionMessageId: undefined,
       activeTaskId: undefined,
     });
   }, [
@@ -188,8 +216,7 @@ export function useTaskMemory({
             "Task memory extraction fork agent created with config:",
             config,
           );
-          // AsyncAgentRunner observes runnableTasks$ via store.useQuery, so the
-          // taskInited commit in createForkAgent is picked up on the next render.
+          // AsyncAgentRunner picks up the taskInited commit on the next render.
           setTaskMemoryState({
             ...nextState,
             activeTaskId: config.taskId,
@@ -200,6 +227,7 @@ export function useTaskMemory({
             ...nextState,
             isExtracting: false,
             activeTaskId: undefined,
+            pendingExtractionMessageId: undefined,
           });
         });
 
@@ -210,5 +238,7 @@ export function useTaskMemory({
 
   return {
     tryExtractTaskMemory,
+    taskMemoryState,
+    setTaskMemoryState,
   };
 }

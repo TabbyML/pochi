@@ -23,6 +23,7 @@ export async function compactTask({
   model,
   messages,
   recentFiles,
+  taskMemoryBoundaryMessageId,
   abortSignal,
   inline,
   store,
@@ -32,6 +33,8 @@ export async function compactTask({
   model: LanguageModelV3;
   messages: Message[];
   recentFiles?: RecentFileState[];
+  /** UUID of the last message covered by memory.md; messages after it are kept verbatim. */
+  taskMemoryBoundaryMessageId?: string;
   abortSignal?: AbortSignal;
   inline?: boolean;
   store?: LiveKitStore;
@@ -44,10 +47,12 @@ export async function compactTask({
   try {
     // Prefer task memory if available
     let summaryText: string | undefined;
+    let usedTaskMemory = false;
     if (store) {
       const memoryFile = store.query(makeStoreFileQuery("/memory.md"));
       if (memoryFile?.content?.trim()) {
         summaryText = memoryFile.content;
+        usedTaskMemory = true;
       }
     }
 
@@ -62,23 +67,88 @@ export async function compactTask({
       );
     }
 
-    const text = prompts.inlineCompact(
-      summaryText,
-      messages.length - 1,
-      formatRecentFileContext(recentFiles),
-    );
+    const recentFileContext = formatRecentFileContext(recentFiles);
+
     if (inline) {
-      lastMessage.parts.unshift({
-        type: "text",
-        text,
-      });
+      // Preferred: attach at the boundary so trailing messages survive verbatim.
+      const attachIndex = usedTaskMemory
+        ? findVerbatimAttachIndex(messages, taskMemoryBoundaryMessageId)
+        : undefined;
+      const attachMessage =
+        attachIndex !== undefined ? messages[attachIndex] : undefined;
+      if (attachIndex !== undefined && attachMessage) {
+        const text = prompts.inlineCompact(
+          summaryText,
+          attachIndex,
+          recentFileContext,
+          { verbatimTail: true },
+        );
+        attachMessage.parts.unshift({ type: "text", text });
+        logger.debug(
+          `Inline compact attached at index ${attachIndex}; preserving ${
+            messages.length - attachIndex
+          } trailing messages verbatim.`,
+        );
+        return;
+      }
+
+      // Fallback: attach at the trailing message; tail is dropped.
+      const text = prompts.inlineCompact(
+        summaryText,
+        messages.length - 1,
+        recentFileContext,
+      );
+      lastMessage.parts.unshift({ type: "text", text });
       return;
     }
-    return text;
+
+    // Non-inline: return the summary for callers seeding a fresh task.
+    return prompts.inlineCompact(
+      summaryText,
+      messages.length - 1,
+      recentFileContext,
+    );
   } catch (err) {
     logger.warn("Failed to create summary", err);
     throw err;
   }
+}
+
+/**
+ * Find the index at which to attach the compact block so trailing messages
+ * survive verbatim. Returns `undefined` when the boundary is missing,
+ * shadowed by a previous `<compact>` tag, or when no user-role message
+ * exists between the previous compact and the boundary.
+ */
+export function findVerbatimAttachIndex(
+  messages: Message[],
+  boundaryMessageId: string | undefined,
+): number | undefined {
+  if (!boundaryMessageId) return;
+
+  const boundary = messages.findIndex((m) => m?.id === boundaryMessageId);
+  const tail = messages.length - 1;
+  if (boundary <= 0 || boundary >= tail) return;
+
+  // Floor at the latest pre-existing compact block, if any.
+  let previousCompactIndex = -1;
+  for (let i = tail - 1; i >= 0; i--) {
+    if (
+      messages[i]?.parts.some(
+        (p) => p.type === "text" && prompts.isCompact(p.text),
+      )
+    ) {
+      previousCompactIndex = i;
+      break;
+    }
+  }
+  if (previousCompactIndex >= boundary) return;
+
+  // Walk backwards from `boundary` to find a `user`-role message.
+  for (let i = boundary; i > previousCompactIndex; i--) {
+    if (messages[i]?.role === "user") return i;
+  }
+  return;
 }
 
 async function createSummary(
