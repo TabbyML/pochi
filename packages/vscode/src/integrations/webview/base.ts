@@ -26,6 +26,7 @@ import type { VSCodeHostImpl } from "./vscode-host-impl";
 
 const logger = getLogger("WebviewBase");
 let liveStoreSharedWorkerDataUrl: string | undefined;
+let sqliteWasmDataUrl: string | undefined;
 
 function getLiveStoreSharedWorkerDataUrl(extensionUri: vscode.Uri): string {
   if (liveStoreSharedWorkerDataUrl) {
@@ -47,6 +48,26 @@ function getLiveStoreSharedWorkerDataUrl(extensionUri: vscode.Uri): string {
   )}`;
 
   return liveStoreSharedWorkerDataUrl;
+}
+
+function getSqliteWasmDataUrl(extensionUri: vscode.Uri): string {
+  if (sqliteWasmDataUrl) {
+    return sqliteWasmDataUrl;
+  }
+
+  const sqliteWasmPath = vscode.Uri.joinPath(
+    extensionUri,
+    "assets",
+    "webview-ui",
+    "dist",
+    "wa-sqlite.wasm",
+  );
+
+  sqliteWasmDataUrl = `data:application/wasm;base64,${readFileSync(
+    sqliteWasmPath.fsPath,
+  ).toString("base64")}`;
+
+  return sqliteWasmDataUrl;
 }
 
 /**
@@ -142,11 +163,20 @@ export abstract class WebviewBase implements vscode.Disposable {
         "dist",
         "wa-sqlite.wasm",
       ]);
+      const sqliteWasmWorkerDataUrl = getSqliteWasmDataUrl(
+        this.context.extensionUri,
+      );
       const webviewDistBaseUri = getUri(webview, this.context.extensionUri, [
         "assets",
         "webview-ui",
         "dist",
       ]).toString();
+      const workerAssetsPathScript = `self.__assetsPath = (path) => {
+        if (path === "wa-sqlite.wasm") {
+          return ${JSON.stringify(sqliteWasmWorkerDataUrl)};
+        }
+        return path;
+      };`;
 
       const assetLoaderScript = `<script nonce="${nonce}" type="module">
       window.__assetsPath = (path) => {
@@ -156,7 +186,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         return path;
       }
       window.__liveStoreSharedWorkerUrl = ${JSON.stringify(sharedWorkerDataUrl)};
-      window.__workerAssetsPathScript = 'self.__assetsPath = (path) => { if (path === "wa-sqlite.wasm") { return "${sqliteWasmUri}"; }};';
+      window.__workerAssetsPathScript = ${JSON.stringify(workerAssetsPathScript)};
       </script>`;
 
       const scriptUri = getUri(webview, this.context.extensionUri, [
