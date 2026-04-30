@@ -13,7 +13,11 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 
-import type { ClientTools, CompiledToolPolicies } from "@getpochi/tools";
+import {
+  type ClientTools,
+  type CompiledToolPolicies,
+  validateAgentTypePatternPolicy,
+} from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -209,7 +213,9 @@ export class ManagedToolCallLifeCycle
     let executePromise: Promise<unknown>;
 
     if (this.toolName === "newTask") {
-      executePromise = this.runNewTask(args as NewTaskParameterType);
+      executePromise = this.runNewTask(args as NewTaskParameterType, {
+        toolPolicies: options?.toolPolicies,
+      });
     } else {
       executePromise = vscodeHost.executeToolCall(this.toolName, args, {
         toolCallId: this.toolCallId,
@@ -240,7 +246,18 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private runNewTask(args: NewTaskParameterType): Promise<NewTaskReturnType> {
+  private runNewTask(
+    args: NewTaskParameterType,
+    options?: {
+      toolPolicies?: CompiledToolPolicies;
+    },
+  ): Promise<NewTaskReturnType> {
+    // Validate the agent type pattern policy, throw if failed
+    validateAgentTypePatternPolicy(
+      args.agentType,
+      options?.toolPolicies?.newTask,
+    );
+
     const uid = args._meta?.uid;
     if (!uid) {
       throw new Error("Missing uid in newTask arguments");

@@ -59,6 +59,7 @@ export {
   normalizeToolSpecs,
   parseToolSpec,
   validateCommandPatternPolicy,
+  validateAgentTypePatternPolicy,
   validateToolPolicy,
   validateExecuteCommandRules,
 } from "./utils";
