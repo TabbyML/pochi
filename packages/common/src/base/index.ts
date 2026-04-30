@@ -15,6 +15,19 @@ export {
   Environment,
   type GitStatus,
 } from "./environment";
+export type {
+  AutoMemoryContext,
+  AutoMemoryDreamSession,
+  AutoMemoryManifestEntry,
+  AutoMemoryType,
+} from "./prompts/auto-memory";
+export {
+  AutoMemoryIndexName,
+  AutoMemoryLockName,
+  AutoMemoryMaxManifestEntries,
+  AutoMemoryTypeValues,
+  truncateAutoMemoryIndex,
+} from "./prompts/auto-memory";
 
 export { WebsiteTaskCreateEvent } from "./event";
 

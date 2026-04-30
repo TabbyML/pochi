@@ -5,7 +5,7 @@ import {
   getAllowedToolNames,
 } from "@getpochi/tools";
 import { describe, expect, it } from "vitest";
-import { buildForkMessages } from "../create-fork-agent";
+import { buildForkMessages, createForkAgent } from "../create-fork-agent";
 
 describe("buildForkMessages", () => {
   it("clones parent messages with fresh ids", () => {
@@ -36,6 +36,38 @@ describe("buildForkMessages", () => {
       role: "user",
       parts: [{ type: "text", text: "extract memory" }],
     });
+  });
+
+  it("persists async agent tools with path-pattern rules", async () => {
+    const states: unknown[] = [];
+    const commits: unknown[] = [];
+
+    await createForkAgent({
+      store: {
+        commit: (event: unknown) => commits.push(event),
+      } as never,
+      label: "memory",
+      parentTaskId: "parent-task",
+      parentMessages: [],
+      parentCwd: "/repo",
+      directive: "extract memory",
+      tools: ["readFile(/memory/**)", "writeToFile(/memory/**)"],
+      setAsyncAgentState: (_taskId, state) => {
+        states.push(state);
+      },
+    });
+
+    expect(commits).toHaveLength(1);
+    expect(states).toEqual([
+      {
+        parentTaskId: "parent-task",
+        tools: [
+          "readFile(/memory/**)",
+          "writeToFile(/memory/**)",
+          "attemptCompletion",
+        ],
+      },
+    ]);
   });
 });
 

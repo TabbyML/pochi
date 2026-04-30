@@ -35,6 +35,7 @@ import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
+import { useAutoMemory } from "./hooks/use-auto-memory";
 import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
@@ -155,6 +156,14 @@ function Chat({ user, uid, info }: ChatProps) {
   const tryExtractTaskMemoryRef = useLatest(tryExtractTaskMemory);
   const taskMemoryStateRef = useLatest(taskMemoryState);
   const setTaskMemoryStateRef = useLatest(setTaskMemoryState);
+  const { tryUpdateAutoMemory } = useAutoMemory({
+    isSubTask,
+    taskId: uid,
+    parentCwd: task?.cwd ?? undefined,
+    storeRegistry,
+    jwt,
+  });
+  const tryUpdateAutoMemoryRef = useLatest(tryUpdateAutoMemory);
 
   const chatKit = useLiveChatKit({
     store,
@@ -205,6 +214,7 @@ function Chat({ user, uid, info }: ChatProps) {
         setContextWindowUsage.current(data.contextWindowUsage);
       }
       tryExtractTaskMemoryRef.current(data);
+      tryUpdateAutoMemoryRef.current(data);
     },
   });
 

@@ -1,12 +1,13 @@
 import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
-import type { Environment } from "../base";
+import type { AutoMemoryContext, Environment } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type { RecentFileState } from "../tool-utils";
 import type {
   AsyncAgentState,
+  AutoMemoryTaskState,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -419,6 +420,37 @@ export interface VSCodeHostApi {
     value: ThreadSignalSerialization<TaskMemoryState | undefined>;
     setTaskMemoryState: (state: TaskMemoryState) => Promise<void>;
   }>;
+
+  readAutoMemory(options?: {
+    cwd?: string;
+    ensure?: boolean;
+  }): Promise<AutoMemoryContext | undefined>;
+
+  readAutoMemoryState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
+    setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
+  }>;
+
+  beginAutoMemoryDream(options: {
+    cwd?: string;
+    sessionUpdatedAts: readonly number[];
+  }): Promise<
+    | {
+        context: AutoMemoryContext;
+        token: string;
+        previousLastDreamAt: number;
+        sessionCount: number;
+        reason: "time" | "sessions";
+      }
+    | undefined
+  >;
+
+  finishAutoMemoryDream(options: {
+    memoryDir: string;
+    token: string;
+    previousLastDreamAt: number;
+    success: boolean;
+  }): Promise<void>;
 
   readAsyncAgentState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AsyncAgentState | undefined>;

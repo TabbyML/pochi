@@ -2,6 +2,8 @@ import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { AutoMemoryManager } from "@/lib/auto-memory";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
@@ -73,6 +75,7 @@ import {
 import { getVendor } from "@getpochi/common/vendor";
 import {
   type AsyncAgentState,
+  type AutoMemoryTaskState,
   type BuiltinSubAgentInfo,
   type CaptureEvent,
   type ChangedFileContent,
@@ -197,10 +200,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
     private readonly layoutManager: LayoutManager,
+    private readonly autoMemoryManager: AutoMemoryManager,
   ) {}
 
   private get cwd() {
     return this.workspaceScope.cwd;
+  }
+
+  private isAutoMemoryEnabled() {
+    return (
+      this.pochiConfiguration.advancedSettings.value.memory?.enabled === true
+    );
   }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -1258,6 +1268,54 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       setTaskMemoryState: (state: TaskMemoryState) =>
         this.taskStateStore.setTaskMemoryState(taskId, state),
     };
+  };
+
+  readAutoMemory = async (options?: {
+    cwd?: string;
+    ensure?: boolean;
+  }) => {
+    if (!this.isAutoMemoryEnabled()) return undefined;
+    return this.autoMemoryManager.readContext(
+      options?.cwd ?? this.cwd ?? undefined,
+      {
+        ensure: options?.ensure,
+      },
+    );
+  };
+
+  readAutoMemoryState = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
+    setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getAutoMemoryStateSignal(taskId),
+      ),
+      setAutoMemoryState: (state: AutoMemoryTaskState) =>
+        this.taskStateStore.setAutoMemoryState(taskId, state),
+    };
+  };
+
+  beginAutoMemoryDream = async (options: {
+    cwd?: string;
+    sessionUpdatedAts: readonly number[];
+  }) => {
+    if (!this.isAutoMemoryEnabled()) return undefined;
+    return this.autoMemoryManager.beginDreamRun({
+      cwd: options.cwd ?? this.cwd ?? undefined,
+      sessionUpdatedAts: options.sessionUpdatedAts,
+    });
+  };
+
+  finishAutoMemoryDream = async (options: {
+    memoryDir: string;
+    token: string;
+    previousLastDreamAt: number;
+    success: boolean;
+  }) => {
+    return this.autoMemoryManager.finishDreamRun(options);
   };
 
   readAsyncAgentState = async (

@@ -140,3 +140,15 @@ export interface AsyncAgentState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
 }
+
+export interface AutoMemoryTaskState {
+  lastExtractionMessageCount: number;
+  isExtracting: boolean;
+  extractionCount: number;
+  activeExtractionTaskId?: string;
+  isDreaming: boolean;
+  activeDreamTaskId?: string;
+  activeDreamToken?: string;
+  activeDreamMemoryDir?: string;
+  activeDreamPreviousLastDreamAt?: number;
+}
