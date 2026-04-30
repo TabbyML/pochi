@@ -298,7 +298,7 @@ function Part({
       <MemoReasoningPartUI
         className={paddingClass}
         part={part}
-        isLoading={part.state === "streaming"}
+        isLoading={isLastPartInMessages}
       />
     );
   }
@@ -384,7 +384,7 @@ function ReasoningPartRenderer(props: Parameters<typeof ReasoningPartUI>[0]) {
 }
 
 const MemoReasoningPartUI = memo(ReasoningPartRenderer, (prev, next) => {
-  return prev.part.text === next.part.text;
+  return prev.part.text === next.part.text && prev.isLoading === next.isLoading;
 });
 MemoReasoningPartUI.displayName = "MemoReasoningPartUI";
 
