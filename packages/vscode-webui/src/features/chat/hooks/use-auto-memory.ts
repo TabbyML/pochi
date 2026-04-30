@@ -1,5 +1,5 @@
 import { useAutoMemoryState } from "@/lib/hooks/use-auto-memory-state";
-import { getOrLoadTaskStore, useDefaultStore } from "@/lib/use-default-store";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import {
   type AutoMemoryContext,
@@ -7,11 +7,8 @@ import {
   getLogger,
   prompts,
 } from "@getpochi/common";
-import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ToolSpecInput } from "@getpochi/tools";
-import type { StoreRegistry } from "@livestore/livestore";
-import { threadSignal } from "@quilted/threads/signals";
 import { useCallback, useEffect } from "react";
 import { createForkAgent } from "../lib/create-fork-agent";
 
@@ -26,7 +23,6 @@ const MemoryReadToolNames = [
 ] as const;
 const MemoryWriteToolNames = ["writeToFile", "applyDiff"] as const;
 const MemoryWriteTools = new Set(["writeToFile", "applyDiff", "editNotebook"]);
-const MaxDreamTranscriptChars = 120_000;
 const MaxSessionTranscriptChars = 24_000;
 const MaxPartChars = 4_000;
 
@@ -35,26 +31,14 @@ type StreamFinishData = {
   status?: string;
 };
 
-type HistoryTask = {
-  id: string;
-  parentId?: string | null;
-  cwd?: string | null;
-  updatedAt?: number;
-  runAsync?: boolean | number | null;
-};
-
 export function useAutoMemory({
   isSubTask,
   taskId,
   parentCwd,
-  storeRegistry,
-  jwt,
 }: {
   isSubTask: boolean;
   taskId: string;
   parentCwd: string | undefined;
-  storeRegistry: StoreRegistry;
-  jwt: string | null;
 }) {
   const store = useDefaultStore();
   const { autoMemoryState, setAutoMemoryState } = useAutoMemoryState(taskId);
@@ -179,103 +163,39 @@ export function useAutoMemory({
     [autoMemoryState, parentCwd, setAutoMemoryState, store, taskId],
   );
 
-  const collectSameRepoTasks = useCallback(
-    async ({
-      context,
-      currentCwd,
-    }: {
-      context: AutoMemoryContext;
-      currentCwd: string | undefined;
-    }): Promise<HistoryTask[]> => {
-      const tasksSignal = threadSignal(await vscodeHost.readTasks());
-      const tasks = Object.values(tasksSignal.value) as HistoryTask[];
-      const result: HistoryTask[] = [];
-
-      for (const task of tasks) {
-        if (!task.id || task.parentId) continue;
-        if (task.runAsync === true || task.runAsync === 1) continue;
-        if (!task.cwd && !currentCwd) continue;
-
-        const taskMemory = await vscodeHost.readAutoMemory({
-          cwd: task.cwd ?? currentCwd,
-          ensure: false,
-        });
-        if (taskMemory?.repoKey === context.repoKey) {
-          result.push(task);
-        }
-      }
-
-      return result;
-    },
-    [],
-  );
-
-  const collectDreamSessions = useCallback(
-    async ({
-      candidates,
-      currentTaskId,
-    }: {
-      candidates: HistoryTask[];
-      currentTaskId: string;
-    }): Promise<AutoMemoryDreamSession[]> => {
-      const sessions: AutoMemoryDreamSession[] = [];
-      let totalChars = 0;
-
-      for (const task of candidates.sort(
-        (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0),
-      )) {
-        const taskStore =
-          task.id === currentTaskId
-            ? store
-            : await getOrLoadTaskStore({
-                storeRegistry,
-                storeId: encodeStoreId(jwt, task.id),
-                jwt,
-              });
-        const rows = taskStore.query(
-          catalog.queries.makeMessagesQuery(task.id),
-        );
-        const transcript = serializeSessionTranscript(
-          rows.map((row) => row.data as Message),
-        );
-        if (!transcript) continue;
-
-        totalChars += transcript.length;
-        if (totalChars > MaxDreamTranscriptChars) break;
-
-        sessions.push({
-          taskId: task.id,
-          updatedAt: task.updatedAt ?? Date.now(),
-          cwd: task.cwd,
+  const writeCurrentTranscript = useCallback(
+    async (messages: readonly Message[]) => {
+      const transcript = serializeSessionTranscript(messages);
+      if (!transcript) return;
+      try {
+        await vscodeHost.writeTaskTranscript({
+          taskId,
+          cwd: parentCwd,
+          updatedAt: Date.now(),
           transcript,
         });
+      } catch (error) {
+        logger.warn("Failed to write task transcript", error);
       }
-
-      return sessions;
     },
-    [jwt, store, storeRegistry],
+    [parentCwd, taskId],
   );
 
   const maybeStartDream = useCallback(
-    async (context: AutoMemoryContext) => {
+    async (_context: AutoMemoryContext) => {
       if (autoMemoryState.isDreaming) return;
 
-      const candidates = await collectSameRepoTasks({
-        context,
-        currentCwd: parentCwd,
-      });
-      const run = await vscodeHost.beginAutoMemoryDream({
-        cwd: parentCwd,
-        sessionUpdatedAts: candidates.map((task) => task.updatedAt ?? 0),
-      });
+      const run = await vscodeHost.beginAutoMemoryDream({ cwd: parentCwd });
       if (!run) return;
 
-      const sessions = await collectDreamSessions({
-        candidates: candidates.filter(
-          (task) => (task.updatedAt ?? 0) > run.previousLastDreamAt,
-        ),
-        currentTaskId: taskId,
-      });
+      const sessions: AutoMemoryDreamSession[] = run.candidates.map(
+        (candidate) => ({
+          taskId: candidate.taskId,
+          updatedAt: candidate.updatedAt,
+          cwd: candidate.cwd,
+          transcriptFilename: candidate.transcriptFilename,
+        }),
+      );
 
       if (sessions.length === 0) {
         await vscodeHost.finishAutoMemoryDream({
@@ -323,15 +243,7 @@ export function useAutoMemory({
         });
       }
     },
-    [
-      collectDreamSessions,
-      collectSameRepoTasks,
-      autoMemoryState,
-      parentCwd,
-      setAutoMemoryState,
-      store,
-      taskId,
-    ],
+    [autoMemoryState, parentCwd, setAutoMemoryState, store, taskId],
   );
 
   const tryUpdateAutoMemory = useCallback(
@@ -342,6 +254,11 @@ export function useAutoMemory({
       void (async () => {
         const context = await vscodeHost.readAutoMemory({ cwd: parentCwd });
         if (!context) return;
+
+        // Always dump the current task's transcript to disk first so the
+        // dream agent can read it on demand. Only this panel writes its
+        // own transcript — no cross-store hydration needed elsewhere.
+        await writeCurrentTranscript(data.messages);
 
         const lastExtractionMessageCount =
           autoMemoryState.lastExtractionMessageCount;
@@ -389,6 +306,7 @@ export function useAutoMemory({
       parentCwd,
       setAutoMemoryState,
       startExtraction,
+      writeCurrentTranscript,
     ],
   );
 
@@ -400,10 +318,14 @@ export function useAutoMemory({
 function buildMemoryTools(
   context: AutoMemoryContext,
 ): readonly ToolSpecInput[] {
-  const memoryGlob = `${normalizeMemoryDir(context.memoryDir)}/**`;
+  const memoryGlob = `${normalizeDir(context.memoryDir)}/**`;
+  const transcriptGlob = `${normalizeDir(context.transcriptDir)}/**`;
   const tools: ToolSpecInput[] = [];
   for (const name of MemoryReadToolNames) {
     tools.push(`${name}(${memoryGlob})`);
+    // Read-only access to transcripts — write tools are intentionally not
+    // granted; transcripts are derived data owned by the producing panel.
+    tools.push(`${name}(${transcriptGlob})`);
   }
   for (const name of MemoryWriteToolNames) {
     tools.push(`${name}(${memoryGlob})`);
@@ -411,8 +333,8 @@ function buildMemoryTools(
   return tools;
 }
 
-function normalizeMemoryDir(memoryDir: string): string {
-  return memoryDir.replace(/\\/g, "/").replace(/\/+$/, "");
+function normalizeDir(dir: string): string {
+  return dir.replace(/\\/g, "/").replace(/\/+$/, "");
 }
 
 function didConversationWriteMemory(

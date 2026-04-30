@@ -1298,15 +1298,32 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  beginAutoMemoryDream = async (options: {
-    cwd?: string;
-    sessionUpdatedAts: readonly number[];
-  }) => {
+  beginAutoMemoryDream = async (options: { cwd?: string }) => {
     if (!this.isAutoMemoryEnabled()) return undefined;
-    return this.autoMemoryManager.beginDreamRun({
-      cwd: options.cwd ?? this.cwd ?? undefined,
-      sessionUpdatedAts: options.sessionUpdatedAts,
+    const cwd = options.cwd ?? this.cwd ?? undefined;
+
+    // Walk the host-owned task list once, filter to top-level tasks under
+    // the same repoKey as the current cwd, and keep only sessions touched
+    // since the previous dream. The webview no longer needs cross-store
+    // hydration to gather candidates.
+    const candidates = await this.collectDreamCandidates(cwd);
+    const run = await this.autoMemoryManager.beginDreamRun({
+      cwd,
+      sessionUpdatedAts: candidates.map((task) => task.updatedAt ?? 0),
     });
+    if (!run) return undefined;
+
+    const filtered = candidates
+      .filter((task) => (task.updatedAt ?? 0) > run.previousLastDreamAt)
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .map((task) => ({
+        taskId: task.id,
+        cwd: task.cwd,
+        updatedAt: task.updatedAt ?? 0,
+        transcriptFilename: `${task.id}.md`,
+      }));
+
+    return { ...run, candidates: filtered };
   };
 
   finishAutoMemoryDream = async (options: {
@@ -1316,6 +1333,59 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     success: boolean;
   }) => {
     return this.autoMemoryManager.finishDreamRun(options);
+  };
+
+  writeTaskTranscript = async (options: {
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    updatedAt?: number;
+    transcript: string;
+  }) => {
+    if (!this.isAutoMemoryEnabled()) return undefined;
+    return this.autoMemoryManager.writeTaskTranscript({
+      taskId: options.taskId,
+      cwd: options.cwd ?? this.cwd ?? undefined,
+      title: options.title,
+      updatedAt: options.updatedAt,
+      transcript: options.transcript,
+    });
+  };
+
+  /**
+   * Walk TaskHistoryStore and pick top-level tasks whose `cwd` resolves to
+   * the same repoKey as the dream's `cwd`. Subtasks are skipped — they
+   * don't represent independent user sessions.
+   */
+  private collectDreamCandidates = async (
+    cwd: string | undefined,
+  ): Promise<
+    Array<{ id: string; cwd?: string | null; updatedAt?: number }>
+  > => {
+    const baseContext = await this.autoMemoryManager.readContext(cwd, {
+      ensure: false,
+    });
+    if (!baseContext) return [];
+
+    const tasks = Object.values(this.taskHistoryStore.tasks.value);
+    const result: Array<{
+      id: string;
+      cwd?: string | null;
+      updatedAt?: number;
+    }> = [];
+
+    for (const task of tasks) {
+      if (!task.id || task.parentId) continue;
+      const taskCwd = task.cwd ?? cwd;
+      if (!taskCwd) continue;
+      const taskContext = await this.autoMemoryManager
+        .readContext(taskCwd, { ensure: false })
+        .catch(() => undefined);
+      if (taskContext?.repoKey !== baseContext.repoKey) continue;
+      result.push({ id: task.id, cwd: task.cwd, updatedAt: task.updatedAt });
+    }
+
+    return result;
   };
 
   readAsyncAgentState = async (

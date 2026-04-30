@@ -31,6 +31,13 @@ export type AutoMemoryContext = {
   indexContent: string;
   indexTruncated: boolean;
   manifest: AutoMemoryManifestEntry[];
+  /**
+   * Directory holding per-task transcript markdown files for this repo,
+   * e.g. `~/.pochi/projects/<repoKey>/transcripts`. The dream agent is
+   * granted read-only file-tool access to this directory and reads
+   * transcripts on demand instead of receiving them inline in the prompt.
+   */
+  transcriptDir: string;
 };
 
 type TruncateResult = {
@@ -155,7 +162,12 @@ export type AutoMemoryDreamSession = {
   taskId: string;
   updatedAt: number;
   cwd?: string | null;
-  transcript: string;
+  /**
+   * Transcript filename relative to {@link AutoMemoryContext.transcriptDir}.
+   * The dream agent reads transcripts on demand via the readFile tool — no
+   * transcript content is shipped inline in the directive.
+   */
+  transcriptFilename: string;
 };
 
 export function buildAutoMemoryDreamDirective({
@@ -170,27 +182,30 @@ export function buildAutoMemoryDreamDirective({
       ? "No sessions were available."
       : sessions
           .map(
-            (session) => `## Session ${session.taskId}
-Updated: ${new Date(session.updatedAt).toISOString()}
-CWD: ${session.cwd ?? "(unknown)"}
-
-${session.transcript}`,
+            (session) =>
+              `- ${session.transcriptFilename} (taskId=${session.taskId}, updated=${new Date(
+                session.updatedAt,
+              ).toISOString()}, cwd=${session.cwd ?? "(unknown)"})`,
           )
-          .join("\n\n");
+          .join("\n");
 
   return `Consolidate long-term memory for this repository.
 
 Memory directory: ${context.memoryDir}
 Index file: ${context.indexPath}
+Transcripts directory: ${context.transcriptDir}
 
 Existing topic manifest:
 ${formatAutoMemoryManifest(context.manifest)}
 
-Use the sessions below as source material. Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, and rewrite topic files as needed so future sessions see a concise and accurate MEMORY.md index.
+Source material lives as markdown files in the transcripts directory above. Each file is one task session and starts with a YAML frontmatter block (taskId, cwd, updatedAt, title). The transcripts directory is read-only for this run — use readFile / listFiles / globFiles / searchFiles to inspect only the entries you need, and never edit them.
 
-Never store ephemeral task status, raw logs, git history, temporary plans, or content already captured by project rules.
+Strategy:
+- Open transcripts selectively: skim filenames + frontmatter first, then drill into entries that look durable.
+- Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, and rewrite topic files as needed so future sessions see a concise and accurate MEMORY.md index.
+- Never store ephemeral task status, raw logs, git history, temporary plans, or content already captured by project rules.
 
-Sessions:
+Sessions to review (${sessions.length}):
 ${sessionText}
 
 Finish with attemptCompletion summarizing changed memory files, or state that no durable changes were needed.`;

@@ -160,8 +160,6 @@ function Chat({ user, uid, info }: ChatProps) {
     isSubTask,
     taskId: uid,
     parentCwd: task?.cwd ?? undefined,
-    storeRegistry,
-    jwt,
   });
   const tryUpdateAutoMemoryRef = useLatest(tryUpdateAutoMemory);
 

@@ -431,16 +431,25 @@ export interface VSCodeHostApi {
     setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
   }>;
 
-  beginAutoMemoryDream(options: {
-    cwd?: string;
-    sessionUpdatedAts: readonly number[];
-  }): Promise<
+  beginAutoMemoryDream(options: { cwd?: string }): Promise<
     | {
         context: AutoMemoryContext;
         token: string;
         previousLastDreamAt: number;
         sessionCount: number;
         reason: "time" | "sessions";
+        /**
+         * Metadata for tasks the dream agent should consider, filtered to
+         * the same `repoKey` and to sessions touched after the previous
+         * consolidation. The agent reads each transcript on demand from
+         * {@link AutoMemoryContext.transcriptDir} via the readFile tool.
+         */
+        candidates: ReadonlyArray<{
+          taskId: string;
+          cwd?: string | null;
+          updatedAt: number;
+          transcriptFilename: string;
+        }>;
       }
     | undefined
   >;
@@ -451,6 +460,27 @@ export interface VSCodeHostApi {
     previousLastDreamAt: number;
     success: boolean;
   }): Promise<void>;
+
+  /**
+   * Persist the current task's transcript to the on-disk transcripts
+   * directory. The owning task panel is the only writer for its own
+   * transcript; the dream agent reads it later via the readFile tool.
+   * Returns metadata identifying the written file (or undefined if
+   * long-term memory is disabled / write failed).
+   */
+  writeTaskTranscript(options: {
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    updatedAt?: number;
+    transcript: string;
+  }): Promise<
+    | {
+        transcriptDir: string;
+        filename: string;
+      }
+    | undefined
+  >;
 
   readAsyncAgentState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AsyncAgentState | undefined>;

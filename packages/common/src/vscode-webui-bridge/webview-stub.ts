@@ -406,16 +406,19 @@ const VSCodeHostStub = {
       setAutoMemoryState: (_state: AutoMemoryTaskState) => Promise.resolve(),
     };
   },
-  beginAutoMemoryDream: async (_options: {
-    cwd?: string;
-    sessionUpdatedAts: readonly number[];
-  }): Promise<
+  beginAutoMemoryDream: async (_options: { cwd?: string }): Promise<
     | {
         context: AutoMemoryContext;
         token: string;
         previousLastDreamAt: number;
         sessionCount: number;
         reason: "time" | "sessions";
+        candidates: ReadonlyArray<{
+          taskId: string;
+          cwd?: string | null;
+          updatedAt: number;
+          transcriptFilename: string;
+        }>;
       }
     | undefined
   > => {
@@ -428,6 +431,15 @@ const VSCodeHostStub = {
     success: boolean;
   }): Promise<void> => {
     return Promise.resolve();
+  },
+  writeTaskTranscript: async (_options: {
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    updatedAt?: number;
+    transcript: string;
+  }): Promise<{ transcriptDir: string; filename: string } | undefined> => {
+    return undefined;
   },
   readAsyncAgentState: async (
     _taskId: string,
