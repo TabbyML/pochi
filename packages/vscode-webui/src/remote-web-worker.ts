@@ -1,7 +1,7 @@
 import {
   isCrossOriginWorkerUrl,
   makeSharedWorkerBootstrapUrl,
-  makeWorkerBootstrapSource,
+  makeWorkerBootstrapUrl,
   resolveWorkerUrl,
 } from "./lib/worker-url";
 
@@ -15,13 +15,7 @@ if (import.meta.env.DEV) {
           const url = resolveWorkerUrl(scriptURL);
           super(
             isCrossOriginWorkerUrl(url)
-              ? // Launch the worker with an inline script that will use `importScripts`
-                // to bootstrap the actual script to work around the same origin policy.
-                URL.createObjectURL(
-                  new Blob([makeWorkerBootstrapSource(url, options?.type)], {
-                    type: "text/javascript",
-                  }),
-                )
+              ? makeWorkerBootstrapUrl(url, options?.type)
               : scriptURL,
             options,
           );

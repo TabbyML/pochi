@@ -21,9 +21,31 @@ export function makeWorkerBootstrapSource(
   return `importScripts=((i)=>(...a)=>i(...a.map((u)=>''+new URL(u,"${url}"))))(importScripts);importScripts("${url}")`;
 }
 
+export function getWebviewId(): string | undefined {
+  if (typeof location === "undefined") {
+    return;
+  }
+  return new URL(location.href).searchParams.get("id") ?? undefined;
+}
+
+export function makeWorkerBootstrapUrl(
+  url: string,
+  type: WorkerOptions["type"] | undefined,
+  webviewId = getWebviewId(),
+): string {
+  // VS Code's webview service worker uses the worker client URL's `id`
+  // query to route localhost and webview-resource requests back to the panel.
+  const source = webviewId
+    ? `${makeWorkerBootstrapSource(url, type)}\n//# sourceURL=vscode-worker`
+    : makeWorkerBootstrapSource(url, type);
+  const idSearch = webviewId ? `?id=${encodeURIComponent(webviewId)}` : "";
+  return `data:text/javascript;charset=utf-8,${encodeURIComponent(source)}${idSearch}`;
+}
+
 export function makeSharedWorkerBootstrapUrl(
   url: string,
   type: WorkerOptions["type"] | undefined,
+  webviewId = getWebviewId(),
 ): string {
-  return `data:text/javascript;charset=utf-8,${encodeURIComponent(makeWorkerBootstrapSource(url, type))}`;
+  return makeWorkerBootstrapUrl(url, type, webviewId);
 }
