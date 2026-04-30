@@ -144,9 +144,14 @@ export function compileToolPolicies(
     };
   }
 
-  const webFetchPolicy = compileWebFetchDomainPolicy(tools);
+  const webFetchPolicy = compileDomainToolPolicy(tools, "webFetch");
   if (webFetchPolicy) {
     policies.webFetch = webFetchPolicy;
+  }
+
+  const webSearchPolicy = compileDomainToolPolicy(tools, "webSearch");
+  if (webSearchPolicy) {
+    policies.webSearch = webSearchPolicy;
   }
 
   for (const toolName of [
@@ -164,29 +169,35 @@ export function compileToolPolicies(
   return Object.keys(policies).length > 0 ? policies : undefined;
 }
 
-function compileWebFetchDomainPolicy(tools: ToolSpecInput[] | undefined) {
-  if (!tools?.some((tool) => parseToolSpec(tool).name === "webFetch")) {
+function compileDomainToolPolicy(
+  tools: ToolSpecInput[] | undefined,
+  toolName: "webFetch" | "webSearch",
+) {
+  if (!tools?.some((tool) => parseToolSpec(tool).name === toolName)) {
     return undefined;
   }
 
-  const rules = getToolRules(tools, "webFetch");
+  const rules = getToolRules(tools, toolName);
   if (!rules) {
     return undefined;
   }
 
   return {
     kind: "domain-pattern",
-    patterns: rules.map(parseWebFetchDomainRule),
+    patterns: rules.map((rule) => parseDomainRule(toolName, rule)),
   } as const;
 }
 
-function parseWebFetchDomainRule(rule: string): string {
+function parseDomainRule(
+  toolName: "webFetch" | "webSearch",
+  rule: string,
+): string {
   const trimmedRule = rule.trim();
   const domainPrefix = "domain:";
 
   if (!trimmedRule.toLowerCase().startsWith(domainPrefix)) {
     throw new Error(
-      `Invalid webFetch rule "${rule}". Use webFetch(domain:example.com).`,
+      `Invalid ${toolName} rule "${rule}". Use ${toolName}(domain:example.com).`,
     );
   }
 
@@ -196,7 +207,7 @@ function parseWebFetchDomainRule(rule: string): string {
 
   if (!domainPattern) {
     throw new Error(
-      `Invalid webFetch rule "${rule}". Use webFetch(domain:example.com).`,
+      `Invalid ${toolName} rule "${rule}". Use ${toolName}(domain:example.com).`,
     );
   }
 
@@ -351,6 +362,36 @@ export function validateToolPolicy(
     return;
   }
 
+  if (toolName === "webSearch") {
+    const webSearchInput =
+      typeof input === "object" && input !== null
+        ? (input as { searchDomainFilter?: unknown })
+        : undefined;
+    const rawDomainFilters = webSearchInput?.searchDomainFilter;
+
+    const effectiveDomainFilters = validateWebSearchDomainPatternPolicy(
+      rawDomainFilters,
+      policies?.webSearch,
+    );
+
+    const hasAllowlistEntries =
+      Array.isArray(rawDomainFilters) &&
+      rawDomainFilters.some(
+        (entry) =>
+          typeof entry === "string" &&
+          entry.trim().length > 0 &&
+          !entry.trim().startsWith("-"),
+      );
+
+    if (effectiveDomainFilters && webSearchInput && !hasAllowlistEntries) {
+      // Intentionally mutate when searchDomainFilter is missing or deny-only,
+      // so downstream executeToolCall includes agent-configured allowlist.
+      webSearchInput.searchDomainFilter = effectiveDomainFilters;
+    }
+
+    return;
+  }
+
   if (
     toolName === "readFile" ||
     toolName === "writeToFile" ||
@@ -368,6 +409,77 @@ export function validateToolPolicy(
 
     validatePathPatternPolicy(rawPath, policies?.[toolName], options);
   }
+}
+
+function validateWebSearchDomainPatternPolicy(
+  rawDomainFilters: unknown,
+  policy:
+    | {
+        kind: "domain-pattern";
+        patterns: string[];
+      }
+    | undefined,
+): string[] | undefined {
+  if (!policy) {
+    return undefined;
+  }
+
+  if (rawDomainFilters == null) {
+    return [...policy.patterns];
+  }
+
+  if (!Array.isArray(rawDomainFilters)) {
+    throw new Error("searchDomainFilter must be an array of domain strings.");
+  }
+
+  if (rawDomainFilters.length === 0) {
+    return [...policy.patterns];
+  }
+
+  const entries = rawDomainFilters.map((entry) => {
+    if (typeof entry !== "string") {
+      throw new Error("searchDomainFilter must be an array of domain strings.");
+    }
+
+    const normalizedEntry = entry.trim();
+    if (!normalizedEntry) {
+      throw new Error(
+        "searchDomainFilter must contain non-empty domain patterns.",
+      );
+    }
+
+    return normalizedEntry;
+  });
+
+  const allowEntries = entries.filter((entry) => !entry.startsWith("-"));
+  const denyEntries = entries.filter((entry) => entry.startsWith("-"));
+
+  for (const entry of allowEntries) {
+    const normalizedDomain = normalizeDomainPattern(entry);
+    if (!normalizedDomain) {
+      throw new Error(
+        "searchDomainFilter must contain non-empty domain patterns.",
+      );
+    }
+
+    const matched = policy.patterns.some((pattern) =>
+      minimatch(normalizedDomain, normalizeDomainPattern(pattern), {
+        nocase: true,
+      }),
+    );
+
+    if (!matched) {
+      throw new Error(
+        `searchDomainFilter contains disallowed domain "${entry}". Allowed domain patterns: ${policy.patterns.join(", ")}`,
+      );
+    }
+  }
+
+  if (allowEntries.length === 0) {
+    return [...new Set([...policy.patterns, ...denyEntries])];
+  }
+
+  return entries;
 }
 
 function validatePathPatternPolicy(
