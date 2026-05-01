@@ -1,11 +1,12 @@
 import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
-import type { Environment } from "../base";
+import type { AutoMemoryContext, Environment } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type {
   AsyncAgentState,
+  AutoMemoryTaskState,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -387,6 +388,58 @@ const VSCodeHostStub = {
       value: {} as ThreadSignalSerialization<TaskMemoryState | undefined>,
       setTaskMemoryState: (_state: TaskMemoryState) => Promise.resolve(),
     };
+  },
+  readAutoMemory: async (_options?: {
+    cwd?: string;
+    ensure?: boolean;
+  }): Promise<AutoMemoryContext | undefined> => {
+    return undefined;
+  },
+  readAutoMemoryState: async (
+    _taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
+    setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<AutoMemoryTaskState | undefined>,
+      setAutoMemoryState: (_state: AutoMemoryTaskState) => Promise.resolve(),
+    };
+  },
+  beginAutoMemoryDream: async (_options: { cwd?: string }): Promise<
+    | {
+        context: AutoMemoryContext;
+        token: string;
+        previousLastDreamAt: number;
+        sessionCount: number;
+        reason: "time" | "sessions";
+        candidates: ReadonlyArray<{
+          taskId: string;
+          cwd?: string | null;
+          updatedAt: number;
+          transcriptFilename: string;
+        }>;
+      }
+    | undefined
+  > => {
+    return undefined;
+  },
+  finishAutoMemoryDream: async (_options: {
+    memoryDir: string;
+    token: string;
+    previousLastDreamAt: number;
+    success: boolean;
+  }): Promise<void> => {
+    return Promise.resolve();
+  },
+  writeTaskTranscript: async (_options: {
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    updatedAt?: number;
+    transcript: string;
+  }): Promise<{ transcriptDir: string; filename: string } | undefined> => {
+    return undefined;
   },
   readAsyncAgentState: async (
     _taskId: string,

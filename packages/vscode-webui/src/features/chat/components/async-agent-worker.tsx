@@ -296,6 +296,11 @@ function AsyncAgentWorkerInner({
 
   const failWorker = useCallback(
     (message: string) => {
+      // Idempotent: avoid re-aborting / re-committing taskFailed when callers
+      // (e.g. the max-step watcher) re-fire on subsequent renders.
+      if (completedRef.current) {
+        return;
+      }
       logger.warn({ taskId, message }, "Failing async agent worker");
       completedRef.current = true;
       if (!abortController.current.signal.aborted) {
@@ -411,6 +416,9 @@ function AsyncAgentWorkerInner({
   }, [stepCount, currentStepCount]);
 
   useEffect(() => {
+    if (completedRef.current) {
+      return;
+    }
     if (currentStepCount > AsyncAgentMaxStep) {
       failWorker("The async agent failed to complete, max step count reached.");
     }

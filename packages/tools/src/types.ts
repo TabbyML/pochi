@@ -75,6 +75,18 @@ export interface CompiledToolPolicies {
     kind: "path-pattern";
     patterns: string[];
   };
+  listFiles?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  globFiles?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  searchFiles?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
 }
 
 export type ToolFunctionType<T extends Tool> = (

@@ -831,6 +831,18 @@
                   }
                 }
               },
+              "memory": {
+                "type": "object",
+                "default": {},
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable local long-term memory for Pochi."
+                  }
+                }
+              },
               "logToFile": {
                 "type": "object",
                 "default": {},

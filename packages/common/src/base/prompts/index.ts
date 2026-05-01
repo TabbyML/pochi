@@ -1,5 +1,13 @@
 import { BuiltInAgentPath } from "../../vscode-webui-bridge/types/custom-agent";
 import { renderActiveSelection } from "./active-selection";
+import {
+  buildAutoMemoryDreamDirective,
+  buildAutoMemoryExtractionDirective,
+  buildAutoMemoryPrompt,
+  formatAutoMemoryManifest,
+  serializeMemoryMessage,
+  truncateAutoMemoryIndex,
+} from "./auto-memory";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
@@ -37,6 +45,14 @@ export const prompts = {
   taskMemory: {
     template: taskMemoryTemplate,
     buildExtractionDirective: buildMemoryExtractionDirective,
+  },
+  autoMemory: {
+    buildPrompt: buildAutoMemoryPrompt,
+    buildExtractionDirective: buildAutoMemoryExtractionDirective,
+    buildDreamDirective: buildAutoMemoryDreamDirective,
+    formatManifest: formatAutoMemoryManifest,
+    truncateIndex: truncateAutoMemoryIndex,
+    serializeMessage: serializeMemoryMessage,
   },
 };
 

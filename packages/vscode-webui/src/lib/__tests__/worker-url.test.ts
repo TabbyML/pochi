@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isCrossOriginWorkerUrl,
   makeSharedWorkerBootstrapUrl,
+  makeWorkerBootstrapUrl,
   makeWorkerBootstrapSource,
 } from "../worker-url";
 
@@ -40,6 +41,20 @@ describe("makeSharedWorkerBootstrapUrl", () => {
     expect(first).toContain("data:text/javascript;charset=utf-8,");
     expect(decodeURIComponent(first.split(",")[1] ?? "")).toBe(
       'import "https://example.com/shared-worker.js"',
+    );
+  });
+
+  it("can carry the VS Code webview id in the data URL search", () => {
+    const url = makeWorkerBootstrapUrl(
+      "https://example.com/worker.js",
+      "module",
+      "webview-1",
+    );
+    const parsed = new URL(url);
+
+    expect(parsed.searchParams.get("id")).toBe("webview-1");
+    expect(decodeURIComponent(url.split(",")[1] ?? "")).toBe(
+      'import "https://example.com/worker.js"\n//# sourceURL=vscode-worker?id=webview-1',
     );
   });
 });
