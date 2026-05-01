@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type {
   AsyncAgentState,
+  AutoMemoryTaskState,
   ContextWindowUsage,
   McpConfigOverride,
   TaskChangedFile,
@@ -16,6 +17,7 @@ type TaskStateData = {
   changedFiles?: TaskChangedFile[];
   contextWindowUsage?: ContextWindowUsage;
   taskMemoryState?: TaskMemoryState;
+  autoMemoryState?: AutoMemoryTaskState;
   asyncAgentState?: AsyncAgentState;
   // unix timestamp in milliseconds
   updatedAt: number;
@@ -193,6 +195,22 @@ export class TaskDataStore {
 
   getTaskMemoryStateSignal(taskId: string) {
     return computed(() => this.state.value[taskId]?.taskMemoryState);
+  }
+
+  getAutoMemoryState(taskId: string): AutoMemoryTaskState | undefined {
+    return this.getTaskState(taskId)?.autoMemoryState;
+  }
+
+  async setAutoMemoryState(
+    taskId: string,
+    autoMemoryState: AutoMemoryTaskState,
+  ): Promise<void> {
+    const existing = this.getTaskState(taskId) || {};
+    await this.saveTaskState(taskId, { ...existing, autoMemoryState });
+  }
+
+  getAutoMemoryStateSignal(taskId: string) {
+    return computed(() => this.state.value[taskId]?.autoMemoryState);
   }
 
   getAsyncAgentState(taskId: string): AsyncAgentState | undefined {

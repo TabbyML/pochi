@@ -177,6 +177,66 @@ describe("path pattern policies", () => {
     ).toThrow("Path is not allowed by the configured path rules.");
   });
 
+  it("should compile path patterns for listFiles, globFiles, and searchFiles", () => {
+    const policies = compileToolPolicies([
+      "listFiles(/memory/**)",
+      "globFiles(/memory/**)",
+      "searchFiles(/memory/**)",
+    ]);
+
+    expect(policies?.listFiles).toEqual({
+      kind: "path-pattern",
+      patterns: ["/memory/**"],
+    });
+    expect(policies?.globFiles).toEqual({
+      kind: "path-pattern",
+      patterns: ["/memory/**"],
+    });
+    expect(policies?.searchFiles).toEqual({
+      kind: "path-pattern",
+      patterns: ["/memory/**"],
+    });
+  });
+
+  it("should match absolute path patterns against absolute and relative inputs", () => {
+    const cwd = path.join(process.cwd(), "workspace-root");
+    const memoryDir = path.resolve(cwd, "..", "memory");
+    const policies = compileToolPolicies([
+      `readFile(${memoryDir}/**)`,
+      `listFiles(${memoryDir}/**)`,
+    ]);
+
+    // Absolute path inside the configured directory should match.
+    expect(() =>
+      validateToolPolicy(
+        "readFile",
+        { path: path.join(memoryDir, "topic.md") },
+        policies,
+        { cwd },
+      ),
+    ).not.toThrow();
+
+    // listFiles should also be validated against its policy.
+    expect(() =>
+      validateToolPolicy(
+        "listFiles",
+        { path: path.join(memoryDir, "subdir") },
+        policies,
+        { cwd },
+      ),
+    ).not.toThrow();
+
+    // Paths outside the directory should be rejected.
+    expect(() =>
+      validateToolPolicy(
+        "readFile",
+        { path: path.join(cwd, "src", "index.ts") },
+        policies,
+        { cwd },
+      ),
+    ).toThrow("Path is not allowed by the configured path rules.");
+  });
+
   it("should validate mixed workspace and virtual path patterns correctly", () => {
     const cwd = path.join(process.cwd(), "workspace-root");
     const mixedPolicy = compileToolPolicies([

@@ -67,11 +67,17 @@ export function useLiveChatKitGetters({
     } satisfies Environment;
   }, [todos, omitCustomRules, taskId]);
 
+  const getAutoMemory = useCallback(async () => {
+    return vscodeHost.readAutoMemory();
+  }, []);
+
   return {
     // biome-ignore lint/correctness/useExhaustiveDependencies(llm.current): llm is ref.
     getLLM: useCallback(() => llm.current, []),
 
     getEnvironment,
+
+    getAutoMemory,
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
     getMcpInfo: useCallback(() => {

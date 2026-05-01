@@ -149,12 +149,7 @@ export function compileToolPolicies(
     policies.webFetch = webFetchPolicy;
   }
 
-  for (const toolName of [
-    "readFile",
-    "writeToFile",
-    "applyDiff",
-    "editNotebook",
-  ] as const) {
+  for (const toolName of PathPolicyToolNames) {
     const policy = compilePathToolPolicy(tools, toolName);
     if (policy) {
       policies[toolName] = policy;
@@ -162,6 +157,24 @@ export function compileToolPolicies(
   }
 
   return Object.keys(policies).length > 0 ? policies : undefined;
+}
+
+const PathPolicyToolNames = [
+  "readFile",
+  "writeToFile",
+  "applyDiff",
+  "editNotebook",
+  "listFiles",
+  "globFiles",
+  "searchFiles",
+] as const;
+
+type PathPolicyToolName = (typeof PathPolicyToolNames)[number];
+
+function isPathPolicyToolName(
+  toolName: string,
+): toolName is PathPolicyToolName {
+  return (PathPolicyToolNames as readonly string[]).includes(toolName);
 }
 
 function compileWebFetchDomainPolicy(tools: ToolSpecInput[] | undefined) {
@@ -205,7 +218,7 @@ function parseWebFetchDomainRule(rule: string): string {
 
 function compilePathToolPolicy(
   tools: ToolSpecInput[] | undefined,
-  toolName: "readFile" | "writeToFile" | "applyDiff" | "editNotebook",
+  toolName: PathPolicyToolName,
 ) {
   if (!tools?.some((tool) => parseToolSpec(tool).name === toolName)) {
     return undefined;
@@ -351,12 +364,7 @@ export function validateToolPolicy(
     return;
   }
 
-  if (
-    toolName === "readFile" ||
-    toolName === "writeToFile" ||
-    toolName === "applyDiff" ||
-    toolName === "editNotebook"
-  ) {
+  if (isPathPolicyToolName(toolName)) {
     const rawPath =
       typeof input === "object" && input !== null && "path" in input
         ? (input as { path?: unknown }).path
@@ -384,19 +392,65 @@ function validatePathPatternPolicy(
     return;
   }
 
-  const pathForRuleMatch = normalizePathForRuleMatch(inputPath, options);
-  const matched = policy.patterns.some((pattern) => {
-    const normalizedPattern = normalizePattern(pattern);
-    return minimatch(pathForRuleMatch, normalizedPattern, {
-      nocase: true,
-    });
-  });
+  const pathInfo = describeRuleMatchPath(inputPath, options);
+  const matched = policy.patterns.some((pattern) =>
+    matchPathPattern(pathInfo, pattern),
+  );
 
   if (!matched) {
     throw new Error(
       `Path is not allowed by the configured path rules. Allowed path patterns: ${policy.patterns.join(", ")}`,
     );
   }
+}
+
+type RuleMatchPath =
+  | { kind: "virtual"; path: string }
+  | { kind: "fs"; absolute: string; relative: string };
+
+function describeRuleMatchPath(
+  inputPath: string,
+  options: { cwd: string },
+): RuleMatchPath {
+  if (inputPath.startsWith("pochi://")) {
+    return { kind: "virtual", path: normalizePattern(inputPath) };
+  }
+
+  const resolvedPath = path.isAbsolute(inputPath)
+    ? path.resolve(inputPath)
+    : path.resolve(options.cwd, inputPath);
+  const relativePath = path.relative(options.cwd, resolvedPath);
+  const normalizedRelative = normalizePattern(relativePath);
+  const relative =
+    normalizedRelative === "" || normalizedRelative === "."
+      ? "."
+      : normalizedRelative;
+  return {
+    kind: "fs",
+    absolute: normalizePattern(resolvedPath),
+    relative,
+  };
+}
+
+function matchPathPattern(pathInfo: RuleMatchPath, pattern: string): boolean {
+  const normalizedPattern = normalizePattern(pattern);
+
+  if (pathInfo.kind === "virtual") {
+    return minimatch(pathInfo.path, normalizedPattern, { nocase: true });
+  }
+
+  if (isAbsolutePattern(normalizedPattern)) {
+    return minimatch(pathInfo.absolute, normalizedPattern, { nocase: true });
+  }
+
+  return minimatch(pathInfo.relative, normalizedPattern, { nocase: true });
+}
+
+function isAbsolutePattern(pattern: string): boolean {
+  // Recognize POSIX absolute paths (`/foo/**`) and Windows-style absolute paths
+  // (`C:/foo/**`). Patterns are pre-normalized so backslashes have already been
+  // converted to forward slashes.
+  return pattern.startsWith("/") || /^[A-Za-z]:\//.test(pattern);
 }
 
 function validateDomainPatternPolicy(
@@ -430,34 +484,6 @@ function validateDomainPatternPolicy(
       `URL domain is not allowed by the configured webFetch domain rules. Allowed domain patterns: ${policy.patterns.join(", ")}`,
     );
   }
-}
-
-function normalizePathForRuleMatch(
-  inputPath: string,
-  options: { cwd: string },
-): string {
-  if (inputPath.startsWith("pochi://")) {
-    return normalizePattern(inputPath);
-  }
-
-  return normalizeWorkspacePathForRuleMatch(inputPath, options);
-}
-
-function normalizeWorkspacePathForRuleMatch(
-  inputPath: string,
-  options: { cwd: string },
-): string {
-  const resolvedPath = path.isAbsolute(inputPath)
-    ? path.resolve(inputPath)
-    : path.resolve(options.cwd, inputPath);
-  const relativePath = path.relative(options.cwd, resolvedPath);
-  const normalizedRelativePath = normalizePattern(relativePath);
-
-  if (normalizedRelativePath === "" || normalizedRelativePath === ".") {
-    return ".";
-  }
-
-  return normalizedRelativePath;
 }
 
 function normalizePattern(input: string): string {

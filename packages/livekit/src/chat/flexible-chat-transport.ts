@@ -1,5 +1,9 @@
 import { getErrorMessage } from "@ai-sdk/provider";
-import type { Environment, PochiProviderOptions } from "@getpochi/common";
+import type {
+  AutoMemoryContext,
+  Environment,
+  PochiProviderOptions,
+} from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
 
@@ -48,6 +52,7 @@ export type OnStartCallback = (options: {
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
   getEnvironment?: () => Promise<Environment>;
+  getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
   getMcpInfo?: () => {
     toolset: Record<string, McpTool>;
     instructions: string;
@@ -105,6 +110,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     messages = prompts.injectEnvironment(messages, environment) as Message[];
+    const autoMemory = await this.getters.getAutoMemory?.();
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
     const skills = this.getters.getSkills?.();
@@ -167,6 +173,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       environment?.info?.customRules,
       this.customAgent,
       mcpInfo?.instructions,
+      autoMemory,
     );
     const systemPromptChars = systemPrompt.length;
     const toolsChars = JSON.stringify(tools).length;

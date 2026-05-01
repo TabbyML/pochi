@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { TextDecoder, TextEncoder } from "node:util";
+import { removeTaskTranscripts } from "@/lib/auto-memory";
 import { isFileExists } from "@/lib/fs";
 import { taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
@@ -132,11 +133,13 @@ export class TaskHistoryStore implements vscode.Disposable {
 
     if (hasStaleTasks) {
       await this.writeTasksToDisk();
-      await Promise.allSettled(
-        removedTaskIds.map((id) =>
+      await Promise.allSettled([
+        ...removedTaskIds.map((id) =>
           fs.rm(getTaskDataDir(id), { recursive: true, force: true }),
         ),
-      );
+        // Drop any orphaned auto-memory transcripts for these tasks.
+        removeTaskTranscripts(removedTaskIds),
+      ]);
     }
   }
 

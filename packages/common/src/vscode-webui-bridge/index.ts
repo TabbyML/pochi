@@ -27,6 +27,7 @@ export type {
   ContextWindowUsage,
   TaskMemoryState,
   AsyncAgentState,
+  AutoMemoryTaskState,
 } from "./types/task";
 export type {
   VSCodeLmModel,
