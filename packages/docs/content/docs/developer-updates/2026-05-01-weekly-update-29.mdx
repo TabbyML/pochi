@@ -1,0 +1,127 @@
+---
+title: 'Weekly Update #29'
+slug: weekly-update-29
+date: '2026-05-01'
+---
+### TL;DR
+
+In this update, Pochi gets context-aware in two directions: tasks now maintain persistent memory that survives compaction, and custom agents that can precisely scope which files and domains they're allowed to touch.
+
+More below!
+
+### 🚀 Features
+
+- **Task Memory****:** Pochi now maintains a persistent memory file throughout a task — including across context compaction.
+
+A background agent extracts structured session notes into `pochi://-/memory.md` at regular intervals. When compaction kicks in, Pochi uses this memory file as the summary source instead of generating a fresh one from scratch.
+
+Most noticeable on long debugging or refactoring sessions where compaction previously felt like Pochi losing its place. [**#1480**](https://github.com/TabbyML/pochi/pull/1480)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/d6/d63f1bdce9caae114d75074e22f961f2f1ad89b67b344be7585e8736494f6642.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+- **Scoped Tool Access for Custom Agents:** Custom agents can now declare precise access policies for file operations and web requests — restricting which paths they can read or write, and which domains they can fetch from.
+
+Previously, custom agents had full filesystem and web access with no hard enforcement. Scoping was prompt-only.
+
+Use `executeCommand(npm *)` to whitelist commands, `readFile(src/**)` to limit file reads, or `webFetch(domain:*.``example.com``)` to restrict web access. Policies are enforced at the tool level.  
+
+For the full list of supported configurations, check the [custom agent docs](https://docs.getpochi.com/custom-agent/). [**#1497**](https://github.com/TabbyML/pochi/pull/1497), [**#1495**](https://github.com/TabbyML/pochi/pull/1495)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/37/3770cb9ea85a10e24180b3e27ea7d52a888a4e10134318216d280572cf138122.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+### ✨ Enhancements
+
+- **Microbatch Parallel Tool Execution:** Tool calls now execute in micro-batches based on side-effect profile. Reads and git commands run concurrently; writes serialize automatically.
+
+Pochi already ran tool calls in parallel, but with no side-effect awareness — reads and writes could race, and a failed call wouldn't cancel downstream dependencies.
+
+Most noticeable on tasks that span multiple files and git history simultaneously. [**#1477**](https://github.com/TabbyML/pochi/pull/1477)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/11/110ad370fba9e1f50160a92c9ce8fe8dd1b72df0d4edc2373994d8a2986f0591.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+- **Compact File Preservation:** When compaction kicks in, Pochi snapshots the files you were actively reading and carries them forward — full content where they fit, file references where they're too large.
+
+Previously, compact summaries dropped file context entirely. After compaction, Pochi would re-read files it had already processed, burning tokens and losing step.
+
+Most useful for long refactoring or debugging sessions across multiple files. [**#1481**](https://github.com/TabbyML/pochi/pull/1481)
+
+
+
+- **Attachment Preview in Chat Input:** File attachment previews now appear inside the chat input form rather than outside it.
+
+The previous placement made it easy to lose track of what was attached before sending — especially with multiple files queued. [**#1485**](https://github.com/TabbyML/pochi/pull/1485)
+
+![](https://assets.docs.getpochi.com/docs/11/1149bf25f44682c9b2504ca49fe1e5d9a2a76c30f267ad9c1e290b54973e2013)
+
+
+
+- **Web Search Multi-Query:** The `webSearch` tool now accepts up to 5 queries in a single call, batching related searches into one request instead of N sequential ones.
+
+Researching multiple facets of a problem previously meant chaining search calls, each waiting on the last. [**#1479**](https://github.com/TabbyML/pochi/pull/1479)
+
+
+- **Webview Performance:** Message list rendering is faster on long sessions. Key components are now memoized and checkpoint calculation refactored from O(N²) to O(N).
+
+Long tasks with many tool calls and diffs caused noticeable slowdowns as the message list grew. [**#1494**](https://github.com/TabbyML/pochi/pull/1494)
+
+
+
+### 🐛 Bug Fixes
+
+- **Tool Call Input Null Fix:** Pochi no longer throws a `Field required` error when retrying an interrupted task.
+
+When a task was cancelled mid-stream, tool call inputs could be left as `null`. The Anthropic API requires a non-null object, so the next retry would fail immediately with a validation error. [**#1463**](https://github.com/TabbyML/pochi/pull/1463)
+
+- **VS Code 1.118 Task Panel Fix:** Pochi no longer fails to open the task panel on VS Code 1.118.
+
+VS Code 1.118 changed how its webview service worker routes internal resource requests. Workers launched without a webview ID couldn't route requests back to the correct panel, causing it to error on load.
+
+Workers now carry the webview ID through their bootstrap URL so VS Code routes requests correctly. SQLite assets are also inlined to sidestep the same routing issue. [**#1508**](https://github.com/TabbyML/pochi/pull/1508)
+
+
+
+### 🔥 Preview
+
+- **Auto Memory + Auto Dream:** We're building persistent memory across sessions — a `MEMORY.md` file in your project root that Pochi maintains over time. 
+
+Store context, preferences, and project notes that carry forward automatically. 
+
+Tell Pochi to "remember" or "forget" anything, and it updates the file directly. 
+
+
