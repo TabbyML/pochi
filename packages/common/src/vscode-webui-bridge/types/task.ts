@@ -143,6 +143,7 @@ export interface AsyncAgentState {
 
 export interface AutoMemoryTaskState {
   lastExtractionMessageCount: number;
+  pendingExtractionMessageCount?: number;
   isExtracting: boolean;
   extractionCount: number;
   activeExtractionTaskId?: string;

@@ -54,6 +54,72 @@ export function useAutoMemory({
     ),
   );
 
+  const maybeStartDream = useCallback(
+    async (baseState = autoMemoryState) => {
+      if (!setAutoMemoryState || baseState.isDreaming || baseState.isExtracting)
+        return;
+
+      const run = await vscodeHost.beginAutoMemoryDream({ cwd: parentCwd });
+      if (!run) return;
+
+      const sessions: AutoMemoryDreamSession[] = run.candidates.map(
+        (candidate) => ({
+          taskId: candidate.taskId,
+          updatedAt: candidate.updatedAt,
+          cwd: candidate.cwd,
+          transcriptFilename: candidate.transcriptFilename,
+        }),
+      );
+
+      if (sessions.length === 0) {
+        await vscodeHost.finishAutoMemoryDream({
+          memoryDir: run.context.memoryDir,
+          token: run.token,
+          previousLastDreamAt: run.previousLastDreamAt,
+          success: true,
+        });
+        return;
+      }
+
+      try {
+        const config = await createForkAgent({
+          store,
+          label: "auto-memory-dream",
+          parentTaskId: taskId,
+          parentMessages: [],
+          parentCwd,
+          directive: prompts.autoMemory.buildDreamDirective({
+            context: run.context,
+            sessions,
+          }),
+          tools: buildMemoryTools(run.context),
+          setAsyncAgentState: async (asyncTaskId, state) => {
+            const result = await vscodeHost.readAsyncAgentState(asyncTaskId);
+            await result.setAsyncAgentState(state);
+          },
+        });
+
+        setAutoMemoryState({
+          ...baseState,
+          isDreaming: true,
+          activeDreamTaskId: config.taskId,
+          activeDreamToken: run.token,
+          activeDreamMemoryDir: run.context.memoryDir,
+          activeDreamPreviousLastDreamAt: run.previousLastDreamAt,
+        });
+      } catch (error) {
+        logger.warn("Failed to create long-term memory dream task", error);
+        await vscodeHost.finishAutoMemoryDream({
+          memoryDir: run.context.memoryDir,
+          token: run.token,
+          previousLastDreamAt: run.previousLastDreamAt,
+          success: false,
+        });
+      }
+    },
+    [autoMemoryState, parentCwd, setAutoMemoryState, store, taskId],
+  );
+
   useEffect(() => {
     if (
       !setAutoMemoryState ||
@@ -69,15 +135,31 @@ export function useAutoMemory({
       return;
     }
 
-    setAutoMemoryState({
+    const success = activeExtractionTask?.status === "completed";
+    const nextState = {
       ...autoMemoryState,
       isExtracting: false,
-      extractionCount: activeExtractionTask
+      extractionCount: success
         ? autoMemoryState.extractionCount + 1
         : autoMemoryState.extractionCount,
+      lastExtractionMessageCount: success
+        ? (autoMemoryState.pendingExtractionMessageCount ??
+          autoMemoryState.lastExtractionMessageCount)
+        : autoMemoryState.lastExtractionMessageCount,
+      pendingExtractionMessageCount: undefined,
       activeExtractionTaskId: undefined,
-    });
-  }, [activeExtractionTask, autoMemoryState, setAutoMemoryState]);
+    };
+
+    setAutoMemoryState(nextState);
+    if (success) {
+      void maybeStartDream(nextState);
+    }
+  }, [
+    activeExtractionTask,
+    autoMemoryState,
+    maybeStartDream,
+    setAutoMemoryState,
+  ]);
 
   useEffect(() => {
     if (
@@ -125,7 +207,7 @@ export function useAutoMemory({
       const nextState = {
         ...autoMemoryState,
         isExtracting: true,
-        lastExtractionMessageCount: messageCount,
+        pendingExtractionMessageCount: messageCount,
       };
       setAutoMemoryState?.(nextState);
 
@@ -157,6 +239,7 @@ export function useAutoMemory({
           ...nextState,
           isExtracting: false,
           activeExtractionTaskId: undefined,
+          pendingExtractionMessageCount: undefined,
         });
       }
     },
@@ -181,71 +264,6 @@ export function useAutoMemory({
     [parentCwd, taskId],
   );
 
-  const maybeStartDream = useCallback(
-    async (_context: AutoMemoryContext) => {
-      if (autoMemoryState.isDreaming) return;
-
-      const run = await vscodeHost.beginAutoMemoryDream({ cwd: parentCwd });
-      if (!run) return;
-
-      const sessions: AutoMemoryDreamSession[] = run.candidates.map(
-        (candidate) => ({
-          taskId: candidate.taskId,
-          updatedAt: candidate.updatedAt,
-          cwd: candidate.cwd,
-          transcriptFilename: candidate.transcriptFilename,
-        }),
-      );
-
-      if (sessions.length === 0) {
-        await vscodeHost.finishAutoMemoryDream({
-          memoryDir: run.context.memoryDir,
-          token: run.token,
-          previousLastDreamAt: run.previousLastDreamAt,
-          success: true,
-        });
-        return;
-      }
-
-      try {
-        const config = await createForkAgent({
-          store,
-          label: "auto-memory-dream",
-          parentTaskId: taskId,
-          parentMessages: [],
-          parentCwd,
-          directive: prompts.autoMemory.buildDreamDirective({
-            context: run.context,
-            sessions,
-          }),
-          tools: buildMemoryTools(run.context),
-          setAsyncAgentState: async (asyncTaskId, state) => {
-            const result = await vscodeHost.readAsyncAgentState(asyncTaskId);
-            await result.setAsyncAgentState(state);
-          },
-        });
-
-        setAutoMemoryState?.({
-          ...autoMemoryState,
-          isDreaming: true,
-          activeDreamTaskId: config.taskId,
-          activeDreamToken: run.token,
-          activeDreamMemoryDir: run.context.memoryDir,
-          activeDreamPreviousLastDreamAt: run.previousLastDreamAt,
-        });
-      } catch (error) {
-        logger.warn("Failed to create long-term memory dream task", error);
-        await vscodeHost.finishAutoMemoryDream({
-          memoryDir: run.context.memoryDir,
-          token: run.token,
-          previousLastDreamAt: run.previousLastDreamAt,
-          success: false,
-        });
-      }
-    },
-    [autoMemoryState, parentCwd, setAutoMemoryState, store, taskId],
-  );
-
   const tryUpdateAutoMemory = useCallback(
     (data: StreamFinishData) => {
       if (isSubTask || !setAutoMemoryState) return false;
@@ -264,6 +282,7 @@ export function useAutoMemory({
           autoMemoryState.lastExtractionMessageCount;
         const messageCount = data.messages.length;
         let extractionStarted = false;
+        let stateForDream = autoMemoryState;
 
         if (
           !autoMemoryState.isExtracting &&
@@ -273,12 +292,14 @@ export function useAutoMemory({
             didConversationWriteMemory(
               data.messages.slice(lastExtractionMessageCount),
               context.memoryDir,
+              parentCwd,
             )
           ) {
-            setAutoMemoryState({
+            stateForDream = {
               ...autoMemoryState,
               lastExtractionMessageCount: messageCount,
-            });
+            };
+            setAutoMemoryState(stateForDream);
           } else {
             await startExtraction({
               context,
@@ -291,7 +312,7 @@ export function useAutoMemory({
         }
 
         if (!extractionStarted) {
-          await maybeStartDream(context);
+          await maybeStartDream(stateForDream);
         }
       })().catch((error) => {
         logger.warn("Long-term memory update failed", error);
@@ -340,15 +361,18 @@ function normalizeDir(dir: string): string {
 function didConversationWriteMemory(
   messages: readonly Message[],
   memoryDir: string,
+  cwd?: string,
 ): boolean {
   return messages.some((message) =>
     message.parts.some((part) => {
       const toolName = getToolName(part);
       if (!toolName || !MemoryWriteTools.has(toolName)) return false;
+      if (!isSuccessfulToolOutput(part)) return false;
+
       const inputPath =
         "input" in part && isObject(part.input) ? part.input.path : undefined;
       return (
-        typeof inputPath === "string" && isMemoryPath(inputPath, memoryDir)
+        typeof inputPath === "string" && isMemoryPath(inputPath, memoryDir, cwd)
       );
     }),
   );
@@ -360,13 +384,81 @@ function getToolName(part: Message["parts"][number]): string | undefined {
     : undefined;
 }
 
-function isMemoryPath(inputPath: string, memoryDir: string): boolean {
-  const normalizedPath = inputPath.replace(/\\/g, "/");
-  const normalizedMemoryDir = memoryDir.replace(/\\/g, "/").replace(/\/+$/, "");
+function isSuccessfulToolOutput(part: Message["parts"][number]): boolean {
+  if (!("state" in part) || part.state !== "output-available") return false;
+  const output = "output" in part ? part.output : undefined;
+  return isObject(output) && output.success === true && !("error" in output);
+}
+
+function isMemoryPath(
+  inputPath: string,
+  memoryDir: string,
+  cwd?: string,
+): boolean {
+  const normalizedPath = normalizeFsPath(inputPath, cwd);
+  const normalizedMemoryDir = normalizeFsPath(memoryDir).replace(/\/+$/, "");
+  const [pathForMatch, memoryDirForMatch] =
+    isWindowsAbsolutePath(normalizedPath) ||
+    isWindowsAbsolutePath(normalizedMemoryDir)
+      ? [normalizedPath.toLowerCase(), normalizedMemoryDir.toLowerCase()]
+      : [normalizedPath, normalizedMemoryDir];
   return (
-    normalizedPath === normalizedMemoryDir ||
-    normalizedPath.startsWith(`${normalizedMemoryDir}/`)
+    pathForMatch === memoryDirForMatch ||
+    pathForMatch.startsWith(`${memoryDirForMatch}/`)
   );
+}
+
+function normalizeFsPath(inputPath: string, cwd?: string): string {
+  const normalizedInput = inputPath.replace(/\\/g, "/");
+  const absoluteInput =
+    isAbsoluteFsPath(normalizedInput) || !cwd
+      ? normalizedInput
+      : `${cwd.replace(/\\/g, "/").replace(/\/+$/, "")}/${normalizedInput}`;
+  return normalizePathSegments(absoluteInput);
+}
+
+function normalizePathSegments(inputPath: string): string {
+  const { root, rest } = splitPathRoot(inputPath);
+  const segments: string[] = [];
+
+  for (const segment of rest.split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      if (segments.length > 0) {
+        segments.pop();
+      } else if (!root) {
+        segments.push(segment);
+      }
+      continue;
+    }
+    segments.push(segment);
+  }
+
+  const pathWithoutTrailingSlash = `${root}${segments.join("/")}`;
+  return pathWithoutTrailingSlash || root || ".";
+}
+
+function splitPathRoot(inputPath: string): { root: string; rest: string } {
+  const normalizedPath = inputPath.replace(/\\/g, "/");
+  const driveRoot = normalizedPath.match(/^[A-Za-z]:\//);
+  if (driveRoot) {
+    return {
+      root: driveRoot[0],
+      rest: normalizedPath.slice(driveRoot[0].length),
+    };
+  }
+  if (normalizedPath.startsWith("/")) {
+    return { root: "/", rest: normalizedPath.slice(1) };
+  }
+  return { root: "", rest: normalizedPath };
+}
+
+function isAbsoluteFsPath(inputPath: string): boolean {
+  return inputPath.startsWith("/") || isWindowsAbsolutePath(inputPath);
+}
+
+function isWindowsAbsolutePath(inputPath: string): boolean {
+  return /^[A-Za-z]:\//.test(inputPath.replace(/\\/g, "/"));
 }
 
 function serializeSessionTranscript(messages: readonly Message[]): string {
