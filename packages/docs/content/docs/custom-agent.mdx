@@ -89,6 +89,14 @@ Restrict which domains the agent can fetch via `webFetch`. The specifier must st
 | `webFetch(domain:example.com)` | Exact domain match (e.g., allows only `example.com`) |
 | `webFetch(domain:*.example.com)` | Glob match against subdomains (e.g., allows `api.example.com`, `docs.example.com`) |
 
+#### New Task Restrictions
+
+Restrict which agent types a custom agent can launch using `newTask`.
+
+- `newTask(_)` allows launching only the default agent (when `agentType` is omitted).
+- `newTask(browser)` allows launching only the `browser` agent.
+- `newTask(explorer-*)` allows launching any agent whose name starts with `explorer-`.
+
 Example:
 
 ```markdown
@@ -102,6 +110,8 @@ tools:
   - writeToFile(.pochi/**)
   - webFetch(domain:docs.example.com)
   - webFetch(domain:*.getpochi.com)
+  - newTask(_)
+  - newTask(browser)
 ---
 ```
 
