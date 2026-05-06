@@ -44,6 +44,7 @@ export interface IFileStateCache {
 
 export type CompiledToolPolicy =
   | { kind: "command-pattern"; patterns: string[] }
+  | { kind: "agent-type-pattern"; patterns: string[] }
   | {
       kind: "domain-pattern";
       patterns: string[];
@@ -55,6 +56,7 @@ export type CompiledToolPolicy =
 
 export interface CompiledToolPolicies {
   executeCommand?: { kind: "command-pattern"; patterns: string[] };
+  newTask?: { kind: "agent-type-pattern"; patterns: string[] };
   webFetch?: {
     kind: "domain-pattern";
     patterns: string[];

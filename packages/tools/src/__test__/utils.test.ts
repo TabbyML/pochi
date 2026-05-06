@@ -360,3 +360,163 @@ describe("webFetch domain policies", () => {
     ).toThrow("URL domain is not allowed by the configured webFetch domain rules.");
   });
 });
+
+describe("newTask agent type policies", () => {
+  it("should compile agent type pattern rules for newTask", () => {
+    const policies = compileToolPolicies([
+      "newTask(browser)",
+      "newTask(explorer-*)",
+    ]);
+
+    expect(policies?.newTask).toEqual({
+      kind: "agent-type-pattern",
+      patterns: ["browser", "explorer-*"],
+    });
+  });
+
+  it("should allow agent types matching configured rules", () => {
+    const policies = compileToolPolicies([
+      "newTask(browser)",
+      "newTask(explorer-*)",
+    ]);
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        {
+          agentType: "browser",
+        },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        {
+          agentType: "explorer-code",
+        },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+  });
+
+  it("should reject agent types not matching configured rules", () => {
+    const policies = compileToolPolicies([
+      "newTask(browser)",
+      "newTask(explorer-*)",
+    ]);
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        {
+          agentType: "planner",
+        },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow('Agent type "planner" is not allowed by the configured agent type rules.');
+  });
+
+  it("should allow empty agent type when rule '_' exists", () => {
+    const policies = compileToolPolicies(["newTask(_)"]);
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        {},
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        { agentType: "browser" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow();
+  });
+
+  it("should allow empty agent type when rule '_' exists in object form", () => {
+    const policies = compileToolPolicies([{ name: "newTask", rules: ["_"] }]);
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        {},
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        { agentType: "browser" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow();
+  });
+
+  it("should treat newTask() as unrestricted (default behavior)", () => {
+    const policies = compileToolPolicies(["newTask()"]);
+    expect(policies?.newTask).toBeUndefined();
+  });
+
+  it("should allow multiple agent type rules (whitelist)", () => {
+    const policies = compileToolPolicies([
+      "newTask(_)",
+      "newTask(browser)",
+    ]);
+
+    // Allows default agent
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        {},
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    // Allows browser agent
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        { agentType: "browser" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    // Rejects others
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        { agentType: "planner" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow();
+  });
+
+  it("should reject empty agent type when only specific agent types are allowed", () => {
+    const policies = compileToolPolicies(["newTask(browser)"]);
+
+    expect(() =>
+      validateToolPolicy(
+        "newTask",
+        {},
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow('Agent type "" is not allowed by the configured agent type rules.');
+  });
+});

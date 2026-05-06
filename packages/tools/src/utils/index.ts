@@ -135,12 +135,20 @@ export function compileToolPolicies(
   tools: ToolSpecInput[] | undefined,
 ): CompiledToolPolicies | undefined {
   const executeCommandRules = getToolRules(tools, "executeCommand");
+  const newTaskRules = getToolRules(tools, "newTask");
   const policies: CompiledToolPolicies = {};
 
   if (executeCommandRules) {
     policies.executeCommand = {
       kind: "command-pattern",
       patterns: executeCommandRules,
+    };
+  }
+
+  if (newTaskRules) {
+    policies.newTask = {
+      kind: "agent-type-pattern",
+      patterns: newTaskRules,
     };
   }
 
@@ -330,6 +338,37 @@ export function validateCommandPatternPolicy(
   validateExecuteCommandRules(command, policy.patterns);
 }
 
+export function validateAgentTypePatternPolicy(
+  agentType: string | undefined,
+  policy: { kind: "agent-type-pattern"; patterns: string[] } | undefined,
+): void {
+  if (!policy) {
+    return;
+  }
+
+  const normalizedAgentType = agentType ?? "";
+
+  const matched = policy.patterns.some((pattern) => {
+    const trimedPattern = pattern.trim();
+    // '_' is a special value that matches an empty agentType (default agent).
+    const targetAgentType = trimedPattern === "_" ? "" : trimedPattern;
+
+    if (targetAgentType.includes("*")) {
+      const regex = new RegExp(
+        `^${escapeRegex(targetAgentType).replace(/\\\*/g, ".*")}$`,
+      );
+      return regex.test(normalizedAgentType);
+    }
+    return normalizedAgentType === targetAgentType;
+  });
+
+  if (!matched) {
+    throw new Error(
+      `Agent type "${normalizedAgentType}" is not allowed by the configured agent type rules. Allowed agent type patterns: ${policy.patterns.join(", ")}`,
+    );
+  }
+}
+
 export function validateToolPolicy(
   toolName: string,
   input: unknown,
@@ -347,6 +386,19 @@ export function validateToolPolicy(
     }
 
     validateCommandPatternPolicy(command, policies?.executeCommand);
+    return;
+  }
+
+  if (toolName === "newTask") {
+    const agentType =
+      typeof input === "object" && input !== null && "agentType" in input
+        ? (input as { agentType?: unknown }).agentType
+        : undefined;
+
+    validateAgentTypePatternPolicy(
+      typeof agentType === "string" ? agentType : undefined,
+      policies?.newTask,
+    );
     return;
   }
 
