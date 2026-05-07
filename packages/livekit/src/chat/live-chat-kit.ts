@@ -532,14 +532,16 @@ export class LiveChatKit<
       }
 
       const llm = getters.getLLM();
-      const getModel = () => createModel({ llm });
-      scheduleGenerateTitleJob({
-        taskId: this.taskId,
-        store,
-        blobStore: this.blobStore,
-        messages,
-        getModel,
-      });
+      if (!task.runAsync) {
+        const getModel = () => createModel({ llm });
+        scheduleGenerateTitleJob({
+          taskId: this.taskId,
+          store,
+          blobStore: this.blobStore,
+          messages,
+          getModel,
+        });
+      }
 
       store.commit(
         events.chatStreamStarted({
