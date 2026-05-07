@@ -13,6 +13,7 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeHost } from "@/lib/vscode";
 import { constants, type Environment } from "@getpochi/common";
+import type { AutoMemoryContext } from "@getpochi/common";
 import { createModel } from "@getpochi/common/vendor/edge";
 import {
   type DisplayModel,
@@ -21,7 +22,7 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 export function useLiveChatKitGetters({
   todos,
@@ -67,8 +68,22 @@ export function useLiveChatKitGetters({
     } satisfies Environment;
   }, [todos, omitCustomRules, taskId]);
 
-  const getAutoMemory = useCallback(async () => {
-    return vscodeHost.readAutoMemory();
+  // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
+  // the cached system+tools prefix. New memory shows on next mount.
+  const autoMemoryCacheRef = useRef<Promise<
+    AutoMemoryContext | undefined
+  > | null>(null);
+  const getAutoMemory = useCallback(() => {
+    if (autoMemoryCacheRef.current) return autoMemoryCacheRef.current;
+    const pending = vscodeHost.readAutoMemory();
+    autoMemoryCacheRef.current = pending;
+    pending.catch(() => {
+      // Allow retry on transient failure.
+      if (autoMemoryCacheRef.current === pending) {
+        autoMemoryCacheRef.current = null;
+      }
+    });
+    return pending;
   }, []);
 
   return {
