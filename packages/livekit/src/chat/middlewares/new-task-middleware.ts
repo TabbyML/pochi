@@ -100,7 +100,7 @@ export function createNewTaskMiddleware(
                 uid,
               };
               store.commit(
-                events.taskInited({
+                events[runAsync ? "asyncTaskInited" : "taskInited"]({
                   id: uid,
                   cwd,
                   parentId: parentTaskId,

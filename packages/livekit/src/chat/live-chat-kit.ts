@@ -466,8 +466,12 @@ export class LiveChatKit<
   };
 
   markAsFailed = (error: Error) => {
+    const taskFailed = this.task?.runAsync
+      ? events.asyncTaskFailed
+      : events.taskFailed;
+
     this.store.commit(
-      events.taskFailed({
+      taskFailed({
         id: this.taskId,
         error: toTaskError(error),
         updatedAt: new Date(),
@@ -530,19 +534,24 @@ export class LiveChatKit<
       if (!task) {
         throw new Error("Task not found");
       }
+      const chatStreamStarted = task.runAsync
+        ? events.asyncChatStreamStarted
+        : events.chatStreamStarted;
 
       const llm = getters.getLLM();
       const getModel = () => createModel({ llm });
-      scheduleGenerateTitleJob({
-        taskId: this.taskId,
-        store,
-        blobStore: this.blobStore,
-        messages,
-        getModel,
-      });
+      if (!task.runAsync) {
+        scheduleGenerateTitleJob({
+          taskId: this.taskId,
+          store,
+          blobStore: this.blobStore,
+          messages,
+          getModel,
+        });
+      }
 
       store.commit(
-        events.chatStreamStarted({
+        chatStreamStarted({
           id: this.taskId,
           data: lastMessage,
           todos: environment?.todos || [],
@@ -587,6 +596,9 @@ export class LiveChatKit<
 
     const finishReason = streamFinishReason ?? message.metadata?.finishReason;
     const status = toTaskStatus(message, finishReason);
+    const chatStreamFinished = this.task?.runAsync
+      ? events.asyncChatStreamFinished
+      : events.chatStreamFinished;
 
     let contextWindowUsage: ContextWindowUsage | undefined = undefined;
     if (message.metadata?.kind === "assistant") {
@@ -618,7 +630,7 @@ export class LiveChatKit<
     }
 
     store.commit(
-      events.chatStreamFinished({
+      chatStreamFinished({
         id: this.taskId,
         status,
         data: message,
@@ -649,9 +661,12 @@ export class LiveChatKit<
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
     const lastMessage = this.chat.messages.at(-1) || null;
+    const chatStreamFailed = this.task?.runAsync
+      ? events.asyncChatStreamFailed
+      : events.chatStreamFailed;
 
     this.store.commit(
-      events.chatStreamFailed({
+      chatStreamFailed({
         id: this.taskId,
         error: toTaskError(error),
         data: lastMessage,

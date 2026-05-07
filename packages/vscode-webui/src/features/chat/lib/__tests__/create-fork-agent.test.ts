@@ -1,4 +1,4 @@
-import type { Message } from "@getpochi/livekit";
+import { type Message, catalog } from "@getpochi/livekit";
 import {
   type ToolSpecInput,
   compileToolPolicies,
@@ -58,6 +58,11 @@ describe("buildForkMessages", () => {
     });
 
     expect(commits).toHaveLength(1);
+    expect(commits[0]).toMatchObject({
+      name: catalog.events.asyncTaskInited.name,
+      args: { runAsync: true },
+    });
+    expect(catalog.events.asyncTaskInited.options.clientOnly).toBe(true);
     expect(states).toEqual([
       {
         parentTaskId: "parent-task",

@@ -109,73 +109,103 @@ export const tables = {
   }),
 };
 
+const taskInitedSchema = Schema.Struct({
+  ...taskInitFields,
+  initMessages: Schema.optional(Schema.Array(DBMessage)),
+  initTitle: Schema.optional(Schema.String),
+  displayId: Schema.optional(Schema.Number).pipe(
+    deprecated("Concept of displayId is removed"),
+  ),
+  // @deprecated
+  // use initMessages instead
+  initMessage: Schema.optional(
+    Schema.Struct({
+      id: Schema.String,
+      parts: Schema.Array(DBUIPart),
+    }),
+  ).pipe(deprecated("use initMessages instead")),
+});
+
+const taskFailedSchema = Schema.Struct({
+  id: Schema.String,
+  error: TaskError,
+  updatedAt: Schema.Date,
+});
+
+const chatStreamStartedSchema = Schema.Struct({
+  id: Schema.String,
+  data: DBMessage,
+  todos: Todos,
+  title: Schema.optional(Schema.String).pipe(
+    deprecated("use updateTitle instead"),
+  ),
+  git: Schema.optional(Git),
+  updatedAt: Schema.Date,
+  modelId: Schema.optional(Schema.String),
+  displayId: Schema.optional(Schema.Number).pipe(
+    deprecated("Concept of displayId is removed"),
+  ),
+});
+
+const chatStreamFinishedSchema = Schema.Struct({
+  id: Schema.String,
+  data: DBMessage,
+  totalTokens: Schema.NullOr(Schema.Number),
+  status: TaskStatus,
+  updatedAt: Schema.Date,
+  duration: Schema.optional(Schema.DurationFromMillis),
+  lastCheckpointHash: Schema.optional(Schema.String),
+});
+
+const chatStreamFailedSchema = Schema.Struct({
+  id: Schema.String,
+  error: TaskError,
+  data: Schema.NullOr(DBMessage),
+  updatedAt: Schema.Date,
+  duration: Schema.optional(Schema.DurationFromMillis),
+  lastCheckpointHash: Schema.optional(Schema.String),
+});
+
 export const events = {
   taskInited: Events.synced({
     name: "v1.TaskInited",
-    schema: Schema.Struct({
-      ...taskInitFields,
-      initMessages: Schema.optional(Schema.Array(DBMessage)),
-      initTitle: Schema.optional(Schema.String),
-      displayId: Schema.optional(Schema.Number).pipe(
-        deprecated("Concept of displayId is removed"),
-      ),
-      // @deprecated
-      // use initMessages instead
-      initMessage: Schema.optional(
-        Schema.Struct({
-          id: Schema.String,
-          parts: Schema.Array(DBUIPart),
-        }),
-      ).pipe(deprecated("use initMessages instead")),
-    }),
+    schema: taskInitedSchema,
+  }),
+  asyncTaskInited: Events.clientOnly({
+    name: "client.AsyncTaskInited",
+    schema: taskInitedSchema,
   }),
   taskFailed: Events.synced({
     name: "v1.TaskFailed",
-    schema: Schema.Struct({
-      id: Schema.String,
-      error: TaskError,
-      updatedAt: Schema.Date,
-    }),
+    schema: taskFailedSchema,
+  }),
+  asyncTaskFailed: Events.clientOnly({
+    name: "client.AsyncTaskFailed",
+    schema: taskFailedSchema,
   }),
   chatStreamStarted: Events.synced({
     name: "v1.ChatStreamStarted",
-    schema: Schema.Struct({
-      id: Schema.String,
-      data: DBMessage,
-      todos: Todos,
-      title: Schema.optional(Schema.String).pipe(
-        deprecated("use updateTitle instead"),
-      ),
-      git: Schema.optional(Git),
-      updatedAt: Schema.Date,
-      modelId: Schema.optional(Schema.String),
-      displayId: Schema.optional(Schema.Number).pipe(
-        deprecated("Concept of displayId is removed"),
-      ),
-    }),
+    schema: chatStreamStartedSchema,
+  }),
+  asyncChatStreamStarted: Events.clientOnly({
+    name: "client.AsyncChatStreamStarted",
+    schema: chatStreamStartedSchema,
   }),
   chatStreamFinished: Events.synced({
     name: "v1.ChatStreamFinished",
-    schema: Schema.Struct({
-      id: Schema.String,
-      data: DBMessage,
-      totalTokens: Schema.NullOr(Schema.Number),
-      status: TaskStatus,
-      updatedAt: Schema.Date,
-      duration: Schema.optional(Schema.DurationFromMillis),
-      lastCheckpointHash: Schema.optional(Schema.String),
-    }),
+    schema: chatStreamFinishedSchema,
+  }),
+  asyncChatStreamFinished: Events.clientOnly({
+    name: "client.AsyncChatStreamFinished",
+    schema: chatStreamFinishedSchema,
   }),
   chatStreamFailed: Events.synced({
     name: "v1.ChatStreamFailed",
-    schema: Schema.Struct({
-      id: Schema.String,
-      error: TaskError,
-      data: Schema.NullOr(DBMessage),
-      updatedAt: Schema.Date,
-      duration: Schema.optional(Schema.DurationFromMillis),
-      lastCheckpointHash: Schema.optional(Schema.String),
-    }),
+    schema: chatStreamFailedSchema,
+  }),
+  asyncChatStreamFailed: Events.clientOnly({
+    name: "client.AsyncChatStreamFailed",
+    schema: chatStreamFailedSchema,
   }),
   updateShareId: Events.synced({
     name: "v1.UpdateShareId",
@@ -279,154 +309,173 @@ export const events = {
   }),
 };
 
-const materializers = State.SQLite.materializers(events, {
-  "v1.TaskInited": ({
+const materializeTaskInited = ({
+  id,
+  parentId,
+  runAsync,
+  createdAt,
+  cwd,
+  initMessage,
+  initMessages,
+  initTitle,
+  displayId,
+}: typeof taskInitedSchema.Type) => [
+  tables.tasks.insert({
     id,
+    shareId: parentId ? undefined : `p-${id.replaceAll("-", "")}`,
+    status: initMessages
+      ? initMessages.length > 0
+        ? "pending-model"
+        : "pending-input"
+      : initMessage
+        ? "pending-model"
+        : "pending-input",
     parentId,
-    runAsync,
+    runAsync: runAsync ?? false,
     createdAt,
     cwd,
-    initMessage,
-    initMessages,
-    initTitle,
+    title: initTitle,
     displayId,
-  }) => [
-    tables.tasks.insert({
-      id,
-      shareId: parentId ? undefined : `p-${id.replaceAll("-", "")}`,
-      status: initMessages
-        ? initMessages.length > 0
-          ? "pending-model"
-          : "pending-input"
-        : initMessage
-          ? "pending-model"
-          : "pending-input",
-      parentId,
-      runAsync: runAsync ?? false,
-      createdAt,
-      cwd,
-      title: initTitle,
-      displayId,
-      updatedAt: createdAt,
-      isPublicShared: true,
-    }),
-    ...(initMessages?.map((message) => {
-      return tables.messages.insert({
-        id: message.id,
-        taskId: id,
-        data: message,
-      });
-    }) ??
-      (initMessage
-        ? [
-            tables.messages.insert({
-              id: initMessage.id,
-              taskId: id,
-              data: {
-                id: initMessage.id,
-                role: "user",
-                parts: initMessage.parts,
-              },
-            }),
-          ]
-        : [])),
-  ],
-  "v1.TaskFailed": ({ id, error, updatedAt }) => [
-    tables.tasks
-      .update({
-        status: "failed",
-        error,
-        updatedAt,
-      })
-      .where({ id }),
-  ],
-  "v1.ChatStreamStarted": ({
-    id,
-    data,
-    todos,
-    git,
-    title,
-    updatedAt,
-    modelId,
-    displayId,
-  }) => [
-    tables.tasks
-      .update({
-        status: "pending-model",
-        todos,
-        git,
-        title,
-        updatedAt,
-        modelId,
-        displayId,
-        lastCheckpointHash: null, // set as null to disable user edit when streaming
-      })
-      .where({ id }),
-    tables.messages
-      .insert({
-        id: data.id,
-        taskId: id,
-        data,
-      })
-      .onConflict("id", "replace"),
-  ],
-  "v1.ChatStreamFinished": ({
-    id,
-    data,
-    totalTokens,
-    status,
-    updatedAt,
-    duration,
-    lastCheckpointHash,
-  }) => [
-    tables.tasks
-      .update({
-        totalTokens,
-        status,
-        updatedAt,
-        // Clear error if the stream is finished
-        error: null,
-        lastStepDuration: duration ?? undefined,
-        lastCheckpointHash: lastCheckpointHash,
-      })
-      .where({ id }),
-    tables.messages
-      .insert({
-        id: data.id,
-        data,
-        taskId: id,
-      })
-      .onConflict("id", "replace"),
-  ],
-  "v1.ChatStreamFailed": ({
-    id,
-    error,
-    updatedAt,
-    data,
-    duration,
-    lastCheckpointHash,
-  }) => [
-    tables.tasks
-      .update({
-        status: "failed",
-        error,
-        updatedAt,
-        lastStepDuration: duration ?? undefined,
-        lastCheckpointHash,
-      })
-      .where({ id }),
-    ...(data
+    updatedAt: createdAt,
+    isPublicShared: true,
+  }),
+  ...(initMessages?.map((message) => {
+    return tables.messages.insert({
+      id: message.id,
+      taskId: id,
+      data: message,
+    });
+  }) ??
+    (initMessage
       ? [
-          tables.messages
-            .insert({
-              id: data.id,
-              taskId: id,
-              data,
-            })
-            .onConflict("id", "replace"),
+          tables.messages.insert({
+            id: initMessage.id,
+            taskId: id,
+            data: {
+              id: initMessage.id,
+              role: "user",
+              parts: initMessage.parts,
+            },
+          }),
         ]
-      : []),
-  ],
+      : [])),
+];
+
+const materializeTaskFailed = ({
+  id,
+  error,
+  updatedAt,
+}: typeof taskFailedSchema.Type) => [
+  tables.tasks
+    .update({
+      status: "failed",
+      error,
+      updatedAt,
+    })
+    .where({ id }),
+];
+
+const materializeChatStreamStarted = ({
+  id,
+  data,
+  todos,
+  git,
+  title,
+  updatedAt,
+  modelId,
+  displayId,
+}: typeof chatStreamStartedSchema.Type) => [
+  tables.tasks
+    .update({
+      status: "pending-model",
+      todos,
+      git,
+      title,
+      updatedAt,
+      modelId,
+      displayId,
+      lastCheckpointHash: null, // set as null to disable user edit when streaming
+    })
+    .where({ id }),
+  tables.messages
+    .insert({
+      id: data.id,
+      taskId: id,
+      data,
+    })
+    .onConflict("id", "replace"),
+];
+
+const materializeChatStreamFinished = ({
+  id,
+  data,
+  totalTokens,
+  status,
+  updatedAt,
+  duration,
+  lastCheckpointHash,
+}: typeof chatStreamFinishedSchema.Type) => [
+  tables.tasks
+    .update({
+      totalTokens,
+      status,
+      updatedAt,
+      // Clear error if the stream is finished
+      error: null,
+      lastStepDuration: duration ?? undefined,
+      lastCheckpointHash: lastCheckpointHash,
+    })
+    .where({ id }),
+  tables.messages
+    .insert({
+      id: data.id,
+      data,
+      taskId: id,
+    })
+    .onConflict("id", "replace"),
+];
+
+const materializeChatStreamFailed = ({
+  id,
+  error,
+  updatedAt,
+  data,
+  duration,
+  lastCheckpointHash,
+}: typeof chatStreamFailedSchema.Type) => [
+  tables.tasks
+    .update({
+      status: "failed",
+      error,
+      updatedAt,
+      lastStepDuration: duration ?? undefined,
+      lastCheckpointHash,
+    })
+    .where({ id }),
+  ...(data
+    ? [
+        tables.messages
+          .insert({
+            id: data.id,
+            taskId: id,
+            data,
+          })
+          .onConflict("id", "replace"),
+      ]
+    : []),
+];
+
+const materializers = State.SQLite.materializers(events, {
+  "v1.TaskInited": materializeTaskInited,
+  "client.AsyncTaskInited": materializeTaskInited,
+  "v1.TaskFailed": materializeTaskFailed,
+  "client.AsyncTaskFailed": materializeTaskFailed,
+  "v1.ChatStreamStarted": materializeChatStreamStarted,
+  "client.AsyncChatStreamStarted": materializeChatStreamStarted,
+  "v1.ChatStreamFinished": materializeChatStreamFinished,
+  "client.AsyncChatStreamFinished": materializeChatStreamFinished,
+  "v1.ChatStreamFailed": materializeChatStreamFailed,
+  "client.AsyncChatStreamFailed": materializeChatStreamFailed,
   "v1.UpdateShareId": ({ id, shareId, updatedAt }) =>
     tables.tasks.update({ shareId, updatedAt }).where({ id, shareId: null }),
   "v1.UpdateTitle": ({ id, title, updatedAt }) =>

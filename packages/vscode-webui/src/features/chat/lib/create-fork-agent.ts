@@ -90,7 +90,7 @@ export async function createForkAgent(
   await options.setAsyncAgentState(taskId, asyncAgentState);
 
   options.store.commit(
-    catalog.events.taskInited({
+    catalog.events.asyncTaskInited({
       id: taskId,
       cwd: options.parentCwd,
       runAsync: true,
