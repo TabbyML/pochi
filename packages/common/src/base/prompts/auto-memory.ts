@@ -1,6 +1,18 @@
-import type { UIMessage } from "ai";
+import type { TextUIPart, UIMessage } from "ai";
 
 export const AutoMemoryIndexName = "MEMORY.md";
+
+/**
+ * Distinctive marker used to tag the long-term memory system reminder so we
+ * can identify and replace prior injections without colliding with the
+ * environment system reminder. Kept as a literal string so call sites in
+ * other packages can match against it cheaply.
+ */
+const AutoMemoryReminderMarker = "<!-- pochi:auto-memory -->";
+
+export function isAutoMemorySystemReminder(content: string): boolean {
+  return content.includes(AutoMemoryReminderMarker);
+}
 export const AutoMemoryLockName = ".consolidate-lock";
 export const AutoMemoryMaxIndexLines = 200;
 export const AutoMemoryMaxIndexBytes = 25_000;
@@ -92,14 +104,21 @@ export function formatAutoMemoryManifest(
     .join("\n");
 }
 
-export function buildAutoMemoryPrompt(
+/**
+ * Static long-term memory guidance for the system prompt. Contains the
+ * behavioral rules and the per-workspace memory directory paths, but does
+ * NOT include the MEMORY.md index content — that is dynamic and must be
+ * injected separately via {@link buildAutoMemoryDynamicPrompt} so the system
+ * prompt prefix stays cacheable even when memory files change between tasks.
+ *
+ * Mirrors the split in claude-code's `memdir/memdir.ts`, where memory rules
+ * live in the system prompt and MEMORY.md content is delivered as a
+ * user-context attachment.
+ */
+export function buildAutoMemoryStaticPrompt(
   context: AutoMemoryContext | undefined,
 ): string {
   if (!context) return "";
-
-  const indexContent = context.indexContent.trim()
-    ? context.indexContent
-    : "(MEMORY.md is currently empty.)";
 
   return `====
 
@@ -123,8 +142,98 @@ When the user asks you to remember something, write or update the relevant topic
 
 The long-term memory directory is an explicit exception to the normal relative-path tool rule. You may use the absolute paths above when reading or writing memory files.
 
-Current MEMORY.md index:
+The current MEMORY.md index is delivered separately as its own system reminder on the first user turn. That snapshot is taken at the start of the task and is intentionally NOT refreshed mid-task — new memories you write here become visible only in the next task session.`;
+}
+
+/**
+ * Dynamic long-term memory block — just the MEMORY.md index snapshot wrapped
+ * in a labeled section. Injected by {@link injectAutoMemory} into the
+ * first-turn user message as a dedicated system reminder so it travels in the
+ * user-context portion of the request rather than the cached system prefix.
+ */
+export function buildAutoMemoryDynamicPrompt(
+  context: AutoMemoryContext | undefined,
+): string {
+  if (!context) return "";
+
+  const indexContent = context.indexContent.trim()
+    ? context.indexContent
+    : "(MEMORY.md is currently empty.)";
+
+  return `${AutoMemoryReminderMarker}
+# Long-term Memory Index (MEMORY.md)
+This snapshot of MEMORY.md was captured at the start of the task and will not be refreshed until the next task session. Topic files referenced here live under ${context.memoryDir}.
+
 ${indexContent}`;
+}
+
+/**
+ * Inject the dynamic MEMORY.md snapshot into the most recent user message as
+ * a dedicated system reminder, separate from the environment reminder.
+ *
+ * Behavior:
+ * - Only fires on the first user turn (`messages.length === 1`); subsequent
+ *   turns rely on conversation history to retain the snapshot.
+ * - Strips any prior auto-memory reminder from the target message before
+ *   inserting, keeping regenerations idempotent.
+ * - Inserts the new reminder immediately before the last text part so the
+ *   user's actual prompt remains the visible tail of the message — same
+ *   placement convention as `injectEnvironment`.
+ */
+export function injectAutoMemory(
+  messages: UIMessage[],
+  context: AutoMemoryContext | undefined,
+): UIMessage[] {
+  if (!context) return messages;
+  const memoryBlock = buildAutoMemoryDynamicPrompt(context);
+  if (!memoryBlock) return messages;
+
+  // Index in the conversation, not just the current request: avoids
+  // re-emitting on resume / regenerate where the same snapshot is already
+  // in history.
+  if (messages.length !== 1) return messages;
+
+  const messageToInject = messages.at(-1);
+  if (!messageToInject) return messages;
+  if (messageToInject.role !== "user") return messages;
+
+  const reminderText = `<system-reminder>${memoryBlock}</system-reminder>`;
+  const reminderPart: TextUIPart = {
+    type: "text",
+    text: reminderText,
+  };
+
+  const filteredParts = (messageToInject.parts ?? []).filter(
+    (part) =>
+      part.type !== "text" || !isAutoMemorySystemReminder(part.text ?? ""),
+  );
+  const lastTextPartIndex = filteredParts.findLastIndex(
+    (part) => part.type === "text",
+  );
+  const insertIndex = lastTextPartIndex >= 0 ? lastTextPartIndex : 0;
+
+  messageToInject.parts = [
+    ...filteredParts.slice(0, insertIndex),
+    reminderPart,
+    ...filteredParts.slice(insertIndex),
+  ];
+  return messages;
+}
+
+/**
+ * Backward-compatible composition of the static + dynamic memory prompts.
+ * New callers should prefer the split helpers; this remains for any
+ * consumer that still wants both blocks fused into a single string.
+ */
+export function buildAutoMemoryPrompt(
+  context: AutoMemoryContext | undefined,
+): string {
+  const staticPart = buildAutoMemoryStaticPrompt(context);
+  const dynamicPart = buildAutoMemoryDynamicPrompt(context);
+  if (!staticPart && !dynamicPart) return "";
+  if (!dynamicPart) return staticPart;
+  if (!staticPart) return dynamicPart;
+  return `${staticPart}\n\n${dynamicPart}`;
 }
 
 export function buildAutoMemoryExtractionDirective({
