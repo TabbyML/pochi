@@ -1,12 +1,12 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { Environment } from "@getpochi/common";
-import { GoogleVertexModel } from "@getpochi/common/configuration";
 import type {
   ActiveSelection,
   BashOutputs,
   Review,
   UserEdits,
-} from "@getpochi/common/vscode-webui-bridge";
+} from "@getpochi/common";
+import { Environment } from "@getpochi/common";
+import { GoogleVertexModel } from "@getpochi/common/configuration";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { FinishReason, InferUITools, UIMessage } from "ai";

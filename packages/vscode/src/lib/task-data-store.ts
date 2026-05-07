@@ -3,9 +3,11 @@ import type {
   AsyncAgentState,
   AutoMemoryTaskState,
   ContextWindowUsage,
+  TaskMemoryState,
+} from "@getpochi/common";
+import type {
   McpConfigOverride,
   TaskChangedFile,
-  TaskMemoryState,
 } from "@getpochi/common/vscode-webui-bridge";
 import { computed, signal } from "@preact/signals-core";
 import { inject, injectable, singleton } from "tsyringe";

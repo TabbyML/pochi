@@ -55,8 +55,12 @@ import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
+  type AsyncAgentState,
+  type AutoMemoryTaskState,
+  type ContextWindowUsage,
   type Environment,
   type GitStatus,
+  type TaskMemoryState,
   toErrorMessage,
 } from "@getpochi/common";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -74,12 +78,9 @@ import {
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
-  type AsyncAgentState,
-  type AutoMemoryTaskState,
   type BuiltinSubAgentInfo,
   type CaptureEvent,
   type ChangedFileContent,
-  type ContextWindowUsage,
   type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
@@ -98,7 +99,6 @@ import {
   type SkillFile,
   type TaskArchivedParams,
   type TaskChangedFile,
-  type TaskMemoryState,
   type TaskStates,
   type VSCodeHostApi,
   type VSCodeSettings,

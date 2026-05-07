@@ -18,7 +18,11 @@ import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { getLogger } from "@getpochi/common";
+import {
+  type ForkAgentUseCase,
+  type MessageCacheBreakpoint,
+  getLogger,
+} from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
@@ -58,6 +62,8 @@ export function AsyncAgentWorker({
       taskId={taskId}
       tools={asyncAgentState?.tools}
       parentTaskId={asyncAgentState?.parentTaskId}
+      messageCacheBreakpoint={asyncAgentState?.messageCacheBreakpoint}
+      requestUseCase={asyncAgentState?.useCase}
       batchExecuteManager={batchExecuteManager}
     />
   );
@@ -67,10 +73,14 @@ function AsyncAgentWorkerInner({
   taskId,
   tools,
   parentTaskId,
+  messageCacheBreakpoint,
+  requestUseCase,
   batchExecuteManager,
 }: AsyncAgentWorkerProps & {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
+  messageCacheBreakpoint?: MessageCacheBreakpoint;
+  requestUseCase?: ForkAgentUseCase;
 }) {
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
@@ -161,6 +171,8 @@ function AsyncAgentWorkerInner({
     abortSignal: abortController.current.signal,
     getters,
     isSubTask: false,
+    messageCacheBreakpoint: messageCacheBreakpoint ?? "last",
+    requestUseCase,
     sendAutomaticallyWhen: (x) => {
       if (
         abortController.current.signal.aborted ||

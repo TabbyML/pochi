@@ -1,3 +1,9 @@
+import type {
+  ContextWindowUsage,
+  MessageCacheBreakpoint,
+  PochiRequestUseCase,
+  TaskMemoryState,
+} from "@getpochi/common";
 import { getLogger } from "@getpochi/common";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
@@ -18,10 +24,6 @@ import {
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type {
-  ContextWindowUsage,
-  TaskMemoryState,
-} from "@getpochi/common/vscode-webui-bridge";
 import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -148,6 +150,8 @@ export type LiveChatKitOptions<T> = {
   getters: PrepareRequestGetters;
 
   isSubTask?: boolean;
+  messageCacheBreakpoint?: MessageCacheBreakpoint;
+  requestUseCase?: PochiRequestUseCase;
 
   store: LiveKitStore;
 
@@ -250,6 +254,8 @@ export class LiveChatKit<
     onCompact,
     getters,
     isSubTask,
+    messageCacheBreakpoint,
+    requestUseCase,
     customAgent,
     outputSchema,
     attemptCompletionSchema,
@@ -271,6 +277,8 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
+      messageCacheBreakpoint,
+      requestUseCase,
       customAgent,
       outputSchema,
       attemptCompletionSchema,
