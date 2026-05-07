@@ -2,11 +2,11 @@ import type { TextUIPart, UIMessage } from "ai";
 
 export const AutoMemoryIndexName = "MEMORY.md";
 
-// Marker to identify auto-memory reminders for idempotent replacement.
-const AutoMemoryReminderMarker = "<!-- pochi:auto-memory -->";
+// Header doubles as the marker for identifying auto-memory reminders.
+const AutoMemoryHeader = "# Long-term Memory Index (MEMORY.md)";
 
 export function isAutoMemorySystemReminder(content: string): boolean {
-  return content.includes(AutoMemoryReminderMarker);
+  return content.includes(AutoMemoryHeader);
 }
 export const AutoMemoryLockName = ".consolidate-lock";
 export const AutoMemoryMaxIndexLines = 200;
@@ -144,8 +144,7 @@ export function buildAutoMemoryDynamicPrompt(
     ? context.indexContent
     : "(MEMORY.md is currently empty.)";
 
-  return `${AutoMemoryReminderMarker}
-# Long-term Memory Index (MEMORY.md)
+  return `${AutoMemoryHeader}
 This snapshot of MEMORY.md was captured at the start of the task and will not be refreshed until the next task session. Topic files referenced here live under ${context.memoryDir}.
 
 ${indexContent}`;
