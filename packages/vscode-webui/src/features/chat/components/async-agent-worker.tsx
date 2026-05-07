@@ -409,12 +409,8 @@ function AsyncAgentWorkerInner({
       .filter((part) => part.type === "step-start").length;
   }, [messages]);
 
-  // IMPORTANT: read `stepCount` directly here (instead of going through an
-  // intermediate `currentStepCount` state) so that the guard fires in the
-  // SAME render in which the worker mounts. This sets `completedRef.current`
-  // before the auto-start effect below has a chance to call `retry()`,
-  // preventing a wasted regenerate round-trip (and the spurious AbortError it
-  // produces) when we resume a task that already exceeded the step budget.
+  // Read `stepCount` directly so the guard fires on mount, before the
+  // auto-start effect below can call `retry()` on an over-budget task.
   useEffect(() => {
     if (completedRef.current) {
       return;
@@ -437,8 +433,7 @@ function AsyncAgentWorkerInner({
       messages.length > 0 &&
       !completedRef.current &&
       !abortController.current.signal.aborted &&
-      // Defensive guard: even if the max-step effect above hasn't yet flipped
-      // `completedRef`, refuse to resume a task that already blew the budget.
+      // Belt-and-suspenders: never resume an over-budget task.
       stepCount <= AsyncAgentMaxStep &&
       !(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
