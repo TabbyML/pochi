@@ -1,7 +1,7 @@
 ---
 title: 'Weekly Update #29'
 slug: weekly-update-29
-date: '2026-05-01'
+date: '2026-05-08'
 ---
 ### TL;DR
 
@@ -13,7 +13,7 @@ More below!
 
 - **Task Memory:** Pochi now maintains a persistent memory file throughout a task — including across context compaction.
 
-A background agent extracts structured session notes into `MEMORY.md` at regular intervals. When compaction kicks in, Pochi uses this memory file as the summary source instead of generating a fresh one from scratch.
+A background agent extracts structured session notes into `memory.md` at regular intervals. When compaction kicks in, Pochi uses this memory file as the summary source instead of generating a fresh one from scratch.
 
 Most noticeable on long debugging or refactoring sessions where compaction previously felt like Pochi losing its place. [**#1480**](https://github.com/TabbyML/pochi/pull/1480)
 
@@ -108,11 +108,21 @@ Long tasks with many tool calls and diffs caused noticeable slowdowns as the mes
 
 When a task was cancelled mid-stream, tool call inputs could be left as `null`. The Anthropic API requires a non-null object, so the next retry would fail immediately with a validation error. [**#1463**](https://github.com/TabbyML/pochi/pull/1463)
 
+- **Reasoning UI Display Fix:** The reasoning block now shows the correct loading state during streaming and after completion.
+
+An incorrect `isLoading` condition prevented the reasoning component from re-rendering when its loading state changed. **[#1504](https://github.com/TabbyML/pochi/pull/1504)**
+
 - **VS Code 1.118 Task Panel Fix:** Pochi no longer fails to open the task panel on VS Code 1.118.
 
 VS Code 1.118 changed how its webview service worker routes internal resource requests. Workers launched without a webview ID couldn't route requests back to the correct panel, causing it to error on load.
 
 Workers now carry the webview ID through their bootstrap URL so VS Code routes requests correctly. SQLite assets are also inlined to sidestep the same routing issue. [**#1508**](https://github.com/TabbyML/pochi/pull/1508)
+
+- **Async Agent Step Limit Fix:** Pochi no longer gets stuck when an async agent task hits the 50-step limit — whether the task is actively running or being resumed.
+
+Two related issues caused this: mid-run, `failWorker`'s identity changed on every re-render, causing the failure to commit repeatedly in a tight loop. On resume, the max-step guard read `currentStepCount` before it populated on first render, so `retry()` fired before the task could be marked as failed — surfacing as high CPU usage on every mount.
+
+Both paths now fail cleanly once. **[#1510](https://github.com/TabbyML/pochi/pull/1510)**, **[#1515](https://github.com/TabbyML/pochi/pull/1515)**
 
 
 
