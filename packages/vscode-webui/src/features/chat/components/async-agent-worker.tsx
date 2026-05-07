@@ -408,21 +408,21 @@ function AsyncAgentWorkerInner({
       .flatMap((message) => message.parts)
       .filter((part) => part.type === "step-start").length;
   }, [messages]);
-  const [currentStepCount, setCurrentStepCount] = useState(0);
-  useEffect(() => {
-    if (stepCount > currentStepCount) {
-      setCurrentStepCount(stepCount);
-    }
-  }, [stepCount, currentStepCount]);
 
+  // IMPORTANT: read `stepCount` directly here (instead of going through an
+  // intermediate `currentStepCount` state) so that the guard fires in the
+  // SAME render in which the worker mounts. This sets `completedRef.current`
+  // before the auto-start effect below has a chance to call `retry()`,
+  // preventing a wasted regenerate round-trip (and the spurious AbortError it
+  // produces) when we resume a task that already exceeded the step budget.
   useEffect(() => {
     if (completedRef.current) {
       return;
     }
-    if (currentStepCount > AsyncAgentMaxStep) {
+    if (stepCount > AsyncAgentMaxStep) {
       failWorker("The async agent failed to complete, max step count reached.");
     }
-  }, [currentStepCount, failWorker]);
+  }, [stepCount, failWorker]);
 
   // Auto-start / resume the agent from its current last message.
   // Only kicks in when the task already has at least one message, since async
@@ -437,6 +437,9 @@ function AsyncAgentWorkerInner({
       messages.length > 0 &&
       !completedRef.current &&
       !abortController.current.signal.aborted &&
+      // Defensive guard: even if the max-step effect above hasn't yet flipped
+      // `completedRef`, refuse to resume a task that already blew the budget.
+      stepCount <= AsyncAgentMaxStep &&
       !(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
         task?.status === "completed"
@@ -448,6 +451,7 @@ function AsyncAgentWorkerInner({
           taskId,
           modelId: selectedModel.id,
           messageCount: messages.length,
+          stepCount,
         },
         "▶ start async agent",
       );
@@ -458,6 +462,7 @@ function AsyncAgentWorkerInner({
     isModelsLoading,
     selectedModel,
     messages.length,
+    stepCount,
     retry,
     task?.status,
     task?.error,
