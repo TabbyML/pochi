@@ -408,21 +408,17 @@ function AsyncAgentWorkerInner({
       .flatMap((message) => message.parts)
       .filter((part) => part.type === "step-start").length;
   }, [messages]);
-  const [currentStepCount, setCurrentStepCount] = useState(0);
-  useEffect(() => {
-    if (stepCount > currentStepCount) {
-      setCurrentStepCount(stepCount);
-    }
-  }, [stepCount, currentStepCount]);
 
+  // Read `stepCount` directly so the guard fires on mount, before the
+  // auto-start effect below can call `retry()` on an over-budget task.
   useEffect(() => {
     if (completedRef.current) {
       return;
     }
-    if (currentStepCount > AsyncAgentMaxStep) {
+    if (stepCount > AsyncAgentMaxStep) {
       failWorker("The async agent failed to complete, max step count reached.");
     }
-  }, [currentStepCount, failWorker]);
+  }, [stepCount, failWorker]);
 
   // Auto-start / resume the agent from its current last message.
   // Only kicks in when the task already has at least one message, since async
@@ -437,6 +433,8 @@ function AsyncAgentWorkerInner({
       messages.length > 0 &&
       !completedRef.current &&
       !abortController.current.signal.aborted &&
+      // Belt-and-suspenders: never resume an over-budget task.
+      stepCount <= AsyncAgentMaxStep &&
       !(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
         task?.status === "completed"
@@ -448,6 +446,7 @@ function AsyncAgentWorkerInner({
           taskId,
           modelId: selectedModel.id,
           messageCount: messages.length,
+          stepCount,
         },
         "▶ start async agent",
       );
@@ -458,6 +457,7 @@ function AsyncAgentWorkerInner({
     isModelsLoading,
     selectedModel,
     messages.length,
+    stepCount,
     retry,
     task?.status,
     task?.error,
