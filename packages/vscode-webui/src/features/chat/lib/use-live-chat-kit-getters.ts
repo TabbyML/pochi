@@ -68,10 +68,8 @@ export function useLiveChatKitGetters({
     } satisfies Environment;
   }, [todos, omitCustomRules, taskId]);
 
-  // Snapshot once per hook lifetime — i.e. once per task panel — so MEMORY.md
-  // rewrites by the extraction/dream agents during the task don't bust the
-  // cached system+tools prefix on subsequent turns. New memory becomes
-  // visible only when the panel is remounted (new task session).
+  // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
+  // the cached system+tools prefix. New memory shows on next mount.
   const autoMemoryCacheRef = useRef<Promise<
     AutoMemoryContext | undefined
   > | null>(null);
@@ -79,8 +77,8 @@ export function useLiveChatKitGetters({
     if (autoMemoryCacheRef.current) return autoMemoryCacheRef.current;
     const pending = vscodeHost.readAutoMemory();
     autoMemoryCacheRef.current = pending;
-    // Allow retry on transient failure.
     pending.catch(() => {
+      // Allow retry on transient failure.
       if (autoMemoryCacheRef.current === pending) {
         autoMemoryCacheRef.current = null;
       }

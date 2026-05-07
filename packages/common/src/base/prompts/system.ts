@@ -18,10 +18,8 @@ export function createSystemPrompt(
 IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are for helping the user with programming. You may use URLs provided by the user in their messages or local files.
 
 `.trim();
-  // The system prompt only carries the static memory guidance. The
-  // MEMORY.md index snapshot itself is injected separately via the
-  // environment system reminder so it doesn't bust the cached system
-  // prefix when memory files change between sessions.
+  // Static guidance only — MEMORY.md index is injected separately to keep
+  // the system prefix cache stable across sessions.
   const autoMemoryPrompt = buildAutoMemoryStaticPrompt(autoMemory);
   const customRulesPrompt =
     customAgent?.omitAgentsMd === true ? "" : getCustomRulesPrompt(customRules);
