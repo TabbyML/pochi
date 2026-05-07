@@ -13,7 +13,7 @@ More below!
 
 - **Task Memory:** Pochi now maintains a persistent memory file throughout a task — including across context compaction.
 
-A background agent extracts structured session notes into `pochi://-/memory.md` at regular intervals. When compaction kicks in, Pochi uses this memory file as the summary source instead of generating a fresh one from scratch.
+A background agent extracts structured session notes into `memory.md` at regular intervals. When compaction kicks in, Pochi uses this memory file as the summary source instead of generating a fresh one from scratch.
 
 Most noticeable on long debugging or refactoring sessions where compaction previously felt like Pochi losing its place. [**#1480**](https://github.com/TabbyML/pochi/pull/1480)
 
