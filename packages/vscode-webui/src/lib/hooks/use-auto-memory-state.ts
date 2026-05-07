@@ -1,5 +1,5 @@
 import { vscodeHost } from "@/lib/vscode";
-import type { AutoMemoryTaskState } from "@getpochi/common/vscode-webui-bridge";
+import type { AutoMemoryTaskState } from "@getpochi/common";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 

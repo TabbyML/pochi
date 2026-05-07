@@ -1,11 +1,8 @@
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
+import type { ContextWindowUsage, TaskMemoryState } from "@getpochi/common";
 import { constants, getLogger, prompts } from "@getpochi/common";
-import type {
-  ContextWindowUsage,
-  TaskMemoryState,
-} from "@getpochi/common/vscode-webui-bridge";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ToolSpecInput } from "@getpochi/tools";
 import { useCallback, useEffect } from "react";

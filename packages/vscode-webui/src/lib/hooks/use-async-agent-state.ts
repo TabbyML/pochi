@@ -1,6 +1,5 @@
 import { vscodeHost } from "@/lib/vscode";
-import { getLogger } from "@getpochi/common";
-import type { AsyncAgentState } from "@getpochi/common/vscode-webui-bridge";
+import { type AsyncAgentState, getLogger } from "@getpochi/common";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 import { useLatest } from "./use-latest";

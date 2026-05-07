@@ -1,17 +1,21 @@
 import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
-import type { AutoMemoryContext, Environment } from "../base";
+import type {
+  AsyncAgentState,
+  AutoMemoryContext,
+  AutoMemoryTaskState,
+  ContextWindowUsage,
+  Environment,
+  TaskMemoryState,
+} from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type { RecentFileState } from "../tool-utils";
 import type {
-  AsyncAgentState,
-  AutoMemoryTaskState,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
-  ContextWindowUsage,
   CustomAgentFile,
   ExecuteCommandResult,
   FileDiff,
@@ -27,7 +31,6 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
-  TaskMemoryState,
   TaskStates,
   WorkspaceState,
 } from "./index";

@@ -1,4 +1,8 @@
-import { getLogger } from "@getpochi/common";
+import {
+  type AsyncAgentState,
+  type ForkAgentUseCase,
+  getLogger,
+} from "@getpochi/common";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { type ToolSpecInput, parseToolSpec } from "@getpochi/tools";
 
@@ -28,20 +32,20 @@ export function buildForkMessages(
 export interface ForkAgentConfig {
   taskId: string;
   cwd: string | undefined;
-  label: string;
+  label: ForkAgentUseCase;
 }
 
 export interface CreateForkAgentOptions {
   store: LiveKitStore;
-  label: string;
+  label: ForkAgentUseCase;
   parentTaskId?: string;
   parentMessages: Message[];
   parentCwd: string | undefined;
   directive: string;
   tools?: readonly ToolSpecInput[];
-  setAsyncAgentState?: (
+  setAsyncAgentState: (
     taskId: string,
-    state: { tools?: readonly ToolSpecInput[]; parentTaskId?: string },
+    state: AsyncAgentState,
   ) => Promise<void> | void;
 }
 
@@ -53,10 +57,6 @@ export async function createForkAgent(
     options.parentMessages,
     options.directive,
   ) as Message[];
-
-  if ((options.tools || options.parentTaskId) && !options.setAsyncAgentState) {
-    throw new Error("setAsyncAgentState is required for async agent state");
-  }
 
   logger.debug(
     {
@@ -71,21 +71,23 @@ export async function createForkAgent(
     "Creating async fork agent",
   );
 
-  if (options.tools || options.parentTaskId) {
-    const asyncAgentState = {
-      parentTaskId: options.parentTaskId,
-      tools: options.tools ? ensureAttemptCompletion(options.tools) : undefined,
-    };
-    logger.debug(
-      {
-        taskId,
-        parentTaskId: asyncAgentState.parentTaskId,
-        tools: asyncAgentState.tools?.length,
-      },
-      "Persisting async fork agent state",
-    );
-    await options.setAsyncAgentState?.(taskId, asyncAgentState);
-  }
+  const asyncAgentState: AsyncAgentState = {
+    parentTaskId: options.parentTaskId,
+    tools: options.tools ? ensureAttemptCompletion(options.tools) : undefined,
+    messageCacheBreakpoint: "secondLast",
+    useCase: options.label,
+  };
+  logger.debug(
+    {
+      taskId,
+      parentTaskId: asyncAgentState.parentTaskId,
+      tools: asyncAgentState.tools?.length,
+      messageCacheBreakpoint: asyncAgentState.messageCacheBreakpoint,
+      useCase: asyncAgentState.useCase,
+    },
+    "Persisting async fork agent state",
+  );
+  await options.setAsyncAgentState(taskId, asyncAgentState);
 
   options.store.commit(
     catalog.events.taskInited({

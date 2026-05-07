@@ -46,7 +46,7 @@ describe("buildForkMessages", () => {
       store: {
         commit: (event: unknown) => commits.push(event),
       } as never,
-      label: "memory",
+      label: "task-memory",
       parentTaskId: "parent-task",
       parentMessages: [],
       parentCwd: "/repo",
@@ -66,6 +66,8 @@ describe("buildForkMessages", () => {
           "writeToFile(/memory/**)",
           "attemptCompletion",
         ],
+        messageCacheBreakpoint: "secondLast",
+        useCase: "task-memory",
       },
     ]);
   });
