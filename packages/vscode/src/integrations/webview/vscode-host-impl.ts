@@ -55,8 +55,8 @@ import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
-  type AsyncAgentState,
   type AutoMemoryTaskState,
+  type BackgroundTaskState,
   type ContextWindowUsage,
   type Environment,
   type GitStatus,
@@ -1388,27 +1388,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return result;
   };
 
-  readAsyncAgentState = async (
+  readBackgroundTaskState = async (
     taskId: string,
   ): Promise<{
-    value: ThreadSignalSerialization<AsyncAgentState | undefined>;
-    setAsyncAgentState: (state: AsyncAgentState) => Promise<void>;
+    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
+    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
   }> => {
-    logger.debug({ taskId }, "readAsyncAgentState");
+    logger.debug({ taskId }, "readBackgroundTaskState");
     return {
       value: ThreadSignal.serialize(
-        this.taskStateStore.getAsyncAgentStateSignal(taskId),
+        this.taskStateStore.getBackgroundTaskStateSignal(taskId),
       ),
-      setAsyncAgentState: (state: AsyncAgentState) => {
+      setBackgroundTaskState: (state: BackgroundTaskState) => {
         logger.debug(
           {
             taskId,
             parentTaskId: state.parentTaskId,
             tools: state.tools?.length,
           },
-          "readAsyncAgentState.setAsyncAgentState",
+          "readBackgroundTaskState.setBackgroundTaskState",
         );
-        return this.taskStateStore.setAsyncAgentState(taskId, state);
+        return this.taskStateStore.setBackgroundTaskState(taskId, state);
       },
     };
   };

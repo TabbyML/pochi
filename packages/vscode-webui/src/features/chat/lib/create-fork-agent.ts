@@ -1,5 +1,5 @@
 import {
-  type AsyncAgentState,
+  type BackgroundTaskState,
   type ForkAgentUseCase,
   getLogger,
 } from "@getpochi/common";
@@ -7,6 +7,31 @@ import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { type ToolSpecInput, parseToolSpec } from "@getpochi/tools";
 
 const logger = getLogger("CreateForkAgent");
+
+const ForkAgentUseCaseLabels: Record<ForkAgentUseCase, string> = {
+  "task-memory": "Task Memory Extraction",
+  "auto-memory": "Auto Memory Extraction",
+  "auto-memory-dream": "Auto Memory Dream",
+};
+
+/**
+ * Build a human-readable title for a fork agent so it can be identified in
+ * task lists. The use-case is rendered as a bracketed tag so it stands out
+ * from the parent task title. Callers compose the title and pass it in via
+ * {@link CreateForkAgentOptions.initTitle}.
+ *
+ * Examples:
+ *   buildForkAgentInitTitle("task-memory")              -> "[Task Memory Extraction]"
+ *   buildForkAgentInitTitle("auto-memory", "Refactor")  -> "[Auto Memory Extraction] Refactor"
+ */
+export function buildForkAgentInitTitle(
+  useCase: ForkAgentUseCase,
+  parentTaskTitle?: string,
+): string {
+  const useCaseLabel = ForkAgentUseCaseLabels[useCase];
+  const parent = parentTaskTitle?.trim();
+  return parent ? `[${useCaseLabel}] ${parent}` : `[${useCaseLabel}]`;
+}
 
 /**
  * Build the init messages for a fork agent: all parent messages followed by
@@ -38,14 +63,15 @@ export interface ForkAgentConfig {
 export interface CreateForkAgentOptions {
   store: LiveKitStore;
   label: ForkAgentUseCase;
+  initTitle?: string;
   parentTaskId?: string;
   parentMessages: Message[];
   parentCwd: string | undefined;
   directive: string;
   tools?: readonly ToolSpecInput[];
-  setAsyncAgentState: (
+  setBackgroundTaskState: (
     taskId: string,
-    state: AsyncAgentState,
+    state: BackgroundTaskState,
   ) => Promise<void> | void;
 }
 
@@ -62,16 +88,17 @@ export async function createForkAgent(
     {
       taskId,
       label: options.label,
+      initTitle: options.initTitle,
       parentTaskId: options.parentTaskId,
       parentCwd: options.parentCwd,
       parentMessages: options.parentMessages.length,
       initMessages: initMessages.length,
       tools: options.tools?.length,
     },
-    "Creating async fork agent",
+    "Creating background fork agent",
   );
 
-  const asyncAgentState: AsyncAgentState = {
+  const backgroundTaskState: BackgroundTaskState = {
     parentTaskId: options.parentTaskId,
     tools: options.tools ? ensureAttemptCompletion(options.tools) : undefined,
     messageCacheBreakpoint: "secondLast",
@@ -80,28 +107,29 @@ export async function createForkAgent(
   logger.debug(
     {
       taskId,
-      parentTaskId: asyncAgentState.parentTaskId,
-      tools: asyncAgentState.tools?.length,
-      messageCacheBreakpoint: asyncAgentState.messageCacheBreakpoint,
-      useCase: asyncAgentState.useCase,
+      parentTaskId: backgroundTaskState.parentTaskId,
+      tools: backgroundTaskState.tools?.length,
+      messageCacheBreakpoint: backgroundTaskState.messageCacheBreakpoint,
+      useCase: backgroundTaskState.useCase,
     },
-    "Persisting async fork agent state",
+    "Persisting background fork agent state",
   );
-  await options.setAsyncAgentState(taskId, asyncAgentState);
+  await options.setBackgroundTaskState(taskId, backgroundTaskState);
 
   options.store.commit(
     catalog.events.taskInited({
       id: taskId,
       cwd: options.parentCwd,
-      runAsync: true,
+      background: true,
       createdAt: new Date(),
       initMessages,
+      initTitle: options.initTitle,
     }),
   );
 
   logger.debug(
-    { taskId, label: options.label },
-    "Async fork agent initialized",
+    { taskId, label: options.label, initTitle: options.initTitle },
+    "Background fork agent initialized",
   );
 
   return {

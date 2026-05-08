@@ -5,7 +5,11 @@ import {
   getAllowedToolNames,
 } from "@getpochi/tools";
 import { describe, expect, it } from "vitest";
-import { buildForkMessages, createForkAgent } from "../create-fork-agent";
+import {
+  buildForkAgentInitTitle,
+  buildForkMessages,
+  createForkAgent,
+} from "../create-fork-agent";
 
 describe("buildForkMessages", () => {
   it("clones parent messages with fresh ids", () => {
@@ -38,7 +42,7 @@ describe("buildForkMessages", () => {
     });
   });
 
-  it("persists async agent tools with path-pattern rules", async () => {
+  it("persists background task tools with path-pattern rules", async () => {
     const states: unknown[] = [];
     const commits: unknown[] = [];
 
@@ -47,17 +51,21 @@ describe("buildForkMessages", () => {
         commit: (event: unknown) => commits.push(event),
       } as never,
       label: "task-memory",
+      initTitle: "[Task Memory Extraction] Parent Task Title",
       parentTaskId: "parent-task",
       parentMessages: [],
       parentCwd: "/repo",
       directive: "extract memory",
       tools: ["readFile(/memory/**)", "writeToFile(/memory/**)"],
-      setAsyncAgentState: (_taskId, state) => {
+      setBackgroundTaskState: (_taskId, state) => {
         states.push(state);
       },
     });
 
     expect(commits).toHaveLength(1);
+    expect(commits[0]).toMatchObject({
+      args: { initTitle: "[Task Memory Extraction] Parent Task Title" },
+    });
     expect(states).toEqual([
       {
         parentTaskId: "parent-task",
@@ -70,6 +78,32 @@ describe("buildForkMessages", () => {
         useCase: "task-memory",
       },
     ]);
+  });
+});
+
+describe("buildForkAgentInitTitle", () => {
+  it("returns the bracketed use-case label when no parent title is provided", () => {
+    expect(buildForkAgentInitTitle("task-memory")).toBe(
+      "[Task Memory Extraction]",
+    );
+    expect(buildForkAgentInitTitle("auto-memory")).toBe(
+      "[Auto Memory Extraction]",
+    );
+    expect(buildForkAgentInitTitle("auto-memory-dream")).toBe(
+      "[Auto Memory Dream]",
+    );
+  });
+
+  it("appends the parent task title when available", () => {
+    expect(buildForkAgentInitTitle("task-memory", "Build something")).toBe(
+      "[Task Memory Extraction] Build something",
+    );
+  });
+
+  it("ignores blank parent titles", () => {
+    expect(buildForkAgentInitTitle("auto-memory", "   ")).toBe(
+      "[Auto Memory Extraction]",
+    );
   });
 });
 
