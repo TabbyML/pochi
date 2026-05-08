@@ -70,7 +70,12 @@ export const PochiProviderOptions = z.object({
 
 export type PochiProviderOptions = z.infer<typeof PochiProviderOptions>;
 
-export type MessageCacheBreakpoint = "last" | "secondLast";
+/** Returns true if the given use case is a fork agent use case. */
+export function isForkAgentUseCase(
+  useCase: string | undefined,
+): useCase is ForkAgentUseCase {
+  return ForkAgentUseCase.safeParse(useCase).success;
+}
 
 export type ContextWindowUsage = {
   system: number;
@@ -83,6 +88,5 @@ export type ContextWindowUsage = {
 export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
-  messageCacheBreakpoint?: MessageCacheBreakpoint;
   useCase?: ForkAgentUseCase;
 }
