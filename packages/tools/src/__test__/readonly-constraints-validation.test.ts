@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkReadOnlyConstraints,
   isReadonlyToolCall,
-} from "../utils/readonly-constraints-validation";
+} from "../utils/readonly-validation";
 
 describe("checkReadOnlyConstraints", () => {
   it("returns false for empty or whitespace-only input", () => {

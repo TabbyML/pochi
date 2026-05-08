@@ -42,7 +42,7 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
-import { parseToolSpec } from "./utils";
+import { parseToolSpec } from "./utils/tool-spec";
 import { writeToFile } from "./write-to-file";
 
 export {
@@ -54,15 +54,17 @@ export {
   type ParsedToolSpec,
   type ToolSpecInput,
   getAllowedToolNames,
-  compileToolPolicies,
   getToolRules,
   normalizeToolSpecs,
   parseToolSpec,
-  validateCommandPatternPolicy,
+} from "./utils/tool-spec";
+export {
+  compileToolPolicies,
   validateAgentTypePatternPolicy,
-  validateToolPolicy,
+  validateCommandPatternPolicy,
   validateExecuteCommandRules,
-} from "./utils";
+  validateToolPolicy,
+} from "./utils/tool-policy";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 export {
@@ -71,17 +73,17 @@ export {
   executeToolCalls,
   isSafeToBatchToolCall,
   partitionToolCalls,
-} from "./utils/batch-utils";
-export { ToolCallQueue } from "./utils/tool-call-queue";
+  ToolCallQueue,
+} from "./utils/tool-batch";
 export {
   checkReadOnlyConstraints,
   isReadonlyToolCall,
-} from "./utils/readonly-constraints-validation";
+} from "./utils/readonly-validation";
 export type {
   BatchedToolCallCancelReason as ToolCallCancelReason,
   BatchedToolCallResult,
   BatchedToolCall,
-} from "./utils/batch-utils";
+} from "./utils/tool-batch";
 
 export function isUserInputToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";

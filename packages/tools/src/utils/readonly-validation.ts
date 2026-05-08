@@ -1,7 +1,7 @@
 import { parse } from "shell-quote";
-import { getToolRules, parseToolSpec } from ".";
 import { ToolsByPermission } from "../constants";
 import type { CustomAgent } from "../new-task";
+import { getToolRules, parseToolSpec } from "./tool-spec";
 
 /** Tool names that are inherently side-effect-free. */
 const ReadonlyToolNames = new Set<string>(ToolsByPermission.read);

@@ -199,6 +199,7 @@
         "ai": "catalog:",
         "json-schema": "^0.4.0",
         "minimatch": "catalog:",
+        "pathe": "^2.0.3",
         "shell-quote": "^1.8.3",
         "zod": "catalog:",
       },
