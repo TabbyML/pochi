@@ -2,9 +2,13 @@ import { BuiltInAgentPath } from "../../vscode-webui-bridge/types/custom-agent";
 import { renderActiveSelection } from "./active-selection";
 import {
   buildAutoMemoryDreamDirective,
+  buildAutoMemoryDynamicPrompt,
   buildAutoMemoryExtractionDirective,
   buildAutoMemoryPrompt,
+  buildAutoMemoryStaticPrompt,
   formatAutoMemoryManifest,
+  injectAutoMemory,
+  isAutoMemorySystemReminder,
   serializeMemoryMessage,
   truncateAutoMemoryIndex,
 } from "./auto-memory";
@@ -25,10 +29,12 @@ import { renderUserEdits } from "./user-edits";
 export const prompts = {
   system: createSystemPrompt,
   injectEnvironment,
+  injectAutoMemory,
   environment: createEnvironmentPrompt,
   createSystemReminder,
   isSystemReminder,
   isEnvironmentSystemReminder,
+  isAutoMemorySystemReminder,
   isCompact,
   compact: createCompactPrompt,
   inlineCompact,
@@ -48,6 +54,8 @@ export const prompts = {
   },
   autoMemory: {
     buildPrompt: buildAutoMemoryPrompt,
+    buildStaticPrompt: buildAutoMemoryStaticPrompt,
+    buildDynamicPrompt: buildAutoMemoryDynamicPrompt,
     buildExtractionDirective: buildAutoMemoryExtractionDirective,
     buildDreamDirective: buildAutoMemoryDreamDirective,
     formatManifest: formatAutoMemoryManifest,

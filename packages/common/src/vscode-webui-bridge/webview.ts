@@ -1,17 +1,21 @@
 import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
-import type { AutoMemoryContext, Environment } from "../base";
+import type {
+  AutoMemoryContext,
+  AutoMemoryTaskState,
+  BackgroundTaskState,
+  ContextWindowUsage,
+  Environment,
+  TaskMemoryState,
+} from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type { RecentFileState } from "../tool-utils";
 import type {
-  AsyncAgentState,
-  AutoMemoryTaskState,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
-  ContextWindowUsage,
   CustomAgentFile,
   ExecuteCommandResult,
   FileDiff,
@@ -27,7 +31,6 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
-  TaskMemoryState,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -482,9 +485,9 @@ export interface VSCodeHostApi {
     | undefined
   >;
 
-  readAsyncAgentState(taskId: string): Promise<{
-    value: ThreadSignalSerialization<AsyncAgentState | undefined>;
-    setAsyncAgentState: (state: AsyncAgentState) => Promise<void>;
+  readBackgroundTaskState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
+    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
   }>;
 
   /**

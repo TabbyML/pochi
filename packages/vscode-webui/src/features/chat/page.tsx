@@ -29,7 +29,7 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
-import { AsyncAgentRunner } from "./components/async-agent-runner";
+import { BackgroundTaskRunner } from "./components/background-task-runner";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
@@ -367,7 +367,7 @@ function Chat({ user, uid, info }: ChatProps) {
           mcpConfigOverride={mcpConfigOverride}
         />
       </div>
-      <AsyncAgentRunner />
+      <BackgroundTaskRunner />
     </div>
   );
 }

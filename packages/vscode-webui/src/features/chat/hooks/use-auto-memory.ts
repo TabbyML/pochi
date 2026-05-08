@@ -10,7 +10,10 @@ import {
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ToolSpecInput } from "@getpochi/tools";
 import { useCallback, useEffect } from "react";
-import { createForkAgent } from "../lib/create-fork-agent";
+import {
+  buildForkAgentInitTitle,
+  createForkAgent,
+} from "../lib/create-fork-agent";
 
 const logger = getLogger("useAutoMemory");
 const ActiveStatuses = new Set(["pending-model", "pending-tool"]);
@@ -82,9 +85,14 @@ export function useAutoMemory({
       }
 
       try {
+        const parentTask = store.query(catalog.queries.makeTaskQuery(taskId));
         const config = await createForkAgent({
           store,
           label: "auto-memory-dream",
+          initTitle: buildForkAgentInitTitle(
+            "auto-memory-dream",
+            parentTask?.title ?? undefined,
+          ),
           parentTaskId: taskId,
           parentMessages: [],
           parentCwd,
@@ -93,9 +101,10 @@ export function useAutoMemory({
             sessions,
           }),
           tools: buildMemoryTools(run.context),
-          setAsyncAgentState: async (asyncTaskId, state) => {
-            const result = await vscodeHost.readAsyncAgentState(asyncTaskId);
-            await result.setAsyncAgentState(state);
+          setBackgroundTaskState: async (backgroundTaskId, state) => {
+            const result =
+              await vscodeHost.readBackgroundTaskState(backgroundTaskId);
+            await result.setBackgroundTaskState(state);
           },
         });
 
@@ -212,9 +221,14 @@ export function useAutoMemory({
       setAutoMemoryState?.(nextState);
 
       try {
+        const parentTask = store.query(catalog.queries.makeTaskQuery(taskId));
         const config = await createForkAgent({
           store,
           label: "auto-memory",
+          initTitle: buildForkAgentInitTitle(
+            "auto-memory",
+            parentTask?.title ?? undefined,
+          ),
           parentTaskId: taskId,
           parentMessages: messages,
           parentCwd,
@@ -223,9 +237,10 @@ export function useAutoMemory({
             previousMessageCount,
           }),
           tools: buildMemoryTools(context),
-          setAsyncAgentState: async (asyncTaskId, state) => {
-            const result = await vscodeHost.readAsyncAgentState(asyncTaskId);
-            await result.setAsyncAgentState(state);
+          setBackgroundTaskState: async (backgroundTaskId, state) => {
+            const result =
+              await vscodeHost.readBackgroundTaskState(backgroundTaskId);
+            await result.setBackgroundTaskState(state);
           },
         });
 

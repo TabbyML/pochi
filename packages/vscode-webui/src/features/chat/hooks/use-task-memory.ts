@@ -1,15 +1,15 @@
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
+import type { ContextWindowUsage, TaskMemoryState } from "@getpochi/common";
 import { constants, getLogger, prompts } from "@getpochi/common";
-import type {
-  ContextWindowUsage,
-  TaskMemoryState,
-} from "@getpochi/common/vscode-webui-bridge";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ToolSpecInput } from "@getpochi/tools";
 import { useCallback, useEffect } from "react";
-import { createForkAgent } from "../lib/create-fork-agent";
+import {
+  buildForkAgentInitTitle,
+  createForkAgent,
+} from "../lib/create-fork-agent";
 
 const logger = getLogger("useTaskMemory");
 
@@ -198,17 +198,25 @@ export function useTaskMemory({
 
       logger.debug("Existing task memory content:", existingMemory);
 
+      const parentTask = store.query(catalog.queries.makeTaskQuery(taskId));
+      const initTitle = buildForkAgentInitTitle(
+        "task-memory",
+        parentTask?.title ?? undefined,
+      );
+
       void createForkAgent({
         store,
         label: "task-memory",
+        initTitle,
         parentTaskId: taskId,
         parentMessages: data.messages,
         parentCwd,
         directive: prompts.taskMemory.buildExtractionDirective(existingMemory),
         tools: TaskMemoryAllowedTools,
-        setAsyncAgentState: async (asyncTaskId, state) => {
-          const result = await vscodeHost.readAsyncAgentState(asyncTaskId);
-          await result.setAsyncAgentState(state);
+        setBackgroundTaskState: async (backgroundTaskId, state) => {
+          const result =
+            await vscodeHost.readBackgroundTaskState(backgroundTaskId);
+          await result.setBackgroundTaskState(state);
         },
       })
         .then((config) => {
@@ -216,7 +224,7 @@ export function useTaskMemory({
             "Task memory extraction fork agent created with config:",
             config,
           );
-          // AsyncAgentRunner picks up the taskInited commit on the next render.
+          // BackgroundTaskRunner picks up the taskInited commit on the next render.
           setTaskMemoryState({
             ...nextState,
             activeTaskId: config.taskId,

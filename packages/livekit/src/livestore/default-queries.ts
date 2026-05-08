@@ -33,8 +33,7 @@ export const makeSubTaskQuery = (taskId: string) =>
 export const runnableTasks$ = queryDb(
   () =>
     tables.tasks.where({
-      runAsync: true,
-      parentId: null,
+      background: true,
       status: {
         op: "IN",
         value: ["pending-model", "pending-tool"],

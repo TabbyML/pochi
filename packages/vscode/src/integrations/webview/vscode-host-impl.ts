@@ -55,8 +55,12 @@ import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
+  type AutoMemoryTaskState,
+  type BackgroundTaskState,
+  type ContextWindowUsage,
   type Environment,
   type GitStatus,
+  type TaskMemoryState,
   toErrorMessage,
 } from "@getpochi/common";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -74,12 +78,9 @@ import {
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import {
-  type AsyncAgentState,
-  type AutoMemoryTaskState,
   type BuiltinSubAgentInfo,
   type CaptureEvent,
   type ChangedFileContent,
-  type ContextWindowUsage,
   type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
@@ -98,7 +99,6 @@ import {
   type SkillFile,
   type TaskArchivedParams,
   type TaskChangedFile,
-  type TaskMemoryState,
   type TaskStates,
   type VSCodeHostApi,
   type VSCodeSettings,
@@ -1388,27 +1388,27 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return result;
   };
 
-  readAsyncAgentState = async (
+  readBackgroundTaskState = async (
     taskId: string,
   ): Promise<{
-    value: ThreadSignalSerialization<AsyncAgentState | undefined>;
-    setAsyncAgentState: (state: AsyncAgentState) => Promise<void>;
+    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
+    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
   }> => {
-    logger.debug({ taskId }, "readAsyncAgentState");
+    logger.debug({ taskId }, "readBackgroundTaskState");
     return {
       value: ThreadSignal.serialize(
-        this.taskStateStore.getAsyncAgentStateSignal(taskId),
+        this.taskStateStore.getBackgroundTaskStateSignal(taskId),
       ),
-      setAsyncAgentState: (state: AsyncAgentState) => {
+      setBackgroundTaskState: (state: BackgroundTaskState) => {
         logger.debug(
           {
             taskId,
             parentTaskId: state.parentTaskId,
             tools: state.tools?.length,
           },
-          "readAsyncAgentState.setAsyncAgentState",
+          "readBackgroundTaskState.setBackgroundTaskState",
         );
-        return this.taskStateStore.setAsyncAgentState(taskId, state);
+        return this.taskStateStore.setBackgroundTaskState(taskId, state);
       },
     };
   };

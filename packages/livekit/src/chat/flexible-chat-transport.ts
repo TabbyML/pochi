@@ -2,7 +2,9 @@ import { getErrorMessage } from "@ai-sdk/provider";
 import type {
   AutoMemoryContext,
   Environment,
+  MessageCacheBreakpoint,
   PochiProviderOptions,
+  PochiRequestUseCase,
 } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
@@ -65,6 +67,8 @@ export type ChatTransportOptions = {
   onStart?: OnStartCallback;
   getters: PrepareRequestGetters;
   isSubTask?: boolean;
+  messageCacheBreakpoint?: MessageCacheBreakpoint;
+  requestUseCase?: PochiRequestUseCase;
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
@@ -76,6 +80,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
+  private readonly messageCacheBreakpoint: MessageCacheBreakpoint;
+  private readonly requestUseCase: PochiRequestUseCase;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
@@ -87,6 +93,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
+    this.messageCacheBreakpoint = options.messageCacheBreakpoint ?? "last";
+    this.requestUseCase = options.requestUseCase ?? "agent";
     this.store = options.store;
     this.blobStore = options.blobStore;
     this.customAgent = options.customAgent;
@@ -109,8 +117,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   }) => {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
-    messages = prompts.injectEnvironment(messages, environment) as Message[];
     const autoMemory = await this.getters.getAutoMemory?.();
+    messages = prompts.injectEnvironment(messages, environment) as Message[];
+    messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
     const skills = this.getters.getSkills?.();
@@ -203,14 +212,17 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       providerOptions: cacheControl,
     };
 
-    const cachedModelMessages = withCacheBreakpointOnLastMessage(modelMessages);
+    const cachedModelMessages = withMessageCacheBreakpoint(
+      modelMessages,
+      this.messageCacheBreakpoint,
+    );
 
     const stream = streamText({
       providerOptions: {
         pochi: {
           taskId: chatId,
           client: globalThis.POCHI_CLIENT,
-          useCase: "agent",
+          useCase: this.requestUseCase,
         } satisfies PochiProviderOptions,
       },
       system: systemMessage,
@@ -268,23 +280,26 @@ function prepareMessages(inputMessages: Message[]): Message[] {
 }
 
 /**
- * Attach an Anthropic ephemeral cache breakpoint to the last message of the
+ * Attach an Anthropic ephemeral cache breakpoint to a message in the
  * conversation. Combined with a breakpoint on the system block, this caches
- * the entire request prefix (tools + system + message history). On the next
- * request that adds new messages, the previous boundary becomes a cache hit.
+ * the request prefix (tools + system + message history) up to the selected
+ * boundary. On the next request that adds new messages, the previous boundary
+ * becomes a cache hit.
  *
- * For fork agents this is what makes the parent task's prefix reusable: the
- * fork's `[...parentMessages, newDirective]` will hit the cache up to the end
- * of `parentMessages` (the last message at the time of the parent's request),
- * even though the new directive itself is uncached.
+ * Fork agents select the second-to-last message because their final message is
+ * a fresh directive, while the reusable parent-task prefix ends immediately
+ * before it.
  */
-function withCacheBreakpointOnLastMessage(
+export function withMessageCacheBreakpoint(
   messages: ModelMessage[],
+  breakpoint: MessageCacheBreakpoint,
 ): ModelMessage[] {
   if (messages.length === 0) return messages;
-  const lastIndex = messages.length - 1;
+  const cacheIndex =
+    breakpoint === "secondLast" ? messages.length - 2 : messages.length - 1;
+  if (cacheIndex < 0) return messages;
   return messages.map((m, i) => {
-    if (i !== lastIndex) return m;
+    if (i !== cacheIndex) return m;
     return {
       ...m,
       providerOptions: {

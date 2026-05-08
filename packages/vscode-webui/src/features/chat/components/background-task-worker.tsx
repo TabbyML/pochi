@@ -1,5 +1,5 @@
 /**
- * AsyncAgentWorker — drives a single async task to completion.
+ * BackgroundTaskWorker — drives a single background task to completion.
  *
  * Headless component (renders null). Receives a taskId and an optional tool
  * allow-list, then drives the task from the store.
@@ -12,13 +12,17 @@ import {
 } from "@/features/retry";
 import { useSelectedModels } from "@/features/settings";
 import { useTodos } from "@/features/todo";
-import { useAsyncAgentState } from "@/lib/hooks/use-async-agent-state";
+import { useBackgroundTaskState } from "@/lib/hooks/use-background-task-state";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { getLogger } from "@getpochi/common";
+import {
+  type ForkAgentUseCase,
+  type MessageCacheBreakpoint,
+  getLogger,
+} from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
@@ -30,47 +34,53 @@ import {
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BatchExecuteManager } from "../lib/batch-execute-manager";
-import { createAsyncAgentBatchedToolCall } from "../lib/batched-tool-call-adapters";
+import { createBackgroundTaskBatchedToolCall } from "../lib/batched-tool-call-adapters";
 import { useLiveChatKitGetters } from "../lib/use-live-chat-kit-getters";
 
-const AsyncAgentMaxStep = 50;
-const AsyncAgentMaxRetry = 8;
-// After this many consecutive rejected (allow-list) tool calls we stop the agent
-// to avoid the model getting stuck in a loop calling forbidden tools.
-const AsyncAgentMaxToolRejections = 5;
-const logger = getLogger("AsyncAgentWorker");
+const BackgroundTaskMaxStep = 50;
+const BackgroundTaskMaxRetry = 8;
+// After this many consecutive rejected (allow-list) tool calls we stop the
+// worker to avoid the model getting stuck in a loop calling forbidden tools.
+const BackgroundTaskMaxToolRejections = 5;
+const logger = getLogger("BackgroundTaskWorker");
 
-interface AsyncAgentWorkerProps {
+interface BackgroundTaskWorkerProps {
   taskId: string;
   batchExecuteManager: BatchExecuteManager;
 }
 
-export function AsyncAgentWorker({
+export function BackgroundTaskWorker({
   taskId,
   batchExecuteManager,
-}: AsyncAgentWorkerProps) {
-  const { asyncAgentState, isLoading } = useAsyncAgentState(taskId);
+}: BackgroundTaskWorkerProps) {
+  const { backgroundTaskState, isLoading } = useBackgroundTaskState(taskId);
 
   if (isLoading) return null;
 
   return (
-    <AsyncAgentWorkerInner
+    <BackgroundTaskWorkerInner
       taskId={taskId}
-      tools={asyncAgentState?.tools}
-      parentTaskId={asyncAgentState?.parentTaskId}
+      tools={backgroundTaskState?.tools}
+      parentTaskId={backgroundTaskState?.parentTaskId}
+      messageCacheBreakpoint={backgroundTaskState?.messageCacheBreakpoint}
+      requestUseCase={backgroundTaskState?.useCase}
       batchExecuteManager={batchExecuteManager}
     />
   );
 }
 
-function AsyncAgentWorkerInner({
+function BackgroundTaskWorkerInner({
   taskId,
   tools,
   parentTaskId,
+  messageCacheBreakpoint,
+  requestUseCase,
   batchExecuteManager,
-}: AsyncAgentWorkerProps & {
+}: BackgroundTaskWorkerProps & {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
+  messageCacheBreakpoint?: MessageCacheBreakpoint;
+  requestUseCase?: ForkAgentUseCase;
 }) {
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
@@ -130,8 +140,8 @@ function AsyncAgentWorkerInner({
 
   // NOTE: Intentionally do NOT abort on unmount.
   //
-  // Async agents are designed to be resumable: if the webview / page is
-  // closed mid-task, the next time it is opened `AsyncAgentRunner` will
+  // Background tasks are designed to be resumable: if the webview / page is
+  // closed mid-task, the next time it is opened `BackgroundTaskRunner` will
   // re-discover the task via `runnableTasks$` (status is still
   // `pending-model` / `pending-tool`) and re-mount this worker, which will
   // pick up from the last persisted message.
@@ -161,6 +171,8 @@ function AsyncAgentWorkerInner({
     abortSignal: abortController.current.signal,
     getters,
     isSubTask: false,
+    messageCacheBreakpoint: messageCacheBreakpoint ?? "last",
+    requestUseCase,
     sendAutomaticallyWhen: (x) => {
       if (
         abortController.current.signal.aborted ||
@@ -215,15 +227,15 @@ function AsyncAgentWorkerInner({
             allowedToolCount: allowedToolsSet.size,
             rejectionCount: toolRejectionCountRef.current,
           },
-          "Async agent tool call rejected by allow-list",
+          "Background task tool call rejected by allow-list",
         );
         writeToolOutput(toolCall.toolName, toolCall.toolCallId, {
-          output: `Tool ${toolCall.toolName} is not allowed for this async agent.`,
+          output: `Tool ${toolCall.toolName} is not allowed for this background task.`,
         });
 
-        if (toolRejectionCountRef.current >= AsyncAgentMaxToolRejections) {
+        if (toolRejectionCountRef.current >= BackgroundTaskMaxToolRejections) {
           failWorkerRef.current?.(
-            `The async agent kept calling disallowed tools (${toolRejectionCountRef.current}). Stopping.`,
+            `The background task kept calling disallowed tools (${toolRejectionCountRef.current}). Stopping.`,
           );
         }
         return;
@@ -251,7 +263,7 @@ function AsyncAgentWorkerInner({
       // concurrent batch; stateful calls remain serial barriers.
       batchExecuteManager.enqueue(
         taskId,
-        createAsyncAgentBatchedToolCall({
+        createBackgroundTaskBatchedToolCall({
           toolCall,
           taskId,
           parentTaskId,
@@ -301,7 +313,7 @@ function AsyncAgentWorkerInner({
       if (completedRef.current) {
         return;
       }
-      logger.warn({ taskId, message }, "Failing async agent worker");
+      logger.warn({ taskId, message }, "Failing background task worker");
       completedRef.current = true;
       if (!abortController.current.signal.aborted) {
         abortController.current.abort(message);
@@ -344,9 +356,9 @@ function AsyncAgentWorkerInner({
       if (completedRef.current || abortController.current.signal.aborted) {
         return;
       }
-      if (retryCount >= AsyncAgentMaxRetry) {
+      if (retryCount >= BackgroundTaskMaxRetry) {
         failWorker(
-          "The async agent failed to complete, max retry count reached.",
+          "The background task failed to complete, max retry count reached.",
         );
         return;
       }
@@ -408,25 +420,24 @@ function AsyncAgentWorkerInner({
       .flatMap((message) => message.parts)
       .filter((part) => part.type === "step-start").length;
   }, [messages]);
-  const [currentStepCount, setCurrentStepCount] = useState(0);
-  useEffect(() => {
-    if (stepCount > currentStepCount) {
-      setCurrentStepCount(stepCount);
-    }
-  }, [stepCount, currentStepCount]);
 
+  // Read `stepCount` directly so the guard fires on mount, before the
+  // auto-start effect below can call `retry()` on an over-budget task.
   useEffect(() => {
     if (completedRef.current) {
       return;
     }
-    if (currentStepCount > AsyncAgentMaxStep) {
-      failWorker("The async agent failed to complete, max step count reached.");
+    if (stepCount > BackgroundTaskMaxStep) {
+      failWorker(
+        "The background task failed to complete, max step count reached.",
+      );
     }
-  }, [currentStepCount, failWorker]);
+  }, [stepCount, failWorker]);
 
-  // Auto-start / resume the agent from its current last message.
-  // Only kicks in when the task already has at least one message, since async
-  // agents are initialized by their parent task before this worker mounts.
+  // Auto-start / resume the worker from its current last message.
+  // Only kicks in when the task already has at least one message, since
+  // background tasks are initialized by their parent task before this worker
+  // mounts.
   const initStarted = useRef(false);
   useEffect(() => {
     if (
@@ -437,6 +448,8 @@ function AsyncAgentWorkerInner({
       messages.length > 0 &&
       !completedRef.current &&
       !abortController.current.signal.aborted &&
+      // Belt-and-suspenders: never resume an over-budget task.
+      stepCount <= BackgroundTaskMaxStep &&
       !(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
         task?.status === "completed"
@@ -448,8 +461,9 @@ function AsyncAgentWorkerInner({
           taskId,
           modelId: selectedModel.id,
           messageCount: messages.length,
+          stepCount,
         },
-        "▶ start async agent",
+        "▶ start background task",
       );
       retry();
     }
@@ -458,6 +472,7 @@ function AsyncAgentWorkerInner({
     isModelsLoading,
     selectedModel,
     messages.length,
+    stepCount,
     retry,
     task?.status,
     task?.error,
@@ -544,7 +559,7 @@ function summarizeToolPayload(
 /**
  * Walk the messages array and produce a flat, human-friendly summary that
  * interleaves text turns with tool-call invocations and their outputs. Useful
- * for tracing async-agent behavior in logs without dumping raw message JSON.
+ * for tracing background-task behavior in logs without dumping raw message JSON.
  *
  * Returns a single string (newline-joined) so that tslog renders it as one
  * readable block rather than a JS array literal with escape sequences.

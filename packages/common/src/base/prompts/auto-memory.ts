@@ -1,6 +1,13 @@
-import type { UIMessage } from "ai";
+import type { TextUIPart, UIMessage } from "ai";
 
 export const AutoMemoryIndexName = "MEMORY.md";
+
+// Header doubles as the marker for identifying auto-memory reminders.
+const AutoMemoryHeader = "# Long-term Memory Index (MEMORY.md)";
+
+export function isAutoMemorySystemReminder(content: string): boolean {
+  return content.includes(AutoMemoryHeader);
+}
 export const AutoMemoryLockName = ".consolidate-lock";
 export const AutoMemoryMaxIndexLines = 200;
 export const AutoMemoryMaxIndexBytes = 25_000;
@@ -92,14 +99,15 @@ export function formatAutoMemoryManifest(
     .join("\n");
 }
 
-export function buildAutoMemoryPrompt(
+/**
+ * Static memory guidance for the system prompt — rules + paths, no index.
+ * The index is injected separately so the system prefix stays cacheable
+ * across sessions. Mirrors claude-code's memdir split.
+ */
+export function buildAutoMemoryStaticPrompt(
   context: AutoMemoryContext | undefined,
 ): string {
   if (!context) return "";
-
-  const indexContent = context.indexContent.trim()
-    ? context.indexContent
-    : "(MEMORY.md is currently empty.)";
 
   return `====
 
@@ -123,8 +131,74 @@ When the user asks you to remember something, write or update the relevant topic
 
 The long-term memory directory is an explicit exception to the normal relative-path tool rule. You may use the absolute paths above when reading or writing memory files.
 
-Current MEMORY.md index:
+The current MEMORY.md index is delivered separately as its own system reminder on the first user turn. That snapshot is taken at the start of the task and is intentionally NOT refreshed mid-task — new memories you write here become visible only in the next task session.`;
+}
+
+/** MEMORY.md snapshot block, injected via {@link injectAutoMemory}. */
+export function buildAutoMemoryDynamicPrompt(
+  context: AutoMemoryContext | undefined,
+): string {
+  if (!context) return "";
+
+  const indexContent = context.indexContent.trim()
+    ? context.indexContent
+    : "(MEMORY.md is currently empty.)";
+
+  return `${AutoMemoryHeader}
+This snapshot of MEMORY.md was captured at the start of the task and will not be refreshed until the next task session. Topic files referenced here live under ${context.memoryDir}.
+
 ${indexContent}`;
+}
+
+/**
+ * Inject the MEMORY.md snapshot as a dedicated system reminder on the first
+ * user turn. Idempotent — replaces any prior auto-memory reminder.
+ */
+export function injectAutoMemory(
+  messages: UIMessage[],
+  context: AutoMemoryContext | undefined,
+): UIMessage[] {
+  if (!context) return messages;
+  const memoryBlock = buildAutoMemoryDynamicPrompt(context);
+  if (!memoryBlock) return messages;
+  if (messages.length !== 1) return messages;
+
+  const messageToInject = messages.at(-1);
+  if (!messageToInject || messageToInject.role !== "user") return messages;
+
+  const reminderPart: TextUIPart = {
+    type: "text",
+    text: `<system-reminder>${memoryBlock}</system-reminder>`,
+  };
+
+  const filteredParts = (messageToInject.parts ?? []).filter(
+    (part) =>
+      part.type !== "text" || !isAutoMemorySystemReminder(part.text ?? ""),
+  );
+  // Place reminder before the user's text so the prompt remains the tail.
+  const lastTextPartIndex = filteredParts.findLastIndex(
+    (part) => part.type === "text",
+  );
+  const insertIndex = lastTextPartIndex >= 0 ? lastTextPartIndex : 0;
+
+  messageToInject.parts = [
+    ...filteredParts.slice(0, insertIndex),
+    reminderPart,
+    ...filteredParts.slice(insertIndex),
+  ];
+  return messages;
+}
+
+/** Back-compat wrapper composing static + dynamic memory prompts. */
+export function buildAutoMemoryPrompt(
+  context: AutoMemoryContext | undefined,
+): string {
+  const staticPart = buildAutoMemoryStaticPrompt(context);
+  const dynamicPart = buildAutoMemoryDynamicPrompt(context);
+  if (!staticPart && !dynamicPart) return "";
+  if (!dynamicPart) return staticPart;
+  if (!staticPart) return dynamicPart;
+  return `${staticPart}\n\n${dynamicPart}`;
 }
 
 export function buildAutoMemoryExtractionDirective({

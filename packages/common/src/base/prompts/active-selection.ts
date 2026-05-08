@@ -1,4 +1,4 @@
-import type { ActiveSelection } from "../../vscode-webui-bridge/types/message";
+import type { ActiveSelection } from "../message-context";
 
 export function renderActiveSelection(selection: ActiveSelection): string {
   if (!selection) {
