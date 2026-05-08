@@ -118,12 +118,6 @@ More below!
 
   Workers now carry the webview ID through their bootstrap URL so VS Code routes requests correctly. SQLite assets are also inlined to sidestep the same routing issue. [**#1508**](https://github.com/TabbyML/pochi/pull/1508)
 
-- **Async Agent Step Limit Fix:** Pochi no longer gets stuck when an async agent task hits the 50-step limit — whether the task is actively running or being resumed.
-
-  Two related issues caused this: mid-run, `failWorker`'s identity changed on every re-render, causing the failure to commit repeatedly in a tight loop. On resume, the max-step guard read `currentStepCount` before it populated on first render, so `retry()` fired before the task could be marked as failed — surfacing as high CPU usage on every mount.
-
-  Both paths now fail cleanly once. **[#1510](https://github.com/TabbyML/pochi/pull/1510)**, **[#1515](https://github.com/TabbyML/pochi/pull/1515)**
-
 
 
 ### 🔥 Preview
