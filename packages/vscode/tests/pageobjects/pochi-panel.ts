@@ -59,13 +59,34 @@ export class PochiPanel {
   /**
    * Wait for at least one user message to appear in the task panel.
    * This confirms the task panel is properly displaying the conversation.
+   *
+   * If `expectedText` is provided, also wait for the rendered message
+   * text to contain that substring. This avoids races where the message
+   * wrapper (with the avatar fallback) is rendered before the message
+   * body finishes hydrating.
    */
-  async waitForUserMessage(timeout = 30000) {
+  async waitForUserMessage(timeout = 30000, expectedText?: string) {
     const userMessage = $('[aria-label="chat-message-user"]');
     await userMessage.waitForExist({
       timeout,
       timeoutMsg: "User message did not appear in task panel",
     });
+
+    if (!expectedText) {
+      return;
+    }
+
+    await browser.waitUntil(
+      async () => {
+        const text = await userMessage.getText();
+        return text.includes(expectedText);
+      },
+      {
+        timeout,
+        timeoutMsg: `User message did not contain expected text: ${expectedText}`,
+        interval: 500,
+      },
+    );
   }
 
   /**
