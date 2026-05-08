@@ -9,9 +9,10 @@ import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
-import { type RefObject, useEffect, useRef } from "react";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
+import { useSubtaskPreviewSource } from "../../hooks/use-subtask-preview-source";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -53,7 +54,14 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
     subTaskToolCallStatusRegistry.current,
   );
 
-  return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
+  return (
+    <NewTaskToolView
+      {...props}
+      taskSource={taskSource}
+      uid={uid}
+      toolCallStatusRegistryRef={subTaskToolCallStatusRegistry}
+    />
+  );
 }
 
 export interface NewTaskToolViewProps extends ToolProps<"newTask"> {
@@ -78,6 +86,16 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
 
   const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
     useShowMessageList(completed);
+  const previewSource = useSubtaskPreviewSource(taskSource, {
+    isExecuting,
+    isPreviewVisible: showMessageList,
+  });
+  const taskThreadSource = useMemo(() => {
+    if (!previewSource) {
+      return undefined;
+    }
+    return { ...previewSource, isLoading: false };
+  }, [previewSource]);
 
   // Collapse when execution completes
   const wasCompleted = useRef(completed);
@@ -87,16 +105,30 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     }
   }, [isExecuting, completed, setShowMessageList]);
 
+  const expandableDetail = useMemo(() => {
+    return taskThreadSource && taskThreadSource.messages.length > 1 ? (
+      <FixedStateChatContextProvider
+        toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+      >
+        <TaskThread
+          source={taskThreadSource}
+          showMessageList={showMessageList}
+          assistant={{ name: agent ?? "Pochi" }}
+        />
+      </FixedStateChatContextProvider>
+    ) : undefined;
+  }, [agent, showMessageList, taskThreadSource, toolCallStatusRegistryRef]);
+
   if (agentType === "browser") {
-    return <BrowserView {...props} />;
+    return <BrowserView {...props} taskSource={previewSource} />;
   }
 
   if (agentType === "planner") {
-    return <PlannerView {...props} />;
+    return <PlannerView {...props} taskSource={previewSource} />;
   }
 
   if (agentType === "walkthrough") {
-    return <WalkthroughView {...props} />;
+    return <WalkthroughView {...props} taskSource={previewSource} />;
   }
 
   const title = (
@@ -138,19 +170,6 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
       </div>
     </div>
   );
-
-  const expandableDetail =
-    taskSource && taskSource.messages.length > 1 ? (
-      <FixedStateChatContextProvider
-        toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-      >
-        <TaskThread
-          source={{ ...taskSource, isLoading: false }}
-          showMessageList={showMessageList}
-          assistant={{ name: agent ?? "Pochi" }}
-        />
-      </FixedStateChatContextProvider>
-    ) : undefined;
 
   return (
     <ExpandableToolContainer

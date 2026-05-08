@@ -12,6 +12,7 @@ import {
   ThreadSignal,
   type ThreadSignalSerialization,
 } from "@quilted/threads/signals";
+import { funnel } from "remeda";
 import { executeCommandWithNode } from "../integrations/terminal/execute-command-with-node";
 import {
   PtySpawnError,
@@ -19,6 +20,7 @@ import {
 } from "../integrations/terminal/execute-command-with-pty";
 
 const logger = getLogger("ExecuteCommand");
+const ExecuteCommandStreamingThrottleMs = 300;
 
 type CompletedCommandOutput = {
   output: string;
@@ -72,6 +74,23 @@ export const executeCommand: ToolFunctionType<
     if (executionStarted) return;
     executionStarted = true;
 
+    let done = false;
+    let pendingData: { output: string; isTruncated: boolean } | null = null;
+
+    const throttledFlush = funnel(
+      () => {
+        if (done) return;
+        const data = pendingData;
+        if (!data) return;
+        output.value = {
+          content: data.output,
+          status: "running",
+          isTruncated: data.isTruncated,
+        };
+      },
+      { minGapMs: ExecuteCommandStreamingThrottleMs, triggerAt: "both" },
+    );
+
     executeCommandImpl({
       command,
       cwd,
@@ -79,23 +98,25 @@ export const executeCommand: ToolFunctionType<
       abortSignal,
       envs,
       onData: (data) => {
-        output.value = {
-          content: data.output,
-          status: "running",
-          isTruncated: data.isTruncated,
-        };
+        pendingData = data;
+        throttledFlush.call();
       },
     })
       .then(async ({ output: commandOutput, isTruncated }) => {
+        done = true;
         output.value = await persistCompletedOutput({
           output: commandOutput,
           isTruncated,
         });
       })
       .catch(async (error) => {
+        const lastOutput = pendingData?.output ?? output.value.content;
+        const lastTruncated =
+          pendingData?.isTruncated ?? output.value.isTruncated;
+        done = true;
         output.value = await persistCompletedOutput({
-          output: output.value.content,
-          isTruncated: output.value.isTruncated,
+          output: lastOutput,
+          isTruncated: lastTruncated,
           error: error.message,
         });
       });
