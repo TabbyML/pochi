@@ -2,10 +2,10 @@ import * as path from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   compileToolPolicies,
-  parseToolSpec,
   validateExecuteCommandRules,
   validateToolPolicy,
-} from "../utils";
+} from "../utils/tool-policy";
+import { parseToolSpec } from "../utils/tool-spec";
 
 describe("validateExecuteCommandRules", () => {
   it("should correctly parse commands with semicolons inside quotes", () => {

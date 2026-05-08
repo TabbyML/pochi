@@ -6,7 +6,7 @@ import {
   partitionToolCalls,
   runConcurrentBatch,
   type BatchedToolCall,
-} from "../utils/batch-utils";
+} from "../utils/tool-batch";
 
 describe("BatchExecutionError", () => {
   it("has the correct name", () => {
