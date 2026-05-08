@@ -1,7 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type {
-  AsyncAgentState,
   AutoMemoryTaskState,
+  BackgroundTaskState,
   ContextWindowUsage,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -20,7 +20,7 @@ type TaskStateData = {
   contextWindowUsage?: ContextWindowUsage;
   taskMemoryState?: TaskMemoryState;
   autoMemoryState?: AutoMemoryTaskState;
-  asyncAgentState?: AsyncAgentState;
+  backgroundTaskState?: BackgroundTaskState;
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -215,38 +215,38 @@ export class TaskDataStore {
     return computed(() => this.state.value[taskId]?.autoMemoryState);
   }
 
-  getAsyncAgentState(taskId: string): AsyncAgentState | undefined {
-    const asyncAgentState = this.getTaskState(taskId)?.asyncAgentState;
+  getBackgroundTaskState(taskId: string): BackgroundTaskState | undefined {
+    const backgroundTaskState = this.getTaskState(taskId)?.backgroundTaskState;
     logger.debug(
       {
         taskId,
-        hasAsyncAgentState: asyncAgentState !== undefined,
-        parentTaskId: asyncAgentState?.parentTaskId,
-        tools: asyncAgentState?.tools?.length,
+        hasBackgroundTaskState: backgroundTaskState !== undefined,
+        parentTaskId: backgroundTaskState?.parentTaskId,
+        tools: backgroundTaskState?.tools?.length,
       },
-      "getAsyncAgentState",
+      "getBackgroundTaskState",
     );
-    return asyncAgentState;
+    return backgroundTaskState;
   }
 
-  async setAsyncAgentState(
+  async setBackgroundTaskState(
     taskId: string,
-    asyncAgentState: AsyncAgentState,
+    backgroundTaskState: BackgroundTaskState,
   ): Promise<void> {
     const existing = this.getTaskState(taskId) || {};
     logger.debug(
       {
         taskId,
-        parentTaskId: asyncAgentState.parentTaskId,
-        tools: asyncAgentState.tools?.length,
+        parentTaskId: backgroundTaskState.parentTaskId,
+        tools: backgroundTaskState.tools?.length,
       },
-      "setAsyncAgentState",
+      "setBackgroundTaskState",
     );
-    await this.saveTaskState(taskId, { ...existing, asyncAgentState });
+    await this.saveTaskState(taskId, { ...existing, backgroundTaskState });
   }
 
-  getAsyncAgentStateSignal(taskId: string) {
-    logger.debug({ taskId }, "getAsyncAgentStateSignal");
-    return computed(() => this.state.value[taskId]?.asyncAgentState);
+  getBackgroundTaskStateSignal(taskId: string) {
+    logger.debug({ taskId }, "getBackgroundTaskStateSignal");
+    return computed(() => this.state.value[taskId]?.backgroundTaskState);
   }
 }

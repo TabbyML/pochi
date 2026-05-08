@@ -1,9 +1,10 @@
 /**
- * AsyncAgentRunner — headless React component that discovers and drives
- * async fork agents in the background.
+ * BackgroundTaskRunner — headless React component that discovers and drives
+ * background tasks (e.g. background fork agents).
  *
- * It queries the store for top-level tasks with runAsync=true and a runnable
- * status, then runs each one using a headless LiveChatKit + useChat loop.
+ * It queries the store for top-level tasks with `background=true` and a
+ * runnable status, then runs each one using a headless LiveChatKit + useChat
+ * loop.
  *
  * Task creation is NOT done here. If a task was interrupted (e.g. page closed),
  * remounting this component will resume execution automatically.
@@ -14,11 +15,11 @@ import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { useEffect, useRef } from "react";
 import { BatchExecuteManager } from "../lib/batch-execute-manager";
-import { AsyncAgentWorker } from "./async-agent-worker";
+import { BackgroundTaskWorker } from "./background-task-worker";
 
-const logger = getLogger("AsyncAgentRunner");
+const logger = getLogger("BackgroundTaskRunner");
 
-export function AsyncAgentRunner() {
+export function BackgroundTaskRunner() {
   const store = useDefaultStore();
   const runnableTasks = store.useQuery(catalog.queries.runnableTasks$);
 
@@ -30,7 +31,7 @@ export function AsyncAgentRunner() {
         runnableTaskCount: runnableTasks.length,
         taskIds: runnableTasks.map((task) => task.id),
       },
-      "Async runnable tasks updated",
+      "Background runnable tasks updated",
     );
   }, [runnableTasks]);
 
@@ -39,7 +40,7 @@ export function AsyncAgentRunner() {
   return (
     <>
       {runnableTasks.map((task) => (
-        <AsyncAgentWorker
+        <BackgroundTaskWorker
           key={task.id}
           taskId={task.id}
           batchExecuteManager={batchExecuteManager}

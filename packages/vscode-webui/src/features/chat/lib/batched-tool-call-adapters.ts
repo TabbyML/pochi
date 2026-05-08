@@ -51,7 +51,7 @@ type CreateExecutorToolCallAdapterOptions = {
   toolCallStatusRegistry: ToolCallStatusRegistry;
 };
 
-type CreateAsyncAgentToolCallAdapterOptions = {
+type CreateBackgroundTaskToolCallAdapterOptions = {
   toolCall: ToolCall;
   taskId: string;
   parentTaskId?: string;
@@ -299,14 +299,14 @@ export function createSubtaskBatchedToolCall({
 }
 
 /**
- * For async-agent workers: directly executes via vscodeHost and reports
+ * For background-task workers: directly executes via vscodeHost and reports
  * results with addToolOutput, with support for executeCommand streaming and
  * a parentTaskId-driven file-state cache.
  *
  * Unlike the subtask adapter, this does not depend on a UI-side
  * ToolCallStatusRegistry.
  */
-export function createAsyncAgentBatchedToolCall({
+export function createBackgroundTaskBatchedToolCall({
   toolCall,
   taskId,
   parentTaskId,
@@ -314,7 +314,7 @@ export function createAsyncAgentBatchedToolCall({
   abortSignal,
   toolPolicies,
   addToolOutput,
-}: CreateAsyncAgentToolCallAdapterOptions): BatchedToolCall {
+}: CreateBackgroundTaskToolCallAdapterOptions): BatchedToolCall {
   return {
     toolCallId: toolCall.toolCallId,
     toolName: toolCall.toolName,
@@ -370,7 +370,7 @@ export function createAsyncAgentBatchedToolCall({
                 if (output.error) {
                   finalResult.error = output.error;
                 } else if (reason === "aborted") {
-                  finalResult.error = "Aborted by async agent worker";
+                  finalResult.error = "Aborted by background task worker";
                 }
 
                 addToolOutput({
@@ -433,7 +433,7 @@ export function createAsyncAgentBatchedToolCall({
         const normalizedError =
           error instanceof Error
             ? error
-            : new Error("Async agent batch execution failed");
+            : new Error("Background task batch execution failed");
         addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,

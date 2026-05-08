@@ -80,7 +80,7 @@ export type ContextWindowUsage = {
   toolResults: number;
 };
 
-export interface AsyncAgentState {
+export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
   messageCacheBreakpoint?: MessageCacheBreakpoint;

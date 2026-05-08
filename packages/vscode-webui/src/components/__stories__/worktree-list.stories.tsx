@@ -96,6 +96,7 @@ const mockTasks = [
     modelId: null,
     displayId: null,
     runAsync: null,
+    background: null,
     lastCheckpointHash: null,
   },
   {
@@ -118,6 +119,7 @@ const mockTasks = [
     modelId: null,
     displayId: null,
     runAsync: null,
+    background: null,
     lastCheckpointHash: null,
   },
   {
@@ -140,6 +142,7 @@ const mockTasks = [
     modelId: null,
     displayId: null,
     runAsync: null,
+    background: null,
     lastCheckpointHash: null,
   },
 ] satisfies Task[];

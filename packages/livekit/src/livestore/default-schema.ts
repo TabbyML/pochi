@@ -28,6 +28,7 @@ export const tables = {
       title: State.SQLite.text({ nullable: true }),
       parentId: State.SQLite.text({ nullable: true }),
       runAsync: State.SQLite.boolean({ nullable: true }),
+      background: State.SQLite.boolean({ nullable: true }),
       status: State.SQLite.text({
         default: "pending-input",
         schema: TaskStatus,
@@ -284,6 +285,7 @@ const materializers = State.SQLite.materializers(events, {
     id,
     parentId,
     runAsync,
+    background,
     createdAt,
     cwd,
     initMessage,
@@ -303,6 +305,7 @@ const materializers = State.SQLite.materializers(events, {
           : "pending-input",
       parentId,
       runAsync: runAsync ?? false,
+      background: background ?? false,
       createdAt,
       cwd,
       title: initTitle,

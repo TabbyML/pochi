@@ -532,7 +532,7 @@ export class LiveChatKit<
       }
 
       const llm = getters.getLLM();
-      if (!task.runAsync) {
+      if (!task.background) {
         const getModel = () => createModel({ llm });
         scheduleGenerateTitleJob({
           taskId: this.taskId,
