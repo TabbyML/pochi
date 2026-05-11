@@ -82,6 +82,8 @@ export function ModelSelect({
             <Button
               variant="ghost"
               aria-label="model-select"
+              data-valid={isValid ? "true" : "false"}
+              data-model-id={value?.id ?? ""}
               className={cn(
                 "!gap-0.5 !px-1 button-focus h-6 max-w-full items-center py-0 font-normal",
                 triggerClassName,
