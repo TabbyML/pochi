@@ -101,7 +101,6 @@ export async function createForkAgent(
   const backgroundTaskState: BackgroundTaskState = {
     parentTaskId: options.parentTaskId,
     tools: options.tools ? ensureAttemptCompletion(options.tools) : undefined,
-    messageCacheBreakpoint: "secondLast",
     useCase: options.label,
   };
   logger.debug(
@@ -109,7 +108,6 @@ export async function createForkAgent(
       taskId,
       parentTaskId: backgroundTaskState.parentTaskId,
       tools: backgroundTaskState.tools?.length,
-      messageCacheBreakpoint: backgroundTaskState.messageCacheBreakpoint,
       useCase: backgroundTaskState.useCase,
     },
     "Persisting background fork agent state",

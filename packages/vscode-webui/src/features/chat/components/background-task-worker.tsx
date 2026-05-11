@@ -18,11 +18,7 @@ import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import {
-  type ForkAgentUseCase,
-  type MessageCacheBreakpoint,
-  getLogger,
-} from "@getpochi/common";
+import { type ForkAgentUseCase, getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
@@ -62,7 +58,6 @@ export function BackgroundTaskWorker({
       taskId={taskId}
       tools={backgroundTaskState?.tools}
       parentTaskId={backgroundTaskState?.parentTaskId}
-      messageCacheBreakpoint={backgroundTaskState?.messageCacheBreakpoint}
       requestUseCase={backgroundTaskState?.useCase}
       batchExecuteManager={batchExecuteManager}
     />
@@ -73,13 +68,11 @@ function BackgroundTaskWorkerInner({
   taskId,
   tools,
   parentTaskId,
-  messageCacheBreakpoint,
   requestUseCase,
   batchExecuteManager,
 }: BackgroundTaskWorkerProps & {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
-  messageCacheBreakpoint?: MessageCacheBreakpoint;
   requestUseCase?: ForkAgentUseCase;
 }) {
   const store = useDefaultStore();
@@ -171,7 +164,6 @@ function BackgroundTaskWorkerInner({
     abortSignal: abortController.current.signal,
     getters,
     isSubTask: false,
-    messageCacheBreakpoint: messageCacheBreakpoint ?? "last",
     requestUseCase,
     sendAutomaticallyWhen: (x) => {
       if (
