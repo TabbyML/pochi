@@ -1,6 +1,5 @@
 import type {
   ContextWindowUsage,
-  MessageCacheBreakpoint,
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -150,7 +149,6 @@ export type LiveChatKitOptions<T> = {
   getters: PrepareRequestGetters;
 
   isSubTask?: boolean;
-  messageCacheBreakpoint?: MessageCacheBreakpoint;
   requestUseCase?: PochiRequestUseCase;
 
   store: LiveKitStore;
@@ -254,7 +252,6 @@ export class LiveChatKit<
     onCompact,
     getters,
     isSubTask,
-    messageCacheBreakpoint,
     requestUseCase,
     customAgent,
     outputSchema,
@@ -277,7 +274,6 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
-      messageCacheBreakpoint,
       requestUseCase,
       customAgent,
       outputSchema,

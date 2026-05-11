@@ -74,7 +74,6 @@ describe("buildForkMessages", () => {
           "writeToFile(/memory/**)",
           "attemptCompletion",
         ],
-        messageCacheBreakpoint: "secondLast",
         useCase: "task-memory",
       },
     ]);
