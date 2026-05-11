@@ -1,0 +1,68 @@
+diff --git a/dist/index.js b/dist/index.js
+index a9b455c..1058801 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -13291,6 +13291,13 @@ var AbstractChat = class {
+       }
+     }
+     this.setStatus({ status: "submitted", error: void 0 });
++    const abortController = new AbortController();
++    this.activeResponse = {
++      abortController
++    };
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal
++    });
+     const lastMessage = this.lastMessage;
+     let isAbort = false;
+     let isDisconnect = false;
+@@ -13301,7 +13308,7 @@ var AbstractChat = class {
+           lastMessage: this.state.snapshot(lastMessage),
+           messageId: this.generateId()
+         }),
+-        abortController: new AbortController()
++        abortController
+       };
+       activeResponse.abortController.signal.addEventListener("abort", () => {
+         isAbort = true;
+@@ -13651,4 +13658,4 @@ var TextStreamChatTransport = class extends HttpChatTransport {
+   wrapProvider,
+   zodSchema
+ });
+-//# sourceMappingURL=index.js.map
+\ No newline at end of file
++//# sourceMappingURL=index.js.map
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 992776d..7357b24 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -13266,6 +13266,13 @@ var AbstractChat = class {
+       }
+     }
+     this.setStatus({ status: "submitted", error: void 0 });
++    const abortController = new AbortController();
++    this.activeResponse = {
++      abortController
++    };
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal
++    });
+     const lastMessage = this.lastMessage;
+     let isAbort = false;
+     let isDisconnect = false;
+@@ -13276,7 +13283,7 @@ var AbstractChat = class {
+           lastMessage: this.state.snapshot(lastMessage),
+           messageId: this.generateId()
+         }),
+-        abortController: new AbortController()
++        abortController
+       };
+       activeResponse.abortController.signal.addEventListener("abort", () => {
+         isAbort = true;
+@@ -13625,4 +13632,4 @@ export {
+   wrapProvider,
+   zodSchema3 as zodSchema
+ };
+-//# sourceMappingURL=index.mjs.map
+\ No newline at end of file
++//# sourceMappingURL=index.mjs.map

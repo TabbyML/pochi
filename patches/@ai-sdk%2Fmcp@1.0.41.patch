@@ -1,0 +1,62 @@
+diff --git a/dist/index.d.mts b/dist/index.d.mts
+index ade96aa..091818b 100644
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -503,6 +503,7 @@ interface MCPClientConfig {
+ }
+ declare function createMCPClient(config: MCPClientConfig): Promise<MCPClient>;
+ interface MCPClient {
++    instructions?: string;
+     /**
+      * Information about the connected MCP server, as reported during initialization.
+      * @see https://modelcontextprotocol.io/specification/2025-11-25/schema#implementation
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index ade96aa..091818b 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -503,6 +503,7 @@ interface MCPClientConfig {
+ }
+ declare function createMCPClient(config: MCPClientConfig): Promise<MCPClient>;
+ interface MCPClient {
++    instructions?: string;
+     /**
+      * Information about the connected MCP server, as reported during initialization.
+      * @see https://modelcontextprotocol.io/specification/2025-11-25/schema#implementation
+diff --git a/dist/index.js b/dist/index.js
+index 00eccd0..117f898 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1747,6 +1747,7 @@ var DefaultMCPClient = class {
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       this._serverInfo = result.serverInfo;
+       await this.notification({
+         method: "notifications/initialized"
+@@ -2213,4 +2214,4 @@ var DefaultMCPClient = class {
+   createMCPClient,
+   experimental_createMCPClient
+ });
+-//# sourceMappingURL=index.js.map
+\ No newline at end of file
++//# sourceMappingURL=index.js.map
+diff --git a/dist/index.mjs b/dist/index.mjs
+index d9de8be..17e1eee 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1721,6 +1721,7 @@ var DefaultMCPClient = class {
+         });
+       }
+       this.serverCapabilities = result.capabilities;
++      this.instructions = result.instructions;
+       this._serverInfo = result.serverInfo;
+       await this.notification({
+         method: "notifications/initialized"
+@@ -2186,4 +2187,4 @@ export {
+   createMCPClient,
+   createMCPClient as experimental_createMCPClient
+ };
+-//# sourceMappingURL=index.mjs.map
+\ No newline at end of file
++//# sourceMappingURL=index.mjs.map
