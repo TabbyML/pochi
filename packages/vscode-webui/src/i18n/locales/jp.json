@@ -64,7 +64,8 @@
     "messages": "メッセージ",
     "files": "ファイル",
     "toolResults": "ツールの結果",
-    "viewTaskMemory": "タスクメモリを表示"
+    "viewTaskMemory": "タスクメモリを表示",
+    "viewTaskMemoryTooltip": "タスク圧縮時に使用されるタスクメモリを表示します。"
   },
   "modelSelect": {
     "selectModel": "モデルを選択",

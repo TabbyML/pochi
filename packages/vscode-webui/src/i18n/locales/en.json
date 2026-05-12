@@ -62,7 +62,8 @@
     "messages": "Messages",
     "files": "Files",
     "toolResults": "Tool Results",
-    "viewTaskMemory": "View task memory"
+    "viewTaskMemory": "View task memory",
+    "viewTaskMemoryTooltip": "View the task memory that will be used when compacting this task."
   },
   "modelSelect": {
     "selectModel": "Select Model",

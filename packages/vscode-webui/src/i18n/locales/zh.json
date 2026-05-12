@@ -63,7 +63,8 @@
     "messages": "消息",
     "files": "文件",
     "toolResults": "工具结果",
-    "viewTaskMemory": "查看任务记忆"
+    "viewTaskMemory": "查看任务记忆",
+    "viewTaskMemoryTooltip": "查看任务记忆，压缩任务时将使用此记忆。"
   },
   "modelSelect": {
     "selectModel": "选择模型",

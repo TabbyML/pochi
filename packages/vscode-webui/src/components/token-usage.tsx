@@ -158,7 +158,7 @@ export function TokenUsage({
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[22rem] border"
+        className="w-[23rem] border"
         sideOffset={0}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -316,9 +316,10 @@ export function TokenUsage({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex shrink-0 cursor-pointer items-center justify-center text-muted-foreground hover:text-foreground"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="size-8 shrink-0 p-0"
                       aria-label={t("tokenUsage.viewTaskMemory")}
                       onClick={() => {
                         vscodeHost.openFile(TaskMemoryFileUri);
@@ -326,10 +327,12 @@ export function TokenUsage({
                       }}
                     >
                       <NotebookText className="size-4" />
-                    </button>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{t("tokenUsage.viewTaskMemory")}</p>
+                    <p className="max-w-xs">
+                      {t("tokenUsage.viewTaskMemoryTooltip")}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
