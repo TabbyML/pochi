@@ -1,0 +1,42 @@
+diff --git a/dist/index.js b/dist/index.js
+index 7e0992f..ec3a55f 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -2261,7 +2261,8 @@ function zod4Schema(zodSchema2, options) {
+       z4.toJSONSchema(zodSchema2, {
+         target: "draft-7",
+         io: "input",
+-        reused: useReferences ? "ref" : "inline"
++        reused: useReferences ? "ref" : "inline",
++        unrepresentable: "any"
+       })
+     ),
+     {
+@@ -2847,4 +2848,4 @@ var import_stream2 = require("eventsource-parser/stream");
+   withoutTrailingSlash,
+   zodSchema
+ });
+-//# sourceMappingURL=index.js.map
+\ No newline at end of file
++//# sourceMappingURL=index.js.map
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 1cccf8e..fb89eb2 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -2172,7 +2172,8 @@ function zod4Schema(zodSchema2, options) {
+       z4.toJSONSchema(zodSchema2, {
+         target: "draft-7",
+         io: "input",
+-        reused: useReferences ? "ref" : "inline"
++        reused: useReferences ? "ref" : "inline",
++        unrepresentable: "any"
+       })
+     ),
+     {
+@@ -2761,4 +2762,4 @@ export {
+   withoutTrailingSlash,
+   zodSchema
+ };
+-//# sourceMappingURL=index.mjs.map
+\ No newline at end of file
++//# sourceMappingURL=index.mjs.map
