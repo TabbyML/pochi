@@ -61,7 +61,8 @@
     "userContext": "User Context",
     "messages": "Messages",
     "files": "Files",
-    "toolResults": "Tool Results"
+    "toolResults": "Tool Results",
+    "viewTaskMemory": "View task memory"
   },
   "modelSelect": {
     "selectModel": "Select Model",

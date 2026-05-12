@@ -62,7 +62,8 @@
     "userContext": "사용자 컨텍스트",
     "messages": "메시지",
     "files": "파일",
-    "toolResults": "도구 결과"
+    "toolResults": "도구 결과",
+    "viewTaskMemory": "작업 메모리 보기"
   },
   "modelSelect": {
     "selectModel": "모델 선택",

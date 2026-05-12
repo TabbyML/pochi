@@ -62,7 +62,8 @@
     "userContext": "用户上下文",
     "messages": "消息",
     "files": "文件",
-    "toolResults": "工具结果"
+    "toolResults": "工具结果",
+    "viewTaskMemory": "查看任务记忆"
   },
   "modelSelect": {
     "selectModel": "选择模型",
