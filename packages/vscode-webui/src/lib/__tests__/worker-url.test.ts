@@ -1,10 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isCrossOriginWorkerUrl,
   makeSharedWorkerBootstrapUrl,
+  makeWorkerBootstrapBlobUrl,
   makeWorkerBootstrapUrl,
   makeWorkerBootstrapSource,
+  revokeWorkerBootstrapBlobUrl,
 } from "../worker-url";
+
+const originalCreateObjectURL = URL.createObjectURL;
+const originalRevokeObjectURL = URL.revokeObjectURL;
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    value: originalCreateObjectURL,
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    value: originalRevokeObjectURL,
+  });
+  vi.restoreAllMocks();
+});
 
 describe("makeWorkerBootstrapSource", () => {
   it("creates a module bootstrap import", () => {
@@ -23,6 +41,83 @@ describe("makeWorkerBootstrapSource", () => {
         undefined,
       ),
     ).toContain('importScripts("https://example.com/shared-worker.js")');
+  });
+});
+
+describe("makeWorkerBootstrapBlobUrl", () => {
+  it("returns a same-origin blob URL with a debuggable source URL", () => {
+    let blobParts: BlobPart[] | undefined;
+    let blobOptions: BlobPropertyBag | undefined;
+    const BaseBlob = Blob;
+    class TestBlob extends BaseBlob {
+      constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
+        blobParts = parts;
+        blobOptions = options;
+        super(parts, options);
+      }
+    }
+    const createObjectURL = vi.fn(() => "blob:vscode-webview://panel/worker");
+    vi.stubGlobal("Blob", TestBlob);
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectURL,
+    });
+
+    const url = makeWorkerBootstrapBlobUrl(
+      "https://example.com/worker.js",
+      "module",
+      "webview-1",
+    );
+
+    expect(url).toBe("blob:vscode-webview://panel/worker");
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(TestBlob));
+    expect(blobParts).toEqual([
+      'import "https://example.com/worker.js"\n//# sourceURL=vscode-worker?id=webview-1',
+    ]);
+    expect(blobOptions).toEqual({ type: "text/javascript" });
+  });
+
+  it("bypasses VS Code localhost routing for blob worker imports", () => {
+    let blobParts: BlobPart[] | undefined;
+    const BaseBlob = Blob;
+    class TestBlob extends BaseBlob {
+      constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
+        blobParts = parts;
+        super(parts, options);
+      }
+    }
+    vi.stubGlobal("Blob", TestBlob);
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn(() => "blob:vscode-webview://panel/worker"),
+    });
+
+    makeWorkerBootstrapBlobUrl(
+      "http://localhost:4112/src/livestore.default.worker.ts?worker_file&type=module",
+      "module",
+      "webview-1",
+    );
+
+    expect(blobParts).toEqual([
+      'import "http://localhost.:4112/src/livestore.default.worker.ts?worker_file&type=module"\n//# sourceURL=vscode-worker?id=webview-1',
+    ]);
+  });
+});
+
+describe("revokeWorkerBootstrapBlobUrl", () => {
+  it("revokes the underlying blob URL without routing search params", () => {
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectURL,
+    });
+
+    revokeWorkerBootstrapBlobUrl("blob:vscode-webview://panel/worker?id=webview-1");
+
+    expect(revokeObjectURL).toHaveBeenCalledWith(
+      "blob:vscode-webview://panel/worker",
+    );
   });
 });
 
