@@ -57,7 +57,10 @@ Based on the user conversation above (EXCLUDING this note-taking instruction mes
 
 ${currentNotesSection}
 
-Your ONLY task is to use the writeToFile tool to ${isUpdate ? "update" : "create"} ${TaskMemoryFileUri} with the session notes, then call attemptCompletion. Do not call any other tools except readFile if you need to check a file's content for accuracy.
+Your ONLY task is to ${isUpdate ? "update" : "create"} ${TaskMemoryFileUri} with the session notes in a SINGLE assistant response. You MUST emit BOTH tool calls below as parallel tool calls in the SAME assistant message so the extraction finishes in one turn:
+  1. writeToFile — write the full memory content to ${TaskMemoryFileUri}.
+  2. attemptCompletion — provide a brief summary of what was updated.
+Do NOT wait for the writeToFile result before calling attemptCompletion. Do NOT split the two calls across separate turns. Do NOT call any other tool.
 
 CRITICAL RULES:
 - The file must maintain its exact structure with all sections and headers intact
@@ -73,5 +76,5 @@ CRITICAL RULES:
 - IMPORTANT: Always update "Current State" to reflect the most recent work — this is critical for continuity after compaction
 - IMPORTANT: Always update "Worklog" with a terse log of what was done since the last extraction
 
-Use writeToFile with path ${TaskMemoryFileUri} and the full updated content, then call attemptCompletion with a brief summary of what was updated.`;
+Reminder: emit writeToFile (with path ${TaskMemoryFileUri} and the full updated content) and attemptCompletion (with a brief summary) as PARALLEL tool calls in this single assistant message — do not produce them across separate turns.`;
 }
