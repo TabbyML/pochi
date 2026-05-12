@@ -1,5 +1,5 @@
 import { blobStore } from "@/lib/remote-blob-store";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 import type {
   BuiltinSubAgentInfo,
@@ -34,7 +34,6 @@ type ExecuteCommandReturnType = {
 type NewTaskParameterType = InferToolInput<ClientTools["newTask"]>;
 type NewTaskReturnType = {
   result: string;
-  runAsync: boolean;
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
@@ -263,23 +262,7 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    const runAsync = !!args.runAsync;
-    if (runAsync && isVSCodeEnvironment()) {
-      const cwd = window.POCHI_TASK_INFO?.cwd;
-      if (cwd) {
-        void vscodeHost.openTaskInPanel(
-          {
-            type: "open-task",
-            uid,
-            cwd,
-            storeId: this.store.storeId,
-          },
-          { preserveFocus: true, preview: false },
-        );
-      }
-    }
-
-    return Promise.resolve({ result: uid, runAsync });
+    return Promise.resolve({ result: uid });
   }
 
   addResult(result: unknown): void {
@@ -385,21 +368,10 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private onExecuteNewTask({ result, runAsync }: NewTaskReturnType) {
+  private onExecuteNewTask({ result }: NewTaskReturnType) {
     const uid = result;
     if (!uid) {
       throw new Error("Missing uid in newTask result");
-    }
-
-    if (runAsync) {
-      this.transitTo("execute", {
-        type: "complete",
-        result: {
-          result: uid,
-        },
-        reason: "execute-finish",
-      });
-      return;
     }
 
     const cleanupFns: (() => void)[] = [];

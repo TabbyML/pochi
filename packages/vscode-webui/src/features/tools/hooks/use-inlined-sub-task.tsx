@@ -17,10 +17,6 @@ export function useInlinedSubTask(
     todosRef,
   });
 
-  if (tool.input?.runAsync) {
-    return undefined;
-  }
-
   if (tool.state === "input-streaming") {
     return undefined;
   }

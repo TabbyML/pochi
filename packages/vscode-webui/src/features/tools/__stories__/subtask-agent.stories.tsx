@@ -98,17 +98,6 @@ const overviewMessage: Message = {
       },
     },
     {
-      type: "tool-newTask",
-      toolCallId: "tool_new_task_async_1",
-      state: "input-available",
-      input: {
-        description: "Async Subtask Agent",
-        prompt: "Run the command and report the output.",
-        runAsync: true,
-        _meta: { uid: "task-async-1" },
-      },
-    },
-    {
       type: "tool-readBackgroundJobOutput",
       toolCallId: "tool_read_bg_top_level",
       state: "output-available",

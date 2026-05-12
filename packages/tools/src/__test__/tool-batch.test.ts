@@ -32,11 +32,7 @@ describe("isSafeToBatchToolCall", () => {
     expect(isSafeToBatchToolCall("readFile", {})).toBe(true);
   });
 
-  it("returns true for newTask with runAsync: true", () => {
-    expect(isSafeToBatchToolCall("newTask", { runAsync: true })).toBe(true);
-  });
-
-  it("returns true for newTask without runAsync", () => {
+  it("returns true for newTask", () => {
     expect(isSafeToBatchToolCall("newTask", { agentType: "default" })).toBe(
       true,
     );

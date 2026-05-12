@@ -78,7 +78,9 @@ export const Git = Schema.Struct({
 export const taskInitFields = {
   id: Schema.String,
   parentId: Schema.optional(Schema.String),
-  runAsync: Schema.optional(Schema.Boolean),
+  runAsync: Schema.optional(Schema.Boolean).pipe(
+    deprecated("Async newTask is removed"),
+  ),
   background: Schema.optional(Schema.Boolean),
   cwd: Schema.optional(Schema.String),
   createdAt: Schema.Date,
@@ -87,7 +89,6 @@ export const taskInitFields = {
 
 export const taskFullFields = {
   ...taskInitFields,
-  runAsync: Schema.optional(Schema.Boolean),
   background: Schema.optional(Schema.Boolean),
   git: Schema.optional(Git),
   shareId: Schema.optional(Schema.String),

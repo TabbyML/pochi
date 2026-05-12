@@ -1,6 +1,5 @@
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
@@ -9,7 +8,7 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment } from "@/lib/vscode";
 import { type RefObject, useEffect, useRef } from "react";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
@@ -28,16 +27,11 @@ interface NewTaskToolProps extends ToolProps<"newTask"> {
 export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   const { tool, taskThreadSource } = props;
   const uid = tool.input?._meta?.uid;
-  const isRunAsync = tool.input?.runAsync;
 
   let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
     taskThreadSource;
 
   const inlinedTaskSource = useInlinedSubTask(tool);
-
-  if (isRunAsync) {
-    return <AsyncTaskToolView {...props} uid={uid} />;
-  }
 
   if (inlinedTaskSource) {
     taskSource = inlinedTaskSource;
@@ -49,69 +43,6 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
 
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 };
-
-function AsyncTaskToolView(
-  props: NewTaskToolProps & { uid: string | undefined },
-) {
-  const { tool, isExecuting, uid } = props;
-  const store = useDefaultStore();
-
-  const agentType = tool.input?.agentType;
-  const toolTitle = agentType ?? "Subtask";
-  const description = tool.input?.description ?? "";
-  const cwd = window.POCHI_TASK_INFO?.cwd;
-  const storeId = store.storeId;
-
-  const canOpen = isVSCodeEnvironment() && !!uid && !!cwd;
-  const openInTab = () => {
-    if (!uid || !cwd) return;
-    vscodeHost.openTaskInPanel({
-      type: "open-task",
-      uid,
-      cwd,
-      storeId,
-    });
-  };
-
-  const title = (
-    <>
-      <div className="flex min-w-0 flex-1 items-start gap-2">
-        <StatusIcon
-          tool={tool}
-          isExecuting={isExecuting}
-          className="mt-1 self-start leading-none"
-        />
-        <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
-          <Badge
-            variant="secondary"
-            className={cn("mr-2 inline-flex py-0 align-middle")}
-          >
-            {toolTitle}
-          </Badge>
-          {description && (
-            <span className="break-words align-middle">{description}</span>
-          )}
-        </div>
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-4 px-2 text-xs"
-        onClick={openInTab}
-        disabled={!canOpen}
-      >
-        {"ASYNC"}
-      </Button>
-    </>
-  );
-
-  return (
-    <ExpandableToolContainer
-      title={title}
-      titleClassname="flex w-full items-start justify-between gap-2"
-    />
-  );
-}
 
 function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   const { tool, isExecuting, uid } = props;
