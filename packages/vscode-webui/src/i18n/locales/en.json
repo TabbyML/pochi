@@ -62,6 +62,7 @@
     "messages": "Messages",
     "files": "Files",
     "toolResults": "Tool Results",
+    "taskMemory": "Task Memory",
     "viewTaskMemory": "View task memory",
     "viewTaskMemoryTooltip": "View the task memory that will be used when compacting this task."
   },

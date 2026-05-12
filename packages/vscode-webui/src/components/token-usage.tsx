@@ -18,7 +18,7 @@ import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
 import { constants } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
-import { CircleAlert, Loader2, NotebookText } from "lucide-react";
+import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
@@ -158,7 +158,7 @@ export function TokenUsage({
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[23rem] border"
+        className="w-[26rem] border"
         sideOffset={0}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -316,18 +316,19 @@ export function TokenUsage({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="size-8 shrink-0 p-0"
-                      aria-label={t("tokenUsage.viewTaskMemory")}
-                      onClick={() => {
-                        vscodeHost.openFile(TaskMemoryFileUri);
-                        setIsOpen(false);
-                      }}
-                    >
-                      <NotebookText className="size-4" />
-                    </Button>
+                    <div className="inline-block">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          vscodeHost.openFile(TaskMemoryFileUri);
+                          setIsOpen(false);
+                        }}
+                      >
+                        {t("tokenUsage.taskMemory")}
+                      </Button>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs">

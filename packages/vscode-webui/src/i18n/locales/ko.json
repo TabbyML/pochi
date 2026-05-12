@@ -63,6 +63,7 @@
     "messages": "메시지",
     "files": "파일",
     "toolResults": "도구 결과",
+    "taskMemory": "작업 메모리",
     "viewTaskMemory": "작업 메모리 보기",
     "viewTaskMemoryTooltip": "작업 압축 시 사용될 작업 메모리를 봅니다."
   },
