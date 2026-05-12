@@ -158,7 +158,7 @@ export function TokenUsage({
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[26rem] border"
+        className="w-[355px] border"
         sideOffset={0}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -330,10 +330,8 @@ export function TokenUsage({
                       </Button>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">
-                      {t("tokenUsage.viewTaskMemoryTooltip")}
-                    </p>
+                  <TooltipContent className="max-w-[200px]">
+                    {t("tokenUsage.viewTaskMemoryTooltip")}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
