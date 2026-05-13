@@ -23,15 +23,16 @@ function keyString(key: ToolCallLifeCycleKey) {
   });
 }
 
-type ToolCallStatusRegistryEntry = {
-  toolCallId: string;
-  toolName: string;
-  isExecuting: boolean;
-  streamingResult?: StreamingResult;
-};
-
 export class ToolCallStatusRegistry extends Emittery<{ updated: undefined }> {
-  private toolCallStatusMap = new Map<string, ToolCallStatusRegistryEntry>();
+  private toolCallStatusMap = new Map<
+    string,
+    {
+      toolCallId: string;
+      toolName: string;
+      isExecuting: boolean;
+      streamingResult?: StreamingResult;
+    }
+  >();
 
   get(key: ToolCallLifeCycleKey) {
     return this.toolCallStatusMap.get(keyString(key));
