@@ -3,6 +3,7 @@ import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
+import { getSupportedRecordingVideoConfig } from "./browser-recording-codecs";
 import type { useDefaultStore } from "./use-default-store";
 import { vscodeHost } from "./vscode";
 
@@ -53,6 +54,7 @@ export class BrowserRecordingSession {
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
   private lastWhiteScreenCheckTime = 0;
+  private recordingUnavailable = false;
 
   // WebSocket related
   private ws: WebSocket | null = null;
@@ -116,6 +118,10 @@ export class BrowserRecordingSession {
 
   private addFrame = runExclusive.buildMethod(async (frame: string) => {
     try {
+      if (this.recordingUnavailable) {
+        return;
+      }
+
       if (!this.muxer) {
         const now = Date.now();
         if (now - this.lastWhiteScreenCheckTime < WhiteScreenCheckInterval) {
@@ -132,7 +138,7 @@ export class BrowserRecordingSession {
       }
       const blob = new Blob([bytes], { type: "image/jpeg" });
       const imageBitmap = await createImageBitmap(blob, {
-        resizeHeight: 480,
+        resizeWidth: 720,
         resizeQuality: "high",
       });
 
@@ -144,6 +150,17 @@ export class BrowserRecordingSession {
 
         try {
           const { width, height } = imageBitmap;
+          const videoConfig = await getSupportedRecordingVideoConfig(
+            width,
+            height,
+          );
+          if (!videoConfig) {
+            this.recordingUnavailable = true;
+            logger.error("No supported browser recording codec");
+            imageBitmap.close();
+            return;
+          }
+
           const muxer = new Muxer({
             target: new ArrayBufferTarget(),
             video: {
@@ -158,18 +175,13 @@ export class BrowserRecordingSession {
             output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
             error: (e) => logger.error("VideoEncoder error", e),
           });
-          encoder.configure({
-            codec: "avc1.4d001f",
-            width,
-            height,
-            bitrate: 500_000,
-            latencyMode: "quality",
-          });
+          encoder.configure(videoConfig);
 
           this.muxer = muxer;
           this.videoEncoder = encoder;
           this.startTime = performance.now();
         } catch (e) {
+          this.recordingUnavailable = true;
           logger.error("Failed to initialize recording", e);
         }
       }
