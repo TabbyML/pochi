@@ -188,16 +188,19 @@ export class BrowserRecordingSession {
       }
       const blob = new Blob([bytes], { type: "image/jpeg" });
       const imageBitmap = await createImageBitmap(blob);
-      const recordingImageBitmap =
-        await createRecordingImageBitmap(imageBitmap);
 
       if (!this.muxer) {
         if (isWhiteScreen(imageBitmap)) {
-          recordingImageBitmap.close();
           imageBitmap.close();
           return;
         }
+      }
 
+      const recordingImageBitmap =
+        await createRecordingImageBitmap(imageBitmap);
+      imageBitmap.close();
+
+      if (!this.muxer) {
         try {
           const { width, height } = recordingImageBitmap;
           const videoConfig = await getSupportedRecordingVideoConfig(
@@ -208,7 +211,6 @@ export class BrowserRecordingSession {
             this.recordingUnavailable = true;
             logger.error("No supported browser recording codec");
             recordingImageBitmap.close();
-            imageBitmap.close();
             return;
           }
 
@@ -244,7 +246,6 @@ export class BrowserRecordingSession {
         videoFrame.close();
       }
       recordingImageBitmap.close();
-      imageBitmap.close();
     } catch (err) {
       logger.error("Failed to process frame", err);
     }
