@@ -254,8 +254,13 @@ export abstract class WebviewBase implements vscode.Disposable {
 
     const devWebUIPort = "4112";
     const devWebUIHttpBaseUrl = `http://localhost:${devWebUIPort}`;
+    // `localhost.` is the fully-qualified localhost name. We use it only for
+    // blob-worker imports so VS Code's webview service worker does not trap
+    // localhost requests that cannot be associated with a webview `id`.
+    const devWebUIHttpBaseUrlLocalhostDot = `http://localhost.:${devWebUIPort}`;
     const devWebUIHttpBaseUrlIp = `http://0.0.0.0:${devWebUIPort}`;
     const devWebUIWsBaseUrl = `ws://localhost:${devWebUIPort}`;
+    const devWebUIWsBaseUrlLocalhostDot = `ws://localhost.:${devWebUIPort}`;
     const devWebUIWsBaseUrlIp = `ws://0.0.0.0:${devWebUIPort}`;
 
     const scriptUri = vscode.Uri.parse(`${devWebUIHttpBaseUrl}/src/main.tsx`);
@@ -280,11 +285,11 @@ export abstract class WebviewBase implements vscode.Disposable {
       `default-src 'none';`,
       `img-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
       `media-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
-      `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
+      `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${webview.cspSource} data:`,
-      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
-      `worker-src ${webview.cspSource} ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} data: blob:`,
+      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlLocalhostDot} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
+      `worker-src ${webview.cspSource} ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} data: blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 

@@ -1,8 +1,9 @@
 import {
   isCrossOriginWorkerUrl,
   makeSharedWorkerBootstrapUrl,
-  makeWorkerBootstrapUrl,
+  makeWorkerBootstrapBlobUrl,
   resolveWorkerUrl,
+  revokeWorkerBootstrapBlobUrl,
 } from "./lib/worker-url";
 
 if (import.meta.env.DEV) {
@@ -13,12 +14,18 @@ if (import.meta.env.DEV) {
       class Worker extends BaseWorker {
         constructor(scriptURL: string | URL, options?: WorkerOptions) {
           const url = resolveWorkerUrl(scriptURL);
-          super(
-            isCrossOriginWorkerUrl(url)
-              ? makeWorkerBootstrapUrl(url, options?.type)
-              : scriptURL,
-            options,
-          );
+          const bootstrapUrl = isCrossOriginWorkerUrl(url)
+            ? // Dedicated workers need a blob: bootstrap so OPFS inherits the
+              // webview origin. SharedWorker keeps a deterministic data: URL below.
+              makeWorkerBootstrapBlobUrl(url, options?.type)
+            : undefined;
+          try {
+            super(bootstrapUrl ?? scriptURL, options);
+          } finally {
+            if (bootstrapUrl) {
+              setTimeout(() => revokeWorkerBootstrapBlobUrl(bootstrapUrl), 0);
+            }
+          }
         }
       })(Worker));
 
