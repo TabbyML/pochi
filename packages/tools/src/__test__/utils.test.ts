@@ -50,6 +50,118 @@ def fibonacci(n):
   });
 });
 
+describe("startBackgroundJob command policies", () => {
+  it("should compile command pattern rules for startBackgroundJob", () => {
+    const policies = compileToolPolicies([
+      "startBackgroundJob(npm run dev)",
+      "startBackgroundJob(bun *)",
+    ]);
+
+    expect(policies?.startBackgroundJob).toEqual({
+      kind: "command-pattern",
+      patterns: ["npm run dev", "bun *"],
+    });
+  });
+
+  it("should preserve multiple startBackgroundJob patterns from object tool specs", () => {
+    const policies = compileToolPolicies([
+      {
+        name: "startBackgroundJob",
+        rules: ["npm run dev", "bun *"],
+      },
+    ]);
+
+    expect(policies?.startBackgroundJob).toEqual({
+      kind: "command-pattern",
+      patterns: ["npm run dev", "bun *"],
+    });
+  });
+
+  it("should allow startBackgroundJob commands matching configured patterns", () => {
+    const policies = compileToolPolicies([
+      "startBackgroundJob(npm run dev)",
+      "startBackgroundJob(bun *)",
+    ]);
+
+    expect(() =>
+      validateToolPolicy(
+        "startBackgroundJob",
+        { command: "npm run dev" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      validateToolPolicy(
+        "startBackgroundJob",
+        { command: "bun run watch" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+  });
+
+  it("should reject startBackgroundJob commands outside configured patterns", () => {
+    const policies = compileToolPolicies([
+      "startBackgroundJob(npm run dev)",
+    ]);
+
+    expect(() =>
+      validateToolPolicy(
+        "startBackgroundJob",
+        { command: "rm -rf /" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow("Command is not allowed by the configured command rules.");
+  });
+
+  it("should treat startBackgroundJob and executeCommand policies independently", () => {
+    const policies = compileToolPolicies([
+      "executeCommand(git status)",
+      "startBackgroundJob(npm run dev)",
+    ]);
+
+    // executeCommand rules should not authorize startBackgroundJob calls.
+    expect(() =>
+      validateToolPolicy(
+        "startBackgroundJob",
+        { command: "git status" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow("Command is not allowed by the configured command rules.");
+
+    // And startBackgroundJob rules should not authorize executeCommand calls.
+    expect(() =>
+      validateToolPolicy(
+        "executeCommand",
+        { command: "npm run dev" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow("Command is not allowed by the configured command rules.");
+  });
+
+  it("should leave startBackgroundJob unrestricted when no rules are configured", () => {
+    const policies = compileToolPolicies([
+      { name: "startBackgroundJob" },
+    ]);
+
+    expect(policies?.startBackgroundJob).toBeUndefined();
+
+    expect(() =>
+      validateToolPolicy(
+        "startBackgroundJob",
+        { command: "anything goes" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
+  });
+});
+
 describe("path pattern policies", () => {
   it("should reject string tool declarations with multiple rules", () => {
     expect(() => parseToolSpec("readFile(src/**, pochi://-/plan.md)")).toThrow(

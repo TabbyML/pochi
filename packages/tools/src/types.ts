@@ -56,6 +56,7 @@ export type CompiledToolPolicy =
 
 export interface CompiledToolPolicies {
   executeCommand?: { kind: "command-pattern"; patterns: string[] };
+  startBackgroundJob?: { kind: "command-pattern"; patterns: string[] };
   newTask?: { kind: "agent-type-pattern"; patterns: string[] };
   webFetch?: {
     kind: "domain-pattern";

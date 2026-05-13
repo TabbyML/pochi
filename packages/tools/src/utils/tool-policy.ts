@@ -8,6 +8,19 @@ import { type ToolSpecInput, getToolRules, parseToolSpec } from "./tool-spec";
 // Policy compilation
 // ---------------------------------------------------------------------------
 
+const CommandPolicyToolNames = [
+  "executeCommand",
+  "startBackgroundJob",
+] as const;
+
+type CommandPolicyToolName = (typeof CommandPolicyToolNames)[number];
+
+function isCommandPolicyToolName(
+  toolName: string,
+): toolName is CommandPolicyToolName {
+  return (CommandPolicyToolNames as readonly string[]).includes(toolName);
+}
+
 const PathPolicyToolNames = [
   "readFile",
   "writeToFile",
@@ -29,15 +42,17 @@ function isPathPolicyToolName(
 export function compileToolPolicies(
   tools: ToolSpecInput[] | undefined,
 ): CompiledToolPolicies | undefined {
-  const executeCommandRules = getToolRules(tools, "executeCommand");
   const newTaskRules = getToolRules(tools, "newTask");
   const policies: CompiledToolPolicies = {};
 
-  if (executeCommandRules) {
-    policies.executeCommand = {
-      kind: "command-pattern",
-      patterns: executeCommandRules,
-    };
+  for (const toolName of CommandPolicyToolNames) {
+    const rules = getToolRules(tools, toolName);
+    if (rules) {
+      policies[toolName] = {
+        kind: "command-pattern",
+        patterns: rules,
+      };
+    }
   }
 
   if (newTaskRules) {
@@ -256,7 +271,7 @@ export function validateToolPolicy(
   policies: CompiledToolPolicies | undefined,
   options: { cwd: string },
 ): void {
-  if (toolName === "executeCommand") {
+  if (isCommandPolicyToolName(toolName)) {
     const command =
       typeof input === "object" && input !== null && "command" in input
         ? (input as { command?: unknown }).command
@@ -266,7 +281,7 @@ export function validateToolPolicy(
       return;
     }
 
-    validateCommandPatternPolicy(command, policies?.executeCommand);
+    validateCommandPatternPolicy(command, policies?.[toolName]);
     return;
   }
 
