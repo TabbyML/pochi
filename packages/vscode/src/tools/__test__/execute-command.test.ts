@@ -111,4 +111,95 @@ describe("executeCommand Tool", () => {
       clock.restore();
     }
   });
+
+  it("cancels pending throttled output after completion", async () => {
+    const maybePersistToolResult = sinon.stub().resolves({
+      output: "completed output",
+      isTruncated: false,
+    });
+    const throttledCall = sinon.stub();
+    const throttledCancel = sinon.stub();
+    const funnel = sinon.stub().returns({
+      call: throttledCall,
+      cancel: throttledCancel,
+      flush: sinon.stub(),
+      isIdle: false,
+    });
+
+    const executeCommandWithNode = sinon.stub().callsFake(async ({ onData }) => {
+      onData?.({
+        output: "first output",
+        isTruncated: false,
+      });
+      return {
+        output: "completed output",
+        isTruncated: false,
+      };
+    });
+
+    const { executeCommand } = proxyquire.noCallThru().load(
+      "../execute-command",
+      {
+        "@getpochi/common": {
+          getLogger: () => ({
+            warn: sinon.stub(),
+          }),
+        },
+        "@getpochi/common/tool-utils": {
+          getShellPath: () => undefined,
+          maybePersistToolResult,
+        },
+        "@getpochi/tools": {
+          validateExecuteCommandRules: sinon.stub(),
+        },
+        "@quilted/threads/signals": {
+          ThreadSignal: {
+            serialize: (signal: {
+              value: SignalValue;
+              subscribe: (subscriber: (value: SignalValue) => void) => () => void;
+            }) => ({
+              get value() {
+                return signal.value;
+              },
+              start(subscriber: (value: SignalValue) => void) {
+                return signal.subscribe(subscriber);
+              },
+            }),
+          },
+        },
+        remeda: {
+          funnel,
+        },
+        "../integrations/terminal/execute-command-with-node": {
+          executeCommandWithNode,
+        },
+        "../integrations/terminal/execute-command-with-pty": {
+          PtySpawnError: class PtySpawnError extends Error {},
+          executeCommandWithPty: sinon.stub(),
+        },
+      },
+    ) as typeof import("../execute-command");
+
+    const result = await executeCommand(
+      { command: "echo ok" },
+      {
+        abortSignal: new AbortController().signal,
+        cwd: process.cwd(),
+        messages: [],
+        toolCallId: "call-1",
+        taskId: "task-1",
+      },
+    );
+
+    (
+      result.output as unknown as {
+        start: (subscriber: (value: SignalValue) => void) => () => void;
+      }
+    ).start(() => {});
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.ok(throttledCancel.calledOnce);
+    assert.ok(throttledCall.calledOnce);
+  });
 });
