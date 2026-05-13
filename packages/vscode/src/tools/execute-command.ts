@@ -104,6 +104,7 @@ export const executeCommand: ToolFunctionType<
     })
       .then(async ({ output: commandOutput, isTruncated }) => {
         done = true;
+        throttledFlush.cancel();
         output.value = await persistCompletedOutput({
           output: commandOutput,
           isTruncated,
@@ -114,6 +115,7 @@ export const executeCommand: ToolFunctionType<
         const lastTruncated =
           pendingData?.isTruncated ?? output.value.isTruncated;
         done = true;
+        throttledFlush.cancel();
         output.value = await persistCompletedOutput({
           output: lastOutput,
           isTruncated: lastTruncated,

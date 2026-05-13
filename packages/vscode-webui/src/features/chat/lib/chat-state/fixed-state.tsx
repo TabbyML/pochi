@@ -23,8 +23,6 @@ function keyString(key: ToolCallLifeCycleKey) {
   });
 }
 
-const ToolCallStatusRegistryStreamingThrottleMs = 300;
-
 type ToolCallStatusRegistryEntry = {
   toolCallId: string;
   toolName: string;
@@ -34,19 +32,6 @@ type ToolCallStatusRegistryEntry = {
 
 export class ToolCallStatusRegistry extends Emittery<{ updated: undefined }> {
   private toolCallStatusMap = new Map<string, ToolCallStatusRegistryEntry>();
-  private pendingStreamingUpdateTimer:
-    | ReturnType<typeof globalThis.setTimeout>
-    | undefined;
-
-  private readonly streamingThrottleMs: number;
-
-  constructor(
-    options: { streamingThrottleMs?: number | undefined } | undefined = {},
-  ) {
-    super();
-    this.streamingThrottleMs =
-      options.streamingThrottleMs ?? ToolCallStatusRegistryStreamingThrottleMs;
-  }
 
   get(key: ToolCallLifeCycleKey) {
     return this.toolCallStatusMap.get(keyString(key));
@@ -56,60 +41,18 @@ export class ToolCallStatusRegistry extends Emittery<{ updated: undefined }> {
     key: ToolCallLifeCycleKey,
     value: { isExecuting: boolean; streamingResult?: StreamingResult },
   ) {
-    const mapKey = keyString(key);
-    const previous = this.toolCallStatusMap.get(mapKey);
-    this.toolCallStatusMap.set(mapKey, { ...key, ...value });
-
-    if (shouldThrottleStreamingUpdate(previous, value)) {
-      this.scheduleStreamingUpdate();
-      return;
-    }
-
-    this.emitUpdatedImmediately();
+    this.toolCallStatusMap.set(keyString(key), { ...key, ...value });
+    this.emit("updated");
   }
 
   delete(key: ToolCallLifeCycleKey) {
     this.toolCallStatusMap.delete(keyString(key));
-    this.emitUpdatedImmediately();
+    this.emit("updated");
   }
 
   entries() {
     return this.toolCallStatusMap.entries();
   }
-
-  private scheduleStreamingUpdate() {
-    if (this.pendingStreamingUpdateTimer !== undefined) {
-      return;
-    }
-
-    this.pendingStreamingUpdateTimer = globalThis.setTimeout(() => {
-      this.pendingStreamingUpdateTimer = undefined;
-      this.emitUpdated();
-    }, this.streamingThrottleMs);
-  }
-
-  private emitUpdatedImmediately() {
-    if (this.pendingStreamingUpdateTimer !== undefined) {
-      globalThis.clearTimeout(this.pendingStreamingUpdateTimer);
-      this.pendingStreamingUpdateTimer = undefined;
-    }
-    this.emitUpdated();
-  }
-
-  private emitUpdated() {
-    this.emit("updated");
-  }
-}
-
-function shouldThrottleStreamingUpdate(
-  previous: ToolCallStatusRegistryEntry | undefined,
-  value: { isExecuting: boolean; streamingResult?: StreamingResult },
-) {
-  return (
-    previous?.isExecuting === true &&
-    value.isExecuting === true &&
-    value.streamingResult !== undefined
-  );
 }
 
 interface FixedStateChatContextProviderProps {

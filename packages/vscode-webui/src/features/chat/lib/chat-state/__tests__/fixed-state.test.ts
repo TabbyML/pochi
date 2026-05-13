@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ToolCallStatusRegistry } from "../fixed-state";
 
 const toolCall = {
@@ -24,16 +24,8 @@ async function flushEmittery() {
 }
 
 describe("ToolCallStatusRegistry", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("throttles streaming updates while keeping the latest value", async () => {
-    const registry = new ToolCallStatusRegistry({ streamingThrottleMs: 100 });
+  it("emits an update for every status change", async () => {
+    const registry = new ToolCallStatusRegistry();
     const onUpdated = vi.fn();
     registry.on("updated", onUpdated);
 
@@ -52,41 +44,13 @@ describe("ToolCallStatusRegistry", () => {
     });
     await flushEmittery();
 
-    expect(onUpdated).toHaveBeenCalledTimes(1);
-
-    vi.advanceTimersByTime(99);
-    await flushEmittery();
-    expect(onUpdated).toHaveBeenCalledTimes(1);
-
-    vi.advanceTimersByTime(1);
-    await flushEmittery();
-    expect(onUpdated).toHaveBeenCalledTimes(2);
+    expect(onUpdated).toHaveBeenCalledTimes(3);
     expect([...registry.entries()][0]?.[1].streamingResult).toEqual(
       streamingOutput("second"),
     );
-  });
 
-  it("flushes a pending streaming update when execution finishes", async () => {
-    const registry = new ToolCallStatusRegistry({ streamingThrottleMs: 100 });
-    const onUpdated = vi.fn();
-    registry.on("updated", onUpdated);
-
-    registry.set(toolCall, { isExecuting: true });
-    registry.set(toolCall, {
-      isExecuting: true,
-      streamingResult: streamingOutput("latest"),
-    });
+    registry.delete(toolCall);
     await flushEmittery();
-
-    expect(onUpdated).toHaveBeenCalledTimes(1);
-
-    registry.set(toolCall, { isExecuting: false });
-    await flushEmittery();
-
-    expect(onUpdated).toHaveBeenCalledTimes(2);
-
-    vi.advanceTimersByTime(100);
-    await flushEmittery();
-    expect(onUpdated).toHaveBeenCalledTimes(2);
+    expect(onUpdated).toHaveBeenCalledTimes(4);
   });
 });
