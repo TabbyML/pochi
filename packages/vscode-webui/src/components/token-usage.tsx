@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
+import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
+import { vscodeHost } from "@/lib/vscode";
 import { constants } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -21,6 +23,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
+
+const TaskMemoryFileUri = "pochi://-/memory.md";
 
 interface Props {
   taskId: string;
@@ -44,6 +48,8 @@ export function TokenUsage({
   selectedModel,
 }: Props) {
   const { contextWindowUsage } = useTaskContextWindowUsage(taskId);
+  const { taskMemoryState } = useTaskMemoryState(taskId);
+  const hasTaskMemory = taskMemoryState.extractionCount > 0;
   const { t } = useTranslation();
   const contextWindow =
     selectedModel.options.contextWindow || constants.DefaultContextWindow;
@@ -152,7 +158,7 @@ export function TokenUsage({
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-80 border"
+        className="w-[355px] border"
         sideOffset={0}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -306,6 +312,30 @@ export function TokenUsage({
                 {minTokenTooltip}
               </Tooltip>
             </TooltipProvider>
+            {hasTaskMemory && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="inline-block">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          vscodeHost.openFile(TaskMemoryFileUri);
+                          setIsOpen(false);
+                        }}
+                      >
+                        {t("tokenUsage.taskMemory")}
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[200px]">
+                    {t("tokenUsage.viewTaskMemoryTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
       </PopoverContent>

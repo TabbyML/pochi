@@ -61,7 +61,10 @@
     "userContext": "User Context",
     "messages": "Messages",
     "files": "Files",
-    "toolResults": "Tool Results"
+    "toolResults": "Tool Results",
+    "taskMemory": "Task Memory",
+    "viewTaskMemory": "View task memory",
+    "viewTaskMemoryTooltip": "View the task memory that will be used when compacting this task."
   },
   "modelSelect": {
     "selectModel": "Select Model",
