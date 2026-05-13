@@ -10,15 +10,17 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
+import { useThrottle } from "react-use";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
-import { useSubtaskPreviewSource } from "../../hooks/use-subtask-preview-source";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
 import { WalkthroughView } from "./walkthrough-view";
+
+const SubtaskPreviewThrottleMs = 300;
 
 interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
@@ -86,10 +88,8 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
 
   const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
     useShowMessageList(completed);
-  const previewSource = useSubtaskPreviewSource(taskSource, {
-    isExecuting,
-    isPreviewVisible: showMessageList,
-  });
+  const throttledTaskSource = useThrottle(taskSource, SubtaskPreviewThrottleMs);
+  const previewSource = isExecuting ? throttledTaskSource : taskSource;
   const taskThreadSource = useMemo(() => {
     if (!previewSource) {
       return undefined;
