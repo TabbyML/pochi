@@ -40,7 +40,6 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import type z from "zod";
-import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
@@ -139,7 +138,7 @@ export interface RunnerOptions {
   browserSessionStore?: BrowserSessionStore;
 
   /**
-   * Timeout in milliseconds to wait for async subtasks and background jobs
+   * Timeout in milliseconds to wait for background jobs
    * to complete before finalizing attemptCompletion. Default: 60000ms (60s).
    * Set to 0 to disable waiting.
    */
@@ -159,7 +158,6 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
-  private asyncSubTaskManager: AsyncSubTaskManager;
   private fileSystem: FileSystem;
   private customAgent?: CustomAgent;
 
@@ -184,7 +182,6 @@ export class TaskRunner {
     this.llm = options.llm;
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
-    this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
     this.customAgent = options.customAgent;
 
     this.fileSystem = options.filesystem;
@@ -199,17 +196,11 @@ export class TaskRunner {
       skills: options.skills,
       mcpHub: options.mcpHub,
       backgroundJobManager: this.backgroundJobManager,
-      asyncSubTaskManager: this.asyncSubTaskManager,
       browserSessionStore: options.browserSessionStore,
       createSubTaskRunner: (
         taskId: string,
-        runAsync: boolean,
         overrideOptions?: CreateSubTaskRunnerOverrideOptions,
       ) => {
-        // create sub task
-        if (runAsync) {
-          this.asyncSubTaskManager.registerTask(taskId);
-        }
         const definedOverrideOptions =
           overrideOptions == null
             ? undefined
@@ -227,9 +218,7 @@ export class TaskRunner {
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
-        if (!runAsync) {
-          options.onSubTaskCreated?.(runner);
-        }
+        options.onSubTaskCreated?.(runner);
         return runner;
       },
     };
@@ -331,61 +320,40 @@ export class TaskRunner {
   }
 
   /**
-   * Wait for all async subtasks and background jobs to complete.
+   * Wait for all background jobs to complete.
    * Respects the configured asyncWaitTimeoutInMs and abort signal.
-   * @returns A formatted string with async results if any, or undefined if no results
+   * @returns A formatted string with background job results if any, or undefined if no results
    */
   private async waitForAsyncWork(): Promise<string | undefined> {
-    const pendingSubtaskIds = this.asyncSubTaskManager.getPendingTaskIds();
     const pendingJobIds = this.backgroundJobManager.getPendingJobIds();
 
     const spinner = createSpinner(
-      `Waiting for async work to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
+      `Waiting for background jobs to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
 
-    // Wait for both subtasks and background jobs in parallel
-    const [subtaskStatus, jobStatus] = await Promise.all([
-      this.asyncSubTaskManager.waitForAllTasks(
-        this.asyncWaitTimeoutInMs,
-        this.abortSignal,
-      ),
-      this.backgroundJobManager.waitForAllJobs(
-        this.asyncWaitTimeoutInMs,
-        this.abortSignal,
-      ),
-    ]);
+    const jobStatus = await this.backgroundJobManager.waitForAllJobs(
+      this.asyncWaitTimeoutInMs,
+      this.abortSignal,
+    );
 
     // Handle timeout or abort - return undefined to finish without feeding back to LLM
-    if (subtaskStatus === "timeout" || jobStatus === "timeout") {
-      const remainingSubtasks = this.asyncSubTaskManager.getPendingTaskIds();
+    if (jobStatus === "timeout") {
       const remainingJobs = this.backgroundJobManager.getPendingJobIds();
       spinner.fail(
-        `Async wait timeout reached. Remaining: ${remainingSubtasks.length} subtask(s), ${remainingJobs.length} job(s)`,
+        `Async wait timeout reached. Remaining: ${remainingJobs.length} job(s)`,
       );
       return undefined;
     }
 
-    if (subtaskStatus === "aborted" || jobStatus === "aborted") {
+    if (jobStatus === "aborted") {
       spinner.fail("Async work wait was aborted.");
       return undefined;
     }
 
-    spinner.succeed("All async work completed.");
+    spinner.succeed("All background jobs completed.");
 
-    // Collect results from completed async work
+    // Collect results from completed background jobs
     const results: string[] = [];
-
-    for (const taskId of pendingSubtaskIds) {
-      const taskOutput = this.asyncSubTaskManager.readTaskOutput(taskId);
-      if (taskOutput) {
-        const parts = [
-          `Async Subtask (ID: ${taskId}, status: ${taskOutput.status}):`,
-        ];
-        if (taskOutput.error) parts.push(`Error: ${taskOutput.error}`);
-        if (taskOutput.output) parts.push(`Output:\n${taskOutput.output}`);
-        results.push(parts.join("\n"));
-      }
-    }
 
     for (const jobId of pendingJobIds) {
       const jobOutput = this.backgroundJobManager.readOutput(jobId);
@@ -424,17 +392,13 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
-      // Check for pending async subtasks and background jobs
-      const hasPendingSubtasks = this.asyncSubTaskManager.hasPendingTasks();
+      // Check for pending background jobs
       const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
-      if (
-        this.asyncWaitTimeoutInMs > 0 &&
-        (hasPendingSubtasks || hasPendingJobs)
-      ) {
+      if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
         const asyncResults = await this.waitForAsyncWork();
         if (asyncResults) {
-          // If there are async results - feed them back to LLM instead of completing
+          // If there are background job results - feed them back to LLM instead of completing
           const userMessage = createAsyncResultsMessage(asyncResults);
           this.chat.appendOrReplaceMessage(userMessage);
           return "next";
@@ -776,8 +740,8 @@ function createUserMessage(prompt: string): Message {
 }
 
 function createAsyncResultsMessage(asyncResults: string): Message {
-  const instruction = `The following async subtasks and/or background jobs have completed while you were working. Review their outputs and take appropriate action based on the results:
-- If the async work succeeded and no further action is needed, call attemptCompletion to finalize.
+  const instruction = `The following background jobs have completed while you were working. Review their outputs and take appropriate action based on the results:
+- If the background jobs succeeded and no further action is needed, call attemptCompletion to finalize.
 - If there are errors or issues that need to be addressed, take the necessary steps to resolve them.
 - If the results require updates to your previous work, make those adjustments.
 

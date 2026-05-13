@@ -27,6 +27,8 @@ export const tables = {
       isPublicShared: State.SQLite.boolean({ default: false }),
       title: State.SQLite.text({ nullable: true }),
       parentId: State.SQLite.text({ nullable: true }),
+      // @deprecated kept for backward compatibility with existing databases;
+      // Async newTask was removed and this column is no longer populated.
       runAsync: State.SQLite.boolean({ nullable: true }),
       background: State.SQLite.boolean({ nullable: true }),
       status: State.SQLite.text({
@@ -304,6 +306,7 @@ const materializers = State.SQLite.materializers(events, {
           ? "pending-model"
           : "pending-input",
       parentId,
+      // @deprecated runAsync kept for backward compatibility with old events.
       runAsync: runAsync ?? false,
       background: background ?? false,
       createdAt,

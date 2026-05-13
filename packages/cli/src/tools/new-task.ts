@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { constants } from "@getpochi/common";
 import { getLogger } from "@getpochi/common";
 import { formatFollowupQuestions } from "@getpochi/livekit";
 import type {
@@ -28,7 +27,7 @@ const SubTaskBrowserAgentMaxSteps = 65535;
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType, runAsync }, { toolCallId }) => {
+  async ({ _meta, agentType }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -118,33 +117,13 @@ export const newTask =
       }
     }
 
-    const isAsync = !!runAsync && constants.EnableAsyncNewTask;
     const overrideOptions: { customAgent?: CustomAgent; maxSteps?: number } = {
       customAgent,
     };
     if (customAgent?.name === "browser") {
       overrideOptions.maxSteps = SubTaskBrowserAgentMaxSteps;
     }
-    const subTaskRunner = options.createSubTaskRunner(
-      taskId,
-      isAsync,
-      overrideOptions,
-    );
-
-    // Check if this is an async task
-    if (isAsync) {
-      // Start the subtask but don't wait for completion
-      void Promise.resolve(subTaskRunner.run())
-        .catch(() => {
-          // Ignore errors for Async tasks
-        })
-        .finally(() => {
-          return finalize?.();
-        });
-      return {
-        result: taskId,
-      };
-    }
+    const subTaskRunner = options.createSubTaskRunner(taskId, overrideOptions);
 
     // Execute the sub-task (synchronous), rethrow any errors
     try {

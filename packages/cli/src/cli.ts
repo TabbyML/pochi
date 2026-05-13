@@ -161,7 +161,7 @@ const program = new Command()
   )
   .option(
     "--async-wait-timeout <ms>",
-    "Wait for async subtasks and background jobs to complete before finalizing attemptCompletion. Set to 0 to disable waiting.",
+    "Wait for background jobs to complete before finalizing attemptCompletion. Set to 0 to disable waiting.",
     parseNonNegativeInt,
     60000,
   )

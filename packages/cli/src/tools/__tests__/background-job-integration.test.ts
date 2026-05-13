@@ -4,24 +4,9 @@ import { executeToolCall } from "../index";
 import { BackgroundJobManager } from "../../lib/background-job-manager";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import { AsyncSubTaskManager } from "../../lib/async-subtask-manager";
-import { catalog } from "@getpochi/livekit";
-import { makeAdapter } from "@livestore/adapter-node";
-import { createStorePromise } from "@livestore/livestore";
 import { NodeBlobStore } from "../../node-blob-store";
 import { FileStateCache } from "@getpochi/common/tool-utils";
 import os from "node:os";
-
-async function createAsyncTaskManager() {
-  const store = await createStorePromise({
-    adapter: makeAdapter({ storage: { type: "in-memory" } }),
-    schema: catalog.schema,
-    storeId: `test-${crypto.randomUUID()}`,
-    syncPayload: {},
-  });
-
-  return new AsyncSubTaskManager(store);
-}
 
 describe("executeToolCall with background jobs", () => {
   const testBlobStorage = path.join(os.tmpdir(), "pochi-test", "blobs");
@@ -32,16 +17,9 @@ describe("executeToolCall with background jobs", () => {
 
   it("should pass backgroundJobManager to tool execution", async () => {
     const manager = new BackgroundJobManager();
-    const store = await createStorePromise({
-      adapter: makeAdapter({ storage: { type: "in-memory" } }),
-      schema: catalog.schema,
-      storeId: `test-${crypto.randomUUID()}`,
-      syncPayload: {},
-    });
-    const asyncSubTaskManager = new AsyncSubTaskManager(store);
     const cwd = path.resolve(".");
     const blobStore = new NodeBlobStore(testBlobStorage);
-    
+
     // Mock the tool call
     const toolCall: any = {
       type: "tool-startBackgroundJob",
@@ -56,13 +34,12 @@ describe("executeToolCall with background jobs", () => {
 
     // We verified that executeToolCall calls the tool function with `options` first.
     // The tool function (startBackgroundJob) now extracts backgroundJobManager from `options` (context).
-    
+
     const result = (await executeToolCall(
       toolCall,
       {
         rg: "rg",
         backgroundJobManager: manager,
-        asyncSubTaskManager,
         fileSystem: {
           readFile: async () => new Uint8Array(),
           writeFile: async () => {},
@@ -79,73 +56,14 @@ describe("executeToolCall with background jobs", () => {
     if ('error' in result) {
         expect(result.error).not.toContain("Background job manager not available.");
     }
-    
+
     // It should succeed and return backgroundJobId
     expect(result).toHaveProperty("backgroundJobId");
-    
+
     // Clean up
     if ('backgroundJobId' in result) {
         manager.kill(result.backgroundJobId as string);
     }
-  });
-
-  it("stringifies non-string async task results", async () => {
-    const store = await createStorePromise({
-      adapter: makeAdapter({ storage: { type: "in-memory" } }),
-      schema: catalog.schema,
-      storeId: `test-${crypto.randomUUID()}`,
-      syncPayload: {},
-    });
-
-    const taskId = crypto.randomUUID();
-    const now = new Date();
-    const resultObject = { ok: true, count: 2 };
-
-    store.commit(
-      catalog.events.taskInited({
-        id: taskId,
-        parentId: undefined,
-        runAsync: true,
-        createdAt: now,
-        cwd: path.resolve("."),
-        initMessages: [],
-        initTitle: undefined,
-        displayId: undefined,
-      }),
-    );
-
-    const messageId = crypto.randomUUID();
-    store.commit(
-      catalog.events.chatStreamFinished({
-        id: taskId,
-        data: {
-          id: messageId,
-          role: "assistant",
-          parts: [
-            { type: "step-start" },
-            {
-              type: "tool-attemptCompletion",
-              state: "input-available",
-              input: {
-                result: resultObject,
-              },
-            },
-          ],
-        } as any,
-        totalTokens: null,
-        status: "completed",
-        updatedAt: now,
-        duration: undefined,
-        lastCheckpointHash: undefined,
-      }),
-    );
-
-    const manager = new AsyncSubTaskManager(store);
-    manager.registerTask(taskId);
-
-    const output = manager.readTaskOutput(taskId);
-    expect(output?.status).toBe("completed");
-    expect(output?.output).toBe(JSON.stringify(resultObject));
   });
 
   it("returns a tool error when file path policy validation fails", async () => {
@@ -208,7 +126,6 @@ describe("executeToolCall with background jobs", () => {
       {
         rg: "rg",
         backgroundJobManager: new BackgroundJobManager(),
-        asyncSubTaskManager: await createAsyncTaskManager(),
         fileSystem: {
           readFile,
           writeFile: async () => {},
@@ -256,7 +173,6 @@ describe("executeToolCall with background jobs", () => {
       {
         rg: "rg",
         backgroundJobManager: new BackgroundJobManager(),
-        asyncSubTaskManager: await createAsyncTaskManager(),
         fileSystem: {
           readFile,
           writeFile: async () => {},

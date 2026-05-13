@@ -251,7 +251,7 @@ function BackgroundTaskWorkerInner({
       );
 
       // Defer execution to the BatchExecuteManager: consecutive safe-to-batch
-      // calls (read-only, runAsync newTask, startBackgroundJob) run as one
+      // calls (read-only, newTask, startBackgroundJob) run as one
       // concurrent batch; stateful calls remain serial barriers.
       batchExecuteManager.enqueue(
         taskId,
