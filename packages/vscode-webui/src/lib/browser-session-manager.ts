@@ -13,6 +13,8 @@ const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
 const WhiteScreenCheckInterval = 500;
 const WebsocketRetryInterval = 2500;
+const RecordingVideoWidth = 854;
+const RecordingVideoHeight = 480;
 
 function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   const width = 32;
@@ -47,6 +49,54 @@ function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   }
 
   return true;
+}
+
+async function createRecordingImageBitmap(
+  imageBitmap: ImageBitmap,
+): Promise<ImageBitmap> {
+  const width = RecordingVideoWidth;
+  const height = RecordingVideoHeight;
+  let canvas: OffscreenCanvas | HTMLCanvasElement;
+  let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
+    null;
+
+  if (typeof OffscreenCanvas !== "undefined") {
+    canvas = new OffscreenCanvas(width, height);
+    ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
+  } else {
+    canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext("2d");
+  }
+
+  if (!ctx) {
+    throw new Error("Failed to create browser recording canvas");
+  }
+
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  const scale = Math.min(
+    width / imageBitmap.width,
+    height / imageBitmap.height,
+  );
+  const drawWidth = Math.round(imageBitmap.width * scale);
+  const drawHeight = Math.round(imageBitmap.height * scale);
+  const drawX = Math.floor((width - drawWidth) / 2);
+  const drawY = Math.floor((height - drawHeight) / 2);
+  ctx.drawImage(imageBitmap, drawX, drawY, drawWidth, drawHeight);
+
+  if (
+    typeof OffscreenCanvas !== "undefined" &&
+    canvas instanceof OffscreenCanvas
+  ) {
+    return canvas.transferToImageBitmap();
+  }
+
+  return createImageBitmap(canvas);
 }
 
 export class BrowserRecordingSession {
@@ -137,19 +187,19 @@ export class BrowserRecordingSession {
         bytes[i] = binaryString.charCodeAt(i);
       }
       const blob = new Blob([bytes], { type: "image/jpeg" });
-      const imageBitmap = await createImageBitmap(blob, {
-        resizeWidth: 720,
-        resizeQuality: "high",
-      });
+      const imageBitmap = await createImageBitmap(blob);
+      const recordingImageBitmap =
+        await createRecordingImageBitmap(imageBitmap);
 
       if (!this.muxer) {
         if (isWhiteScreen(imageBitmap)) {
+          recordingImageBitmap.close();
           imageBitmap.close();
           return;
         }
 
         try {
-          const { width, height } = imageBitmap;
+          const { width, height } = recordingImageBitmap;
           const videoConfig = await getSupportedRecordingVideoConfig(
             width,
             height,
@@ -157,6 +207,7 @@ export class BrowserRecordingSession {
           if (!videoConfig) {
             this.recordingUnavailable = true;
             logger.error("No supported browser recording codec");
+            recordingImageBitmap.close();
             imageBitmap.close();
             return;
           }
@@ -188,10 +239,11 @@ export class BrowserRecordingSession {
 
       if (this.videoEncoder?.state === "configured") {
         const timestamp = (performance.now() - this.startTime) * 1000;
-        const videoFrame = new VideoFrame(imageBitmap, { timestamp });
+        const videoFrame = new VideoFrame(recordingImageBitmap, { timestamp });
         this.videoEncoder.encode(videoFrame);
         videoFrame.close();
       }
+      recordingImageBitmap.close();
       imageBitmap.close();
     } catch (err) {
       logger.error("Failed to process frame", err);
