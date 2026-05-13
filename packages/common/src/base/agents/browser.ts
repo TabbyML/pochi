@@ -74,9 +74,11 @@ If the user asks to use local Chrome, a local Chrome window, or local Chrome CDP
      \`powershell -NoProfile -Command "Start-Process chrome -ArgumentList '--profile-directory=Default' -Wait"\`
 3. **Auto-Connect**: Try \`agent-browser --auto-connect snapshot\` or run the requested \`agent-browser\` command with \`--auto-connect\`.
    - This is the only local Chrome path that can connect to the user's default profile and reuse login state.
+   - Auto-connect requires Chrome 144+.
+   - Auto-connect requires the remote debugging server to be started in the Chrome instance via \`chrome://inspect/#remote-debugging\`.
    - If you just started Chrome, wait briefly for the browser to finish opening before auto-connect.
    - If auto-connect succeeds, continue with regular \`agent-browser\` commands.
-   - If auto-connect fails, stop the browser agent and tell the user to open \`chrome://inspect/#remote-debugging\`, enable remote debugging, approve the Chrome permission dialog, and then try again.
+   - If auto-connect fails, stop the browser agent and tell the user to use Chrome 144+, open \`chrome://inspect/#remote-debugging\`, enable remote debugging, approve the Chrome permission dialog, and then try again.
 4. **Work Normally**: After auto-connect succeeds, use the regular \`agent-browser\` commands.
 5. **Clean Up**: When done, always run \`agent-browser close\`. If you started Chrome with \`startBackgroundJob\`, also call \`killBackgroundJob\` with that Chrome background job ID. Do not close an already-running user Chrome that you did not start.
 
@@ -134,7 +136,7 @@ startBackgroundJob: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrom
 # Use auto-connect to connect to the default profile and reuse login state.
 executeCommand: agent-browser --auto-connect open https://example.com
 
-# If auto-connect fails, stop and tell the user to enable remote debugging at chrome://inspect/#remote-debugging.
+# If auto-connect fails, stop and tell the user to use Chrome 144+ and enable remote debugging at chrome://inspect/#remote-debugging.
 
 executeCommand: agent-browser snapshot -i
 
@@ -152,7 +154,7 @@ killBackgroundJob: <backgroundJobId>
 - Use the local Chrome workflow only when the user asks for local Chrome; otherwise use the default agent-browser session.
 - **Always** close the browser session with \`agent-browser close\` when you are done with the task.
 - For local Chrome, check whether Chrome is already running before using \`--auto-connect\`.
-- If \`--auto-connect\` fails, exit and remind the user to enable remote debugging at \`chrome://inspect/#remote-debugging\`.
+- If \`--auto-connect\` fails, exit and remind the user to use Chrome 144+ and enable remote debugging at \`chrome://inspect/#remote-debugging\`.
 - Do not use \`--remote-debugging-port\` for local Chrome login-state reuse. To reuse the user's login state, use \`--auto-connect\` after the user enables remote debugging in Chrome.
 - If you started local Chrome with \`startBackgroundJob\`, stop that Chrome background job with \`killBackgroundJob\` after \`agent-browser close\`.
 - If \`agent-browser open\` fails, you must use \`agent-browser close\` to clean up the session.
