@@ -44,6 +44,14 @@ export const runnableTasks$ = queryDb(
   },
 );
 
+export const backgroundTasks$ = queryDb(
+  () =>
+    tables.tasks.where("background", "=", true).orderBy("updatedAt", "desc"),
+  {
+    label: "backgroundTasks",
+  },
+);
+
 export const makeStoreFileQuery = (filePath: string) =>
   queryDb(
     () => tables.files.where("filePath", "=", filePath).first(undefined),
