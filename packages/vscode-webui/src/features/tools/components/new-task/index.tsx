@@ -87,7 +87,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     tool.output.result.trim().length > 0;
 
   const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
-    useShowMessageList(completed);
+    useShowMessageList();
   const throttledTaskSource = useThrottle(taskSource, SubtaskPreviewThrottleMs);
   const previewSource = isExecuting ? throttledTaskSource : taskSource;
   const taskThreadSource = useMemo(() => {
@@ -181,8 +181,9 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   );
 }
 
-function useShowMessageList(completed: boolean) {
-  return useDebounceState(!completed, 1_500, {
-    leading: !isVSCodeEnvironment(),
+function useShowMessageList() {
+  const isVSCode = isVSCodeEnvironment();
+  return useDebounceState(false, 1_500, {
+    leading: !isVSCode,
   });
 }

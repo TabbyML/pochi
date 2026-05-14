@@ -84,4 +84,4 @@ export const ToolsByPermission = {
   default: ["todoWrite"] as string[],
 };
 
-export const MaxToolCallConcurrency = 10;
+export const MaxToolCallConcurrency = 20;
