@@ -29,6 +29,7 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
+import { BackgroundTaskDebugPanel } from "./components/background-task-debug-panel";
 import { BackgroundTaskRunner } from "./components/background-task-runner";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
@@ -368,6 +369,7 @@ function Chat({ user, uid, info }: ChatProps) {
         />
       </div>
       <BackgroundTaskRunner />
+      <BackgroundTaskDebugPanel />
     </div>
   );
 }
