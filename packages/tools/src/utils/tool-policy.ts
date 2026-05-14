@@ -208,6 +208,11 @@ export function validateExecuteCommandRules(
   command: string,
   allowedPatterns: string[],
 ): void {
+  const commandMatched = allowedPatterns.some((pattern) => pattern === command);
+  if (commandMatched) {
+    return;
+  }
+
   const segments = splitCommandSegments(command);
 
   for (const segment of segments) {
