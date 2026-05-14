@@ -11,7 +11,11 @@ import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type React from "react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
+import {
+  useAutoApproveGuard,
+  useBatchExecuteManager,
+  useToolCallLifeCycle,
+} from "../lib/chat-state";
 import type { BlockingState } from "./use-blocking-operations";
 import type { ChatInput } from "./use-chat-input-state";
 
@@ -51,14 +55,13 @@ export function useChatSubmit({
   taskId,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
-  const { executingToolCalls, isExecuting } = useToolCallLifeCycle();
+  const { isExecuting } = useToolCallLifeCycle();
+  const batchExecuteManager = useBatchExecuteManager();
   const { t } = useTranslation();
 
   const abortExecutingToolCalls = useCallback(() => {
-    for (const toolCall of executingToolCalls) {
-      toolCall.abort();
-    }
-  }, [executingToolCalls]);
+    batchExecuteManager.abort(taskId, "user-abort");
+  }, [batchExecuteManager, taskId]);
 
   const userEdits = useUserEdits(taskId);
   const activeSelection = useActiveSelection();

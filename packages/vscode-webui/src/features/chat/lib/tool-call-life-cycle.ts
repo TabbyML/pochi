@@ -274,26 +274,14 @@ export class ManagedToolCallLifeCycle
   }
 
   abort(reason: AbortReason = "user-abort", result: unknown = {}) {
-    if (this.state.type === "init") {
-      this.transitTo("init", {
-        type: "complete",
-        result,
-        reason,
-      });
-      return;
-    }
-
     if (
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
       this.state.abort(reason);
-      this.transitTo(["execute", "execute:streaming"], {
-        type: "complete",
-        result,
-        reason,
-      });
     }
+
+    this.settleAbort(reason, result);
   }
 
   reject() {
@@ -406,12 +394,8 @@ export class ManagedToolCallLifeCycle
     });
 
     const onAbort = () => {
-      this.transitTo("execute:streaming", {
-        type: "complete",
-        result: {
-          error: abortSignal.reason,
-        },
-        reason: "user-abort",
+      this.settleAbort("user-abort", {
+        error: abortSignal.reason,
       });
       cleanup();
     };
@@ -447,6 +431,20 @@ export class ManagedToolCallLifeCycle
       (task) => onTaskUpdate(task),
     );
     cleanupFns.push(unsubscribe);
+  }
+
+  private settleAbort(reason: AbortReason, result: unknown) {
+    if (
+      this.state.type === "init" ||
+      this.state.type === "execute" ||
+      this.state.type === "execute:streaming"
+    ) {
+      this.transitTo(this.state.type, {
+        type: "complete",
+        result,
+        reason,
+      });
+    }
   }
 
   private checkState<T extends ToolCallState["type"]>(
