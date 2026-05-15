@@ -5,10 +5,7 @@ export const browser: CustomAgent = {
   description:
     "Web browser automation agent for navigating websites, interacting with pages, and extracting information. Uses agent-browser CLI for browser control, including headless sessions and optional local Chrome auto-connect.",
   tools: [
-    "executeCommand(agent-browser)",
-    "executeCommand(npm install -g agent-browser)",
-    'executeCommand(pgrep -x "Google Chrome|chrome|google-chrome|chromium")',
-    'executeCommand(powershell -NoProfile -Command "Get-Process chrome -ErrorAction SilentlyContinue")',
+    "executeCommand",
     "startBackgroundJob",
     "readBackgroundJobOutput",
     "killBackgroundJob",
