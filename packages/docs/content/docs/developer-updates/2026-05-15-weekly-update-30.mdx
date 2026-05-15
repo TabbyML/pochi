@@ -1,0 +1,113 @@
+---
+title: 'Weekly Update #30 '
+slug: weekly-update-30-
+date: '2026-05-15'
+---
+### TL;DR
+
+Pochi can now operate inside your real Chrome browser: logged-in sessions, your cookies, your stored state. 
+
+Task Memory is now inspectable mid-task, so you know exactly what shapes compaction, and background jobs respect the same command policies as `executeCommand`, closing the last open gap in scoped tool access.
+
+
+
+More below!
+
+### 🚀 Features
+
+- **Browser Agent - Local Chrome Support:** Pochi's browser agent can now connect to and control your locally running Chrome browser. When you ask it to use local Chrome, the agent checks whether Chrome is already open, starts it with your default profile if needed, then connects via the Chrome DevTools Protocol to operate directly inside your session.
+
+Previously, the browser agent only ran headless sessions — no cookies, no stored logins, no saved state. Accessing anything that requires a login meant the agent was effectively locked out.
+
+This is most useful when your task requires accessing GitHub, internal dashboards, or any service you're already authenticated with. 
+
+Requires Chrome 144+ with remote debugging enabled at `chrome://inspect/#remote-debugging`. [**#1530**](https://github.com/TabbyML/pochi/pull/1530)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/e8/e841e05f53c5c743bef7c8cc91def25e2b5f878ffa9c2d4b7ccc23680e4162b0.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+- **View Task Memory:** A Task Memory button now appears in the Token Usage popover once Pochi has extracted at least one memory entry. Clicking it opens `memory.md` — the structured session notes Pochi has been accumulating throughout your task.
+
+Task Memory was introduced in v0.46, but the extraction process was invisible. You couldn't verify what had been stored or how it would shape compaction.
+
+Now you can inspect the memory file directly at any point during a long task. [**#1528**](https://github.com/TabbyML/pochi/pull/1528)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/b1/b18cc4378d5194fb6a010af1c8e24703217058b36102c658780ac15a730a66a5.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+- **Scoped Tool Access: ****`startBackgroundJob`**** Policy:** `startBackgroundJob` now respects the same command-pattern policies as `executeCommand`. Declare `startBackgroundJob(npm run dev)` in your custom agent config to restrict which background commands the agent can launch.
+
+ v0.46 introduced scoped tool access for `executeCommand`, `readFile`, `writeToFile`, `applyDiff`, `editNotebook`, and `webFetch` — but `startBackgroundJob` was left out. An agent restricted to `executeCommand(git *)` could still run arbitrary shell commands via a background job.
+
+The two tools are kept independent: an `executeCommand(git *)` rule does not authorize `startBackgroundJob` calls, and vice versa. The same syntax you already use for `executeCommand` works here. 
+
+For the full policy configuration reference, check the [custom agent docs](https://docs.getpochi.com/custom-agent/). [**#1538**](https://github.com/TabbyML/pochi/pull/1538)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/91/91d33a4d219395954005096d56fd7f59cda923ddf1462a07839c4a04ffee3406.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+### ✨ Enhancements
+
+- **Auto-Expand Task Panel Input:** The task panel input now expands as you type, up to 30% of viewport height or 420px,  before switching to internal scrolling. 
+
+Previously it was capped at 128px — roughly 4 visible lines. Pasting a multi-paragraph prompt or a long file path meant scrolling through a cramped box to review what you'd typed before sending.
+
+Most noticeable when dropping in detailed instructions or long context at the start of a task. [**#1531**](https://github.com/TabbyML/pochi/pull/1531)
+
+![](https://assets.docs.getpochi.com/docs/fa/fa697d4467eebeaa51c77ce8468a99711ca03d3c936b5951a213a01ad86ce42a)
+
+
+
+### 🐛 Bug Fixes
+
+- **Thinking Summary Display:** The thinking summary block now displays correctly for Anthropic models. [**#1526**](https://github.com/TabbyML/pochi/pull/1526)
+
+![](https://assets.docs.getpochi.com/docs/8e/8e1b6bd62f7c7f3dc8ee5fad7ffdd52714b754f76badaf8a6ec786cbfa505815)
+
+
+
+- **Browser Recording Codec and Canvas:** Browser recordings no longer fail on platforms where the hard-coded H.264 codec isn't available — the recorder now detects a supported codec at runtime. 
+
+Frames are also rendered to a consistent 854×480 canvas with letterboxing, fixing distorted or broken recordings from variable source dimensions. [**#1535**](https://github.com/TabbyML/pochi/pull/1535), [**#1537**](https://github.com/TabbyML/pochi/pull/1537)
+
+![](https://assets.docs.getpochi.com/docs/35/35596c6e07aaf726cba9eaef8976e2987d53a10daf34d227aadca8bd6122eec6)
+
+
+
+- **Collapsed Tool Container Chevron:** The chevron icon for collapsed tool containers now points left again, as intended. A previous change had accidentally flipped it to point right. [**#1529**](https://github.com/TabbyML/pochi/pull/1529)
+
+![](https://assets.docs.getpochi.com/docs/47/47f479a64b65ae59cb25ed579ab8ce86edde6b3153c0fdd357accd8c520beaf8)
+
