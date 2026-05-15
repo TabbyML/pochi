@@ -28,3 +28,9 @@ export const TaskMemoryUpdateToolCallThreshold = 3;
  * to prevent hangs when git itself is broken or unresponsive.
  */
 export const GitOperationTimeoutMs = 10_000;
+
+/**
+ * Block timeout (ms) for `git worktree remove`, which is mostly filesystem
+ * IO and frequently exceeds the default 10s while git is still deleting.
+ */
+export const WorktreeRemoveTimeoutMs = 60_000;
