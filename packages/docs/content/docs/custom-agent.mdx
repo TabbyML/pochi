@@ -47,7 +47,7 @@ The frontmatter provides metadata for the custom agent:
 
 Rule entries follow the format `tool` or `tool(specifier)`. The following tools support specifier-based restrictions:
 
-- `executeCommand`, `startBackgroundJob` — Command patterns, e.g. `executeCommand(npm run *)`, `startBackgroundJob(npm run dev)`
+- `executeCommand` — Command patterns, e.g. `executeCommand(npm run *)`
 - `readFile`, `writeToFile`, `applyDiff`, `editNotebook` — Path globs, e.g. `readFile(src/**)`
 - `webFetch` — Domain patterns, e.g. `webFetch(domain:*.example.com)`
 
@@ -64,18 +64,6 @@ Restrict which shell commands the agent can run via `executeCommand`. The specif
 | `executeCommand(npm *)` | Allows command segments matching the pattern `npm *` |
 | `executeCommand(npm run test)` | Allows command segments matching exactly `npm run test` |
 | `executeCommand(npm run test *)` | Allows command segments matching the pattern `npm run test *` |
-
-#### Background Job Restrictions
-
-Restrict which long-running commands the agent can launch via `startBackgroundJob`. The same command-pattern matching used for `executeCommand` applies here, but the two policies are independent — an `executeCommand(...)` rule does **not** authorize a `startBackgroundJob` call, and vice versa. Declare separate entries for each tool as needed.
-
-| Declaration | Behavior |
-|---|---|
-| `startBackgroundJob` | No restrictions — allows any background command |
-| `startBackgroundJob(npm)` | Allows background commands whose first token is `npm` |
-| `startBackgroundJob(npm *)` | Allows background commands matching the pattern `npm *` |
-| `startBackgroundJob(npm run dev)` | Allows starting only `npm run dev` as a background job |
-| `startBackgroundJob(npm run dev *)` | Allows background commands matching the pattern `npm run dev *` |
 
 #### Path-based File Restrictions
 
@@ -117,7 +105,6 @@ description: Code reviewer with restricted filesystem and network access
 tools:
   - executeCommand(git diff)
   - executeCommand(grep *)
-  - startBackgroundJob(npm run dev)
   - readFile(src/**)
   - readFile(packages/**/*.md)
   - writeToFile(.pochi/**)
