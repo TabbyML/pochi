@@ -8,7 +8,7 @@ vi.mock('@getpochi/tools', async (importOriginal) => {
   const original = await importOriginal<typeof import('@getpochi/tools')>();
   return {
     ...original,
-    isUserInputToolPart: vi.fn(),
+    isCompletionToolPart: vi.fn(),
   };
 });
 

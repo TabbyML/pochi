@@ -1,15 +1,20 @@
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import type { ContextWindowUsage, TaskMemoryState } from "@getpochi/common";
-import { constants, getLogger, prompts } from "@getpochi/common";
-import { type Message, catalog } from "@getpochi/livekit";
+import { getLogger, prompts } from "@getpochi/common";
+import { catalog } from "@getpochi/livekit";
 import type { ToolSpecInput } from "@getpochi/tools";
 import { useCallback, useEffect } from "react";
 import {
   buildForkAgentInitTitle,
   createForkAgent,
 } from "../lib/create-fork-agent";
+import {
+  type ExtractionData,
+  getExtractionMetrics,
+  shouldExtractTaskMemory,
+  toExtractingState,
+} from "../lib/task-memory-extraction";
 
 const logger = getLogger("useTaskMemory");
 
@@ -22,101 +27,6 @@ const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
 /** Fork-agent statuses that mean it is still running. */
 const ActiveStatuses = new Set(["pending-model", "pending-tool"]);
 const IdleTaskId = "__task_memory_idle__";
-
-type ExtractionData = {
-  messages: Message[];
-  contextWindowUsage?: ContextWindowUsage;
-};
-
-type ExtractionMetrics = {
-  tokens: number;
-  toolCalls: number;
-  trailingMessageId: string | undefined;
-  trailingMessageHasOpenToolCall: boolean;
-};
-
-function getExtractionMetrics(data: ExtractionData): ExtractionMetrics {
-  const last = data.messages.at(-1);
-  return {
-    tokens: computeTotalTokens(data.contextWindowUsage),
-    toolCalls: countToolCalls(data.messages),
-    trailingMessageId: last?.id,
-    trailingMessageHasOpenToolCall: lastMessageHasOpenToolCall(data.messages),
-  };
-}
-
-function computeTotalTokens(usage?: ContextWindowUsage) {
-  if (!usage) return 0;
-  return (
-    usage.system +
-    usage.tools +
-    usage.messages +
-    usage.files +
-    usage.toolResults
-  );
-}
-
-function countToolCalls(messages: Message[]): number {
-  let count = 0;
-  for (const message of messages) {
-    if (message.role !== "assistant") continue;
-    for (const part of message.parts) {
-      if (part.type.startsWith("tool-")) {
-        count++;
-      }
-    }
-  }
-  return count;
-}
-
-/** True if the trailing assistant turn has tool calls without output yet. */
-function lastMessageHasOpenToolCall(messages: Message[]): boolean {
-  const last = messages.at(-1);
-  if (!last || last.role !== "assistant") return false;
-  return last.parts.some((part) => {
-    if (!part.type.startsWith("tool-")) return false;
-    if (!("state" in part)) return false;
-    const state = (part as { state: string }).state;
-    return state !== "output-available" && state !== "output-error";
-  });
-}
-
-function shouldExtractTaskMemory(
-  state: TaskMemoryState,
-  metrics: ExtractionMetrics,
-): boolean {
-  if (state.isExtracting) return false;
-
-  if (!state.initialized) {
-    return metrics.tokens >= constants.TaskMemoryInitTokenThreshold;
-  }
-
-  const tokenDelta = metrics.tokens - state.lastExtractionTokens;
-  const toolCallDelta = metrics.toolCalls - state.lastExtractionToolCalls;
-
-  return (
-    tokenDelta >= constants.TaskMemoryUpdateTokenIncrement &&
-    toolCallDelta >= constants.TaskMemoryUpdateToolCallThreshold
-  );
-}
-
-function toExtractingState(
-  state: TaskMemoryState,
-  metrics: ExtractionMetrics,
-): TaskMemoryState {
-  // Skip the boundary when the snapshot is mid-tool-call to avoid
-  // slicing through a tool_use/tool_result pair on the next compaction.
-  return {
-    ...state,
-    initialized: true,
-    isExtracting: true,
-    lastExtractionTokens: metrics.tokens,
-    lastExtractionToolCalls: metrics.toolCalls,
-    pendingExtractionMessageId: metrics.trailingMessageHasOpenToolCall
-      ? undefined
-      : metrics.trailingMessageId,
-  };
-}
 
 export function useTaskMemory({
   isSubTask,

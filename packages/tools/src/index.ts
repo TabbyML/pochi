@@ -85,18 +85,20 @@ export type {
   BatchedToolCall,
 } from "./utils/tool-batch";
 
-export function isUserInputToolName(name: string): boolean {
+export function isCompletionToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";
 }
 
-export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
+export function isCompletionToolPart(
+  part: UIMessagePart<UIDataTypes, UITools>,
+) {
   if (!isStaticToolUIPart(part)) return false;
-  return isUserInputToolName(getStaticToolName(part));
+  return isCompletionToolName(getStaticToolName(part));
 }
 
 export function isAutoSuccessToolName(name: string): boolean {
   return (
-    isUserInputToolName(name) ||
+    isCompletionToolName(name) ||
     ToolsByPermission.default.some((tool) => name === tool)
   );
 }

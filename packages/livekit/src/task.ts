@@ -1,5 +1,6 @@
 import { isAbortError } from "@ai-sdk/provider-utils";
 import type { GitStatus } from "@getpochi/common";
+import { isCompletionToolPart } from "@getpochi/tools";
 import {
   APICallError,
   type FinishReason,
@@ -27,10 +28,7 @@ export function toTaskStatus(
 
   let hasToolCall = false;
   for (const part of message.parts.slice(lastStepStart + 1)) {
-    if (
-      part.type === "tool-askFollowupQuestion" ||
-      part.type === "tool-attemptCompletion"
-    ) {
+    if (isCompletionToolPart(part)) {
       return "completed";
     }
 

@@ -1,3 +1,5 @@
+import { isCompletionToolPart } from "@getpochi/tools";
+import { getStaticToolName, isStaticToolUIPart } from "ai";
 import type { Message } from "../types";
 
 // Condition A: The last step contains completion tools (attemptCompletion or askFollowupQuestion).
@@ -14,25 +16,16 @@ export function filterCompletionTools(message: Message): Message {
       ? message.parts.slice(lastStepStartIndex)
       : message.parts;
 
-  const hasCompletionTools = parts.some(
-    (part) =>
-      part.type === "tool-attemptCompletion" ||
-      part.type === "tool-askFollowupQuestion",
-  );
+  const hasCompletionTools = parts.some(isCompletionToolPart);
   const hasOtherTools = parts.some(
     (part) =>
-      part.type.startsWith("tool-") &&
-      part.type !== "tool-todoWrite" &&
-      part.type !== "tool-attemptCompletion" &&
-      part.type !== "tool-askFollowupQuestion",
+      isStaticToolUIPart(part) &&
+      getStaticToolName(part) !== "todoWrite" &&
+      !isCompletionToolPart(part),
   );
 
   if (hasCompletionTools && hasOtherTools) {
-    const lastStepParts = parts.filter(
-      (part) =>
-        part.type !== "tool-attemptCompletion" &&
-        part.type !== "tool-askFollowupQuestion",
-    );
+    const lastStepParts = parts.filter((part) => !isCompletionToolPart(part));
     const prevStepsParts =
       lastStepStartIndex > 0 ? message.parts.slice(0, lastStepStartIndex) : [];
     return {
