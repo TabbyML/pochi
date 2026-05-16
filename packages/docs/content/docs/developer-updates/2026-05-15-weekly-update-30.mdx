@@ -48,7 +48,7 @@ More below!
     Your browser does not support the video tag.
   </video>
 
-- **Scoped Tool Access - `startBackgroundJob` Policy:** `startBackgroundJob` now respects the same command-pattern policies as `executeCommand`. Declare `startBackgroundJob(npm run dev)` in your custom agent config to restrict which background commands the agent can launch.
+- **Scoped Tool Access - startBackgroundJob Policy:** `startBackgroundJob` now respects the same command-pattern policies as `executeCommand`. Declare `startBackgroundJob(npm run dev)` in your custom agent config to restrict which background commands the agent can launch.
 
   v0.46 introduced scoped tool access for `executeCommand`, `readFile`, `writeToFile`, `applyDiff`, `editNotebook`, and `webFetch` — but `startBackgroundJob` was left out. An agent restricted to `executeCommand(git *)` could still run arbitrary shell commands via a background job.
 
