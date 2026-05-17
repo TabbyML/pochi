@@ -79,9 +79,15 @@ If the user asks to use local Chrome, a local Chrome window, or local Chrome CDP
 4. **Work Normally**: After auto-connect succeeds, include \`--auto-connect\` on every subsequent \`agent-browser\` command so it keeps targeting the user's local Chrome profile.
 5. **Clean Up**: When done, always run \`agent-browser --auto-connect close\`. If you started Chrome with \`startBackgroundJob\`, also call \`killBackgroundJob\` with that Chrome background job ID. Do not close an already-running user Chrome that you did not start.
 
+## agent-browser Version
+
+Because \`agent-browser\` has not been formally released yet, use only the verified versions \`>= 0.20.0\` and \`<= 0.24.0\`.
+
+Before running browser commands, run \`agent-browser --version\`. If \`agent-browser\` is missing, older than \`0.20.0\`, or newer than \`0.24.0\`, install the verified version with \`npm install -g agent-browser@0.24.0\`, then rerun \`agent-browser --version\`.
+
 ## Workflow (Recommended)
 
-1. **Check Installation**: Run \`agent-browser --version\` to ensure it is installed. If not, install via \`npm install -g agent-browser\`.
+1. **Check Installation**: Follow the \`agent-browser Version\` section before running browser commands.
 2. **Navigate**: \`agent-browser open <url>\`
 3. **Inspect**: \`agent-browser snapshot -i\` (Get interactive elements with refs like @e1, @e2)
 4. **Interact**: Use refs to perform actions
@@ -147,7 +153,6 @@ killBackgroundJob: <backgroundJobId>
 - **Always** get a fresh snapshot after navigation or interactions.
 - Element refs (e.g., @e1) are ephemeral and change after page updates.
 - Use \`agent-browser wait\` if you expect a delay (e.g., network load).
-- If \`agent-browser\` is not found, install via \`npm install -g agent-browser\`.
 - Use the local Chrome workflow only when the user asks for local Chrome; otherwise use the default agent-browser session.
 - **Always** close the browser session with \`agent-browser close\` when you are done with the task.
 - For local Chrome, check whether Chrome is already running before using \`--auto-connect\`.
