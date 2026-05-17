@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseTitle, prepareLastMessageForRetry } from "..";
+import {
+  isAssistantMessageWithInvalidToolCalls,
+  parseTitle,
+  prepareLastMessageForRetry,
+} from "..";
 import type { UIMessage } from "ai";
 
 describe("message-utils", () => {
@@ -66,5 +70,121 @@ describe("message-utils", () => {
       const after = message?.parts.filter((part) => part.type === "step-start").length || 0;
       expect(after).toBe(1);
     })
-  })
-})
+
+    it("should roll back the last step when it contains an invalid tool call", () => {
+      const lastMessage: UIMessage = {
+        id: "broken-1",
+        role: "assistant",
+        parts: [
+          { type: "step-start" },
+          {
+            type: "text",
+            text: "Reading the file.",
+            // biome-ignore lint/suspicious/noExplicitAny: test fixture
+          } as any,
+          {
+            type: "tool-executeCommand",
+            toolCallId: "call_ok",
+            state: "output-available",
+            input: { command: "ls" },
+            output: { output: "ok", isTruncated: false },
+            // biome-ignore lint/suspicious/noExplicitAny: test fixture
+          } as any,
+          { type: "step-start" },
+          {
+            type: "text",
+            text: "Now let me add the abort handling for the batch manager:",
+            // biome-ignore lint/suspicious/noExplicitAny: test fixture
+          } as any,
+          {
+            type: "tool-readFile",
+            toolCallId: "call_bad",
+            state: "output-error",
+            input: undefined,
+            rawInput:
+              '{"path": "src/foo.tsx", "startLine": 100, 145}',
+            errorText: "Error repairing tool call: Unexpected token ...",
+            // biome-ignore lint/suspicious/noExplicitAny: test fixture
+          } as any,
+        ],
+      };
+
+      const before =
+        lastMessage.parts.filter((p) => p.type === "step-start").length;
+      expect(before).toBe(2);
+      const message = prepareLastMessageForRetry(lastMessage);
+      const after =
+        message?.parts.filter((p) => p.type === "step-start").length || 0;
+      // The step containing the invalid tool call is sliced off.
+      expect(after).toBe(1);
+      // The healthy preceding tool call is preserved.
+      expect(
+        message?.parts.some(
+          (p) => "toolCallId" in p && p.toolCallId === "call_ok",
+        ),
+      ).toBe(true);
+      expect(
+        message?.parts.some(
+          (p) => "toolCallId" in p && p.toolCallId === "call_bad",
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe("isAssistantMessageWithInvalidToolCalls", () => {
+    it("returns true for output-error tool calls with malformed rawInput", () => {
+      const message: UIMessage = {
+        id: "1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "call_bad",
+            state: "output-error",
+            input: undefined,
+            rawInput: '{"path": "x", "startLine": 1, 2}',
+            errorText: "bad",
+            // biome-ignore lint/suspicious/noExplicitAny: test fixture
+          } as any,
+        ],
+      };
+      expect(isAssistantMessageWithInvalidToolCalls(message)).toBe(true);
+    });
+
+    it("returns false for output-error tool calls with valid object input", () => {
+      const message: UIMessage = {
+        id: "1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "call_ok_err",
+            state: "output-error",
+            input: { path: "x" },
+            errorText: "tool execution failed",
+            // biome-ignore lint/suspicious/noExplicitAny: test fixture
+          } as any,
+        ],
+      };
+      expect(isAssistantMessageWithInvalidToolCalls(message)).toBe(false);
+    });
+
+    it("returns false for healthy output-available tool calls", () => {
+      const message: UIMessage = {
+        id: "1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "call_ok",
+            state: "output-available",
+            input: { path: "x" },
+            output: { content: "" },
+            // biome-ignore lint/suspicious/noExplicitAny: test fixture
+          } as any,
+        ],
+      };
+      expect(isAssistantMessageWithInvalidToolCalls(message)).toBe(false);
+    });
+  });
+});

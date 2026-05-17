@@ -1,4 +1,5 @@
 import {
+  type ToolUIPart,
   type UIMessage,
   isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
@@ -32,6 +33,34 @@ export function isAssistantMessageWithPartialToolCalls(lastMessage: UIMessage) {
   );
 }
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * A tool call is "invalid" when it ended in `output-error` state and neither
+ * `input` nor `rawInput` is a plain object. This typically happens when the
+ * model emitted malformed JSON tool arguments and the repair pass also failed:
+ * the AI SDK then leaves `input: undefined` and `rawInput` as the raw
+ * (non-JSON) string. Sending such a part to providers like Anthropic causes
+ * `tool_use.input: Input should be a valid dictionary` and the conversation
+ * gets stuck — every retry replays the same broken tool_use.
+ */
+function isInvalidToolCallPart(part: UIMessage["parts"][number]): boolean {
+  if (!isStaticToolUIPart(part)) return false;
+  if (part.state !== "output-error") return false;
+  if (isPlainObject(part.input)) return false;
+  const rawInput = (part as ToolUIPart & { rawInput?: unknown }).rawInput;
+  return !isPlainObject(rawInput);
+}
+
+export function isAssistantMessageWithInvalidToolCalls(
+  message: UIMessage,
+): boolean {
+  return (
+    message.role === "assistant" && message.parts.some(isInvalidToolCallPart)
+  );
+}
+
 export function prepareLastMessageForRetry<T extends UIMessage>(
   lastMessage: T,
 ): T | null {
@@ -41,12 +70,20 @@ export function prepareLastMessageForRetry<T extends UIMessage>(
   };
 
   do {
-    if (lastAssistantMessageIsCompleteWithToolCalls({ messages: [message] })) {
-      return message;
-    }
+    // Roll back the last step if it contains an invalid tool call. The AI SDK
+    // considers `output-error` parts "complete", so we have to detect the
+    // malformed-input case explicitly to avoid an infinite retry loop where
+    // the same broken `tool_use` is sent to the provider every time.
+    if (!isAssistantMessageWithInvalidToolCalls(message)) {
+      if (
+        lastAssistantMessageIsCompleteWithToolCalls({ messages: [message] })
+      ) {
+        return message;
+      }
 
-    if (isAssistantMessageWithNoToolCalls(message)) {
-      return message;
+      if (isAssistantMessageWithNoToolCalls(message)) {
+        return message;
+      }
     }
 
     const lastStepStartIndex = message.parts.findLastIndex(
