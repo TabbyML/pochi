@@ -22,7 +22,11 @@ import { useChat } from "@ai-sdk/react";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import { type Todo, compileToolPolicies } from "@getpochi/tools";
+import {
+  type Todo,
+  compileToolPolicies,
+  isCompletionToolName,
+} from "@getpochi/tools";
 import {
   getStaticToolName,
   lastAssistantMessageIsCompleteWithToolCalls,
@@ -110,10 +114,7 @@ export function useLiveSubTask(
       }
 
       // completion tools
-      if (
-        toolCall.toolName === "attemptCompletion" ||
-        toolCall.toolName === "askFollowupQuestion"
-      ) {
+      if (isCompletionToolName(toolCall.toolName)) {
         // no-op
         return;
       }

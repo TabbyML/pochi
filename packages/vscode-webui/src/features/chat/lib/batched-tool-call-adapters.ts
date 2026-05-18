@@ -62,7 +62,7 @@ type CreateBackgroundTaskToolCallAdapterOptions = {
     tool: string;
     toolCallId: string;
     output: unknown;
-  }) => void;
+  }) => void | Promise<void>;
 };
 
 /** Backed by a ToolCallLifeCycle; execution and cancellation delegate to the lifecycle. */
@@ -354,7 +354,7 @@ export function createBackgroundTaskBatchedToolCall({
 
               let resolved = false;
 
-              const finalize = (
+              const finalize = async (
                 output: ExecuteCommandResult,
                 reason: "completed" | "aborted",
               ) => {
@@ -373,27 +373,29 @@ export function createBackgroundTaskBatchedToolCall({
                   finalResult.error = "Aborted by background task worker";
                 }
 
-                addToolOutput({
-                  tool: toolCall.toolName,
-                  toolCallId: toolCall.toolCallId,
-                  output: finalResult,
-                });
-
-                streamResolve(finalResult.error as string | undefined);
+                try {
+                  await addToolOutput({
+                    tool: toolCall.toolName,
+                    toolCallId: toolCall.toolCallId,
+                    output: finalResult,
+                  });
+                } finally {
+                  streamResolve(finalResult.error as string | undefined);
+                }
               };
 
               const onAbort = () => {
-                finalize(signal.value, "aborted");
+                void finalize(signal.value, "aborted");
               };
 
               const unsubscribe = signal.subscribe((output) => {
                 if (output.status === "completed") {
-                  finalize(output, "completed");
+                  void finalize(output, "completed");
                 }
               });
 
               if (abortSignal.aborted) {
-                finalize(signal.value, "aborted");
+                void finalize(signal.value, "aborted");
               } else {
                 abortSignal.addEventListener("abort", onAbort);
               }
@@ -412,7 +414,7 @@ export function createBackgroundTaskBatchedToolCall({
           } satisfies BatchedToolCallResult;
         }
 
-        addToolOutput({
+        await addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: result,
@@ -434,7 +436,7 @@ export function createBackgroundTaskBatchedToolCall({
           error instanceof Error
             ? error
             : new Error("Background task batch execution failed");
-        addToolOutput({
+        await addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: { error: normalizedError.message },
@@ -442,8 +444,8 @@ export function createBackgroundTaskBatchedToolCall({
         throw normalizedError;
       }
     },
-    cancel: (reason: ToolCallCancelReason) => {
-      addToolOutput({
+    cancel: async (reason: ToolCallCancelReason) => {
+      await addToolOutput({
         tool: toolCall.toolName,
         toolCallId: toolCall.toolCallId,
         output: {

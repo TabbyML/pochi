@@ -19,15 +19,20 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { type ForkAgentUseCase, getLogger } from "@getpochi/common";
-import { catalog } from "@getpochi/livekit";
+import { type Message, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
   type Todo,
   type ToolSpecInput,
   compileToolPolicies,
   getAllowedToolNames,
+  isCompletionToolName,
 } from "@getpochi/tools";
-import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import {
+  getStaticToolName,
+  isStaticToolUIPart,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BatchExecuteManager } from "../lib/batch-execute-manager";
 import { createBackgroundTaskBatchedToolCall } from "../lib/batched-tool-call-adapters";
@@ -83,13 +88,15 @@ function BackgroundTaskWorkerInner({
   const abortController = useRef(new AbortController());
   const todosRef = useRef<Todo[] | undefined>(undefined);
   const completedRef = useRef(false);
+  const terminalToolSeenRef = useRef(false);
   const toolRejectionCountRef = useRef(0);
+  const chatKitRef = useRef<ReturnType<typeof useLiveChatKit> | null>(null);
   // Refs that bridge values defined later in the component body into callbacks
   // passed to `useLiveChatKit` (which is created before those values exist).
   // This avoids accidental TDZ access if the callbacks ever ran synchronously.
-  const addToolOutputRef = useRef<((args: AddToolOutputArgs) => void) | null>(
-    null,
-  );
+  const addToolOutputRef = useRef<
+    ((args: AddToolOutputArgs) => void | Promise<void>) | null
+  >(null);
   const chatStatusRef = useRef<string | null>(null);
   const allowedToolsSet = useMemo(
     () => (tools ? getAllowedToolNames([...tools]) : undefined),
@@ -100,23 +107,34 @@ function BackgroundTaskWorkerInner({
     [tools],
   );
 
+  const persistLastMessage = useCallback(() => {
+    const lastMessage = chatKitRef.current?.chat.messages.at(-1);
+    if (!lastMessage) return;
+    // Final background turns may not make another request, so flush tool outputs now.
+    store.commit(catalog.events.updateMessages({ messages: [lastMessage] }));
+  }, [store]);
+
+  // Wrap the latest `addToolOutput` (delivered via ref) so adapters can invoke
+  // it even though they're constructed inside `onToolCall` before
+  // `useChat`-bound `addToolOutput` exists in the closure.
+  const adapterAddToolOutput = useCallback(
+    async (args: AddToolOutputArgs) => {
+      await addToolOutputRef.current?.(args);
+      persistLastMessage();
+    },
+    [persistLastMessage],
+  );
+
   const writeToolOutput = useCallback(
     (toolName: string, toolCallId: string, output: unknown) => {
-      addToolOutputRef.current?.({
+      void adapterAddToolOutput({
         tool: toolName,
         toolCallId,
         output,
       });
     },
-    [],
+    [adapterAddToolOutput],
   );
-
-  // Wrap the latest `addToolOutput` (delivered via ref) so adapters can invoke
-  // it even though they're constructed inside `onToolCall` before
-  // `useChat`-bound `addToolOutput` exists in the closure.
-  const adapterAddToolOutput = useCallback((args: AddToolOutputArgs) => {
-    addToolOutputRef.current?.(args);
-  }, []);
 
   useEffect(() => {
     const signal = abortController.current.signal;
@@ -178,6 +196,9 @@ function BackgroundTaskWorkerInner({
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onStreamFinish: (data) => {
+      const terminalToolSeen = terminalToolSeenRef.current;
+      terminalToolSeenRef.current = false;
+
       if (data.status === "completed") {
         const conversation = summarizeMessages(data.messages);
         logger.debug(
@@ -191,17 +212,18 @@ function BackgroundTaskWorkerInner({
       if (!abortController.current.signal.aborted) {
         batchExecuteManager.processQueue(taskId);
       }
+
+      if (terminalToolSeen) {
+        completedRef.current = true;
+      }
     },
-    onToolCall: async ({ toolCall }) => {
+    onToolCall: ({ toolCall }) => {
       if (completedRef.current) {
         return;
       }
 
-      if (
-        toolCall.toolName === "attemptCompletion" ||
-        toolCall.toolName === "askFollowupQuestion"
-      ) {
-        completedRef.current = true;
+      if (isCompletionToolName(toolCall.toolName)) {
+        terminalToolSeenRef.current = true;
         logger.debug(
           { taskId, toolName: toolCall.toolName },
           `✔ terminal tool ${toolCall.toolName}`,
@@ -267,6 +289,7 @@ function BackgroundTaskWorkerInner({
       );
     },
   });
+  chatKitRef.current = chatKit;
 
   const {
     messages,
@@ -285,7 +308,7 @@ function BackgroundTaskWorkerInner({
   useEffect(() => {
     addToolOutputRef.current = addToolOutput as unknown as (
       args: AddToolOutputArgs,
-    ) => void;
+    ) => Promise<void>;
   }, [addToolOutput]);
 
   useEffect(() => {
@@ -557,17 +580,13 @@ function summarizeToolPayload(
  * readable block rather than a JS array literal with escape sequences.
  */
 function summarizeMessages(
-  messages: ReadonlyArray<{
-    role: string;
-    parts: ReadonlyArray<Record<string, unknown>>;
-  }>,
+  messages: ReadonlyArray<Pick<Message, "role" | "parts">>,
 ): string {
   const lines: string[] = [];
   let stepIndex = 0;
   for (const message of messages) {
     const role = message.role;
-    for (const rawPart of message.parts) {
-      const part = rawPart as Record<string, unknown> & { type: string };
+    for (const part of message.parts) {
       const type = part.type;
       if (type === "step-start") {
         stepIndex += 1;
@@ -590,23 +609,28 @@ function summarizeMessages(
         );
         continue;
       }
-      if (typeof type === "string" && type.startsWith("tool-")) {
-        const toolName = type.slice("tool-".length);
-        const state =
-          typeof part.state === "string" ? (part.state as string) : "unknown";
+      if (isStaticToolUIPart(part)) {
+        const toolName = getStaticToolName(part);
+        const state = typeof part.state === "string" ? part.state : "unknown";
         const callId =
-          typeof part.toolCallId === "string"
-            ? (part.toolCallId as string)
-            : "";
+          typeof part.toolCallId === "string" ? part.toolCallId : "";
         const shortId = callId ? callId.slice(-6) : "";
         const inputPreview = summarizeToolPayload(
           part.input,
           ToolInputPreviewMaxLen,
         );
+        const outputRecord = part as Record<string, unknown>;
         const outputKey =
-          "output" in part ? "output" : "result" in part ? "result" : undefined;
+          "output" in outputRecord
+            ? "output"
+            : "result" in outputRecord
+              ? "result"
+              : undefined;
         const outputPreview = outputKey
-          ? summarizeToolPayload(part[outputKey], ToolOutputPreviewMaxLen)
+          ? summarizeToolPayload(
+              outputRecord[outputKey],
+              ToolOutputPreviewMaxLen,
+            )
           : undefined;
         const header = `[${role}] ${toolName}${shortId ? `#${shortId}` : ""} (${state})`;
         const segments = [header];

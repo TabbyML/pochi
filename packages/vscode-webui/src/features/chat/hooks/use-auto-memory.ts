@@ -9,6 +9,7 @@ import {
 } from "@getpochi/common";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ToolSpecInput } from "@getpochi/tools";
+import { getStaticToolName, isStaticToolUIPart } from "ai";
 import { useCallback, useEffect } from "react";
 import {
   buildForkAgentInitTitle,
@@ -394,9 +395,7 @@ function didConversationWriteMemory(
 }
 
 function getToolName(part: Message["parts"][number]): string | undefined {
-  return typeof part.type === "string" && part.type.startsWith("tool-")
-    ? part.type.slice("tool-".length)
-    : undefined;
+  return isStaticToolUIPart(part) ? getStaticToolName(part) : undefined;
 }
 
 function isSuccessfulToolOutput(part: Message["parts"][number]): boolean {
@@ -489,7 +488,7 @@ function serializeSessionTranscript(messages: readonly Message[]): string {
 function sanitizePart(part: Message["parts"][number]) {
   if (part.type === "text") return part;
   if (part.type.startsWith("data-")) return { type: part.type };
-  if (part.type.startsWith("tool-")) {
+  if (isStaticToolUIPart(part)) {
     return {
       type: part.type,
       state: "state" in part ? part.state : undefined,
