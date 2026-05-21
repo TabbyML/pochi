@@ -6,6 +6,10 @@ on:
     tags:
       - "cli@*"
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   update-fallback:
     runs-on: ubuntu-latest
