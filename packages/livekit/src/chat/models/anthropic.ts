@@ -8,7 +8,7 @@ export function createAnthropicModel(
   const anthropic = createAnthropic({
     baseURL: llm.baseURL,
     apiKey: llm.apiKey,
-    fetch: proxedFetch,
+    fetch: proxiedFetch,
   });
 
   return wrapLanguageModel({
@@ -23,11 +23,14 @@ export function createAnthropicModel(
   });
 }
 
-const proxedFetch: typeof fetch = async (input, init) => {
-  const originalUrl = input.toString();
-  const url = new URL(
-    globalThis.POCHI_CORS_PROXY_URL_PREFIX + encodeURIComponent(originalUrl),
-  );
+export const proxiedFetch: typeof fetch = async (input, init) => {
+  const proxyPrefix = globalThis.POCHI_CORS_PROXY_URL_PREFIX;
+  if (!proxyPrefix) {
+    return fetch(input, init);
+  }
+
+  const originalUrl = input instanceof Request ? input.url : input.toString();
+  const url = new URL(`${proxyPrefix}${encodeURIComponent(originalUrl)}`);
 
   return fetch(url, init);
 };
