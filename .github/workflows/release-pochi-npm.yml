@@ -24,6 +24,12 @@ jobs:
           bun-version: 1.2.15
       - run: bun install
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
       - name: Extract version and determine release type
         id: release_info
         run: |
