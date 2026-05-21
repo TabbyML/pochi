@@ -34,6 +34,18 @@ export function isPochiOutputTab(tab: vscode.Tab) {
   );
 }
 
+// Returns true if this tab is a file-backed editor (text/diff/custom/notebook).
+// Webview tabs (Settings, Keyboard Shortcuts, Extensions, …) return false.
+export function isFileBackedEditorTab(tab: vscode.Tab): boolean {
+  return (
+    tab.input instanceof vscode.TabInputText ||
+    tab.input instanceof vscode.TabInputTextDiff ||
+    tab.input instanceof vscode.TabInputCustom ||
+    tab.input instanceof vscode.TabInputNotebook ||
+    tab.input instanceof vscode.TabInputNotebookDiff
+  );
+}
+
 export function getTabGroupType(tabs: readonly vscode.Tab[]) {
   if (tabs.length === 0) {
     return "empty";
