@@ -99,6 +99,7 @@ import {
   type SkillFile,
   type TaskArchivedParams,
   type TaskChangedFile,
+  type TaskPinnedParams,
   type TaskStates,
   type VSCodeHostApi,
   type VSCodeSettings,
@@ -1421,9 +1422,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         computed(() => {
           const tasks = this.taskHistoryStore.tasks.value;
           const archived = this.taskStateStore.getArchivedSignal().value;
+          const pinned = this.taskStateStore.getPinnedSignal().value;
           return Object.values(tasks).some((task) => {
             if (task.parentId !== null) return false;
             if (archived[task.id]) return false;
+            if (pinned[task.id]) return false;
             return task.updatedAt < oneWeekAgo;
           });
         }),
@@ -1434,15 +1437,23 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             [params.taskId]: params.archived,
           });
           if (params.archived) {
+            // Archiving a task implicitly unpins it.
+            if (this.taskStateStore.getPinnedSignal().value[params.taskId]) {
+              await this.taskStateStore.setPinned({
+                [params.taskId]: false,
+              });
+            }
             this.deleteFileStateCache(params.taskId);
           }
         } else if (params.type === "batch") {
           const tasks = this.taskHistoryStore.tasks.value;
+          const pinned = this.taskStateStore.getPinnedSignal().value;
           const updates: Record<string, boolean> = {};
 
           for (const [taskId, task] of Object.entries(tasks)) {
             if (
               task.updatedAt < oneWeekAgo &&
+              !pinned[taskId] &&
               (!params.cwd || task.cwd === params.cwd)
             ) {
               updates[taskId] = true;
@@ -1456,6 +1467,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             }
           }
         }
+      },
+    };
+  };
+
+  readTaskPinned = async () => {
+    return {
+      value: ThreadSignal.serialize(this.taskStateStore.getPinnedSignal()),
+      setTaskPinned: async (params: TaskPinnedParams) => {
+        await this.taskStateStore.setPinned({
+          [params.taskId]: params.pinned,
+        });
       },
     };
   };

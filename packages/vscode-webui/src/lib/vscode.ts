@@ -132,6 +132,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "writeTaskTranscript",
         "readBackgroundTaskState",
         "readTaskArchived",
+        "readTaskPinned",
         "readLang",
         "readTaskChangedFiles",
       ],

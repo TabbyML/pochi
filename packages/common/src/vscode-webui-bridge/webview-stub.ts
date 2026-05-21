@@ -31,6 +31,7 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
+  TaskPinnedParams,
   TaskStates,
   VSCodeHostApi,
   VSCodeSettings,
@@ -465,6 +466,16 @@ const VSCodeHostStub = {
       value: {} as ThreadSignalSerialization<Record<string, boolean>>,
       hasArchivableTasks: {} as ThreadSignalSerialization<boolean>,
       setTaskArchived: (_params: TaskArchivedParams) => Promise.resolve(),
+    });
+  },
+
+  readTaskPinned(): Promise<{
+    value: ThreadSignalSerialization<Record<string, boolean>>;
+    setTaskPinned: (params: TaskPinnedParams) => Promise<void>;
+  }> {
+    return Promise.resolve({
+      value: {} as ThreadSignalSerialization<Record<string, boolean>>,
+      setTaskPinned: (_params: TaskPinnedParams) => Promise.resolve(),
     });
   },
 

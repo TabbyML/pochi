@@ -31,6 +31,7 @@ import { useSelectedModels } from "@/features/settings";
 import { useArchivedTasks } from "@/lib/hooks/use-archived-tasks";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePaginatedTasks } from "@/lib/hooks/use-paginated-tasks";
+import { usePinnedTasks } from "@/lib/hooks/use-pinned-tasks";
 import { usePochiTabs } from "@/lib/hooks/use-pochi-tabs";
 import { useTaskArchived } from "@/lib/hooks/use-task-archived";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
@@ -49,6 +50,7 @@ import type { Task } from "@getpochi/livekit";
 import {
   Archive,
   Check,
+  ChevronDown,
   GitCompare,
   GitPullRequest,
   ListFilterIcon,
@@ -184,9 +186,11 @@ export function WorktreeList({
     optimisticGroups[0].path === (workspacePath || cwd);
 
   const archivedTasks = useArchivedTasks();
+  const pinnedTasks = usePinnedTasks();
 
   return (
     <div className="flex flex-col gap-1">
+      {pinnedTasks.length > 0 && <PinnedTasksSection tasks={pinnedTasks} />}
       {/* Tasks Header */}
       <div
         className="group flex items-center gap-2 px-1 pb-1"
@@ -586,6 +590,51 @@ function WorktreeSection({
               {t("tasksPage.emptyState.description")}
             </div>
           )}
+        </ScrollArea>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function PinnedTasksSection({ tasks }: { tasks: readonly Task[] }) {
+  const { t } = useTranslation();
+  const pochiTasks = usePochiTabs();
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  return (
+    <Collapsible
+      open={isExpanded}
+      onOpenChange={setIsExpanded}
+      className="mb-3"
+    >
+      <div
+        className="group/pinned-header px-1"
+        data-testid="pinned-tasks-section-header"
+      >
+        <div className="flex h-6 items-center gap-2">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full flex-1 cursor-pointer select-none items-center gap-1.5 font-bold font-sans text-sm uppercase leading-6"
+            >
+              <span className="truncate">{t("tasksPage.pinned")}</span>
+              <ChevronDown
+                className={cn(
+                  "size-3.5 text-muted-foreground opacity-0 transition-[opacity,transform] duration-150 group-hover/pinned-header:opacity-100",
+                  !isExpanded && "-rotate-90",
+                )}
+              />
+            </button>
+          </CollapsibleTrigger>
+        </div>
+      </div>
+      <CollapsibleContent>
+        <ScrollArea viewportClassname="px-1 py-1 max-h-[300px]">
+          {tasks.map((task) => (
+            <div key={task.id} className="py-0.5">
+              <TaskRow task={task} state={pochiTasks[task.id]} />
+            </div>
+          ))}
         </ScrollArea>
       </CollapsibleContent>
     </Collapsible>
