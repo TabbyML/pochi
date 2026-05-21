@@ -1,4 +1,4 @@
-import type { BashOutputs } from "../../vscode-webui-bridge/types/message";
+import type { BashOutputs } from "../message-context";
 
 export function renderBashOutputs(bashOutputs: BashOutputs): string {
   if (!bashOutputs?.length) {

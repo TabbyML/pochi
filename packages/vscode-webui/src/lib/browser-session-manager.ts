@@ -3,6 +3,7 @@ import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
+import { getSupportedRecordingVideoConfig } from "./browser-recording-codecs";
 import type { useDefaultStore } from "./use-default-store";
 import { vscodeHost } from "./vscode";
 
@@ -12,6 +13,8 @@ const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
 const WhiteScreenCheckInterval = 500;
 const WebsocketRetryInterval = 2500;
+const RecordingVideoWidth = 854;
+const RecordingVideoHeight = 480;
 
 function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   const width = 32;
@@ -48,11 +51,60 @@ function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   return true;
 }
 
+async function createRecordingImageBitmap(
+  imageBitmap: ImageBitmap,
+): Promise<ImageBitmap> {
+  const width = RecordingVideoWidth;
+  const height = RecordingVideoHeight;
+  let canvas: OffscreenCanvas | HTMLCanvasElement;
+  let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
+    null;
+
+  if (typeof OffscreenCanvas !== "undefined") {
+    canvas = new OffscreenCanvas(width, height);
+    ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
+  } else {
+    canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext("2d");
+  }
+
+  if (!ctx) {
+    throw new Error("Failed to create browser recording canvas");
+  }
+
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  const scale = Math.min(
+    width / imageBitmap.width,
+    height / imageBitmap.height,
+  );
+  const drawWidth = Math.round(imageBitmap.width * scale);
+  const drawHeight = Math.round(imageBitmap.height * scale);
+  const drawX = Math.floor((width - drawWidth) / 2);
+  const drawY = Math.floor((height - drawHeight) / 2);
+  ctx.drawImage(imageBitmap, drawX, drawY, drawWidth, drawHeight);
+
+  if (
+    typeof OffscreenCanvas !== "undefined" &&
+    canvas instanceof OffscreenCanvas
+  ) {
+    return canvas.transferToImageBitmap();
+  }
+
+  return createImageBitmap(canvas);
+}
+
 export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
   private lastWhiteScreenCheckTime = 0;
+  private recordingUnavailable = false;
 
   // WebSocket related
   private ws: WebSocket | null = null;
@@ -116,6 +168,10 @@ export class BrowserRecordingSession {
 
   private addFrame = runExclusive.buildMethod(async (frame: string) => {
     try {
+      if (this.recordingUnavailable) {
+        return;
+      }
+
       if (!this.muxer) {
         const now = Date.now();
         if (now - this.lastWhiteScreenCheckTime < WhiteScreenCheckInterval) {
@@ -131,19 +187,33 @@ export class BrowserRecordingSession {
         bytes[i] = binaryString.charCodeAt(i);
       }
       const blob = new Blob([bytes], { type: "image/jpeg" });
-      const imageBitmap = await createImageBitmap(blob, {
-        resizeHeight: 480,
-        resizeQuality: "high",
-      });
+      const imageBitmap = await createImageBitmap(blob);
 
       if (!this.muxer) {
         if (isWhiteScreen(imageBitmap)) {
           imageBitmap.close();
           return;
         }
+      }
 
+      const recordingImageBitmap =
+        await createRecordingImageBitmap(imageBitmap);
+      imageBitmap.close();
+
+      if (!this.muxer) {
         try {
-          const { width, height } = imageBitmap;
+          const { width, height } = recordingImageBitmap;
+          const videoConfig = await getSupportedRecordingVideoConfig(
+            width,
+            height,
+          );
+          if (!videoConfig) {
+            this.recordingUnavailable = true;
+            logger.error("No supported browser recording codec");
+            recordingImageBitmap.close();
+            return;
+          }
+
           const muxer = new Muxer({
             target: new ArrayBufferTarget(),
             video: {
@@ -158,29 +228,24 @@ export class BrowserRecordingSession {
             output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
             error: (e) => logger.error("VideoEncoder error", e),
           });
-          encoder.configure({
-            codec: "avc1.4d001f",
-            width,
-            height,
-            bitrate: 500_000,
-            latencyMode: "quality",
-          });
+          encoder.configure(videoConfig);
 
           this.muxer = muxer;
           this.videoEncoder = encoder;
           this.startTime = performance.now();
         } catch (e) {
+          this.recordingUnavailable = true;
           logger.error("Failed to initialize recording", e);
         }
       }
 
       if (this.videoEncoder?.state === "configured") {
         const timestamp = (performance.now() - this.startTime) * 1000;
-        const videoFrame = new VideoFrame(imageBitmap, { timestamp });
+        const videoFrame = new VideoFrame(recordingImageBitmap, { timestamp });
         this.videoEncoder.encode(videoFrame);
         videoFrame.close();
       }
-      imageBitmap.close();
+      recordingImageBitmap.close();
     } catch (err) {
       logger.error("Failed to process frame", err);
     }

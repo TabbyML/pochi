@@ -1,0 +1,49 @@
+name: Update Latest CLI Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "cli@*"
+
+jobs:
+  update-fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            LATEST_TAG=$(git tag -l "cli@*" --sort=-v:refname | grep -v -e '-alpha\.' -e '-beta\.' -e '-rc\.' | head -n 1)
+            echo "version=$LATEST_TAG" >> $GITHUB_OUTPUT
+          else
+            if echo "${{ github.ref_name }}" | grep -q -e '-alpha\.' -e '-beta\.' -e '-rc\.' ; then
+              echo "version=" >> $GITHUB_OUTPUT
+            else
+              echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Update docs static version file
+        if: steps.get_version.outputs.version != ''
+        run: |
+          NEW_VERSION="${{ steps.get_version.outputs.version }}"
+          echo "$NEW_VERSION" > packages/docs/public/cli-latest-version.txt
+
+      - name: Create Pull Request
+        if: steps.get_version.outputs.version != ''
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          commit-message: "chore(install): update latest cli version to ${{ steps.get_version.outputs.version }}"
+          title: "chore(install): update latest cli version to ${{ steps.get_version.outputs.version }}"
+          body: "Automatically generated PR to update the latest CLI version in docs public directory to `${{ steps.get_version.outputs.version }}`."
+          branch: "chore/update-cli-version-${{ steps.get_version.outputs.version }}"
+          base: main

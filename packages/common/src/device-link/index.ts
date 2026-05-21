@@ -18,9 +18,7 @@ export const deviceLink = () => {
         {
           method: "POST",
           body: z.object({
-            deviceName: z.string({
-              description: "Name of the device",
-            }),
+            deviceName: z.string().describe("Name of the device"),
           }),
           requireHeaders: true,
           metadata: {
@@ -67,9 +65,7 @@ export const deviceLink = () => {
         {
           method: "GET",
           query: z.object({
-            token: z.string({
-              description: "Device link token",
-            }),
+            token: z.string().describe("Device link token"),
           }),
           requireHeaders: true,
           metadata: {
@@ -160,9 +156,7 @@ export const deviceLink = () => {
         {
           method: "GET",
           query: z.object({
-            token: z.string({
-              description: "Device link token",
-            }),
+            token: z.string().describe("Device link token"),
           }),
           requireHeaders: true,
           metadata: {
@@ -224,9 +218,7 @@ export const deviceLink = () => {
         {
           method: "POST",
           body: z.object({
-            token: z.string({
-              description: "Device link token",
-            }),
+            token: z.string().describe("Device link token"),
           }),
           requireHeaders: true,
           metadata: {

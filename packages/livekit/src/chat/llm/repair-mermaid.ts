@@ -1,5 +1,10 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { formatters, getLogger, prompts } from "@getpochi/common";
+import {
+  type PochiProviderOptions,
+  formatters,
+  getLogger,
+  prompts,
+} from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
 import { events } from "../../livestore/default-schema";
 import type { LiveKitStore, Message } from "../../types";
@@ -172,9 +177,9 @@ async function generateFixedMermaid(
     providerOptions: {
       pochi: {
         taskId,
-        version: globalThis.POCHI_CLIENT,
+        client: globalThis.POCHI_CLIENT,
         useCase: "repair-mermaid",
-      },
+      } satisfies PochiProviderOptions,
     },
     model,
     prompt: await convertToModelMessages(

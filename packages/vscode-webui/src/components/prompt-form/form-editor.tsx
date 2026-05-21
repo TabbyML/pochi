@@ -659,7 +659,7 @@ export function FormEditor({
       }}
     >
       {children}
-      <ScrollArea viewportClassname="max-h-32">
+      <ScrollArea viewportClassname="max-h-[min(30vh,420px)]">
         <EditorContent
           editor={editor}
           className="prose !border-none min-h-25 w-full max-w-none overflow-hidden break-words text-[var(--vscode-input-foreground)] focus:outline-none"

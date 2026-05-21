@@ -43,7 +43,7 @@ export const ExpandIcon: React.FC<{
       <ChevronRight
         className={cn(
           "size-3 transition-transform",
-          isExpanded ? "rotate-90" : "rotate-0",
+          isExpanded ? "rotate-90" : "rotate-180",
         )}
       />
     </span>

@@ -1,0 +1,46 @@
+diff --git a/dist/do-rpc/client.js b/dist/do-rpc/client.js
+index b2114abad7d08592673938d5c8ae58b9f1c2bc43..7a9bc689a1a158ba1e22524bfc650006e0ccba0b 100644
+--- a/dist/do-rpc/client.js
++++ b/dist/do-rpc/client.js
+@@ -15,16 +15,10 @@ const processReadableStream = (stream, parser, writeResponse) => Effect.gen(func
+             const decoded = parser.decode(value);
+             // Handle array of messages - we get [[message]] from server
+             let messages;
+-            if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
+-                // Double-wrapped array [[message]] -> [message]
+-                messages = decoded[0];
+-            }
+-            else if (Array.isArray(decoded)) {
+-                // Single array [message]
+-                messages = decoded;
+-            }
+-            else {
+-                messages = [decoded];
++            if (Array.isArray(decoded) === true) {
++                messages = decoded.flat(1)
++            } else {
++                messages = [decoded]
+             }
+             // Write each message
+             for (const message of messages) {
+@@ -75,16 +69,10 @@ const makeProtocolDurableObject = ({ callRpc, }) => RpcClient.Protocol.make(Effe
+             const decoded = parser.decode(serializedResponse);
+             // Handle potential nested array from server serialization
+             let responseArray;
+-            if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
+-                // Double-wrapped array [[Exit]] -> [Exit]
+-                responseArray = decoded[0];
+-            }
+-            else if (Array.isArray(decoded)) {
+-                // Single array [Exit]
+-                responseArray = decoded;
+-            }
+-            else {
+-                responseArray = [decoded];
++            if (Array.isArray(decoded) === true) {
++                responseArray = decoded.flat(1)
++            } else {
++                responseArray = [decoded]
+             }
+             // Process each response
+             for (const response of responseArray) {

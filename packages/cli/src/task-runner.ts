@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts } from "@getpochi/common";
+import { getLogger, prompts, toErrorMessage } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -23,16 +23,23 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
-import { type Todo, isUserInputToolPart } from "@getpochi/tools";
-import { type CustomAgent, type Skill, getToolArgs } from "@getpochi/tools";
+import { type BatchedToolCallResult, ToolCallQueue } from "@getpochi/tools";
+import {
+  type CompiledToolPolicies,
+  type CustomAgent,
+  type Skill,
+  type Todo,
+  compileToolPolicies,
+  isCompletionToolPart,
+  validateToolPolicy,
+} from "@getpochi/tools";
 import {
   type ToolUIPart,
   getStaticToolName,
   isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import type z from "zod/v4";
-import { AsyncSubTaskManager } from "./lib/async-subtask-manager";
+import type z from "zod";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
@@ -131,7 +138,7 @@ export interface RunnerOptions {
   browserSessionStore?: BrowserSessionStore;
 
   /**
-   * Timeout in milliseconds to wait for async subtasks and background jobs
+   * Timeout in milliseconds to wait for background jobs
    * to complete before finalizing attemptCompletion. Default: 60000ms (60s).
    * Set to 0 to disable waiting.
    */
@@ -151,7 +158,6 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
-  private asyncSubTaskManager: AsyncSubTaskManager;
   private fileSystem: FileSystem;
   private customAgent?: CustomAgent;
 
@@ -176,7 +182,6 @@ export class TaskRunner {
     this.llm = options.llm;
     this.blobStore = options.blobStore;
     this.backgroundJobManager = new BackgroundJobManager();
-    this.asyncSubTaskManager = new AsyncSubTaskManager(options.store);
     this.customAgent = options.customAgent;
 
     this.fileSystem = options.filesystem;
@@ -191,17 +196,11 @@ export class TaskRunner {
       skills: options.skills,
       mcpHub: options.mcpHub,
       backgroundJobManager: this.backgroundJobManager,
-      asyncSubTaskManager: this.asyncSubTaskManager,
       browserSessionStore: options.browserSessionStore,
       createSubTaskRunner: (
         taskId: string,
-        runAsync: boolean,
         overrideOptions?: CreateSubTaskRunnerOverrideOptions,
       ) => {
-        // create sub task
-        if (runAsync) {
-          this.asyncSubTaskManager.registerTask(taskId);
-        }
         const definedOverrideOptions =
           overrideOptions == null
             ? undefined
@@ -219,9 +218,7 @@ export class TaskRunner {
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
-        if (!runAsync) {
-          options.onSubTaskCreated?.(runner);
-        }
+        options.onSubTaskCreated?.(runner);
         return runner;
       },
     };
@@ -323,61 +320,40 @@ export class TaskRunner {
   }
 
   /**
-   * Wait for all async subtasks and background jobs to complete.
+   * Wait for all background jobs to complete.
    * Respects the configured asyncWaitTimeoutInMs and abort signal.
-   * @returns A formatted string with async results if any, or undefined if no results
+   * @returns A formatted string with background job results if any, or undefined if no results
    */
   private async waitForAsyncWork(): Promise<string | undefined> {
-    const pendingSubtaskIds = this.asyncSubTaskManager.getPendingTaskIds();
     const pendingJobIds = this.backgroundJobManager.getPendingJobIds();
 
     const spinner = createSpinner(
-      `Waiting for async work to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
+      `Waiting for background jobs to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
 
-    // Wait for both subtasks and background jobs in parallel
-    const [subtaskStatus, jobStatus] = await Promise.all([
-      this.asyncSubTaskManager.waitForAllTasks(
-        this.asyncWaitTimeoutInMs,
-        this.abortSignal,
-      ),
-      this.backgroundJobManager.waitForAllJobs(
-        this.asyncWaitTimeoutInMs,
-        this.abortSignal,
-      ),
-    ]);
+    const jobStatus = await this.backgroundJobManager.waitForAllJobs(
+      this.asyncWaitTimeoutInMs,
+      this.abortSignal,
+    );
 
     // Handle timeout or abort - return undefined to finish without feeding back to LLM
-    if (subtaskStatus === "timeout" || jobStatus === "timeout") {
-      const remainingSubtasks = this.asyncSubTaskManager.getPendingTaskIds();
+    if (jobStatus === "timeout") {
       const remainingJobs = this.backgroundJobManager.getPendingJobIds();
       spinner.fail(
-        `Async wait timeout reached. Remaining: ${remainingSubtasks.length} subtask(s), ${remainingJobs.length} job(s)`,
+        `Async wait timeout reached. Remaining: ${remainingJobs.length} job(s)`,
       );
       return undefined;
     }
 
-    if (subtaskStatus === "aborted" || jobStatus === "aborted") {
+    if (jobStatus === "aborted") {
       spinner.fail("Async work wait was aborted.");
       return undefined;
     }
 
-    spinner.succeed("All async work completed.");
+    spinner.succeed("All background jobs completed.");
 
-    // Collect results from completed async work
+    // Collect results from completed background jobs
     const results: string[] = [];
-
-    for (const taskId of pendingSubtaskIds) {
-      const taskOutput = this.asyncSubTaskManager.readTaskOutput(taskId);
-      if (taskOutput) {
-        const parts = [
-          `Async Subtask (ID: ${taskId}, status: ${taskOutput.status}):`,
-        ];
-        if (taskOutput.error) parts.push(`Error: ${taskOutput.error}`);
-        if (taskOutput.output) parts.push(`Output:\n${taskOutput.output}`);
-        results.push(parts.join("\n"));
-      }
-    }
 
     for (const jobId of pendingJobIds) {
       const jobOutput = this.backgroundJobManager.readOutput(jobId);
@@ -416,17 +392,13 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
-      // Check for pending async subtasks and background jobs
-      const hasPendingSubtasks = this.asyncSubTaskManager.hasPendingTasks();
+      // Check for pending background jobs
       const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
-      if (
-        this.asyncWaitTimeoutInMs > 0 &&
-        (hasPendingSubtasks || hasPendingJobs)
-      ) {
+      if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
         const asyncResults = await this.waitForAsyncWork();
         if (asyncResults) {
-          // If there are async results - feed them back to LLM instead of completing
+          // If there are background job results - feed them back to LLM instead of completing
           const userMessage = createAsyncResultsMessage(asyncResults);
           this.chat.appendOrReplaceMessage(userMessage);
           return "next";
@@ -572,64 +544,137 @@ export class TaskRunner {
 
   private async processToolCalls(message: Message) {
     logger.trace("Processing tool calls in the last message.");
-    const executeCommandWhitelist = getToolArgs(
-      this.customAgent?.tools,
-      "executeCommand",
+    const toolPolicies = compileToolPolicies(this.customAgent?.tools);
+
+    const toolCalls = message.parts
+      .filter(isStaticToolUIPart)
+      .filter((tc) => tc.state === "input-available");
+
+    if (toolCalls.length === 0) {
+      logger.trace("No tool calls to process.");
+      return "next" as const;
+    }
+
+    const queue = new ToolCallQueue();
+
+    for (const toolCall of toolCalls) {
+      queue.enqueue({
+        toolCallId: toolCall.toolCallId,
+        toolName: getStaticToolName(toolCall),
+        input: toolCall.input,
+        run: async () => this.runToolCall(toolCall, toolPolicies),
+        cancel: async (reason) => {
+          const toolName = getStaticToolName(toolCall);
+          logger.debug(
+            `Tool call ${toolName} (${toolCall.toolCallId}) cancelled: ${reason}`,
+          );
+          await this.chatKit.chat.addToolOutput({
+            // @ts-expect-error
+            tool: toolName,
+            toolCallId: toolCall.toolCallId,
+            output: {
+              // @ts-expect-error
+              error:
+                "Tool call was cancelled because a previous tool call failed.",
+            },
+          });
+        },
+      });
+    }
+
+    await queue.start();
+
+    logger.trace("All tool calls processed in the last message.");
+    return "next" as const;
+  }
+
+  private async runToolCall(
+    toolCall: ToolUIPart<UITools>,
+    toolPolicies: CompiledToolPolicies | undefined,
+  ): Promise<BatchedToolCallResult> {
+    const toolName = getStaticToolName(toolCall);
+    logger.trace(
+      `Found tool call: ${toolName} with args: ${JSON.stringify(toolCall.input)}`,
     );
-    for (const toolCall of message.parts.filter(isStaticToolUIPart)) {
-      if (toolCall.state !== "input-available") continue;
-      const toolName = getStaticToolName(toolCall);
-      logger.trace(
-        `Found tool call: ${toolName} with args: ${JSON.stringify(
-          toolCall.input,
-        )}`,
+
+    try {
+      validateToolPolicy(toolName, toolCall.input, toolPolicies, {
+        cwd: this.cwd,
+      });
+    } catch (error) {
+      return {
+        kind: "error",
+        error: toErrorMessage(error),
+      };
+    }
+
+    const resolvedInput = resolveToolCallArgs(
+      toolCall.input,
+      this.store.storeId,
+    );
+
+    let envs: Record<string, string> | undefined;
+    if (this.customAgent?.name === "browser") {
+      envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
+        this.taskId,
       );
+    }
 
-      const resolvedInput = resolveToolCallArgs(
-        toolCall.input,
-        this.store.storeId,
-      );
+    const toolResult = await this.executeToolCallItem(
+      { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+      envs,
+    );
 
-      let envs: Record<string, string> | undefined;
-      if (this.customAgent?.name === "browser") {
-        envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
-          this.taskId,
-        );
-      }
+    const persistedToolResult = await maybePersistToolResult(
+      toolName,
+      toolCall.toolCallId,
+      this.taskId,
+      toolResult,
+    );
 
-      const toolResult = await processContentOutput(
+    await this.chatKit.chat.addToolOutput({
+      tool: toolName,
+      toolCallId: toolCall.toolCallId,
+      // @ts-expect-error
+      output: persistedToolResult,
+    });
+
+    logger.trace(`Tool call result: ${JSON.stringify(persistedToolResult)}`);
+
+    const toolError = getToolExecutionError(persistedToolResult);
+    if (toolError) {
+      return {
+        kind: "error",
+        error: toolError,
+      };
+    }
+
+    return {
+      kind: "success",
+    };
+  }
+
+  private async executeToolCallItem(
+    toolCall: ToolUIPart<UITools>,
+    envs: Record<string, string> | undefined,
+  ): Promise<unknown> {
+    try {
+      return await processContentOutput(
         this.blobStore,
         await executeToolCall(
-          { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+          toolCall,
           this.toolCallOptions,
           this.cwd,
           undefined,
           this.llm.contentType,
           envs,
-          executeCommandWhitelist,
         ),
       );
-
-      const persistedToolResult = await maybePersistToolResult(
-        toolName,
-        toolCall.toolCallId,
-        this.taskId,
-        toolResult,
-      );
-
-      await this.chatKit.chat.addToolOutput({
-        // @ts-expect-error
-        tool: toolName,
-        toolCallId: toolCall.toolCallId,
-        // @ts-expect-error
-        output: persistedToolResult,
-      });
-
-      logger.trace(`Tool call result: ${JSON.stringify(toolResult)}`);
+    } catch (error) {
+      return {
+        error: `Failed to execute tool: ${toErrorMessage(error)}`,
+      };
     }
-    logger.trace("All tool calls processed in the last message.");
-
-    return "next" as const;
   }
 
   // Helper method to run the command
@@ -695,8 +740,8 @@ function createUserMessage(prompt: string): Message {
 }
 
 function createAsyncResultsMessage(asyncResults: string): Message {
-  const instruction = `The following async subtasks and/or background jobs have completed while you were working. Review their outputs and take appropriate action based on the results:
-- If the async work succeeded and no further action is needed, call attemptCompletion to finalize.
+  const instruction = `The following background jobs have completed while you were working. Review their outputs and take appropriate action based on the results:
+- If the background jobs succeeded and no further action is needed, call attemptCompletion to finalize.
 - If there are errors or issues that need to be addressed, take the necessary steps to resolve them.
 - If the results require updates to your previous work, make those adjustments.
 
@@ -707,7 +752,7 @@ ${asyncResults}`;
 function isResultMessage(message: Message): boolean {
   return (
     message.role === "assistant" &&
-    (message.parts?.some(isUserInputToolPart) ?? false)
+    (message.parts?.some(isCompletionToolPart) ?? false)
   );
 }
 
@@ -720,4 +765,17 @@ function toError(e: unknown): Error {
     return new Error(e);
   }
   return new Error(JSON.stringify(e));
+}
+
+function getToolExecutionError(result: unknown): string | undefined {
+  if (typeof result !== "object" || result === null || !("error" in result)) {
+    return undefined;
+  }
+
+  const { error } = result;
+  if (error == null) {
+    return undefined;
+  }
+
+  return toErrorMessage(error);
 }

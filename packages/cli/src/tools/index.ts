@@ -48,7 +48,6 @@ export async function executeToolCall(
   abortSignal?: AbortSignal,
   contentType?: string[],
   envs?: Record<string, string>,
-  executeCommandWhitelist?: string[],
 ) {
   const toolName = getStaticToolName(tool);
 
@@ -63,7 +62,6 @@ export async function executeToolCall(
         cwd,
         contentType,
         envs,
-        executeCommandWhitelist,
       });
     } catch (e) {
       if (e instanceof ExecuteCommandError) {

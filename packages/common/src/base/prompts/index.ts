@@ -1,5 +1,17 @@
 import { BuiltInAgentPath } from "../../vscode-webui-bridge/types/custom-agent";
 import { renderActiveSelection } from "./active-selection";
+import {
+  buildAutoMemoryDreamDirective,
+  buildAutoMemoryDynamicPrompt,
+  buildAutoMemoryExtractionDirective,
+  buildAutoMemoryPrompt,
+  buildAutoMemoryStaticPrompt,
+  formatAutoMemoryManifest,
+  injectAutoMemory,
+  isAutoMemorySystemReminder,
+  serializeMemoryMessage,
+  truncateAutoMemoryIndex,
+} from "./auto-memory";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
@@ -8,15 +20,21 @@ import { generateTitle } from "./generate-title";
 import { renderReviewComments } from "./review-comments";
 import { createSkillPrompt, createUseSkillResult } from "./skill";
 import { createSystemPrompt } from "./system";
+import {
+  buildMemoryExtractionDirective,
+  taskMemoryTemplate,
+} from "./task-memory";
 import { renderUserEdits } from "./user-edits";
 
 export const prompts = {
   system: createSystemPrompt,
   injectEnvironment,
+  injectAutoMemory,
   environment: createEnvironmentPrompt,
   createSystemReminder,
   isSystemReminder,
   isEnvironmentSystemReminder,
+  isAutoMemorySystemReminder,
   isCompact,
   compact: createCompactPrompt,
   inlineCompact,
@@ -30,6 +48,20 @@ export const prompts = {
   renderBashOutputs,
   fixMermaidError,
   createUseSkillResult,
+  taskMemory: {
+    template: taskMemoryTemplate,
+    buildExtractionDirective: buildMemoryExtractionDirective,
+  },
+  autoMemory: {
+    buildPrompt: buildAutoMemoryPrompt,
+    buildStaticPrompt: buildAutoMemoryStaticPrompt,
+    buildDynamicPrompt: buildAutoMemoryDynamicPrompt,
+    buildExtractionDirective: buildAutoMemoryExtractionDirective,
+    buildDreamDirective: buildAutoMemoryDreamDirective,
+    formatManifest: formatAutoMemoryManifest,
+    truncateIndex: truncateAutoMemoryIndex,
+    serializeMessage: serializeMemoryMessage,
+  },
 };
 
 function createSystemReminder(content: string) {
@@ -58,11 +90,20 @@ function isCompact(content: string) {
   return content.startsWith("<compact>") && content.endsWith("</compact>");
 }
 
-function inlineCompact(summary: string, messageCount: number) {
+function inlineCompact(
+  summary: string,
+  messageCount: number,
+  appendix?: string,
+  options?: { verbatimTail?: boolean },
+) {
+  const appendixText = appendix ? `\n\n${appendix}` : "";
+  const epilogue = options?.verbatimTail
+    ? "This section summarizes the older portion of the conversation. The most recent turns that follow this block have NOT been condensed — they are the original messages preserved verbatim. Use them as the source of truth for recent activity."
+    : "This section contains a summary of the conversation up to this point to save context. The full conversation history has been preserved but condensed for efficiency.";
   return `<compact>
 Previous conversation summary (${messageCount} messages):
 ${summary}
-This section contains a summary of the conversation up to this point to save context. The full conversation history has been preserved but condensed for efficiency.
+${epilogue}${appendixText}
 </compact>`;
 }
 

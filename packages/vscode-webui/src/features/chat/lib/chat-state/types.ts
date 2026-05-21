@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, createContext } from "react";
+import type { BatchExecuteManager } from "../batch-execute-manager";
 import type { ToolCallLifeCycle } from "../tool-call-life-cycle";
 
 export interface ChatState {
@@ -13,6 +14,7 @@ export interface ChatState {
   completeToolCalls: ToolCallLifeCycle[];
   retryCount: RetryCount | undefined;
   setRetryCount: Dispatch<SetStateAction<RetryCount | undefined>>;
+  batchExecuteManager: BatchExecuteManager;
 }
 
 export type RetryCount = { error: Error; count: number };

@@ -1,6 +1,11 @@
 import { getLogger } from "@getpochi/common";
 import type {
+  AutoMemoryTaskState,
+  BackgroundTaskState,
   ContextWindowUsage,
+  TaskMemoryState,
+} from "@getpochi/common";
+import type {
   McpConfigOverride,
   TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -13,6 +18,9 @@ type TaskStateData = {
   archived?: boolean;
   changedFiles?: TaskChangedFile[];
   contextWindowUsage?: ContextWindowUsage;
+  taskMemoryState?: TaskMemoryState;
+  autoMemoryState?: AutoMemoryTaskState;
+  backgroundTaskState?: BackgroundTaskState;
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -173,5 +181,72 @@ export class TaskDataStore {
    */
   getContextWindowUsageSignal(taskId: string) {
     return computed(() => this.state.value[taskId]?.contextWindowUsage);
+  }
+
+  getTaskMemoryState(taskId: string): TaskMemoryState | undefined {
+    return this.getTaskState(taskId)?.taskMemoryState;
+  }
+
+  async setTaskMemoryState(
+    taskId: string,
+    taskMemoryState: TaskMemoryState,
+  ): Promise<void> {
+    const existing = this.getTaskState(taskId) || {};
+    await this.saveTaskState(taskId, { ...existing, taskMemoryState });
+  }
+
+  getTaskMemoryStateSignal(taskId: string) {
+    return computed(() => this.state.value[taskId]?.taskMemoryState);
+  }
+
+  getAutoMemoryState(taskId: string): AutoMemoryTaskState | undefined {
+    return this.getTaskState(taskId)?.autoMemoryState;
+  }
+
+  async setAutoMemoryState(
+    taskId: string,
+    autoMemoryState: AutoMemoryTaskState,
+  ): Promise<void> {
+    const existing = this.getTaskState(taskId) || {};
+    await this.saveTaskState(taskId, { ...existing, autoMemoryState });
+  }
+
+  getAutoMemoryStateSignal(taskId: string) {
+    return computed(() => this.state.value[taskId]?.autoMemoryState);
+  }
+
+  getBackgroundTaskState(taskId: string): BackgroundTaskState | undefined {
+    const backgroundTaskState = this.getTaskState(taskId)?.backgroundTaskState;
+    logger.debug(
+      {
+        taskId,
+        hasBackgroundTaskState: backgroundTaskState !== undefined,
+        parentTaskId: backgroundTaskState?.parentTaskId,
+        tools: backgroundTaskState?.tools?.length,
+      },
+      "getBackgroundTaskState",
+    );
+    return backgroundTaskState;
+  }
+
+  async setBackgroundTaskState(
+    taskId: string,
+    backgroundTaskState: BackgroundTaskState,
+  ): Promise<void> {
+    const existing = this.getTaskState(taskId) || {};
+    logger.debug(
+      {
+        taskId,
+        parentTaskId: backgroundTaskState.parentTaskId,
+        tools: backgroundTaskState.tools?.length,
+      },
+      "setBackgroundTaskState",
+    );
+    await this.saveTaskState(taskId, { ...existing, backgroundTaskState });
+  }
+
+  getBackgroundTaskStateSignal(taskId: string) {
+    logger.debug({ taskId }, "getBackgroundTaskStateSignal");
+    return computed(() => this.state.value[taskId]?.backgroundTaskState);
   }
 }

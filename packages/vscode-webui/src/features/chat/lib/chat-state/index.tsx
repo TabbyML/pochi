@@ -18,6 +18,10 @@ export function useChatAbortController() {
   return useChatState().abortController;
 }
 
+export function useBatchExecuteManager() {
+  return useChatState().batchExecuteManager;
+}
+
 export function useToolCallLifeCycle() {
   const { getToolCallLifeCycle, executingToolCalls, completeToolCalls } =
     useChatState();

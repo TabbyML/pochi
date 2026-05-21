@@ -22,6 +22,82 @@ describe("FileStateCacheRegistry", () => {
     assert.strictEqual(nextCache.size, 0);
   });
 
+  it("copies a source task cache without sharing cache state", () => {
+    const registry = new FileStateCacheRegistry();
+
+    const sourceCache = registry.get("parent-task");
+    sourceCache.set("/tmp/file.txt", {
+      content: "hello",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+
+    registry.copyIfAbsent("parent-task", "fork-task");
+
+    const forkCache = registry.get("fork-task");
+    assert.notStrictEqual(forkCache, sourceCache);
+    assert.deepStrictEqual(forkCache.get("/tmp/file.txt"), {
+      content: "hello",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+
+    forkCache.set("/tmp/file.txt", {
+      content: "fork",
+      timestamp: 2,
+      startLine: undefined,
+      endLine: undefined,
+      fromWrite: true,
+    });
+
+    assert.strictEqual(sourceCache.get("/tmp/file.txt")?.content, "hello");
+  });
+
+  it("does not overwrite an existing target cache when copying", () => {
+    const registry = new FileStateCacheRegistry();
+
+    registry.get("parent-task").set("/tmp/file.txt", {
+      content: "parent",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+    registry.get("fork-task").set("/tmp/file.txt", {
+      content: "existing",
+      timestamp: 2,
+      startLine: 1,
+      endLine: 1,
+    });
+
+    registry.copyIfAbsent("parent-task", "fork-task");
+
+    assert.strictEqual(
+      registry.get("fork-task").get("/tmp/file.txt")?.content,
+      "existing",
+    );
+  });
+
+  it("copies into an empty target cache", () => {
+    const registry = new FileStateCacheRegistry();
+
+    registry.get("parent-task").set("/tmp/file.txt", {
+      content: "parent",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+    registry.get("fork-task");
+
+    registry.copyIfAbsent("parent-task", "fork-task");
+
+    assert.strictEqual(
+      registry.get("fork-task").get("/tmp/file.txt")?.content,
+      "parent",
+    );
+  });
+
   it("disposes all retained caches", () => {
     const registry = new FileStateCacheRegistry();
 

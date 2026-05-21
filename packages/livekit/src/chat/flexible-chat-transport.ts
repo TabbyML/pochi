@@ -1,5 +1,10 @@
 import { getErrorMessage } from "@ai-sdk/provider";
-import type { Environment, PochiProviderOptions } from "@getpochi/common";
+import type {
+  AutoMemoryContext,
+  Environment,
+  PochiProviderOptions,
+  PochiRequestUseCase,
+} from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
 
@@ -22,7 +27,7 @@ import {
   tool,
   wrapLanguageModel,
 } from "ai";
-import type z from "zod/v4";
+import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
 import type { LiveKitStore, Message, Metadata, RequestData } from "../types";
@@ -47,6 +52,7 @@ export type OnStartCallback = (options: {
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
   getEnvironment?: () => Promise<Environment>;
+  getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
   getMcpInfo?: () => {
     toolset: Record<string, McpTool>;
     instructions: string;
@@ -59,6 +65,7 @@ export type ChatTransportOptions = {
   onStart?: OnStartCallback;
   getters: PrepareRequestGetters;
   isSubTask?: boolean;
+  requestUseCase?: PochiRequestUseCase;
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
@@ -70,6 +77,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
   private readonly isSubTask?: boolean;
+  private readonly requestUseCase: PochiRequestUseCase;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
@@ -81,6 +89,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     this.getters = options.getters;
     this.isSubTask = options.isSubTask;
+    this.requestUseCase = options.requestUseCase ?? "agent";
     this.store = options.store;
     this.blobStore = options.blobStore;
     this.customAgent = options.customAgent;
@@ -103,7 +112,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   }) => {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
+    const autoMemory = await this.getters.getAutoMemory?.();
     messages = prompts.injectEnvironment(messages, environment) as Message[];
+    messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
     const skills = this.getters.getSkills?.();
@@ -148,6 +159,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
 
+    // Tool ordering should be deterministic
     const tools = selectAgentTools({
       agent: this.customAgent,
       isSubTask: !!this.isSubTask,
@@ -165,6 +177,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       environment?.info?.customRules,
       this.customAgent,
       mcpInfo?.instructions,
+      autoMemory,
     );
     const systemPromptChars = systemPrompt.length;
     const toolsChars = JSON.stringify(tools).length;
@@ -179,12 +192,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         { tools },
       ),
     )) as ModelMessage[];
+
+    // Anthropic cache breakpoints are applied server-side based on `useCase`.
     const stream = streamText({
       providerOptions: {
         pochi: {
           taskId: chatId,
           client: globalThis.POCHI_CLIENT,
-          useCase: "agent",
+          useCase: this.requestUseCase,
         } satisfies PochiProviderOptions,
       },
       system: systemPrompt,

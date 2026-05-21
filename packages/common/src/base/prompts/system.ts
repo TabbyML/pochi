@@ -1,5 +1,7 @@
 import type { CustomAgent } from "@getpochi/tools";
 import type { Environment } from "../environment";
+import type { AutoMemoryContext } from "./auto-memory";
+import { buildAutoMemoryStaticPrompt } from "./auto-memory";
 
 type CustomRules = Environment["info"]["customRules"];
 
@@ -7,6 +9,7 @@ export function createSystemPrompt(
   customRules: CustomRules,
   customAgent?: CustomAgent,
   mcpInstructions?: string,
+  autoMemory?: AutoMemoryContext,
 ) {
   const agentSystemPrompt =
     customAgent?.systemPrompt ||
@@ -15,14 +18,25 @@ export function createSystemPrompt(
 IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are for helping the user with programming. You may use URLs provided by the user in their messages or local files.
 
 `.trim();
+  // Static guidance only — MEMORY.md index is injected separately to keep
+  // the system prefix cache stable across sessions.
+  const autoMemoryPrompt = buildAutoMemoryStaticPrompt(autoMemory);
+  const customRulesPrompt =
+    customAgent?.omitAgentsMd === true ? "" : getCustomRulesPrompt(customRules);
+  const mcpInstructionsPrompt = getMcpInstructionsPrompt(mcpInstructions);
 
-  return `${agentSystemPrompt.trim()}
+  const sections = [
+    getTodoListPrompt(),
+    getRulesPrompt(),
+    autoMemoryPrompt,
+    customRulesPrompt,
+    mcpInstructionsPrompt,
+  ]
+    .filter((section) => section.trim().length > 0)
+    .join("\n")
+    .trim();
 
-${getTodoListPrompt()}
-${getRulesPrompt()}
-${customAgent?.omitAgentsMd === true ? "" : getCustomRulesPrompt(customRules)}
-${getMcpInstructionsPrompt(mcpInstructions)}
-`.trim();
+  return `${agentSystemPrompt.trim()}\n\n${sections}`.trim();
 }
 
 function getRulesPrompt() {

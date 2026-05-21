@@ -4,7 +4,7 @@ import { makeWorker } from "@livestore/adapter-web/worker";
 import { SyncBackend } from "@livestore/common";
 import { makeWsSync } from "@livestore/sync-cf/client";
 import { Effect, Stream, SubscriptionRef } from "@livestore/utils/effect";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 const Payload = z.object({
   jwt: z.string(),

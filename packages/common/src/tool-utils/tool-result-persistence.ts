@@ -61,7 +61,7 @@ export async function maybePersistToolResult(
 
     // Lazily write the full output once; both cases share the same file.
     const dir = getToolResultsDir(taskId);
-    const filePath = path.join(dir, `${toolCallId}.json`);
+    const filePath = path.join(dir, `${toolName}-${toolCallId}.json`);
     let fileWritten = false;
     const ensureFile = async () => {
       if (!fileWritten) {

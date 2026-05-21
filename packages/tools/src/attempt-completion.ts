@@ -1,4 +1,4 @@
-import { z } from "zod/v4";
+import { z } from "zod";
 import { NoOtherToolsReminderPrompt } from "./constants";
 import { defineClientTool } from "./types";
 

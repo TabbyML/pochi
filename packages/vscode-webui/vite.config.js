@@ -141,6 +141,9 @@ export default defineConfig({
     environment: "jsdom",
   },
   server: {
+    // Blob-worker imports use `localhost.` to avoid VS Code webview localhost
+    // routing while still resolving to the local Vite dev server.
+    allowedHosts: ["localhost."],
     cors: true,
     hmr: {
       host: "localhost",

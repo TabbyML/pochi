@@ -1,4 +1,4 @@
-import type { UserEdits } from "../../vscode-webui-bridge/types/message";
+import type { UserEdits } from "../message-context";
 
 export function renderUserEdits(userEdits: UserEdits): string {
   if (!userEdits || userEdits.length === 0) {

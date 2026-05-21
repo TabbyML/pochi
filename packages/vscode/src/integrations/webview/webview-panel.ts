@@ -14,7 +14,7 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import { container } from "tsyringe";
 import * as vscode from "vscode";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { PochiConfiguration } from "../configuration";
 import { WorktreeManager } from "../git/worktree";
 import { getViewColumnForTask } from "../layout";

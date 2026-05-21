@@ -309,13 +309,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       )}
-      {files.length > 0 && (
-        <AttachmentPreviewList
-          files={files}
-          onRemove={removeFile}
-          isUploading={isUploadingAttachments}
-        />
-      )}
       <ChatInputForm
         input={input}
         setInput={setInput}
@@ -340,7 +333,17 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             todos.length > 0 ||
             useTaskChangedFilesHelpers.visibleChangedFiles.length > 0,
         })}
-      />
+      >
+        {files.length > 0 && (
+          <div className="px-3">
+            <AttachmentPreviewList
+              files={files}
+              onRemove={removeFile}
+              isUploading={isUploadingAttachments}
+            />
+          </div>
+        )}
+      </ChatInputForm>
 
       {/* Hidden file input for image uploads */}
       <input

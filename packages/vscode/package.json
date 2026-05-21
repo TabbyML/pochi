@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.43.0-dev",
+  "version": "0.49.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -831,6 +831,18 @@
                   }
                 }
               },
+              "memory": {
+                "type": "object",
+                "default": {},
+                "additionalProperties": false,
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable local long-term memory for Pochi."
+                  }
+                }
+              },
               "logToFile": {
                 "type": "object",
                 "default": {},
@@ -873,10 +885,10 @@
     "build": "npm-run-all --parallel build:vscode copy:webui",
     "vscode:prepublish": "bun turbo build",
     "vscode:package": "vsce package --no-dependencies --allow-missing-repository",
-    "vscode:publish": "vsce publish --no-dependencies --allow-missing-repository",
-    "vscode:publish-prerelease": "vsce publish --no-dependencies --allow-missing-repository --pre-release",
-    "ovsx:publish": "ovsx publish --no-dependencies --pat $OVSX_PAT",
-    "ovsx:publish-prerelease": "ovsx publish --no-dependencies --pre-release --pat $OVSX_PAT",
+    "vscode:publish": "vsce publish --no-dependencies --allow-missing-repository --skip-duplicate",
+    "vscode:publish-prerelease": "vsce publish --no-dependencies --allow-missing-repository --pre-release --skip-duplicate",
+    "ovsx:publish": "ovsx publish --no-dependencies --skip-duplicate --pat $OVSX_PAT",
+    "ovsx:publish-prerelease": "ovsx publish --no-dependencies --pre-release --skip-duplicate --pat $OVSX_PAT",
     "publish": "bun run vscode:publish && bun run ovsx:publish",
     "publish-prerelease": "bun run vscode:publish-prerelease && bun run ovsx:publish-prerelease",
     "watch:webui": "cd ../vscode-webui && bun run start",

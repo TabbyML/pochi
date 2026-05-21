@@ -66,7 +66,7 @@ describe("maybePersistToolResult", () => {
       expect(result.isTruncated).toBe(false);
 
       // File written with full JSON-stringified output
-      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `${TOOL_CALL_ID}.json`);
+      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `executeCommand-${TOOL_CALL_ID}.json`);
       const fileContent = await fs.readFile(filePath, "utf-8");
       expect(fileContent).toBe(JSON.stringify(output));
     });
@@ -107,7 +107,7 @@ describe("maybePersistToolResult", () => {
       expect(result.content[0].text).toContain("[Output too large:");
 
       // File contains full original output
-      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `${TOOL_CALL_ID}.json`);
+      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `someMcpTool-${TOOL_CALL_ID}.json`);
       const fileContent = await fs.readFile(filePath, "utf-8");
       expect(fileContent).toBe(JSON.stringify(output));
     });

@@ -2,6 +2,8 @@ import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { AutoMemoryManager } from "@/lib/auto-memory";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
 import {
   collectCustomRules,
@@ -52,7 +54,15 @@ import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
-import type { Environment, GitStatus } from "@getpochi/common";
+import {
+  type AutoMemoryTaskState,
+  type BackgroundTaskState,
+  type ContextWindowUsage,
+  type Environment,
+  type GitStatus,
+  type TaskMemoryState,
+  toErrorMessage,
+} from "@getpochi/common";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import type { UserInfo } from "@getpochi/common/configuration";
@@ -71,7 +81,6 @@ import {
   type BuiltinSubAgentInfo,
   type CaptureEvent,
   type ChangedFileContent,
-  type ContextWindowUsage,
   type CreateWorktreeOptions,
   type CustomAgentFile,
   type DiffCheckpointOptions,
@@ -97,8 +106,8 @@ import {
   getTaskDisplayTitle,
   resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { ToolFunctionType } from "@getpochi/tools";
-import { createClientTools } from "@getpochi/tools";
+import type { CompiledToolPolicies, ToolFunctionType } from "@getpochi/tools";
+import { createClientTools, validateToolPolicy } from "@getpochi/tools";
 import { computed } from "@preact/signals-core";
 import {
   ThreadAbortSignal,
@@ -191,10 +200,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
     private readonly layoutManager: LayoutManager,
+    private readonly autoMemoryManager: AutoMemoryManager,
   ) {}
 
   private get cwd() {
     return this.workspaceScope.cwd;
+  }
+
+  private isAutoMemoryEnabled() {
+    return (
+      this.pochiConfiguration.advancedSettings.value.memory?.enabled === true
+    );
   }
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
@@ -349,6 +365,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     this.fileStateCacheRegistry.clear(taskId);
   };
 
+  readRecentFilesForCompact = async (taskId: string) => {
+    return this.fileStateCacheRegistry.getRecentFiles(taskId);
+  };
+
   deleteFileStateCache(taskId: string): void {
     this.fileStateCacheRegistry.delete(taskId);
   }
@@ -456,9 +476,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
+      fileStateCacheSourceTaskId?: string;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -488,15 +509,31 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.builtinSubAgentInfo,
     );
     const toolCallStart = Date.now();
+    try {
+      validateToolPolicy(toolName, args, options.toolPolicies, {
+        cwd: this.cwd,
+      });
+    } catch (error) {
+      return {
+        error: toErrorMessage(error),
+      };
+    }
+
     const resolvedArgs = resolveToolCallArgs(
       args,
       options.storeId,
       options.builtinSubAgentInfo,
     );
     const taskId = options.taskId;
-    const fileStateCache = this.fileStateCacheRegistry.get(options.taskId);
+    if (options.fileStateCacheSourceTaskId) {
+      this.fileStateCacheRegistry.copyIfAbsent(
+        options.fileStateCacheSourceTaskId,
+        taskId,
+      );
+    }
+    const fileStateCache = this.fileStateCacheRegistry.get(taskId);
     logger.debug(
-      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
+      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCacheSourceTaskId=${options.fileStateCacheSourceTaskId ?? "none"} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
     );
     const rawResult = await safeCall(
       tool(resolvedArgs, {
@@ -507,7 +544,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         contentType: options.contentType,
         envs,
         taskId,
-        executeCommandWhitelist: options.executeCommandWhitelist,
         fileStateCache,
       }),
     );
@@ -1216,6 +1252,164 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       ),
       setContextWindowUsage: (contextWindowUsage: ContextWindowUsage) =>
         this.taskStateStore.setContextWindowUsage(taskId, contextWindowUsage),
+    };
+  };
+
+  readTaskMemoryState = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<TaskMemoryState | undefined>;
+    setTaskMemoryState: (state: TaskMemoryState) => Promise<void>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getTaskMemoryStateSignal(taskId),
+      ),
+      setTaskMemoryState: (state: TaskMemoryState) =>
+        this.taskStateStore.setTaskMemoryState(taskId, state),
+    };
+  };
+
+  readAutoMemory = async (options?: {
+    cwd?: string;
+    ensure?: boolean;
+  }) => {
+    if (!this.isAutoMemoryEnabled()) return undefined;
+    return this.autoMemoryManager.readContext(
+      options?.cwd ?? this.cwd ?? undefined,
+      {
+        ensure: options?.ensure,
+      },
+    );
+  };
+
+  readAutoMemoryState = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
+    setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getAutoMemoryStateSignal(taskId),
+      ),
+      setAutoMemoryState: (state: AutoMemoryTaskState) =>
+        this.taskStateStore.setAutoMemoryState(taskId, state),
+    };
+  };
+
+  beginAutoMemoryDream = async (options: { cwd?: string }) => {
+    if (!this.isAutoMemoryEnabled()) return undefined;
+    const cwd = options.cwd ?? this.cwd ?? undefined;
+
+    // Walk the host-owned task list once, filter to top-level tasks under
+    // the same repoKey as the current cwd, and keep only sessions touched
+    // since the previous dream. The webview no longer needs cross-store
+    // hydration to gather candidates.
+    const candidates = await this.collectDreamCandidates(cwd);
+    const run = await this.autoMemoryManager.beginDreamRun({
+      cwd,
+      sessionUpdatedAts: candidates.map((task) => task.updatedAt ?? 0),
+    });
+    if (!run) return undefined;
+
+    const filtered = candidates
+      .filter((task) => (task.updatedAt ?? 0) > run.previousLastDreamAt)
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .map((task) => ({
+        taskId: task.id,
+        cwd: task.cwd,
+        updatedAt: task.updatedAt ?? 0,
+        transcriptFilename: `${task.id}.md`,
+      }));
+
+    return { ...run, candidates: filtered };
+  };
+
+  finishAutoMemoryDream = async (options: {
+    memoryDir: string;
+    token: string;
+    previousLastDreamAt: number;
+    success: boolean;
+  }) => {
+    return this.autoMemoryManager.finishDreamRun(options);
+  };
+
+  writeTaskTranscript = async (options: {
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    updatedAt?: number;
+    transcript: string;
+  }) => {
+    if (!this.isAutoMemoryEnabled()) return undefined;
+    return this.autoMemoryManager.writeTaskTranscript({
+      taskId: options.taskId,
+      cwd: options.cwd ?? this.cwd ?? undefined,
+      title: options.title,
+      updatedAt: options.updatedAt,
+      transcript: options.transcript,
+    });
+  };
+
+  /**
+   * Walk TaskHistoryStore and pick top-level tasks whose `cwd` resolves to
+   * the same repoKey as the dream's `cwd`. Subtasks are skipped — they
+   * don't represent independent user sessions.
+   */
+  private collectDreamCandidates = async (
+    cwd: string | undefined,
+  ): Promise<
+    Array<{ id: string; cwd?: string | null; updatedAt?: number }>
+  > => {
+    const baseContext = await this.autoMemoryManager.readContext(cwd, {
+      ensure: false,
+    });
+    if (!baseContext) return [];
+
+    const tasks = Object.values(this.taskHistoryStore.tasks.value);
+    const result: Array<{
+      id: string;
+      cwd?: string | null;
+      updatedAt?: number;
+    }> = [];
+
+    for (const task of tasks) {
+      if (!task.id || task.parentId) continue;
+      const taskCwd = task.cwd ?? cwd;
+      if (!taskCwd) continue;
+      const taskContext = await this.autoMemoryManager
+        .readContext(taskCwd, { ensure: false })
+        .catch(() => undefined);
+      if (taskContext?.repoKey !== baseContext.repoKey) continue;
+      result.push({ id: task.id, cwd: task.cwd, updatedAt: task.updatedAt });
+    }
+
+    return result;
+  };
+
+  readBackgroundTaskState = async (
+    taskId: string,
+  ): Promise<{
+    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
+    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
+  }> => {
+    logger.debug({ taskId }, "readBackgroundTaskState");
+    return {
+      value: ThreadSignal.serialize(
+        this.taskStateStore.getBackgroundTaskStateSignal(taskId),
+      ),
+      setBackgroundTaskState: (state: BackgroundTaskState) => {
+        logger.debug(
+          {
+            taskId,
+            parentTaskId: state.parentTaskId,
+            tools: state.tools?.length,
+          },
+          "readBackgroundTaskState.setBackgroundTaskState",
+        );
+        return this.taskStateStore.setBackgroundTaskState(taskId, state);
+      },
     };
   };
 

@@ -5,13 +5,24 @@ import { resolvePath } from "./fs";
 
 const logger = getLogger("FileStateCache");
 
-export const FILE_UNCHANGED_STUB =
+export const FileUnchangedStub =
   "File unchanged since last read. The content from the earlier Read tool_result in this conversation is still current — refer to that instead of re-reading.";
 
 type FileCacheCallbackResult<T> = {
   result: T;
-  /** Content to store in cache. Pass null to skip caching (e.g. actual binary content). */
+  /** Model-visible content to store in cache. Pass null to skip caching (e.g. actual binary content). */
   fileCacheContent: string | null;
+  /** Whether the result sent to the model was truncated. */
+  fileCacheIsTruncated?: boolean;
+};
+
+export type RecentFileState = {
+  path: string;
+  content: string;
+  timestamp: number;
+  startLine: number | undefined;
+  endLine: number | undefined;
+  isTruncated?: boolean;
 };
 
 /** Default maximum number of entries in the cache */
@@ -120,6 +131,25 @@ export class FileStateCache {
     yield* this.entries.values();
   }
 
+  getRecentFiles(maxFiles = 5): RecentFileState[] {
+    const entries: Array<[string, IFileState]> = [];
+    this.entries.forEach((state, path) => {
+      entries.push([path, state]);
+    });
+
+    return entries
+      .reverse()
+      .slice(0, maxFiles)
+      .map(([path, state]) => ({
+        path,
+        content: state.content,
+        timestamp: state.timestamp,
+        startLine: state.startLine,
+        endLine: state.endLine,
+        isTruncated: state.isTruncated,
+      }));
+  }
+
   *[Symbol.iterator](): IterableIterator<[string, IFileState]> {
     yield* this.entries;
   }
@@ -207,7 +237,7 @@ export async function checkStaleness(
  * @param content - The new file content after edit/write
  * @param getMtime - Platform-specific function to get current file mtime
  */
-export async function updateCacheAfterWrite(
+async function updateCacheAfterWrite(
   cache: IFileStateCache,
   resolvedPath: string,
   content: string,
@@ -335,7 +365,7 @@ export async function withReadFileCache<T>(opts: {
   // --- Read deduplication ---
   // If we've already read this exact file + range and it hasn't been
   // modified on disk, return a "deduplicated" sentinel so the caller
-  // can return a lightweight FILE_UNCHANGED_STUB instead of re-sending
+  // can return a lightweight FileUnchangedStub instead of re-sending
   // the full content (saves tokens).
   if (shouldCache) {
     const existingState = cache.get(resolvedPath);
@@ -359,7 +389,8 @@ export async function withReadFileCache<T>(opts: {
     }
   }
 
-  const { result, fileCacheContent } = await doRead(resolvedPath);
+  const { result, fileCacheContent, fileCacheIsTruncated } =
+    await doRead(resolvedPath);
 
   // --- Populate cache ---
   // Store what the model has "seen" so that future reads can dedup,
@@ -377,6 +408,7 @@ export async function withReadFileCache<T>(opts: {
         timestamp: mtimeMs,
         startLine,
         endLine,
+        isTruncated: fileCacheIsTruncated,
       });
     }
   }

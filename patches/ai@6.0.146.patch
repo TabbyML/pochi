@@ -24,4 +24,31 @@ index fdee58ea95b7ffb558ece5035c8646ea3ec8ba4a..92d800e5641fda23f60dfec76e40bde8
 +        abortController,
        };
        activeResponse.abortController.signal.addEventListener("abort", () => {
+        isAbort = true;
+diff --git a/dist/index.mjs b/dist/index.mjs
+index fdee58ea95b7ffb558ece5035c8646ea3ec8ba4a..92d800e5641fda23f60dfec76e40bde821e46d67 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -13170,6 +13170,13 @@ var AbstractChat = class {
+       }
+     }
+     this.setStatus({ status: "submitted", error: void 0 });
++    const abortController = new AbortController();
++    this.activeResponse = {
++      abortController,
++    }
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal,
++    })
+     const lastMessage = this.lastMessage;
+     let isAbort = false;
+     let isDisconnect = false;
+@@ -13180,7 +13187,7 @@ var AbstractChat = class {
+           lastMessage: this.state.snapshot(lastMessage),
+           messageId: this.generateId()
+         }),
+-        abortController: new AbortController()
++        abortController,
+       };
+       activeResponse.abortController.signal.addEventListener("abort", () => {
          isAbort = true;

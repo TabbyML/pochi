@@ -217,6 +217,11 @@ const PochiAdvanceSettings = z.object({
       developerMode: z.boolean().optional(),
     })
     .optional(),
+  memory: z
+    .object({
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   logToFile: z
     .object({
       level: z

@@ -1,4 +1,7 @@
-import { FileStateCache } from "@getpochi/common/tool-utils";
+import {
+  FileStateCache,
+  type RecentFileState,
+} from "@getpochi/common/tool-utils";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
@@ -16,8 +19,28 @@ export class FileStateCacheRegistry implements vscode.Disposable {
     return cache;
   }
 
+  copyIfAbsent(sourceTaskId: string, targetTaskId: string): void {
+    const existingTarget = this.caches.get(targetTaskId);
+    if (existingTarget && existingTarget.size > 0) {
+      return;
+    }
+
+    const source = this.caches.get(sourceTaskId);
+    const target = new FileStateCache();
+    if (source) {
+      for (const [key, value] of source) {
+        target.set(key, { ...value });
+      }
+    }
+    this.caches.set(targetTaskId, target);
+  }
+
   clear(taskId: string): void {
     this.caches.get(taskId)?.clear();
+  }
+
+  getRecentFiles(taskId: string): RecentFileState[] {
+    return this.caches.get(taskId)?.getRecentFiles() ?? [];
   }
 
   delete(taskId: string): void {

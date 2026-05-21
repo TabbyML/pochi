@@ -26,6 +26,7 @@ import type { VSCodeHostImpl } from "./vscode-host-impl";
 
 const logger = getLogger("WebviewBase");
 let liveStoreSharedWorkerDataUrl: string | undefined;
+let sqliteWasmDataUrl: string | undefined;
 
 function getLiveStoreSharedWorkerDataUrl(extensionUri: vscode.Uri): string {
   if (liveStoreSharedWorkerDataUrl) {
@@ -47,6 +48,26 @@ function getLiveStoreSharedWorkerDataUrl(extensionUri: vscode.Uri): string {
   )}`;
 
   return liveStoreSharedWorkerDataUrl;
+}
+
+function getSqliteWasmDataUrl(extensionUri: vscode.Uri): string {
+  if (sqliteWasmDataUrl) {
+    return sqliteWasmDataUrl;
+  }
+
+  const sqliteWasmPath = vscode.Uri.joinPath(
+    extensionUri,
+    "assets",
+    "webview-ui",
+    "dist",
+    "wa-sqlite.wasm",
+  );
+
+  sqliteWasmDataUrl = `data:application/wasm;base64,${readFileSync(
+    sqliteWasmPath.fsPath,
+  ).toString("base64")}`;
+
+  return sqliteWasmDataUrl;
 }
 
 /**
@@ -142,11 +163,20 @@ export abstract class WebviewBase implements vscode.Disposable {
         "dist",
         "wa-sqlite.wasm",
       ]);
+      const sqliteWasmWorkerDataUrl = getSqliteWasmDataUrl(
+        this.context.extensionUri,
+      );
       const webviewDistBaseUri = getUri(webview, this.context.extensionUri, [
         "assets",
         "webview-ui",
         "dist",
       ]).toString();
+      const workerAssetsPathScript = `self.__assetsPath = (path) => {
+        if (path === "wa-sqlite.wasm") {
+          return ${JSON.stringify(sqliteWasmWorkerDataUrl)};
+        }
+        return path;
+      };`;
 
       const assetLoaderScript = `<script nonce="${nonce}" type="module">
       window.__assetsPath = (path) => {
@@ -156,7 +186,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         return path;
       }
       window.__liveStoreSharedWorkerUrl = ${JSON.stringify(sharedWorkerDataUrl)};
-      window.__workerAssetsPathScript = 'self.__assetsPath = (path) => { if (path === "wa-sqlite.wasm") { return "${sqliteWasmUri}"; }};';
+      window.__workerAssetsPathScript = ${JSON.stringify(workerAssetsPathScript)};
       </script>`;
 
       const scriptUri = getUri(webview, this.context.extensionUri, [
@@ -224,8 +254,13 @@ export abstract class WebviewBase implements vscode.Disposable {
 
     const devWebUIPort = "4112";
     const devWebUIHttpBaseUrl = `http://localhost:${devWebUIPort}`;
+    // `localhost.` is the fully-qualified localhost name. We use it only for
+    // blob-worker imports so VS Code's webview service worker does not trap
+    // localhost requests that cannot be associated with a webview `id`.
+    const devWebUIHttpBaseUrlLocalhostDot = `http://localhost.:${devWebUIPort}`;
     const devWebUIHttpBaseUrlIp = `http://0.0.0.0:${devWebUIPort}`;
     const devWebUIWsBaseUrl = `ws://localhost:${devWebUIPort}`;
+    const devWebUIWsBaseUrlLocalhostDot = `ws://localhost.:${devWebUIPort}`;
     const devWebUIWsBaseUrlIp = `ws://0.0.0.0:${devWebUIPort}`;
 
     const scriptUri = vscode.Uri.parse(`${devWebUIHttpBaseUrl}/src/main.tsx`);
@@ -250,11 +285,11 @@ export abstract class WebviewBase implements vscode.Disposable {
       `default-src 'none';`,
       `img-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
       `media-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
-      `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
+      `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${webview.cspSource} data:`,
-      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
-      `worker-src ${webview.cspSource} ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} data: blob:`,
+      `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlLocalhostDot} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
+      `worker-src ${webview.cspSource} ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} data: blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
 

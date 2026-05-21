@@ -24,6 +24,8 @@ export interface IFileState {
   endLine: number | undefined;
   /** True for entries created by write/edit tools; absent or false for read entries */
   fromWrite?: boolean;
+  /** True when the readFile result sent to the model was truncated */
+  isTruncated?: boolean;
 }
 
 /**
@@ -40,6 +42,56 @@ export interface IFileStateCache {
   clear(): void;
 }
 
+export type CompiledToolPolicy =
+  | { kind: "command-pattern"; patterns: string[] }
+  | { kind: "agent-type-pattern"; patterns: string[] }
+  | {
+      kind: "domain-pattern";
+      patterns: string[];
+    }
+  | {
+      kind: "path-pattern";
+      patterns: string[];
+    };
+
+export interface CompiledToolPolicies {
+  executeCommand?: { kind: "command-pattern"; patterns: string[] };
+  startBackgroundJob?: { kind: "command-pattern"; patterns: string[] };
+  newTask?: { kind: "agent-type-pattern"; patterns: string[] };
+  webFetch?: {
+    kind: "domain-pattern";
+    patterns: string[];
+  };
+  readFile?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  writeToFile?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  applyDiff?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  editNotebook?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  listFiles?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  globFiles?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+  searchFiles?: {
+    kind: "path-pattern";
+    patterns: string[];
+  };
+}
+
 export type ToolFunctionType<T extends Tool> = (
   input: InferToolInput<T>,
   options: ToolExecutionOptions & {
@@ -47,7 +99,6 @@ export type ToolFunctionType<T extends Tool> = (
     contentType?: string[];
     envs?: Record<string, string>;
     taskId?: string;
-    executeCommandWhitelist?: string[];
     fileStateCache?: IFileStateCache;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;

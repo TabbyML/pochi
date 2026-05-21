@@ -1,19 +1,18 @@
 import * as path from "node:path";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
-import { waitForWebviewSubscription } from "@/integrations/terminal/utils";
 import { getLogger } from "@getpochi/common";
 import {
   getShellPath,
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
-import {
-  type ClientTools,
-  type ToolFunctionType,
-  validateExecuteCommandWhitelist,
-} from "@getpochi/tools";
+import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
-import { ThreadSignal } from "@quilted/threads/signals";
+import {
+  ThreadSignal,
+  type ThreadSignalSerialization,
+} from "@quilted/threads/signals";
+import { funnel } from "remeda";
 import { executeCommandWithNode } from "../integrations/terminal/execute-command-with-node";
 import {
   PtySpawnError,
@@ -21,6 +20,7 @@ import {
 } from "../integrations/terminal/execute-command-with-pty";
 
 const logger = getLogger("ExecuteCommand");
+const ExecuteCommandStreamingThrottleMs = 300;
 
 type CompletedCommandOutput = {
   output: string;
@@ -32,14 +32,7 @@ export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
   { command, cwd = ".", timeout },
-  {
-    abortSignal,
-    cwd: workspaceDir,
-    envs,
-    toolCallId,
-    taskId,
-    executeCommandWhitelist,
-  },
+  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
 ) => {
   const defaultTimeout = 120;
   if (!command) {
@@ -52,15 +45,12 @@ export const executeCommand: ToolFunctionType<
     cwd = path.normalize(path.join(workspaceDir, cwd));
   }
 
-  if (executeCommandWhitelist && executeCommandWhitelist.length > 0) {
-    validateExecuteCommandWhitelist(command, executeCommandWhitelist);
-  }
-
   const output = signal<ExecuteCommandResult>({
     content: "",
     status: "idle",
     isTruncated: false,
   });
+  let executionStarted = false;
 
   const persistCompletedOutput = async (
     result: CompletedCommandOutput,
@@ -80,7 +70,27 @@ export const executeCommand: ToolFunctionType<
     };
   };
 
-  waitForWebviewSubscription().then(() =>
+  const startExecution = () => {
+    if (executionStarted) return;
+    executionStarted = true;
+
+    let done = false;
+    let pendingData: { output: string; isTruncated: boolean } | null = null;
+
+    const throttledFlush = funnel(
+      () => {
+        if (done) return;
+        const data = pendingData;
+        if (!data) return;
+        output.value = {
+          content: data.output,
+          status: "running",
+          isTruncated: data.isTruncated,
+        };
+      },
+      { minGapMs: ExecuteCommandStreamingThrottleMs, triggerAt: "both" },
+    );
+
     executeCommandImpl({
       command,
       cwd,
@@ -88,34 +98,50 @@ export const executeCommand: ToolFunctionType<
       abortSignal,
       envs,
       onData: (data) => {
-        output.value = {
-          content: data.output,
-          status: "running",
-          isTruncated: data.isTruncated,
-        };
+        pendingData = data;
+        throttledFlush.call();
       },
     })
       .then(async ({ output: commandOutput, isTruncated }) => {
+        done = true;
+        throttledFlush.cancel();
         output.value = await persistCompletedOutput({
           output: commandOutput,
           isTruncated,
         });
       })
       .catch(async (error) => {
+        const lastOutput = pendingData?.output ?? output.value.content;
+        const lastTruncated =
+          pendingData?.isTruncated ?? output.value.isTruncated;
+        done = true;
+        throttledFlush.cancel();
         output.value = await persistCompletedOutput({
-          output: output.value.content,
-          isTruncated: output.value.isTruncated,
+          output: lastOutput,
+          isTruncated: lastTruncated,
           error: error.message,
         });
-      }),
-  );
+      });
+  };
 
-  // Though stated in prompt that agent must run commands sequentially if needed (e.g git add . && git commit -m), in many cases model still generate two command in parallel.
-  // Add a small delay here to reduce the occurances of .git/index.lock conflicts.
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  const serializedOutput = ThreadSignal.serialize(output);
+  const wrappedOutput: ThreadSignalSerialization<ExecuteCommandResult> = {
+    ...serializedOutput,
+    start(
+      subscriber: (value: ExecuteCommandResult) => void,
+      options?: Parameters<typeof serializedOutput.start>[1],
+    ) {
+      const unsubscribe = serializedOutput.start(subscriber, options);
+      startExecution();
 
-  // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
-  return { output: ThreadSignal.serialize(output) as any };
+      return unsubscribe;
+    },
+  };
+
+  return {
+    // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
+    output: wrappedOutput as any,
+  };
 };
 
 async function executeCommandImpl({

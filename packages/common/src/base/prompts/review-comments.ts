@@ -1,4 +1,4 @@
-import type { Review } from "../../vscode-webui-bridge/types/review";
+import type { Review } from "../message-context";
 
 export function renderReviewComments(reviews: Review[]): string {
   if (reviews.length === 0) {

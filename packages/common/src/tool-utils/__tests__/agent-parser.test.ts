@@ -117,6 +117,74 @@ Agent with merged executeCommand declarations.`;
     ]);
   });
 
+  it("should parse repeated scoped tool declarations as separate entries", async () => {
+    const content = `---
+name: repeated-scoped-agent
+description: Agent with repeated scoped tool declarations
+tools: readFile(src/**), readFile(pochi://-/plan.md), writeToFile(src/**/*.md), writeToFile(pochi://-/notes.md), executeCommand(git status), executeCommand(npm run *), searchFiles
+---
+
+Agent with repeated scoped declarations.`;
+
+    const result = await parseAgentFile("repeated-scoped-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.tools).toEqual([
+      "readFile(src/**)",
+      "readFile(pochi://-/plan.md)",
+      "writeToFile(src/**/*.md)",
+      "writeToFile(pochi://-/notes.md)",
+      "executeCommand(git status)",
+      "executeCommand(npm run *)",
+      "searchFiles",
+    ]);
+  });
+
+  it("should parse quoted one-line tool strings split by top-level commas", async () => {
+    const content = `---
+name: quoted-one-line-agent
+description: Agent with quoted one-line tools string
+tools: "readFile(src/**), readFile(pochi://-/plan.md), executeCommand(git status), searchFiles"
+---
+
+Agent with quoted one-line tools string.`;
+
+    const result = await parseAgentFile("quoted-one-line-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult.tools).toEqual([
+      "readFile(src/**)",
+      "readFile(pochi://-/plan.md)",
+      "executeCommand(git status)",
+      "searchFiles",
+    ]);
+  });
+
+  it("should return an error for scoped tool declarations containing commas", async () => {
+    const content = `---
+name: scoped-comma-agent
+description: Agent with invalid scoped tool declarations
+tools: readFile(src/**, pochi://-/plan.md), executeCommand(git status, npm run *)
+---
+
+Agent with invalid scoped declarations.`;
+
+    const result = await parseAgentFile("scoped-comma-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    expect(result).toBeDefined();
+    expect(result).toHaveProperty("error", "validationError");
+    expect(result).toHaveProperty(
+      "message",
+      'Invalid tool declaration "readFile(src/**, pochi://-/plan.md)". Use one declaration per tool rule, for example: readFile(src/**), readFile(pochi://-/plan.md).',
+    );
+  });
+
   it("should parse multiple array tools and trim empty entries", async () => {
     const content = `---
 name: multi-array-tools-agent
@@ -144,6 +212,29 @@ Agent with many tools in array form.`;
       "searchFiles",
       "writeToFile",
     ]);
+  });
+
+  it("should return an error for array tool entries containing commas in scoped declarations", async () => {
+    const content = `---
+name: invalid-array-tools-agent
+description: Agent with invalid array tools
+tools:
+  - "readFile(src/**, pochi://-/plan.md)"
+  - searchFiles
+---
+
+Agent with invalid array tools.`;
+
+    const result = await parseAgentFile("invalid-array-tools-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    expect(result).toBeDefined();
+    expect(result).toHaveProperty("error", "validationError");
+    expect(result).toHaveProperty(
+      "message",
+      'Invalid tool declaration "readFile(src/**, pochi://-/plan.md)". Use one declaration per tool rule, for example: readFile(src/**), readFile(pochi://-/plan.md).',
+    );
   });
 
   it("should parse omitAgentsMd from frontmatter", async () => {

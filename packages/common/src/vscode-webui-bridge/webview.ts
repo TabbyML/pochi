@@ -1,13 +1,21 @@
+import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
-import type { Environment } from "../base";
+import type {
+  AutoMemoryContext,
+  AutoMemoryTaskState,
+  BackgroundTaskState,
+  ContextWindowUsage,
+  Environment,
+  TaskMemoryState,
+} from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
+import type { RecentFileState } from "../tool-utils";
 import type {
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
-  ContextWindowUsage,
   CustomAgentFile,
   ExecuteCommandResult,
   FileDiff,
@@ -86,9 +94,10 @@ export interface VSCodeHostApi {
       abortSignal: ThreadAbortSignalSerialization;
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
+      fileStateCacheSourceTaskId?: string;
     },
   ): Promise<unknown>;
 
@@ -134,6 +143,13 @@ export interface VSCodeHostApi {
    * from being returned for content that was compacted away.
    */
   clearFileStateCache(taskId: string): Promise<void>;
+
+  /**
+   * Read recent file state cache entries for the given task ID.
+   * Used by compaction to keep recently read file contents visible after
+   * the compacted conversation drops the original readFile tool results.
+   */
+  readRecentFilesForCompact(taskId: string): Promise<RecentFileState[]>;
 
   readActiveSelection(): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>
@@ -401,6 +417,77 @@ export interface VSCodeHostApi {
     setContextWindowUsage: (
       contextWindowUsage: ContextWindowUsage,
     ) => Promise<void>;
+  }>;
+
+  readTaskMemoryState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<TaskMemoryState | undefined>;
+    setTaskMemoryState: (state: TaskMemoryState) => Promise<void>;
+  }>;
+
+  readAutoMemory(options?: {
+    cwd?: string;
+    ensure?: boolean;
+  }): Promise<AutoMemoryContext | undefined>;
+
+  readAutoMemoryState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
+    setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
+  }>;
+
+  beginAutoMemoryDream(options: { cwd?: string }): Promise<
+    | {
+        context: AutoMemoryContext;
+        token: string;
+        previousLastDreamAt: number;
+        sessionCount: number;
+        reason: "time" | "sessions";
+        /**
+         * Metadata for tasks the dream agent should consider, filtered to
+         * the same `repoKey` and to sessions touched after the previous
+         * consolidation. The agent reads each transcript on demand from
+         * {@link AutoMemoryContext.transcriptDir} via the readFile tool.
+         */
+        candidates: ReadonlyArray<{
+          taskId: string;
+          cwd?: string | null;
+          updatedAt: number;
+          transcriptFilename: string;
+        }>;
+      }
+    | undefined
+  >;
+
+  finishAutoMemoryDream(options: {
+    memoryDir: string;
+    token: string;
+    previousLastDreamAt: number;
+    success: boolean;
+  }): Promise<void>;
+
+  /**
+   * Persist the current task's transcript to the on-disk transcripts
+   * directory. The owning task panel is the only writer for its own
+   * transcript; the dream agent reads it later via the readFile tool.
+   * Returns metadata identifying the written file (or undefined if
+   * long-term memory is disabled / write failed).
+   */
+  writeTaskTranscript(options: {
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    updatedAt?: number;
+    transcript: string;
+  }): Promise<
+    | {
+        transcriptDir: string;
+        filename: string;
+      }
+    | undefined
+  >;
+
+  readBackgroundTaskState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
+    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
   }>;
 
   /**

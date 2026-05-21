@@ -1,6 +1,5 @@
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
@@ -9,8 +8,9 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { type RefObject, useEffect, useRef } from "react";
+import { isVSCodeEnvironment } from "@/lib/vscode";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
+import { useThrottle } from "react-use";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
@@ -20,6 +20,8 @@ import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
 import { WalkthroughView } from "./walkthrough-view";
 
+const SubtaskPreviewThrottleMs = 300;
+
 interface NewTaskToolProps extends ToolProps<"newTask"> {
   // For storybook visualization
   taskThreadSource?: TaskThreadSource;
@@ -28,16 +30,11 @@ interface NewTaskToolProps extends ToolProps<"newTask"> {
 export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   const { tool, taskThreadSource } = props;
   const uid = tool.input?._meta?.uid;
-  const isRunAsync = tool.input?.runAsync;
 
   let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
     taskThreadSource;
 
   const inlinedTaskSource = useInlinedSubTask(tool);
-
-  if (isRunAsync) {
-    return <AsyncTaskToolView {...props} uid={uid} />;
-  }
 
   if (inlinedTaskSource) {
     taskSource = inlinedTaskSource;
@@ -50,69 +47,6 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 };
 
-function AsyncTaskToolView(
-  props: NewTaskToolProps & { uid: string | undefined },
-) {
-  const { tool, isExecuting, uid } = props;
-  const store = useDefaultStore();
-
-  const agentType = tool.input?.agentType;
-  const toolTitle = agentType ?? "Subtask";
-  const description = tool.input?.description ?? "";
-  const cwd = window.POCHI_TASK_INFO?.cwd;
-  const storeId = store.storeId;
-
-  const canOpen = isVSCodeEnvironment() && !!uid && !!cwd;
-  const openInTab = () => {
-    if (!uid || !cwd) return;
-    vscodeHost.openTaskInPanel({
-      type: "open-task",
-      uid,
-      cwd,
-      storeId,
-    });
-  };
-
-  const title = (
-    <>
-      <div className="flex min-w-0 flex-1 items-start gap-2">
-        <StatusIcon
-          tool={tool}
-          isExecuting={isExecuting}
-          className="mt-1 self-start leading-none"
-        />
-        <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
-          <Badge
-            variant="secondary"
-            className={cn("mr-2 inline-flex py-0 align-middle")}
-          >
-            {toolTitle}
-          </Badge>
-          {description && (
-            <span className="break-words align-middle">{description}</span>
-          )}
-        </div>
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-4 px-2 text-xs"
-        onClick={openInTab}
-        disabled={!canOpen}
-      >
-        {"ASYNC"}
-      </Button>
-    </>
-  );
-
-  return (
-    <ExpandableToolContainer
-      title={title}
-      titleClassname="flex w-full items-start justify-between gap-2"
-    />
-  );
-}
-
 function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   const { tool, isExecuting, uid } = props;
   const subTaskToolCallStatusRegistry = useRef(new ToolCallStatusRegistry());
@@ -122,7 +56,14 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
     subTaskToolCallStatusRegistry.current,
   );
 
-  return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
+  return (
+    <NewTaskToolView
+      {...props}
+      taskSource={taskSource}
+      uid={uid}
+      toolCallStatusRegistryRef={subTaskToolCallStatusRegistry}
+    />
+  );
 }
 
 export interface NewTaskToolViewProps extends ToolProps<"newTask"> {
@@ -146,7 +87,15 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     tool.output.result.trim().length > 0;
 
   const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
-    useShowMessageList(completed);
+    useShowMessageList();
+  const throttledTaskSource = useThrottle(taskSource, SubtaskPreviewThrottleMs);
+  const previewSource = isExecuting ? throttledTaskSource : taskSource;
+  const taskThreadSource = useMemo(() => {
+    if (!previewSource) {
+      return undefined;
+    }
+    return { ...previewSource, isLoading: false };
+  }, [previewSource]);
 
   // Collapse when execution completes
   const wasCompleted = useRef(completed);
@@ -156,16 +105,30 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     }
   }, [isExecuting, completed, setShowMessageList]);
 
+  const expandableDetail = useMemo(() => {
+    return taskThreadSource && taskThreadSource.messages.length > 1 ? (
+      <FixedStateChatContextProvider
+        toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+      >
+        <TaskThread
+          source={taskThreadSource}
+          showMessageList={showMessageList}
+          assistant={{ name: agent ?? "Pochi" }}
+        />
+      </FixedStateChatContextProvider>
+    ) : undefined;
+  }, [agent, showMessageList, taskThreadSource, toolCallStatusRegistryRef]);
+
   if (agentType === "browser") {
-    return <BrowserView {...props} />;
+    return <BrowserView {...props} taskSource={previewSource} />;
   }
 
   if (agentType === "planner") {
-    return <PlannerView {...props} />;
+    return <PlannerView {...props} taskSource={previewSource} />;
   }
 
   if (agentType === "walkthrough") {
-    return <WalkthroughView {...props} />;
+    return <WalkthroughView {...props} taskSource={previewSource} />;
   }
 
   const title = (
@@ -208,19 +171,6 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     </div>
   );
 
-  const expandableDetail =
-    taskSource && taskSource.messages.length > 1 ? (
-      <FixedStateChatContextProvider
-        toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-      >
-        <TaskThread
-          source={{ ...taskSource, isLoading: false }}
-          showMessageList={showMessageList}
-          assistant={{ name: agent ?? "Pochi" }}
-        />
-      </FixedStateChatContextProvider>
-    ) : undefined;
-
   return (
     <ExpandableToolContainer
       title={title}
@@ -231,8 +181,9 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   );
 }
 
-function useShowMessageList(completed: boolean) {
-  return useDebounceState(!completed, 1_500, {
-    leading: !isVSCodeEnvironment(),
+function useShowMessageList() {
+  const isVSCode = isVSCodeEnvironment();
+  return useDebounceState(false, 1_500, {
+    leading: !isVSCode,
   });
 }

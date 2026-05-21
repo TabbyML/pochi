@@ -1,4 +1,10 @@
-import { getLogger } from "@getpochi/common";
+import type {
+  ContextWindowUsage,
+  PochiRequestUseCase,
+  TaskMemoryState,
+} from "@getpochi/common";
+import { getLogger, isForkAgentUseCase } from "@getpochi/common";
+import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import {
@@ -7,7 +13,7 @@ import {
   type ChatOnFinishCallback,
   isStaticToolUIPart,
 } from "ai";
-import type z from "zod/v4";
+import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import {
   makeAllDataQuery,
@@ -17,7 +23,6 @@ import {
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
-import type { ContextWindowUsage } from "@getpochi/common/vscode-webui-bridge";
 import type { LiveKitStore, Message, Task } from "../types";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -33,6 +38,44 @@ import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
+/** Compaction waits up to this long for an in-flight task-memory extraction. */
+const TaskMemorySettleTimeoutMs = 5_000;
+const TaskMemorySettlePollIntervalMs = 200;
+
+type GetRecentFilesForCompact = () =>
+  | RecentFileState[]
+  | Promise<RecentFileState[]>;
+
+type GetTaskMemoryState = () => TaskMemoryState | undefined;
+
+async function readRecentFilesForCompact(
+  getRecentFilesForCompact: GetRecentFilesForCompact | undefined,
+): Promise<RecentFileState[] | undefined> {
+  try {
+    return await getRecentFilesForCompact?.();
+  } catch (error) {
+    logger.warn(
+      "Failed to read recent files for compaction. Continue compacting without file restoration.",
+      error,
+    );
+  }
+}
+
+/** Polls until no extraction is in progress or `timeoutMs` elapses. */
+async function settleTaskMemoryExtraction(
+  getTaskMemoryState: GetTaskMemoryState | undefined,
+  timeoutMs: number,
+): Promise<void> {
+  if (!getTaskMemoryState) return;
+  if (!getTaskMemoryState()?.isExtracting) return;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (!getTaskMemoryState()?.isExtracting) return;
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, TaskMemorySettlePollIntervalMs),
+    );
+  }
+}
 
 async function runSideEffectSafely({
   sideEffectName,
@@ -106,6 +149,7 @@ export type LiveChatKitOptions<T> = {
   getters: PrepareRequestGetters;
 
   isSubTask?: boolean;
+  requestUseCase?: PochiRequestUseCase;
 
   store: LiveKitStore;
 
@@ -137,7 +181,16 @@ export type LiveChatKitOptions<T> = {
    * Use this to clear caches (e.g. FileStateCache) that depend on
    * conversation context that was discarded during compaction.
    */
-  onCompact?: () => void;
+  onCompact?: () => void | Promise<void>;
+
+  /**
+   * Returns recent file contents the model saw before compaction.
+   * They are appended to the compact block before the cache is cleared.
+   */
+  getRecentFilesForCompact?: GetRecentFilesForCompact;
+
+  /** Latest `TaskMemoryState` snapshot — provides the verbatim boundary and the `isExtracting` flag. */
+  getTaskMemoryState?: GetTaskMemoryState;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -172,6 +225,7 @@ export class LiveChatKit<
   protected readonly blobStore: BlobStore;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
+  private readonly requestUseCase: PochiRequestUseCase | undefined;
 
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
@@ -199,17 +253,21 @@ export class LiveChatKit<
     onCompact,
     getters,
     isSubTask,
+    requestUseCase,
     customAgent,
     outputSchema,
     attemptCompletionSchema,
     onStreamStart,
 
     onStreamFinish,
+    getRecentFilesForCompact,
+    getTaskMemoryState,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
     this.blobStore = blobStore;
+    this.requestUseCase = requestUseCase;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
     this.transport = new FlexibleChatTransport({
@@ -218,6 +276,7 @@ export class LiveChatKit<
       onStart: this.onStart,
       getters,
       isSubTask,
+      requestUseCase,
       customAgent,
       outputSchema,
       attemptCompletionSchema,
@@ -255,16 +314,27 @@ export class LiveChatKit<
         lastMessage.metadata.compact
       ) {
         try {
+          // Wait briefly so memory.md and boundary id are fresh.
+          await settleTaskMemoryExtraction(
+            getTaskMemoryState,
+            TaskMemorySettleTimeoutMs,
+          );
           const model = createModel({ llm: getters.getLLM() });
           await compactTask({
             blobStore: this.blobStore,
             taskId: this.taskId,
             model,
             messages,
+            recentFiles: await readRecentFilesForCompact(
+              getRecentFilesForCompact,
+            ),
+            taskMemoryBoundaryMessageId:
+              getTaskMemoryState?.()?.lastExtractionMessageId,
             abortSignal,
             inline: true,
+            store: this.store,
           });
-          onCompact?.();
+          await onCompact?.();
         } catch (err) {
           logger.error("Failed to compact task", err);
           throw err;
@@ -289,18 +359,27 @@ export class LiveChatKit<
 
     this.compact = async () => {
       const { messages } = this.chat;
+      // Wait briefly so memory.md and boundary id are fresh.
+      await settleTaskMemoryExtraction(
+        getTaskMemoryState,
+        TaskMemorySettleTimeoutMs,
+      );
       const model = createModel({ llm: getters.getLLM() });
       const summary = await compactTask({
         blobStore: this.blobStore,
         taskId: this.taskId,
         model,
         messages,
+        recentFiles: await readRecentFilesForCompact(getRecentFilesForCompact),
+        taskMemoryBoundaryMessageId:
+          getTaskMemoryState?.()?.lastExtractionMessageId,
+        store: this.store,
       });
 
       if (!summary) {
         throw new Error("Failed to compact task");
       }
-      onCompact?.();
+      await onCompact?.();
       return summary;
     };
 
@@ -451,14 +530,16 @@ export class LiveChatKit<
       }
 
       const llm = getters.getLLM();
-      const getModel = () => createModel({ llm });
-      scheduleGenerateTitleJob({
-        taskId: this.taskId,
-        store,
-        blobStore: this.blobStore,
-        messages,
-        getModel,
-      });
+      if (!task.background) {
+        const getModel = () => createModel({ llm });
+        scheduleGenerateTitleJob({
+          taskId: this.taskId,
+          store,
+          blobStore: this.blobStore,
+          messages,
+          getModel,
+        });
+      }
 
       store.commit(
         events.chatStreamStarted({
@@ -496,7 +577,12 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    const message = filterCompletionTools(originalMessage);
+    // Fork-agent background tasks emit `writeToFile + attemptCompletion`
+    // as parallel tool calls; stripping `attemptCompletion` would lock the
+    // task at `pending-tool` forever, so skip the filter for them.
+    const message = isForkAgentUseCase(this.requestUseCase)
+      ? originalMessage
+      : filterCompletionTools(originalMessage);
     this.chat.messages = [...this.chat.messages.slice(0, -1), message];
 
     const { store } = this;

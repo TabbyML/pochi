@@ -1,8 +1,9 @@
 import {
   isCrossOriginWorkerUrl,
   makeSharedWorkerBootstrapUrl,
-  makeWorkerBootstrapSource,
+  makeWorkerBootstrapBlobUrl,
   resolveWorkerUrl,
+  revokeWorkerBootstrapBlobUrl,
 } from "./lib/worker-url";
 
 if (import.meta.env.DEV) {
@@ -13,18 +14,18 @@ if (import.meta.env.DEV) {
       class Worker extends BaseWorker {
         constructor(scriptURL: string | URL, options?: WorkerOptions) {
           const url = resolveWorkerUrl(scriptURL);
-          super(
-            isCrossOriginWorkerUrl(url)
-              ? // Launch the worker with an inline script that will use `importScripts`
-                // to bootstrap the actual script to work around the same origin policy.
-                URL.createObjectURL(
-                  new Blob([makeWorkerBootstrapSource(url, options?.type)], {
-                    type: "text/javascript",
-                  }),
-                )
-              : scriptURL,
-            options,
-          );
+          const bootstrapUrl = isCrossOriginWorkerUrl(url)
+            ? // Dedicated workers need a blob: bootstrap so OPFS inherits the
+              // webview origin. SharedWorker keeps a deterministic data: URL below.
+              makeWorkerBootstrapBlobUrl(url, options?.type)
+            : undefined;
+          try {
+            super(bootstrapUrl ?? scriptURL, options);
+          } finally {
+            if (bootstrapUrl) {
+              setTimeout(() => revokeWorkerBootstrapBlobUrl(bootstrapUrl), 0);
+            }
+          }
         }
       })(Worker));
 

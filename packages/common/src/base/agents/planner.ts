@@ -17,7 +17,7 @@ Examples of user requests this agent shall trigger:
     "globFiles",
     "listFiles",
     "searchFiles",
-    "writeToFile",
+    "writeToFile(pochi://-/plan.md)",
     "askFollowupQuestion",
   ],
   systemPrompt: `

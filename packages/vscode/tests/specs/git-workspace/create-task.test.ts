@@ -64,7 +64,7 @@ describe("Create Task Tests", () => {
     );
 
     // Verify the user message is visible in the task panel
-    await panel.waitForUserMessage(30000);
+    await panel.waitForUserMessage(30000, TestMessage);
     const userMessageText = await panel.getUserMessageText();
     console.log("[Test Debug] User message text in panel:", userMessageText);
     expect(userMessageText).toContain(TestMessage);

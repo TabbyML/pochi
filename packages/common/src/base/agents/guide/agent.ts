@@ -15,7 +15,12 @@ Trigger examples:
 - Configuration: "how do I configure Pochi?", "explain config options", "help me modify my config", "set up a new provider", "add an MCP server"
 - Help & feedback: "join the discord", "report a bug", "where can I get help?"
 `.trim(),
-  tools: ["readFile", "writeToFile", "askFollowupQuestion"],
+  tools: [
+    "readFile",
+    "writeToFile(~/.pochi/config.jsonc)",
+    "writeToFile(.pochi/config.jsonc)",
+    "askFollowupQuestion",
+  ],
   systemPrompt: `
 You are the **Pochi Guide** - your mission is to help users understand and configure Pochi.
 

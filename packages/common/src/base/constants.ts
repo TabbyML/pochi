@@ -15,7 +15,12 @@ export const PochiTaskIdHeader = "x-pochi-task-id";
 export const PochiClientHeader = "x-pochi-client";
 export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
 
-export const EnableAsyncNewTask = true;
+/**
+ * Task Memory thresholds — background extraction of session notes.
+ */
+export const TaskMemoryInitTokenThreshold = 10_000;
+export const TaskMemoryUpdateTokenIncrement = 5_000;
+export const TaskMemoryUpdateToolCallThreshold = 3;
 
 /**
  * Timeout (ms) for any single git operation.
@@ -23,3 +28,9 @@ export const EnableAsyncNewTask = true;
  * to prevent hangs when git itself is broken or unresponsive.
  */
 export const GitOperationTimeoutMs = 10_000;
+
+/**
+ * Block timeout (ms) for `git worktree remove`, which is mostly filesystem
+ * IO and frequently exceeds the default 10s while git is still deleting.
+ */
+export const WorktreeRemoveTimeoutMs = 60_000;

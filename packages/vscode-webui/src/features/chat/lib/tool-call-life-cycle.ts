@@ -1,5 +1,5 @@
 import { blobStore } from "@/lib/remote-blob-store";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
 import type {
   BuiltinSubAgentInfo,
@@ -13,7 +13,11 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 
-import type { ClientTools } from "@getpochi/tools";
+import {
+  type ClientTools,
+  type CompiledToolPolicies,
+  validateAgentTypePatternPolicy,
+} from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -30,7 +34,6 @@ type ExecuteCommandReturnType = {
 type NewTaskParameterType = InferToolInput<ClientTools["newTask"]>;
 type NewTaskReturnType = {
   result: string;
-  runAsync: boolean;
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
@@ -46,7 +49,16 @@ export type StreamingResult =
       throws: (error: string) => void;
     };
 
-type CompleteReason = "execute-finish" | "user-reject" | "user-abort";
+export type CompleteReason =
+  | "execute-finish"
+  | "user-reject"
+  | "user-abort"
+  | "previous-tool-call-failed";
+
+type AbortReason = Extract<
+  CompleteReason,
+  "user-abort" | "previous-tool-call-failed"
+>;
 
 type AbortFunctionType = AbortController["abort"];
 
@@ -76,7 +88,7 @@ type ToolCallState =
       type: "dispose";
     };
 
-type ToolCallLifeCycleEvents = {
+export type ToolCallLifeCycleEvents = {
   [K in ToolCallState["type"]]: Extract<ToolCallState, { type: K }>;
 };
 
@@ -113,7 +125,7 @@ export interface ToolCallLifeCycle {
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       taskId?: string;
     },
   ): void;
@@ -121,12 +133,21 @@ export interface ToolCallLifeCycle {
   /**
    * Abort the currently executing tool call.
    */
-  abort(): void;
+  abort(reason?: AbortReason, result?: unknown): void;
 
   /**
    * Reject the tool call, preventing execution.
    */
   reject(): void;
+
+  /**
+   * Subscribe to lifecycle state transition events.
+   * Returns an unsubscribe function.
+   */
+  on<K extends keyof ToolCallLifeCycleEvents>(
+    eventName: K,
+    listener: (eventData: ToolCallLifeCycleEvents[K]) => void,
+  ): () => void;
 
   addResult(result: unknown): void;
 }
@@ -179,7 +200,7 @@ export class ManagedToolCallLifeCycle
     options?: {
       contentType?: string[];
       builtinSubAgentInfo?: BuiltinSubAgentInfo;
-      executeCommandWhitelist?: string[];
+      toolPolicies?: CompiledToolPolicies;
       taskId?: string;
     },
   ) {
@@ -191,14 +212,16 @@ export class ManagedToolCallLifeCycle
     let executePromise: Promise<unknown>;
 
     if (this.toolName === "newTask") {
-      executePromise = this.runNewTask(args as NewTaskParameterType);
+      executePromise = this.runNewTask(args as NewTaskParameterType, {
+        toolPolicies: options?.toolPolicies,
+      });
     } else {
       executePromise = vscodeHost.executeToolCall(this.toolName, args, {
         toolCallId: this.toolCallId,
         abortSignal: ThreadAbortSignal.serialize(abortSignal),
         contentType: options?.contentType,
         builtinSubAgentInfo: options?.builtinSubAgentInfo,
-        executeCommandWhitelist: options?.executeCommandWhitelist,
+        toolPolicies: options?.toolPolicies,
         storeId: this.store.storeId,
         taskId: options?.taskId ?? "",
       });
@@ -222,29 +245,24 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private runNewTask(args: NewTaskParameterType): Promise<NewTaskReturnType> {
+  private runNewTask(
+    args: NewTaskParameterType,
+    options?: {
+      toolPolicies?: CompiledToolPolicies;
+    },
+  ): Promise<NewTaskReturnType> {
+    // Validate the agent type pattern policy, throw if failed
+    validateAgentTypePatternPolicy(
+      args.agentType,
+      options?.toolPolicies?.newTask,
+    );
+
     const uid = args._meta?.uid;
     if (!uid) {
       throw new Error("Missing uid in newTask arguments");
     }
 
-    const runAsync = !!args.runAsync;
-    if (runAsync && isVSCodeEnvironment()) {
-      const cwd = window.POCHI_TASK_INFO?.cwd;
-      if (cwd) {
-        void vscodeHost.openTaskInPanel(
-          {
-            type: "open-task",
-            uid,
-            cwd,
-            storeId: this.store.storeId,
-          },
-          { preserveFocus: true, preview: false },
-        );
-      }
-    }
-
-    return Promise.resolve({ result: uid, runAsync });
+    return Promise.resolve({ result: uid });
   }
 
   addResult(result: unknown): void {
@@ -255,18 +273,15 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  abort() {
+  abort(reason: AbortReason = "user-abort", result: unknown = {}) {
     if (
       this.state.type === "execute" ||
       this.state.type === "execute:streaming"
     ) {
-      this.state.abort();
-      this.transitTo(["execute", "execute:streaming"], {
-        type: "complete",
-        result: {},
-        reason: "user-abort",
-      });
+      this.state.abort(reason);
     }
+
+    this.settleAbort(reason, result);
   }
 
   reject() {
@@ -341,21 +356,10 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private onExecuteNewTask({ result, runAsync }: NewTaskReturnType) {
+  private onExecuteNewTask({ result }: NewTaskReturnType) {
     const uid = result;
     if (!uid) {
       throw new Error("Missing uid in newTask result");
-    }
-
-    if (runAsync) {
-      this.transitTo("execute", {
-        type: "complete",
-        result: {
-          result: uid,
-        },
-        reason: "execute-finish",
-      });
-      return;
     }
 
     const cleanupFns: (() => void)[] = [];
@@ -390,12 +394,8 @@ export class ManagedToolCallLifeCycle
     });
 
     const onAbort = () => {
-      this.transitTo("execute:streaming", {
-        type: "complete",
-        result: {
-          error: abortSignal.reason,
-        },
-        reason: "user-abort",
+      this.settleAbort("user-abort", {
+        error: abortSignal.reason,
       });
       cleanup();
     };
@@ -431,6 +431,20 @@ export class ManagedToolCallLifeCycle
       (task) => onTaskUpdate(task),
     );
     cleanupFns.push(unsubscribe);
+  }
+
+  private settleAbort(reason: AbortReason, result: unknown) {
+    if (
+      this.state.type === "init" ||
+      this.state.type === "execute" ||
+      this.state.type === "execute:streaming"
+    ) {
+      this.transitTo(this.state.type, {
+        type: "complete",
+        result,
+        reason,
+      });
+    }
   }
 
   private checkState<T extends ToolCallState["type"]>(

@@ -90,8 +90,37 @@ export class PochiSidebar {
     throw new Error(`Model ${modelName} not found in selection menu`);
   }
 
+  /**
+   * Wait until the model select button reports a selected, valid model.
+   * The chat input form silently drops submissions when no model is
+   * selected, so callers must guarantee selection before pressing Enter.
+   */
+  async waitForModelReady(timeout = 30000) {
+    await browser.waitUntil(
+      async () => {
+        const valid = await this.modelSelect.getAttribute("data-valid");
+        const modelId = await this.modelSelect.getAttribute("data-model-id");
+        const ready = valid === "true" && !!modelId;
+        if (!ready) {
+          console.log(
+            `[Test Debug] Waiting for model: valid=${valid} modelId=${modelId}`,
+          );
+        }
+        return ready;
+      },
+      {
+        timeout,
+        timeoutMsg: "Model select did not become ready",
+        interval: 500,
+      },
+    );
+  }
+
   async sendMessage(text: string, waitMs = 1000) {
     await this.input.waitForDisplayed({ timeout: 1000 * 10 });
+    // Make sure a usable model is selected before submitting; otherwise the
+    // form silently rejects the Enter keypress and no task is created.
+    await this.waitForModelReady();
     await this.input.click();
     await browser.keys(text);
     await browser.pause(waitMs);

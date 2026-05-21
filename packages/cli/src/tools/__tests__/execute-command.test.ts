@@ -1,4 +1,4 @@
-import { getToolArgs } from "@getpochi/tools";
+import { getToolRules } from "@getpochi/tools";
 import { describe, expect, it } from "vitest";
 import { executeCommand } from "../execute-command";
 
@@ -179,132 +179,12 @@ describe("executeCommand", () => {
     expect(durationMs).toBeLessThan(1500);
   });
 
-  it("should allow commands in executeCommand whitelist", async () => {
-    const result = await executeCommand()(
-      { command: "echo whitelist-ok" },
-      {
-        ...mockToolExecutionOptions,
-        executeCommandWhitelist: ["echo whitelist-ok"],
-      },
-    );
-
-    expect(result.output).toContain("whitelist-ok");
-  });
-
-  it("should reject commands not in executeCommand whitelist", async () => {
-    await expect(
-      executeCommand()(
-        { command: "pwd" },
-        {
-          ...mockToolExecutionOptions,
-          executeCommandWhitelist: ["echo"],
-        },
-      ),
-    ).rejects.toThrow("Command is not allowed by the configured command rules");
-  });
-
-  it("should reject chained commands with non-whitelisted segments", async () => {
-    await expect(
-      executeCommand()(
-        { command: "echo ok && pwd" },
-        {
-          ...mockToolExecutionOptions,
-          executeCommandWhitelist: ["echo"],
-        },
-      ),
-    ).rejects.toThrow("Command is not allowed by the configured command rules");
-  });
-
-  it("should allow wildcard pattern matching for full segment", async () => {
-    const result = await executeCommand()(
-      { command: "echo agent-browser" },
-      {
-        ...mockToolExecutionOptions,
-        executeCommandWhitelist: ["echo *"],
-      },
-    );
-
-    expect(result.output).toContain("agent-browser");
-  });
-
-  it("should allow exact command matching for npm --version", async () => {
-    const result = await executeCommand()(
-      { command: "npm --version" },
-      {
-        ...mockToolExecutionOptions,
-        executeCommandWhitelist: ["npm --version"],
-      },
-    );
-
-    expect(result.output).toBeDefined();
-  });
-
-  it("should allow npm subcommand when whitelist is token npm", async () => {
-    const result = await executeCommand()(
-      { command: "npm run --version" },
-      {
-        ...mockToolExecutionOptions,
-        executeCommandWhitelist: ["npm"],
-      },
-    );
-
-    expect(result.output).toBeDefined();
-  });
-
-  it("should allow npm wildcard pattern npm *", async () => {
-    const result = await executeCommand()(
-      { command: "npm exec --version" },
-      {
-        ...mockToolExecutionOptions,
-        executeCommandWhitelist: ["npm *"],
-      },
-    );
-
-    expect(result.output).toBeDefined();
-  });
-
-  it("should allow npm run wildcard pattern npm run *", async () => {
-    const result = await executeCommand()(
-      { command: "npm run --version" },
-      {
-        ...mockToolExecutionOptions,
-        executeCommandWhitelist: ["npm run *"],
-      },
-    );
-
-    expect(result.output).toBeDefined();
-  });
-
-  it("should reject npm exec when whitelist is npm run *", async () => {
-    await expect(
-      executeCommand()(
-        { command: "npm exec --version" },
-        {
-          ...mockToolExecutionOptions,
-          executeCommandWhitelist: ["npm run *"],
-        },
-      ),
-    ).rejects.toThrow("Command is not allowed by the configured command rules");
-  });
-
-  it("should reject non-exact segment for multi-token pattern without wildcard", async () => {
-    await expect(
-      executeCommand()(
-        { command: "npm run --version" },
-        {
-          ...mockToolExecutionOptions,
-          executeCommandWhitelist: ["npm run"],
-        },
-      ),
-    ).rejects.toThrow("Command is not allowed by the configured command rules");
-  });
-
-  it("should merge multiple executeCommand specs via getToolArgs", () => {
-    const whitelist = getToolArgs(
+  it("should merge multiple executeCommand specs via getToolRules", () => {
+    const allowedPatterns = getToolRules(
       ["executeCommand(agent-browser *)", "executeCommand(npm *)"],
       "executeCommand",
     );
 
-    expect(whitelist).toEqual(["agent-browser *", "npm *"]);
+    expect(allowedPatterns).toEqual(["agent-browser *", "npm *"]);
   });
 });

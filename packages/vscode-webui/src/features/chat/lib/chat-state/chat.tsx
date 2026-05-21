@@ -1,4 +1,5 @@
 import { type ReactNode, useRef, useState } from "react";
+import { BatchExecuteManager } from "../batch-execute-manager";
 import { useToolCallLifeCycles } from "../use-tool-call-life-cycles";
 import { ChatContext, type ChatState, type RetryCount } from "./types";
 
@@ -14,6 +15,7 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
   );
   const { executingToolCalls, getToolCallLifeCycle, completeToolCalls } =
     useToolCallLifeCycles(abortController.current.signal);
+  const batchExecuteManager = useRef(new BatchExecuteManager()).current;
 
   const value: ChatState = {
     abortController,
@@ -23,6 +25,7 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
     completeToolCalls,
     retryCount,
     setRetryCount,
+    batchExecuteManager,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
@@ -36,6 +39,7 @@ export function ChatContextProviderStub({
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
     undefined,
   );
+  const batchExecuteManager = useRef(new BatchExecuteManager()).current;
 
   const value: ChatState = {
     abortController,
@@ -47,6 +51,7 @@ export function ChatContextProviderStub({
     completeToolCalls: [],
     retryCount,
     setRetryCount,
+    batchExecuteManager,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

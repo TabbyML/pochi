@@ -1,6 +1,6 @@
 import type { Tool } from "ai";
 import { describe, expect, it } from "vitest";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { type CustomAgent, selectAgentTools } from "../index";
 
 const ClientToolNames = [
@@ -106,6 +106,39 @@ describe("selectAgentTools", () => {
     expect(tools.mcpLookup).toBe(mcpTool);
     expect(tools).not.toHaveProperty("executeCommand(git status)");
     expect(tools).not.toHaveProperty("missingTool");
+  });
+
+  it("extracts builtin tool names from file tool declarations with rules", () => {
+    const tools = selectAgentTools({
+      agent: createAgent({
+        tools: [
+          "readFile(src/**)",
+          "readFile(pochi://-/plan.md)",
+          "writeToFile(pochi://-/notes.md)",
+          "applyDiff(src/**)",
+          "editNotebook(src/**/*.ipynb)",
+          "executeCommand(git status)",
+        ],
+      }),
+      isSubTask: false,
+    });
+
+    expect(toolNames(tools)).toEqual(
+      [
+        ...RequiredAgentToolNames,
+        "applyDiff",
+        "editNotebook",
+        "executeCommand",
+        "readFile",
+        "writeToFile",
+      ].sort(),
+    );
+    expect(tools).not.toHaveProperty("readFile(src/**)");
+    expect(tools).not.toHaveProperty("readFile(pochi://-/plan.md)");
+    expect(tools).not.toHaveProperty("writeToFile(pochi://-/notes.md)");
+    expect(tools).not.toHaveProperty("applyDiff(src/**)");
+    expect(tools).not.toHaveProperty("editNotebook(src/**/*.ipynb)");
+    expect(tools).not.toHaveProperty("executeCommand(git status)");
   });
 
   it("only enables askFollowupQuestion for planner and guide agents", () => {

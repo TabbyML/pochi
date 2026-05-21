@@ -1,7 +1,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getLogger } from "@getpochi/common";
 import { wrapLanguageModel } from "ai";
-import { z } from "zod/v4";
+import { z } from "zod";
 import type { RequestData } from "../../types";
 
 const logger = getLogger("openai");

@@ -1,5 +1,5 @@
 import {
-  FILE_UNCHANGED_STUB,
+  FileUnchangedStub,
   getFileModificationTime,
   isPlainText,
   readMediaFile,
@@ -52,12 +52,16 @@ export const readFile =
           addLineNumbers,
         });
 
-        return { result, fileCacheContent: fileContent };
+        return {
+          result,
+          fileCacheContent: result.content,
+          fileCacheIsTruncated: result.isTruncated,
+        };
       },
     });
 
     if (cacheResult.deduplicated) {
-      return { content: FILE_UNCHANGED_STUB, isTruncated: false };
+      return { content: FileUnchangedStub, isTruncated: false };
     }
 
     return cacheResult.result;

@@ -255,18 +255,35 @@ export class WorktreeManager implements vscode.Disposable {
       return false;
     }
 
+    // `git worktree remove --force` is mostly filesystem IO; the default 10s
+    // block timeout often fires while git is still deleting. Use a longer
+    // timeout and fall back to manual rm + prune on failure.
+    const git = simpleGit(this.workspacePath, {
+      timeout: { block: constants.WorktreeRemoveTimeoutMs },
+    });
+
     try {
-      await this.git.raw(["worktree", "remove", "--force", worktreePath]);
-      this.worktreeInfoProvider.delete(worktreePath);
-      return true;
+      await git.raw(["worktree", "remove", "--force", worktreePath]);
     } catch (error) {
-      logger.error(`Failed to delete worktree: ${toErrorMessage(error)}`);
-      vscode.window.showErrorMessage(
-        `Failed to delete worktree: ${toErrorMessage(error)}`,
-      );
+      logger.warn(`git worktree remove failed: ${toErrorMessage(error)}`);
+      try {
+        await fs.rm(worktreePath, { recursive: true, force: true });
+        await git.raw(["worktree", "prune"]);
+      } catch (cleanupError) {
+        const message = toErrorMessage(cleanupError);
+        logger.error(`Failed to delete worktree: ${message}`);
+        vscode.window.showErrorMessage(`Failed to delete worktree: ${message}`);
+        return false;
+      }
     }
 
-    return false;
+    // Update the signal eagerly so the UI doesn't flicker while waiting for
+    // the file-system watcher's onDidDelete to fire updateWorktrees().
+    this.worktrees.value = this.worktrees.value.filter(
+      (wt) => wt.path !== worktreePath,
+    );
+    this.worktreeInfoProvider.delete(worktreePath);
+    return true;
   }
 
   async showWorktreeDiff(cwd: string) {

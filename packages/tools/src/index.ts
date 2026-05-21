@@ -1,4 +1,6 @@
 export { McpTool } from "./mcp-tools";
+import { ToolsByPermission } from "./constants";
+export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
 import {
   type Tool,
   type UIDataTypes,
@@ -7,7 +9,7 @@ import {
   getStaticToolName,
   isStaticToolUIPart,
 } from "ai";
-import type { z } from "zod/v4";
+import type { z } from "zod";
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
 import { createAttemptCompletionTool } from "./attempt-completion";
@@ -21,7 +23,13 @@ import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
 export { MediaOutput } from "./read-file";
-export type { ToolFunctionType, IFileStateCache, IFileState } from "./types";
+export type {
+  ToolFunctionType,
+  IFileStateCache,
+  IFileState,
+  CompiledToolPolicy,
+  CompiledToolPolicies,
+} from "./types";
 export type {
   AskFollowupQuestionInput,
   Question,
@@ -34,7 +42,7 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
-import { parseToolSpec } from "./utils";
+import { parseToolSpec } from "./utils/tool-spec";
 import { writeToFile } from "./write-to-file";
 
 export {
@@ -46,26 +54,51 @@ export {
   type ParsedToolSpec,
   type ToolSpecInput,
   getAllowedToolNames,
-  getToolArgs,
+  getToolRules,
   normalizeToolSpecs,
   parseToolSpec,
-  validateExecuteCommandWhitelist,
-} from "./utils";
+} from "./utils/tool-spec";
+export {
+  compileToolPolicies,
+  validateAgentTypePatternPolicy,
+  validateCommandPatternPolicy,
+  validateExecuteCommandRules,
+  validateToolPolicy,
+} from "./utils/tool-policy";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
+export {
+  BatchExecutionErrorMessages,
+  BatchExecutionError,
+  executeToolCalls,
+  isSafeToBatchToolCall,
+  partitionToolCalls,
+  ToolCallQueue,
+} from "./utils/tool-batch";
+export {
+  checkReadOnlyConstraints,
+  isReadonlyToolCall,
+} from "./utils/readonly-validation";
+export type {
+  BatchedToolCallCancelReason as ToolCallCancelReason,
+  BatchedToolCallResult,
+  BatchedToolCall,
+} from "./utils/tool-batch";
 
-export function isUserInputToolName(name: string): boolean {
+export function isCompletionToolName(name: string): boolean {
   return name === "askFollowupQuestion" || name === "attemptCompletion";
 }
 
-export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
+export function isCompletionToolPart(
+  part: UIMessagePart<UIDataTypes, UITools>,
+) {
   if (!isStaticToolUIPart(part)) return false;
-  return isUserInputToolName(getStaticToolName(part));
+  return isCompletionToolName(getStaticToolName(part));
 }
 
 export function isAutoSuccessToolName(name: string): boolean {
   return (
-    isUserInputToolName(name) ||
+    isCompletionToolName(name) ||
     ToolsByPermission.default.some((tool) => name === tool)
   );
 }
@@ -78,35 +111,6 @@ export function isAutoSuccessToolPart(
 }
 
 export type ToolName = keyof ClientTools;
-
-export const ToolsByPermission = {
-  read: [
-    ...([
-      "readFile",
-      "listFiles",
-      "globFiles",
-      "searchFiles",
-      "readBackgroundJobOutput",
-      "useSkill",
-    ] satisfies ToolName[]),
-
-    // Pochi offered-tools
-    "webFetch",
-    "webSearch",
-  ] as string[],
-  write: [
-    "writeToFile",
-    "applyDiff",
-    "editNotebook",
-  ] satisfies ToolName[] as string[],
-  execute: [
-    "executeCommand",
-    "startBackgroundJob",
-    "killBackgroundJob",
-    "newTask",
-  ] satisfies ToolName[] as string[],
-  default: ["todoWrite"] satisfies ToolName[] as string[],
-};
 
 export const ServerToolApproved = "<server-tool-approved>";
 
