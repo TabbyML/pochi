@@ -44,7 +44,7 @@ export function createGeminiCliModel({
   });
 }
 
-function createFetcher(
+export function createFetcher(
   model: string,
   getCredentials: () => Promise<GeminiCredentials>,
   cors?: boolean,
@@ -66,12 +66,11 @@ function createFetcher(
 
     let urlToFetch: URL;
 
-    if (cors) {
-      const url = new URL(
-        globalThis.POCHI_CORS_PROXY_URL_PREFIX +
-          encodeURIComponent(originalUrl.toString()),
+    const proxyPrefix = globalThis.POCHI_CORS_PROXY_URL_PREFIX;
+    if (cors && proxyPrefix) {
+      urlToFetch = new URL(
+        `${proxyPrefix}${encodeURIComponent(originalUrl.toString())}`,
       );
-      urlToFetch = url;
     } else {
       urlToFetch = originalUrl;
     }

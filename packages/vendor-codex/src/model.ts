@@ -96,16 +96,16 @@ function createCodexResponsesModel(
   return openai.responses(modelId || "gpt-5");
 }
 
-function createProxyFetch(getCredentials: () => Promise<unknown>) {
+export function createProxyFetch(getCredentials: () => Promise<unknown>) {
   return async (
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const originalUrl = input.toString();
-
-    const url = new URL(
-      globalThis.POCHI_CORS_PROXY_URL_PREFIX + encodeURIComponent(originalUrl),
-    );
+    const proxyPrefix = globalThis.POCHI_CORS_PROXY_URL_PREFIX;
+    const originalUrl = input instanceof Request ? input.url : input.toString();
+    const url = proxyPrefix
+      ? new URL(`${proxyPrefix}${encodeURIComponent(originalUrl)}`)
+      : input;
 
     const transformedBody = transformRequestBody(
       typeof init?.body === "string" ? init.body : undefined,
