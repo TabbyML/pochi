@@ -36,6 +36,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BatchExecuteManager } from "../lib/batch-execute-manager";
 import { createBackgroundTaskBatchedToolCall } from "../lib/batched-tool-call-adapters";
+import { countStepStarts } from "../lib/create-fork-agent";
 import { useLiveChatKitGetters } from "../lib/use-live-chat-kit-getters";
 
 const BackgroundTaskMaxStep = 50;
@@ -64,6 +65,7 @@ export function BackgroundTaskWorker({
       tools={backgroundTaskState?.tools}
       parentTaskId={backgroundTaskState?.parentTaskId}
       requestUseCase={backgroundTaskState?.useCase}
+      baselineStepCount={backgroundTaskState?.baselineStepCount}
       batchExecuteManager={batchExecuteManager}
     />
   );
@@ -74,11 +76,13 @@ function BackgroundTaskWorkerInner({
   tools,
   parentTaskId,
   requestUseCase,
+  baselineStepCount = 0,
   batchExecuteManager,
 }: BackgroundTaskWorkerProps & {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
   requestUseCase?: ForkAgentUseCase;
+  baselineStepCount?: number;
 }) {
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
@@ -430,24 +434,21 @@ function BackgroundTaskWorkerInner({
     }
   }, [status, errorForRetry]);
 
-  const stepCount = useMemo(() => {
-    return messages
-      .flatMap((message) => message.parts)
-      .filter((part) => part.type === "step-start").length;
-  }, [messages]);
+  const stepCount = useMemo(() => countStepStarts(messages), [messages]);
+  // Subtract the parent's baseline so only the fork's own steps count.
+  const effectiveStepCount = Math.max(0, stepCount - baselineStepCount);
 
-  // Read `stepCount` directly so the guard fires on mount, before the
-  // auto-start effect below can call `retry()` on an over-budget task.
+  // Guard fires on mount so auto-start below never resumes an over-budget task.
   useEffect(() => {
     if (completedRef.current) {
       return;
     }
-    if (stepCount > BackgroundTaskMaxStep) {
+    if (effectiveStepCount > BackgroundTaskMaxStep) {
       failWorker(
         "The background task failed to complete, max step count reached.",
       );
     }
-  }, [stepCount, failWorker]);
+  }, [effectiveStepCount, failWorker]);
 
   // Auto-start / resume the worker from its current last message.
   // Only kicks in when the task already has at least one message, since
@@ -464,7 +465,7 @@ function BackgroundTaskWorkerInner({
       !completedRef.current &&
       !abortController.current.signal.aborted &&
       // Belt-and-suspenders: never resume an over-budget task.
-      stepCount <= BackgroundTaskMaxStep &&
+      effectiveStepCount <= BackgroundTaskMaxStep &&
       !(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
         task?.status === "completed"
@@ -477,6 +478,7 @@ function BackgroundTaskWorkerInner({
           modelId: selectedModel.id,
           messageCount: messages.length,
           stepCount,
+          baselineStepCount,
         },
         "▶ start background task",
       );
@@ -488,6 +490,8 @@ function BackgroundTaskWorkerInner({
     selectedModel,
     messages.length,
     stepCount,
+    baselineStepCount,
+    effectiveStepCount,
     retry,
     task?.status,
     task?.error,

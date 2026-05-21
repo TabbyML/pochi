@@ -75,8 +75,49 @@ describe("buildForkMessages", () => {
           "attemptCompletion",
         ],
         useCase: "task-memory",
+        baselineStepCount: 0,
       },
     ]);
+  });
+
+  it("persists baselineStepCount derived from parent step-start parts", async () => {
+    const states: Array<{ baselineStepCount?: number }> = [];
+    const parentMessages = [
+      {
+        id: "m1",
+        role: "user",
+        parts: [{ type: "text", text: "hello" }],
+      },
+      {
+        id: "m2",
+        role: "assistant",
+        parts: [
+          { type: "step-start" },
+          { type: "text", text: "a" },
+          { type: "step-start" },
+          { type: "text", text: "b" },
+        ],
+      },
+      {
+        id: "m3",
+        role: "assistant",
+        parts: [{ type: "step-start" }, { type: "text", text: "c" }],
+      },
+    ] as Message[];
+
+    await createForkAgent({
+      store: { commit: () => undefined } as never,
+      label: "task-memory",
+      parentMessages,
+      parentCwd: "/repo",
+      directive: "extract memory",
+      setBackgroundTaskState: (_taskId, state) => {
+        states.push(state);
+      },
+    });
+
+    expect(states).toHaveLength(1);
+    expect(states[0].baselineStepCount).toBe(3);
   });
 });
 
