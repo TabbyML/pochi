@@ -66,7 +66,17 @@
     "toolResults": "ツールの結果",
     "taskMemory": "タスクメモリ",
     "viewTaskMemory": "タスクメモリを表示",
-    "viewTaskMemoryTooltip": "タスク圧縮時に使用されるタスクメモリを表示します。"
+    "viewTaskMemoryTooltip": "タスク圧縮時に使用されるタスクメモリを表示します。",
+    "compact": "圧縮",
+    "memory": "メモリ",
+    "autoMemory": "自動メモリ",
+    "autoMemoryEnabled": "自動メモリを有効化",
+    "autoMemoryDescription": "セッションをまたいだ永続的な知識を共有メモリインデックスに自動抽出します。",
+    "viewAutoMemory": "自動メモリを表示",
+    "viewAutoMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
+    "viewTaskMemoryButtonTooltip": "タスク圧縮時に再利用されるタスクメモリの要約を開きます。",
+    "autoMemoryUnavailable": "git ワークスペースでタスクを実行すると自動メモリが利用可能になります。",
+    "taskMemoryUnavailable": "タスクメモリは会話の進行に伴って自動的に生成されます。"
   },
   "modelSelect": {
     "selectModel": "モデルを選択",

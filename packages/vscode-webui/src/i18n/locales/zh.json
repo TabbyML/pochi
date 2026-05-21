@@ -65,7 +65,17 @@
     "toolResults": "工具结果",
     "taskMemory": "任务记忆",
     "viewTaskMemory": "查看任务记忆",
-    "viewTaskMemoryTooltip": "查看任务记忆，压缩任务时将使用此记忆。"
+    "viewTaskMemoryTooltip": "查看任务记忆，压缩任务时将使用此记忆。",
+    "compact": "压缩",
+    "memory": "记忆",
+    "autoMemory": "自动记忆",
+    "autoMemoryEnabled": "启用自动记忆",
+    "autoMemoryDescription": "在多个会话之间自动提取持久知识到共享记忆索引中。",
+    "viewAutoMemory": "查看自动记忆",
+    "viewAutoMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
+    "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",
+    "autoMemoryUnavailable": "在 git 工作区运行任务后自动记忆将可用。",
+    "taskMemoryUnavailable": "任务记忆将随着对话进行自动生成。"
   },
   "modelSelect": {
     "selectModel": "选择模型",

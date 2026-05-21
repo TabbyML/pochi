@@ -12,17 +12,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
 import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
 import { constants } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
+import { Switch } from "./ui/switch";
 
 const TaskMemoryFileUri = "pochi://-/memory.md";
 
@@ -50,6 +53,24 @@ export function TokenUsage({
   const { contextWindowUsage } = useTaskContextWindowUsage(taskId);
   const { taskMemoryState } = useTaskMemoryState(taskId);
   const hasTaskMemory = taskMemoryState.extractionCount > 0;
+  const { autoMemoryEnabled, setAutoMemoryEnabled } = useAutoMemoryEnabled();
+  const { data: autoMemoryContext } = useQuery({
+    queryKey: ["autoMemoryContext", autoMemoryEnabled],
+    queryFn: () => vscodeHost.readAutoMemory({ ensure: false }),
+    enabled: autoMemoryEnabled,
+    staleTime: 5_000,
+  });
+  const autoMemoryAvailable = Boolean(autoMemoryContext);
+
+  const handleOpenAutoMemory = async () => {
+    // Ensure the memory directory and index file exist before opening so
+    // VS Code doesn't show a "file not found" error on first use.
+    const context = await vscodeHost.readAutoMemory({ ensure: true });
+    if (context?.indexPath) {
+      vscodeHost.openFile(context.indexPath);
+      setIsOpen(false);
+    }
+  };
   const { t } = useTranslation();
   const contextWindow =
     selectedModel.options.contextWindow || constants.DefaultContextWindow;
@@ -158,29 +179,14 @@ export function TokenUsage({
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[355px] border"
+        className="w-85 border"
         sideOffset={0}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="flex flex-col gap-y-4 text-xs">
-          {rules?.length > 0 && (
-            <div className="flex flex-col gap-y-1">
-              <div className="mb-1 text-muted-foreground">
-                {t("tokenUsage.rules")}
-              </div>
-              <div>
-                <FileList
-                  matches={rules.map((item) => ({
-                    file: item.relativeFilepath ?? item.filepath,
-                    label: item.label,
-                  }))}
-                  showBaseName={false}
-                />
-              </div>
-            </div>
-          )}
+          {/* Section: Context Window */}
           <div className="flex flex-col gap-y-1">
             <div className="mb-1 flex items-center gap-1 font-medium text-foreground">
               <span>{t("tokenUsage.contextWindow")}</span>
@@ -265,54 +271,91 @@ export function TokenUsage({
               </div>
             )}
           </div>
-          <div className="mt-2 flex items-center gap-x-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-block">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => {
-                        compact?.newCompactTask();
-                        setIsOpen(false);
-                      }}
-                      disabled={!compact?.enabled}
-                    >
-                      {compact?.newCompactTaskPending
-                        ? t("tokenUsage.compacting")
-                        : t("tokenUsage.newTaskWithSummary")}
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                {minTokenTooltip}
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-block">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => {
-                        compact?.inlineCompactTask();
-                        setIsOpen(false);
-                      }}
-                      disabled={!compact?.enabled}
-                    >
-                      {compact?.inlineCompactTaskPending
-                        ? t("tokenUsage.compacting")
-                        : t("tokenUsage.compactTask")}
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                {minTokenTooltip}
-              </Tooltip>
-            </TooltipProvider>
-            {hasTaskMemory && (
+
+          {/* Section: Rules */}
+          {rules?.length > 0 && (
+            <div className="flex flex-col gap-y-1">
+              <div className="font-medium text-foreground">
+                {t("tokenUsage.rules")}
+              </div>
+              <div>
+                <FileList
+                  matches={rules.map((item) => ({
+                    file: item.relativeFilepath ?? item.filepath,
+                    label: item.label,
+                  }))}
+                  showBaseName={false}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Section: Memory */}
+          <div className="flex flex-col gap-y-2">
+            <div className="font-medium text-foreground">
+              {t("tokenUsage.memory")}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Auto Memory: view + toggle in one button-styled control */}
+              <div
+                className={cn(
+                  "inline-flex h-8 items-center rounded-md border bg-background text-xs shadow-xs transition-colors",
+                  "dark:border-input dark:bg-input/30",
+                )}
+              >
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleOpenAutoMemory();
+                        }}
+                        disabled={!autoMemoryEnabled || !autoMemoryAvailable}
+                        className={cn(
+                          "h-full rounded-l-md px-3 font-medium text-foreground transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-input/50",
+                          "disabled:cursor-not-allowed disabled:bg-transparent disabled:text-muted-foreground disabled:hover:bg-transparent dark:disabled:hover:bg-transparent",
+                        )}
+                      >
+                        {t("tokenUsage.autoMemory")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[220px]">
+                      {autoMemoryEnabled && autoMemoryAvailable
+                        ? t("tokenUsage.viewAutoMemoryTooltip")
+                        : t("tokenUsage.autoMemoryUnavailable")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span
+                  className="h-full w-px bg-border dark:bg-input"
+                  aria-hidden="true"
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-full items-center px-2">
+                        <Switch
+                          id="auto-memory-enabled"
+                          aria-label={t("tokenUsage.autoMemoryEnabled")}
+                          checked={autoMemoryEnabled}
+                          disabled={!setAutoMemoryEnabled}
+                          onCheckedChange={(checked) =>
+                            setAutoMemoryEnabled?.(checked)
+                          }
+                          className="h-4 w-7 [&>span]:size-3.5"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[220px]">
+                      {t("tokenUsage.autoMemoryEnabled")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              {/* Task Memory: view-only outline button */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -325,17 +368,75 @@ export function TokenUsage({
                           vscodeHost.openFile(TaskMemoryFileUri);
                           setIsOpen(false);
                         }}
+                        disabled={!hasTaskMemory}
                       >
                         {t("tokenUsage.taskMemory")}
                       </Button>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-[200px]">
-                    {t("tokenUsage.viewTaskMemoryTooltip")}
+                  <TooltipContent className="max-w-[220px]">
+                    {hasTaskMemory
+                      ? t("tokenUsage.viewTaskMemoryTooltip")
+                      : t("tokenUsage.taskMemoryUnavailable")}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            )}
+            </div>
+          </div>
+
+          {/* Section: Compact */}
+          <div className="flex flex-col gap-y-2">
+            <div className="font-medium text-foreground">
+              {t("tokenUsage.compact")}
+            </div>
+            <div className="flex flex-nowrap items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="inline-block">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          compact?.newCompactTask();
+                          setIsOpen(false);
+                        }}
+                        disabled={!compact?.enabled}
+                      >
+                        {compact?.newCompactTaskPending
+                          ? t("tokenUsage.compacting")
+                          : t("tokenUsage.newTaskWithSummary")}
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  {minTokenTooltip}
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="inline-block">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          compact?.inlineCompactTask();
+                          setIsOpen(false);
+                        }}
+                        disabled={!compact?.enabled}
+                      >
+                        {compact?.inlineCompactTaskPending
+                          ? t("tokenUsage.compacting")
+                          : t("tokenUsage.compactTask")}
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  {minTokenTooltip}
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
       </PopoverContent>

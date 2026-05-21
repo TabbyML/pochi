@@ -429,6 +429,18 @@ export interface VSCodeHostApi {
     ensure?: boolean;
   }): Promise<AutoMemoryContext | undefined>;
 
+  /**
+   * Reads whether long-term (auto) memory is enabled and returns the
+   * reactive signal plus a setter, mirroring the
+   * `readAutoMemoryState` / `readTaskMemoryState` pattern. Auto memory is
+   * on by default; users can opt out via the `pochi.advanced.memory.enabled`
+   * setting.
+   */
+  readAutoMemoryEnabled(): Promise<{
+    value: ThreadSignalSerialization<boolean>;
+    setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
+  }>;
+
   readAutoMemoryState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
     setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
