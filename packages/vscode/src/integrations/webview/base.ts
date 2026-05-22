@@ -204,15 +204,17 @@ export abstract class WebviewBase implements vscode.Disposable {
         "index.css",
       ]);
       const style = `<link rel="stylesheet" href="${styleUri}">`;
+      const chartJsCdnOrigin = "https://cdn.jsdelivr.net";
 
       const csp = [
         `default-src 'none';`,
         `img-src ${webview.cspSource} https://* blob: data:`,
         `media-src ${webview.cspSource} https://* blob: data:`,
-        `script-src 'nonce-${nonce}' 'unsafe-eval'`,
+        `script-src 'nonce-${nonce}' ${webview.cspSource} ${chartJsCdnOrigin} 'unsafe-eval'`,
         `style-src ${webview.cspSource} 'unsafe-inline'`,
         `font-src ${webview.cspSource} data:`,
         `connect-src ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://*.vscode-cdn.net https://* http://*:* ws://localhost:* data: blob:`,
+        `frame-src 'self' data: blob:`,
         `worker-src ${webview.cspSource} data: blob:`,
       ];
       const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;
@@ -280,15 +282,17 @@ export abstract class WebviewBase implements vscode.Disposable {
 
     const reactRefreshHash =
       "sha256-yL+3q2cca0YKq6RvbZxpS67pnyG8uCKFMrhN3CvGX8A=";
+    const chartJsCdnOrigin = "https://cdn.jsdelivr.net";
 
     const csp = [
       `default-src 'none';`,
       `img-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
       `media-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} https://* blob: data:`,
-      `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} '${reactRefreshHash}' 'unsafe-eval'`,
+      `script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} ${chartJsCdnOrigin} '${reactRefreshHash}' 'unsafe-eval'`,
       `style-src ${webview.cspSource} 'self' 'unsafe-inline'`,
       `font-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlIp} ${webview.cspSource} data:`,
       `connect-src ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} ${devWebUIWsBaseUrl} ${devWebUIWsBaseUrlLocalhostDot} ${devWebUIWsBaseUrlIp} ${getServerBaseUrl()} ${getSyncBaseUrl()} ${getSyncBaseUrl().replace("http", "ws")} https://* http://*:* ws://localhost:* data: blob:`,
+      `frame-src 'self' data: blob:`,
       `worker-src ${webview.cspSource} ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} data: blob:`,
     ];
     const cspHeader = `<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">`;

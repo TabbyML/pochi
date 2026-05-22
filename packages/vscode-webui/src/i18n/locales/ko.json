@@ -292,6 +292,7 @@
     "stop": "중지",
     "preview": "미리보기",
     "calling": "호출 중",
+    "renderingWidget": "Widget 렌더링 중",
     "request": "요청",
     "response": "응답",
     "imgAlt": "MCP 도구 응답 스냅샷",

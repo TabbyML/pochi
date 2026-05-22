@@ -18,6 +18,7 @@ import { multiApplyDiffTool } from "./multi-apply-diff";
 import { newTaskTool } from "./new-task";
 import { ReadBackgroundJobOutputTool } from "./read-background-job-output";
 import { readFileTool } from "./read-file";
+import { RenderWidgetTool } from "./render-widget";
 import { searchFilesTool } from "./search-files";
 import { StartBackgroundJobTool } from "./start-background-job";
 import { todoWriteTool } from "./todo-write";
@@ -122,6 +123,7 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   listFiles: listFilesTool,
   globFiles: globFilesTool,
   todoWrite: todoWriteTool,
+  renderWidget: RenderWidgetTool,
   createReview: createReviewTool,
   editNotebook: editNotebookTool,
   useSkill: UseSkillTool,
