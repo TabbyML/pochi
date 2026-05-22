@@ -60,6 +60,7 @@ describe("RenderWidgetTool", () => {
               title: "Broken widget",
               kind: "interactive",
               widgetCode: "<script>throw new Error('boom')</script>",
+              guidelinesRead: true,
             },
           } as never
         }
@@ -77,5 +78,40 @@ describe("RenderWidgetTool", () => {
     });
 
     expect(screen.getByText("boom")).toBeTruthy();
+  });
+
+  it("waits for the sandboxed renderer to report widget height", () => {
+    render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-2",
+            state: "input-available",
+            input: {
+              title: "Measured widget",
+              kind: "diagram",
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    const iframe = screen.getByTitle("Measured widget");
+    expect(iframe.style.height).toBe("");
+
+    act(() => {
+      iframe.dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({ type: "height", height: 320 });
+    });
+
+    expect(iframe.style.height).toBe("320px");
   });
 });

@@ -48,9 +48,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   const channelReadyRef = useRef(false);
   const isSendingRef = useRef(false);
   const hasPostedPreviewRef = useRef(false);
-  const [height, setHeight] = useState(() =>
-    clampHeight(tool.state !== "input-streaming" ? tool.input?.heightHint : 0),
-  );
+  const [height, setHeight] = useState<number | undefined>();
   const [hasFirstHeight, setHasFirstHeight] = useState(false);
   const [rendererError, setRendererError] = useState<string | undefined>();
   const channelId = useMemo(

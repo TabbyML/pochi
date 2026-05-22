@@ -2,10 +2,9 @@ import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const renderWidget: ToolFunctionType<
   ClientTools["renderWidget"]
-> = async ({ title, kind }) => {
+> = async ({ title }) => {
   return {
     success: true,
     title,
-    kind,
   };
 };

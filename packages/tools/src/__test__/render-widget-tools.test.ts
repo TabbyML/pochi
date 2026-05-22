@@ -4,6 +4,10 @@ import {
   isReadonlyToolCall,
   selectAgentTools,
 } from "../index";
+import {
+  renderWidgetInputSchema,
+  renderWidgetOutputSchema,
+} from "../render-widget";
 
 function toolNames(tools: Record<string, unknown>): string[] {
   return Object.keys(tools).sort();
@@ -18,22 +22,49 @@ describe("render widget tools", () => {
   });
 
   it("validates generative UI tool schemas", () => {
-    const tools = createClientTools();
+    const inputProperties = renderWidgetInputSchema.toJSONSchema().properties;
+    const outputProperties = renderWidgetOutputSchema.toJSONSchema().properties;
 
     expect(() =>
-      tools.renderWidget.inputSchema.parse({
+      renderWidgetInputSchema.parse({
+        title: "Flow",
+        kind: "diagram",
+        widgetCode: "<svg></svg>",
+        guidelinesRead: true,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      renderWidgetInputSchema.parse({
         title: "Flow",
         kind: "diagram",
         widgetCode: "<svg></svg>",
       }),
-    ).not.toThrow();
+    ).toThrow();
     expect(() =>
-      tools.renderWidget.inputSchema.parse({
+      renderWidgetInputSchema.parse({
+        title: "Flow",
+        kind: "diagram",
+        widgetCode: "<svg></svg>",
+        guidelinesRead: false,
+      }),
+    ).toThrow();
+    expect(() =>
+      renderWidgetInputSchema.parse({
         title: "Flow",
         widgetCode: "<svg></svg>",
         kind: "core",
+        guidelinesRead: true,
       }),
     ).toThrow();
+    expect(inputProperties).toHaveProperty("guidelinesRead");
+    expect(inputProperties).not.toHaveProperty("heightHint");
+    expect(outputProperties).not.toHaveProperty("kind");
+    expect(() =>
+      renderWidgetOutputSchema.parse({
+        success: true,
+        title: "Flow",
+      }),
+    ).not.toThrow();
   });
 
   it("treats renderWidget as a readonly UI rendering call", () => {
@@ -42,6 +73,7 @@ describe("render widget tools", () => {
         title: "Flow",
         kind: "diagram",
         widgetCode: "<svg></svg>",
+        guidelinesRead: true,
       }),
     ).toBe(true);
   });
