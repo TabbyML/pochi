@@ -1394,20 +1394,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
     setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
   }> => {
-    logger.debug({ taskId }, "readBackgroundTaskState");
     return {
       value: ThreadSignal.serialize(
         this.taskStateStore.getBackgroundTaskStateSignal(taskId),
       ),
       setBackgroundTaskState: (state: BackgroundTaskState) => {
-        logger.debug(
-          {
-            taskId,
-            parentTaskId: state.parentTaskId,
-            tools: state.tools?.length,
-          },
-          "readBackgroundTaskState.setBackgroundTaskState",
-        );
         return this.taskStateStore.setBackgroundTaskState(taskId, state);
       },
     };

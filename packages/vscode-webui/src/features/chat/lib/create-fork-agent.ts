@@ -54,6 +54,15 @@ export function buildForkMessages(
   ];
 }
 
+/** Count `step-start` parts across messages. */
+export function countStepStarts(
+  messages: ReadonlyArray<Pick<Message, "parts">>,
+): number {
+  return messages
+    .flatMap((message) => message.parts)
+    .filter((part) => part.type === "step-start").length;
+}
+
 export interface ForkAgentConfig {
   taskId: string;
   cwd: string | undefined;
@@ -83,6 +92,8 @@ export async function createForkAgent(
     options.parentMessages,
     options.directive,
   ) as Message[];
+  // Exclude the parent's steps from the fork's max-step guard.
+  const baselineStepCount = countStepStarts(options.parentMessages);
 
   logger.debug(
     {
@@ -94,6 +105,7 @@ export async function createForkAgent(
       parentMessages: options.parentMessages.length,
       initMessages: initMessages.length,
       tools: options.tools?.length,
+      baselineStepCount,
     },
     "Creating background fork agent",
   );
@@ -102,6 +114,7 @@ export async function createForkAgent(
     parentTaskId: options.parentTaskId,
     tools: options.tools ? ensureAttemptCompletion(options.tools) : undefined,
     useCase: options.label,
+    baselineStepCount,
   };
   logger.debug(
     {

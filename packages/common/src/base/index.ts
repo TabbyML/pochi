@@ -89,4 +89,6 @@ export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
   useCase?: ForkAgentUseCase;
+  /** Step-start count inherited from the parent, excluded from the max-step guard. */
+  baselineStepCount?: number;
 }

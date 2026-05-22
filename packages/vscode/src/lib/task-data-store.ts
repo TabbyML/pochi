@@ -216,17 +216,7 @@ export class TaskDataStore {
   }
 
   getBackgroundTaskState(taskId: string): BackgroundTaskState | undefined {
-    const backgroundTaskState = this.getTaskState(taskId)?.backgroundTaskState;
-    logger.debug(
-      {
-        taskId,
-        hasBackgroundTaskState: backgroundTaskState !== undefined,
-        parentTaskId: backgroundTaskState?.parentTaskId,
-        tools: backgroundTaskState?.tools?.length,
-      },
-      "getBackgroundTaskState",
-    );
-    return backgroundTaskState;
+    return this.getTaskState(taskId)?.backgroundTaskState;
   }
 
   async setBackgroundTaskState(
@@ -234,19 +224,10 @@ export class TaskDataStore {
     backgroundTaskState: BackgroundTaskState,
   ): Promise<void> {
     const existing = this.getTaskState(taskId) || {};
-    logger.debug(
-      {
-        taskId,
-        parentTaskId: backgroundTaskState.parentTaskId,
-        tools: backgroundTaskState.tools?.length,
-      },
-      "setBackgroundTaskState",
-    );
     await this.saveTaskState(taskId, { ...existing, backgroundTaskState });
   }
 
   getBackgroundTaskStateSignal(taskId: string) {
-    logger.debug({ taskId }, "getBackgroundTaskStateSignal");
     return computed(() => this.state.value[taskId]?.backgroundTaskState);
   }
 }
