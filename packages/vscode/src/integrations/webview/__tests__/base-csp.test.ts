@@ -1,29 +1,37 @@
+import * as assert from "node:assert";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "mocha";
+import * as path from "node:path";
 
 describe("webview CSP", () => {
   it("allows sandboxed widget iframes to load from blob URLs", () => {
     const source = readFileSync(
-      "packages/vscode/src/integrations/webview/base.ts",
+      path.join(__dirname, "../base.ts"),
       "utf8",
     );
 
-    expect(source.match(/frame-src 'self' data: blob:/g)).toHaveLength(2);
+    const matches = source.match(/frame-src 'self' data: blob:/g);
+    assert.strictEqual(matches?.length, 2);
   });
 
   it("allows packaged widget renderer scripts and the approved Chart.js CDN without unsafe-inline", () => {
     const source = readFileSync(
-      "packages/vscode/src/integrations/webview/base.ts",
+      path.join(__dirname, "../base.ts"),
       "utf8",
     );
 
-    expect(source).toContain(
-      "`script-src 'nonce-${nonce}' ${webview.cspSource} ${chartJsCdnOrigin} 'unsafe-eval'`",
+    assert.ok(
+      source.includes(
+        "`script-src 'nonce-${nonce}' ${webview.cspSource} ${chartJsCdnOrigin} 'unsafe-eval'`",
+      ),
     );
-    expect(source).toContain(
-      "`script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} ${chartJsCdnOrigin} '${reactRefreshHash}' 'unsafe-eval'`",
+    assert.ok(
+      source.includes(
+        "`script-src 'nonce-${nonce}' ${devWebUIHttpBaseUrl} ${devWebUIHttpBaseUrlLocalhostDot} ${devWebUIHttpBaseUrlIp} ${chartJsCdnOrigin} '${reactRefreshHash}' 'unsafe-eval'`",
+      ),
     );
-    expect(source.match(/https:\/\/cdn\.jsdelivr\.net/g)).toHaveLength(2);
-    expect(source).not.toContain("script-src 'unsafe-inline'");
+    const matches = source.match(/https:\/\/cdn\.jsdelivr\.net/g);
+    assert.strictEqual(matches?.length, 2);
+    assert.ok(!source.includes("script-src 'unsafe-inline'"));
   });
 });
