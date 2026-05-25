@@ -22,7 +22,7 @@ export const renderWidgetInputSchema = z.object({
   guidelinesRead: z
     .literal(true)
     .describe(
-      "Set true only after invoking the `readWidgetGuidelines` skill via the `useSkill` tool and reading the returned guidelines for the selected kind.",
+      "Set true only after invoking the `read-widget-guidelines` skill via the `useSkill` tool and reading the returned guidelines for the selected kind.",
     ),
 });
 
@@ -33,7 +33,7 @@ export const renderWidgetOutputSchema = z.object({
 
 export const renderWidget = defineClientTool({
   description:
-    "Render a local generative UI widget in the VSCode chat. Use this for SVG diagrams, UI mockups, local interactive explainers, charts, and art. IMPORTANT: Before calling this tool, you MUST first invoke the `useSkill` tool with skill name `readWidgetGuidelines` to fetch the widget guidelines, and then author the widget strictly following those guidelines. The widget must be self-contained HTML/SVG and must not call LLMs, host actions, external APIs, or external resources, except for the approved Chart.js CDN script when chart guidance requires it.",
+    "Render a local generative UI widget in the VSCode chat. Use this for SVG diagrams, UI mockups, local interactive explainers, charts, and art. IMPORTANT: Before calling this tool, you MUST first invoke the `useSkill` tool with skill name `read-widget-guidelines` to fetch the widget guidelines, and then author the widget strictly following those guidelines. The widget must be self-contained HTML/SVG and must not call LLMs, host actions, external APIs, or external resources, except for the approved Chart.js CDN script when chart guidance requires it.",
   inputSchema: renderWidgetInputSchema,
   outputSchema: renderWidgetOutputSchema,
 });
