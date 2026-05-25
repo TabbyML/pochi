@@ -59,6 +59,14 @@ export type {
   ReviewCodeSnippet,
 } from "./types/review";
 export type { BuiltinSubAgentInfo } from "./types/sub-agent";
+export type { WebviewPanelInfo } from "./types/webview";
+export {
+  BrowserAgentRecordingSize,
+  BrowserAgentRecordingSizeOptions,
+  BrowserAgentSettings,
+  parseBrowserAgentRecordingSize,
+  type BrowserAgentSettingsUpdate,
+} from "./types/browser-agent-settings";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export { isValidSkillFile } from "./types/skill";
 export {

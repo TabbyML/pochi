@@ -2,6 +2,8 @@ import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { AuthEvents } from "@/lib/auth-events";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { AutoMemoryManager } from "@/lib/auto-memory";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
@@ -65,7 +67,12 @@ import {
 } from "@getpochi/common";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { BrowserSessionStore } from "@getpochi/common/browser";
-import type { UserInfo } from "@getpochi/common/configuration";
+import {
+  type UserInfo,
+  mergeBrowserAgentSettings,
+  pochiConfig,
+  updatePochiConfig,
+} from "@getpochi/common/configuration";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -77,6 +84,7 @@ import {
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
+import type { BrowserAgentSettingsUpdate } from "@getpochi/common/vscode-webui-bridge";
 import {
   type BuiltinSubAgentInfo,
   type CaptureEvent,
@@ -162,6 +170,7 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
 import { PochiTaskEditorProvider } from "./webview-panel";
+import { PochiWebviewStandalonePanel } from "./webview-standalone-panel";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -174,6 +183,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
+    private readonly events: AuthEvents,
     private readonly editorContextState: EditorContextState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
@@ -939,6 +949,30 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
   };
 
+  readBrowserAgentSettings = async () => {
+    return {
+      browserSettings: ThreadSignal.serialize(
+        computed(() =>
+          mergeBrowserAgentSettings(pochiConfig.value.browserAgentSettings),
+        ),
+      ),
+      updateBrowserAgentSettings: async (
+        params: BrowserAgentSettingsUpdate,
+      ) => {
+        const browserAgentSettings = mergeBrowserAgentSettings(
+          params,
+          pochiConfig.value.browserAgentSettings,
+        );
+        await updatePochiConfig(
+          {
+            browserAgentSettings,
+          },
+          "user",
+        );
+      },
+    };
+  };
+
   showInformationMessage = async <T extends string>(
     message: string,
     options: { modal?: boolean; detail?: string },
@@ -1001,6 +1035,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
     }
   };
+
+  openBrowserAgentSettingsPanel: VSCodeHostApi["openBrowserAgentSettingsPanel"] =
+    () => {
+      PochiWebviewStandalonePanel.open("browser-agent-settings", {
+        context: this.context,
+        events: this.events,
+        pochiConfiguration: this.pochiConfiguration,
+        vscodeHost: this,
+      });
+    };
 
   sendTaskNotification = async (
     kind: "failed" | "completed" | "pending-tool" | "pending-input",

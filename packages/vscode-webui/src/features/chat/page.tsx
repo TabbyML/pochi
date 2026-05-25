@@ -15,6 +15,7 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
@@ -70,7 +71,7 @@ export function ChatPage(props: ChatProps) {
 interface ChatProps {
   uid: string;
   user?: UserInfo;
-  info: NonNullable<typeof window.POCHI_TASK_INFO>;
+  info: PochiTaskInfo;
 }
 
 function Chat({ user, uid, info }: ChatProps) {

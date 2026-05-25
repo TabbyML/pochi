@@ -7,11 +7,11 @@ import { taskFileChanged } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
 import { getCorsProxyUrlPrefix } from "@getpochi/common/cors-proxy";
 import type {
-  PochiTaskInfo,
   ResourceURI,
   SessionState,
   VSCodeHostApi,
   WebviewHostApi,
+  WebviewPanelInfo,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   getServerBaseUrl,
@@ -125,7 +125,7 @@ export abstract class WebviewBase implements vscode.Disposable {
   protected getHtmlForWebview(
     webview: vscode.Webview,
     kind: "sidebar" | "pane",
-    info?: PochiTaskInfo,
+    panelInfo?: WebviewPanelInfo,
   ): string {
     const isProd =
       this.context.extensionMode === vscode.ExtensionMode.Production ||
@@ -145,12 +145,15 @@ export abstract class WebviewBase implements vscode.Disposable {
     </style>`;
 
     const nonce = getNonce();
+    const panelInfoGlobal = panelInfo
+      ? `window.POCHI_PANEL_INFO = ${JSON.stringify(panelInfo)};`
+      : "";
     const injectGlobalVars = `<script type="module" nonce="${nonce}">
       window.POCHI_CLIENT = "Pochi/${this.context.extension.packageJSON.version}"
       window.POCHI_CORS_PROXY_URL_PREFIX = "${getCorsProxyUrlPrefix()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";
-      ${info ? `window.POCHI_TASK_INFO = ${JSON.stringify(info)};` : ""}
+      ${panelInfoGlobal}
     </script>`;
 
     if (isProd) {

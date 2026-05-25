@@ -6,6 +6,7 @@ import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { browserSessionManager } from "./browser-session-manager";
+import { useBrowserAgentSettings } from "./hooks/use-browser-agent-settings";
 
 /** @useSignals */
 export const useBrowserSession = (taskId: string) => {
@@ -24,10 +25,15 @@ export const useManageBrowserSession = ({
   messages,
 }: { messages: Message[] }) => {
   const store = useDefaultStore();
+  const { browserSettings } = useBrowserAgentSettings();
   const lastMessage = messages.at(-1);
 
   useEffect(() => {
     const manageBrowserSession = async () => {
+      if (!browserSettings) {
+        return;
+      }
+
       if (!lastMessage) {
         return;
       }
@@ -45,7 +51,11 @@ export const useManageBrowserSession = ({
           const taskId = part.input?._meta?.uid || "";
           const { taskId: parentId } = decodeStoreId(store.storeId);
           if (!browserSessionManager.isRegistered(taskId)) {
-            await browserSessionManager.registerSession(taskId, parentId);
+            await browserSessionManager.registerSession(
+              taskId,
+              parentId,
+              browserSettings.recording,
+            );
           }
         }
 
@@ -67,5 +77,5 @@ export const useManageBrowserSession = ({
     };
 
     manageBrowserSession();
-  }, [lastMessage, store]);
+  }, [browserSettings, lastMessage, store]);
 };

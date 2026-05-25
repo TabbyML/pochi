@@ -37,6 +37,10 @@ import type {
   VSCodeSettings,
   WorkspaceState,
 } from "./index";
+import type {
+  BrowserAgentSettings,
+  BrowserAgentSettingsUpdate,
+} from "./types/browser-agent-settings";
 import type { ActiveSelection } from "./types/message";
 
 const VSCodeHostStub = {
@@ -228,6 +232,14 @@ const VSCodeHostStub = {
   updateVSCodeSettings: (_params: Partial<VSCodeSettings>) => {
     return Promise.resolve();
   },
+  readBrowserAgentSettings: () => {
+    return Promise.resolve({
+      browserSettings: {} as ThreadSignalSerialization<BrowserAgentSettings>,
+      updateBrowserAgentSettings: async (
+        _params: BrowserAgentSettingsUpdate,
+      ) => {},
+    });
+  },
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
   },
@@ -281,6 +293,8 @@ const VSCodeHostStub = {
       showFileChanges?: boolean;
     },
   ): Promise<void> => {},
+
+  openBrowserAgentSettingsPanel: (): void => {},
 
   sendTaskNotification: async (): Promise<void> => {},
 
