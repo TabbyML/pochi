@@ -135,7 +135,6 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
   readFile: createReadFileTool(options?.contentType),
   useSkill: createSkillTool(options?.skills),
   searchFiles,
-  renderWidget,
   todoWrite,
   writeToFile,
   editNotebook,
@@ -148,6 +147,7 @@ export const createClientTools = (options?: CreateClientToolOptions) => {
     startBackgroundJob,
     readBackgroundJobOutput,
     killBackgroundJob,
+    renderWidget,
   };
 };
 
