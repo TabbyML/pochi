@@ -253,7 +253,7 @@ export function buildWidgetIframeSrc(html: string) {
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
-export function buildWidgetIframeShell(
+export function buildWidgetIframeDocument(
   rendererScriptSrc: string,
   themeVariablesCss = "",
   channelId = "pochi-widget",

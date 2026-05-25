@@ -10,7 +10,7 @@ import type { ToolProps } from "../types";
 // the parent WebUI window.
 import rendererScriptSrc from "./renderer-entry.ts?worker&url";
 import {
-  buildWidgetIframeShell,
+  buildWidgetIframeDocument,
   buildWidgetIframeSrc,
   coalescePendingWidgetMessage,
   collectWidgetThemeVariables,
@@ -55,9 +55,9 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     () => `pochi-widget-${tool.toolCallId}`,
     [tool.toolCallId],
   );
-  const iframeShell = useMemo(
+  const iframeDocument = useMemo(
     () =>
-      buildWidgetIframeShell(
+      buildWidgetIframeDocument(
         rendererScriptSrc,
         collectWidgetThemeVariables(),
         channelId,
@@ -65,8 +65,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     [channelId],
   );
   const iframeSrc = useMemo(
-    () => buildWidgetIframeSrc(iframeShell),
-    [iframeShell],
+    () => buildWidgetIframeSrc(iframeDocument),
+    [iframeDocument],
   );
 
   const input = tool.input;
@@ -214,7 +214,6 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     };
   }, []);
 
-  const displayTitle = title.replaceAll("_", " ");
   const headerLabel = t("toolInvocation.renderingWidget");
 
   return (
@@ -222,10 +221,11 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       <div className="flex items-center text-muted-foreground text-sm">
         <StatusIcon isExecuting={isExecuting} tool={tool} />
         <span className="ml-2">{headerLabel}</span>
+        <span>{title}</span>
       </div>
       <iframe
         ref={iframeRef}
-        title={displayTitle}
+        title={title}
         src={iframeSrc}
         sandbox="allow-scripts"
         onLoad={handleLoad}

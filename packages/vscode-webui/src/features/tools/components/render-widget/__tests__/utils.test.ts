@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import {
-  buildWidgetIframeShell,
+  buildWidgetIframeDocument,
   buildWidgetIframeSrc,
   ChartJsCdnScriptSrc,
   coalescePendingWidgetMessage,
@@ -213,30 +213,30 @@ describe("render widget utilities", () => {
     expect(measureWidgetContentHeight(root, body)).toBe(204);
   });
 
-  it("builds a renderer shell with restrictive CSP and disabled network APIs", () => {
-    const shell = buildWidgetIframeShell(
+  it("builds a renderer document with restrictive CSP and disabled network APIs", () => {
+    const iframeDocument = buildWidgetIframeDocument(
       "http://localhost:4112/src/features/tools/components/render-widget/renderer-entry.ts",
       "",
       "widget-test-channel",
     );
-    const iframeSrc = buildWidgetIframeSrc(shell);
+    const iframeSrc = buildWidgetIframeSrc(iframeDocument);
 
-    expect(shell).toContain("connect-src http://localhost:4112");
-    expect(shell).toContain(
+    expect(iframeDocument).toContain("connect-src http://localhost:4112");
+    expect(iframeDocument).toContain(
       `script-src http://localhost:4112 ${ChartJsCdnScriptSrc} 'unsafe-eval'`,
     );
-    expect(shell).toContain("sandboxed");
-    expect(shell).toContain('data-channel-id="widget-test-channel"');
-    expect(shell).not.toContain("data-chart-script-src");
-    expect(shell).toContain(":where(svg .th)");
-    expect(shell).toContain("svg .__pochi_widget_appear");
-    expect(shell).toContain("--pochi-widget-appear-delay");
-    expect(shell).toContain("translateY(8px)");
-    expect(shell).toContain("1200ms ease-out");
-    expect(shell).toContain(
+    expect(iframeDocument).toContain("sandboxed");
+    expect(iframeDocument).toContain('data-channel-id="widget-test-channel"');
+    expect(iframeDocument).not.toContain("data-chart-script-src");
+    expect(iframeDocument).toContain(":where(svg .th)");
+    expect(iframeDocument).toContain("svg .__pochi_widget_appear");
+    expect(iframeDocument).toContain("--pochi-widget-appear-delay");
+    expect(iframeDocument).toContain("translateY(8px)");
+    expect(iframeDocument).toContain("1200ms ease-out");
+    expect(iframeDocument).toContain(
       '<script type="module" src="http://localhost:4112/src/features/tools/components/render-widget/renderer-entry.ts"></script>',
     );
-    expect(shell).not.toContain("<script>\n");
+    expect(iframeDocument).not.toContain("<script>\n");
     expect(iframeSrc).toMatch(/^data:text\/html;charset=utf-8,/);
   });
 
@@ -245,30 +245,32 @@ describe("render widget utilities", () => {
     base.href = "http://localhost:4112/";
     document.head.appendChild(base);
 
-    const shell = buildWidgetIframeShell(
+    const iframeDocument = buildWidgetIframeDocument(
       "/src/features/tools/components/render-widget/renderer-entry.ts?worker_file&type=module",
     );
 
-    expect(shell).toContain(
+    expect(iframeDocument).toContain(
       `script-src http://localhost:4112 ${ChartJsCdnScriptSrc} 'unsafe-eval'`,
     );
-    expect(shell).toContain(
+    expect(iframeDocument).toContain(
       'src="http://localhost:4112/src/features/tools/components/render-widget/renderer-entry.ts"',
     );
-    expect(shell).not.toContain("data-chart-script-src");
-    expect(shell).not.toContain("worker_file");
+    expect(iframeDocument).not.toContain("data-chart-script-src");
+    expect(iframeDocument).not.toContain("worker_file");
 
     base.remove();
   });
 
   it("does not inject a local chart capability script in production", () => {
-    const shell = buildWidgetIframeShell("https://example.test/widget-renderer.js");
+    const iframeDocument = buildWidgetIframeDocument(
+      "https://example.test/widget-renderer.js",
+    );
 
-    expect(shell).not.toContain("data-chart-script-src");
-    expect(shell).toContain(
+    expect(iframeDocument).not.toContain("data-chart-script-src");
+    expect(iframeDocument).toContain(
       `script-src https://example.test ${ChartJsCdnScriptSrc} 'unsafe-eval'`,
     );
-    expect(shell).toContain("connect-src https://cdn.jsdelivr.net");
+    expect(iframeDocument).toContain("connect-src https://cdn.jsdelivr.net");
   });
 
   it("uses one shared sanitizer policy for widget fragments", () => {
@@ -279,7 +281,7 @@ describe("render widget utilities", () => {
     ).toBe(`<div data-ok="yes">Safe</div><a>link</a>`);
   });
 
-  it("copies VSCode theme variables into the iframe shell", () => {
+  it("copies VSCode theme variables into the iframe document", () => {
     document.documentElement.style.setProperty(
       "--vscode-editor-foreground",
       "#ffffff",
@@ -287,8 +289,8 @@ describe("render widget utilities", () => {
 
     const themeCss = collectWidgetThemeVariables();
     expect(themeCss).toContain("--vscode-editor-foreground: #ffffff;");
-    expect(buildWidgetIframeShell("http://localhost:4112/widget.js", themeCss)).toContain(
-      "--vscode-editor-foreground: #ffffff;",
-    );
+    expect(
+      buildWidgetIframeDocument("http://localhost:4112/widget.js", themeCss),
+    ).toContain("--vscode-editor-foreground: #ffffff;");
   });
 });
