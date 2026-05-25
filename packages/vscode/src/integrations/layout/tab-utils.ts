@@ -34,16 +34,50 @@ export function isPochiOutputTab(tab: vscode.Tab) {
   );
 }
 
-// Returns true if this tab is a file-backed editor (text/diff/custom/notebook).
-// Webview tabs (Settings, Keyboard Shortcuts, Extensions, …) return false.
+// URI schemes that represent VS Code's own configuration / chrome editors
+// rather than real workspace files. These tabs survive layout shuffles
+// poorly (issue #1551), so they should not trigger the Pochi auto-apply.
+//   - `vscode-userdata`: Preferences: Open User Settings (JSON), keybindings.json
+//   - `vscode-settings`: legacy settings editor input
+//   - `vscode`: internal vscode:// resources (walkthroughs, etc.)
+const NonWorkspaceUriSchemes = new Set([
+  "vscode-userdata",
+  "vscode-settings",
+  "vscode",
+]);
+
+function isNonWorkspaceUri(uri: vscode.Uri): boolean {
+  return NonWorkspaceUriSchemes.has(uri.scheme);
+}
+
+// Returns true if this tab is a file-backed editor (text/diff/custom/notebook)
+// backed by a real workspace URI. Tabs that look like editors but actually
+// host VS Code chrome — webview tabs (Settings, Keyboard Shortcuts,
+// Extensions, …) and `vscode-userdata:`-backed JSON editors (User Settings
+// JSON, keybindings.json) — return false so they don't trigger auto-layout.
 export function isFileBackedEditorTab(tab: vscode.Tab): boolean {
-  return (
-    tab.input instanceof vscode.TabInputText ||
-    tab.input instanceof vscode.TabInputTextDiff ||
-    tab.input instanceof vscode.TabInputCustom ||
-    tab.input instanceof vscode.TabInputNotebook ||
-    tab.input instanceof vscode.TabInputNotebookDiff
-  );
+  if (tab.input instanceof vscode.TabInputText) {
+    return !isNonWorkspaceUri(tab.input.uri);
+  }
+  if (tab.input instanceof vscode.TabInputTextDiff) {
+    return (
+      !isNonWorkspaceUri(tab.input.original) &&
+      !isNonWorkspaceUri(tab.input.modified)
+    );
+  }
+  if (tab.input instanceof vscode.TabInputCustom) {
+    return !isNonWorkspaceUri(tab.input.uri);
+  }
+  if (tab.input instanceof vscode.TabInputNotebook) {
+    return !isNonWorkspaceUri(tab.input.uri);
+  }
+  if (tab.input instanceof vscode.TabInputNotebookDiff) {
+    return (
+      !isNonWorkspaceUri(tab.input.original) &&
+      !isNonWorkspaceUri(tab.input.modified)
+    );
+  }
+  return false;
 }
 
 export function getTabGroupType(tabs: readonly vscode.Tab[]) {
