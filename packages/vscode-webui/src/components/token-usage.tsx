@@ -296,13 +296,34 @@ export function TokenUsage({
               {t("tokenUsage.memory")}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {/* Auto Memory: view + toggle in one button-styled control */}
+              {/* Auto Memory: toggle + view in one button-styled control */}
               <div
                 className={cn(
                   "inline-flex h-8 items-center rounded-md border bg-background text-xs shadow-xs transition-colors",
                   "dark:border-input dark:bg-input/30",
                 )}
               >
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-full items-center pl-2">
+                        <Switch
+                          id="auto-memory-enabled"
+                          aria-label={t("tokenUsage.autoMemoryEnabled")}
+                          checked={autoMemoryEnabled}
+                          disabled={!setAutoMemoryEnabled}
+                          onCheckedChange={(checked) =>
+                            setAutoMemoryEnabled?.(checked)
+                          }
+                          className="h-3.5 w-6 [&>span]:size-3"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[220px]">
+                      {t("tokenUsage.autoMemoryEnabled")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -313,7 +334,7 @@ export function TokenUsage({
                         }}
                         disabled={!autoMemoryEnabled || !autoMemoryAvailable}
                         className={cn(
-                          "h-full rounded-l-md px-3 font-medium text-foreground transition-colors",
+                          "h-full rounded-r-md pr-3 pl-1.5 font-medium text-foreground transition-colors",
                           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-input/50",
                           "disabled:cursor-not-allowed disabled:bg-transparent disabled:text-muted-foreground disabled:hover:bg-transparent dark:disabled:hover:bg-transparent",
                         )}
@@ -325,31 +346,6 @@ export function TokenUsage({
                       {autoMemoryEnabled && autoMemoryAvailable
                         ? t("tokenUsage.viewAutoMemoryTooltip")
                         : t("tokenUsage.autoMemoryUnavailable")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <span
-                  className="h-full w-px bg-border dark:bg-input"
-                  aria-hidden="true"
-                />
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex h-full items-center px-2">
-                        <Switch
-                          id="auto-memory-enabled"
-                          aria-label={t("tokenUsage.autoMemoryEnabled")}
-                          checked={autoMemoryEnabled}
-                          disabled={!setAutoMemoryEnabled}
-                          onCheckedChange={(checked) =>
-                            setAutoMemoryEnabled?.(checked)
-                          }
-                          className="h-4 w-7 [&>span]:size-3.5"
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[220px]">
-                      {t("tokenUsage.autoMemoryEnabled")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
