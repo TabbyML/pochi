@@ -208,8 +208,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   }
 
   private isAutoMemoryEnabled() {
-    // Auto memory is enabled by default; users can opt-out by explicitly
-    // setting `pochi.advanced.memory.enabled` to `false`.
     return (
       this.pochiConfiguration.advancedSettings.value.memory?.enabled !== false
     );

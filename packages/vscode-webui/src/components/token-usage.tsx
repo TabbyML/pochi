@@ -63,8 +63,6 @@ export function TokenUsage({
   const autoMemoryAvailable = Boolean(autoMemoryContext);
 
   const handleOpenAutoMemory = async () => {
-    // Ensure the memory directory and index file exist before opening so
-    // VS Code doesn't show a "file not found" error on first use.
     const context = await vscodeHost.readAutoMemory({ ensure: true });
     if (context?.indexPath) {
       vscodeHost.openFile(context.indexPath);
