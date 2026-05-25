@@ -55,6 +55,7 @@ export const PochiRequestUseCase = z.enum([
   "repair-tool-call",
   "generate-task-title",
   "compact-task",
+  "auto-compact-task",
   "repair-mermaid",
   ...ForkAgentUseCase.options,
 ]);
