@@ -228,6 +228,7 @@
   },
   "tasksPage": {
     "tasks": "タスク",
+    "pinned": "ピン留め",
     "filter": "タスクをフィルター",
     "archivedTasks": "アーカイブされたタスク",
     "deletedWorktrees": "削除されたワークツリー",
@@ -272,6 +273,8 @@
     "loadMore": "さらに読み込む",
     "archiveTask": "タスクをアーカイブ",
     "unarchiveTask": "タスクをアーカイブ解除",
+    "pinTask": "タスクをピン留め",
+    "unpinTask": "ピン留めを解除",
     "archiveOldTasks": "古いタスクをアーカイブ",
     "archiveOldTasksTooltip": "1週間以上前のタスクをアーカイブ",
     "showAnyTasks": "すべてのタスクを表示",

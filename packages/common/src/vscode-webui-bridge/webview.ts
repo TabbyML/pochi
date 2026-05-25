@@ -31,6 +31,7 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
+  TaskPinnedParams,
   TaskStates,
   WorkspaceState,
 } from "./index";
@@ -498,6 +499,15 @@ export interface VSCodeHostApi {
     value: ThreadSignalSerialization<Record<string, boolean>>;
     hasArchivableTasks: ThreadSignalSerialization<boolean>;
     setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
+  }>;
+
+  /**
+   * Read and manage pinned state for tasks.
+   * Returns a serialized signal for the pinned value map and a setter function.
+   */
+  readTaskPinned(): Promise<{
+    value: ThreadSignalSerialization<Record<string, boolean>>;
+    setTaskPinned: (params: TaskPinnedParams) => Promise<void>;
   }>;
 
   readLang(): Promise<{

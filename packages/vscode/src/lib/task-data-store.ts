@@ -16,6 +16,7 @@ import type * as vscode from "vscode";
 type TaskStateData = {
   mcpConfigOverride?: McpConfigOverride;
   archived?: boolean;
+  pinned?: boolean;
   changedFiles?: TaskChangedFile[];
   contextWindowUsage?: ContextWindowUsage;
   taskMemoryState?: TaskMemoryState;
@@ -138,6 +139,35 @@ export class TaskDataStore {
       for (const [taskId, taskData] of Object.entries(this.state.value)) {
         if (taskData.archived !== undefined) {
           result[taskId] = taskData.archived;
+        }
+      }
+      return result;
+    });
+  }
+
+  async setPinned(updates: Record<string, boolean>): Promise<void> {
+    const newState = { ...this.state.value };
+    const now = Date.now();
+    for (const [taskId, pinned] of Object.entries(updates)) {
+      const existing = newState[taskId] || { updatedAt: now };
+      newState[taskId] = { ...existing, pinned, updatedAt: now };
+    }
+    await this.context.globalState.update(this.storageKey, newState);
+    this.state.value = newState;
+  }
+
+  /**
+   * Get a computed signal for all tasks' pinned states.
+   *
+   * Returns a Record<taskId, pinned> for all tasks.
+   * Used for ThreadSignal serialization.
+   */
+  getPinnedSignal() {
+    return computed(() => {
+      const result: Record<string, boolean> = {};
+      for (const [taskId, taskData] of Object.entries(this.state.value)) {
+        if (taskData.pinned !== undefined) {
+          result[taskId] = taskData.pinned;
         }
       }
       return result;

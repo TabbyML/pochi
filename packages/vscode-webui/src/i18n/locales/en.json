@@ -227,6 +227,7 @@
   },
   "tasksPage": {
     "tasks": "Tasks",
+    "pinned": "Pinned",
     "filter": "Filter tasks",
     "archivedTasks": "Archived tasks",
     "deletedWorktrees": "Deleted worktrees",
@@ -272,6 +273,8 @@
     "loadMore": "Load more",
     "archiveTask": "Archive task",
     "unarchiveTask": "Unarchive task",
+    "pinTask": "Pin task",
+    "unpinTask": "Unpin task",
     "archiveOldTasks": "Archive old tasks",
     "archiveOldTasksTooltip": "Archive tasks older than one week",
     "showAnyTasks": "Show any tasks",
