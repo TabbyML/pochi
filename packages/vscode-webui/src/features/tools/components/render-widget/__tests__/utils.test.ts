@@ -375,8 +375,8 @@ describe("render widget utilities", () => {
     const iframeDocument = buildWidgetIframeDocument(
       "http://localhost:4112/widget.js",
     );
-    expect(iframeDocument).toContain("html.light { color-scheme: light; }");
-    expect(iframeDocument).toContain("html.dark { color-scheme: dark; }");
+    expect(iframeDocument).toContain(".light body { color-scheme: light; }");
+    expect(iframeDocument).toContain(".dark body { color-scheme: dark; }");
   });
 
   it("does not leak `vscode-` prefixed selectors into the iframe stylesheet", () => {

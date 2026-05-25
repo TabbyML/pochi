@@ -14,7 +14,11 @@ export const renderWidgetInputSchema = z.object({
       "HTML/SVG fragment to render. Do not include doctype/html/head/body. Put visible content first and scripts last.",
     ),
   guidelinesRead: z
-    .literal(true)
+    .boolean()
+    .refine((val) => val === true, {
+      message:
+        "Set true only after invoking the `widget-guidelines` skill via the `useSkill` tool and reading the returned guidelines for the selected kind.",
+    })
     .describe(
       "Set true only after invoking the `widget-guidelines` skill via the `useSkill` tool and reading the returned guidelines for the selected kind.",
     ),

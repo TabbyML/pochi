@@ -252,7 +252,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       <div className="flex items-center text-muted-foreground text-sm">
         <StatusIcon isExecuting={isExecuting} tool={tool} />
         <span className="ml-2">{headerLabel}</span>
-        <span>{title}</span>
+        <span className="ml-2 text-foreground">{title}</span>
       </div>
       <iframe
         ref={iframeRef}

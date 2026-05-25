@@ -397,14 +397,14 @@ function getWidgetConnectCspSource(scriptSrc: string) {
 
 const WidgetBaseStyles = `
 * { box-sizing: border-box; }
-html { color-scheme: light dark; }
-html.light { color-scheme: light; }
-html.dark { color-scheme: dark; }
+html { background: transparent !important; }
+.light body { color-scheme: light; }
+.dark body { color-scheme: dark; }
 body {
   margin: 0;
   padding: 12px 0;
   overflow: hidden;
-  background: transparent;
+  background: transparent !important;
   color: var(--vscode-editor-foreground, #cccccc);
   font-family: var(--vscode-font-family, system-ui, sans-serif);
 }
