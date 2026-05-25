@@ -68,6 +68,17 @@ export {
 export { ActiveSelection, BashOutputs, UserEdits } from "./types/message";
 export type { VSCodeSettings } from "./types/vscode-settings";
 export {
+  BrowserAgentSettings,
+  BrowserAgentSettingsConfig,
+  BrowserAgentRecordingSize,
+  DefaultBrowserAgentSettings,
+  PochiWebviewSettings,
+  PochiWebviewSettingsStorageName,
+  mergeBrowserAgentSettings,
+  type BrowserAgentSettingsConfig as BrowserAgentSettingsConfigType,
+  type BrowserAgentSettingsUpdate,
+} from "./types/browser-agent-settings";
+export {
   buildTaskScopedMcpInfo,
   buildInstructionsFromConnections,
   buildToolsetFromConnections,

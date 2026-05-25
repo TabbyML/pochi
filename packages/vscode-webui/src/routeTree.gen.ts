@@ -12,6 +12,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as TaskImport } from './routes/task'
 import { Route as SignInImport } from './routes/sign-in'
 import { Route as SettingsImport } from './routes/settings'
+import { Route as BrowserAgentSettingsImport } from './routes/browser-agent-settings'
 import { Route as IndexImport } from './routes/index'
 
 // Create/Update Routes
@@ -34,6 +35,12 @@ const SettingsRoute = SettingsImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const BrowserAgentSettingsRoute = BrowserAgentSettingsImport.update({
+  id: '/browser-agent-settings',
+  path: '/browser-agent-settings',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
@@ -49,6 +56,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/browser-agent-settings': {
+      id: '/browser-agent-settings'
+      path: '/browser-agent-settings'
+      fullPath: '/browser-agent-settings'
+      preLoaderRoute: typeof BrowserAgentSettingsImport
       parentRoute: typeof rootRoute
     }
     '/settings': {
@@ -79,6 +93,7 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/browser-agent-settings': typeof BrowserAgentSettingsRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/task': typeof TaskRoute
@@ -86,6 +101,7 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/browser-agent-settings': typeof BrowserAgentSettingsRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/task': typeof TaskRoute
@@ -94,6 +110,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/browser-agent-settings': typeof BrowserAgentSettingsRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/task': typeof TaskRoute
@@ -101,15 +118,27 @@ export interface FileRoutesById {
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/sign-in' | '/task'
+  fullPaths:
+    | '/'
+    | '/browser-agent-settings'
+    | '/settings'
+    | '/sign-in'
+    | '/task'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/sign-in' | '/task'
-  id: '__root__' | '/' | '/settings' | '/sign-in' | '/task'
+  to: '/' | '/browser-agent-settings' | '/settings' | '/sign-in' | '/task'
+  id:
+    | '__root__'
+    | '/'
+    | '/browser-agent-settings'
+    | '/settings'
+    | '/sign-in'
+    | '/task'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BrowserAgentSettingsRoute: typeof BrowserAgentSettingsRoute
   SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
   TaskRoute: typeof TaskRoute
@@ -117,6 +146,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BrowserAgentSettingsRoute: BrowserAgentSettingsRoute,
   SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,
   TaskRoute: TaskRoute,
@@ -133,6 +163,7 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/browser-agent-settings",
         "/settings",
         "/sign-in",
         "/task"
@@ -140,6 +171,9 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/browser-agent-settings": {
+      "filePath": "browser-agent-settings.tsx"
     },
     "/settings": {
       "filePath": "settings.tsx"

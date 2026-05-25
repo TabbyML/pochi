@@ -532,5 +532,24 @@
     "noFrameAvailable": "No frame available",
     "executing": "Executing...",
     "paused": "Paused"
+  },
+  "browserAgentSettings": {
+    "runtimeSection": "Browser runtime",
+    "localChromeSection": "Local Chrome",
+    "recordingSection": "Session recording",
+    "localChromeHint": "Local Chrome uses --auto-connect and can reuse the current user's logged-in browser session. Browser Agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
+    "browserMode": "Browser mode",
+    "managedBrowser": "Managed browser",
+    "localChrome": "Local Chrome",
+    "chromePath": "Chrome Executable Path (Optional)",
+    "chromePathHint": "Leave blank to auto-detect.",
+    "startParams": "Custom Browser Arguments (Optional)",
+    "startParamsHint": "Space-separated arguments to pass to the browser executable.",
+    "enableRecording": "Record browser sessions",
+    "recordingSize": "Recording resolution"
+  },
+  "builtInAgentsSettings": {
+    "title": "BUILT-IN AGENTS",
+    "browser": "Browser Agent"
   }
 }

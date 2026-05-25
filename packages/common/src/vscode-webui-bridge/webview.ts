@@ -35,6 +35,10 @@ import type {
   WorkspaceState,
 } from "./index";
 import type {
+  BrowserAgentSettings,
+  BrowserAgentSettingsUpdate,
+} from "./types/browser-agent-settings";
+import type {
   CreateWorktreeOptions,
   DiffCheckpointOptions,
   GithubIssue,
@@ -309,6 +313,13 @@ export interface VSCodeHostApi {
 
   updateVSCodeSettings(params: Partial<VSCodeSettings>): Promise<void>;
 
+  readBrowserAgentSettings(): Promise<{
+    browserSettings: ThreadSignalSerialization<BrowserAgentSettings>;
+    updateBrowserAgentSettings: (
+      params: BrowserAgentSettingsUpdate,
+    ) => Promise<void>;
+  }>;
+
   /**
    * Show an information message to users. Optionally provide an array of items which will be presented as
    * clickable buttons.
@@ -350,6 +361,8 @@ export interface VSCodeHostApi {
       showFileChanges?: boolean;
     },
   ): Promise<void>;
+
+  openBrowserAgentSettingsPanel(): void;
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",

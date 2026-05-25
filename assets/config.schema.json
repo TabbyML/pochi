@@ -505,6 +505,54 @@
           }
         ]
       }
+    },
+    "browserAgentSettings": {
+      "type": "object",
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "managed",
+                "localChrome"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "localChrome": {
+          "type": "object",
+          "properties": {
+            "chromePath": {
+              "type": "string"
+            },
+            "startParams": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "recording": {
+          "type": "object",
+          "properties": {
+            "recordingEnabled": {
+              "type": "boolean"
+            },
+            "recordingSize": {
+              "type": "string",
+              "enum": [
+                "1280x720",
+                "1138x640",
+                "854x480"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

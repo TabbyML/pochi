@@ -529,5 +529,24 @@
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",
     "paused": "일시 중지됨"
+  },
+  "browserAgentSettings": {
+    "runtimeSection": "브라우저 런타임",
+    "localChromeSection": "로컬 Chrome",
+    "recordingSection": "세션 녹화",
+    "localChromeHint": "로컬 Chrome은 --auto-connect를 사용하며 현재 사용자의 로그인된 브라우저 세션을 재사용할 수 있습니다. Browser Agent가 해당 Chrome 프로필에 이미 로그인된 사이트와 계정에 접근할 수 있으므로 신뢰할 수 있는 작업에만 사용하세요.",
+    "browserMode": "브라우저 모드",
+    "managedBrowser": "내장 브라우저",
+    "localChrome": "로컬 Chrome",
+    "chromePath": "Chrome Executable Path (Optional)",
+    "chromePathHint": "Leave blank to auto-detect.",
+    "startParams": "Custom Browser Arguments (Optional)",
+    "startParamsHint": "Space-separated arguments to pass to the browser executable.",
+    "enableRecording": "브라우저 세션 녹화",
+    "recordingSize": "녹화 해상도"
+  },
+  "builtInAgentsSettings": {
+    "title": "내장 에이전트",
+    "browser": "브라우저 에이전트"
   }
 }

@@ -1,4 +1,5 @@
 import z from "zod";
+import { BrowserAgentSettingsConfig } from "../vscode-webui-bridge/types/browser-agent-settings";
 import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
 import { VendorConfig } from "./vendor";
@@ -40,5 +41,6 @@ export function makePochiConfig(strict = false) {
     vendors: looseRecord(VendorConfig.nullable(), strict).optional(),
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
+    browserAgentSettings: BrowserAgentSettingsConfig.optional(),
   });
 }

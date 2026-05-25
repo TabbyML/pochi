@@ -535,5 +535,24 @@
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
     "paused": "一時停止"
+  },
+  "browserAgentSettings": {
+    "runtimeSection": "ブラウザーランタイム",
+    "localChromeSection": "ローカル Chrome",
+    "recordingSection": "セッション録画",
+    "localChromeHint": "ローカル Chrome は --auto-connect を使用し、現在のユーザーのログイン済みブラウザーセッションを再利用できます。Browser Agent はその Chrome プロファイルでログイン済みのサイトやアカウントにアクセスできる場合があるため、信頼できるタスクにのみ使用してください。",
+    "browserMode": "ブラウザーモード",
+    "managedBrowser": "組み込みブラウザー",
+    "localChrome": "ローカル Chrome",
+    "chromePath": "Chrome Executable Path (Optional)",
+    "chromePathHint": "Leave blank to auto-detect.",
+    "startParams": "Custom Browser Arguments (Optional)",
+    "startParamsHint": "Space-separated arguments to pass to the browser executable.",
+    "enableRecording": "ブラウザーセッションを録画",
+    "recordingSize": "録画解像度"
+  },
+  "builtInAgentsSettings": {
+    "title": "組み込みエージェント",
+    "browser": "ブラウザーエージェント"
   }
 }

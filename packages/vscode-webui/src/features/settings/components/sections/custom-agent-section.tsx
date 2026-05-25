@@ -16,8 +16,8 @@ import {
 import { AlertTriangle, Bot, Edit } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { AccordionSection } from "../ui/accordion-section";
-import { EmptySectionPlaceholder, SectionItem } from "../ui/section";
+import { EmptySectionPlaceholder, Section, SectionItem } from "../ui/section";
+import { BuiltInAgentSection } from "./built-in-agent-section";
 
 const CustomAgentParseErrorMap: Record<
   InvalidCustomAgentFile["error"],
@@ -105,13 +105,11 @@ export const CustomAgentSection: React.FC = () => {
   };
 
   return (
-    <AccordionSection
-      localStorageKey="settings-custom-agent-section"
-      title={t("settings.customAgents.title")}
-      collapsable={customAgents.length > 3}
-      defaultOpen={true}
-    >
-      {renderCustomAgentsContent()}
-    </AccordionSection>
+    <Section title={t("settings.customAgents.title")}>
+      <div className="ml-1 flex flex-col gap-6">
+        <div>{renderCustomAgentsContent()}</div>
+        <BuiltInAgentSection />
+      </div>
+    </Section>
   );
 };

@@ -125,7 +125,10 @@ export abstract class WebviewBase implements vscode.Disposable {
   protected getHtmlForWebview(
     webview: vscode.Webview,
     kind: "sidebar" | "pane",
-    info?: PochiTaskInfo,
+    options?: {
+      info?: PochiTaskInfo;
+      route?: string;
+    },
   ): string {
     const isProd =
       this.context.extensionMode === vscode.ExtensionMode.Production ||
@@ -150,7 +153,8 @@ export abstract class WebviewBase implements vscode.Disposable {
       window.POCHI_CORS_PROXY_URL_PREFIX = "${getCorsProxyUrlPrefix()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";
-      ${info ? `window.POCHI_TASK_INFO = ${JSON.stringify(info)};` : ""}
+      ${options?.info ? `window.POCHI_TASK_INFO = ${JSON.stringify(options.info)};` : ""}
+      ${options?.route ? `window.POCHI_INITIAL_ROUTE = ${JSON.stringify(options.route)};` : ""}
     </script>`;
 
     if (isProd) {
