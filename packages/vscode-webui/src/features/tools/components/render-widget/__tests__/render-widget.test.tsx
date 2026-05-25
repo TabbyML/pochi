@@ -32,6 +32,10 @@ vi.mock("../../status-icon", () => ({
   StatusIcon: () => <span data-testid="status-icon" />,
 }));
 
+vi.mock("@/components/theme-provider", () => ({
+  useTheme: () => ({ theme: "dark", setTheme: () => {} }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) =>

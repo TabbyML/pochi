@@ -1,5 +1,7 @@
 export type WidgetRenderMode = "preview" | "finalize";
 
+export type WidgetThemeClass = "dark" | "light";
+
 export type PendingWidgetRenderMessage = {
   type: string;
   html: string;
@@ -9,6 +11,8 @@ export type PendingWidgetRenderMessage = {
 export const ChartJsCdnScriptSrc =
   "https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js";
 export const ChartJsCdnOrigin = "https://cdn.jsdelivr.net";
+
+export const WidgetThemeStyleId = "pochi-widget-theme";
 
 export type WidgetScript =
   | { type: "external"; src: string }
@@ -225,18 +229,53 @@ export function sanitizeWidgetFragment(html: string) {
   return template.innerHTML;
 }
 
+/**
+ * Detects the current VSCode webview theme. VSCode injects `vscode-dark` /
+ * `vscode-light` onto the `<body>` element; we fall back to `<html>` for
+ * development environments that mirror the class on the root. Returns the
+ * simplified `"dark"` / `"light"` token that we propagate into the iframe.
+ */
+export function getCurrentWidgetThemeClass(): WidgetThemeClass {
+  const targets: Element[] = [];
+  if (typeof document !== "undefined") {
+    if (document.body) targets.push(document.body);
+    if (document.documentElement) targets.push(document.documentElement);
+  }
+  for (const target of targets) {
+    if (target.classList.contains("vscode-light")) return "light";
+    if (target.classList.contains("vscode-dark")) return "dark";
+  }
+  return "dark";
+}
+
+/**
+ * Collects VSCode + Pochi CSS custom properties from both `<body>` (where
+ * VSCode injects them at runtime) and `<html>` (where dev environments mirror
+ * them via `theme-provider`). Variables defined on body win because that is
+ * the authoritative source in real VSCode webviews.
+ */
 export function collectWidgetThemeVariables() {
+  const seen = new Set<string>();
   const lines: string[] = [];
-  const styles = getComputedStyle(document.documentElement);
+  const targets: Element[] = [];
+  if (typeof document !== "undefined") {
+    if (document.body) targets.push(document.body);
+    if (document.documentElement) targets.push(document.documentElement);
+  }
 
-  for (let i = 0; i < styles.length; i++) {
-    const name = styles.item(i);
-    if (!name.startsWith("--vscode-") && !name.startsWith("--pochi-")) {
-      continue;
-    }
+  for (const target of targets) {
+    const styles = getComputedStyle(target);
+    for (let i = 0; i < styles.length; i++) {
+      const name = styles.item(i);
+      if (seen.has(name)) continue;
+      if (!name.startsWith("--vscode-") && !name.startsWith("--pochi-")) {
+        continue;
+      }
 
-    const value = styles.getPropertyValue(name).trim();
-    if (value) {
+      const value = styles.getPropertyValue(name).trim();
+      if (!value) continue;
+
+      seen.add(name);
       lines.push(`  ${name}: ${escapeCssVariableValue(value)};`);
     }
   }
@@ -257,6 +296,7 @@ export function buildWidgetIframeDocument(
   rendererScriptSrc: string,
   themeVariablesCss = "",
   channelId = "pochi-widget",
+  themeClass: WidgetThemeClass = "dark",
 ) {
   const resolvedRendererScriptSrc = normalizeWidgetModuleScriptSrc(
     resolveWidgetModuleScriptSrc(rendererScriptSrc),
@@ -270,17 +310,20 @@ export function buildWidgetIframeDocument(
     "&quot;",
   );
   const safeChannelId = escapeHtmlAttribute(channelId);
+  const safeThemeClass = escapeHtmlAttribute(themeClass);
   const scriptCspSource = getScriptCspSource(resolvedRendererScriptSrc);
   const connectCspSource = getWidgetConnectCspSource(resolvedRendererScriptSrc);
 
   return `<!doctype html>
-<html>
+<html class="${safeThemeClass}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${scriptCspSource} ${ChartJsCdnScriptSrc} 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; connect-src ${connectCspSource}; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; font-src 'none'">
-<style>
+<style id="${WidgetThemeStyleId}">
 ${safeThemeVariablesCss}
+</style>
+<style>
 ${WidgetBaseStyles}
 </style>
 </head>
@@ -355,6 +398,8 @@ function getWidgetConnectCspSource(scriptSrc: string) {
 const WidgetBaseStyles = `
 * { box-sizing: border-box; }
 html { color-scheme: light dark; }
+html.light { color-scheme: light; }
+html.dark { color-scheme: dark; }
 body {
   margin: 0;
   padding: 12px 0;
@@ -397,31 +442,82 @@ svg {
 :where(svg .node:hover) { opacity: 0.82; }
 :where(svg .arr) { stroke: var(--vscode-descriptionForeground, #9d9d9d); stroke-width: 1.5; fill: none; }
 :where(svg .leader) { stroke: var(--vscode-descriptionForeground, #9d9d9d); stroke-width: 0.5; stroke-dasharray: 4 3; fill: none; }
-:where(svg .c-blue > rect, svg .c-blue > circle, svg .c-blue > ellipse) { fill: #0C447C; stroke: #85B7EB; }
-:where(svg .c-blue > .th, svg .c-blue > .t) { fill: #B5D4F4; }
-:where(svg .c-blue > .ts) { fill: #85B7EB; }
-:where(svg .c-teal > rect, svg .c-teal > circle, svg .c-teal > ellipse) { fill: #085041; stroke: #5DCAA5; }
-:where(svg .c-teal > .th, svg .c-teal > .t) { fill: #9FE1CB; }
-:where(svg .c-teal > .ts) { fill: #5DCAA5; }
-:where(svg .c-amber > rect, svg .c-amber > circle, svg .c-amber > ellipse) { fill: #633806; stroke: #EF9F27; }
-:where(svg .c-amber > .th, svg .c-amber > .t) { fill: #FAC775; }
-:where(svg .c-amber > .ts) { fill: #EF9F27; }
-:where(svg .c-green > rect, svg .c-green > circle, svg .c-green > ellipse) { fill: #27500A; stroke: #97C459; }
-:where(svg .c-green > .th, svg .c-green > .t) { fill: #C0DD97; }
-:where(svg .c-green > .ts) { fill: #97C459; }
-:where(svg .c-red > rect, svg .c-red > circle, svg .c-red > ellipse) { fill: #791F1F; stroke: #F09595; }
-:where(svg .c-red > .th, svg .c-red > .t) { fill: #F7C1C1; }
-:where(svg .c-red > .ts) { fill: #F09595; }
-:where(svg .c-purple > rect, svg .c-purple > circle, svg .c-purple > ellipse) { fill: #3C3489; stroke: #AFA9EC; }
-:where(svg .c-purple > .th, svg .c-purple > .t) { fill: #CECBF6; }
-:where(svg .c-purple > .ts) { fill: #AFA9EC; }
-:where(svg .c-coral > rect, svg .c-coral > circle, svg .c-coral > ellipse) { fill: #712B13; stroke: #F0997B; }
-:where(svg .c-coral > .th, svg .c-coral > .t) { fill: #F5C4B3; }
-:where(svg .c-coral > .ts) { fill: #F0997B; }
-:where(svg .c-pink > rect, svg .c-pink > circle, svg .c-pink > ellipse) { fill: #72243E; stroke: #ED93B1; }
-:where(svg .c-pink > .th, svg .c-pink > .t) { fill: #F4C0D1; }
-:where(svg .c-pink > .ts) { fill: #ED93B1; }
-:where(svg .c-gray > rect, svg .c-gray > circle, svg .c-gray > ellipse) { fill: #444441; stroke: #B4B2A9; }
-:where(svg .c-gray > .th, svg .c-gray > .t) { fill: #D3D1C7; }
-:where(svg .c-gray > .ts) { fill: #B4B2A9; }
+
+/* Mockup form controls — use VSCode tokens so they follow the active theme automatically. */
+input, textarea {
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 2px;
+  padding: 4px 6px;
+  font-family: var(--vscode-font-family);
+}
+button {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+/* Dark palette */
+:where(.dark svg .blue > rect, .dark svg .blue > circle, .dark svg .blue > ellipse) { fill: #0C447C; stroke: #85B7EB; }
+:where(.dark svg .blue > .th, .dark svg .blue > .t) { fill: #B5D4F4; }
+:where(.dark svg .blue > .ts) { fill: #85B7EB; }
+:where(.dark svg .teal > rect, .dark svg .teal > circle, .dark svg .teal > ellipse) { fill: #085041; stroke: #5DCAA5; }
+:where(.dark svg .teal > .th, .dark svg .teal > .t) { fill: #9FE1CB; }
+:where(.dark svg .teal > .ts) { fill: #5DCAA5; }
+:where(.dark svg .amber > rect, .dark svg .amber > circle, .dark svg .amber > ellipse) { fill: #633806; stroke: #EF9F27; }
+:where(.dark svg .amber > .th, .dark svg .amber > .t) { fill: #FAC775; }
+:where(.dark svg .amber > .ts) { fill: #EF9F27; }
+:where(.dark svg .green > rect, .dark svg .green > circle, .dark svg .green > ellipse) { fill: #27500A; stroke: #97C459; }
+:where(.dark svg .green > .th, .dark svg .green > .t) { fill: #C0DD97; }
+:where(.dark svg .green > .ts) { fill: #97C459; }
+:where(.dark svg .red > rect, .dark svg .red > circle, .dark svg .red > ellipse) { fill: #791F1F; stroke: #F09595; }
+:where(.dark svg .red > .th, .dark svg .red > .t) { fill: #F7C1C1; }
+:where(.dark svg .red > .ts) { fill: #F09595; }
+:where(.dark svg .purple > rect, .dark svg .purple > circle, .dark svg .purple > ellipse) { fill: #3C3489; stroke: #AFA9EC; }
+:where(.dark svg .purple > .th, .dark svg .purple > .t) { fill: #CECBF6; }
+:where(.dark svg .purple > .ts) { fill: #AFA9EC; }
+:where(.dark svg .coral > rect, .dark svg .coral > circle, .dark svg .coral > ellipse) { fill: #712B13; stroke: #F0997B; }
+:where(.dark svg .coral > .th, .dark svg .coral > .t) { fill: #F5C4B3; }
+:where(.dark svg .coral > .ts) { fill: #F0997B; }
+:where(.dark svg .pink > rect, .dark svg .pink > circle, .dark svg .pink > ellipse) { fill: #72243E; stroke: #ED93B1; }
+:where(.dark svg .pink > .th, .dark svg .pink > .t) { fill: #F4C0D1; }
+:where(.dark svg .pink > .ts) { fill: #ED93B1; }
+:where(.dark svg .gray > rect, .dark svg .gray > circle, .dark svg .gray > ellipse) { fill: #444441; stroke: #B4B2A9; }
+:where(.dark svg .gray > .th, .dark svg .gray > .t) { fill: #D3D1C7; }
+:where(.dark svg .gray > .ts) { fill: #B4B2A9; }
+
+/* Light palette */
+:where(.light svg .blue > rect, .light svg .blue > circle, .light svg .blue > ellipse) { fill: #DBE7F4; stroke: #2B6CB0; }
+:where(.light svg .blue > .th, .light svg .blue > .t) { fill: #1B4480; }
+:where(.light svg .blue > .ts) { fill: #2B6CB0; }
+:where(.light svg .teal > rect, .light svg .teal > circle, .light svg .teal > ellipse) { fill: #D2EEDF; stroke: #0E8C6F; }
+:where(.light svg .teal > .th, .light svg .teal > .t) { fill: #084F3F; }
+:where(.light svg .teal > .ts) { fill: #0E8C6F; }
+:where(.light svg .amber > rect, .light svg .amber > circle, .light svg .amber > ellipse) { fill: #FBE6C2; stroke: #B47213; }
+:where(.light svg .amber > .th, .light svg .amber > .t) { fill: #5C3704; }
+:where(.light svg .amber > .ts) { fill: #B47213; }
+:where(.light svg .green > rect, .light svg .green > circle, .light svg .green > ellipse) { fill: #DDEFC7; stroke: #5E8A35; }
+:where(.light svg .green > .th, .light svg .green > .t) { fill: #294E0A; }
+:where(.light svg .green > .ts) { fill: #5E8A35; }
+:where(.light svg .red > rect, .light svg .red > circle, .light svg .red > ellipse) { fill: #F7D7D7; stroke: #BF3535; }
+:where(.light svg .red > .th, .light svg .red > .t) { fill: #791F1F; }
+:where(.light svg .red > .ts) { fill: #BF3535; }
+:where(.light svg .purple > rect, .light svg .purple > circle, .light svg .purple > ellipse) { fill: #E0DCF5; stroke: #5E4FBE; }
+:where(.light svg .purple > .th, .light svg .purple > .t) { fill: #393188; }
+:where(.light svg .purple > .ts) { fill: #5E4FBE; }
+:where(.light svg .coral > rect, .light svg .coral > circle, .light svg .coral > ellipse) { fill: #F8DDCF; stroke: #C25530; }
+:where(.light svg .coral > .th, .light svg .coral > .t) { fill: #6F2A12; }
+:where(.light svg .coral > .ts) { fill: #C25530; }
+:where(.light svg .pink > rect, .light svg .pink > circle, .light svg .pink > ellipse) { fill: #F8D8E2; stroke: #BD3F6D; }
+:where(.light svg .pink > .th, .light svg .pink > .t) { fill: #71243D; }
+:where(.light svg .pink > .ts) { fill: #BD3F6D; }
+:where(.light svg .gray > rect, .light svg .gray > circle, .light svg .gray > ellipse) { fill: #E5E3DD; stroke: #6F6E69; }
+:where(.light svg .gray > .th, .light svg .gray > .t) { fill: #404040; }
+:where(.light svg .gray > .ts) { fill: #6F6E69; }
 `;

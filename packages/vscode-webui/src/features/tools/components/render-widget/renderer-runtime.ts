@@ -2,6 +2,8 @@ import { createChannel } from "bidc";
 import morphdom from "morphdom";
 import {
   type WidgetScript,
+  type WidgetThemeClass,
+  WidgetThemeStyleId,
   collectWidgetRevealElements,
   extractWidgetScripts,
   measureWidgetContentHeight,
@@ -13,6 +15,14 @@ type WidgetRenderMessage = {
   html: string;
   animateReveal?: boolean;
 };
+
+type WidgetThemeMessage = {
+  type: "theme";
+  themeClass: WidgetThemeClass;
+  variablesCss: string;
+};
+
+type WidgetIncomingMessage = WidgetRenderMessage | WidgetThemeMessage;
 
 type WidgetEvent =
   | { type: "ready" }
@@ -134,8 +144,27 @@ export function startWidgetRenderer() {
     reportHeight();
   };
 
-  const handle = async (data: WidgetRenderMessage) => {
+  const applyTheme = (message: WidgetThemeMessage) => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(message.themeClass);
+
+    const styleEl = document.getElementById(
+      WidgetThemeStyleId,
+    ) as HTMLStyleElement | null;
+    if (styleEl) {
+      styleEl.textContent = message.variablesCss;
+    }
+    reportHeight();
+  };
+
+  const handle = async (data: WidgetIncomingMessage) => {
     try {
+      if (data.type === "theme") {
+        applyTheme(data);
+        return;
+      }
+
       if (data.type !== "preview" && data.type !== "finalize") return;
 
       const html = String(data.html || "");
@@ -179,7 +208,7 @@ export function startWidgetRenderer() {
     addEventListener("load", reportHeight, { once: true });
   }
 
-  channel.receive(async (data: WidgetRenderMessage) => {
+  channel.receive(async (data: WidgetIncomingMessage) => {
     await handle(data);
     return { ok: true };
   });

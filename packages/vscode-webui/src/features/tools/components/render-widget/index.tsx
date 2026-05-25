@@ -1,3 +1,4 @@
+import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,10 +11,12 @@ import type { ToolProps } from "../types";
 // the parent WebUI window.
 import rendererScriptSrc from "./renderer-entry.ts?worker&url";
 import {
+  type WidgetThemeClass,
   buildWidgetIframeDocument,
   buildWidgetIframeSrc,
   coalescePendingWidgetMessage,
   collectWidgetThemeVariables,
+  getCurrentWidgetThemeClass,
   prepareWidgetHtml,
   shouldAnimateWidgetReveal,
 } from "./utils";
@@ -29,9 +32,33 @@ type WidgetRenderMessage = {
   animateReveal?: boolean;
 };
 
+type WidgetThemeMessage = {
+  type: "theme";
+  themeClass: WidgetThemeClass;
+  variablesCss: string;
+};
+
+type WidgetIncomingMessage = WidgetRenderMessage | WidgetThemeMessage;
+
 type WidgetAck = { ok: true };
-type WidgetRendererEndpoint = (message: WidgetRenderMessage) => WidgetAck;
+type WidgetRendererEndpoint = (message: WidgetIncomingMessage) => WidgetAck;
 type WidgetChannel = ReturnType<typeof createChannel>;
+
+/**
+ * Channel runtime: stores everything the send-queue needs.
+ * - `channel` is non-null iff the iframe has loaded and we created a channel.
+ * - `ready` flips to true only after the in-iframe runtime posts "ready".
+ * - Pending messages are coalesced (render) or replaced (theme).
+ * - `flushChain` serializes all `await channel.send` calls so we never
+ *   overlap concurrent sends without needing a manual `isSending` mutex.
+ */
+type ChannelRuntime = {
+  channel: WidgetChannel | null;
+  ready: boolean;
+  pendingRender?: WidgetRenderMessage;
+  pendingTheme?: WidgetThemeMessage;
+  flushChain: Promise<void>;
+};
 
 export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   tool,
@@ -40,13 +67,15 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isLastPart,
 }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const channelRef = useRef<WidgetChannel | null>(null);
-  const pendingMessageRef = useRef<WidgetRenderMessage | undefined>(undefined);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const iframeLoadedRef = useRef(false);
-  const channelReadyRef = useRef(false);
-  const isSendingRef = useRef(false);
+  const runtimeRef = useRef<ChannelRuntime>({
+    channel: null,
+    ready: false,
+    flushChain: Promise.resolve(),
+  });
+  // Tracks animation history only — intentionally separate from channel state.
   const hasPostedPreviewRef = useRef(false);
   const [height, setHeight] = useState<number | undefined>();
   const [hasFirstHeight, setHasFirstHeight] = useState(false);
@@ -61,6 +90,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         rendererScriptSrc,
         collectWidgetThemeVariables(),
         channelId,
+        getCurrentWidgetThemeClass(),
       ),
     [channelId],
   );
@@ -84,84 +114,92 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     isLastPart,
   });
 
-  const drainPending = useCallback(async () => {
-    const channel = channelRef.current;
-    if (
-      !channel ||
-      !channelReadyRef.current ||
-      isSendingRef.current ||
-      !pendingMessageRef.current
-    ) {
-      return;
-    }
+  // Drain the queue serially. Re-entrance is prevented by the chain itself:
+  // each scheduleFlush() appends one more `flush` task to `flushChain`, and
+  // tasks run one-at-a-time. Concurrent sends are impossible by construction.
+  const flush = useCallback(async () => {
+    const rt = runtimeRef.current;
+    if (!rt.channel || !rt.ready) return;
+    while (rt.pendingTheme || rt.pendingRender) {
+      const next =
+        rt.pendingTheme ?? (rt.pendingRender as WidgetIncomingMessage);
+      if (next.type === "theme") rt.pendingTheme = undefined;
+      else rt.pendingRender = undefined;
 
-    const message = pendingMessageRef.current;
-    pendingMessageRef.current = undefined;
-    isSendingRef.current = true;
-
-    try {
-      await channel.send<WidgetRendererEndpoint>(message);
-    } catch (error) {
-      pendingMessageRef.current = coalescePendingWidgetMessage(
-        pendingMessageRef.current,
-        message,
-      );
-    } finally {
-      isSendingRef.current = false;
-    }
-
-    if (pendingMessageRef.current) {
-      drainPending();
+      try {
+        await rt.channel.send<WidgetRendererEndpoint>(next);
+      } catch {
+        // Restore on failure and bail; next scheduleFlush() will retry.
+        if (next.type === "theme") rt.pendingTheme = next;
+        else {
+          rt.pendingRender = coalescePendingWidgetMessage(
+            rt.pendingRender,
+            next,
+          );
+        }
+        return;
+      }
     }
   }, []);
 
-  const initChannel = useCallback(() => {
-    if (channelRef.current) return channelRef.current;
-    const target = iframeRef.current?.contentWindow;
-    if (!target || !iframeLoadedRef.current) return null;
+  const scheduleFlush = useCallback(() => {
+    const rt = runtimeRef.current;
+    rt.flushChain = rt.flushChain.then(flush).catch(() => {});
+  }, [flush]);
 
+  const queueRenderMessage = useCallback(
+    (message: WidgetRenderMessage) => {
+      const rt = runtimeRef.current;
+      const next = coalescePendingWidgetMessage(rt.pendingRender, message);
+      if (next === rt.pendingRender) return;
+      rt.pendingRender = next;
+      scheduleFlush();
+    },
+    [scheduleFlush],
+  );
+
+  const queueThemeMessage = useCallback(
+    (message: WidgetThemeMessage) => {
+      runtimeRef.current.pendingTheme = message;
+      scheduleFlush();
+    },
+    [scheduleFlush],
+  );
+
+  const handleLoad = useCallback(() => {
+    const rt = runtimeRef.current;
+    const target = iframeRef.current?.contentWindow;
+    if (!target) return;
+
+    rt.channel?.cleanup();
+    rt.ready = false;
     const channel = createChannel(target, channelId);
-    channelRef.current = channel;
+    rt.channel = channel;
     channel.receive((event: WidgetRendererEvent) => {
       if (event.type === "ready") {
-        channelReadyRef.current = true;
-        drainPending();
-        return { ok: true };
-      }
-
-      if (event.type === "height") {
+        runtimeRef.current.ready = true;
+        scheduleFlush();
+      } else if (event.type === "height") {
         setHeight(clampHeight(event.height));
         setHasFirstHeight(true);
-        return { ok: true };
-      }
-
-      if (event.type === "error") {
+      } else if (event.type === "error") {
         setRendererError(event.message);
-        return { ok: true };
       }
-
       return { ok: true };
     });
+  }, [channelId, scheduleFlush]);
 
-    return channel;
-  }, [channelId, drainPending]);
-
-  const queueWidgetMessage = useCallback(
-    (message: WidgetRenderMessage) => {
-      const nextPending = coalescePendingWidgetMessage(
-        pendingMessageRef.current,
-        message,
-      );
-      if (nextPending === pendingMessageRef.current) {
-        return;
-      }
-
-      pendingMessageRef.current = nextPending;
-      initChannel();
-      drainPending();
-    },
-    [drainPending, initChannel],
-  );
+  // Push theme updates whenever the parent webview theme changes so the
+  // sandboxed iframe re-applies the new vscode-* variables and color palette
+  // without needing to be re-mounted.
+  useEffect(() => {
+    const themeClass: WidgetThemeClass = theme === "light" ? "light" : "dark";
+    queueThemeMessage({
+      type: "theme",
+      themeClass,
+      variablesCss: collectWidgetThemeVariables(),
+    });
+  }, [theme, queueThemeMessage]);
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -182,12 +220,12 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         (shouldAnimateReveal && !hasPostedPreviewRef.current),
     };
     if (isFinal) {
-      queueWidgetMessage(message);
+      queueRenderMessage(message);
       return;
     }
 
     debounceRef.current = setTimeout(() => {
-      queueWidgetMessage(message);
+      queueRenderMessage(message);
       hasPostedPreviewRef.current = true;
       debounceRef.current = null;
     }, 140);
@@ -198,19 +236,12 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         debounceRef.current = null;
       }
     };
-  }, [isFinal, queueWidgetMessage, shouldAnimateReveal, widgetCode]);
-
-  const handleLoad = useCallback(() => {
-    channelReadyRef.current = false;
-    isSendingRef.current = false;
-    iframeLoadedRef.current = true;
-    initChannel();
-  }, [initChannel]);
+  }, [isFinal, queueRenderMessage, shouldAnimateReveal, widgetCode]);
 
   useEffect(() => {
     return () => {
-      channelRef.current?.cleanup();
-      channelRef.current = null;
+      runtimeRef.current.channel?.cleanup();
+      runtimeRef.current.channel = null;
     };
   }, []);
 

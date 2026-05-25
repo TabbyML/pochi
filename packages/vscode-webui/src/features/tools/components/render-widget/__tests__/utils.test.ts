@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   buildWidgetIframeDocument,
   buildWidgetIframeSrc,
@@ -8,15 +8,26 @@ import {
   collectWidgetRevealElements,
   collectWidgetThemeVariables,
   extractWidgetScripts,
+  getCurrentWidgetThemeClass,
+  isAllowedWidgetExternalScriptSrc,
   measureWidgetContentHeight,
+  normalizeWidgetModuleScriptSrc,
   prepareWidgetHtml,
   sanitizeWidgetFragment,
   selectWidgetRevealElements,
   shouldAnimateWidgetReveal,
   stripRunnableScripts,
+  WidgetThemeStyleId,
 } from "../utils";
 
 describe("render widget utilities", () => {
+  afterEach(() => {
+    document.documentElement.classList.remove("vscode-dark", "vscode-light");
+    document.documentElement.style.cssText = "";
+    document.body.classList.remove("vscode-dark", "vscode-light");
+    document.body.style.cssText = "";
+  });
+
   it("strips an unclosed script while previewing streamed HTML", () => {
     const html = `<div>Ready</div><script>document.body.textContent = "nope"`;
 
@@ -292,5 +303,187 @@ describe("render widget utilities", () => {
     expect(
       buildWidgetIframeDocument("http://localhost:4112/widget.js", themeCss),
     ).toContain("--vscode-editor-foreground: #ffffff;");
+  });
+
+  it("collects theme variables defined on body (real VSCode webview)", () => {
+    document.body.style.setProperty("--vscode-font-family", "MyFont, sans");
+    document.body.style.setProperty(
+      "--vscode-editor-foreground",
+      "#abcdef",
+    );
+
+    const themeCss = collectWidgetThemeVariables();
+    expect(themeCss).toContain("--vscode-font-family: MyFont, sans;");
+    expect(themeCss).toContain("--vscode-editor-foreground: #abcdef;");
+  });
+
+  it("prefers body-scoped variables over duplicates on documentElement", () => {
+    document.body.style.setProperty(
+      "--vscode-editor-foreground",
+      "#bodywin",
+    );
+    document.documentElement.style.setProperty(
+      "--vscode-editor-foreground",
+      "#htmlloses",
+    );
+
+    const themeCss = collectWidgetThemeVariables();
+    expect(themeCss).toContain("--vscode-editor-foreground: #bodywin;");
+    expect(themeCss).not.toContain("#htmlloses");
+  });
+
+  it("detects current theme class from body and documentElement", () => {
+    expect(getCurrentWidgetThemeClass()).toBe("dark");
+
+    document.documentElement.classList.add("vscode-light");
+    expect(getCurrentWidgetThemeClass()).toBe("light");
+    document.documentElement.classList.remove("vscode-light");
+
+    document.body.classList.add("vscode-light");
+    expect(getCurrentWidgetThemeClass()).toBe("light");
+    document.body.classList.remove("vscode-light");
+
+    document.body.classList.add("vscode-dark");
+    expect(getCurrentWidgetThemeClass()).toBe("dark");
+  });
+
+  it("writes the theme class on iframe <html> and isolates theme css in a dedicated <style>", () => {
+    const themeCss = ":root {\n  --vscode-editor-foreground: #fff;\n}";
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+      themeCss,
+      "pochi-widget",
+      "light",
+    );
+
+    expect(iframeDocument).toContain('<html class="light">');
+    expect(iframeDocument).toContain(
+      `<style id="${WidgetThemeStyleId}">\n${themeCss}\n</style>`,
+    );
+    expect(iframeDocument).toContain(".light svg .blue > rect");
+    expect(iframeDocument).toContain(".dark svg .blue > rect");
+  });
+
+  it("defaults to the dark class when none is provided", () => {
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+    );
+    expect(iframeDocument).toContain('<html class="dark">');
+  });
+
+  it("ships both light and dark color-scheme rules so html class swap is enough", () => {
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+    );
+    expect(iframeDocument).toContain("html.light { color-scheme: light; }");
+    expect(iframeDocument).toContain("html.dark { color-scheme: dark; }");
+  });
+
+  it("does not leak `vscode-` prefixed selectors into the iframe stylesheet", () => {
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+    );
+    expect(iframeDocument).not.toContain(".vscode-dark svg");
+    expect(iframeDocument).not.toContain(".vscode-light svg");
+  });
+
+  it("prefers body over documentElement when both have theme classes", () => {
+    document.documentElement.classList.add("vscode-dark");
+    document.body.classList.add("vscode-light");
+
+    expect(getCurrentWidgetThemeClass()).toBe("light");
+  });
+
+  it("strips `javascript:` and absolute network href attributes from links", () => {
+    expect(
+      sanitizeWidgetFragment(
+        `<a href="javascript:alert(1)">x</a><a href="https://evil.test">y</a><a href="#anchor">z</a>`,
+      ),
+    ).toBe(`<a>x</a><a>y</a><a href="#anchor">z</a>`);
+  });
+
+  it("removes every forbidden top-level tag from rendered fragments", () => {
+    const html = `
+      <base href="https://attacker.test">
+      <embed src="x">
+      <form><input/></form>
+      <iframe src="x"></iframe>
+      <link rel="stylesheet" href="x">
+      <meta http-equiv="refresh" content="0;url=x">
+      <object data="x"></object>
+      <span>ok</span>
+    `;
+    const sanitized = sanitizeWidgetFragment(html);
+    for (const tag of ["base", "embed", "form", "iframe", "link", "meta", "object"]) {
+      expect(sanitized).not.toContain(`<${tag}`);
+    }
+    expect(sanitized).toContain("<span>ok</span>");
+  });
+
+  it("HTML-escapes the channel id so attacker-controlled toolCallId cannot break out", () => {
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+      "",
+      `pochi-widget-"><script>x</script>`,
+    );
+    // The `"` and `<` are escaped so the attribute cannot terminate early.
+    // `>` is harmless inside a double-quoted attribute value.
+    expect(iframeDocument).not.toContain(`-"><script`);
+    expect(iframeDocument).toContain("&quot;");
+    expect(iframeDocument).toContain("&lt;script>");
+    expect(iframeDocument).toContain("&lt;/script>");
+  });
+
+  it("only accepts the exact Chart.js CDN URL as an external script", () => {
+    expect(isAllowedWidgetExternalScriptSrc(ChartJsCdnScriptSrc)).toBe(true);
+    expect(
+      isAllowedWidgetExternalScriptSrc(
+        "http://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedWidgetExternalScriptSrc(
+        "https://cdn.jsdelivr.net/npm/chart.js@5.0.0/dist/chart.umd.min.js",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedWidgetExternalScriptSrc(
+        "https://evil.test/npm/chart.js@4.5.1/dist/chart.umd.min.js",
+      ),
+    ).toBe(false);
+    expect(isAllowedWidgetExternalScriptSrc("not a url")).toBe(false);
+  });
+
+  it("strips Vite's worker_file query but preserves other query params", () => {
+    expect(
+      normalizeWidgetModuleScriptSrc(
+        "http://localhost:4112/x.ts?worker_file&type=module",
+      ),
+    ).toBe("http://localhost:4112/x.ts");
+    expect(
+      normalizeWidgetModuleScriptSrc("http://localhost:4112/x.ts?v=1"),
+    ).toBe("http://localhost:4112/x.ts?v=1");
+  });
+
+  it("coalesces same-mode same-html messages but replaces on content change", () => {
+    const a = {
+      type: "preview" as const,
+      html: "<div>a</div>",
+      animateReveal: false,
+    };
+    const b = {
+      type: "preview" as const,
+      html: "<div>b</div>",
+      animateReveal: false,
+    };
+    const same = {
+      type: "preview" as const,
+      html: "<div>a</div>",
+      animateReveal: false,
+    };
+
+    expect(coalescePendingWidgetMessage(a, same)).toBe(a);
+    expect(coalescePendingWidgetMessage(a, b)).toBe(b);
+    expect(coalescePendingWidgetMessage(undefined, a)).toBe(a);
   });
 });
