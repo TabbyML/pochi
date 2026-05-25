@@ -127,7 +127,7 @@
     },
     "tools": {
       "title": "Tools",
-      "builtIn": "BUILT-IN TOOLS"
+      "builtIn": "Built-in tools"
     },
     "general": {
       "title": "General"
@@ -534,22 +534,22 @@
     "paused": "Paused"
   },
   "browserAgentSettings": {
-    "runtimeSection": "Browser runtime",
+    "runtimeSection": "Browser Runtime",
     "localChromeSection": "Local Chrome",
-    "recordingSection": "Session recording",
-    "localChromeHint": "Local Chrome uses --auto-connect and can reuse the current user's logged-in browser session. Browser Agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
+    "recordingSection": "Session Recording",
+    "localChromeHint": "Local chrome uses --auto-connect and can reuse the current user's logged-in browser session. Browser Agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
     "browserMode": "Browser mode",
     "managedBrowser": "Managed browser",
-    "localChrome": "Local Chrome",
-    "chromePath": "Chrome Executable Path (Optional)",
+    "localChrome": "Local chrome",
+    "chromePath": "Chrome executable path (optional)",
     "chromePathHint": "Leave blank to auto-detect.",
-    "startParams": "Custom Browser Arguments (Optional)",
+    "startParams": "Custom browser arguments (optional)",
     "startParamsHint": "Space-separated arguments to pass to the browser executable.",
     "enableRecording": "Record browser sessions",
     "recordingSize": "Recording resolution"
   },
   "builtInAgentsSettings": {
-    "title": "BUILT-IN AGENTS",
+    "title": "Built-in agents",
     "browser": "Browser Agent"
   }
 }

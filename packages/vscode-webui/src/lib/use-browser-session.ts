@@ -30,6 +30,10 @@ export const useManageBrowserSession = ({
 
   useEffect(() => {
     const manageBrowserSession = async () => {
+      if (!browserSettings) {
+        return;
+      }
+
       if (!lastMessage) {
         return;
       }
@@ -73,5 +77,5 @@ export const useManageBrowserSession = ({
     };
 
     manageBrowserSession();
-  }, [browserSettings.recording, lastMessage, store]);
+  }, [browserSettings, lastMessage, store]);
 };

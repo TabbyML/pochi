@@ -73,7 +73,10 @@ export class PochiWebviewPanel
     this.panel.webview.html = this.getHtmlForWebview(
       this.panel.webview,
       "pane",
-      { info },
+      {
+        type: "task",
+        payload: { task: info },
+      },
     );
     this.setupAuthEventListeners();
     this.setupFileWatcher(info.cwd, info.uid);

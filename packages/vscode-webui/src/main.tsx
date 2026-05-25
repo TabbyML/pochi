@@ -66,15 +66,21 @@ declare module "@tanstack/react-router" {
 // In the "pane" webview, navigate to the panel page on load.
 // Avoid setting window.location.hash globally because other scripts may modify it.
 if (window.POCHI_WEBVIEW_KIND === "pane") {
-  const info = window.POCHI_TASK_INFO;
-  if (window.POCHI_INITIAL_ROUTE) {
-    router.navigate({ to: window.POCHI_INITIAL_ROUTE, replace: true });
-  } else if (info) {
-    router.navigate({
-      to: "/task",
-      // Pass uid only, other params will be parsed after route
-      search: { uid: info.uid },
-    });
+  const panelInfo = window.POCHI_PANEL_INFO;
+  switch (panelInfo?.type) {
+    case "standalone":
+      router.navigate({
+        to: panelInfo.payload.route,
+        replace: true,
+      });
+      break;
+    case "task":
+      router.navigate({
+        to: "/task",
+        // Pass uid only, other params will be parsed after route
+        search: { uid: panelInfo.payload.task.uid },
+      });
+      break;
   }
 }
 

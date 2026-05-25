@@ -69,6 +69,7 @@ import {
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   type UserInfo,
+  mergeBrowserAgentSettings,
   pochiConfig,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
@@ -83,8 +84,8 @@ import {
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
+import type { BrowserAgentSettingsUpdate } from "@getpochi/common/vscode-webui-bridge";
 import {
-  type BrowserAgentSettingsUpdate,
   type BuiltinSubAgentInfo,
   type CaptureEvent,
   type ChangedFileContent,
@@ -111,7 +112,6 @@ import {
   type VSCodeSettings,
   type WorkspaceState,
   getTaskDisplayTitle,
-  mergeBrowserAgentSettings,
   resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { CompiledToolPolicies, ToolFunctionType } from "@getpochi/tools";

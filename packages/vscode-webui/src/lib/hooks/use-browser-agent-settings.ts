@@ -1,7 +1,4 @@
-import {
-  type BrowserAgentSettingsUpdate,
-  DefaultBrowserAgentSettings,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { BrowserAgentSettingsUpdate } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -30,7 +27,7 @@ export function useBrowserAgentSettings() {
   );
 
   return {
-    browserSettings: data?.browserSettings.value ?? DefaultBrowserAgentSettings,
+    browserSettings: data?.browserSettings.value,
     setBrowserSettings,
   };
 }

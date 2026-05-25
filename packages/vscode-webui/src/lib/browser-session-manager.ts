@@ -3,7 +3,7 @@ import { getLogger } from "@getpochi/common";
 import {
   type BrowserAgentRecordingSize,
   type BrowserAgentSettings,
-  DefaultBrowserAgentSettings,
+  parseBrowserAgentRecordingSize,
 } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
@@ -19,11 +19,6 @@ const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 const WhiteScreenCheckInterval = 500;
 const WebsocketRetryInterval = 2500;
 type BrowserRecordingOptions = BrowserAgentSettings["recording"];
-
-function parseRecordingSize(size: BrowserAgentRecordingSize) {
-  const [width, height] = size.split("x").map(Number);
-  return { width, height };
-}
 
 function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   const width = 32;
@@ -64,7 +59,7 @@ async function createRecordingImageBitmap(
   imageBitmap: ImageBitmap,
   recordingSize: BrowserAgentRecordingSize,
 ): Promise<ImageBitmap> {
-  const { width, height } = parseRecordingSize(recordingSize);
+  const { width, height } = parseBrowserAgentRecordingSize(recordingSize);
   let canvas: OffscreenCanvas | HTMLCanvasElement;
   let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
     null;
@@ -322,12 +317,12 @@ export class BrowserSessionManager {
   async registerSession(
     taskId: string,
     parentId: string,
-    recordingOptions?: Partial<BrowserRecordingOptions>,
+    recordingOptions: BrowserRecordingOptions,
   ) {
-    const recordingSession = new BrowserRecordingSession(taskId, {
-      ...DefaultBrowserAgentSettings.recording,
-      ...recordingOptions,
-    });
+    const recordingSession = new BrowserRecordingSession(
+      taskId,
+      recordingOptions,
+    );
     this.browserSessions.set(taskId, recordingSession);
     const { streamUrl } = await vscodeHost.registerBrowserSession(
       taskId,

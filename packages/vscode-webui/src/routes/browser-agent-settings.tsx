@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBrowserAgentSettings } from "@/lib/hooks/use-browser-agent-settings";
 import { cn } from "@/lib/utils";
-import type { BrowserAgentRecordingSize } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type BrowserAgentRecordingSize,
+  BrowserAgentRecordingSizeOptions,
+  parseBrowserAgentRecordingSize,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, ChevronDown } from "lucide-react";
@@ -37,16 +41,22 @@ const DefaultStartParams = "--no-sandbox --disable-dev-shm-usage";
 const RecordingSizeOptions: {
   value: BrowserAgentRecordingSize;
   label: string;
-}[] = [
-  { value: "1280x720", label: "1280 x 720" },
-  { value: "1138x640", label: "1138 x 640" },
-  { value: "854x480", label: "854 x 480" },
-];
+}[] = BrowserAgentRecordingSizeOptions.map((value) => {
+  const { width, height } = parseBrowserAgentRecordingSize(value);
+  return {
+    value,
+    label: `${width} x ${height}`,
+  };
+});
 
 export const BrowserSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   const { browserSettings: settings, setBrowserSettings } =
     useBrowserAgentSettings();
+
+  if (!settings) {
+    return null;
+  }
 
   return (
     <main className="grid gap-5">

@@ -1,6 +1,7 @@
 import type { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { getOrLoadTaskStore } from "@/lib/use-default-store";
+import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
 import type { StoreRegistry } from "@livestore/livestore";
 import { useEffect, useState } from "react";
@@ -8,7 +9,7 @@ import type { useTranslation } from "react-i18next";
 
 interface UseChatInitializationProps {
   chatKit: ReturnType<typeof useLiveChatKit>;
-  info: NonNullable<typeof window.POCHI_TASK_INFO>;
+  info: PochiTaskInfo;
   storeRegistry: StoreRegistry;
   jwt: string | null;
   t: ReturnType<typeof useTranslation>["t"];

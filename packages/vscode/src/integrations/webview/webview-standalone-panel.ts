@@ -72,7 +72,10 @@ export class PochiWebviewStandalonePanel
     this.panel.webview.html = this.getHtmlForWebview(
       this.panel.webview,
       "pane",
-      { route: definition.route },
+      {
+        type: "standalone",
+        payload: { route: definition.route },
+      },
     );
     this.panel.iconPath = WebviewBase.getLogoIconPath(
       this.context.extensionUri,

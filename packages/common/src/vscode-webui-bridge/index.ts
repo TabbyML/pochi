@@ -58,6 +58,14 @@ export type {
   ReviewCodeSnippet,
 } from "./types/review";
 export type { BuiltinSubAgentInfo } from "./types/sub-agent";
+export type { WebviewPanelInfo } from "./types/webview";
+export {
+  BrowserAgentRecordingSize,
+  BrowserAgentRecordingSizeOptions,
+  BrowserAgentSettings,
+  parseBrowserAgentRecordingSize,
+  type BrowserAgentSettingsUpdate,
+} from "./types/browser-agent-settings";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export { isValidSkillFile } from "./types/skill";
 export {
@@ -67,17 +75,6 @@ export {
 } from "./task-utils";
 export { ActiveSelection, BashOutputs, UserEdits } from "./types/message";
 export type { VSCodeSettings } from "./types/vscode-settings";
-export {
-  BrowserAgentSettings,
-  BrowserAgentSettingsConfig,
-  BrowserAgentRecordingSize,
-  DefaultBrowserAgentSettings,
-  PochiWebviewSettings,
-  PochiWebviewSettingsStorageName,
-  mergeBrowserAgentSettings,
-  type BrowserAgentSettingsConfig as BrowserAgentSettingsConfigType,
-  type BrowserAgentSettingsUpdate,
-} from "./types/browser-agent-settings";
 export {
   buildTaskScopedMcpInfo,
   buildInstructionsFromConnections,

@@ -14,3 +14,4 @@ export type { PochiConfigTarget } from "./config-manager";
 export * from "./model";
 export * from "./mcp";
 export * from "./vendor";
+export * from "./browser-agent-settings";
