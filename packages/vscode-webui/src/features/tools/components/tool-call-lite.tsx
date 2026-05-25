@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
+import type { TFunction } from "i18next";
 import { Loader2, Pause } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -116,7 +117,7 @@ export function ToolCallLite({
 
 function getLabelFromTool(
   type: ToolUIPart<UITools>["type"],
-  t: ReturnType<typeof useTranslation>["t"],
+  t: TFunction,
 ): string {
   switch (type) {
     case "tool-readFile":

@@ -838,7 +838,7 @@
                 "properties": {
                   "enabled": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Enable local long-term memory for Pochi."
                   }
                 }

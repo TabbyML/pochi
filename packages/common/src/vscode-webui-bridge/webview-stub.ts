@@ -413,6 +413,15 @@ const VSCodeHostStub = {
   }): Promise<AutoMemoryContext | undefined> => {
     return undefined;
   },
+  readAutoMemoryEnabled: async (): Promise<{
+    value: ThreadSignalSerialization<boolean>;
+    setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<boolean>,
+      setAutoMemoryEnabled: (_enabled: boolean) => Promise.resolve(),
+    };
+  },
   readAutoMemoryState: async (
     _taskId: string,
   ): Promise<{

@@ -220,7 +220,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   private isAutoMemoryEnabled() {
     return (
-      this.pochiConfiguration.advancedSettings.value.memory?.enabled === true
+      this.pochiConfiguration.advancedSettings.value.memory?.enabled !== false
     );
   }
 
@@ -1326,6 +1326,31 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         ensure: options?.ensure,
       },
     );
+  };
+
+  readAutoMemoryEnabled = async (): Promise<{
+    value: ThreadSignalSerialization<boolean>;
+    setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        computed(
+          () =>
+            this.pochiConfiguration.advancedSettings.value.memory?.enabled !==
+            false,
+        ),
+      ),
+      setAutoMemoryEnabled: async (enabled: boolean) => {
+        const current = this.pochiConfiguration.advancedSettings.value;
+        this.pochiConfiguration.advancedSettings.value = {
+          ...current,
+          memory: {
+            ...current.memory,
+            enabled,
+          },
+        };
+      },
+    };
   };
 
   readAutoMemoryState = async (

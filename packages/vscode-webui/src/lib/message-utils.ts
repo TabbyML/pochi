@@ -6,11 +6,11 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
-import type { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { vscodeHost } from "./vscode";
 
 export function prepareMessageParts(
-  t: ReturnType<typeof useTranslation>["t"],
+  t: TFunction,
   prompt: string,
   files: FileUIPart[],
   reviews: Review[],
@@ -54,7 +54,7 @@ export function prepareMessageParts(
 
   let fallbackPrompt = "";
   if (files.length) {
-    fallbackPrompt = t("chat.pleaseCheckFiles");
+    fallbackPrompt = t("chat.pleaseCheckFiles") as string;
   }
 
   const finalPrompt = prompt || fallbackPrompt;

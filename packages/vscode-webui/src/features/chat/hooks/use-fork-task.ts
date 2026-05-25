@@ -1,14 +1,14 @@
 import { vscodeHost } from "@/lib/vscode";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import type { LiveKitStore, Task } from "@getpochi/livekit";
+import type { TFunction } from "i18next";
 import { useCallback } from "react";
-import type { useTranslation } from "react-i18next";
 
 interface UseForkTaskProps {
   task: Task | undefined;
   store: LiveKitStore;
   jwt: string | null;
-  t: ReturnType<typeof useTranslation>["t"];
+  t: TFunction;
 }
 
 export function useForkTask({ task, store, jwt, t }: UseForkTaskProps) {
@@ -19,7 +19,9 @@ export function useForkTask({ task, store, jwt, t }: UseForkTaskProps) {
           store,
           jwt,
           title: task.title
-            ? t("forkTask.forkedTaskTitle", { taskTitle: task.title })
+            ? (t("forkTask.forkedTaskTitle", {
+                taskTitle: task.title,
+              }) as string)
             : undefined,
           cwd: task.cwd,
           commitId,
