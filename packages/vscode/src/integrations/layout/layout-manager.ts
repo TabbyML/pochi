@@ -16,6 +16,7 @@ import {
   findActivePochiTaskTab,
   getTabGroupType,
   getTabGroupsShape,
+  isFileBackedEditorTab,
   isPochiOutputTab,
   isPochiTaskTab,
   isSameTabGroupsShape,
@@ -222,9 +223,12 @@ export class LayoutManager implements vscode.Disposable {
                 }
               });
             } else if (
-              // Auto apply when first editor tab open and task tab exists
+              // Auto apply when first file-backed editor tab opens and a
+              // task tab exists. Skip webview tabs like Settings to avoid
+              // closing them via the subsequent re-layout (issue #1551).
               !isPochiTaskTab(tab) &&
               !isTerminalTab(tab) &&
+              isFileBackedEditorTab(tab) &&
               countOtherTabs(prevTabGroupsShape) === 0 &&
               countPochiTaskTabs(this.tabGroupsShape) > 0
             ) {
