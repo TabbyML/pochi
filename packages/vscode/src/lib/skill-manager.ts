@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { BuiltInSkillPath, builtInSkills, getLogger } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import { parseSkillFile } from "@getpochi/common/tool-utils";
 import {
   type SkillFile,
@@ -8,7 +8,7 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import { computed, signal } from "@preact/signals-core";
 import { funnel, uniqueBy } from "remeda";
-import { Lifecycle, injectable, scoped } from "tsyringe";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "./workspace-scoped";
@@ -16,47 +16,52 @@ import { WorkspaceScope } from "./workspace-scoped";
 const logger = getLogger("SkillManager");
 
 /**
- * Read skills from a directory
- * Expects directory structure: skills/skill-name/SKILL.md
+ * Read skills from a directory.
+ *
+ * Two layouts are supported:
+ *   - `<dir>/<skill>.md`            (flat, used for single-file skills)
+ *   - `<dir>/<skill>/SKILL.md`      (folder, when the skill ships extra files)
  */
 async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
   const skills: SkillFile[] = [];
+  const readFileContent = async (filePath: string): Promise<string> => {
+    const fileContent = await vscode.workspace.fs.readFile(
+      vscode.Uri.file(filePath),
+    );
+    return new TextDecoder().decode(fileContent);
+  };
+
   try {
-    const files = await vscode.workspace.fs.readDirectory(vscode.Uri.file(dir));
-    for (const [fileName, fileType] of files) {
-      // Look for subdirectories (skill directories)
+    const entries = await vscode.workspace.fs.readDirectory(
+      vscode.Uri.file(dir),
+    );
+    for (const [fileName, fileType] of entries) {
       if (
         fileType & vscode.FileType.Directory ||
         fileType & vscode.FileType.SymbolicLink
       ) {
-        const skillDir = path.join(dir, fileName);
-        const skillFilePath = path.join(skillDir, "SKILL.md");
-
+        const skillFilePath = path.join(dir, fileName, "SKILL.md");
         try {
-          // Check if SKILL.md exists in this subdirectory
           const stat = await vscode.workspace.fs.stat(
             vscode.Uri.file(skillFilePath),
           );
           if (stat.type === vscode.FileType.File) {
-            const readFileContent = async (
-              filePath: string,
-            ): Promise<string> => {
-              const fileContent = await vscode.workspace.fs.readFile(
-                vscode.Uri.file(filePath),
-              );
-              return new TextDecoder().decode(fileContent);
-            };
             const skill = await parseSkillFile(skillFilePath, readFileContent);
             skills.push(skill);
           }
         } catch (error) {
-          // SKILL.md doesn't exist in this directory, skip it
-          logger.debug(`No SKILL.md found in ${skillDir}:`, error);
+          logger.debug(`No SKILL.md found in ${fileName}:`, error);
         }
+      } else if (
+        fileType & vscode.FileType.File &&
+        fileName.toLowerCase().endsWith(".md")
+      ) {
+        const skillFilePath = path.join(dir, fileName);
+        const skill = await parseSkillFile(skillFilePath, readFileContent);
+        skills.push(skill);
       }
     }
   } catch (error) {
-    // Directory may not exist, which is fine.
     logger.debug(`Could not read skills from directory ${dir}:`, error);
   }
   return skills;
@@ -72,7 +77,18 @@ export class SkillManager implements vscode.Disposable {
     this.skills.value.filter(isValidSkillFile),
   );
 
-  constructor(private readonly workspaceScope: WorkspaceScope) {
+  private readonly builtInSkillsDir: string;
+
+  constructor(
+    private readonly workspaceScope: WorkspaceScope,
+    @inject("vscode.ExtensionContext")
+    private readonly extensionContext: vscode.ExtensionContext,
+  ) {
+    this.builtInSkillsDir = path.join(
+      this.extensionContext.extensionUri.fsPath,
+      "assets",
+      "skills",
+    );
     this.initWatchers();
     this.loadSkills();
   }
@@ -167,12 +183,11 @@ export class SkillManager implements vscode.Disposable {
 
   private async loadSkills() {
     try {
-      const allSkills: SkillFile[] = [
-        ...builtInSkills.map((skill) => ({
-          ...skill,
-          filePath: BuiltInSkillPath,
-        })),
-      ];
+      const builtInSkillFiles = await readSkillsFromDir(this.builtInSkillsDir);
+      const allSkills: SkillFile[] = builtInSkillFiles.map((skill) => ({
+        ...skill,
+        isBuiltIn: true,
+      }));
       if (this.cwd) {
         const cwd = this.cwd;
 
@@ -219,11 +234,7 @@ export class SkillManager implements vscode.Disposable {
         })),
       );
 
-      this.skills.value = uniqueBy(allSkills, (skill) =>
-        skill.filePath === BuiltInSkillPath
-          ? skill.name + BuiltInSkillPath
-          : skill.name,
-      );
+      this.skills.value = uniqueBy(allSkills, (skill) => skill.name);
       logger.debug(`Loaded ${allSkills.length} skills`);
     } catch (error) {
       logger.error("Failed to load skills", error);

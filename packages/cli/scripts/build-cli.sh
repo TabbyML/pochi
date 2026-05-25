@@ -1,6 +1,15 @@
 #!/bin/bash
 set -ex
 
+# Ship the built-in skill markdown files next to the bundled output so the
+# CLI loader (`packages/cli/src/lib/builtin-skills-dir.ts`) can resolve
+# them via `import.meta.dirname/skills/` (or `<binary-dir>/skills/`).
+copy_builtin_skills() {
+        local dest="$1"
+        rm -rf "$dest/skills"
+        cp -R ../common/src/base/skills "$dest/skills"
+}
+
 # we upload the released file to npm and run using node,
 # we use bun to utilize local dev,
 # so add this dispatcher if run bun locally
@@ -26,6 +35,8 @@ build_js() {
         # so we have to replace it manually.
         sed -i.bak '1s|^.*$|#!/usr/bin/env node|' ./dist/cli.js
         rm -f ./dist/cli.js.bak
+
+        copy_builtin_skills ./dist
 }
 
 build_exe() {
@@ -35,6 +46,8 @@ build_exe() {
                 --compile \
                 --outfile ./dist/pochi \
                 "$@"
+
+        copy_builtin_skills ./dist
 }
 
 if [[ ${TARGET:-""} == "node" ]]; then

@@ -5,7 +5,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeHost } from "@/lib/vscode";
-import { BuiltInSkillPath } from "@getpochi/common";
 import type {
   InvalidSkillFile,
   SkillFile,
@@ -30,9 +29,7 @@ const SkillParseErrorMap: Record<
 export const SkillSection: React.FC = () => {
   const { t } = useTranslation();
   const { skills: allSkills = [], isLoading } = useSkills();
-  const skills = allSkills.filter(
-    (skill) => skill.filePath !== BuiltInSkillPath,
-  );
+  const skills = allSkills.filter((skill) => !skill.isBuiltIn);
 
   const handleEditSkill = (skill: SkillFile) => {
     vscodeHost.openFile(skill.filePath);
