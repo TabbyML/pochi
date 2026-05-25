@@ -1,6 +1,8 @@
 import type { Skill } from "@getpochi/tools";
 
-export interface ValidSkillFile extends Skill {}
+export interface ValidSkillFile extends Skill {
+  isBuiltIn?: boolean;
+}
 
 export interface InvalidSkillFile extends Partial<Skill> {
   /**
@@ -19,6 +21,7 @@ export interface InvalidSkillFile extends Partial<Skill> {
    * Detailed error message
    */
   message: string;
+  isBuiltIn?: boolean;
 }
 
 export type SkillFile = ValidSkillFile | InvalidSkillFile;

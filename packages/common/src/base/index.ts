@@ -38,7 +38,6 @@ export { withTimeout } from "./async-utils";
 
 export { builtInAgents } from "./agents";
 
-export { builtInSkills, BuiltInSkillPath } from "./skills";
 export * from "./message-context";
 export type { AutoMemoryTaskState, TaskMemoryState } from "./memory";
 

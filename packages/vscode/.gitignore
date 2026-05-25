@@ -1,4 +1,5 @@
 assets/webview-ui/
+assets/skills/
 *.vsix
 
 .vscode-test/

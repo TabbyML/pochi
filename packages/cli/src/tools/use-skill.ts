@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { BuiltInSkillPath, prompts } from "@getpochi/common";
+import { prompts } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
@@ -17,7 +17,6 @@ export const useSkill =
       throw new Error("No skills are available in the workspace.");
     }
 
-    // Find the requested skill
     const skill = skills.find((s) => s.name === skillName);
     if (!skill) {
       const availableSkills = skills.map((s) => s.name).join(", ");
@@ -26,17 +25,6 @@ export const useSkill =
       );
     }
 
-    // Builtin skills don't have a real file path — return instructions directly
-    if (skill.filePath === BuiltInSkillPath) {
-      return {
-        result: prompts.createUseSkillResult(skill),
-        _meta: {
-          filePath: BuiltInSkillPath,
-        },
-      };
-    }
-
-    // Resolve the file path
     let resolvedFilePath: string;
     if (path.isAbsolute(skill.filePath)) {
       resolvedFilePath = skill.filePath;
@@ -46,10 +34,8 @@ export const useSkill =
       resolvedFilePath = path.resolve(workspaceDir, skill.filePath);
     }
 
-    // Verify the file still exists
     await fs.access(resolvedFilePath);
 
-    // Return the skill instructions
     return {
       result: prompts.createUseSkillResult(skill),
       _meta: {
