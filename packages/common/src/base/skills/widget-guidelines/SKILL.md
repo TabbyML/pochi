@@ -24,28 +24,55 @@ These rules apply to every `renderWidget` call:
 - Use font-weight 500 for most labels and headings, 600 only for strong emphasis or primary metrics. Avoid oversized 32px+ hero typography inside chat widgets.
 - Use sentence case labels. Keep text short inside visuals; put prose explanations in the chat response outside `renderWidget`.
 
+## Core Design Principles
+
+These rules apply to every widget kind:
+
+- Make the widget feel native to Pochi and VSCode. Use transparent outer containers, compact spacing, flat surfaces, and theme variables instead of decorative backgrounds.
+- Keep prose outside the widget. Use the chat response for explanations, summaries, introductions, and caveats; use `widgetCode` only for the visual or local control surface.
+- Build for streaming. Put a short `<style>` first only when needed, then visible HTML/SVG structure, and put scripts last. The user should see useful structure before JavaScript runs.
+- Avoid decorative gradients, shadows, blur, glow, noise, or oversized hero typography. Use visual weight for meaning, not ornament.
+- Do not hide primary content behind tabs, carousels, or `display: none` during streaming. Post-stream local steppers are fine when all controls and state are local.
+- Keep content in normal flow and auto-height. Avoid fixed overlays, nested scrolling, and layout that depends on a viewport outside the iframe.
+
 ## Visual Contract
 
-Pick colors from two sources only: the diagram color classes below, and VSCode CSS variables for UI surfaces.
+Pick colors from two sources by default: the diagram color classes below, and VSCode CSS variables for UI surfaces. The only exception is an illustrative physical scene where theme inversion would be misleading, such as heat, water, flame, or material color; keep those hardcoded colors local and consistent.
 
 ### Diagram Color Classes
 
 Available color classnames: `gray`, `purple`, `teal`, `coral`, `pink`, `blue`, `green`, `amber`, `red`.
 
-Apply the class to a `<g>`, `<rect>`, `<circle>`, or `<ellipse>` — not to `<path>`. Dark mode is handled automatically.
+Apply the class to a `<g>` that directly contains the colored `<rect>`, `<circle>`, or `<ellipse>` and the child `.t`, `.ts`, or `.th` text.
 
-Light mode: 50 fill + 600 stroke + 800 title + 600 subtitle.
-Dark mode: 800 fill + 200 stroke + 100 title + 200 subtitle.
+### Palette Stops
+
+Palette stop numbers describe tone inside one color family. Lower numbers are lighter; higher numbers are darker. They are design roles, not CSS class names or CSS variables. The widget host implements the canonical seven-stop palette table; do not copy that table into `widgetCode`, write `blue-600`, `fill="600"`, or hardcode stop numbers in SVG.
+
+When using built-in diagram color classes, choose only the color class. Pochi applies the stop roles automatically:
+
+| Theme | Shape fill | Shape stroke | `.th` / `.t` text | `.ts` text |
+|---|---|---|---|---|
+| Light | 50, the pale fill | 600, the strong border | 800, dark same-family title text | 600, medium same-family subtitle text |
+| Dark | 800, the dark fill | 200, the light border | 100, light same-family title text | 200, light same-family subtitle text |
+
+Stop roles are useful only when reasoning about diagram contrast or hand-picked physical colors. For HTML controls, panels, and UI surfaces, use VSCode CSS variables instead.
+
+- `50`: pale fill on light themes.
+- `100` / `200`: light text or stroke on dark fills.
+- `400`: mid accent, rarely needed in widgets.
+- `600`: strong border or secondary text on pale fills.
+- `800` / `900`: dark text on pale fills; use `900` only when extra contrast is needed.
 
 ### Assigning Colors
 
 Color encodes meaning, not order. Group same-category nodes under one color class, keep 2–3 colors per diagram, and use `gray` for neutral or structural nodes.
 
-Prefer `purple`, `teal`, `coral`, `pink` for general categories. Keep `blue`, `green`, `amber`, `red` for genuine info / success / warning / error meaning (illustrative diagrams may use them for physical properties like temperature).
+Prefer `purple`, `teal`, `coral`, `pink` for general categories. Use `gray` for neutral or structural content. Keep `blue`, `green`, `amber`, `red` for genuine info / success / warning / error meaning; illustrative diagrams may also use them for physical properties like cold, organic growth, heat, pressure, danger, or error.
 
 ### Text on Colored Fills
 
-Use the 800/900 stop of the same color family — never black or `--vscode-foreground` on a colored fill. When a card has both a title and a subtitle, pick two different stops (title 800, subtitle 600 in light; title 100, subtitle 200 in dark).
+Built-in diagram color classes already choose same-family text colors for `.t`, `.ts`, and `.th`. If an illustrative physical scene needs hardcoded colors, keep text in the same color family with strong contrast; never place black or generic `--vscode-foreground` text on a colored fill.
 
 ### VSCode CSS Variables
 
