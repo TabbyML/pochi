@@ -24,8 +24,8 @@ import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import { Progress } from "./ui/progress";
-import { Switch } from "./ui/switch";
 
 const TaskMemoryFileUri = "pochi://-/memory.md";
 
@@ -294,31 +294,37 @@ export function TokenUsage({
               {t("tokenUsage.memory")}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {/* Auto Memory: toggle + view in one button-styled control */}
+              {/* Project Memory: outline pill with checkbox + clickable label */}
               <div
                 className={cn(
-                  "inline-flex h-8 items-center rounded-md border bg-background text-xs shadow-xs transition-colors",
+                  "inline-flex h-8 items-center gap-2 rounded-md border bg-background px-2.5 text-xs shadow-xs transition-colors",
                   "dark:border-input dark:bg-input/30",
                 )}
               >
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex h-full items-center pl-2">
-                        <Switch
-                          id="auto-memory-enabled"
-                          aria-label={t("tokenUsage.autoMemoryEnabled")}
+                      <span className="inline-flex">
+                        <Checkbox
+                          id="project-memory-enabled"
+                          aria-label={
+                            autoMemoryEnabled
+                              ? t("tokenUsage.projectMemoryDisable")
+                              : t("tokenUsage.projectMemoryEnable")
+                          }
                           checked={autoMemoryEnabled}
                           disabled={!setAutoMemoryEnabled}
                           onCheckedChange={(checked) =>
-                            setAutoMemoryEnabled?.(checked)
+                            setAutoMemoryEnabled?.(checked === true)
                           }
-                          className="h-3.5 w-6 [&>span]:size-3"
+                          className="data-[state=checked]:!border-[var(--vscode-focusBorder)] data-[state=checked]:!bg-[var(--vscode-focusBorder)] data-[state=checked]:!text-[var(--vscode-button-foreground)] size-4 border-[var(--vscode-focusBorder)] [&_svg]:size-3"
                         />
-                      </div>
+                      </span>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-[220px]">
-                      {t("tokenUsage.autoMemoryEnabled")}
+                    <TooltipContent>
+                      {autoMemoryEnabled
+                        ? t("tokenUsage.projectMemoryDisable")
+                        : t("tokenUsage.projectMemoryEnable")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -332,24 +338,34 @@ export function TokenUsage({
                         }}
                         disabled={!autoMemoryEnabled || !autoMemoryAvailable}
                         className={cn(
-                          "h-full rounded-r-md pr-3 pl-1.5 font-medium text-foreground transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-input/50",
-                          "disabled:cursor-not-allowed disabled:bg-transparent disabled:text-muted-foreground disabled:hover:bg-transparent dark:disabled:hover:bg-transparent",
+                          "select-none font-medium text-foreground transition-colors",
+                          "enabled:cursor-pointer enabled:hover:underline",
+                          "disabled:cursor-not-allowed disabled:text-muted-foreground",
                         )}
                       >
-                        {t("tokenUsage.autoMemory")}
+                        {t("tokenUsage.projectMemory")}
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-[220px]">
-                      {autoMemoryEnabled && autoMemoryAvailable
-                        ? t("tokenUsage.viewAutoMemoryTooltip")
-                        : t("tokenUsage.autoMemoryUnavailable")}
+                    <TooltipContent className="max-w-[260px]">
+                      <div className="flex flex-col gap-1">
+                        <div className="font-medium">
+                          {t("tokenUsage.projectMemory")}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {t("tokenUsage.projectMemoryDescription")}
+                        </div>
+                        {!autoMemoryAvailable && (
+                          <div className="text-muted-foreground italic">
+                            {t("tokenUsage.projectMemoryUnavailable")}
+                          </div>
+                        )}
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
 
-              {/* Task Memory: view-only outline button */}
+              {/* Task Memory: outline pill button */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -357,7 +373,7 @@ export function TokenUsage({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-xs"
+                        className="h-8 text-xs"
                         onClick={() => {
                           vscodeHost.openFile(TaskMemoryFileUri);
                           setIsOpen(false);
@@ -368,10 +384,20 @@ export function TokenUsage({
                       </Button>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-[220px]">
-                    {hasTaskMemory
-                      ? t("tokenUsage.viewTaskMemoryTooltip")
-                      : t("tokenUsage.taskMemoryUnavailable")}
+                  <TooltipContent className="max-w-[260px]">
+                    <div className="flex flex-col gap-1">
+                      <div className="font-medium">
+                        {t("tokenUsage.taskMemory")}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {t("tokenUsage.taskMemoryDescription")}
+                      </div>
+                      {!hasTaskMemory && (
+                        <div className="text-muted-foreground italic">
+                          {t("tokenUsage.taskMemoryUnavailable")}
+                        </div>
+                      )}
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
