@@ -70,6 +70,7 @@ export const ToolsByPermission = {
     "searchFiles",
     "readBackgroundJobOutput",
     "useSkill",
+    "renderWidget",
     // Pochi offered-tools
     "webFetch",
     "webSearch",
@@ -81,7 +82,7 @@ export const ToolsByPermission = {
     "killBackgroundJob",
     "newTask",
   ] as string[],
-  default: ["todoWrite"] as string[],
+  default: ["todoWrite", "renderWidget"] as string[],
 };
 
 export const MaxToolCallConcurrency = 20;

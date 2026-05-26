@@ -305,6 +305,7 @@
     "stop": "Stop",
     "preview": "Preview",
     "calling": "Calling",
+    "renderingWidget": "Rendering widget",
     "request": "Request",
     "response": "Response",
     "imgAlt": "MCP tool response snapshot",

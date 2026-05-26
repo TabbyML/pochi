@@ -19,6 +19,7 @@ import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import type { multiApplyDiff } from "./multi-apply-diff";
 import { type CustomAgent, createNewTaskTool } from "./new-task";
+import { renderWidget } from "./render-widget";
 import { searchFiles } from "./search-files";
 import { todoWrite } from "./todo-write";
 export { Todo } from "./todo-write";
@@ -146,6 +147,7 @@ export const createClientTools = (options?: CreateClientToolOptions) => {
     startBackgroundJob,
     readBackgroundJobOutput,
     killBackgroundJob,
+    renderWidget,
   };
 };
 

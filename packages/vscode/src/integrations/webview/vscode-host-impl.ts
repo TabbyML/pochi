@@ -51,6 +51,7 @@ import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
+import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
@@ -1623,6 +1624,7 @@ const ToolMap: Record<
   searchFiles,
   listFiles: listFilesTool,
   globFiles,
+  renderWidget,
   writeToFile,
   applyDiff,
   todoWrite,
