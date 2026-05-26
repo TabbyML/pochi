@@ -3,6 +3,7 @@
 Use this module for UI mockups, forms, cards, dashboards, and bounded records.
 
 - Use VSCode theme variables for surfaces and text. Do not hardcode light-only grays.
+- For mockups, lean on VSCode CSS variables for more than text and surfaces: use them for buttons, inputs, dropdowns, badges, hover states, selected rows, focus outlines, and validation states when those elements appear.
 - Use compact, flat UI surfaces with 0.5px borders and VSCode theme variables.
 - Prefer simple grids, cards, metric blocks, forms, and controls that fit the chat width.
 - Use one raised card for bounded objects, but avoid card-inside-card layouts.
