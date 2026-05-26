@@ -13,6 +13,7 @@ fs.mkdirSync(destBaseDir, { recursive: true });
 const filesToCopy = [
   "index.js",
   "index.css",
+  "renderer-entry.js",
   "wa-sqlite.wasm",
   "make-shared-worker.js",
 ];

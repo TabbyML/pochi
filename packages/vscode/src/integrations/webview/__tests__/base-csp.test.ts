@@ -34,4 +34,18 @@ describe("webview CSP", () => {
     assert.strictEqual(matches?.length, 2);
     assert.ok(!source.includes("script-src 'unsafe-inline'"));
   });
+
+  it("resolves packaged webview assets through VS Code resource URIs", () => {
+    const source = readFileSync(
+      path.join(__dirname, "../base.ts"),
+      "utf8",
+    );
+    const copyScript = readFileSync(
+      path.join(__dirname, "../../../../scripts/copy-webui-dist.js"),
+      "utf8",
+    );
+
+    assert.ok(source.includes('return "${webviewDistBaseUri}/" + path;'));
+    assert.ok(copyScript.includes('"renderer-entry.js"'));
+  });
 });

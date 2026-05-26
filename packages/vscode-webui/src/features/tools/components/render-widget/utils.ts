@@ -18,6 +18,14 @@ export type WidgetScript =
   | { type: "external"; src: string }
   | { type: "inline"; code: string };
 
+export type WidgetRendererScript =
+  | string
+  | {
+      src: string;
+      code?: string;
+      nonce?: string;
+    };
+
 export function coalescePendingWidgetMessage<
   T extends PendingWidgetRenderMessage,
 >(current: T | undefined, next: T): T;
@@ -293,11 +301,17 @@ export function buildWidgetIframeSrc(html: string) {
 }
 
 export function buildWidgetIframeDocument(
-  rendererScriptSrc: string,
+  rendererScript: WidgetRendererScript,
   themeVariablesCss = "",
   channelId = "pochi-widget",
   themeClass: WidgetThemeClass = "dark",
 ) {
+  const rendererScriptSrc =
+    typeof rendererScript === "string" ? rendererScript : rendererScript.src;
+  const rendererScriptCode =
+    typeof rendererScript === "string" ? undefined : rendererScript.code;
+  const rendererScriptNonce =
+    typeof rendererScript === "string" ? undefined : rendererScript.nonce;
   const resolvedRendererScriptSrc = normalizeWidgetModuleScriptSrc(
     resolveWidgetModuleScriptSrc(rendererScriptSrc),
   );
@@ -311,8 +325,15 @@ export function buildWidgetIframeDocument(
   );
   const safeChannelId = escapeHtmlAttribute(channelId);
   const safeThemeClass = escapeHtmlAttribute(themeClass);
-  const scriptCspSource = getScriptCspSource(resolvedRendererScriptSrc);
+  const scriptCspSource =
+    rendererScriptCode && rendererScriptNonce
+      ? `'nonce-${rendererScriptNonce}'`
+      : getScriptCspSource(resolvedRendererScriptSrc);
   const connectCspSource = getWidgetConnectCspSource(resolvedRendererScriptSrc);
+  const rendererScriptElement =
+    rendererScriptCode && rendererScriptNonce
+      ? `<script nonce="${escapeHtmlAttribute(rendererScriptNonce)}">${escapeInlineScriptContent(rendererScriptCode)}</script>`
+      : `<script type="module" src="${safeRendererScriptSrc}"></script>`;
 
   return `<!doctype html>
 <html class="${safeThemeClass}">
@@ -329,7 +350,7 @@ ${WidgetBaseStyles}
 </head>
 <body>
 <div id="root" data-channel-id="${safeChannelId}" aria-label="sandboxed generative UI widget"></div>
-<script type="module" src="${safeRendererScriptSrc}"></script>
+${rendererScriptElement}
 </body>
 </html>`;
 }
@@ -339,6 +360,10 @@ function escapeHtmlAttribute(value: string) {
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;");
+}
+
+function escapeInlineScriptContent(code: string) {
+  return code.replace(/<\/script/gi, "<\\/script").replace(/<!--/g, "<\\!--");
 }
 
 function resolveWidgetModuleScriptSrc(scriptSrc: string) {
