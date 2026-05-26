@@ -551,7 +551,7 @@
     "runtimeSection": "Browser Runtime",
     "localChromeSection": "Local Chrome",
     "recordingSection": "Session Recording",
-    "localChromeHint": "Local chrome uses --auto-connect and can reuse the current user's logged-in browser session. Browser Agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
+    "localChromeHint": "Local chrome uses --auto-connect and can reuse the current user's logged-in browser session. browser agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
     "browserMode": "Browser mode",
     "managedBrowser": "Managed browser",
     "localChrome": "Local chrome",
@@ -564,6 +564,6 @@
   },
   "builtInAgentsSettings": {
     "title": "Built-in agents",
-    "browser": "Browser Agent"
+    "browser": "browser"
   }
 }
