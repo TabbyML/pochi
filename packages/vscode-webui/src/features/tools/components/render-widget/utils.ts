@@ -443,25 +443,6 @@ svg {
 :where(svg .arr) { stroke: var(--vscode-descriptionForeground, #9d9d9d); stroke-width: 1.5; fill: none; }
 :where(svg .leader) { stroke: var(--vscode-descriptionForeground, #9d9d9d); stroke-width: 0.5; stroke-dasharray: 4 3; fill: none; }
 
-/* Mockup form controls — use VSCode tokens so they follow the active theme automatically. */
-input, textarea {
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 2px;
-  padding: 4px 6px;
-  font-family: var(--vscode-font-family);
-}
-button {
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  padding: 4px 12px;
-  cursor: pointer;
-}
-button:hover {
-  background: var(--vscode-button-hoverBackground);
-}
 
 /* Dark palette */
 :where(.dark svg .blue > rect, .dark svg .blue > circle, .dark svg .blue > ellipse) { fill: #0C447C; stroke: #85B7EB; }

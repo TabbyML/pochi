@@ -31,7 +31,14 @@ describe("loadSkills", () => {
     const names = await listBuiltInSkillNames();
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) {
-      const filePath = path.join(BuiltInSkillsDir, `${name}.md`);
+      const flatPath = path.join(BuiltInSkillsDir, `${name}.md`);
+      const dirPath = path.join(BuiltInSkillsDir, name, "SKILL.md");
+      const filePath = (await fs
+        .stat(flatPath)
+        .then(() => true)
+        .catch(() => false))
+        ? flatPath
+        : dirPath;
       const content = await fs.readFile(filePath, "utf-8");
       expect(content).toContain("---");
       expect(content).toContain(`name: ${name}`);
