@@ -32,9 +32,11 @@ export const ExpandIcon: React.FC<{
   className?: string;
 }> = ({ isExpanded, onClick, className }) => {
   return (
-    <span
+    <button
+      type="button"
+      aria-label={isExpanded ? "Collapse tool details" : "Expand tool details"}
       className={cn(
-        "mt-0.5 self-start rounded bg-muted p-1 transition-opacity hover:bg-secondary",
+        "mt-0.5 self-start rounded border-0 bg-muted p-1 text-current transition-opacity hover:bg-secondary",
         !isExpanded && "opacity-0 group-hover:opacity-100",
         className,
       )}
@@ -46,13 +48,14 @@ export const ExpandIcon: React.FC<{
           isExpanded ? "rotate-90" : "rotate-180",
         )}
       />
-    </span>
+    </button>
   );
 };
 
 export const ExpandableToolContainer: React.FC<{
   title: React.ReactNode;
   expandableDetail?: React.ReactNode;
+  renderExpandableDetail?: () => React.ReactNode;
   expandableDetailIcon?: React.ReactNode;
   detail?: React.ReactNode;
   expanded?: boolean;
@@ -62,6 +65,7 @@ export const ExpandableToolContainer: React.FC<{
 }> = ({
   title,
   expandableDetail,
+  renderExpandableDetail,
   expandableDetailIcon,
   detail,
   expanded,
@@ -72,6 +76,12 @@ export const ExpandableToolContainer: React.FC<{
   const [internalShowDetails, setInternalShowDetails] =
     useState(defaultExpanded);
   const showDetails = expanded ?? internalShowDetails;
+  const hasExpandableDetail = Boolean(
+    expandableDetail || renderExpandableDetail,
+  );
+  const resolvedExpandableDetail = showDetails
+    ? (renderExpandableDetail?.() ?? expandableDetail)
+    : undefined;
 
   const handleToggle = () => {
     const next = !showDetails;
@@ -94,7 +104,7 @@ export const ExpandableToolContainer: React.FC<{
             {expandableDetailIcon}
           </span>
         )}
-        {expandableDetail && (
+        {hasExpandableDetail && (
           <ExpandIcon
             isExpanded={showDetails}
             onClick={handleToggle}
@@ -102,7 +112,7 @@ export const ExpandableToolContainer: React.FC<{
           />
         )}
       </ToolTitle>
-      {showDetails && expandableDetail}
+      {resolvedExpandableDetail}
       {detail}
     </ToolContainer>
   );

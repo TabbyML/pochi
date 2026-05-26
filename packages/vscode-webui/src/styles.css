@@ -25,6 +25,16 @@ code {
     monospace;
 }
 
+.message-list-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
+}
+
+.perf-content-visibility-off .message-list-item {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);

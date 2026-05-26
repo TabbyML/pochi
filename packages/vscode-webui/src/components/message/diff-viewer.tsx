@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { parsePatchFiles, resolveThemes } from "@pierre/diffs";
-import { PatchDiff } from "@pierre/diffs/react";
+import { PatchDiff, Virtualizer } from "@pierre/diffs/react";
 import { Columns2, Rows2, WrapText } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -39,6 +39,13 @@ const patchDiffStyle = {
   "--diffs-fg-number-deletion-override":
     "var(--vscode-editorGutter-deletedBackground)",
 } as React.CSSProperties;
+const patchDiffMetrics = {
+  lineHeight: 16.5,
+  hunkLineCount: 30,
+  diffHeaderHeight: 0,
+  hunkSeparatorHeight: 24,
+  fileGap: 8,
+};
 
 const resolveThemesOnce = async () => {
   if (themesResolved) return;
@@ -50,10 +57,33 @@ const resolveThemesOnce = async () => {
   }
 };
 
+export const PlainDiffViewer = memo(function PlainDiffViewer({
+  patch,
+  filePath,
+}: DiffViewerProps) {
+  return (
+    <DiffViewerImpl patch={patch} filePath={filePath} virtualized={false} />
+  );
+});
+
+PlainDiffViewer.displayName = "PlainDiffViewer";
+
 export const DiffViewer = memo(function DiffViewer({
   patch,
   filePath,
 }: DiffViewerProps) {
+  return (
+    <DiffViewerImpl patch={patch} filePath={filePath} virtualized={true} />
+  );
+});
+
+DiffViewer.displayName = "DiffViewer";
+
+function DiffViewerImpl({
+  patch,
+  filePath,
+  virtualized,
+}: DiffViewerProps & { virtualized: boolean }) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const [isReady, setIsReady] = useState(themesResolved);
@@ -180,15 +210,22 @@ export const DiffViewer = memo(function DiffViewer({
           </div>
         </div>
       )}
-      <div className="max-h-60 overflow-auto">
+      {virtualized ? (
+        <Virtualizer className="max-h-60 overflow-auto">
+          <PatchDiff
+            patch={patch}
+            options={patchDiffOptions}
+            metrics={patchDiffMetrics}
+            style={patchDiffStyle}
+          />
+        </Virtualizer>
+      ) : (
         <PatchDiff
           patch={patch}
           options={patchDiffOptions}
           style={patchDiffStyle}
         />
-      </div>
+      )}
     </div>
   );
-});
-
-DiffViewer.displayName = "DiffViewer";
+}

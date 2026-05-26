@@ -4,15 +4,56 @@ import { getBaseName, isFolder } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import { useState } from "react";
 import { FileIcon } from "./file-icon";
+import {
+  type FileListMatch,
+  MaxRenderedFileListItems,
+  getVisibleFileListMatches,
+} from "./file-list-utils";
 
 export const FileList: React.FC<{
-  matches: { file: string; line?: number; context?: string; label?: string }[];
+  matches: FileListMatch[];
   showBaseName?: boolean;
 }> = ({ matches, showBaseName = true }) => {
+  return (
+    <FileListView
+      matches={matches}
+      showBaseName={showBaseName}
+      maxItems={MaxRenderedFileListItems}
+    />
+  );
+};
+
+export const FullFileList: React.FC<{
+  matches: FileListMatch[];
+  showBaseName?: boolean;
+}> = ({ matches, showBaseName = true }) => {
+  return (
+    <FileListView
+      matches={matches}
+      showBaseName={showBaseName}
+      maxItems={Number.POSITIVE_INFINITY}
+    />
+  );
+};
+
+function FileListView({
+  matches,
+  showBaseName,
+  maxItems,
+}: {
+  matches: FileListMatch[];
+  showBaseName: boolean;
+  maxItems: number;
+}) {
   const [activeIndex, setActiveIndex] = useState(-1);
   if (matches.length === 0) {
     return null;
   }
+
+  const { visibleMatches, hiddenCount } = getVisibleFileListMatches(
+    matches,
+    maxItems,
+  );
 
   return (
     <ScrollArea
@@ -25,7 +66,7 @@ export const FileList: React.FC<{
       }}
       tabIndex={0}
     >
-      {matches.map((match, index) => (
+      {visibleMatches.map((match, index) => (
         <div
           key={match.file + (match.line ?? "") + index}
           className={`cursor-pointer truncate rounded py-0.5 ${activeIndex === index ? "bg-accent" : "hover:bg-accent/50"}`}
@@ -78,6 +119,11 @@ export const FileList: React.FC<{
           </span>
         </div>
       ))}
+      {hiddenCount > 0 && (
+        <div className="px-2 py-1 text-muted-foreground text-xs">
+          {hiddenCount} more results not shown
+        </div>
+      )}
     </ScrollArea>
   );
-};
+}
