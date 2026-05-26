@@ -118,7 +118,3 @@ Do not mix diagram families in one SVG. If a topic needs both intuition and refe
 - Simple indicators such as particles, bubbles, flames, heat waves, or vibration lines are allowed only when they explain state.
 - Avoid decorative gradients. A single `<linearGradient>` is acceptable only when it represents a continuous physical property such as temperature or pressure.
 - If a mechanism has meaningful controls, prefer an interactive widget with local sliders, toggles, buttons, and `addEventListener` bindings. Do not use inline `on*` attributes.
-
-## Mermaid and schemas
-
-Do not load Mermaid.js inside `renderWidget`; widget CSP and sanitization only allow the approved Chart.js script. If an ERD or class diagram is better represented by Mermaid, put a Markdown `mermaid` code block in the chat response instead of using `renderWidget`. For diagrams that must live inside a widget, use carefully planned inline SVG.
