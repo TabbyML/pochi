@@ -63,17 +63,19 @@
     "files": "Files",
     "toolResults": "Tool Results",
     "taskMemory": "Task Memory",
+    "taskMemoryDescription": "Summary of the current task. Reused when compacting this conversation to preserve essential context.",
     "viewTaskMemory": "View task memory",
     "viewTaskMemoryTooltip": "View the task memory that will be used when compacting this task.",
     "compact": "Compact",
     "memory": "Memory",
-    "autoMemory": "Auto Memory",
-    "autoMemoryEnabled": "Enable Auto Memory",
-    "autoMemoryDescription": "Automatically extract durable knowledge across sessions into a shared memory index.",
-    "viewAutoMemory": "View Auto Memory",
-    "viewAutoMemoryTooltip": "Open the MEMORY.md index for this workspace.",
+    "projectMemory": "Project Memory",
+    "projectMemoryEnable": "Enable Project Memory",
+    "projectMemoryDisable": "Disable Project Memory",
+    "projectMemoryDescription": "Pochi learns about your project as you work and saves it to MEMORY.md, so future tasks start with helpful context.",
+    "viewProjectMemory": "View",
+    "viewProjectMemoryTooltip": "Open the MEMORY.md index for this workspace.",
     "viewTaskMemoryButtonTooltip": "Open the task memory summary that compacting will reuse.",
-    "autoMemoryUnavailable": "Auto memory will become available after running a task in a git workspace.",
+    "projectMemoryUnavailable": "Project memory becomes available after running a task in this workspace.",
     "taskMemoryUnavailable": "Task memory is generated automatically as the conversation grows."
   },
   "modelSelect": {
@@ -551,7 +553,7 @@
     "runtimeSection": "Browser Runtime",
     "localChromeSection": "Local Chrome",
     "recordingSection": "Session Recording",
-    "localChromeHint": "Local chrome uses --auto-connect and can reuse the current user's logged-in browser session. Browser Agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
+    "localChromeHint": "Local chrome uses --auto-connect and can reuse the current user's logged-in browser session. browser agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
     "browserMode": "Browser mode",
     "managedBrowser": "Managed browser",
     "localChrome": "Local chrome",
@@ -564,6 +566,6 @@
   },
   "builtInAgentsSettings": {
     "title": "Built-in agents",
-    "browser": "Browser Agent"
+    "browser": "browser"
   }
 }

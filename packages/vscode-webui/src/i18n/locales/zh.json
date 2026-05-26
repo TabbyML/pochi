@@ -64,17 +64,19 @@
     "files": "文件",
     "toolResults": "工具结果",
     "taskMemory": "任务记忆",
+    "taskMemoryDescription": "当前任务的摘要。压缩本次对话时会被复用以保留关键上下文。",
     "viewTaskMemory": "查看任务记忆",
     "viewTaskMemoryTooltip": "查看任务记忆，压缩任务时将使用此记忆。",
     "compact": "压缩",
     "memory": "记忆",
-    "autoMemory": "自动记忆",
-    "autoMemoryEnabled": "启用自动记忆",
-    "autoMemoryDescription": "在多个会话之间自动提取持久知识到共享记忆索引中。",
-    "viewAutoMemory": "查看自动记忆",
-    "viewAutoMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
+    "projectMemory": "项目记忆",
+    "projectMemoryEnable": "启用项目记忆",
+    "projectMemoryDisable": "停用项目记忆",
+    "projectMemoryDescription": "Pochi 会在工作过程中学习你的项目并自动保存到 MEMORY.md，后续任务将带着这些上下文启动。",
+    "viewProjectMemory": "查看",
+    "viewProjectMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
     "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",
-    "autoMemoryUnavailable": "在 git 工作区运行任务后自动记忆将可用。",
+    "projectMemoryUnavailable": "在此工作区运行任务后，项目记忆将可用。",
     "taskMemoryUnavailable": "任务记忆将随着对话进行自动生成。"
   },
   "modelSelect": {
@@ -552,7 +554,7 @@
     "runtimeSection": "浏览器运行环境",
     "localChromeSection": "本地 Chrome",
     "recordingSection": "会话录制",
-    "localChromeHint": "本地 Chrome 使用 --auto-connect，并可复用当前用户已登录的浏览器会话。Browser Agent 可能访问该 Chrome 个人资料中已登录的网站和账号，请仅在可信任务中使用。",
+    "localChromeHint": "本地 Chrome 使用 --auto-connect，并可复用当前用户已登录的浏览器会话。浏览器代理可能访问该 Chrome 个人资料中已登录的网站和账号，请仅在可信任务中使用。",
     "browserMode": "浏览器模式",
     "managedBrowser": "托管浏览器",
     "localChrome": "本地 Chrome",
@@ -565,6 +567,6 @@
   },
   "builtInAgentsSettings": {
     "title": "内置代理",
-    "browser": "浏览器代理"
+    "browser": "浏览器"
   }
 }

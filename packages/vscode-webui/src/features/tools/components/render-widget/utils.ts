@@ -18,6 +18,14 @@ export type WidgetScript =
   | { type: "external"; src: string }
   | { type: "inline"; code: string };
 
+export type WidgetRendererScript =
+  | string
+  | {
+      src: string;
+      code?: string;
+      nonce?: string;
+    };
+
 export function coalescePendingWidgetMessage<
   T extends PendingWidgetRenderMessage,
 >(current: T | undefined, next: T): T;
@@ -293,11 +301,17 @@ export function buildWidgetIframeSrc(html: string) {
 }
 
 export function buildWidgetIframeDocument(
-  rendererScriptSrc: string,
+  rendererScript: WidgetRendererScript,
   themeVariablesCss = "",
   channelId = "pochi-widget",
   themeClass: WidgetThemeClass = "dark",
 ) {
+  const rendererScriptSrc =
+    typeof rendererScript === "string" ? rendererScript : rendererScript.src;
+  const rendererScriptCode =
+    typeof rendererScript === "string" ? undefined : rendererScript.code;
+  const rendererScriptNonce =
+    typeof rendererScript === "string" ? undefined : rendererScript.nonce;
   const resolvedRendererScriptSrc = normalizeWidgetModuleScriptSrc(
     resolveWidgetModuleScriptSrc(rendererScriptSrc),
   );
@@ -311,8 +325,15 @@ export function buildWidgetIframeDocument(
   );
   const safeChannelId = escapeHtmlAttribute(channelId);
   const safeThemeClass = escapeHtmlAttribute(themeClass);
-  const scriptCspSource = getScriptCspSource(resolvedRendererScriptSrc);
+  const scriptCspSource =
+    rendererScriptCode && rendererScriptNonce
+      ? `'nonce-${rendererScriptNonce}'`
+      : getScriptCspSource(resolvedRendererScriptSrc);
   const connectCspSource = getWidgetConnectCspSource(resolvedRendererScriptSrc);
+  const rendererScriptElement =
+    rendererScriptCode && rendererScriptNonce
+      ? `<script nonce="${escapeHtmlAttribute(rendererScriptNonce)}">${escapeInlineScriptContent(rendererScriptCode)}</script>`
+      : `<script type="module" src="${safeRendererScriptSrc}"></script>`;
 
   return `<!doctype html>
 <html class="${safeThemeClass}">
@@ -329,7 +350,7 @@ ${WidgetBaseStyles}
 </head>
 <body>
 <div id="root" data-channel-id="${safeChannelId}" aria-label="sandboxed generative UI widget"></div>
-<script type="module" src="${safeRendererScriptSrc}"></script>
+${rendererScriptElement}
 </body>
 </html>`;
 }
@@ -339,6 +360,10 @@ function escapeHtmlAttribute(value: string) {
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;");
+}
+
+function escapeInlineScriptContent(code: string) {
+  return code.replace(/<\/script/gi, "<\\/script").replace(/<!--/g, "<\\!--");
 }
 
 function resolveWidgetModuleScriptSrc(scriptSrc: string) {
@@ -422,11 +447,11 @@ body {
   to { opacity: 1; }
 }
 .__pochi_widget_appear {
-  animation: __pochi_widget_fade_in 1200ms ease-out both;
+  animation: __pochi_widget_fade_in 450ms ease-out both;
   animation-delay: var(--pochi-widget-appear-delay, 0ms);
 }
 svg .__pochi_widget_appear {
-  animation: __pochi_widget_svg_fade_in 1200ms ease-out both;
+  animation: __pochi_widget_svg_fade_in 450ms ease-out both;
   animation-delay: var(--pochi-widget-appear-delay, 0ms);
 }
 svg {
@@ -444,61 +469,28 @@ svg {
 :where(svg .leader) { stroke: var(--vscode-descriptionForeground, #9d9d9d); stroke-width: 0.5; stroke-dasharray: 4 3; fill: none; }
 
 
-/* Dark palette */
-:where(.dark svg .blue > rect, .dark svg .blue > circle, .dark svg .blue > ellipse) { fill: #0C447C; stroke: #85B7EB; }
-:where(.dark svg .blue > .th, .dark svg .blue > .t) { fill: #B5D4F4; }
-:where(.dark svg .blue > .ts) { fill: #85B7EB; }
-:where(.dark svg .teal > rect, .dark svg .teal > circle, .dark svg .teal > ellipse) { fill: #085041; stroke: #5DCAA5; }
-:where(.dark svg .teal > .th, .dark svg .teal > .t) { fill: #9FE1CB; }
-:where(.dark svg .teal > .ts) { fill: #5DCAA5; }
-:where(.dark svg .amber > rect, .dark svg .amber > circle, .dark svg .amber > ellipse) { fill: #633806; stroke: #EF9F27; }
-:where(.dark svg .amber > .th, .dark svg .amber > .t) { fill: #FAC775; }
-:where(.dark svg .amber > .ts) { fill: #EF9F27; }
-:where(.dark svg .green > rect, .dark svg .green > circle, .dark svg .green > ellipse) { fill: #27500A; stroke: #97C459; }
-:where(.dark svg .green > .th, .dark svg .green > .t) { fill: #C0DD97; }
-:where(.dark svg .green > .ts) { fill: #97C459; }
-:where(.dark svg .red > rect, .dark svg .red > circle, .dark svg .red > ellipse) { fill: #791F1F; stroke: #F09595; }
-:where(.dark svg .red > .th, .dark svg .red > .t) { fill: #F7C1C1; }
-:where(.dark svg .red > .ts) { fill: #F09595; }
-:where(.dark svg .purple > rect, .dark svg .purple > circle, .dark svg .purple > ellipse) { fill: #3C3489; stroke: #AFA9EC; }
-:where(.dark svg .purple > .th, .dark svg .purple > .t) { fill: #CECBF6; }
-:where(.dark svg .purple > .ts) { fill: #AFA9EC; }
-:where(.dark svg .coral > rect, .dark svg .coral > circle, .dark svg .coral > ellipse) { fill: #712B13; stroke: #F0997B; }
-:where(.dark svg .coral > .th, .dark svg .coral > .t) { fill: #F5C4B3; }
-:where(.dark svg .coral > .ts) { fill: #F0997B; }
-:where(.dark svg .pink > rect, .dark svg .pink > circle, .dark svg .pink > ellipse) { fill: #72243E; stroke: #ED93B1; }
-:where(.dark svg .pink > .th, .dark svg .pink > .t) { fill: #F4C0D1; }
-:where(.dark svg .pink > .ts) { fill: #ED93B1; }
-:where(.dark svg .gray > rect, .dark svg .gray > circle, .dark svg .gray > ellipse) { fill: #444441; stroke: #B4B2A9; }
-:where(.dark svg .gray > .th, .dark svg .gray > .t) { fill: #D3D1C7; }
-:where(.dark svg .gray > .ts) { fill: #B4B2A9; }
+/* Diagram palette */
+.dark svg .blue { --pochi-svg-fill: #0C447C; --pochi-svg-stroke: #85B7EB; --pochi-svg-title: #B5D4F4; --pochi-svg-subtitle: #85B7EB; }
+.dark svg .teal { --pochi-svg-fill: #085041; --pochi-svg-stroke: #5DCAA5; --pochi-svg-title: #9FE1CB; --pochi-svg-subtitle: #5DCAA5; }
+.dark svg .amber { --pochi-svg-fill: #633806; --pochi-svg-stroke: #EF9F27; --pochi-svg-title: #FAC775; --pochi-svg-subtitle: #EF9F27; }
+.dark svg .green { --pochi-svg-fill: #27500A; --pochi-svg-stroke: #97C459; --pochi-svg-title: #C0DD97; --pochi-svg-subtitle: #97C459; }
+.dark svg .red { --pochi-svg-fill: #791F1F; --pochi-svg-stroke: #F09595; --pochi-svg-title: #F7C1C1; --pochi-svg-subtitle: #F09595; }
+.dark svg .purple { --pochi-svg-fill: #3C3489; --pochi-svg-stroke: #AFA9EC; --pochi-svg-title: #CECBF6; --pochi-svg-subtitle: #AFA9EC; }
+.dark svg .coral { --pochi-svg-fill: #712B13; --pochi-svg-stroke: #F0997B; --pochi-svg-title: #F5C4B3; --pochi-svg-subtitle: #F0997B; }
+.dark svg .pink { --pochi-svg-fill: #72243E; --pochi-svg-stroke: #ED93B1; --pochi-svg-title: #F4C0D1; --pochi-svg-subtitle: #ED93B1; }
+.dark svg .gray { --pochi-svg-fill: #444441; --pochi-svg-stroke: #B4B2A9; --pochi-svg-title: #D3D1C7; --pochi-svg-subtitle: #B4B2A9; }
 
-/* Light palette */
-:where(.light svg .blue > rect, .light svg .blue > circle, .light svg .blue > ellipse) { fill: #DBE7F4; stroke: #2B6CB0; }
-:where(.light svg .blue > .th, .light svg .blue > .t) { fill: #1B4480; }
-:where(.light svg .blue > .ts) { fill: #2B6CB0; }
-:where(.light svg .teal > rect, .light svg .teal > circle, .light svg .teal > ellipse) { fill: #D2EEDF; stroke: #0E8C6F; }
-:where(.light svg .teal > .th, .light svg .teal > .t) { fill: #084F3F; }
-:where(.light svg .teal > .ts) { fill: #0E8C6F; }
-:where(.light svg .amber > rect, .light svg .amber > circle, .light svg .amber > ellipse) { fill: #FBE6C2; stroke: #B47213; }
-:where(.light svg .amber > .th, .light svg .amber > .t) { fill: #5C3704; }
-:where(.light svg .amber > .ts) { fill: #B47213; }
-:where(.light svg .green > rect, .light svg .green > circle, .light svg .green > ellipse) { fill: #DDEFC7; stroke: #5E8A35; }
-:where(.light svg .green > .th, .light svg .green > .t) { fill: #294E0A; }
-:where(.light svg .green > .ts) { fill: #5E8A35; }
-:where(.light svg .red > rect, .light svg .red > circle, .light svg .red > ellipse) { fill: #F7D7D7; stroke: #BF3535; }
-:where(.light svg .red > .th, .light svg .red > .t) { fill: #791F1F; }
-:where(.light svg .red > .ts) { fill: #BF3535; }
-:where(.light svg .purple > rect, .light svg .purple > circle, .light svg .purple > ellipse) { fill: #E0DCF5; stroke: #5E4FBE; }
-:where(.light svg .purple > .th, .light svg .purple > .t) { fill: #393188; }
-:where(.light svg .purple > .ts) { fill: #5E4FBE; }
-:where(.light svg .coral > rect, .light svg .coral > circle, .light svg .coral > ellipse) { fill: #F8DDCF; stroke: #C25530; }
-:where(.light svg .coral > .th, .light svg .coral > .t) { fill: #6F2A12; }
-:where(.light svg .coral > .ts) { fill: #C25530; }
-:where(.light svg .pink > rect, .light svg .pink > circle, .light svg .pink > ellipse) { fill: #F8D8E2; stroke: #BD3F6D; }
-:where(.light svg .pink > .th, .light svg .pink > .t) { fill: #71243D; }
-:where(.light svg .pink > .ts) { fill: #BD3F6D; }
-:where(.light svg .gray > rect, .light svg .gray > circle, .light svg .gray > ellipse) { fill: #E5E3DD; stroke: #6F6E69; }
-:where(.light svg .gray > .th, .light svg .gray > .t) { fill: #404040; }
-:where(.light svg .gray > .ts) { fill: #6F6E69; }
+.light svg .blue { --pochi-svg-fill: #E6F1FB; --pochi-svg-stroke: #185FA5; --pochi-svg-title: #0C447C; --pochi-svg-subtitle: #185FA5; }
+.light svg .teal { --pochi-svg-fill: #E1F5EE; --pochi-svg-stroke: #0F6E56; --pochi-svg-title: #085041; --pochi-svg-subtitle: #0F6E56; }
+.light svg .amber { --pochi-svg-fill: #FAEEDA; --pochi-svg-stroke: #854F0B; --pochi-svg-title: #633806; --pochi-svg-subtitle: #854F0B; }
+.light svg .green { --pochi-svg-fill: #EAF3DE; --pochi-svg-stroke: #3B6D11; --pochi-svg-title: #27500A; --pochi-svg-subtitle: #3B6D11; }
+.light svg .red { --pochi-svg-fill: #FCEBEB; --pochi-svg-stroke: #A32D2D; --pochi-svg-title: #791F1F; --pochi-svg-subtitle: #A32D2D; }
+.light svg .purple { --pochi-svg-fill: #EEEDFE; --pochi-svg-stroke: #534AB7; --pochi-svg-title: #3C3489; --pochi-svg-subtitle: #534AB7; }
+.light svg .coral { --pochi-svg-fill: #FAECE7; --pochi-svg-stroke: #993C1D; --pochi-svg-title: #712B13; --pochi-svg-subtitle: #993C1D; }
+.light svg .pink { --pochi-svg-fill: #FBEAF0; --pochi-svg-stroke: #993556; --pochi-svg-title: #72243E; --pochi-svg-subtitle: #993556; }
+.light svg .gray { --pochi-svg-fill: #F1EFE8; --pochi-svg-stroke: #5F5E5A; --pochi-svg-title: #444441; --pochi-svg-subtitle: #5F5E5A; }
+
+:where(svg .blue, svg .teal, svg .amber, svg .green, svg .red, svg .purple, svg .coral, svg .pink, svg .gray) > :where(rect, circle, ellipse) { fill: var(--pochi-svg-fill); stroke: var(--pochi-svg-stroke); }
+:where(svg .blue, svg .teal, svg .amber, svg .green, svg .red, svg .purple, svg .coral, svg .pink, svg .gray) > :where(.th, .t) { fill: var(--pochi-svg-title); }
+:where(svg .blue, svg .teal, svg .amber, svg .green, svg .red, svg .purple, svg .coral, svg .pink, svg .gray) > .ts { fill: var(--pochi-svg-subtitle); }
 `;

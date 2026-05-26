@@ -30,8 +30,12 @@ type WidgetEvent =
   | { type: "error"; message: string; stack?: string };
 type WidgetParentEndpoint = (event: WidgetEvent) => { ok: true };
 
-const RevealDelayStepMs = 220;
+const RevealDelayStepMs = 80;
 const MaxRevealDelayMs = 6000;
+
+export function getWidgetRevealDelayMs(index: number) {
+  return Math.min(index * RevealDelayStepMs, MaxRevealDelayMs);
+}
 
 export function startWidgetRenderer() {
   disableHostAndNetworkApis();
@@ -58,7 +62,7 @@ export function startWidgetRenderer() {
     const revealElements = collectWidgetRevealElements(elements);
 
     for (const [index, element] of revealElements.entries()) {
-      const delay = Math.min(index * RevealDelayStepMs, MaxRevealDelayMs);
+      const delay = getWidgetRevealDelayMs(index);
       element.classList.add("__pochi_widget_appear");
       (element as HTMLElement | SVGElement).style.setProperty(
         "--pochi-widget-appear-delay",

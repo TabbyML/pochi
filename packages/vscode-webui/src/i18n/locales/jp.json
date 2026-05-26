@@ -65,17 +65,19 @@
     "files": "ファイル",
     "toolResults": "ツールの結果",
     "taskMemory": "タスクメモリ",
+    "taskMemoryDescription": "現在のタスクの要約です。会話を圧縮する際、重要な文脈を保持するために再利用されます。",
     "viewTaskMemory": "タスクメモリを表示",
     "viewTaskMemoryTooltip": "タスク圧縮時に使用されるタスクメモリを表示します。",
     "compact": "圧縮",
     "memory": "メモリ",
-    "autoMemory": "自動メモリ",
-    "autoMemoryEnabled": "自動メモリを有効化",
-    "autoMemoryDescription": "セッションをまたいだ永続的な知識を共有メモリインデックスに自動抽出します。",
-    "viewAutoMemory": "自動メモリを表示",
-    "viewAutoMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
+    "projectMemory": "プロジェクトメモリ",
+    "projectMemoryEnable": "プロジェクトメモリを有効化",
+    "projectMemoryDisable": "プロジェクトメモリを無効化",
+    "projectMemoryDescription": "Pochi が作業中にプロジェクトについて学んだ内容を MEMORY.md に保存し、今後のタスクで役立つ文脈として再利用します。",
+    "viewProjectMemory": "表示",
+    "viewProjectMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
     "viewTaskMemoryButtonTooltip": "タスク圧縮時に再利用されるタスクメモリの要約を開きます。",
-    "autoMemoryUnavailable": "git ワークスペースでタスクを実行すると自動メモリが利用可能になります。",
+    "projectMemoryUnavailable": "このワークスペースでタスクを実行するとプロジェクトメモリが利用可能になります。",
     "taskMemoryUnavailable": "タスクメモリは会話の進行に伴って自動的に生成されます。"
   },
   "modelSelect": {
@@ -554,7 +556,7 @@
     "runtimeSection": "ブラウザー実行環境",
     "localChromeSection": "ローカル Chrome",
     "recordingSection": "セッション録画",
-    "localChromeHint": "ローカル Chrome は --auto-connect を使用し、現在のユーザーのログイン済みブラウザーセッションを再利用できます。Browser Agent はその Chrome プロファイルでログイン済みのサイトやアカウントにアクセスできる可能性があるため、信頼できるタスクでのみ使用してください。",
+    "localChromeHint": "ローカル Chrome は --auto-connect を使用し、現在のユーザーのログイン済みブラウザーセッションを再利用できます。ブラウザーエージェントはその Chrome プロファイルでログイン済みのサイトやアカウントにアクセスできる可能性があるため、信頼できるタスクでのみ使用してください。",
     "browserMode": "ブラウザーモード",
     "managedBrowser": "マネージドブラウザー",
     "localChrome": "ローカル Chrome",
@@ -567,6 +569,6 @@
   },
   "builtInAgentsSettings": {
     "title": "組み込みエージェント",
-    "browser": "ブラウザーエージェント"
+    "browser": "ブラウザー"
   }
 }

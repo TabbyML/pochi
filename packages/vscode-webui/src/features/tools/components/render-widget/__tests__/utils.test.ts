@@ -243,7 +243,7 @@ describe("render widget utilities", () => {
     expect(iframeDocument).toContain("svg .__pochi_widget_appear");
     expect(iframeDocument).toContain("--pochi-widget-appear-delay");
     expect(iframeDocument).toContain("translateY(8px)");
-    expect(iframeDocument).toContain("1200ms ease-out");
+    expect(iframeDocument).toContain("450ms ease-out");
     expect(iframeDocument).toContain(
       '<script type="module" src="http://localhost:4112/src/features/tools/components/render-widget/renderer-entry.ts"></script>',
     );
@@ -282,6 +282,26 @@ describe("render widget utilities", () => {
       `script-src https://example.test ${ChartJsCdnScriptSrc} 'unsafe-eval'`,
     );
     expect(iframeDocument).toContain("connect-src https://cdn.jsdelivr.net");
+  });
+
+  it("can inline the packaged renderer script with the parent webview nonce", () => {
+    const scriptSrc =
+      "https://file+.vscode-resource.vscode-cdn.net/Users/me/.vscode/extensions/tabbyml.pochi/assets/webview-ui/dist/renderer-entry.js";
+    const iframeDocument = buildWidgetIframeDocument({
+      src: scriptSrc,
+      code: 'console.log("</script>")',
+      nonce: "abc123",
+    });
+
+    expect(iframeDocument).toContain(
+      `script-src 'nonce-abc123' ${ChartJsCdnScriptSrc} 'unsafe-eval'`,
+    );
+    expect(iframeDocument).toContain(
+      '<script nonce="abc123">console.log("<\\/script>")</script>',
+    );
+    expect(iframeDocument).not.toContain(`src="${scriptSrc}"`);
+    expect(iframeDocument).not.toContain("script-src https://file+");
+    expect(iframeDocument).not.toContain("data:text/javascript");
   });
 
   it("uses one shared sanitizer policy for widget fragments", () => {
@@ -360,8 +380,102 @@ describe("render widget utilities", () => {
     expect(iframeDocument).toContain(
       `<style id="${WidgetThemeStyleId}">\n${themeCss}\n</style>`,
     );
-    expect(iframeDocument).toContain(".light svg .blue > rect");
-    expect(iframeDocument).toContain(".dark svg .blue > rect");
+    expect(iframeDocument).toContain(".light svg .blue");
+    expect(iframeDocument).toContain(".dark svg .blue");
+  });
+
+  it("uses canonical diagram palette stops through shared SVG color rules", () => {
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+    );
+    const palette = {
+      blue: {
+        50: "#E6F1FB",
+        100: "#B5D4F4",
+        200: "#85B7EB",
+        600: "#185FA5",
+        800: "#0C447C",
+      },
+      teal: {
+        50: "#E1F5EE",
+        100: "#9FE1CB",
+        200: "#5DCAA5",
+        600: "#0F6E56",
+        800: "#085041",
+      },
+      amber: {
+        50: "#FAEEDA",
+        100: "#FAC775",
+        200: "#EF9F27",
+        600: "#854F0B",
+        800: "#633806",
+      },
+      green: {
+        50: "#EAF3DE",
+        100: "#C0DD97",
+        200: "#97C459",
+        600: "#3B6D11",
+        800: "#27500A",
+      },
+      red: {
+        50: "#FCEBEB",
+        100: "#F7C1C1",
+        200: "#F09595",
+        600: "#A32D2D",
+        800: "#791F1F",
+      },
+      purple: {
+        50: "#EEEDFE",
+        100: "#CECBF6",
+        200: "#AFA9EC",
+        600: "#534AB7",
+        800: "#3C3489",
+      },
+      coral: {
+        50: "#FAECE7",
+        100: "#F5C4B3",
+        200: "#F0997B",
+        600: "#993C1D",
+        800: "#712B13",
+      },
+      pink: {
+        50: "#FBEAF0",
+        100: "#F4C0D1",
+        200: "#ED93B1",
+        600: "#993556",
+        800: "#72243E",
+      },
+      gray: {
+        50: "#F1EFE8",
+        100: "#D3D1C7",
+        200: "#B4B2A9",
+        600: "#5F5E5A",
+        800: "#444441",
+      },
+    } as const;
+    const colorSelector = Object.keys(palette)
+      .map((name) => `svg .${name}`)
+      .join(", ");
+
+    for (const [name, stops] of Object.entries(palette)) {
+      expect(iframeDocument).toContain(
+        `.dark svg .${name} { --pochi-svg-fill: ${stops[800]}; --pochi-svg-stroke: ${stops[200]}; --pochi-svg-title: ${stops[100]}; --pochi-svg-subtitle: ${stops[200]}; }`,
+      );
+      expect(iframeDocument).toContain(
+        `.light svg .${name} { --pochi-svg-fill: ${stops[50]}; --pochi-svg-stroke: ${stops[600]}; --pochi-svg-title: ${stops[800]}; --pochi-svg-subtitle: ${stops[600]}; }`,
+      );
+    }
+    expect(iframeDocument).toContain(
+      `:where(${colorSelector}) > :where(rect, circle, ellipse) { fill: var(--pochi-svg-fill); stroke: var(--pochi-svg-stroke); }`,
+    );
+    expect(iframeDocument).toContain(
+      `:where(${colorSelector}) > :where(.th, .t) { fill: var(--pochi-svg-title); }`,
+    );
+    expect(iframeDocument).toContain(
+      `:where(${colorSelector}) > .ts { fill: var(--pochi-svg-subtitle); }`,
+    );
+    expect(iframeDocument).not.toContain(".light svg .blue > rect");
+    expect(iframeDocument).not.toContain(".dark svg .blue > rect");
   });
 
   it("defaults to the dark class when none is provided", () => {
