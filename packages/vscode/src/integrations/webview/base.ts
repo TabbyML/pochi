@@ -186,7 +186,7 @@ export abstract class WebviewBase implements vscode.Disposable {
         if (path === "wa-sqlite.wasm") {
           return "${sqliteWasmUri}";
         }
-        return path;
+        return "${webviewDistBaseUri}/" + path;
       }
       window.__liveStoreSharedWorkerUrl = ${JSON.stringify(sharedWorkerDataUrl)};
       window.__workerAssetsPathScript = ${JSON.stringify(workerAssetsPathScript)};

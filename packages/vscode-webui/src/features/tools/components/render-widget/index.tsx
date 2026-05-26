@@ -6,9 +6,9 @@ import { useTranslation } from "react-i18next";
 import { StatusIcon } from "../status-icon";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
-// standalone module URL. No Web Worker is created; the URL is loaded as a
-// normal module script inside the sandboxed iframe, so it does not execute in
-// the parent WebUI window.
+// standalone module URL. No Web Worker is created; the renderer is loaded as a
+// normal script inside the sandboxed iframe, so it does not execute in the
+// parent WebUI window.
 import rendererScriptSrc from "./renderer-entry.ts?worker&url";
 import {
   type WidgetThemeClass,
@@ -80,22 +80,52 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   const [height, setHeight] = useState<number | undefined>();
   const [hasFirstHeight, setHasFirstHeight] = useState(false);
   const [rendererError, setRendererError] = useState<string | undefined>();
+  const [rendererScriptCode, setRendererScriptCode] = useState<
+    string | undefined
+  >();
   const channelId = useMemo(
     () => `pochi-widget-${tool.toolCallId}`,
     [tool.toolCallId],
   );
-  const iframeDocument = useMemo(
-    () =>
-      buildWidgetIframeDocument(
-        rendererScriptSrc,
-        collectWidgetThemeVariables(),
-        channelId,
-        getCurrentWidgetThemeClass(),
-      ),
-    [channelId],
-  );
+  useEffect(() => {
+    if (!import.meta.env.PROD) return;
+
+    let disposed = false;
+    loadPackagedRendererScriptCode()
+      .then((code) => {
+        if (!disposed) setRendererScriptCode(code);
+      })
+      .catch((error) => {
+        if (!disposed) {
+          setRendererError(
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const iframeDocument = useMemo(() => {
+    if (import.meta.env.PROD && !rendererScriptCode) return undefined;
+
+    return buildWidgetIframeDocument(
+      import.meta.env.PROD
+        ? {
+            src: rendererScriptSrc,
+            code: rendererScriptCode,
+            nonce: getWebviewScriptNonce(),
+          }
+        : rendererScriptSrc,
+      collectWidgetThemeVariables(),
+      channelId,
+      getCurrentWidgetThemeClass(),
+    );
+  }, [channelId, rendererScriptCode]);
   const iframeSrc = useMemo(
-    () => buildWidgetIframeSrc(iframeDocument),
+    () => (iframeDocument ? buildWidgetIframeSrc(iframeDocument) : undefined),
     [iframeDocument],
   );
 
@@ -254,18 +284,20 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         <span className="ml-2">{headerLabel}</span>
         <span className="ml-2 text-foreground">{title}</span>
       </div>
-      <iframe
-        ref={iframeRef}
-        title={title}
-        src={iframeSrc}
-        sandbox="allow-scripts"
-        onLoad={handleLoad}
-        className={cn(
-          "w-full bg-transparent",
-          hasFirstHeight && "transition-[height] duration-150 ease-out",
-        )}
-        style={{ height }}
-      />
+      {iframeSrc ? (
+        <iframe
+          ref={iframeRef}
+          title={title}
+          src={iframeSrc}
+          sandbox="allow-scripts"
+          onLoad={handleLoad}
+          className={cn(
+            "w-full bg-transparent",
+            hasFirstHeight && "transition-[height] duration-150 ease-out",
+          )}
+          style={{ height }}
+        />
+      ) : null}
       {rendererError ? (
         <div className="text-error text-xs">{rendererError}</div>
       ) : null}
@@ -276,4 +308,27 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
 function clampHeight(height: number | undefined) {
   if (!height || !Number.isFinite(height)) return 160;
   return Math.min(Math.max(Math.ceil(height), 120), 1200);
+}
+
+function getWebviewScriptNonce() {
+  if (typeof document === "undefined") return undefined;
+  for (const script of Array.from(document.scripts)) {
+    if (script.nonce) return script.nonce;
+  }
+}
+
+let packagedRendererScriptCodePromise: Promise<string> | undefined;
+
+function loadPackagedRendererScriptCode() {
+  packagedRendererScriptCodePromise ??= fetch(rendererScriptSrc).then(
+    async (response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load widget renderer script: ${response.status}`,
+        );
+      }
+      return response.text();
+    },
+  );
+  return packagedRendererScriptCodePromise;
 }

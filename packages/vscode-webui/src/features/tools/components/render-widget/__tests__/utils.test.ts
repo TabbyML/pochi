@@ -284,6 +284,26 @@ describe("render widget utilities", () => {
     expect(iframeDocument).toContain("connect-src https://cdn.jsdelivr.net");
   });
 
+  it("can inline the packaged renderer script with the parent webview nonce", () => {
+    const scriptSrc =
+      "https://file+.vscode-resource.vscode-cdn.net/Users/me/.vscode/extensions/tabbyml.pochi/assets/webview-ui/dist/renderer-entry.js";
+    const iframeDocument = buildWidgetIframeDocument({
+      src: scriptSrc,
+      code: 'console.log("</script>")',
+      nonce: "abc123",
+    });
+
+    expect(iframeDocument).toContain(
+      `script-src 'nonce-abc123' ${ChartJsCdnScriptSrc} 'unsafe-eval'`,
+    );
+    expect(iframeDocument).toContain(
+      '<script nonce="abc123">console.log("<\\/script>")</script>',
+    );
+    expect(iframeDocument).not.toContain(`src="${scriptSrc}"`);
+    expect(iframeDocument).not.toContain("script-src https://file+");
+    expect(iframeDocument).not.toContain("data:text/javascript");
+  });
+
   it("uses one shared sanitizer policy for widget fragments", () => {
     expect(
       sanitizeWidgetFragment(
