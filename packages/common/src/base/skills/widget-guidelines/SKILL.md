@@ -45,18 +45,32 @@ Available color classnames: `gray`, `purple`, `teal`, `coral`, `pink`, `blue`, `
 
 Apply the class to a `<g>` that directly contains the colored `<rect>`, `<circle>`, or `<ellipse>` and the child `.t`, `.ts`, or `.th` text.
 
-### Palette Stops
+### Palette Levels
 
-Palette stop numbers describe tone inside one color family. Lower numbers are lighter; higher numbers are darker. They are design roles, not CSS class names or CSS variables. The widget host implements the canonical seven-stop palette table; do not copy that table into `widgetCode`, write `blue-600`, `fill="600"`, or hardcode stop numbers in SVG.
+Palette levels describe tone inside one color family. Lower numbers are lighter; higher numbers are darker. They explain the hex values that the widget host applies internally; they are not CSS class names, CSS variables, or SVG attribute values. Do not copy the palette table into `widgetCode` or write numbered palette names in generated SVG.
 
-When using built-in diagram color classes, choose only the color class. Pochi applies the stop roles automatically:
+| Color | 50 | 100 | 200 | 400 | 600 | 800 | 900 |
+|---|---|---|---|---|---|---|---|
+| `purple` | `#EEEDFE` | `#CECBF6` | `#AFA9EC` | `#7F77DD` | `#534AB7` | `#3C3489` | `#26215C` |
+| `teal` | `#E1F5EE` | `#9FE1CB` | `#5DCAA5` | `#1D9E75` | `#0F6E56` | `#085041` | `#04342C` |
+| `coral` | `#FAECE7` | `#F5C4B3` | `#F0997B` | `#D85A30` | `#993C1D` | `#712B13` | `#4A1B0C` |
+| `pink` | `#FBEAF0` | `#F4C0D1` | `#ED93B1` | `#D4537E` | `#993556` | `#72243E` | `#4B1528` |
+| `gray` | `#F1EFE8` | `#D3D1C7` | `#B4B2A9` | `#888780` | `#5F5E5A` | `#444441` | `#2C2C2A` |
+| `blue` | `#E6F1FB` | `#B5D4F4` | `#85B7EB` | `#378ADD` | `#185FA5` | `#0C447C` | `#042C53` |
+| `green` | `#EAF3DE` | `#C0DD97` | `#97C459` | `#639922` | `#3B6D11` | `#27500A` | `#173404` |
+| `amber` | `#FAEEDA` | `#FAC775` | `#EF9F27` | `#BA7517` | `#854F0B` | `#633806` | `#412402` |
+| `red` | `#FCEBEB` | `#F7C1C1` | `#F09595` | `#E24B4A` | `#A32D2D` | `#791F1F` | `#501313` |
+
+When using built-in diagram color classes, choose only the plain color class. Pochi maps palette levels to roles automatically:
 
 | Theme | Shape fill | Shape stroke | `.th` / `.t` text | `.ts` text |
 |---|---|---|---|---|
 | Light | 50, the pale fill | 600, the strong border | 800, dark same-family title text | 600, medium same-family subtitle text |
 | Dark | 800, the dark fill | 200, the light border | 100, light same-family title text | 200, light same-family subtitle text |
 
-Stop roles are useful only when reasoning about diagram contrast or hand-picked physical colors. For HTML controls, panels, and UI surfaces, use VSCode CSS variables instead.
+In generated SVG, write `class="blue"` or `class="teal"` on the owning group; do not write numbered palette names.
+
+Palette levels are useful only when reasoning about diagram contrast or hand-picked physical colors. For HTML controls, panels, and UI surfaces, use VSCode CSS variables instead.
 
 - `50`: pale fill on light themes.
 - `100` / `200`: light text or stroke on dark fills.
