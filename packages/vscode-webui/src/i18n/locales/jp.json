@@ -554,7 +554,7 @@
     "runtimeSection": "ブラウザー実行環境",
     "localChromeSection": "ローカル Chrome",
     "recordingSection": "セッション録画",
-    "localChromeHint": "ローカル Chrome は --auto-connect を使用し、現在のユーザーのログイン済みブラウザーセッションを再利用できます。Browser Agent はその Chrome プロファイルでログイン済みのサイトやアカウントにアクセスできる可能性があるため、信頼できるタスクでのみ使用してください。",
+    "localChromeHint": "ローカル Chrome は --auto-connect を使用し、現在のユーザーのログイン済みブラウザーセッションを再利用できます。ブラウザーエージェントはその Chrome プロファイルでログイン済みのサイトやアカウントにアクセスできる可能性があるため、信頼できるタスクでのみ使用してください。",
     "browserMode": "ブラウザーモード",
     "managedBrowser": "マネージドブラウザー",
     "localChrome": "ローカル Chrome",
@@ -567,6 +567,6 @@
   },
   "builtInAgentsSettings": {
     "title": "組み込みエージェント",
-    "browser": "ブラウザーエージェント"
+    "browser": "ブラウザー"
   }
 }
