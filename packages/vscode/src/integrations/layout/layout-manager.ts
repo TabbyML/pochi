@@ -11,13 +11,14 @@ import { PochiTaskEditorProvider } from "../webview/webview-panel";
 import { findDefaultTextDocument } from "./default-document";
 import {
   countOtherTabs,
-  countPochiTaskTabs,
+  countPochiPanelTabs,
   countTerminalTabs,
   findActivePochiTaskTab,
   getTabGroupType,
   getTabGroupsShape,
   isFileBackedEditorTab,
   isPochiOutputTab,
+  isPochiPanelTab,
   isPochiTaskTab,
   isSameTabGroupsShape,
   isSameTabInput,
@@ -207,12 +208,12 @@ export class LayoutManager implements vscode.Disposable {
 
           for (const tab of event.opened) {
             if (
-              // Auto apply when task tab open
-              isPochiTaskTab(tab)
+              // Auto apply when Pochi panel tab opens.
+              isPochiPanelTab(tab)
             ) {
-              const params = PochiTaskEditorProvider.parseTaskUri(
-                tab.input.uri,
-              );
+              const params = isPochiTaskTab(tab)
+                ? PochiTaskEditorProvider.parseTaskUri(tab.input.uri)
+                : undefined;
               this.scheduled.push(tab, 100, () => {
                 if (this.fsm.state.value === "non-pochi-layout") {
                   this.fsm.send({
@@ -224,13 +225,13 @@ export class LayoutManager implements vscode.Disposable {
               });
             } else if (
               // Auto apply when first file-backed editor tab opens and a
-              // task tab exists. Skip webview tabs like Settings to avoid
+              // Pochi panel tab exists. Skip webview tabs like Settings to avoid
               // closing them via the subsequent re-layout (issue #1551).
-              !isPochiTaskTab(tab) &&
+              !isPochiPanelTab(tab) &&
               !isTerminalTab(tab) &&
               isFileBackedEditorTab(tab) &&
               countOtherTabs(prevTabGroupsShape) === 0 &&
-              countPochiTaskTabs(this.tabGroupsShape) > 0
+              countPochiPanelTabs(this.tabGroupsShape) > 0
             ) {
               const taskTab = findActivePochiTaskTab();
               const params = taskTab
@@ -369,7 +370,7 @@ export class LayoutManager implements vscode.Disposable {
     return terminal;
   }
 
-  getViewColumnForTask() {
+  getViewColumnForPochiPanel() {
     if (this.enabled && this.fsm.state.value === "pochi-layout") {
       return vscode.ViewColumn.One;
     }
@@ -438,8 +439,8 @@ export class LayoutManager implements vscode.Disposable {
 
     const leftTabGroup = this.allTabGroups[0];
     const leftTabGroupType = getTabGroupType(leftTabGroup.tabs);
-    if (!(leftTabGroupType === "empty" || leftTabGroupType === "pochi-task")) {
-      return invalid("Left: not empty or pochi-task only");
+    if (!(leftTabGroupType === "empty" || leftTabGroupType === "pochi-panel")) {
+      return invalid("Left: not empty or pochi-panel only");
     }
 
     const rightBottomTabGroup = this.allTabGroups[this.allTabGroups.length - 1];
@@ -501,31 +502,33 @@ export class LayoutManager implements vscode.Disposable {
       mainWindowTabGroupsCount,
     );
     const mainWindowTabGroupsShape = getTabGroupsShape(mainWindowTabGroups);
-    const taskGroups = mainWindowTabGroups.filter(
-      (group) => getTabGroupType(group.tabs) === "pochi-task",
+    const pochiPanelGroups = mainWindowTabGroups.filter(
+      (group) => getTabGroupType(group.tabs) === "pochi-panel",
     );
     const editorGroups = mainWindowTabGroups.filter(
       (group) => getTabGroupType(group.tabs) === "editor",
     );
     let remainGroupsCount =
-      mainWindowTabGroups.length - taskGroups.length - editorGroups.length;
+      mainWindowTabGroups.length -
+      pochiPanelGroups.length -
+      editorGroups.length;
     logger.trace("- mainWindowTabGroups.length:", mainWindowTabGroups.length);
-    logger.trace("- taskGroups.length:", taskGroups.length);
+    logger.trace("- pochiPanelGroups.length:", pochiPanelGroups.length);
     logger.trace("- editorGroups.length:", editorGroups.length);
     logger.trace("- remainGroupsCount", remainGroupsCount);
 
-    // Find the pochi-task groups, move them and join to one
-    logger.trace("Begin setup task group.");
-    if (taskGroups.length > 0) {
-      for (let i = 0; i < taskGroups.length; i++) {
-        // while i-th group is not pochi-task groups, find one and move it into i-th group
-        while (getTabGroupType(this.allTabGroups[i].tabs) !== "pochi-task") {
+    // Find the pochi-panel groups, move them and join to one
+    logger.trace("Begin setup Pochi panel group.");
+    if (pochiPanelGroups.length > 0) {
+      for (let i = 0; i < pochiPanelGroups.length; i++) {
+        // while i-th group is not pochi-panel groups, find one and move it into i-th group
+        while (getTabGroupType(this.allTabGroups[i].tabs) !== "pochi-panel") {
           const groupIndex =
             i +
             this.allTabGroups
               .slice(i)
               .findIndex(
-                (group) => getTabGroupType(group.tabs) === "pochi-task",
+                (group) => getTabGroupType(group.tabs) === "pochi-panel",
               );
           await focusEditorGroup(groupIndex);
           await executeVSCodeCommand(
@@ -533,7 +536,7 @@ export class LayoutManager implements vscode.Disposable {
           );
         }
       }
-      for (let i = 0; i < taskGroups.length - 1; i++) {
+      for (let i = 0; i < pochiPanelGroups.length - 1; i++) {
         // join groups n - 1 times
         await focusEditorGroup(0);
         await executeVSCodeCommand("workbench.action.joinTwoGroups");
@@ -551,8 +554,7 @@ export class LayoutManager implements vscode.Disposable {
         await executeVSCodeCommand("workbench.action.newGroupLeft");
       }
     }
-    // Pochi-task group is ready now
-    logger.trace("End setup task group.");
+    logger.trace("End setup Pochi panel group.");
 
     // Find the editor groups, move them and join to one
     logger.trace("Begin setup editor group.");
@@ -610,12 +612,12 @@ export class LayoutManager implements vscode.Disposable {
     // Terminal group is ready now
     logger.trace("End setup terminal group.");
 
-    // Loop editor group, move task/terminal tabs
+    // Loop editor group, move Pochi panel/terminal tabs
     logger.trace("Begin move tabs in editor group.");
     let tabIndex = 0;
     while (tabIndex < this.allTabGroups[1].tabs.length) {
       const tab = this.allTabGroups[1].tabs[tabIndex];
-      if (isPochiTaskTab(tab)) {
+      if (isPochiPanelTab(tab)) {
         await focusEditorGroup(1);
         await executeVSCodeCommand(
           "workbench.action.openEditorAtIndex",
@@ -657,7 +659,7 @@ export class LayoutManager implements vscode.Disposable {
       const tab = lastGroup.tabs[0];
       await executeVSCodeCommand("workbench.action.openEditorAtIndex", 0);
       const movingLastEditor = lastGroup.tabs.length === 1;
-      if (isPochiTaskTab(tab)) {
+      if (isPochiPanelTab(tab)) {
         await executeVSCodeCommand("moveActiveEditor", {
           to: "first",
           by: "group",
@@ -753,7 +755,7 @@ export class LayoutManager implements vscode.Disposable {
       }
       // Target group index
       let target = 0;
-      if (isPochiTaskTab(userFocusTab)) {
+      if (isPochiPanelTab(userFocusTab)) {
         target = 0;
       } else if (isTerminalTab(userFocusTab)) {
         target = 2;
