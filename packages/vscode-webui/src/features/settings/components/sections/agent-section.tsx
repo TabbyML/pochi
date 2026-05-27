@@ -13,11 +13,10 @@ import {
   BuiltInAgentPath,
   isValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { AlertTriangle, Bot, Edit } from "lucide-react";
+import { AlertTriangle, Bot, Edit, Globe, Settings } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptySectionPlaceholder, Section, SectionItem } from "../ui/section";
-import { BuiltInAgentSection } from "./built-in-agent-section";
 
 const CustomAgentParseErrorMap: Record<
   InvalidCustomAgentFile["error"],
@@ -30,7 +29,7 @@ const CustomAgentParseErrorMap: Record<
   validationError: "settings.customAgents.errors.validationError",
 };
 
-export const CustomAgentSection: React.FC = () => {
+export const AgentSection: React.FC = () => {
   const { t } = useTranslation();
   const { customAgents = [], isLoading } = useCustomAgents();
 
@@ -43,6 +42,10 @@ export const CustomAgentSection: React.FC = () => {
     vscodeHost.openFile(agent.filePath);
   };
 
+  const openBrowserAgentSettings = () => {
+    vscodeHost.openBrowserAgentSettingsPanel();
+  };
+
   const renderCustomAgentsContent = () => {
     if (isLoading) {
       return (
@@ -51,15 +54,7 @@ export const CustomAgentSection: React.FC = () => {
     }
 
     if (customAgentsWithoutBuiltIn.length === 0) {
-      return (
-        <EmptySectionPlaceholder
-          content={
-            <div className="space-y-2">
-              <p className="text-xs">{t("settings.customAgents.empty")}</p>
-            </div>
-          }
-        />
-      );
+      return null;
     }
 
     return (
@@ -104,11 +99,27 @@ export const CustomAgentSection: React.FC = () => {
     );
   };
 
+  const renderBuiltInAgentsContent = () => {
+    return (
+      <SectionItem
+        title={t("builtInAgentsSettings.browser")}
+        icon={<Globe className="size-4" />}
+        onClick={openBrowserAgentSettings}
+        actions={[
+          {
+            icon: <Settings className="size-3.5" />,
+            onClick: openBrowserAgentSettings,
+          },
+        ]}
+      />
+    );
+  };
+
   return (
     <Section title={t("settings.customAgents.title")}>
-      <div className="ml-1 flex flex-col gap-6">
-        <div>{renderCustomAgentsContent()}</div>
-        <BuiltInAgentSection />
+      <div className="ml-1 flex flex-col gap-2">
+        {renderCustomAgentsContent()}
+        {renderBuiltInAgentsContent()}
       </div>
     </Section>
   );
