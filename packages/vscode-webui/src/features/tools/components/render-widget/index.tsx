@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StatusIcon } from "../status-icon";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
@@ -77,7 +76,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   // Tracks animation history only — intentionally separate from channel state.
   const hasPostedPreviewRef = useRef(false);
-  const [height, setHeight] = useState<number | undefined>();
+  const [height, setHeight] = useState(0);
   const [hasFirstHeight, setHasFirstHeight] = useState(false);
   const [rendererError, setRendererError] = useState<string | undefined>();
   const [rendererScriptCode, setRendererScriptCode] = useState<
@@ -275,15 +274,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     };
   }, []);
 
-  const headerLabel = t("toolInvocation.renderingWidget");
-
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center text-muted-foreground text-sm">
-        <StatusIcon isExecuting={isExecuting} tool={tool} />
-        <span className="ml-2">{headerLabel}</span>
-        <span className="ml-2 text-foreground">{title}</span>
-      </div>
+    <div className="flex flex-col">
       {iframeSrc ? (
         <iframe
           ref={iframeRef}
@@ -306,8 +298,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
 };
 
 function clampHeight(height: number | undefined) {
-  if (!height || !Number.isFinite(height)) return 160;
-  return Math.min(Math.max(Math.ceil(height), 120), 1200);
+  if (height === undefined || !Number.isFinite(height)) return 0;
+  return Math.min(Math.max(Math.ceil(height), 0), 1200);
 }
 
 function getWebviewScriptNonce() {

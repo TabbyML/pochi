@@ -52,6 +52,34 @@ describe("RenderWidgetTool", () => {
     receiveHandler = undefined;
   });
 
+  it("renders the widget iframe without VS Code tool header chrome", () => {
+    render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-no-header",
+            state: "input-available",
+            input: {
+              title: "Clean widget",
+              kind: "diagram",
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(screen.queryByTestId("status-icon")).toBeNull();
+    expect(screen.queryByText("Rendering widget")).toBeNull();
+    expect(screen.queryByText("Clean widget")).toBeNull();
+    expect(screen.getByTitle("Clean widget")).toBeTruthy();
+  });
+
   it("shows renderer errors returned from the sandboxed iframe", () => {
     render(
       <RenderWidgetTool
@@ -84,7 +112,7 @@ describe("RenderWidgetTool", () => {
     expect(screen.getByText("boom")).toBeTruthy();
   });
 
-  it("waits for the sandboxed renderer to report widget height", () => {
+  it("starts at zero height and waits for the sandboxed renderer to report widget height", () => {
     render(
       <RenderWidgetTool
         tool={
@@ -107,7 +135,7 @@ describe("RenderWidgetTool", () => {
     );
 
     const iframe = screen.getByTitle("Measured widget");
-    expect(iframe.style.height).toBe("");
+    expect(iframe.style.height).toBe("0px");
 
     act(() => {
       iframe.dispatchEvent(new Event("load"));

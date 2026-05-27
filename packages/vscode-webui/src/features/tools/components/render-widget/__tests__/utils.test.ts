@@ -210,8 +210,8 @@ describe("render widget utilities", () => {
   it("measures widget height from root content instead of viewport scroll height", () => {
     const root = document.createElement("div");
     const body = document.createElement("body");
-    body.style.paddingTop = "12px";
-    body.style.paddingBottom = "12px";
+    body.style.paddingTop = "4px";
+    body.style.paddingBottom = "4px";
     Object.defineProperty(document.documentElement, "scrollHeight", {
       configurable: true,
       value: 900,
@@ -221,7 +221,18 @@ describe("render widget utilities", () => {
         height: 180,
       }) as DOMRect;
 
-    expect(measureWidgetContentHeight(root, body)).toBe(204);
+    expect(measureWidgetContentHeight(root, body)).toBe(188);
+  });
+
+  it("allows an empty widget root to measure as zero before content renders", () => {
+    const root = document.createElement("div");
+    const body = document.createElement("body");
+    root.getBoundingClientRect = () =>
+      ({
+        height: 0,
+      }) as DOMRect;
+
+    expect(measureWidgetContentHeight(root, body)).toBe(0);
   });
 
   it("builds a renderer document with restrictive CSP and disabled network APIs", () => {
@@ -491,6 +502,17 @@ describe("render widget utilities", () => {
     );
     expect(iframeDocument).toContain(".light body { color-scheme: light; }");
     expect(iframeDocument).toContain(".dark body { color-scheme: dark; }");
+  });
+
+  it("starts the iframe body compact with no root minimum height", () => {
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+    );
+
+    expect(iframeDocument).toContain("padding: 4px 0;");
+    expect(iframeDocument).toContain("min-height: 0;");
+    expect(iframeDocument).not.toContain("padding: 12px 0;");
+    expect(iframeDocument).not.toContain("min-height: 96px;");
   });
 
   it("does not leak `vscode-` prefixed selectors into the iframe stylesheet", () => {
