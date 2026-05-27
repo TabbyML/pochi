@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RenderWidgetTool } from "../index";
+
+const sentMessages: Record<string, unknown>[] = [];
 
 let receiveHandler:
   | ((event: {
@@ -18,7 +20,10 @@ vi.mock("bidc", () => ({
     receive: vi.fn((handler) => {
       receiveHandler = handler;
     }),
-    send: vi.fn(async () => ({ ok: true })),
+    send: vi.fn(async (message: Record<string, unknown>) => {
+      sentMessages.push(message);
+      return { ok: true };
+    }),
     cleanup: vi.fn(),
   })),
 }));
@@ -50,6 +55,18 @@ vi.mock("../renderer-entry.ts?worker&url", () => ({
 describe("RenderWidgetTool", () => {
   beforeEach(() => {
     receiveHandler = undefined;
+    sentMessages.length = 0;
+    document.documentElement.className = "";
+    document.documentElement.style.cssText = "";
+    document.body.className = "";
+    document.body.style.cssText = "";
+  });
+
+  afterEach(() => {
+    document.documentElement.className = "";
+    document.documentElement.style.cssText = "";
+    document.body.className = "";
+    document.body.style.cssText = "";
   });
 
   it("renders the widget iframe without VS Code tool header chrome", () => {
@@ -145,5 +162,64 @@ describe("RenderWidgetTool", () => {
     });
 
     expect(iframe.style.height).toBe("320px");
+  });
+
+  it("pushes theme updates when VS Code mutates body theme attributes", async () => {
+    render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-theme",
+            state: "input-available",
+            input: {
+              title: "Theme widget",
+              kind: "diagram",
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    const iframe = screen.getByTitle("Theme widget");
+    act(() => {
+      iframe.dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({ type: "ready" });
+    });
+
+    await waitFor(() => {
+      expect(sentMessages.some((message) => message.type === "theme")).toBe(
+        true,
+      );
+    });
+    const initialMessageCount = sentMessages.length;
+
+    await act(async () => {
+      document.body.classList.add("vscode-light");
+      document.body.style.setProperty("--vscode-editor-foreground", "#123456");
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(
+        sentMessages.slice(initialMessageCount).some((message) => {
+          return (
+            message.type === "theme" &&
+            message.themeClass === "light" &&
+            typeof message.variablesCss === "string" &&
+            message.variablesCss.includes(
+              "--vscode-editor-foreground: #123456;",
+            )
+          );
+        }),
+      ).toBe(true);
+    });
   });
 });

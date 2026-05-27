@@ -245,7 +245,9 @@ export function sanitizeWidgetFragment(html: string) {
  * development environments that mirror the class on the root. Returns the
  * simplified `"dark"` / `"light"` token that we propagate into the iframe.
  */
-export function getCurrentWidgetThemeClass(): WidgetThemeClass {
+export function getCurrentWidgetThemeClass(
+  fallback: WidgetThemeClass = "dark",
+): WidgetThemeClass {
   const targets: Element[] = [];
   if (typeof document !== "undefined") {
     if (document.body) targets.push(document.body);
@@ -255,7 +257,7 @@ export function getCurrentWidgetThemeClass(): WidgetThemeClass {
     if (target.classList.contains("vscode-light")) return "light";
     if (target.classList.contains("vscode-dark")) return "dark";
   }
-  return "dark";
+  return fallback;
 }
 
 /**

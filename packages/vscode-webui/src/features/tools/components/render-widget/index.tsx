@@ -86,6 +86,9 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     () => `pochi-widget-${tool.toolCallId}`,
     [tool.toolCallId],
   );
+  const fallbackThemeClass: WidgetThemeClass =
+    theme === "light" ? "light" : "dark";
+
   useEffect(() => {
     if (!import.meta.env.PROD) return;
 
@@ -120,9 +123,9 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         : rendererScriptSrc,
       collectWidgetThemeVariables(),
       channelId,
-      getCurrentWidgetThemeClass(),
+      getCurrentWidgetThemeClass(fallbackThemeClass),
     );
-  }, [channelId, rendererScriptCode]);
+  }, [channelId, fallbackThemeClass, rendererScriptCode]);
   const iframeSrc = useMemo(
     () => (iframeDocument ? buildWidgetIframeSrc(iframeDocument) : undefined),
     [iframeDocument],
@@ -195,6 +198,14 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     [scheduleFlush],
   );
 
+  const queueCurrentThemeMessage = useCallback(() => {
+    queueThemeMessage({
+      type: "theme",
+      themeClass: getCurrentWidgetThemeClass(fallbackThemeClass),
+      variablesCss: collectWidgetThemeVariables(),
+    });
+  }, [fallbackThemeClass, queueThemeMessage]);
+
   const handleLoad = useCallback(() => {
     const rt = runtimeRef.current;
     const target = iframeRef.current?.contentWindow;
@@ -222,13 +233,29 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   // sandboxed iframe re-applies the new vscode-* variables and color palette
   // without needing to be re-mounted.
   useEffect(() => {
-    const themeClass: WidgetThemeClass = theme === "light" ? "light" : "dark";
-    queueThemeMessage({
-      type: "theme",
-      themeClass,
-      variablesCss: collectWidgetThemeVariables(),
-    });
-  }, [theme, queueThemeMessage]);
+    queueCurrentThemeMessage();
+  }, [queueCurrentThemeMessage]);
+
+  useEffect(() => {
+    if (typeof MutationObserver === "undefined") return;
+
+    const targets = [document.body, document.documentElement].filter(
+      Boolean,
+    ) as Element[];
+    if (targets.length === 0) return;
+
+    const observer = new MutationObserver(queueCurrentThemeMessage);
+    for (const target of targets) {
+      observer.observe(target, {
+        attributes: true,
+        attributeFilter: ["class", "style"],
+      });
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [queueCurrentThemeMessage]);
 
   useEffect(() => {
     if (debounceRef.current) {
