@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StatusIcon } from "../status-icon";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
@@ -77,7 +76,11 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   // Tracks animation history only — intentionally separate from channel state.
   const hasPostedPreviewRef = useRef(false);
-  const [height, setHeight] = useState<number | undefined>();
+  // Remember the most recently queued render so we can replay it after the
+  // iframe reloads (e.g. browser-initiated reloads). Theme changes alone must
+  // not remount the iframe — they propagate via the theme message channel.
+  const lastRenderRef = useRef<WidgetRenderMessage | undefined>(undefined);
+  const [height, setHeight] = useState(0);
   const [hasFirstHeight, setHasFirstHeight] = useState(false);
   const [rendererError, setRendererError] = useState<string | undefined>();
   const [rendererScriptCode, setRendererScriptCode] = useState<
@@ -87,6 +90,24 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     () => `pochi-widget-${tool.toolCallId}`,
     [tool.toolCallId],
   );
+  const fallbackThemeClass: WidgetThemeClass =
+    theme === "light" ? "light" : "dark";
+  // Capture the theme snapshot used to seed the initial iframe document. We
+  // keep this stable so the iframe src does not change when the parent webview
+  // theme switches; live theme updates are pushed through the theme message
+  // channel instead, which avoids remounting the iframe (which would clear the
+  // widget body until the next render message is queued).
+  const initialThemeRef = useRef<{
+    themeClass: WidgetThemeClass;
+    variablesCss: string;
+  } | null>(null);
+  if (!initialThemeRef.current) {
+    initialThemeRef.current = {
+      themeClass: getCurrentWidgetThemeClass(fallbackThemeClass),
+      variablesCss: collectWidgetThemeVariables(),
+    };
+  }
+
   useEffect(() => {
     if (!import.meta.env.PROD) return;
 
@@ -111,6 +132,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   const iframeDocument = useMemo(() => {
     if (import.meta.env.PROD && !rendererScriptCode) return undefined;
 
+    const initialTheme = initialThemeRef.current;
     return buildWidgetIframeDocument(
       import.meta.env.PROD
         ? {
@@ -119,9 +141,9 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
             nonce: getWebviewScriptNonce(),
           }
         : rendererScriptSrc,
-      collectWidgetThemeVariables(),
+      initialTheme?.variablesCss ?? "",
       channelId,
-      getCurrentWidgetThemeClass(),
+      initialTheme?.themeClass ?? "dark",
     );
   }, [channelId, rendererScriptCode]);
   const iframeSrc = useMemo(
@@ -180,6 +202,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   const queueRenderMessage = useCallback(
     (message: WidgetRenderMessage) => {
       const rt = runtimeRef.current;
+      lastRenderRef.current = message;
       const next = coalescePendingWidgetMessage(rt.pendingRender, message);
       if (next === rt.pendingRender) return;
       rt.pendingRender = next;
@@ -196,6 +219,14 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     [scheduleFlush],
   );
 
+  const queueCurrentThemeMessage = useCallback(() => {
+    queueThemeMessage({
+      type: "theme",
+      themeClass: getCurrentWidgetThemeClass(fallbackThemeClass),
+      variablesCss: collectWidgetThemeVariables(),
+    });
+  }, [fallbackThemeClass, queueThemeMessage]);
+
   const handleLoad = useCallback(() => {
     const rt = runtimeRef.current;
     const target = iframeRef.current?.contentWindow;
@@ -203,6 +234,17 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
 
     rt.channel?.cleanup();
     rt.ready = false;
+    // Seed the queue with the most recently rendered widget body and current
+    // theme so a fresh iframe (initial mount or an unexpected reload) catches
+    // up to the latest state as soon as it becomes ready.
+    rt.pendingTheme = {
+      type: "theme",
+      themeClass: getCurrentWidgetThemeClass(fallbackThemeClass),
+      variablesCss: collectWidgetThemeVariables(),
+    };
+    if (lastRenderRef.current) {
+      rt.pendingRender = lastRenderRef.current;
+    }
     const channel = createChannel(target, channelId);
     rt.channel = channel;
     channel.receive((event: WidgetRendererEvent) => {
@@ -217,19 +259,35 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       }
       return { ok: true };
     });
-  }, [channelId, scheduleFlush]);
+  }, [channelId, fallbackThemeClass, scheduleFlush]);
 
   // Push theme updates whenever the parent webview theme changes so the
   // sandboxed iframe re-applies the new vscode-* variables and color palette
   // without needing to be re-mounted.
   useEffect(() => {
-    const themeClass: WidgetThemeClass = theme === "light" ? "light" : "dark";
-    queueThemeMessage({
-      type: "theme",
-      themeClass,
-      variablesCss: collectWidgetThemeVariables(),
-    });
-  }, [theme, queueThemeMessage]);
+    queueCurrentThemeMessage();
+  }, [queueCurrentThemeMessage]);
+
+  useEffect(() => {
+    if (typeof MutationObserver === "undefined") return;
+
+    const targets = [document.body, document.documentElement].filter(
+      Boolean,
+    ) as Element[];
+    if (targets.length === 0) return;
+
+    const observer = new MutationObserver(queueCurrentThemeMessage);
+    for (const target of targets) {
+      observer.observe(target, {
+        attributes: true,
+        attributeFilter: ["class", "style"],
+      });
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [queueCurrentThemeMessage]);
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -275,15 +333,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     };
   }, []);
 
-  const headerLabel = t("toolInvocation.renderingWidget");
-
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center text-muted-foreground text-sm">
-        <StatusIcon isExecuting={isExecuting} tool={tool} />
-        <span className="ml-2">{headerLabel}</span>
-        <span className="ml-2 text-foreground">{title}</span>
-      </div>
+    <div className="flex flex-col">
       {iframeSrc ? (
         <iframe
           ref={iframeRef}
@@ -306,8 +357,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
 };
 
 function clampHeight(height: number | undefined) {
-  if (!height || !Number.isFinite(height)) return 160;
-  return Math.min(Math.max(Math.ceil(height), 120), 1200);
+  if (height === undefined || !Number.isFinite(height)) return 0;
+  return Math.min(Math.max(Math.ceil(height), 0), 1200);
 }
 
 function getWebviewScriptNonce() {

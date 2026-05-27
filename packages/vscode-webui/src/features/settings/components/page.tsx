@@ -1,7 +1,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AccountSection } from "./sections/account-section";
 import { AdvancedSettingsSection } from "./sections/advanced-settings-section";
-import { CustomAgentSection } from "./sections/custom-agent-section";
+import { AgentSection } from "./sections/agent-section";
 import { ModelSection } from "./sections/model-section";
 import { SkillSection } from "./sections/skill-section";
 import { ToolsSection } from "./sections/tools-section";
@@ -14,7 +14,7 @@ export function SettingsPage() {
         <div className="space-y-1">
           <AccountSection />
           <WorkspaceRulesSection />
-          <CustomAgentSection />
+          <AgentSection />
           <SkillSection />
           <ToolsSection />
           <ModelSection />

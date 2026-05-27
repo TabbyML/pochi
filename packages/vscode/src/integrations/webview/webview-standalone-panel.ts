@@ -5,7 +5,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import * as vscode from "vscode";
 import type { PochiConfiguration } from "../configuration";
-import { getViewColumnForTask } from "../layout";
+import { getViewColumnForPochiPanel } from "../layout";
 import { WebviewBase } from "./base";
 import type { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -104,7 +104,7 @@ export class PochiWebviewStandalonePanel
     const panel = vscode.window.createWebviewPanel(
       `pochi.${definition.id}`,
       definition.title,
-      getViewColumnForTask() ?? vscode.ViewColumn.Active,
+      getViewColumnForPochiPanel() ?? vscode.ViewColumn.Active,
       {
         enableScripts: true,
         retainContextWhenHidden: true,

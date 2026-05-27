@@ -1319,8 +1319,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readAutoMemory = async (options?: {
     cwd?: string;
     ensure?: boolean;
+    force?: boolean;
   }) => {
-    if (!this.isAutoMemoryEnabled()) return undefined;
+    if (!options?.force && !this.isAutoMemoryEnabled()) return undefined;
     return this.autoMemoryManager.readContext(
       options?.cwd ?? this.cwd ?? undefined,
       {
