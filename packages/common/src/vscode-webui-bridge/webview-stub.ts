@@ -410,6 +410,7 @@ const VSCodeHostStub = {
   readAutoMemory: async (_options?: {
     cwd?: string;
     ensure?: boolean;
+    force?: boolean;
   }): Promise<AutoMemoryContext | undefined> => {
     return undefined;
   },

@@ -441,6 +441,12 @@ export interface VSCodeHostApi {
   readAutoMemory(options?: {
     cwd?: string;
     ensure?: boolean;
+    /**
+     * When true, bypass the user's Project Memory enabled preference and
+     * return the context regardless. Used by UI surfaces that need to
+     * surface the memory index file even when the feature is disabled.
+     */
+    force?: boolean;
   }): Promise<AutoMemoryContext | undefined>;
 
   readAutoMemoryEnabled(): Promise<{
