@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { z } from "zod";
 import { PochiConfiguration } from "../configuration";
 import { WorktreeManager } from "../git/worktree";
-import { getViewColumnForTask } from "../layout";
+import { getViewColumnForPochiPanel } from "../layout";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -388,7 +388,7 @@ async function openTaskInColumn(
     return;
   }
 
-  const viewColumn = options?.viewColumn ?? getViewColumnForTask();
+  const viewColumn = options?.viewColumn ?? getViewColumnForPochiPanel();
 
   await vscode.commands.executeCommand(
     "vscode.openWith",

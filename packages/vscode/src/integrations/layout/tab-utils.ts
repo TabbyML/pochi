@@ -1,6 +1,9 @@
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
 
+const MainThreadWebviewPrefix = "mainThreadWebview-";
+const PochiPanelViewTypePrefix = "pochi.";
+
 export function isPochiTaskTab(tab: vscode.Tab): tab is vscode.Tab & {
   input: vscode.TabInputCustom & {
     viewType: typeof PochiTaskEditorProvider.viewType;
@@ -10,6 +13,24 @@ export function isPochiTaskTab(tab: vscode.Tab): tab is vscode.Tab & {
     tab.input instanceof vscode.TabInputCustom &&
     tab.input.viewType === PochiTaskEditorProvider.viewType
   );
+}
+
+export function isPochiPanelTab(tab: vscode.Tab) {
+  if (tab.input instanceof vscode.TabInputCustom) {
+    return tab.input.viewType.startsWith(PochiPanelViewTypePrefix);
+  }
+  if (tab.input instanceof vscode.TabInputWebview) {
+    return normalizeWebviewPanelViewType(tab.input.viewType).startsWith(
+      PochiPanelViewTypePrefix,
+    );
+  }
+  return false;
+}
+
+function normalizeWebviewPanelViewType(viewType: string) {
+  return viewType.startsWith(MainThreadWebviewPrefix)
+    ? viewType.slice(MainThreadWebviewPrefix.length)
+    : viewType;
 }
 
 export function isTerminalTab(
@@ -84,8 +105,8 @@ export function getTabGroupType(tabs: readonly vscode.Tab[]) {
   if (tabs.length === 0) {
     return "empty";
   }
-  if (tabs.every((tab) => isPochiTaskTab(tab))) {
-    return "pochi-task";
+  if (tabs.every((tab) => isPochiPanelTab(tab))) {
+    return "pochi-panel";
   }
   if (tabs.every((tab) => isTerminalTab(tab))) {
     return "terminal";
@@ -205,10 +226,10 @@ export function isSameTabGroupsShape(a: TabGroupShape, b: TabGroupShape) {
   return true;
 }
 
-export function countPochiTaskTabs(tabGroups: TabGroupShape) {
+export function countPochiPanelTabs(tabGroups: TabGroupShape) {
   return tabGroups.reduce(
     (acc, group) =>
-      acc + group.tabs.filter((tab) => isPochiTaskTab(tab)).length,
+      acc + group.tabs.filter((tab) => isPochiPanelTab(tab)).length,
     0,
   );
 }
@@ -229,7 +250,7 @@ export function countOtherTabs(tabGroups: TabGroupShape) {
   return tabGroups.reduce(
     (acc, group) =>
       acc +
-      group.tabs.filter((tab) => !isPochiTaskTab(tab) && !isTerminalTab(tab))
+      group.tabs.filter((tab) => !isPochiPanelTab(tab) && !isTerminalTab(tab))
         .length,
     0,
   );
