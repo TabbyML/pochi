@@ -76,6 +76,10 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   // Tracks animation history only — intentionally separate from channel state.
   const hasPostedPreviewRef = useRef(false);
+  // Remember the most recently queued render so we can replay it after the
+  // iframe reloads (e.g. browser-initiated reloads). Theme changes alone must
+  // not remount the iframe — they propagate via the theme message channel.
+  const lastRenderRef = useRef<WidgetRenderMessage | undefined>(undefined);
   const [height, setHeight] = useState(0);
   const [hasFirstHeight, setHasFirstHeight] = useState(false);
   const [rendererError, setRendererError] = useState<string | undefined>();
@@ -88,6 +92,21 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   );
   const fallbackThemeClass: WidgetThemeClass =
     theme === "light" ? "light" : "dark";
+  // Capture the theme snapshot used to seed the initial iframe document. We
+  // keep this stable so the iframe src does not change when the parent webview
+  // theme switches; live theme updates are pushed through the theme message
+  // channel instead, which avoids remounting the iframe (which would clear the
+  // widget body until the next render message is queued).
+  const initialThemeRef = useRef<{
+    themeClass: WidgetThemeClass;
+    variablesCss: string;
+  } | null>(null);
+  if (!initialThemeRef.current) {
+    initialThemeRef.current = {
+      themeClass: getCurrentWidgetThemeClass(fallbackThemeClass),
+      variablesCss: collectWidgetThemeVariables(),
+    };
+  }
 
   useEffect(() => {
     if (!import.meta.env.PROD) return;
@@ -113,6 +132,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   const iframeDocument = useMemo(() => {
     if (import.meta.env.PROD && !rendererScriptCode) return undefined;
 
+    const initialTheme = initialThemeRef.current;
     return buildWidgetIframeDocument(
       import.meta.env.PROD
         ? {
@@ -121,11 +141,11 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
             nonce: getWebviewScriptNonce(),
           }
         : rendererScriptSrc,
-      collectWidgetThemeVariables(),
+      initialTheme?.variablesCss ?? "",
       channelId,
-      getCurrentWidgetThemeClass(fallbackThemeClass),
+      initialTheme?.themeClass ?? "dark",
     );
-  }, [channelId, fallbackThemeClass, rendererScriptCode]);
+  }, [channelId, rendererScriptCode]);
   const iframeSrc = useMemo(
     () => (iframeDocument ? buildWidgetIframeSrc(iframeDocument) : undefined),
     [iframeDocument],
@@ -182,6 +202,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   const queueRenderMessage = useCallback(
     (message: WidgetRenderMessage) => {
       const rt = runtimeRef.current;
+      lastRenderRef.current = message;
       const next = coalescePendingWidgetMessage(rt.pendingRender, message);
       if (next === rt.pendingRender) return;
       rt.pendingRender = next;
@@ -213,6 +234,17 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
 
     rt.channel?.cleanup();
     rt.ready = false;
+    // Seed the queue with the most recently rendered widget body and current
+    // theme so a fresh iframe (initial mount or an unexpected reload) catches
+    // up to the latest state as soon as it becomes ready.
+    rt.pendingTheme = {
+      type: "theme",
+      themeClass: getCurrentWidgetThemeClass(fallbackThemeClass),
+      variablesCss: collectWidgetThemeVariables(),
+    };
+    if (lastRenderRef.current) {
+      rt.pendingRender = lastRenderRef.current;
+    }
     const channel = createChannel(target, channelId);
     rt.channel = channel;
     channel.receive((event: WidgetRendererEvent) => {
@@ -227,7 +259,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       }
       return { ok: true };
     });
-  }, [channelId, scheduleFlush]);
+  }, [channelId, fallbackThemeClass, scheduleFlush]);
 
   // Push theme updates whenever the parent webview theme changes so the
   // sandboxed iframe re-applies the new vscode-* variables and color palette

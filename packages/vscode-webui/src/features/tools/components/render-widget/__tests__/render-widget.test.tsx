@@ -37,8 +37,10 @@ vi.mock("../../status-icon", () => ({
   StatusIcon: () => <span data-testid="status-icon" />,
 }));
 
+let mockedTheme: "dark" | "light" = "dark";
+
 vi.mock("@/components/theme-provider", () => ({
-  useTheme: () => ({ theme: "dark", setTheme: () => {} }),
+  useTheme: () => ({ theme: mockedTheme, setTheme: () => {} }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -56,6 +58,7 @@ describe("RenderWidgetTool", () => {
   beforeEach(() => {
     receiveHandler = undefined;
     sentMessages.length = 0;
+    mockedTheme = "dark";
     document.documentElement.className = "";
     document.documentElement.style.cssText = "";
     document.body.className = "";
@@ -219,6 +222,126 @@ describe("RenderWidgetTool", () => {
             )
           );
         }),
+      ).toBe(true);
+    });
+  });
+
+  it("keeps the iframe mounted across parent theme switches", () => {
+    const { rerender } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-stable-src",
+            state: "input-available",
+            input: {
+              title: "Stable widget",
+              kind: "diagram",
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    const iframe = screen.getByTitle("Stable widget") as HTMLIFrameElement;
+    const originalSrc = iframe.src;
+    expect(originalSrc).toBeTruthy();
+
+    mockedTheme = "light";
+    rerender(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-stable-src",
+            state: "input-available",
+            input: {
+              title: "Stable widget",
+              kind: "diagram",
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    // The iframe src must NOT change when the parent webview theme switches —
+    // a new src would remount the iframe and clear the rendered widget body
+    // until the next render message arrives. Theme updates are pushed via the
+    // theme message channel instead.
+    expect(screen.getByTitle("Stable widget").getAttribute("src")).toBe(
+      originalSrc,
+    );
+  });
+
+  it("replays the last render message when the iframe reloads", async () => {
+    render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-replay",
+            state: "input-available",
+            input: {
+              title: "Replay widget",
+              kind: "diagram",
+              widgetCode: "<svg><rect/></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    const iframe = screen.getByTitle("Replay widget");
+    act(() => {
+      iframe.dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({ type: "ready" });
+    });
+
+    await waitFor(() => {
+      expect(
+        sentMessages.some(
+          (message) =>
+            message.type === "finalize" &&
+            typeof message.html === "string" &&
+            (message.html as string).includes("rect"),
+        ),
+      ).toBe(true);
+    });
+
+    sentMessages.length = 0;
+
+    // Simulate an iframe reload (which the bidc channel cleanup mimics).
+    act(() => {
+      iframe.dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({ type: "ready" });
+    });
+
+    await waitFor(() => {
+      expect(
+        sentMessages.some(
+          (message) =>
+            (message.type === "finalize" || message.type === "preview") &&
+            typeof message.html === "string" &&
+            (message.html as string).includes("rect"),
+        ),
       ).toBe(true);
     });
   });
