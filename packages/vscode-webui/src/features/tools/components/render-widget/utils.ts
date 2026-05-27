@@ -87,11 +87,13 @@ export function measureWidgetContentHeight(
   body: HTMLElement = document.body,
 ) {
   const rootHeight = root.getBoundingClientRect().height;
+  if (rootHeight <= 0 && !root.hasChildNodes()) return 0;
+
   const bodyStyles = getComputedStyle(body);
   const paddingTop = Number.parseFloat(bodyStyles.paddingTop) || 0;
   const paddingBottom = Number.parseFloat(bodyStyles.paddingBottom) || 0;
 
-  return Math.max(120, Math.ceil(rootHeight + paddingTop + paddingBottom));
+  return Math.max(0, Math.ceil(rootHeight + paddingTop + paddingBottom));
 }
 
 function isWidgetRevealElement(element: Element, seen: Set<Element>) {
@@ -243,7 +245,9 @@ export function sanitizeWidgetFragment(html: string) {
  * development environments that mirror the class on the root. Returns the
  * simplified `"dark"` / `"light"` token that we propagate into the iframe.
  */
-export function getCurrentWidgetThemeClass(): WidgetThemeClass {
+export function getCurrentWidgetThemeClass(
+  fallback: WidgetThemeClass = "dark",
+): WidgetThemeClass {
   const targets: Element[] = [];
   if (typeof document !== "undefined") {
     if (document.body) targets.push(document.body);
@@ -253,7 +257,7 @@ export function getCurrentWidgetThemeClass(): WidgetThemeClass {
     if (target.classList.contains("vscode-light")) return "light";
     if (target.classList.contains("vscode-dark")) return "dark";
   }
-  return "dark";
+  return fallback;
 }
 
 /**
@@ -427,7 +431,7 @@ html { background: transparent !important; }
 .dark body { color-scheme: dark; }
 body {
   margin: 0;
-  padding: 12px 0;
+  padding: 4px 0;
   overflow: hidden;
   background: transparent !important;
   color: var(--vscode-editor-foreground, #cccccc);
@@ -436,7 +440,7 @@ body {
 #root {
   display: block;
   width: 100%;
-  min-height: 96px;
+  min-height: 0;
 }
 @keyframes __pochi_widget_fade_in {
   from { opacity: 0; transform: translateY(8px); }
