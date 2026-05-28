@@ -551,7 +551,6 @@ async function createLLMConfigWithVendors(
     return {
       id: `${vendorId}/${modelId}`,
       type: "vendor",
-      contextWindow: options.contextWindow,
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: () =>
         createModel(vendorId, {
@@ -574,7 +573,6 @@ async function createLLMConfigWithPochi(
     return {
       id: `${vendorId}/${model}`,
       type: "vendor",
-      contextWindow: pochiModelOptions.contextWindow,
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: () =>
         createModel(vendorId, {
