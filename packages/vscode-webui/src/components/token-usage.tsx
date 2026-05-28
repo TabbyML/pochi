@@ -231,13 +231,13 @@ export function TokenUsage({
                   {systemVal > 0.05 && (
                     <div className="ml-3 flex justify-between text-muted-foreground">
                       <span>{t("tokenUsage.systemInstructions")}</span>
-                      <span>{systemVal.toFixed(1)}%</span>
+                      <span>{formatPercentage(systemVal)}</span>
                     </div>
                   )}
                   {toolsVal > 0.05 && (
                     <div className="ml-3 flex justify-between text-muted-foreground">
                       <span>{t("tokenUsage.toolDefinitions")}</span>
-                      <span>{toolsVal.toFixed(1)}%</span>
+                      <span>{formatPercentage(toolsVal)}</span>
                     </div>
                   )}
                 </div>
@@ -251,19 +251,19 @@ export function TokenUsage({
                   {messagesVal > 0.05 && (
                     <div className="ml-3 flex justify-between text-muted-foreground">
                       <span>{t("tokenUsage.messages")}</span>
-                      <span>{messagesVal.toFixed(1)}%</span>
+                      <span>{formatPercentage(messagesVal)}</span>
                     </div>
                   )}
                   {filesVal > 0.05 && (
                     <div className="ml-3 flex justify-between text-muted-foreground">
                       <span>{t("tokenUsage.files")}</span>
-                      <span>{filesVal.toFixed(1)}%</span>
+                      <span>{formatPercentage(filesVal)}</span>
                     </div>
                   )}
                   {toolResultsVal > 0.05 && (
                     <div className="ml-3 flex justify-between text-muted-foreground">
                       <span>{t("tokenUsage.toolResults")}</span>
-                      <span>{toolResultsVal.toFixed(1)}%</span>
+                      <span>{formatPercentage(toolResultsVal)}</span>
                     </div>
                   )}
                 </div>
@@ -348,7 +348,7 @@ export function TokenUsage({
 
                   {autoMemoryAvailable && (
                     <span className="text-muted-foreground">
-                      {projectMemoryVal.toFixed(1)}%
+                      {formatPercentage(projectMemoryVal)}
                     </span>
                   )}
                 </div>
@@ -469,6 +469,14 @@ export function TokenUsage({
       </PopoverContent>
     </Popover>
   );
+}
+
+function formatPercentage(value: number): string {
+  const rounded = value.toFixed(1);
+  if (value > 0 && rounded === "0.0") {
+    return "<0.1%";
+  }
+  return `${rounded}%`;
 }
 
 function formatTokens(tokens: number | null | undefined): string {
