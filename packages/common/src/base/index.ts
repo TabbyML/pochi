@@ -26,6 +26,7 @@ export {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   AutoMemoryMaxManifestEntries,
+  AutoMemoryProjectInfoName,
   AutoMemoryTypeValues,
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
