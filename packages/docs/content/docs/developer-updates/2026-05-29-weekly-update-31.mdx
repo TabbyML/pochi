@@ -1,0 +1,103 @@
+---
+title: 'Weekly Update #31'
+---
+# Weekly Update #31
+
+### TL;DR
+
+This release reduces the setup tax: Pochi now renders interactive visual widgets directly in chat, Project Memory is on by default, and the Browser Agent ships with a dedicated settings UI. Task pinning rounds it out for anyone juggling multiple active worktrees.
+
+
+
+More below!
+
+### 🚀 Features
+
+- **Generative UI:** Pochi can now render interactive visual widgets directly in the chat panel using the `renderWidget` tool. Widgets stream live as the agent generates them — diagrams, charts, art, interactive components, and mockups all render in a sandboxed frame without leaving the task.
+
+  Previously, Pochi's output was limited to text and code. There was no way to generate or display visual content natively — agents had to produce files or code for the user to run separately.
+
+  Most powerful for agents that need to communicate visually: architecture diagrams, data charts, UI mockups, or any output where a picture is worth the code. Available to all agents by default with no additional configuration required. [**#1572**](https://github.com/TabbyML/pochi/pull/1572), [**#1573**](https://github.com/TabbyML/pochi/pull/1573)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/c4/c4609c165e16fc9dcbeb062e14215c6686a1a808883dfa4dd4bc3e1f0d056c8a.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+- **Project Memory:** Project Memory is now enabled for all users out of the box. The Token Usage popover gains a new Memory section with two rows, Project Memory and Task Memory, each showing the file path and clickable to open the file directly in the editor. An inline checkbox next to the section heading toggles Project Memory on or off.
+
+  Previously, Project Memory was opt-in via `pochi.advanced.memory.enabled: true` in VS Code settings, so persistent memory across tasks required deliberate setup.
+
+  Over time, Pochi builds up a picture of your project, preferences, decisions, patterns and carries it forward automatically. Toggle it off anytime from the token usage panel. Disabling keeps your existing `MEMORY.md` intact. [**#1571**](https://github.com/TabbyML/pochi/pull/1571)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/35/353344f073b633a3fa1dd3b7e77fe5341a9d70d87b47bdf8f78b7eddce03133a.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+- **Browser Agent - Settings Panel:** The Browser Agent now has a dedicated settings panel for runtime and recording configuration. Switch between Managed browser and Local Chrome, set a custom Chrome executable path and start parameters, and configure recording resolution — all from the UI.
+
+  Previously, Browser Agent configuration required manually editing `~/.pochi/config.jsonc`. There was no UI, and switching to Local Chrome meant knowing the exact config key and editing it by hand.
+
+  Switch to Local Chrome in the panel and start a browser task, Pochi picks up your config automatically without needing to be told which runtime to use. Useful for anything behind a login: dashboards, internal tools, or services you're already authenticated with. [**#1552**](https://github.com/TabbyML/pochi/pull/1552)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/aa/aa8e099ea115e50a2f8e5d40204b6fd1a7faa1ff70734fc0068d9d7ad0d997b4.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+### ✨ Enhancements
+
+- **Task Pinning:** Tasks can now be pinned to keep them at the top of the task list regardless of recency. Pinned tasks appear in a dedicated Pinned section above all worktree groups, removed from their original position to avoid duplication.
+
+  Task list ordering was purely recency-based, so a task you needed to return to repeatedly would sink as new tasks were created on top of it.
+
+  Most useful when juggling multiple active worktrees. Pin and unpin from the hover menu on any task row. Archiving a pinned task automatically unpins it, and pinned tasks are excluded from the "Archive old tasks" batch action. Pinned state persists across VS Code reloads. [**#1561**](https://github.com/TabbyML/pochi/pull/1561)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/06/0630aacf7afe2ca0d3bfe89d39d4656ac2c04e7ea540aeabc6e9efb029b1a287.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+### 🐛 Bug Fixes
+
+- **VS Code Settings Page Stays Open:** The VS Code Settings page and other built-in tabs like Keyboard Shortcuts and Extensions no longer closes when Pochi's auto-layout runs with only a task tab visible.
+
+  Any non-task tab was being treated as a file-backed editor, causing the layout manager to trigger a re-layout and close it. [**#1570**](https://github.com/TabbyML/pochi/pull/1570)
+
