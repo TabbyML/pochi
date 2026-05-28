@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { parsePatchFiles, resolveThemes } from "@pierre/diffs";
-import { PatchDiff, Virtualizer } from "@pierre/diffs/react";
+import { FileDiff, Virtualizer } from "@pierre/diffs/react";
 import { Columns2, Rows2, WrapText } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -57,47 +57,31 @@ const resolveThemesOnce = async () => {
   }
 };
 
-export const PlainDiffViewer = memo(function PlainDiffViewer({
-  patch,
-  filePath,
-}: DiffViewerProps) {
-  return (
-    <DiffViewerImpl patch={patch} filePath={filePath} virtualized={false} />
-  );
-});
-
-PlainDiffViewer.displayName = "PlainDiffViewer";
-
 export const DiffViewer = memo(function DiffViewer({
   patch,
   filePath,
 }: DiffViewerProps) {
-  return (
-    <DiffViewerImpl patch={patch} filePath={filePath} virtualized={true} />
-  );
+  return <DiffViewerImpl patch={patch} filePath={filePath} />;
 });
 
 DiffViewer.displayName = "DiffViewer";
 
-function DiffViewerImpl({
-  patch,
-  filePath,
-  virtualized,
-}: DiffViewerProps & { virtualized: boolean }) {
+function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const [isReady, setIsReady] = useState(themesResolved);
   const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
   const [lineWrap, setLineWrap] = useState(false);
 
-  // Validate the patch using parsePatchFiles
-  const isValidPatch = useMemo(() => {
+  const fileDiff = useMemo(() => {
     try {
       const parsed = parsePatchFiles(patch, undefined, true);
-      // Check if we got at least one valid patch with files
-      return parsed.length > 0 && parsed.some((p) => p.files.length > 0);
+      if (parsed.length !== 1 || parsed[0].files.length !== 1) {
+        return undefined;
+      }
+      return parsed[0].files[0];
     } catch {
-      return false;
+      return undefined;
     }
   }, [patch]);
 
@@ -129,7 +113,7 @@ function DiffViewerImpl({
   };
 
   // If patch is invalid, fall back to CodeBlock render
-  if (!isValidPatch) {
+  if (!fileDiff) {
     return <CodeBlock language="diff" value={patch} />;
   }
 
@@ -210,22 +194,14 @@ function DiffViewerImpl({
           </div>
         </div>
       )}
-      {virtualized ? (
-        <Virtualizer className="max-h-60 overflow-auto">
-          <PatchDiff
-            patch={patch}
-            options={patchDiffOptions}
-            metrics={patchDiffMetrics}
-            style={patchDiffStyle}
-          />
-        </Virtualizer>
-      ) : (
-        <PatchDiff
-          patch={patch}
+      <Virtualizer className="max-h-60 overflow-auto">
+        <FileDiff
+          fileDiff={fileDiff}
           options={patchDiffOptions}
+          metrics={patchDiffMetrics}
           style={patchDiffStyle}
         />
-      )}
+      </Virtualizer>
     </div>
   );
 }

@@ -1,43 +1,115 @@
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import { getBaseName, isFolder } from "@/lib/utils/file";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useMemo, useRef, useState } from "react";
+import { FileIcon } from "../../features/tools/components/file-icon";
 import {
   FileList,
-  FullFileList,
+  type FileListMatch,
 } from "../../features/tools/components/file-list";
-import { makeFileMatches } from "./fixtures";
+import { makeFileMatches } from "./perf-data";
 import {
   ComparisonPanel,
   MeasuredProfiler,
+  useAutoMeasureOnMount,
   usePerfHarness,
 } from "./perf-harness";
 
+function BaselineFileList({
+  matches,
+  showBaseName = true,
+}: {
+  matches: FileListMatch[];
+  showBaseName?: boolean;
+}) {
+  if (matches.length === 0) {
+    return null;
+  }
+
+  return (
+    <ScrollArea className="flex max-h-[100px] flex-col gap-1 rounded border p-1">
+      {matches.map((match, index) => (
+        <div
+          key={match.file + (match.line ?? "") + index}
+          className="cursor-pointer truncate rounded py-0.5 hover:bg-accent/50"
+          title={match.context}
+        >
+          <span className="truncate px-1 font-semibold text-foreground">
+            <FileIcon
+              path={match.file}
+              className="mr-1 ml-0.5 text-xl/4"
+              defaultIconClassName="ml-0 mr-0.5"
+              isDirectory={isFolder(match.file)}
+            />
+            {showBaseName && (
+              <>
+                {getBaseName(match.file)}
+                {match.line && (
+                  <span className="truncate text-foreground/70">
+                    :{match.line}
+                  </span>
+                )}
+              </>
+            )}
+          </span>
+          <span
+            title={match.file}
+            className={cn(
+              showBaseName ? "text-foreground/70" : "text-foreground",
+            )}
+          >
+            {match.label ?? match.file}
+          </span>
+        </div>
+      ))}
+    </ScrollArea>
+  );
+}
+
 function FileListPerfStory({ itemCount }: { itemCount: number }) {
   const perf = usePerfHarness();
-  const [fullMounted, setFullMounted] = useState(true);
-  const [cappedMounted, setCappedMounted] = useState(true);
-  const [fullRenderKey, setFullRenderKey] = useState(0);
-  const [cappedRenderKey, setCappedRenderKey] = useState(0);
-  const fullRef = useRef<HTMLDivElement | null>(null);
-  const cappedRef = useRef<HTMLDivElement | null>(null);
-  const variants: [string, string] = ["Full", "Capped"];
+  const [baselineMounted, setBaselineMounted] = useState(false);
+  const [virtualizedMounted, setVirtualizedMounted] = useState(false);
+  const [baselineRenderKey, setBaselineRenderKey] = useState(0);
+  const [virtualizedRenderKey, setVirtualizedRenderKey] = useState(0);
+  const baselineRef = useRef<HTMLDivElement | null>(null);
+  const virtualizedRef = useRef<HTMLDivElement | null>(null);
+  const variants: [string, string] = ["Baseline", "Virtualized"];
   const matches = useMemo(() => makeFileMatches(itemCount), [itemCount]);
 
   const measureBoth = async (
     comparisonKey: string,
-    fullAction: () => void,
-    cappedAction: () => void,
+    baselineAction: () => void,
+    virtualizedAction: () => void,
   ) => {
-    await perf.measureAction(`${variants[0]} ${comparisonKey}`, fullAction, {
-      comparisonKey,
-      variant: variants[0],
-      target: fullRef.current,
-    });
-    await perf.measureAction(`${variants[1]} ${comparisonKey}`, cappedAction, {
-      comparisonKey,
-      variant: variants[1],
-      target: cappedRef.current,
-    });
+    await perf.measureAction(
+      `${variants[0]} ${comparisonKey}`,
+      baselineAction,
+      {
+        comparisonKey,
+        variant: variants[0],
+        target: baselineRef.current,
+      },
+    );
+    await perf.measureAction(
+      `${variants[1]} ${comparisonKey}`,
+      virtualizedAction,
+      {
+        comparisonKey,
+        variant: variants[1],
+        target: virtualizedRef.current,
+      },
+    );
   };
+
+  useAutoMeasureOnMount(() =>
+    measureBoth(
+      "mount file list",
+      () => setBaselineMounted(true),
+      () => setVirtualizedMounted(true),
+    ),
+  );
 
   return (
     <div ref={perf.rootRef} className="p-3">
@@ -50,12 +122,12 @@ function FileListPerfStory({ itemCount }: { itemCount: number }) {
         <button
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
-          disabled={fullMounted && cappedMounted}
+          disabled={baselineMounted && virtualizedMounted}
           onClick={() =>
             measureBoth(
               "mount file list",
-              () => setFullMounted(true),
-              () => setCappedMounted(true),
+              () => setBaselineMounted(true),
+              () => setVirtualizedMounted(true),
             )
           }
         >
@@ -64,12 +136,12 @@ function FileListPerfStory({ itemCount }: { itemCount: number }) {
         <button
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
-          disabled={!fullMounted && !cappedMounted}
+          disabled={!baselineMounted && !virtualizedMounted}
           onClick={() =>
             measureBoth(
               "unmount file list",
-              () => setFullMounted(false),
-              () => setCappedMounted(false),
+              () => setBaselineMounted(false),
+              () => setVirtualizedMounted(false),
             )
           }
         >
@@ -78,12 +150,12 @@ function FileListPerfStory({ itemCount }: { itemCount: number }) {
         <button
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
-          disabled={!fullMounted || !cappedMounted}
+          disabled={!baselineMounted || !virtualizedMounted}
           onClick={() =>
             measureBoth(
               "remount file list",
-              () => setFullRenderKey((prev) => prev + 1),
-              () => setCappedRenderKey((prev) => prev + 1),
+              () => setBaselineRenderKey((prev) => prev + 1),
+              () => setVirtualizedRenderKey((prev) => prev + 1),
             )
           }
         >
@@ -91,33 +163,23 @@ function FileListPerfStory({ itemCount }: { itemCount: number }) {
         </button>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <section ref={fullRef} className="min-w-0">
+        <section ref={baselineRef} className="min-w-0">
           <div className="mb-1 font-medium text-muted-foreground text-xs">
-            Full
+            Baseline
           </div>
-          {fullMounted && (
-            <MeasuredProfiler
-              id="FullFileListPerf"
-              record={perf.record}
-              comparisonKey="initial mount file list"
-              variant={variants[0]}
-            >
-              <FullFileList key={fullRenderKey} matches={matches} />
+          {baselineMounted && (
+            <MeasuredProfiler id="BaselineFileListPerf" record={perf.record}>
+              <BaselineFileList key={baselineRenderKey} matches={matches} />
             </MeasuredProfiler>
           )}
         </section>
-        <section ref={cappedRef} className="min-w-0">
+        <section ref={virtualizedRef} className="min-w-0">
           <div className="mb-1 font-medium text-muted-foreground text-xs">
-            Capped
+            Virtualized
           </div>
-          {cappedMounted && (
-            <MeasuredProfiler
-              id="CappedFileListPerf"
-              record={perf.record}
-              comparisonKey="initial mount file list"
-              variant={variants[1]}
-            >
-              <FileList key={cappedRenderKey} matches={matches} />
+          {virtualizedMounted && (
+            <MeasuredProfiler id="VirtualizedFileListPerf" record={perf.record}>
+              <FileList key={virtualizedRenderKey} matches={matches} />
             </MeasuredProfiler>
           )}
         </section>
@@ -144,4 +206,4 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const FullVsCapped: Story = {};
+export const BaselineVsVirtualized: Story = {};

@@ -1,40 +1,102 @@
-import { DiffViewer, PlainDiffViewer } from "@/components/message/diff-viewer";
+import {
+  DiffViewer,
+  type DiffViewerProps,
+} from "@/components/message/diff-viewer";
 import type { UITools } from "@getpochi/livekit";
+import { PatchDiff } from "@pierre/diffs/react";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ToolUIPart } from "ai";
 import { useMemo, useRef, useState } from "react";
 import { FileBadge } from "../../features/tools/components/file-badge";
 import { ExpandableToolContainer } from "../../features/tools/components/tool-container";
-import { makeWriteToFileTool } from "./fixtures";
+import { makeWriteToFileTool } from "./perf-data";
 import {
   ComparisonPanel,
   MeasuredProfiler,
+  useAutoMeasureOnMount,
   usePerfHarness,
+  waitForStablePerfElementCount,
 } from "./perf-harness";
+
+const baselinePatchDiffUnsafeCSS = `
+  [data-separator="line-info"] {
+    height: 24px;
+  }`;
+const baselinePatchDiffStyle = {
+  "--diffs-font-family": "JetBrains Mono, monospace",
+  "--diffs-font-size": "11px",
+  "--diffs-line-height": 1.5,
+  "--diffs-addition-color-override":
+    "var(--vscode-editorGutter-addedBackground)",
+  "--diffs-deletion-color-override":
+    "var(--vscode-editorGutter-deletedBackground)",
+  "--diffs-fg-number-addition-override":
+    "var(--vscode-editorGutter-addedBackground)",
+  "--diffs-fg-number-deletion-override":
+    "var(--vscode-editorGutter-deletedBackground)",
+} as React.CSSProperties;
+const baselinePatchDiffOptions = {
+  theme: "dark-plus",
+  diffStyle: "unified" as const,
+  overflow: "scroll" as const,
+  disableFileHeader: true,
+  diffIndicators: "bars" as const,
+  unsafeCSS: baselinePatchDiffUnsafeCSS,
+};
+
+function BaselineDiffViewer({ patch, filePath }: DiffViewerProps) {
+  return (
+    <div className="diff-viewer-container overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)]">
+      {filePath && (
+        <div className="flex items-center justify-between border-b px-2 py-1">
+          <span className="truncate font-mono text-muted-foreground text-xs">
+            {filePath}
+          </span>
+        </div>
+      )}
+      <div className="max-h-60 overflow-auto">
+        <PatchDiff
+          patch={patch}
+          options={baselinePatchDiffOptions}
+          style={baselinePatchDiffStyle}
+        />
+      </div>
+    </div>
+  );
+}
 
 function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
   const perf = usePerfHarness();
-  const [plainMounted, setPlainMounted] = useState(true);
-  const [virtualizedMounted, setVirtualizedMounted] = useState(true);
-  const [plainExpanded, setPlainExpanded] = useState(true);
+  const [baselineMounted, setBaselineMounted] = useState(false);
+  const [virtualizedMounted, setVirtualizedMounted] = useState(false);
+  const [baselineExpanded, setBaselineExpanded] = useState(true);
   const [virtualizedExpanded, setVirtualizedExpanded] = useState(true);
-  const [plainRenderKey, setPlainRenderKey] = useState(0);
+  const [baselineRenderKey, setBaselineRenderKey] = useState(0);
   const [virtualizedRenderKey, setVirtualizedRenderKey] = useState(0);
-  const plainRef = useRef<HTMLDivElement | null>(null);
+  const baselineRef = useRef<HTMLDivElement | null>(null);
   const virtualizedRef = useRef<HTMLDivElement | null>(null);
-  const variants: [string, string] = ["Plain", "Virtualized"];
+  const variants: [string, string] = ["Baseline", "Virtualized"];
   const tool = useMemo(() => makeWriteToFileTool(lineCount), [lineCount]);
 
   const measureBoth = async (
     comparisonKey: string,
-    plainAction: () => void,
+    baselineAction: () => void,
     virtualizedAction: () => void,
+    afterAction?: {
+      baseline?: () => unknown | Promise<unknown>;
+      virtualized?: () => unknown | Promise<unknown>;
+    },
   ) => {
-    await perf.measureAction(`${variants[0]} ${comparisonKey}`, plainAction, {
-      comparisonKey,
-      variant: variants[0],
-      target: plainRef.current,
-    });
+    await perf.measureAction(
+      `${variants[0]} ${comparisonKey}`,
+      baselineAction,
+      {
+        comparisonKey,
+        variant: variants[0],
+        target: baselineRef.current,
+        afterAction: afterAction?.baseline,
+      },
+    );
     await perf.measureAction(
       `${variants[1]} ${comparisonKey}`,
       virtualizedAction,
@@ -42,9 +104,26 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
         comparisonKey,
         variant: variants[1],
         target: virtualizedRef.current,
+        afterAction: afterAction?.virtualized,
       },
     );
   };
+
+  const waitForMountedToolDiffs = {
+    baseline: () =>
+      waitForStablePerfElementCount(baselineRef, { minCount: 300 }),
+    virtualized: () =>
+      waitForStablePerfElementCount(virtualizedRef, { minCount: 300 }),
+  };
+
+  useAutoMeasureOnMount(() =>
+    measureBoth(
+      "cold mount writeToFile diff",
+      () => setBaselineMounted(true),
+      () => setVirtualizedMounted(true),
+      waitForMountedToolDiffs,
+    ),
+  );
 
   return (
     <div ref={perf.rootRef} className="p-3">
@@ -57,12 +136,13 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
         <button
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
-          disabled={plainMounted && virtualizedMounted}
+          disabled={baselineMounted && virtualizedMounted}
           onClick={() =>
             measureBoth(
               "mount writeToFile diff",
-              () => setPlainMounted(true),
+              () => setBaselineMounted(true),
               () => setVirtualizedMounted(true),
+              waitForMountedToolDiffs,
             )
           }
         >
@@ -71,11 +151,11 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
         <button
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
-          disabled={!plainMounted && !virtualizedMounted}
+          disabled={!baselineMounted && !virtualizedMounted}
           onClick={() =>
             measureBoth(
               "unmount writeToFile diff",
-              () => setPlainMounted(false),
+              () => setBaselineMounted(false),
               () => setVirtualizedMounted(false),
             )
           }
@@ -86,14 +166,14 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
           disabled={
-            !plainMounted ||
+            !baselineMounted ||
             !virtualizedMounted ||
-            (plainExpanded && virtualizedExpanded)
+            (baselineExpanded && virtualizedExpanded)
           }
           onClick={() =>
             measureBoth(
               "expand writeToFile diff",
-              () => setPlainExpanded(true),
+              () => setBaselineExpanded(true),
               () => setVirtualizedExpanded(true),
             )
           }
@@ -104,14 +184,14 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
           disabled={
-            !plainMounted ||
+            !baselineMounted ||
             !virtualizedMounted ||
-            (!plainExpanded && !virtualizedExpanded)
+            (!baselineExpanded && !virtualizedExpanded)
           }
           onClick={() =>
             measureBoth(
               "collapse writeToFile diff",
-              () => setPlainExpanded(false),
+              () => setBaselineExpanded(false),
               () => setVirtualizedExpanded(false),
             )
           }
@@ -121,18 +201,19 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
         <button
           type="button"
           className="rounded border px-2 py-1 text-xs disabled:opacity-50"
-          disabled={!plainMounted || !virtualizedMounted}
+          disabled={!baselineMounted || !virtualizedMounted}
           onClick={() =>
             measureBoth(
               "remount expanded writeToFile diff",
               () => {
-                setPlainExpanded(true);
-                setPlainRenderKey((prev) => prev + 1);
+                setBaselineExpanded(true);
+                setBaselineRenderKey((prev) => prev + 1);
               },
               () => {
                 setVirtualizedExpanded(true);
                 setVirtualizedRenderKey((prev) => prev + 1);
               },
+              waitForMountedToolDiffs,
             )
           }
         >
@@ -140,23 +221,18 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
         </button>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <section ref={plainRef} className="min-w-0">
+        <section ref={baselineRef} className="min-w-0">
           <div className="mb-1 font-medium text-muted-foreground text-xs">
-            Plain
+            Baseline
           </div>
-          {plainMounted && (
-            <MeasuredProfiler
-              id="PlainToolDiffPerf"
-              record={perf.record}
-              comparisonKey="initial mount writeToFile diff"
-              variant={variants[0]}
-            >
-              <WriteToFileDiffVariant
-                key={plainRenderKey}
+          {baselineMounted && (
+            <MeasuredProfiler id="BaselineToolDiffPerf" record={perf.record}>
+              <WriteToFileDiff
+                key={baselineRenderKey}
                 tool={tool}
-                expanded={plainExpanded}
-                onToggle={setPlainExpanded}
-                virtualized={false}
+                expanded={baselineExpanded}
+                onToggle={setBaselineExpanded}
+                Viewer={BaselineDiffViewer}
               />
             </MeasuredProfiler>
           )}
@@ -166,18 +242,13 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
             Virtualized
           </div>
           {virtualizedMounted && (
-            <MeasuredProfiler
-              id="VirtualizedToolDiffPerf"
-              record={perf.record}
-              comparisonKey="initial mount writeToFile diff"
-              variant={variants[1]}
-            >
-              <WriteToFileDiffVariant
+            <MeasuredProfiler id="VirtualizedToolDiffPerf" record={perf.record}>
+              <WriteToFileDiff
                 key={virtualizedRenderKey}
                 tool={tool}
                 expanded={virtualizedExpanded}
                 onToggle={setVirtualizedExpanded}
-                virtualized={true}
+                Viewer={DiffViewer}
               />
             </MeasuredProfiler>
           )}
@@ -187,16 +258,16 @@ function ToolDiffPerfStory({ lineCount }: { lineCount: number }) {
   );
 }
 
-function WriteToFileDiffVariant({
+function WriteToFileDiff({
   tool,
   expanded,
   onToggle,
-  virtualized,
+  Viewer,
 }: {
   tool: ToolUIPart<UITools>;
   expanded: boolean;
   onToggle: (expanded: boolean) => void;
-  virtualized: boolean;
+  Viewer: React.ComponentType<DiffViewerProps>;
 }) {
   const input = tool.input as { path: string };
   const output = tool.output as {
@@ -205,7 +276,6 @@ function WriteToFileDiffVariant({
       editSummary: { added: number; removed: number };
     };
   };
-  const Viewer = virtualized ? DiffViewer : PlainDiffViewer;
 
   return (
     <ExpandableToolContainer
@@ -248,4 +318,4 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const WriteToFilePlainVsVirtualized: Story = {};
+export const WriteToFileBaselineVsVirtualized: Story = {};

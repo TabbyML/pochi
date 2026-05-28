@@ -4,9 +4,9 @@ import {
   makeFileMatches,
   makeReplaceFilePatch,
   makeWriteToFileTool,
-} from "../fixtures";
+} from "../perf-data";
 
-describe("perf fixtures", () => {
+describe("perf data", () => {
   it("creates a valid added-file patch with the requested number of additions", () => {
     const patch = makeAddedFilePatch("plan.md", 3);
 
@@ -40,7 +40,7 @@ describe("perf fixtures", () => {
     ]);
   });
 
-  it("creates markdown-heavy writeToFile fixtures", () => {
+  it("creates markdown-heavy writeToFile data", () => {
     const tool = makeWriteToFileTool(20);
     const input = tool.input as { content: string };
     const output = tool.output as { _meta: { edit: string } };

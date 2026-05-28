@@ -1,10 +1,11 @@
 import { MessageList } from "@/components/message/message-list";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useMemo, useRef, useState } from "react";
-import { makePerfMessages } from "./fixtures";
+import { makePerfMessages } from "./perf-data";
 import {
   ComparisonPanel,
   MeasuredProfiler,
+  useAutoMeasureOnMount,
   usePerfHarness,
 } from "./perf-harness";
 
@@ -18,8 +19,8 @@ function MessageListPerfStory({
   diffLineCount: number;
 }) {
   const perf = usePerfHarness();
-  const [offMounted, setOffMounted] = useState(true);
-  const [onMounted, setOnMounted] = useState(true);
+  const [offMounted, setOffMounted] = useState(false);
+  const [onMounted, setOnMounted] = useState(false);
   const [offRenderKey, setOffRenderKey] = useState(0);
   const [onRenderKey, setOnRenderKey] = useState(0);
   const offRef = useRef<HTMLDivElement | null>(null);
@@ -49,6 +50,14 @@ function MessageListPerfStory({
       target: onRef.current,
     });
   };
+
+  useAutoMeasureOnMount(() =>
+    measureBoth(
+      "mount message list",
+      () => setOffMounted(true),
+      () => setOnMounted(true),
+    ),
+  );
 
   return (
     <div ref={perf.rootRef} className="flex h-[760px] flex-col p-3">
@@ -110,8 +119,6 @@ function MessageListPerfStory({
             <MeasuredProfiler
               id="ContentVisibilityOffMessageListPerf"
               record={perf.record}
-              comparisonKey="initial mount message list"
-              variant={variants[0]}
             >
               <MessageList
                 key={offRenderKey}
@@ -132,8 +139,6 @@ function MessageListPerfStory({
             <MeasuredProfiler
               id="ContentVisibilityOnMessageListPerf"
               record={perf.record}
-              comparisonKey="initial mount message list"
-              variant={variants[1]}
             >
               <MessageList
                 key={onRenderKey}

@@ -1,27 +1,42 @@
-import { describe, expect, it } from "vitest";
-import { getVisibleFileListMatches } from "../file-list-utils";
+import { describe, expect, it, vi } from "vitest";
+import { getVirtualFileListRange } from "../file-list";
 
-describe("getVisibleFileListMatches", () => {
-  it("returns all matches when the list is below the render cap", () => {
-    const matches = Array.from({ length: 3 }, (_, index) => ({
-      file: `file-${index}.ts`,
-    }));
+vi.mock("@/lib/vscode", () => ({
+  vscodeHost: {
+    openFile: vi.fn(),
+  },
+}));
 
-    expect(getVisibleFileListMatches(matches)).toEqual({
-      visibleMatches: matches,
-      hiddenCount: 0,
+describe("getVirtualFileListRange", () => {
+  it("renders a small list without padding", () => {
+    expect(
+      getVirtualFileListRange({
+        itemCount: 3,
+        scrollTop: 0,
+        viewportHeight: 100,
+        rowHeight: 24,
+        overscan: 4,
+      }),
+    ).toEqual({
+      startIndex: 0,
+      endIndex: 3,
+      offsetTop: 0,
+      totalHeight: 72,
     });
   });
 
-  it("caps visible matches and reports hidden count", () => {
-    const matches = Array.from({ length: 205 }, (_, index) => ({
-      file: `file-${index}.ts`,
-    }));
+  it("returns a scrolled virtual window without dropping later matches", () => {
+    const result = getVirtualFileListRange({
+      itemCount: 500,
+      scrollTop: 4800,
+      viewportHeight: 100,
+      rowHeight: 24,
+      overscan: 4,
+    });
 
-    const result = getVisibleFileListMatches(matches);
-
-    expect(result.visibleMatches).toHaveLength(200);
-    expect(result.visibleMatches.at(-1)?.file).toBe("file-199.ts");
-    expect(result.hiddenCount).toBe(5);
+    expect(result.startIndex).toBe(196);
+    expect(result.endIndex).toBe(209);
+    expect(result.offsetTop).toBe(4704);
+    expect(result.totalHeight).toBe(12000);
   });
 });

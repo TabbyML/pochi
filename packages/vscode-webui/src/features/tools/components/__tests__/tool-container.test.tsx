@@ -20,14 +20,17 @@ describe("ExpandableToolContainer", () => {
   it("renders lazy expandable detail after expanding", () => {
     const renderExpandableDetail = vi.fn(() => <div>Lazy detail</div>);
 
-    render(
+    const { container } = render(
       <ExpandableToolContainer
         title="Tool title"
         renderExpandableDetail={renderExpandableDetail}
       />,
     );
 
-    fireEvent.click(screen.getByLabelText("Expand tool details"));
+    const expandIcon = container.querySelector(".cursor-pointer");
+    expect(expandIcon).toBeTruthy();
+
+    fireEvent.click(expandIcon as HTMLElement);
 
     expect(renderExpandableDetail).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Lazy detail")).toBeTruthy();

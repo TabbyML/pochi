@@ -15,7 +15,6 @@ import { ChevronRight, FileDiff, FilePenLine } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VscDiffMultiple, VscGoToFile } from "react-icons/vsc";
-import { type DiffStats, getDiffStats } from "./user-edits-utils";
 
 interface Props {
   userEdits: UserEdits;
@@ -24,6 +23,18 @@ interface Props {
     modified: string | undefined;
   };
   hideActions?: boolean;
+}
+
+interface DiffStats {
+  added: number;
+  removed: number;
+}
+
+function getDiffStats(diff: string): DiffStats {
+  return {
+    added: (diff.match(/^\+/gm) || []).length,
+    removed: (diff.match(/^\-/gm) || []).length,
+  };
 }
 
 export const UserEditsPart: React.FC<Props> = ({

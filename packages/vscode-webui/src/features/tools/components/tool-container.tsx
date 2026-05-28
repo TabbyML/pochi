@@ -32,11 +32,9 @@ export const ExpandIcon: React.FC<{
   className?: string;
 }> = ({ isExpanded, onClick, className }) => {
   return (
-    <button
-      type="button"
-      aria-label={isExpanded ? "Collapse tool details" : "Expand tool details"}
+    <span
       className={cn(
-        "mt-0.5 self-start rounded border-0 bg-muted p-1 text-current transition-opacity hover:bg-secondary",
+        "mt-0.5 self-start rounded bg-muted p-1 transition-opacity hover:bg-secondary",
         !isExpanded && "opacity-0 group-hover:opacity-100",
         className,
       )}
@@ -48,7 +46,7 @@ export const ExpandIcon: React.FC<{
           isExpanded ? "rotate-90" : "rotate-180",
         )}
       />
-    </button>
+    </span>
   );
 };
 
