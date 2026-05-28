@@ -3,7 +3,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { FileIcon, FileList } from "@/features/tools";
+import { FileList } from "@/features/tools";
 import { cn } from "@/lib/utils";
 
 import {
@@ -17,7 +17,7 @@ import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
-import { constants } from "@getpochi/common";
+import { constants, prompts } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -145,11 +145,21 @@ export function TokenUsage({
   const filesVal = getPct(contextWindowUsage?.files);
   const toolResultsVal = getPct(contextWindowUsage?.toolResults);
 
-  const showSystemSection = systemVal > 0.05 || toolsVal > 0.05;
+  // Project memory is injected via a <system-reminder> block (counted under
+  // the breakdown's "system" bucket via systemReminderTokens) plus the static
+  // LONG-TERM MEMORY rules section that gets folded into systemPromptTokens.
+  // Estimate its tokens locally so we can show its share of the context
+  // window alongside the file row.
+  const projectMemoryTokens = autoMemoryContext
+    ? estimateTokensFromText(prompts.autoMemory.buildPrompt(autoMemoryContext))
+    : 0;
+  const projectMemoryVal = getPct(projectMemoryTokens);
+
+  const showSystemSection =
+    !!contextWindowUsage && (systemVal > 0.05 || toolsVal > 0.05);
   const showUserContextSection =
-    messagesVal > 0.05 || filesVal > 0.05 || toolResultsVal > 0.05;
-  const showBreakdown =
-    contextWindowUsage && (showSystemSection || showUserContextSection);
+    !!contextWindowUsage &&
+    (messagesVal > 0.05 || filesVal > 0.05 || toolResultsVal > 0.05);
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
@@ -221,55 +231,175 @@ export function TokenUsage({
             </div>
             <Progress value={percentage} className="mb-3" />
 
-            {showBreakdown && (
-              <div className="mt-1 flex flex-col gap-y-3">
-                {showSystemSection && (
-                  <div className="flex flex-col gap-y-1.5">
-                    <div className="font-medium text-foreground">
-                      {t("tokenUsage.system")}
-                    </div>
-                    {systemVal > 0.05 && (
-                      <div className="ml-3 flex justify-between text-muted-foreground">
-                        <span>{t("tokenUsage.systemInstructions")}</span>
-                        <span>{systemVal.toFixed(1)}%</span>
-                      </div>
-                    )}
-                    {toolsVal > 0.05 && (
-                      <div className="ml-3 flex justify-between text-muted-foreground">
-                        <span>{t("tokenUsage.toolDefinitions")}</span>
-                        <span>{toolsVal.toFixed(1)}%</span>
-                      </div>
-                    )}
+            <div className="mt-1 flex flex-col gap-y-3">
+              {showSystemSection && (
+                <div className="flex flex-col gap-y-1.5">
+                  <div className="font-medium text-foreground">
+                    {t("tokenUsage.system")}
                   </div>
-                )}
+                  {systemVal > 0.05 && (
+                    <div className="ml-3 flex justify-between text-muted-foreground">
+                      <span>{t("tokenUsage.systemInstructions")}</span>
+                      <span>{systemVal.toFixed(1)}%</span>
+                    </div>
+                  )}
+                  {toolsVal > 0.05 && (
+                    <div className="ml-3 flex justify-between text-muted-foreground">
+                      <span>{t("tokenUsage.toolDefinitions")}</span>
+                      <span>{toolsVal.toFixed(1)}%</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
-                {showUserContextSection && (
-                  <div className="flex flex-col gap-y-1.5">
-                    <div className="font-medium text-foreground">
-                      {t("tokenUsage.userContext")}
-                    </div>
-                    {messagesVal > 0.05 && (
-                      <div className="ml-3 flex justify-between text-muted-foreground">
-                        <span>{t("tokenUsage.messages")}</span>
-                        <span>{messagesVal.toFixed(1)}%</span>
-                      </div>
-                    )}
-                    {filesVal > 0.05 && (
-                      <div className="ml-3 flex justify-between text-muted-foreground">
-                        <span>{t("tokenUsage.files")}</span>
-                        <span>{filesVal.toFixed(1)}%</span>
-                      </div>
-                    )}
-                    {toolResultsVal > 0.05 && (
-                      <div className="ml-3 flex justify-between text-muted-foreground">
-                        <span>{t("tokenUsage.toolResults")}</span>
-                        <span>{toolResultsVal.toFixed(1)}%</span>
-                      </div>
-                    )}
+              {showUserContextSection && (
+                <div className="flex flex-col gap-y-1.5">
+                  <div className="font-medium text-foreground">
+                    {t("tokenUsage.userContext")}
                   </div>
-                )}
+                  {messagesVal > 0.05 && (
+                    <div className="ml-3 flex justify-between text-muted-foreground">
+                      <span>{t("tokenUsage.messages")}</span>
+                      <span>{messagesVal.toFixed(1)}%</span>
+                    </div>
+                  )}
+                  {filesVal > 0.05 && (
+                    <div className="ml-3 flex justify-between text-muted-foreground">
+                      <span>{t("tokenUsage.files")}</span>
+                      <span>{filesVal.toFixed(1)}%</span>
+                    </div>
+                  )}
+                  {toolResultsVal > 0.05 && (
+                    <div className="ml-3 flex justify-between text-muted-foreground">
+                      <span>{t("tokenUsage.toolResults")}</span>
+                      <span>{toolResultsVal.toFixed(1)}%</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Memory sub-section: same style as System / User Context */}
+              <div className="flex flex-col gap-y-1.5">
+                <div className="font-medium text-foreground">
+                  {t("tokenUsage.memory")}
+                </div>
+
+                {/* Project Memory row (label + toggle on the left, percentage on the right) */}
+                <div className="ml-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="cursor-pointer text-left text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              void handleOpenAutoMemory();
+                            }}
+                          >
+                            {t("tokenUsage.projectMemory")}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[260px]">
+                          <div className="flex flex-col gap-1">
+                            <div className="font-medium">
+                              {t("tokenUsage.projectMemory")}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {t("tokenUsage.projectMemoryDescription")}
+                            </div>
+                            {!autoMemoryAvailable && (
+                              <div className="text-muted-foreground italic">
+                                {t("tokenUsage.projectMemoryUnavailable")}
+                              </div>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <label
+                            htmlFor="project-memory-enabled"
+                            className={cn(
+                              "inline-flex select-none items-center",
+                              setAutoMemoryEnabled
+                                ? "cursor-pointer"
+                                : "cursor-not-allowed",
+                            )}
+                          >
+                            <Checkbox
+                              id="project-memory-enabled"
+                              aria-label={
+                                autoMemoryEnabled
+                                  ? t("tokenUsage.projectMemoryDisable")
+                                  : t("tokenUsage.projectMemoryEnable")
+                              }
+                              checked={autoMemoryEnabled}
+                              disabled={!setAutoMemoryEnabled}
+                              onCheckedChange={(checked) =>
+                                setAutoMemoryEnabled?.(checked === true)
+                              }
+                              className="data-[state=checked]:!border-[var(--vscode-focusBorder)] data-[state=checked]:!bg-[var(--vscode-focusBorder)] data-[state=checked]:!text-[var(--vscode-button-foreground)] size-3.5 [&_svg]:size-2.5"
+                            />
+                          </label>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {autoMemoryEnabled
+                            ? t("tokenUsage.projectMemoryDisable")
+                            : t("tokenUsage.projectMemoryEnable")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  {autoMemoryAvailable && (
+                    <span className="text-muted-foreground">
+                      {projectMemoryVal.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Task Memory row (mirrors Project Memory row structure so the tooltip anchors at the same position) */}
+                <div className="ml-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="cursor-pointer text-left text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              vscodeHost.openFile(TaskMemoryFileUri);
+                              setIsOpen(false);
+                            }}
+                          >
+                            {t("tokenUsage.taskMemory")}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[260px]">
+                          <div className="flex flex-col gap-1">
+                            <div className="font-medium">
+                              {t("tokenUsage.taskMemory")}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {t("tokenUsage.taskMemoryDescription")}
+                            </div>
+                            {!hasTaskMemory && (
+                              <div className="text-muted-foreground italic">
+                                {t("tokenUsage.taskMemoryUnavailable")}
+                              </div>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Section: Rules */}
@@ -289,143 +419,6 @@ export function TokenUsage({
               </div>
             </div>
           )}
-
-          {/* Section: Memory */}
-          <div className="flex flex-col gap-y-1">
-            <div className="flex items-center gap-2">
-              <div className="font-medium text-foreground">
-                {t("tokenUsage.memory")}
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <label
-                      htmlFor="project-memory-enabled"
-                      className={cn(
-                        "inline-flex select-none items-center gap-1 text-[10px] text-muted-foreground",
-                        setAutoMemoryEnabled
-                          ? "cursor-pointer"
-                          : "cursor-not-allowed",
-                      )}
-                    >
-                      <Checkbox
-                        id="project-memory-enabled"
-                        aria-label={
-                          autoMemoryEnabled
-                            ? t("tokenUsage.projectMemoryDisable")
-                            : t("tokenUsage.projectMemoryEnable")
-                        }
-                        checked={autoMemoryEnabled}
-                        disabled={!setAutoMemoryEnabled}
-                        onCheckedChange={(checked) =>
-                          setAutoMemoryEnabled?.(checked === true)
-                        }
-                        className="data-[state=checked]:!border-[var(--vscode-focusBorder)] data-[state=checked]:!bg-[var(--vscode-focusBorder)] data-[state=checked]:!text-[var(--vscode-button-foreground)] size-3.5 border-[var(--vscode-focusBorder)] [&_svg]:size-2.5"
-                      />
-                      <span>{t("tokenUsage.projectMemory")}</span>
-                    </label>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {autoMemoryEnabled
-                      ? t("tokenUsage.projectMemoryDisable")
-                      : t("tokenUsage.projectMemoryEnable")}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div className="flex max-h-[100px] flex-col gap-1 overflow-auto rounded border p-1">
-              {/* Project Memory row */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      className="flex cursor-pointer items-center truncate rounded py-0.5 pr-1 hover:bg-accent/50"
-                      onClick={() => {
-                        void handleOpenAutoMemory();
-                      }}
-                      // biome-ignore lint/a11y/noNoninteractiveTabindex: row acts as button
-                      tabIndex={0}
-                    >
-                      <span className="min-w-0 flex-1 truncate px-1">
-                        <FileIcon
-                          path={autoMemoryContext?.indexPath ?? "MEMORY.md"}
-                          className="mr-1 ml-0.5 text-xl/4"
-                          defaultIconClassName="ml-0 mr-0.5"
-                        />
-                        <span className="font-semibold">
-                          {t("tokenUsage.projectMemory")}
-                        </span>
-                        <span className="ml-1 truncate text-foreground/70">
-                          {autoMemoryContext?.indexPath ?? "MEMORY.md"}
-                        </span>
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[260px]">
-                    <div className="flex flex-col gap-1">
-                      <div className="font-medium">
-                        {t("tokenUsage.projectMemory")}
-                      </div>
-                      <div className="text-muted-foreground">
-                        {t("tokenUsage.projectMemoryDescription")}
-                      </div>
-                      {!autoMemoryAvailable && (
-                        <div className="text-muted-foreground italic">
-                          {t("tokenUsage.projectMemoryUnavailable")}
-                        </div>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* Task Memory row */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      className="flex cursor-pointer items-center truncate rounded py-0.5 pr-1 hover:bg-accent/50"
-                      onClick={() => {
-                        vscodeHost.openFile(TaskMemoryFileUri);
-                        setIsOpen(false);
-                      }}
-                      // biome-ignore lint/a11y/noNoninteractiveTabindex: row acts as button
-                      tabIndex={0}
-                    >
-                      <span className="min-w-0 flex-1 truncate px-1">
-                        <FileIcon
-                          path={TaskMemoryFileUri}
-                          className="mr-1 ml-0.5 text-xl/4"
-                          defaultIconClassName="ml-0 mr-0.5"
-                        />
-                        <span className="font-semibold">
-                          {t("tokenUsage.taskMemory")}
-                        </span>
-                        <span className="ml-1 truncate text-foreground/70">
-                          {TaskMemoryFileUri}
-                        </span>
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[260px]">
-                    <div className="flex flex-col gap-1">
-                      <div className="font-medium">
-                        {t("tokenUsage.taskMemory")}
-                      </div>
-                      <div className="text-muted-foreground">
-                        {t("tokenUsage.taskMemoryDescription")}
-                      </div>
-                      {!hasTaskMemory && (
-                        <div className="text-muted-foreground italic">
-                          {t("tokenUsage.taskMemoryUnavailable")}
-                        </div>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
 
           {/* Section: Compact */}
           <div className="flex flex-col gap-y-2">
@@ -521,4 +514,13 @@ function formatTokens(tokens: number | null | undefined): string {
   }
 
   return `${formattedValue}${unit}`;
+}
+
+/**
+ * Mirror of livekit's `estimateTokens` (kept private to livekit) so the
+ * token-usage popover can estimate ad-hoc text (e.g. the project-memory
+ * prompt) without taking a runtime dependency on the livekit package.
+ */
+function estimateTokensFromText(text: string): number {
+  return Math.ceil(text.length / 4);
 }
