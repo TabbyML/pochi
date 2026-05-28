@@ -306,7 +306,6 @@
     "stop": "停止",
     "preview": "预览",
     "calling": "正在调用",
-    "renderingWidget": "正在渲染 widget",
     "request": "请求",
     "response": "响应",
     "imgAlt": "MCP工具响应快照",
