@@ -2,7 +2,6 @@ import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
@@ -65,7 +64,6 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isLoading,
   isLastPart,
 }) => {
-  const { t } = useTranslation();
   const { theme } = useTheme();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,10 +150,6 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   );
 
   const input = tool.input;
-  const title =
-    input && "title" in input && input.title
-      ? input.title
-      : t("toolInvocation.renderingWidget");
   const widgetCode =
     input && "widgetCode" in input && input.widgetCode ? input.widgetCode : "";
   const isFinal =
@@ -338,7 +332,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       {iframeSrc ? (
         <iframe
           ref={iframeRef}
-          title={title}
+          title={`widget_${tool.toolCallId}`}
           src={iframeSrc}
           sandbox="allow-scripts"
           onLoad={handleLoad}
