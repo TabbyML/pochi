@@ -26,7 +26,7 @@ These rules apply to every `renderWidget` call:
 
 ## Core Design Principles
 
-These rules apply to every widget kind:
+These rules apply to every widget:
 
 - Make the widget feel native to Pochi and VSCode. Use transparent outer containers, compact spacing, flat surfaces, and theme variables instead of decorative backgrounds.
 - Keep prose outside the widget. Use the chat response for explanations, summaries, introductions, and caveats; use `widgetCode` only for the visual or local control surface.
@@ -130,7 +130,7 @@ button:hover {
 
 ## Reference Loading
 
-Read one or more of the modules below before generating a widget. Pick only what the task actually needs; combine modules when the widget spans multiple categories.
+Before composing `widgetCode`, choose and read at least one relevant reference module. Read multiple modules when the widget spans categories. Pick only what the task actually needs.
 
 - `references/diagram.md`: SVG flowcharts, structural diagrams, and illustrative diagrams.
 - `references/mockup.md`: UI mockups, forms, cards, dashboards, and bounded records.
