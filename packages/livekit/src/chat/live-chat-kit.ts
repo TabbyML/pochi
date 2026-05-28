@@ -24,7 +24,6 @@ import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
 import type { LiveKitStore, Message, Task } from "../types";
-import { shouldAutoCompact } from "./auto-compact-policy";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
@@ -309,20 +308,11 @@ export class LiveChatKit<
       // Mark status to make async behaivor blocked based on status (e.g isLoading )
       const { messages } = this.chat;
       const lastMessage = messages.at(-1);
-      const isManualCompact =
+      if (
         lastMessage?.role === "user" &&
         lastMessage.metadata?.kind === "user" &&
-        lastMessage.metadata.compact === true;
-
-      const isAutoCompact =
-        !isManualCompact &&
-        shouldAutoCompact({
-          messages,
-          llm: getters.getLLM(),
-          task: this.task,
-        });
-
-      if (isManualCompact || isAutoCompact) {
+        lastMessage.metadata.compact
+      ) {
         try {
           // Wait briefly so memory.md and boundary id are fresh.
           await settleTaskMemoryExtraction(
@@ -330,13 +320,6 @@ export class LiveChatKit<
             TaskMemorySettleTimeoutMs,
           );
           const model = createModel({ llm: getters.getLLM() });
-          if (isAutoCompact) {
-            logger.info(
-              `Auto-compact triggered (totalTokens=${
-                this.task?.totalTokens ?? 0
-              }).`,
-            );
-          }
           await compactTask({
             blobStore: this.blobStore,
             taskId: this.taskId,
@@ -350,7 +333,6 @@ export class LiveChatKit<
             abortSignal,
             inline: true,
             store: this.store,
-            useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
           await onCompact?.();
         } catch (err) {
