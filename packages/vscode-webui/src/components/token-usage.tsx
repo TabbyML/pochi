@@ -128,14 +128,16 @@ export function TokenUsage({
 
     // Sum up the total tokens from the breakdown. Each bucket is non-overlapping
     // (project memory is split out of `system`/`systemReminder` in livekit's
-    // estimateTokenBreakdown) so we can sum them all directly.
+    // estimateTokenBreakdown) so we can sum them all directly. Older tasks
+    // persisted before `projectMemory` was introduced will not have that
+    // field, so we fall back to 0 to avoid NaN propagation.
     const breakdownTotal =
-      contextWindowUsage.system +
-      contextWindowUsage.tools +
-      contextWindowUsage.messages +
-      contextWindowUsage.files +
-      contextWindowUsage.toolResults +
-      contextWindowUsage.projectMemory;
+      (contextWindowUsage.system ?? 0) +
+      (contextWindowUsage.tools ?? 0) +
+      (contextWindowUsage.messages ?? 0) +
+      (contextWindowUsage.files ?? 0) +
+      (contextWindowUsage.toolResults ?? 0) +
+      (contextWindowUsage.projectMemory ?? 0);
 
     if (breakdownTotal === 0) return 0;
 
