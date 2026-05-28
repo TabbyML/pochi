@@ -318,6 +318,7 @@
     "executeCommand": "I will execute the following command",
     "executingCommand": "Executing command",
     "for": "for",
+    "matching": "matching",
     "searching": "Searching",
     "searchingFor": "Searching for:",
     "matchCount_one": "{{count}} match",

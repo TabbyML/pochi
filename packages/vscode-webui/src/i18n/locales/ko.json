@@ -318,6 +318,7 @@
     "executeCommand": "다음 명령을 실행합니다",
     "executingCommand": "명령 실행 중",
     "for": "대상",
+    "matching": "매칭",
     "searching": "검색 중",
     "searchingFor": "검색 중:",
     "matchCount_one": "{{count}}개 일치",

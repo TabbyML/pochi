@@ -317,6 +317,7 @@
     "executeCommand": "我将执行以下命令",
     "executingCommand": "正在执行命令",
     "for": "匹配",
+    "matching": "匹配",
     "searching": "搜索中",
     "searchingFor": "搜索：",
     "matchCount_one": "{{count}}个匹配",
