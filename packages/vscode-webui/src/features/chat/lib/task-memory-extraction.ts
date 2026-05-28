@@ -33,7 +33,8 @@ function computeTotalTokens(usage?: ContextWindowUsage) {
     usage.tools +
     usage.messages +
     usage.files +
-    usage.toolResults
+    usage.toolResults +
+    usage.projectMemory
   );
 }
 

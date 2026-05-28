@@ -17,7 +17,7 @@ import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
-import { constants, prompts } from "@getpochi/common";
+import { constants } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -126,13 +126,16 @@ export function TokenUsage({
   const getPct = (value: number | undefined) => {
     if (!value || !contextWindowUsage) return 0;
 
-    // Sum up the total tokens from the breakdown
+    // Sum up the total tokens from the breakdown. Each bucket is non-overlapping
+    // (project memory is split out of `system`/`systemReminder` in livekit's
+    // estimateTokenBreakdown) so we can sum them all directly.
     const breakdownTotal =
       contextWindowUsage.system +
       contextWindowUsage.tools +
       contextWindowUsage.messages +
       contextWindowUsage.files +
-      contextWindowUsage.toolResults;
+      contextWindowUsage.toolResults +
+      contextWindowUsage.projectMemory;
 
     if (breakdownTotal === 0) return 0;
 
@@ -144,16 +147,7 @@ export function TokenUsage({
   const messagesVal = getPct(contextWindowUsage?.messages);
   const filesVal = getPct(contextWindowUsage?.files);
   const toolResultsVal = getPct(contextWindowUsage?.toolResults);
-
-  // Project memory is injected via a <system-reminder> block (counted under
-  // the breakdown's "system" bucket via systemReminderTokens) plus the static
-  // LONG-TERM MEMORY rules section that gets folded into systemPromptTokens.
-  // Estimate its tokens locally so we can show its share of the context
-  // window alongside the file row.
-  const projectMemoryTokens = autoMemoryContext
-    ? estimateTokensFromText(prompts.autoMemory.buildPrompt(autoMemoryContext))
-    : 0;
-  const projectMemoryVal = getPct(projectMemoryTokens);
+  const projectMemoryVal = getPct(contextWindowUsage?.projectMemory);
 
   const showSystemSection =
     !!contextWindowUsage && (systemVal > 0.05 || toolsVal > 0.05);
@@ -514,13 +508,4 @@ function formatTokens(tokens: number | null | undefined): string {
   }
 
   return `${formattedValue}${unit}`;
-}
-
-/**
- * Mirror of livekit's `estimateTokens` (kept private to livekit) so the
- * token-usage popover can estimate ad-hoc text (e.g. the project-memory
- * prompt) without taking a runtime dependency on the livekit package.
- */
-function estimateTokensFromText(text: string): number {
-  return Math.ceil(text.length / 4);
 }
