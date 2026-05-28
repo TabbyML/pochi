@@ -83,6 +83,7 @@ export type ContextWindowUsage = {
   messages: number;
   files: number;
   toolResults: number;
+  projectMemory: number;
 };
 
 export interface BackgroundTaskState {

@@ -3,7 +3,7 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { getLogger, isForkAgentUseCase } from "@getpochi/common";
+import { getLogger, isForkAgentUseCase, prompts } from "@getpochi/common";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
@@ -600,6 +600,7 @@ export class LiveChatKit<
         filesTokens,
         toolResultsTokens,
         systemReminderTokens,
+        projectMemoryTokens,
       } = estimateTokenBreakdown(this.chat.messages);
       const systemTokens =
         (message.metadata.systemPromptTokens || 0) + systemReminderTokens;
@@ -610,7 +611,8 @@ export class LiveChatKit<
         toolsTokens +
         messagesTokens +
         filesTokens +
-        toolResultsTokens;
+        toolResultsTokens +
+        projectMemoryTokens;
       if (totalTokens > 0) {
         contextWindowUsage = {
           system: systemTokens,
@@ -618,6 +620,7 @@ export class LiveChatKit<
           messages: messagesTokens,
           files: filesTokens,
           toolResults: toolResultsTokens,
+          projectMemory: projectMemoryTokens,
         };
       }
     }
@@ -702,6 +705,7 @@ function estimateTokenBreakdown(messages: Message[]) {
   let filesTokens = 0;
   let toolResultsTokens = 0;
   let systemReminderTokens = 0;
+  let projectMemoryTokens = 0;
 
   for (const msg of messages) {
     for (const part of msg.parts) {
@@ -711,7 +715,14 @@ function estimateTokenBreakdown(messages: Message[]) {
           const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
           const reminders = contentStr.match(reminderRegex);
           if (reminders) {
-            systemReminderTokens += estimateTokens(reminders.join(""));
+            for (const reminder of reminders) {
+              const tokens = estimateTokens(reminder);
+              if (prompts.isAutoMemorySystemReminder(reminder)) {
+                projectMemoryTokens += tokens;
+              } else {
+                systemReminderTokens += tokens;
+              }
+            }
             contentStr = contentStr.replace(reminderRegex, "");
           }
         }
@@ -752,5 +763,6 @@ function estimateTokenBreakdown(messages: Message[]) {
     filesTokens,
     toolResultsTokens,
     systemReminderTokens,
+    projectMemoryTokens,
   };
 }

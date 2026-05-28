@@ -34,6 +34,7 @@ function usage(tokens: number) {
     messages: 0,
     files: 0,
     toolResults: 0,
+    projectMemory: 0,
   };
 }
 
