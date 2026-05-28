@@ -245,7 +245,13 @@ const SearchFilesTool = ({ tool }: ToolCallLiteViewProps<"searchFiles">) => {
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
       <HighlightedText>{path}</HighlightedText>
-      {filePattern && <HighlightedText>{filePattern}</HighlightedText>}
+      {filePattern && (
+        <>
+          {" "}
+          {t("toolInvocation.matching")}{" "}
+          <HighlightedText>{filePattern}</HighlightedText>
+        </>
+      )}
     </>
   );
 

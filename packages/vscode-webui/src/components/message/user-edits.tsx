@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UserEdits } from "@getpochi/common/vscode-webui-bridge";
 import { ChevronRight, FileDiff, FilePenLine } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VscDiffMultiple, VscGoToFile } from "react-icons/vsc";
 
@@ -25,14 +25,31 @@ interface Props {
   hideActions?: boolean;
 }
 
+interface DiffStats {
+  added: number;
+  removed: number;
+}
+
+function getDiffStats(diff: string): DiffStats {
+  return {
+    added: (diff.match(/^\+/gm) || []).length,
+    removed: (diff.match(/^\-/gm) || []).length,
+  };
+}
+
 export const UserEditsPart: React.FC<Props> = ({
   userEdits,
   checkpoints,
   hideActions,
 }) => {
   const { t } = useTranslation();
+  const visibleUserEdits = userEdits ?? [];
+  const editStats = useMemo(
+    () => visibleUserEdits.map((edit) => getDiffStats(edit.diff)),
+    [visibleUserEdits],
+  );
 
-  if (!userEdits || userEdits.length === 0) return null;
+  if (visibleUserEdits.length === 0) return null;
 
   const onShowDiff = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -40,19 +57,13 @@ export const UserEditsPart: React.FC<Props> = ({
       await vscodeHost.showCheckpointDiff(
         t("userEdits.diffTitle", { defaultValue: "User Edits" }),
         { origin: checkpoints.origin, modified: checkpoints.modified },
-        userEdits.map((e) => e.filepath),
+        visibleUserEdits.map((e) => e.filepath),
       );
     }
   };
 
-  const totalAdded = userEdits.reduce(
-    (sum, edit) => sum + (edit.diff.match(/^\+/gm) || []).length,
-    0,
-  );
-  const totalRemoved = userEdits.reduce(
-    (sum, edit) => sum + (edit.diff.match(/^\-/gm) || []).length,
-    0,
-  );
+  const totalAdded = editStats.reduce((sum, stats) => sum + stats.added, 0);
+  const totalRemoved = editStats.reduce((sum, stats) => sum + stats.removed, 0);
 
   return (
     <CollapsibleSection
@@ -66,7 +77,7 @@ export const UserEditsPart: React.FC<Props> = ({
         <>
           <span className="text-muted-foreground text-xs">
             {t("userEdits.filesEdited", {
-              count: userEdits.length,
+              count: visibleUserEdits.length,
               defaultValue: "{{count}} file edited",
             })}
           </span>
@@ -100,10 +111,11 @@ export const UserEditsPart: React.FC<Props> = ({
       }
       contentClassName="gap-1"
     >
-      {userEdits.map((edit) => (
+      {visibleUserEdits.map((edit, index) => (
         <UserEditItem
           key={edit.filepath}
           edit={edit}
+          stats={editStats[index] ?? { added: 0, removed: 0 }}
           checkpoints={checkpoints}
           hideActions={hideActions}
         />
@@ -119,9 +131,15 @@ interface UserEditItemProps {
     modified: string | undefined;
   };
   hideActions?: boolean;
+  stats: DiffStats;
 }
 
-function UserEditItem({ edit, checkpoints, hideActions }: UserEditItemProps) {
+function UserEditItem({
+  edit,
+  checkpoints,
+  hideActions,
+  stats,
+}: UserEditItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
 
@@ -140,10 +158,6 @@ function UserEditItem({ edit, checkpoints, hideActions }: UserEditItemProps) {
       );
     }
   };
-
-  // Calculate simple stats from diff string if possible (lines added/removed)
-  const added = (edit.diff.match(/^\+/gm) || []).length;
-  const removed = (edit.diff.match(/^\-/gm) || []).length;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -164,7 +178,7 @@ function UserEditItem({ edit, checkpoints, hideActions }: UserEditItemProps) {
           </span>
         </div>
         <div className="flex items-center gap-2 px-3 text-xs">
-          <EditSummary editSummary={{ added, removed }} className="text-xs" />
+          <EditSummary editSummary={stats} className="text-xs" />
           {!hideActions && (
             <div className="hidden items-center gap-1 group-hover:flex">
               {checkpoints?.origin && (

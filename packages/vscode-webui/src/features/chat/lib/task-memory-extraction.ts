@@ -29,11 +29,12 @@ export function getExtractionMetrics(data: ExtractionData): ExtractionMetrics {
 function computeTotalTokens(usage?: ContextWindowUsage) {
   if (!usage) return 0;
   return (
-    usage.system +
-    usage.tools +
-    usage.messages +
-    usage.files +
-    usage.toolResults
+    (usage.system ?? 0) +
+    (usage.tools ?? 0) +
+    (usage.messages ?? 0) +
+    (usage.files ?? 0) +
+    (usage.toolResults ?? 0) +
+    (usage.projectMemory ?? 0)
   );
 }
 

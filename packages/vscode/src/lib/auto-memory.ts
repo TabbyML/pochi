@@ -10,6 +10,7 @@ import {
   AutoMemoryLockName,
   type AutoMemoryManifestEntry,
   AutoMemoryMaxManifestEntries,
+  AutoMemoryProjectInfoName,
   AutoMemoryTypeValues,
   toErrorMessage,
   truncateAutoMemoryIndex,
@@ -72,6 +73,13 @@ export class AutoMemoryManager {
       await fs.mkdir(memoryDir, { recursive: true });
       await fs.mkdir(transcriptDir, { recursive: true });
       await ensureIndexFile(indexPath);
+      await writeProjectInfoFile({ projectRoot, repoKey, repoRoot }).catch(
+        (error) => {
+          logger.warn(
+            `Failed to update project info file: ${toErrorMessage(error)}`,
+          );
+        },
+      );
     }
 
     const rawIndexContent = await fs
@@ -333,6 +341,44 @@ async function ensureIndexFile(indexPath: string): Promise<void> {
       }
       throw error;
     });
+}
+
+type ProjectInfoFile = {
+  repoKey: string;
+  repoPath: string;
+};
+
+/**
+ * Persist a sidecar `project.json` at the root of the obfuscated project
+ * directory so users (and future tooling) can map `<repoKey>` back to its
+ * source repository. The file is rewritten only when the mapping actually
+ * changes — e.g. a relocated repository — so steady-state turns don't churn
+ * the disk. Timestamps are intentionally omitted; the directory's own ctime
+ * / mtime already records that information.
+ */
+async function writeProjectInfoFile({
+  projectRoot,
+  repoKey,
+  repoRoot,
+}: {
+  projectRoot: string;
+  repoKey: string;
+  repoRoot: string;
+}): Promise<void> {
+  const filePath = path.join(projectRoot, AutoMemoryProjectInfoName);
+  try {
+    const existing = await fs.readFile(filePath, "utf8");
+    const parsed: Partial<ProjectInfoFile> = JSON.parse(existing);
+    if (parsed.repoKey === repoKey && parsed.repoPath === repoRoot) {
+      return;
+    }
+  } catch {
+    // Missing or unreadable file — fall through to writing a fresh copy.
+  }
+
+  const info: ProjectInfoFile = { repoKey, repoPath: repoRoot };
+  await fs.mkdir(projectRoot, { recursive: true });
+  await fs.writeFile(filePath, `${JSON.stringify(info, null, 2)}\n`);
 }
 
 async function scanAutoMemoryManifest(

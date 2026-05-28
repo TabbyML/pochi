@@ -28,7 +28,6 @@ describe("render widget tools", () => {
     expect(() =>
       renderWidgetInputSchema.parse({
         title: "Flow",
-        kind: "diagram",
         widgetCode: "<svg></svg>",
         guidelinesRead: true,
       }),
@@ -36,33 +35,29 @@ describe("render widget tools", () => {
     expect(() =>
       renderWidgetInputSchema.parse({
         title: "Flow",
-        kind: "diagram",
         widgetCode: "<svg></svg>",
       }),
     ).toThrow();
     expect(() =>
       renderWidgetInputSchema.parse({
         title: "Flow",
-        kind: "diagram",
         widgetCode: "<svg></svg>",
         guidelinesRead: false,
       }),
     ).toThrow();
     expect(() =>
       renderWidgetInputSchema.parse({
-        title: "Flow",
         widgetCode: "<svg></svg>",
-        kind: "core",
         guidelinesRead: true,
       }),
     ).toThrow();
+    expect(inputProperties).toHaveProperty("title");
+    expect(inputProperties).toHaveProperty("widgetCode");
     expect(inputProperties).toHaveProperty("guidelinesRead");
-    expect(inputProperties).not.toHaveProperty("heightHint");
-    expect(outputProperties).not.toHaveProperty("kind");
+    expect(outputProperties).toHaveProperty("success");
     expect(() =>
       renderWidgetOutputSchema.parse({
         success: true,
-        title: "Flow",
       }),
     ).not.toThrow();
   });
@@ -71,7 +66,6 @@ describe("render widget tools", () => {
     expect(
       isReadonlyToolCall("renderWidget", {
         title: "Flow",
-        kind: "diagram",
         widgetCode: "<svg></svg>",
         guidelinesRead: true,
       }),

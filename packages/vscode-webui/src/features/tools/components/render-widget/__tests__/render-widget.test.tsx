@@ -43,16 +43,15 @@ vi.mock("@/components/theme-provider", () => ({
   useTheme: () => ({ theme: mockedTheme, setTheme: () => {} }),
 }));
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) =>
-      key === "toolInvocation.renderingWidget" ? "Rendering widget" : key,
-  }),
-}));
-
 vi.mock("../renderer-entry.ts?worker&url", () => ({
   default: "http://localhost:4112/widget-renderer.js",
 }));
+
+function getWidgetIframe(container: HTMLElement): HTMLIFrameElement {
+  const iframe = container.querySelector("iframe");
+  expect(iframe).toBeTruthy();
+  return iframe as HTMLIFrameElement;
+}
 
 describe("RenderWidgetTool", () => {
   beforeEach(() => {
@@ -73,7 +72,7 @@ describe("RenderWidgetTool", () => {
   });
 
   it("renders the widget iframe without VS Code tool header chrome", () => {
-    render(
+    const { container } = render(
       <RenderWidgetTool
         tool={
           {
@@ -82,7 +81,6 @@ describe("RenderWidgetTool", () => {
             state: "input-available",
             input: {
               title: "Clean widget",
-              kind: "diagram",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -96,12 +94,38 @@ describe("RenderWidgetTool", () => {
 
     expect(screen.queryByTestId("status-icon")).toBeNull();
     expect(screen.queryByText("Rendering widget")).toBeNull();
-    expect(screen.queryByText("Clean widget")).toBeNull();
-    expect(screen.getByTitle("Clean widget")).toBeTruthy();
+    expect(getWidgetIframe(container).getAttribute("title")).toBe(
+      "Clean widget",
+    );
+  });
+
+  it("falls back to the tool call id when the widget title is unavailable", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-legacy",
+            state: "input-available",
+            input: {
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(getWidgetIframe(container).getAttribute("title")).toBe(
+      "widget_widget-legacy",
+    );
   });
 
   it("shows renderer errors returned from the sandboxed iframe", () => {
-    render(
+    const { container } = render(
       <RenderWidgetTool
         tool={
           {
@@ -110,7 +134,6 @@ describe("RenderWidgetTool", () => {
             state: "input-available",
             input: {
               title: "Broken widget",
-              kind: "interactive",
               widgetCode: "<script>throw new Error('boom')</script>",
               guidelinesRead: true,
             },
@@ -123,7 +146,7 @@ describe("RenderWidgetTool", () => {
     );
 
     act(() => {
-      screen.getByTitle("Broken widget").dispatchEvent(new Event("load"));
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
     });
     act(() => {
       receiveHandler?.({ type: "error", message: "boom" });
@@ -133,7 +156,7 @@ describe("RenderWidgetTool", () => {
   });
 
   it("starts at zero height and waits for the sandboxed renderer to report widget height", () => {
-    render(
+    const { container } = render(
       <RenderWidgetTool
         tool={
           {
@@ -142,7 +165,6 @@ describe("RenderWidgetTool", () => {
             state: "input-available",
             input: {
               title: "Measured widget",
-              kind: "diagram",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -154,7 +176,7 @@ describe("RenderWidgetTool", () => {
       />,
     );
 
-    const iframe = screen.getByTitle("Measured widget");
+    const iframe = getWidgetIframe(container);
     expect(iframe.style.height).toBe("0px");
 
     act(() => {
@@ -168,7 +190,7 @@ describe("RenderWidgetTool", () => {
   });
 
   it("pushes theme updates when VS Code mutates body theme attributes", async () => {
-    render(
+    const { container } = render(
       <RenderWidgetTool
         tool={
           {
@@ -177,7 +199,6 @@ describe("RenderWidgetTool", () => {
             state: "input-available",
             input: {
               title: "Theme widget",
-              kind: "diagram",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -189,7 +210,7 @@ describe("RenderWidgetTool", () => {
       />,
     );
 
-    const iframe = screen.getByTitle("Theme widget");
+    const iframe = getWidgetIframe(container);
     act(() => {
       iframe.dispatchEvent(new Event("load"));
     });
@@ -227,7 +248,7 @@ describe("RenderWidgetTool", () => {
   });
 
   it("keeps the iframe mounted across parent theme switches", () => {
-    const { rerender } = render(
+    const { container, rerender } = render(
       <RenderWidgetTool
         tool={
           {
@@ -236,7 +257,6 @@ describe("RenderWidgetTool", () => {
             state: "input-available",
             input: {
               title: "Stable widget",
-              kind: "diagram",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -248,7 +268,7 @@ describe("RenderWidgetTool", () => {
       />,
     );
 
-    const iframe = screen.getByTitle("Stable widget") as HTMLIFrameElement;
+    const iframe = getWidgetIframe(container);
     const originalSrc = iframe.src;
     expect(originalSrc).toBeTruthy();
 
@@ -262,7 +282,6 @@ describe("RenderWidgetTool", () => {
             state: "input-available",
             input: {
               title: "Stable widget",
-              kind: "diagram",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -278,13 +297,11 @@ describe("RenderWidgetTool", () => {
     // a new src would remount the iframe and clear the rendered widget body
     // until the next render message arrives. Theme updates are pushed via the
     // theme message channel instead.
-    expect(screen.getByTitle("Stable widget").getAttribute("src")).toBe(
-      originalSrc,
-    );
+    expect(getWidgetIframe(container).getAttribute("src")).toBe(originalSrc);
   });
 
   it("replays the last render message when the iframe reloads", async () => {
-    render(
+    const { container } = render(
       <RenderWidgetTool
         tool={
           {
@@ -293,7 +310,6 @@ describe("RenderWidgetTool", () => {
             state: "input-available",
             input: {
               title: "Replay widget",
-              kind: "diagram",
               widgetCode: "<svg><rect/></svg>",
               guidelinesRead: true,
             },
@@ -305,7 +321,7 @@ describe("RenderWidgetTool", () => {
       />,
     );
 
-    const iframe = screen.getByTitle("Replay widget");
+    const iframe = getWidgetIframe(container);
     act(() => {
       iframe.dispatchEvent(new Event("load"));
     });

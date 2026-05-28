@@ -26,6 +26,7 @@ export {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   AutoMemoryMaxManifestEntries,
+  AutoMemoryProjectInfoName,
   AutoMemoryTypeValues,
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
@@ -55,7 +56,6 @@ export const PochiRequestUseCase = z.enum([
   "repair-tool-call",
   "generate-task-title",
   "compact-task",
-  "auto-compact-task",
   "repair-mermaid",
   ...ForkAgentUseCase.options,
 ]);
@@ -83,6 +83,7 @@ export type ContextWindowUsage = {
   messages: number;
   files: number;
   toolResults: number;
+  projectMemory: number;
 };
 
 export interface BackgroundTaskState {

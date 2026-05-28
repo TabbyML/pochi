@@ -31,7 +31,13 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
       <HighlightedText>{path}</HighlightedText>
-      {filePattern && <HighlightedText>{filePattern}</HighlightedText>}
+      {filePattern && (
+        <>
+          {" "}
+          {t("toolInvocation.matching")}{" "}
+          <HighlightedText>{filePattern}</HighlightedText>
+        </>
+      )}
     </>
   );
 
