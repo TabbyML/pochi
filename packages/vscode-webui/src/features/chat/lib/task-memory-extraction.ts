@@ -28,8 +28,6 @@ export function getExtractionMetrics(data: ExtractionData): ExtractionMetrics {
 
 function computeTotalTokens(usage?: ContextWindowUsage) {
   if (!usage) return 0;
-  // Older persisted tasks may not have `projectMemory`; treat it as 0 so the
-  // running total stays a finite number for the memory-extraction trigger.
   return (
     (usage.system ?? 0) +
     (usage.tools ?? 0) +

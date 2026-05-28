@@ -127,11 +127,6 @@ export function TokenUsage({
   const getPct = (value: number | undefined) => {
     if (!value || !contextWindowUsage) return 0;
 
-    // Sum up the total tokens from the breakdown. Each bucket is non-overlapping
-    // (project memory is split out of `system`/`systemReminder` in livekit's
-    // estimateTokenBreakdown) so we can sum them all directly. Older tasks
-    // persisted before `projectMemory` was introduced will not have that
-    // field, so we fall back to 0 to avoid NaN propagation.
     const breakdownTotal =
       (contextWindowUsage.system ?? 0) +
       (contextWindowUsage.tools ?? 0) +
@@ -150,12 +145,6 @@ export function TokenUsage({
   const messagesVal = getPct(contextWindowUsage?.messages);
   const filesVal = getPct(contextWindowUsage?.files);
   const toolResultsVal = getPct(contextWindowUsage?.toolResults);
-  // Server-side livekit tracks projectMemory as part of ContextWindowUsage,
-  // but reopened tasks (and tasks that haven't completed a stream yet) don't
-  // have it. Fall back to a local estimate of the exact same
-  // `<system-reminder>` wrapper that livekit measures and normalize against
-  // the model's context window (same denominator as the top-level chip), so
-  // the row keeps showing a number across both code paths.
   const projectMemoryTokens =
     contextWindowUsage?.projectMemory ??
     estimateProjectMemoryTokens(autoMemoryContext);
@@ -523,13 +512,6 @@ function formatTokens(tokens: number | null | undefined): string {
   return `${formattedValue}${unit}`;
 }
 
-/**
- * Local fallback for the project-memory token bucket used when livekit hasn't
- * produced a fresh ContextWindowUsage yet (e.g. right after reopening a task).
- * Mirrors livekit's `estimateTokens` (chars / 4) over exactly the same
- * `<system-reminder>` wrapper that `injectAutoMemory` injects, so the value
- * matches what the server would compute on the next stream finish.
- */
 function estimateProjectMemoryTokens(
   context: AutoMemoryContext | null | undefined,
 ): number {

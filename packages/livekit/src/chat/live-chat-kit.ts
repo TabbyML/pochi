@@ -723,9 +723,6 @@ function estimateTokenBreakdown(messages: Message[]) {
   let filesTokens = 0;
   let toolResultsTokens = 0;
   let systemReminderTokens = 0;
-  // Project-memory tokens come from the auto-memory `<system-reminder>` block
-  // injected on the first user turn. We split it out from `systemReminderTokens`
-  // so the UI can show its share without double-counting against `system`.
   let projectMemoryTokens = 0;
 
   for (const msg of messages) {

@@ -83,11 +83,6 @@ export type ContextWindowUsage = {
   messages: number;
   files: number;
   toolResults: number;
-  /**
-   * Tokens contributed by the project-memory (auto-memory) `<system-reminder>`
-   * block injected on the first user turn. Tracked separately from `system`
-   * so the UI can display the project-memory share without double-counting.
-   */
   projectMemory: number;
 };
 
