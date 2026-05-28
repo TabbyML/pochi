@@ -319,6 +319,7 @@
     "executeCommand": "以下のコマンドを実行します",
     "executingCommand": "コマンドを実行中",
     "for": "で",
+    "matching": "一致する",
     "searching": "検索中",
     "searchingFor": "検索中：",
     "matchCount_one": "{{count}}件一致",
