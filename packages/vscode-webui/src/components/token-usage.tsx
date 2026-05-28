@@ -17,7 +17,8 @@ import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
-import { constants } from "@getpochi/common";
+import type { AutoMemoryContext } from "@getpochi/common";
+import { constants, prompts } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -149,7 +150,17 @@ export function TokenUsage({
   const messagesVal = getPct(contextWindowUsage?.messages);
   const filesVal = getPct(contextWindowUsage?.files);
   const toolResultsVal = getPct(contextWindowUsage?.toolResults);
-  const projectMemoryVal = getPct(contextWindowUsage?.projectMemory);
+  // Server-side livekit tracks projectMemory as part of ContextWindowUsage,
+  // but reopened tasks (and tasks that haven't completed a stream yet) don't
+  // have it. Fall back to a local estimate of the exact same
+  // `<system-reminder>` wrapper that livekit measures and normalize against
+  // the model's context window (same denominator as the top-level chip), so
+  // the row keeps showing a number across both code paths.
+  const projectMemoryTokens =
+    contextWindowUsage?.projectMemory ??
+    estimateProjectMemoryTokens(autoMemoryContext);
+  const projectMemoryVal =
+    contextWindow > 0 ? (projectMemoryTokens / contextWindow) * 100 : 0;
 
   const showSystemSection =
     !!contextWindowUsage && (systemVal > 0.05 || toolsVal > 0.05);
@@ -510,4 +521,21 @@ function formatTokens(tokens: number | null | undefined): string {
   }
 
   return `${formattedValue}${unit}`;
+}
+
+/**
+ * Local fallback for the project-memory token bucket used when livekit hasn't
+ * produced a fresh ContextWindowUsage yet (e.g. right after reopening a task).
+ * Mirrors livekit's `estimateTokens` (chars / 4) over exactly the same
+ * `<system-reminder>` wrapper that `injectAutoMemory` injects, so the value
+ * matches what the server would compute on the next stream finish.
+ */
+function estimateProjectMemoryTokens(
+  context: AutoMemoryContext | null | undefined,
+): number {
+  if (!context) return 0;
+  const dynamic = prompts.autoMemory.buildDynamicPrompt(context);
+  if (!dynamic) return 0;
+  const reminder = `<system-reminder>${dynamic}</system-reminder>`;
+  return Math.ceil(reminder.length / 4);
 }
