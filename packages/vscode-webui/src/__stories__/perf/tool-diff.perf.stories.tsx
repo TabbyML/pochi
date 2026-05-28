@@ -291,11 +291,11 @@ function WriteToFileDiff({
       }
       expanded={expanded}
       onToggle={onToggle}
-      renderExpandableDetail={() => (
+      expandableDetail={
         <div className="my-2 ml-1 flex flex-col">
           <Viewer patch={output._meta.edit} filePath={input.path} />
         </div>
-      )}
+      }
     />
   );
 }

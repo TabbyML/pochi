@@ -77,73 +77,52 @@ export const McpToolCall: React.FC<ToolProps<any>> = ({
   return (
     <ExpandableToolContainer
       title={title}
-      renderExpandableDetail={() => (
-        <McpToolCallDetail
-          input={input}
-          result={result}
-          previewImageLink={previewImageLink}
-          setPreviewImageLink={setPreviewImageLink}
-        />
-      )}
-    />
-  );
-};
-
-function McpToolCallDetail({
-  input,
-  result,
-  previewImageLink,
-  setPreviewImageLink,
-}: {
-  input: unknown;
-  result: unknown;
-  previewImageLink: boolean;
-  setPreviewImageLink: (value: boolean) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="overflow-hidden rounded-lg border bg-[var(--vscode-editor-background)]">
-      <div className="border-[var(--vscode-widget-border)] border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
-        <span className="font-medium text-[var(--vscode-editor-foreground)] text-sm">
-          {t("toolInvocation.request")}
-        </span>
-      </div>
-      <CodeBlock
-        language={"json"}
-        value={JSON.stringify(input, null, 2)}
-        isMinimalView={true}
-        className="border-0"
-      />
-
-      {result && isMcpToolCallResult(result) ? (
-        <>
-          <div className="flex items-center justify-between border-[var(--vscode-widget-border)] border-t border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
+      expandableDetail={
+        <div className="overflow-hidden rounded-lg border bg-[var(--vscode-editor-background)]">
+          {/* Request Section */}
+          <div className="border-[var(--vscode-widget-border)] border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
             <span className="font-medium text-[var(--vscode-editor-foreground)] text-sm">
-              {t("toolInvocation.response")}
+              {t("toolInvocation.request")}
             </span>
-            {hasTextContent(result) && (
-              <DisplayModeToggle
-                previewImageLink={previewImageLink}
-                onToggle={setPreviewImageLink}
-              />
-            )}
           </div>
-          <Result result={result} previewImageLink={previewImageLink} />
-        </>
-      ) : (
-        <div className="p-0">
           <CodeBlock
             language={"json"}
-            value={JSON.stringify(result, null, 2)}
+            value={JSON.stringify(input, null, 2)}
             isMinimalView={true}
             className="border-0"
           />
+
+          {/* Response Section */}
+          {result && isMcpToolCallResult(result) ? (
+            <>
+              <div className="flex items-center justify-between border-[var(--vscode-widget-border)] border-t border-b bg-[var(--vscode-editorGroupHeader-tabsBackground)] px-4 py-2">
+                <span className="font-medium text-[var(--vscode-editor-foreground)] text-sm">
+                  {t("toolInvocation.response")}
+                </span>
+                {hasTextContent(result) && (
+                  <DisplayModeToggle
+                    previewImageLink={previewImageLink}
+                    onToggle={setPreviewImageLink}
+                  />
+                )}
+              </div>
+              <Result result={result} previewImageLink={previewImageLink} />
+            </>
+          ) : (
+            <div className="p-0">
+              <CodeBlock
+                language={"json"}
+                value={JSON.stringify(result, null, 2)}
+                isMinimalView={true}
+                className="border-0"
+              />
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      }
+    />
   );
-}
+};
 
 function Result({
   result,

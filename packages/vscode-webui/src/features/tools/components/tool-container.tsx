@@ -53,7 +53,6 @@ export const ExpandIcon: React.FC<{
 export const ExpandableToolContainer: React.FC<{
   title: React.ReactNode;
   expandableDetail?: React.ReactNode;
-  renderExpandableDetail?: () => React.ReactNode;
   expandableDetailIcon?: React.ReactNode;
   detail?: React.ReactNode;
   expanded?: boolean;
@@ -63,7 +62,6 @@ export const ExpandableToolContainer: React.FC<{
 }> = ({
   title,
   expandableDetail,
-  renderExpandableDetail,
   expandableDetailIcon,
   detail,
   expanded,
@@ -74,12 +72,6 @@ export const ExpandableToolContainer: React.FC<{
   const [internalShowDetails, setInternalShowDetails] =
     useState(defaultExpanded);
   const showDetails = expanded ?? internalShowDetails;
-  const hasExpandableDetail = Boolean(
-    expandableDetail || renderExpandableDetail,
-  );
-  const resolvedExpandableDetail = showDetails
-    ? (renderExpandableDetail?.() ?? expandableDetail)
-    : undefined;
 
   const handleToggle = () => {
     const next = !showDetails;
@@ -102,7 +94,7 @@ export const ExpandableToolContainer: React.FC<{
             {expandableDetailIcon}
           </span>
         )}
-        {hasExpandableDetail && (
+        {expandableDetail && (
           <ExpandIcon
             isExpanded={showDetails}
             onClick={handleToggle}
@@ -110,7 +102,7 @@ export const ExpandableToolContainer: React.FC<{
           />
         )}
       </ToolTitle>
-      {resolvedExpandableDetail}
+      {showDetails && expandableDetail}
       {detail}
     </ToolContainer>
   );
