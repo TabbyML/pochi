@@ -150,6 +150,10 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   );
 
   const input = tool.input;
+  const title =
+    input && "title" in input && input.title
+      ? input.title
+      : `widget_${tool.toolCallId}`;
   const widgetCode =
     input && "widgetCode" in input && input.widgetCode ? input.widgetCode : "";
   const isFinal =
@@ -332,7 +336,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       {iframeSrc ? (
         <iframe
           ref={iframeRef}
-          title={`widget_${tool.toolCallId}`}
+          title={title}
           src={iframeSrc}
           sandbox="allow-scripts"
           onLoad={handleLoad}

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { defineClientTool } from "./types";
 
 export const renderWidgetInputSchema = z.object({
+  title: z.string().describe("Short human-readable title for the widget."),
   widgetCode: z
     .string()
     .describe(

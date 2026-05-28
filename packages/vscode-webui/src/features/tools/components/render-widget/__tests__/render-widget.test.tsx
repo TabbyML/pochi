@@ -80,6 +80,7 @@ describe("RenderWidgetTool", () => {
             toolCallId: "widget-no-header",
             state: "input-available",
             input: {
+              title: "Clean widget",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -94,7 +95,32 @@ describe("RenderWidgetTool", () => {
     expect(screen.queryByTestId("status-icon")).toBeNull();
     expect(screen.queryByText("Rendering widget")).toBeNull();
     expect(getWidgetIframe(container).getAttribute("title")).toBe(
-      "widget_widget-no-header",
+      "Clean widget",
+    );
+  });
+
+  it("falls back to the tool call id when the widget title is unavailable", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-legacy",
+            state: "input-available",
+            input: {
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(getWidgetIframe(container).getAttribute("title")).toBe(
+      "widget_widget-legacy",
     );
   });
 
@@ -107,6 +133,7 @@ describe("RenderWidgetTool", () => {
             toolCallId: "widget-1",
             state: "input-available",
             input: {
+              title: "Broken widget",
               widgetCode: "<script>throw new Error('boom')</script>",
               guidelinesRead: true,
             },
@@ -137,6 +164,7 @@ describe("RenderWidgetTool", () => {
             toolCallId: "widget-2",
             state: "input-available",
             input: {
+              title: "Measured widget",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -170,6 +198,7 @@ describe("RenderWidgetTool", () => {
             toolCallId: "widget-theme",
             state: "input-available",
             input: {
+              title: "Theme widget",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -227,6 +256,7 @@ describe("RenderWidgetTool", () => {
             toolCallId: "widget-stable-src",
             state: "input-available",
             input: {
+              title: "Stable widget",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -251,6 +281,7 @@ describe("RenderWidgetTool", () => {
             toolCallId: "widget-stable-src",
             state: "input-available",
             input: {
+              title: "Stable widget",
               widgetCode: "<svg></svg>",
               guidelinesRead: true,
             },
@@ -278,6 +309,7 @@ describe("RenderWidgetTool", () => {
             toolCallId: "widget-replay",
             state: "input-available",
             input: {
+              title: "Replay widget",
               widgetCode: "<svg><rect/></svg>",
               guidelinesRead: true,
             },

@@ -27,21 +27,31 @@ describe("render widget tools", () => {
 
     expect(() =>
       renderWidgetInputSchema.parse({
+        title: "Flow",
         widgetCode: "<svg></svg>",
         guidelinesRead: true,
       }),
     ).not.toThrow();
     expect(() =>
       renderWidgetInputSchema.parse({
+        title: "Flow",
         widgetCode: "<svg></svg>",
       }),
     ).toThrow();
     expect(() =>
       renderWidgetInputSchema.parse({
+        title: "Flow",
         widgetCode: "<svg></svg>",
         guidelinesRead: false,
       }),
     ).toThrow();
+    expect(() =>
+      renderWidgetInputSchema.parse({
+        widgetCode: "<svg></svg>",
+        guidelinesRead: true,
+      }),
+    ).toThrow();
+    expect(inputProperties).toHaveProperty("title");
     expect(inputProperties).toHaveProperty("widgetCode");
     expect(inputProperties).toHaveProperty("guidelinesRead");
     expect(outputProperties).toHaveProperty("success");
@@ -55,6 +65,7 @@ describe("render widget tools", () => {
   it("treats renderWidget as a readonly UI rendering call", () => {
     expect(
       isReadonlyToolCall("renderWidget", {
+        title: "Flow",
         widgetCode: "<svg></svg>",
         guidelinesRead: true,
       }),
