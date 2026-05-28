@@ -128,7 +128,7 @@ export const BrowserSettingsSection: React.FC = () => {
       </SettingsSection>
 
       <SettingsSection title={t("browserAgentSettings.recordingSection")}>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           <label
             htmlFor="browser-agent-recording-enabled"
             className="flex min-h-9 items-center gap-3 font-medium text-muted-foreground text-sm"
@@ -146,7 +146,7 @@ export const BrowserSettingsSection: React.FC = () => {
             />
             <span>{t("browserAgentSettings.enableRecording")}</span>
           </label>
-          <SettingsRow label={t("browserAgentSettings.recordingSize")} stacked>
+          <SettingsRow label={t("browserAgentSettings.recordingSize")}>
             <RecordingSizeSelect
               value={settings.recording.recordingSize}
               onChange={(recordingSize) =>
@@ -182,19 +182,12 @@ function SettingsSection({
 function SettingsRow({
   label,
   children,
-  stacked,
 }: {
   label: string;
   children: React.ReactNode;
-  stacked?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "grid gap-1.5",
-        !stacked && "md:grid-cols-[160px_minmax(0,1fr)] md:items-center",
-      )}
-    >
+    <div className="grid gap-1.5">
       <span className="font-medium text-muted-foreground text-sm">{label}</span>
       <div className="min-w-0">{children}</div>
     </div>
