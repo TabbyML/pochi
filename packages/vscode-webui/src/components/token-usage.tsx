@@ -17,8 +17,7 @@ import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
-import type { AutoMemoryContext } from "@getpochi/common";
-import { constants, prompts } from "@getpochi/common";
+import { constants } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -145,11 +144,7 @@ export function TokenUsage({
   const messagesVal = getPct(contextWindowUsage?.messages);
   const filesVal = getPct(contextWindowUsage?.files);
   const toolResultsVal = getPct(contextWindowUsage?.toolResults);
-  const projectMemoryTokens =
-    contextWindowUsage?.projectMemory ??
-    estimateProjectMemoryTokens(autoMemoryContext);
-  const projectMemoryVal =
-    contextWindow > 0 ? (projectMemoryTokens / contextWindow) * 100 : 0;
+  const projectMemoryVal = getPct(contextWindowUsage?.projectMemory);
 
   const showSystemSection =
     !!contextWindowUsage && (systemVal > 0.05 || toolsVal > 0.05);
@@ -510,14 +505,4 @@ function formatTokens(tokens: number | null | undefined): string {
   }
 
   return `${formattedValue}${unit}`;
-}
-
-function estimateProjectMemoryTokens(
-  context: AutoMemoryContext | null | undefined,
-): number {
-  if (!context) return 0;
-  const dynamic = prompts.autoMemory.buildDynamicPrompt(context);
-  if (!dynamic) return 0;
-  const reminder = `<system-reminder>${dynamic}</system-reminder>`;
-  return Math.ceil(reminder.length / 4);
 }
