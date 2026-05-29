@@ -212,12 +212,16 @@ export function TokenUsage({
                   </TooltipProvider>
                 )}
             </div>
-            <div className="mb-2 text-muted-foreground">
-              {t("tokenUsage.tokensUsed", {
-                used: formatTokens(totalTokens),
-                total: formatTokens(contextWindow),
-                percentage,
-              })}
+            <div className="mb-2 flex items-center justify-between text-muted-foreground">
+              <span>
+                {t("tokenUsage.tokensUsed", {
+                  used: formatTokens(totalTokens),
+                  total: formatTokens(contextWindow),
+                })}
+              </span>
+              <span className="font-semibold text-foreground">
+                {percentage}%
+              </span>
             </div>
             <Progress value={percentage} className="mb-3" />
 
