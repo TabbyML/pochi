@@ -56,7 +56,7 @@
     "compactTask": "タスクを圧縮",
     "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} tokens が必要です",
     "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
-    "tokensUsed": "{{used}} / {{total}} tokens • {{percentage}}%",
+    "tokensUsed": "{{used}} / {{total}} tokens",
     "system": "システム",
     "systemInstructions": "システム指示",
     "toolDefinitions": "ツール定義",
@@ -64,13 +64,13 @@
     "messages": "メッセージ",
     "files": "ファイル",
     "toolResults": "ツールの結果",
-    "taskMemory": "タスクメモリ",
+    "taskMemory": "タスク",
     "taskMemoryDescription": "現在のタスクの要約です。会話を圧縮する際、重要な文脈を保持するために再利用されます。",
     "viewTaskMemory": "タスクメモリを表示",
     "viewTaskMemoryTooltip": "タスク圧縮時に使用されるタスクメモリを表示します。",
     "compact": "圧縮",
     "memory": "メモリ",
-    "projectMemory": "プロジェクトメモリ",
+    "projectMemory": "プロジェクト",
     "projectMemoryEnable": "プロジェクトメモリを有効化",
     "projectMemoryDisable": "プロジェクトメモリを無効化",
     "projectMemoryDescription": "Pochi が作業中にプロジェクトについて学んだ内容を MEMORY.md に保存し、今後のタスクで役立つ文脈として再利用します。",
@@ -149,12 +149,11 @@
     "advanced": {
       "title": "詳細設定",
       "developerMode": "開発者モード",
-      "enablePochiModels": "Pochi モデルを有効化",
       "clearStorage": "ストレージをクリア",
       "resetReviewPlanTutorialCounter": "レビュー計画チュートリアルカウンターをリセット",
       "language": "言語",
       "languageDescription": "希望の言語を選択してください",
-      "hideRecommendSettings": "推奨設定を非表示にする"
+      "resetRecommendSettings": "推奨設定をリセット"
     },
     "rules": {
       "title": "ルール",
@@ -556,16 +555,15 @@
     "runtimeSection": "ブラウザー実行環境",
     "localChromeSection": "ローカル Chrome",
     "recordingSection": "セッション録画",
-    "localChromeHint": "ローカル Chrome は --auto-connect を使用し、現在のユーザーのログイン済みブラウザーセッションを再利用できます。ブラウザーエージェントはその Chrome プロファイルでログイン済みのサイトやアカウントにアクセスできる可能性があるため、信頼できるタスクでのみ使用してください。",
     "browserMode": "ブラウザーモード",
+    "browserModeHint": "マネージドブラウザーは分離されたブラウザーセッションで実行されます。ローカル Chrome はあなたの Chrome プロファイルに接続し、既存のログイン状態やブラウザー状態を再利用できます。",
     "managedBrowser": "マネージドブラウザー",
     "localChrome": "ローカル Chrome",
     "chromePath": "Chrome 実行ファイルのパス（任意）",
     "chromePathHint": "空欄の場合は自動検出します。",
     "startParams": "カスタムブラウザー引数（任意）",
     "startParamsHint": "ブラウザー実行ファイルに渡す引数をスペース区切りで入力します。",
-    "enableRecording": "ブラウザーセッションを録画",
-    "recordingSize": "録画解像度"
+    "enableRecording": "ブラウザーセッションを録画"
   },
   "builtInAgentsSettings": {
     "title": "組み込みエージェント",

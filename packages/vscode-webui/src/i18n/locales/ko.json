@@ -55,7 +55,7 @@
     "compactTask": "작업 압축",
     "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} tokens 이상 필요합니다",
     "defaultContextWindowWarning": "컨텍스트 창 값은 기본값이며 사용자 지정 모델에 대해 정확하지 않을 수 있습니다. 정확한 token 관리를 위해 모델 공급자의 설명서에 따라 설정에서 조정하십시오.",
-    "tokensUsed": "{{used}} / {{total}} tokens • {{percentage}}%",
+    "tokensUsed": "{{used}} / {{total}} tokens",
     "system": "시스템",
     "systemInstructions": "시스템 지침",
     "toolDefinitions": "도구 정의",
@@ -63,13 +63,13 @@
     "messages": "메시지",
     "files": "파일",
     "toolResults": "도구 결과",
-    "taskMemory": "작업 메모리",
+    "taskMemory": "작업",
     "taskMemoryDescription": "현재 작업의 요약입니다. 대화 압축 시 핵심 맥락을 유지하기 위해 재사용됩니다.",
     "viewTaskMemory": "작업 메모리 보기",
     "viewTaskMemoryTooltip": "작업 압축 시 사용될 작업 메모리를 봅니다.",
     "compact": "압축",
     "memory": "메모리",
-    "projectMemory": "프로젝트 메모리",
+    "projectMemory": "프로젝트",
     "projectMemoryEnable": "프로젝트 메모리 활성화",
     "projectMemoryDisable": "프로젝트 메모리 비활성화",
     "projectMemoryDescription": "Pochi 가 작업 중 프로젝트에 대해 학습한 내용을 MEMORY.md 에 저장하여, 향후 작업에서 유용한 맥락으로 재사용합니다.",
@@ -148,12 +148,11 @@
     "advanced": {
       "title": "고급 설정",
       "developerMode": "개발자 모드",
-      "enablePochiModels": "Pochi 모델 활성화",
       "clearStorage": "저장소 지우기",
       "resetReviewPlanTutorialCounter": "리뷰 계획 튜토리얼 카운터 재설정",
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요",
-      "hideRecommendSettings": "추천 설정 숨기기"
+      "resetRecommendSettings": "추천 설정 재설정"
     },
     "rules": {
       "title": "규칙",
@@ -295,7 +294,6 @@
     "requiresApproval": "승인 대기 중",
     "taskCompleted": "작업 완료",
     "reading": "읽는 중 ",
-
     "writing": "쓰는 중 ",
     "continue": "계속",
     "cancel": "취소",
@@ -550,16 +548,15 @@
     "runtimeSection": "브라우저 런타임",
     "localChromeSection": "로컬 Chrome",
     "recordingSection": "세션 녹화",
-    "localChromeHint": "로컬 Chrome은 --auto-connect를 사용하며 현재 사용자의 로그인된 브라우저 세션을 재사용할 수 있습니다. 브라우저 에이전트가 해당 Chrome 프로필에 이미 로그인된 사이트와 계정에 접근할 수 있으므로 신뢰할 수 있는 작업에서만 사용하세요.",
     "browserMode": "브라우저 모드",
+    "browserModeHint": "관리형 브라우저는 격리된 브라우저 세션에서 실행됩니다. 로컬 Chrome은 사용자의 Chrome 프로필에 연결되어 기존 로그인과 브라우저 상태를 재사용할 수 있습니다.",
     "managedBrowser": "관리형 브라우저",
     "localChrome": "로컬 Chrome",
     "chromePath": "Chrome 실행 파일 경로(선택 사항)",
     "chromePathHint": "비워 두면 자동으로 감지합니다.",
     "startParams": "사용자 지정 브라우저 인수(선택 사항)",
     "startParamsHint": "브라우저 실행 파일에 전달할 인수를 공백으로 구분해 입력하세요.",
-    "enableRecording": "브라우저 세션 녹화",
-    "recordingSize": "녹화 해상도"
+    "enableRecording": "브라우저 세션 녹화"
   },
   "builtInAgentsSettings": {
     "title": "내장 에이전트",

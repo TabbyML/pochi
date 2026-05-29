@@ -33,8 +33,6 @@ export interface SettingsState {
 
   isDevMode: boolean;
 
-  enablePochiModels: boolean;
-
   toggleSubtaskOffhand: () => void;
   updateAutoApproveSettings: (data: Partial<AutoApprove>) => void;
   updateSubtaskAutoApproveSettings: (data: Partial<AutoApprove>) => void;
@@ -43,8 +41,6 @@ export interface SettingsState {
   updateAutoApproveActive: (value: boolean) => void;
   updateSubtaskAutoApproveActive: (value: boolean) => void;
   updateIsDevMode: (value: boolean) => void;
-
-  updateEnablePochiModels: (value: boolean) => void;
 
   initSubtaskAutoApproveSettings: () => void;
 }
@@ -130,8 +126,6 @@ export const useSettingsStore = create<SettingsState>()(
 
       isDevMode: false,
 
-      enablePochiModels: false,
-
       toggleSubtaskOffhand: () =>
         set((state) => ({
           subtaskOffhand: !state.subtaskOffhand,
@@ -172,9 +166,6 @@ export const useSettingsStore = create<SettingsState>()(
         set(() => ({ subtaskAutoApproveActive: value })),
 
       updateIsDevMode: (value: boolean) => set(() => ({ isDevMode: value })),
-
-      updateEnablePochiModels: (value: boolean) =>
-        set(() => ({ enablePochiModels: value })),
     }),
     {
       name: SettingsStorageName,
