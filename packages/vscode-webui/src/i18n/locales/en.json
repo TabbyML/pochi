@@ -153,7 +153,7 @@
       "language": "Language",
       "languageDescription": "Choose your preferred language",
       "openInTab": "Allows to open the task in a new tab",
-      "hideRecommendSettings": "Hide Recommended Settings"
+      "resetRecommendSettings": "Reset Setup Recommendations"
     },
     "rules": {
       "title": "Rules",
