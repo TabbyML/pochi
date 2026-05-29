@@ -555,16 +555,15 @@
     "runtimeSection": "ブラウザー実行環境",
     "localChromeSection": "ローカル Chrome",
     "recordingSection": "セッション録画",
-    "localChromeHint": "ローカル Chrome は --auto-connect を使用し、現在のユーザーのログイン済みブラウザーセッションを再利用できます。ブラウザーエージェントはその Chrome プロファイルでログイン済みのサイトやアカウントにアクセスできる可能性があるため、信頼できるタスクでのみ使用してください。",
     "browserMode": "ブラウザーモード",
+    "browserModeHint": "マネージドブラウザーは分離されたブラウザーセッションで実行されます。ローカル Chrome はあなたの Chrome プロファイルに接続し、既存のログイン状態やブラウザー状態を再利用できます。",
     "managedBrowser": "マネージドブラウザー",
     "localChrome": "ローカル Chrome",
     "chromePath": "Chrome 実行ファイルのパス（任意）",
     "chromePathHint": "空欄の場合は自動検出します。",
     "startParams": "カスタムブラウザー引数（任意）",
     "startParamsHint": "ブラウザー実行ファイルに渡す引数をスペース区切りで入力します。",
-    "enableRecording": "ブラウザーセッションを録画",
-    "recordingSize": "録画解像度"
+    "enableRecording": "ブラウザーセッションを録画"
   },
   "builtInAgentsSettings": {
     "title": "組み込みエージェント",

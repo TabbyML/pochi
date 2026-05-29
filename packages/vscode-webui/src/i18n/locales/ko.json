@@ -548,16 +548,15 @@
     "runtimeSection": "브라우저 런타임",
     "localChromeSection": "로컬 Chrome",
     "recordingSection": "세션 녹화",
-    "localChromeHint": "로컬 Chrome은 --auto-connect를 사용하며 현재 사용자의 로그인된 브라우저 세션을 재사용할 수 있습니다. 브라우저 에이전트가 해당 Chrome 프로필에 이미 로그인된 사이트와 계정에 접근할 수 있으므로 신뢰할 수 있는 작업에서만 사용하세요.",
     "browserMode": "브라우저 모드",
+    "browserModeHint": "관리형 브라우저는 격리된 브라우저 세션에서 실행됩니다. 로컬 Chrome은 사용자의 Chrome 프로필에 연결되어 기존 로그인과 브라우저 상태를 재사용할 수 있습니다.",
     "managedBrowser": "관리형 브라우저",
     "localChrome": "로컬 Chrome",
     "chromePath": "Chrome 실행 파일 경로(선택 사항)",
     "chromePathHint": "비워 두면 자동으로 감지합니다.",
     "startParams": "사용자 지정 브라우저 인수(선택 사항)",
     "startParamsHint": "브라우저 실행 파일에 전달할 인수를 공백으로 구분해 입력하세요.",
-    "enableRecording": "브라우저 세션 녹화",
-    "recordingSize": "녹화 해상도"
+    "enableRecording": "브라우저 세션 녹화"
   },
   "builtInAgentsSettings": {
     "title": "내장 에이전트",

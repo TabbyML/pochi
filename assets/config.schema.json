@@ -539,14 +539,6 @@
           "properties": {
             "recordingEnabled": {
               "type": "boolean"
-            },
-            "recordingSize": {
-              "type": "string",
-              "enum": [
-                "1280x720",
-                "1138x640",
-                "854x480"
-              ]
             }
           },
           "additionalProperties": false

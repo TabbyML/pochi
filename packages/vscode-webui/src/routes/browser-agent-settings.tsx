@@ -1,22 +1,10 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBrowserAgentSettings } from "@/lib/hooks/use-browser-agent-settings";
 import { cn } from "@/lib/utils";
-import {
-  type BrowserAgentRecordingSize,
-  BrowserAgentRecordingSizeOptions,
-  parseBrowserAgentRecordingSize,
-} from "@getpochi/common/vscode-webui-bridge";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, ChevronDown } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -25,7 +13,7 @@ export const Route = createFileRoute("/browser-agent-settings")({
     return (
       <div className="h-screen bg-background">
         <ScrollArea className="h-full">
-          <div className="mx-auto grid w-full max-w-4xl gap-6 px-6 py-7">
+          <div className="mx-auto grid w-full max-w-3xl gap-5 px-5 py-6">
             <BrowserSettingsSection />
           </div>
         </ScrollArea>
@@ -38,17 +26,6 @@ const DefaultChromePath =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const DefaultStartParams = "--no-sandbox --disable-dev-shm-usage";
 
-const RecordingSizeOptions: {
-  value: BrowserAgentRecordingSize;
-  label: string;
-}[] = BrowserAgentRecordingSizeOptions.map((value) => {
-  const { width, height } = parseBrowserAgentRecordingSize(value);
-  return {
-    value,
-    label: `${width} x ${height}`,
-  };
-});
-
 export const BrowserSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   const { browserSettings: settings, setBrowserSettings } =
@@ -58,80 +35,87 @@ export const BrowserSettingsSection: React.FC = () => {
     return null;
   }
 
+  const isLocalChromeMode = settings.runtime.mode === "localChrome";
+
   return (
     <main className="grid gap-5">
       <SettingsSection title={t("browserAgentSettings.runtimeSection")}>
-        <SettingsRow label={t("browserAgentSettings.browserMode")}>
-          <SegmentedControl
-            value={settings.runtime.mode}
-            options={[
-              {
-                value: "managed",
-                label: t("browserAgentSettings.managedBrowser"),
-              },
-              {
-                value: "localChrome",
-                label: t("browserAgentSettings.localChrome"),
-              },
-            ]}
-            onChange={(mode) =>
-              setBrowserSettings({
-                runtime: { mode },
-              })
-            }
-          />
-        </SettingsRow>
-      </SettingsSection>
-
-      <SettingsSection title={t("browserAgentSettings.localChromeSection")}>
-        <p className="text-muted-foreground text-xs leading-5">
-          {t("browserAgentSettings.localChromeHint")}
-        </p>
-        <SettingsRow label={t("browserAgentSettings.chromePath")}>
-          <div className="grid gap-1.5">
-            <Input
-              className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
-              value={settings.localChrome.chromePath}
-              placeholder={DefaultChromePath}
-              onChange={(event) =>
-                setBrowserSettings({
-                  localChrome: {
-                    chromePath: event.target.value,
+        <div className="grid gap-4">
+          <SettingsRow label={t("browserAgentSettings.browserMode")}>
+            <div className="grid gap-1.5">
+              <SegmentedControl
+                value={settings.runtime.mode}
+                options={[
+                  {
+                    value: "managed",
+                    label: t("browserAgentSettings.managedBrowser"),
                   },
-                })
-              }
-            />
-            <p className="text-muted-foreground text-xs">
-              {t("browserAgentSettings.chromePathHint")}
-            </p>
-          </div>
-        </SettingsRow>
-        <SettingsRow label={t("browserAgentSettings.startParams")}>
-          <div className="grid gap-1.5">
-            <Input
-              className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
-              value={settings.localChrome.startParams}
-              placeholder={DefaultStartParams}
-              onChange={(event) =>
-                setBrowserSettings({
-                  localChrome: {
-                    startParams: event.target.value,
+                  {
+                    value: "localChrome",
+                    label: t("browserAgentSettings.localChrome"),
                   },
-                })
-              }
-            />
-            <p className="text-muted-foreground text-xs">
-              {t("browserAgentSettings.startParamsHint")}
-            </p>
-          </div>
-        </SettingsRow>
+                ]}
+                onChange={(mode) =>
+                  setBrowserSettings({
+                    runtime: { mode },
+                  })
+                }
+              />
+              <FieldHint>{t("browserAgentSettings.browserModeHint")}</FieldHint>
+            </div>
+          </SettingsRow>
+          {isLocalChromeMode && (
+            <SettingsSubsection
+              title={t("browserAgentSettings.localChromeSection")}
+            >
+              <SettingsRow label={t("browserAgentSettings.chromePath")}>
+                <div className="grid gap-1.5">
+                  <Input
+                    className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
+                    value={settings.localChrome.chromePath}
+                    placeholder={DefaultChromePath}
+                    onChange={(event) =>
+                      setBrowserSettings({
+                        localChrome: {
+                          chromePath: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <FieldHint>
+                    {t("browserAgentSettings.chromePathHint")}
+                  </FieldHint>
+                </div>
+              </SettingsRow>
+              <SettingsRow label={t("browserAgentSettings.startParams")}>
+                <div className="grid gap-1.5">
+                  <Input
+                    className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
+                    value={settings.localChrome.startParams}
+                    placeholder={DefaultStartParams}
+                    onChange={(event) =>
+                      setBrowserSettings({
+                        localChrome: {
+                          startParams: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <FieldHint>
+                    {t("browserAgentSettings.startParamsHint")}
+                  </FieldHint>
+                </div>
+              </SettingsRow>
+            </SettingsSubsection>
+          )}
+        </div>
       </SettingsSection>
 
       <SettingsSection title={t("browserAgentSettings.recordingSection")}>
         <div className="grid gap-4">
           <label
             htmlFor="browser-agent-recording-enabled"
-            className="flex min-h-9 items-center gap-3 font-medium text-muted-foreground text-sm"
+            className="flex min-h-9 items-center gap-2.5 font-medium text-foreground text-sm"
           >
             <Checkbox
               id="browser-agent-recording-enabled"
@@ -146,18 +130,6 @@ export const BrowserSettingsSection: React.FC = () => {
             />
             <span>{t("browserAgentSettings.enableRecording")}</span>
           </label>
-          <SettingsRow label={t("browserAgentSettings.recordingSize")}>
-            <RecordingSizeSelect
-              value={settings.recording.recordingSize}
-              onChange={(recordingSize) =>
-                setBrowserSettings({
-                  recording: {
-                    recordingSize,
-                  },
-                })
-              }
-            />
-          </SettingsRow>
         </div>
       </SettingsSection>
     </main>
@@ -172,70 +144,72 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid gap-3 border-border/70 border-t pt-5 first:border-t-0 first:pt-0">
-      <h2 className="font-semibold text-base tracking-normal">{title}</h2>
+    <section className="grid gap-4 border-border/70 border-t pt-5 first:border-t-0 first:pt-0">
+      <div className="flex min-h-7 items-center">
+        <h2 className="font-semibold text-base text-foreground tracking-normal">
+          {title}
+        </h2>
+      </div>
       {children}
     </section>
   );
 }
 
-function SettingsRow({
-  label,
+function SettingsSubsection({
+  title,
+  description,
   children,
 }: {
-  label: string;
+  title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
+    <div className="grid gap-4 rounded-md border border-border/70 bg-background/60 p-4">
+      <div className="flex min-h-6 items-center">
+        <h3 className="font-semibold text-foreground text-sm tracking-normal">
+          {title}
+        </h3>
+      </div>
+      {description && <FieldHint>{description}</FieldHint>}
+      <div className="grid gap-3.5">{children}</div>
+    </div>
+  );
+}
+
+function SettingsRow({
+  label,
+  labelFor,
+  density = "default",
+  children,
+}: {
+  label: string;
+  labelFor?: string;
+  density?: "default" | "compact";
+  children: React.ReactNode;
+}) {
+  const labelClassName = cn(
+    "font-medium text-muted-foreground",
+    density === "compact" ? "text-xs" : "text-sm",
+  );
+  const labelNode = labelFor ? (
+    <label htmlFor={labelFor} className={labelClassName}>
+      {label}
+    </label>
+  ) : (
+    <span className={labelClassName}>{label}</span>
+  );
+
+  return (
     <div className="grid gap-1.5">
-      <span className="font-medium text-muted-foreground text-sm">{label}</span>
+      {labelNode}
       <div className="min-w-0">{children}</div>
     </div>
   );
 }
 
-function RecordingSizeSelect({
-  value,
-  onChange,
-}: {
-  value: BrowserAgentRecordingSize;
-  onChange: (value: BrowserAgentRecordingSize) => void;
-}) {
-  const selectedOption =
-    RecordingSizeOptions.find((option) => option.value === value) ??
-    RecordingSizeOptions[0];
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex h-9 w-full items-center justify-between rounded-md border border-border/80 bg-background px-3 text-sm shadow-sm outline-none transition-[color,box-shadow] hover:bg-muted focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          <span>{selectedOption.label}</span>
-          <ChevronDown className="size-4 text-muted-foreground" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="w-[var(--radix-dropdown-menu-trigger-width)]"
-      >
-        {RecordingSizeOptions.map((option) => {
-          const isSelected = option.value === value;
-          return (
-            <DropdownMenuItem
-              key={option.value}
-              className="justify-between"
-              onSelect={() => onChange(option.value)}
-            >
-              {option.label}
-              {isSelected && <Check className="size-4 text-primary" />}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+function FieldHint({ children }: { children: React.ReactNode }) {
+  return <p className="text-muted-foreground text-xs leading-5">{children}</p>;
 }
 
 function SegmentedControl<T extends string>({
@@ -248,7 +222,7 @@ function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-background p-1 shadow-sm">
+    <div className="grid w-full grid-cols-2 gap-1 rounded-md border border-border bg-background p-1 shadow-sm">
       {options.map((option) => {
         const isSelected = option.value === value;
         return (
