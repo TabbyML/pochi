@@ -3,7 +3,9 @@
     "disable": "Disable",
     "openFolder": "Open Folder",
     "account": "Account",
-    "help": "Help"
+    "help": "Help",
+    "reset": "Reset",
+    "clear": "Clear"
   },
   "error": {
     "somethingWentWrong": "Something went wrong",
@@ -147,6 +149,7 @@
     "advanced": {
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
+      "developerSettings": "Developer Settings",
       "clearStorage": "Clear Storage",
       "resetReviewPlanTutorialCounter": "Reset Review Plan Tutorial Counter",
       "language": "Language",
