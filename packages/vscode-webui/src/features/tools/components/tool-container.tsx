@@ -102,8 +102,8 @@ export const ExpandableToolContainer: React.FC<{
           />
         )}
       </ToolTitle>
-      {showDetails && expandableDetail}
       {detail}
+      {showDetails && expandableDetail}
     </ToolContainer>
   );
 };
