@@ -1,10 +1,6 @@
 import { blobStore } from "@/lib/remote-blob-store";
 import { getLogger } from "@getpochi/common";
-import {
-  type BrowserAgentRecordingSize,
-  type BrowserAgentSettings,
-  parseBrowserAgentRecordingSize,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { BrowserAgentSettings } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
@@ -18,6 +14,8 @@ const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
 const WhiteScreenCheckInterval = 500;
 const WebsocketRetryInterval = 2500;
+const RecordingWidth = 960;
+const RecordingHeight = 540;
 type BrowserRecordingOptions = BrowserAgentSettings["recording"];
 
 function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
@@ -57,20 +55,18 @@ function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
 
 async function createRecordingImageBitmap(
   imageBitmap: ImageBitmap,
-  recordingSize: BrowserAgentRecordingSize,
 ): Promise<ImageBitmap> {
-  const { width, height } = parseBrowserAgentRecordingSize(recordingSize);
   let canvas: OffscreenCanvas | HTMLCanvasElement;
   let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
     null;
 
   if (typeof OffscreenCanvas !== "undefined") {
-    canvas = new OffscreenCanvas(width, height);
+    canvas = new OffscreenCanvas(RecordingWidth, RecordingHeight);
     ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
   } else {
     canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = RecordingWidth;
+    canvas.height = RecordingHeight;
     ctx = canvas.getContext("2d");
   }
 
@@ -79,18 +75,18 @@ async function createRecordingImageBitmap(
   }
 
   ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, RecordingWidth, RecordingHeight);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
   const scale = Math.min(
-    width / imageBitmap.width,
-    height / imageBitmap.height,
+    RecordingWidth / imageBitmap.width,
+    RecordingHeight / imageBitmap.height,
   );
   const drawWidth = Math.round(imageBitmap.width * scale);
   const drawHeight = Math.round(imageBitmap.height * scale);
-  const drawX = Math.floor((width - drawWidth) / 2);
-  const drawY = Math.floor((height - drawHeight) / 2);
+  const drawX = Math.floor((RecordingWidth - drawWidth) / 2);
+  const drawY = Math.floor((RecordingHeight - drawHeight) / 2);
   ctx.drawImage(imageBitmap, drawX, drawY, drawWidth, drawHeight);
 
   if (
@@ -207,10 +203,8 @@ export class BrowserRecordingSession {
         }
       }
 
-      const recordingImageBitmap = await createRecordingImageBitmap(
-        imageBitmap,
-        this.options.recordingSize,
-      );
+      const recordingImageBitmap =
+        await createRecordingImageBitmap(imageBitmap);
       imageBitmap.close();
 
       if (!this.muxer) {

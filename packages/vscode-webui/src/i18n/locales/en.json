@@ -3,7 +3,9 @@
     "disable": "Disable",
     "openFolder": "Open Folder",
     "account": "Account",
-    "help": "Help"
+    "help": "Help",
+    "reset": "Reset",
+    "clear": "Clear"
   },
   "error": {
     "somethingWentWrong": "Something went wrong",
@@ -147,6 +149,7 @@
     "advanced": {
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
+      "developerSettings": "Developer Settings",
       "clearStorage": "Clear Storage",
       "resetReviewPlanTutorialCounter": "Reset Review Plan Tutorial Counter",
       "language": "Language",
@@ -556,6 +559,7 @@
     "recordingSection": "Session Recording",
     "localChromeHint": "Local Chrome uses --auto-connect and can reuse the current user's logged-in browser session. The browser agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
     "browserMode": "Browser Mode",
+    "browserModeHint": "Managed Browser runs in an isolated browser session. Local Chrome connects to your Chrome profile so it can reuse existing sign-ins and browser state.",
     "managedBrowser": "Managed Browser",
     "localChrome": "Local Chrome",
     "chromePath": "Chrome Executable Path (Optional)",

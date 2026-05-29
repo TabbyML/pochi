@@ -553,16 +553,15 @@
     "runtimeSection": "浏览器运行环境",
     "localChromeSection": "本地 Chrome",
     "recordingSection": "会话录制",
-    "localChromeHint": "本地 Chrome 使用 --auto-connect，并可复用当前用户已登录的浏览器会话。浏览器代理可能访问该 Chrome 个人资料中已登录的网站和账号，请仅在可信任务中使用。",
     "browserMode": "浏览器模式",
+    "browserModeHint": "托管浏览器会在隔离的浏览器会话中运行。本地 Chrome 会连接到你的 Chrome 个人资料，可复用已有登录状态和浏览器状态。",
     "managedBrowser": "托管浏览器",
     "localChrome": "本地 Chrome",
     "chromePath": "Chrome 可执行文件路径（可选）",
     "chromePathHint": "留空则自动检测。",
     "startParams": "自定义浏览器参数（可选）",
     "startParamsHint": "传递给浏览器可执行文件的参数，用空格分隔。",
-    "enableRecording": "录制浏览器会话",
-    "recordingSize": "录制分辨率"
+    "enableRecording": "录制浏览器会话"
   },
   "builtInAgentsSettings": {
     "title": "内置代理",
