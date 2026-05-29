@@ -58,8 +58,6 @@ export const BrowserSettingsSection: React.FC = () => {
     return null;
   }
 
-  const isLocalChromeMode = settings.runtime.mode === "localChrome";
-
   return (
     <main className="grid gap-5">
       <SettingsSection title={t("browserAgentSettings.runtimeSection")}>
@@ -85,51 +83,49 @@ export const BrowserSettingsSection: React.FC = () => {
         </SettingsRow>
       </SettingsSection>
 
-      {isLocalChromeMode && (
-        <SettingsSection title={t("browserAgentSettings.localChromeSection")}>
-          <p className="text-muted-foreground text-xs leading-5">
-            {t("browserAgentSettings.localChromeHint")}
-          </p>
-          <SettingsRow label={t("browserAgentSettings.chromePath")}>
-            <div className="grid gap-1.5">
-              <Input
-                className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
-                value={settings.localChrome.chromePath}
-                placeholder={DefaultChromePath}
-                onChange={(event) =>
-                  setBrowserSettings({
-                    localChrome: {
-                      chromePath: event.target.value,
-                    },
-                  })
-                }
-              />
-              <p className="text-muted-foreground text-xs">
-                {t("browserAgentSettings.chromePathHint")}
-              </p>
-            </div>
-          </SettingsRow>
-          <SettingsRow label={t("browserAgentSettings.startParams")}>
-            <div className="grid gap-1.5">
-              <Input
-                className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
-                value={settings.localChrome.startParams}
-                placeholder={DefaultStartParams}
-                onChange={(event) =>
-                  setBrowserSettings({
-                    localChrome: {
-                      startParams: event.target.value,
-                    },
-                  })
-                }
-              />
-              <p className="text-muted-foreground text-xs">
-                {t("browserAgentSettings.startParamsHint")}
-              </p>
-            </div>
-          </SettingsRow>
-        </SettingsSection>
-      )}
+      <SettingsSection title={t("browserAgentSettings.localChromeSection")}>
+        <p className="text-muted-foreground text-xs leading-5">
+          {t("browserAgentSettings.localChromeHint")}
+        </p>
+        <SettingsRow label={t("browserAgentSettings.chromePath")}>
+          <div className="grid gap-1.5">
+            <Input
+              className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
+              value={settings.localChrome.chromePath}
+              placeholder={DefaultChromePath}
+              onChange={(event) =>
+                setBrowserSettings({
+                  localChrome: {
+                    chromePath: event.target.value,
+                  },
+                })
+              }
+            />
+            <p className="text-muted-foreground text-xs">
+              {t("browserAgentSettings.chromePathHint")}
+            </p>
+          </div>
+        </SettingsRow>
+        <SettingsRow label={t("browserAgentSettings.startParams")}>
+          <div className="grid gap-1.5">
+            <Input
+              className="h-9 border-border/80 bg-background shadow-sm placeholder:text-muted-foreground/80"
+              value={settings.localChrome.startParams}
+              placeholder={DefaultStartParams}
+              onChange={(event) =>
+                setBrowserSettings({
+                  localChrome: {
+                    startParams: event.target.value,
+                  },
+                })
+              }
+            />
+            <p className="text-muted-foreground text-xs">
+              {t("browserAgentSettings.startParamsHint")}
+            </p>
+          </div>
+        </SettingsRow>
+      </SettingsSection>
 
       <SettingsSection title={t("browserAgentSettings.recordingSection")}>
         <div className="grid gap-4">
