@@ -553,16 +553,15 @@
     "runtimeSection": "Browser Runtime",
     "localChromeSection": "Local Chrome",
     "recordingSection": "Session Recording",
-    "localChromeHint": "Local chrome uses --auto-connect and can reuse the current user's logged-in browser session. browser agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
     "browserMode": "Browser mode",
+    "browserModeHint": "Managed browser runs in an isolated browser session. Local chrome connects to your Chrome profile so it can reuse existing sign-ins and browser state.",
     "managedBrowser": "Managed browser",
     "localChrome": "Local chrome",
     "chromePath": "Chrome executable path (optional)",
     "chromePathHint": "Leave blank to auto-detect.",
     "startParams": "Custom browser arguments (optional)",
     "startParamsHint": "Space-separated arguments to pass to the browser executable.",
-    "enableRecording": "Record browser sessions",
-    "recordingSize": "Recording resolution"
+    "enableRecording": "Record browser sessions"
   },
   "builtInAgentsSettings": {
     "title": "Built-in agents",

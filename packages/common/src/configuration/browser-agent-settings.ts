@@ -13,7 +13,6 @@ export const DefaultBrowserAgentSettings: BrowserAgentSettingsValue = {
   },
   recording: {
     recordingEnabled: true,
-    recordingSize: "1138x640",
   },
 };
 
