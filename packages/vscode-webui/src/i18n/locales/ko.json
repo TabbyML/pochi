@@ -148,7 +148,6 @@
     "advanced": {
       "title": "고급 설정",
       "developerMode": "개발자 모드",
-      "enablePochiModels": "Pochi 모델 활성화",
       "clearStorage": "저장소 지우기",
       "resetReviewPlanTutorialCounter": "리뷰 계획 튜토리얼 카운터 재설정",
       "language": "언어",

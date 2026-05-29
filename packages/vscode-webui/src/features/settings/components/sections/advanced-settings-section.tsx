@@ -9,13 +9,7 @@ import { SettingsCheckboxOption } from "../ui/settings-checkbox-option";
 
 export const AdvancedSettingsSection: React.FC = () => {
   const { t } = useTranslation();
-  const {
-    isDevMode,
-    updateIsDevMode,
-
-    enablePochiModels,
-    updateEnablePochiModels,
-  } = useSettingsStore();
+  const { isDevMode, updateIsDevMode } = useSettingsStore();
   const vscodeSettings = useVSCodeSettings();
   const { resetCount } = useReviewPlanTutorialCounter();
 
@@ -37,14 +31,6 @@ export const AdvancedSettingsSection: React.FC = () => {
         )}
         {isDevMode && (
           <>
-            <SettingsCheckboxOption
-              id="enable-pochi-models"
-              label={t("settings.advanced.enablePochiModels")}
-              checked={enablePochiModels}
-              onCheckedChange={(checked) => {
-                updateEnablePochiModels(!!checked);
-              }}
-            />
             {vscodeSettings?.hideRecommendSettings && (
               <div>
                 <Button
