@@ -56,7 +56,7 @@
     "compactTask": "タスクを圧縮",
     "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} tokens が必要です",
     "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
-    "tokensUsed": "{{used}} / {{total}} tokens • {{percentage}}%",
+    "tokensUsed": "{{used}} / {{total}} tokens",
     "system": "システム",
     "systemInstructions": "システム指示",
     "toolDefinitions": "ツール定義",
