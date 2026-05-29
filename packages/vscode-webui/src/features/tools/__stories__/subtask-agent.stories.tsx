@@ -89,7 +89,20 @@ const overviewMessage: Message = {
           task: {
             messages: subtaskMessages,
             clientTaskId: "task-inline-1",
-            todos: [],
+            todos: [
+              {
+                id: "todo-seq",
+                content: "Run seq 7 command to generate numbers",
+                status: "completed",
+                priority: "high",
+              },
+              {
+                id: "todo-verify",
+                content: "Verify that the numbers 1 to 7 are printed",
+                status: "completed",
+                priority: "medium",
+              },
+            ],
           },
         },
       },
