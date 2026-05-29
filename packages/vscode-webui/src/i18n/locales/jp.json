@@ -154,7 +154,7 @@
       "resetReviewPlanTutorialCounter": "レビュー計画チュートリアルカウンターをリセット",
       "language": "言語",
       "languageDescription": "希望の言語を選択してください",
-      "hideRecommendSettings": "推奨設定を非表示にする"
+      "resetRecommendSettings": "推奨設定をリセット"
     },
     "rules": {
       "title": "ルール",

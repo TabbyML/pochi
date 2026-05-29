@@ -153,7 +153,7 @@
       "resetReviewPlanTutorialCounter": "重置评审计划教程计数器",
       "language": "语言",
       "languageDescription": "选择您的首选语言",
-      "hideRecommendSettings": "隐藏推荐设置"
+      "resetRecommendSettings": "重置推荐设置"
     },
     "rules": {
       "title": "规则",
