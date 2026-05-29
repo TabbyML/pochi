@@ -1,7 +1,6 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import {
   type PochiProviderOptions,
-  type PochiRequestUseCase,
   formatters,
   getLogger,
   prompts,
@@ -28,7 +27,6 @@ export async function compactTask({
   abortSignal,
   inline,
   store,
-  useCase = "compact-task",
 }: {
   blobStore: BlobStore;
   taskId: string;
@@ -40,7 +38,6 @@ export async function compactTask({
   abortSignal?: AbortSignal;
   inline?: boolean;
   store?: LiveKitStore;
-  useCase?: Extract<PochiRequestUseCase, "compact-task" | "auto-compact-task">;
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
@@ -67,7 +64,6 @@ export async function compactTask({
         model,
         abortSignal,
         messages.slice(0, -1),
-        useCase,
       );
     }
 
@@ -156,7 +152,6 @@ async function createSummary(
   model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
-  useCase: Extract<PochiRequestUseCase, "compact-task" | "auto-compact-task">,
 ) {
   const messages: Message[] = [
     ...inputMessages,
@@ -177,7 +172,7 @@ async function createSummary(
       pochi: {
         taskId,
         client: globalThis.POCHI_CLIENT,
-        useCase,
+        useCase: "compact-task",
       } satisfies PochiProviderOptions,
     },
     model,

@@ -131,7 +131,6 @@ function useLLM({
       return {
         id: model.id,
         type: "vendor",
-        contextWindow: model.options.contextWindow,
         useToolCallMiddleware: model.options.useToolCallMiddleware,
         getModel: () =>
           createModel(model.vendorId, {

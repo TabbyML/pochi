@@ -122,7 +122,7 @@ export const MessageList: React.FC<{
           {renderMessages.map((m, messageIndex) => (
             <div
               key={m.id}
-              className="flex flex-col"
+              className="message-list-item flex flex-col"
               aria-label={`chat-message-${m.role}`}
             >
               <div className={cn(showUserAvatar && "pt-4 pb-2")}>

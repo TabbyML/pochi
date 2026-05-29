@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { parsePatchFiles, resolveThemes } from "@pierre/diffs";
-import { PatchDiff } from "@pierre/diffs/react";
+import { FileDiff, Virtualizer } from "@pierre/diffs/react";
 import { Columns2, Rows2, WrapText } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -39,6 +39,13 @@ const patchDiffStyle = {
   "--diffs-fg-number-deletion-override":
     "var(--vscode-editorGutter-deletedBackground)",
 } as React.CSSProperties;
+const patchDiffMetrics = {
+  lineHeight: 16.5,
+  hunkLineCount: 30,
+  diffHeaderHeight: 0,
+  hunkSeparatorHeight: 24,
+  fileGap: 8,
+};
 
 const resolveThemesOnce = async () => {
   if (themesResolved) return;
@@ -54,20 +61,27 @@ export const DiffViewer = memo(function DiffViewer({
   patch,
   filePath,
 }: DiffViewerProps) {
+  return <DiffViewerImpl patch={patch} filePath={filePath} />;
+});
+
+DiffViewer.displayName = "DiffViewer";
+
+function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const [isReady, setIsReady] = useState(themesResolved);
   const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
   const [lineWrap, setLineWrap] = useState(false);
 
-  // Validate the patch using parsePatchFiles
-  const isValidPatch = useMemo(() => {
+  const fileDiff = useMemo(() => {
     try {
       const parsed = parsePatchFiles(patch, undefined, true);
-      // Check if we got at least one valid patch with files
-      return parsed.length > 0 && parsed.some((p) => p.files.length > 0);
+      if (parsed.length !== 1 || parsed[0].files.length !== 1) {
+        return undefined;
+      }
+      return parsed[0].files[0];
     } catch {
-      return false;
+      return undefined;
     }
   }, [patch]);
 
@@ -99,7 +113,7 @@ export const DiffViewer = memo(function DiffViewer({
   };
 
   // If patch is invalid, fall back to CodeBlock render
-  if (!isValidPatch) {
+  if (!fileDiff) {
     return <CodeBlock language="diff" value={patch} />;
   }
 
@@ -180,15 +194,14 @@ export const DiffViewer = memo(function DiffViewer({
           </div>
         </div>
       )}
-      <div className="max-h-60 overflow-auto">
-        <PatchDiff
-          patch={patch}
+      <Virtualizer className="max-h-60 overflow-auto">
+        <FileDiff
+          fileDiff={fileDiff}
           options={patchDiffOptions}
+          metrics={patchDiffMetrics}
           style={patchDiffStyle}
         />
-      </div>
+      </Virtualizer>
     </div>
   );
-});
-
-DiffViewer.displayName = "DiffViewer";
+}

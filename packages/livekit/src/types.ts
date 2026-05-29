@@ -138,10 +138,6 @@ const RequestData = z.object({
     z.object({
       id: z.string(),
       type: z.literal("vendor"),
-      contextWindow: z
-        .number()
-        .optional()
-        .describe("Context window of the model."),
       useToolCallMiddleware: z
         .boolean()
         .optional()

@@ -31,17 +31,19 @@ export const AdvancedSettingsSection: React.FC = () => {
         )}
         {isDevMode && (
           <>
-            {vscodeSettings && (
-              <SettingsCheckboxOption
-                id="hide-recommend-settings"
-                label={t("settings.advanced.hideRecommendSettings")}
-                checked={vscodeSettings.hideRecommendSettings}
-                onCheckedChange={async (checked) => {
-                  await vscodeHost.updateVSCodeSettings({
-                    hideRecommendSettings: !!checked,
-                  });
-                }}
-              />
+            {vscodeSettings?.hideRecommendSettings && (
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    await vscodeHost.updateVSCodeSettings({
+                      hideRecommendSettings: false,
+                    });
+                  }}
+                >
+                  {t("settings.advanced.resetRecommendSettings")}
+                </Button>
+              </div>
             )}
             <div>
               <Button

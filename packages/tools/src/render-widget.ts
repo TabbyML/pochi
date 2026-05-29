@@ -3,11 +3,6 @@ import { defineClientTool } from "./types";
 
 export const renderWidgetInputSchema = z.object({
   title: z.string().describe("Short human-readable title for the widget."),
-  kind: z
-    .enum(["diagram", "mockup", "interactive", "chart", "art"])
-    .describe(
-      "Closest primary widget kind: diagram, mockup, interactive, chart, or art.",
-    ),
   widgetCode: z
     .string()
     .describe(
@@ -17,16 +12,15 @@ export const renderWidgetInputSchema = z.object({
     .boolean()
     .refine((val) => val === true, {
       message:
-        "Set true only after invoking the `widget-guidelines` skill via the `useSkill` tool and reading the returned guidelines for the selected kind.",
+        "Set true only after invoking the `widget-guidelines` skill via the `useSkill` tool and reading the returned guidelines.",
     })
     .describe(
-      "Set true only after invoking the `widget-guidelines` skill via the `useSkill` tool and reading the returned guidelines for the selected kind.",
+      "Set true only after invoking the `widget-guidelines` skill via the `useSkill` tool and reading the returned guidelines.",
     ),
 });
 
 export const renderWidgetOutputSchema = z.object({
   success: z.boolean(),
-  title: z.string(),
 });
 
 export const renderWidget = defineClientTool({
