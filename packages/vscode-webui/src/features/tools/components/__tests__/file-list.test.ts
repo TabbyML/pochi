@@ -1,5 +1,15 @@
+import { render } from "@testing-library/react";
+import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { getVirtualFileListRange } from "../file-list";
+import { FileList, getVirtualFileListRange } from "../file-list";
+
+vi.mock("@/components/theme-provider", () => ({
+  useTheme: () => ({ theme: "dark" }),
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
@@ -38,5 +48,94 @@ describe("getVirtualFileListRange", () => {
     expect(result.endIndex).toBe(209);
     expect(result.offsetTop).toBe(4704);
     expect(result.totalHeight).toBe(12000);
+  });
+});
+
+describe("FileList", () => {
+  const makeMatches = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      file: `packages/vscode-webui/src/example-${index}.tsx`,
+      line: index + 1,
+      context: `file list row ${index}`,
+    }));
+
+  it("keeps the pre-virtualization scroll area styling", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "packages/vscode-webui/src/features/tools/components/file-list.tsx",
+            line: 12,
+            context: "file list style contract",
+          },
+        ],
+      }),
+    );
+
+    const scrollArea = container.querySelector('[data-slot="scroll-area"]');
+    expect(scrollArea).not.toBeNull();
+    expect(scrollArea?.className.split(/\s+/)).toEqual(
+      expect.arrayContaining([
+        "flex",
+        "max-h-[100px]",
+        "flex-col",
+        "gap-1",
+        "rounded",
+        "border",
+        "p-1",
+      ]),
+    );
+  });
+
+  it("keeps rows at their pre-virtualization natural height", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "packages/vscode-webui/src/features/tools/components/file-list.tsx",
+            line: 12,
+            context: "file list row style contract",
+          },
+        ],
+      }),
+    );
+
+    const row = container.querySelector(
+      '[title="file list row style contract"]',
+    );
+    expect(row).not.toBeNull();
+    const rowClasses = row?.className.split(/\s+/);
+    expect(rowClasses).toEqual(
+      expect.arrayContaining([
+        "cursor-pointer",
+        "truncate",
+        "rounded",
+        "py-0.5",
+        "hover:bg-accent/50",
+      ]),
+    );
+    expect(rowClasses).not.toContain("h-6");
+  });
+
+  it("renders lists at the virtualization threshold without a virtual height spacer", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: makeMatches(50),
+      }),
+    );
+
+    expect(container.querySelector('div.relative[style^="height:"]')).toBeNull();
+  });
+
+  it("virtualizes lists above the virtualization threshold", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: makeMatches(51),
+      }),
+    );
+
+    expect(
+      container.querySelector('div.relative[style^="height:"]'),
+    ).not.toBeNull();
   });
 });
