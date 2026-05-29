@@ -48,7 +48,9 @@ export function ReasoningPartUI({
     </span>
   );
 
-  const detail = <MessageMarkdown>{part.text}</MessageMarkdown>;
+  const detail = (
+    <MessageMarkdown className="pl-2">{part.text}</MessageMarkdown>
+  );
 
   return (
     <div className={className}>
