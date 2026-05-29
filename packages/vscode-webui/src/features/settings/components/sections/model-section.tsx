@@ -10,14 +10,12 @@ import { useModelList } from "@/lib/hooks/use-model-list";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DotIcon, PencilIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useSettingsStore } from "../../store";
 import { AccordionSection } from "../ui/accordion-section";
 import { EmptySectionPlaceholder, Section } from "../ui/section";
 
 export const ModelSection = () => {
   const { t } = useTranslation();
   const { modelList = [], isLoading } = useModelList(false);
-  const { enablePochiModels } = useSettingsStore();
 
   const getCostTypeBadgeText = (label?: string) => {
     return label === "super" ? t("modelSelect.super") : t("modelSelect.swift");
@@ -33,7 +31,7 @@ export const ModelSection = () => {
       (x): x is Extract<DisplayModel, { type: "vendor" }> =>
         x.type === "vendor" &&
         x.vendorId === "pochi" &&
-        (!x.modelId.startsWith("pochi/") || enablePochiModels),
+        !x.modelId.startsWith("pochi/"),
     )
     .sort((lhs, rhs) => {
       const lhsLabel = lhs.options.label;

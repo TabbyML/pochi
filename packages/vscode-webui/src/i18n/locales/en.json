@@ -147,7 +147,6 @@
     "advanced": {
       "title": "Advanced Settings",
       "developerMode": "Developer Mode",
-      "enablePochiModels": "Enable Pochi Models",
       "clearStorage": "Clear Storage",
       "resetReviewPlanTutorialCounter": "Reset Review Plan Tutorial Counter",
       "language": "Language",

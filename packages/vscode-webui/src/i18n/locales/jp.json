@@ -149,7 +149,6 @@
     "advanced": {
       "title": "詳細設定",
       "developerMode": "開発者モード",
-      "enablePochiModels": "Pochi モデルを有効化",
       "clearStorage": "ストレージをクリア",
       "resetReviewPlanTutorialCounter": "レビュー計画チュートリアルカウンターをリセット",
       "language": "言語",
