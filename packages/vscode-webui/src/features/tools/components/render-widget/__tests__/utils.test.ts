@@ -315,6 +315,25 @@ describe("render widget utilities", () => {
     expect(iframeDocument).not.toContain("data:text/javascript");
   });
 
+  it("inlines the packaged renderer script with a local nonce when the parent page has none", () => {
+    const scriptSrc =
+      "https://livekit-cf.tabbyml.workers.dev/assets/renderer-entry-CmF2_IbD.js";
+    const iframeDocument = buildWidgetIframeDocument({
+      src: scriptSrc,
+      code: "console.log('share widget')",
+    });
+    const cspNonceMatch = iframeDocument.match(/script-src 'nonce-([^']+)'/);
+    const scriptNonceMatch = iframeDocument.match(/<script nonce="([^"]+)">/);
+
+    expect(cspNonceMatch?.[1]).toBeTruthy();
+    expect(scriptNonceMatch?.[1]).toBe(cspNonceMatch?.[1]);
+    expect(iframeDocument).toContain("console.log('share widget')</script>");
+    expect(iframeDocument).not.toContain(`src="${scriptSrc}"`);
+    expect(iframeDocument).not.toContain(
+      "script-src https://livekit-cf.tabbyml.workers.dev",
+    );
+  });
+
   it("uses one shared sanitizer policy for widget fragments", () => {
     expect(
       sanitizeWidgetFragment(

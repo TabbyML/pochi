@@ -13,6 +13,7 @@ export const ChartJsCdnScriptSrc =
 export const ChartJsCdnOrigin = "https://cdn.jsdelivr.net";
 
 export const WidgetThemeStyleId = "pochi-widget-theme";
+const WidgetScriptNonceByteLength = 16;
 
 export type WidgetScript =
   | { type: "external"; src: string }
@@ -316,6 +317,9 @@ export function buildWidgetIframeDocument(
     typeof rendererScript === "string" ? undefined : rendererScript.code;
   const rendererScriptNonce =
     typeof rendererScript === "string" ? undefined : rendererScript.nonce;
+  const inlineRendererScriptNonce = rendererScriptCode
+    ? rendererScriptNonce || createWidgetScriptNonce()
+    : undefined;
   const resolvedRendererScriptSrc = normalizeWidgetModuleScriptSrc(
     resolveWidgetModuleScriptSrc(rendererScriptSrc),
   );
@@ -330,13 +334,13 @@ export function buildWidgetIframeDocument(
   const safeChannelId = escapeHtmlAttribute(channelId);
   const safeThemeClass = escapeHtmlAttribute(themeClass);
   const scriptCspSource =
-    rendererScriptCode && rendererScriptNonce
-      ? `'nonce-${rendererScriptNonce}'`
+    rendererScriptCode && inlineRendererScriptNonce
+      ? `'nonce-${inlineRendererScriptNonce}'`
       : getScriptCspSource(resolvedRendererScriptSrc);
   const connectCspSource = getWidgetConnectCspSource(resolvedRendererScriptSrc);
   const rendererScriptElement =
-    rendererScriptCode && rendererScriptNonce
-      ? `<script nonce="${escapeHtmlAttribute(rendererScriptNonce)}">${escapeInlineScriptContent(rendererScriptCode)}</script>`
+    rendererScriptCode && inlineRendererScriptNonce
+      ? `<script nonce="${escapeHtmlAttribute(inlineRendererScriptNonce)}">${escapeInlineScriptContent(rendererScriptCode)}</script>`
       : `<script type="module" src="${safeRendererScriptSrc}"></script>`;
 
   return `<!doctype html>
@@ -368,6 +372,20 @@ function escapeHtmlAttribute(value: string) {
 
 function escapeInlineScriptContent(code: string) {
   return code.replace(/<\/script/gi, "<\\/script").replace(/<!--/g, "<\\!--");
+}
+
+function createWidgetScriptNonce() {
+  if (globalThis.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(WidgetScriptNonceByteLength);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, formatNonceByte).join("");
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+}
+
+function formatNonceByte(byte: number) {
+  return byte.toString(16).padStart(2, "0");
 }
 
 function resolveWidgetModuleScriptSrc(scriptSrc: string) {
