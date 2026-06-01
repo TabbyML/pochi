@@ -1,6 +1,6 @@
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { threadSignal } from "@quilted/threads/signals";
-import i18n from "i18next";
+import i18n, { type Resource } from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 import en from "./locales/en.json";
@@ -8,7 +8,8 @@ import jp from "./locales/jp.json";
 import ko from "./locales/ko.json";
 import zh from "./locales/zh.json";
 
-const resources = {
+// Keep this broad to avoid deep i18next type instantiation on large locale JSON.
+const resources: Resource = {
   en: {
     translation: en,
   },
@@ -21,7 +22,7 @@ const resources = {
   ko: {
     translation: ko,
   },
-} as const;
+};
 
 const langDetector = new LanguageDetector();
 langDetector.addDetector({
