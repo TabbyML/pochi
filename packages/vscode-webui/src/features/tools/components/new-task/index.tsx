@@ -113,11 +113,25 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
         <TaskThread
           source={taskThreadSource}
           showMessageList={showMessageList}
+          showTodos={false}
           assistant={{ name: agent ?? "Pochi" }}
         />
       </FixedStateChatContextProvider>
     ) : undefined;
   }, [agent, showMessageList, taskThreadSource, toolCallStatusRegistryRef]);
+
+  const detail = useMemo(() => {
+    if (!taskThreadSource) {
+      return undefined;
+    }
+    return (
+      <TaskThread
+        source={taskThreadSource}
+        showMessageList={false}
+        showTodos={true}
+      />
+    );
+  }, [taskThreadSource]);
 
   if (agentType === "browser") {
     return <BrowserView {...props} taskSource={previewSource} />;
@@ -175,6 +189,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     <ExpandableToolContainer
       title={title}
       expandableDetail={expandableDetail}
+      detail={detail}
       expanded={showMessageList}
       onToggle={setShowMessageListImmediately}
     />

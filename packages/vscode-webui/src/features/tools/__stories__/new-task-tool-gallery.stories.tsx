@@ -231,3 +231,42 @@ export const Variants: Story = {
     ],
   },
 };
+
+export const CollapsedWithTodos: Story = {
+  args: {
+    tools: [
+      {
+        ...newTaskProps1,
+        toolCallId: `${newTaskProps1.toolCallId}-collapsed-with-todos`,
+        // @ts-expect-error - Adding custom prop for Storybook
+        taskThreadSource: {
+          messages: mockMessages,
+          todos: [
+            {
+              id: "todo-1",
+              content:
+                "Search for occurrences of enablePochiModels, useEnablePochiModels, and updateEnablePochiModels in the codebase",
+              status: "completed",
+              priority: "high",
+            },
+            {
+              id: "todo-2",
+              content:
+                "Analyze the search results and extract relevant code snippets and file paths",
+              status: "completed",
+              priority: "high",
+            },
+            {
+              id: "todo-3",
+              content:
+                "Present the final findings and code snippets to the user",
+              status: "pending",
+              priority: "medium",
+            },
+          ],
+          isLoading: false,
+        },
+      },
+    ],
+  },
+};
