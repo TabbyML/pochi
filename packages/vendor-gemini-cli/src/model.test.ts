@@ -7,7 +7,7 @@ describe("Gemini CLI fetcher", () => {
     Reflect.deleteProperty(globalThis, "POCHI_CORS_PROXY_URL_PREFIX");
   });
 
-  it("uses direct fetch when CORS is requested but the proxy is not configured", async () => {
+  it("uses direct fetch when the CORS proxy is not configured", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response("data: {}\r\n\r\n"));
@@ -21,7 +21,6 @@ describe("Gemini CLI fetcher", () => {
         expiresAt: Date.now() + 60_000,
         project: "project-id",
       }),
-      true,
     );
 
     await fetcher("https://unused.example", {
@@ -54,7 +53,6 @@ describe("Gemini CLI fetcher", () => {
         expiresAt: Date.now() + 60_000,
         project: "project-id",
       }),
-      true,
     );
 
     await fetcher("https://unused.example", {
