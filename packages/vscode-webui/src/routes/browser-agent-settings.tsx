@@ -1,14 +1,13 @@
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useBrowserAgentSettings } from "@/lib/hooks/use-browser-agent-settings";
 import { cn } from "@/lib/utils";
 import {
@@ -17,7 +16,6 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckIcon, ChevronDown } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -84,20 +82,27 @@ export const BrowserSettingsSection: React.FC = () => {
             >
               <SettingsRow label={t("browserAgentSettings.viewportSize")}>
                 <div className="grid gap-1.5">
-                  <DropdownSelectControl
+                  <Select
                     value={settings.managedBrowser.viewport}
-                    options={BrowserAgentViewportSizes.map((size) => ({
-                      value: size,
-                      label: t(`browserAgentSettings.viewportSizes.${size}`),
-                    }))}
-                    onChange={(viewport: BrowserAgentViewportSettings) => {
+                    onValueChange={(viewport: BrowserAgentViewportSettings) => {
                       setBrowserSettings({
                         managedBrowser: {
                           viewport,
                         },
                       });
                     }}
-                  />
+                  >
+                    <SelectTrigger className="h-9 w-full border-border/80 bg-background shadow-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BrowserAgentViewportSizes.map((size) => (
+                        <SelectItem key={size} value={size}>
+                          {t(`browserAgentSettings.viewportSizes.${size}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FieldHint>
                     {t("browserAgentSettings.viewportHint")}
                   </FieldHint>
@@ -283,65 +288,5 @@ function SegmentedControl<T extends string>({
         );
       })}
     </div>
-  );
-}
-
-function DropdownSelectControl<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T | undefined;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  const selectedOption = options.find((option) => option.value === value);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-9 w-full justify-between border-border/80 bg-background px-3 font-normal text-sm shadow-sm"
-        >
-          <span className="truncate">
-            {selectedOption?.label ?? options[0]?.label}
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="w-[var(--radix-dropdown-menu-trigger-width)]"
-      >
-        <DropdownMenuRadioGroup value={value}>
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <DropdownMenuRadioItem
-                key={option.value}
-                value={option.value}
-                className="cursor-pointer pl-2"
-                onClick={(event) => {
-                  onChange(option.value);
-                  event.stopPropagation();
-                }}
-              >
-                <CheckIcon
-                  className={cn(
-                    "mr-2 size-4 shrink-0",
-                    isSelected ? "opacity-100" : "opacity-0",
-                  )}
-                />
-                <span className={cn(isSelected && "font-semibold")}>
-                  {option.label}
-                </span>
-              </DropdownMenuRadioItem>
-            );
-          })}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
