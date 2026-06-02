@@ -2,10 +2,14 @@ import type {
   BrowserAgentSettingsConfig,
   BrowserAgentSettings as BrowserAgentSettingsValue,
 } from "../vscode-webui-bridge/types/browser-agent-settings";
+import { DefaultBrowserAgentViewport } from "../vscode-webui-bridge/types/browser-agent-settings";
 
 export const DefaultBrowserAgentSettings: BrowserAgentSettingsValue = {
   runtime: {
     mode: "managed",
+  },
+  managedBrowser: {
+    viewport: DefaultBrowserAgentViewport,
   },
   localChrome: {
     chromePath: "",
@@ -25,6 +29,11 @@ export function mergeBrowserAgentSettings(
       ...DefaultBrowserAgentSettings.runtime,
       ...current?.runtime,
       ...settings?.runtime,
+    },
+    managedBrowser: {
+      ...DefaultBrowserAgentSettings.managedBrowser,
+      ...current?.managedBrowser,
+      ...settings?.managedBrowser,
     },
     localChrome: {
       ...DefaultBrowserAgentSettings.localChrome,

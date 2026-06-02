@@ -522,6 +522,21 @@
           },
           "additionalProperties": false
         },
+        "managedBrowser": {
+          "type": "object",
+          "properties": {
+            "viewport": {
+              "type": "string",
+              "enum": [
+                "1280x720",
+                "900x600",
+                "768x1024",
+                "360x640"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
         "localChrome": {
           "type": "object",
           "properties": {

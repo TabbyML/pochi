@@ -1,6 +1,10 @@
 import { blobStore } from "@/lib/remote-blob-store";
 import { getLogger } from "@getpochi/common";
-import type { BrowserAgentSettings } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type BrowserAgentSettings,
+  DefaultRecordingViewport,
+  getBrowserAgentViewportSize,
+} from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
@@ -14,9 +18,11 @@ const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
 const WhiteScreenCheckInterval = 500;
 const WebsocketRetryInterval = 2500;
-const RecordingWidth = 960;
-const RecordingHeight = 540;
-type BrowserRecordingOptions = BrowserAgentSettings["recording"];
+
+type BrowserRecordingOptions = {
+  recording: BrowserAgentSettings["recording"];
+  viewport?: BrowserAgentSettings["managedBrowser"]["viewport"];
+};
 
 function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   const width = 32;
@@ -55,18 +61,24 @@ function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
 
 async function createRecordingImageBitmap(
   imageBitmap: ImageBitmap,
+  viewport?: BrowserAgentSettings["managedBrowser"]["viewport"],
 ): Promise<ImageBitmap> {
   let canvas: OffscreenCanvas | HTMLCanvasElement;
   let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
     null;
+  const recordingViewport = viewport
+    ? getBrowserAgentViewportSize(viewport)
+    : DefaultRecordingViewport;
+  const width = recordingViewport.width;
+  const height = recordingViewport.height;
 
   if (typeof OffscreenCanvas !== "undefined") {
-    canvas = new OffscreenCanvas(RecordingWidth, RecordingHeight);
+    canvas = new OffscreenCanvas(width, height);
     ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
   } else {
     canvas = document.createElement("canvas");
-    canvas.width = RecordingWidth;
-    canvas.height = RecordingHeight;
+    canvas.width = width;
+    canvas.height = height;
     ctx = canvas.getContext("2d");
   }
 
@@ -75,18 +87,18 @@ async function createRecordingImageBitmap(
   }
 
   ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, RecordingWidth, RecordingHeight);
+  ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
   const scale = Math.min(
-    RecordingWidth / imageBitmap.width,
-    RecordingHeight / imageBitmap.height,
+    width / imageBitmap.width,
+    height / imageBitmap.height,
   );
   const drawWidth = Math.round(imageBitmap.width * scale);
   const drawHeight = Math.round(imageBitmap.height * scale);
-  const drawX = Math.floor((RecordingWidth - drawWidth) / 2);
-  const drawY = Math.floor((RecordingHeight - drawHeight) / 2);
+  const drawX = Math.floor((width - drawWidth) / 2);
+  const drawY = Math.floor((height - drawHeight) / 2);
   ctx.drawImage(imageBitmap, drawX, drawY, drawWidth, drawHeight);
 
   if (
@@ -138,7 +150,7 @@ export class BrowserRecordingSession {
             const data = JSON.parse(event.data);
             if (data.type === "frame") {
               const frame = data.data;
-              if (!this.options.recordingEnabled) {
+              if (!this.options.recording.recordingEnabled) {
                 this.notifyFrame(frame);
                 return;
               }
@@ -203,8 +215,10 @@ export class BrowserRecordingSession {
         }
       }
 
-      const recordingImageBitmap =
-        await createRecordingImageBitmap(imageBitmap);
+      const recordingImageBitmap = await createRecordingImageBitmap(
+        imageBitmap,
+        this.options.viewport,
+      );
       imageBitmap.close();
 
       if (!this.muxer) {

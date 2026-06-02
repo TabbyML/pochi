@@ -556,6 +556,7 @@
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",
     "localChromeSection": "Local Chrome",
+    "managedBrowserSection": "Managed Browser",
     "recordingSection": "Session Recording",
     "localChromeHint": "Local Chrome uses --auto-connect and can reuse the current user's logged-in browser session. The browser agent may access sites and accounts already signed in to that Chrome profile, so use it only for trusted tasks.",
     "browserMode": "Browser Mode",
@@ -566,6 +567,14 @@
     "chromePathHint": "Leave blank to auto-detect.",
     "startParams": "Custom Browser Arguments (Optional)",
     "startParamsHint": "Space-separated arguments to pass to the browser executable.",
+    "viewportSize": "Viewport size",
+    "viewportHint": "Controls the browser view and recording size for Managed Browser sessions.",
+    "viewportSizes": {
+      "1280x720": "Large Desktop (1280x720)",
+      "900x600": "Small Desktop (900x600)",
+      "768x1024": "Tablet (768x1024)",
+      "360x640": "Mobile (360x640)"
+    },
     "enableRecording": "Record Browser Sessions",
     "recordingSize": "Recording Resolution"
   },
