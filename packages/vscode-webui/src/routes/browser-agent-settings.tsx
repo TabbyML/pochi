@@ -51,6 +51,28 @@ export const BrowserSettingsSection: React.FC = () => {
 
   return (
     <main className="grid gap-5">
+      <SettingsSection title={t("browserAgentSettings.recordingSection")}>
+        <div className="grid gap-4">
+          <label
+            htmlFor="browser-agent-recording-enabled"
+            className="flex min-h-9 items-center gap-2.5 font-medium text-foreground text-sm"
+          >
+            <Checkbox
+              id="browser-agent-recording-enabled"
+              checked={settings.recording.recordingEnabled}
+              onCheckedChange={(checked: CheckedState) =>
+                setBrowserSettings({
+                  recording: {
+                    recordingEnabled: checked === true,
+                  },
+                })
+              }
+            />
+            <span>{t("browserAgentSettings.enableRecording")}</span>
+          </label>
+        </div>
+      </SettingsSection>
+
       <SettingsSection title={t("browserAgentSettings.runtimeSection")}>
         <div className="grid gap-4">
           <SettingsRow label={t("browserAgentSettings.browserMode")}>
@@ -154,28 +176,6 @@ export const BrowserSettingsSection: React.FC = () => {
               </SettingsRow>
             </SettingsSubsection>
           )}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title={t("browserAgentSettings.recordingSection")}>
-        <div className="grid gap-4">
-          <label
-            htmlFor="browser-agent-recording-enabled"
-            className="flex min-h-9 items-center gap-2.5 font-medium text-foreground text-sm"
-          >
-            <Checkbox
-              id="browser-agent-recording-enabled"
-              checked={settings.recording.recordingEnabled}
-              onCheckedChange={(checked: CheckedState) =>
-                setBrowserSettings({
-                  recording: {
-                    recordingEnabled: checked === true,
-                  },
-                })
-              }
-            />
-            <span>{t("browserAgentSettings.enableRecording")}</span>
-          </label>
         </div>
       </SettingsSection>
     </main>
