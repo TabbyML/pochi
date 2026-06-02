@@ -12,6 +12,7 @@ import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
 import { ExpandIcon } from "../tool-container";
+import { TodoDetail } from "./todo-detail";
 
 interface SubAgentViewProps {
   uid?: string;
@@ -126,6 +127,8 @@ export function SubAgentView({
 
       {children}
 
+      <TodoDetail todos={taskSource?.todos ?? []} />
+
       {showFooter && (
         <>
           <div className="flex items-center gap-2 overflow-x-hidden border-t bg-muted/30 px-2 py-1.5 text-muted-foreground">
@@ -184,7 +187,6 @@ export function SubAgentView({
                 <TaskThread
                   source={{ ...taskSource, isLoading: false }}
                   showMessageList={true}
-                  showTodos={false}
                   scrollAreaClassName="border-none"
                   assistant={{ name: assistantName }}
                 />

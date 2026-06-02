@@ -18,6 +18,7 @@ import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
+import { TodoDetail } from "./todo-detail";
 import { WalkthroughView } from "./walkthrough-view";
 
 const SubtaskPreviewThrottleMs = 300;
@@ -175,6 +176,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     <ExpandableToolContainer
       title={title}
       expandableDetail={expandableDetail}
+      detail={<TodoDetail todos={taskSource?.todos ?? []} />}
       expanded={showMessageList}
       onToggle={setShowMessageListImmediately}
     />
