@@ -20,13 +20,14 @@ export const BrowserAgentViewportSizes = [
   "360x640",
 ] as const;
 
-export const DefaultBrowserAgentViewport = BrowserAgentViewportSizes[0];
-
 const BrowserAgentViewportSettings = z.enum(BrowserAgentViewportSizes);
 
 export type BrowserAgentViewportSettings = z.infer<
   typeof BrowserAgentViewportSettings
 >;
+
+export const DefaultBrowserAgentViewport: BrowserAgentViewportSettings =
+  "1280x720";
 
 const BrowserAgentManagedBrowserSettings = z.object({
   viewport: BrowserAgentViewportSettings,
