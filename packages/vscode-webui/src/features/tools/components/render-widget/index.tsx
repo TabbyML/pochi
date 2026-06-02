@@ -2,6 +2,8 @@ import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRenderWidgetStore } from "../../../chat/hooks/use-render-widget-store";
+import { useSendMessage } from "../../../chat/lib/chat-events";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
@@ -22,7 +24,9 @@ import {
 type WidgetRendererEvent =
   | { type: "ready" }
   | { type: "height"; height: number }
-  | { type: "error"; message: string; stack?: string };
+  | { type: "error"; message: string; stack?: string }
+  | { type: "state"; state: unknown }
+  | { type: "sendMessage"; prompt: string };
 
 type WidgetRenderMessage = {
   type: "preview" | "finalize";
@@ -65,6 +69,11 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isLastPart,
 }) => {
   const { theme } = useTheme();
+  const sendMessage = useSendMessage();
+  const setWidgetState = useRenderWidgetStore((state) => state.setWidgetState);
+  const clearWidgetState = useRenderWidgetStore(
+    (state) => state.clearWidgetState,
+  );
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runtimeRef = useRef<ChannelRuntime>({
@@ -158,6 +167,9 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     input && "widgetCode" in input && input.widgetCode ? input.widgetCode : "";
   const isFinal =
     tool.state === "input-available" || tool.state === "output-available";
+  const isInteractive = tool.state === "input-available";
+  const isInteractiveRef = useRef(isInteractive);
+  isInteractiveRef.current = isInteractive;
   const shouldAnimateReveal = shouldAnimateWidgetReveal({
     isExecuting,
     isLoading,
@@ -225,6 +237,13 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     });
   }, [fallbackThemeClass, queueThemeMessage]);
 
+  useEffect(() => {
+    if (!isInteractive) return;
+    return () => {
+      clearWidgetState(tool.toolCallId);
+    };
+  }, [clearWidgetState, isInteractive, tool.toolCallId]);
+
   const handleLoad = useCallback(() => {
     const rt = runtimeRef.current;
     const target = iframeRef.current?.contentWindow;
@@ -245,7 +264,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     }
     const channel = createChannel(target, channelId);
     rt.channel = channel;
-    channel.receive((event: WidgetRendererEvent) => {
+    channel.receive((rawEvent) => {
+      const event = rawEvent as WidgetRendererEvent;
       if (event.type === "ready") {
         runtimeRef.current.ready = true;
         scheduleFlush();
@@ -254,10 +274,25 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         setHasFirstHeight(true);
       } else if (event.type === "error") {
         setRendererError(event.message);
+      } else if (event.type === "state") {
+        if (isInteractiveRef.current) {
+          setWidgetState(tool.toolCallId, event.state ?? {});
+        }
+      } else if (event.type === "sendMessage") {
+        if (isInteractiveRef.current && event.prompt.trim()) {
+          sendMessage({ prompt: event.prompt });
+        }
       }
       return { ok: true };
     });
-  }, [channelId, fallbackThemeClass, scheduleFlush]);
+  }, [
+    channelId,
+    fallbackThemeClass,
+    scheduleFlush,
+    sendMessage,
+    setWidgetState,
+    tool.toolCallId,
+  ]);
 
   // Push theme updates whenever the parent webview theme changes so the
   // sandboxed iframe re-applies the new vscode-* variables and color palette
@@ -343,6 +378,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
           className={cn(
             "w-full bg-transparent",
             hasFirstHeight && "transition-[height] duration-150 ease-out",
+            !isInteractive && "pointer-events-none",
           )}
           style={{ height }}
         />

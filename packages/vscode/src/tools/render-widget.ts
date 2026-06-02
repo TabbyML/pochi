@@ -4,6 +4,6 @@ export const renderWidget: ToolFunctionType<
   ClientTools["renderWidget"]
 > = async () => {
   return {
-    success: true,
+    state: {},
   };
 };

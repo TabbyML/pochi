@@ -100,7 +100,8 @@ export function isCompletionToolPart(
 export function isAutoSuccessToolName(name: string): boolean {
   return (
     isCompletionToolName(name) ||
-    ToolsByPermission.default.some((tool) => name === tool)
+    (ToolsByPermission.default.some((tool) => name === tool) &&
+      name !== "renderWidget")
   );
 }
 

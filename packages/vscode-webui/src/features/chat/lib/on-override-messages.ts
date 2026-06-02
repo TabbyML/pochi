@@ -1,6 +1,8 @@
 import { vscodeHost } from "@/lib/vscode";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
+import { getStaticToolName, isStaticToolUIPart } from "ai";
 import { unique } from "remeda";
+import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
@@ -16,6 +18,8 @@ export async function onOverrideMessages({
   messages: Message[];
   abortSignal: AbortSignal;
 }) {
+  writePendingRenderWidgetOutput(messages);
+
   const checkpoints = messages
     .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
     .map((p) => p.data.commit);
@@ -34,6 +38,50 @@ export async function onOverrideMessages({
       // diff summary in chat view
       await updateChangedFiles(taskId, lastCheckpoint, lastMessage);
     }
+  }
+}
+
+export function writePendingRenderWidgetOutput(messages: Message[]) {
+  const outputMessage = findRenderWidgetOutputMessage(messages);
+  if (!outputMessage) return;
+
+  const store = useRenderWidgetStore.getState();
+  const outputPartIndex = findPendingRenderWidgetPartIndex(outputMessage);
+  if (outputPartIndex === undefined) return;
+
+  const part = outputMessage.parts[outputPartIndex];
+  if (!isStaticToolUIPart(part)) return;
+
+  const state = store.getWidgetState(part.toolCallId) ?? {};
+  outputMessage.parts = outputMessage.parts.map((currentPart, index) =>
+    index === outputPartIndex
+      ? ({
+          ...part,
+          state: "output-available",
+          output: { state },
+        } as Message["parts"][number])
+      : currentPart,
+  );
+  store.clearWidgetState(part.toolCallId);
+}
+
+function findRenderWidgetOutputMessage(messages: Message[]) {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage) return;
+  if (lastMessage.role === "assistant") return lastMessage;
+  if (lastMessage.role !== "user") return;
+
+  const previousMessage = messages.at(-2);
+  return previousMessage?.role === "assistant" ? previousMessage : undefined;
+}
+
+function findPendingRenderWidgetPartIndex(message: Message) {
+  for (let partIndex = message.parts.length - 1; partIndex >= 0; partIndex--) {
+    const part = message.parts[partIndex];
+    if (!isStaticToolUIPart(part)) continue;
+    if (getStaticToolName(part) !== "renderWidget") continue;
+    if (part.state !== "input-available") continue;
+    return partIndex;
   }
 }
 

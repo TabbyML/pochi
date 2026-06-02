@@ -54,10 +54,11 @@ describe("render widget tools", () => {
     expect(inputProperties).toHaveProperty("title");
     expect(inputProperties).toHaveProperty("widgetCode");
     expect(inputProperties).toHaveProperty("guidelinesRead");
-    expect(outputProperties).toHaveProperty("success");
+    expect(outputProperties).toHaveProperty("state");
+    expect(outputProperties).not.toHaveProperty("success");
     expect(() =>
       renderWidgetOutputSchema.parse({
-        success: true,
+        state: { hex: "#b87528" },
       }),
     ).not.toThrow();
   });

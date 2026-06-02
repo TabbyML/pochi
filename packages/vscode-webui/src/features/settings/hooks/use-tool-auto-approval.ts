@@ -46,7 +46,8 @@ export const getPendingToolcallApproval = (
     if (
       isStaticToolUIPart(part) &&
       part.state === "input-available" &&
-      !isCompletionToolPart(part)
+      !isCompletionToolPart(part) &&
+      getStaticToolName(part) !== "renderWidget"
     ) {
       tools.push(part);
     }
