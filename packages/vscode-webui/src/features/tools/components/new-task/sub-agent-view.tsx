@@ -12,7 +12,6 @@ import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
 import { ExpandIcon } from "../tool-container";
-import { TodoDetail } from "./todo-detail";
 
 interface SubAgentViewProps {
   uid?: string;
@@ -26,6 +25,7 @@ interface SubAgentViewProps {
   assistantName?: string;
   showToolCall?: boolean;
   showTaskThread?: boolean;
+  showTodos?: boolean;
 }
 
 export function SubAgentView({
@@ -126,8 +126,6 @@ export function SubAgentView({
       </div>
 
       {children}
-
-      <TodoDetail todos={taskSource?.todos ?? []} />
 
       {showFooter && (
         <>
