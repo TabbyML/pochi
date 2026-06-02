@@ -1,14 +1,15 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { builtInAgents, getLogger } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import {
-  BuiltInAgentPath,
   type CustomAgentFile,
+  type ValidCustomAgentFile,
+  isValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
-import { uniqueBy } from "remeda";
-import { Lifecycle, injectable, scoped } from "tsyringe";
+import { funnel, uniqueBy } from "remeda";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../integrations/configuration";
@@ -17,28 +18,46 @@ import { WorkspaceScope } from "./workspace-scoped";
 
 const logger = getLogger("CustomAgentManager");
 
-/**
- * Read custom agents from a directory
- */
 async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
   const agents: CustomAgentFile[] = [];
+  const readFileContent = async (filePath: string): Promise<string> => {
+    const fileContent = await vscode.workspace.fs.readFile(
+      vscode.Uri.file(filePath),
+    );
+    return new TextDecoder().decode(fileContent);
+  };
+
   try {
-    const files = await vscode.workspace.fs.readDirectory(vscode.Uri.file(dir));
-    for (const [fileName] of files) {
-      if (fileName.endsWith(".md")) {
-        const filePath = path.join(dir, fileName);
-        const readFileContent = async (filePath: string): Promise<string> => {
-          const fileContent = await vscode.workspace.fs.readFile(
-            vscode.Uri.file(filePath),
+    const entries = await vscode.workspace.fs.readDirectory(
+      vscode.Uri.file(dir),
+    );
+    for (const [entryName, entryType] of entries) {
+      if (
+        entryType & vscode.FileType.Directory ||
+        entryType & vscode.FileType.SymbolicLink
+      ) {
+        const agentFilePath = path.join(dir, entryName, "AGENT.md");
+        try {
+          const stat = await vscode.workspace.fs.stat(
+            vscode.Uri.file(agentFilePath),
           );
-          return new TextDecoder().decode(fileContent);
-        };
-        const agent = await parseAgentFile(filePath, readFileContent);
+          if (stat.type === vscode.FileType.File) {
+            const agent = await parseAgentFile(agentFilePath, readFileContent);
+            agents.push(agent);
+          }
+        } catch (error) {
+          logger.debug(`No AGENT.md found in ${entryName}:`, error);
+        }
+      } else if (
+        entryType & vscode.FileType.File &&
+        entryName.toLowerCase().endsWith(".md")
+      ) {
+        const agentFilePath = path.join(dir, entryName);
+        const agent = await parseAgentFile(agentFilePath, readFileContent);
         agents.push(agent);
       }
     }
   } catch (error) {
-    // Directory may not exist, which is fine.
     logger.debug(`Could not read agents from directory ${dir}:`, error);
   }
   return agents;
@@ -51,14 +70,22 @@ export class CustomAgentManager implements vscode.Disposable {
 
   readonly agents = signal<CustomAgentFile[]>([]);
 
+  private readonly builtInAgentsDir: string;
+
   constructor(
     private readonly workspaceScope: WorkspaceScope,
     private readonly configuration: PochiConfiguration,
+    @inject("vscode.ExtensionContext")
+    private readonly extensionContext: vscode.ExtensionContext,
   ) {
+    this.builtInAgentsDir = path.join(
+      this.extensionContext.extensionUri.fsPath,
+      "assets",
+      "agents",
+    );
     this.initWatchers();
     this.loadAgents();
 
-    // Re-load agents when configuration changes
     this.disposables.push({
       dispose: this.configuration.advancedSettings.subscribe(() => {
         this.loadAgents();
@@ -70,76 +97,89 @@ export class CustomAgentManager implements vscode.Disposable {
     return this.workspaceScope.cwd;
   }
 
+  private watchAgentsDir(base: string, prefix: string) {
+    const baseUri = vscode.Uri.file(base);
+
+    const flatFileWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(baseUri, `${prefix}/*.md`),
+    );
+    flatFileWatcher.onDidCreate(() => this.scheduleReload.call());
+    flatFileWatcher.onDidChange(() => this.scheduleReload.call());
+    flatFileWatcher.onDidDelete(() => this.scheduleReload.call());
+    this.disposables.push(flatFileWatcher);
+
+    const folderFileWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(baseUri, `${prefix}/*/AGENT.md`),
+    );
+    folderFileWatcher.onDidCreate(() => this.scheduleReload.call());
+    folderFileWatcher.onDidChange(() => this.scheduleReload.call());
+    folderFileWatcher.onDidDelete(() => this.scheduleReload.call());
+    this.disposables.push(folderFileWatcher);
+
+    const dirWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(baseUri, `${prefix}/*`),
+    );
+    dirWatcher.onDidCreate(() => this.scheduleReload.call());
+    dirWatcher.onDidDelete(() => this.scheduleReload.call());
+    this.disposables.push(dirWatcher);
+
+    const parentWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(baseUri, prefix),
+    );
+    parentWatcher.onDidCreate(() => this.scheduleReload.call());
+    parentWatcher.onDidDelete(() => this.scheduleReload.call());
+    this.disposables.push(parentWatcher);
+
+    const rootDir = prefix.split("/")[0];
+    if (rootDir && rootDir !== prefix) {
+      const rootWatcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(baseUri, rootDir),
+      );
+      rootWatcher.onDidCreate(() => this.scheduleReload.call());
+      rootWatcher.onDidDelete(() => this.scheduleReload.call());
+      this.disposables.push(rootWatcher);
+    }
+  }
+
   private initWatchers() {
-    const watchDir = (base: string, prefix: string, pattern: string) => {
-      const baseUri = vscode.Uri.file(base);
-
-      const fileWatcher = vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(baseUri, pattern),
-      );
-      fileWatcher.onDidCreate(() => this.loadAgents());
-      fileWatcher.onDidChange(() => this.loadAgents());
-      fileWatcher.onDidDelete(() => this.loadAgents());
-      this.disposables.push(fileWatcher);
-
-      const dirWatcher = vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(baseUri, `${prefix}/*`),
-      );
-      dirWatcher.onDidCreate(() => this.loadAgents());
-      dirWatcher.onDidDelete(() => this.loadAgents());
-      this.disposables.push(dirWatcher);
-
-      const parentWatcher = vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(baseUri, prefix),
-      );
-      parentWatcher.onDidCreate(() => this.loadAgents());
-      parentWatcher.onDidDelete(() => this.loadAgents());
-      this.disposables.push(parentWatcher);
-
-      const rootDir = prefix.split("/")[0];
-      if (rootDir && rootDir !== prefix) {
-        const rootWatcher = vscode.workspace.createFileSystemWatcher(
-          new vscode.RelativePattern(baseUri, rootDir),
-        );
-        rootWatcher.onDidCreate(() => this.loadAgents());
-        rootWatcher.onDidDelete(() => this.loadAgents());
-        this.disposables.push(rootWatcher);
-      }
-    };
-
     try {
       if (this.cwd) {
-        watchDir(path.join(this.cwd, ".pochi"), "agents", "agents/**/*.md");
+        this.watchAgentsDir(path.join(this.cwd, ".pochi"), "agents");
       }
     } catch (error) {
       logger.error("Failed to initialize project agents watcher", error);
     }
 
     try {
-      watchDir(path.join(os.homedir(), ".pochi"), "agents", "agents/**/*.md");
+      this.watchAgentsDir(path.join(os.homedir(), ".pochi"), "agents");
     } catch (error) {
       logger.error("Failed to initialize system agents watcher", error);
     }
   }
+
+  private readonly scheduleReload = funnel(() => this.loadAgents(), {
+    triggerAt: "end",
+    minQuietPeriodMs: 200,
+  });
 
   private async loadAgents() {
     try {
       const reviewAgentEnabled =
         this.configuration.advancedSettings.value.reviewAgent ?? false;
 
-      const filteredBuiltInAgents = builtInAgents.filter((agent) => {
-        if (agent.name === "reviewer" && !reviewAgentEnabled) {
-          return false;
-        }
-        return true;
-      });
-
-      const allAgents: CustomAgentFile[] = [
-        ...filteredBuiltInAgents.map((x) => ({
-          ...x,
-          filePath: BuiltInAgentPath,
-        })),
-      ];
+      const builtInAgentFiles = await readAgentsFromDir(this.builtInAgentsDir);
+      const allAgents: CustomAgentFile[] = builtInAgentFiles
+        .filter((agent) => {
+          if (
+            agent.name === "reviewer" &&
+            isValidCustomAgentFile(agent as ValidCustomAgentFile) &&
+            !reviewAgentEnabled
+          ) {
+            return false;
+          }
+          return true;
+        })
+        .map((agent) => ({ ...agent, isBuiltIn: true }));
 
       if (this.cwd) {
         const projectAgentsDir = path.join(this.cwd, ".pochi", "agents");
@@ -162,11 +202,7 @@ export class CustomAgentManager implements vscode.Disposable {
         })),
       );
 
-      this.agents.value = uniqueBy(allAgents, (agent) =>
-        agent.filePath === BuiltInAgentPath
-          ? agent.name + agent.filePath
-          : agent.name,
-      );
+      this.agents.value = uniqueBy(allAgents, (agent) => agent.name);
       logger.debug(`Loaded ${allAgents.length} custom agents`);
     } catch (error) {
       logger.error("Failed to load custom agents", error);
@@ -175,6 +211,7 @@ export class CustomAgentManager implements vscode.Disposable {
   }
 
   dispose() {
+    this.scheduleReload.cancel();
     for (const d of this.disposables) {
       d.dispose();
     }

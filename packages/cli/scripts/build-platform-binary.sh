@@ -13,8 +13,8 @@ build() {
     # `<dirname(process.execPath)>/skills/` after the user extracts the
     # tarball into `~/.pochi/bin/`.
     cp -R ../common/src/base/skills "./dist/$platform/skills"
+    cp -R ../common/src/base/agents "./dist/$platform/agents"
     # generate .tar.gz for linux and mac, generate .zip for windows.
-    # Both archives preserve the `skills/` subdirectory next to the binary.
     if [ "$platform" == "windows-x64" ]; then
         (cd "./dist/$platform" && zip -r "../pochi-$platform.zip" .)
     else

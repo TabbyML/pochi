@@ -10,6 +10,12 @@ copy_builtin_skills() {
         cp -R ../common/src/base/skills "$dest/skills"
 }
 
+copy_builtin_agents() {
+        local dest="$1"
+        rm -rf "$dest/agents"
+        cp -R ../common/src/base/agents "$dest/agents"
+}
+
 # we upload the released file to npm and run using node,
 # we use bun to utilize local dev,
 # so add this dispatcher if run bun locally
@@ -37,6 +43,7 @@ build_js() {
         rm -f ./dist/cli.js.bak
 
         copy_builtin_skills ./dist
+        copy_builtin_agents ./dist
 }
 
 build_exe() {
@@ -48,6 +55,7 @@ build_exe() {
                 "$@"
 
         copy_builtin_skills ./dist
+        copy_builtin_agents ./dist
 }
 
 if [[ ${TARGET:-""} == "node" ]]; then

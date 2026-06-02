@@ -296,4 +296,38 @@ Content with empty frontmatter.`;
     expect(result.name).toBe("empty-frontmatter");
     expect(result).toHaveProperty("error", "parseError");
   });
+
+  it("should derive name from parent directory for folder-layout AGENT.md", async () => {
+    const content = `---
+description: Folder-layout agent
+---
+
+Agent body.`;
+
+    const result = await parseAgentFile(
+      "agents/my-folder-agent/AGENT.md",
+      () => Promise.resolve(content),
+    );
+
+    expect(result).toBeDefined();
+    expect(result.name).toBe("my-folder-agent");
+    expect(result).not.toHaveProperty("error");
+  });
+
+  it("should accept a user agent that uses a built-in agent name (collision handled by loader)", async () => {
+    const content = `---
+name: planner
+description: Custom planner override
+---
+
+Custom planner instructions.`;
+
+    const result = await parseAgentFile("planner.md", () =>
+      Promise.resolve(content),
+    );
+
+    expect(result).toBeDefined();
+    expect(result).not.toHaveProperty("error");
+    expect(result.name).toBe("planner");
+  });
 });

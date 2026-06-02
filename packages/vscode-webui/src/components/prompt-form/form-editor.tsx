@@ -33,7 +33,6 @@ import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import {
-  BuiltInAgentPath,
   isValidCustomAgentFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -725,8 +724,7 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
     ]);
     const options: SlashCandidate[] = [
       ...customAgents.value
-        // Filter out built-in agent
-        .filter((x) => x.filePath !== BuiltInAgentPath)
+        .filter((x) => !x.isBuiltIn)
         .filter((x) => isValidCustomAgentFile(x))
         .map((x) => ({
           type: "custom-agent" as const,

@@ -1,17 +1,10 @@
-import * as path from "node:path";
-import { remark } from "remark";
-import remarkFrontmatter from "remark-frontmatter";
-import { remove } from "unist-util-remove";
-import { matter } from "vfile-matter";
 import z from "zod";
-import { toErrorMessage } from "../base";
 import type {
   InvalidSkillFile,
   SkillFile,
   ValidSkillFile,
 } from "../vscode-webui-bridge";
-
-type VFile = Parameters<typeof matter>[0];
+import { parseMarkdownWithFrontmatter } from "./markdown-frontmatter";
 
 const SkillFrontmatter = z.object({
   name: z.string(),
@@ -22,58 +15,41 @@ const SkillFrontmatter = z.object({
   "allowed-tools": z.string().optional(),
 });
 
+const EmptyFrontmatterMessage =
+  "No skill definition found in the frontmatter of the file.";
+
 export async function parseSkillFile(
   filePath: string,
   readFileContent: (filePath: string) => Promise<string>,
 ): Promise<SkillFile> {
-  const baseName = path.basename(filePath);
-  const defaultName =
-    baseName.toLowerCase() === "skill.md"
-      ? path.basename(path.dirname(filePath))
-      : path.basename(baseName, path.extname(baseName));
-  let content: string;
-  try {
-    content = await readFileContent(filePath);
-  } catch (error) {
-    return {
-      name: defaultName,
-      filePath,
-      error: "readError",
-      message: toErrorMessage(error),
-    } satisfies InvalidSkillFile;
-  }
+  const parsed = await parseMarkdownWithFrontmatter(filePath, readFileContent, {
+    folderFileName: "skill.md",
+  });
 
-  let vfile: VFile;
-  try {
-    vfile = await remark()
-      .use(remarkFrontmatter, [{ type: "yaml", marker: "-" }])
-      .use(() => (_tree, file) => matter(file))
-      .use(() => (tree) => {
-        remove(tree, "yaml");
-      })
-      .process(content);
-  } catch (error) {
+  if (!parsed.ok) {
+    if (parsed.error === "readError") {
+      return {
+        name: parsed.defaultName,
+        filePath,
+        error: "readError",
+        message: parsed.message,
+      } satisfies InvalidSkillFile;
+    }
+
+    const isEmptyFrontmatter =
+      parsed.message === "No definition found in the frontmatter of the file.";
     return {
-      name: defaultName,
+      name: parsed.defaultName,
       filePath,
       error: "parseError",
-      message: toErrorMessage(error),
+      message: isEmptyFrontmatter ? EmptyFrontmatterMessage : parsed.message,
+      instructions: parsed.body,
     } satisfies InvalidSkillFile;
   }
 
-  const instructions = vfile.value.toString().trim();
+  const { defaultName, frontmatter, body: instructions } = parsed;
 
-  if (!vfile.data.matter || Object.keys(vfile.data.matter).length === 0) {
-    return {
-      name: defaultName,
-      filePath,
-      error: "parseError",
-      message: "No skill definition found in the frontmatter of the file.",
-      instructions,
-    } satisfies InvalidSkillFile;
-  }
-
-  const parseResult = SkillFrontmatter.safeParse(vfile.data.matter);
+  const parseResult = SkillFrontmatter.safeParse(frontmatter);
   if (!parseResult.success) {
     return {
       name: defaultName,

@@ -21,7 +21,6 @@ import {
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
 import "./markdown.css";
-import { BuiltInAgentPath } from "@getpochi/common/vscode-webui-bridge";
 import { useTranslation } from "react-i18next";
 import type { ExtraProps, Options } from "react-markdown";
 
@@ -427,8 +426,7 @@ export function MessageMarkdown({
       "custom-agent": (props: CustomAgentComponentProps) => {
         const { id, path } = props;
         const cleanId = id.replaceAll("user-content-", "/");
-        // Handle legacy empty path
-        if (!path || path === BuiltInAgentPath) {
+        if (!path) {
           return (
             <span className="mx-px inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-1.5 py-0.5 align-baseline font-medium text-muted-foreground text-sm/4">
               {cleanId.replaceAll("/", "")}

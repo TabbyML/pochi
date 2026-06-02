@@ -9,10 +9,7 @@ import type {
   CustomAgentFile,
   InvalidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import {
-  BuiltInAgentPath,
-  isValidCustomAgentFile,
-} from "@getpochi/common/vscode-webui-bridge";
+import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { AlertTriangle, Bot, Edit, Globe, Settings } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,9 +30,8 @@ export const AgentSection: React.FC = () => {
   const { t } = useTranslation();
   const { customAgents = [], isLoading } = useCustomAgents();
 
-  // Filter out built-in agent
   const customAgentsWithoutBuiltIn = useMemo(() => {
-    return customAgents.filter((agent) => agent.filePath !== BuiltInAgentPath);
+    return customAgents.filter((agent) => !agent.isBuiltIn);
   }, [customAgents]);
 
   const handleEditAgent = (agent: CustomAgentFile) => {
