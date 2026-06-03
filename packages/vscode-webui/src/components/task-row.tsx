@@ -169,7 +169,7 @@ export function TaskRow({
             </div>
             <div className="h-6 text-muted-foreground text-sm">
               <div className="flex items-center justify-between gap-2 overflow-hidden">
-                <div className="flex flex-1 items-center gap-2 overflow-hidden">
+                <div className="flex min-w-0 max-w-[50%] items-center gap-2 overflow-hidden">
                   <GitBadge git={task.git} />
                   {task.lineChanges && (
                     <EditSummary
@@ -178,14 +178,19 @@ export function TaskRow({
                     />
                   )}
                 </div>
-                {state?.running && task.pendingToolCalls?.length ? (
-                  <ToolCallLite
-                    tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
-                    requiresApproval={state.requiresApproval}
-                  />
-                ) : (
-                  <TaskStatusView task={task} state={state} />
-                )}
+                <div className="flex min-w-0 flex-1 justify-end overflow-hidden">
+                  {state?.running && task.pendingToolCalls?.length ? (
+                    <ToolCallLite
+                      tools={
+                        task.pendingToolCalls as Array<ToolUIPart<UITools>>
+                      }
+                      requiresApproval={state.requiresApproval}
+                      className="w-auto"
+                    />
+                  ) : (
+                    <TaskStatusView task={task} state={state} />
+                  )}
+                </div>
               </div>
             </div>
           </div>

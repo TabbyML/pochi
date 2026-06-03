@@ -12,6 +12,7 @@ interface Props {
   requiresApproval?: boolean;
   showCommandDetails?: boolean;
   showStatusIcon?: boolean;
+  className?: string;
 }
 
 export function ToolCallLite({
@@ -19,6 +20,7 @@ export function ToolCallLite({
   requiresApproval,
   showCommandDetails,
   showStatusIcon = true,
+  className,
 }: Props) {
   const { t } = useTranslation();
 
@@ -97,7 +99,12 @@ export function ToolCallLite({
   }
 
   return detail ? (
-    <div className="flex w-full min-w-0 flex-nowrap items-center overflow-hidden whitespace-nowrap">
+    <div
+      className={cn(
+        "flex w-full min-w-0 flex-nowrap items-center overflow-hidden whitespace-nowrap",
+        className,
+      )}
+    >
       {!showStatusIcon ? null : requiresApproval ? (
         <Pause className="size-3.5 shrink-0" />
       ) : (
