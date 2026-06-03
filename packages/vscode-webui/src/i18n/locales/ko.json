@@ -547,7 +547,7 @@
   "browserAgentSettings": {
     "runtimeSection": "브라우저 런타임",
     "localChromeSection": "로컬 Chrome",
-    "recordingSection": "세션 녹화",
+    "managedBrowserSection": "관리형 브라우저",
     "browserMode": "브라우저 모드",
     "browserModeHint": "관리형 브라우저는 격리된 브라우저 세션에서 실행됩니다. 로컬 Chrome은 사용자의 Chrome 프로필에 연결되어 기존 로그인과 브라우저 상태를 재사용할 수 있습니다.",
     "managedBrowser": "관리형 브라우저",
@@ -556,7 +556,14 @@
     "chromePathHint": "비워 두면 자동으로 감지합니다.",
     "startParams": "사용자 지정 브라우저 인수(선택 사항)",
     "startParamsHint": "브라우저 실행 파일에 전달할 인수를 공백으로 구분해 입력하세요.",
-    "enableRecording": "브라우저 세션 녹화"
+    "viewportSize": "뷰포트 크기",
+    "viewportHint": "관리형 브라우저 세션의 브라우저 보기 크기를 제어합니다.",
+    "viewportSizes": {
+      "1280x720": "대형 데스크톱 (1280x720)",
+      "900x600": "소형 데스크톱 (900x600)",
+      "768x1024": "태블릿 (768x1024)",
+      "360x640": "모바일 (360x640)"
+    }
   },
   "builtInAgentsSettings": {
     "title": "내장 에이전트",

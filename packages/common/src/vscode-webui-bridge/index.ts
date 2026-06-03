@@ -62,7 +62,12 @@ export type { BuiltinSubAgentInfo } from "./types/sub-agent";
 export type { WebviewPanelInfo } from "./types/webview";
 export {
   BrowserAgentSettings,
+  BrowserAgentViewportSizes,
+  DefaultBrowserAgentViewport,
+  DefaultRecordingViewport,
+  getBrowserAgentViewportSize,
   type BrowserAgentSettingsUpdate,
+  type BrowserAgentViewportSettings,
 } from "./types/browser-agent-settings";
 export { isValidCustomAgentFile } from "./types/custom-agent";
 export { isValidSkillFile } from "./types/skill";
