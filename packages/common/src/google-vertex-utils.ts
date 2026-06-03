@@ -3,11 +3,7 @@ import {
   createVertexWithoutCredentials,
 } from "@ai-sdk/google-vertex/edge";
 import type { GoogleVertexModel } from "./configuration";
-
-// Declare global variable for CORS proxy url prefix
-declare global {
-  var POCHI_CORS_PROXY_URL_PREFIX: string;
-}
+import { withCorsProxy } from "./fetch-utils";
 
 function createPatchedFetchForFinetune(accessToken?: string | undefined) {
   function patchString(str: string) {
@@ -44,15 +40,7 @@ function createPatchedFetchForFinetune(accessToken?: string | undefined) {
       throw new Error(`Unexpected requestInfo type: ${typeof requestInfo}`);
     }
 
-    // Use CORS proxy if configured
-    if (globalThis.POCHI_CORS_PROXY_URL_PREFIX) {
-      const proxyUrl = finalUrl.toString();
-      finalUrl = new URL(
-        globalThis.POCHI_CORS_PROXY_URL_PREFIX + encodeURIComponent(proxyUrl),
-      );
-    }
-
-    return fetch(finalUrl, patchedRequestInit);
+    return fetch(withCorsProxy(finalUrl), patchedRequestInit);
   };
 }
 

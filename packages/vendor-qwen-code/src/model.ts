@@ -1,5 +1,6 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import { withCorsProxy } from "@getpochi/common/fetch-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { QwenCoderCredentials } from "./types";
@@ -48,21 +49,7 @@ function createPatchedFetch(
     const headers = new Headers(requestInit?.headers);
     headers.set("Authorization", `Bearer ${access_token}`);
 
-    let finalUrl: string | URL | Request;
-
-    // Check if CORS proxy is available (VSCode environment)
-    if (globalThis.POCHI_CORS_PROXY_URL_PREFIX) {
-      const url = new URL(
-        globalThis.POCHI_CORS_PROXY_URL_PREFIX +
-          encodeURIComponent(requestInfo.toString()),
-      );
-      finalUrl = url;
-    } else {
-      // CLI environment - make direct request
-      finalUrl = requestInfo;
-    }
-
-    const resp = await fetch(finalUrl, {
+    const resp = await fetch(withCorsProxy(requestInfo), {
       ...requestInit,
       headers,
     });

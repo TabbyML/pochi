@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import { withCorsProxy } from "@getpochi/common/fetch-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
 import { transformToCodexFormat } from "./transformers";
@@ -101,12 +102,6 @@ export function createProxyFetch(getCredentials: () => Promise<unknown>) {
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
-    const proxyPrefix = globalThis.POCHI_CORS_PROXY_URL_PREFIX;
-    const originalUrl = input instanceof Request ? input.url : input.toString();
-    const url = proxyPrefix
-      ? new URL(`${proxyPrefix}${encodeURIComponent(originalUrl)}`)
-      : input;
-
     const transformedBody = transformRequestBody(
       typeof init?.body === "string" ? init.body : undefined,
     );
@@ -114,7 +109,7 @@ export function createProxyFetch(getCredentials: () => Promise<unknown>) {
     const credentials = await (getCredentials() as Promise<CodexCredentials>);
     const headers = createCodexHeaders(credentials, init);
 
-    return fetch(url, {
+    return fetch(withCorsProxy(input), {
       ...init,
       headers,
       body: transformedBody || undefined,
