@@ -8,66 +8,125 @@ Use this module for local interactive explainers and clickable visuals.
 - Bind events with `addEventListener` in a final script. Do not use inline `on*` attributes.
 - Put the complete interactive state in the top-level `<pochi-widget state='...'>` JSON attribute. Use `window.pochi.state` to read it and `window.pochi.setState(nextState)` after every meaningful interaction.
 - IMPORTANT: Render from `window.pochi.state`, not from separate closure variables. A selected color, active city, highlighted node id, slider value, or current step must be represented in state before the UI updates.
-- Use a small `render()` function that reads `const state = window.pochi.state` and derives DOM classes, labels, input values, charts, and button states from that snapshot. Event handlers should compute `nextState`, call `window.pochi.setState(nextState)`, then call `render()` so the state update drives the visible UI.
+- Use the Static DOM + `render()` mutates existing nodes pattern. Write the visible widget shell and controls directly in HTML so streaming preview remains useful before scripts run.
+- Use a small `render()` function that reads `const state = window.pochi.state` and updates existing nodes with `textContent`, `classList`, `style`, `value`, `checked`, `hidden`, and ARIA attributes. Do not use `innerHTML` for UI updates.
+- Event handlers should compute `nextState`, call `window.pochi.setState(nextState)`, then call `render()` so the state update drives the visible UI.
 - For interactive diagrams, clicking a node should update a nearby detail panel and highlight related nodes or edges.
-- Follow-up message actions should be explicit buttons or menu items with short, model-authored prompts, for example `window.pochi.sendMessage("show the next 15 days weather for the selected city")`. If the click also changes state, call `window.pochi.setState(nextState)` first. Do not append JSON state to the prompt.
+- Follow-up message actions should be explicit buttons or menu items with short, model-authored prompts, for example `window.pochi.sendMessage("show the next 7 days weather for the selected city")`. If the click also changes state, call `window.pochi.setState(nextState)` first. Do not append JSON state to the prompt.
 
-State-driven interaction pattern:
+Static DOM state-driven interaction pattern:
 
 ```html
-<pochi-widget state='{"hex":"#b87528","alpha":1}'>
+<pochi-widget state='{"city":"san-francisco","unit":"celsius","showDetails":true}'>
   <style>
-    .swatch { width: 40px; height: 40px; border-radius: 4px; }
-    .colors { display: flex; gap: 6px; margin: 8px 0; }
-    .colors button { width: 24px; height: 24px; border: 1px solid var(--vscode-widget-border); }
-    .colors button[aria-pressed="true"] { outline: 2px solid var(--vscode-focusBorder); }
+    .weather-widget { display: grid; gap: 10px; color: var(--vscode-foreground); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .toolbar button { border: 1px solid var(--vscode-widget-border); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px; padding: 3px 8px; }
+    .toolbar button[aria-pressed="true"] { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+    .summary { border: 1px solid var(--vscode-widget-border); border-radius: 6px; padding: 10px; background: var(--vscode-editorWidget-background); }
+    .metric { font-size: 24px; font-weight: 600; }
+    .muted { color: var(--vscode-descriptionForeground); font-size: 12px; }
+    .details[hidden] { display: none; }
   </style>
-  <div class="swatch" data-swatch></div>
-  <output data-value></output>
-  <div class="colors">
-    <button type="button" data-color="#b87528" aria-label="Amber"></button>
-    <button type="button" data-color="#3d7dd8" aria-label="Blue"></button>
-    <button type="button" data-color="#278a63" aria-label="Green"></button>
-  </div>
-  <input type="range" min="0" max="1" step="0.01" data-alpha>
-  <button type="button" data-followup>Generate full picker</button>
+  <section class="weather-widget">
+    <div class="toolbar" aria-label="Cities">
+      <button type="button" data-city="san-francisco" aria-pressed="true">San Francisco</button>
+      <button type="button" data-city="london">London</button>
+      <button type="button" data-city="paris">Paris</button>
+    </div>
+
+    <div class="toolbar" aria-label="Display options">
+      <button type="button" data-unit="celsius" aria-pressed="true">C</button>
+      <button type="button" data-unit="fahrenheit">F</button>
+      <label class="muted">
+        <input type="checkbox" data-details-toggle checked>
+        Details
+      </label>
+    </div>
+
+    <section class="summary">
+      <div class="muted" data-city-label>San Francisco</div>
+      <div class="metric" data-temperature>18 C</div>
+      <div data-condition>Foggy</div>
+      <div class="details" data-details>
+        <p class="muted" data-note>Cool marine air with a soft west wind.</p>
+      </div>
+    </section>
+
+    <button type="button" data-followup>Show 7-day forecast</button>
+  </section>
 </pochi-widget>
 <script>
   const widget = document.querySelector("pochi-widget");
-  const swatch = widget.querySelector("[data-swatch]");
-  const value = widget.querySelector("[data-value]");
-  const alpha = widget.querySelector("[data-alpha]");
+  const cityButtons = Array.from(widget.querySelectorAll("[data-city]"));
+  const unitButtons = Array.from(widget.querySelectorAll("[data-unit]"));
+  const detailsToggle = widget.querySelector("[data-details-toggle]");
+  const cityLabel = widget.querySelector("[data-city-label]");
+  const temperature = widget.querySelector("[data-temperature]");
+  const condition = widget.querySelector("[data-condition]");
+  const details = widget.querySelector("[data-details]");
+  const note = widget.querySelector("[data-note]");
+  const followup = widget.querySelector("[data-followup]");
+
+  const weather = {
+    "san-francisco": { label: "San Francisco", celsius: 18, condition: "Foggy", note: "Cool marine air with a soft west wind." },
+    london: { label: "London", celsius: 16, condition: "Cloudy", note: "Muted light with a chance of light rain." },
+    paris: { label: "Paris", celsius: 22, condition: "Sunny", note: "Mild afternoon warmth with clear breaks." },
+  };
+
+  function formatTemp(celsius, unit) {
+    return unit === "fahrenheit"
+      ? `${Math.round((celsius * 9) / 5 + 32)} F`
+      : `${celsius} C`;
+  }
 
   function render() {
     const state = window.pochi.state;
-    swatch.style.background = state.hex;
-    swatch.style.opacity = String(state.alpha);
-    value.textContent = `${state.hex} / ${Math.round(state.alpha * 100)}%`;
-    alpha.value = String(state.alpha);
-    for (const button of widget.querySelectorAll("[data-color]")) {
-      button.style.background = button.dataset.color;
-      button.setAttribute("aria-pressed", String(button.dataset.color === state.hex));
+    const city = weather[state.city] || weather["san-francisco"];
+
+    for (const button of cityButtons) {
+      const selected = button.dataset.city === state.city;
+      button.setAttribute("aria-pressed", String(selected));
     }
+
+    for (const button of unitButtons) {
+      const selected = button.dataset.unit === state.unit;
+      button.setAttribute("aria-pressed", String(selected));
+    }
+
+    detailsToggle.checked = Boolean(state.showDetails);
+    details.hidden = !state.showDetails;
+
+    cityLabel.textContent = city.label;
+    temperature.textContent = formatTemp(city.celsius, state.unit);
+    condition.textContent = city.condition;
+    note.textContent = city.note;
   }
 
-  for (const button of widget.querySelectorAll("[data-color]")) {
+  for (const button of cityButtons) {
     button.addEventListener("click", () => {
-      const nextState = { ...window.pochi.state, hex: button.dataset.color };
-      // State update drives UI: write state first, then render from window.pochi.state.
+      const nextState = { ...window.pochi.state, city: button.dataset.city };
       window.pochi.setState(nextState);
       render();
     });
   }
 
-  alpha.addEventListener("input", () => {
-    const nextState = { ...window.pochi.state, alpha: Number(alpha.value) };
-    // State update drives UI: write state first, then render from window.pochi.state.
+  for (const button of unitButtons) {
+    button.addEventListener("click", () => {
+      const nextState = { ...window.pochi.state, unit: button.dataset.unit };
+      window.pochi.setState(nextState);
+      render();
+    });
+  }
+
+  detailsToggle.addEventListener("change", () => {
+    const nextState = { ...window.pochi.state, showDetails: detailsToggle.checked };
     window.pochi.setState(nextState);
     render();
   });
 
-  widget.querySelector("[data-followup]").addEventListener("click", () => {
-    window.pochi.sendMessage("generate a full color picker for the selected color");
+  followup.addEventListener("click", () => {
+    window.pochi.sendMessage("show the next 7 days weather for the selected city");
   });
 
   render();
