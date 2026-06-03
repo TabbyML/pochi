@@ -25,6 +25,7 @@ interface SubAgentViewProps {
   assistantName?: string;
   showToolCall?: boolean;
   showTaskThread?: boolean;
+  showTodos?: boolean;
 }
 
 export function SubAgentView({
@@ -184,7 +185,6 @@ export function SubAgentView({
                 <TaskThread
                   source={{ ...taskSource, isLoading: false }}
                   showMessageList={true}
-                  showTodos={false}
                   scrollAreaClassName="border-none"
                   assistant={{ name: assistantName }}
                 />

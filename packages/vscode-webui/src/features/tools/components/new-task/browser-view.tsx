@@ -55,7 +55,6 @@ export function BrowserView(props: NewTaskToolViewProps) {
               <TaskThread
                 source={taskSource}
                 showMessageList={true}
-                showTodos={false}
                 scrollAreaClassName="border-none h-full w-full my-0"
                 assistant={{ name: "Browser" }}
               />
