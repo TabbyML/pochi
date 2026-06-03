@@ -9,10 +9,6 @@ const BrowserAgentLocalChromeSettings = z.object({
   startParams: z.string(),
 });
 
-const BrowserAgentRecordingSettings = z.object({
-  recordingEnabled: z.boolean(),
-});
-
 export const BrowserAgentViewportSizes = [
   "1280x720",
   "900x600",
@@ -37,7 +33,6 @@ export const BrowserAgentSettings = z.object({
   runtime: BrowserAgentRuntimeSettings,
   managedBrowser: BrowserAgentManagedBrowserSettings,
   localChrome: BrowserAgentLocalChromeSettings,
-  recording: BrowserAgentRecordingSettings,
 });
 
 export type BrowserAgentSettings = z.infer<typeof BrowserAgentSettings>;
@@ -50,7 +45,6 @@ export const BrowserAgentSettingsConfig = z.object({
   runtime: BrowserAgentRuntimeSettings.partial().optional(),
   managedBrowser: BrowserAgentManagedBrowserSettings.partial().optional(),
   localChrome: BrowserAgentLocalChromeSettings.partial().optional(),
-  recording: BrowserAgentRecordingSettings.partial().optional(),
 });
 
 export type BrowserAgentSettingsConfig = z.infer<

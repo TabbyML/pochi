@@ -1,4 +1,3 @@
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -9,12 +8,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useBrowserAgentSettings } from "@/lib/hooks/use-browser-agent-settings";
-import { cn } from "@/lib/utils";
 import {
   type BrowserAgentViewportSettings,
   BrowserAgentViewportSizes,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { CheckedState } from "@radix-ui/react-checkbox";
 import { createFileRoute } from "@tanstack/react-router";
 import type React from "react";
 import { useTranslation } from "react-i18next";
@@ -36,6 +33,7 @@ export const Route = createFileRoute("/browser-agent-settings")({
 const DefaultChromePath =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const DefaultStartParams = "--no-sandbox --disable-dev-shm-usage";
+type BrowserMode = "managed" | "localChrome";
 
 export const BrowserSettingsSection: React.FC = () => {
   const { t } = useTranslation();
@@ -51,91 +49,63 @@ export const BrowserSettingsSection: React.FC = () => {
 
   return (
     <main className="grid gap-5">
-      <SettingsSection title={t("browserAgentSettings.recordingSection")}>
-        <div className="grid gap-4">
-          <label
-            htmlFor="browser-agent-recording-enabled"
-            className="flex min-h-9 items-center gap-2.5 font-medium text-foreground text-sm"
-          >
-            <Checkbox
-              id="browser-agent-recording-enabled"
-              checked={settings.recording.recordingEnabled}
-              onCheckedChange={(checked: CheckedState) =>
-                setBrowserSettings({
-                  recording: {
-                    recordingEnabled: checked === true,
-                  },
-                })
-              }
-            />
-            <span>{t("browserAgentSettings.enableRecording")}</span>
-          </label>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title={t("browserAgentSettings.runtimeSection")}>
+      <SettingsSection>
         <div className="grid gap-4">
           <SettingsRow label={t("browserAgentSettings.browserMode")}>
             <div className="grid gap-1.5">
-              <SegmentedControl
+              <Select
                 value={settings.runtime.mode}
-                options={[
-                  {
-                    value: "managed",
-                    label: t("browserAgentSettings.managedBrowser"),
-                  },
-                  {
-                    value: "localChrome",
-                    label: t("browserAgentSettings.localChrome"),
-                  },
-                ]}
-                onChange={(mode) =>
+                onValueChange={(mode: BrowserMode) =>
                   setBrowserSettings({
                     runtime: { mode },
                   })
                 }
-              />
+              >
+                <SelectTrigger className="h-9 w-full border-border/80 bg-background shadow-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="managed">
+                    {t("browserAgentSettings.managedBrowser")}
+                  </SelectItem>
+                  <SelectItem value="localChrome">
+                    {t("browserAgentSettings.localChrome")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               <FieldHint>{t("browserAgentSettings.browserModeHint")}</FieldHint>
             </div>
           </SettingsRow>
           {isManagedBrowserMode && (
-            <SettingsSubsection
-              title={t("browserAgentSettings.managedBrowserSection")}
-            >
-              <SettingsRow label={t("browserAgentSettings.viewportSize")}>
-                <div className="grid gap-1.5">
-                  <Select
-                    value={settings.managedBrowser.viewport}
-                    onValueChange={(viewport: BrowserAgentViewportSettings) => {
-                      setBrowserSettings({
-                        managedBrowser: {
-                          viewport,
-                        },
-                      });
-                    }}
-                  >
-                    <SelectTrigger className="h-9 w-full border-border/80 bg-background shadow-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BrowserAgentViewportSizes.map((size) => (
-                        <SelectItem key={size} value={size}>
-                          {t(`browserAgentSettings.viewportSizes.${size}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldHint>
-                    {t("browserAgentSettings.viewportHint")}
-                  </FieldHint>
-                </div>
-              </SettingsRow>
-            </SettingsSubsection>
+            <SettingsRow label={t("browserAgentSettings.viewportSize")}>
+              <div className="grid gap-1.5">
+                <Select
+                  value={settings.managedBrowser.viewport}
+                  onValueChange={(viewport: BrowserAgentViewportSettings) => {
+                    setBrowserSettings({
+                      managedBrowser: {
+                        viewport,
+                      },
+                    });
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-full border-border/80 bg-background shadow-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BrowserAgentViewportSizes.map((size) => (
+                      <SelectItem key={size} value={size}>
+                        {t(`browserAgentSettings.viewportSizes.${size}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldHint>{t("browserAgentSettings.viewportHint")}</FieldHint>
+              </div>
+            </SettingsRow>
           )}
           {isLocalChromeMode && (
-            <SettingsSubsection
-              title={t("browserAgentSettings.localChromeSection")}
-            >
+            <>
               <SettingsRow label={t("browserAgentSettings.chromePath")}>
                 <div className="grid gap-1.5">
                   <Input
@@ -174,7 +144,7 @@ export const BrowserSettingsSection: React.FC = () => {
                   </FieldHint>
                 </div>
               </SettingsRow>
-            </SettingsSubsection>
+            </>
           )}
         </div>
       </SettingsSection>
@@ -183,61 +153,27 @@ export const BrowserSettingsSection: React.FC = () => {
 };
 
 function SettingsSection({
-  title,
   children,
 }: {
-  title: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="grid gap-4 border-border/70 border-t pt-5 first:border-t-0 first:pt-0">
-      <div className="flex min-h-7 items-center">
-        <h2 className="font-semibold text-base text-foreground tracking-normal">
-          {title}
-        </h2>
-      </div>
       {children}
     </section>
-  );
-}
-
-function SettingsSubsection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-4 rounded-md border border-border/70 bg-background/60 p-4">
-      <div className="flex min-h-6 items-center">
-        <h3 className="font-semibold text-foreground text-sm tracking-normal">
-          {title}
-        </h3>
-      </div>
-      {description && <FieldHint>{description}</FieldHint>}
-      <div className="grid gap-3.5">{children}</div>
-    </div>
   );
 }
 
 function SettingsRow({
   label,
   labelFor,
-  density = "default",
   children,
 }: {
   label: string;
   labelFor?: string;
-  density?: "default" | "compact";
   children: React.ReactNode;
 }) {
-  const labelClassName = cn(
-    "font-medium text-muted-foreground",
-    density === "compact" ? "text-xs" : "text-sm",
-  );
+  const labelClassName = "font-semibold text-base text-foreground";
   const labelNode = labelFor ? (
     <label htmlFor={labelFor} className={labelClassName}>
       {label}
@@ -255,38 +191,5 @@ function SettingsRow({
 }
 
 function FieldHint({ children }: { children: React.ReactNode }) {
-  return <p className="text-muted-foreground text-xs leading-5">{children}</p>;
-}
-
-function SegmentedControl<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T | undefined;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="grid w-full grid-cols-2 gap-1 rounded-md border border-border bg-background p-1 shadow-sm">
-      {options.map((option) => {
-        const isSelected = option.value === value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            className={cn(
-              "h-8 rounded-[calc(theme(borderRadius.md)-2px)] px-3 text-sm transition-colors",
-              isSelected
-                ? "bg-primary font-semibold text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+  return <p className="text-muted-foreground text-sm leading-5">{children}</p>;
 }

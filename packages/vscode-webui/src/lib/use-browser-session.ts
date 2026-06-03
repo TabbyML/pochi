@@ -52,7 +52,6 @@ export const useManageBrowserSession = ({
           const { taskId: parentId } = decodeStoreId(store.storeId);
           if (!browserSessionManager.isRegistered(taskId)) {
             await browserSessionManager.registerSession(taskId, parentId, {
-              recording: browserSettings.recording,
               viewport:
                 browserSettings.runtime.mode === "managed"
                   ? browserSettings.managedBrowser.viewport

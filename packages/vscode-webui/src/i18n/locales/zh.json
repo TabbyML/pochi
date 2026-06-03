@@ -553,7 +553,6 @@
     "runtimeSection": "浏览器运行环境",
     "localChromeSection": "本地 Chrome",
     "managedBrowserSection": "托管浏览器",
-    "recordingSection": "会话录制",
     "browserMode": "浏览器模式",
     "browserModeHint": "托管浏览器会在隔离的浏览器会话中运行。本地 Chrome 会连接到你的 Chrome 个人资料，可复用已有登录状态和浏览器状态。",
     "managedBrowser": "托管浏览器",
@@ -563,14 +562,13 @@
     "startParams": "自定义浏览器参数（可选）",
     "startParamsHint": "传递给浏览器可执行文件的参数，用空格分隔。",
     "viewportSize": "视口尺寸",
-    "viewportHint": "控制托管浏览器会话的浏览器视图和录屏尺寸。",
+    "viewportHint": "控制托管浏览器会话的浏览器视图尺寸。",
     "viewportSizes": {
       "1280x720": "大桌面 (1280x720)",
       "900x600": "小桌面 (900x600)",
       "768x1024": "平板 (768x1024)",
       "360x640": "手机 (360x640)"
-    },
-    "enableRecording": "录制浏览器会话"
+    }
   },
   "builtInAgentsSettings": {
     "title": "内置代理",

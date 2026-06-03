@@ -20,7 +20,6 @@ const WhiteScreenCheckInterval = 500;
 const WebsocketRetryInterval = 2500;
 
 type BrowserRecordingOptions = {
-  recording: BrowserAgentSettings["recording"];
   viewport?: BrowserAgentSettings["managedBrowser"]["viewport"];
 };
 
@@ -150,10 +149,6 @@ export class BrowserRecordingSession {
             const data = JSON.parse(event.data);
             if (data.type === "frame") {
               const frame = data.data;
-              if (!this.options.recording.recordingEnabled) {
-                this.notifyFrame(frame);
-                return;
-              }
               void this.addFrame(frame);
               // Only notify subscribers after recording has started (passed white screen check)
               if (this.muxer) {

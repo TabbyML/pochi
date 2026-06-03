@@ -15,9 +15,6 @@ export const DefaultBrowserAgentSettings: BrowserAgentSettingsValue = {
     chromePath: "",
     startParams: "",
   },
-  recording: {
-    recordingEnabled: true,
-  },
 };
 
 export function mergeBrowserAgentSettings(
@@ -39,11 +36,6 @@ export function mergeBrowserAgentSettings(
       ...DefaultBrowserAgentSettings.localChrome,
       ...current?.localChrome,
       ...settings?.localChrome,
-    },
-    recording: {
-      ...DefaultBrowserAgentSettings.recording,
-      ...current?.recording,
-      ...settings?.recording,
     },
   };
 }

@@ -548,15 +548,6 @@
             }
           },
           "additionalProperties": false
-        },
-        "recording": {
-          "type": "object",
-          "properties": {
-            "recordingEnabled": {
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false

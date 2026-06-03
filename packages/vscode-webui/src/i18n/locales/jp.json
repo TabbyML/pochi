@@ -555,7 +555,6 @@
     "runtimeSection": "ブラウザー実行環境",
     "localChromeSection": "ローカル Chrome",
     "managedBrowserSection": "マネージドブラウザー",
-    "recordingSection": "セッション録画",
     "browserMode": "ブラウザーモード",
     "browserModeHint": "マネージドブラウザーは分離されたブラウザーセッションで実行されます。ローカル Chrome はあなたの Chrome プロファイルに接続し、既存のログイン状態やブラウザー状態を再利用できます。",
     "managedBrowser": "マネージドブラウザー",
@@ -565,14 +564,13 @@
     "startParams": "カスタムブラウザー引数（任意）",
     "startParamsHint": "ブラウザー実行ファイルに渡す引数をスペース区切りで入力します。",
     "viewportSize": "ビューポートサイズ",
-    "viewportHint": "マネージドブラウザーセッションのブラウザービューと録画サイズを制御します。",
+    "viewportHint": "マネージドブラウザーセッションのブラウザービューサイズを制御します。",
     "viewportSizes": {
       "1280x720": "大きいデスクトップ (1280x720)",
       "900x600": "小さいデスクトップ (900x600)",
       "768x1024": "タブレット (768x1024)",
       "360x640": "モバイル (360x640)"
-    },
-    "enableRecording": "ブラウザーセッションを録画"
+    }
   },
   "builtInAgentsSettings": {
     "title": "組み込みエージェント",
