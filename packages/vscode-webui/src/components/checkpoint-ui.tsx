@@ -185,7 +185,7 @@ export const CheckpointUI: React.FC<{
   return (
     <div
       className={cn(
-        "relative min-h-5 w-full opacity-0 transition-opacity duration-200",
+        "relative w-full opacity-0 transition-opacity duration-200",
         showCheckpoint && "opacity-100",
       )}
     >
