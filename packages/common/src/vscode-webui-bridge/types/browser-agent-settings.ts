@@ -9,22 +9,42 @@ const BrowserAgentLocalChromeSettings = z.object({
   startParams: z.string(),
 });
 
-const BrowserAgentRecordingSettings = z.object({
-  recordingEnabled: z.boolean(),
+export const BrowserAgentViewportSizes = [
+  "1280x720",
+  "900x600",
+  "768x1024",
+  "360x640",
+] as const;
+
+const BrowserAgentViewportSettings = z.enum(BrowserAgentViewportSizes);
+
+export type BrowserAgentViewportSettings = z.infer<
+  typeof BrowserAgentViewportSettings
+>;
+
+export const DefaultBrowserAgentViewport: BrowserAgentViewportSettings =
+  "1280x720";
+
+const BrowserAgentManagedBrowserSettings = z.object({
+  viewport: BrowserAgentViewportSettings,
 });
 
 export const BrowserAgentSettings = z.object({
   runtime: BrowserAgentRuntimeSettings,
+  managedBrowser: BrowserAgentManagedBrowserSettings,
   localChrome: BrowserAgentLocalChromeSettings,
-  recording: BrowserAgentRecordingSettings,
 });
 
 export type BrowserAgentSettings = z.infer<typeof BrowserAgentSettings>;
 
+export const DefaultRecordingViewport = getBrowserAgentViewportSize(
+  DefaultBrowserAgentViewport,
+);
+
 export const BrowserAgentSettingsConfig = z.object({
   runtime: BrowserAgentRuntimeSettings.partial().optional(),
+  managedBrowser: BrowserAgentManagedBrowserSettings.partial().optional(),
   localChrome: BrowserAgentLocalChromeSettings.partial().optional(),
-  recording: BrowserAgentRecordingSettings.partial().optional(),
 });
 
 export type BrowserAgentSettingsConfig = z.infer<
@@ -32,3 +52,13 @@ export type BrowserAgentSettingsConfig = z.infer<
 >;
 
 export type BrowserAgentSettingsUpdate = BrowserAgentSettingsConfig;
+
+export function getBrowserAgentViewportSize(
+  viewport: BrowserAgentSettings["managedBrowser"]["viewport"],
+) {
+  const [width, height] = viewport.split("x").map(Number);
+  return {
+    width,
+    height,
+  };
+}

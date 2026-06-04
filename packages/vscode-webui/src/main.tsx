@@ -7,7 +7,7 @@ import {
   createHashHistory,
   createRouter,
 } from "@tanstack/react-router";
-import { StrictMode } from "react";
+import { Fragment, type ReactNode, StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 
 // Import the generated route tree
@@ -98,11 +98,7 @@ function InnerApp() {
     );
   }
 
-  return (
-    <StrictMode>
-      <RouterProvider router={router} context={{}} />
-    </StrictMode>
-  );
+  return <RouterProvider router={router} context={{}} />;
 }
 
 function App() {
@@ -113,14 +109,24 @@ function App() {
   );
 }
 
+function StrictModeBoundary({ children }: { children: ReactNode }) {
+  // React dev StrictMode replays effects. In the VS Code webview those effects
+  // can start host-backed streams, so dev should match the production runtime.
+  const Component =
+    import.meta.env.DEV && globalThis.POCHI_WEBVIEW_KIND
+      ? Fragment
+      : StrictMode;
+  return <Component>{children}</Component>;
+}
+
 // Render the app
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
-    <StrictMode>
+    <StrictModeBoundary>
       <App />
-    </StrictMode>,
+    </StrictModeBoundary>,
   );
 }
 

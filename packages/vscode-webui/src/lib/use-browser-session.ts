@@ -51,11 +51,12 @@ export const useManageBrowserSession = ({
           const taskId = part.input?._meta?.uid || "";
           const { taskId: parentId } = decodeStoreId(store.storeId);
           if (!browserSessionManager.isRegistered(taskId)) {
-            await browserSessionManager.registerSession(
-              taskId,
-              parentId,
-              browserSettings.recording,
-            );
+            await browserSessionManager.registerSession(taskId, parentId, {
+              viewport:
+                browserSettings.runtime.mode === "managed"
+                  ? browserSettings.managedBrowser.viewport
+                  : undefined,
+            });
           }
         }
 

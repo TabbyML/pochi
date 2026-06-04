@@ -52,6 +52,9 @@ Run these via executeCommand:
 - `agent-browser --auto-connect <command>`: Auto-discover and connect to a running local Chrome instance
 - `agent-browser close`: Close the browser session
 
+### Browser Settings
+- `agent-browser set viewport <width> <height>`: Set the viewport size
+
 ## Browser Agent Settings
 
 Before choosing the browser runtime, read the user's Pochi config with `readFile`.
@@ -60,10 +63,13 @@ Check `~/.pochi/config.jsonc` and use the `browserAgentSettings` key when presen
 - `runtime.mode`: `managed`
 - `localChrome.chromePath`: empty string, meaning use the operating system default Chrome command
 - `localChrome.startParams`: empty string
+- `managedBrowser.viewport`: `1280x720`
 
 When `browserAgentSettings.runtime.mode` is `managed`, use the normal managed browser workflow with `agent-browser ...` commands unless the user explicitly asks for Local Chrome.
 
 When `browserAgentSettings.runtime.mode` is `localChrome`, use the Local Chrome workflow by default unless the user explicitly asks for a managed browser. Apply `browserAgentSettings.localChrome.chromePath` and `browserAgentSettings.localChrome.startParams` when starting Chrome. Use `agent-browser --auto-connect ...` for browser commands in the Local Chrome workflow.
+
+When using the managed browser workflow, read `browserAgentSettings.managedBrowser.viewport` as a `<width>x<height>` value and apply it with `agent-browser set viewport <width> <height>` before the first `agent-browser open`, `goto`, or `navigate` command. Do not apply this managed-browser viewport setting in the Local Chrome workflow.
 
 ## Local Chrome
 
@@ -102,19 +108,23 @@ Before running browser commands, run `agent-browser --version`. If `agent-browse
 1. **Read Browser Settings**: Use `readFile` to read `~/.pochi/config.jsonc` and inspect `browserAgentSettings`.
 2. **Check Installation**: Follow the `agent-browser Version` section before running browser commands.
 3. **Choose Runtime**: Use the managed browser workflow or Local Chrome workflow according to `browserAgentSettings.runtime.mode`, unless the user explicitly asks for a different browser runtime.
-4. **Navigate**: Use the selected runtime to open the URL.
-5. **Inspect**: Get interactive elements with refs like @e1, @e2.
-6. **Interact**: Use refs to perform actions
+4. **Apply Managed Viewport Before Navigation**: If `browserAgentSettings.runtime.mode` is `managed`, split `browserAgentSettings.managedBrowser.viewport` as `<width>x<height>`, then run `agent-browser set viewport <width> <height>` before the first `agent-browser open`, `goto`, or `navigate` command. Skip this step for Local Chrome.
+5. **Navigate**: Use the selected runtime to open the URL.
+6. **Inspect**: Get interactive elements with refs like @e1, @e2.
+7. **Interact**: Use refs to perform actions
    - `agent-browser click @e2`
    - `agent-browser fill @e3 "text"`
-7. **Verify**: Take a new snapshot after interactions to verify state changes.
-8. **Close**: Close the browser session when done.
+8. **Verify**: Take a new snapshot after interactions to verify state changes.
+9. **Close**: Close the browser session when done.
 
 ## Example
 
 Task: Login to example.com
 
 ```bash
+# Set the managed browser viewport before opening the page
+executeCommand: agent-browser set viewport 1280 720
+
 # Open the page
 executeCommand: agent-browser open https://example.com/login
 

@@ -59,16 +59,16 @@ describe("maybePersistToolResult", () => {
       // Field replaced with truncated message
       expect(typeof result.output).toBe("string");
       expect(result.output).toContain("[Output too large:");
-      expect(result.output).toContain(".json");
+      expect(result.output).toContain(".log");
       expect(result.output).toContain("Preview");
 
       // Other fields preserved
       expect(result.isTruncated).toBe(false);
 
-      // File written with full JSON-stringified output
-      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `executeCommand-${TOOL_CALL_ID}.json`);
+      // File written with full raw string output
+      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `executeCommand-${TOOL_CALL_ID}-output.log`);
       const fileContent = await fs.readFile(filePath, "utf-8");
-      expect(fileContent).toBe(JSON.stringify(output));
+      expect(fileContent).toBe(big);
     });
 
     it("preview contains first chars of the large field", async () => {
@@ -106,10 +106,10 @@ describe("maybePersistToolResult", () => {
       expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain("[Output too large:");
 
-      // File contains full original output
-      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `someMcpTool-${TOOL_CALL_ID}.json`);
+      // File contains full original output as combined text
+      const filePath = path.join(tmpDir, ".pochi", "tasks", TASK_ID, "tool-results", `someMcpTool-${TOOL_CALL_ID}-content.log`);
       const fileContent = await fs.readFile(filePath, "utf-8");
-      expect(fileContent).toBe(JSON.stringify(output));
+      expect(fileContent).toBe(`${big}\nmore text`);
     });
 
     it("skips content array containing non-text blocks", async () => {

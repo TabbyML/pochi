@@ -2,6 +2,7 @@ import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { EventSourceParserStream } from "@ai-sdk/provider-utils";
+import { withCorsProxy } from "@getpochi/common/fetch-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { APICallError, wrapLanguageModel } from "ai";
 import type { GeminiCredentials } from "./types";
@@ -17,8 +18,6 @@ export function createGeminiCliModel({
     fetch: createFetcher(
       modelId,
       getCredentials as () => Promise<GeminiCredentials>,
-      // Turn on cors if in browser env
-      "window" in globalThis,
     ),
   })(modelId);
 
@@ -47,7 +46,6 @@ export function createGeminiCliModel({
 export function createFetcher(
   model: string,
   getCredentials: () => Promise<GeminiCredentials>,
-  cors?: boolean,
 ) {
   return async (
     _requestInfo: Request | URL | string,
@@ -64,16 +62,7 @@ export function createFetcher(
       "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse",
     );
 
-    let urlToFetch: URL;
-
-    const proxyPrefix = globalThis.POCHI_CORS_PROXY_URL_PREFIX;
-    if (cors && proxyPrefix) {
-      urlToFetch = new URL(
-        `${proxyPrefix}${encodeURIComponent(originalUrl.toString())}`,
-      );
-    } else {
-      urlToFetch = originalUrl;
-    }
+    const urlToFetch = withCorsProxy(originalUrl);
 
     const patchedRequestInit = {
       ...requestInit,
