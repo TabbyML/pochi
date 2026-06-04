@@ -24,6 +24,10 @@ import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
 import type { LiveKitStore, Message, Task } from "../types";
+import {
+  MaxConsecutiveAutoCompactFailures,
+  shouldAutoCompact,
+} from "./auto-compact-policy";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
@@ -176,12 +180,9 @@ export type LiveChatKitOptions<T> = {
     },
   ) => void;
 
-  /**
-   * Called after a successful compaction (inline or explicit).
-   * Use this to clear caches (e.g. FileStateCache) that depend on
-   * conversation context that was discarded during compaction.
-   */
-  onCompact?: () => void | Promise<void>;
+  onCompactStart?: () => void;
+
+  onCompactFinish?: (success: boolean) => void | Promise<void>;
 
   /**
    * Returns recent file contents the model saw before compaction.
@@ -242,6 +243,7 @@ export class LiveChatKit<
   readonly compact: () => Promise<string>;
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private lastStepStartTimestamp: number | undefined;
+  private consecutiveAutoCompactFailures = 0;
 
   constructor({
     taskId,
@@ -250,7 +252,6 @@ export class LiveChatKit<
     blobStore,
     chatClass,
     onOverrideMessages,
-    onCompact,
     getters,
     isSubTask,
     requestUseCase,
@@ -258,8 +259,9 @@ export class LiveChatKit<
     outputSchema,
     attemptCompletionSchema,
     onStreamStart,
-
     onStreamFinish,
+    onCompactStart,
+    onCompactFinish,
     getRecentFilesForCompact,
     getTaskMemoryState,
     ...chatInit
@@ -308,11 +310,28 @@ export class LiveChatKit<
       // Mark status to make async behaivor blocked based on status (e.g isLoading )
       const { messages } = this.chat;
       const lastMessage = messages.at(-1);
-      if (
+      const isManualCompact =
         lastMessage?.role === "user" &&
         lastMessage.metadata?.kind === "user" &&
-        lastMessage.metadata.compact
-      ) {
+        lastMessage.metadata.compact === true;
+
+      const isAutoCompact =
+        !isManualCompact &&
+        this.consecutiveAutoCompactFailures <
+          MaxConsecutiveAutoCompactFailures &&
+        shouldAutoCompact({
+          messages,
+          llm: getters.getLLM(),
+          task: this.task,
+        });
+
+      if (isManualCompact || isAutoCompact) {
+        try {
+          onCompactStart?.();
+        } catch (notifyErr) {
+          logger.warn("onCompactStart callback threw", notifyErr);
+        }
+        let compactSucceeded = false;
         try {
           // Wait briefly so memory.md and boundary id are fresh.
           await settleTaskMemoryExtraction(
@@ -320,6 +339,13 @@ export class LiveChatKit<
             TaskMemorySettleTimeoutMs,
           );
           const model = createModel({ llm: getters.getLLM() });
+          if (isAutoCompact) {
+            logger.info(
+              `Auto-compact triggered (totalTokens=${
+                this.task?.totalTokens ?? 0
+              }).`,
+            );
+          }
           await compactTask({
             blobStore: this.blobStore,
             taskId: this.taskId,
@@ -333,11 +359,29 @@ export class LiveChatKit<
             abortSignal,
             inline: true,
             store: this.store,
+            useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
-          await onCompact?.();
+          if (isAutoCompact) {
+            this.consecutiveAutoCompactFailures = 0;
+          }
+          compactSucceeded = true;
         } catch (err) {
-          logger.error("Failed to compact task", err);
-          throw err;
+          if (isAutoCompact) {
+            this.consecutiveAutoCompactFailures += 1;
+            logger.warn(
+              `Auto-compact failed (${this.consecutiveAutoCompactFailures}/${MaxConsecutiveAutoCompactFailures}); request will proceed without compaction.`,
+              err,
+            );
+          } else {
+            logger.error("Failed to compact task", err);
+            throw err;
+          }
+        } finally {
+          try {
+            await onCompactFinish?.(compactSucceeded);
+          } catch (notifyErr) {
+            logger.warn("onCompactFinish callback threw", notifyErr);
+          }
         }
       }
       if (onOverrideMessages) {
@@ -358,29 +402,45 @@ export class LiveChatKit<
     };
 
     this.compact = async () => {
-      const { messages } = this.chat;
-      // Wait briefly so memory.md and boundary id are fresh.
-      await settleTaskMemoryExtraction(
-        getTaskMemoryState,
-        TaskMemorySettleTimeoutMs,
-      );
-      const model = createModel({ llm: getters.getLLM() });
-      const summary = await compactTask({
-        blobStore: this.blobStore,
-        taskId: this.taskId,
-        model,
-        messages,
-        recentFiles: await readRecentFilesForCompact(getRecentFilesForCompact),
-        taskMemoryBoundaryMessageId:
-          getTaskMemoryState?.()?.lastExtractionMessageId,
-        store: this.store,
-      });
-
-      if (!summary) {
-        throw new Error("Failed to compact task");
+      try {
+        onCompactStart?.();
+      } catch (notifyErr) {
+        logger.warn("onCompactStart callback threw", notifyErr);
       }
-      await onCompact?.();
-      return summary;
+      let compactSucceeded = false;
+      try {
+        const { messages } = this.chat;
+        // Wait briefly so memory.md and boundary id are fresh.
+        await settleTaskMemoryExtraction(
+          getTaskMemoryState,
+          TaskMemorySettleTimeoutMs,
+        );
+        const model = createModel({ llm: getters.getLLM() });
+        const summary = await compactTask({
+          blobStore: this.blobStore,
+          taskId: this.taskId,
+          model,
+          messages,
+          recentFiles: await readRecentFilesForCompact(
+            getRecentFilesForCompact,
+          ),
+          taskMemoryBoundaryMessageId:
+            getTaskMemoryState?.()?.lastExtractionMessageId,
+          store: this.store,
+        });
+
+        if (!summary) {
+          throw new Error("Failed to compact task");
+        }
+        compactSucceeded = true;
+        return summary;
+      } finally {
+        try {
+          await onCompactFinish?.(compactSucceeded);
+        } catch (notifyErr) {
+          logger.warn("onCompactFinish callback threw", notifyErr);
+        }
+      }
     };
 
     this.repairMermaid = async (chart: string, error: string) => {

@@ -46,6 +46,7 @@ export const MessageList: React.FC<{
     image?: string | null;
   };
   isLoading: boolean;
+  loadingLabel?: string;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   showUserAvatar?: boolean;
   className?: string;
@@ -59,6 +60,7 @@ export const MessageList: React.FC<{
 }> = ({
   messages: renderMessages,
   isLoading,
+  loadingLabel,
   user = { name: "User" },
   assistant,
   containerRef,
@@ -204,12 +206,14 @@ export const MessageList: React.FC<{
           ))}
           {showLoader && (
             <div className="py-2">
-              <Loader2
-                className={cn(
-                  "mx-auto size-6",
-                  debouncedIsLoading ? "animate-spin" : "invisible",
-                )}
-              />
+              {debouncedIsLoading ? (
+                <div className="mx-auto flex items-center justify-center gap-2 text-muted-foreground text-sm">
+                  <Loader2 className="size-6 animate-spin" />
+                  {loadingLabel && <span>{loadingLabel}</span>}
+                </div>
+              ) : (
+                <Loader2 className="invisible mx-auto size-6" />
+              )}
             </div>
           )}
         </ScrollArea>
