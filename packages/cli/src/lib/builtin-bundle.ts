@@ -11,8 +11,9 @@ interface MaterializedBundle {
   agentsDir: string;
 }
 
-const SkillsMarker = "/skills/";
-const AgentsMarker = "/agents/";
+const SkillsPrefix = "skills__";
+const AgentsPrefix = "agents__";
+const PathSeparatorEncoding = "__";
 
 type EmbeddedBlob = Blob & { name?: string };
 
@@ -29,28 +30,36 @@ function getEmbeddedBlobs(): readonly EmbeddedBlob[] {
   return bunGlobal?.embeddedFiles ?? [];
 }
 
+function stripHashSuffix(stem: string): string {
+  // Bun's default asset naming appends `-<hash>` before the extension. Drop
+  // that suffix so the encoded prefix used at build time round-trips cleanly.
+  return stem.replace(/-[a-z0-9]+$/i, "");
+}
+
 function classifyBlob(blob: EmbeddedBlob): ClassifiedBlob | undefined {
   const name = blob.name ?? "";
   if (!name.toLowerCase().endsWith(".md")) return undefined;
 
-  const skillIdx = name.lastIndexOf(SkillsMarker);
-  const agentIdx = name.lastIndexOf(AgentsMarker);
+  const base = name.slice(name.lastIndexOf("/") + 1);
+  const dotIdx = base.lastIndexOf(".");
+  if (dotIdx <= 0) return undefined;
+  const stem = stripHashSuffix(base.slice(0, dotIdx));
+  const ext = base.slice(dotIdx);
 
-  if (skillIdx !== -1 && skillIdx > agentIdx) {
-    return {
-      blob,
-      relativePath: name.slice(skillIdx + SkillsMarker.length),
-      kind: "skill",
-    };
+  let kind: "skill" | "agent";
+  let body: string;
+  if (stem.startsWith(SkillsPrefix)) {
+    kind = "skill";
+    body = stem.slice(SkillsPrefix.length);
+  } else if (stem.startsWith(AgentsPrefix)) {
+    kind = "agent";
+    body = stem.slice(AgentsPrefix.length);
+  } else {
+    return undefined;
   }
-  if (agentIdx !== -1) {
-    return {
-      blob,
-      relativePath: name.slice(agentIdx + AgentsMarker.length),
-      kind: "agent",
-    };
-  }
-  return undefined;
+
+  const relativePath = `${body.split(PathSeparatorEncoding).join("/")}${ext}`;
+  return { blob, relativePath, kind };
 }
 
 async function computeBundleHash(blobs: ClassifiedBlob[]): Promise<string> {

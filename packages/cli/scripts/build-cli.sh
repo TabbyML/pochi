@@ -44,18 +44,36 @@ build_js() {
 }
 
 build_exe() {
-        local md_files
-        md_files=$(find ../common/src/base/skills ../common/src/base/agents \
+        local staging
+        staging="./dist/.builtin-staging"
+        rm -rf "$staging"
+        mkdir -p "$staging"
+
+        # Copy each built-in markdown into the staging dir with a flat,
+        # path-encoded filename (`<kind>__<rel>.md`, with `/` replaced by `__`).
+        # The runtime decoder in `builtin-bundle.ts` splits on `__` to recover
+        # the original layout. This lets us keep Bun's default asset naming
+        # (`[name]-[hash].[ext]`) and avoids touching the `[dir]` of every
+        # *other* embedded asset (e.g. `wa-sqlite.node.wasm` under
+        # `node_modules/@livestore/...`), which broke `--compile` startup on
+        # Linux x64.
+        while IFS= read -r f; do
+                local rel encoded
+                rel=${f#../common/src/base/}
+                encoded=${rel//\//__}
+                cp "$f" "$staging/$encoded"
+        done < <(find ../common/src/base/skills ../common/src/base/agents \
                 -type f -name "*.md")
 
-        bun build src/cli.ts $md_files \
+        bun build src/cli.ts "$staging"/*.md \
                 --banner='import * as undici from "undici";' \
-                --asset-naming="[dir]/[name].[ext]" \
                 --loader .md:file \
                 --external lightningcss \
                 --compile \
                 --outfile ./dist/pochi \
                 "$@"
+
+        rm -rf "$staging"
 }
 
 if [[ ${TARGET:-""} == "node" ]]; then
