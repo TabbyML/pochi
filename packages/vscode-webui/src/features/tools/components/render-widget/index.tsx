@@ -4,7 +4,7 @@ import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRenderWidgetStore } from "../../../chat/hooks/use-render-widget-store";
-import { useSendMessage } from "../../../chat/lib/chat-events";
+import { useSendMessage } from "@/features/chat";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
