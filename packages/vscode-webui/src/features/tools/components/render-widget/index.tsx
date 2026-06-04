@@ -191,13 +191,20 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       try {
         await rt.channel.send<WidgetRendererEndpoint>(next);
       } catch {
-        // Restore on failure and bail; next scheduleFlush() will retry.
-        if (next.type === "theme") rt.pendingTheme = next;
-        else {
+        // Restore on failure without overwriting a newer message queued while
+        // this send was in flight; next scheduleFlush() will retry.
+        if (next.type === "theme") {
+          const hasNewerThemeQueued = rt.pendingTheme !== undefined;
+          if (!hasNewerThemeQueued) {
+            rt.pendingTheme = next;
+          }
+        } else if (rt.pendingRender) {
           rt.pendingRender = coalescePendingWidgetMessage(
-            rt.pendingRender,
             next,
+            rt.pendingRender,
           );
+        } else {
+          rt.pendingRender = next;
         }
         return;
       }
