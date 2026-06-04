@@ -59,25 +59,27 @@ describe("render widget tools", () => {
     expect(inputProperties).toHaveProperty("widgetCode");
     expect(inputProperties).toHaveProperty("guidelinesRead");
     expect(outputProperties).toHaveProperty("state");
-    expect(outputProperties).toHaveProperty("error");
-    expect(outputJsonSchema).not.toHaveProperty("required");
+    expect(outputProperties).not.toHaveProperty("error");
+    expect(outputJsonSchema.required).toEqual(["state"]);
     expect(outputProperties).not.toHaveProperty("success");
     expect(() =>
       renderWidgetOutputSchema.parse({
         state: { hex: "#b87528" },
       }),
     ).not.toThrow();
-    expect(() =>
-      renderWidgetOutputSchema.parse({
-        error: "Widget state must be JSON-serializable.",
-      }),
-    ).not.toThrow();
-    expect(() =>
+    expect(
       renderWidgetOutputSchema.parse({
         state: { hex: "#b87528" },
         error: "Widget state must be JSON-serializable.",
       }),
-    ).not.toThrow();
+    ).toEqual({
+      state: { hex: "#b87528" },
+    });
+    expect(() =>
+      renderWidgetOutputSchema.parse({
+        error: "Widget state must be JSON-serializable.",
+      }),
+    ).toThrow();
   });
 
   it("does not treat renderWidget as an auto-success tool", () => {

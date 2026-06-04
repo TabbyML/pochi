@@ -53,13 +53,11 @@ export function writePendingRenderWidgetOutput(messages: Message[]) {
   const part = outputMessage.parts[outputPartIndex];
   if (!isStaticToolUIPart(part)) return;
 
-  const state = store.getWidgetState(part.toolCallId);
+  const state = store.getWidgetState(part.toolCallId) ?? {};
+  const output = { state };
   const error = store.getWidgetError(part.toolCallId);
-  const output: { state?: unknown; error?: string } = {};
-  if (state !== undefined) {
-    output.state = state;
-  }
   if (error !== undefined) {
+    // @ts-expect-error renderWidget output schema intentionally omits runtime errors.
     output.error = error;
   }
   outputMessage.parts = outputMessage.parts.map((currentPart, index) =>

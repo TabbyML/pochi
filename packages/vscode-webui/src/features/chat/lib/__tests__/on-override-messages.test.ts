@@ -84,7 +84,7 @@ describe("onOverrideMessages", () => {
     expect(store.getWidgetError("widget-1")).toBeUndefined();
   });
 
-  it("omits renderWidget state when no UI state has been reported", async () => {
+  it("commits an empty renderWidget state when no UI state has been reported", async () => {
     const messages = [
       createAssistantMessage([
         createRenderWidgetPart({
@@ -95,9 +95,6 @@ describe("onOverrideMessages", () => {
       createUserMessage("continue"),
     ];
 
-    const store = useRenderWidgetStore.getState();
-    store.setWidgetError("widget-1", "Widget failed.");
-
     await onOverrideMessages({
       store: {} as never,
       taskId: "task-1",
@@ -107,11 +104,6 @@ describe("onOverrideMessages", () => {
 
     expect(messages[0].parts[0]).toMatchObject({
       state: "output-available",
-      output: {
-        error: "Widget failed.",
-      },
-    });
-    expect(messages[0].parts[0]).not.toMatchObject({
       output: {
         state: {},
       },

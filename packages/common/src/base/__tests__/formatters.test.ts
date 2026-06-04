@@ -134,33 +134,6 @@ describe('formatters', () => {
       expect(toolPart.input).not.toBeNull();
       expect(toolPart.input).toEqual({});
     });
-
-    it('should omit state when resolving pending renderWidget tool parts without UI state', () => {
-      const messages: UIMessage[] = [
-        {
-          id: 'assistant-1',
-          role: 'assistant',
-          parts: [
-            createToolPart('renderWidget', 'input-available', {
-              title: 'Widget',
-              widgetCode: '<pochi-widget state="{}"></pochi-widget>',
-              guidelinesRead: true,
-            }),
-          ],
-        },
-        {
-          id: 'user-1',
-          role: 'user',
-          parts: [{ type: 'text', text: 'hello' }],
-        },
-      ];
-      const formatted = formatters.llm(messages);
-      const toolPart = formatted[0].parts[0] as any;
-      expect(toolPart.state).toBe('output-available');
-      expect(toolPart.output).toEqual({
-        error: 'User cancelled the tool call.',
-      });
-    });
   });
 
   describe('formatters.llm', () => {

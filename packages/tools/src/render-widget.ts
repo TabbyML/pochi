@@ -20,8 +20,12 @@ export const renderWidgetInputSchema = z.object({
 });
 
 export const renderWidgetOutputSchema = z.object({
-  state: z.unknown().optional().describe("JSON-serializable widget UI state."),
-  error: z.string().optional().describe("Optional widget runtime error."),
+  state: z
+    .unknown()
+    .refine((value) => value !== undefined, {
+      message: "Widget state is required.",
+    })
+    .describe("JSON-serializable widget UI state."),
 });
 
 export const renderWidget = defineClientTool({
