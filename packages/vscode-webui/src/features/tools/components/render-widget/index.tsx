@@ -299,7 +299,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         }
       } else if (event.type === "state") {
         if (isInteractiveRef.current) {
-          setWidgetState(tool.toolCallId, event.state ?? {});
+          setWidgetState(tool.toolCallId, event.state);
         }
       } else if (event.type === "sendMessage") {
         if (

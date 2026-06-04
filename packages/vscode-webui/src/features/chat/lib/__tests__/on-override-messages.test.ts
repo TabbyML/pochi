@@ -84,6 +84,40 @@ describe("onOverrideMessages", () => {
     expect(store.getWidgetError("widget-1")).toBeUndefined();
   });
 
+  it("omits renderWidget state when no UI state has been reported", async () => {
+    const messages = [
+      createAssistantMessage([
+        createRenderWidgetPart({
+          toolCallId: "widget-1",
+          state: "input-available",
+        }),
+      ]),
+      createUserMessage("continue"),
+    ];
+
+    const store = useRenderWidgetStore.getState();
+    store.setWidgetError("widget-1", "Widget failed.");
+
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(messages[0].parts[0]).toMatchObject({
+      state: "output-available",
+      output: {
+        error: "Widget failed.",
+      },
+    });
+    expect(messages[0].parts[0]).not.toMatchObject({
+      output: {
+        state: {},
+      },
+    });
+  });
+
   it("commits only the last pending renderWidget part in the adjacent assistant message", async () => {
     const messages = [
       createAssistantMessage([

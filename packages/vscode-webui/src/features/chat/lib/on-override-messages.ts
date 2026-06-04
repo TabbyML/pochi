@@ -53,9 +53,15 @@ export function writePendingRenderWidgetOutput(messages: Message[]) {
   const part = outputMessage.parts[outputPartIndex];
   if (!isStaticToolUIPart(part)) return;
 
-  const state = store.getWidgetState(part.toolCallId) ?? {};
+  const state = store.getWidgetState(part.toolCallId);
   const error = store.getWidgetError(part.toolCallId);
-  const output = error ? { state, error } : { state };
+  const output: { state?: unknown; error?: string } = {};
+  if (state !== undefined) {
+    output.state = state;
+  }
+  if (error !== undefined) {
+    output.error = error;
+  }
   outputMessage.parts = outputMessage.parts.map((currentPart, index) =>
     index === outputPartIndex
       ? ({

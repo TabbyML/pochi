@@ -97,7 +97,7 @@ export function isCompletionToolPart(
   return isCompletionToolName(getStaticToolName(part));
 }
 
-export function isInteractiveToolName(name: string): boolean {
+export function isInteractiveToolName(name: string): name is "renderWidget" {
   return name === "renderWidget";
 }
 

@@ -37,6 +37,23 @@ describe("render widget renderer runtime", () => {
     expect(reportState).toHaveBeenCalledWith({ hex: "#b87528" });
   });
 
+  it("defaults missing pochi-widget state to an empty object for widget code", () => {
+    const root = document.createElement("div");
+    root.innerHTML = "<pochi-widget></pochi-widget>";
+    document.body.appendChild(root);
+    const reportState = vi.fn();
+
+    installPochiWidgetStateRuntime({
+      root,
+      reportState,
+      reportSendMessage: vi.fn(),
+      reportError: vi.fn(),
+    });
+
+    expect(window.pochi.state).toEqual({});
+    expect(reportState).toHaveBeenCalledWith({});
+  });
+
   it("reports an error when the top-level pochi-widget state container is missing", () => {
     const root = document.createElement("div");
     root.innerHTML = "<section>missing state container</section>";
@@ -136,5 +153,25 @@ describe("render widget renderer runtime", () => {
       "Widget state must be JSON-serializable.",
     );
     expect(reportState).not.toHaveBeenCalledWith({ invalid: expect.anything() });
+  });
+
+  it("reports undefined state updates as invalid without throwing to widget code", () => {
+    const root = document.createElement("div");
+    root.innerHTML = `<pochi-widget state='{}'></pochi-widget>`;
+    document.body.appendChild(root);
+    const reportError = vi.fn();
+
+    installPochiWidgetStateRuntime({
+      root,
+      reportState: vi.fn(),
+      reportSendMessage: vi.fn(),
+      reportError,
+    });
+
+    expect(() => window.pochi.setState(undefined)).not.toThrow();
+    expect(reportError).toHaveBeenCalledWith(
+      "Widget state must be JSON-serializable.",
+    );
+    expect(window.pochi.state).toEqual({});
   });
 });

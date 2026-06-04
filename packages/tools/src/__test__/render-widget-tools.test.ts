@@ -26,7 +26,8 @@ describe("render widget tools", () => {
 
   it("validates generative UI tool schemas", () => {
     const inputProperties = renderWidgetInputSchema.toJSONSchema().properties;
-    const outputProperties = renderWidgetOutputSchema.toJSONSchema().properties;
+    const outputJsonSchema = renderWidgetOutputSchema.toJSONSchema();
+    const outputProperties = outputJsonSchema.properties;
 
     expect(() =>
       renderWidgetInputSchema.parse({
@@ -59,10 +60,16 @@ describe("render widget tools", () => {
     expect(inputProperties).toHaveProperty("guidelinesRead");
     expect(outputProperties).toHaveProperty("state");
     expect(outputProperties).toHaveProperty("error");
+    expect(outputJsonSchema).not.toHaveProperty("required");
     expect(outputProperties).not.toHaveProperty("success");
     expect(() =>
       renderWidgetOutputSchema.parse({
         state: { hex: "#b87528" },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      renderWidgetOutputSchema.parse({
+        error: "Widget state must be JSON-serializable.",
       }),
     ).not.toThrow();
     expect(() =>

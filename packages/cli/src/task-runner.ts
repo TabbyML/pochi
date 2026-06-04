@@ -568,14 +568,14 @@ export class TaskRunner {
           logger.debug(
             `Tool call ${toolName} (${toolCall.toolCallId}) cancelled: ${reason}`,
           );
+          const error =
+            "Tool call was cancelled because a previous tool call failed.";
           await this.chatKit.chat.addToolOutput({
             // @ts-expect-error
             tool: toolName,
             toolCallId: toolCall.toolCallId,
             output: {
-              // @ts-expect-error
-              error:
-                "Tool call was cancelled because a previous tool call failed.",
+              error,
             },
           });
         },
