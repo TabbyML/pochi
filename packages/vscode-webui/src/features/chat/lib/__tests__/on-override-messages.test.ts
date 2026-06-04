@@ -52,6 +52,38 @@ describe("onOverrideMessages", () => {
     ).toBeUndefined();
   });
 
+  it("commits renderer errors with the pending renderWidget output", async () => {
+    const messages = [
+      createAssistantMessage([
+        createRenderWidgetPart({
+          toolCallId: "widget-1",
+          state: "input-available",
+        }),
+      ]),
+      createUserMessage("continue"),
+    ];
+
+    const store = useRenderWidgetStore.getState();
+    store.setWidgetState("widget-1", { hex: "#b87528" });
+    store.setWidgetError("widget-1", "Widget state must be JSON-serializable.");
+
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(messages[0].parts[0]).toMatchObject({
+      state: "output-available",
+      output: {
+        state: { hex: "#b87528" },
+        error: "Widget state must be JSON-serializable.",
+      },
+    });
+    expect(store.getWidgetError("widget-1")).toBeUndefined();
+  });
+
   it("commits only the last pending renderWidget part in the adjacent assistant message", async () => {
     const messages = [
       createAssistantMessage([

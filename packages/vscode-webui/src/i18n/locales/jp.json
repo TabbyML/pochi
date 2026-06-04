@@ -310,6 +310,7 @@
     "request": "リクエスト",
     "response": "レスポンス",
     "imgAlt": "MCPツールレスポンススナップショット",
+    "widgetError": "ウィジェットエラー：",
     "applyingDiffTo": "差分を適用中：",
     "applyingDiffsTo": "複数の差分を適用中：",
     "addingReviewComment": "レビュー中 ",

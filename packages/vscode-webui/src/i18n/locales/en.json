@@ -314,6 +314,7 @@
     "request": "Request",
     "response": "Response",
     "imgAlt": "MCP tool response snapshot",
+    "widgetError": "Widget error: ",
     "applyingDiffTo": "Applying diff to ",
     "applyingDiffsTo": "Applying diffs to ",
     "addingReviewComment": "Reviewing ",

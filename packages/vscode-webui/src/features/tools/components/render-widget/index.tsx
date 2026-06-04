@@ -2,6 +2,7 @@ import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useRenderWidgetStore } from "../../../chat/hooks/use-render-widget-store";
 import { useSendMessage } from "../../../chat/lib/chat-events";
 import type { ToolProps } from "../types";
@@ -69,8 +70,13 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isLastPart,
 }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const sendMessage = useSendMessage();
   const setWidgetState = useRenderWidgetStore((state) => state.setWidgetState);
+  const setWidgetError = useRenderWidgetStore((state) => state.setWidgetError);
+  const clearWidgetError = useRenderWidgetStore(
+    (state) => state.clearWidgetError,
+  );
   const clearWidgetState = useRenderWidgetStore(
     (state) => state.clearWidgetState,
   );
@@ -83,6 +89,12 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   // Tracks animation history only — intentionally separate from channel state.
   const hasPostedPreviewRef = useRef(false);
+  const hasSentMessageRef = useRef(false);
+  const toolCallIdRef = useRef(tool.toolCallId);
+  if (toolCallIdRef.current !== tool.toolCallId) {
+    toolCallIdRef.current = tool.toolCallId;
+    hasSentMessageRef.current = false;
+  }
   // Remember the most recently queued render so we can replay it after the
   // iframe reloads (e.g. browser-initiated reloads). Theme changes alone must
   // not remount the iframe — they propagate via the theme message channel.
@@ -125,16 +137,17 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       })
       .catch((error) => {
         if (!disposed) {
-          setRendererError(
-            error instanceof Error ? error.message : String(error),
-          );
+          const message =
+            error instanceof Error ? error.message : String(error);
+          setRendererError(message);
+          setWidgetError(tool.toolCallId, message);
         }
       });
 
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [setWidgetError, tool.toolCallId]);
 
   const iframeDocument = useMemo(() => {
     if (import.meta.env.PROD && !rendererScriptCode) return undefined;
@@ -281,12 +294,20 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         setHasFirstHeight(true);
       } else if (event.type === "error") {
         setRendererError(event.message);
+        if (isInteractiveRef.current) {
+          setWidgetError(tool.toolCallId, event.message);
+        }
       } else if (event.type === "state") {
         if (isInteractiveRef.current) {
           setWidgetState(tool.toolCallId, event.state ?? {});
         }
       } else if (event.type === "sendMessage") {
-        if (isInteractiveRef.current && event.prompt.trim()) {
+        if (
+          isInteractiveRef.current &&
+          event.prompt.trim() &&
+          !hasSentMessageRef.current
+        ) {
+          hasSentMessageRef.current = true;
           sendMessage({ prompt: event.prompt });
         }
       }
@@ -297,6 +318,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     fallbackThemeClass,
     scheduleFlush,
     sendMessage,
+    setWidgetError,
     setWidgetState,
     tool.toolCallId,
   ]);
@@ -338,6 +360,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     if (!widgetCode) return;
 
     setRendererError(undefined);
+    clearWidgetError(tool.toolCallId);
     const mode = isFinal ? "finalize" : "preview";
     const html = prepareWidgetHtml(widgetCode, mode);
     const message: WidgetRenderMessage = {
@@ -364,7 +387,14 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         debounceRef.current = null;
       }
     };
-  }, [isFinal, queueRenderMessage, shouldAnimateReveal, widgetCode]);
+  }, [
+    clearWidgetError,
+    isFinal,
+    queueRenderMessage,
+    shouldAnimateReveal,
+    tool.toolCallId,
+    widgetCode,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -385,13 +415,18 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
           className={cn(
             "w-full bg-transparent",
             hasFirstHeight && "transition-[height] duration-150 ease-out",
-            !isInteractive && "pointer-events-none",
           )}
           style={{ height }}
         />
       ) : null}
       {rendererError ? (
-        <div className="text-error text-xs">{rendererError}</div>
+        <div
+          role="alert"
+          className="mt-2 break-words rounded-md border border-[var(--vscode-inputValidation-errorBorder,var(--vscode-errorForeground))] bg-[var(--vscode-inputValidation-errorBackground,transparent)] px-3 py-2 text-[var(--vscode-errorForeground)] text-xs leading-5"
+        >
+          <span className="font-medium">{t("toolInvocation.widgetError")}</span>
+          {rendererError}
+        </div>
       ) : null}
     </div>
   );

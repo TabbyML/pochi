@@ -51,6 +51,13 @@ vi.mock("@/components/theme-provider", () => ({
   useTheme: () => ({ theme: mockedTheme, setTheme: () => {} }),
 }));
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) =>
+      key === "toolInvocation.widgetError" ? "Translated widget error: " : key,
+  }),
+}));
+
 vi.mock("../../../../chat/lib/chat-events", () => ({
   useSendMessage: () => sendMessageMock,
 }));
@@ -167,7 +174,9 @@ describe("RenderWidgetTool", () => {
       receiveHandler?.({ type: "error", message: "boom" });
     });
 
-    expect(screen.getByText("boom")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Translated widget error: boom",
+    );
   });
 
   it("starts at zero height and waits for the sandboxed renderer to report widget height", () => {
@@ -573,6 +582,87 @@ describe("RenderWidgetTool", () => {
     });
   });
 
+  it("forwards only one widget sendMessage while waiting for the tool output transition", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-message-once",
+            state: "input-available",
+            input: {
+              title: "Message widget",
+              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "sendMessage",
+        prompt: "show next 15 days weather",
+      });
+      receiveHandler?.({
+        type: "sendMessage",
+        prompt: "show next 30 days weather",
+      });
+    });
+
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+    expect(sendMessageMock).toHaveBeenCalledWith({
+      prompt: "show next 15 days weather",
+    });
+  });
+
+  it("stores renderer errors for the pending renderWidget output", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-error",
+            state: "input-available",
+            input: {
+              title: "Error widget",
+              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "error",
+        message: "Widget state must be JSON-serializable.",
+      });
+    });
+
+    expect(screen.queryByText("Widget error")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Translated widget error: Widget state must be JSON-serializable.",
+    );
+    expect(useRenderWidgetStore.getState().getWidgetError("widget-error")).toBe(
+      "Widget state must be JSON-serializable.",
+    );
+  });
+
   it("stops accepting widget events after the renderWidget call has output", () => {
     const { container, rerender } = render(
       <RenderWidgetTool
@@ -629,6 +719,10 @@ describe("RenderWidgetTool", () => {
         />,
       );
     });
+
+    expect(getWidgetIframe(container).className).not.toContain(
+      "pointer-events-none",
+    );
 
     act(() => {
       receiveHandler?.({ type: "state", state: { city: "shanghai" } });

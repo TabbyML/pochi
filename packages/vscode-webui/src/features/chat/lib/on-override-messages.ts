@@ -1,6 +1,7 @@
 import { vscodeHost } from "@/lib/vscode";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
-import { getStaticToolName, isStaticToolUIPart } from "ai";
+import { isInteractiveToolPart } from "@getpochi/tools";
+import { isStaticToolUIPart } from "ai";
 import { unique } from "remeda";
 import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
 
@@ -53,12 +54,14 @@ export function writePendingRenderWidgetOutput(messages: Message[]) {
   if (!isStaticToolUIPart(part)) return;
 
   const state = store.getWidgetState(part.toolCallId) ?? {};
+  const error = store.getWidgetError(part.toolCallId);
+  const output = error ? { state, error } : { state };
   outputMessage.parts = outputMessage.parts.map((currentPart, index) =>
     index === outputPartIndex
       ? ({
           ...part,
           state: "output-available",
-          output: { state },
+          output,
         } as Message["parts"][number])
       : currentPart,
   );
@@ -79,7 +82,7 @@ function findPendingRenderWidgetPartIndex(message: Message) {
   for (let partIndex = message.parts.length - 1; partIndex >= 0; partIndex--) {
     const part = message.parts[partIndex];
     if (!isStaticToolUIPart(part)) continue;
-    if (getStaticToolName(part) !== "renderWidget") continue;
+    if (!isInteractiveToolPart(part)) continue;
     if (part.state !== "input-available") continue;
     return partIndex;
   }

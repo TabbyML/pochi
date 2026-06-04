@@ -6,6 +6,7 @@ import {
   type ToolName,
   ToolsByPermission,
   isCompletionToolPart,
+  isInteractiveToolPart,
 } from "@getpochi/tools";
 import {
   type ToolUIPart,
@@ -47,7 +48,7 @@ export const getPendingToolcallApproval = (
       isStaticToolUIPart(part) &&
       part.state === "input-available" &&
       !isCompletionToolPart(part) &&
-      getStaticToolName(part) !== "renderWidget"
+      !isInteractiveToolPart(part)
     ) {
       tools.push(part);
     }
