@@ -27,6 +27,12 @@ export const CustomAgent = z.object({
     .describe(
       "Whether to omit workspace agent markdown such as AGENTS.md and README.pochi.md from the agent system prompt.",
     ),
+  filePath: z
+    .string()
+    .optional()
+    .describe(
+      "The file system path where this agent is defined. Used as the base directory for resolving any reference files mentioned in the system prompt.",
+    ),
 });
 
 export type CustomAgent = z.infer<typeof CustomAgent>;

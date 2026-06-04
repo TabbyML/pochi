@@ -8,6 +8,7 @@ export interface ValidCustomAgentFile extends CustomAgent {
    * The file system path where this custom agent is defined
    */
   filePath: string;
+  isBuiltIn?: boolean;
 }
 
 export interface InvalidCustomAgentFile extends Partial<CustomAgent> {
@@ -27,9 +28,8 @@ export interface InvalidCustomAgentFile extends Partial<CustomAgent> {
    * Detailed error message
    */
   message: string;
+  isBuiltIn?: boolean;
 }
-
-export const BuiltInAgentPath = "_builtIn_";
 
 export type CustomAgentFile = ValidCustomAgentFile | InvalidCustomAgentFile;
 

@@ -11,13 +11,17 @@ export function createSystemPrompt(
   mcpInstructions?: string,
   autoMemory?: AutoMemoryContext,
 ) {
-  const agentSystemPrompt =
+  const agentSystemPromptBody =
     customAgent?.systemPrompt ||
     `You are Pochi, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
 
 IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are for helping the user with programming. You may use URLs provided by the user in their messages or local files.
 
 `.trim();
+  const agentSystemPrompt =
+    customAgent?.systemPrompt && customAgent.filePath
+      ? `${agentSystemPromptBody.trim()}\n\n[Agent location: ${customAgent.filePath}]\nUse the directory containing this agent's source file as the base directory for resolving any reference files mentioned above (e.g. \`references/<name>.md\` → \`<dir>/references/<name>.md\`).`
+      : agentSystemPromptBody;
   // Static guidance only — MEMORY.md index is injected separately to keep
   // the system prefix cache stable across sessions.
   const autoMemoryPrompt = buildAutoMemoryStaticPrompt(autoMemory);

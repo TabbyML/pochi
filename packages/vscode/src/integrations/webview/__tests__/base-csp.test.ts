@@ -41,7 +41,7 @@ describe("webview CSP", () => {
       "utf8",
     );
     const copyScript = readFileSync(
-      path.join(__dirname, "../../../../scripts/copy-webui-dist.js"),
+      path.join(__dirname, "../../../../scripts/copy-assets.js"),
       "utf8",
     );
 

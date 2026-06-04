@@ -1,12 +1,15 @@
-import { describe, it, expect } from "vitest";
 import { mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import { run } from "../lib/run";
 
 describe("pochi --version", () => {
   it("should run in an empty directory", () => {
-    const tmpDir = join(tmpdir(), `pochi-test-${Math.random().toString(36).slice(2)}`);
+    const tmpDir = join(
+      tmpdir(),
+      `pochi-test-${Math.random().toString(36).slice(2)}`,
+    );
     mkdirSync(tmpDir, { recursive: true });
 
     try {

@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { loadAgents, builtInAgentFiles } from "../load-agents";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { describe, expect, it } from "vitest";
+import { loadAgents, loadBuiltInAgents } from "../load-agents";
 
 describe("Load Agents", () => {
   it("should load project agents with relative paths alongside built-in agents", async () => {
@@ -28,11 +28,12 @@ tools:
 Project agent instructions.`,
       );
 
+      const builtInAgents = await loadBuiltInAgents();
       const agents = await loadAgents(projectRoot, false);
 
       expect(agents).toEqual(
         expect.arrayContaining([
-          ...builtInAgentFiles,
+          ...builtInAgents,
           expect.objectContaining({
             name: "project-agent",
             description: "Project test agent",
@@ -70,11 +71,12 @@ tools: "readFile(src/**), readFile(pochi://-/plan.md), writeToFile, executeComma
 Project agent instructions.`,
       );
 
+      const builtInAgents = await loadBuiltInAgents();
       const agents = await loadAgents(projectRoot, false);
 
       expect(agents).toEqual(
         expect.arrayContaining([
-          ...builtInAgentFiles,
+          ...builtInAgents,
           expect.objectContaining({
             name: "project-agent-inline",
             description: "Project test agent with inline tools",
@@ -94,7 +96,8 @@ Project agent instructions.`,
   });
 
   it("should return built-in agents for non-existent directories", async () => {
+    const builtInAgents = await loadBuiltInAgents();
     const agents = await loadAgents("/non/existent/path", false);
-    expect(agents).toEqual(builtInAgentFiles);
+    expect(agents).toEqual(builtInAgents);
   });
 });

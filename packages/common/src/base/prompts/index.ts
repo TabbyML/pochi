@@ -1,4 +1,3 @@
-import { BuiltInAgentPath } from "../../vscode-webui-bridge/types/custom-agent";
 import { renderActiveSelection } from "./active-selection";
 import {
   buildAutoMemoryDreamDirective,
@@ -126,5 +125,5 @@ function createCustomAgentPrompt(id: string, path?: string) {
       return match.replace("<", "&lt;");
     },
   );
-  return `<custom-agent id="${id}" path="${path || BuiltInAgentPath}">Please use the newTask tool to run ${processedAgentName} to complete the following request:\n</custom-agent>`;
+  return `<custom-agent id="${id}" path="${path ?? ""}">Please use the newTask tool to run ${processedAgentName} to complete the following request:\n</custom-agent>`;
 }

@@ -1,0 +1,565 @@
+## Configuration Schema
+
+`~/.pochi/config.jsonc` uses JSONC format (JSON with comments).
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "default": "https://getpochi.com/config.schema.json",
+      "type": "string"
+    },
+    "vendors": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "credentials": {},
+              "user": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "credentials"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "providers": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "contentType": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "baseURL": {
+                "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
+                "type": "string"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "openai"
+              }
+            },
+            "required": [
+              "models"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "contentType": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "baseURL": {
+                "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
+                "type": "string"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "openai-responses"
+              }
+            },
+            "required": [
+              "models",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "contentType": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "baseURL": {
+                "description": "Base URL for the model provider's API, e.g., \"https://api.openai.com/v1\"",
+                "type": "string"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "anthropic"
+              }
+            },
+            "required": [
+              "models",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "contentType": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "kind": {
+                "type": "string",
+                "const": "google-vertex-tuning"
+              },
+              "vertex": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "service-account"
+                      },
+                      "serviceAccountKey": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "serviceAccountKey",
+                      "location"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "access-token"
+                      },
+                      "accessToken": {
+                        "type": "string"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "accessToken",
+                      "projectId",
+                      "location"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "model-url"
+                      },
+                      "issueUrl": {
+                        "type": "string"
+                      },
+                      "modelUrl": {
+                        "type": "string"
+                      },
+                      "timeout": {
+                        "type": "number",
+                        "description": "Timeout in milliseconds when requesting model api"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "issueUrl",
+                      "modelUrl",
+                      "timeout"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "models",
+              "kind",
+              "vertex"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Display name of the provider, e.g., \"OpenAI\", \"Anthropic\", etc.",
+                "type": "string"
+              },
+              "models": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "Display name of the model, e.g., \"GPT-4o\"",
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "description": "Maximum number of generated tokens for the model",
+                      "type": "number"
+                    },
+                    "contextWindow": {
+                      "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "useToolCallMiddleware": {
+                      "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "contentType": {
+                      "description": "The supported mime types model can handle",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "kind": {
+                "type": "string",
+                "const": "ai-gateway"
+              },
+              "apiKey": {
+                "description": "API key for the model provider, if required.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "models",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "disabled": {
+                "type": "boolean"
+              },
+              "disabledTools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "url": {
+                "type": "string"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "disabled": {
+                "type": "boolean"
+              },
+              "disabledTools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "command": {
+                "type": "string"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "env": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "command",
+              "args"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "browserAgentSettings": {
+      "type": "object",
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "managed",
+                "localChrome"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "localChrome": {
+          "type": "object",
+          "properties": {
+            "chromePath": {
+              "type": "string"
+            },
+            "startParams": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "recording": {
+          "type": "object",
+          "properties": {
+            "recordingEnabled": {
+              "type": "boolean"
+            },
+            "recordingSize": {
+              "type": "string",
+              "enum": [
+                "1280x720",
+                "1138x640",
+                "854x480"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+```
