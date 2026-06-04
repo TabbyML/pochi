@@ -59,18 +59,7 @@ export async function maybePersistToolResult(
       ...(output as Record<string, unknown>),
     };
 
-    // Lazily write the full output once; both cases share the same file.
     const dir = getToolResultsDir(taskId);
-    const filePath = path.join(dir, `${toolName}-${toolCallId}.json`);
-    let fileWritten = false;
-    const ensureFile = async () => {
-      if (!fileWritten) {
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(filePath, serialized, "utf-8");
-        fileWritten = true;
-      }
-    };
-
     let persisted = false;
 
     // Case 1: top-level string fields (execute-command, read-background-job)
@@ -78,7 +67,10 @@ export async function maybePersistToolResult(
       if (typeof value !== "string") continue;
       if (value.length <= PersistedToolResultPreviewSize) continue;
 
-      await ensureFile();
+      const filePath = path.join(dir, `${toolName}-${toolCallId}-${key}.log`);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(filePath, value, "utf-8");
+
       result[key] = buildTruncatedValue(value, filePath);
       persisted = true;
 
@@ -102,7 +94,14 @@ export async function maybePersistToolResult(
         const combined = (contentArray as { type: "text"; text: string }[])
           .map((b) => b.text)
           .join("\n");
-        await ensureFile();
+
+        const filePath = path.join(
+          dir,
+          `${toolName}-${toolCallId}-content.log`,
+        );
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(filePath, combined, "utf-8");
+
         result.content = [
           { type: "text", text: buildTruncatedValue(combined, filePath) },
         ];
