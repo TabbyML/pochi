@@ -8,6 +8,7 @@ import type React from "react";
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
+  loadingLabel?: string;
   user?: { name: string; image?: string | null };
   messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
@@ -21,6 +22,7 @@ interface ChatAreaProps {
 export function ChatArea({
   messages,
   isLoading,
+  loadingLabel,
   user,
   messagesContainerRef,
   className,
@@ -45,6 +47,7 @@ export function ChatArea({
           image: resourceUri?.logo128,
         }}
         isLoading={isLoading}
+        loadingLabel={loadingLabel}
         containerRef={messagesContainerRef}
         className={className}
         forkTask={forkTask}

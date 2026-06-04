@@ -22,7 +22,7 @@ import type { Todo } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApprovalAndRetry } from "../approval";
 import {
@@ -165,15 +165,14 @@ function Chat({ user, uid, info }: ChatProps) {
   });
   const tryUpdateAutoMemoryRef = useLatest(tryUpdateAutoMemory);
 
-  const chatKit = useLiveChatKit({
-    store,
-    blobStore,
-    taskId: uid,
-    getters,
-    isSubTask,
-    customAgent,
-    abortSignal: chatAbortController.current.signal,
-    onCompact: async () => {
+  const [isCompacting, setIsCompacting] = useState(false);
+  const onCompactStart = useCallback(() => {
+    setIsCompacting(true);
+  }, []);
+  const onCompactFinish = useCallback(
+    async (success: boolean) => {
+      setIsCompacting(false);
+      if (!success) return;
       await vscodeHost.clearFileStateCache(uid);
       // Token usage drops at compact, so rebase the baseline against the
       // post-compact view; tool-call count is monotonic and unaffected.
@@ -183,6 +182,19 @@ function Chat({ user, uid, info }: ChatProps) {
         setter({ ...current, lastExtractionTokens: 0 });
       }
     },
+    [uid, setTaskMemoryStateRef, taskMemoryStateRef],
+  );
+
+  const chatKit = useLiveChatKit({
+    store,
+    blobStore,
+    taskId: uid,
+    getters,
+    isSubTask,
+    customAgent,
+    abortSignal: chatAbortController.current.signal,
+    onCompactStart,
+    onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
     getTaskMemoryState: () => taskMemoryStateRef.current,
     sendAutomaticallyWhen: (x) => {
@@ -339,7 +351,8 @@ function Chat({ user, uid, info }: ChatProps) {
       )}
       <ChatArea
         messages={renderMessages}
-        isLoading={isLoading}
+        isLoading={isLoading || isCompacting}
+        loadingLabel={isCompacting ? t("tokenUsage.compacting") : undefined}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
         className={cn({
