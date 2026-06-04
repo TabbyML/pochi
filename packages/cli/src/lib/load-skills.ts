@@ -9,7 +9,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { isValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import { uniqueBy } from "remeda";
-import { BuiltInSkillsDir } from "./builtin-skills-dir";
+import { getBuiltInSkillsDir } from "./builtin-skills-dir";
 
 const logger = getLogger("loadSkills");
 
@@ -56,7 +56,7 @@ async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
 }
 
 async function loadBuiltInSkills(): Promise<ValidSkillFile[]> {
-  const skills = await readSkillsFromDir(BuiltInSkillsDir);
+  const skills = await readSkillsFromDir(await getBuiltInSkillsDir());
   return skills
     .filter((skill): skill is ValidSkillFile => isValidSkillFile(skill))
     .map((skill) => ({ ...skill, isBuiltIn: true }));

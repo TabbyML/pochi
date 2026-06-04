@@ -8,13 +8,6 @@ build() {
     local target=$1
     local platform=$2
     bun run build -- --target="$target" --outfile="./dist/$platform/pochi"
-    # Ship the built-in skill markdown next to the binary inside the archive.
-    # The runtime resolver in `src/lib/builtin-skills-dir.ts` looks for
-    # `<dirname(process.execPath)>/skills/` after the user extracts the
-    # tarball into `~/.pochi/bin/`.
-    cp -R ../common/src/base/skills "./dist/$platform/skills"
-    cp -R ../common/src/base/agents "./dist/$platform/agents"
-    # generate .tar.gz for linux and mac, generate .zip for windows.
     if [ "$platform" == "windows-x64" ]; then
         (cd "./dist/$platform" && zip -r "../pochi-$platform.zip" .)
     else

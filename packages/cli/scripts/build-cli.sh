@@ -1,9 +1,6 @@
 #!/bin/bash
 set -ex
 
-# Ship the built-in skill markdown files next to the bundled output so the
-# CLI loader (`packages/cli/src/lib/builtin-skills-dir.ts`) can resolve
-# them via `import.meta.dirname/skills/` (or `<binary-dir>/skills/`).
 copy_builtin_skills() {
         local dest="$1"
         rm -rf "$dest/skills"
@@ -47,15 +44,18 @@ build_js() {
 }
 
 build_exe() {
-        bun build src/cli.ts --banner='import * as undici from "undici";' \
-                --asset-naming="[name].[ext]" \
+        local md_files
+        md_files=$(find ../common/src/base/skills ../common/src/base/agents \
+                -type f -name "*.md")
+
+        bun build src/cli.ts $md_files \
+                --banner='import * as undici from "undici";' \
+                --asset-naming="[dir]/[name].[ext]" \
+                --loader .md:file \
                 --external lightningcss \
                 --compile \
                 --outfile ./dist/pochi \
                 "$@"
-
-        copy_builtin_skills ./dist
-        copy_builtin_agents ./dist
 }
 
 if [[ ${TARGET:-""} == "node" ]]; then

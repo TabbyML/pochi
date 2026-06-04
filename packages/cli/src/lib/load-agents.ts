@@ -10,7 +10,7 @@ import type {
 import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import type { CustomAgent } from "@getpochi/tools";
 import { uniqueBy } from "remeda";
-import { BuiltInAgentsDir } from "./builtin-agents-dir";
+import { getBuiltInAgentsDir } from "./builtin-agents-dir";
 
 const logger = getLogger("loadAgents");
 
@@ -50,7 +50,7 @@ async function readAgentsFromDir(dir: string): Promise<CustomAgentFile[]> {
 }
 
 export async function loadBuiltInAgents(): Promise<ValidCustomAgentFile[]> {
-  const agents = await readAgentsFromDir(BuiltInAgentsDir);
+  const agents = await readAgentsFromDir(await getBuiltInAgentsDir());
   return agents
     .filter((agent): agent is ValidCustomAgentFile =>
       isValidCustomAgentFile(agent),

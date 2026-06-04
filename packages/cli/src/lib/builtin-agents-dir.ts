@@ -2,10 +2,14 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ensureBuiltInBundle } from "./builtin-bundle";
 
 const thisDir = dirname(fileURLToPath(import.meta.url));
 
-function resolveBuiltInAgentsDir(): string {
+export async function getBuiltInAgentsDir(): Promise<string> {
+  const bundle = await ensureBuiltInBundle();
+  if (bundle) return bundle.agentsDir;
+
   const bundleSibling = join(thisDir, "agents");
   if (existsSync(bundleSibling)) return bundleSibling;
 
@@ -20,5 +24,3 @@ function resolveBuiltInAgentsDir(): string {
     return bundleSibling;
   }
 }
-
-export const BuiltInAgentsDir = resolveBuiltInAgentsDir();

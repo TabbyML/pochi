@@ -1,22 +1,21 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { BuiltInSkillsDir } from "../builtin-skills-dir";
 import { describe, expect, it } from "vitest";
+import { getBuiltInSkillsDir } from "../builtin-skills-dir";
 import { loadSkills } from "../load-skills";
 
 async function listBuiltInSkillNames(): Promise<string[]> {
+  const dir = await getBuiltInSkillsDir();
   const names: string[] = [];
-  for (const entry of await fs.readdir(BuiltInSkillsDir, {
+  for (const entry of await fs.readdir(dir, {
     withFileTypes: true,
   })) {
     if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
       names.push(entry.name.replace(/\.md$/i, ""));
     } else if (entry.isDirectory()) {
       try {
-        const stat = await fs.stat(
-          path.join(BuiltInSkillsDir, entry.name, "SKILL.md"),
-        );
+        const stat = await fs.stat(path.join(dir, entry.name, "SKILL.md"));
         if (stat.isFile()) names.push(entry.name);
       } catch {
         // No SKILL.md in this folder.
@@ -28,11 +27,12 @@ async function listBuiltInSkillNames(): Promise<string[]> {
 
 describe("loadSkills", () => {
   it("exposes built-in skill markdown directly from the on-disk folder", async () => {
+    const dir = await getBuiltInSkillsDir();
     const names = await listBuiltInSkillNames();
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) {
-      const flatPath = path.join(BuiltInSkillsDir, `${name}.md`);
-      const dirPath = path.join(BuiltInSkillsDir, name, "SKILL.md");
+      const flatPath = path.join(dir, `${name}.md`);
+      const dirPath = path.join(dir, name, "SKILL.md");
       const filePath = (await fs
         .stat(flatPath)
         .then(() => true)
