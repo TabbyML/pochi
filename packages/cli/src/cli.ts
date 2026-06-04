@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-process.stderr.write(`[boot-probe] argv=${JSON.stringify(process.argv)}\n`);
 // Workaround for https://github.com/oven-sh/bun/issues/18145
 import "@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" with { type: "file" };
 

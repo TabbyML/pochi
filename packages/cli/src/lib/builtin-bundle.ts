@@ -3,6 +3,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { getLogger } from "@getpochi/common";
+// The bundler follows this side-effect import so the static
+// `import "..." with { type: "file" }` statements emitted by the build
+// script reach `Bun.embeddedFiles` in the compiled binary.
+import "./builtin-embeds.generated";
 
 const logger = getLogger("BuiltInBundle");
 
