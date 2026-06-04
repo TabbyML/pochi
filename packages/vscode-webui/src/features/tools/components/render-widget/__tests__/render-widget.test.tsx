@@ -1,7 +1,7 @@
+// @vitest-environment jsdom
+import { useRenderWidgetStore } from "@/features/chat";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-// @vitest-environment jsdom
-import { useRenderWidgetStore } from "../../../../chat/hooks/use-render-widget-store";
 import { RenderWidgetTool } from "../index";
 
 const sendMessageMock = vi.hoisted(() => vi.fn());
@@ -22,6 +22,10 @@ let receiveHandler:
     })
   | undefined;
 
+vi.mock("@/lib/vscode", () => ({
+  vscodeHost: {},
+}));
+
 vi.mock("bidc", () => ({
   createChannel: vi.fn(() => ({
     receive: vi.fn((handler) => {
@@ -39,6 +43,12 @@ vi.mock("bidc", () => ({
 vi.mock("@/lib/utils", () => ({
   cn: (...classes: Array<string | false | undefined>) =>
     classes.filter(Boolean).join(" "),
+  tw: (strings: TemplateStringsArray, ...values: unknown[]) =>
+    strings.reduce(
+      (acc, str, idx) =>
+        acc + str + (values[idx] !== undefined ? String(values[idx]) : ""),
+      "",
+    ),
 }));
 
 vi.mock("../../status-icon", () => ({

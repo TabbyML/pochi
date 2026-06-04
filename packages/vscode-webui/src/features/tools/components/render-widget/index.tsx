@@ -1,6 +1,5 @@
 import { useTheme } from "@/components/theme-provider";
-import { useRenderWidgetStore } from "@/features/chat/hooks/use-render-widget-store";
-import { useSendMessage } from "@/features/chat/lib/chat-events";
+import { useRenderWidgetStore, useSendMessage } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

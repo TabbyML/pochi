@@ -43,3 +43,5 @@ export {
   useSubtaskInfo,
   type SubtaskInfo,
 } from "./hooks/use-subtask-info";
+
+export { useRenderWidgetStore } from "./hooks/use-render-widget-store";
