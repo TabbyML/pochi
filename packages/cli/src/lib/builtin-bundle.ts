@@ -3,10 +3,6 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { getLogger } from "@getpochi/common";
-// The bundler follows this side-effect import so the static
-// `import "..." with { type: "file" }` statements emitted by the build
-// script reach `Bun.embeddedFiles` in the compiled binary.
-import "./builtin-embeds.generated";
 
 const logger = getLogger("BuiltInBundle");
 
@@ -15,9 +11,8 @@ interface MaterializedBundle {
   agentsDir: string;
 }
 
-const SkillsPrefix = "skills__";
-const AgentsPrefix = "agents__";
-const PathSeparatorEncoding = "__";
+const SkillsMarker = "/skills/";
+const AgentsMarker = "/agents/";
 
 type EmbeddedBlob = Blob & { name?: string };
 
@@ -34,36 +29,28 @@ function getEmbeddedBlobs(): readonly EmbeddedBlob[] {
   return bunGlobal?.embeddedFiles ?? [];
 }
 
-function stripHashSuffix(stem: string): string {
-  // Bun's default asset naming appends `-<hash>` before the extension. Drop
-  // that suffix so the encoded prefix used at build time round-trips cleanly.
-  return stem.replace(/-[a-z0-9]+$/i, "");
-}
-
 function classifyBlob(blob: EmbeddedBlob): ClassifiedBlob | undefined {
   const name = blob.name ?? "";
   if (!name.toLowerCase().endsWith(".md")) return undefined;
 
-  const base = name.slice(name.lastIndexOf("/") + 1);
-  const dotIdx = base.lastIndexOf(".");
-  if (dotIdx <= 0) return undefined;
-  const stem = stripHashSuffix(base.slice(0, dotIdx));
-  const ext = base.slice(dotIdx);
+  const skillIdx = name.lastIndexOf(SkillsMarker);
+  const agentIdx = name.lastIndexOf(AgentsMarker);
 
-  let kind: "skill" | "agent";
-  let body: string;
-  if (stem.startsWith(SkillsPrefix)) {
-    kind = "skill";
-    body = stem.slice(SkillsPrefix.length);
-  } else if (stem.startsWith(AgentsPrefix)) {
-    kind = "agent";
-    body = stem.slice(AgentsPrefix.length);
-  } else {
-    return undefined;
+  if (skillIdx !== -1 && skillIdx > agentIdx) {
+    return {
+      blob,
+      relativePath: name.slice(skillIdx + SkillsMarker.length),
+      kind: "skill",
+    };
   }
-
-  const relativePath = `${body.split(PathSeparatorEncoding).join("/")}${ext}`;
-  return { blob, relativePath, kind };
+  if (agentIdx !== -1) {
+    return {
+      blob,
+      relativePath: name.slice(agentIdx + AgentsMarker.length),
+      kind: "agent",
+    };
+  }
+  return undefined;
 }
 
 async function computeBundleHash(blobs: ClassifiedBlob[]): Promise<string> {
