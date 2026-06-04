@@ -324,7 +324,6 @@ function Chat({ user, uid, info }: ChatProps) {
     : attachmentUpload.error ||
       fromTaskError(task) ||
       (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
-
   useHandleChatEvents({
     sendMessage:
       isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,

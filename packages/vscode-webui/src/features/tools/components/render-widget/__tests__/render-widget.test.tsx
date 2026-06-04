@@ -1,19 +1,30 @@
 // @vitest-environment jsdom
+import { useRenderWidgetStore } from "@/features/chat";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RenderWidgetTool } from "../index";
 
+const sendMessageMock = vi.hoisted(() => vi.fn());
 const sentMessages: Record<string, unknown>[] = [];
+let sendHandler:
+  | ((message: Record<string, unknown>) => Promise<{ ok: true }>)
+  | undefined;
 
 let receiveHandler:
   | ((event: {
-      type: "ready" | "height" | "error";
+      type: "ready" | "height" | "error" | "state" | "sendMessage";
       height?: number;
       message?: string;
+      prompt?: string;
+      state?: unknown;
     }) => {
       ok: true;
     })
   | undefined;
+
+vi.mock("@/lib/vscode", () => ({
+  vscodeHost: {},
+}));
 
 vi.mock("bidc", () => ({
   createChannel: vi.fn(() => ({
@@ -21,6 +32,7 @@ vi.mock("bidc", () => ({
       receiveHandler = handler;
     }),
     send: vi.fn(async (message: Record<string, unknown>) => {
+      if (sendHandler) return sendHandler(message);
       sentMessages.push(message);
       return { ok: true };
     }),
@@ -31,6 +43,12 @@ vi.mock("bidc", () => ({
 vi.mock("@/lib/utils", () => ({
   cn: (...classes: Array<string | false | undefined>) =>
     classes.filter(Boolean).join(" "),
+  tw: (strings: TemplateStringsArray, ...values: unknown[]) =>
+    strings.reduce(
+      (acc, str, idx) =>
+        acc + str + (values[idx] !== undefined ? String(values[idx]) : ""),
+      "",
+    ),
 }));
 
 vi.mock("../../status-icon", () => ({
@@ -41,6 +59,17 @@ let mockedTheme: "dark" | "light" = "dark";
 
 vi.mock("@/components/theme-provider", () => ({
   useTheme: () => ({ theme: mockedTheme, setTheme: () => {} }),
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) =>
+      key === "toolInvocation.widgetError" ? "Translated widget error: " : key,
+  }),
+}));
+
+vi.mock("../../../../chat/lib/chat-events", () => ({
+  useSendMessage: () => sendMessageMock,
 }));
 
 vi.mock("../renderer-entry.ts?worker&url", () => ({
@@ -56,12 +85,15 @@ function getWidgetIframe(container: HTMLElement): HTMLIFrameElement {
 describe("RenderWidgetTool", () => {
   beforeEach(() => {
     receiveHandler = undefined;
+    sendHandler = undefined;
+    sendMessageMock.mockClear();
     sentMessages.length = 0;
     mockedTheme = "dark";
     document.documentElement.className = "";
     document.documentElement.style.cssText = "";
     document.body.className = "";
     document.body.style.cssText = "";
+    useRenderWidgetStore.getState().clearAllWidgetStates();
   });
 
   afterEach(() => {
@@ -152,7 +184,9 @@ describe("RenderWidgetTool", () => {
       receiveHandler?.({ type: "error", message: "boom" });
     });
 
-    expect(screen.getByText("boom")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Translated widget error: boom",
+    );
   });
 
   it("starts at zero height and waits for the sandboxed renderer to report widget height", () => {
@@ -360,5 +394,397 @@ describe("RenderWidgetTool", () => {
         ),
       ).toBe(true);
     });
+  });
+
+  it("keeps a newer render message queued when an older render send fails", async () => {
+    let rejectPreview: ((error: Error) => void) | undefined;
+    let resolvePreviewStarted: (() => void) | undefined;
+    const previewStarted = new Promise<void>((resolve) => {
+      resolvePreviewStarted = resolve;
+    });
+    let shouldRejectPreview = true;
+
+    sendHandler = (message) => {
+      sentMessages.push(message);
+      if (
+        shouldRejectPreview &&
+        message.type === "preview" &&
+        typeof message.html === "string" &&
+        message.html.includes("preview")
+      ) {
+        shouldRejectPreview = false;
+        resolvePreviewStarted?.();
+        return new Promise<{ ok: true }>((_, reject) => {
+          rejectPreview = reject;
+        });
+      }
+      return Promise.resolve({ ok: true });
+    };
+
+    const { container, rerender } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-render-retry",
+            state: "input-streaming",
+            input: {
+              title: "Retry widget",
+              widgetCode: "<div>preview</div>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={true}
+        isLoading={true}
+        isLastPart={true}
+        messages={[]}
+      />,
+    );
+
+    const iframe = getWidgetIframe(container);
+    act(() => {
+      iframe.dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({ type: "ready" });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 160));
+    });
+    await previewStarted;
+
+    rerender(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-render-retry",
+            state: "input-available",
+            input: {
+              title: "Retry widget",
+              widgetCode: "<div>final</div>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        isLastPart={true}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      rejectPreview?.(new Error("send failed"));
+    });
+
+    await waitFor(() => {
+      const renderMessages = sentMessages.filter(
+        (message) => message.type === "preview" || message.type === "finalize",
+      );
+      const lastRenderMessage = renderMessages.at(-1);
+      expect(lastRenderMessage?.type).toBe("finalize");
+      expect(lastRenderMessage?.html).toContain("final");
+    });
+  });
+
+  it("keeps a newer theme message queued when an older theme send fails", async () => {
+    let rejectTheme: ((error: Error) => void) | undefined;
+    let resolveThemeStarted: (() => void) | undefined;
+    const themeStarted = new Promise<void>((resolve) => {
+      resolveThemeStarted = resolve;
+    });
+    let shouldRejectTheme = true;
+
+    sendHandler = (message) => {
+      sentMessages.push(message);
+      if (shouldRejectTheme && message.type === "theme") {
+        shouldRejectTheme = false;
+        resolveThemeStarted?.();
+        return new Promise<{ ok: true }>((_, reject) => {
+          rejectTheme = reject;
+        });
+      }
+      return Promise.resolve({ ok: true });
+    };
+
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-theme-retry",
+            state: "input-available",
+            input: {
+              title: "Theme retry widget",
+              widgetCode: "<svg></svg>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        isLastPart={true}
+        messages={[]}
+      />,
+    );
+
+    const iframe = getWidgetIframe(container);
+    act(() => {
+      iframe.dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({ type: "ready" });
+    });
+    await themeStarted;
+
+    await act(async () => {
+      document.body.classList.add("vscode-light");
+      document.body.style.setProperty("--vscode-editor-foreground", "#123456");
+      await Promise.resolve();
+    });
+    act(() => {
+      rejectTheme?.(new Error("theme send failed"));
+    });
+
+    await waitFor(() => {
+      const themeMessages = sentMessages.filter(
+        (message) => message.type === "theme",
+      );
+      expect(themeMessages.at(-1)?.themeClass).toBe("light");
+    });
+  });
+
+  it("forwards widget sendMessage events through the chat send-message event", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-message",
+            state: "input-available",
+            input: {
+              title: "Message widget",
+              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "sendMessage",
+        prompt: "show next 15 days weather",
+      });
+    });
+
+    expect(sendMessageMock).toHaveBeenCalledWith({
+      prompt: "show next 15 days weather",
+    });
+  });
+
+  it("forwards only one widget sendMessage while waiting for the tool output transition", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-message-once",
+            state: "input-available",
+            input: {
+              title: "Message widget",
+              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "sendMessage",
+        prompt: "show next 15 days weather",
+      });
+      receiveHandler?.({
+        type: "sendMessage",
+        prompt: "show next 30 days weather",
+      });
+    });
+
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+    expect(sendMessageMock).toHaveBeenCalledWith({
+      prompt: "show next 15 days weather",
+    });
+  });
+
+  it("stores renderer errors for the pending renderWidget output", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-error",
+            state: "input-available",
+            input: {
+              title: "Error widget",
+              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "error",
+        message: "Widget state must be JSON-serializable.",
+      });
+    });
+
+    expect(screen.queryByText("Widget error")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Translated widget error: Widget state must be JSON-serializable.",
+    );
+    expect(useRenderWidgetStore.getState().getWidgetError("widget-error")).toBe(
+      "Widget state must be JSON-serializable.",
+    );
+  });
+
+  it("stops accepting widget events after the renderWidget call has output", () => {
+    const { container, rerender } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-transition-output",
+            state: "input-available",
+            input: {
+              title: "Transition widget",
+              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+              guidelinesRead: true,
+            },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({ type: "state", state: { city: "beijing" } });
+    });
+
+    expect(
+      useRenderWidgetStore
+        .getState()
+        .getWidgetState("widget-transition-output"),
+    ).toEqual({ city: "beijing" });
+
+    act(() => {
+      rerender(
+        <RenderWidgetTool
+          tool={
+            {
+              type: "tool-renderWidget",
+              toolCallId: "widget-transition-output",
+              state: "output-available",
+              input: {
+                title: "Transition widget",
+                widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+                guidelinesRead: true,
+              },
+              output: { state: { city: "beijing" } },
+            } as never
+          }
+          isExecuting={false}
+          isLoading={false}
+          messages={[]}
+        />,
+      );
+    });
+
+    expect(getWidgetIframe(container).className).not.toContain(
+      "pointer-events-none",
+    );
+
+    act(() => {
+      receiveHandler?.({ type: "state", state: { city: "shanghai" } });
+      receiveHandler?.({
+        type: "sendMessage",
+        prompt: "show next 15 days weather",
+      });
+    });
+
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(
+      useRenderWidgetStore
+        .getState()
+        .getWidgetState("widget-transition-output"),
+    ).toBeUndefined();
+  });
+
+  it("ignores widget sendMessage events after the renderWidget call has output", () => {
+    const { container } = render(
+      <RenderWidgetTool
+        tool={
+          {
+            type: "tool-renderWidget",
+            toolCallId: "widget-output",
+            state: "output-available",
+            input: {
+              title: "Message widget",
+              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+              guidelinesRead: true,
+            },
+            output: { state: { city: "beijing" } },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "sendMessage",
+        prompt: "show next 15 days weather",
+      });
+    });
+
+    expect(sendMessageMock).not.toHaveBeenCalled();
+    expect(
+      useRenderWidgetStore.getState().getWidgetState("widget-output"),
+    ).toBeUndefined();
   });
 });

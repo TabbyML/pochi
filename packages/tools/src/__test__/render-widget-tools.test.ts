@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   createClientTools,
+  isAutoSuccessToolName,
+  isInteractiveToolName,
+  isInteractiveToolPart,
   isReadonlyToolCall,
   selectAgentTools,
 } from "../index";
@@ -23,7 +26,8 @@ describe("render widget tools", () => {
 
   it("validates generative UI tool schemas", () => {
     const inputProperties = renderWidgetInputSchema.toJSONSchema().properties;
-    const outputProperties = renderWidgetOutputSchema.toJSONSchema().properties;
+    const outputJsonSchema = renderWidgetOutputSchema.toJSONSchema();
+    const outputProperties = outputJsonSchema.properties;
 
     expect(() =>
       renderWidgetInputSchema.parse({
@@ -54,12 +58,50 @@ describe("render widget tools", () => {
     expect(inputProperties).toHaveProperty("title");
     expect(inputProperties).toHaveProperty("widgetCode");
     expect(inputProperties).toHaveProperty("guidelinesRead");
-    expect(outputProperties).toHaveProperty("success");
+    expect(outputProperties).toHaveProperty("state");
+    expect(outputProperties).not.toHaveProperty("error");
+    expect(outputJsonSchema.required).toEqual(["state"]);
+    expect(outputProperties).not.toHaveProperty("success");
     expect(() =>
       renderWidgetOutputSchema.parse({
-        success: true,
+        state: { hex: "#b87528" },
       }),
     ).not.toThrow();
+    expect(
+      renderWidgetOutputSchema.parse({
+        state: { hex: "#b87528" },
+        error: "Widget state must be JSON-serializable.",
+      }),
+    ).toEqual({
+      state: { hex: "#b87528" },
+    });
+  });
+
+  it("does not treat renderWidget as an auto-success tool", () => {
+    expect(isAutoSuccessToolName("attemptCompletion")).toBe(true);
+    expect(isAutoSuccessToolName("todoWrite")).toBe(true);
+    expect(isAutoSuccessToolName("renderWidget")).toBe(false);
+  });
+
+  it("identifies interactive tool names and parts", () => {
+    expect(isInteractiveToolName("renderWidget")).toBe(true);
+    expect(isInteractiveToolName("writeToFile")).toBe(false);
+    expect(
+      isInteractiveToolPart({
+        type: "tool-renderWidget",
+        toolCallId: "widget-1",
+        state: "input-available",
+        input: {},
+      } as never),
+    ).toBe(true);
+    expect(
+      isInteractiveToolPart({
+        type: "tool-writeToFile",
+        toolCallId: "write-1",
+        state: "input-available",
+        input: {},
+      } as never),
+    ).toBe(false);
   });
 
   it("treats renderWidget as a readonly UI rendering call", () => {

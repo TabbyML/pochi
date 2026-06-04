@@ -97,10 +97,22 @@ export function isCompletionToolPart(
   return isCompletionToolName(getStaticToolName(part));
 }
 
+export function isInteractiveToolName(name: string): name is "renderWidget" {
+  return name === "renderWidget";
+}
+
+export function isInteractiveToolPart(
+  part: UIMessagePart<UIDataTypes, UITools>,
+): boolean {
+  if (!isStaticToolUIPart(part)) return false;
+  return isInteractiveToolName(getStaticToolName(part));
+}
+
 export function isAutoSuccessToolName(name: string): boolean {
   return (
     isCompletionToolName(name) ||
-    ToolsByPermission.default.some((tool) => name === tool)
+    (ToolsByPermission.default.some((tool) => name === tool) &&
+      !isInteractiveToolName(name))
   );
 }
 

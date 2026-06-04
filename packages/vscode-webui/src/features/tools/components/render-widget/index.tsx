@@ -1,7 +1,9 @@
 import { useTheme } from "@/components/theme-provider";
+import { useRenderWidgetStore, useSendMessage } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
@@ -22,7 +24,9 @@ import {
 type WidgetRendererEvent =
   | { type: "ready" }
   | { type: "height"; height: number }
-  | { type: "error"; message: string; stack?: string };
+  | { type: "error"; message: string; stack?: string }
+  | { type: "state"; state: unknown }
+  | { type: "sendMessage"; prompt: string };
 
 type WidgetRenderMessage = {
   type: "preview" | "finalize";
@@ -65,6 +69,16 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isLastPart,
 }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
+  const sendMessage = useSendMessage();
+  const setWidgetState = useRenderWidgetStore((state) => state.setWidgetState);
+  const setWidgetError = useRenderWidgetStore((state) => state.setWidgetError);
+  const clearWidgetError = useRenderWidgetStore(
+    (state) => state.clearWidgetError,
+  );
+  const clearWidgetState = useRenderWidgetStore(
+    (state) => state.clearWidgetState,
+  );
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runtimeRef = useRef<ChannelRuntime>({
@@ -74,6 +88,12 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   // Tracks animation history only — intentionally separate from channel state.
   const hasPostedPreviewRef = useRef(false);
+  const hasSentMessageRef = useRef(false);
+  const toolCallIdRef = useRef(tool.toolCallId);
+  if (toolCallIdRef.current !== tool.toolCallId) {
+    toolCallIdRef.current = tool.toolCallId;
+    hasSentMessageRef.current = false;
+  }
   // Remember the most recently queued render so we can replay it after the
   // iframe reloads (e.g. browser-initiated reloads). Theme changes alone must
   // not remount the iframe — they propagate via the theme message channel.
@@ -116,16 +136,17 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       })
       .catch((error) => {
         if (!disposed) {
-          setRendererError(
-            error instanceof Error ? error.message : String(error),
-          );
+          const message =
+            error instanceof Error ? error.message : String(error);
+          setRendererError(message);
+          setWidgetError(tool.toolCallId, message);
         }
       });
 
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [setWidgetError, tool.toolCallId]);
 
   const iframeDocument = useMemo(() => {
     if (import.meta.env.PROD && !rendererScriptCode) return undefined;
@@ -158,6 +179,9 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     input && "widgetCode" in input && input.widgetCode ? input.widgetCode : "";
   const isFinal =
     tool.state === "input-available" || tool.state === "output-available";
+  const isInteractive = tool.state === "input-available";
+  const isInteractiveRef = useRef(isInteractive);
+  isInteractiveRef.current = isInteractive;
   const shouldAnimateReveal = shouldAnimateWidgetReveal({
     isExecuting,
     isLoading,
@@ -179,13 +203,20 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       try {
         await rt.channel.send<WidgetRendererEndpoint>(next);
       } catch {
-        // Restore on failure and bail; next scheduleFlush() will retry.
-        if (next.type === "theme") rt.pendingTheme = next;
-        else {
+        // Restore on failure without overwriting a newer message queued while
+        // this send was in flight; next scheduleFlush() will retry.
+        if (next.type === "theme") {
+          const hasNewerThemeQueued = rt.pendingTheme !== undefined;
+          if (!hasNewerThemeQueued) {
+            rt.pendingTheme = next;
+          }
+        } else if (rt.pendingRender) {
           rt.pendingRender = coalescePendingWidgetMessage(
-            rt.pendingRender,
             next,
+            rt.pendingRender,
           );
+        } else {
+          rt.pendingRender = next;
         }
         return;
       }
@@ -225,6 +256,13 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     });
   }, [fallbackThemeClass, queueThemeMessage]);
 
+  useEffect(() => {
+    if (!isInteractive) return;
+    return () => {
+      clearWidgetState(tool.toolCallId);
+    };
+  }, [clearWidgetState, isInteractive, tool.toolCallId]);
+
   const handleLoad = useCallback(() => {
     const rt = runtimeRef.current;
     const target = iframeRef.current?.contentWindow;
@@ -245,7 +283,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     }
     const channel = createChannel(target, channelId);
     rt.channel = channel;
-    channel.receive((event: WidgetRendererEvent) => {
+    channel.receive((rawEvent) => {
+      const event = rawEvent as WidgetRendererEvent;
       if (event.type === "ready") {
         runtimeRef.current.ready = true;
         scheduleFlush();
@@ -254,10 +293,34 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         setHasFirstHeight(true);
       } else if (event.type === "error") {
         setRendererError(event.message);
+        if (isInteractiveRef.current) {
+          setWidgetError(tool.toolCallId, event.message);
+        }
+      } else if (event.type === "state") {
+        if (isInteractiveRef.current) {
+          setWidgetState(tool.toolCallId, event.state);
+        }
+      } else if (event.type === "sendMessage") {
+        if (
+          isInteractiveRef.current &&
+          event.prompt.trim() &&
+          !hasSentMessageRef.current
+        ) {
+          hasSentMessageRef.current = true;
+          sendMessage({ prompt: event.prompt });
+        }
       }
       return { ok: true };
     });
-  }, [channelId, fallbackThemeClass, scheduleFlush]);
+  }, [
+    channelId,
+    fallbackThemeClass,
+    scheduleFlush,
+    sendMessage,
+    setWidgetError,
+    setWidgetState,
+    tool.toolCallId,
+  ]);
 
   // Push theme updates whenever the parent webview theme changes so the
   // sandboxed iframe re-applies the new vscode-* variables and color palette
@@ -296,6 +359,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     if (!widgetCode) return;
 
     setRendererError(undefined);
+    clearWidgetError(tool.toolCallId);
     const mode = isFinal ? "finalize" : "preview";
     const html = prepareWidgetHtml(widgetCode, mode);
     const message: WidgetRenderMessage = {
@@ -322,7 +386,14 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         debounceRef.current = null;
       }
     };
-  }, [isFinal, queueRenderMessage, shouldAnimateReveal, widgetCode]);
+  }, [
+    clearWidgetError,
+    isFinal,
+    queueRenderMessage,
+    shouldAnimateReveal,
+    tool.toolCallId,
+    widgetCode,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -348,7 +419,13 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         />
       ) : null}
       {rendererError ? (
-        <div className="text-error text-xs">{rendererError}</div>
+        <div
+          role="alert"
+          className="mt-2 break-words rounded-md border border-[var(--vscode-inputValidation-errorBorder,var(--vscode-errorForeground))] bg-[var(--vscode-inputValidation-errorBackground,transparent)] px-3 py-2 text-[var(--vscode-errorForeground)] text-xs leading-5"
+        >
+          <span className="font-medium">{t("toolInvocation.widgetError")}</span>
+          {rendererError}
+        </div>
       ) : null}
     </div>
   );

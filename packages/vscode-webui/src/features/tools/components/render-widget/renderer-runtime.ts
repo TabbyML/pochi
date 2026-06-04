@@ -27,14 +27,122 @@ type WidgetIncomingMessage = WidgetRenderMessage | WidgetThemeMessage;
 type WidgetEvent =
   | { type: "ready" }
   | { type: "height"; height: number }
-  | { type: "error"; message: string; stack?: string };
+  | { type: "error"; message: string; stack?: string }
+  | { type: "state"; state: unknown }
+  | { type: "sendMessage"; prompt: string };
 type WidgetParentEndpoint = (event: WidgetEvent) => { ok: true };
 
 const RevealDelayStepMs = 80;
 const MaxRevealDelayMs = 6000;
+const MissingWidgetStateError =
+  "Widgets must include a top-level <pochi-widget> state container.";
+const InvalidWidgetStateError = "Widget state must be JSON-serializable.";
+
+export interface PochiWidgetApi {
+  readonly state: unknown;
+  setState(nextState: unknown): void;
+  sendMessage(prompt: string): void;
+}
+
+declare global {
+  interface Window {
+    pochi: PochiWidgetApi;
+  }
+}
 
 export function getWidgetRevealDelayMs(index: number) {
   return Math.min(index * RevealDelayStepMs, MaxRevealDelayMs);
+}
+
+interface PochiWidgetStateRuntimeOptions {
+  root: Element;
+  reportState: (state: unknown) => void;
+  reportSendMessage: (prompt: string) => void;
+  reportError: (message: string, stack?: string) => void;
+}
+
+export function installPochiWidgetStateRuntime({
+  root,
+  reportState,
+  reportSendMessage,
+  reportError,
+}: PochiWidgetStateRuntimeOptions) {
+  ensurePochiWidgetElementDefined();
+
+  const widgetElement = findTopLevelPochiWidget(root);
+  if (!widgetElement) {
+    reportError(MissingWidgetStateError);
+  }
+  let currentState = widgetElement
+    ? readWidgetState(widgetElement, reportError)
+    : {};
+  let currentStateJson = stringifyWidgetState(currentState);
+  reportState(currentState);
+
+  const syncState = (nextState: unknown) => {
+    try {
+      const jsonState = cloneJsonSerializableState(nextState);
+      currentState = jsonState;
+      currentStateJson = stringifyWidgetState(jsonState);
+      if (widgetElement) {
+        widgetElement.setAttribute("state", currentStateJson);
+        widgetElement.dispatchEvent(
+          new CustomEvent("pochi-state-change", {
+            detail: { state: jsonState },
+          }),
+        );
+      } else {
+        reportError(MissingWidgetStateError);
+      }
+      reportState(jsonState);
+    } catch (error) {
+      reportError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const api: PochiWidgetApi = {
+    get state() {
+      return cloneJsonSerializableState(currentState);
+    },
+    setState: syncState,
+    sendMessage(prompt: string) {
+      reportSendMessage(String(prompt));
+    },
+  };
+  window.pochi = api;
+
+  const syncFromWidgetElement = () => {
+    if (!widgetElement) return;
+    const nextState = readWidgetState(widgetElement, reportError);
+    const nextStateJson = stringifyWidgetState(nextState);
+    if (nextStateJson === currentStateJson) return;
+    currentState = nextState;
+    currentStateJson = nextStateJson;
+    reportState(nextState);
+  };
+
+  widgetElement?.addEventListener("pochi-state-change", syncFromWidgetElement);
+
+  const observer =
+    widgetElement && typeof MutationObserver === "function"
+      ? new MutationObserver(syncFromWidgetElement)
+      : undefined;
+  observer?.observe(widgetElement as Element, {
+    attributes: true,
+    attributeFilter: ["state"],
+  });
+
+  return () => {
+    observer?.disconnect();
+    widgetElement?.removeEventListener(
+      "pochi-state-change",
+      syncFromWidgetElement,
+    );
+    if (window.pochi === api) {
+      // @ts-expect-error removing iframe-local injected API during teardown
+      window.pochi = undefined;
+    }
+  };
 }
 
 export function startWidgetRenderer() {
@@ -44,6 +152,7 @@ export function startWidgetRenderer() {
   let lastVisualHtml = "";
   let lastExecutedFinalHtml = "";
   let lastVisualRevealAnimated = false;
+  let cleanupStateRuntime: (() => void) | undefined;
   const externalScriptLoadPromises = new Map<string, Promise<void>>();
   const channel = createChannel(root?.dataset.channelId || "pochi-widget");
 
@@ -185,6 +294,23 @@ export function startWidgetRenderer() {
         return;
       }
       lastExecutedFinalHtml = html;
+      if (root) {
+        cleanupStateRuntime?.();
+        const cleanup = installPochiWidgetStateRuntime({
+          root,
+          reportState: (state) => {
+            channel.send<WidgetParentEndpoint>({ type: "state", state });
+          },
+          reportSendMessage: (prompt) => {
+            channel.send<WidgetParentEndpoint>({
+              type: "sendMessage",
+              prompt,
+            });
+          },
+          reportError,
+        });
+        cleanupStateRuntime = cleanup;
+      }
       await runScripts(extractWidgetScripts(html));
     } catch (error) {
       reportError(
@@ -236,4 +362,92 @@ function disableHostAndNetworkApis() {
 
 function stripScripts(html: string) {
   return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+}
+
+function ensurePochiWidgetElementDefined() {
+  if (typeof customElements === "undefined") return;
+  if (customElements.get("pochi-widget")) return;
+
+  class PochiWidgetElement extends HTMLElement {
+    get state() {
+      return JSON.parse(this.getAttribute("state") || "{}");
+    }
+
+    set state(nextState: unknown) {
+      const jsonState = cloneJsonSerializableState(nextState);
+      this.setAttribute("state", stringifyWidgetState(jsonState));
+      this.dispatchEvent(
+        new CustomEvent("pochi-state-change", {
+          detail: { state: jsonState },
+        }),
+      );
+    }
+  }
+
+  customElements.define("pochi-widget", PochiWidgetElement);
+}
+
+function findTopLevelPochiWidget(root: Element) {
+  return Array.from(root.children).find(
+    (child) => child.tagName.toLowerCase() === "pochi-widget",
+  );
+}
+
+function readWidgetState(
+  widgetElement: Element,
+  reportError: (message: string, stack?: string) => void,
+) {
+  const rawState = widgetElement.getAttribute("state") || "{}";
+  try {
+    return cloneJsonSerializableState(JSON.parse(rawState));
+  } catch (error) {
+    reportError(
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : undefined,
+    );
+    return {};
+  }
+}
+
+function stringifyWidgetState(state: unknown) {
+  return JSON.stringify(state);
+}
+
+function cloneJsonSerializableState(state: unknown) {
+  assertJsonSerializable(state);
+  return JSON.parse(JSON.stringify(state)) as unknown;
+}
+
+function assertJsonSerializable(state: unknown, seen = new Set<object>()) {
+  if (state === null) return;
+
+  const stateType = typeof state;
+  if (stateType === "string" || stateType === "boolean") return;
+  if (stateType === "number") {
+    if (!Number.isFinite(state)) throw new Error(InvalidWidgetStateError);
+    return;
+  }
+  if (stateType !== "object") throw new Error(InvalidWidgetStateError);
+
+  const objectState = state as object;
+  if (seen.has(objectState)) throw new Error(InvalidWidgetStateError);
+  seen.add(objectState);
+
+  if (Array.isArray(state)) {
+    for (const item of state) {
+      assertJsonSerializable(item, seen);
+    }
+    seen.delete(objectState);
+    return;
+  }
+
+  const prototype = Object.getPrototypeOf(state);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new Error(InvalidWidgetStateError);
+  }
+
+  for (const value of Object.values(state as Record<string, unknown>)) {
+    assertJsonSerializable(value, seen);
+  }
+  seen.delete(objectState);
 }

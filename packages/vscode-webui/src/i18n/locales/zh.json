@@ -308,6 +308,7 @@
     "request": "请求",
     "response": "响应",
     "imgAlt": "MCP工具响应快照",
+    "widgetError": "组件错误：",
     "applyingDiffTo": "正在应用差异到 ",
     "applyingDiffsTo": "正在应用差异到 ",
     "addingReviewComment": "正在审查 ",
