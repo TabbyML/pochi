@@ -75,11 +75,6 @@ describe("render widget tools", () => {
     ).toEqual({
       state: { hex: "#b87528" },
     });
-    expect(() =>
-      renderWidgetOutputSchema.parse({
-        error: "Widget state must be JSON-serializable.",
-      }),
-    ).toThrow();
   });
 
   it("does not treat renderWidget as an auto-success tool", () => {
