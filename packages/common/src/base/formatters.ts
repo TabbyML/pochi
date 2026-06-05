@@ -264,6 +264,18 @@ function removeEmptyTextParts(messages: UIMessage[]) {
   });
 }
 
+function removeEmptyReasoningPartsForUI(messages: UIMessage[]) {
+  return messages.map((message) => {
+    message.parts = message.parts.filter((part) => {
+      if (part.type === "reasoning") {
+        return part.text.trim().length > 0;
+      }
+      return true;
+    });
+    return message;
+  });
+}
+
 function refineDetectedNewPromblems(messages: UIMessage[]) {
   const isWriteFileResultToolPart = (
     part: UIMessage["parts"][number],
@@ -381,6 +393,7 @@ const LLMFormatOps: FormatOp[] = [
 ];
 const UIFormatOps = [
   removeEmptyTextParts,
+  removeEmptyReasoningPartsForUI,
   removeEmptyMessages,
   refineDetectedNewPromblems,
   resolvePendingToolCalls,
