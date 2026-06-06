@@ -80,6 +80,28 @@ describe('formatters', () => {
       expect(assistantMessages[0].parts).toHaveLength(4); // reasoning, text, tool1, tool2
     });
 
+    it('should remove empty reasoning parts with provider metadata', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'reasoning',
+              text: '',
+              providerMetadata: { openai: { itemId: 'rs_abc123' } },
+            },
+            createToolPart('webSearch', 'output-available', {}, { result: 'ok' }),
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(clone(messages));
+
+      expect(formatted[0].parts).toHaveLength(1);
+      expect(formatted[0].parts[0].type).toBe('tool-webSearch');
+    });
+
     it('should remove system reminder messages', () => {
       const formatted = formatters.ui(clone(baseMessages));
       expect(formatted.find((m) => m.id === 'user-2')).toBeUndefined();
