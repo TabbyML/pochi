@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { useRenderWidgetStore } from "@/features/chat/hooks/use-render-widget-store";
+import { useRenderWidgetStore } from "@/features/chat";
 import {
   act,
   fireEvent,
@@ -83,11 +83,25 @@ vi.mock("../../status-icon", () => ({
   StatusIcon: statusIconMock,
 }));
 
-vi.mock("@/features/chat", () => ({
-  useToolCallLifeCycle: () => ({
-    getToolCallLifeCycle: lifecycleMocks.getToolCallLifeCycle,
-  }),
-}));
+vi.mock("@/features/chat", async () => {
+  const { useRenderWidgetStore } = await import(
+    "../../../../chat/hooks/use-render-widget-store"
+  );
+  const {
+    getRenderWidgetErrorMessageKey,
+    mergeRenderWidgetError,
+    normalizeRenderWidgetError,
+  } = await import("../../../../chat/lib/render-widget-error");
+  return {
+    getRenderWidgetErrorMessageKey,
+    mergeRenderWidgetError,
+    normalizeRenderWidgetError,
+    useRenderWidgetStore,
+    useToolCallLifeCycle: () => ({
+      getToolCallLifeCycle: lifecycleMocks.getToolCallLifeCycle,
+    }),
+  };
+});
 
 let mockedTheme: "dark" | "light" = "dark";
 

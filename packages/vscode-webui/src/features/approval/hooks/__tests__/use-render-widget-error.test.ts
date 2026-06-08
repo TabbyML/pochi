@@ -1,6 +1,10 @@
 import type { Message } from "@getpochi/livekit";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getRenderWidgetError } from "../use-render-widget-error";
+
+vi.mock("@/features/chat", () => ({
+  useRenderWidgetStore: vi.fn(),
+}));
 
 describe("getRenderWidgetError", () => {
   it("returns the latest renderWidget error kind", () => {

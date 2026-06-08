@@ -4,14 +4,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useRenderWidgetStore } from "@/features/chat/hooks/use-render-widget-store";
 import {
   type RenderWidgetError,
   type RenderWidgetErrorKind,
   getRenderWidgetErrorMessageKey,
   mergeRenderWidgetError,
   normalizeRenderWidgetError,
-} from "@/features/chat/lib/render-widget-error";
+  useRenderWidgetStore,
+} from "@/features/chat";
 import { getToolPartError } from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";

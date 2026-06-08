@@ -1,8 +1,8 @@
-import { useRenderWidgetStore } from "@/features/chat/hooks/use-render-widget-store";
-import type {
-  RenderWidgetError,
-  RenderWidgetErrorKind,
-} from "@/features/chat/lib/render-widget-error";
+import {
+  type RenderWidgetError,
+  type RenderWidgetErrorKind,
+  useRenderWidgetStore,
+} from "@/features/chat";
 import type { Message } from "@getpochi/livekit";
 import { useMemo } from "react";
 

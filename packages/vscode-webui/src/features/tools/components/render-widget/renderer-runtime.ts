@@ -1,10 +1,10 @@
+import { createChannel } from "bidc";
+import morphdom from "morphdom";
 import {
   InvalidWidgetStateError,
   MissingWidgetStateError,
   type RenderWidgetErrorKind,
-} from "@/features/chat/lib/render-widget-error";
-import { createChannel } from "bidc";
-import morphdom from "morphdom";
+} from "../../../chat/lib/render-widget-error";
 import {
   type WidgetScript,
   type WidgetThemeClass,

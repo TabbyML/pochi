@@ -5,7 +5,7 @@ import { FixWidgetButton } from "../fix-widget-button";
 
 const sendMessageMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/features/chat/lib/chat-events", () => ({
+vi.mock("@/features/chat", () => ({
   useSendMessage: () => sendMessageMock,
 }));
 

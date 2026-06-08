@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { useSendMessage } from "@/features/chat/lib/chat-events";
+import { useSendMessage } from "@/features/chat";
 
 const FixWidgetPrompt =
   "Please fix the latest render widget so it renders correctly.";
