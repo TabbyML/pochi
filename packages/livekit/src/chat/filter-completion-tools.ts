@@ -2,7 +2,7 @@ import { isCompletionToolPart } from "@getpochi/tools";
 import { getStaticToolName, isStaticToolUIPart } from "ai";
 import type { Message } from "../types";
 
-// Condition A: The last step contains completion tools (attemptCompletion or askFollowupQuestion).
+// Condition A: The last step contains completion tools.
 // Condition B: The last step contains other functional tools (excluding todoWrite).
 // Rule:
 // If both conditions are met, remove the completion tools. This prevents the agent from

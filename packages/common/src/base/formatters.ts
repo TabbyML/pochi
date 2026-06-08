@@ -32,9 +32,7 @@ function resolvePendingToolCalls(
             // to satisfy API requirements (e.g. Anthropic requires tool_use.input to be non-null)
             input: part.input ?? {},
             state: "output-available",
-            output: isSuccess
-              ? { success: true }
-              : { error: "User cancelled the tool call." },
+            output: getResolvedToolPartOutput(part, isSuccess),
           } as UIMessage["parts"][number];
         }
         return part;
@@ -47,6 +45,16 @@ function resolvePendingToolCalls(
 
     return message;
   });
+}
+
+function getResolvedToolPartOutput(
+  part: ToolUIPart,
+  isSuccess: boolean,
+): unknown {
+  if (!isSuccess) return { error: "User cancelled the tool call." };
+  return getStaticToolName(part) === "renderWidget"
+    ? { state: {} }
+    : { success: true };
 }
 
 function stripKnownXMLTags(messages: UIMessage[]): UIMessage[] {

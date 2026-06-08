@@ -21,7 +21,7 @@ describe("onOverrideMessages", () => {
     useRenderWidgetStore.getState().clearAllWidgetStates();
   });
 
-  it("commits the adjacent pending renderWidget output from the latest UI state", async () => {
+  it("commits non-latest renderWidget output from the latest UI state", async () => {
     const messages = [
       createAssistantMessage([
         createRenderWidgetPart({
@@ -52,7 +52,7 @@ describe("onOverrideMessages", () => {
     ).toBeUndefined();
   });
 
-  it("commits renderer errors with the pending renderWidget output", async () => {
+  it("commits renderer errors with the renderWidget output", async () => {
     const messages = [
       createAssistantMessage([
         createRenderWidgetPart({
@@ -110,7 +110,7 @@ describe("onOverrideMessages", () => {
     });
   });
 
-  it("commits only the last pending renderWidget part in the adjacent assistant message", async () => {
+  it("commits every input-available renderWidget part outside the latest message", async () => {
     const messages = [
       createAssistantMessage([
         createRenderWidgetPart({
@@ -136,7 +136,8 @@ describe("onOverrideMessages", () => {
     });
 
     expect(messages[0].parts[0]).toMatchObject({
-      state: "input-available",
+      state: "output-available",
+      output: { state: { hex: "#b87528" } },
     });
     expect(messages[0].parts[1]).toMatchObject({
       state: "output-available",
@@ -144,41 +145,122 @@ describe("onOverrideMessages", () => {
     });
   });
 
-  it.each(["output-available", "output-error"] as const)(
-    "does not overwrite renderWidget output in %s state",
-    async (state) => {
-      const existingOutput =
-        state === "output-available"
-          ? { state: { hex: "#b87528" } }
-          : { errorText: "failed" };
-      const messages = [
-        createAssistantMessage([
-          createRenderWidgetPart({
-            toolCallId: "widget-1",
-            state,
-            output: existingOutput,
-          }),
-        ]),
-        createUserMessage("continue"),
-      ];
+  it("does not commit renderWidget output from older assistant messages", async () => {
+    const messages = [
+      createAssistantMessage([
+        createRenderWidgetPart({
+          toolCallId: "widget-old",
+          state: "input-available",
+        }),
+      ]),
+      createUserMessage("continue"),
+      createAssistantMessage([]),
+      createUserMessage("next"),
+    ];
 
-      useRenderWidgetStore
-        .getState()
-        .setWidgetState("widget-1", { hex: "#ffffff" });
+    useRenderWidgetStore
+      .getState()
+      .setWidgetState("widget-old", { city: "beijing" });
 
-      await onOverrideMessages({
-        store: {} as never,
-        taskId: "task-1",
-        messages,
-        abortSignal: new AbortController().signal,
-      });
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
 
-      expect(messages[0].parts[0]).toMatchObject({
-        state,
-        output: existingOutput,
-      });
-    },
-  );
+    expect(messages[0].parts[0]).toMatchObject({
+      state: "input-available",
+    });
+    expect("output" in messages[0].parts[0]).toBe(false);
+  });
+
+  it("does not commit renderWidget output in the latest message", async () => {
+    const messages = [
+      createUserMessage("show a widget"),
+      createAssistantMessage([
+        createRenderWidgetPart({
+          toolCallId: "widget-latest",
+          state: "input-available",
+        }),
+      ]),
+    ];
+
+    useRenderWidgetStore
+      .getState()
+      .setWidgetState("widget-latest", { city: "beijing" });
+
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(messages[1].parts[0]).toMatchObject({
+      state: "input-available",
+    });
+    expect("output" in messages[1].parts[0]).toBe(false);
+  });
+
+  it("overwrites completed renderWidget output with the latest UI state", async () => {
+    const messages = [
+      createAssistantMessage([
+        createRenderWidgetPart({
+          toolCallId: "widget-1",
+          state: "output-available",
+          output: { state: {} },
+        }),
+      ]),
+      createUserMessage("continue"),
+    ];
+
+    useRenderWidgetStore
+      .getState()
+      .setWidgetState("widget-1", { hex: "#ffffff" });
+
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(messages[0].parts[0]).toMatchObject({
+      state: "output-available",
+      output: { state: { hex: "#ffffff" } },
+    });
+  });
+
+  it("does not overwrite renderWidget output-error parts", async () => {
+    const existingOutput = { errorText: "failed" };
+    const messages = [
+      createAssistantMessage([
+        createRenderWidgetPart({
+          toolCallId: "widget-1",
+          state: "output-error",
+          output: existingOutput,
+        }),
+      ]),
+      createUserMessage("continue"),
+    ];
+
+    useRenderWidgetStore
+      .getState()
+      .setWidgetState("widget-1", { hex: "#ffffff" });
+
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(messages[0].parts[0]).toMatchObject({
+      state: "output-error",
+      output: existingOutput,
+    });
+  });
 });
 
 function createAssistantMessage(parts: Message["parts"]): Message {

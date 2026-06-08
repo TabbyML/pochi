@@ -414,6 +414,15 @@ describe("render widget utilities", () => {
     expect(iframeDocument).toContain(".dark svg .blue");
   });
 
+  it("does not ship widget-authored send-message action CSS", () => {
+    const iframeDocument = buildWidgetIframeDocument(
+      "http://localhost:4112/widget.js",
+    );
+
+    expect(iframeDocument).not.toContain("__pochi_widget_frozen");
+    expect(iframeDocument).not.toContain("pochi-widget-send-message");
+  });
+
   it("uses canonical diagram palette stops through shared SVG color rules", () => {
     const iframeDocument = buildWidgetIframeDocument(
       "http://localhost:4112/widget.js",

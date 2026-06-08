@@ -1,10 +1,38 @@
 // @vitest-environment jsdom
-import { useRenderWidgetStore } from "@/features/chat";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { useRenderWidgetStore } from "@/features/chat/hooks/use-render-widget-store";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RenderWidgetTool } from "../index";
 
-const sendMessageMock = vi.hoisted(() => vi.fn());
+const statusIconMock = vi.hoisted(() =>
+  vi.fn((_props: Record<string, unknown>) => (
+    <span data-testid="status-icon" />
+  )),
+);
+const lifecycleMocks = vi.hoisted(() => {
+  const lifecycle = {
+    status: "init",
+    addResult: vi.fn(),
+  };
+  return {
+    lifecycle,
+    getToolCallLifeCycle: vi.fn(() => lifecycle),
+  };
+});
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
 const sentMessages: Record<string, unknown>[] = [];
 let sendHandler:
   | ((message: Record<string, unknown>) => Promise<{ ok: true }>)
@@ -12,10 +40,10 @@ let sendHandler:
 
 let receiveHandler:
   | ((event: {
-      type: "ready" | "height" | "error" | "state" | "sendMessage";
+      type: "ready" | "height" | "error" | "state";
       height?: number;
       message?: string;
-      prompt?: string;
+      kind?: "internal" | "runtime";
       state?: unknown;
     }) => {
       ok: true;
@@ -52,7 +80,13 @@ vi.mock("@/lib/utils", () => ({
 }));
 
 vi.mock("../../status-icon", () => ({
-  StatusIcon: () => <span data-testid="status-icon" />,
+  StatusIcon: statusIconMock,
+}));
+
+vi.mock("@/features/chat", () => ({
+  useToolCallLifeCycle: () => ({
+    getToolCallLifeCycle: lifecycleMocks.getToolCallLifeCycle,
+  }),
 }));
 
 let mockedTheme: "dark" | "light" = "dark";
@@ -63,13 +97,17 @@ vi.mock("@/components/theme-provider", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) =>
-      key === "toolInvocation.widgetError" ? "Translated widget error: " : key,
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        "toolInvocation.renderWidget": "Render Widget",
+        "toolInvocation.widgetFrozen":
+          "This widget is from an earlier message. Only the latest widget remains interactive.",
+        "toolInvocation.widgetInternalError": "Widget setup error.",
+        "toolInvocation.widgetRuntimeError": "Widget runtime error.",
+      };
+      return translations[key] ?? key;
+    },
   }),
-}));
-
-vi.mock("../../../../chat/lib/chat-events", () => ({
-  useSendMessage: () => sendMessageMock,
 }));
 
 vi.mock("../renderer-entry.ts?worker&url", () => ({
@@ -86,7 +124,13 @@ describe("RenderWidgetTool", () => {
   beforeEach(() => {
     receiveHandler = undefined;
     sendHandler = undefined;
-    sendMessageMock.mockClear();
+    statusIconMock.mockClear();
+    lifecycleMocks.lifecycle.status = "init";
+    lifecycleMocks.lifecycle.addResult.mockReset();
+    lifecycleMocks.lifecycle.addResult.mockImplementation(() => {
+      lifecycleMocks.lifecycle.status = "complete";
+    });
+    lifecycleMocks.getToolCallLifeCycle.mockClear();
     sentMessages.length = 0;
     mockedTheme = "dark";
     document.documentElement.className = "";
@@ -103,32 +147,105 @@ describe("RenderWidgetTool", () => {
     document.body.style.cssText = "";
   });
 
-  it("renders the widget iframe without VS Code tool header chrome", () => {
+  it("renders the widget iframe with render widget header chrome", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-header",
+      state: "input-available",
+      input: {
+        title: "Weather Widget",
+        widgetCode: "<svg></svg>",
+        guidelinesRead: true,
+      },
+    } as never;
     const { container } = render(
       <RenderWidgetTool
-        tool={
-          {
-            type: "tool-renderWidget",
-            toolCallId: "widget-no-header",
-            state: "input-available",
-            input: {
-              title: "Clean widget",
-              widgetCode: "<svg></svg>",
-              guidelinesRead: true,
-            },
-          } as never
-        }
+        tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
+        messages={createMessagesWithTool(tool)}
       />,
     );
 
-    expect(screen.queryByTestId("status-icon")).toBeNull();
-    expect(screen.queryByText("Rendering widget")).toBeNull();
+    expect(screen.getByTestId("status-icon")).toBeTruthy();
+    expect(statusIconMock.mock.calls[0]?.[0]).toMatchObject({
+      isExecuting: false,
+      tool: {
+        state: "output-available",
+        toolCallId: "widget-header",
+        output: {},
+      },
+    });
+    expect(screen.getByText("Render Widget")).toBeTruthy();
+    expect(screen.getByText("Weather Widget")).toBeTruthy();
     expect(getWidgetIframe(container).getAttribute("title")).toBe(
-      "Clean widget",
+      "Weather Widget",
     );
+  });
+
+  it("does not complete the widget while the widget input is streaming", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-streaming",
+      state: "input-streaming",
+      input: {
+        title: "Streaming Widget",
+        widgetCode: "<svg></svg>",
+        guidelinesRead: true,
+      },
+    } as never;
+
+    render(
+      <RenderWidgetTool
+        tool={tool}
+        isExecuting={true}
+        isLoading={true}
+        messages={createMessagesWithTool(tool)}
+      />,
+    );
+
+    expect(statusIconMock.mock.calls[0]?.[0]).toMatchObject({
+      isExecuting: true,
+      tool: {
+        state: "input-streaming",
+        toolCallId: "widget-streaming",
+      },
+    });
+    expect(lifecycleMocks.lifecycle.addResult).not.toHaveBeenCalled();
+  });
+
+  it("does not auto-complete the final widget input", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-complete",
+      state: "input-available",
+      input: {
+        title: "Complete Widget",
+        widgetCode: "<svg></svg>",
+        guidelinesRead: true,
+      },
+    } as never;
+    const { rerender } = render(
+      <RenderWidgetTool
+        tool={tool}
+        isExecuting={false}
+        isLoading={false}
+        messages={createMessagesWithTool(tool)}
+      />,
+    );
+
+    expect(lifecycleMocks.lifecycle.addResult).not.toHaveBeenCalled();
+
+    rerender(
+      <RenderWidgetTool
+        tool={tool}
+        isExecuting={false}
+        isLoading={false}
+        messages={createMessagesWithTool(tool)}
+      />,
+    );
+
+    expect(lifecycleMocks.lifecycle.addResult).not.toHaveBeenCalled();
   });
 
   it("falls back to the tool call id when the widget title is unavailable", () => {
@@ -156,24 +273,23 @@ describe("RenderWidgetTool", () => {
     );
   });
 
-  it("shows renderer errors returned from the sandboxed iframe", () => {
+  it("shows renderer errors in the header without inline error chrome", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-1",
+      state: "input-available",
+      input: {
+        title: "Broken widget",
+        widgetCode: "<script>throw new Error('boom')</script>",
+        guidelinesRead: true,
+      },
+    } as never;
     const { container } = render(
       <RenderWidgetTool
-        tool={
-          {
-            type: "tool-renderWidget",
-            toolCallId: "widget-1",
-            state: "input-available",
-            input: {
-              title: "Broken widget",
-              widgetCode: "<script>throw new Error('boom')</script>",
-              guidelinesRead: true,
-            },
-          } as never
-        }
+        tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
+        messages={createMessagesWithTool(tool)}
       />,
     );
 
@@ -184,9 +300,9 @@ describe("RenderWidgetTool", () => {
       receiveHandler?.({ type: "error", message: "boom" });
     });
 
-    expect(screen.getByRole("alert").textContent).toBe(
-      "Translated widget error: boom",
-    );
+    expect(screen.queryByText("Widget failed")).toBeNull();
+    expect(screen.queryByText("toolInvocation.widgetFailed")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("starts at zero height and waits for the sandboxed renderer to report widget height", () => {
@@ -556,101 +672,23 @@ describe("RenderWidgetTool", () => {
     });
   });
 
-  it("forwards widget sendMessage events through the chat send-message event", () => {
+  it("stores renderer errors for the next renderWidget output", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-error",
+      state: "input-available",
+      input: {
+        title: "Error widget",
+        widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+        guidelinesRead: true,
+      },
+    } as never;
     const { container } = render(
       <RenderWidgetTool
-        tool={
-          {
-            type: "tool-renderWidget",
-            toolCallId: "widget-message",
-            state: "input-available",
-            input: {
-              title: "Message widget",
-              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
-              guidelinesRead: true,
-            },
-          } as never
-        }
+        tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
-      />,
-    );
-
-    act(() => {
-      getWidgetIframe(container).dispatchEvent(new Event("load"));
-    });
-    act(() => {
-      receiveHandler?.({
-        type: "sendMessage",
-        prompt: "show next 15 days weather",
-      });
-    });
-
-    expect(sendMessageMock).toHaveBeenCalledWith({
-      prompt: "show next 15 days weather",
-    });
-  });
-
-  it("forwards only one widget sendMessage while waiting for the tool output transition", () => {
-    const { container } = render(
-      <RenderWidgetTool
-        tool={
-          {
-            type: "tool-renderWidget",
-            toolCallId: "widget-message-once",
-            state: "input-available",
-            input: {
-              title: "Message widget",
-              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
-              guidelinesRead: true,
-            },
-          } as never
-        }
-        isExecuting={false}
-        isLoading={false}
-        messages={[]}
-      />,
-    );
-
-    act(() => {
-      getWidgetIframe(container).dispatchEvent(new Event("load"));
-    });
-    act(() => {
-      receiveHandler?.({
-        type: "sendMessage",
-        prompt: "show next 15 days weather",
-      });
-      receiveHandler?.({
-        type: "sendMessage",
-        prompt: "show next 30 days weather",
-      });
-    });
-
-    expect(sendMessageMock).toHaveBeenCalledTimes(1);
-    expect(sendMessageMock).toHaveBeenCalledWith({
-      prompt: "show next 15 days weather",
-    });
-  });
-
-  it("stores renderer errors for the pending renderWidget output", () => {
-    const { container } = render(
-      <RenderWidgetTool
-        tool={
-          {
-            type: "tool-renderWidget",
-            toolCallId: "widget-error",
-            state: "input-available",
-            input: {
-              title: "Error widget",
-              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
-              guidelinesRead: true,
-            },
-          } as never
-        }
-        isExecuting={false}
-        isLoading={false}
-        messages={[]}
+        messages={createMessagesWithTool(tool)}
       />,
     );
 
@@ -661,36 +699,95 @@ describe("RenderWidgetTool", () => {
       receiveHandler?.({
         type: "error",
         message: "Widget state must be JSON-serializable.",
+        kind: "internal",
       });
     });
 
-    expect(screen.queryByText("Widget error")).toBeNull();
-    expect(screen.getByRole("alert").textContent).toBe(
-      "Translated widget error: Widget state must be JSON-serializable.",
-    );
-    expect(useRenderWidgetStore.getState().getWidgetError("widget-error")).toBe(
-      "Widget state must be JSON-serializable.",
-    );
+    expect(screen.queryByText("Widget failed")).toBeNull();
+    expect(screen.queryByText("toolInvocation.widgetFailed")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      useRenderWidgetStore.getState().getWidgetError("widget-error"),
+    ).toEqual({
+      kind: "internal",
+      message: "Widget state must be JSON-serializable.",
+    });
+    expect(statusIconMock.mock.calls.at(-1)?.[0]).toMatchObject({
+      tool: {
+        state: "output-available",
+        output: {
+          error: "Widget setup error.",
+        },
+      },
+    });
   });
 
-  it("stops accepting widget events after the renderWidget call has output", () => {
-    const { container, rerender } = render(
+  it("stores runtime renderer errors with a user-friendly status error", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-runtime-error",
+      state: "input-available",
+      input: {
+        title: "Runtime error widget",
+        widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+        guidelinesRead: true,
+      },
+    } as never;
+    const { container } = render(
       <RenderWidgetTool
-        tool={
-          {
-            type: "tool-renderWidget",
-            toolCallId: "widget-transition-output",
-            state: "input-available",
-            input: {
-              title: "Transition widget",
-              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
-              guidelinesRead: true,
-            },
-          } as never
-        }
+        tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
+        messages={createMessagesWithTool(tool)}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "error",
+        message: "Cannot read properties of null",
+        kind: "runtime",
+      });
+    });
+
+    expect(screen.queryByText("Widget failed")).toBeNull();
+    expect(screen.queryByText("toolInvocation.widgetFailed")).toBeNull();
+    expect(
+      useRenderWidgetStore.getState().getWidgetError("widget-runtime-error"),
+    ).toEqual({
+      kind: "runtime",
+      message: "Cannot read properties of null",
+    });
+    expect(statusIconMock.mock.calls.at(-1)?.[0]).toMatchObject({
+      tool: {
+        state: "output-available",
+        output: {
+          error: "Widget runtime error.",
+        },
+      },
+    });
+  });
+
+  it("keeps the latest renderWidget interactive after the call has output", () => {
+    const inputTool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-transition-output",
+      state: "input-available",
+      input: {
+        title: "Transition widget",
+        widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+        guidelinesRead: true,
+      },
+    } as never;
+    const { container, rerender } = render(
+      <RenderWidgetTool
+        tool={inputTool}
+        isExecuting={false}
+        isLoading={false}
+        messages={createMessagesWithTool(inputTool)}
       />,
     );
 
@@ -708,24 +805,23 @@ describe("RenderWidgetTool", () => {
     ).toEqual({ city: "beijing" });
 
     act(() => {
+      const outputTool = {
+        type: "tool-renderWidget",
+        toolCallId: "widget-transition-output",
+        state: "output-available",
+        input: {
+          title: "Transition widget",
+          widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+          guidelinesRead: true,
+        },
+        output: { state: { city: "beijing" } },
+      } as never;
       rerender(
         <RenderWidgetTool
-          tool={
-            {
-              type: "tool-renderWidget",
-              toolCallId: "widget-transition-output",
-              state: "output-available",
-              input: {
-                title: "Transition widget",
-                widgetCode: "<pochi-widget state='{}'></pochi-widget>",
-                guidelinesRead: true,
-              },
-              output: { state: { city: "beijing" } },
-            } as never
-          }
+          tool={outputTool}
           isExecuting={false}
           isLoading={false}
-          messages={[]}
+          messages={createMessagesWithTool(outputTool)}
         />,
       );
     });
@@ -736,55 +832,114 @@ describe("RenderWidgetTool", () => {
 
     act(() => {
       receiveHandler?.({ type: "state", state: { city: "shanghai" } });
-      receiveHandler?.({
-        type: "sendMessage",
-        prompt: "show next 15 days weather",
-      });
     });
 
-    expect(sendMessageMock).not.toHaveBeenCalled();
     expect(
       useRenderWidgetStore
         .getState()
         .getWidgetState("widget-transition-output"),
-    ).toBeUndefined();
+    ).toEqual({ city: "shanghai" });
   });
 
-  it("ignores widget sendMessage events after the renderWidget call has output", () => {
-    const { container } = render(
+  it("shows failed status for committed renderWidget outputs with errors", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-output-error",
+      state: "output-available",
+      input: {
+        title: "Committed widget",
+        widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+        guidelinesRead: true,
+      },
+      output: {
+        state: {},
+        error: "Renderer failed",
+      },
+    } as never;
+
+    render(
       <RenderWidgetTool
-        tool={
-          {
-            type: "tool-renderWidget",
-            toolCallId: "widget-output",
-            state: "output-available",
-            input: {
-              title: "Message widget",
-              widgetCode: "<pochi-widget state='{}'></pochi-widget>",
-              guidelinesRead: true,
-            },
-            output: { state: { city: "beijing" } },
-          } as never
-        }
+        tool={tool}
         isExecuting={false}
         isLoading={false}
         messages={[]}
       />,
     );
 
+    expect(screen.queryByText("Widget failed")).toBeNull();
+    expect(screen.queryByText("toolInvocation.widgetFailed")).toBeNull();
+    expect(
+      screen.queryByText(
+        "This widget is from an earlier message. Only the latest widget remains interactive.",
+      ),
+    ).toBeNull();
+  });
+
+  it("freezes widget interaction when the renderWidget call is not in the latest assistant message", async () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-old",
+      state: "input-available",
+      input: {
+        title: "Old widget",
+        widgetCode: "<pochi-widget state='{}'></pochi-widget>",
+        guidelinesRead: true,
+      },
+    } as never;
+    const { container } = render(
+      <RenderWidgetTool
+        tool={tool}
+        isExecuting={false}
+        isLoading={false}
+        messages={[
+          {
+            id: "assistant-old",
+            role: "assistant",
+            parts: [tool],
+          } as never,
+          {
+            id: "user-latest",
+            role: "user",
+            parts: [{ type: "text", text: "next" }],
+          } as never,
+        ]}
+      />,
+    );
+
+    const frozenText =
+      "This widget is from an earlier message. Only the latest widget remains interactive.";
+    const frozenHint = screen.getByLabelText(frozenText);
+    expect(frozenHint.textContent).not.toContain(frozenText);
+    expect(frozenHint.getAttribute("title")).toBeNull();
+    fireEvent.focus(frozenHint);
+    await waitFor(() => {
+      expect(screen.getByRole("tooltip").textContent).toContain(frozenText);
+    });
+    expect(getWidgetIframe(container).className).toContain(
+      "pointer-events-none",
+    );
+
     act(() => {
       getWidgetIframe(container).dispatchEvent(new Event("load"));
     });
     act(() => {
-      receiveHandler?.({
-        type: "sendMessage",
-        prompt: "show next 15 days weather",
-      });
+      receiveHandler?.({ type: "state", state: { city: "beijing" } });
     });
 
-    expect(sendMessageMock).not.toHaveBeenCalled();
     expect(
-      useRenderWidgetStore.getState().getWidgetState("widget-output"),
+      useRenderWidgetStore.getState().getWidgetState("widget-old"),
     ).toBeUndefined();
   });
 });
+
+function createMessagesWithTool(
+  tool: Parameters<typeof RenderWidgetTool>[0]["tool"],
+) {
+  return [
+    {
+      id: "assistant-active",
+      role: "assistant",
+      parts: [tool],
+    },
+  ] as Parameters<typeof RenderWidgetTool>[0]["messages"];
+}

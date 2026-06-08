@@ -1,3 +1,8 @@
+import {
+  InvalidWidgetStateError,
+  MissingWidgetStateError,
+  type RenderWidgetErrorKind,
+} from "@/features/chat/lib/render-widget-error";
 import { createChannel } from "bidc";
 import morphdom from "morphdom";
 import {
@@ -27,21 +32,21 @@ type WidgetIncomingMessage = WidgetRenderMessage | WidgetThemeMessage;
 type WidgetEvent =
   | { type: "ready" }
   | { type: "height"; height: number }
-  | { type: "error"; message: string; stack?: string }
-  | { type: "state"; state: unknown }
-  | { type: "sendMessage"; prompt: string };
+  | {
+      type: "error";
+      message: string;
+      kind: RenderWidgetErrorKind;
+      stack?: string;
+    }
+  | { type: "state"; state: unknown };
 type WidgetParentEndpoint = (event: WidgetEvent) => { ok: true };
 
 const RevealDelayStepMs = 80;
 const MaxRevealDelayMs = 6000;
-const MissingWidgetStateError =
-  "Widgets must include a top-level <pochi-widget> state container.";
-const InvalidWidgetStateError = "Widget state must be JSON-serializable.";
 
 export interface PochiWidgetApi {
   readonly state: unknown;
   setState(nextState: unknown): void;
-  sendMessage(prompt: string): void;
 }
 
 declare global {
@@ -57,14 +62,12 @@ export function getWidgetRevealDelayMs(index: number) {
 interface PochiWidgetStateRuntimeOptions {
   root: Element;
   reportState: (state: unknown) => void;
-  reportSendMessage: (prompt: string) => void;
   reportError: (message: string, stack?: string) => void;
 }
 
 export function installPochiWidgetStateRuntime({
   root,
   reportState,
-  reportSendMessage,
   reportError,
 }: PochiWidgetStateRuntimeOptions) {
   ensurePochiWidgetElementDefined();
@@ -105,9 +108,6 @@ export function installPochiWidgetStateRuntime({
       return cloneJsonSerializableState(currentState);
     },
     setState: syncState,
-    sendMessage(prompt: string) {
-      reportSendMessage(String(prompt));
-    },
   };
   window.pochi = api;
 
@@ -157,7 +157,20 @@ export function startWidgetRenderer() {
   const channel = createChannel(root?.dataset.channelId || "pochi-widget");
 
   const reportError = (message: string, stack?: string) => {
-    channel.send<WidgetParentEndpoint>({ type: "error", message, stack });
+    channel.send<WidgetParentEndpoint>({
+      type: "error",
+      message,
+      kind: "runtime",
+      stack,
+    });
+  };
+  const reportInternalError = (message: string, stack?: string) => {
+    channel.send<WidgetParentEndpoint>({
+      type: "error",
+      message,
+      kind: "internal",
+      stack,
+    });
   };
 
   const reportHeight = () => {
@@ -301,13 +314,7 @@ export function startWidgetRenderer() {
           reportState: (state) => {
             channel.send<WidgetParentEndpoint>({ type: "state", state });
           },
-          reportSendMessage: (prompt) => {
-            channel.send<WidgetParentEndpoint>({
-              type: "sendMessage",
-              prompt,
-            });
-          },
-          reportError,
+          reportError: reportInternalError,
         });
         cleanupStateRuntime = cleanup;
       }

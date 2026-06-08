@@ -25,7 +25,7 @@ export const renderWidgetOutputSchema = z.object({
 
 export const renderWidget = defineClientTool({
   description:
-    "Render a local generative UI widget in the VSCode chat. Use this for SVG diagrams, UI mockups, local interactive explainers, charts, and art. Widgets can offer widget-authored follow-up prompts or actions. IMPORTANT: Before calling this tool, use the `useSkill` tool to run `widget-guidelines` and follow the returned widget guidelines.",
+    "Render a local generative UI widget in the VSCode chat. Use this for SVG diagrams, UI mockups, local interactive explainers, charts, and art. IMPORTANT: Before calling this tool, use the `useSkill` tool to run `widget-guidelines` and follow the returned widget guidelines.",
   inputSchema: renderWidgetInputSchema,
   outputSchema: renderWidgetOutputSchema,
 });
