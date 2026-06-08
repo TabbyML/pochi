@@ -1,3 +1,4 @@
+import { formatPochiFileDisplayPath } from "@getpochi/common";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 import { FileList } from "./file-list";
@@ -30,7 +31,9 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
   const searchCondition = (
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
-      <HighlightedText>{path}</HighlightedText>
+      <HighlightedText>
+        {path ? formatPochiFileDisplayPath(path) : path}
+      </HighlightedText>
       {filePattern && (
         <>
           {" "}

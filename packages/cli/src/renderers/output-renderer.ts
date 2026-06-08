@@ -1,4 +1,8 @@
-import { formatters } from "@getpochi/common";
+import {
+  formatPochiFileDisplayPath,
+  formatters,
+  getPochiBuiltinFileDisplayInfo,
+} from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { isAutoSuccessToolPart, isCompletionToolPart } from "@getpochi/tools";
@@ -177,7 +181,7 @@ export class OutputRenderer {
   }
 }
 
-function renderToolPart(
+export function renderToolPart(
   part: ToolUIPart<UITools>,
   attemptCompletionSchemaOverride = false,
 ): {
@@ -202,7 +206,7 @@ function renderToolPart(
   if (part.type === "tool-readFile") {
     const { path = "unknown" } = part.input || {};
     return {
-      text: `📖 Reading ${chalk.bold(path)}`,
+      text: `📖 ${formatReadFileText(path)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -211,7 +215,7 @@ function renderToolPart(
   if (part.type === "tool-writeToFile") {
     const { path = "unknown" } = part.input || {};
     return {
-      text: `✏️  Writing ${chalk.bold(path)}`,
+      text: `✏️  Writing ${formatCliDisplayPath(path)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -220,7 +224,7 @@ function renderToolPart(
   if (part.type === "tool-applyDiff") {
     const { path = "unknown" } = part.input || {};
     return {
-      text: `🔧 Applying diff to ${chalk.bold(path)}`,
+      text: `🔧 Applying diff to ${formatCliDisplayPath(path)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -231,7 +235,7 @@ function renderToolPart(
     const { path = ".", recursive = false } = part.input || {};
     const recursiveText = recursive ? " recursively" : "";
     return {
-      text: `📂 Listing files in ${chalk.bold(path)}${recursiveText}`,
+      text: `📂 Listing files in ${formatCliDisplayPath(path)}${recursiveText}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -240,7 +244,7 @@ function renderToolPart(
   if (part.type === "tool-globFiles") {
     const { globPattern = "*", path = "." } = part.input || {};
     return {
-      text: `🔍 Searching for ${chalk.bold(globPattern)} in ${chalk.bold(path)}`,
+      text: `🔍 Searching for ${chalk.bold(globPattern)} in ${formatCliDisplayPath(path)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -252,7 +256,7 @@ function renderToolPart(
       ? `${chalk.bold(regex)} in ${chalk.bold(filePattern)} files`
       : `${chalk.bold(regex)}`;
     return {
-      text: `🔍 Searching for ${searchDesc} in ${chalk.bold(path)}`,
+      text: `🔍 Searching for ${searchDesc} in ${formatCliDisplayPath(path)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -346,6 +350,20 @@ function renderToolPart(
     stop: hasError ? "fail" : "succeed",
     error: errorText,
   };
+}
+
+function formatReadFileText(path: string) {
+  const builtInFile = getPochiBuiltinFileDisplayInfo(path);
+  if (builtInFile?.isReference) {
+    const itemKind = builtInFile.assetKind === "skills" ? "skill" : "agent";
+    return `Reading built-in ${itemKind} reference ${chalk.bold(builtInFile.relativePath)}`;
+  }
+
+  return `Reading ${formatCliDisplayPath(path)}`;
+}
+
+function formatCliDisplayPath(path: string) {
+  return chalk.bold(formatPochiFileDisplayPath(path));
 }
 
 type NewTaskTool = Extract<ToolUIPart<UITools>, { type: "tool-newTask" }>;

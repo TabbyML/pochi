@@ -2,6 +2,7 @@ import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { cn } from "@/lib/utils";
 import { addLineBreak } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
+import { formatPochiFileDisplayPath } from "@getpochi/common";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { EditSummary } from "./edit-summary";
@@ -47,6 +48,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
         ? `:${startLine}-${endLine}`
         : `:${startLine}`
       : "";
+  const displayLabel = label || formatPochiFileDisplayPath(path);
 
   const defaultOnClick = async () => {
     if (changes?.origin && changes?.modified) {
@@ -91,7 +93,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
     >
       <FileIcon path={path} isDirectory={isDirectory} />
       <span className={cn("ml-0.5 break-words", labelClassName)}>
-        {addLineBreak(label || path)}
+        {addLineBreak(displayLabel)}
         <span className="text-zinc-500 dark:text-zinc-400">{lineRange}</span>
       </span>
       {editSummary && <EditSummary editSummary={editSummary} />}

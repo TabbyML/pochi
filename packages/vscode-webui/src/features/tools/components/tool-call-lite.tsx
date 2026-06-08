@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { formatPochiFileDisplayPath } from "@getpochi/common";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
@@ -251,7 +252,9 @@ const SearchFilesTool = ({ tool }: ToolCallLiteViewProps<"searchFiles">) => {
   const searchCondition = (
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
-      <HighlightedText>{path}</HighlightedText>
+      <HighlightedText>
+        {path ? formatPochiFileDisplayPath(path) : path}
+      </HighlightedText>
       {filePattern && (
         <>
           {" "}
@@ -291,7 +294,10 @@ const GlobFilesTool = ({ tool }: ToolCallLiteViewProps<"globFiles">) => {
 
   const searchCondition = (
     <>
-      {t("toolInvocation.in")} <HighlightedText>{path}</HighlightedText>
+      {t("toolInvocation.in")}{" "}
+      <HighlightedText>
+        {path ? formatPochiFileDisplayPath(path) : path}
+      </HighlightedText>
       {globPattern && (
         <>
           {t("toolInvocation.for")}{" "}
@@ -380,7 +386,11 @@ const McpTool = ({ tool }: ToolCallLiteViewProps<any>) => {
 };
 
 function FileBadge({ path, className }: { path: string; className?: string }) {
-  return <span className={cn("truncate", className)}>{path}</span>;
+  return (
+    <span className={cn("truncate", className)}>
+      {formatPochiFileDisplayPath(path)}
+    </span>
+  );
 }
 
 function HighlightedText({

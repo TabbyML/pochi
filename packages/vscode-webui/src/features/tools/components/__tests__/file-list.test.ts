@@ -58,6 +58,8 @@ describe("FileList", () => {
       line: index + 1,
       context: `file list row ${index}`,
     }));
+  const visibleText = (container: HTMLElement) =>
+    container.textContent?.replace(/\u200B/g, "") ?? "";
 
   it("keeps the pre-virtualization scroll area styling", () => {
     const { container } = render(
@@ -115,6 +117,37 @@ describe("FileList", () => {
       ]),
     );
     expect(rowClasses).not.toContain("h-6");
+  });
+
+  it("shows shortened display paths for built-in files", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/references/chart.md",
+            context: "built-in skill reference",
+          },
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/agents/guide/references/config-schema.md",
+            context: "built-in agent reference",
+          },
+        ],
+      }),
+    );
+
+    expect(visibleText(container)).toContain(
+      "widget-guidelines/references/chart.md",
+    );
+    expect(visibleText(container)).toContain(
+      "guide/references/config-schema.md",
+    );
+    expect(visibleText(container)).not.toContain(
+      "skills/widget-guidelines/references/chart.md",
+    );
+    expect(visibleText(container)).not.toContain(
+      "agents/guide/references/config-schema.md",
+    );
+    expect(visibleText(container)).not.toContain("/.vscode/extensions/");
   });
 
   it("renders lists at the virtualization threshold without a virtual height spacer", () => {

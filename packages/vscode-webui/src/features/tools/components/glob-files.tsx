@@ -1,3 +1,4 @@
+import { formatPochiFileDisplayPath } from "@getpochi/common";
 import { useTranslation } from "react-i18next";
 import { FileList } from "./file-list";
 import { HighlightedText } from "./highlight-text";
@@ -37,7 +38,10 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
 
   const searchCondition = (
     <>
-      {t("toolInvocation.in")} <HighlightedText>{path}</HighlightedText>
+      {t("toolInvocation.in")}{" "}
+      <HighlightedText>
+        {path ? formatPochiFileDisplayPath(path) : path}
+      </HighlightedText>
       {globPattern && (
         <>
           {t("toolInvocation.for")}{" "}
