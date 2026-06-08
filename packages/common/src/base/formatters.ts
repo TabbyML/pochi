@@ -9,60 +9,44 @@ import { clone } from "remeda";
 import { KnownTags } from "./constants";
 import { prompts } from "./prompts";
 
-type PendingToolCallBehavior = "cancel" | "drop";
-
 function resolvePendingToolCalls(
   messages: UIMessage[],
-  {
-    resolveLastMessage = false,
-    pendingToolCallBehavior = "cancel",
-  }: {
-    resolveLastMessage?: boolean;
-    pendingToolCallBehavior?: PendingToolCallBehavior;
-  } = {},
+  resolveLastMessage = false,
 ): UIMessage[] {
-  return messages
-    .map((message, index) => {
-      if (
-        (resolveLastMessage ? true : index < messages.length - 1) &&
-        message.role === "assistant"
-      ) {
-        const parts = message.parts.flatMap((part) => {
-          if (
-            isStaticToolUIPart(part) &&
-            part.state !== "output-available" &&
-            part.state !== "output-error"
-          ) {
-            if (pendingToolCallBehavior === "drop") {
-              return [];
-            }
+  return messages.map((message, index) => {
+    if (
+      (resolveLastMessage ? true : index < messages.length - 1) &&
+      message.role === "assistant"
+    ) {
+      const parts = message.parts.map((part) => {
+        if (
+          isStaticToolUIPart(part) &&
+          part.state !== "output-available" &&
+          part.state !== "output-error"
+        ) {
+          const isSuccess = isAutoSuccessToolPart(part);
+          const { approval: _approval, ...resolvedPart } = part;
+          return {
+            ...resolvedPart,
+            // When input is null (input-streaming state), replace with empty object
+            // to satisfy API requirements (e.g. Anthropic requires tool_use.input to be non-null)
+            input: part.input ?? {},
+            state: "output-available",
+            output: isSuccess
+              ? { success: true }
+              : { error: "User cancelled the tool call." },
+          } as UIMessage["parts"][number];
+        }
+        return part;
+      });
+      return {
+        ...message,
+        parts,
+      };
+    }
 
-            const isSuccess = isAutoSuccessToolPart(part);
-            const { approval: _approval, ...resolvedPart } = part;
-            return [
-              {
-                ...resolvedPart,
-                // When input is null (input-streaming state), replace with empty object
-                // to satisfy API requirements (e.g. Anthropic requires tool_use.input to be non-null)
-                input: part.input ?? {},
-                state: "output-available",
-                output: isSuccess
-                  ? { success: true }
-                  : { error: "User cancelled the tool call." },
-              } as UIMessage["parts"][number],
-            ];
-          }
-          return [part];
-        });
-        return {
-          ...message,
-          parts,
-        };
-      }
-
-      return message;
-    })
-    .filter((message) => message.parts.length > 0);
+    return message;
+  });
 }
 
 function stripKnownXMLTags(messages: UIMessage[]): UIMessage[] {
@@ -390,7 +374,7 @@ function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
     lastMessage.role === "assistant" &&
     lastMessage.parts.some((x) => isCompletionToolPart(x));
 
-  return resolvePendingToolCalls(messages, { resolveLastMessage });
+  return resolvePendingToolCalls(messages, resolveLastMessage);
 }
 
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
@@ -400,6 +384,7 @@ const LLMFormatOps: FormatOp[] = [
   refineDetectedNewPromblems,
   extractCompactMessages,
   removeMessagesWithoutTextOrToolCall,
+  resolvePendingToolCalls,
   stripKnownXMLTags,
   removeToolCallResultMetadata,
   removeToolCallResultTransientData,
@@ -432,7 +417,6 @@ function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
 
 export interface LLMFormatterOptions {
   removeSystemReminder?: boolean;
-  pendingToolCallBehavior?: PendingToolCallBehavior;
 }
 
 export const formatters = {
@@ -445,14 +429,9 @@ export const formatters = {
 
   // Format messages before sending them to the LLM.
   llm: <T extends UIMessage>(messages: T[], options?: LLMFormatterOptions) => {
-    const llmFormatOps = [
-      ...(options?.removeSystemReminder ? [removeSystemReminder] : []),
-      ...LLMFormatOps,
-      (messages: UIMessage[]) =>
-        resolvePendingToolCalls(messages, {
-          pendingToolCallBehavior: options?.pendingToolCallBehavior,
-        }),
-    ];
+    const llmFormatOps = options?.removeSystemReminder
+      ? [removeSystemReminder, ...LLMFormatOps]
+      : LLMFormatOps;
     return formatMessages(messages, llmFormatOps) as T[];
   },
 

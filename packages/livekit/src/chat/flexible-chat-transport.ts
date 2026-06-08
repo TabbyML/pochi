@@ -5,7 +5,7 @@ import type {
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
-import { formatters, isForkAgentUseCase, prompts } from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import * as R from "remeda";
 
 import {
@@ -187,11 +187,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
       await convertToModelMessages(
-        formatters.llm(preparedMessages, {
-          pendingToolCallBehavior: isForkAgentUseCase(this.requestUseCase)
-            ? "drop"
-            : "cancel",
-        }),
+        formatters.llm(preparedMessages),
         // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
         { tools },
       ),

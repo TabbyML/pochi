@@ -5,7 +5,6 @@ import {
 } from "@getpochi/common";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { type ToolSpecInput, parseToolSpec } from "@getpochi/tools";
-import { isStaticToolUIPart } from "ai";
 
 const logger = getLogger("CreateForkAgent");
 
@@ -36,43 +35,23 @@ export function buildForkAgentInitTitle(
 
 /**
  * Build the init messages for a fork agent: all parent messages followed by
- * a new user message containing the directive. Unfinished tool calls inherited
- * from the parent are dropped — the fork starts from a clean tool-state and
- * cannot resolve the parent's in-flight calls.
+ * a new user message containing the directive.
  */
 export function buildForkMessages(
   parentMessages: Message[],
   directive: string,
 ): Message[] {
-  const clonedParents = parentMessages
-    .map((message) => {
-      const cloned = {
-        ...structuredClone(message),
-        id: crypto.randomUUID(),
-      } as Message;
-      cloned.parts = cloned.parts.filter(
-        (part) => !isUnfinishedToolPart(part),
-      ) as Message["parts"];
-      return cloned;
-    })
-    .filter((message) => message.parts.length > 0);
-
   return [
-    ...clonedParents,
+    ...parentMessages.map((message) => ({
+      ...structuredClone(message),
+      id: crypto.randomUUID(),
+    })),
     {
       id: crypto.randomUUID(),
       role: "user",
       parts: [{ type: "text", text: directive }],
     } as Message,
   ];
-}
-
-function isUnfinishedToolPart(part: Message["parts"][number]): boolean {
-  return (
-    isStaticToolUIPart(part) &&
-    part.state !== "output-available" &&
-    part.state !== "output-error"
-  );
 }
 
 /** Count `step-start` parts across messages. */
