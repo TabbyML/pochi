@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   type RenderWidgetError,
   type RenderWidgetErrorKind,
+  mergeRenderWidgetError,
   normalizeRenderWidgetError,
 } from "../lib/render-widget-error";
 
@@ -35,7 +36,11 @@ export const useRenderWidgetStore = create<RenderWidgetStoreState>()(
     setWidgetError: (toolCallId, error, kind) =>
       set((current) => {
         const widgetErrors = new Map(current.widgetErrors);
-        widgetErrors.set(toolCallId, normalizeRenderWidgetError(error, kind));
+        const nextError = normalizeRenderWidgetError(error, kind);
+        widgetErrors.set(
+          toolCallId,
+          mergeRenderWidgetError(widgetErrors.get(toolCallId), nextError),
+        );
         return { widgetErrors };
       }),
     getWidgetError: (toolCallId) => get().widgetErrors.get(toolCallId),

@@ -9,7 +9,7 @@ Use this module for local interactive explainers and clickable visuals.
 - Put the complete interactive state in the top-level `<pochi-widget state='...'>` JSON attribute. Use `window.pochi.state` to read it and `window.pochi.setState(nextState)` after every meaningful interaction.
 - IMPORTANT: Render from `window.pochi.state`, not from separate closure variables. A selected color, active city, highlighted node id, slider value, or current step must be represented in state before the UI updates.
 - Use the Static DOM + `render()` mutates existing nodes pattern. Write the visible widget shell and controls directly in HTML so streaming preview remains useful before scripts run.
-- Use a small `render()` function that reads `const state = window.pochi.state` and updates existing nodes with `textContent`, `classList`, `style`, `value`, `checked`, `hidden`, and ARIA attributes. Do not use `innerHTML` for UI updates.
+- Use a small `render()` function that reads `const state = window.pochi.state` and updates existing nodes with `textContent`, `classList`, `style`, `value`, `checked`, `hidden`, and ARIA attributes. Do not use `innerHTML` or `insertAdjacentHTML` to update UI, generate lists, swap icons, or replace cards; predeclare the needed DOM nodes and mutate them instead.
 - Event handlers should compute `nextState`, call `window.pochi.setState(nextState)`, then call `render()` so the state update drives the visible UI.
 - For interactive diagrams, clicking a node should update a nearby detail panel and highlight related nodes or edges.
 - Keep buttons, menus, and node clicks local to the widget. They may update state and visible UI, but they must not send chat messages.

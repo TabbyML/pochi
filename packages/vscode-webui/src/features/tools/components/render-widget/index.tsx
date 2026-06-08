@@ -9,6 +9,7 @@ import {
   type RenderWidgetError,
   type RenderWidgetErrorKind,
   getRenderWidgetErrorMessageKey,
+  mergeRenderWidgetError,
   normalizeRenderWidgetError,
 } from "@/features/chat/lib/render-widget-error";
 import { getToolPartError } from "@/lib/tool-call-error";
@@ -329,7 +330,10 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         setHeight(clampHeight(event.height));
         setHasFirstHeight(true);
       } else if (event.type === "error") {
-        setRendererError(normalizeRenderWidgetError(event.message, event.kind));
+        const nextError = normalizeRenderWidgetError(event.message, event.kind);
+        setRendererError((current) =>
+          mergeRenderWidgetError(current, nextError),
+        );
         if (isInteractiveRef.current) {
           setWidgetError(tool.toolCallId, event.message, event.kind);
         }

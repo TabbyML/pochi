@@ -771,6 +771,64 @@ describe("RenderWidgetTool", () => {
     });
   });
 
+  it("keeps setup errors when a later runtime error also fires", () => {
+    const tool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-setup-priority-error",
+      state: "input-available",
+      input: {
+        title: "Setup priority widget",
+        widgetCode: "<div>missing pochi-widget</div><script>\\`</script>",
+        guidelinesRead: true,
+      },
+    } as never;
+    const { container } = render(
+      <RenderWidgetTool
+        tool={tool}
+        isExecuting={false}
+        isLoading={false}
+        messages={createMessagesWithTool(tool)}
+      />,
+    );
+
+    act(() => {
+      getWidgetIframe(container).dispatchEvent(new Event("load"));
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "error",
+        message:
+          "Widgets must include a top-level <pochi-widget> state container.",
+        kind: "internal",
+      });
+    });
+    act(() => {
+      receiveHandler?.({
+        type: "error",
+        message: "Invalid or unexpected token",
+        kind: "runtime",
+      });
+    });
+
+    expect(
+      useRenderWidgetStore
+        .getState()
+        .getWidgetError("widget-setup-priority-error"),
+    ).toEqual({
+      kind: "internal",
+      message:
+        "Widgets must include a top-level <pochi-widget> state container.",
+    });
+    expect(statusIconMock.mock.calls.at(-1)?.[0]).toMatchObject({
+      tool: {
+        state: "output-available",
+        output: {
+          error: "Widget setup error.",
+        },
+      },
+    });
+  });
+
   it("keeps the latest renderWidget interactive after the call has output", () => {
     const inputTool = {
       type: "tool-renderWidget",

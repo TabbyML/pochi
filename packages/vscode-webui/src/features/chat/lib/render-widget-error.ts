@@ -36,3 +36,14 @@ export function getRenderWidgetErrorMessageKey(
     ? "toolInvocation.widgetInternalError"
     : "toolInvocation.widgetRuntimeError";
 }
+
+export function mergeRenderWidgetError(
+  current: RenderWidgetError | undefined,
+  next: RenderWidgetError,
+) {
+  if (!current || current.kind === next.kind) {
+    return next;
+  }
+
+  return next.kind === "internal" ? next : current;
+}
