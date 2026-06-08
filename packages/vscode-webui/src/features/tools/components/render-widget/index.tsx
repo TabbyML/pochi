@@ -1,9 +1,24 @@
 import { useTheme } from "@/components/theme-provider";
-import { useRenderWidgetStore, useSendMessage } from "@/features/chat";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  type RenderWidgetError,
+  type RenderWidgetErrorKind,
+  getRenderWidgetErrorMessageKey,
+  mergeRenderWidgetError,
+  normalizeRenderWidgetError,
+  useRenderWidgetStore,
+} from "@/features/chat";
+import { getToolPartError } from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
 import { createChannel } from "bidc";
+import { Lock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { StatusIcon } from "../status-icon";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
@@ -24,9 +39,13 @@ import {
 type WidgetRendererEvent =
   | { type: "ready" }
   | { type: "height"; height: number }
-  | { type: "error"; message: string; stack?: string }
-  | { type: "state"; state: unknown }
-  | { type: "sendMessage"; prompt: string };
+  | {
+      type: "error";
+      message: string;
+      kind?: RenderWidgetErrorKind;
+      stack?: string;
+    }
+  | { type: "state"; state: unknown };
 
 type WidgetRenderMessage = {
   type: "preview" | "finalize";
@@ -67,10 +86,10 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isExecuting,
   isLoading,
   isLastPart,
+  messages,
 }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const sendMessage = useSendMessage();
   const setWidgetState = useRenderWidgetStore((state) => state.setWidgetState);
   const setWidgetError = useRenderWidgetStore((state) => state.setWidgetError);
   const clearWidgetError = useRenderWidgetStore(
@@ -88,19 +107,15 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   // Tracks animation history only — intentionally separate from channel state.
   const hasPostedPreviewRef = useRef(false);
-  const hasSentMessageRef = useRef(false);
-  const toolCallIdRef = useRef(tool.toolCallId);
-  if (toolCallIdRef.current !== tool.toolCallId) {
-    toolCallIdRef.current = tool.toolCallId;
-    hasSentMessageRef.current = false;
-  }
   // Remember the most recently queued render so we can replay it after the
   // iframe reloads (e.g. browser-initiated reloads). Theme changes alone must
   // not remount the iframe — they propagate via the theme message channel.
   const lastRenderRef = useRef<WidgetRenderMessage | undefined>(undefined);
   const [height, setHeight] = useState(0);
   const [hasFirstHeight, setHasFirstHeight] = useState(false);
-  const [rendererError, setRendererError] = useState<string | undefined>();
+  const [rendererError, setRendererError] = useState<
+    RenderWidgetError | undefined
+  >();
   const [rendererScriptCode, setRendererScriptCode] = useState<
     string | undefined
   >();
@@ -126,6 +141,39 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     };
   }
 
+  const input = tool.input;
+  const title =
+    input && "title" in input && input.title
+      ? input.title
+      : `widget_${tool.toolCallId}`;
+  const widgetCode =
+    input && "widgetCode" in input && input.widgetCode ? input.widgetCode : "";
+  const isFinal =
+    tool.state === "input-available" ||
+    tool.state === "output-available" ||
+    tool.state === "output-error";
+  const isActive = isRenderWidgetPartInLatestAssistantMessage(
+    messages,
+    tool.toolCallId,
+  );
+  const isInteractive = isActive;
+  const isFrozen = !isActive;
+  const shouldBlockPointerEvents = isFrozen;
+  const committedError = getToolPartError(tool);
+  const widgetError =
+    rendererError ??
+    (committedError ? normalizeRenderWidgetError(committedError) : undefined);
+  const widgetErrorMessage = widgetError
+    ? t(getRenderWidgetErrorMessageKey(widgetError))
+    : undefined;
+  const displayTool = getRenderWidgetDisplayTool({
+    tool,
+    error: widgetErrorMessage,
+    isExecuting,
+  });
+  const isInteractiveRef = useRef(isInteractive);
+  isInteractiveRef.current = isInteractive;
+
   useEffect(() => {
     if (!import.meta.env.PROD) return;
 
@@ -138,8 +186,10 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         if (!disposed) {
           const message =
             error instanceof Error ? error.message : String(error);
-          setRendererError(message);
-          setWidgetError(tool.toolCallId, message);
+          setRendererError(normalizeRenderWidgetError(message, "internal"));
+          if (isInteractiveRef.current) {
+            setWidgetError(tool.toolCallId, message, "internal");
+          }
         }
       });
 
@@ -170,18 +220,6 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     [iframeDocument],
   );
 
-  const input = tool.input;
-  const title =
-    input && "title" in input && input.title
-      ? input.title
-      : `widget_${tool.toolCallId}`;
-  const widgetCode =
-    input && "widgetCode" in input && input.widgetCode ? input.widgetCode : "";
-  const isFinal =
-    tool.state === "input-available" || tool.state === "output-available";
-  const isInteractive = tool.state === "input-available";
-  const isInteractiveRef = useRef(isInteractive);
-  isInteractiveRef.current = isInteractive;
   const shouldAnimateReveal = shouldAnimateWidgetReveal({
     isExecuting,
     isLoading,
@@ -292,22 +330,16 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
         setHeight(clampHeight(event.height));
         setHasFirstHeight(true);
       } else if (event.type === "error") {
-        setRendererError(event.message);
+        const nextError = normalizeRenderWidgetError(event.message, event.kind);
+        setRendererError((current) =>
+          mergeRenderWidgetError(current, nextError),
+        );
         if (isInteractiveRef.current) {
-          setWidgetError(tool.toolCallId, event.message);
+          setWidgetError(tool.toolCallId, event.message, event.kind);
         }
       } else if (event.type === "state") {
         if (isInteractiveRef.current) {
           setWidgetState(tool.toolCallId, event.state);
-        }
-      } else if (event.type === "sendMessage") {
-        if (
-          isInteractiveRef.current &&
-          event.prompt.trim() &&
-          !hasSentMessageRef.current
-        ) {
-          hasSentMessageRef.current = true;
-          sendMessage({ prompt: event.prompt });
         }
       }
       return { ok: true };
@@ -316,7 +348,6 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     channelId,
     fallbackThemeClass,
     scheduleFlush,
-    sendMessage,
     setWidgetError,
     setWidgetState,
     tool.toolCallId,
@@ -403,7 +434,28 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   }, []);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 items-center gap-2 text-muted-foreground text-sm">
+        <StatusIcon isExecuting={isExecuting} tool={displayTool} />
+        <span className="shrink-0 font-medium text-foreground">
+          {t("toolInvocation.renderWidget")}
+        </span>
+        <span className="truncate">{title}</span>
+        {isFrozen ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("toolInvocation.widgetFrozen")}
+                className="inline-flex shrink-0 cursor-help items-center border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <Lock className="size-3" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("toolInvocation.widgetFrozen")}</TooltipContent>
+          </Tooltip>
+        ) : null}
+      </div>
       {iframeSrc ? (
         <iframe
           ref={iframeRef}
@@ -414,26 +466,70 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
           className={cn(
             "w-full bg-transparent",
             hasFirstHeight && "transition-[height] duration-150 ease-out",
+            shouldBlockPointerEvents && "pointer-events-none",
           )}
           style={{ height }}
         />
-      ) : null}
-      {rendererError ? (
-        <div
-          role="alert"
-          className="mt-2 break-words rounded-md border border-[var(--vscode-inputValidation-errorBorder,var(--vscode-errorForeground))] bg-[var(--vscode-inputValidation-errorBackground,transparent)] px-3 py-2 text-[var(--vscode-errorForeground)] text-xs leading-5"
-        >
-          <span className="font-medium">{t("toolInvocation.widgetError")}</span>
-          {rendererError}
-        </div>
       ) : null}
     </div>
   );
 };
 
+function getRenderWidgetDisplayTool({
+  tool,
+  error,
+  isExecuting,
+}: {
+  tool: ToolProps<"renderWidget">["tool"];
+  error?: string;
+  isExecuting: boolean;
+}): ToolProps<"renderWidget">["tool"] {
+  if (error) {
+    return {
+      ...tool,
+      state: "output-available",
+      output: {
+        ...getRenderWidgetOutput(tool),
+        error,
+      },
+    } as unknown as ToolProps<"renderWidget">["tool"];
+  }
+
+  if (tool.state === "input-available" && !isExecuting) {
+    return {
+      ...tool,
+      state: "output-available",
+      output: getRenderWidgetOutput(tool),
+    } as unknown as ToolProps<"renderWidget">["tool"];
+  }
+
+  return tool;
+}
+
+function getRenderWidgetOutput(tool: ToolProps<"renderWidget">["tool"]) {
+  if ("output" in tool && isRecord(tool.output)) return tool.output;
+  return {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function clampHeight(height: number | undefined) {
   if (height === undefined || !Number.isFinite(height)) return 0;
   return Math.min(Math.max(Math.ceil(height), 0), 1200);
+}
+
+function isRenderWidgetPartInLatestAssistantMessage(
+  messages: ToolProps<"renderWidget">["messages"],
+  toolCallId: string,
+) {
+  const message = messages.at(-1);
+  if (message?.role !== "assistant") return false;
+  return message.parts.some(
+    (part) =>
+      part.type === "tool-renderWidget" && part.toolCallId === toolCallId,
+  );
 }
 
 function getWebviewScriptNonce() {

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createClientTools,
   isAutoSuccessToolName,
-  isInteractiveToolName,
-  isInteractiveToolPart,
+  isCompletionToolName,
+  isCompletionToolPart,
   isReadonlyToolCall,
   selectAgentTools,
 } from "../index";
@@ -77,31 +77,20 @@ describe("render widget tools", () => {
     });
   });
 
-  it("does not treat renderWidget as an auto-success tool", () => {
-    expect(isAutoSuccessToolName("attemptCompletion")).toBe(true);
-    expect(isAutoSuccessToolName("todoWrite")).toBe(true);
-    expect(isAutoSuccessToolName("renderWidget")).toBe(false);
-  });
-
-  it("identifies interactive tool names and parts", () => {
-    expect(isInteractiveToolName("renderWidget")).toBe(true);
-    expect(isInteractiveToolName("writeToFile")).toBe(false);
+  it("treats renderWidget as a completion and auto-success tool", () => {
+    expect(isCompletionToolName("attemptCompletion")).toBe(true);
+    expect(isCompletionToolName("renderWidget")).toBe(true);
     expect(
-      isInteractiveToolPart({
+      isCompletionToolPart({
         type: "tool-renderWidget",
         toolCallId: "widget-1",
         state: "input-available",
         input: {},
       } as never),
     ).toBe(true);
-    expect(
-      isInteractiveToolPart({
-        type: "tool-writeToFile",
-        toolCallId: "write-1",
-        state: "input-available",
-        input: {},
-      } as never),
-    ).toBe(false);
+    expect(isAutoSuccessToolName("attemptCompletion")).toBe(true);
+    expect(isAutoSuccessToolName("todoWrite")).toBe(true);
+    expect(isAutoSuccessToolName("renderWidget")).toBe(true);
   });
 
   it("treats renderWidget as a readonly UI rendering call", () => {

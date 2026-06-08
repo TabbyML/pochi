@@ -1,12 +1,22 @@
 import { create } from "zustand";
+import {
+  type RenderWidgetError,
+  type RenderWidgetErrorKind,
+  mergeRenderWidgetError,
+  normalizeRenderWidgetError,
+} from "../lib/render-widget-error";
 
 interface RenderWidgetStoreState {
   widgetStates: Map<string, unknown>;
-  widgetErrors: Map<string, string>;
+  widgetErrors: Map<string, RenderWidgetError>;
   setWidgetState: (toolCallId: string, state: unknown) => void;
   getWidgetState: (toolCallId: string) => unknown;
-  setWidgetError: (toolCallId: string, error: string) => void;
-  getWidgetError: (toolCallId: string) => string | undefined;
+  setWidgetError: (
+    toolCallId: string,
+    error: string,
+    kind?: RenderWidgetErrorKind,
+  ) => void;
+  getWidgetError: (toolCallId: string) => RenderWidgetError | undefined;
   clearWidgetError: (toolCallId: string) => void;
   clearWidgetState: (toolCallId: string) => void;
   clearAllWidgetStates: () => void;
@@ -23,10 +33,14 @@ export const useRenderWidgetStore = create<RenderWidgetStoreState>()(
         return { widgetStates };
       }),
     getWidgetState: (toolCallId) => get().widgetStates.get(toolCallId),
-    setWidgetError: (toolCallId, error) =>
+    setWidgetError: (toolCallId, error, kind) =>
       set((current) => {
         const widgetErrors = new Map(current.widgetErrors);
-        widgetErrors.set(toolCallId, error);
+        const nextError = normalizeRenderWidgetError(error, kind);
+        widgetErrors.set(
+          toolCallId,
+          mergeRenderWidgetError(widgetErrors.get(toolCallId), nextError),
+        );
         return { widgetErrors };
       }),
     getWidgetError: (toolCallId) => get().widgetErrors.get(toolCallId),

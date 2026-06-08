@@ -156,6 +156,38 @@ describe('formatters', () => {
       expect(toolPart.input).not.toBeNull();
       expect(toolPart.input).toEqual({});
     });
+
+    it('should resolve pending renderWidget parts with an empty widget state output', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'tool-renderWidget',
+              toolCallId: 'widget-1',
+              state: 'input-available',
+              input: {
+                title: 'Weather',
+                widgetCode: '<pochi-widget state="{}"></pochi-widget>',
+                guidelinesRead: true,
+              },
+            } as any,
+          ],
+        },
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'hello' }],
+        },
+      ];
+
+      const formatted = formatters.llm(messages);
+      const toolPart = formatted[0].parts[0] as any;
+
+      expect(toolPart.state).toBe('output-available');
+      expect(toolPart.output).toEqual({ state: {} });
+    });
   });
 
   describe('formatters.llm', () => {

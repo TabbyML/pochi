@@ -45,3 +45,13 @@ export {
 } from "./hooks/use-subtask-info";
 
 export { useRenderWidgetStore } from "./hooks/use-render-widget-store";
+
+export {
+  getRenderWidgetErrorMessageKey,
+  mergeRenderWidgetError,
+  normalizeRenderWidgetError,
+} from "./lib/render-widget-error";
+export type {
+  RenderWidgetError,
+  RenderWidgetErrorKind,
+} from "./lib/render-widget-error";
