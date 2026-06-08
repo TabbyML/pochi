@@ -30,7 +30,7 @@ _Step by step operations log_
 `;
 
 const MaxSectionTokens = 2000;
-const TaskMemoryFileUri = "pochi://-/memory.md";
+export const TaskMemoryFileUri = "pochi://-/memory.md";
 
 /**
  * Build the extraction directive that the fork agent receives.

@@ -4,6 +4,7 @@ import type { Message, RequestData, Task } from "../../types";
 import {
   AutoCompactBufferTokens,
   MaxSummaryOutputTokens,
+  findAutoCompactAttachIndex,
   getAutoCompactThreshold,
   shouldAutoCompact,
 } from "../auto-compact-policy";
@@ -25,6 +26,25 @@ function assistantMessage(text = "previous answer"): Message {
     id: "a-prev",
     role: "assistant",
     parts: [{ type: "text", text }],
+  } as unknown as Message;
+}
+
+function assistantToolMessage(
+  state: "input-available" | "output-available" | "output-error",
+): Message {
+  return {
+    id: "a-tool",
+    role: "assistant",
+    parts: [
+      {
+        type: "tool-readFile",
+        toolCallId: "tool-1",
+        state,
+        input: { path: "foo.ts" },
+        output:
+          state === "input-available" ? undefined : { output: "result text" },
+      },
+    ],
   } as unknown as Message;
 }
 
@@ -86,6 +106,33 @@ describe("shouldAutoCompact", () => {
 
   it("does not trigger when the last message is not from the user", () => {
     const messages = [userMessage(), assistantMessage()];
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm: openaiLlm(contextWindow),
+        task: task(contextWindow),
+      }),
+    ).toBe(false);
+  });
+
+  it("triggers after a completed assistant tool result", () => {
+    const messages = [
+      userMessage("initial", { id: "u-0" } as Partial<Message>),
+      assistantMessage(),
+      userMessage("continue", { id: "u-1" } as Partial<Message>),
+      assistantToolMessage("output-available"),
+    ];
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm: openaiLlm(contextWindow),
+        task: task(getAutoCompactThreshold(contextWindow)),
+      }),
+    ).toBe(true);
+  });
+
+  it("does not trigger while assistant tool calls are still pending", () => {
+    const messages = [userMessage(), assistantToolMessage("input-available")];
     expect(
       shouldAutoCompact({
         messages,
@@ -179,6 +226,33 @@ describe("shouldAutoCompact", () => {
     ).toBe(false);
   });
 
+  it("skips when the tool-result tail already carries a <compact> block", () => {
+    const messages = [
+      assistantMessage(),
+      userMessage("<compact>previous summary</compact>"),
+      assistantToolMessage("output-available"),
+    ];
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm: openaiLlm(contextWindow),
+        task: task(contextWindow),
+      }),
+    ).toBe(false);
+  });
+
+  it("uses estimated total tokens when task token metadata is stale", () => {
+    const messages = [assistantMessage(), userMessage()];
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm: openaiLlm(contextWindow),
+        task: task(constants.CompactTaskMinTokens - 1),
+        estimatedTotalTokens: getAutoCompactThreshold(contextWindow),
+      }),
+    ).toBe(true);
+  });
+
   it("returns false when there are no messages", () => {
     expect(
       shouldAutoCompact({
@@ -198,5 +272,27 @@ describe("shouldAutoCompact", () => {
         task: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe("findAutoCompactAttachIndex", () => {
+  it("returns the last message index when the tail is user-authored", () => {
+    const messages = [assistantMessage(), userMessage()];
+    expect(findAutoCompactAttachIndex(messages)).toBe(1);
+  });
+
+  it("returns the previous user index when the tail is a completed tool result", () => {
+    const messages = [
+      userMessage("initial", { id: "u-0" } as Partial<Message>),
+      assistantMessage(),
+      userMessage("continue", { id: "u-1" } as Partial<Message>),
+      assistantToolMessage("output-available"),
+    ];
+    expect(findAutoCompactAttachIndex(messages)).toBe(2);
+  });
+
+  it("returns undefined for non-tool assistant tails", () => {
+    const messages = [userMessage(), assistantMessage()];
+    expect(findAutoCompactAttachIndex(messages)).toBeUndefined();
   });
 });

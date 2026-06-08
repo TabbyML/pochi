@@ -39,6 +39,7 @@ export { withTimeout } from "./async-utils";
 
 export * from "./message-context";
 export type { AutoMemoryTaskState, TaskMemoryState } from "./memory";
+export { TaskMemoryFileUri } from "./prompts/task-memory";
 
 export const ForkAgentUseCase = z.enum([
   "task-memory",

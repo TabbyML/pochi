@@ -6,17 +6,13 @@ export interface TaskMemoryState {
    * UUID of the last message incorporated into memory.md by the most recent
    * successful extraction. Compaction uses this as the boundary to know
    * which messages are already covered by the curated session notes and
-   * which still need to be preserved verbatim. Stored as a UUID rather
-   * than a numeric index so it remains stable across any in-place
-   * mutations of the messages array (compact tag insertion, fork/restore,
-   * etc.).
+   * which still need to be preserved verbatim.
    */
   lastExtractionMessageId?: string;
   /**
    * Snapshot of the trailing message UUID at the moment the in-flight
    * extraction was started. Promoted to `lastExtractionMessageId` once the
-   * fork agent finishes successfully (and the snapshot was on a clean turn
-   * boundary at promotion time).
+   * fork agent writes memory.md successfully.
    */
   pendingExtractionMessageId?: string;
   isExtracting: boolean;

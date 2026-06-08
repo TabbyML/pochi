@@ -1,3 +1,4 @@
+import { TaskMemoryFileUri } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import {
   type ToolSpecInput,
@@ -37,6 +38,70 @@ describe("buildForkMessages", () => {
     expect(result[0].parts).toEqual(parentMessages[0].parts);
     expect(result[1].parts).toEqual(parentMessages[1].parts);
     expect(result[2]).toMatchObject({
+      role: "user",
+      parts: [{ type: "text", text: "extract memory" }],
+    });
+  });
+
+  it("drops unfinished parent tool calls before storing fork messages", () => {
+    const parentMessages = [
+      {
+        id: "parent-message-1",
+        role: "assistant",
+        parts: [
+          { type: "text", text: "Reading files" },
+          {
+            type: "tool-readFile",
+            toolCallId: "pending-read",
+            state: "input-available",
+            input: { path: "pending.md" },
+          },
+          {
+            type: "tool-readFile",
+            toolCallId: "done-read",
+            state: "output-available",
+            input: { path: "done.md" },
+            output: { output: "done" },
+          },
+        ],
+      },
+    ] as Message[];
+
+    const result = buildForkMessages(parentMessages, "extract memory");
+
+    expect(result).toHaveLength(2);
+    expect(result[0].parts).toEqual([
+      { type: "text", text: "Reading files" },
+      {
+        type: "tool-readFile",
+        toolCallId: "done-read",
+        state: "output-available",
+        input: { path: "done.md" },
+        output: { output: "done" },
+      },
+    ]);
+  });
+
+  it("drops parent messages that only contain unfinished tool calls", () => {
+    const parentMessages = [
+      {
+        id: "parent-message-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "pending-read",
+            state: "input-available",
+            input: { path: "pending.md" },
+          },
+        ],
+      },
+    ] as Message[];
+
+    const result = buildForkMessages(parentMessages, "extract memory");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
       role: "user",
       parts: [{ type: "text", text: "extract memory" }],
     });
@@ -150,7 +215,7 @@ describe("buildForkAgentInitTitle", () => {
 describe("task-memory tool policy", () => {
   const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
     "readFile",
-    "writeToFile(pochi://-/memory.md)",
+    `writeToFile(${TaskMemoryFileUri})`,
   ];
 
   it("derives the allowed tool name set", () => {
@@ -166,7 +231,7 @@ describe("task-memory tool policy", () => {
 
     expect(policies?.writeToFile).toEqual({
       kind: "path-pattern",
-      patterns: ["pochi://-/memory.md"],
+      patterns: [TaskMemoryFileUri],
     });
     expect(policies?.readFile).toBeUndefined();
   });

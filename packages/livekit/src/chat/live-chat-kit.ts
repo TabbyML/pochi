@@ -154,6 +154,7 @@ export type LiveChatKitOptions<T> = {
 
   isSubTask?: boolean;
   requestUseCase?: PochiRequestUseCase;
+  disableAutoCompact?: boolean;
 
   store: LiveKitStore;
 
@@ -255,6 +256,7 @@ export class LiveChatKit<
     getters,
     isSubTask,
     requestUseCase,
+    disableAutoCompact,
     customAgent,
     outputSchema,
     attemptCompletionSchema,
@@ -315,7 +317,10 @@ export class LiveChatKit<
         lastMessage.metadata?.kind === "user" &&
         lastMessage.metadata.compact === true;
 
+      const canAutoCompact =
+        !disableAutoCompact && !isForkAgentUseCase(requestUseCase);
       const isAutoCompact =
+        canAutoCompact &&
         !isManualCompact &&
         this.consecutiveAutoCompactFailures <
           MaxConsecutiveAutoCompactFailures &&
@@ -323,6 +328,7 @@ export class LiveChatKit<
           messages,
           llm: getters.getLLM(),
           task: this.task,
+          estimatedTotalTokens: estimateCurrentMessagesTokens(messages),
         });
 
       if (isManualCompact || isAutoCompact) {
@@ -825,4 +831,22 @@ function estimateTokenBreakdown(messages: Message[]) {
     systemReminderTokens,
     projectMemoryTokens,
   };
+}
+
+function estimateCurrentMessagesTokens(messages: Message[]) {
+  const {
+    messagesTokens,
+    filesTokens,
+    toolResultsTokens,
+    systemReminderTokens,
+    projectMemoryTokens,
+  } = estimateTokenBreakdown(messages);
+
+  return (
+    messagesTokens +
+    filesTokens +
+    toolResultsTokens +
+    systemReminderTokens +
+    projectMemoryTokens
+  );
 }

@@ -1,4 +1,5 @@
 import { constants, prompts } from "@getpochi/common";
+import { isStaticToolUIPart } from "ai";
 import type { Message, RequestData, Task } from "../types";
 
 export const MaxSummaryOutputTokens = 20_000;
@@ -22,22 +23,31 @@ export function shouldAutoCompact({
   messages,
   llm,
   task,
+  estimatedTotalTokens,
 }: {
   messages: Message[];
   llm: RequestData["llm"] | undefined;
   task: Task | null | undefined;
+  estimatedTotalTokens?: number;
 }): boolean {
-  const lastMessage = messages.at(-1);
-  if (lastMessage?.role !== "user") return false;
+  const attachIndex = findAutoCompactAttachIndex(messages);
+  if (attachIndex === undefined) return false;
+
+  const attachMessage = messages[attachIndex];
 
   if (
-    lastMessage.metadata?.kind === "user" &&
-    lastMessage.metadata.compact === true
+    attachMessage?.metadata?.kind === "user" &&
+    attachMessage.metadata.compact === true
   ) {
     return false;
   }
 
-  const totalTokens = task?.totalTokens ?? 0;
+  if (!task && estimatedTotalTokens === undefined) return false;
+
+  const totalTokens = Math.max(
+    task?.totalTokens ?? 0,
+    estimatedTotalTokens ?? 0,
+  );
   if (totalTokens < constants.CompactTaskMinTokens) return false;
 
   const contextWindow = resolveContextWindow(llm);
@@ -46,12 +56,49 @@ export function shouldAutoCompact({
   }
 
   if (
-    lastMessage.parts.some(
-      (part) => part.type === "text" && prompts.isCompact(part.text),
-    )
+    messages
+      .slice(attachIndex)
+      .some((message) =>
+        message.parts.some(
+          (part) => part.type === "text" && prompts.isCompact(part.text),
+        ),
+      )
   ) {
     return false;
   }
 
   return true;
+}
+
+export function findAutoCompactAttachIndex(
+  messages: Message[],
+): number | undefined {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage) return;
+
+  if (lastMessage.role === "user") {
+    return messages.length - 1;
+  }
+
+  if (!isCompleteAssistantToolResultMessage(lastMessage)) {
+    return;
+  }
+
+  const previousUserIndex = messages.findLastIndex(
+    (message, index) => index < messages.length - 1 && message.role === "user",
+  );
+  return previousUserIndex === -1 ? undefined : previousUserIndex;
+}
+
+function isCompleteAssistantToolResultMessage(message: Message): boolean {
+  if (message.role !== "assistant") return false;
+
+  const toolParts = message.parts.filter(isStaticToolUIPart);
+  return (
+    toolParts.length > 0 &&
+    toolParts.every(
+      (part) =>
+        part.state === "output-available" || part.state === "output-error",
+    )
+  );
 }

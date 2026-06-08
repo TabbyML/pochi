@@ -156,6 +156,59 @@ describe('formatters', () => {
       expect(toolPart.input).not.toBeNull();
       expect(toolPart.input).toEqual({});
     });
+
+    it('drops pending tool calls when requested for fork-agent context', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'text', text: 'I will inspect the file.' },
+            createToolPart('readFile', 'input-available', {
+              path: 'src/file.ts',
+            }),
+          ],
+        },
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'extract memory' }],
+        },
+      ];
+
+      const formatted = formatters.llm(messages, {
+        pendingToolCallBehavior: 'drop',
+      });
+
+      expect(formatted[0].parts).toEqual([
+        { type: 'text', text: 'I will inspect the file.' },
+      ]);
+    });
+
+    it('removes assistant messages that only contain dropped pending tool calls', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            createToolPart('readFile', 'input-available', {
+              path: 'src/file.ts',
+            }),
+          ],
+        },
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'extract memory' }],
+        },
+      ];
+
+      const formatted = formatters.llm(messages, {
+        pendingToolCallBehavior: 'drop',
+      });
+
+      expect(formatted.map((message) => message.id)).toEqual(['user-1']);
+    });
   });
 
   describe('formatters.llm', () => {
