@@ -2,7 +2,7 @@
 
 Use this module for local interactive explainers and clickable visuals.
 
-- All interactions are local. Never call host APIs, send chat messages, or request network data.
+- All interactions are local. Never call host APIs or request network data.
 - Good controls: sliders, segmented buttons, toggles, node selection, hover highlights, step forward/back, reset, and local detail panels.
 - Start with useful static content, then enhance with script after streaming completes.
 - Bind events with `addEventListener` in a final script. Do not use inline `on*` attributes.
@@ -12,7 +12,7 @@ Use this module for local interactive explainers and clickable visuals.
 - Use a small `render()` function that reads `const state = window.pochi.state` and updates existing nodes with `textContent`, `classList`, `style`, `value`, `checked`, `hidden`, and ARIA attributes. Do not use `innerHTML` or `insertAdjacentHTML` to update UI, generate lists, swap icons, or replace cards; predeclare the needed DOM nodes and mutate them instead.
 - Event handlers should compute `nextState`, call `window.pochi.setState(nextState)`, then call `render()` so the state update drives the visible UI.
 - For interactive diagrams, clicking a node should update a nearby detail panel and highlight related nodes or edges.
-- Keep buttons, menus, and node clicks local to the widget. They may update state and visible UI, but they must not send chat messages.
+- Keep buttons, menus, and node clicks local to the widget. They may update state and visible UI.
 
 Static DOM state-driven interaction pattern:
 

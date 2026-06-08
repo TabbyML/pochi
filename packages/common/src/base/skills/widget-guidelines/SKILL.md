@@ -15,9 +15,9 @@ These rules apply to every `renderWidget` call:
 - Pochi streams `widgetCode` as the model generates it. Put visible structure first and scripts last.
 - The widget runs in a sandboxed iframe inside VSCode. Interactivity must stay local to the widget.
 - Every widget must have one top-level `<pochi-widget state='...'>` element. Static widgets can use `state='{}'`; interactive widgets must put the complete UI state needed to interpret the current display in that JSON attribute.
-- Keep widget state JSON-serializable. On every meaningful interaction, compute `nextState`, call `window.pochi.setState(nextState)`, then render the visible UI from `window.pochi.state` so the host can commit the latest state before the next user message.
+- Keep widget state JSON-serializable. On every meaningful interaction, compute `nextState`, call `window.pochi.setState(nextState)`, then render the visible UI from `window.pochi.state` so the host can persist the latest state.
 - IMPORTANT: Treat `window.pochi.state` as the only UI state source of truth. Use the Static DOM + `render()` mutates existing nodes pattern to make that relationship obvious: build the visible shell and controls as static DOM first, then make `render()` read from `window.pochi.state` and mutate existing nodes with `textContent`, `classList`, `style`, `value`, `checked`, `hidden`, and ARIA attributes. Do not use `innerHTML` or `insertAdjacentHTML` to update UI, generate lists, swap icons, or replace cards; predeclare the needed DOM nodes and mutate them instead. Do not keep separate hidden state that can drift from the visible UI.
-- Widgets cannot send chat messages. Keep all widget controls local: update `window.pochi.state` and re-render existing UI only.
+- Keep all widget controls local: update `window.pochi.state` and re-render existing UI only.
 - Do not use other host actions, external APIs, or external data requests.
 - Do not use `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `sendBeacon`, form submission, or external image/font URLs.
 - The only external script allowed is the approved Chart.js CDN script in `references/chart.md`.

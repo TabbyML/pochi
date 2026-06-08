@@ -4,12 +4,8 @@ import {
   useRenderWidgetStore,
 } from "@/features/chat";
 import type { Message } from "@getpochi/livekit";
+import { getStaticToolName, isStaticToolUIPart } from "ai";
 import { useMemo } from "react";
-
-type RenderWidgetPart = Extract<
-  Message["parts"][number],
-  { type: "tool-renderWidget" }
->;
 
 export function useRenderWidgetError({
   messages,
@@ -33,8 +29,8 @@ export function getRenderWidgetError(
 ): RenderWidgetErrorKind | undefined {
   let hasRuntimeError = false;
 
-  for (const part of getLatestRenderWidgetParts(messages)) {
-    const error = getWidgetError(part.toolCallId);
+  for (const toolCallId of getLatestRenderWidgetToolCallIds(messages)) {
+    const error = getWidgetError(toolCallId);
     if (!error) continue;
     if (error.kind === "internal") return "internal";
     hasRuntimeError = true;
@@ -43,10 +39,18 @@ export function getRenderWidgetError(
   return hasRuntimeError ? "runtime" : undefined;
 }
 
-function getLatestRenderWidgetParts(messages: Message[]): RenderWidgetPart[] {
+function getLatestRenderWidgetToolCallIds(messages: Message[]): string[] {
   const message = messages.at(-1);
   if (message?.role !== "assistant") return [];
-  return message.parts.filter(
-    (part): part is RenderWidgetPart => part.type === "tool-renderWidget",
-  );
+  const toolCallIds: string[] = [];
+  for (const part of message.parts) {
+    if (
+      !isStaticToolUIPart(part) ||
+      getStaticToolName(part) !== "renderWidget"
+    ) {
+      continue;
+    }
+    toolCallIds.push(part.toolCallId);
+  }
+  return toolCallIds;
 }

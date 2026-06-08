@@ -166,7 +166,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   const widgetErrorMessage = widgetError
     ? t(getRenderWidgetErrorMessageKey(widgetError))
     : undefined;
-  const statusTool = getRenderWidgetStatusTool({
+  const displayTool = getRenderWidgetDisplayTool({
     tool,
     error: widgetErrorMessage,
     isExecuting,
@@ -436,7 +436,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex min-w-0 items-center gap-2 text-muted-foreground text-sm">
-        <StatusIcon isExecuting={isExecuting} tool={statusTool} />
+        <StatusIcon isExecuting={isExecuting} tool={displayTool} />
         <span className="shrink-0 font-medium text-foreground">
           {t("toolInvocation.renderWidget")}
         </span>
@@ -475,7 +475,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   );
 };
 
-function getRenderWidgetStatusTool({
+function getRenderWidgetDisplayTool({
   tool,
   error,
   isExecuting,
