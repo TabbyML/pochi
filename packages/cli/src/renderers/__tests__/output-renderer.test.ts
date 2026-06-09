@@ -1,3 +1,5 @@
+import { homedir } from "node:os";
+import path from "node:path";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 import { describe, expect, it } from "vitest";
@@ -11,7 +13,10 @@ function renderText(part: ToolUIPart<UITools>) {
 }
 
 describe("renderToolPart", () => {
-  it("renders built-in skill readFile output with the skill name and relative file path", () => {
+  const pochiHomePath = (...parts: string[]) =>
+    path.join(homedir(), ".pochi", ...parts);
+
+  it("renders built-in skill readFile output with the display path", () => {
     const text = renderText({
       type: "tool-readFile",
       toolCallId: "call-1",
@@ -22,11 +27,11 @@ describe("renderToolPart", () => {
     } as ToolUIPart<UITools>);
 
     expect(text).toContain(
-      "Reading built-in skill widget-guidelines: references/chart.md",
+      "Reading pochi://skills/widget-guidelines/references/chart.md",
     );
   });
 
-  it("renders built-in agent readFile output with the agent name and relative file path", () => {
+  it("renders built-in agent readFile output with the display path", () => {
     const text = renderText({
       type: "tool-readFile",
       toolCallId: "call-1",
@@ -37,7 +42,22 @@ describe("renderToolPart", () => {
     } as ToolUIPart<UITools>);
 
     expect(text).toContain(
-      "Reading built-in agent guide: references/config-schema.md",
+      "Reading pochi://agents/guide/references/config-schema.md",
+    );
+  });
+
+  it("renders built-in virtual URI readFile output with the display path", () => {
+    const text = renderText({
+      type: "tool-readFile",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: "pochi://skills/widget-guidelines/references/interactive.md",
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toContain(
+      "Reading pochi://skills/widget-guidelines/references/interactive.md",
     );
   });
 
@@ -51,12 +71,16 @@ describe("renderToolPart", () => {
       },
     } as ToolUIPart<UITools>);
 
-    expect(text).toContain("Listing files in skills/widget-guidelines");
+    expect(text).toContain("Listing files in pochi://skills/widget-guidelines");
   });
 
   it("renders project memory paths in file operation output", () => {
-    const memoryPath =
-      "/Users/jueliang/.pochi/projects/pochi-c212a47e71/memory/project.md";
+    const memoryPath = pochiHomePath(
+      "projects",
+      "pochi-c212a47e71",
+      "memory",
+      "project.md",
+    );
 
     for (const type of [
       "tool-readFile",
@@ -72,7 +96,7 @@ describe("renderToolPart", () => {
         },
       } as ToolUIPart<UITools>);
 
-      expect(text).toContain("projectMemory/project.md");
+      expect(text).toContain("pochi://$/memory/project.md");
     }
   });
 
@@ -87,5 +111,56 @@ describe("renderToolPart", () => {
     } as ToolUIPart<UITools>);
 
     expect(text).toContain("pochi://-/memory.md");
+  });
+
+  it("renders project memory virtual URIs with the project memory display path", () => {
+    const text = renderText({
+      type: "tool-writeToFile",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: "pochi://$/memory/llm-training.md",
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toContain("pochi://$/memory/llm-training.md");
+  });
+
+  it("renders persisted task tool result paths with the task display path", () => {
+    const text = renderText({
+      type: "tool-readFile",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: pochiHomePath(
+          "tasks",
+          "ac7cadc8-4685-4508-9c75-2cf273b54deb",
+          "tool-results",
+          "executeCommand-HsqmmmQnwJuB1Jtz-output.log",
+        ),
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toContain(
+      "pochi://~/tool-results/executeCommand-HsqmmmQnwJuB1Jtz-output.log",
+    );
+  });
+
+  it("renders unmatched Pochi home paths with the global display prefix", () => {
+    const text = renderText({
+      type: "tool-readFile",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: pochiHomePath(
+          "tasks",
+          "ac7cadc8-4685-4508-9c75-2cf273b54deb",
+        ),
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toContain(
+      "Reading pochi://tasks/ac7cadc8-4685-4508-9c75-2cf273b54deb",
+    );
   });
 });

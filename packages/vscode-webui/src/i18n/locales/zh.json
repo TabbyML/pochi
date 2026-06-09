@@ -293,9 +293,6 @@
     "requiresApproval": "需要批准",
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",
-    "readingBuiltInSkill": "正在读取内置技能",
-    "readingBuiltInAgent": "正在读取内置代理",
-
     "writing": "正在写入 ",
     "continue": "继续",
     "cancel": "取消",

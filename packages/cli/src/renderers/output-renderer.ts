@@ -1,8 +1,5 @@
-import {
-  formatPochiFileDisplayPath,
-  formatters,
-  getPochiBuiltinFileDisplayInfo,
-} from "@getpochi/common";
+import { homedir } from "node:os";
+import { formatPochiFileDisplayPath, formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { isAutoSuccessToolPart, isCompletionToolPart } from "@getpochi/tools";
@@ -353,18 +350,11 @@ export function renderToolPart(
 }
 
 function formatReadFileText(path: string) {
-  const builtInFile = getPochiBuiltinFileDisplayInfo(path);
-  if (builtInFile) {
-    const itemKind = builtInFile.assetKind === "skills" ? "skill" : "agent";
-    const filePath = builtInFile.filePath || builtInFile.relativePath;
-    return `Reading built-in ${itemKind} ${chalk.bold(builtInFile.name)}: ${chalk.bold(filePath)}`;
-  }
-
   return `Reading ${formatCliDisplayPath(path)}`;
 }
 
 function formatCliDisplayPath(path: string) {
-  return chalk.bold(formatPochiFileDisplayPath(path));
+  return chalk.bold(formatPochiFileDisplayPath(path, { homeDir: homedir() }));
 }
 
 type NewTaskTool = Extract<ToolUIPart<UITools>, { type: "tool-newTask" }>;

@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { formatPochiFileDisplayPath } from "@getpochi/common";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
@@ -7,6 +6,7 @@ import type { TFunction } from "i18next";
 import { Loader2, Pause } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { FileBadge } from "./file-badge";
 
 interface Props {
   tools: Array<ToolUIPart<UITools>> | undefined;
@@ -252,9 +252,7 @@ const SearchFilesTool = ({ tool }: ToolCallLiteViewProps<"searchFiles">) => {
   const searchCondition = (
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
-      <HighlightedText>
-        {path ? formatPochiFileDisplayPath(path) : path}
-      </HighlightedText>
+      {path && <FileBadge className="ml-1" path={path} isDirectory />}
       {filePattern && (
         <>
           {" "}
@@ -295,9 +293,7 @@ const GlobFilesTool = ({ tool }: ToolCallLiteViewProps<"globFiles">) => {
   const searchCondition = (
     <>
       {t("toolInvocation.in")}{" "}
-      <HighlightedText>
-        {path ? formatPochiFileDisplayPath(path) : path}
-      </HighlightedText>
+      {path && <FileBadge className="ml-1" path={path} isDirectory />}
       {globPattern && (
         <>
           {t("toolInvocation.for")}{" "}
@@ -384,14 +380,6 @@ const McpTool = ({ tool }: ToolCallLiteViewProps<any>) => {
     </>
   );
 };
-
-function FileBadge({ path, className }: { path: string; className?: string }) {
-  return (
-    <span className={cn("truncate", className)}>
-      {formatPochiFileDisplayPath(path)}
-    </span>
-  );
-}
 
 function HighlightedText({
   children,

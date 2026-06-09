@@ -1,10 +1,21 @@
 import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { globFilesTool as GlobFilesTool } from "../glob-files";
 import { searchFilesTool as SearchFilesTool } from "../search-files";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+vi.mock("@/components/theme-provider", () => ({
+  useTheme: () => ({ theme: "dark" }),
+}));
+
+vi.mock("@/lib/vscode", () => ({
+  vscodeHost: {
+    openFile: vi.fn(),
+    showCheckpointDiff: vi.fn(),
+  },
 }));
 
 vi.mock("../status-icon", () => ({
@@ -22,8 +33,20 @@ vi.mock("../file-list", () => ({
 }));
 
 const memoryDir = "/Users/jueliang/.pochi/projects/pochi-c212a47e71/memory";
+const visibleText = (container: HTMLElement) =>
+  container.textContent?.replace(/\u200B/g, "") ?? "";
 
 describe("tool path display", () => {
+  const originalPochiHomeDir = globalThis.POCHI_HOME_DIR;
+
+  beforeEach(() => {
+    globalThis.POCHI_HOME_DIR = "/Users/jueliang";
+  });
+
+  afterEach(() => {
+    globalThis.POCHI_HOME_DIR = originalPochiHomeDir;
+  });
+
   it("shortens project memory paths in searchFiles titles", () => {
     const { container } = render(
       <SearchFilesTool
@@ -42,8 +65,8 @@ describe("tool path display", () => {
       />,
     );
 
-    expect(container.textContent).toContain("projectMemory");
-    expect(container.textContent).not.toContain("/.pochi/projects/");
+    expect(visibleText(container)).toContain("pochi://$/memory");
+    expect(visibleText(container)).not.toContain("/.pochi/projects/");
   });
 
   it("shortens project memory paths in globFiles titles", () => {
@@ -64,7 +87,7 @@ describe("tool path display", () => {
       />,
     );
 
-    expect(container.textContent).toContain("projectMemory");
-    expect(container.textContent).not.toContain("/.pochi/projects/");
+    expect(visibleText(container)).toContain("pochi://$/memory");
+    expect(visibleText(container)).not.toContain("/.pochi/projects/");
   });
 });

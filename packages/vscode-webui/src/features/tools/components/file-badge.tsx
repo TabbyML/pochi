@@ -48,7 +48,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
         ? `:${startLine}-${endLine}`
         : `:${startLine}`
       : "";
-  const displayLabel = label || formatPochiFileDisplayPath(path);
+  const displayLabel = label || getFileBadgeDisplayLabel(path);
 
   const defaultOnClick = async () => {
     if (changes?.origin && changes?.modified) {
@@ -101,3 +101,9 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
     </span>
   );
 };
+
+export function getFileBadgeDisplayLabel(path: string) {
+  return formatPochiFileDisplayPath(path, {
+    homeDir: globalThis.POCHI_HOME_DIR,
+  });
+}

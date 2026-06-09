@@ -139,14 +139,14 @@ describe("FileList", () => {
       container.querySelectorAll('[title^="built-in"]'),
     );
     expect(visibleText(skillRow as HTMLElement)).toBe(
-      "chart.mdreferences/chart.md",
+      "chart.mdpochi://skills/widget-guidelines/references/chart.md",
     );
     expect(visibleText(agentRow as HTMLElement)).toBe(
-      "config-schema.mdreferences/config-schema.md",
+      "config-schema.mdpochi://agents/guide/references/config-schema.md",
     );
   });
 
-  it("omits display paths that match the visible basename", () => {
+  it("formats built-in file list paths from the original file path", () => {
     const { container } = render(
       createElement(FileList, {
         matches: [
@@ -165,8 +165,29 @@ describe("FileList", () => {
     const [skillFileRow, referencesRow] = Array.from(
       container.querySelectorAll('[title^="built-in"]'),
     );
-    expect(visibleText(skillFileRow as HTMLElement)).toBe("SKILL.md");
-    expect(visibleText(referencesRow as HTMLElement)).toBe("references");
+    expect(visibleText(skillFileRow as HTMLElement)).toBe(
+      "SKILL.mdpochi://skills/widget-guidelines/SKILL.md",
+    );
+    expect(visibleText(referencesRow as HTMLElement)).toBe(
+      "referencespochi://skills/widget-guidelines/references",
+    );
+  });
+
+  it("omits display paths that match the visible basename", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "SKILL.md",
+            label: "SKILL.md",
+            context: "duplicate display path",
+          },
+        ],
+      }),
+    );
+
+    const row = container.querySelector('[title="duplicate display path"]');
+    expect(visibleText(row as HTMLElement)).toBe("SKILL.md");
   });
 
   it("renders lists at the virtualization threshold without a virtual height spacer", () => {

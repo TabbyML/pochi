@@ -38,9 +38,8 @@ export { toErrorMessage } from "./error";
 export { withTimeout } from "./async-utils";
 export {
   formatPochiFileDisplayPath,
-  getPochiBuiltinFileDisplayInfo,
-  type PochiBuiltinFileDisplayInfo,
-} from "./display-path";
+  type PochiFileDisplayPathOptions,
+} from "../filepath-formatter";
 
 export * from "./message-context";
 export type { AutoMemoryTaskState, TaskMemoryState } from "./memory";

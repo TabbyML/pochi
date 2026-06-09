@@ -1,5 +1,5 @@
-import { formatPochiFileDisplayPath } from "@getpochi/common";
 import { useTranslation } from "react-i18next";
+import { FileBadge } from "./file-badge";
 import { FileList } from "./file-list";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
@@ -39,9 +39,7 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
   const searchCondition = (
     <>
       {t("toolInvocation.in")}{" "}
-      <HighlightedText>
-        {path ? formatPochiFileDisplayPath(path) : path}
-      </HighlightedText>
+      {path && <FileBadge className="ml-1" path={path} isDirectory />}
       {globPattern && (
         <>
           {t("toolInvocation.for")}{" "}

@@ -2,8 +2,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { getBaseName, isFolder } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
-import { formatPochiFileDisplayPath } from "@getpochi/common";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { getFileBadgeDisplayLabel } from "./file-badge";
 import { FileIcon } from "./file-icon";
 
 export interface FileListMatch {
@@ -235,7 +235,5 @@ function getFileListDisplayPath(match: FileListMatch) {
     return match.label;
   }
 
-  return formatPochiFileDisplayPath(match.file, {
-    builtInItemRelativePath: true,
-  });
+  return getFileBadgeDisplayLabel(match.file);
 }

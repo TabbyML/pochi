@@ -300,8 +300,6 @@
     "requiresApproval": "Requires Approval",
     "taskCompleted": "Task Completed",
     "reading": "Reading ",
-    "readingBuiltInSkill": "Reading built-in skill",
-    "readingBuiltInAgent": "Reading built-in agent",
     "writing": "Writing ",
     "continue": "Continue",
     "cancel": "Cancel",
