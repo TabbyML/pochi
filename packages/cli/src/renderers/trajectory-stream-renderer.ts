@@ -47,6 +47,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
           if (!R.isDeepEqual(cachedPart, resolvedPart)) {
             const outputData = {
               type: "message-part",
+              timestamp: new Date().toISOString(),
               messageId: message.id,
               role: message.role,
               index: i,
