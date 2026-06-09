@@ -11,7 +11,7 @@ import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { type ForkAgentUseCase, getLogger } from "@getpochi/common";
+import { constants, type ForkAgentUseCase, getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
@@ -238,6 +238,7 @@ function BackgroundTaskWorkerInner({
     regenerate,
   } = useChat({
     chat: chatKit.chat,
+    experimental_throttle: constants.StreamingUpdateThrottleMs,
   });
 
   useEffect(() => {
