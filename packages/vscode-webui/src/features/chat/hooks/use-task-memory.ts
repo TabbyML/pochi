@@ -1,8 +1,8 @@
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import { getLogger, prompts } from "@getpochi/common";
-import { catalog } from "@getpochi/livekit";
+import { TaskMemoryFileUri, getLogger, prompts } from "@getpochi/common";
+import { type Message, catalog } from "@getpochi/livekit";
 import type { ToolSpecInput } from "@getpochi/tools";
 import { useCallback, useEffect } from "react";
 import {
@@ -12,6 +12,7 @@ import {
 import {
   type ExtractionData,
   getExtractionMetrics,
+  getTaskMemoryExtractionResult,
   shouldExtractTaskMemory,
   toExtractingState,
 } from "../lib/task-memory-extraction";
@@ -21,11 +22,10 @@ const logger = getLogger("useTaskMemory");
 /** Tools the extraction fork agent may call. */
 const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
   "readFile",
-  "writeToFile(pochi://-/memory.md)",
+  `writeToFile(${TaskMemoryFileUri})`,
 ];
 
-/** Fork-agent statuses that mean it is still running. */
-const ActiveStatuses = new Set(["pending-model", "pending-tool"]);
+const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 const IdleTaskId = "__task_memory_idle__";
 
 export function useTaskMemory({
@@ -45,6 +45,9 @@ export function useTaskMemory({
   const activeTask = store.useQuery(
     catalog.queries.makeTaskQuery(activeTaskId ?? IdleTaskId),
   );
+  const activeMessageRows = store.useQuery(
+    catalog.queries.makeMessagesQuery(activeTaskId ?? IdleTaskId),
+  );
 
   useEffect(() => {
     if (
@@ -55,10 +58,14 @@ export function useTaskMemory({
     )
       return;
 
-    if (activeTask && ActiveStatuses.has(activeTask.status)) return;
+    const extractionResult = getTaskMemoryExtractionResult(
+      activeTask,
+      activeMessageRows.map((row) => row.data as Message),
+    );
+    if (extractionResult === "pending") return;
 
     // Extraction finished — on success, promote the pending boundary id.
-    const succeeded = !!activeTask;
+    const succeeded = extractionResult === "succeeded";
     setTaskMemoryState({
       ...taskMemoryState,
       isExtracting: false,
@@ -75,6 +82,7 @@ export function useTaskMemory({
   }, [
     activeTaskId,
     activeTask,
+    activeMessageRows,
     isSubTask,
     setTaskMemoryState,
     taskMemoryState,
@@ -102,7 +110,7 @@ export function useTaskMemory({
       setTaskMemoryState(nextState);
 
       const memoryFile = store.query(
-        catalog.queries.makeStoreFileQuery("/memory.md"),
+        catalog.queries.makeStoreFileQuery(TaskMemoryStoreFilePath),
       );
       const existingMemory = memoryFile?.content ?? undefined;
 

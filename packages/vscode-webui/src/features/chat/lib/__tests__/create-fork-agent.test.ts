@@ -1,3 +1,4 @@
+import { TaskMemoryFileUri } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import {
   type ToolSpecInput,
@@ -150,7 +151,7 @@ describe("buildForkAgentInitTitle", () => {
 describe("task-memory tool policy", () => {
   const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
     "readFile",
-    "writeToFile(pochi://-/memory.md)",
+    `writeToFile(${TaskMemoryFileUri})`,
   ];
 
   it("derives the allowed tool name set", () => {
@@ -166,7 +167,7 @@ describe("task-memory tool policy", () => {
 
     expect(policies?.writeToFile).toEqual({
       kind: "path-pattern",
-      patterns: ["pochi://-/memory.md"],
+      patterns: [TaskMemoryFileUri],
     });
     expect(policies?.readFile).toBeUndefined();
   });

@@ -17,7 +17,7 @@ import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
-import { constants } from "@getpochi/common";
+import { constants, TaskMemoryFileUri } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Loader2 } from "lucide-react";
@@ -26,8 +26,6 @@ import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Progress } from "./ui/progress";
-
-const TaskMemoryFileUri = "pochi://-/memory.md";
 
 interface Props {
   taskId: string;

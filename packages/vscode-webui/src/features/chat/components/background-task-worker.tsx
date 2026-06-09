@@ -149,6 +149,7 @@ function BackgroundTaskWorkerInner({
     getters,
     isSubTask: false,
     requestUseCase,
+    disableAutoCompact: true,
     sendAutomaticallyWhen: (x) => {
       if (
         isAborted() ||
@@ -196,7 +197,7 @@ function BackgroundTaskWorkerInner({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: {
-            output: `Tool ${toolCall.toolName} is not allowed for this background task.`,
+            error: `Tool ${toolCall.toolName} is not allowed for this background task.`,
           },
         });
 
