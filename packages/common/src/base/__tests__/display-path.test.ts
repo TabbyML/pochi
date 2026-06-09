@@ -33,6 +33,22 @@ describe("formatPochiFileDisplayPath", () => {
     ).toBe("agents/guide/references/config-schema.md");
   });
 
+  it("can show built-in file paths without the asset kind and name", () => {
+    expect(
+      formatPochiFileDisplayPath(
+        "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/references/chart.md",
+        { builtInItemRelativePath: true },
+      ),
+    ).toBe("references/chart.md");
+
+    expect(
+      formatPochiFileDisplayPath(
+        "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/SKILL.md",
+        { builtInItemRelativePath: true },
+      ),
+    ).toBe("SKILL.md");
+  });
+
   it("shortens built-in paths from the VS Code development assets directory", () => {
     expect(
       formatPochiFileDisplayPath(
@@ -49,7 +65,6 @@ describe("formatPochiFileDisplayPath", () => {
       name: "widget-guidelines",
       filePath: "references/chart.md",
       relativePath: "widget-guidelines/references/chart.md",
-      isReference: true,
     });
   });
 
@@ -93,7 +108,7 @@ describe("formatPochiFileDisplayPath", () => {
     ).toBe("packages/vscode-webui/src/main.tsx");
   });
 
-  it("returns built-in reference metadata for display-specific labels", () => {
+  it("returns built-in metadata for display-specific labels", () => {
     expect(
       getPochiBuiltinFileDisplayInfo(
         "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/references/chart.md",
@@ -103,7 +118,6 @@ describe("formatPochiFileDisplayPath", () => {
       name: "widget-guidelines",
       filePath: "references/chart.md",
       relativePath: "widget-guidelines/references/chart.md",
-      isReference: true,
     });
   });
 });

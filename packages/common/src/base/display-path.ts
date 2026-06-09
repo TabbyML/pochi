@@ -19,7 +19,10 @@ export interface PochiBuiltinFileDisplayInfo {
   name: string;
   filePath: string;
   relativePath: string;
-  isReference: boolean;
+}
+
+export interface PochiFileDisplayPathOptions {
+  builtInItemRelativePath?: boolean;
 }
 
 export function getPochiBuiltinFileDisplayInfo(
@@ -41,14 +44,19 @@ export function getPochiBuiltinFileDisplayInfo(
     name,
     filePath,
     relativePath,
-    isReference:
-      filePath === "references" || filePath.startsWith("references/"),
   };
 }
 
-export function formatPochiFileDisplayPath(path: string) {
+export function formatPochiFileDisplayPath(
+  path: string,
+  options?: PochiFileDisplayPathOptions,
+) {
   const info = getPochiBuiltinFileDisplayInfo(path);
   if (info) {
+    if (options?.builtInItemRelativePath && info.filePath) {
+      return info.filePath;
+    }
+
     return `${builtInAssetDisplayNames[info.assetKind]}/${info.relativePath}`;
   }
 

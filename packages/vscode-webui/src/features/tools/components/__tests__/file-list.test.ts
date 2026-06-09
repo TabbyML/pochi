@@ -135,19 +135,38 @@ describe("FileList", () => {
       }),
     );
 
-    expect(visibleText(container)).toContain(
-      "widget-guidelines/references/chart.md",
+    const [skillRow, agentRow] = Array.from(
+      container.querySelectorAll('[title^="built-in"]'),
     );
-    expect(visibleText(container)).toContain(
-      "guide/references/config-schema.md",
+    expect(visibleText(skillRow as HTMLElement)).toBe(
+      "chart.mdreferences/chart.md",
     );
-    expect(visibleText(container)).not.toContain(
-      "skills/widget-guidelines/references/chart.md",
+    expect(visibleText(agentRow as HTMLElement)).toBe(
+      "config-schema.mdreferences/config-schema.md",
     );
-    expect(visibleText(container)).not.toContain(
-      "agents/guide/references/config-schema.md",
+  });
+
+  it("omits display paths that match the visible basename", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/SKILL.md",
+            context: "built-in skill file",
+          },
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/references",
+            context: "built-in skill directory",
+          },
+        ],
+      }),
     );
-    expect(visibleText(container)).not.toContain("/.vscode/extensions/");
+
+    const [skillFileRow, referencesRow] = Array.from(
+      container.querySelectorAll('[title^="built-in"]'),
+    );
+    expect(visibleText(skillFileRow as HTMLElement)).toBe("SKILL.md");
+    expect(visibleText(referencesRow as HTMLElement)).toBe("references");
   });
 
   it("renders lists at the virtualization threshold without a virtual height spacer", () => {

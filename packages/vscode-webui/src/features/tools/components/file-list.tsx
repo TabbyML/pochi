@@ -2,10 +2,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { getBaseName, isFolder } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
-import {
-  formatPochiFileDisplayPath,
-  getPochiBuiltinFileDisplayInfo,
-} from "@getpochi/common";
+import { formatPochiFileDisplayPath } from "@getpochi/common";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FileIcon } from "./file-icon";
 
@@ -134,7 +131,10 @@ export const FileList: React.FC<{
     index: number,
     renderedIndex: number,
   ) => {
+    const baseName = getBaseName(match.file);
     const displayPath = getFileListDisplayPath(match);
+    const shouldShowDisplayPath = !showBaseName || displayPath !== baseName;
+
     return (
       <div
         key={match.file + (match.line ?? "") + index}
@@ -162,7 +162,7 @@ export const FileList: React.FC<{
           />
           {showBaseName && (
             <>
-              {getBaseName(match.file)}
+              {baseName}
               {match.line && (
                 <span
                   className={`truncate ${activeIndex === index ? "text-accent-foreground/70" : "text-foreground/70"}`}
@@ -173,20 +173,22 @@ export const FileList: React.FC<{
             </>
           )}
         </span>
-        <span
-          title={match.file}
-          className={cn(
-            activeIndex === index
-              ? showBaseName
-                ? "text-accent-foreground/70"
-                : "text-accent-foreground"
-              : showBaseName
-                ? "text-foreground/70"
-                : "text-foreground",
-          )}
-        >
-          {displayPath}
-        </span>
+        {shouldShowDisplayPath && (
+          <span
+            title={match.file}
+            className={cn(
+              activeIndex === index
+                ? showBaseName
+                  ? "text-accent-foreground/70"
+                  : "text-accent-foreground"
+                : showBaseName
+                  ? "text-foreground/70"
+                  : "text-foreground",
+            )}
+          >
+            {displayPath}
+          </span>
+        )}
       </div>
     );
   };
@@ -233,10 +235,7 @@ function getFileListDisplayPath(match: FileListMatch) {
     return match.label;
   }
 
-  const builtInFile = getPochiBuiltinFileDisplayInfo(match.file);
-  if (builtInFile?.isReference) {
-    return builtInFile.relativePath;
-  }
-
-  return formatPochiFileDisplayPath(match.file);
+  return formatPochiFileDisplayPath(match.file, {
+    builtInItemRelativePath: true,
+  });
 }
