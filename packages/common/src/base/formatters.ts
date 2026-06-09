@@ -437,9 +437,10 @@ export const formatters = {
 
   // Format messages before sending them to the LLM.
   llm: <T extends UIMessage>(messages: T[], options?: LLMFormatterOptions) => {
-    const llmFormatOps = options?.removeSystemReminder
-      ? [removeSystemReminder, ...LLMFormatOps]
-      : LLMFormatOps;
+    const llmFormatOps = [
+      ...(options?.removeSystemReminder ? [removeSystemReminder] : []),
+      ...LLMFormatOps,
+    ];
     return formatMessages(messages, llmFormatOps) as T[];
   },
 
