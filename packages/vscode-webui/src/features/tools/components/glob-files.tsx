@@ -1,4 +1,4 @@
-import { formatPochiFileDisplayPath } from "@getpochi/common/filepath-formatter";
+import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import { useTranslation } from "react-i18next";
 import { FileList } from "./file-list";
 import { HighlightedText } from "./highlight-text";

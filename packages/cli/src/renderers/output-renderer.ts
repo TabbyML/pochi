@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { formatters } from "@getpochi/common";
-import { formatPochiFileDisplayPath } from "@getpochi/common/filepath-formatter";
 import { parseMarkdown } from "@getpochi/common/message-utils";
+import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { Message, UITools } from "@getpochi/livekit";
 import { isAutoSuccessToolPart, isCompletionToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName, isStaticToolUIPart } from "ai";

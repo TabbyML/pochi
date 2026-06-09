@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPochiFileDisplayPath } from "../filepath-formatter";
+import { formatPochiFileDisplayPath } from "../pochi-file-system";
 
 describe("formatPochiFileDisplayPath", () => {
   const homeDir = "/Users/jueliang";

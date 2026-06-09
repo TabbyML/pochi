@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { formatPochiFileDisplayPath } from "@getpochi/common/filepath-formatter";
+import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
