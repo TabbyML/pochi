@@ -56,25 +56,30 @@ WASM_LOADER_BACKUP="${WASM_LOADER_FILE}.bak"
 
 # patch wasm loader to load `assets/wa-sqlite.node.wasm`
 patch_wasm_loader() {
-        cp "$WASM_LOADER_FILE" "$WASM_LOADER_BACKUP"
-
-        WASM_LOADER_FILE="$WASM_LOADER_FILE" bun -e '
+        WASM_LOADER_FILE="$WASM_LOADER_FILE" WASM_LOADER_BACKUP="$WASM_LOADER_BACKUP" bun -e '
                 const path = process.env.WASM_LOADER_FILE;
+                const backupPath = process.env.WASM_LOADER_BACKUP;
                 if (!path) throw new Error("WASM_LOADER_FILE is not set");
+                if (!backupPath) throw new Error("WASM_LOADER_BACKUP is not set");
 
-                let text = await Bun.file(path).text();
+                const text = await Bun.file(path).text();
 
                 const pattern = /new URL\("wa-sqlite\.node\.wasm",\s*import\.meta\.url\)\.href/g;
                 const replacement = `new URL("assets/wa-sqlite.node.wasm",import.meta.url).href`;
 
                 const patched = text.replace(pattern, replacement);
                 if (patched === text) {
+                        if (text.includes(replacement)) {
+                                console.log(`Already patched ${path}`);
+                                process.exit(0);
+                        }
+
                         console.error(`Patch target not found in ${path}`);
                         process.exit(1);
                 }
 
-                text = patched;
-                await Bun.write(path, text);
+                await Bun.write(backupPath, text);
+                await Bun.write(path, patched);
 
                 console.log(`Patched ${path}`);
         '
@@ -89,6 +94,7 @@ restore_wasm_loader() {
 }
 
 build_exe_prepare() {
+        rm -rf "./assets"
         mkdir -p "./assets"
         cp "../../node_modules/@livestore/wa-sqlite/dist/wa-sqlite.node.wasm" "./assets/wa-sqlite.node.wasm"
         cp -R "../common/src/base/skills" "./assets/skills"
@@ -98,9 +104,7 @@ build_exe_prepare() {
 }
 
 build_exe_cleanup() {
-        rm -f "./assets/wa-sqlite.node.wasm"
-        rm -rf "./assets/skills"
-        rm -rf "./assets/agents"
+        rm -rf "./assets"
 
         restore_wasm_loader
 }
@@ -111,11 +115,15 @@ build_exe_collect_inputs() {
 }
 
 build_exe() {
+        build_exe_cleanup
+        trap build_exe_cleanup EXIT
         build_exe_prepare
-        trap build_exe_cleanup RETURN
 
         local input_files=()
-        mapfile -d '' -t input_files < <(build_exe_collect_inputs)
+        local input_file
+        while IFS= read -r -d '' input_file; do
+                input_files+=("$input_file")
+        done < <(build_exe_collect_inputs)
 
         bun build "${input_files[@]}" \
                 --banner='import * as undici from "undici";' \
