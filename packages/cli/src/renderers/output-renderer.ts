@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
-import { formatPochiFileDisplayPath, formatters } from "@getpochi/common";
+import { formatters } from "@getpochi/common";
+import { formatPochiFileDisplayPath } from "@getpochi/common/filepath-formatter";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Message, UITools } from "@getpochi/livekit";
 import { isAutoSuccessToolPart, isCompletionToolPart } from "@getpochi/tools";
@@ -203,7 +204,7 @@ export function renderToolPart(
   if (part.type === "tool-readFile") {
     const { path = "unknown" } = part.input || {};
     return {
-      text: `📖 ${formatReadFileText(path)}`,
+      text: `📖 Reading ${formatCliDisplayPath(path)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -347,10 +348,6 @@ export function renderToolPart(
     stop: hasError ? "fail" : "succeed",
     error: errorText,
   };
-}
-
-function formatReadFileText(path: string) {
-  return `Reading ${formatCliDisplayPath(path)}`;
 }
 
 function formatCliDisplayPath(path: string) {

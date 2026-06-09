@@ -36,10 +36,6 @@ export { WebsiteTaskCreateEvent } from "./event";
 export { toErrorMessage } from "./error";
 
 export { withTimeout } from "./async-utils";
-export {
-  formatPochiFileDisplayPath,
-  type PochiFileDisplayPathOptions,
-} from "../filepath-formatter";
 
 export * from "./message-context";
 export type { AutoMemoryTaskState, TaskMemoryState } from "./memory";

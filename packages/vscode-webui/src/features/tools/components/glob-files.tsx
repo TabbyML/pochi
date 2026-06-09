@@ -1,5 +1,5 @@
+import { formatPochiFileDisplayPath } from "@getpochi/common/filepath-formatter";
 import { useTranslation } from "react-i18next";
-import { FileBadge } from "./file-badge";
 import { FileList } from "./file-list";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
@@ -39,7 +39,9 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
   const searchCondition = (
     <>
       {t("toolInvocation.in")}{" "}
-      {path && <FileBadge className="ml-1" path={path} isDirectory />}
+      <HighlightedText>
+        {path ? formatFilepathDisplay(path) : path}
+      </HighlightedText>
       {globPattern && (
         <>
           {t("toolInvocation.for")}{" "}
@@ -71,3 +73,9 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
 
   return <ExpandableToolContainer title={title} expandableDetail={resultEl} />;
 };
+
+function formatFilepathDisplay(path: string) {
+  return formatPochiFileDisplayPath(path, {
+    homeDir: globalThis.POCHI_HOME_DIR,
+  });
+}

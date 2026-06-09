@@ -2,7 +2,7 @@ import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { cn } from "@/lib/utils";
 import { addLineBreak } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
-import { formatPochiFileDisplayPath } from "@getpochi/common";
+import { formatPochiFileDisplayPath } from "@getpochi/common/filepath-formatter";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { EditSummary } from "./edit-summary";
