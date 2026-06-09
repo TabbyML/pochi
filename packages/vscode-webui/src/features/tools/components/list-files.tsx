@@ -1,8 +1,8 @@
-import { isFolder } from "@/lib/utils/file";
+import { getBaseName, isFolder } from "@/lib/utils/file";
 
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { FileBadge } from "./file-badge";
+import { FileBadge, getFileBadgeDisplayLabel } from "./file-badge";
 import { FileList } from "./file-list";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
@@ -25,12 +25,18 @@ export const listFilesTool: React.FC<ToolProps<"listFiles">> = ({
     files = tool.output.files;
     isTruncated = tool.output.isTruncated ?? false;
 
+    const displayBasePath = path
+      ? getFormattedDisplayBasePath(path)
+      : undefined;
     resultEl =
       files.length > 0 ? (
         <FileList
           matches={files.map((file) => {
             return {
               file,
+              label: displayBasePath
+                ? joinDisplayPath(displayBasePath, getBaseName(file))
+                : undefined,
             };
           })}
         />
@@ -54,3 +60,14 @@ export const listFilesTool: React.FC<ToolProps<"listFiles">> = ({
 
   return <ExpandableToolContainer title={title} expandableDetail={resultEl} />;
 };
+
+function getFormattedDisplayBasePath(path: string) {
+  const displayPath = getFileBadgeDisplayLabel(path);
+  return displayPath !== path || path.startsWith("pochi://")
+    ? displayPath
+    : undefined;
+}
+
+function joinDisplayPath(basePath: string, filePath: string) {
+  return `${basePath.replace(/\/+$/, "")}/${filePath.replace(/^\/+/, "")}`;
+}

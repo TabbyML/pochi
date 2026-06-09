@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
@@ -164,7 +165,7 @@ const LabelAndFilePathView = ({
     <>
       <span className="ml-2" />
       <span className="truncate whitespace-nowrap">{label}</span>
-      {path && <FileBadge className="ml-1" path={path} />}
+      {path && <FilePathText className="ml-1" path={path} />}
     </>
   );
 };
@@ -251,7 +252,9 @@ const SearchFilesTool = ({ tool }: ToolCallLiteViewProps<"searchFiles">) => {
   const searchCondition = (
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
-      <HighlightedText>{path}</HighlightedText>
+      <HighlightedText>
+        {path ? formatLitePathDisplay(path) : path}
+      </HighlightedText>
       {filePattern && (
         <>
           {" "}
@@ -280,7 +283,7 @@ const ListFilesTool = ({ tool }: ToolCallLiteViewProps<"listFiles">) => {
     <>
       <span className="ml-2" />
       {t("toolInvocation.reading")}
-      <FileBadge className="ml-1" path={path ?? ""} />
+      <FilePathText className="ml-1" path={path ?? ""} />
     </>
   );
 };
@@ -291,7 +294,10 @@ const GlobFilesTool = ({ tool }: ToolCallLiteViewProps<"globFiles">) => {
 
   const searchCondition = (
     <>
-      {t("toolInvocation.in")} <HighlightedText>{path}</HighlightedText>
+      {t("toolInvocation.in")}{" "}
+      <HighlightedText>
+        {path ? formatLitePathDisplay(path) : path}
+      </HighlightedText>
       {globPattern && (
         <>
           {t("toolInvocation.for")}{" "}
@@ -338,7 +344,7 @@ const EditNotebookTool = ({ tool }: ToolCallLiteViewProps<"editNotebook">) => {
       {t("toolInvocation.editing")}
       {path && (
         <>
-          <FileBadge className="ml-1" path={path} />
+          <FilePathText className="ml-1" path={path} />
           <span className="ml-1 text-muted-foreground">({cellLabel})</span>
         </>
       )}
@@ -379,8 +385,24 @@ const McpTool = ({ tool }: ToolCallLiteViewProps<any>) => {
   );
 };
 
-function FileBadge({ path, className }: { path: string; className?: string }) {
-  return <span className={cn("truncate", className)}>{path}</span>;
+function FilePathText({
+  path,
+  className,
+}: {
+  path: string;
+  className?: string;
+}) {
+  return (
+    <span className={cn("truncate", className)}>
+      {formatLitePathDisplay(path)}
+    </span>
+  );
+}
+
+function formatLitePathDisplay(path: string) {
+  return formatPochiFileDisplayPath(path, {
+    homeDir: globalThis.POCHI_HOME_DIR,
+  });
 }
 
 function HighlightedText({
