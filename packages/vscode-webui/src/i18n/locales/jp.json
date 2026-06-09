@@ -295,8 +295,8 @@
     "requiresApproval": "承認待ち",
     "taskCompleted": "タスク完了",
     "reading": "読み込み中 ",
-    "readingBuiltInSkillReference": "組み込み skill reference を読み込み中 ",
-    "readingBuiltInAgentReference": "組み込み agent reference を読み込み中 ",
+    "readingBuiltInSkill": "組み込み skill を読み込み中",
+    "readingBuiltInAgent": "組み込み agent を読み込み中",
 
     "writing": "書き込み中 ",
     "continue": "続行",

@@ -354,9 +354,10 @@ export function renderToolPart(
 
 function formatReadFileText(path: string) {
   const builtInFile = getPochiBuiltinFileDisplayInfo(path);
-  if (builtInFile?.isReference) {
+  if (builtInFile) {
     const itemKind = builtInFile.assetKind === "skills" ? "skill" : "agent";
-    return `Reading built-in ${itemKind} reference ${chalk.bold(builtInFile.relativePath)}`;
+    const filePath = builtInFile.filePath || builtInFile.relativePath;
+    return `Reading built-in ${itemKind} ${chalk.bold(builtInFile.name)}: ${chalk.bold(filePath)}`;
   }
 
   return `Reading ${formatCliDisplayPath(path)}`;

@@ -16,6 +16,8 @@ const projectStoragePattern =
 
 export interface PochiBuiltinFileDisplayInfo {
   assetKind: "skills" | "agents";
+  name: string;
+  filePath: string;
   relativePath: string;
   isReference: boolean;
 }
@@ -32,10 +34,15 @@ export function getPochiBuiltinFileDisplayInfo(
   }
 
   const [, assetKind, relativePath] = match;
+  const [name = "", ...filePathParts] = relativePath.split("/");
+  const filePath = filePathParts.join("/");
   return {
     assetKind: assetKind as "skills" | "agents",
+    name,
+    filePath,
     relativePath,
-    isReference: relativePath.split("/")[1] === "references",
+    isReference:
+      filePath === "references" || filePath.startsWith("references/"),
   };
 }
 

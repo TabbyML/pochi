@@ -46,6 +46,8 @@ describe("formatPochiFileDisplayPath", () => {
       ),
     ).toEqual({
       assetKind: "skills",
+      name: "widget-guidelines",
+      filePath: "references/chart.md",
       relativePath: "widget-guidelines/references/chart.md",
       isReference: true,
     });
@@ -98,6 +100,8 @@ describe("formatPochiFileDisplayPath", () => {
       ),
     ).toEqual({
       assetKind: "skills",
+      name: "widget-guidelines",
+      filePath: "references/chart.md",
       relativePath: "widget-guidelines/references/chart.md",
       isReference: true,
     });

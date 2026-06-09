@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { renderToolPart } from "../output-renderer";
 
 describe("renderToolPart", () => {
-  it("shows built-in skill references with semantic context in readFile output", () => {
+  it("shows built-in skill files with the skill name and relative file path", () => {
     const rendered = renderToolPart({
       type: "tool-readFile",
       toolCallId: "call-1",
@@ -15,13 +15,15 @@ describe("renderToolPart", () => {
     } as ToolUIPart<UITools>);
 
     expect(rendered.text).toContain(
-      "Reading built-in skill reference widget-guidelines/references/chart.md",
+      "Reading built-in skill widget-guidelines: references/chart.md",
     );
+    expect(rendered.text).not.toContain("(file ");
+    expect(rendered.text).not.toContain("skill reference");
     expect(rendered.text).not.toContain("/var/folders/tmp/pochi-builtin");
     expect(rendered.text).not.toContain("$skills/");
   });
 
-  it("shows built-in agent references with semantic context in readFile output", () => {
+  it("shows built-in agent files with the agent name and relative file path", () => {
     const rendered = renderToolPart({
       type: "tool-readFile",
       toolCallId: "call-1",
@@ -32,10 +34,29 @@ describe("renderToolPart", () => {
     } as ToolUIPart<UITools>);
 
     expect(rendered.text).toContain(
-      "Reading built-in agent reference guide/references/config-schema.md",
+      "Reading built-in agent guide: references/config-schema.md",
     );
+    expect(rendered.text).not.toContain("(file ");
+    expect(rendered.text).not.toContain("agent reference");
     expect(rendered.text).not.toContain("/var/folders/tmp/pochi-builtin");
     expect(rendered.text).not.toContain("$agents/");
+  });
+
+  it("does not require built-in readFile paths to live under references", () => {
+    const rendered = renderToolPart({
+      type: "tool-readFile",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: "/var/folders/tmp/pochi-builtin-abc123def4567890/skills/widget-guidelines/SKILL.md",
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(rendered.text).toContain(
+      "Reading built-in skill widget-guidelines: SKILL.md",
+    );
+    expect(rendered.text).not.toContain("(file ");
+    expect(rendered.text).not.toContain("skill reference");
   });
 
   it("shows built-in asset directories without dollar-prefixed aliases", () => {
