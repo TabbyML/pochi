@@ -19,6 +19,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
+import { constants } from "@getpochi/common";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -91,7 +92,11 @@ export function useLiveSubTask(
     getters,
     isSubTask: true,
     customAgent,
-    onCompact: () => vscodeHost.clearFileStateCache(uid),
+    onCompactFinish: (success: boolean) => {
+      if (success) {
+        return vscodeHost.clearFileStateCache(uid);
+      }
+    },
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
         lifecycle.streamingResult,
@@ -175,6 +180,7 @@ export function useLiveSubTask(
     regenerate,
   } = useChat({
     chat: chatKit.chat,
+    experimental_throttle: constants.StreamingUpdateThrottleMs,
   });
 
   const [retryCount, setRetryCount] = useState(0);

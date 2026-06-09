@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { z } from "zod";
 import { PochiConfiguration } from "../configuration";
 import { WorktreeManager } from "../git/worktree";
-import { getViewColumnForTask } from "../layout";
+import { getViewColumnForPochiPanel } from "../layout";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -73,7 +73,10 @@ export class PochiWebviewPanel
     this.panel.webview.html = this.getHtmlForWebview(
       this.panel.webview,
       "pane",
-      info,
+      {
+        type: "task",
+        payload: { task: info },
+      },
     );
     this.setupAuthEventListeners();
     this.setupFileWatcher(info.cwd, info.uid);
@@ -385,7 +388,7 @@ async function openTaskInColumn(
     return;
   }
 
-  const viewColumn = options?.viewColumn ?? getViewColumnForTask();
+  const viewColumn = options?.viewColumn ?? getViewColumnForPochiPanel();
 
   await vscode.commands.executeCommand(
     "vscode.openWith",

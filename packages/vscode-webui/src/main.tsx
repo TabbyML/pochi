@@ -7,7 +7,7 @@ import {
   createHashHistory,
   createRouter,
 } from "@tanstack/react-router";
-import { StrictMode } from "react";
+import { Fragment, type ReactNode, StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 
 // Import the generated route tree
@@ -63,16 +63,24 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// In the "pane" webview, navigate to the task page on load.
+// In the "pane" webview, navigate to the panel page on load.
 // Avoid setting window.location.hash globally because other scripts may modify it.
 if (window.POCHI_WEBVIEW_KIND === "pane") {
-  const info = window.POCHI_TASK_INFO;
-  if (info) {
-    router.navigate({
-      to: "/task",
-      // Pass uid only, other params will be parsed after route
-      search: { uid: info.uid },
-    });
+  const panelInfo = window.POCHI_PANEL_INFO;
+  switch (panelInfo?.type) {
+    case "standalone":
+      router.navigate({
+        to: panelInfo.payload.route,
+        replace: true,
+      });
+      break;
+    case "task":
+      router.navigate({
+        to: "/task",
+        // Pass uid only, other params will be parsed after route
+        search: { uid: panelInfo.payload.task.uid },
+      });
+      break;
   }
 }
 
@@ -90,11 +98,7 @@ function InnerApp() {
     );
   }
 
-  return (
-    <StrictMode>
-      <RouterProvider router={router} context={{}} />
-    </StrictMode>
-  );
+  return <RouterProvider router={router} context={{}} />;
 }
 
 function App() {
@@ -105,14 +109,24 @@ function App() {
   );
 }
 
+function StrictModeBoundary({ children }: { children: ReactNode }) {
+  // React dev StrictMode replays effects. In the VS Code webview those effects
+  // can start host-backed streams, so dev should match the production runtime.
+  const Component =
+    import.meta.env.DEV && globalThis.POCHI_WEBVIEW_KIND
+      ? Fragment
+      : StrictMode;
+  return <Component>{children}</Component>;
+}
+
 // Render the app
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
-    <StrictMode>
+    <StrictModeBoundary>
       <App />
-    </StrictMode>,
+    </StrictModeBoundary>,
   );
 }
 

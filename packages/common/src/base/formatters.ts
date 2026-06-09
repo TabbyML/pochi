@@ -32,9 +32,7 @@ function resolvePendingToolCalls(
             // to satisfy API requirements (e.g. Anthropic requires tool_use.input to be non-null)
             input: part.input ?? {},
             state: "output-available",
-            output: isSuccess
-              ? { success: true }
-              : { error: "User cancelled the tool call." },
+            output: getResolvedToolPartOutput(part, isSuccess),
           } as UIMessage["parts"][number];
         }
         return part;
@@ -47,6 +45,16 @@ function resolvePendingToolCalls(
 
     return message;
   });
+}
+
+function getResolvedToolPartOutput(
+  part: ToolUIPart,
+  isSuccess: boolean,
+): unknown {
+  if (!isSuccess) return { error: "User cancelled the tool call." };
+  return getStaticToolName(part) === "renderWidget"
+    ? { state: {} }
+    : { success: true };
 }
 
 function stripKnownXMLTags(messages: UIMessage[]): UIMessage[] {
@@ -84,7 +92,7 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
     if (
       parts.some(
         (x) =>
-          x.type === "text" ||
+          (x.type === "text" && !prompts.isCompact(x.text)) ||
           x.type === "data-reviews" ||
           x.type === "data-bash-outputs" ||
           isStaticToolUIPart(x),
@@ -264,6 +272,18 @@ function removeEmptyTextParts(messages: UIMessage[]) {
   });
 }
 
+function removeEmptyReasoningPartsForUI(messages: UIMessage[]) {
+  return messages.map((message) => {
+    message.parts = message.parts.filter((part) => {
+      if (part.type === "reasoning") {
+        return part.text.trim().length > 0;
+      }
+      return true;
+    });
+    return message;
+  });
+}
+
 function refineDetectedNewPromblems(messages: UIMessage[]) {
   const isWriteFileResultToolPart = (
     part: UIMessage["parts"][number],
@@ -381,6 +401,7 @@ const LLMFormatOps: FormatOp[] = [
 ];
 const UIFormatOps = [
   removeEmptyTextParts,
+  removeEmptyReasoningPartsForUI,
   removeEmptyMessages,
   refineDetectedNewPromblems,
   resolvePendingToolCalls,

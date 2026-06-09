@@ -236,8 +236,10 @@ export class TaskRunner {
 
       abortSignal: options.abortSignal,
 
-      onCompact: () => {
-        this.toolCallOptions.fileStateCache.clear();
+      onCompactFinish: (success: boolean) => {
+        if (success) {
+          this.toolCallOptions.fileStateCache.clear();
+        }
       },
 
       getters: {

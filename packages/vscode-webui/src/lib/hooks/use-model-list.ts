@@ -1,4 +1,3 @@
-import { useEnablePochiModels } from "@/features/settings";
 import { vscodeHost } from "@/lib/vscode";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
@@ -13,27 +12,18 @@ export const useModelList = (filterPochiModels: boolean) => {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const enablePochiModels = useEnablePochiModels();
   const { users } = useUserStorage();
 
   const modelList = useMemo(() => {
     return filterPochiModels
       ? data?.modelList?.value?.filter((model) => {
           if (model.type === "vendor" && model.vendorId === "pochi") {
-            return (
-              !!users?.pochi &&
-              (!model.modelId.startsWith("pochi/") || enablePochiModels)
-            );
+            return !!users?.pochi && !model.modelId.startsWith("pochi/");
           }
           return true;
         })
       : data?.modelList?.value;
-  }, [
-    filterPochiModels,
-    data?.modelList?.value,
-    enablePochiModels,
-    users?.pochi,
-  ]);
+  }, [filterPochiModels, data?.modelList?.value, users?.pochi]);
 
   return {
     modelList,

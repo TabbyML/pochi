@@ -16,6 +16,7 @@ const ClientToolNames = [
   "readBackgroundJobOutput",
   "readFile",
   "searchFiles",
+  "renderWidget",
   "startBackgroundJob",
   "todoWrite",
   "useSkill",

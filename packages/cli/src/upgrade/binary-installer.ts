@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import {
   chmodSync,
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -9,7 +10,7 @@ import {
   statSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { extname, join } from "node:path";
+import { dirname, extname, join } from "node:path";
 import type { Command } from "@commander-js/extra-typings";
 import chalk from "chalk";
 import {
@@ -191,6 +192,18 @@ export async function downloadAndInstall(
     // Make executable
     if (process.platform !== "win32") {
       chmodSync(latestBinaryPath, 0o755);
+    }
+
+    // Sync the built-in skills sidecar. Recent releases ship a `skills/`
+    // folder next to the binary inside the archive; the runtime resolver
+    // reads from `<binary-dir>/skills/`, so we replace it wholesale on each
+    // upgrade to pick up new skills, edits, or removals.
+    const extractedSkillsDir = join(dirname(extractedBinaryPath), "skills");
+    if (existsSync(extractedSkillsDir)) {
+      const installedSkillsDir = join(binDir, "skills");
+      rmSync(installedSkillsDir, { recursive: true, force: true });
+      cpSync(extractedSkillsDir, installedSkillsDir, { recursive: true });
+      console.log(`📚 Updated built-in skills at: ${installedSkillsDir}`);
     }
 
     // Clean up temporary directory

@@ -8,9 +8,8 @@ build() {
     local target=$1
     local platform=$2
     bun run build -- --target="$target" --outfile="./dist/$platform/pochi"
-    # generate .tar.gz for linux and mac, generate .zip for windows
     if [ "$platform" == "windows-x64" ]; then
-        zip -r "./dist/pochi-$platform.zip" -j "./dist/$platform/"*
+        (cd "./dist/$platform" && zip -r "../pochi-$platform.zip" .)
     else
         tar -czvf "./dist/pochi-$platform.tar.gz" -C "./dist/$platform" .
     fi

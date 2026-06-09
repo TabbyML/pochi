@@ -1,8 +1,9 @@
-import type { TaskMemoryState } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
+import { TaskMemoryFileUri, type TaskMemoryState } from "@getpochi/common";
+import type { Message, Task } from "@getpochi/livekit";
 import { describe, expect, it } from "vitest";
 import {
   getExtractionMetrics,
+  getTaskMemoryExtractionResult,
   lastMessageHasOpenToolCall,
   shouldExtractTaskMemory,
   toExtractingState,
@@ -34,11 +35,36 @@ function usage(tokens: number) {
     messages: 0,
     files: 0,
     toolResults: 0,
+    projectMemory: 0,
   };
 }
 
+function task(status: Task["status"]): Pick<Task, "status"> {
+  return { status };
+}
+
+function writeMemoryMessage(
+  state: "input-available" | "output-available" | "output-error",
+): Message {
+  const output =
+    state === "output-available"
+      ? { output: "Wrote memory" }
+      : state === "output-error"
+        ? { error: "Write failed" }
+        : undefined;
+  return assistantMessage("write-memory", [
+    {
+      type: "tool-writeToFile",
+      toolCallId: "write-1",
+      state,
+      input: { path: TaskMemoryFileUri, content: "# Session Title" },
+      ...(output === undefined ? {} : { output }),
+    } as Message["parts"][number],
+  ]);
+}
+
 describe("task memory extraction metrics", () => {
-  it("treats unresolved non-terminal tool calls as an unsafe fork boundary", () => {
+  it("allows unresolved non-terminal tool calls as the extraction boundary", () => {
     const messages = [
       assistantMessage("read-turn", [
         {
@@ -57,7 +83,10 @@ describe("task memory extraction metrics", () => {
 
     expect(lastMessageHasOpenToolCall(messages)).toBe(true);
     expect(metrics.trailingMessageHasOpenToolCall).toBe(true);
-    expect(shouldExtractTaskMemory(baseState, metrics)).toBe(false);
+    expect(shouldExtractTaskMemory(baseState, metrics)).toBe(true);
+    expect(toExtractingState(baseState, metrics).pendingExtractionMessageId).toBe(
+      "read-turn",
+    );
   });
 
   it("allows terminal completion tools because they do not require tool output", () => {
@@ -82,5 +111,40 @@ describe("task memory extraction metrics", () => {
     expect(toExtractingState(baseState, metrics).pendingExtractionMessageId).toBe(
       "done-turn",
     );
+  });
+});
+
+describe("task memory extraction completion", () => {
+  it("succeeds once the extraction wrote memory.md", () => {
+    expect(
+      getTaskMemoryExtractionResult(
+        task("pending-tool"),
+        [writeMemoryMessage("output-available")],
+      ),
+    ).toBe("succeeded");
+  });
+
+  it("fails when the extraction stops without writing memory.md", () => {
+    expect(
+      getTaskMemoryExtractionResult(
+        task("failed"),
+        [writeMemoryMessage("input-available")],
+      ),
+    ).toBe("failed");
+    expect(
+      getTaskMemoryExtractionResult(
+        task("pending-input"),
+        [writeMemoryMessage("output-error")],
+      ),
+    ).toBe("failed");
+  });
+
+  it("keeps waiting while the extraction is still running without a memory write", () => {
+    expect(
+      getTaskMemoryExtractionResult(
+        task("pending-tool"),
+        [writeMemoryMessage("input-available")],
+      ),
+    ).toBe("pending");
   });
 });

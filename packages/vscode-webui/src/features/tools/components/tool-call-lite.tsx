@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import type { UITools } from "@getpochi/livekit";
 import type { ToolName } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName } from "ai";
+import type { TFunction } from "i18next";
 import { Loader2, Pause } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +12,7 @@ interface Props {
   requiresApproval?: boolean;
   showCommandDetails?: boolean;
   showStatusIcon?: boolean;
+  className?: string;
 }
 
 export function ToolCallLite({
@@ -18,6 +20,7 @@ export function ToolCallLite({
   requiresApproval,
   showCommandDetails,
   showStatusIcon = true,
+  className,
 }: Props) {
   const { t } = useTranslation();
 
@@ -96,7 +99,12 @@ export function ToolCallLite({
   }
 
   return detail ? (
-    <div className="flex w-full min-w-0 flex-nowrap items-center overflow-hidden whitespace-nowrap">
+    <div
+      className={cn(
+        "flex w-full min-w-0 flex-nowrap items-center overflow-hidden whitespace-nowrap",
+        className,
+      )}
+    >
       {!showStatusIcon ? null : requiresApproval ? (
         <Pause className="size-3.5 shrink-0" />
       ) : (
@@ -116,7 +124,7 @@ export function ToolCallLite({
 
 function getLabelFromTool(
   type: ToolUIPart<UITools>["type"],
-  t: ReturnType<typeof useTranslation>["t"],
+  t: TFunction,
 ): string {
   switch (type) {
     case "tool-readFile":
@@ -244,7 +252,13 @@ const SearchFilesTool = ({ tool }: ToolCallLiteViewProps<"searchFiles">) => {
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
       <HighlightedText>{path}</HighlightedText>
-      {filePattern && <HighlightedText>{filePattern}</HighlightedText>}
+      {filePattern && (
+        <>
+          {" "}
+          {t("toolInvocation.matching")}{" "}
+          <HighlightedText>{filePattern}</HighlightedText>
+        </>
+      )}
     </>
   );
 

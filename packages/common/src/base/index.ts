@@ -26,6 +26,7 @@ export {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   AutoMemoryMaxManifestEntries,
+  AutoMemoryProjectInfoName,
   AutoMemoryTypeValues,
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
@@ -36,11 +37,9 @@ export { toErrorMessage } from "./error";
 
 export { withTimeout } from "./async-utils";
 
-export { builtInAgents } from "./agents";
-
-export { builtInSkills, BuiltInSkillPath } from "./skills";
 export * from "./message-context";
 export type { AutoMemoryTaskState, TaskMemoryState } from "./memory";
+export { TaskMemoryFileUri } from "./prompts/task-memory";
 
 export const ForkAgentUseCase = z.enum([
   "task-memory",
@@ -56,6 +55,7 @@ export const PochiRequestUseCase = z.enum([
   "repair-tool-call",
   "generate-task-title",
   "compact-task",
+  "auto-compact-task",
   "repair-mermaid",
   ...ForkAgentUseCase.options,
 ]);
@@ -83,10 +83,13 @@ export type ContextWindowUsage = {
   messages: number;
   files: number;
   toolResults: number;
+  projectMemory: number;
 };
 
 export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
   useCase?: ForkAgentUseCase;
+  /** Step-start count inherited from the parent, excluded from the max-step guard. */
+  baselineStepCount?: number;
 }

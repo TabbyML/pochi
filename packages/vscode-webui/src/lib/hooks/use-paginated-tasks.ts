@@ -2,6 +2,7 @@ import type { Task } from "@getpochi/livekit";
 import { useCallback, useState } from "react";
 import { useTasks } from "../use-tasks";
 import { useTaskArchived } from "./use-task-archived";
+import { useTaskPinned } from "./use-task-pinned";
 
 interface UsePaginatedTasksOptions {
   cwd: string;
@@ -25,6 +26,7 @@ export function usePaginatedTasks({
   const [limit, setLimit] = useState(pageSize);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { isTaskArchived } = useTaskArchived();
+  const { isTaskPinned } = useTaskPinned();
 
   const tasks = useTasks()
     .filter(
@@ -32,6 +34,8 @@ export function usePaginatedTasks({
         t.parentId === null &&
         t.cwd === cwd &&
         !!t.title?.trim() &&
+        // Pinned tasks live in their own top-level section.
+        !isTaskPinned(t.id) &&
         (showArchived || !isTaskArchived(t.id)),
     )
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());

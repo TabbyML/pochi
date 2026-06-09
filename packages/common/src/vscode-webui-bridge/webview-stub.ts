@@ -31,11 +31,16 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
+  TaskPinnedParams,
   TaskStates,
   VSCodeHostApi,
   VSCodeSettings,
   WorkspaceState,
 } from "./index";
+import type {
+  BrowserAgentSettings,
+  BrowserAgentSettingsUpdate,
+} from "./types/browser-agent-settings";
 import type { ActiveSelection } from "./types/message";
 
 const VSCodeHostStub = {
@@ -227,6 +232,14 @@ const VSCodeHostStub = {
   updateVSCodeSettings: (_params: Partial<VSCodeSettings>) => {
     return Promise.resolve();
   },
+  readBrowserAgentSettings: () => {
+    return Promise.resolve({
+      browserSettings: {} as ThreadSignalSerialization<BrowserAgentSettings>,
+      updateBrowserAgentSettings: async (
+        _params: BrowserAgentSettingsUpdate,
+      ) => {},
+    });
+  },
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
   },
@@ -280,6 +293,8 @@ const VSCodeHostStub = {
       showFileChanges?: boolean;
     },
   ): Promise<void> => {},
+
+  openBrowserAgentSettingsPanel: (): void => {},
 
   sendTaskNotification: async (): Promise<void> => {},
 
@@ -395,8 +410,18 @@ const VSCodeHostStub = {
   readAutoMemory: async (_options?: {
     cwd?: string;
     ensure?: boolean;
+    force?: boolean;
   }): Promise<AutoMemoryContext | undefined> => {
     return undefined;
+  },
+  readAutoMemoryEnabled: async (): Promise<{
+    value: ThreadSignalSerialization<boolean>;
+    setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
+  }> => {
+    return {
+      value: {} as ThreadSignalSerialization<boolean>,
+      setAutoMemoryEnabled: (_enabled: boolean) => Promise.resolve(),
+    };
   },
   readAutoMemoryState: async (
     _taskId: string,
@@ -465,6 +490,16 @@ const VSCodeHostStub = {
       value: {} as ThreadSignalSerialization<Record<string, boolean>>,
       hasArchivableTasks: {} as ThreadSignalSerialization<boolean>,
       setTaskArchived: (_params: TaskArchivedParams) => Promise.resolve(),
+    });
+  },
+
+  readTaskPinned(): Promise<{
+    value: ThreadSignalSerialization<Record<string, boolean>>;
+    setTaskPinned: (params: TaskPinnedParams) => Promise<void>;
+  }> {
+    return Promise.resolve({
+      value: {} as ThreadSignalSerialization<Record<string, boolean>>,
+      setTaskPinned: (_params: TaskPinnedParams) => Promise.resolve(),
     });
   },
 

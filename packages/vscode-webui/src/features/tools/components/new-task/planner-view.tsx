@@ -158,7 +158,6 @@ export function PlannerView(props: NewTaskToolViewProps) {
           <TaskThread
             source={taskSource}
             showMessageList={true}
-            showTodos={false}
             scrollAreaClassName="border-none h-[300px] my-0"
             assistant={{ name: "Planner" }}
           />

@@ -1,22 +1,10 @@
-import * as path from "node:path";
-import { remark } from "remark";
-import remarkFrontmatter from "remark-frontmatter";
-import { remove } from "unist-util-remove";
-import { matter } from "vfile-matter";
 import z from "zod";
-import { builtInSkills, toErrorMessage } from "../base";
 import type {
   InvalidSkillFile,
   SkillFile,
   ValidSkillFile,
 } from "../vscode-webui-bridge";
-
-/**
- * Names reserved by builtin skills — user-defined skills cannot use these names.
- */
-const ReservedSkillNames = new Set(builtInSkills.map((s) => s.name));
-
-type VFile = Parameters<typeof matter>[0];
+import { parseMarkdownWithFrontmatter } from "./markdown-frontmatter";
 
 const SkillFrontmatter = z.object({
   name: z.string(),
@@ -27,54 +15,41 @@ const SkillFrontmatter = z.object({
   "allowed-tools": z.string().optional(),
 });
 
+const EmptyFrontmatterMessage =
+  "No skill definition found in the frontmatter of the file.";
+
 export async function parseSkillFile(
   filePath: string,
   readFileContent: (filePath: string) => Promise<string>,
 ): Promise<SkillFile> {
-  const defaultName = path.basename(path.dirname(filePath));
-  let content: string;
-  try {
-    content = await readFileContent(filePath);
-  } catch (error) {
-    return {
-      name: defaultName,
-      filePath,
-      error: "readError",
-      message: toErrorMessage(error),
-    } satisfies InvalidSkillFile;
-  }
+  const parsed = await parseMarkdownWithFrontmatter(filePath, readFileContent, {
+    folderFileName: "skill.md",
+  });
 
-  let vfile: VFile;
-  try {
-    vfile = await remark()
-      .use(remarkFrontmatter, [{ type: "yaml", marker: "-" }])
-      .use(() => (_tree, file) => matter(file))
-      .use(() => (tree) => {
-        remove(tree, "yaml");
-      })
-      .process(content);
-  } catch (error) {
+  if (!parsed.ok) {
+    if (parsed.error === "readError") {
+      return {
+        name: parsed.defaultName,
+        filePath,
+        error: "readError",
+        message: parsed.message,
+      } satisfies InvalidSkillFile;
+    }
+
+    const isEmptyFrontmatter =
+      parsed.message === "No definition found in the frontmatter of the file.";
     return {
-      name: defaultName,
+      name: parsed.defaultName,
       filePath,
       error: "parseError",
-      message: toErrorMessage(error),
+      message: isEmptyFrontmatter ? EmptyFrontmatterMessage : parsed.message,
+      instructions: parsed.body,
     } satisfies InvalidSkillFile;
   }
 
-  const instructions = vfile.value.toString().trim();
+  const { defaultName, frontmatter, body: instructions } = parsed;
 
-  if (!vfile.data.matter || Object.keys(vfile.data.matter).length === 0) {
-    return {
-      name: defaultName,
-      filePath,
-      error: "parseError",
-      message: "No skill definition found in the frontmatter of the file.",
-      instructions,
-    } satisfies InvalidSkillFile;
-  }
-
-  const parseResult = SkillFrontmatter.safeParse(vfile.data.matter);
+  const parseResult = SkillFrontmatter.safeParse(frontmatter);
   if (!parseResult.success) {
     return {
       name: defaultName,
@@ -87,16 +62,6 @@ export async function parseSkillFile(
 
   const frontmatterData = parseResult.data;
   const skillName = frontmatterData.name || defaultName;
-
-  if (ReservedSkillNames.has(skillName)) {
-    return {
-      name: skillName,
-      filePath,
-      error: "validationError",
-      message: `Skill name "${skillName}" is reserved by a built-in Pochi skill and cannot be used for custom skills.`,
-      instructions,
-    } satisfies InvalidSkillFile;
-  }
 
   return {
     filePath,

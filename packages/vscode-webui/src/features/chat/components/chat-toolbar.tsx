@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApprovalButton,
+  FixWidgetButton,
   isRetryApprovalCountingDown,
   type useApprovalAndRetry,
 } from "@/features/approval";
@@ -69,6 +70,7 @@ interface ChatToolbarProps {
   isSubTask: boolean;
   subtask?: SubtaskInfo;
   displayError: Error | undefined;
+  showRenderWidgetFixButton?: boolean;
   todosRef: React.RefObject<Todo[] | undefined>;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
@@ -85,6 +87,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   subtask,
   task,
   displayError,
+  showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
   todosRef,
   onUpdateIsPublicShared,
   taskId,
@@ -252,11 +255,15 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting,
   );
 
+  const showRenderWidgetFixButton =
+    !!shouldShowRenderWidgetFixButton && allowAddToolResult && !pendingApproval;
+
   const showSubmitReviewButton =
     !isSubmitDisabled &&
     !!reviews.length &&
     !!messages.length &&
     !isLoading &&
+    !showRenderWidgetFixButton &&
     (!pendingApproval ||
       (pendingApproval.name === "retry" &&
         !isRetryApprovalCountingDown(pendingApproval)));
@@ -282,6 +289,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             task={task}
             subtask={subtask}
           />
+          {showRenderWidgetFixButton ? (
+            <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
+              <FixWidgetButton />
+            </div>
+          ) : null}
           <SubmitReviewsButton
             showSubmitReviewButton={showSubmitReviewButton}
             onSubmit={handleSubmit}

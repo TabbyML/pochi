@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { BuiltInSkillPath, builtInSkills, getLogger } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import { isFileExists, parseSkillFile } from "@getpochi/common/tool-utils";
 import type {
   SkillFile,
@@ -9,62 +9,65 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import { isValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import { uniqueBy } from "remeda";
+import { getBuiltInSkillsDir } from "./builtin-skills-dir";
 
 const logger = getLogger("loadSkills");
 
 /**
- * Read skills from a directory
- * Expects directory structure: skills/skill-name/SKILL.md
+ * Read skills from a directory.
+ *
+ * Two layouts are supported:
+ *   - `<dir>/<skill>.md`            (flat, used for single-file skills)
+ *   - `<dir>/<skill>/SKILL.md`      (folder, when the skill ships extra files)
  */
 async function readSkillsFromDir(dir: string): Promise<SkillFile[]> {
   const skills: SkillFile[] = [];
+  const readFileContent = async (filePath: string) =>
+    await fs.readFile(filePath, "utf-8");
+
   try {
     if (!(await isFileExists(dir))) {
       return skills;
     }
 
-    const files = await fs.readdir(dir, { withFileTypes: true });
-    for (const file of files) {
-      // Look for subdirectories (skill directories)
-      if (file.isDirectory() || file.isSymbolicLink()) {
-        const skillDir = path.join(dir, file.name);
-        const skillFilePath = path.join(skillDir, "SKILL.md");
-
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() || entry.isSymbolicLink()) {
+        const skillFilePath = path.join(dir, entry.name, "SKILL.md");
         try {
-          // Check if SKILL.md exists in this subdirectory
           const stat = await fs.stat(skillFilePath);
           if (stat.isFile()) {
-            const readFileContent = async (filePath: string) =>
-              await fs.readFile(filePath, "utf-8");
             const skill = await parseSkillFile(skillFilePath, readFileContent);
             skills.push({ ...skill, filePath: skillFilePath });
           }
         } catch (error) {
-          // SKILL.md doesn't exist in this directory, skip it
-          logger.debug(`No SKILL.md found in ${skillDir}:`, error);
+          logger.debug(`No SKILL.md found in ${entry.name}:`, error);
         }
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+        const skillFilePath = path.join(dir, entry.name);
+        const skill = await parseSkillFile(skillFilePath, readFileContent);
+        skills.push({ ...skill, filePath: skillFilePath });
       }
     }
   } catch (error) {
-    // Directory may not exist, which is fine.
     logger.debug(`Could not read skills from directory ${dir}:`, error);
   }
   return skills;
 }
 
-export const builtInSkillFiles: ValidSkillFile[] = builtInSkills.map(
-  (skill) => ({
-    ...skill,
-    filePath: BuiltInSkillPath,
-  }),
-);
+async function loadBuiltInSkills(): Promise<ValidSkillFile[]> {
+  const skills = await readSkillsFromDir(await getBuiltInSkillsDir());
+  return skills
+    .filter((skill): skill is ValidSkillFile => isValidSkillFile(skill))
+    .map((skill) => ({ ...skill, isBuiltIn: true }));
+}
 
 export async function loadSkills(
   workingDirectory?: string,
   includeSystemSkills = true,
 ): Promise<ValidSkillFile[]> {
   try {
-    const allSkills: SkillFile[] = [...builtInSkillFiles];
+    const allSkills: SkillFile[] = [...(await loadBuiltInSkills())];
 
     // Load project skills if working directory is provided
     if (workingDirectory) {
@@ -120,20 +123,17 @@ export async function loadSkills(
       );
     }
 
-    // Filter out invalid skills for CLI usage
-    const validSkills = uniqueBy(allSkills, (skill) =>
-      skill.filePath === BuiltInSkillPath
-        ? skill.name + BuiltInSkillPath
-        : skill.name,
-    ).filter((skill): skill is ValidSkillFile => {
-      if (isValidSkillFile(skill)) {
-        return true;
-      }
-      logger.warn(
-        `Ignoring invalid skill file ${skill.filePath}: [${skill.error}] ${skill.message}`,
-      );
-      return false;
-    });
+    const validSkills = uniqueBy(allSkills, (skill) => skill.name).filter(
+      (skill): skill is ValidSkillFile => {
+        if (isValidSkillFile(skill)) {
+          return true;
+        }
+        logger.warn(
+          `Ignoring invalid skill file ${skill.filePath}: [${skill.error}] ${skill.message}`,
+        );
+        return false;
+      },
+    );
 
     logger.debug(
       `Loaded ${allSkills.length} skills (${validSkills.length} valid, ${allSkills.length - validSkills.length} invalid)`,

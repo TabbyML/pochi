@@ -282,6 +282,56 @@ describe("executeToolCalls", () => {
     expect(caught).toBeInstanceOf(BatchExecutionError);
   });
 
+  it("concurrent batch failure is isolated; subsequent serial items still execute", async () => {
+    const executed: string[] = [];
+
+    const items: BatchedToolCall[] = [
+      {
+        ...item("readFile"),
+        run: async () => {
+          throw new Error("first tool call failed");
+        },
+      },
+      {
+        ...item("listFiles"),
+        run: async () => {
+          executed.push("listFiles");
+          return { kind: "success" as const };
+        },
+      },
+      {
+        ...item("globFiles"),
+        run: async () => {
+          executed.push("globFiles");
+          return { kind: "success" as const };
+        },
+      },
+      {
+        ...item("writeToFile"),
+        run: async () => {
+          executed.push("writeToFile");
+          return { kind: "success" as const };
+        },
+      },
+      {
+        ...item("applyDiff"),
+        run: async () => {
+          executed.push("applyDiff");
+          return { kind: "success" as const };
+        },
+      },
+    ];
+
+    await executeToolCalls({ toolCalls: items });
+
+    // concurrent-batch failure is swallowed; the two serial items still run
+    expect(executed).toContain("listFiles");
+    expect(executed).toContain("globFiles");
+    expect(executed).toContain("writeToFile");
+    expect(executed).toContain("applyDiff");
+    expect(executed).not.toContain("readFile");
+  });
+
   it("runs all concurrent items and checks total execution count", async () => {
     let executeCount = 0;
 

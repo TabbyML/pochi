@@ -56,7 +56,7 @@
     "compactTask": "タスクを圧縮",
     "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} tokens が必要です",
     "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
-    "tokensUsed": "{{used}} / {{total}} tokens • {{percentage}}%",
+    "tokensUsed": "{{used}} / {{total}} tokens",
     "system": "システム",
     "systemInstructions": "システム指示",
     "toolDefinitions": "ツール定義",
@@ -64,9 +64,21 @@
     "messages": "メッセージ",
     "files": "ファイル",
     "toolResults": "ツールの結果",
-    "taskMemory": "タスクメモリ",
+    "taskMemory": "タスク",
+    "taskMemoryDescription": "現在のタスクの要約です。会話を圧縮する際、重要な文脈を保持するために再利用されます。",
     "viewTaskMemory": "タスクメモリを表示",
-    "viewTaskMemoryTooltip": "タスク圧縮時に使用されるタスクメモリを表示します。"
+    "viewTaskMemoryTooltip": "タスク圧縮時に使用されるタスクメモリを表示します。",
+    "compact": "圧縮",
+    "memory": "メモリ",
+    "projectMemory": "プロジェクト",
+    "projectMemoryEnable": "プロジェクトメモリを有効化",
+    "projectMemoryDisable": "プロジェクトメモリを無効化",
+    "projectMemoryDescription": "Pochi が作業中にプロジェクトについて学んだ内容を MEMORY.md に保存し、今後のタスクで役立つ文脈として再利用します。",
+    "viewProjectMemory": "表示",
+    "viewProjectMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
+    "viewTaskMemoryButtonTooltip": "タスク圧縮時に再利用されるタスクメモリの要約を開きます。",
+    "projectMemoryUnavailable": "このワークスペースでタスクを実行するとプロジェクトメモリが利用可能になります。",
+    "taskMemoryUnavailable": "タスクメモリは会話の進行に伴って自動的に生成されます。"
   },
   "modelSelect": {
     "selectModel": "モデルを選択",
@@ -137,12 +149,11 @@
     "advanced": {
       "title": "詳細設定",
       "developerMode": "開発者モード",
-      "enablePochiModels": "Pochi モデルを有効化",
       "clearStorage": "ストレージをクリア",
       "resetReviewPlanTutorialCounter": "レビュー計画チュートリアルカウンターをリセット",
       "language": "言語",
       "languageDescription": "希望の言語を選択してください",
-      "hideRecommendSettings": "推奨設定を非表示にする"
+      "resetRecommendSettings": "推奨設定をリセット"
     },
     "rules": {
       "title": "ルール",
@@ -228,6 +239,7 @@
   },
   "tasksPage": {
     "tasks": "タスク",
+    "pinned": "ピン留め",
     "filter": "タスクをフィルター",
     "archivedTasks": "アーカイブされたタスク",
     "deletedWorktrees": "削除されたワークツリー",
@@ -272,6 +284,8 @@
     "loadMore": "さらに読み込む",
     "archiveTask": "タスクをアーカイブ",
     "unarchiveTask": "タスクをアーカイブ解除",
+    "pinTask": "タスクをピン留め",
+    "unpinTask": "ピン留めを解除",
     "archiveOldTasks": "古いタスクをアーカイブ",
     "archiveOldTasksTooltip": "1週間以上前のタスクをアーカイブ",
     "showAnyTasks": "すべてのタスクを表示",
@@ -296,6 +310,11 @@
     "request": "リクエスト",
     "response": "レスポンス",
     "imgAlt": "MCPツールレスポンススナップショット",
+    "renderWidget": "ウィジェットを表示",
+    "widgetFrozen": "このウィジェットは以前のメッセージのものです。最新のウィジェットのみ操作できます。",
+    "widgetInternalError": "ウィジェット設定エラーです。",
+    "widgetRuntimeError": "ウィジェット実行時エラーです。",
+    "fixWidget": "修正してください",
     "applyingDiffTo": "差分を適用中：",
     "applyingDiffsTo": "複数の差分を適用中：",
     "addingReviewComment": "レビュー中 ",
@@ -303,6 +322,7 @@
     "executeCommand": "以下のコマンドを実行します",
     "executingCommand": "コマンドを実行中",
     "for": "で",
+    "matching": "一致する",
     "searching": "検索中",
     "searchingFor": "検索中：",
     "matchCount_one": "{{count}}件一致",
@@ -535,5 +555,30 @@
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
     "paused": "一時停止"
+  },
+  "browserAgentSettings": {
+    "runtimeSection": "ブラウザー実行環境",
+    "localChromeSection": "ローカル Chrome",
+    "managedBrowserSection": "マネージドブラウザー",
+    "browserMode": "ブラウザーモード",
+    "browserModeHint": "マネージドブラウザーは分離されたブラウザーセッションで実行されます。ローカル Chrome はあなたの Chrome プロファイルに接続し、既存のログイン状態やブラウザー状態を再利用できます。",
+    "managedBrowser": "マネージドブラウザー",
+    "localChrome": "ローカル Chrome",
+    "chromePath": "Chrome 実行ファイルのパス（任意）",
+    "chromePathHint": "空欄の場合は自動検出します。",
+    "startParams": "カスタムブラウザー引数（任意）",
+    "startParamsHint": "ブラウザー実行ファイルに渡す引数をスペース区切りで入力します。",
+    "viewportSize": "ビューポートサイズ",
+    "viewportHint": "マネージドブラウザーセッションのブラウザービューサイズを制御します。",
+    "viewportSizes": {
+      "1280x720": "大きいデスクトップ (1280x720)",
+      "900x600": "小さいデスクトップ (900x600)",
+      "768x1024": "タブレット (768x1024)",
+      "360x640": "モバイル (360x640)"
+    }
+  },
+  "builtInAgentsSettings": {
+    "title": "組み込みエージェント",
+    "browser": "ブラウザー"
   }
 }

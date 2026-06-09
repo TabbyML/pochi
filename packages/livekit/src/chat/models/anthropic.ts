@@ -1,4 +1,5 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { fetchWithCorsProxy } from "@getpochi/common/fetch-utils";
 import { wrapLanguageModel } from "ai";
 import type { RequestData } from "../../types";
 
@@ -8,7 +9,7 @@ export function createAnthropicModel(
   const anthropic = createAnthropic({
     baseURL: llm.baseURL,
     apiKey: llm.apiKey,
-    fetch: proxiedFetch,
+    fetch: fetchWithCorsProxy,
   });
 
   return wrapLanguageModel({
@@ -22,15 +23,3 @@ export function createAnthropicModel(
     },
   });
 }
-
-export const proxiedFetch: typeof fetch = async (input, init) => {
-  const proxyPrefix = globalThis.POCHI_CORS_PROXY_URL_PREFIX;
-  if (!proxyPrefix) {
-    return fetch(input, init);
-  }
-
-  const originalUrl = input instanceof Request ? input.url : input.toString();
-  const url = new URL(`${proxyPrefix}${encodeURIComponent(originalUrl)}`);
-
-  return fetch(url, init);
-};

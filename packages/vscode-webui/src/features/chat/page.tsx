@@ -13,17 +13,18 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { formatters } from "@getpochi/common";
+import { constants, formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import type { Todo } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useApprovalAndRetry } from "../approval";
+import { useApprovalAndRetry, useRenderWidgetError } from "../approval";
 import {
   useAutoApprove,
   useSelectedModels,
@@ -51,6 +52,7 @@ import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useTaskMemory } from "./hooks/use-task-memory";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
+import { getRenderWidgetErrorMessageKey } from "./lib/render-widget-error";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import {
   ChatContainerClassName,
@@ -70,7 +72,7 @@ export function ChatPage(props: ChatProps) {
 interface ChatProps {
   uid: string;
   user?: UserInfo;
-  info: NonNullable<typeof window.POCHI_TASK_INFO>;
+  info: PochiTaskInfo;
 }
 
 function Chat({ user, uid, info }: ChatProps) {
@@ -164,15 +166,14 @@ function Chat({ user, uid, info }: ChatProps) {
   });
   const tryUpdateAutoMemoryRef = useLatest(tryUpdateAutoMemory);
 
-  const chatKit = useLiveChatKit({
-    store,
-    blobStore,
-    taskId: uid,
-    getters,
-    isSubTask,
-    customAgent,
-    abortSignal: chatAbortController.current.signal,
-    onCompact: async () => {
+  const [isCompacting, setIsCompacting] = useState(false);
+  const onCompactStart = useCallback(() => {
+    setIsCompacting(true);
+  }, []);
+  const onCompactFinish = useCallback(
+    async (success: boolean) => {
+      setIsCompacting(false);
+      if (!success) return;
       await vscodeHost.clearFileStateCache(uid);
       // Token usage drops at compact, so rebase the baseline against the
       // post-compact view; tool-call count is monotonic and unaffected.
@@ -182,6 +183,19 @@ function Chat({ user, uid, info }: ChatProps) {
         setter({ ...current, lastExtractionTokens: 0 });
       }
     },
+    [uid, setTaskMemoryStateRef, taskMemoryStateRef],
+  );
+
+  const chatKit = useLiveChatKit({
+    store,
+    blobStore,
+    taskId: uid,
+    getters,
+    isSubTask,
+    customAgent,
+    abortSignal: chatAbortController.current.signal,
+    onCompactStart,
+    onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
     getTaskMemoryState: () => taskMemoryStateRef.current,
     sendAutomaticallyWhen: (x) => {
@@ -223,6 +237,7 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const chat = useChat({
     chat: chatKit.chat,
+    experimental_throttle: constants.StreamingUpdateThrottleMs,
   });
 
   const { messages, sendMessage, status } = chat;
@@ -240,6 +255,9 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
+  const renderWidgetErrorKind = useRenderWidgetError({
+    messages,
+  });
 
   const { repairMermaid, repairingChart } = useRepairMermaid({
     repairMermaid: chatKit.repairMermaid,
@@ -305,13 +323,28 @@ function Chat({ user, uid, info }: ChatProps) {
     isLoading,
     pendingApprovalName: pendingApproval?.name,
   });
-  // Display errors with priority: 1. autoDismissError, 2. uploadImageError, 3. error pending retry approval
+  const showRenderWidgetFixButton =
+    !isLoading && !pendingApproval && !!renderWidgetErrorKind;
+  const pendingApprovalError =
+    pendingApproval?.name === "retry" ? pendingApproval.error : undefined;
+  const renderWidgetError =
+    showRenderWidgetFixButton && renderWidgetErrorKind
+      ? new Error(
+          t(
+            getRenderWidgetErrorMessageKey({
+              kind: renderWidgetErrorKind,
+            }),
+          ),
+        )
+      : undefined;
+
+  // Display errors with priority: 1. uploadImageError, 2. task error, 3. pending approval error, 4. widget error
   const displayError = isLoading
     ? undefined
     : attachmentUpload.error ||
       fromTaskError(task) ||
-      (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
-
+      pendingApprovalError ||
+      renderWidgetError;
   useHandleChatEvents({
     sendMessage:
       isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
@@ -338,7 +371,8 @@ function Chat({ user, uid, info }: ChatProps) {
       )}
       <ChatArea
         messages={renderMessages}
-        isLoading={isLoading}
+        isLoading={isLoading || isCompacting}
+        loadingLabel={isCompacting ? t("tokenUsage.compacting") : undefined}
         user={user || defaultUser}
         messagesContainerRef={messagesContainerRef}
         className={cn({
@@ -362,6 +396,7 @@ function Chat({ user, uid, info }: ChatProps) {
           isSubTask={isSubTask}
           subtask={subtask}
           displayError={displayError}
+          showRenderWidgetFixButton={showRenderWidgetFixButton}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           taskId={uid}
           isRepairingMermaid={!!repairingChart}

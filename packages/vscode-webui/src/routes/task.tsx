@@ -8,6 +8,7 @@ import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { DefaultStoreOptionsProvider } from "@/lib/use-default-store";
 import { encodeStoreId } from "@getpochi/common/store-id-utils";
+import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { createFileRoute } from "@tanstack/react-router";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -24,18 +25,17 @@ export const Route = createFileRoute("/task")({
 
 function RouteComponent() {
   const searchParams = Route.useSearch();
-  let info: typeof window.POCHI_TASK_INFO;
-  if (window.POCHI_WEBVIEW_KIND === "pane" && window.POCHI_TASK_INFO) {
-    if (searchParams.uid === window.POCHI_TASK_INFO.uid) {
-      info = window.POCHI_TASK_INFO;
-    } else {
-      info = {
-        uid: searchParams.uid,
-        cwd: window.POCHI_TASK_INFO.cwd,
-        type: "open-task",
-      };
-    }
-  }
+  const panelInfo = window.POCHI_PANEL_INFO;
+  const info: PochiTaskInfo | undefined =
+    window.POCHI_WEBVIEW_KIND === "pane" && panelInfo?.type === "task"
+      ? searchParams.uid === panelInfo.payload.task.uid
+        ? panelInfo.payload.task
+        : {
+            uid: searchParams.uid,
+            cwd: panelInfo.payload.task.cwd,
+            type: "open-task",
+          }
+      : undefined;
 
   if (!info) {
     throw new Error("task params not found");

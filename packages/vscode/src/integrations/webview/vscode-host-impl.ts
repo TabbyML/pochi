@@ -2,6 +2,8 @@ import * as os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { AuthEvents } from "@/lib/auth-events";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { AutoMemoryManager } from "@/lib/auto-memory";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { CustomAgentManager } from "@/lib/custom-agent";
@@ -49,6 +51,7 @@ import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
+import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
 import { todoWrite } from "@/tools/todo-write";
@@ -65,7 +68,12 @@ import {
 } from "@getpochi/common";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { BrowserSessionStore } from "@getpochi/common/browser";
-import type { UserInfo } from "@getpochi/common/configuration";
+import {
+  type UserInfo,
+  mergeBrowserAgentSettings,
+  pochiConfig,
+  updatePochiConfig,
+} from "@getpochi/common/configuration";
 import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -77,6 +85,7 @@ import {
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
+import type { BrowserAgentSettingsUpdate } from "@getpochi/common/vscode-webui-bridge";
 import {
   type BuiltinSubAgentInfo,
   type CaptureEvent,
@@ -99,6 +108,7 @@ import {
   type SkillFile,
   type TaskArchivedParams,
   type TaskChangedFile,
+  type TaskPinnedParams,
   type TaskStates,
   type VSCodeHostApi,
   type VSCodeSettings,
@@ -161,6 +171,7 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
 import { PochiTaskEditorProvider } from "./webview-panel";
+import { PochiWebviewStandalonePanel } from "./webview-standalone-panel";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -173,6 +184,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   constructor(
     @inject("vscode.ExtensionContext")
     private readonly context: vscode.ExtensionContext,
+    private readonly events: AuthEvents,
     private readonly editorContextState: EditorContextState,
     private readonly terminalState: TerminalState,
     private readonly posthog: PostHog,
@@ -209,7 +221,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   private isAutoMemoryEnabled() {
     return (
-      this.pochiConfiguration.advancedSettings.value.memory?.enabled === true
+      this.pochiConfiguration.advancedSettings.value.memory?.enabled !== false
     );
   }
 
@@ -938,6 +950,30 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
   };
 
+  readBrowserAgentSettings = async () => {
+    return {
+      browserSettings: ThreadSignal.serialize(
+        computed(() =>
+          mergeBrowserAgentSettings(pochiConfig.value.browserAgentSettings),
+        ),
+      ),
+      updateBrowserAgentSettings: async (
+        params: BrowserAgentSettingsUpdate,
+      ) => {
+        const browserAgentSettings = mergeBrowserAgentSettings(
+          params,
+          pochiConfig.value.browserAgentSettings,
+        );
+        await updatePochiConfig(
+          {
+            browserAgentSettings,
+          },
+          "user",
+        );
+      },
+    };
+  };
+
   showInformationMessage = async <T extends string>(
     message: string,
     options: { modal?: boolean; detail?: string },
@@ -1000,6 +1036,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       }
     }
   };
+
+  openBrowserAgentSettingsPanel: VSCodeHostApi["openBrowserAgentSettingsPanel"] =
+    () => {
+      PochiWebviewStandalonePanel.open("browser-agent-settings", {
+        context: this.context,
+        events: this.events,
+        pochiConfiguration: this.pochiConfiguration,
+        vscodeHost: this,
+      });
+    };
 
   sendTaskNotification = async (
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
@@ -1273,14 +1319,40 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   readAutoMemory = async (options?: {
     cwd?: string;
     ensure?: boolean;
+    force?: boolean;
   }) => {
-    if (!this.isAutoMemoryEnabled()) return undefined;
+    if (!options?.force && !this.isAutoMemoryEnabled()) return undefined;
     return this.autoMemoryManager.readContext(
       options?.cwd ?? this.cwd ?? undefined,
       {
         ensure: options?.ensure,
       },
     );
+  };
+
+  readAutoMemoryEnabled = async (): Promise<{
+    value: ThreadSignalSerialization<boolean>;
+    setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
+  }> => {
+    return {
+      value: ThreadSignal.serialize(
+        computed(
+          () =>
+            this.pochiConfiguration.advancedSettings.value.memory?.enabled !==
+            false,
+        ),
+      ),
+      setAutoMemoryEnabled: async (enabled: boolean) => {
+        const current = this.pochiConfiguration.advancedSettings.value;
+        this.pochiConfiguration.advancedSettings.value = {
+          ...current,
+          memory: {
+            ...current.memory,
+            enabled,
+          },
+        };
+      },
+    };
   };
 
   readAutoMemoryState = async (
@@ -1394,20 +1466,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
     setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
   }> => {
-    logger.debug({ taskId }, "readBackgroundTaskState");
     return {
       value: ThreadSignal.serialize(
         this.taskStateStore.getBackgroundTaskStateSignal(taskId),
       ),
       setBackgroundTaskState: (state: BackgroundTaskState) => {
-        logger.debug(
-          {
-            taskId,
-            parentTaskId: state.parentTaskId,
-            tools: state.tools?.length,
-          },
-          "readBackgroundTaskState.setBackgroundTaskState",
-        );
         return this.taskStateStore.setBackgroundTaskState(taskId, state);
       },
     };
@@ -1421,9 +1484,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         computed(() => {
           const tasks = this.taskHistoryStore.tasks.value;
           const archived = this.taskStateStore.getArchivedSignal().value;
+          const pinned = this.taskStateStore.getPinnedSignal().value;
           return Object.values(tasks).some((task) => {
             if (task.parentId !== null) return false;
             if (archived[task.id]) return false;
+            if (pinned[task.id]) return false;
             return task.updatedAt < oneWeekAgo;
           });
         }),
@@ -1434,15 +1499,23 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             [params.taskId]: params.archived,
           });
           if (params.archived) {
+            // Archiving a task implicitly unpins it.
+            if (this.taskStateStore.getPinnedSignal().value[params.taskId]) {
+              await this.taskStateStore.setPinned({
+                [params.taskId]: false,
+              });
+            }
             this.deleteFileStateCache(params.taskId);
           }
         } else if (params.type === "batch") {
           const tasks = this.taskHistoryStore.tasks.value;
+          const pinned = this.taskStateStore.getPinnedSignal().value;
           const updates: Record<string, boolean> = {};
 
           for (const [taskId, task] of Object.entries(tasks)) {
             if (
               task.updatedAt < oneWeekAgo &&
+              !pinned[taskId] &&
               (!params.cwd || task.cwd === params.cwd)
             ) {
               updates[taskId] = true;
@@ -1456,6 +1529,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             }
           }
         }
+      },
+    };
+  };
+
+  readTaskPinned = async () => {
+    return {
+      value: ThreadSignal.serialize(this.taskStateStore.getPinnedSignal()),
+      setTaskPinned: async (params: TaskPinnedParams) => {
+        await this.taskStateStore.setPinned({
+          [params.taskId]: params.pinned,
+        });
       },
     };
   };
@@ -1541,6 +1625,7 @@ const ToolMap: Record<
   searchFiles,
   listFiles: listFilesTool,
   globFiles,
+  renderWidget,
   writeToFile,
   applyDiff,
   todoWrite,

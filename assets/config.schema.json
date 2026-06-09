@@ -505,6 +505,52 @@
           }
         ]
       }
+    },
+    "browserAgentSettings": {
+      "type": "object",
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "managed",
+                "localChrome"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "managedBrowser": {
+          "type": "object",
+          "properties": {
+            "viewport": {
+              "type": "string",
+              "enum": [
+                "1280x720",
+                "900x600",
+                "768x1024",
+                "360x640"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "localChrome": {
+          "type": "object",
+          "properties": {
+            "chromePath": {
+              "type": "string"
+            },
+            "startParams": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

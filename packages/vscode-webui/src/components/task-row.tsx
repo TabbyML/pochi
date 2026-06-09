@@ -8,6 +8,7 @@ import { EditSummary } from "@/features/tools";
 import { ToolCallLite } from "@/features/tools";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskArchived } from "@/lib/hooks/use-task-archived";
+import { useTaskPinned } from "@/lib/hooks/use-task-pinned";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
@@ -15,7 +16,7 @@ import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import type { TaskState } from "@getpochi/common/vscode-webui-bridge";
 import type { Task, UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
-import { Archive, GitBranch, Loader2 } from "lucide-react";
+import { Archive, GitBranch, Loader2, Pin, PinOff } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -32,11 +33,14 @@ export function TaskRow({
   const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const { isTaskArchived, setTaskArchived } = useTaskArchived();
+  const { isTaskPinned, setTaskPinned } = useTaskPinned();
 
   const archived = useMemo(
     () => isTaskArchived(task.id),
     [isTaskArchived, task.id],
   );
+
+  const pinned = useMemo(() => isTaskPinned(task.id), [isTaskPinned, task.id]);
 
   const title = useMemo(() => parseTitle(task.title), [task.title]);
 
@@ -68,6 +72,17 @@ export function TaskRow({
       });
     },
     [setTaskArchived, task.id, archived],
+  );
+
+  const handlePinClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setTaskPinned?.({
+        taskId: task.id,
+        pinned: !pinned,
+      });
+    },
+    [setTaskPinned, task.id, pinned],
   );
 
   return (
@@ -105,24 +120,48 @@ export function TaskRow({
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {!isDeleted && isHovered ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 hover:bg-transparent"
-                        onClick={handleArchiveClick}
-                        aria-label="archive-task-button"
-                      >
-                        <Archive className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {archived
-                        ? t("tasksPage.unarchiveTask")
-                        : t("tasksPage.archiveTask")}
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="flex items-center">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-transparent"
+                          onClick={handlePinClick}
+                          aria-label="pin-task-button"
+                        >
+                          {pinned ? (
+                            <PinOff className="size-3.5" />
+                          ) : (
+                            <Pin className="size-3.5" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {pinned
+                          ? t("tasksPage.unpinTask")
+                          : t("tasksPage.pinTask")}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-transparent"
+                          onClick={handleArchiveClick}
+                          aria-label="archive-task-button"
+                        >
+                          <Archive className="size-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {archived
+                          ? t("tasksPage.unarchiveTask")
+                          : t("tasksPage.archiveTask")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 ) : (
                   <div className="text-sm">{formatTimeAgo(task.createdAt)}</div>
                 )}
@@ -130,7 +169,7 @@ export function TaskRow({
             </div>
             <div className="h-6 text-muted-foreground text-sm">
               <div className="flex items-center justify-between gap-2 overflow-hidden">
-                <div className="flex flex-1 items-center gap-2 overflow-hidden">
+                <div className="flex min-w-0 max-w-[50%] items-center gap-2 overflow-hidden">
                   <GitBadge git={task.git} />
                   {task.lineChanges && (
                     <EditSummary
@@ -139,14 +178,19 @@ export function TaskRow({
                     />
                   )}
                 </div>
-                {state?.running && task.pendingToolCalls?.length ? (
-                  <ToolCallLite
-                    tools={task.pendingToolCalls as Array<ToolUIPart<UITools>>}
-                    requiresApproval={state.requiresApproval}
-                  />
-                ) : (
-                  <TaskStatusView task={task} state={state} />
-                )}
+                <div className="flex min-w-0 flex-1 justify-end overflow-hidden">
+                  {state?.running && task.pendingToolCalls?.length ? (
+                    <ToolCallLite
+                      tools={
+                        task.pendingToolCalls as Array<ToolUIPart<UITools>>
+                      }
+                      requiresApproval={state.requiresApproval}
+                      className="w-auto"
+                    />
+                  ) : (
+                    <TaskStatusView task={task} state={state} />
+                  )}
+                </div>
               </div>
             </div>
           </div>

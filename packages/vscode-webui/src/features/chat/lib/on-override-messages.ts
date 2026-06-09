@@ -1,6 +1,7 @@
 import { vscodeHost } from "@/lib/vscode";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { unique } from "remeda";
+import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
 
 /**
  * Handles the onOverrideMessages event by appending a checkpoint to the last message.
@@ -16,6 +17,8 @@ export async function onOverrideMessages({
   messages: Message[];
   abortSignal: AbortSignal;
 }) {
+  writeRenderWidgetOutput(messages);
+
   const checkpoints = messages
     .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
     .map((p) => p.data.commit);
@@ -35,6 +38,48 @@ export async function onOverrideMessages({
       await updateChangedFiles(taskId, lastCheckpoint, lastMessage);
     }
   }
+}
+
+export function writeRenderWidgetOutput(messages: Message[]) {
+  const store = useRenderWidgetStore.getState();
+  const message = getRenderWidgetOutputMessage(messages);
+  if (!message) return;
+
+  message.parts = message.parts.map((part) => {
+    if (part.type !== "tool-renderWidget") return part;
+    if (part.state !== "input-available" && part.state !== "output-available") {
+      return part;
+    }
+
+    const state =
+      store.getWidgetState(part.toolCallId) ??
+      getExistingRenderWidgetState(part.output) ??
+      {};
+    const output = { state };
+    const error = store.getWidgetError(part.toolCallId);
+    if (error !== undefined) {
+      // @ts-expect-error renderWidget output schema intentionally omits runtime errors.
+      output.error = error.message;
+    }
+    store.clearWidgetState(part.toolCallId);
+    return {
+      ...part,
+      state: "output-available",
+      output,
+    };
+  });
+}
+
+function getRenderWidgetOutputMessage(messages: Message[]) {
+  if (messages.at(-1)?.role !== "user") return;
+  const message = messages.at(-2);
+  return message?.role === "assistant" ? message : undefined;
+}
+
+function getExistingRenderWidgetState(output: unknown) {
+  if (typeof output !== "object" || output === null) return undefined;
+  if (!Object.hasOwn(output, "state")) return undefined;
+  return (output as { state?: unknown }).state;
 }
 
 /**

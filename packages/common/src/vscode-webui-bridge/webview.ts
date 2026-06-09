@@ -31,9 +31,14 @@ import type {
   SkillFile,
   TaskArchivedParams,
   TaskChangedFile,
+  TaskPinnedParams,
   TaskStates,
   WorkspaceState,
 } from "./index";
+import type {
+  BrowserAgentSettings,
+  BrowserAgentSettingsUpdate,
+} from "./types/browser-agent-settings";
 import type {
   CreateWorktreeOptions,
   DiffCheckpointOptions,
@@ -309,6 +314,13 @@ export interface VSCodeHostApi {
 
   updateVSCodeSettings(params: Partial<VSCodeSettings>): Promise<void>;
 
+  readBrowserAgentSettings(): Promise<{
+    browserSettings: ThreadSignalSerialization<BrowserAgentSettings>;
+    updateBrowserAgentSettings: (
+      params: BrowserAgentSettingsUpdate,
+    ) => Promise<void>;
+  }>;
+
   /**
    * Show an information message to users. Optionally provide an array of items which will be presented as
    * clickable buttons.
@@ -350,6 +362,8 @@ export interface VSCodeHostApi {
       showFileChanges?: boolean;
     },
   ): Promise<void>;
+
+  openBrowserAgentSettingsPanel(): void;
 
   sendTaskNotification(
     kind: "failed" | "completed" | "pending-tool" | "pending-input",
@@ -427,7 +441,18 @@ export interface VSCodeHostApi {
   readAutoMemory(options?: {
     cwd?: string;
     ensure?: boolean;
+    /**
+     * When true, bypass the user's Project Memory enabled preference and
+     * return the context regardless. Used by UI surfaces that need to
+     * surface the memory index file even when the feature is disabled.
+     */
+    force?: boolean;
   }): Promise<AutoMemoryContext | undefined>;
+
+  readAutoMemoryEnabled(): Promise<{
+    value: ThreadSignalSerialization<boolean>;
+    setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
+  }>;
 
   readAutoMemoryState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
@@ -498,6 +523,15 @@ export interface VSCodeHostApi {
     value: ThreadSignalSerialization<Record<string, boolean>>;
     hasArchivableTasks: ThreadSignalSerialization<boolean>;
     setTaskArchived: (params: TaskArchivedParams) => Promise<void>;
+  }>;
+
+  /**
+   * Read and manage pinned state for tasks.
+   * Returns a serialized signal for the pinned value map and a setter function.
+   */
+  readTaskPinned(): Promise<{
+    value: ThreadSignalSerialization<Record<string, boolean>>;
+    setTaskPinned: (params: TaskPinnedParams) => Promise<void>;
   }>;
 
   readLang(): Promise<{

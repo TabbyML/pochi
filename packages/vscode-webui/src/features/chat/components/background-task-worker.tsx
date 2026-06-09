@@ -1,10 +1,3 @@
-/**
- * BackgroundTaskWorker — drives a single background task to completion.
- *
- * Headless component (renders null). Receives a taskId and an optional tool
- * allow-list, then drives the task from the store.
- */
-
 import {
   ReadyForRetryError,
   useMixinReadyForRetryError,
@@ -18,8 +11,8 @@ import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { type ForkAgentUseCase, getLogger } from "@getpochi/common";
-import { type Message, catalog } from "@getpochi/livekit";
+import { constants, type ForkAgentUseCase, getLogger } from "@getpochi/common";
+import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
   type Todo,
@@ -28,20 +21,15 @@ import {
   getAllowedToolNames,
   isCompletionToolName,
 } from "@getpochi/tools";
-import {
-  getStaticToolName,
-  isStaticToolUIPart,
-  lastAssistantMessageIsCompleteWithToolCalls,
-} from "ai";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BatchExecuteManager } from "../lib/batch-execute-manager";
 import { createBackgroundTaskBatchedToolCall } from "../lib/batched-tool-call-adapters";
+import { countStepStarts } from "../lib/create-fork-agent";
 import { useLiveChatKitGetters } from "../lib/use-live-chat-kit-getters";
 
 const BackgroundTaskMaxStep = 50;
 const BackgroundTaskMaxRetry = 8;
-// After this many consecutive rejected (allow-list) tool calls we stop the
-// worker to avoid the model getting stuck in a loop calling forbidden tools.
 const BackgroundTaskMaxToolRejections = 5;
 const logger = getLogger("BackgroundTaskWorker");
 
@@ -49,6 +37,12 @@ interface BackgroundTaskWorkerProps {
   taskId: string;
   batchExecuteManager: BatchExecuteManager;
 }
+
+type AddToolOutputArgs = {
+  tool: string;
+  toolCallId: string;
+  output: unknown;
+};
 
 export function BackgroundTaskWorker({
   taskId,
@@ -64,6 +58,7 @@ export function BackgroundTaskWorker({
       tools={backgroundTaskState?.tools}
       parentTaskId={backgroundTaskState?.parentTaskId}
       requestUseCase={backgroundTaskState?.useCase}
+      baselineStepCount={backgroundTaskState?.baselineStepCount}
       batchExecuteManager={batchExecuteManager}
     />
   );
@@ -74,11 +69,13 @@ function BackgroundTaskWorkerInner({
   tools,
   parentTaskId,
   requestUseCase,
+  baselineStepCount = 0,
   batchExecuteManager,
 }: BackgroundTaskWorkerProps & {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
   requestUseCase?: ForkAgentUseCase;
+  baselineStepCount?: number;
 }) {
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
@@ -91,13 +88,11 @@ function BackgroundTaskWorkerInner({
   const terminalToolSeenRef = useRef(false);
   const toolRejectionCountRef = useRef(0);
   const chatKitRef = useRef<ReturnType<typeof useLiveChatKit> | null>(null);
-  // Refs that bridge values defined later in the component body into callbacks
-  // passed to `useLiveChatKit` (which is created before those values exist).
-  // This avoids accidental TDZ access if the callbacks ever ran synchronously.
   const addToolOutputRef = useRef<
     ((args: AddToolOutputArgs) => void | Promise<void>) | null
   >(null);
   const chatStatusRef = useRef<string | null>(null);
+
   const allowedToolsSet = useMemo(
     () => (tools ? getAllowedToolNames([...tools]) : undefined),
     [tools],
@@ -107,16 +102,18 @@ function BackgroundTaskWorkerInner({
     [tools],
   );
 
+  const isAborted = useCallback(
+    () => completedRef.current || abortController.current.signal.aborted,
+    [],
+  );
+
   const persistLastMessage = useCallback(() => {
     const lastMessage = chatKitRef.current?.chat.messages.at(-1);
     if (!lastMessage) return;
-    // Final background turns may not make another request, so flush tool outputs now.
+    // Final background turns may not make another request; flush eagerly.
     store.commit(catalog.events.updateMessages({ messages: [lastMessage] }));
   }, [store]);
 
-  // Wrap the latest `addToolOutput` (delivered via ref) so adapters can invoke
-  // it even though they're constructed inside `onToolCall` before
-  // `useChat`-bound `addToolOutput` exists in the closure.
   const adapterAddToolOutput = useCallback(
     async (args: AddToolOutputArgs) => {
       await addToolOutputRef.current?.(args);
@@ -125,48 +122,17 @@ function BackgroundTaskWorkerInner({
     [persistLastMessage],
   );
 
-  const writeToolOutput = useCallback(
-    (toolName: string, toolCallId: string, output: unknown) => {
-      void adapterAddToolOutput({
-        tool: toolName,
-        toolCallId,
-        output,
-      });
-    },
-    [adapterAddToolOutput],
-  );
-
   useEffect(() => {
     const signal = abortController.current.signal;
-    const onAbort = () => {
-      // Cancel all queued / in-flight tool calls for this task so that the
-      // batch manager doesn't leave dangling subscriptions or pending items.
-      batchExecuteManager.abort(taskId, "user-abort");
-    };
+    const onAbort = () => batchExecuteManager.abort(taskId, "user-abort");
     signal.addEventListener("abort", onAbort);
-    return () => {
-      signal.removeEventListener("abort", onAbort);
-    };
+    return () => signal.removeEventListener("abort", onAbort);
   }, [taskId, batchExecuteManager]);
 
-  // NOTE: Intentionally do NOT abort on unmount.
-  //
-  // Background tasks are designed to be resumable: if the webview / page is
-  // closed mid-task, the next time it is opened `BackgroundTaskRunner` will
-  // re-discover the task via `runnableTasks$` (status is still
-  // `pending-model` / `pending-tool`) and re-mount this worker, which will
-  // pick up from the last persisted message.
-  //
-  // Calling `abortController.abort()` here would propagate through the chat
-  // and trigger `markAsFailed({ kind: "AbortError" })`, taking the task out
-  // of `runnableTasks$` permanently. Letting the browser context tear down
-  // is sufficient to terminate in-flight work when the page actually closes;
-  // for React re-mounts (StrictMode, hot reload, etc.) the next mount will
-  // resume cleanly.
-  //
-  // In-flight `executeCommand` ThreadSignal subscriptions are still released
-  // through the worker's own abort paths (`failWorker`, max-retry,
-  // max-step, max-tool-rejection), so we don't leak in those scenarios.
+  // NOTE: Do NOT abort on unmount. Background tasks are resumable —
+  // `BackgroundTaskRunner` re-mounts this worker via `runnableTasks$` after
+  // webview close. Aborting here would mark the task `AbortError` and drop
+  // it from `runnableTasks$` permanently.
 
   const getters = useLiveChatKitGetters({
     todos: todosRef,
@@ -183,10 +149,10 @@ function BackgroundTaskWorkerInner({
     getters,
     isSubTask: false,
     requestUseCase,
+    disableAutoCompact: true,
     sendAutomaticallyWhen: (x) => {
       if (
-        abortController.current.signal.aborted ||
-        completedRef.current ||
+        isAborted() ||
         isModelsLoading ||
         !selectedModel ||
         chatStatusRef.current === "error"
@@ -195,20 +161,10 @@ function BackgroundTaskWorkerInner({
       }
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
-    onStreamFinish: (data) => {
+    onStreamFinish: () => {
       const terminalToolSeen = terminalToolSeenRef.current;
       terminalToolSeenRef.current = false;
 
-      if (data.status === "completed") {
-        const conversation = summarizeMessages(data.messages);
-        logger.debug(
-          { taskId, messageCount: data.messages.length },
-          `✔ stream-finish (${data.messages.length} msgs)\n${conversation}`,
-        );
-      }
-
-      // Kick off the queued tool calls (if any) so that batch-eligible items
-      // run concurrently while stateful items remain serial barriers.
       if (!abortController.current.signal.aborted) {
         batchExecuteManager.processQueue(taskId);
       }
@@ -218,16 +174,10 @@ function BackgroundTaskWorkerInner({
       }
     },
     onToolCall: ({ toolCall }) => {
-      if (completedRef.current) {
-        return;
-      }
+      if (completedRef.current) return;
 
       if (isCompletionToolName(toolCall.toolName)) {
         terminalToolSeenRef.current = true;
-        logger.debug(
-          { taskId, toolName: toolCall.toolName },
-          `✔ terminal tool ${toolCall.toolName}`,
-        );
         return;
       }
 
@@ -243,8 +193,12 @@ function BackgroundTaskWorkerInner({
           },
           "Background task tool call rejected by allow-list",
         );
-        writeToolOutput(toolCall.toolName, toolCall.toolCallId, {
-          output: `Tool ${toolCall.toolName} is not allowed for this background task.`,
+        void adapterAddToolOutput({
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: {
+            error: `Tool ${toolCall.toolName} is not allowed for this background task.`,
+          },
         });
 
         if (toolRejectionCountRef.current >= BackgroundTaskMaxToolRejections) {
@@ -255,26 +209,10 @@ function BackgroundTaskWorkerInner({
         return;
       }
 
-      // Reset the rejection counter once the model recovers and calls an
-      // allowed tool again.
       toolRejectionCountRef.current = 0;
 
-      if (abortController.current.signal.aborted) {
-        return;
-      }
+      if (abortController.current.signal.aborted) return;
 
-      logger.debug(
-        {
-          taskId,
-          toolCallId: toolCall.toolCallId,
-          input: summarizeToolPayload((toolCall as { input?: unknown }).input),
-        },
-        `→ tool ${toolCall.toolName}`,
-      );
-
-      // Defer execution to the BatchExecuteManager: consecutive safe-to-batch
-      // calls (read-only, newTask, startBackgroundJob) run as one
-      // concurrent batch; stateful calls remain serial barriers.
       batchExecuteManager.enqueue(
         taskId,
         createBackgroundTaskBatchedToolCall({
@@ -301,10 +239,9 @@ function BackgroundTaskWorkerInner({
     regenerate,
   } = useChat({
     chat: chatKit.chat,
+    experimental_throttle: constants.StreamingUpdateThrottleMs,
   });
 
-  // Keep refs in sync so callbacks captured by `useLiveChatKit` always read
-  // the latest values without re-creating the chat kit.
   useEffect(() => {
     addToolOutputRef.current = addToolOutput as unknown as (
       args: AddToolOutputArgs,
@@ -323,11 +260,7 @@ function BackgroundTaskWorkerInner({
 
   const failWorker = useCallback(
     (message: string) => {
-      // Idempotent: avoid re-aborting / re-committing taskFailed when callers
-      // (e.g. the max-step watcher) re-fire on subsequent renders.
-      if (completedRef.current) {
-        return;
-      }
+      if (completedRef.current) return;
       logger.warn({ taskId, message }, "Failing background task worker");
       completedRef.current = true;
       if (!abortController.current.signal.aborted) {
@@ -337,8 +270,6 @@ function BackgroundTaskWorkerInner({
     },
     [chatKit, taskId],
   );
-  // Bridge `failWorker` into the `onToolCall` closure (which is created via
-  // `useLiveChatKit` before `failWorker` exists).
   const failWorkerRef = useRef(failWorker);
   useEffect(() => {
     failWorkerRef.current = failWorker;
@@ -353,50 +284,28 @@ function BackgroundTaskWorkerInner({
   });
   const retry = useCallback(
     (retryError?: Error) => {
-      if (
-        completedRef.current ||
-        abortController.current.signal.aborted ||
-        !(status === "ready" || status === "error")
-      ) {
-        return;
-      }
+      if (isAborted() || !(status === "ready" || status === "error")) return;
       void retryImpl(retryError ?? new ReadyForRetryError());
     },
-    [retryImpl, status],
+    [retryImpl, status, isAborted],
   );
 
   const [retryCount, setRetryCount] = useState(0);
   const retryWithCount = useCallback(
     (retryError?: Error) => {
-      if (completedRef.current || abortController.current.signal.aborted) {
-        return;
-      }
+      if (isAborted()) return;
       if (retryCount >= BackgroundTaskMaxRetry) {
         failWorker(
           "The background task failed to complete, max retry count reached.",
         );
         return;
       }
-      logger.debug(
-        {
-          taskId,
-          retryCount: retryCount + 1,
-          error: retryError ? formatLogValue(retryError) : undefined,
-        },
-        `↻ retry #${retryCount + 1}`,
-      );
       setRetryCount((count) => count + 1);
       retry(retryError);
     },
-    [failWorker, retry, retryCount, taskId],
+    [failWorker, retry, retryCount, isAborted],
   );
 
-  // The retry pipeline:
-  // 1. `errorForRetry` becomes truthy when chat reports a recoverable error.
-  // 2. Debounce the error for 1s so transient flips don't trigger spurious retries.
-  // 3. After debounce, the second effect picks up `pendingErrorForRetry`,
-  //    immediately clears it (so this only fires once per error), and kicks off
-  //    `retryWithCount`.
   const errorForRetry = useMixinReadyForRetryError(messages, error);
   const [
     pendingErrorForRetry,
@@ -413,16 +322,15 @@ function BackgroundTaskWorkerInner({
     }
   }, [errorForRetry, debouncedSetPendingErrorForRetry, status]);
   useEffect(() => {
-    if (
-      completedRef.current ||
-      abortController.current.signal.aborted ||
-      !pendingErrorForRetry
-    ) {
-      return;
-    }
+    if (isAborted() || !pendingErrorForRetry) return;
     setPendingErrorForRetryNow(undefined);
     retryWithCount(pendingErrorForRetry);
-  }, [pendingErrorForRetry, retryWithCount, setPendingErrorForRetryNow]);
+  }, [
+    pendingErrorForRetry,
+    retryWithCount,
+    setPendingErrorForRetryNow,
+    isAborted,
+  ]);
 
   useEffect(() => {
     if (status === "ready" && errorForRetry === undefined) {
@@ -430,29 +338,19 @@ function BackgroundTaskWorkerInner({
     }
   }, [status, errorForRetry]);
 
-  const stepCount = useMemo(() => {
-    return messages
-      .flatMap((message) => message.parts)
-      .filter((part) => part.type === "step-start").length;
-  }, [messages]);
+  const stepCount = useMemo(() => countStepStarts(messages), [messages]);
+  // Subtract parent baseline so only the fork's own steps count.
+  const effectiveStepCount = Math.max(0, stepCount - baselineStepCount);
 
-  // Read `stepCount` directly so the guard fires on mount, before the
-  // auto-start effect below can call `retry()` on an over-budget task.
   useEffect(() => {
-    if (completedRef.current) {
-      return;
-    }
-    if (stepCount > BackgroundTaskMaxStep) {
+    if (completedRef.current) return;
+    if (effectiveStepCount > BackgroundTaskMaxStep) {
       failWorker(
         "The background task failed to complete, max step count reached.",
       );
     }
-  }, [stepCount, failWorker]);
+  }, [effectiveStepCount, failWorker]);
 
-  // Auto-start / resume the worker from its current last message.
-  // Only kicks in when the task already has at least one message, since
-  // background tasks are initialized by their parent task before this worker
-  // mounts.
   const initStarted = useRef(false);
   useEffect(() => {
     if (
@@ -461,25 +359,14 @@ function BackgroundTaskWorkerInner({
       !isModelsLoading &&
       !!selectedModel &&
       messages.length > 0 &&
-      !completedRef.current &&
-      !abortController.current.signal.aborted &&
-      // Belt-and-suspenders: never resume an over-budget task.
-      stepCount <= BackgroundTaskMaxStep &&
+      !isAborted() &&
+      effectiveStepCount <= BackgroundTaskMaxStep &&
       !(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
         task?.status === "completed"
       )
     ) {
       initStarted.current = true;
-      logger.debug(
-        {
-          taskId,
-          modelId: selectedModel.id,
-          messageCount: messages.length,
-          stepCount,
-        },
-        "▶ start background task",
-      );
       retry();
     }
   }, [
@@ -487,158 +374,12 @@ function BackgroundTaskWorkerInner({
     isModelsLoading,
     selectedModel,
     messages.length,
-    stepCount,
+    effectiveStepCount,
     retry,
     task?.status,
     task?.error,
-    taskId,
+    isAborted,
   ]);
 
   return null;
-}
-
-// Loose type alias: the full `addToolOutput` signature in `useChat` is
-// over-constrained for our dynamic tool-call dispatch, so we widen it here.
-type AddToolOutputArgs = {
-  tool: string;
-  toolCallId: string;
-  output: unknown;
-};
-
-function formatLogValue(value: unknown): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (value instanceof Error) {
-    return value.message;
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
-
-const TextPreviewMaxLen = 160;
-const ToolInputPreviewMaxLen = 120;
-const ToolOutputPreviewMaxLen = 120;
-
-function truncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}…(+${text.length - max})`;
-}
-
-/** Collapse whitespace so previews stay on a single line. */
-function flattenWhitespace(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
-
-/**
- * Strip / collapse `<system-reminder>...</system-reminder>` blocks (and other
- * Pochi-injected wrappers) from a user-visible text snippet so logs focus on
- * what the user actually asked.
- */
-function stripSystemBlocks(text: string): string {
-  return text
-    .replace(
-      /<system-reminder>[\s\S]*?<\/system-reminder>/g,
-      "<system-reminder/>",
-    )
-    .replace(/<environment_details>[\s\S]*?<\/environment_details>/g, "<env/>");
-}
-
-/**
- * Render a value (object / string / etc.) into a single-line preview suitable
- * for log output. JSON-encodes objects and truncates long payloads.
- */
-function summarizeToolPayload(
-  value: unknown,
-  max = ToolInputPreviewMaxLen,
-): string | undefined {
-  if (value === undefined || value === null) return undefined;
-  if (typeof value === "string") {
-    return truncate(flattenWhitespace(value), max);
-  }
-  let serialized: string;
-  try {
-    serialized = JSON.stringify(value);
-  } catch {
-    serialized = String(value);
-  }
-  return truncate(flattenWhitespace(serialized), max);
-}
-
-/**
- * Walk the messages array and produce a flat, human-friendly summary that
- * interleaves text turns with tool-call invocations and their outputs. Useful
- * for tracing background-task behavior in logs without dumping raw message JSON.
- *
- * Returns a single string (newline-joined) so that tslog renders it as one
- * readable block rather than a JS array literal with escape sequences.
- */
-function summarizeMessages(
-  messages: ReadonlyArray<Pick<Message, "role" | "parts">>,
-): string {
-  const lines: string[] = [];
-  let stepIndex = 0;
-  for (const message of messages) {
-    const role = message.role;
-    for (const part of message.parts) {
-      const type = part.type;
-      if (type === "step-start") {
-        stepIndex += 1;
-        lines.push(`-- step ${stepIndex} --`);
-        continue;
-      }
-      if (type === "text") {
-        const raw = typeof part.text === "string" ? part.text : "";
-        const cleaned = flattenWhitespace(stripSystemBlocks(raw));
-        if (!cleaned) continue;
-        lines.push(`[${role}] ${truncate(cleaned, TextPreviewMaxLen)}`);
-        continue;
-      }
-      if (type === "reasoning") {
-        const raw = typeof part.text === "string" ? part.text : "";
-        const cleaned = flattenWhitespace(raw);
-        if (!cleaned) continue;
-        lines.push(
-          `[${role}:reasoning] ${truncate(cleaned, TextPreviewMaxLen)}`,
-        );
-        continue;
-      }
-      if (isStaticToolUIPart(part)) {
-        const toolName = getStaticToolName(part);
-        const state = typeof part.state === "string" ? part.state : "unknown";
-        const callId =
-          typeof part.toolCallId === "string" ? part.toolCallId : "";
-        const shortId = callId ? callId.slice(-6) : "";
-        const inputPreview = summarizeToolPayload(
-          part.input,
-          ToolInputPreviewMaxLen,
-        );
-        const outputRecord = part as Record<string, unknown>;
-        const outputKey =
-          "output" in outputRecord
-            ? "output"
-            : "result" in outputRecord
-              ? "result"
-              : undefined;
-        const outputPreview = outputKey
-          ? summarizeToolPayload(
-              outputRecord[outputKey],
-              ToolOutputPreviewMaxLen,
-            )
-          : undefined;
-        const header = `[${role}] ${toolName}${shortId ? `#${shortId}` : ""} (${state})`;
-        const segments = [header];
-        if (inputPreview) segments.push(`in=${inputPreview}`);
-        if (outputPreview) segments.push(`out=${outputPreview}`);
-        lines.push(segments.join(" "));
-      }
-    }
-  }
-  return lines.join("\n");
 }

@@ -23,19 +23,16 @@ export const TaskThread: React.FC<{
     image?: string | null;
   };
   showMessageList?: boolean;
-  showTodos?: boolean;
   scrollAreaClassName?: string;
 }> = ({
   source,
   user,
   assistant,
   showMessageList = true,
-  showTodos = true,
   scrollAreaClassName,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [todos, setTodos] = useState<Todo[]>([]);
 
   useEffect(() => {
     if (!source) {
@@ -44,7 +41,6 @@ export const TaskThread: React.FC<{
 
     setIsLoading(source.isLoading ?? false);
     setMessages(source.messages);
-    setTodos(source.todos);
   }, [source]);
 
   const renderMessages = useMemo(() => prepareForRender(messages), [messages]);
@@ -86,22 +82,6 @@ export const TaskThread: React.FC<{
 
   return (
     <div className="flex flex-col">
-      {showTodos && todos && todos.length > 0 && (
-        <div className="my-1 flex flex-col px-2 py-1">
-          {todos
-            .filter((x) => x.status !== "cancelled")
-            .map((todo) => (
-              <span
-                key={todo.id}
-                className={cn("text-sm", {
-                  "line-through": todo.status === "completed",
-                })}
-              >
-                • {todo.content}
-              </span>
-            ))}
-        </div>
-      )}
       {showMessageList && (
         <MessageList
           className={cn("px-1 py-0.5", {

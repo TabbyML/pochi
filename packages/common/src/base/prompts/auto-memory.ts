@@ -9,6 +9,13 @@ export function isAutoMemorySystemReminder(content: string): boolean {
   return content.includes(AutoMemoryHeader);
 }
 export const AutoMemoryLockName = ".consolidate-lock";
+/**
+ * Sidecar metadata file that maps an obfuscated project directory
+ * (`~/.pochi/projects/<repoKey>/`) back to its source repository. Lets users
+ * — and future tooling — identify which project a hashed directory belongs
+ * to without scanning every memory or transcript file.
+ */
+export const AutoMemoryProjectInfoName = "project.json";
 export const AutoMemoryMaxIndexLines = 200;
 export const AutoMemoryMaxIndexBytes = 25_000;
 export const AutoMemoryMaxManifestEntries = 200;

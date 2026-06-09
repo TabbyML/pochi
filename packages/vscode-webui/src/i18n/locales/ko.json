@@ -55,7 +55,7 @@
     "compactTask": "작업 압축",
     "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} tokens 이상 필요합니다",
     "defaultContextWindowWarning": "컨텍스트 창 값은 기본값이며 사용자 지정 모델에 대해 정확하지 않을 수 있습니다. 정확한 token 관리를 위해 모델 공급자의 설명서에 따라 설정에서 조정하십시오.",
-    "tokensUsed": "{{used}} / {{total}} tokens • {{percentage}}%",
+    "tokensUsed": "{{used}} / {{total}} tokens",
     "system": "시스템",
     "systemInstructions": "시스템 지침",
     "toolDefinitions": "도구 정의",
@@ -63,9 +63,21 @@
     "messages": "메시지",
     "files": "파일",
     "toolResults": "도구 결과",
-    "taskMemory": "작업 메모리",
+    "taskMemory": "작업",
+    "taskMemoryDescription": "현재 작업의 요약입니다. 대화 압축 시 핵심 맥락을 유지하기 위해 재사용됩니다.",
     "viewTaskMemory": "작업 메모리 보기",
-    "viewTaskMemoryTooltip": "작업 압축 시 사용될 작업 메모리를 봅니다."
+    "viewTaskMemoryTooltip": "작업 압축 시 사용될 작업 메모리를 봅니다.",
+    "compact": "압축",
+    "memory": "메모리",
+    "projectMemory": "프로젝트",
+    "projectMemoryEnable": "프로젝트 메모리 활성화",
+    "projectMemoryDisable": "프로젝트 메모리 비활성화",
+    "projectMemoryDescription": "Pochi 가 작업 중 프로젝트에 대해 학습한 내용을 MEMORY.md 에 저장하여, 향후 작업에서 유용한 맥락으로 재사용합니다.",
+    "viewProjectMemory": "보기",
+    "viewProjectMemoryTooltip": "이 워크스페이스의 MEMORY.md 인덱스를 엽니다.",
+    "viewTaskMemoryButtonTooltip": "작업 압축 시 재사용되는 작업 메모리 요약을 엽니다.",
+    "projectMemoryUnavailable": "이 워크스페이스에서 작업을 실행하면 프로젝트 메모리를 사용할 수 있습니다.",
+    "taskMemoryUnavailable": "작업 메모리는 대화가 진행됨에 따라 자동으로 생성됩니다."
   },
   "modelSelect": {
     "selectModel": "모델 선택",
@@ -136,12 +148,11 @@
     "advanced": {
       "title": "고급 설정",
       "developerMode": "개발자 모드",
-      "enablePochiModels": "Pochi 모델 활성화",
       "clearStorage": "저장소 지우기",
       "resetReviewPlanTutorialCounter": "리뷰 계획 튜토리얼 카운터 재설정",
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요",
-      "hideRecommendSettings": "추천 설정 숨기기"
+      "resetRecommendSettings": "추천 설정 재설정"
     },
     "rules": {
       "title": "규칙",
@@ -227,6 +238,7 @@
   },
   "tasksPage": {
     "tasks": "작업",
+    "pinned": "고정됨",
     "filter": "작업 필터",
     "archivedTasks": "보관된 작업",
     "deletedWorktrees": "삭제된 워크트리",
@@ -271,6 +283,8 @@
     "loadMore": "더 보기",
     "archiveTask": "작업 보관",
     "unarchiveTask": "작업 보관 취소",
+    "pinTask": "작업 고정",
+    "unpinTask": "작업 고정 해제",
     "archiveOldTasks": "오래된 작업 보관",
     "archiveOldTasksTooltip": "1주일 이상 된 작업 보관",
     "showAnyTasks": "모든 작업 표시",
@@ -280,7 +294,6 @@
     "requiresApproval": "승인 대기 중",
     "taskCompleted": "작업 완료",
     "reading": "읽는 중 ",
-
     "writing": "쓰는 중 ",
     "continue": "계속",
     "cancel": "취소",
@@ -295,6 +308,11 @@
     "request": "요청",
     "response": "응답",
     "imgAlt": "MCP 도구 응답 스냅샷",
+    "renderWidget": "위젯 렌더링",
+    "widgetFrozen": "이 위젯은 이전 메시지의 것입니다. 최신 위젯만 계속 상호작용할 수 있습니다.",
+    "widgetInternalError": "위젯 설정 오류입니다.",
+    "widgetRuntimeError": "위젯 런타임 오류입니다.",
+    "fixWidget": "수정해 주세요",
     "applyingDiffTo": "다음에 차이점 적용 중: ",
     "applyingDiffsTo": "다음에 차이점들 적용 중: ",
     "addingReviewComment": "검토 중 ",
@@ -302,6 +320,7 @@
     "executeCommand": "다음 명령을 실행합니다",
     "executingCommand": "명령 실행 중",
     "for": "대상",
+    "matching": "매칭",
     "searching": "검색 중",
     "searchingFor": "검색 중:",
     "matchCount_one": "{{count}}개 일치",
@@ -529,5 +548,30 @@
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",
     "paused": "일시 중지됨"
+  },
+  "browserAgentSettings": {
+    "runtimeSection": "브라우저 런타임",
+    "localChromeSection": "로컬 Chrome",
+    "managedBrowserSection": "관리형 브라우저",
+    "browserMode": "브라우저 모드",
+    "browserModeHint": "관리형 브라우저는 격리된 브라우저 세션에서 실행됩니다. 로컬 Chrome은 사용자의 Chrome 프로필에 연결되어 기존 로그인과 브라우저 상태를 재사용할 수 있습니다.",
+    "managedBrowser": "관리형 브라우저",
+    "localChrome": "로컬 Chrome",
+    "chromePath": "Chrome 실행 파일 경로(선택 사항)",
+    "chromePathHint": "비워 두면 자동으로 감지합니다.",
+    "startParams": "사용자 지정 브라우저 인수(선택 사항)",
+    "startParamsHint": "브라우저 실행 파일에 전달할 인수를 공백으로 구분해 입력하세요.",
+    "viewportSize": "뷰포트 크기",
+    "viewportHint": "관리형 브라우저 세션의 브라우저 보기 크기를 제어합니다.",
+    "viewportSizes": {
+      "1280x720": "대형 데스크톱 (1280x720)",
+      "900x600": "소형 데스크톱 (900x600)",
+      "768x1024": "태블릿 (768x1024)",
+      "360x640": "모바일 (360x640)"
+    }
+  },
+  "builtInAgentsSettings": {
+    "title": "내장 에이전트",
+    "browser": "브라우저"
   }
 }

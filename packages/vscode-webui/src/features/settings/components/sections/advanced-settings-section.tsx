@@ -1,23 +1,11 @@
-import { Button } from "@/components/ui/button";
-import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
-import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
-import { vscodeHost } from "@/lib/vscode";
 import { useTranslation } from "react-i18next";
-import { useSettingsStore } from "../../store";
+import { useDevSettings } from "../../hooks/use-dev-settings";
 import { AccordionSection } from "../ui/accordion-section";
 import { SettingsCheckboxOption } from "../ui/settings-checkbox-option";
 
 export const AdvancedSettingsSection: React.FC = () => {
   const { t } = useTranslation();
-  const {
-    isDevMode,
-    updateIsDevMode,
-
-    enablePochiModels,
-    updateEnablePochiModels,
-  } = useSettingsStore();
-  const vscodeSettings = useVSCodeSettings();
-  const { resetCount } = useReviewPlanTutorialCounter();
+  const { isDevMode, setDevMode } = useDevSettings();
 
   return (
     <AccordionSection
@@ -31,54 +19,9 @@ export const AdvancedSettingsSection: React.FC = () => {
             label={t("settings.advanced.developerMode")}
             checked={isDevMode}
             onCheckedChange={(checked) => {
-              updateIsDevMode(!!checked);
+              setDevMode(!!checked);
             }}
           />
-        )}
-        {isDevMode && (
-          <>
-            <SettingsCheckboxOption
-              id="enable-pochi-models"
-              label={t("settings.advanced.enablePochiModels")}
-              checked={enablePochiModels}
-              onCheckedChange={(checked) => {
-                updateEnablePochiModels(!!checked);
-              }}
-            />
-            {vscodeSettings && (
-              <SettingsCheckboxOption
-                id="hide-recommend-settings"
-                label={t("settings.advanced.hideRecommendSettings")}
-                checked={vscodeSettings.hideRecommendSettings}
-                onCheckedChange={async (checked) => {
-                  await vscodeHost.updateVSCodeSettings({
-                    hideRecommendSettings: !!checked,
-                  });
-                }}
-              />
-            )}
-            <div>
-              <Button
-                variant="destructive"
-                onClick={async () => {
-                  const opfsRoot = await navigator.storage.getDirectory();
-                  if (
-                    "remove" in opfsRoot &&
-                    typeof opfsRoot.remove === "function"
-                  ) {
-                    await opfsRoot.remove();
-                  }
-                }}
-              >
-                {t("settings.advanced.clearStorage")}
-              </Button>
-            </div>
-            <div>
-              <Button variant="default" onClick={resetCount}>
-                {t("settings.advanced.resetReviewPlanTutorialCounter")}
-              </Button>
-            </div>
-          </>
         )}
       </div>
     </AccordionSection>

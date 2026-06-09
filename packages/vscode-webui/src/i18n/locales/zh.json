@@ -55,7 +55,7 @@
     "compactTask": "压缩任务",
     "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话",
     "defaultContextWindowWarning": "上下文窗口值是默认值，对于您的自定义模型可能不准确。为了精确的 token 管理，请根据您的模型提供商的文档在设置中进行调整。",
-    "tokensUsed": "已使用 {{used}} / {{total}} tokens • {{percentage}}%",
+    "tokensUsed": "已使用 {{used}} / {{total}} tokens",
     "system": "系统",
     "systemInstructions": "系统指令",
     "toolDefinitions": "工具定义",
@@ -63,9 +63,21 @@
     "messages": "消息",
     "files": "文件",
     "toolResults": "工具结果",
-    "taskMemory": "任务记忆",
+    "taskMemory": "任务",
+    "taskMemoryDescription": "当前任务的摘要。压缩本次对话时会被复用以保留关键上下文。",
     "viewTaskMemory": "查看任务记忆",
-    "viewTaskMemoryTooltip": "查看任务记忆，压缩任务时将使用此记忆。"
+    "viewTaskMemoryTooltip": "查看任务记忆，压缩任务时将使用此记忆。",
+    "compact": "压缩",
+    "memory": "记忆",
+    "projectMemory": "项目",
+    "projectMemoryEnable": "启用项目记忆",
+    "projectMemoryDisable": "停用项目记忆",
+    "projectMemoryDescription": "Pochi 会在工作过程中学习你的项目并自动保存到 MEMORY.md，后续任务将带着这些上下文启动。",
+    "viewProjectMemory": "查看",
+    "viewProjectMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
+    "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",
+    "projectMemoryUnavailable": "在此工作区运行任务后，项目记忆将可用。",
+    "taskMemoryUnavailable": "任务记忆将随着对话进行自动生成。"
   },
   "modelSelect": {
     "selectModel": "选择模型",
@@ -136,12 +148,11 @@
     "advanced": {
       "title": "高级设置",
       "developerMode": "开发者模式",
-      "enablePochiModels": "启用 Pochi 模型",
       "clearStorage": "清除存储",
       "resetReviewPlanTutorialCounter": "重置评审计划教程计数器",
       "language": "语言",
       "languageDescription": "选择您的首选语言",
-      "hideRecommendSettings": "隐藏推荐设置"
+      "resetRecommendSettings": "重置推荐设置"
     },
     "rules": {
       "title": "规则",
@@ -226,6 +237,7 @@
   },
   "tasksPage": {
     "tasks": "任务",
+    "pinned": "已置顶",
     "filter": "筛选任务",
     "archivedTasks": "已归档任务",
     "deletedWorktrees": "已删除的工作树",
@@ -270,6 +282,8 @@
     "loadMore": "加载更多",
     "archiveTask": "归档任务",
     "unarchiveTask": "取消归档任务",
+    "pinTask": "置顶任务",
+    "unpinTask": "取消置顶",
     "archiveOldTasks": "归档旧任务",
     "archiveOldTasksTooltip": "归档一周前的任务",
     "showAnyTasks": "显示所有任务",
@@ -294,6 +308,11 @@
     "request": "请求",
     "response": "响应",
     "imgAlt": "MCP工具响应快照",
+    "renderWidget": "渲染组件",
+    "widgetFrozen": "这个组件来自较早的消息。只有最新的组件仍可交互。",
+    "widgetInternalError": "组件配置错误。",
+    "widgetRuntimeError": "组件运行时错误。",
+    "fixWidget": "请修复",
     "applyingDiffTo": "正在应用差异到 ",
     "applyingDiffsTo": "正在应用差异到 ",
     "addingReviewComment": "正在审查 ",
@@ -301,6 +320,7 @@
     "executeCommand": "我将执行以下命令",
     "executingCommand": "正在执行命令",
     "for": "匹配",
+    "matching": "匹配",
     "searching": "搜索中",
     "searchingFor": "搜索：",
     "matchCount_one": "{{count}}个匹配",
@@ -533,5 +553,30 @@
     "noFrameAvailable": "无画面",
     "executing": "执行中...",
     "paused": "暂停"
+  },
+  "browserAgentSettings": {
+    "runtimeSection": "浏览器运行环境",
+    "localChromeSection": "本地 Chrome",
+    "managedBrowserSection": "托管浏览器",
+    "browserMode": "浏览器模式",
+    "browserModeHint": "托管浏览器会在隔离的浏览器会话中运行。本地 Chrome 会连接到你的 Chrome 个人资料，可复用已有登录状态和浏览器状态。",
+    "managedBrowser": "托管浏览器",
+    "localChrome": "本地 Chrome",
+    "chromePath": "Chrome 可执行文件路径（可选）",
+    "chromePathHint": "留空则自动检测。",
+    "startParams": "自定义浏览器参数（可选）",
+    "startParamsHint": "传递给浏览器可执行文件的参数，用空格分隔。",
+    "viewportSize": "视口尺寸",
+    "viewportHint": "控制托管浏览器会话的浏览器视图尺寸。",
+    "viewportSizes": {
+      "1280x720": "大桌面 (1280x720)",
+      "900x600": "小桌面 (900x600)",
+      "768x1024": "平板 (768x1024)",
+      "360x640": "手机 (360x640)"
+    }
+  },
+  "builtInAgentsSettings": {
+    "title": "内置代理",
+    "browser": "浏览器"
   }
 }

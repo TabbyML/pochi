@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.49.0-dev",
+  "version": "0.51.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -838,7 +838,7 @@
                 "properties": {
                   "enabled": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Enable local long-term memory for Pochi."
                   }
                 }
@@ -880,9 +880,9 @@
   },
   "private": true,
   "scripts": {
-    "copy:webui": "rm -rf ./assets/webview-ui/dist && bun ./scripts/copy-webui-dist.js",
+    "copy:assets": "bun ./scripts/copy-assets.js",
     "build:vscode": "bun build ./src/extension.ts --outdir ./dist --external vscode --format cjs --target node --minify",
-    "build": "npm-run-all --parallel build:vscode copy:webui",
+    "build": "npm-run-all --parallel build:vscode copy:assets",
     "vscode:prepublish": "bun turbo build",
     "vscode:package": "vsce package --no-dependencies --allow-missing-repository",
     "vscode:publish": "vsce publish --no-dependencies --allow-missing-repository --skip-duplicate",
@@ -893,7 +893,7 @@
     "publish-prerelease": "bun run vscode:publish-prerelease && bun run ovsx:publish-prerelease",
     "watch:webui": "cd ../vscode-webui && bun run start",
     "watch:vscode": "bun build ./src/extension.ts --outdir ./dist --external vscode --format cjs --target node --watch",
-    "watch": "npm-run-all --parallel watch:vscode watch:webui",
+    "watch": "bun run copy:assets && npm-run-all --parallel watch:vscode watch:webui",
     "start": "code --extensionDevelopmentPath=$PWD",
     "dev": "npm-run-all --parallel watch start",
     "tsc": "tsc --noEmit",

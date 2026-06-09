@@ -10,12 +10,14 @@ import type {
   TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { computed, signal } from "@preact/signals-core";
+import * as runExclusive from "run-exclusive";
 import { inject, injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
 
 type TaskStateData = {
   mcpConfigOverride?: McpConfigOverride;
   archived?: boolean;
+  pinned?: boolean;
   changedFiles?: TaskChangedFile[];
   contextWindowUsage?: ContextWindowUsage;
   taskMemoryState?: TaskMemoryState;
@@ -36,6 +38,9 @@ export class TaskDataStore {
   private readonly storageKey = "task-state";
 
   state = signal<Record<string, TaskStateData>>({});
+
+  /** Serializes saveTaskState writes to avoid last-write-wins races. */
+  private writeGroup = runExclusive.createGroupRef();
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -79,15 +84,27 @@ export class TaskDataStore {
     return this.state.value[taskId];
   }
 
-  private async saveTaskState(
-    taskId: string,
-    data: Omit<TaskStateData, "updatedAt">,
-  ): Promise<void> {
-    const taskData: TaskStateData = { ...data, updatedAt: Date.now() };
-    const newState = { ...this.state.value, [taskId]: taskData };
-    await this.context.globalState.update(this.storageKey, newState);
-    this.state.value = newState;
-  }
+  /**
+   * Merges `patch` into the task's state inside `writeGroup`. Pass only
+   * the fields to change; do not spread the previous state in.
+   */
+  private saveTaskState = runExclusive.build(
+    this.writeGroup,
+    async (
+      taskId: string,
+      patch: Partial<Omit<TaskStateData, "updatedAt">>,
+    ): Promise<void> => {
+      const current = this.state.value[taskId] ?? ({} as TaskStateData);
+      const merged: TaskStateData = {
+        ...current,
+        ...patch,
+        updatedAt: Date.now(),
+      };
+      const newState = { ...this.state.value, [taskId]: merged };
+      await this.context.globalState.update(this.storageKey, newState);
+      this.state.value = newState;
+    },
+  );
 
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {
     return this.getTaskState(taskId)?.mcpConfigOverride;
@@ -97,11 +114,10 @@ export class TaskDataStore {
     taskId: string,
     mcpConfigOverride: McpConfigOverride,
   ): Promise<McpConfigOverride> {
-    const existing = this.getTaskState(taskId) || {};
     logger.debug(
       `setMcpConfigOverride for task ${taskId}: ${JSON.stringify(mcpConfigOverride)}`,
     );
-    await this.saveTaskState(taskId, { ...existing, mcpConfigOverride });
+    await this.saveTaskState(taskId, { mcpConfigOverride });
     return mcpConfigOverride;
   }
 
@@ -144,6 +160,35 @@ export class TaskDataStore {
     });
   }
 
+  async setPinned(updates: Record<string, boolean>): Promise<void> {
+    const newState = { ...this.state.value };
+    const now = Date.now();
+    for (const [taskId, pinned] of Object.entries(updates)) {
+      const existing = newState[taskId] || { updatedAt: now };
+      newState[taskId] = { ...existing, pinned, updatedAt: now };
+    }
+    await this.context.globalState.update(this.storageKey, newState);
+    this.state.value = newState;
+  }
+
+  /**
+   * Get a computed signal for all tasks' pinned states.
+   *
+   * Returns a Record<taskId, pinned> for all tasks.
+   * Used for ThreadSignal serialization.
+   */
+  getPinnedSignal() {
+    return computed(() => {
+      const result: Record<string, boolean> = {};
+      for (const [taskId, taskData] of Object.entries(this.state.value)) {
+        if (taskData.pinned !== undefined) {
+          result[taskId] = taskData.pinned;
+        }
+      }
+      return result;
+    });
+  }
+
   getChangedFiles(taskId: string): TaskChangedFile[] {
     return this.getTaskState(taskId)?.changedFiles ?? [];
   }
@@ -152,11 +197,10 @@ export class TaskDataStore {
     taskId: string,
     changedFiles: TaskChangedFile[],
   ): Promise<void> {
-    const existing = this.getTaskState(taskId) || {};
     logger.debug(
       `setChangedFiles for task ${taskId}: ${changedFiles.length} files`,
     );
-    await this.saveTaskState(taskId, { ...existing, changedFiles });
+    await this.saveTaskState(taskId, { changedFiles });
   }
 
   /**
@@ -171,8 +215,7 @@ export class TaskDataStore {
     taskId: string,
     contextWindowUsage: ContextWindowUsage,
   ): Promise<void> {
-    const existing = this.getTaskState(taskId) || {};
-    await this.saveTaskState(taskId, { ...existing, contextWindowUsage });
+    await this.saveTaskState(taskId, { contextWindowUsage });
   }
 
   /**
@@ -191,8 +234,7 @@ export class TaskDataStore {
     taskId: string,
     taskMemoryState: TaskMemoryState,
   ): Promise<void> {
-    const existing = this.getTaskState(taskId) || {};
-    await this.saveTaskState(taskId, { ...existing, taskMemoryState });
+    await this.saveTaskState(taskId, { taskMemoryState });
   }
 
   getTaskMemoryStateSignal(taskId: string) {
@@ -207,8 +249,7 @@ export class TaskDataStore {
     taskId: string,
     autoMemoryState: AutoMemoryTaskState,
   ): Promise<void> {
-    const existing = this.getTaskState(taskId) || {};
-    await this.saveTaskState(taskId, { ...existing, autoMemoryState });
+    await this.saveTaskState(taskId, { autoMemoryState });
   }
 
   getAutoMemoryStateSignal(taskId: string) {
@@ -216,37 +257,17 @@ export class TaskDataStore {
   }
 
   getBackgroundTaskState(taskId: string): BackgroundTaskState | undefined {
-    const backgroundTaskState = this.getTaskState(taskId)?.backgroundTaskState;
-    logger.debug(
-      {
-        taskId,
-        hasBackgroundTaskState: backgroundTaskState !== undefined,
-        parentTaskId: backgroundTaskState?.parentTaskId,
-        tools: backgroundTaskState?.tools?.length,
-      },
-      "getBackgroundTaskState",
-    );
-    return backgroundTaskState;
+    return this.getTaskState(taskId)?.backgroundTaskState;
   }
 
   async setBackgroundTaskState(
     taskId: string,
     backgroundTaskState: BackgroundTaskState,
   ): Promise<void> {
-    const existing = this.getTaskState(taskId) || {};
-    logger.debug(
-      {
-        taskId,
-        parentTaskId: backgroundTaskState.parentTaskId,
-        tools: backgroundTaskState.tools?.length,
-      },
-      "setBackgroundTaskState",
-    );
-    await this.saveTaskState(taskId, { ...existing, backgroundTaskState });
+    await this.saveTaskState(taskId, { backgroundTaskState });
   }
 
   getBackgroundTaskStateSignal(taskId: string) {
-    logger.debug({ taskId }, "getBackgroundTaskStateSignal");
     return computed(() => this.state.value[taskId]?.backgroundTaskState);
   }
 }

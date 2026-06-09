@@ -1,9 +1,18 @@
 #!/bin/bash
 set -ex
 
-# we upload the released file to npm and run using node,
-# we use bun to utilize local dev,
-# so add this dispatcher if run bun locally
+copy_builtin_skills() {
+        local dest="$1"
+        rm -rf "$dest/skills"
+        cp -R ../common/src/base/skills "$dest/skills"
+}
+
+copy_builtin_agents() {
+        local dest="$1"
+        rm -rf "$dest/agents"
+        cp -R ../common/src/base/agents "$dest/agents"
+}
+
 build_js() {
         BUN_VERSION=$(bun --version)
         REQUIRED_VERSION="1.2.15"
@@ -21,16 +30,22 @@ build_js() {
                 --asset-naming="[name].[ext]" \
                 "$@"
 
-        # since we added bun shebang in cli.ts use bun to run pochi locally
-        # bun build will always add bun shebang for cli.js,
-        # so we have to replace it manually.
         sed -i.bak '1s|^.*$|#!/usr/bin/env node|' ./dist/cli.js
         rm -f ./dist/cli.js.bak
+
+        copy_builtin_skills ./dist
+        copy_builtin_agents ./dist
 }
 
 build_exe() {
-        bun build src/cli.ts --banner='import * as undici from "undici";' \
-                --asset-naming="[name].[ext]" \
+        local md_files
+        md_files=$(find ../common/src/base/skills ../common/src/base/agents \
+                -type f -name "*.md")
+
+        bun build src/cli.ts $md_files \
+                --banner='import * as undici from "undici";' \
+                --asset-naming="[dir]/[name].[ext]" \
+                --loader .md:file \
                 --external lightningcss \
                 --compile \
                 --outfile ./dist/pochi \

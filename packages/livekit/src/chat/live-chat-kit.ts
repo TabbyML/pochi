@@ -3,7 +3,7 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { getLogger, isForkAgentUseCase } from "@getpochi/common";
+import { getLogger, isForkAgentUseCase, prompts } from "@getpochi/common";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
@@ -24,6 +24,10 @@ import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 
 import type { LiveKitStore, Message, Task } from "../types";
+import {
+  MaxConsecutiveAutoCompactFailures,
+  shouldAutoCompact,
+} from "./auto-compact-policy";
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
@@ -150,6 +154,7 @@ export type LiveChatKitOptions<T> = {
 
   isSubTask?: boolean;
   requestUseCase?: PochiRequestUseCase;
+  disableAutoCompact?: boolean;
 
   store: LiveKitStore;
 
@@ -176,12 +181,9 @@ export type LiveChatKitOptions<T> = {
     },
   ) => void;
 
-  /**
-   * Called after a successful compaction (inline or explicit).
-   * Use this to clear caches (e.g. FileStateCache) that depend on
-   * conversation context that was discarded during compaction.
-   */
-  onCompact?: () => void | Promise<void>;
+  onCompactStart?: () => void;
+
+  onCompactFinish?: (success: boolean) => void | Promise<void>;
 
   /**
    * Returns recent file contents the model saw before compaction.
@@ -242,6 +244,7 @@ export class LiveChatKit<
   readonly compact: () => Promise<string>;
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private lastStepStartTimestamp: number | undefined;
+  private consecutiveAutoCompactFailures = 0;
 
   constructor({
     taskId,
@@ -250,16 +253,17 @@ export class LiveChatKit<
     blobStore,
     chatClass,
     onOverrideMessages,
-    onCompact,
     getters,
     isSubTask,
     requestUseCase,
+    disableAutoCompact,
     customAgent,
     outputSchema,
     attemptCompletionSchema,
     onStreamStart,
-
     onStreamFinish,
+    onCompactStart,
+    onCompactFinish,
     getRecentFilesForCompact,
     getTaskMemoryState,
     ...chatInit
@@ -308,11 +312,32 @@ export class LiveChatKit<
       // Mark status to make async behaivor blocked based on status (e.g isLoading )
       const { messages } = this.chat;
       const lastMessage = messages.at(-1);
-      if (
+      const isManualCompact =
         lastMessage?.role === "user" &&
         lastMessage.metadata?.kind === "user" &&
-        lastMessage.metadata.compact
-      ) {
+        lastMessage.metadata.compact === true;
+
+      const canAutoCompact =
+        !disableAutoCompact && !isForkAgentUseCase(requestUseCase);
+      const isAutoCompact =
+        canAutoCompact &&
+        !isManualCompact &&
+        this.consecutiveAutoCompactFailures <
+          MaxConsecutiveAutoCompactFailures &&
+        shouldAutoCompact({
+          messages,
+          llm: getters.getLLM(),
+          task: this.task,
+          estimatedTotalTokens: estimateCurrentMessagesTokens(messages),
+        });
+
+      if (isManualCompact || isAutoCompact) {
+        try {
+          onCompactStart?.();
+        } catch (notifyErr) {
+          logger.warn("onCompactStart callback threw", notifyErr);
+        }
+        let compactSucceeded = false;
         try {
           // Wait briefly so memory.md and boundary id are fresh.
           await settleTaskMemoryExtraction(
@@ -320,6 +345,13 @@ export class LiveChatKit<
             TaskMemorySettleTimeoutMs,
           );
           const model = createModel({ llm: getters.getLLM() });
+          if (isAutoCompact) {
+            logger.info(
+              `Auto-compact triggered (totalTokens=${
+                this.task?.totalTokens ?? 0
+              }).`,
+            );
+          }
           await compactTask({
             blobStore: this.blobStore,
             taskId: this.taskId,
@@ -333,11 +365,29 @@ export class LiveChatKit<
             abortSignal,
             inline: true,
             store: this.store,
+            useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
-          await onCompact?.();
+          if (isAutoCompact) {
+            this.consecutiveAutoCompactFailures = 0;
+          }
+          compactSucceeded = true;
         } catch (err) {
-          logger.error("Failed to compact task", err);
-          throw err;
+          if (isAutoCompact) {
+            this.consecutiveAutoCompactFailures += 1;
+            logger.warn(
+              `Auto-compact failed (${this.consecutiveAutoCompactFailures}/${MaxConsecutiveAutoCompactFailures}); request will proceed without compaction.`,
+              err,
+            );
+          } else {
+            logger.error("Failed to compact task", err);
+            throw err;
+          }
+        } finally {
+          try {
+            await onCompactFinish?.(compactSucceeded);
+          } catch (notifyErr) {
+            logger.warn("onCompactFinish callback threw", notifyErr);
+          }
         }
       }
       if (onOverrideMessages) {
@@ -358,29 +408,45 @@ export class LiveChatKit<
     };
 
     this.compact = async () => {
-      const { messages } = this.chat;
-      // Wait briefly so memory.md and boundary id are fresh.
-      await settleTaskMemoryExtraction(
-        getTaskMemoryState,
-        TaskMemorySettleTimeoutMs,
-      );
-      const model = createModel({ llm: getters.getLLM() });
-      const summary = await compactTask({
-        blobStore: this.blobStore,
-        taskId: this.taskId,
-        model,
-        messages,
-        recentFiles: await readRecentFilesForCompact(getRecentFilesForCompact),
-        taskMemoryBoundaryMessageId:
-          getTaskMemoryState?.()?.lastExtractionMessageId,
-        store: this.store,
-      });
-
-      if (!summary) {
-        throw new Error("Failed to compact task");
+      try {
+        onCompactStart?.();
+      } catch (notifyErr) {
+        logger.warn("onCompactStart callback threw", notifyErr);
       }
-      await onCompact?.();
-      return summary;
+      let compactSucceeded = false;
+      try {
+        const { messages } = this.chat;
+        // Wait briefly so memory.md and boundary id are fresh.
+        await settleTaskMemoryExtraction(
+          getTaskMemoryState,
+          TaskMemorySettleTimeoutMs,
+        );
+        const model = createModel({ llm: getters.getLLM() });
+        const summary = await compactTask({
+          blobStore: this.blobStore,
+          taskId: this.taskId,
+          model,
+          messages,
+          recentFiles: await readRecentFilesForCompact(
+            getRecentFilesForCompact,
+          ),
+          taskMemoryBoundaryMessageId:
+            getTaskMemoryState?.()?.lastExtractionMessageId,
+          store: this.store,
+        });
+
+        if (!summary) {
+          throw new Error("Failed to compact task");
+        }
+        compactSucceeded = true;
+        return summary;
+      } finally {
+        try {
+          await onCompactFinish?.(compactSucceeded);
+        } catch (notifyErr) {
+          logger.warn("onCompactFinish callback threw", notifyErr);
+        }
+      }
     };
 
     this.repairMermaid = async (chart: string, error: string) => {
@@ -600,6 +666,7 @@ export class LiveChatKit<
         filesTokens,
         toolResultsTokens,
         systemReminderTokens,
+        projectMemoryTokens,
       } = estimateTokenBreakdown(this.chat.messages);
       const systemTokens =
         (message.metadata.systemPromptTokens || 0) + systemReminderTokens;
@@ -610,7 +677,8 @@ export class LiveChatKit<
         toolsTokens +
         messagesTokens +
         filesTokens +
-        toolResultsTokens;
+        toolResultsTokens +
+        projectMemoryTokens;
       if (totalTokens > 0) {
         contextWindowUsage = {
           system: systemTokens,
@@ -618,6 +686,7 @@ export class LiveChatKit<
           messages: messagesTokens,
           files: filesTokens,
           toolResults: toolResultsTokens,
+          projectMemory: projectMemoryTokens,
         };
       }
     }
@@ -702,6 +771,7 @@ function estimateTokenBreakdown(messages: Message[]) {
   let filesTokens = 0;
   let toolResultsTokens = 0;
   let systemReminderTokens = 0;
+  let projectMemoryTokens = 0;
 
   for (const msg of messages) {
     for (const part of msg.parts) {
@@ -711,7 +781,14 @@ function estimateTokenBreakdown(messages: Message[]) {
           const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
           const reminders = contentStr.match(reminderRegex);
           if (reminders) {
-            systemReminderTokens += estimateTokens(reminders.join(""));
+            for (const reminder of reminders) {
+              const tokens = estimateTokens(reminder);
+              if (prompts.isAutoMemorySystemReminder(reminder)) {
+                projectMemoryTokens += tokens;
+              } else {
+                systemReminderTokens += tokens;
+              }
+            }
             contentStr = contentStr.replace(reminderRegex, "");
           }
         }
@@ -752,5 +829,24 @@ function estimateTokenBreakdown(messages: Message[]) {
     filesTokens,
     toolResultsTokens,
     systemReminderTokens,
+    projectMemoryTokens,
   };
+}
+
+function estimateCurrentMessagesTokens(messages: Message[]) {
+  const {
+    messagesTokens,
+    filesTokens,
+    toolResultsTokens,
+    systemReminderTokens,
+    projectMemoryTokens,
+  } = estimateTokenBreakdown(messages);
+
+  return (
+    messagesTokens +
+    filesTokens +
+    toolResultsTokens +
+    systemReminderTokens +
+    projectMemoryTokens
+  );
 }

@@ -2,8 +2,8 @@ import { container } from "tsyringe";
 import type * as vscode from "vscode";
 import { LayoutManager } from "./layout-manager";
 
-export function getViewColumnForTask() {
-  return container.resolve(LayoutManager).getViewColumnForTask();
+export function getViewColumnForPochiPanel() {
+  return container.resolve(LayoutManager).getViewColumnForPochiPanel();
 }
 
 export function getViewColumnForTerminal() {

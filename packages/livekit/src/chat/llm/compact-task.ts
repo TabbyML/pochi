@@ -1,6 +1,8 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import {
   type PochiProviderOptions,
+  type PochiRequestUseCase,
+  TaskMemoryFileUri,
   formatters,
   getLogger,
   prompts,
@@ -16,6 +18,7 @@ const logger = getLogger("compactTask");
 const PostCompactMaxFilesToRestore = 5;
 const PostCompactMaxCharsPerFile = 20_000;
 const PostCompactTotalCharBudget = 80_000;
+const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 
 export async function compactTask({
   blobStore,
@@ -27,6 +30,7 @@ export async function compactTask({
   abortSignal,
   inline,
   store,
+  useCase = "compact-task",
 }: {
   blobStore: BlobStore;
   taskId: string;
@@ -38,6 +42,7 @@ export async function compactTask({
   abortSignal?: AbortSignal;
   inline?: boolean;
   store?: LiveKitStore;
+  useCase?: Extract<PochiRequestUseCase, "compact-task" | "auto-compact-task">;
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
   if (!lastMessage) {
@@ -45,11 +50,17 @@ export async function compactTask({
   }
 
   try {
+    const inlineAttachIndex = inline
+      ? findInlineCompactAttachIndex(messages)
+      : undefined;
+
     // Prefer task memory if available
     let summaryText: string | undefined;
     let usedTaskMemory = false;
     if (store) {
-      const memoryFile = store.query(makeStoreFileQuery("/memory.md"));
+      const memoryFile = store.query(
+        makeStoreFileQuery(TaskMemoryStoreFilePath),
+      );
       if (memoryFile?.content?.trim()) {
         summaryText = memoryFile.content;
         usedTaskMemory = true;
@@ -58,12 +69,17 @@ export async function compactTask({
 
     // Fall back to LLM-generated summary
     if (!summaryText) {
+      const inputMessages =
+        inline && inlineAttachIndex !== undefined
+          ? messages.slice(0, inlineAttachIndex)
+          : messages.slice(0, -1);
       summaryText = await createSummary(
         blobStore,
         taskId,
         model,
         abortSignal,
-        messages.slice(0, -1),
+        inputMessages,
+        useCase,
       );
     }
 
@@ -71,34 +87,40 @@ export async function compactTask({
 
     if (inline) {
       // Preferred: attach at the boundary so trailing messages survive verbatim.
-      const attachIndex = usedTaskMemory
+      const memoryAttachIndex = usedTaskMemory
         ? findVerbatimAttachIndex(messages, taskMemoryBoundaryMessageId)
         : undefined;
-      const attachMessage =
-        attachIndex !== undefined ? messages[attachIndex] : undefined;
-      if (attachIndex !== undefined && attachMessage) {
+      const memoryAttachMessage =
+        memoryAttachIndex !== undefined
+          ? messages[memoryAttachIndex]
+          : undefined;
+      if (memoryAttachIndex !== undefined && memoryAttachMessage) {
         const text = prompts.inlineCompact(
           summaryText,
-          attachIndex,
+          memoryAttachIndex,
           recentFileContext,
           { verbatimTail: true },
         );
-        attachMessage.parts.unshift({ type: "text", text });
+        memoryAttachMessage.parts.unshift({ type: "text", text });
         logger.debug(
-          `Inline compact attached at index ${attachIndex}; preserving ${
-            messages.length - attachIndex
+          `Inline compact attached at index ${memoryAttachIndex}; preserving ${
+            messages.length - memoryAttachIndex
           } trailing messages verbatim.`,
         );
         return;
       }
 
-      // Fallback: attach at the trailing message; tail is dropped.
+      // Fallback: attach to the latest user message. If the task is between
+      // tool calls, preserve the assistant/tool-result tail verbatim.
+      const attachIndex = inlineAttachIndex ?? messages.length - 1;
+      const attachMessage = messages[attachIndex] ?? lastMessage;
       const text = prompts.inlineCompact(
         summaryText,
-        messages.length - 1,
+        attachIndex,
         recentFileContext,
+        attachIndex < messages.length - 1 ? { verbatimTail: true } : undefined,
       );
-      lastMessage.parts.unshift({ type: "text", text });
+      attachMessage.parts.unshift({ type: "text", text });
       return;
     }
 
@@ -112,6 +134,13 @@ export async function compactTask({
     logger.warn("Failed to create summary", err);
     throw err;
   }
+}
+
+export function findInlineCompactAttachIndex(
+  messages: Message[],
+): number | undefined {
+  const index = messages.findLastIndex((message) => message.role === "user");
+  return index === -1 ? undefined : index;
 }
 
 /**
@@ -152,6 +181,7 @@ async function createSummary(
   model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
+  useCase: Extract<PochiRequestUseCase, "compact-task" | "auto-compact-task">,
 ) {
   const messages: Message[] = [
     ...inputMessages,
@@ -172,7 +202,7 @@ async function createSummary(
       pochi: {
         taskId,
         client: globalThis.POCHI_CLIENT,
-        useCase: "compact-task",
+        useCase,
       } satisfies PochiProviderOptions,
     },
     model,
