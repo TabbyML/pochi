@@ -1,16 +1,19 @@
 import { expect, test } from "vitest";
-import { buildMemoryExtractionDirective } from "../task-memory";
+import {
+  TaskMemoryFileUri,
+  buildMemoryExtractionDirective,
+} from "../task-memory";
 
 test("task memory directive targets the task memory file URI", () => {
   const directive = buildMemoryExtractionDirective();
 
-  expect(directive).toContain("pochi://-/memory.md");
+  expect(directive).toContain(TaskMemoryFileUri);
 });
 
 test("task memory update directive targets the task memory file URI", () => {
   const directive = buildMemoryExtractionDirective("# Session Title\nExisting");
 
-  expect(directive).toContain("pochi://-/memory.md");
+  expect(directive).toContain(TaskMemoryFileUri);
 });
 
 test("task memory directive requires parallel tool calls in one response", () => {

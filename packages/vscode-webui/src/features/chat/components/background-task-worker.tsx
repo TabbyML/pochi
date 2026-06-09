@@ -11,7 +11,7 @@ import { blobStore } from "@/lib/remote-blob-store";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { type ForkAgentUseCase, getLogger } from "@getpochi/common";
+import { constants, type ForkAgentUseCase, getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
@@ -149,6 +149,7 @@ function BackgroundTaskWorkerInner({
     getters,
     isSubTask: false,
     requestUseCase,
+    disableAutoCompact: true,
     sendAutomaticallyWhen: (x) => {
       if (
         isAborted() ||
@@ -196,7 +197,7 @@ function BackgroundTaskWorkerInner({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: {
-            output: `Tool ${toolCall.toolName} is not allowed for this background task.`,
+            error: `Tool ${toolCall.toolName} is not allowed for this background task.`,
           },
         });
 
@@ -238,6 +239,7 @@ function BackgroundTaskWorkerInner({
     regenerate,
   } = useChat({
     chat: chatKit.chat,
+    experimental_throttle: constants.StreamingUpdateThrottleMs,
   });
 
   useEffect(() => {

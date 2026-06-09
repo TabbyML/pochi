@@ -1,7 +1,5 @@
 import { vscodeHost } from "@/lib/vscode";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
-import { isInteractiveToolPart } from "@getpochi/tools";
-import { isStaticToolUIPart } from "ai";
 import { unique } from "remeda";
 import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
 
@@ -19,7 +17,7 @@ export async function onOverrideMessages({
   messages: Message[];
   abortSignal: AbortSignal;
 }) {
-  writePendingRenderWidgetOutput(messages);
+  writeRenderWidgetOutput(messages);
 
   const checkpoints = messages
     .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
@@ -42,54 +40,46 @@ export async function onOverrideMessages({
   }
 }
 
-export function writePendingRenderWidgetOutput(messages: Message[]) {
-  const outputMessage = findRenderWidgetOutputMessage(messages);
-  if (!outputMessage) return;
-
+export function writeRenderWidgetOutput(messages: Message[]) {
   const store = useRenderWidgetStore.getState();
-  const outputPartIndex = findPendingRenderWidgetPartIndex(outputMessage);
-  if (outputPartIndex === undefined) return;
+  const message = getRenderWidgetOutputMessage(messages);
+  if (!message) return;
 
-  const part = outputMessage.parts[outputPartIndex];
-  if (!isStaticToolUIPart(part)) return;
+  message.parts = message.parts.map((part) => {
+    if (part.type !== "tool-renderWidget") return part;
+    if (part.state !== "input-available" && part.state !== "output-available") {
+      return part;
+    }
 
-  const state = store.getWidgetState(part.toolCallId) ?? {};
-  const output = { state };
-  const error = store.getWidgetError(part.toolCallId);
-  if (error !== undefined) {
-    // @ts-expect-error renderWidget output schema intentionally omits runtime errors.
-    output.error = error;
-  }
-  outputMessage.parts = outputMessage.parts.map((currentPart, index) =>
-    index === outputPartIndex
-      ? ({
-          ...part,
-          state: "output-available",
-          output,
-        } as Message["parts"][number])
-      : currentPart,
-  );
-  store.clearWidgetState(part.toolCallId);
+    const state =
+      store.getWidgetState(part.toolCallId) ??
+      getExistingRenderWidgetState(part.output) ??
+      {};
+    const output = { state };
+    const error = store.getWidgetError(part.toolCallId);
+    if (error !== undefined) {
+      // @ts-expect-error renderWidget output schema intentionally omits runtime errors.
+      output.error = error.message;
+    }
+    store.clearWidgetState(part.toolCallId);
+    return {
+      ...part,
+      state: "output-available",
+      output,
+    };
+  });
 }
 
-function findRenderWidgetOutputMessage(messages: Message[]) {
-  const lastMessage = messages.at(-1);
-  if (!lastMessage) return;
-  if (lastMessage.role === "assistant") return lastMessage;
-  if (lastMessage.role !== "user") return;
-
-  const previousMessage = messages.at(-2);
-  return previousMessage?.role === "assistant" ? previousMessage : undefined;
+function getRenderWidgetOutputMessage(messages: Message[]) {
+  if (messages.at(-1)?.role !== "user") return;
+  const message = messages.at(-2);
+  return message?.role === "assistant" ? message : undefined;
 }
 
-function findPendingRenderWidgetPartIndex(message: Message) {
-  for (let partIndex = message.parts.length - 1; partIndex >= 0; partIndex--) {
-    const part = message.parts[partIndex];
-    if (!isStaticToolUIPart(part)) continue;
-    if (!isInteractiveToolPart(part)) continue;
-    if (part.state !== "input-available") continue;
-    return partIndex;
-  }
+function getExistingRenderWidgetState(output: unknown) {
+  if (typeof output !== "object" || output === null) return undefined;
+  if (!Object.hasOwn(output, "state")) return undefined;
+  return (output as { state?: unknown }).state;
 }
 
 /**

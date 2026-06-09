@@ -2,17 +2,17 @@
 
 Use this module for local interactive explainers and clickable visuals.
 
-- All interactions are local unless the widget deliberately offers a model follow-up action through `window.pochi.sendMessage(prompt)`. Never call other host APIs or request network data.
+- All interactions are local. Never call host APIs or request network data.
 - Good controls: sliders, segmented buttons, toggles, node selection, hover highlights, step forward/back, reset, and local detail panels.
 - Start with useful static content, then enhance with script after streaming completes.
 - Bind events with `addEventListener` in a final script. Do not use inline `on*` attributes.
 - Put the complete interactive state in the top-level `<pochi-widget state='...'>` JSON attribute. Use `window.pochi.state` to read it and `window.pochi.setState(nextState)` after every meaningful interaction.
 - IMPORTANT: Render from `window.pochi.state`, not from separate closure variables. A selected color, active city, highlighted node id, slider value, or current step must be represented in state before the UI updates.
 - Use the Static DOM + `render()` mutates existing nodes pattern. Write the visible widget shell and controls directly in HTML so streaming preview remains useful before scripts run.
-- Use a small `render()` function that reads `const state = window.pochi.state` and updates existing nodes with `textContent`, `classList`, `style`, `value`, `checked`, `hidden`, and ARIA attributes. Do not use `innerHTML` for UI updates.
+- Use a small `render()` function that reads `const state = window.pochi.state` and updates existing nodes with `textContent`, `classList`, `style`, `value`, `checked`, `hidden`, and ARIA attributes. Do not use `innerHTML` or `insertAdjacentHTML` to update UI, generate lists, swap icons, or replace cards; predeclare the needed DOM nodes and mutate them instead.
 - Event handlers should compute `nextState`, call `window.pochi.setState(nextState)`, then call `render()` so the state update drives the visible UI.
 - For interactive diagrams, clicking a node should update a nearby detail panel and highlight related nodes or edges.
-- Follow-up message actions should be explicit buttons or menu items with short, model-authored prompts, for example `window.pochi.sendMessage("show the next 7 days weather for the selected city")`. If the click also changes state, call `window.pochi.setState(nextState)` first. Do not append JSON state to the prompt.
+- Keep buttons, menus, and node clicks local to the widget. They may update state and visible UI.
 
 Static DOM state-driven interaction pattern:
 
@@ -53,7 +53,6 @@ Static DOM state-driven interaction pattern:
       </div>
     </section>
 
-    <button type="button" data-followup>Show 7-day forecast</button>
   </section>
 </pochi-widget>
 <script>
@@ -66,7 +65,6 @@ Static DOM state-driven interaction pattern:
   const condition = widget.querySelector("[data-condition]");
   const details = widget.querySelector("[data-details]");
   const note = widget.querySelector("[data-note]");
-  const followup = widget.querySelector("[data-followup]");
 
   const weather = {
     "san-francisco": { label: "San Francisco", celsius: 18, condition: "Foggy", note: "Cool marine air with a soft west wind." },
@@ -123,10 +121,6 @@ Static DOM state-driven interaction pattern:
     const nextState = { ...window.pochi.state, showDetails: detailsToggle.checked };
     window.pochi.setState(nextState);
     render();
-  });
-
-  followup.addEventListener("click", () => {
-    window.pochi.sendMessage("show the next 7 days weather for the selected city");
   });
 
   render();

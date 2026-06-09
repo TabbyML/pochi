@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Message } from "../../types";
-import { findVerbatimAttachIndex } from "../llm/compact-task";
+import {
+  findInlineCompactAttachIndex,
+  findVerbatimAttachIndex,
+} from "../llm/compact-task";
 
 function userMsg(id: string, text = "hi"): Message {
   return {
@@ -126,5 +129,27 @@ describe("findVerbatimAttachIndex", () => {
     ];
     // previous compact at 2; boundary a2 (index 4) — no user msg between
     expect(findVerbatimAttachIndex(messages, "a2")).toBeUndefined();
+  });
+});
+
+describe("findInlineCompactAttachIndex", () => {
+  it("returns the latest user message when the tail is an assistant tool result", () => {
+    const messages = [
+      userMsg("u0"),
+      assistantMsg("a0"),
+      userMsg("u1"),
+      assistantMsg("a1"),
+    ];
+    expect(findInlineCompactAttachIndex(messages)).toBe(2);
+  });
+
+  it("returns the trailing index when the tail is already a user message", () => {
+    const messages = [userMsg("u0"), assistantMsg("a0"), userMsg("u1")];
+    expect(findInlineCompactAttachIndex(messages)).toBe(2);
+  });
+
+  it("returns undefined when no user message exists", () => {
+    const messages = [assistantMsg("a0"), assistantMsg("a1")];
+    expect(findInlineCompactAttachIndex(messages)).toBeUndefined();
   });
 });

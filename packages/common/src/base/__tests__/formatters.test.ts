@@ -80,6 +80,28 @@ describe('formatters', () => {
       expect(assistantMessages[0].parts).toHaveLength(4); // reasoning, text, tool1, tool2
     });
 
+    it('should remove empty reasoning parts with provider metadata', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'reasoning',
+              text: '',
+              providerMetadata: { openai: { itemId: 'rs_abc123' } },
+            },
+            createToolPart('webSearch', 'output-available', {}, { result: 'ok' }),
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(clone(messages));
+
+      expect(formatted[0].parts).toHaveLength(1);
+      expect(formatted[0].parts[0].type).toBe('tool-webSearch');
+    });
+
     it('should remove system reminder messages', () => {
       const formatted = formatters.ui(clone(baseMessages));
       expect(formatted.find((m) => m.id === 'user-2')).toBeUndefined();
@@ -133,6 +155,38 @@ describe('formatters', () => {
       // input must not be null - Anthropic API requires tool_use.input to be a non-null object
       expect(toolPart.input).not.toBeNull();
       expect(toolPart.input).toEqual({});
+    });
+
+    it('should resolve pending renderWidget parts with an empty widget state output', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'tool-renderWidget',
+              toolCallId: 'widget-1',
+              state: 'input-available',
+              input: {
+                title: 'Weather',
+                widgetCode: '<pochi-widget state="{}"></pochi-widget>',
+                guidelinesRead: true,
+              },
+            } as any,
+          ],
+        },
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'hello' }],
+        },
+      ];
+
+      const formatted = formatters.llm(messages);
+      const toolPart = formatted[0].parts[0] as any;
+
+      expect(toolPart.state).toBe('output-available');
+      expect(toolPart.output).toEqual({ state: {} });
     });
   });
 

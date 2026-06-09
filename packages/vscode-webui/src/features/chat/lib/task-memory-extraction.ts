@@ -1,6 +1,6 @@
 import type { ContextWindowUsage, TaskMemoryState } from "@getpochi/common";
-import { constants } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
+import { constants, TaskMemoryFileUri } from "@getpochi/common";
+import type { Message, Task } from "@getpochi/livekit";
 import { isCompletionToolPart } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 
@@ -15,6 +15,8 @@ export type ExtractionMetrics = {
   trailingMessageId: string | undefined;
   trailingMessageHasOpenToolCall: boolean;
 };
+
+export type TaskMemoryExtractionResult = "pending" | "succeeded" | "failed";
 
 export function getExtractionMetrics(data: ExtractionData): ExtractionMetrics {
   const last = data.messages.at(-1);
@@ -67,8 +69,6 @@ export function shouldExtractTaskMemory(
 ): boolean {
   if (state.isExtracting) return false;
 
-  if (metrics.trailingMessageHasOpenToolCall) return false;
-
   if (!state.initialized) {
     return metrics.tokens >= constants.TaskMemoryInitTokenThreshold;
   }
@@ -94,4 +94,33 @@ export function toExtractingState(
     lastExtractionToolCalls: metrics.toolCalls,
     pendingExtractionMessageId: metrics.trailingMessageId,
   };
+}
+
+export function getTaskMemoryExtractionResult(
+  task: Pick<Task, "status"> | null | undefined,
+  messages: Message[],
+): TaskMemoryExtractionResult {
+  for (const message of messages) {
+    for (const part of message.parts) {
+      if (
+        isStaticToolUIPart(part) &&
+        part.state === "output-available" &&
+        isTaskMemoryPath(part.input)
+      ) {
+        return "succeeded";
+      }
+    }
+  }
+
+  if (!task) return "pending";
+  if (task.status === "pending-model" || task.status === "pending-tool") {
+    return "pending";
+  }
+
+  return "failed";
+}
+
+function isTaskMemoryPath(input: unknown): boolean {
+  if (!input || typeof input !== "object" || !("path" in input)) return false;
+  return input.path === TaskMemoryFileUri;
 }

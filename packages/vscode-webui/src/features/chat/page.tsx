@@ -13,7 +13,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { formatters } from "@getpochi/common";
+import { constants, formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
@@ -24,7 +24,7 @@ import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useApprovalAndRetry } from "../approval";
+import { useApprovalAndRetry, useRenderWidgetError } from "../approval";
 import {
   useAutoApprove,
   useSelectedModels,
@@ -52,6 +52,7 @@ import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useTaskMemory } from "./hooks/use-task-memory";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
+import { getRenderWidgetErrorMessageKey } from "./lib/render-widget-error";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import {
   ChatContainerClassName,
@@ -236,6 +237,7 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const chat = useChat({
     chat: chatKit.chat,
+    experimental_throttle: constants.StreamingUpdateThrottleMs,
   });
 
   const { messages, sendMessage, status } = chat;
@@ -253,6 +255,9 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
+  const renderWidgetErrorKind = useRenderWidgetError({
+    messages,
+  });
 
   const { repairMermaid, repairingChart } = useRepairMermaid({
     repairMermaid: chatKit.repairMermaid,
@@ -318,12 +323,28 @@ function Chat({ user, uid, info }: ChatProps) {
     isLoading,
     pendingApprovalName: pendingApproval?.name,
   });
-  // Display errors with priority: 1. autoDismissError, 2. uploadImageError, 3. error pending retry approval
+  const showRenderWidgetFixButton =
+    !isLoading && !pendingApproval && !!renderWidgetErrorKind;
+  const pendingApprovalError =
+    pendingApproval?.name === "retry" ? pendingApproval.error : undefined;
+  const renderWidgetError =
+    showRenderWidgetFixButton && renderWidgetErrorKind
+      ? new Error(
+          t(
+            getRenderWidgetErrorMessageKey({
+              kind: renderWidgetErrorKind,
+            }),
+          ),
+        )
+      : undefined;
+
+  // Display errors with priority: 1. uploadImageError, 2. task error, 3. pending approval error, 4. widget error
   const displayError = isLoading
     ? undefined
     : attachmentUpload.error ||
       fromTaskError(task) ||
-      (pendingApproval?.name === "retry" ? pendingApproval.error : undefined);
+      pendingApprovalError ||
+      renderWidgetError;
   useHandleChatEvents({
     sendMessage:
       isLoading || isModelsLoading || !selectedModel ? undefined : sendMessage,
@@ -375,6 +396,7 @@ function Chat({ user, uid, info }: ChatProps) {
           isSubTask={isSubTask}
           subtask={subtask}
           displayError={displayError}
+          showRenderWidgetFixButton={showRenderWidgetFixButton}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
           taskId={uid}
           isRepairingMermaid={!!repairingChart}

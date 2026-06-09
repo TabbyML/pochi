@@ -29,7 +29,6 @@ describe("render widget renderer runtime", () => {
     installPochiWidgetStateRuntime({
       root,
       reportState,
-      reportSendMessage: vi.fn(),
       reportError: vi.fn(),
     });
 
@@ -46,7 +45,6 @@ describe("render widget renderer runtime", () => {
     installPochiWidgetStateRuntime({
       root,
       reportState,
-      reportSendMessage: vi.fn(),
       reportError: vi.fn(),
     });
 
@@ -64,7 +62,6 @@ describe("render widget renderer runtime", () => {
     installPochiWidgetStateRuntime({
       root,
       reportState,
-      reportSendMessage: vi.fn(),
       reportError,
     });
 
@@ -84,7 +81,6 @@ describe("render widget renderer runtime", () => {
     installPochiWidgetStateRuntime({
       root,
       reportState,
-      reportSendMessage: vi.fn(),
       reportError: vi.fn(),
     });
     window.pochi.setState({ hex: "#ffffff" });
@@ -95,24 +91,20 @@ describe("render widget renderer runtime", () => {
     expect(reportState).toHaveBeenLastCalledWith({ hex: "#ffffff" });
   });
 
-  it("sends messages without bundling widget state", () => {
+  it("does not expose widget-authored sendMessage", () => {
     const root = document.createElement("div");
     root.innerHTML = `<pochi-widget state='{"city":"beijing"}'></pochi-widget>`;
     document.body.appendChild(root);
-    const reportSendMessage = vi.fn();
 
     installPochiWidgetStateRuntime({
       root,
       reportState: vi.fn(),
-      reportSendMessage,
       reportError: vi.fn(),
     });
     window.pochi.setState({ city: "shanghai" });
-    window.pochi.sendMessage("show next 15 days weather");
 
-    expect(reportSendMessage).toHaveBeenCalledWith(
-      "show next 15 days weather",
-    );
+    expect("sendMessage" in window.pochi).toBe(false);
+    expect((window.pochi as { sendMessage?: unknown }).sendMessage).toBeUndefined();
   });
 
   it("keeps custom element state updates in sync with window.pochi.state", () => {
@@ -123,7 +115,6 @@ describe("render widget renderer runtime", () => {
     installPochiWidgetStateRuntime({
       root,
       reportState: vi.fn(),
-      reportSendMessage: vi.fn(),
       reportError: vi.fn(),
     });
     const widget = root.querySelector("pochi-widget") as HTMLElement & {
@@ -144,7 +135,6 @@ describe("render widget renderer runtime", () => {
     installPochiWidgetStateRuntime({
       root,
       reportState,
-      reportSendMessage: vi.fn(),
       reportError,
     });
     window.pochi.setState({ invalid: () => undefined });
@@ -164,7 +154,6 @@ describe("render widget renderer runtime", () => {
     installPochiWidgetStateRuntime({
       root,
       reportState: vi.fn(),
-      reportSendMessage: vi.fn(),
       reportError,
     });
 
