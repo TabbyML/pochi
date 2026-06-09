@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { getBaseName, isFolder } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { getFileBadgeDisplayLabel } from "./file-badge";
 import { FileIcon } from "./file-icon";
 
 export interface FileListMatch {
@@ -129,60 +130,68 @@ export const FileList: React.FC<{
     match: FileListMatch,
     index: number,
     renderedIndex: number,
-  ) => (
-    <div
-      key={match.file + (match.line ?? "") + index}
-      ref={renderedIndex === 0 ? rowRef : undefined}
-      className={`cursor-pointer truncate rounded py-0.5 ${activeIndex === index ? "bg-accent" : "hover:bg-accent/50"}`}
-      title={match.context}
-      onClick={() => {
-        setActiveIndex(index);
-        vscodeHost.openFile(match.file, {
-          start: match.line,
-          preserveFocus: true,
-        });
-      }}
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: <explanation>
-      tabIndex={0}
-    >
-      <span
-        className={`truncate px-1 font-semibold ${activeIndex === index ? "text-accent-foreground" : "text-foreground"}`}
+  ) => {
+    const baseName = getBaseName(match.file);
+    const displayPath = getFileListDisplayPath(match);
+    const shouldShowDisplayPath = !showBaseName || displayPath !== baseName;
+
+    return (
+      <div
+        key={match.file + (match.line ?? "") + index}
+        ref={renderedIndex === 0 ? rowRef : undefined}
+        className={`cursor-pointer truncate rounded py-0.5 ${activeIndex === index ? "bg-accent" : "hover:bg-accent/50"}`}
+        title={match.context}
+        onClick={() => {
+          setActiveIndex(index);
+          vscodeHost.openFile(match.file, {
+            start: match.line,
+            preserveFocus: true,
+          });
+        }}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: <explanation>
+        tabIndex={0}
       >
-        <FileIcon
-          path={match.file}
-          className="mr-1 ml-0.5 text-xl/4"
-          defaultIconClassName="ml-0 mr-0.5" // Default icon is larger than others
-          isDirectory={isFolder(match.file)}
-        />
-        {showBaseName && (
-          <>
-            {getBaseName(match.file)}
-            {match.line && (
-              <span
-                className={`truncate ${activeIndex === index ? "text-accent-foreground/70" : "text-foreground/70"}`}
-              >
-                :{match.line}
-              </span>
+        <span
+          className={`truncate px-1 font-semibold ${activeIndex === index ? "text-accent-foreground" : "text-foreground"}`}
+        >
+          <FileIcon
+            path={match.file}
+            className="mr-1 ml-0.5 text-xl/4"
+            defaultIconClassName="ml-0 mr-0.5" // Default icon is larger than others
+            isDirectory={isFolder(match.file)}
+          />
+          {showBaseName && (
+            <>
+              {baseName}
+              {match.line && (
+                <span
+                  className={`truncate ${activeIndex === index ? "text-accent-foreground/70" : "text-foreground/70"}`}
+                >
+                  :{match.line}
+                </span>
+              )}
+            </>
+          )}
+        </span>
+        {shouldShowDisplayPath && (
+          <span
+            title={match.file}
+            className={cn(
+              activeIndex === index
+                ? showBaseName
+                  ? "text-accent-foreground/70"
+                  : "text-accent-foreground"
+                : showBaseName
+                  ? "text-foreground/70"
+                  : "text-foreground",
             )}
-          </>
+          >
+            {displayPath}
+          </span>
         )}
-      </span>
-      <span
-        title={match.file}
-        className={cn(
-          activeIndex === index
-            ? showBaseName
-              ? "text-accent-foreground/70"
-              : "text-accent-foreground"
-            : showBaseName
-              ? "text-foreground/70"
-              : "text-foreground",
-        )}
-      >
-        {match.label ?? match.file}
-      </span>
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <ScrollArea
@@ -220,3 +229,11 @@ export const FileList: React.FC<{
     </ScrollArea>
   );
 };
+
+function getFileListDisplayPath(match: FileListMatch) {
+  if (match.label) {
+    return match.label;
+  }
+
+  return getFileBadgeDisplayLabel(match.file);
+}

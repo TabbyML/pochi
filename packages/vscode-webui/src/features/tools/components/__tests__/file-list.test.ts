@@ -58,6 +58,8 @@ describe("FileList", () => {
       line: index + 1,
       context: `file list row ${index}`,
     }));
+  const visibleText = (container: HTMLElement) =>
+    container.textContent?.replace(/\u200B/g, "") ?? "";
 
   it("keeps the pre-virtualization scroll area styling", () => {
     const { container } = render(
@@ -115,6 +117,77 @@ describe("FileList", () => {
       ]),
     );
     expect(rowClasses).not.toContain("h-6");
+  });
+
+  it("shows shortened display paths for built-in files", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/references/chart.md",
+            context: "built-in skill reference",
+          },
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/agents/guide/references/config-schema.md",
+            context: "built-in agent reference",
+          },
+        ],
+      }),
+    );
+
+    const [skillRow, agentRow] = Array.from(
+      container.querySelectorAll('[title^="built-in"]'),
+    );
+    expect(visibleText(skillRow as HTMLElement)).toBe(
+      "chart.mdpochi://skills/widget-guidelines/references/chart.md",
+    );
+    expect(visibleText(agentRow as HTMLElement)).toBe(
+      "config-schema.mdpochi://agents/guide/references/config-schema.md",
+    );
+  });
+
+  it("formats built-in file list paths from the original file path", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/SKILL.md",
+            context: "built-in skill file",
+          },
+          {
+            file: "/Users/meng/.vscode/extensions/tabbyml.pochi-0.51.0/assets/skills/widget-guidelines/references",
+            context: "built-in skill directory",
+          },
+        ],
+      }),
+    );
+
+    const [skillFileRow, referencesRow] = Array.from(
+      container.querySelectorAll('[title^="built-in"]'),
+    );
+    expect(visibleText(skillFileRow as HTMLElement)).toBe(
+      "SKILL.mdpochi://skills/widget-guidelines/SKILL.md",
+    );
+    expect(visibleText(referencesRow as HTMLElement)).toBe(
+      "referencespochi://skills/widget-guidelines/references",
+    );
+  });
+
+  it("omits display paths that match the visible basename", () => {
+    const { container } = render(
+      createElement(FileList, {
+        matches: [
+          {
+            file: "SKILL.md",
+            label: "SKILL.md",
+            context: "duplicate display path",
+          },
+        ],
+      }),
+    );
+
+    const row = container.querySelector('[title="duplicate display path"]');
+    expect(visibleText(row as HTMLElement)).toBe("SKILL.md");
   });
 
   it("renders lists at the virtualization threshold without a virtual height spacer", () => {

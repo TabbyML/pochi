@@ -1,3 +1,4 @@
+import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 import { FileList } from "./file-list";
@@ -30,7 +31,9 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
   const searchCondition = (
     <>
       <HighlightedText>{regex}</HighlightedText> {t("toolInvocation.in")}{" "}
-      <HighlightedText>{path}</HighlightedText>
+      <HighlightedText>
+        {path ? formatFilepathDisplay(path) : path}
+      </HighlightedText>
       {filePattern && (
         <>
           {" "}
@@ -61,3 +64,9 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
 
   return <ExpandableToolContainer title={title} expandableDetail={resultEl} />;
 };
+
+function formatFilepathDisplay(path: string) {
+  return formatPochiFileDisplayPath(path, {
+    homeDir: globalThis.POCHI_HOME_DIR,
+  });
+}
