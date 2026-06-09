@@ -10,6 +10,7 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
 }) => {
   const { path, startLine, endLine } = tool.input || {};
   const { t } = useTranslation();
+
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />

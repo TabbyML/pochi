@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import os from "node:os";
 import type { AuthEvents } from "@/lib/auth-events";
 import { asRelativePath } from "@/lib/fs";
 import { getNonce } from "@/lib/get-nonce";
@@ -153,6 +154,7 @@ export abstract class WebviewBase implements vscode.Disposable {
       window.POCHI_CORS_PROXY_URL_PREFIX = "${getCorsProxyUrlPrefix()}";
       window.POCHI_LOG = "${this.pochiConfiguration.advancedSettings.value.webviewLogLevel || ""}";
       window.POCHI_WEBVIEW_KIND = "${kind}";
+      window.POCHI_HOME_DIR = ${JSON.stringify(os.homedir())};
       ${panelInfoGlobal}
     </script>`;
 

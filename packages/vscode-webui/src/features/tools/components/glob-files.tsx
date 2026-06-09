@@ -1,3 +1,4 @@
+import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import { useTranslation } from "react-i18next";
 import { FileList } from "./file-list";
 import { HighlightedText } from "./highlight-text";
@@ -37,7 +38,10 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
 
   const searchCondition = (
     <>
-      {t("toolInvocation.in")} <HighlightedText>{path}</HighlightedText>
+      {t("toolInvocation.in")}{" "}
+      <HighlightedText>
+        {path ? formatFilepathDisplay(path) : path}
+      </HighlightedText>
       {globPattern && (
         <>
           {t("toolInvocation.for")}{" "}
@@ -69,3 +73,9 @@ export const globFilesTool: React.FC<ToolProps<"globFiles">> = ({
 
   return <ExpandableToolContainer title={title} expandableDetail={resultEl} />;
 };
+
+function formatFilepathDisplay(path: string) {
+  return formatPochiFileDisplayPath(path, {
+    homeDir: globalThis.POCHI_HOME_DIR,
+  });
+}
