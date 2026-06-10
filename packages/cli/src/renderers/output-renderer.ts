@@ -3,7 +3,7 @@ import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { Message, UITools } from "@getpochi/livekit";
-import { isAutoSuccessToolPart, isCompletionToolPart } from "@getpochi/tools";
+import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName, isStaticToolUIPart } from "ai";
 import chalk from "chalk";
 import {
@@ -536,7 +536,7 @@ function renderSubtaskMessages(messages: Message[]): string {
   let output = "";
   for (const x of messages) {
     for (const p of x.parts) {
-      if (isStaticToolUIPart(p) && !isCompletionToolPart(p)) {
+      if (isStaticToolUIPart(p) && !isUserInputToolPart(p)) {
         const { text } = renderToolPart(p);
         const lines = text.split("\n");
         for (const line of lines) {

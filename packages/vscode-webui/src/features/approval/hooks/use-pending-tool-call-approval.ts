@@ -1,5 +1,5 @@
 import type { Message, UITools } from "@getpochi/livekit";
-import { type ToolName, isCompletionToolPart } from "@getpochi/tools";
+import { type ToolName, isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName, isStaticToolUIPart } from "ai";
 import { useMemo } from "react";
 
@@ -32,7 +32,7 @@ export function usePendingToolCallApproval({
       if (
         isStaticToolUIPart(part) &&
         part.state === "input-available" &&
-        !isCompletionToolPart(part)
+        !isUserInputToolPart(part)
       ) {
         tools.push(part);
       }

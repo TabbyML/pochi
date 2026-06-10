@@ -1,7 +1,7 @@
 import type { ContextWindowUsage, TaskMemoryState } from "@getpochi/common";
 import { constants, TaskMemoryFileUri } from "@getpochi/common";
 import type { Message, Task } from "@getpochi/livekit";
-import { isCompletionToolPart } from "@getpochi/tools";
+import { isUserInputToolPart } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 
 export type ExtractionData = {
@@ -58,7 +58,7 @@ export function lastMessageHasOpenToolCall(messages: Message[]): boolean {
   const last = messages.at(-1);
   if (!last || last.role !== "assistant") return false;
   return last.parts.some((part) => {
-    if (!isStaticToolUIPart(part) || isCompletionToolPart(part)) return false;
+    if (!isStaticToolUIPart(part) || isUserInputToolPart(part)) return false;
     return part.state !== "output-available" && part.state !== "output-error";
   });
 }

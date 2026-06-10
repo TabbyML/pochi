@@ -1,4 +1,4 @@
-import { isAutoSuccessToolPart, isCompletionToolPart } from "@getpochi/tools";
+import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
 import {
   type ToolUIPart,
   type UIMessage,
@@ -380,7 +380,7 @@ function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
   const resolveLastMessage =
     lastMessage &&
     lastMessage.role === "assistant" &&
-    lastMessage.parts.some((x) => isCompletionToolPart(x));
+    lastMessage.parts.some((x) => isUserInputToolPart(x));
 
   return resolvePendingToolCalls(messages, resolveLastMessage);
 }

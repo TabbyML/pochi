@@ -30,7 +30,7 @@ import {
   type Skill,
   type Todo,
   compileToolPolicies,
-  isCompletionToolPart,
+  isUserInputToolPart,
   validateToolPolicy,
 } from "@getpochi/tools";
 import {
@@ -754,7 +754,7 @@ ${asyncResults}`;
 function isResultMessage(message: Message): boolean {
   return (
     message.role === "assistant" &&
-    (message.parts?.some(isCompletionToolPart) ?? false)
+    (message.parts?.some(isUserInputToolPart) ?? false)
   );
 }
 
