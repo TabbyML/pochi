@@ -94,9 +94,7 @@ export function isUserInputToolName(name: string): boolean {
   );
 }
 
-export function isUserInputToolPart(
-  part: UIMessagePart<UIDataTypes, UITools>,
-) {
+export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   if (!isStaticToolUIPart(part)) return false;
   return isUserInputToolName(getStaticToolName(part));
 }
