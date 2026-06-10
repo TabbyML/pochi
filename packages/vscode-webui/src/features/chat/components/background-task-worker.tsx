@@ -19,7 +19,7 @@ import {
   type ToolSpecInput,
   compileToolPolicies,
   getAllowedToolNames,
-  isCompletionToolName,
+  isUserInputToolName,
 } from "@getpochi/tools";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -176,7 +176,7 @@ function BackgroundTaskWorkerInner({
     onToolCall: ({ toolCall }) => {
       if (completedRef.current) return;
 
-      if (isCompletionToolName(toolCall.toolName)) {
+      if (isUserInputToolName(toolCall.toolName)) {
         terminalToolSeenRef.current = true;
         return;
       }

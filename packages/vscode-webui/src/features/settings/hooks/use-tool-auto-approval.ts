@@ -5,7 +5,7 @@ import type { Message } from "@getpochi/livekit";
 import {
   type ToolName,
   ToolsByPermission,
-  isCompletionToolPart,
+  isUserInputToolPart,
 } from "@getpochi/tools";
 import {
   type ToolUIPart,
@@ -46,7 +46,7 @@ export const getPendingToolcallApproval = (
     if (
       isStaticToolUIPart(part) &&
       part.state === "input-available" &&
-      !isCompletionToolPart(part)
+      !isUserInputToolPart(part)
     ) {
       tools.push(part);
     }
