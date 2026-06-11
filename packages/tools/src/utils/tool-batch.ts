@@ -5,6 +5,17 @@ export type BatchedToolCallCancelReason =
   | "user-abort"
   | "previous-tool-call-failed";
 
+export function getToolCallCancelErrorMessage(
+  reason: BatchedToolCallCancelReason,
+): string {
+  switch (reason) {
+    case "user-abort":
+      return "User aborted the tool call";
+    case "previous-tool-call-failed":
+      return "Tool call was cancelled because a previous tool call failed.";
+  }
+}
+
 export type BatchedToolCallResult =
   | {
       kind: "success";

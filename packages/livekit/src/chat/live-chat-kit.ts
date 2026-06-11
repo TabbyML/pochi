@@ -643,7 +643,7 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    // Fork-agent background tasks emit `writeToFile + attemptCompletion`
+    // Background tasks started from fork agents emit `writeToFile + attemptCompletion`
     // as parallel tool calls; stripping `attemptCompletion` would lock the
     // task at `pending-tool` forever, so skip the filter for them.
     const message = isForkAgentUseCase(this.requestUseCase)

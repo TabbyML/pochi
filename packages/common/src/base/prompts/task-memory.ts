@@ -34,7 +34,7 @@ export const TaskMemoryFileUri = "pochi://-/memory.md";
 
 /**
  * Build the extraction directive that the fork agent receives.
- * This is appended to the parent conversation history via buildForkMessages.
+ * This is appended to the cloned parent conversation as the fork request.
  */
 export function buildMemoryExtractionDirective(
   existingMemory?: string,

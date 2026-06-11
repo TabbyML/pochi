@@ -1,31 +1,20 @@
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { vscodeHost } from "@/lib/vscode";
-import { TaskMemoryFileUri, getLogger, prompts } from "@getpochi/common";
-import { type Message, catalog } from "@getpochi/livekit";
-import type { ToolSpecInput } from "@getpochi/tools";
-import { useCallback, useEffect } from "react";
+import { type ContextWindowUsage, getLogger } from "@getpochi/common";
+import type { StartForkAgent } from "@getpochi/common/fork-agent";
 import {
-  buildForkAgentInitTitle,
-  createForkAgent,
-} from "../lib/create-fork-agent";
-import {
-  type ExtractionData,
+  TaskMemoryStoreFilePath,
   getExtractionMetrics,
-  getTaskMemoryExtractionResult,
+  resolveTaskMemoryExtractionState,
   shouldExtractTaskMemory,
-  toExtractingState,
-} from "../lib/task-memory-extraction";
+  startTaskMemoryExtraction,
+} from "@getpochi/common/task-memory";
+import { type Message, catalog } from "@getpochi/livekit";
+import { useCallback, useEffect } from "react";
+import { createBackgroundTaskFromForkAgent } from "../lib/create-background-task-from-fork-agent";
 
 const logger = getLogger("useTaskMemory");
 
-/** Tools the extraction fork agent may call. */
-const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
-  "readFile",
-  `writeToFile(${TaskMemoryFileUri})`,
-];
-
-const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 const IdleTaskId = "__task_memory_idle__";
 
 export function useTaskMemory({
@@ -40,7 +29,7 @@ export function useTaskMemory({
   const store = useDefaultStore();
   const { taskMemoryState, setTaskMemoryState } = useTaskMemoryState(taskId);
 
-  // Watch the active fork-agent task for completion.
+  // Watch the active extraction background task for completion.
   const activeTaskId = taskMemoryState.activeTaskId;
   const activeTask = store.useQuery(
     catalog.queries.makeTaskQuery(activeTaskId ?? IdleTaskId),
@@ -58,27 +47,12 @@ export function useTaskMemory({
     )
       return;
 
-    const extractionResult = getTaskMemoryExtractionResult(
+    const nextState = resolveTaskMemoryExtractionState({
+      state: taskMemoryState,
       activeTask,
-      activeMessageRows.map((row) => row.data as Message),
-    );
-    if (extractionResult === "pending") return;
-
-    // Extraction finished — on success, promote the pending boundary id.
-    const succeeded = extractionResult === "succeeded";
-    setTaskMemoryState({
-      ...taskMemoryState,
-      isExtracting: false,
-      extractionCount: succeeded
-        ? taskMemoryState.extractionCount + 1
-        : taskMemoryState.extractionCount,
-      lastExtractionMessageId: succeeded
-        ? (taskMemoryState.pendingExtractionMessageId ??
-          taskMemoryState.lastExtractionMessageId)
-        : taskMemoryState.lastExtractionMessageId,
-      pendingExtractionMessageId: undefined,
-      activeTaskId: undefined,
+      activeMessages: activeMessageRows.map((row) => row.data as Message),
     });
+    if (nextState) setTaskMemoryState(nextState);
   }, [
     activeTaskId,
     activeTask,
@@ -89,7 +63,10 @@ export function useTaskMemory({
   ]);
 
   const tryExtractTaskMemory = useCallback(
-    (data: ExtractionData) => {
+    (data: {
+      messages: Message[];
+      contextWindowUsage?: ContextWindowUsage;
+    }) => {
       logger.debug("Attempting to extract task memory...");
       if (isSubTask || !setTaskMemoryState) return false;
 
@@ -101,61 +78,38 @@ export function useTaskMemory({
         return false;
       }
 
-      const nextState = toExtractingState(taskMemoryState, metrics);
-
       logger.debug(
-        "Task memory extraction will proceed with next state:",
-        nextState,
+        "Task memory extraction will proceed with metrics:",
+        metrics,
       );
-      setTaskMemoryState(nextState);
-
+      const parentTask = store.query(catalog.queries.makeTaskQuery(taskId));
       const memoryFile = store.query(
         catalog.queries.makeStoreFileQuery(TaskMemoryStoreFilePath),
       );
-      const existingMemory = memoryFile?.content ?? undefined;
+      const startTaskMemoryForkAgent: StartForkAgent<Message> = (agent) =>
+        createBackgroundTaskFromForkAgent({
+          store,
+          agent,
+        });
 
-      logger.debug("Existing task memory content:", existingMemory);
-
-      const parentTask = store.query(catalog.queries.makeTaskQuery(taskId));
-      const initTitle = buildForkAgentInitTitle(
-        "task-memory",
-        parentTask?.title ?? undefined,
-      );
-
-      void createForkAgent({
-        store,
-        label: "task-memory",
-        initTitle,
+      void startTaskMemoryExtraction({
+        state: taskMemoryState,
+        metrics,
+        setTaskMemoryState,
+        startForkAgent: startTaskMemoryForkAgent,
         parentTaskId: taskId,
         parentMessages: data.messages,
         parentCwd,
-        directive: prompts.taskMemory.buildExtractionDirective(existingMemory),
-        tools: TaskMemoryAllowedTools,
-        setBackgroundTaskState: async (backgroundTaskId, state) => {
-          const result =
-            await vscodeHost.readBackgroundTaskState(backgroundTaskId);
-          await result.setBackgroundTaskState(state);
-        },
+        parentTaskTitle: parentTask?.title ?? undefined,
+        existingMemory: memoryFile?.content ?? undefined,
       })
         .then((config) => {
           logger.debug(
-            "Task memory extraction fork agent created with config:",
+            "Task memory extraction background task started with handle:",
             config,
           );
-          // BackgroundTaskRunner picks up the taskInited commit on the next render.
-          setTaskMemoryState({
-            ...nextState,
-            activeTaskId: config.taskId,
-          });
         })
-        .catch(() => {
-          setTaskMemoryState({
-            ...nextState,
-            isExtracting: false,
-            activeTaskId: undefined,
-            pendingExtractionMessageId: undefined,
-          });
-        });
+        .catch(() => {});
 
       return true;
     },

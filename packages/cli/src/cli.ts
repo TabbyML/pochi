@@ -26,6 +26,7 @@ import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
 import { constants, getLogger } from "@getpochi/common";
+import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   pochiConfig,
@@ -43,6 +44,11 @@ import type { LLMRequestData, Message } from "@getpochi/livekit";
 import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
+import {
+  createAutoMemoryCoordinator,
+  createBackgroundTaskRunner,
+  createTaskMemoryCoordinator,
+} from "./background-task-runner";
 import { handleShellCompletion } from "./completion";
 import { setFfmpegPath } from "./lib/ffmpeg-mjpeg-to-mp4";
 import {
@@ -316,6 +322,29 @@ const program = new Command()
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
+    const isSubTask = selectedAgent !== undefined;
+    const autoMemoryManager = new AutoMemoryManager();
+    const pendingMemoryUpdates = new Set<Promise<unknown>>();
+    let taskMemoryCoordinator:
+      | ReturnType<typeof createTaskMemoryCoordinator>
+      | undefined;
+    let autoMemoryCoordinator:
+      | ReturnType<typeof createAutoMemoryCoordinator>
+      | undefined;
+    const trackMemoryUpdate = (promise: Promise<unknown>) => {
+      const tracked = promise
+        .catch((error) => {
+          logger.warn("CLI memory update failed", error);
+        })
+        .finally(() => {
+          pendingMemoryUpdates.delete(tracked);
+        });
+      pendingMemoryUpdates.add(tracked);
+    };
+    const waitForMemoryUpdates = async () => {
+      if (pendingMemoryUpdates.size === 0) return;
+      await Promise.allSettled([...pendingMemoryUpdates]);
+    };
 
     const runner = new TaskRunner({
       uid,
@@ -334,7 +363,7 @@ const program = new Command()
       skills,
       mcpHub,
       abortSignal: abortController.signal,
-      isSubTask: selectedAgent !== undefined,
+      isSubTask,
       customAgent: selectedAgent,
       outputSchema: options.experimentalOutputSchema
         ? parseOutputSchema(options.experimentalOutputSchema)
@@ -346,10 +375,48 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
+      onStreamFinish(data) {
+        if (!taskMemoryCoordinator || !autoMemoryCoordinator) return;
+        trackMemoryUpdate(
+          Promise.all([
+            taskMemoryCoordinator.update(data),
+            autoMemoryCoordinator.update(data),
+          ]),
+        );
+      },
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
+    });
+    const backgroundTaskRunner = createBackgroundTaskRunner({
+      store,
+      blobStore,
+      llm,
+      cwd: process.cwd(),
+      rg,
+      filesystem,
+      customAgents,
+      skills,
+      mcpHub,
+      parentTaskId: uid,
+      parentFileStateCache: runner.getFileStateCache(),
+      autoMemoryManager,
+    });
+    taskMemoryCoordinator = createTaskMemoryCoordinator({
+      store,
+      stateStore: backgroundTaskRunner.stateStore,
+      parentTaskId: uid,
+      parentCwd: process.cwd(),
+      isSubTask,
+    });
+    autoMemoryCoordinator = createAutoMemoryCoordinator({
+      store,
+      stateStore: backgroundTaskRunner.stateStore,
+      parentTaskId: uid,
+      parentCwd: process.cwd(),
+      isSubTask,
+      manager: autoMemoryManager,
     });
 
     let streamRenderer: StreamRenderer | undefined = undefined;
@@ -382,7 +449,16 @@ const program = new Command()
     let runtimeError: Error | undefined = undefined;
     try {
       logger.debug("Starting task runner...");
+      backgroundTaskRunner.runner.start();
       await runner.run();
+      await waitForMemoryUpdates();
+      await backgroundTaskRunner.drain();
+      taskMemoryCoordinator.settle();
+      while (await autoMemoryCoordinator.settleAndMaybeContinue()) {
+        await backgroundTaskRunner.drain();
+        taskMemoryCoordinator.settle();
+      }
+      taskMemoryCoordinator.settle();
       logger.debug("Task runner finished successfully.");
     } catch (error) {
       runtimeError = error instanceof Error ? error : new Error(String(error));
@@ -390,6 +466,7 @@ const program = new Command()
     } finally {
       logger.debug("Shutting down...");
       // Cleanup resources
+      await backgroundTaskRunner.stop();
       outputRenderer.shutdown();
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {

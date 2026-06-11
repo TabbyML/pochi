@@ -36,7 +36,7 @@ export const runnableTasks$ = queryDb(
       background: true,
       status: {
         op: "IN",
-        value: ["pending-model", "pending-tool"],
+        value: ["pending-model", "pending-tool", "completed"],
       },
     }),
   {
