@@ -1,4 +1,4 @@
-import { TaskMemoryFileUri, type TaskMemoryState } from "@getpochi/common";
+import { TaskMemoryFileUri, type TaskMemoryState } from "../../base";
 import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
 import {

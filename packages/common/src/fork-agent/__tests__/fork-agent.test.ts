@@ -1,7 +1,7 @@
 import {
   buildForkAgentInitTitle,
   createForkAgent,
-} from "@getpochi/common/fork-agent";
+} from "../index";
 import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
 

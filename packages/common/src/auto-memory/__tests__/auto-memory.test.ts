@@ -1,5 +1,4 @@
-import type { AutoMemoryTaskState } from "@getpochi/common";
-import type { AutoMemoryContext } from "@getpochi/common";
+import type { AutoMemoryContext, AutoMemoryTaskState } from "../../base";
 import type { UIMessage } from "ai";
 import {
   didConversationWriteMemory,
