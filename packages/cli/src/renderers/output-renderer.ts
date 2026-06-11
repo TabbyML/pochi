@@ -342,14 +342,6 @@ export function renderToolPart(
     };
   }
 
-  if (part.type === "tool-todoWrite") {
-    const { todos = [] } = part.input || {};
-    return {
-      text: `📋 Updating todo list (${todos.length} items)`,
-      stop: hasError ? "fail" : "succeed",
-      error: errorText,
-    };
-  }
   // Command execution
   if (part.type === "tool-executeCommand") {
     const { command = "" } = part.input || {};
@@ -374,7 +366,7 @@ export function renderToolPart(
     if (attemptCompletionSchemaOverride) {
       content = JSON.stringify(input.result, null, 2);
     } else {
-      content = input.result;
+      content = input.result as string;
     }
     const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${content}`;
 

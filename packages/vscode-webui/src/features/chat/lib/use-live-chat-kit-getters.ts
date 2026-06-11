@@ -18,6 +18,7 @@ import { displayModelToLLM } from "./display-model-to-llm";
 
 export function useLiveChatKitGetters({
   todos,
+  todoModeActive,
   isSubTask,
   omitCustomRules,
   modelOverride,
@@ -25,6 +26,7 @@ export function useLiveChatKitGetters({
   taskId,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
+  todoModeActive?: React.RefObject<boolean>;
   isSubTask: boolean;
   omitCustomRules?: boolean;
   modelOverride?: DisplayModel;
@@ -55,10 +57,10 @@ export function useLiveChatKitGetters({
     });
 
     return {
-      todos: todos.current,
       ...environment,
+      todos: isSubTask ? undefined : todos.current,
     } satisfies Environment;
-  }, [todos, omitCustomRules, taskId]);
+  }, [todos, isSubTask, omitCustomRules, taskId]);
 
   // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
   // the cached system+tools prefix. New memory shows on next mount.
@@ -85,6 +87,11 @@ export function useLiveChatKitGetters({
     getEnvironment,
 
     getAutoMemory,
+
+    isTodoModeActive: useCallback(
+      () => todoModeActive?.current === true,
+      [todoModeActive],
+    ),
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
     getMcpInfo: useCallback(() => {

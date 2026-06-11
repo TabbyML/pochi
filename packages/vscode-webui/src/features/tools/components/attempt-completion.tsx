@@ -1,4 +1,4 @@
-import { MessageMarkdown } from "@/components/message";
+import { CodeBlock, MessageMarkdown } from "@/components/message";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -13,6 +13,7 @@ import { isStaticToolUIPart } from "ai";
 import { Check, Footprints, GitPullRequest } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { getAttemptCompletionResultDisplay } from "./tool-result-display";
 import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
@@ -20,6 +21,7 @@ export const AttemptCompletionTool: React.FC<
 > = ({ tool: toolCall, messages, isSubTask }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
+  const resultContent = getAttemptCompletionResultDisplay(result);
   const sendMessage = useSendMessage();
 
   const { data: currentWorkspace } = useCurrentWorkspace();
@@ -48,7 +50,7 @@ export const AttemptCompletionTool: React.FC<
   }, [messages, toolCall.toolCallId]);
 
   // Return null if there's nothing to display
-  if (!result) {
+  if (!resultContent.content) {
     return null;
   }
 
@@ -102,7 +104,11 @@ export const AttemptCompletionTool: React.FC<
           </div>
         )}
       </div>
-      <MessageMarkdown>{result}</MessageMarkdown>
+      {resultContent.type === "json" ? (
+        <CodeBlock language="json" value={resultContent.content} />
+      ) : (
+        <MessageMarkdown>{resultContent.content}</MessageMarkdown>
+      )}
     </div>
   );
 };

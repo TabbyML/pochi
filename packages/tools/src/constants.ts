@@ -55,7 +55,7 @@ export const EditFileOutputSchema = z.object({
 });
 
 export const NoOtherToolsReminderPrompt =
-  "IMPORTANT: This tool CANNOT be used in combination with other tools (except todoWrite) in a single step. If you need to use other tools, you must do so in a separate step before calling this tool.";
+  "IMPORTANT: This tool CANNOT be used in combination with other tools in a single step. If you need to use other tools, you must do so in a separate step before calling this tool.";
 
 /**
  * Permission-grouped tool name lists.
@@ -82,7 +82,7 @@ export const ToolsByPermission = {
     "killBackgroundJob",
     "newTask",
   ] as string[],
-  default: ["todoWrite", "renderWidget"] as string[],
+  default: ["renderWidget"] as string[],
 };
 
 export const MaxToolCallConcurrency = 20;

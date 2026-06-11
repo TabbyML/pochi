@@ -262,6 +262,138 @@ function removeToolCallResultTransientData(messages: UIMessage[]): UIMessage[] {
   });
 }
 
+function replaceAttemptTodoCompletionForLLM(
+  messages: UIMessage[],
+): UIMessage[] {
+  return messages.map((message) => {
+    if (message.role !== "assistant") return message;
+
+    const parts = message.parts.map((part) => {
+      if (!isAttemptTodoCompletionNewTaskPart(part)) return part;
+
+      const attemptCompletion = getSavedAttemptCompletion(part);
+      const callProviderMetadata =
+        getCallProviderMetadataWithThoughtSignature(part);
+      const replacementPart = {
+        type: "tool-attemptCompletion",
+        toolCallId: attemptCompletion?.toolCallId ?? part.toolCallId,
+        input: attemptCompletion?.input ?? {},
+        ...(callProviderMetadata ? { callProviderMetadata } : {}),
+      };
+
+      if (part.state === "output-available") {
+        return {
+          ...replacementPart,
+          state: "output-available",
+          output: getReplacementAttemptCompletionOutput(part),
+        } as UIMessage["parts"][number];
+      }
+
+      return {
+        ...replacementPart,
+        state: "input-available",
+      } as UIMessage["parts"][number];
+    });
+
+    return {
+      ...message,
+      parts,
+    };
+  });
+}
+
+function isAttemptTodoCompletionNewTaskPart(
+  part: UIMessage["parts"][number],
+): part is ToolUIPart & {
+  input: {
+    agentType?: unknown;
+  };
+} {
+  return (
+    isStaticToolUIPart(part) &&
+    getStaticToolName(part) === "newTask" &&
+    typeof part.input === "object" &&
+    part.input !== null &&
+    "agentType" in part.input &&
+    part.input.agentType === "attemptTodoCompletion"
+  );
+}
+
+type SavedAttemptCompletion = {
+  toolCallId: string;
+  input: unknown;
+};
+
+type AttemptTodoCompletionInput = {
+  _meta?: {
+    sourceAttemptCompletion?: {
+      toolCallId?: string;
+      input?: unknown;
+    };
+  };
+};
+
+function getSavedAttemptCompletion(
+  part: ToolUIPart & {
+    input: {
+      agentType?: unknown;
+    };
+  },
+): SavedAttemptCompletion | undefined {
+  const attemptCompletion = (part.input as AttemptTodoCompletionInput)._meta
+    ?.sourceAttemptCompletion;
+  if (typeof attemptCompletion?.toolCallId !== "string") return undefined;
+
+  return {
+    toolCallId: attemptCompletion.toolCallId,
+    input: attemptCompletion.input,
+  };
+}
+
+type AttemptTodoCompletionOutput = {
+  result?: {
+    success?: boolean;
+    summary?: string;
+  };
+};
+
+function getReplacementAttemptCompletionOutput(part: ToolUIPart) {
+  const output = part.output as AttemptTodoCompletionOutput | undefined;
+  if (output?.result?.success === false) {
+    return {
+      success: false,
+      reason: output.result.summary ?? "Todo completion was not accepted.",
+    };
+  }
+
+  return { success: true };
+}
+
+function getCallProviderMetadataWithThoughtSignature(part: ToolUIPart) {
+  const source = part as ToolUIPart & {
+    providerMetadata?: Record<string, Record<string, unknown>>;
+    callProviderMetadata?: Record<string, Record<string, unknown>>;
+  };
+  const metadata = source.providerMetadata;
+  const existingMetadata = source.callProviderMetadata;
+  let callProviderMetadata = existingMetadata
+    ? { ...existingMetadata }
+    : undefined;
+
+  for (const [provider, value] of Object.entries(metadata ?? {})) {
+    const thoughtSignature = value?.thoughtSignature;
+    if (typeof thoughtSignature !== "string") continue;
+
+    callProviderMetadata ??= {};
+    callProviderMetadata[provider] = {
+      ...callProviderMetadata[provider],
+      thoughtSignature,
+    };
+  }
+
+  return callProviderMetadata;
+}
+
 function removeInvalidCharForStorage(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
@@ -437,12 +569,56 @@ function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
 }
 
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
+
+function removePendingTodoAttemptCompletion(
+  messages: UIMessage[],
+): UIMessage[] {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage || lastMessage.role !== "assistant") return messages;
+
+  const lastPart = lastMessage.parts.at(-1);
+  if (
+    lastPart?.type !== "tool-attemptCompletion" ||
+    lastPart.state === "output-available" ||
+    lastPart.state === "output-error"
+  ) {
+    return messages;
+  }
+
+  // In todo mode the visible audit call is a replacement subtask; hide the
+  // transient attemptCompletion part before the replacement arrives.
+  return [
+    ...messages.slice(0, -1),
+    {
+      ...lastMessage,
+      parts: lastMessage.parts.slice(0, -1),
+    },
+  ];
+}
+
+function removeDeprecatedTodoWriteToolCalls(
+  messages: UIMessage[],
+): UIMessage[] {
+  return removeEmptyMessages(
+    messages.map((message) => ({
+      ...message,
+      parts: message.parts.filter(
+        (part) =>
+          !(
+            isStaticToolUIPart(part) && getStaticToolName(part) === "todoWrite"
+          ),
+      ),
+    })),
+  );
+}
+
 const LLMFormatOps: FormatOp[] = [
   removeEmptyTextParts,
   removeEmptyMessages,
   refineDetectedNewPromblems,
   extractCompactMessages,
   removeMessagesWithoutTextOrToolCall,
+  replaceAttemptTodoCompletionForLLM,
   resolvePendingToolCalls,
   stripKnownXMLTags,
   removeToolCallResultMetadata,
@@ -474,14 +650,26 @@ function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
   return ops.reduce((acc, op) => op(acc), clone(messages));
 }
 
+export interface UIFormatterOptions {
+  hidePendingTodoAttemptCompletion?: boolean;
+}
+
 export interface LLMFormatterOptions {
   removeSystemReminder?: boolean;
 }
 
 export const formatters = {
   // Format messages for the Front-end UI rendering.
-  ui: <T extends UIMessage>(messages: T[]) =>
-    formatMessages(messages, UIFormatOps) as T[],
+  ui: <T extends UIMessage>(messages: T[], options?: UIFormatterOptions) => {
+    const uiFormatOps = [
+      ...UIFormatOps,
+      removeDeprecatedTodoWriteToolCalls,
+      ...(options?.hidePendingTodoAttemptCompletion
+        ? [removePendingTodoAttemptCompletion, removeEmptyMessages]
+        : []),
+    ];
+    return formatMessages(messages, uiFormatOps) as T[];
+  },
 
   shareUI: <T extends UIMessage>(messages: T[]) =>
     formatMessages(messages, ShareUIFormatOps) as T[],
