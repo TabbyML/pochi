@@ -512,12 +512,11 @@ export class ManagedToolCallLifeCycle
     if (abortSignal.aborted) {
       onAbort();
       return;
-    } else {
-      abortSignal.addEventListener("abort", onAbort, { once: true });
-      cleanupFns.push(() => {
-        abortSignal.removeEventListener("abort", onAbort);
-      });
     }
+    abortSignal.addEventListener("abort", onAbort, { once: true });
+    cleanupFns.push(() => {
+      abortSignal.removeEventListener("abort", onAbort);
+    });
 
     const onTaskUpdate = (task: Task | undefined) => {
       if (
@@ -599,12 +598,11 @@ export class ManagedToolCallLifeCycle
     if (abortSignal.aborted) {
       onAbort();
       return;
-    } else {
-      abortSignal.addEventListener("abort", onAbort, { once: true });
-      cleanupFns.push(() => {
-        abortSignal.removeEventListener("abort", onAbort);
-      });
     }
+    abortSignal.addEventListener("abort", onAbort, { once: true });
+    cleanupFns.push(() => {
+      abortSignal.removeEventListener("abort", onAbort);
+    });
 
     const onTaskUpdate = (task: Task | undefined) => {
       if (this.state.type !== "execute:streaming") return;
