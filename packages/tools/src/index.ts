@@ -21,8 +21,7 @@ import type { multiApplyDiff } from "./multi-apply-diff";
 import { type CustomAgent, createNewTaskTool } from "./new-task";
 import { renderWidget } from "./render-widget";
 import { searchFiles } from "./search-files";
-import { todoWrite } from "./todo-write";
-export { Todo } from "./todo-write";
+export { Todo, TodoUpdate } from "./todo";
 export { MediaOutput } from "./read-file";
 export type {
   ToolFunctionType,
@@ -46,6 +45,7 @@ import { type Skill, createSkillTool } from "./use-skill";
 import { parseToolSpec } from "./utils/tool-spec";
 import { writeToFile } from "./write-to-file";
 
+export { parseOutputSchema } from "./output-schema";
 export {
   CustomAgent,
   type SubTask,
@@ -122,8 +122,17 @@ export interface CreateClientToolOptions {
   customAgents?: CustomAgent[];
   skills?: Skill[];
   contentType?: string[];
-  attemptCompletionSchema?: z.ZodAny;
+  attemptCompletionSchema?: z.ZodType;
   agent?: CustomAgent;
+  todoModeEnabled?: boolean;
+}
+
+const HiddenNewTaskAgentNames = new Set(["attemptTodoCompletion"]);
+
+function filterVisibleNewTaskAgents(customAgents?: CustomAgent[]) {
+  return customAgents?.filter(
+    (agent) => !HiddenNewTaskAgentNames.has(agent.name),
+  );
 }
 
 const createCliTools = (options?: CreateClientToolOptions) => ({
@@ -138,10 +147,9 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
   readFile: createReadFileTool(options?.contentType),
   useSkill: createSkillTool(options?.skills),
   searchFiles,
-  todoWrite,
   writeToFile,
   editNotebook,
-  newTask: createNewTaskTool(options?.customAgents),
+  newTask: createNewTaskTool(filterVisibleNewTaskAgents(options?.customAgents)),
 });
 
 export const createClientTools = (options?: CreateClientToolOptions) => {
@@ -173,14 +181,25 @@ type SelectAgentToolsOptions = {
   mcpTools?: ToolMap;
 } & CreateClientToolOptions;
 
-const RequiredAgentTools = ["todoWrite", "attemptCompletion", "useSkill"];
+const RequiredAgentTools = ["attemptCompletion", "useSkill"];
+
+function isTodoModeToolSelectionEnabled(
+  todoModeEnabled: boolean | undefined,
+  isSubTask: boolean,
+): boolean {
+  return !!todoModeEnabled && !isSubTask;
+}
 
 function isAgentToolDisabled(
   agentName: string,
   toolName: string,
   isSubTask: boolean,
+  todoModeEnabled?: boolean,
 ): boolean {
   if (isSubTask && toolName === "newTask") return true;
+  if (todoModeEnabled) {
+    return toolName === "askFollowupQuestion";
+  }
 
   const canAskFollowupQuestion =
     agentName === "planner" || agentName === "guide";
@@ -190,6 +209,7 @@ function isAgentToolDisabled(
 function getAgentToolAllowList(
   agent: CustomAgent | undefined,
   isSubTask: boolean,
+  todoModeEnabled?: boolean,
 ): Set<string> | undefined {
   /**
    * if no agent or no tools specified, we don't filter any tools.
@@ -203,7 +223,9 @@ function getAgentToolAllowList(
 
   for (const tool of agent.tools) {
     const { name } = parseToolSpec(tool);
-    if (isAgentToolDisabled(agent.name, name, isSubTask)) continue;
+    if (isAgentToolDisabled(agent.name, name, isSubTask, todoModeEnabled)) {
+      continue;
+    }
     if (RequiredAgentTools.includes(name)) continue;
     allowed.add(name);
   }
@@ -230,12 +252,26 @@ export const selectAgentTools = (
   options: SelectAgentToolsOptions,
 ): AgentTools => {
   const { agent, mcpTools, isSubTask, ...toolOptions } = options;
-  const allowList = getAgentToolAllowList(agent, options.isSubTask);
+  const todoModeEnabled = isTodoModeToolSelectionEnabled(
+    options.todoModeEnabled,
+    options.isSubTask,
+  );
+  const allowList = getAgentToolAllowList(
+    agent,
+    options.isSubTask,
+    todoModeEnabled,
+  );
 
-  const avaliableTools: AgentTools = {
+  let avaliableTools: AgentTools = {
     ...createClientTools(toolOptions),
     ...(mcpTools ?? {}),
   };
+
+  if (todoModeEnabled) {
+    const { askFollowupQuestion: _askFollowupQuestion, ...rest } =
+      avaliableTools;
+    avaliableTools = rest;
+  }
 
   if (agent?.name === "reviewer") {
     avaliableTools.createReview = createReview;

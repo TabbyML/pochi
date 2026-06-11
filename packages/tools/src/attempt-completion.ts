@@ -20,16 +20,24 @@ Never use this tool with a question or request to engage in further conversation
 ${NoOtherToolsReminderPrompt}
 `.trim(),
   inputSchema: attemptCompletionSchema,
-  outputSchema: z.object({
-    success: z
-      .boolean()
-      .describe("Indicates whether the completion was successful."),
-  }),
+  outputSchema: z.discriminatedUnion("success", [
+    z.object({
+      success: z.literal(true).describe("The completion was accepted."),
+    }),
+    z.object({
+      success: z
+        .literal(false)
+        .describe(
+          "The completion was not accepted; continue working and use the reason as feedback.",
+        ),
+      reason: z.string().describe("Why the completion was not accepted."),
+    }),
+  ]),
 };
 
 export const attemptCompletion = defineClientTool(toolDef);
 
-export const createAttemptCompletionTool = (schema?: z.ZodAny) =>
+export const createAttemptCompletionTool = (schema?: z.ZodType) =>
   defineClientTool({
     ...toolDef,
     // Always wrap in result - use custom schema if provided, otherwise use default string result

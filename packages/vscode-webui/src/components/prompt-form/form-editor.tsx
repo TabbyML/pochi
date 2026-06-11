@@ -117,7 +117,7 @@ interface FormEditorProps {
   onFocus?: (event: FocusEvent) => void;
   messageContent?: string;
   isSubTask: boolean;
-  onTogglePlanMode?: () => void;
+  onSwitchSubmitMode?: () => void;
   className?: string;
 }
 
@@ -138,7 +138,7 @@ export function FormEditor({
   onFileDrop,
   messageContent = "",
   isSubTask,
-  onTogglePlanMode,
+  onSwitchSubmitMode,
   className,
 }: FormEditorProps) {
   const { t } = useTranslation();
@@ -653,7 +653,7 @@ export function FormEditor({
       onKeyDown={(e) => {
         if (e.key === "Tab" && e.shiftKey) {
           e.preventDefault();
-          onTogglePlanMode?.();
+          onSwitchSubmitMode?.();
         }
       }}
     >

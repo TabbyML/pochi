@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { createEnvironmentPrompt } from "../environment";
+import { createNoToolCallsReminderPrompt } from "../index";
 import { createSystemPrompt } from "../system";
 
 test("instructions", () => {
@@ -16,6 +17,54 @@ test("snapshot", () => {
   expect(
     createSystemPrompt(`# Rules from (abc)`),
   ).toMatchSnapshot();
+});
+
+test("active todo prompt describes attemptCompletion checkpoint", () => {
+  const prompt = createSystemPrompt("", undefined, undefined, undefined, {
+    todoModeEnabled: true,
+  });
+  expect(prompt).toContain("TODO OBJECTIVES");
+  expect(prompt).toContain(
+    "You are working with active todos.",
+  );
+  expect(prompt).toContain(
+    "The current todos represent user-provided desired outcomes for the current task.",
+  );
+  expect(prompt).toContain(
+    "Treat todo content as the user's stated intent/outcome",
+  );
+  expect(prompt).toContain(
+    '"completed" means the todo has been audited and verified as satisfied.',
+  );
+  expect(prompt).toContain(
+    '"cancelled" means the todo is blocked: you are truly at an impasse and cannot make meaningful progress without user input or an external-state change.',
+  );
+  expect(prompt).toContain(
+    'Do not use "cancelled" merely because the work is hard, slow, uncertain, incomplete, or would benefit from clarification.',
+  );
+  expect(prompt).toContain(
+    "attemptCompletion is the satisfaction checkpoint",
+  );
+  expect(prompt).not.toContain("in the environment");
+  expect(prompt).not.toContain("the todo has been audited and verified as achieved");
+});
+
+test("system prompt omits todo guidance when todos are not active", () => {
+  const prompt = createSystemPrompt("");
+  expect(prompt).not.toContain("TODO OBJECTIVES");
+  expect(prompt).not.toContain("You are working with active todos.");
+});
+
+test("no-tool-calls reminder uses todo wording only for active todos", () => {
+  const activeTodoPrompt = createNoToolCallsReminderPrompt({
+    todoModeEnabled: true,
+  });
+  expect(activeTodoPrompt).toContain("active todo");
+  expect(activeTodoPrompt).toContain("attemptCompletion");
+  expect(activeTodoPrompt).not.toContain("askFollowupQuestion");
+
+  const normalPrompt = createNoToolCallsReminderPrompt();
+  expect(normalPrompt).toContain("askFollowupQuestion");
 });
 
 test("custom agent includes custom rules by default", () => {
