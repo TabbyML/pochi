@@ -31,8 +31,13 @@
     "createPlan": "計画",
     "createPlanTooltip": "このタスクの実装計画を作成",
     "planModeLabel": "計画",
+    "goalModeLabel": "Todo",
+    "pauseGoal": "Todoを一時停止",
+    "resumeGoal": "Todoを再開",
+    "autoContinueTodo": "TODOを自動継続",
     "planModeToggleShortcutTooltip": "Shift + Tab で切り替え",
     "planModeSubmitTooltip": "計画として送信",
+    "goalModeSubmitTooltip": "Todoモードで送信",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -338,6 +343,7 @@
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
     "updatingToDos": "TODOを更新中",
+    "auditingTodo": "TODOを監査中",
     "editing": "編集しています ",
     "moreTools": "、他{{count}}個のツール",
     "other": "その他、Pochiに伝えてください...",
@@ -451,6 +457,9 @@
   },
   "todoList": {
     "todos": "TODO",
+    "pursuingGoal": "Todoを進行中",
+    "pausing": "一時停止中",
+    "completedGoal": "Todo完了",
     "allDone": "🎉 すべて完了！"
   },
   "commandExecutionPanel": {

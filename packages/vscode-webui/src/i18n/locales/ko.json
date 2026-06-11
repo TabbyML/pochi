@@ -30,8 +30,13 @@
     "createPlan": "계획",
     "createPlanTooltip": "이 작업에 대한 구현 계획 생성",
     "planModeLabel": "계획",
+    "goalModeLabel": "Todo",
+    "pauseGoal": "Todo 일시 중지",
+    "resumeGoal": "Todo 재개",
+    "autoContinueTodo": "할 일 자동 계속",
     "planModeToggleShortcutTooltip": "Shift + Tab으로 전환",
     "planModeSubmitTooltip": "계획으로 제출",
+    "goalModeSubmitTooltip": "Todo 모드로 제출",
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
@@ -336,6 +341,7 @@
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
     "backgroundExecuting": "백그라운드에서 명령 실행 중",
     "updatingToDos": "할 일 업데이트 중",
+    "auditingTodo": "할 일 감사 중",
     "editing": "편집하는 중 ",
     "moreTools": ", 그리고 {{count}}개의 다른 도구들",
     "other": "기타, Pochi에게 알려주세요...",
@@ -449,6 +455,9 @@
   },
   "todoList": {
     "todos": "할 일",
+    "pursuingGoal": "Todo 진행 중",
+    "pausing": "일시 중지 중",
+    "completedGoal": "Todo 완료",
     "allDone": "🎉 모두 완료!"
   },
   "commandExecutionPanel": {

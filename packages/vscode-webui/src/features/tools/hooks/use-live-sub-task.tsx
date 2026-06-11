@@ -302,7 +302,6 @@ export function useLiveSubTask(
 
   const { todos } = useTodos({
     initialTodos: task?.todos,
-    messages,
     todosRef,
   });
 

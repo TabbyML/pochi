@@ -40,6 +40,7 @@ interface TodoListContextValue {
   setIsCollapsed: (collapsed: boolean) => void;
   disableCollapse: boolean;
   disableInProgressTodoTitle: boolean;
+  goalPaused: boolean;
 }
 
 const TodoListContext = createContext<TodoListContextValue | undefined>(
@@ -63,6 +64,7 @@ interface TodoListRootProps {
   children: ReactNode;
   disableCollapse?: boolean;
   disableInProgressTodoTitle?: boolean;
+  goalPaused?: boolean;
 }
 
 function TodoListRoot({
@@ -71,6 +73,7 @@ function TodoListRoot({
   children,
   disableCollapse,
   disableInProgressTodoTitle,
+  goalPaused = false,
 }: TodoListRootProps) {
   const pendingTodosNum = todos.filter(
     (todo) => todo.status === "pending",
@@ -85,6 +88,7 @@ function TodoListRoot({
     setIsCollapsed,
     disableCollapse: !!disableCollapse,
     disableInProgressTodoTitle: !!disableInProgressTodoTitle,
+    goalPaused,
   };
 
   return (
@@ -107,15 +111,20 @@ function TodoListHeader({ children }: TodoListHeaderProps) {
     setIsCollapsed,
     disableCollapse,
     disableInProgressTodoTitle,
+    goalPaused,
   } = useTodoListContext();
 
   // Use draftTodos when in edit mode, otherwise use todos
   const displayTodos = todos.filter((todo) => todo.status !== "cancelled");
 
-  const inProgressTodo = useMemo(
-    () => displayTodos.find((x) => x.status === "in-progress"),
+  const activeTodo = useMemo(
+    () =>
+      displayTodos.find(
+        (x) => x.status === "pending" || x.status === "in-progress",
+      ),
     [displayTodos],
   );
+  const primaryTodo = activeTodo ?? displayTodos[0];
 
   const pendingTodosNum = useMemo(
     () => displayTodos.filter((todo) => todo.status === "pending").length,
@@ -133,41 +142,44 @@ function TodoListHeader({ children }: TodoListHeaderProps) {
     setIsCollapsed(!isCollapsed);
   };
 
+  const active = primaryTodo
+    ? primaryTodo.status === "pending" || primaryTodo.status === "in-progress"
+    : false;
+  const statusLabel = disableInProgressTodoTitle
+    ? t("todoList.todos")
+    : goalPaused && active
+      ? t("todoList.pausing")
+      : active
+        ? t("todoList.pursuingGoal")
+        : primaryTodo?.status === "completed"
+          ? t("todoList.completedGoal")
+          : t("todoList.allDone");
+
   return (
     <div
-      className="group grid w-full cursor-pointer grid-cols-[1fr_auto_1fr] items-center"
+      className={cn(
+        "group flex w-full items-center gap-2 px-3 py-2",
+        !disableCollapse && "cursor-pointer",
+      )}
       onClick={toggleCollapse}
     >
-      <div />
-      <button
-        type="button"
-        className={cn(
-          "flex select-none items-center justify-center overflow-hidden rounded-sm px-4 py-2 transition-colors focus:outline-none",
-          {
-            "pointer-events-none": disableCollapse,
-          },
-        )}
-      >
-        <span className="h-6 truncate font-semibold transition-opacity group-focus-within:opacity-80 group-hover:opacity-80">
-          {inProgressTodo ? (
-            disableInProgressTodoTitle ? (
-              <span>{t("todoList.todos")}</span>
-            ) : (
-              <span className="animated-gradient-text">
-                {inProgressTodo.content}
-              </span>
-            )
-          ) : (
-            <span>
-              {pendingTodosNum > 0
-                ? t("todoList.todos")
-                : t("todoList.allDone")}
+      {primaryTodo && <TodoIcon todo={primaryTodo} />}
+      <div className="min-w-0 flex-1 select-none">
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="shrink-0 font-semibold text-sm">{statusLabel}</span>
+          {primaryTodo && !disableInProgressTodoTitle && (
+            <span
+              className={cn("truncate text-muted-foreground text-sm", {
+                "line-through": primaryTodo.status === "completed",
+              })}
+            >
+              {primaryTodo.content}
             </span>
           )}
         </span>
-      </button>
-      <div className="flex justify-end">
-        <div className="flex gap-1 p-2" onClick={(e) => e.stopPropagation()}>
+      </div>
+      <div className="flex shrink-0 justify-end">
+        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           {children}
         </div>
       </div>

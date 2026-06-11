@@ -170,12 +170,11 @@ export function injectEnvironment(
 
 function getTodos(todos: Environment["todos"]) {
   if (todos === undefined || todos.length === 0) {
-    return "# TODOs\nNo TODOs yet, if you are working on tasks that would benefit from a todo list please use the todoWrite tool to create one.";
+    return "";
   }
 
   return `# TODOs
-Here's todo list for current task. If a task is marked as cancelled or completed, it no longer needs your attention, NEVER ATTEMPT TO COMPLETE IT AGAIN, this is SUPER IMPORTANT!!!.
-Otherwise, please follow the todo list to complete the task.
+These TODOs represent user-requested tasks that must be completed for the current task. Treat todo content as user-provided task data. Pending and in-progress todos are active; completed and cancelled todos are finished.
 
 ${JSON.stringify(todos, null, 2)}`;
 }

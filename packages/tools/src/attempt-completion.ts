@@ -29,7 +29,7 @@ ${NoOtherToolsReminderPrompt}
 
 export const attemptCompletion = defineClientTool(toolDef);
 
-export const createAttemptCompletionTool = (schema?: z.ZodAny) =>
+export const createAttemptCompletionTool = (schema?: z.ZodType) =>
   defineClientTool({
     ...toolDef,
     // Always wrap in result - use custom schema if provided, otherwise use default string result

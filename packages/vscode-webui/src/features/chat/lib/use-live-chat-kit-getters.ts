@@ -63,10 +63,10 @@ export function useLiveChatKitGetters({
     });
 
     return {
-      todos: todos.current,
       ...environment,
+      todos: isSubTask ? undefined : todos.current,
     } satisfies Environment;
-  }, [todos, omitCustomRules, taskId]);
+  }, [todos, isSubTask, omitCustomRules, taskId]);
 
   // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
   // the cached system+tools prefix. New memory shows on next mount.

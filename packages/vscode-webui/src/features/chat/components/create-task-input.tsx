@@ -22,6 +22,7 @@ import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
+import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -52,7 +53,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const activeSelection = useActiveSelection();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const [planMode, setPlanMode] = useState(false);
-  const togglePlanMode = useCallback(() => setPlanMode((v) => !v), []);
+  const [goalMode, setGoalMode] = useState(false);
+  const togglePlanMode = useCallback(() => {
+    setPlanMode((v) => !v);
+    setGoalMode(false);
+  }, []);
+  const toggleGoalMode = useCallback(() => {
+    setGoalMode((v) => !v);
+    setPlanMode(false);
+  }, []);
   const {
     globalMcpConfig,
     mcpConfigOverride,
@@ -150,8 +159,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         name: string;
         url: string;
       }>;
+      todos?: Todo[];
     }): Promise<boolean> => {
-      const { content, shouldCreateWorktree, uploadedFiles } = params;
+      const { content, shouldCreateWorktree, uploadedFiles, todos } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
       if (shouldCreateWorktree) {
@@ -173,6 +183,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         type: "new-task",
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
+        todos,
         files: uploadedFiles,
         activeSelection: activeSelection ?? undefined,
         mcpConfigOverride:
@@ -209,9 +220,13 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     async (options?: {
       shouldCreateWorktree?: boolean;
       shouldCreatePlan?: boolean;
+      shouldCreateGoal?: boolean;
     }) => {
       const { shouldCreateWorktree } = options || {};
       const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
+      const shouldCreateGoal = shouldCreatePlan
+        ? false
+        : (options?.shouldCreateGoal ?? goalMode);
 
       if (isCreatingTask) return;
 
@@ -260,6 +275,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         shouldCreateWorktree:
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+        todos: shouldCreateGoal ? initGoalTodos(content) : undefined,
       });
 
       // Set isCreatingTask state false
@@ -268,6 +284,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask(false);
       // Reset plan mode after each submission
       setPlanMode(false);
+      setGoalMode(false);
     },
     [
       input.text,
@@ -281,6 +298,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
       planMode,
+      goalMode,
     ],
   );
 
@@ -414,9 +432,22 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             resetMcpTools={resetMcpTools}
             isPlanMode={planMode}
             onTogglePlanMode={togglePlanMode}
+            isGoalMode={goalMode}
+            onToggleGoalMode={toggleGoalMode}
           />
         </div>
       </div>
     </>
   );
 };
+
+function initGoalTodos(objective: string): Todo[] {
+  return [
+    {
+      id: crypto.randomUUID(),
+      content: objective,
+      status: "in-progress",
+      priority: "medium",
+    },
+  ];
+}

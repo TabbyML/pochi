@@ -6,6 +6,7 @@ import type {
 import { getLogger, isForkAgentUseCase, prompts } from "@getpochi/common";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
+import type { Todo } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import {
   type ChatInit,
@@ -196,7 +197,7 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
-  attemptCompletionSchema?: z.ZodAny;
+  attemptCompletionSchema?: z.ZodType;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -204,6 +205,7 @@ export type LiveChatKitOptions<T> = {
 
 type InitOptions = {
   initTitle?: string;
+  todos?: Todo[];
 } & (
   | {
       prompt?: string;
@@ -495,6 +497,7 @@ export class LiveChatKit<
         createdAt: new Date(),
         initTitle: options?.initTitle,
         initMessages,
+        todos: options?.todos,
       }),
     );
 

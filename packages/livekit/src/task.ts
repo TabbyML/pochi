@@ -28,6 +28,17 @@ export function toTaskStatus(
 
   let hasToolCall = false;
   for (const part of message.parts.slice(lastStepStart + 1)) {
+    if (
+      part.type === "tool-completeTodo" &&
+      part.state === "output-available"
+    ) {
+      const output = part.output as { success?: unknown };
+      if (output.success === true) {
+        return "completed";
+      }
+      continue;
+    }
+
     if (isCompletionToolPart(part)) {
       return "completed";
     }

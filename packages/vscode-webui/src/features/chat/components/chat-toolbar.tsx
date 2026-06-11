@@ -31,10 +31,17 @@ import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  PaperclipIcon,
+  PauseIcon,
+  PlayIcon,
+  SendHorizonal,
+  StopCircleIcon,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -72,6 +79,8 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
   todosRef: React.RefObject<Todo[] | undefined>;
+  goalPaused: boolean;
+  onGoalPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
   isRepairingMermaid?: boolean;
@@ -89,6 +98,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
   todosRef,
+  goalPaused,
+  onGoalPausedChange,
   onUpdateIsPublicShared,
   taskId,
   isRepairingMermaid = false,
@@ -106,10 +117,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   // Initialize task with prompt if provided and task doesn't exist yet
   const { todos } = useTodos({
-    initialTodos: task?.todos,
-    messages,
+    initialTodos: isSubTask ? undefined : task?.todos,
     todosRef,
   });
+  const goalControllerActive = !isSubTask && hasActiveTodos(todos);
 
   const {
     groupedModels,
@@ -308,9 +319,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           )}
         >
           {todos.length > 0 && (
-            <TodoList todos={todos}>
-              <TodoList.Header />
-              <TodoList.Items viewportClassname="max-h-48" />
+            <TodoList todos={todos} goalPaused={goalPaused} disableCollapse>
+              <TodoList.Header>
+                {goalControllerActive && (
+                  <GoalPauseButton
+                    goalPaused={goalPaused}
+                    onGoalPausedChange={onGoalPausedChange}
+                  />
+                )}
+              </TodoList.Header>
+              {todos.length > 1 && (
+                <TodoList.Items viewportClassname="max-h-48" />
+              )}
             </TodoList>
           )}
           <DiffSummary
@@ -394,6 +414,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}
+            goalPaused={goalControllerActive ? goalPaused : undefined}
+            onGoalPausedChange={
+              goalControllerActive ? onGoalPausedChange : undefined
+            }
             trigger={
               <Button
                 type="button"
@@ -451,6 +475,50 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         </div>
       </div>
     </>
+  );
+};
+
+interface GoalPauseButtonProps {
+  goalPaused: boolean;
+  onGoalPausedChange: (paused: boolean) => void;
+}
+
+const GoalPauseButton: React.FC<GoalPauseButtonProps> = ({
+  goalPaused,
+  onGoalPausedChange,
+}) => {
+  const { t } = useTranslation();
+  const label = goalPaused ? t("chat.resumeGoal") : t("chat.pauseGoal");
+
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="button-focus h-6 w-6 p-0"
+            aria-label={label}
+            onClick={() => onGoalPausedChange(!goalPaused)}
+          >
+            {goalPaused ? (
+              <PlayIcon className="size-4" />
+            ) : (
+              <PauseIcon className="size-4" />
+            )}
+          </Button>
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+      >
+        {label}
+      </HoverCardContent>
+    </HoverCard>
   );
 };
 

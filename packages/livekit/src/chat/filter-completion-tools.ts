@@ -1,9 +1,9 @@
 import { isCompletionToolPart } from "@getpochi/tools";
-import { getStaticToolName, isStaticToolUIPart } from "ai";
+import { isStaticToolUIPart } from "ai";
 import type { Message } from "../types";
 
 // Condition A: The last step contains completion tools (attemptCompletion or askFollowupQuestion).
-// Condition B: The last step contains other functional tools (excluding todoWrite).
+// Condition B: The last step contains other functional tools.
 // Rule:
 // If both conditions are met, remove the completion tools. This prevents the agent from
 // attempting to complete the task or ask a question while simultaneously performing other actions.
@@ -18,10 +18,7 @@ export function filterCompletionTools(message: Message): Message {
 
   const hasCompletionTools = parts.some(isCompletionToolPart);
   const hasOtherTools = parts.some(
-    (part) =>
-      isStaticToolUIPart(part) &&
-      getStaticToolName(part) !== "todoWrite" &&
-      !isCompletionToolPart(part),
+    (part) => isStaticToolUIPart(part) && !isCompletionToolPart(part),
   );
 
   if (hasCompletionTools && hasOtherTools) {

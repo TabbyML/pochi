@@ -71,9 +71,6 @@ export function ToolCallLite({
     case "tool-globFiles":
       detail = <GlobFilesTool tool={tool} />;
       break;
-    case "tool-todoWrite":
-      detail = <TodoWriteTool />;
-      break;
     case "tool-editNotebook":
       detail = <EditNotebookTool tool={tool} />;
       break;
@@ -87,6 +84,9 @@ export function ToolCallLite({
       detail = (
         <span className="ml-2">{t("toolInvocation.taskCompleted")}</span>
       );
+      break;
+    case "tool-completeTodo":
+      detail = <span className="ml-2">{t("toolInvocation.auditingTodo")}</span>;
       break;
     default:
       detail = <McpTool tool={tool} />;
@@ -313,17 +313,6 @@ const GlobFilesTool = ({ tool }: ToolCallLiteViewProps<"globFiles">) => {
       <span>
         {t("toolInvocation.searching")} {searchCondition}
       </span>
-    </>
-  );
-};
-
-const TodoWriteTool = () => {
-  const { t } = useTranslation();
-
-  return (
-    <>
-      <span className="ml-2" />
-      {t("toolInvocation.updatingToDos")}
     </>
   );
 };

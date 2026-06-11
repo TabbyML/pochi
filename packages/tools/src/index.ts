@@ -13,6 +13,7 @@ import type { z } from "zod";
 import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
 import { createAttemptCompletionTool } from "./attempt-completion";
+import { completeTodo } from "./complete-todo";
 import { createReview } from "./create-review";
 import { executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
@@ -21,8 +22,7 @@ import type { multiApplyDiff } from "./multi-apply-diff";
 import { type CustomAgent, createNewTaskTool } from "./new-task";
 import { renderWidget } from "./render-widget";
 import { searchFiles } from "./search-files";
-import { todoWrite } from "./todo-write";
-export { Todo } from "./todo-write";
+export { Todo } from "./todo";
 export { MediaOutput } from "./read-file";
 export type {
   ToolFunctionType,
@@ -68,6 +68,14 @@ export {
 } from "./utils/tool-policy";
 export { Skill } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
+export {
+  completeTodo,
+  completeTodoAuditOutputSchema,
+  completeTodoOutputSchema,
+  resolveCompleteTodoAuditResult,
+  type CompleteTodoAuditOutput,
+  type CompleteTodoOutput,
+} from "./complete-todo";
 export {
   BatchExecutionErrorMessages,
   BatchExecutionError,
@@ -123,8 +131,9 @@ export interface CreateClientToolOptions {
   customAgents?: CustomAgent[];
   skills?: Skill[];
   contentType?: string[];
-  attemptCompletionSchema?: z.ZodAny;
+  attemptCompletionSchema?: z.ZodType;
   agent?: CustomAgent;
+  goalEnabled?: boolean;
 }
 
 const createCliTools = (options?: CreateClientToolOptions) => ({
@@ -133,13 +142,13 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
   attemptCompletion: createAttemptCompletionTool(
     options?.attemptCompletionSchema,
   ),
+  completeTodo,
   executeCommand,
   globFiles,
   listFiles,
   readFile: createReadFileTool(options?.contentType),
   useSkill: createSkillTool(options?.skills),
   searchFiles,
-  todoWrite,
   writeToFile,
   editNotebook,
   newTask: createNewTaskTool(options?.customAgents),
@@ -174,14 +183,33 @@ type SelectAgentToolsOptions = {
   mcpTools?: ToolMap;
 } & CreateClientToolOptions;
 
-const RequiredAgentTools = ["todoWrite", "attemptCompletion", "useSkill"];
+const RequiredAgentTools = ["attemptCompletion", "useSkill"];
+const GoalRequiredAgentTools = ["completeTodo", "useSkill"];
+
+function getRequiredAgentTools(goalEnabled?: boolean): string[] {
+  return goalEnabled ? GoalRequiredAgentTools : RequiredAgentTools;
+}
+
+function isGoalToolSelectionEnabled(
+  goalEnabled: boolean | undefined,
+  isSubTask: boolean,
+): boolean {
+  return !!goalEnabled && !isSubTask;
+}
 
 function isAgentToolDisabled(
   agentName: string,
   toolName: string,
   isSubTask: boolean,
+  goalEnabled?: boolean,
 ): boolean {
   if (isSubTask && toolName === "newTask") return true;
+  if (goalEnabled) {
+    return (
+      toolName === "attemptCompletion" || toolName === "askFollowupQuestion"
+    );
+  }
+  if (toolName === "completeTodo") return true;
 
   const canAskFollowupQuestion =
     agentName === "planner" || agentName === "guide";
@@ -191,7 +219,9 @@ function isAgentToolDisabled(
 function getAgentToolAllowList(
   agent: CustomAgent | undefined,
   isSubTask: boolean,
+  goalEnabled?: boolean,
 ): Set<string> | undefined {
+  const requiredAgentTools = getRequiredAgentTools(goalEnabled);
   /**
    * if no agent or no tools specified, we don't filter any tools.
    * TODO(zhanba): for subagent with no tools specified, we should inherit the parent agent's tools instead of allowing all tools.
@@ -204,12 +234,12 @@ function getAgentToolAllowList(
 
   for (const tool of agent.tools) {
     const { name } = parseToolSpec(tool);
-    if (isAgentToolDisabled(agent.name, name, isSubTask)) continue;
-    if (RequiredAgentTools.includes(name)) continue;
+    if (isAgentToolDisabled(agent.name, name, isSubTask, goalEnabled)) continue;
+    if (requiredAgentTools.includes(name)) continue;
     allowed.add(name);
   }
 
-  for (const name of RequiredAgentTools) {
+  for (const name of requiredAgentTools) {
     allowed.add(name);
   }
 
@@ -231,12 +261,33 @@ export const selectAgentTools = (
   options: SelectAgentToolsOptions,
 ): AgentTools => {
   const { agent, mcpTools, isSubTask, ...toolOptions } = options;
-  const allowList = getAgentToolAllowList(agent, options.isSubTask);
+  const goalEnabled = isGoalToolSelectionEnabled(
+    options.goalEnabled,
+    options.isSubTask,
+  );
+  const allowList = getAgentToolAllowList(
+    agent,
+    options.isSubTask,
+    goalEnabled,
+  );
 
-  const avaliableTools: AgentTools = {
+  let avaliableTools: AgentTools = {
     ...createClientTools(toolOptions),
     ...(mcpTools ?? {}),
   };
+
+  if (!goalEnabled) {
+    const { completeTodo: _completeTodo, ...rest } = avaliableTools;
+    avaliableTools = rest;
+  }
+  if (goalEnabled) {
+    const {
+      attemptCompletion: _attemptCompletion,
+      askFollowupQuestion: _askFollowupQuestion,
+      ...rest
+    } = avaliableTools;
+    avaliableTools = rest;
+  }
 
   if (agent?.name === "reviewer") {
     avaliableTools.createReview = createReview;

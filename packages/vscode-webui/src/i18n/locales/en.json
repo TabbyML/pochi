@@ -32,8 +32,13 @@
     "createPlan": "Plan",
     "createPlanTooltip": "Create an implementation plan for this task",
     "planModeLabel": "Plan",
+    "goalModeLabel": "Todo",
+    "pauseGoal": "Pause todo",
+    "resumeGoal": "Resume todo",
+    "autoContinueTodo": "Auto-continue todo",
     "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
     "planModeSubmitTooltip": "Submit as plan",
+    "goalModeSubmitTooltip": "Submit in Todo mode",
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -342,6 +347,7 @@
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
     "updatingToDos": "Updating TODOs",
+    "auditingTodo": "Auditing Todo",
     "editing": "Editing ",
     "usingSkill": "Using Skill",
     "moreTools_one": ", and {{count}} more tool",
@@ -457,6 +463,9 @@
   },
   "todoList": {
     "todos": "TODOs",
+    "pursuingGoal": "Pursuing todo",
+    "pausing": "Pausing",
+    "completedGoal": "Completed todo",
     "allDone": "🎉 All done!"
   },
   "commandExecutionPanel": {

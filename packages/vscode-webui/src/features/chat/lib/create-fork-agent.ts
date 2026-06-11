@@ -12,6 +12,7 @@ const ForkAgentUseCaseLabels: Record<ForkAgentUseCase, string> = {
   "task-memory": "Task Memory Extraction",
   "auto-memory": "Auto Memory Extraction",
   "auto-memory-dream": "Auto Memory Dream",
+  "todo-audit": "Todo Audit",
 };
 
 /**

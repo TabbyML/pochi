@@ -1,7 +1,7 @@
 import type { Tool } from "ai";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { type CustomAgent, selectAgentTools } from "../index";
+import { type CustomAgent, createClientTools, selectAgentTools } from "../index";
 
 const ClientToolNames = [
   "applyDiff",
@@ -18,16 +18,13 @@ const ClientToolNames = [
   "searchFiles",
   "renderWidget",
   "startBackgroundJob",
-  "todoWrite",
   "useSkill",
   "writeToFile",
 ].sort();
 
-const RequiredAgentToolNames = [
-  "attemptCompletion",
-  "todoWrite",
-  "useSkill",
-].sort();
+const RequiredAgentToolNames = ["attemptCompletion", "useSkill"].sort();
+
+const GoalRequiredAgentToolNames = ["completeTodo", "useSkill"].sort();
 
 function createAgent(overrides: Partial<CustomAgent> = {}): CustomAgent {
   return {
@@ -47,6 +44,10 @@ function toolNames(tools: Record<string, unknown>): string[] {
 }
 
 describe("selectAgentTools", () => {
+  it("does not include legacy todoWrite in the client tool registry", () => {
+    expect(createClientTools()).not.toHaveProperty("todoWrite");
+  });
+
   it("returns all client tools and MCP tools when no agent filter is configured", () => {
     const mcpTool = createTool("MCP search");
 
@@ -264,7 +265,7 @@ describe("selectAgentTools", () => {
           instructions: "Do the thing.",
         },
       ],
-      attemptCompletionSchema: customResultSchema as unknown as z.ZodAny,
+      attemptCompletionSchema: customResultSchema,
     });
     const completionInputSchema = tools.attemptCompletion
       ?.inputSchema as z.ZodType;
@@ -282,5 +283,43 @@ describe("selectAgentTools", () => {
         result: "plain text",
       }).success,
     ).toBe(false);
+  });
+
+  it("uses goal tools when active todos are present", () => {
+    const tools = selectAgentTools({
+      isSubTask: false,
+      goalEnabled: true,
+    });
+
+    expect(toolNames(tools)).toContain("completeTodo");
+    expect(toolNames(tools)).toContain("useSkill");
+    expect(tools).not.toHaveProperty("todoWrite");
+    expect(tools).not.toHaveProperty("attemptCompletion");
+    expect(tools).not.toHaveProperty("askFollowupQuestion");
+  });
+
+  it("does not use goal tools for subtasks", () => {
+    const tools = selectAgentTools({
+      isSubTask: true,
+      goalEnabled: true,
+    });
+
+    expect(toolNames(tools)).not.toContain("completeTodo");
+    expect(toolNames(tools)).toContain("attemptCompletion");
+    expect(toolNames(tools)).toContain("useSkill");
+  });
+
+  it("uses goal required tools for filtered agents", () => {
+    const tools = selectAgentTools({
+      agent: createAgent({
+        tools: ["readFile", "attemptCompletion", "askFollowupQuestion"],
+      }),
+      isSubTask: false,
+      goalEnabled: true,
+    });
+
+    expect(toolNames(tools)).toEqual(
+      [...GoalRequiredAgentToolNames, "readFile"].sort(),
+    );
   });
 });

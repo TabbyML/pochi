@@ -7,6 +7,7 @@ import { type ToolUIPart, getStaticToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
 import { AskFollowupQuestionTool } from "./ask-followup-question";
 import { AttemptCompletionTool } from "./attempt-completion";
+import { CompleteTodoTool } from "./complete-todo";
 import { createReviewTool } from "./create-review";
 import { editNotebookTool } from "./edit-notebook";
 import { executeCommandTool } from "./execute-command";
@@ -21,7 +22,6 @@ import { readFileTool } from "./read-file";
 import { RenderWidgetTool } from "./render-widget";
 import { searchFilesTool } from "./search-files";
 import { StartBackgroundJobTool } from "./start-background-job";
-import { todoWriteTool } from "./todo-write";
 import type { ToolProps } from "./types";
 import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
@@ -110,6 +110,7 @@ export function ToolInvocationPart({
 // biome-ignore lint/suspicious/noExplicitAny: matching all tools
 const Tools: Record<string, React.FC<ToolProps<any>>> = {
   attemptCompletion: AttemptCompletionTool,
+  completeTodo: CompleteTodoTool,
   readFile: readFileTool,
   writeToFile: writeToFileTool,
   applyDiff: applyDiffTool,
@@ -122,7 +123,6 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,
   globFiles: globFilesTool,
-  todoWrite: todoWriteTool,
   renderWidget: RenderWidgetTool,
   createReview: createReviewTool,
   editNotebook: editNotebookTool,

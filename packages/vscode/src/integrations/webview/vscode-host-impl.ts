@@ -54,7 +54,6 @@ import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
-import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
@@ -1628,7 +1627,6 @@ const ToolMap: Record<
   renderWidget,
   writeToFile,
   applyDiff,
-  todoWrite,
   editNotebook,
   useSkill,
   createReview,

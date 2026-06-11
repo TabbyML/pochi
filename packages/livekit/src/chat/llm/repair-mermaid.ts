@@ -37,8 +37,9 @@ export async function repairMermaid({
           part.text.includes("```mermaid") &&
           part.text.includes(chart)) ||
         (part.type === "tool-attemptCompletion" &&
-          part.input?.result?.includes("```mermaid") &&
-          part.input?.result.includes(chart)),
+          typeof part.input?.result === "string" &&
+          part.input.result.includes("```mermaid") &&
+          part.input.result.includes(chart)),
     ),
   );
 
@@ -95,6 +96,7 @@ export async function repairMermaid({
         }
         if (
           part.type === "tool-attemptCompletion" &&
+          typeof part.input?.result === "string" &&
           part.input?.result?.includes(chart)
         ) {
           // Escape special regex characters in the chart content

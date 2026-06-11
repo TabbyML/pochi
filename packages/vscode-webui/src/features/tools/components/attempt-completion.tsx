@@ -20,6 +20,8 @@ export const AttemptCompletionTool: React.FC<
 > = ({ tool: toolCall, messages, isSubTask }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
+  const resultContent =
+    typeof result === "string" ? result : JSON.stringify(result, null, 2);
   const sendMessage = useSendMessage();
 
   const { data: currentWorkspace } = useCurrentWorkspace();
@@ -48,7 +50,7 @@ export const AttemptCompletionTool: React.FC<
   }, [messages, toolCall.toolCallId]);
 
   // Return null if there's nothing to display
-  if (!result) {
+  if (!resultContent) {
     return null;
   }
 
@@ -102,7 +104,7 @@ export const AttemptCompletionTool: React.FC<
           </div>
         )}
       </div>
-      <MessageMarkdown>{result}</MessageMarkdown>
+      <MessageMarkdown>{resultContent}</MessageMarkdown>
     </div>
   );
 };

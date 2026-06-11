@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import type { Todo } from "./todo-write";
+import type { Todo } from "./todo";
 import { defineClientTool } from "./types";
 
 export type SubTask = {

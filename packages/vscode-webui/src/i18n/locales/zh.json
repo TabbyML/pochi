@@ -30,8 +30,13 @@
     "createPlan": "计划",
     "createPlanTooltip": "为此任务创建实施计划",
     "planModeLabel": "计划",
+    "goalModeLabel": "Todo",
+    "pauseGoal": "暂停 Todo",
+    "resumeGoal": "继续 Todo",
+    "autoContinueTodo": "自动推进 Todo",
     "planModeToggleShortcutTooltip": "Shift + Tab 切换",
     "planModeSubmitTooltip": "以计划模式提交",
+    "goalModeSubmitTooltip": "以 Todo 模式提交",
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -336,6 +341,7 @@
     "backgroundExecute": "我将在后台执行以下命令",
     "backgroundExecuting": "正在后台执行命令",
     "updatingToDos": "更新待办事项中",
+    "auditingTodo": "审计 Todo",
     "editing": "正在编辑 ",
     "moreTools": "，以及另外 {{count}} 个工具",
     "other": "其他，告诉 Pochi...",
@@ -449,6 +455,9 @@
   },
   "todoList": {
     "todos": "待办事项",
+    "pursuingGoal": "推进 Todo",
+    "pausing": "暂停中",
+    "completedGoal": "Todo 已完成",
     "allDone": "🎉 全部完成！"
   },
   "commandExecutionPanel": {

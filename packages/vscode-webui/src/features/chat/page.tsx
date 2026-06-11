@@ -15,6 +15,7 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { constants, formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -82,6 +83,8 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const { t } = useTranslation();
   const todosRef = useRef<Todo[] | undefined>(undefined);
+  const [goalPaused, setGoalPaused] = useState(false);
+  const goalPausedRef = useLatest(goalPaused);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -215,6 +218,14 @@ function Chat({ user, uid, info }: ChatProps) {
       if (chatKit.chat.status === "error") {
         return false;
       }
+
+      if (lastAssistantMessageIsCompleteTodoCheckpoint(x.messages)) {
+        return (
+          !goalPausedRef.current &&
+          lastAssistantMessageNeedsTodoContinuation(x.messages)
+        );
+      }
+
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onOverrideMessages,
@@ -252,12 +263,33 @@ function Chat({ user, uid, info }: ChatProps) {
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
     isSubTask,
     clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
+    getHasActiveTodos: () => !isSubTask && hasActiveTodos(todosRef.current),
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
   const renderWidgetErrorKind = useRenderWidgetError({
     messages,
   });
+
+  const handleGoalPausedChange = useCallback(
+    (paused: boolean) => {
+      setGoalPaused(paused);
+      if (paused) return;
+
+      // Toggling pause is local UI state, so the SDK will not re-run
+      // sendAutomaticallyWhen by itself. If the last audit asked us to keep
+      // working, resume by sending the next automatic continuation tick.
+      if (
+        shouldResumeGoalController({
+          messages,
+          status,
+        })
+      ) {
+        void sendMessage(undefined);
+      }
+    },
+    [messages, sendMessage, status],
+  );
 
   const { repairMermaid, repairingChart } = useRepairMermaid({
     repairMermaid: chatKit.repairMermaid,
@@ -292,6 +324,7 @@ function Chat({ user, uid, info }: ChatProps) {
     t,
     setMcpConfigOverride,
     isMcpConfigLoading,
+    todosRef,
   });
 
   useSetSubtaskModel({ isSubTask, customAgent });
@@ -390,6 +423,8 @@ function Chat({ user, uid, info }: ChatProps) {
           chat={chat}
           task={task}
           todosRef={todosRef}
+          goalPaused={goalPaused}
+          onGoalPausedChange={handleGoalPausedChange}
           compact={chatKit.compact}
           approvalAndRetry={approvalAndRetry}
           attachmentUpload={attachmentUpload}
@@ -413,6 +448,36 @@ function fromTaskError(task?: Task) {
   if (task?.error) {
     return new Error(task.error.message);
   }
+}
+
+function shouldResumeGoalController({
+  messages,
+  status,
+}: {
+  messages: Message[];
+  status: string;
+}) {
+  if (status !== "ready") return false;
+  return lastAssistantMessageNeedsTodoContinuation(messages);
+}
+
+function lastAssistantMessageIsCompleteTodoCheckpoint(messages: Message[]) {
+  const message = messages.at(-1);
+  if (message?.role !== "assistant") return false;
+
+  const part = message.parts.at(-1);
+  return part?.type === "tool-completeTodo";
+}
+
+function lastAssistantMessageNeedsTodoContinuation(messages: Message[]) {
+  const message = messages.at(-1);
+  if (message?.role !== "assistant") return false;
+
+  const part = message.parts.at(-1);
+  if (part?.type !== "tool-completeTodo") return false;
+  if (part.state !== "output-available") return false;
+
+  return part.output.success === false;
 }
 
 function shouldStopAutoApprove({ messages }: { messages: Message[] }) {

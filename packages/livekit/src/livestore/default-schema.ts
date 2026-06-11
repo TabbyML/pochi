@@ -119,6 +119,7 @@ export const events = {
       ...taskInitFields,
       initMessages: Schema.optional(Schema.Array(DBMessage)),
       initTitle: Schema.optional(Schema.String),
+      todos: Schema.optional(Todos),
       displayId: Schema.optional(Schema.Number).pipe(
         deprecated("Concept of displayId is removed"),
       ),
@@ -155,6 +156,14 @@ export const events = {
       displayId: Schema.optional(Schema.Number).pipe(
         deprecated("Concept of displayId is removed"),
       ),
+    }),
+  }),
+  updateTodos: Events.synced({
+    name: "v1.UpdateTodos",
+    schema: Schema.Struct({
+      id: Schema.String,
+      todos: Todos,
+      updatedAt: Schema.Date,
     }),
   }),
   chatStreamFinished: Events.synced({
@@ -293,6 +302,7 @@ const materializers = State.SQLite.materializers(events, {
     initMessage,
     initMessages,
     initTitle,
+    todos,
     displayId,
   }) => [
     tables.tasks.insert({
@@ -312,6 +322,7 @@ const materializers = State.SQLite.materializers(events, {
       createdAt,
       cwd,
       title: initTitle,
+      todos: todos ?? [],
       displayId,
       updatedAt: createdAt,
       isPublicShared: true,
@@ -349,7 +360,6 @@ const materializers = State.SQLite.materializers(events, {
   "v1.ChatStreamStarted": ({
     id,
     data,
-    todos,
     git,
     title,
     updatedAt,
@@ -359,7 +369,6 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks
       .update({
         status: "pending-model",
-        todos,
         git,
         title,
         updatedAt,
@@ -375,6 +384,14 @@ const materializers = State.SQLite.materializers(events, {
         data,
       })
       .onConflict("id", "replace"),
+  ],
+  "v1.UpdateTodos": ({ id, todos, updatedAt }) => [
+    tables.tasks
+      .update({
+        todos,
+        updatedAt,
+      })
+      .where({ id }),
   ],
   "v1.ChatStreamFinished": ({
     id,

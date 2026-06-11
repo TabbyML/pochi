@@ -45,6 +45,7 @@ export const ForkAgentUseCase = z.enum([
   "task-memory",
   "auto-memory",
   "auto-memory-dream",
+  "todo-audit",
 ]);
 
 export type ForkAgentUseCase = z.infer<typeof ForkAgentUseCase>;

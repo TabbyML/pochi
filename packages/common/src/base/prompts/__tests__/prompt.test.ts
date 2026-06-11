@@ -18,6 +18,16 @@ test("snapshot", () => {
   ).toMatchSnapshot();
 });
 
+test("todo prompt describes active todos and completeTodo checkpoint", () => {
+  const prompt = createSystemPrompt("");
+  expect(prompt).toContain("TODO TASKS");
+  expect(prompt).toContain(
+    "TODOs represent user-requested tasks that must be completed for the current task.",
+  );
+  expect(prompt).toContain("completeTodo is the required completion checkpoint");
+  expect(prompt).not.toContain("in the environment");
+});
+
 test("custom agent includes custom rules by default", () => {
   expect(
     createSystemPrompt(`# Rules from (abc)`, {

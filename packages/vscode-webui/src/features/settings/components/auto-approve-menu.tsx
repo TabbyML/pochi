@@ -17,6 +17,7 @@ import {
   Eye,
   FileEdit,
   type LucideIcon,
+  PlayIcon,
   RotateCcw,
   SquareChevronRightIcon,
   Terminal,
@@ -39,12 +40,16 @@ interface AutoApproveMenuProps {
   isSubTask: boolean;
   mcpConfigOverride?: McpConfigOverride;
   trigger?: React.ReactNode;
+  goalPaused?: boolean;
+  onGoalPausedChange?: (paused: boolean) => void;
 }
 
 export function AutoApproveMenu({
   isSubTask,
   mcpConfigOverride,
   trigger,
+  goalPaused,
+  onGoalPausedChange,
 }: AutoApproveMenuProps) {
   const { t } = useTranslation();
   const {
@@ -142,6 +147,7 @@ export function AutoApproveMenu({
   ];
 
   const { subtaskOffhand, toggleSubtaskOffhand } = useSubtaskOffhand();
+  const showGoalPauseControl = onGoalPausedChange !== undefined;
 
   const [isDirty, setIsDirty] = useState(false);
   type SettingsSnapshot = {
@@ -324,6 +330,29 @@ export function AutoApproveMenu({
             />
           )}
         </div>
+
+        {showGoalPauseControl && (
+          <div className="mt-1 flex h-7 items-center pl-1">
+            <Checkbox
+              id="goal-pause-trigger-dialog"
+              checked={!goalPaused}
+              onCheckedChange={(checked) =>
+                onGoalPausedChange(checked !== true)
+              }
+            />
+            <label
+              className="flex cursor-pointer items-center gap-3 pr-3"
+              htmlFor="goal-pause-trigger-dialog"
+            >
+              <span className="ml-3.5 flex items-center gap-2 font-semibold">
+                <PlayIcon className="size-4 shrink-0" />
+                <span className="whitespace-nowrap text-foreground text-sm">
+                  {t("chat.autoContinueTodo")}
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
 
         {!isSubTask && (
           <div className="mt-1 flex h-7 items-center">

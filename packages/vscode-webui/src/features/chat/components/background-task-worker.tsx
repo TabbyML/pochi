@@ -18,6 +18,7 @@ import {
   type Todo,
   type ToolSpecInput,
   compileToolPolicies,
+  completeTodoAuditOutputSchema,
   getAllowedToolNames,
   isCompletionToolName,
 } from "@getpochi/tools";
@@ -29,6 +30,7 @@ import { countStepStarts } from "../lib/create-fork-agent";
 import { useLiveChatKitGetters } from "../lib/use-live-chat-kit-getters";
 
 const BackgroundTaskMaxStep = 50;
+const TodoAuditBackgroundTaskMaxStep = 300;
 const BackgroundTaskMaxRetry = 8;
 const BackgroundTaskMaxToolRejections = 5;
 const logger = getLogger("BackgroundTaskWorker");
@@ -92,6 +94,7 @@ function BackgroundTaskWorkerInner({
     ((args: AddToolOutputArgs) => void | Promise<void>) | null
   >(null);
   const chatStatusRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
 
   const allowedToolsSet = useMemo(
     () => (tools ? getAllowedToolNames([...tools]) : undefined),
@@ -105,6 +108,10 @@ function BackgroundTaskWorkerInner({
   const isAborted = useCallback(
     () => completedRef.current || abortController.current.signal.aborted,
     [],
+  );
+  const canRetry = useCallback(
+    () => mountedRef.current && !isAborted(),
+    [isAborted],
   );
 
   const persistLastMessage = useCallback(() => {
@@ -129,6 +136,12 @@ function BackgroundTaskWorkerInner({
     return () => signal.removeEventListener("abort", onAbort);
   }, [taskId, batchExecuteManager]);
 
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // NOTE: Do NOT abort on unmount. Background tasks are resumable —
   // `BackgroundTaskRunner` re-mounts this worker via `runnableTasks$` after
   // webview close. Aborting here would mark the task `AbortError` and drop
@@ -150,6 +163,10 @@ function BackgroundTaskWorkerInner({
     isSubTask: false,
     requestUseCase,
     disableAutoCompact: true,
+    attemptCompletionSchema:
+      requestUseCase === "todo-audit"
+        ? completeTodoAuditOutputSchema
+        : undefined,
     sendAutomaticallyWhen: (x) => {
       if (
         isAborted() ||
@@ -254,7 +271,6 @@ function BackgroundTaskWorkerInner({
 
   useTodos({
     initialTodos: task?.todos,
-    messages,
     todosRef,
   });
 
@@ -281,19 +297,20 @@ function BackgroundTaskWorkerInner({
     sendMessage,
     regenerate,
     clearFileStateCache: () => vscodeHost.clearFileStateCache(taskId),
+    canRetry,
   });
   const retry = useCallback(
     (retryError?: Error) => {
-      if (isAborted() || !(status === "ready" || status === "error")) return;
+      if (!canRetry() || !(status === "ready" || status === "error")) return;
       void retryImpl(retryError ?? new ReadyForRetryError());
     },
-    [retryImpl, status, isAborted],
+    [retryImpl, status, canRetry],
   );
 
   const [retryCount, setRetryCount] = useState(0);
   const retryWithCount = useCallback(
     (retryError?: Error) => {
-      if (isAborted()) return;
+      if (!canRetry()) return;
       if (retryCount >= BackgroundTaskMaxRetry) {
         failWorker(
           "The background task failed to complete, max retry count reached.",
@@ -303,7 +320,7 @@ function BackgroundTaskWorkerInner({
       setRetryCount((count) => count + 1);
       retry(retryError);
     },
-    [failWorker, retry, retryCount, isAborted],
+    [failWorker, retry, retryCount, canRetry],
   );
 
   const errorForRetry = useMixinReadyForRetryError(messages, error);
@@ -322,14 +339,14 @@ function BackgroundTaskWorkerInner({
     }
   }, [errorForRetry, debouncedSetPendingErrorForRetry, status]);
   useEffect(() => {
-    if (isAborted() || !pendingErrorForRetry) return;
+    if (!canRetry() || !pendingErrorForRetry) return;
     setPendingErrorForRetryNow(undefined);
     retryWithCount(pendingErrorForRetry);
   }, [
     pendingErrorForRetry,
     retryWithCount,
     setPendingErrorForRetryNow,
-    isAborted,
+    canRetry,
   ]);
 
   useEffect(() => {
@@ -341,15 +358,19 @@ function BackgroundTaskWorkerInner({
   const stepCount = useMemo(() => countStepStarts(messages), [messages]);
   // Subtract parent baseline so only the fork's own steps count.
   const effectiveStepCount = Math.max(0, stepCount - baselineStepCount);
+  const maxStep =
+    requestUseCase === "todo-audit"
+      ? TodoAuditBackgroundTaskMaxStep
+      : BackgroundTaskMaxStep;
 
   useEffect(() => {
     if (completedRef.current) return;
-    if (effectiveStepCount > BackgroundTaskMaxStep) {
+    if (effectiveStepCount > maxStep) {
       failWorker(
         "The background task failed to complete, max step count reached.",
       );
     }
-  }, [effectiveStepCount, failWorker]);
+  }, [effectiveStepCount, failWorker, maxStep]);
 
   const initStarted = useRef(false);
   useEffect(() => {
@@ -359,8 +380,8 @@ function BackgroundTaskWorkerInner({
       !isModelsLoading &&
       !!selectedModel &&
       messages.length > 0 &&
-      !isAborted() &&
-      effectiveStepCount <= BackgroundTaskMaxStep &&
+      canRetry() &&
+      effectiveStepCount <= maxStep &&
       !(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
         task?.status === "completed"
@@ -375,10 +396,11 @@ function BackgroundTaskWorkerInner({
     selectedModel,
     messages.length,
     effectiveStepCount,
+    maxStep,
     retry,
     task?.status,
     task?.error,
-    isAborted,
+    canRetry,
   ]);
 
   return null;
