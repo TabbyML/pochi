@@ -72,6 +72,7 @@ export {
   BatchExecutionErrorMessages,
   BatchExecutionError,
   executeToolCalls,
+  getToolCallCancelErrorMessage,
   isSafeToBatchToolCall,
   partitionToolCalls,
   ToolCallQueue,

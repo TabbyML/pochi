@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BatchExecutionError,
   executeToolCalls,
+  getToolCallCancelErrorMessage,
   isSafeToBatchToolCall,
   partitionToolCalls,
   runConcurrentBatch,
@@ -24,6 +25,20 @@ describe("BatchExecutionError", () => {
 
   it("is instanceof Error", () => {
     expect(new BatchExecutionError("", null)).toBeInstanceOf(Error);
+  });
+});
+
+describe("getToolCallCancelErrorMessage", () => {
+  it("formats user abort cancellations", () => {
+    expect(getToolCallCancelErrorMessage("user-abort")).toBe(
+      "User aborted the tool call",
+    );
+  });
+
+  it("formats previous tool failure cancellations", () => {
+    expect(getToolCallCancelErrorMessage("previous-tool-call-failed")).toBe(
+      "Tool call was cancelled because a previous tool call failed.",
+    );
   });
 });
 
