@@ -5,7 +5,7 @@ import {
   BackgroundTaskStateStore,
   createAutoMemoryCoordinator,
   createTaskMemoryCoordinator,
-} from "../background-task-runner";
+} from "../background-task-executor";
 import { describe, expect, it, vi } from "vitest";
 
 describe("CLI task-memory coordinator", () => {

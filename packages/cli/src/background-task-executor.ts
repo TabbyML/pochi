@@ -43,11 +43,9 @@ import {
   processContentOutput,
 } from "@getpochi/livekit";
 import {
-  type BackgroundTaskRuntimeAdapter,
-  type BackgroundTaskRuntimeContext,
-  type BackgroundTaskToolCallExecution,
-  createBackgroundTaskRunner as createLiveKitBackgroundTaskRunner,
-} from "@getpochi/livekit/background";
+  type RunningTaskAdaptor,
+  createTaskExecutor as createBackgroundTaskExecutor,
+} from "@getpochi/task-executor";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
 import { BackgroundJobManager } from "./lib/background-job-manager";
@@ -56,7 +54,7 @@ import { readEnvironment } from "./lib/read-environment";
 import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
-const logger = getLogger("BackgroundTaskRunner");
+const logger = getLogger("BackgroundTaskExecutor");
 
 export class BackgroundTaskStateStore {
   private readonly states = new Map<string, BackgroundTaskState>();
@@ -70,7 +68,7 @@ export class BackgroundTaskStateStore {
   }
 }
 
-export interface BackgroundTaskRunnerOptions {
+export interface CliBackgroundTaskExecutorOptions {
   store: LiveKitStore;
   blobStore: BlobStore;
   llm: LLMRequestData;
@@ -86,27 +84,27 @@ export interface BackgroundTaskRunnerOptions {
   autoMemoryManager?: AutoMemoryManager;
 }
 
-export function createBackgroundTaskRunner(
-  options: BackgroundTaskRunnerOptions,
+export function createCliBackgroundTaskExecutor(
+  options: CliBackgroundTaskExecutorOptions,
 ) {
   const stateStore = options.stateStore ?? new BackgroundTaskStateStore();
-  const adapter = new BackgroundTaskAdapter({
+  const adaptor = new CliRunningTaskAdaptor({
     ...options,
     stateStore,
   });
-  const runner = createLiveKitBackgroundTaskRunner({
+  const backgroundTaskExecutor = createBackgroundTaskExecutor({
     store: options.store,
     blobStore: options.blobStore,
-    adapter,
+    adaptor,
   });
 
   return {
-    runner,
     stateStore,
-    drain: () => runner.drain(),
-    stop: async () => {
-      await runner.stop();
-      adapter.dispose();
+    start: () => backgroundTaskExecutor.start(),
+    drain: () => backgroundTaskExecutor.drain(),
+    dispose: async () => {
+      await backgroundTaskExecutor.dispose();
+      adaptor.dispose();
     },
   };
 }
@@ -148,6 +146,12 @@ export function createTaskMemoryCoordinator(options: {
   };
 
   return {
+    getState: () => state,
+
+    resetTokenBaseline() {
+      state = { ...state, lastExtractionTokens: 0 };
+    },
+
     async update(data: {
       messages: Message[];
       contextWindowUsage?: ContextWindowUsage;
@@ -416,11 +420,11 @@ function toBackgroundTaskState(agent: ForkAgent<Message>): BackgroundTaskState {
   };
 }
 
-type BackgroundTaskAdapterOptions = BackgroundTaskRunnerOptions & {
+type CliRunningTaskAdaptorOptions = CliBackgroundTaskExecutorOptions & {
   stateStore: BackgroundTaskStateStore;
 };
 
-class BackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
+class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly blobStore: BlobStore;
   private readonly llm: LLMRequestData;
   private readonly cwd: string;
@@ -439,7 +443,7 @@ class BackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     BackgroundJobManager
   >();
 
-  constructor(options: BackgroundTaskAdapterOptions) {
+  constructor(options: CliRunningTaskAdaptorOptions) {
     this.blobStore = options.blobStore;
     this.llm = options.llm;
     this.cwd = options.cwd;
@@ -462,7 +466,7 @@ class BackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     this.backgroundJobManagers.clear();
   }
 
-  getRequestGetters(context: BackgroundTaskRuntimeContext) {
+  getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
     return {
       getLLM: () => this.llm,
       getEnvironment: async () =>
@@ -486,7 +490,7 @@ class BackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     };
   }
 
-  readBackgroundTaskState(taskId: string) {
+  readTaskState(taskId: string) {
     return this.stateStore.read(taskId);
   }
 
@@ -509,7 +513,9 @@ class BackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     this.getFileStateCache(taskId).clear();
   }
 
-  async executeToolCall(args: BackgroundTaskToolCallExecution) {
+  async executeToolCall(
+    args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
+  ) {
     const tool = {
       type: `tool-${args.toolName}`,
       toolCallId: args.toolCallId,
@@ -536,8 +542,8 @@ class BackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     );
   }
 
-  onBackgroundTaskError(taskId: string, error: Error) {
-    logger.warn({ taskId, error }, "Background task failed");
+  onTaskError(taskId: string, error: Error) {
+    logger.warn({ taskId, error }, "Task execution failed");
   }
 
   private createToolCallOptions(taskId: string): ToolCallOptions {

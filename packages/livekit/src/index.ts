@@ -1,6 +1,7 @@
 import type { RequestData } from "./types";
 
 export { defaultCatalog as catalog } from "./livestore";
+export { LiveChatKit, type LiveChatKitOptions } from "./chat/live-chat-kit";
 export type LLMRequestData = RequestData["llm"];
 export type {
   Message,

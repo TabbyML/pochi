@@ -1,9 +1,9 @@
 import type { BackgroundTaskState } from "@getpochi/common";
-import type { Message } from "../../types";
+import type { Message } from "@getpochi/livekit";
 import {
-  BackgroundTaskRunner,
-  type BackgroundTaskRuntimeAdapter,
-} from "../runner";
+  TaskExecutor,
+  type RunningTaskAdaptor,
+} from "../task-executor";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockState = vi.hoisted(() => ({
@@ -13,7 +13,7 @@ const mockState = vi.hoisted(() => ({
   }>,
 }));
 
-vi.mock("../../chat/live-chat-kit", () => {
+vi.mock("@getpochi/livekit/node", () => {
   class MockChat {
     messages: Message[];
     sendMessageCalls = 0;
@@ -104,7 +104,7 @@ type TestTask = {
   background: boolean;
 };
 
-describe("BackgroundTaskRunner", () => {
+describe("TaskExecutor", () => {
   beforeEach(() => {
     mockState.instances.length = 0;
   });
@@ -123,23 +123,23 @@ describe("BackgroundTaskRunner", () => {
       ]),
     ]);
 
-    const adapter = makeAdapter({
+    const adaptor = makeAdaptor({
       task: {
         tools: ["writeToFile(pochi://-/memory.md)", "attemptCompletion"],
         useCase: "task-memory",
       },
       executeToolCall: vi.fn(async () => ({ ok: true })),
     });
-    const runner = new BackgroundTaskRunner({
+    const executor = new TaskExecutor({
       store: store as never,
       blobStore: {} as never,
-      adapter,
+      adaptor,
     });
 
-    await runner.drain();
+    await executor.drain();
 
-    expect(adapter.executeToolCall).toHaveBeenCalledTimes(1);
-    expect(adapter.executeToolCall).toHaveBeenCalledWith(
+    expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
+    expect(adaptor.executeToolCall).toHaveBeenCalledWith(
       expect.objectContaining({
         taskId: "task",
         toolName: "writeToFile",
@@ -155,9 +155,9 @@ describe("BackgroundTaskRunner", () => {
       },
     );
 
-    await runner.drain();
-    expect(adapter.executeToolCall).toHaveBeenCalledTimes(1);
-    await runner.stop();
+    await executor.drain();
+    expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
+    await executor.dispose();
   });
 
   it("executes pending tool calls and sends the next model request", async () => {
@@ -168,22 +168,22 @@ describe("BackgroundTaskRunner", () => {
       makeAssistantMessage([makeToolPart("readFile", "read", { path: "a.ts" })]),
     ]);
 
-    const adapter = makeAdapter({
+    const adaptor = makeAdaptor({
       task: { tools: ["readFile"] },
       executeToolCall: vi.fn(async () => ({ content: "hello" })),
     });
-    const runner = new BackgroundTaskRunner({
+    const executor = new TaskExecutor({
       store: store as never,
       blobStore: {} as never,
-      adapter,
+      adaptor,
     });
 
-    await runner.drain();
+    await executor.drain();
 
-    expect(adapter.executeToolCall).toHaveBeenCalledTimes(1);
+    expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
     expect(mockState.instances[0].chat.sendMessageCalls).toBe(1);
     expect(store.readTask("task")?.status).toBe("completed");
-    await runner.stop();
+    await executor.dispose();
   });
 
   it("does not start duplicate workers for the same active task", async () => {
@@ -195,30 +195,30 @@ describe("BackgroundTaskRunner", () => {
     ]);
     const pending = deferred<unknown>();
     const executeToolCall = vi.fn(() => pending.promise);
-    const adapter = makeAdapter({
+    const adaptor = makeAdaptor({
       task: { tools: ["readFile"] },
       executeToolCall,
     });
-    const runner = new BackgroundTaskRunner({
+    const executor = new TaskExecutor({
       store: store as never,
       blobStore: {} as never,
-      adapter,
+      adaptor,
     });
 
-    runner.start();
+    executor.start();
     await waitFor(() => executeToolCall.mock.calls.length === 1);
     store.emit();
     store.emit();
 
     expect(mockState.instances).toHaveLength(1);
-    expect(adapter.executeToolCall).toHaveBeenCalledTimes(1);
+    expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
 
     pending.resolve({ content: "hello" });
-    await runner.drain();
-    await runner.stop();
+    await executor.drain();
+    await executor.dispose();
   });
 
-  it("rejects disallowed tool names before invoking the adapter", async () => {
+  it("rejects disallowed tool names before invoking the adaptor", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-tool" }),
     ]);
@@ -227,31 +227,31 @@ describe("BackgroundTaskRunner", () => {
         makeToolPart("executeCommand", "exec", { command: "echo hi" }),
       ]),
     ]);
-    const adapter = makeAdapter({
+    const adaptor = makeAdaptor({
       task: { tools: ["readFile"] },
       executeToolCall: vi.fn(async () => ({ ok: true })),
     });
-    const runner = new BackgroundTaskRunner({
+    const executor = new TaskExecutor({
       store: store as never,
       blobStore: {} as never,
-      adapter,
+      adaptor,
     });
 
-    await runner.drain();
+    await executor.drain();
 
-    expect(adapter.executeToolCall).not.toHaveBeenCalled();
+    expect(adaptor.executeToolCall).not.toHaveBeenCalled();
     expect(getToolPart(store.readMessages("task").at(-1), "exec")).toMatchObject(
       {
         state: "output-available",
         output: {
-          error: "Tool executeCommand is not allowed for this background task.",
+          error: "Tool executeCommand is not allowed for this task.",
         },
       },
     );
-    await runner.stop();
+    await executor.dispose();
   });
 
-  it("applies tool policy validation before invoking the adapter", async () => {
+  it("applies tool policy validation before invoking the adaptor", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-tool", cwd: "/repo" }),
     ]);
@@ -263,19 +263,19 @@ describe("BackgroundTaskRunner", () => {
         }),
       ]),
     ]);
-    const adapter = makeAdapter({
+    const adaptor = makeAdaptor({
       task: { tools: ["writeToFile(/repo/allowed.md)"] },
       executeToolCall: vi.fn(async () => ({ ok: true })),
     });
-    const runner = new BackgroundTaskRunner({
+    const executor = new TaskExecutor({
       store: store as never,
       blobStore: {} as never,
-      adapter,
+      adaptor,
     });
 
-    await runner.drain();
+    await executor.drain();
 
-    expect(adapter.executeToolCall).not.toHaveBeenCalled();
+    expect(adaptor.executeToolCall).not.toHaveBeenCalled();
     expect(
       String(
         (getToolPart(store.readMessages("task").at(-1), "write")?.output as {
@@ -283,7 +283,7 @@ describe("BackgroundTaskRunner", () => {
         })?.error,
       ),
     ).toContain("not allowed");
-    await runner.stop();
+    await executor.dispose();
   });
 });
 
@@ -388,12 +388,12 @@ class FakeLiveKitStore {
   }
 }
 
-function makeAdapter({
+function makeAdaptor({
   task,
   executeToolCall,
 }: {
   task: BackgroundTaskState;
-  executeToolCall: BackgroundTaskRuntimeAdapter["executeToolCall"];
+  executeToolCall: RunningTaskAdaptor["executeToolCall"];
 }) {
   return {
     getRequestGetters: () => ({
@@ -406,9 +406,9 @@ function makeAdapter({
           maxOutputTokens: 4_096,
         }) as never,
     }),
-    readBackgroundTaskState: () => task,
+    readTaskState: () => task,
     executeToolCall,
-  } satisfies BackgroundTaskRuntimeAdapter;
+  } satisfies RunningTaskAdaptor;
 }
 
 function makeTask({
