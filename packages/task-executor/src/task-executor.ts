@@ -26,7 +26,6 @@ import {
   compileToolPolicies,
   getAllowedToolNames,
   getToolCallCancelErrorMessage,
-  isUserInputToolName,
   isUserInputToolPart,
   validateToolPolicy,
 } from "@getpochi/tools";
@@ -93,7 +92,7 @@ export class TaskExecutor {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly adaptor: RunningTaskAdaptor;
-  private readonly workers = new Map<string, RunningTask>();
+  private readonly runningTasks = new Map<string, RunningTask>();
   private unsubscribe: (() => void) | undefined;
   private started = false;
   private disposed = false;
@@ -110,9 +109,9 @@ export class TaskExecutor {
     this.started = true;
     this.unsubscribe = this.store.subscribe(
       catalog.queries.runnableTasks$,
-      () => this.reconcile(this.getRunnableTasks()),
+      () => this.reconcileRunnableTasks(),
     );
-    this.reconcile(this.getRunnableTasks());
+    this.reconcileRunnableTasks();
   }
 
   async dispose() {
@@ -122,79 +121,65 @@ export class TaskExecutor {
     this.unsubscribe = undefined;
     this.started = false;
     await Promise.all(
-      [...this.workers.values()].map(async (worker) => {
-        await worker.dispose();
-        await worker.done.catch(() => undefined);
+      [...this.runningTasks.values()].map(async (runningTask) => {
+        await runningTask.dispose();
+        await runningTask.done.catch(() => undefined);
       }),
     );
-    this.workers.clear();
+    this.runningTasks.clear();
   }
 
   async drain() {
     this.start();
 
     while (true) {
-      const runnableTasks = this.getRunnableTasks();
+      const runnableTasks = this.readRunnableTasks();
       this.reconcile(runnableTasks);
 
-      if (runnableTasks.length === 0 && this.workers.size === 0) {
+      if (runnableTasks.length === 0 && this.runningTasks.size === 0) {
         return;
       }
 
-      const activeWorkers = [...this.workers.values()];
+      const activeTasks = [...this.runningTasks.values()];
       await Promise.race([
-        ...activeWorkers.map((worker) => worker.done.catch(() => undefined)),
+        ...activeTasks.map((runningTask) =>
+          runningTask.done.catch(() => undefined),
+        ),
         sleep(100),
       ]);
     }
   }
 
+  private readRunnableTasks() {
+    return this.store.query(catalog.queries.runnableTasks$);
+  }
+
+  private reconcileRunnableTasks() {
+    this.reconcile(this.readRunnableTasks());
+  }
+
   private reconcile(tasks: readonly Task[]) {
     for (const task of tasks) {
-      if (this.workers.size >= TaskExecutorMaxConcurrency) {
+      if (this.runningTasks.size >= TaskExecutorMaxConcurrency) {
         return;
       }
-      if (!this.workers.has(task.id)) {
-        this.startWorker(task.id);
+      if (!this.runningTasks.has(task.id)) {
+        this.startRunningTask(task.id);
       }
     }
   }
 
-  private getRunnableTasks() {
-    return this.store
-      .query(catalog.queries.runnableTasks$)
-      .filter((task) => this.isTaskRunnable(task));
-  }
-
-  private isTaskRunnable(task: Task) {
-    if (task.status === "pending-model" || task.status === "pending-tool") {
-      return true;
-    }
-
-    if (task.status !== "completed") {
-      return false;
-    }
-
-    return hasPendingNonCompletionToolCalls(this.readMessages(task.id).at(-1));
-  }
-
-  private readMessages(taskId: string) {
-    return this.store
-      .query(catalog.queries.makeMessagesQuery(taskId))
-      .map((message) => message.data as Message);
-  }
-
-  private startWorker(taskId: string) {
+  private startRunningTask(taskId: string) {
     if (this.disposed) return;
-    const worker = new RunningTask({
+    const runningTask = new RunningTask({
       taskId,
       store: this.store,
       blobStore: this.blobStore,
       adaptor: this.adaptor,
     });
-    this.workers.set(taskId, worker);
+    this.runningTasks.set(taskId, runningTask);
 
-    worker.done
+    runningTask.done
       .catch(async (error) => {
         const normalizedError = toError(error);
         logger.warn(
@@ -204,11 +189,11 @@ export class TaskExecutor {
         await this.adaptor.onTaskError?.(taskId, normalizedError);
       })
       .finally(() => {
-        if (this.workers.get(taskId) === worker) {
-          this.workers.delete(taskId);
+        if (this.runningTasks.get(taskId) === runningTask) {
+          this.runningTasks.delete(taskId);
         }
         if (!this.disposed && this.started) {
-          this.reconcile(this.getRunnableTasks());
+          this.reconcileRunnableTasks();
         }
       });
   }
@@ -351,12 +336,6 @@ class RunningTask {
     }
 
     if (task.status === "completed" || task.status === "pending-input") {
-      if (
-        task.status === "completed" &&
-        hasPendingNonCompletionToolCalls(message)
-      ) {
-        return undefined;
-      }
       return "finished";
     }
 
@@ -436,7 +415,7 @@ class RunningTask {
     }
 
     await this.toolCallQueue.start();
-    return this.task?.status === "completed" ? "finished" : "next";
+    return "next";
   }
 
   private async runToolCall(
@@ -534,15 +513,6 @@ class RunningTask {
 
   private async addToolOutput(output: TaskToolOutput) {
     await this.chat.addToolOutput(output as never);
-    await this.persistLastMessage();
-  }
-
-  private async persistLastMessage() {
-    const lastMessage = this.chat.messages.at(-1);
-    if (!lastMessage) return;
-    this.store.commit(
-      catalog.events.updateMessages({ messages: [lastMessage] }),
-    );
   }
 
   private replaceLastMessageForRetry(message: Message): void {
@@ -587,17 +557,6 @@ function getToolExecutionError(result: unknown): string | undefined {
   }
 
   return toErrorMessage(error);
-}
-
-function hasPendingNonCompletionToolCalls(message: Message | undefined) {
-  if (!message || message.role !== "assistant") return false;
-
-  return message.parts.some(
-    (part) =>
-      isStaticToolUIPart(part) &&
-      part.state === "input-available" &&
-      !isUserInputToolName(getStaticToolName(part)),
-  );
 }
 
 function countStepStarts(messages: ReadonlyArray<Pick<Message, "parts">>) {
