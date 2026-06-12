@@ -20,7 +20,7 @@ vi.mock("@getpochi/livekit/node", () => {
 
     constructor(
       messages: Message[],
-      private readonly onSendMessage: () => void,
+      private readonly onSendMessage: (messages: Message[]) => void,
     ) {
       this.messages = structuredClone(messages);
     }
@@ -66,7 +66,7 @@ vi.mock("@getpochi/livekit/node", () => {
 
     async sendMessage() {
       this.sendMessageCalls += 1;
-      this.onSendMessage();
+      this.onSendMessage(this.messages);
     }
   }
 
@@ -83,7 +83,10 @@ vi.mock("@getpochi/livekit/node", () => {
       this.store = options.store;
       this.chat = new MockChat(
         this.store.readMessages(this.taskId),
-        () => this.store.completeTask(this.taskId),
+        (messages) => {
+          this.store.setMessages(this.taskId, messages);
+          this.store.completeTask(this.taskId);
+        },
       );
       mockState.instances.push(this);
     }
@@ -107,57 +110,6 @@ type TestTask = {
 describe("TaskExecutor", () => {
   beforeEach(() => {
     mockState.instances.length = 0;
-  });
-
-  it("executes non-completion tools for completed fork-agent messages without sending another model request", async () => {
-    const store = new FakeLiveKitStore([
-      makeTask({ id: "task", status: "completed" }),
-    ]);
-    store.setMessages("task", [
-      makeAssistantMessage([
-        makeToolPart("writeToFile", "write", {
-          path: "pochi://-/memory.md",
-          content: "memory",
-        }),
-        makeToolPart("attemptCompletion", "done", { result: "done" }),
-      ]),
-    ]);
-
-    const adaptor = makeAdaptor({
-      task: {
-        tools: ["writeToFile(pochi://-/memory.md)", "attemptCompletion"],
-        useCase: "task-memory",
-      },
-      executeToolCall: vi.fn(async () => ({ ok: true })),
-    });
-    const executor = new TaskExecutor({
-      store: store as never,
-      blobStore: {} as never,
-      adaptor,
-    });
-
-    await executor.drain();
-
-    expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
-    expect(adaptor.executeToolCall).toHaveBeenCalledWith(
-      expect.objectContaining({
-        taskId: "task",
-        toolName: "writeToFile",
-        toolCallId: "write",
-      }),
-    );
-    expect(mockState.instances).toHaveLength(1);
-    expect(mockState.instances[0].chat.sendMessageCalls).toBe(0);
-    expect(getToolPart(store.readMessages("task").at(-1), "write")).toMatchObject(
-      {
-        state: "output-available",
-        output: { ok: true },
-      },
-    );
-
-    await executor.drain();
-    expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
-    await executor.dispose();
   });
 
   it("executes pending tool calls and sends the next model request", async () => {
@@ -186,7 +138,7 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
-  it("does not start duplicate workers for the same active task", async () => {
+  it("does not start duplicate running tasks for the same active task", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-tool" }),
     ]);
@@ -322,19 +274,11 @@ class FakeLiveKitStore {
     return undefined;
   }
 
-  commit(event: unknown) {
-    if (!isEvent(event) || event.name !== "v1.UpdateMessages") return;
-    for (const message of event.args.messages as Message[]) {
-      this.upsertMessage(message);
-    }
-    this.emit();
-  }
-
   readRunnableTasks() {
     return [...this.tasks.values()].filter(
       (task) =>
         task.background &&
-        ["pending-model", "pending-tool", "completed"].includes(task.status),
+        ["pending-model", "pending-tool"].includes(task.status),
     );
   }
 
@@ -371,19 +315,6 @@ class FakeLiveKitStore {
   emit() {
     for (const subscriber of this.subscribers) {
       subscriber();
-    }
-  }
-
-  private upsertMessage(message: Message) {
-    for (const [taskId, messages] of this.messages) {
-      const index = messages.findIndex((m) => m.id === message.id);
-      if (index === -1) continue;
-      this.messages.set(taskId, [
-        ...messages.slice(0, index),
-        structuredClone(message),
-        ...messages.slice(index + 1),
-      ]);
-      return;
     }
   }
 }
@@ -474,21 +405,6 @@ function isQuery(value: unknown): value is { label: string; hash: string } {
 
 function readQueryTaskId(query: { hash: string }) {
   return query.hash.slice(query.hash.lastIndexOf("-") + 1);
-}
-
-function isEvent(value: unknown): value is {
-  name: string;
-  args: Record<string, unknown>;
-} {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "name" in value &&
-    "args" in value &&
-    typeof value.name === "string" &&
-    typeof value.args === "object" &&
-    value.args !== null
-  );
 }
 
 function deferred<T>() {

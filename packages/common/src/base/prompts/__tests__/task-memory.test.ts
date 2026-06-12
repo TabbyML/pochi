@@ -16,12 +16,16 @@ test("task memory update directive targets the task memory file URI", () => {
   expect(directive).toContain(TaskMemoryFileUri);
 });
 
-test("task memory directive requires parallel tool calls in one response", () => {
+test("task memory directive requires writing before completion", () => {
   const directive = buildMemoryExtractionDirective();
 
-  expect(directive).toContain("parallel tool calls");
   expect(directive).toContain("writeToFile");
   expect(directive).toContain("attemptCompletion");
-  // The directive should explicitly forbid sequential turns.
-  expect(directive).toContain("Do NOT wait for the writeToFile result");
+  expect(directive).toContain("After the writeToFile result is available");
+  expect(directive).toContain(
+    "Do NOT call attemptCompletion in the same assistant message as writeToFile",
+  );
+  expect(directive).not.toContain("parallel tool calls");
+  expect(directive).not.toContain("PARALLEL");
+  expect(directive).not.toContain("Do NOT wait for the writeToFile result");
 });

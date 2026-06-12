@@ -1,5 +1,6 @@
 {
   "extends": "../../tsconfig.json",
+  "include": ["**/*", "../livekit/ambient.d.ts"],
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

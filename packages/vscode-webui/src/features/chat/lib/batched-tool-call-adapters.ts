@@ -299,7 +299,7 @@ export function createSubtaskBatchedToolCall({
 }
 
 /**
- * For background-task workers: directly executes via vscodeHost and reports
+ * For background task execution: directly executes via vscodeHost and reports
  * results with addToolOutput, with support for executeCommand streaming and
  * a parentTaskId-driven file-state cache.
  *
@@ -370,7 +370,7 @@ export function createBackgroundTaskBatchedToolCall({
                 if (output.error) {
                   finalResult.error = output.error;
                 } else if (reason === "aborted") {
-                  finalResult.error = "Aborted by background task worker";
+                  finalResult.error = "Aborted by background task executor";
                 }
 
                 try {

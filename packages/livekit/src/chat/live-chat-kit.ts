@@ -227,7 +227,6 @@ export class LiveChatKit<
   protected readonly blobStore: BlobStore;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-  private readonly requestUseCase: PochiRequestUseCase | undefined;
 
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
@@ -271,7 +270,6 @@ export class LiveChatKit<
     this.taskId = taskId;
     this.store = store;
     this.blobStore = blobStore;
-    this.requestUseCase = requestUseCase;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
     this.transport = new FlexibleChatTransport({
@@ -643,12 +641,7 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    // Background tasks started from fork agents emit `writeToFile + attemptCompletion`
-    // as parallel tool calls; stripping `attemptCompletion` would lock the
-    // task at `pending-tool` forever, so skip the filter for them.
-    const message = isForkAgentUseCase(this.requestUseCase)
-      ? originalMessage
-      : filterCompletionTools(originalMessage);
+    const message = filterCompletionTools(originalMessage);
     this.chat.messages = [...this.chat.messages.slice(0, -1), message];
 
     const { store } = this;
