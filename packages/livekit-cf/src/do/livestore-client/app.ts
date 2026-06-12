@@ -4,12 +4,13 @@ import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
-import type { LiveStoreEvent, Store } from "@livestore/livestore";
+import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
 import type { InferToolInput } from "ai";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { streamSSE } from "hono/streaming";
 import type { DeepWritable, Env } from "./types";
 
 type RequestVariables = {
@@ -108,38 +109,45 @@ store
       }
     }
 
-    const events: LiveStoreEvent.Client.ForSchema<typeof catalog.schema>[] = [];
-    const iterator = store.events()[Symbol.asyncIterator]();
-    try {
-      while (true) {
-        let timeoutId: ReturnType<typeof setTimeout> | undefined;
-        const timeoutPromise = new Promise<null>((resolve) => {
-          timeoutId = setTimeout(() => resolve(null), 1000);
-        });
-        const nextPromise = iterator.next();
-
-        const result = await Promise.race([nextPromise, timeoutPromise]);
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+    return streamSSE(c, async (stream) => {
+      const iterator = store.events()[Symbol.asyncIterator]();
+      stream.onAbort(() => {
+        if (iterator.return) {
+          iterator.return();
         }
+      });
 
-        if (result === null) {
-          break;
+      try {
+        while (true) {
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<null>((resolve) => {
+            timeoutId = setTimeout(() => resolve(null), 1000);
+          });
+          const nextPromise = iterator.next();
+
+          const result = await Promise.race([nextPromise, timeoutPromise]);
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+
+          if (result === null) {
+            break;
+          }
+
+          if (result.done) {
+            break;
+          }
+
+          await stream.writeSSE({
+            data: JSON.stringify(result.value),
+          });
         }
-
-        if (result.done) {
-          break;
+      } finally {
+        if (iterator.return) {
+          iterator.return();
         }
-
-        events.push(result.value);
       }
-    } finally {
-      if (iterator.return) {
-        await iterator.return();
-      }
-    }
-
-    return c.json({ events });
+    });
   });
 
 export const app = new Hono<{ Bindings: Env }>();
