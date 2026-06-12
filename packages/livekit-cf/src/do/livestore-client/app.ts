@@ -4,7 +4,7 @@ import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
-import type { Store } from "@livestore/livestore";
+import type { LiveStoreEvent, Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
 import type { InferToolInput } from "ai";
 import { Hono } from "hono";
@@ -92,6 +92,54 @@ store
   })
   .get("/tasks/:taskId/html", async (c) => {
     return c.env.ASSETS.fetch(c.req.raw);
+  })
+  .get("/tasks/:taskId/events", async (c) => {
+    const store = await c.env.getStore();
+    const taskId = c.req.param("taskId");
+    const task = store.query(catalog.queries.makeTaskQuery(taskId));
+
+    if (!task) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+
+    if (!task.isPublicShared) {
+      if (!c.get("isOwner")) {
+        throw new HTTPException(403, { message: "Task is not public" });
+      }
+    }
+
+    const events: LiveStoreEvent.Client.ForSchema<typeof catalog.schema>[] = [];
+    const iterator = store.events()[Symbol.asyncIterator]();
+    try {
+      while (true) {
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<null>((resolve) => {
+          timeoutId = setTimeout(() => resolve(null), 1000);
+        });
+        const nextPromise = iterator.next();
+
+        const result = await Promise.race([nextPromise, timeoutPromise]);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
+        if (result === null) {
+          break;
+        }
+
+        if (result.done) {
+          break;
+        }
+
+        events.push(result.value);
+      }
+    } finally {
+      if (iterator.return) {
+        await iterator.return();
+      }
+    }
+
+    return c.json({ events });
   });
 
 export const app = new Hono<{ Bindings: Env }>();
