@@ -43,6 +43,7 @@ const logger = getLogger("TaskExecutor");
 const TaskExecutorMaxStep = 50;
 const TaskExecutorMaxRetry = 8;
 const TaskExecutorMaxToolRejections = 5;
+const TaskExecutorMaxConcurrency = 10;
 
 export interface TaskExecutorToolCallExecution {
   taskId: string;
@@ -150,6 +151,9 @@ export class TaskExecutor {
 
   private reconcile(tasks: readonly Task[]) {
     for (const task of tasks) {
+      if (this.workers.size >= TaskExecutorMaxConcurrency) {
+        return;
+      }
       if (!this.workers.has(task.id)) {
         this.startWorker(task.id);
       }
@@ -202,6 +206,9 @@ export class TaskExecutor {
       .finally(() => {
         if (this.workers.get(taskId) === worker) {
           this.workers.delete(taskId);
+        }
+        if (!this.disposed && this.started) {
+          this.reconcile(this.getRunnableTasks());
         }
       });
   }
