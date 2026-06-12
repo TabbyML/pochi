@@ -1,3 +1,4 @@
+import type { Message } from "@getpochi/livekit";
 import { signal } from "@preact/signals-core";
 import {
   AbstractChat,
@@ -5,7 +6,6 @@ import {
   type ChatState,
   type ChatStatus,
 } from "ai";
-import type { Message } from "../types";
 
 class HeadlessChatState implements ChatState<Message> {
   readonly signal = {

@@ -25,7 +25,7 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import { constants, getLogger } from "@getpochi/common";
+import { constants, type AutoMemoryContext, getLogger } from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
@@ -46,9 +46,9 @@ import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
 import {
   createAutoMemoryCoordinator,
-  createBackgroundTaskRunner,
+  createCliBackgroundTaskExecutor,
   createTaskMemoryCoordinator,
-} from "./background-task-runner";
+} from "./background-task-executor";
 import { handleShellCompletion } from "./completion";
 import { setFfmpegPath } from "./lib/ffmpeg-mjpeg-to-mp4";
 import {
@@ -331,6 +331,20 @@ const program = new Command()
     let autoMemoryCoordinator:
       | ReturnType<typeof createAutoMemoryCoordinator>
       | undefined;
+    let autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
+    const getAutoMemory = () => {
+      if (autoMemoryCache) return autoMemoryCache;
+      const pending = autoMemoryManager.readContext(process.cwd());
+      const cached = pending.catch((error) => {
+        logger.warn("Failed to read long-term memory context", error);
+        if (autoMemoryCache === cached) {
+          autoMemoryCache = null;
+        }
+        return undefined;
+      });
+      autoMemoryCache = cached;
+      return cached;
+    };
     const trackMemoryUpdate = (promise: Promise<unknown>) => {
       const tracked = promise
         .catch((error) => {
@@ -375,6 +389,13 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
+      getAutoMemory,
+      getTaskMemoryState: () => taskMemoryCoordinator?.getState(),
+      onCompactFinish(success) {
+        if (success) {
+          taskMemoryCoordinator?.resetTokenBaseline();
+        }
+      },
       onStreamFinish(data) {
         if (!taskMemoryCoordinator || !autoMemoryCoordinator) return;
         trackMemoryUpdate(
@@ -389,7 +410,7 @@ const program = new Command()
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
-    const backgroundTaskRunner = createBackgroundTaskRunner({
+    const backgroundTaskExecutor = createCliBackgroundTaskExecutor({
       store,
       blobStore,
       llm,
@@ -405,14 +426,14 @@ const program = new Command()
     });
     taskMemoryCoordinator = createTaskMemoryCoordinator({
       store,
-      stateStore: backgroundTaskRunner.stateStore,
+      stateStore: backgroundTaskExecutor.stateStore,
       parentTaskId: uid,
       parentCwd: process.cwd(),
       isSubTask,
     });
     autoMemoryCoordinator = createAutoMemoryCoordinator({
       store,
-      stateStore: backgroundTaskRunner.stateStore,
+      stateStore: backgroundTaskExecutor.stateStore,
       parentTaskId: uid,
       parentCwd: process.cwd(),
       isSubTask,
@@ -449,13 +470,13 @@ const program = new Command()
     let runtimeError: Error | undefined = undefined;
     try {
       logger.debug("Starting task runner...");
-      backgroundTaskRunner.runner.start();
+      backgroundTaskExecutor.start();
       await runner.run();
       await waitForMemoryUpdates();
-      await backgroundTaskRunner.drain();
+      await backgroundTaskExecutor.drain();
       taskMemoryCoordinator.settle();
       while (await autoMemoryCoordinator.settleAndMaybeContinue()) {
-        await backgroundTaskRunner.drain();
+        await backgroundTaskExecutor.drain();
         taskMemoryCoordinator.settle();
       }
       taskMemoryCoordinator.settle();
@@ -466,7 +487,7 @@ const program = new Command()
     } finally {
       logger.debug("Shutting down...");
       // Cleanup resources
-      await backgroundTaskRunner.stop();
+      await backgroundTaskExecutor.dispose();
       outputRenderer.shutdown();
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {

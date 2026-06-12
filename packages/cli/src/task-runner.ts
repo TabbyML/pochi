@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import {
+  type AutoMemoryContext,
   type ContextWindowUsage,
+  type TaskMemoryState,
   getLogger,
   prompts,
   toErrorMessage,
@@ -149,6 +151,12 @@ export interface RunnerOptions {
     contextWindowUsage?: ContextWindowUsage;
   }) => void | Promise<void>;
 
+  onCompactFinish?: (success: boolean) => void | Promise<void>;
+
+  getTaskMemoryState?: () => TaskMemoryState | undefined;
+
+  getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
+
   /**
    * The file system to use for the task runner.
    */
@@ -239,6 +247,8 @@ export class TaskRunner {
           uid: taskId,
           isSubTask: true,
           onStreamFinish: undefined,
+          onCompactFinish: undefined,
+          getTaskMemoryState: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -260,11 +270,15 @@ export class TaskRunner {
 
       abortSignal: options.abortSignal,
 
-      onCompactFinish: (success: boolean) => {
+      onCompactFinish: async (success: boolean) => {
         if (success) {
           this.toolCallOptions.fileStateCache.clear();
         }
+        await options.onCompactFinish?.(success);
       },
+      getRecentFilesForCompact: () =>
+        this.toolCallOptions.fileStateCache.getRecentFiles(),
+      getTaskMemoryState: options.getTaskMemoryState,
       onStreamFinish: options.onStreamFinish,
 
       getters: {
@@ -279,6 +293,11 @@ export class TaskRunner {
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
+        ...(options.getAutoMemory
+          ? {
+              getAutoMemory: options.getAutoMemory,
+            }
+          : {}),
         ...(options.mcpHub
           ? {
               getMcpInfo: () => {

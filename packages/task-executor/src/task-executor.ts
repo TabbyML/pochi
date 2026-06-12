@@ -11,6 +11,15 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import {
+  type BlobStore,
+  type LiveChatKitOptions,
+  type LiveKitStore,
+  type Message,
+  type Task,
+  catalog,
+} from "@getpochi/livekit";
+import { LiveChatKit } from "@getpochi/livekit/node";
+import {
   type BatchedToolCallResult,
   type CompiledToolPolicies,
   ToolCallQueue,
@@ -27,28 +36,15 @@ import {
   isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import type { BlobStore } from "../blob-store";
-import type { PrepareRequestGetters } from "../chat/flexible-chat-transport";
-import { LiveChatKit } from "../chat/live-chat-kit";
-import { defaultCatalog as catalog } from "../livestore";
-import { makeTaskQuery } from "../livestore/default-queries";
-import type { LiveKitStore, Message, Task } from "../types";
 import { HeadlessChat } from "./headless-chat";
 
-const logger = getLogger("BackgroundTaskRunner");
+const logger = getLogger("TaskExecutor");
 
-const BackgroundTaskMaxStep = 50;
-const BackgroundTaskMaxRetry = 8;
-const BackgroundTaskMaxToolRejections = 5;
+const TaskExecutorMaxStep = 50;
+const TaskExecutorMaxRetry = 8;
+const TaskExecutorMaxToolRejections = 5;
 
-export interface BackgroundTaskRuntimeContext {
-  taskId: string;
-  cwd: string | undefined;
-}
-
-export type BackgroundTaskRequestGetters = PrepareRequestGetters;
-
-export interface BackgroundTaskToolCallExecution {
+export interface TaskExecutorToolCallExecution {
   taskId: string;
   parentTaskId: string | undefined;
   storeId: string;
@@ -59,59 +55,56 @@ export interface BackgroundTaskToolCallExecution {
   toolPolicies: CompiledToolPolicies | undefined;
 }
 
-export interface BackgroundTaskRuntimeAdapter {
-  getRequestGetters(
-    context: BackgroundTaskRuntimeContext,
-  ): BackgroundTaskRequestGetters;
-  readBackgroundTaskState(
+export interface RunningTaskAdaptor {
+  getRequestGetters(context: {
+    taskId: string;
+    cwd: string | undefined;
+  }): LiveChatKitOptions<HeadlessChat>["getters"];
+  readTaskState(
     taskId: string,
   ): Promise<BackgroundTaskState | undefined> | BackgroundTaskState | undefined;
-  executeToolCall(args: BackgroundTaskToolCallExecution): Promise<unknown>;
+  executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
   copyFileStateCache?(
     sourceTaskId: string,
     targetTaskId: string,
   ): void | Promise<void>;
   clearFileStateCache?(taskId: string): void | Promise<void>;
-  onBackgroundTaskError?(taskId: string, error: Error): void | Promise<void>;
+  onTaskError?(taskId: string, error: Error): void | Promise<void>;
 }
 
-type BackgroundTaskToolOutput = {
+type TaskToolOutput = {
   tool: string;
   toolCallId: string;
   output: unknown;
 };
 
-type CreateBackgroundTaskRunnerOptions = {
+type CreateTaskExecutorOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
-  adapter: BackgroundTaskRuntimeAdapter;
+  adaptor: RunningTaskAdaptor;
 };
 
-export function createBackgroundTaskRunner(
-  options: CreateBackgroundTaskRunnerOptions,
-) {
-  return new BackgroundTaskRunner(options);
+export function createTaskExecutor(options: CreateTaskExecutorOptions) {
+  return new TaskExecutor(options);
 }
 
-export class BackgroundTaskRunner {
+export class TaskExecutor {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
-  private readonly runtime: BackgroundTaskRuntimeAdapter;
-  private readonly workers = new Map<string, BackgroundTaskWorker>();
+  private readonly adaptor: RunningTaskAdaptor;
+  private readonly workers = new Map<string, RunningTask>();
   private unsubscribe: (() => void) | undefined;
   private started = false;
+  private disposed = false;
 
-  constructor({
-    store,
-    blobStore,
-    adapter,
-  }: CreateBackgroundTaskRunnerOptions) {
+  constructor({ store, blobStore, adaptor }: CreateTaskExecutorOptions) {
     this.store = store;
     this.blobStore = blobStore;
-    this.runtime = adapter;
+    this.adaptor = adaptor;
   }
 
   start() {
+    if (this.disposed) return;
     if (this.started) return;
     this.started = true;
     this.unsubscribe = this.store.subscribe(
@@ -121,12 +114,17 @@ export class BackgroundTaskRunner {
     this.reconcile(this.getRunnableTasks());
   }
 
-  async stop() {
+  async dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     this.started = false;
     await Promise.all(
-      [...this.workers.values()].map((worker) => worker.stop("user-abort")),
+      [...this.workers.values()].map(async (worker) => {
+        await worker.dispose();
+        await worker.done.catch(() => undefined);
+      }),
     );
     this.workers.clear();
   }
@@ -183,11 +181,12 @@ export class BackgroundTaskRunner {
   }
 
   private startWorker(taskId: string) {
-    const worker = new BackgroundTaskWorker({
+    if (this.disposed) return;
+    const worker = new RunningTask({
       taskId,
       store: this.store,
       blobStore: this.blobStore,
-      runtime: this.runtime,
+      adaptor: this.adaptor,
     });
     this.workers.set(taskId, worker);
 
@@ -196,9 +195,9 @@ export class BackgroundTaskRunner {
         const normalizedError = toError(error);
         logger.warn(
           { taskId, error: normalizedError },
-          "Background task failed",
+          "Task execution failed",
         );
-        await this.runtime.onBackgroundTaskError?.(taskId, normalizedError);
+        await this.adaptor.onTaskError?.(taskId, normalizedError);
       })
       .finally(() => {
         if (this.workers.get(taskId) === worker) {
@@ -208,54 +207,50 @@ export class BackgroundTaskRunner {
   }
 }
 
-type BackgroundTaskWorkerOptions = {
+type RunningTaskOptions = {
   taskId: string;
   store: LiveKitStore;
   blobStore: BlobStore;
-  runtime: BackgroundTaskRuntimeAdapter;
+  adaptor: RunningTaskAdaptor;
 };
 
-class BackgroundTaskWorker {
+class RunningTask {
   private readonly taskId: string;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
-  private readonly runtime: BackgroundTaskRuntimeAdapter;
+  private readonly adaptor: RunningTaskAdaptor;
   private readonly abortController = new AbortController();
   private readonly toolCallQueue = new ToolCallQueue();
-  private backgroundTaskState: BackgroundTaskState = {};
+  private taskState: BackgroundTaskState = {};
   private chatKit: LiveChatKit<HeadlessChat> | undefined;
   private retryCount = 0;
   private toolRejectionCount = 0;
-  private stopped = false;
+  private disposed = false;
 
   readonly done: Promise<void>;
 
-  constructor(options: BackgroundTaskWorkerOptions) {
+  constructor(options: RunningTaskOptions) {
     this.taskId = options.taskId;
     this.store = options.store;
     this.blobStore = options.blobStore;
-    this.runtime = options.runtime;
+    this.adaptor = options.adaptor;
     this.done = this.run();
   }
 
-  async stop(reason: string) {
-    if (this.stopped) return;
-    this.stopped = true;
-    this.abortController.abort(reason);
+  async dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.abortController.abort("user-abort");
     await this.toolCallQueue.abort("user-abort");
     await this.chatKit?.chat.stop();
   }
 
   private async run() {
     try {
-      this.backgroundTaskState =
-        (await this.runtime.readBackgroundTaskState(this.taskId)) ?? {};
-      if (
-        this.backgroundTaskState.parentTaskId &&
-        this.runtime.copyFileStateCache
-      ) {
-        await this.runtime.copyFileStateCache(
-          this.backgroundTaskState.parentTaskId,
+      this.taskState = (await this.adaptor.readTaskState(this.taskId)) ?? {};
+      if (this.taskState.parentTaskId && this.adaptor.copyFileStateCache) {
+        await this.adaptor.copyFileStateCache(
+          this.taskState.parentTaskId,
           this.taskId,
         );
       }
@@ -270,9 +265,9 @@ class BackgroundTaskWorker {
 
         if (stepResult === "retry") {
           this.retryCount += 1;
-          if (this.retryCount > BackgroundTaskMaxRetry) {
+          if (this.retryCount > TaskExecutorMaxRetry) {
             throw new Error(
-              "The background task failed to complete, max retry count reached.",
+              "The task failed to complete, max retry count reached.",
             );
           }
         } else {
@@ -294,12 +289,14 @@ class BackgroundTaskWorker {
   }
 
   private get task() {
-    return this.store.query(makeTaskQuery(this.taskId)) ?? undefined;
+    return (
+      this.store.query(catalog.queries.makeTaskQuery(this.taskId)) ?? undefined
+    );
   }
 
   private get chat() {
     if (!this.chatKit) {
-      throw new Error("Background task chat is not initialized.");
+      throw new Error("Task chat is not initialized.");
     }
     return this.chatKit.chat;
   }
@@ -312,17 +309,15 @@ class BackgroundTaskWorker {
       chatClass: HeadlessChat,
       abortSignal: this.abortController.signal,
       isSubTask: false,
-      requestUseCase: this.backgroundTaskState.useCase,
+      requestUseCase: this.taskState.useCase,
       disableAutoCompact: true,
-      getters: this.runtime.getRequestGetters(
+      getters: this.adaptor.getRequestGetters(
         this.createRuntimeContext(currentTask),
       ),
     });
   }
 
-  private createRuntimeContext(
-    currentTask: Task | undefined,
-  ): BackgroundTaskRuntimeContext {
+  private createRuntimeContext(currentTask: Task | undefined) {
     return {
       taskId: this.taskId,
       cwd: normalizeCwd(this.task?.cwd) ?? normalizeCwd(currentTask?.cwd),
@@ -334,7 +329,7 @@ class BackgroundTaskWorker {
 
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
-      throw new Error("No messages in the background task chat.");
+      throw new Error("No messages in the task chat.");
     }
 
     return (
@@ -345,7 +340,7 @@ class BackgroundTaskWorker {
   private processMessage(message: Message): "finished" | "retry" | undefined {
     const task = this.task;
     if (!task) {
-      throw new Error("Background task is not loaded.");
+      throw new Error("Task is not loaded.");
     }
 
     if (task.status === "completed" || task.status === "pending-input") {
@@ -441,8 +436,8 @@ class BackgroundTaskWorker {
     toolCall: ToolUIPart,
   ): Promise<BatchedToolCallResult> {
     const toolName = getStaticToolName(toolCall);
-    const toolPolicies = this.backgroundTaskState.tools
-      ? compileToolPolicies([...this.backgroundTaskState.tools])
+    const toolPolicies = this.taskState.tools
+      ? compileToolPolicies([...this.taskState.tools])
       : undefined;
 
     try {
@@ -457,7 +452,7 @@ class BackgroundTaskWorker {
       });
       if (
         normalizedError.message.startsWith(
-          "The background task kept calling disallowed tools",
+          "The task kept calling disallowed tools",
         )
       ) {
         throw normalizedError;
@@ -469,9 +464,9 @@ class BackgroundTaskWorker {
     }
 
     try {
-      const result = await this.runtime.executeToolCall({
+      const result = await this.adaptor.executeToolCall({
         taskId: this.taskId,
-        parentTaskId: this.backgroundTaskState.parentTaskId,
+        parentTaskId: this.taskState.parentTaskId,
         storeId: this.store.storeId,
         toolName,
         toolCallId: toolCall.toolCallId,
@@ -511,20 +506,18 @@ class BackgroundTaskWorker {
     input: unknown,
     toolPolicies: CompiledToolPolicies | undefined,
   ) {
-    const allowedToolsSet = this.backgroundTaskState.tools
-      ? getAllowedToolNames([...this.backgroundTaskState.tools])
+    const allowedToolsSet = this.taskState.tools
+      ? getAllowedToolNames([...this.taskState.tools])
       : undefined;
 
     if (allowedToolsSet && !allowedToolsSet.has(toolName)) {
       this.toolRejectionCount += 1;
-      if (this.toolRejectionCount >= BackgroundTaskMaxToolRejections) {
+      if (this.toolRejectionCount >= TaskExecutorMaxToolRejections) {
         throw new Error(
-          `The background task kept calling disallowed tools (${this.toolRejectionCount}). Stopping.`,
+          `The task kept calling disallowed tools (${this.toolRejectionCount}). Stopping.`,
         );
       }
-      throw new Error(
-        `Tool ${toolName} is not allowed for this background task.`,
-      );
+      throw new Error(`Tool ${toolName} is not allowed for this task.`);
     }
 
     validateToolPolicy(toolName, input, toolPolicies, {
@@ -532,7 +525,7 @@ class BackgroundTaskWorker {
     });
   }
 
-  private async addToolOutput(output: BackgroundTaskToolOutput) {
+  private async addToolOutput(output: TaskToolOutput) {
     await this.chat.addToolOutput(output as never);
     await this.persistLastMessage();
   }
@@ -546,7 +539,7 @@ class BackgroundTaskWorker {
   }
 
   private replaceLastMessageForRetry(message: Message): void {
-    void this.runtime.clearFileStateCache?.(this.taskId);
+    void this.adaptor.clearFileStateCache?.(this.taskId);
     this.chat.appendOrReplaceMessage(message);
   }
 
@@ -554,13 +547,11 @@ class BackgroundTaskWorker {
     const stepCount = countStepStarts(this.chat.messages);
     const effectiveStepCount = Math.max(
       0,
-      stepCount - (this.backgroundTaskState.baselineStepCount ?? 0),
+      stepCount - (this.taskState.baselineStepCount ?? 0),
     );
 
-    if (effectiveStepCount > BackgroundTaskMaxStep) {
-      throw new Error(
-        "The background task failed to complete, max step count reached.",
-      );
+    if (effectiveStepCount > TaskExecutorMaxStep) {
+      throw new Error("The task failed to complete, max step count reached.");
     }
   }
 }

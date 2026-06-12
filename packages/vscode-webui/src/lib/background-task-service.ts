@@ -17,11 +17,9 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LiveKitStore } from "@getpochi/livekit";
 import {
-  type BackgroundTaskRuntimeAdapter,
-  type BackgroundTaskRuntimeContext,
-  type BackgroundTaskToolCallExecution,
-  createBackgroundTaskRunner,
-} from "@getpochi/livekit/background";
+  type RunningTaskAdaptor,
+  createTaskExecutor as createBackgroundTaskExecutor,
+} from "@getpochi/task-executor";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -36,7 +34,7 @@ const ModelListLoadTimeoutMs = 10_000;
 let currentService: VscodeBackgroundTaskService | undefined;
 
 export function setBackgroundTaskStore(store: LiveKitStore | null) {
-  void currentService?.stop();
+  void currentService?.dispose();
   currentService = undefined;
 
   if (!store) return;
@@ -47,37 +45,40 @@ export function setBackgroundTaskStore(store: LiveKitStore | null) {
 }
 
 class VscodeBackgroundTaskService {
-  private readonly adapter = new VscodeBackgroundTaskAdapter();
-  private readonly runner: ReturnType<typeof createBackgroundTaskRunner>;
-  private stopped = false;
+  private readonly adaptor = new VscodeRunningTaskAdaptor();
+  private readonly backgroundTaskExecutor: ReturnType<
+    typeof createBackgroundTaskExecutor
+  >;
+  private disposed = false;
 
   constructor(store: LiveKitStore) {
-    this.runner = createBackgroundTaskRunner({
+    this.backgroundTaskExecutor = createBackgroundTaskExecutor({
       store,
       blobStore,
-      adapter: this.adapter,
+      adaptor: this.adaptor,
     });
   }
 
   async start() {
     try {
-      await this.adapter.init();
-      if (!this.stopped) {
-        this.runner.start();
+      await this.adaptor.init();
+      if (!this.disposed) {
+        this.backgroundTaskExecutor.start();
       }
     } catch (error) {
-      logger.warn("Failed to start background task runner", error);
+      logger.warn("Failed to start background task executor", error);
     }
   }
 
-  async stop() {
-    this.stopped = true;
-    await this.runner.stop();
-    this.adapter.dispose();
+  async dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    await this.backgroundTaskExecutor.dispose();
+    this.adaptor.dispose();
   }
 }
 
-class VscodeBackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
+class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private modelList: DisplayModel[] = [];
   private mcpStatus: McpStatus = {
     connections: {},
@@ -104,7 +105,7 @@ class VscodeBackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     }
   }
 
-  getRequestGetters(context: BackgroundTaskRuntimeContext) {
+  getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
     return {
       getLLM: () => {
         const llm = this.getLLM();
@@ -128,14 +129,16 @@ class VscodeBackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     };
   }
 
-  async readBackgroundTaskState(
+  async readTaskState(
     taskId: string,
   ): Promise<BackgroundTaskState | undefined> {
     const result = await vscodeHost.readBackgroundTaskState(taskId);
     return threadSignal(result.value).value;
   }
 
-  async executeToolCall(args: BackgroundTaskToolCallExecution) {
+  async executeToolCall(
+    args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
+  ) {
     const result = await vscodeHost.executeToolCall(args.toolName, args.input, {
       toolCallId: args.toolCallId,
       abortSignal: ThreadAbortSignal.serialize(args.abortSignal),
@@ -164,8 +167,8 @@ class VscodeBackgroundTaskAdapter implements BackgroundTaskRuntimeAdapter {
     return vscodeHost.clearFileStateCache(taskId);
   }
 
-  onBackgroundTaskError(taskId: string, error: Error) {
-    logger.warn({ taskId, error }, "Background task runner failed");
+  onTaskError(taskId: string, error: Error) {
+    logger.warn({ taskId, error }, "Task execution failed");
   }
 
   private async initModelList() {

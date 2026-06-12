@@ -3,7 +3,6 @@
   "version": "0.1.0-dev",
   "exports": {
     ".": "./src/index.ts",
-    "./background": "./src/background/index.ts",
     "./react": "./src/react.tsx",
     "./node": "./src/node.ts"
   },
@@ -26,7 +25,6 @@
     "@getpochi/tools": "workspace:*",
     "@livestore/livestore": "catalog:",
     "@livestore/utils": "catalog:",
-    "@preact/signals-core": "catalog:",
     "ai": "catalog:",
     "react": "catalog:",
     "remeda": "catalog:",

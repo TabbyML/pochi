@@ -27,6 +27,7 @@
         "@commander-js/extra-typings": "^14.0.0",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
+        "@getpochi/task-executor": "workspace:*",
         "@getpochi/tools": "workspace:*",
         "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
@@ -162,7 +163,6 @@
         "@getpochi/tools": "workspace:*",
         "@livestore/livestore": "catalog:",
         "@livestore/utils": "catalog:",
-        "@preact/signals-core": "catalog:",
         "ai": "catalog:",
         "react": "catalog:",
         "remeda": "catalog:",
@@ -192,6 +192,17 @@
       },
       "devDependencies": {
         "wrangler": "^4.40.1",
+      },
+    },
+    "packages/task-executor": {
+      "name": "@getpochi/task-executor",
+      "version": "0.1.0-dev",
+      "dependencies": {
+        "@getpochi/common": "workspace:*",
+        "@getpochi/livekit": "workspace:*",
+        "@getpochi/tools": "workspace:*",
+        "@preact/signals-core": "catalog:",
+        "ai": "catalog:",
       },
     },
     "packages/tools": {
@@ -357,6 +368,7 @@
         "@ai-sdk/react": "catalog:",
         "@getpochi/common": "workspace:*",
         "@getpochi/livekit": "workspace:*",
+        "@getpochi/task-executor": "workspace:*",
         "@getpochi/vendor-codex": "workspace:*",
         "@getpochi/vendor-gemini-cli": "workspace:*",
         "@getpochi/vendor-github-copilot": "workspace:*",
@@ -884,6 +896,8 @@
     "@getpochi/livekit": ["@getpochi/livekit@workspace:packages/livekit"],
 
     "@getpochi/livekit-cf": ["@getpochi/livekit-cf@workspace:packages/livekit-cf"],
+
+    "@getpochi/task-executor": ["@getpochi/task-executor@workspace:packages/task-executor"],
 
     "@getpochi/tools": ["@getpochi/tools@workspace:packages/tools"],
 
