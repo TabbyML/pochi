@@ -1,0 +1,105 @@
+---
+title: 'Weekly Update #32'
+---
+# Weekly Update #32
+
+### TL;DR
+
+This release removes friction from long runs and complex workflows. 
+
+Pochi now compacts automatically when context fills up, interactive widgets return their state to the agent for follow-up reasoning, and the browser agent can target any viewport — including mobile.
+
+
+
+More below!
+
+### 🚀 Features
+
+- **Auto Compact:** Pochi now compacts your context automatically when it gets full mid-task, without stopping what it's doing. A "Compacting..." indicator appears in the thread while it runs, and the task picks up where it left off.
+
+  Previously, hitting the context limit meant stopping to manually click "Compact Task" or start a new task with summary. Long tasks that ran into the limit mid-run would stall and wait for you.
+
+  Most useful for extended sessions such as deep codebase exploration, long refactors or anything that runs for a while. If compaction fails, Pochi falls back gracefully and won't keep retrying on a bad state. [**#1627**](https://github.com/TabbyML/pochi/pull/1627)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/19/191d49fdec57f9e3962aef1499122f4b521486d025b1041cf7d138048a9c582b.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+### ✨ Enhancements
+
+- **Interactive Widgets with State Return:** `renderWidget` now passes your widget's UI state back to Pochi after each message. When you interact with a rendered widget — adding entries, clicking buttons, making selections — Pochi sees what you did and can reason on it in the next turn.
+
+  Before this, `renderWidget` returned only `{ success: boolean }`. The widget was a sandboxed iframe and once rendered, Pochi had no visibility into what you did inside it. If you wanted Pochi to act on widget content, you had to describe it manually.
+
+  This is useful when you're building agents with interactive UI: a bookkeeping widget that gets summarized, a stock tracker with a News button that fires a live search, a form the agent reads and validates. The state feeds back automatically. [**#1621**](https://github.com/TabbyML/pochi/pull/1621)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/5d/5d82655bd68385d637acf8be70768e36383aea44a32b05f8aa097a27139ec7dd.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+
+
+- **Browser Agent with Viewport Size:** Browser Agent sessions now let you pick a viewport size before running. Four presets: Large Desktop (1280×720), Small Desktop (900×600), Portrait (768×1024), and Mobile (360×640), selectable from a new dropdown in Browser Agent Settings. The recording scales to match.
+
+  Before, the browser agent ran at a fixed viewport regardless of the site. If you were automating a mobile-first page, the agent was navigating the desktop layout with wrong breakpoints, wrong elements.
+
+  Set Mobile (360×640) before running a task on a responsive site and the agent navigates what your mobile users actually see. Useful for mobile testing, scraping mobile-specific content, or anything that behaves differently at smaller breakpoints. [**#1620**](https://github.com/TabbyML/pochi/pull/1620)
+
+<video
+  controls
+  style={{
+    width: "100%",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  }}
+>
+  <source src="https://assets.docs.getpochi.com/docs/d8/d89f6d312d70ce29e532f721713cd641297ad14499e17fe9237d3ff6b51f68cf.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+### 🐛 Bug Fixes
+
+- **Subtask Todos Visible Without Expanding:** Subtask todo lists now show up in the collapsed newTask tool detail — you can see what a subagent is working on without having to expand the view.
+
+  Previously, todos only rendered inside the expanded subtask view. [**#1618**](https://github.com/TabbyML/pochi/pull/1618)
+
+![](https://assets.docs.getpochi.com/docs/d8/d815193e8f04a5591584b91976d55ee31885f8b0e4ebd0cb4d8c20d68c9113bd)
+
+
+
+- **Git Branch Badge Always Visible:** The git branch badge no longer disappears while a command is running. The executing status now constrains to available space and truncates cleanly, rather than pushing the branch info out.
+
+  Previously, the badge would vanish from task rows whenever a command was executing. [**#1613**](https://github.com/TabbyML/pochi/pull/1613)
+
+![](https://assets.docs.getpochi.com/docs/a8/a8522b9c27d1431c866ea32460d15a466b19e022252fb4798d564cd5dc1078e6)
+
+
+
+- **Outline Button Consistent in Dark Mode:** Outline buttons now look the same in dark mode as they do in light mode. The dark mode overrides that caused the inconsistency have been removed.
+
+  Previously, outline buttons had separate dark mode rules that diverged from the light theme. [**#1612**](https://github.com/TabbyML/pochi/pull/1612)
+
+![](https://assets.docs.getpochi.com/docs/41/41aa4f5379c6d900f5b3c3b9363b4882b31a3a835c271254d4e7108722f852a8)
+
