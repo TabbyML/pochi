@@ -1,18 +1,11 @@
-import { TaskMemoryFileUri } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
-import {
-  type ToolSpecInput,
-  compileToolPolicies,
-  getAllowedToolNames,
-} from "@getpochi/tools";
-import { describe, expect, it } from "vitest";
 import {
   buildForkAgentInitTitle,
-  buildForkMessages,
   createForkAgent,
-} from "../create-fork-agent";
+} from "../index";
+import type { UIMessage } from "ai";
+import { describe, expect, it } from "vitest";
 
-describe("buildForkMessages", () => {
+describe("createForkAgent", () => {
   it("clones parent messages with fresh ids", () => {
     const parentMessages = [
       {
@@ -28,9 +21,14 @@ describe("buildForkMessages", () => {
         role: "assistant",
         parts: [{ type: "text", text: "done" }],
       },
-    ] as Message[];
+    ] as UIMessage[];
 
-    const result = buildForkMessages(parentMessages, "extract memory");
+    const result = createForkAgent({
+      label: "task-memory",
+      parentMessages,
+      parentCwd: "/repo",
+      directive: "extract memory",
+    }).initMessages;
 
     expect(result).toHaveLength(3);
     expect(result[0].id).not.toBe(parentMessages[0].id);
@@ -43,14 +41,8 @@ describe("buildForkMessages", () => {
     });
   });
 
-  it("persists background task tools with path-pattern rules", async () => {
-    const states: unknown[] = [];
-    const commits: unknown[] = [];
-
-    await createForkAgent({
-      store: {
-        commit: (event: unknown) => commits.push(event),
-      } as never,
+  it("builds a fork agent with path-pattern tool rules", () => {
+    const agent = createForkAgent({
       label: "task-memory",
       initTitle: "[Task Memory Extraction] Parent Task Title",
       parentTaskId: "parent-task",
@@ -58,31 +50,25 @@ describe("buildForkMessages", () => {
       parentCwd: "/repo",
       directive: "extract memory",
       tools: ["readFile(/memory/**)", "writeToFile(/memory/**)"],
-      setBackgroundTaskState: (_taskId, state) => {
-        states.push(state);
-      },
     });
 
-    expect(commits).toHaveLength(1);
-    expect(commits[0]).toMatchObject({
-      args: { initTitle: "[Task Memory Extraction] Parent Task Title" },
+    expect(agent).toMatchObject({
+      cwd: "/repo",
+      label: "task-memory",
+      initTitle: "[Task Memory Extraction] Parent Task Title",
+      parentTaskId: "parent-task",
+      tools: [
+        "readFile(/memory/**)",
+        "writeToFile(/memory/**)",
+        "attemptCompletion",
+      ],
+      baselineStepCount: 0,
     });
-    expect(states).toEqual([
-      {
-        parentTaskId: "parent-task",
-        tools: [
-          "readFile(/memory/**)",
-          "writeToFile(/memory/**)",
-          "attemptCompletion",
-        ],
-        useCase: "task-memory",
-        baselineStepCount: 0,
-      },
-    ]);
+    expect(agent).not.toHaveProperty("taskId");
+    expect(agent).not.toHaveProperty("createdAt");
   });
 
-  it("persists baselineStepCount derived from parent step-start parts", async () => {
-    const states: Array<{ baselineStepCount?: number }> = [];
+  it("builds baselineStepCount derived from parent step-start parts", () => {
     const parentMessages = [
       {
         id: "m1",
@@ -104,21 +90,16 @@ describe("buildForkMessages", () => {
         role: "assistant",
         parts: [{ type: "step-start" }, { type: "text", text: "c" }],
       },
-    ] as Message[];
+    ] as UIMessage[];
 
-    await createForkAgent({
-      store: { commit: () => undefined } as never,
+    const agent = createForkAgent({
       label: "task-memory",
       parentMessages,
       parentCwd: "/repo",
       directive: "extract memory",
-      setBackgroundTaskState: (_taskId, state) => {
-        states.push(state);
-      },
     });
 
-    expect(states).toHaveLength(1);
-    expect(states[0].baselineStepCount).toBe(3);
+    expect(agent.baselineStepCount).toBe(3);
   });
 });
 
@@ -145,30 +126,5 @@ describe("buildForkAgentInitTitle", () => {
     expect(buildForkAgentInitTitle("auto-memory", "   ")).toBe(
       "[Auto Memory Extraction]",
     );
-  });
-});
-
-describe("task-memory tool policy", () => {
-  const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
-    "readFile",
-    `writeToFile(${TaskMemoryFileUri})`,
-  ];
-
-  it("derives the allowed tool name set", () => {
-    const allowed = getAllowedToolNames([...TaskMemoryAllowedTools]);
-
-    expect(allowed.has("readFile")).toBe(true);
-    expect(allowed.has("writeToFile")).toBe(true);
-    expect(allowed.has("executeCommand")).toBe(false);
-  });
-
-  it("compiles a writeToFile path policy scoped to memory.md", () => {
-    const policies = compileToolPolicies([...TaskMemoryAllowedTools]);
-
-    expect(policies?.writeToFile).toEqual({
-      kind: "path-pattern",
-      patterns: [TaskMemoryFileUri],
-    });
-    expect(policies?.readFile).toBeUndefined();
   });
 });

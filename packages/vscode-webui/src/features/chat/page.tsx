@@ -31,7 +31,6 @@ import {
   useSettingsStore,
 } from "../settings";
 import { BackgroundTaskDebugPanel } from "./components/background-task-debug-panel";
-import { BackgroundTaskRunner } from "./components/background-task-runner";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
@@ -403,7 +402,6 @@ function Chat({ user, uid, info }: ChatProps) {
           mcpConfigOverride={mcpConfigOverride}
         />
       </div>
-      <BackgroundTaskRunner />
       <BackgroundTaskDebugPanel />
     </div>
   );

@@ -1,20 +1,11 @@
-// Register the models
-import "@getpochi/vendor-pochi/edge";
-import "@getpochi/vendor-tabby/edge";
-import "@getpochi/vendor-gemini-cli/edge";
-import "@getpochi/vendor-codex/edge";
-import "@getpochi/vendor-github-copilot/edge";
-import "@getpochi/vendor-qwen-code/edge";
-
 import { useSelectedModels } from "@/features/settings";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeHost } from "@/lib/vscode";
-import { constants, type Environment } from "@getpochi/common";
 import type { AutoMemoryContext } from "@getpochi/common";
-import { createModel } from "@getpochi/common/vendor/edge";
+import type { Environment } from "@getpochi/common";
 import {
   type DisplayModel,
   type McpConfigOverride,
@@ -23,6 +14,7 @@ import {
 import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback, useRef } from "react";
+import { displayModelToLLM } from "./display-model-to-llm";
 
 export function useLiveChatKitGetters({
   todos,
@@ -127,79 +119,8 @@ function useLLM({
   const model = modelOverride || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!model) return undefined as never;
-    if (model.type === "vendor") {
-      return {
-        id: model.id,
-        type: "vendor",
-        contextWindow: model.options.contextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        getModel: () =>
-          createModel(model.vendorId, {
-            modelId: model.modelId,
-            getCredentials: model.getCredentials,
-          }),
-        contentType: model.contentType,
-      };
-    }
-
-    const { provider } = model;
-    if (provider.kind === "google-vertex-tuning") {
-      return {
-        id: model.id,
-        type: "google-vertex-tuning" as const,
-        modelId: model.modelId,
-        vertex: provider.vertex,
-        maxOutputTokens:
-          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          model.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        contentType: model.contentType,
-      };
-    }
-
-    if (provider.kind === "ai-gateway") {
-      return {
-        id: model.id,
-        type: "ai-gateway" as const,
-        modelId: model.modelId,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          model.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        contentType: model.contentType,
-      };
-    }
-
-    if (
-      provider.kind === undefined ||
-      provider.kind === "openai" ||
-      provider.kind === "anthropic" ||
-      provider.kind === "openai-responses"
-    ) {
-      return {
-        id: model.id,
-        type: provider.kind || "openai",
-        modelId: model.modelId,
-        baseURL: provider.baseURL,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          model.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        contentType: model.contentType,
-      };
-    }
-
-    assertUnreachable(provider.kind);
+    return displayModelToLLM(model);
   })();
 
   return useLatest(llmFromSelectedModel);
-}
-
-function assertUnreachable(_x: never): never {
-  throw new Error("Didn't expect to get here");
 }

@@ -1,5 +1,12 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts, toErrorMessage } from "@getpochi/common";
+import {
+  type AutoMemoryContext,
+  type ContextWindowUsage,
+  type TaskMemoryState,
+  getLogger,
+  prompts,
+  toErrorMessage,
+} from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
@@ -20,10 +27,15 @@ import {
   type LLMRequestData,
   type LiveKitStore,
   type Message,
+  type Task,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
-import { type BatchedToolCallResult, ToolCallQueue } from "@getpochi/tools";
+import {
+  type BatchedToolCallResult,
+  ToolCallQueue,
+  getToolCallCancelErrorMessage,
+} from "@getpochi/tools";
 import {
   type CompiledToolPolicies,
   type CustomAgent,
@@ -130,6 +142,21 @@ export interface RunnerOptions {
 
   attemptCompletionHook?: string;
 
+  onStreamFinish?: (data: {
+    id: string;
+    cwd: string | null;
+    status: Task["status"];
+    messages: Message[];
+    error?: Error;
+    contextWindowUsage?: ContextWindowUsage;
+  }) => void | Promise<void>;
+
+  onCompactFinish?: (success: boolean) => void | Promise<void>;
+
+  getTaskMemoryState?: () => TaskMemoryState | undefined;
+
+  getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
+
   /**
    * The file system to use for the task runner.
    */
@@ -177,6 +204,10 @@ export class TaskRunner {
     return this.chatKit.chat.getState();
   }
 
+  getFileStateCache() {
+    return this.toolCallOptions.fileStateCache;
+  }
+
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
     this.llm = options.llm;
@@ -215,6 +246,9 @@ export class TaskRunner {
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
+          onStreamFinish: undefined,
+          onCompactFinish: undefined,
+          getTaskMemoryState: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -236,11 +270,16 @@ export class TaskRunner {
 
       abortSignal: options.abortSignal,
 
-      onCompactFinish: (success: boolean) => {
+      onCompactFinish: async (success: boolean) => {
         if (success) {
           this.toolCallOptions.fileStateCache.clear();
         }
+        await options.onCompactFinish?.(success);
       },
+      getRecentFilesForCompact: () =>
+        this.toolCallOptions.fileStateCache.getRecentFiles(),
+      getTaskMemoryState: options.getTaskMemoryState,
+      onStreamFinish: options.onStreamFinish,
 
       getters: {
         getLLM: () => options.llm,
@@ -254,6 +293,11 @@ export class TaskRunner {
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
+        ...(options.getAutoMemory
+          ? {
+              getAutoMemory: options.getAutoMemory,
+            }
+          : {}),
         ...(options.mcpHub
           ? {
               getMcpInfo: () => {
@@ -576,8 +620,7 @@ export class TaskRunner {
             toolCallId: toolCall.toolCallId,
             output: {
               // @ts-expect-error
-              error:
-                "Tool call was cancelled because a previous tool call failed.",
+              error: getToolCallCancelErrorMessage(reason),
             },
           });
         },

@@ -34,7 +34,7 @@ export const TaskMemoryFileUri = "pochi://-/memory.md";
 
 /**
  * Build the extraction directive that the fork agent receives.
- * This is appended to the parent conversation history via buildForkMessages.
+ * This is appended to the cloned parent conversation as the fork request.
  */
 export function buildMemoryExtractionDirective(
   existingMemory?: string,
@@ -57,10 +57,10 @@ Based on the user conversation above (EXCLUDING this note-taking instruction mes
 
 ${currentNotesSection}
 
-Your ONLY task is to ${isUpdate ? "update" : "create"} ${TaskMemoryFileUri} with the session notes in a SINGLE assistant response. You MUST emit BOTH tool calls below as parallel tool calls in the SAME assistant message so the extraction finishes in one turn:
-  1. writeToFile — write the full memory content to ${TaskMemoryFileUri}.
-  2. attemptCompletion — provide a brief summary of what was updated.
-Do NOT wait for the writeToFile result before calling attemptCompletion. Do NOT split the two calls across separate turns. Do NOT call any other tool.
+Your ONLY task is to ${isUpdate ? "update" : "create"} ${TaskMemoryFileUri} with the session notes using exactly this tool sequence:
+  1. First call writeToFile to write the full memory content to ${TaskMemoryFileUri}.
+  2. After the writeToFile result is available, call attemptCompletion with a brief summary of what was updated.
+Do NOT call attemptCompletion in the same assistant message as writeToFile. Do NOT call any other tool.
 
 CRITICAL RULES:
 - The file must maintain its exact structure with all sections and headers intact
@@ -76,5 +76,5 @@ CRITICAL RULES:
 - IMPORTANT: Always update "Current State" to reflect the most recent work — this is critical for continuity after compaction
 - IMPORTANT: Always update "Worklog" with a terse log of what was done since the last extraction
 
-Reminder: emit writeToFile (with path ${TaskMemoryFileUri} and the full updated content) and attemptCompletion (with a brief summary) as PARALLEL tool calls in this single assistant message — do not produce them across separate turns.`;
+Reminder: first call writeToFile with path ${TaskMemoryFileUri} and the full updated content. After that tool result is available, call attemptCompletion with a brief summary.`;
 }
