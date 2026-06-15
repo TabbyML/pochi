@@ -11,15 +11,6 @@ import {
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import {
-  type BlobStore,
-  type LiveChatKitOptions,
-  type LiveKitStore,
-  type Message,
-  type Task,
-  catalog,
-} from "@getpochi/livekit";
-import { LiveChatKit } from "@getpochi/livekit/node";
-import {
   type BatchedToolCallResult,
   type CompiledToolPolicies,
   ToolCallQueue,
@@ -35,7 +26,10 @@ import {
   isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
-import { HeadlessChat } from "./headless-chat";
+import type { BlobStore } from "../../blob-store";
+import type { PrepareRequestGetters } from "../../chat/flexible-chat-transport";
+import { defaultCatalog as catalog } from "../../livestore";
+import type { LiveKitStore, Message, Task } from "../../types";
 
 const logger = getLogger("TaskExecutor");
 
@@ -44,7 +38,7 @@ const TaskExecutorMaxRetry = 8;
 const TaskExecutorMaxToolRejections = 5;
 const TaskExecutorMaxConcurrency = 10;
 
-export interface TaskExecutorToolCallExecution {
+interface TaskExecutorToolCallExecution {
   taskId: string;
   parentTaskId: string | undefined;
   storeId: string;
@@ -56,51 +50,89 @@ export interface TaskExecutorToolCallExecution {
 }
 
 export interface RunningTaskAdaptor {
+  waitUntilReady?(): Promise<void>;
   getRequestGetters(context: {
     taskId: string;
     cwd: string | undefined;
-  }): LiveChatKitOptions<HeadlessChat>["getters"];
-  readTaskState(
-    taskId: string,
-  ): Promise<BackgroundTaskState | undefined> | BackgroundTaskState | undefined;
+  }): PrepareRequestGetters;
   executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
-  copyFileStateCache?(
-    sourceTaskId: string,
-    targetTaskId: string,
-  ): void | Promise<void>;
-  clearFileStateCache?(taskId: string): void | Promise<void>;
   onTaskError?(taskId: string, error: Error): void | Promise<void>;
 }
+
+export type BackgroundTaskFileStateCache = {
+  copy?(sourceTaskId: string, targetTaskId: string): void | Promise<void>;
+  clear?(taskId: string): void | Promise<void>;
+};
 
 type TaskToolOutput = {
   tool: string;
   toolCallId: string;
   output: unknown;
 };
+type MaybePromiseLike<T> = T | PromiseLike<T>;
+type BackgroundTaskStateReader = {
+  readState(taskId: string): MaybePromiseLike<BackgroundTaskState | undefined>;
+};
 
 type CreateTaskExecutorOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
+  backgroundTask: BackgroundTaskStateReader;
   adaptor: RunningTaskAdaptor;
+  fileStateCache?: BackgroundTaskFileStateCache;
+  createChatKit: CreateRunningTaskChatKit;
 };
 
-export function createTaskExecutor(options: CreateTaskExecutorOptions) {
-  return new TaskExecutor(options);
-}
+type RunningTaskChat = {
+  messages: Message[];
+  stop: () => Promise<void>;
+  sendMessage: () => Promise<void>;
+  addToolOutput: (output: never) => MaybePromiseLike<void>;
+  appendOrReplaceMessage: (message: Message) => void;
+};
+
+type RunningTaskChatKit = {
+  chat: RunningTaskChat;
+  task?: Task;
+  markAsFailed: (error: Error) => void | Promise<void>;
+};
+
+type CreateRunningTaskChatKit = (options: {
+  taskId: string;
+  store: LiveKitStore;
+  blobStore: BlobStore;
+  abortSignal: AbortSignal;
+  requestUseCase: BackgroundTaskState["useCase"];
+  getters: PrepareRequestGetters;
+}) => RunningTaskChatKit;
 
 export class TaskExecutor {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
+  private readonly backgroundTask: BackgroundTaskStateReader;
   private readonly adaptor: RunningTaskAdaptor;
+  private readonly fileStateCache: BackgroundTaskFileStateCache | undefined;
+  private readonly createRunningTaskChatKit: CreateRunningTaskChatKit;
   private readonly runningTasks = new Map<string, RunningTask>();
+  private readonly taskDoneWaiters = new Map<string, Set<() => void>>();
   private unsubscribe: (() => void) | undefined;
   private started = false;
   private disposed = false;
 
-  constructor({ store, blobStore, adaptor }: CreateTaskExecutorOptions) {
+  constructor({
+    store,
+    blobStore,
+    backgroundTask,
+    adaptor,
+    fileStateCache,
+    createChatKit,
+  }: CreateTaskExecutorOptions) {
     this.store = store;
     this.blobStore = blobStore;
+    this.backgroundTask = backgroundTask;
     this.adaptor = adaptor;
+    this.fileStateCache = fileStateCache;
+    this.createRunningTaskChatKit = createChatKit;
   }
 
   start() {
@@ -127,6 +159,7 @@ export class TaskExecutor {
       }),
     );
     this.runningTasks.clear();
+    this.resolveAllTaskDoneWaiters();
   }
 
   async drain() {
@@ -150,8 +183,32 @@ export class TaskExecutor {
     }
   }
 
+  waitForTaskDone(taskId: string): Promise<void> {
+    if (this.disposed) return Promise.resolve();
+    this.start();
+
+    if (this.isTaskDone(taskId)) {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      let waiters = this.taskDoneWaiters.get(taskId);
+      if (!waiters) {
+        waiters = new Set();
+        this.taskDoneWaiters.set(taskId, waiters);
+      }
+      waiters.add(resolve);
+    });
+  }
+
   private readRunnableTasks() {
     return this.store.query(catalog.queries.runnableTasks$);
+  }
+
+  private isTaskDone(taskId: string) {
+    if (this.runningTasks.has(taskId)) return false;
+    const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+    return !!task && !isRunnableTaskStatus(task.status);
   }
 
   private reconcileRunnableTasks() {
@@ -175,7 +232,10 @@ export class TaskExecutor {
       taskId,
       store: this.store,
       blobStore: this.blobStore,
+      backgroundTask: this.backgroundTask,
       adaptor: this.adaptor,
+      fileStateCache: this.fileStateCache,
+      createChatKit: this.createRunningTaskChatKit,
     });
     this.runningTasks.set(taskId, runningTask);
 
@@ -192,10 +252,26 @@ export class TaskExecutor {
         if (this.runningTasks.get(taskId) === runningTask) {
           this.runningTasks.delete(taskId);
         }
+        this.resolveTaskDoneWaiters(taskId);
         if (!this.disposed && this.started) {
           this.reconcileRunnableTasks();
         }
       });
+  }
+
+  private resolveTaskDoneWaiters(taskId: string) {
+    const waiters = this.taskDoneWaiters.get(taskId);
+    if (!waiters) return;
+    this.taskDoneWaiters.delete(taskId);
+    for (const resolve of waiters) {
+      resolve();
+    }
+  }
+
+  private resolveAllTaskDoneWaiters() {
+    for (const taskId of this.taskDoneWaiters.keys()) {
+      this.resolveTaskDoneWaiters(taskId);
+    }
   }
 }
 
@@ -203,18 +279,24 @@ type RunningTaskOptions = {
   taskId: string;
   store: LiveKitStore;
   blobStore: BlobStore;
+  backgroundTask: BackgroundTaskStateReader;
   adaptor: RunningTaskAdaptor;
+  fileStateCache?: BackgroundTaskFileStateCache;
+  createChatKit: CreateRunningTaskChatKit;
 };
 
 class RunningTask {
   private readonly taskId: string;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
+  private readonly backgroundTask: BackgroundTaskStateReader;
   private readonly adaptor: RunningTaskAdaptor;
+  private readonly fileStateCache: BackgroundTaskFileStateCache | undefined;
+  private readonly createRunningTaskChatKit: CreateRunningTaskChatKit;
   private readonly abortController = new AbortController();
   private readonly toolCallQueue = new ToolCallQueue();
   private taskState: BackgroundTaskState = {};
-  private chatKit: LiveChatKit<HeadlessChat> | undefined;
+  private chatKit: RunningTaskChatKit | undefined;
   private retryCount = 0;
   private toolRejectionCount = 0;
   private disposed = false;
@@ -225,7 +307,10 @@ class RunningTask {
     this.taskId = options.taskId;
     this.store = options.store;
     this.blobStore = options.blobStore;
+    this.backgroundTask = options.backgroundTask;
     this.adaptor = options.adaptor;
+    this.fileStateCache = options.fileStateCache;
+    this.createRunningTaskChatKit = options.createChatKit;
     this.done = this.run();
   }
 
@@ -239,9 +324,10 @@ class RunningTask {
 
   private async run() {
     try {
-      this.taskState = (await this.adaptor.readTaskState(this.taskId)) ?? {};
-      if (this.taskState.parentTaskId && this.adaptor.copyFileStateCache) {
-        await this.adaptor.copyFileStateCache(
+      await this.adaptor.waitUntilReady?.();
+      this.taskState = (await this.backgroundTask.readState(this.taskId)) ?? {};
+      if (this.taskState.parentTaskId && this.fileStateCache?.copy) {
+        await this.fileStateCache.copy(
           this.taskState.parentTaskId,
           this.taskId,
         );
@@ -294,22 +380,19 @@ class RunningTask {
   }
 
   private createChatKit(currentTask: Task | undefined) {
-    return new LiveChatKit<HeadlessChat>({
+    return this.createRunningTaskChatKit({
       taskId: this.taskId,
       store: this.store,
       blobStore: this.blobStore,
-      chatClass: HeadlessChat,
       abortSignal: this.abortController.signal,
-      isSubTask: false,
       requestUseCase: this.taskState.useCase,
-      disableAutoCompact: true,
       getters: this.adaptor.getRequestGetters(
-        this.createRuntimeContext(currentTask),
+        this.createTaskContext(currentTask),
       ),
     });
   }
 
-  private createRuntimeContext(currentTask: Task | undefined) {
+  private createTaskContext(currentTask: Task | undefined) {
     return {
       taskId: this.taskId,
       cwd: normalizeCwd(this.task?.cwd) ?? normalizeCwd(currentTask?.cwd),
@@ -516,7 +599,7 @@ class RunningTask {
   }
 
   private replaceLastMessageForRetry(message: Message): void {
-    void this.adaptor.clearFileStateCache?.(this.taskId);
+    void this.fileStateCache?.clear?.(this.taskId);
     this.chat.appendOrReplaceMessage(message);
   }
 
@@ -576,6 +659,10 @@ function isAbortTaskError(error: unknown) {
 
 function normalizeCwd(cwd: string | null | undefined) {
   return cwd ?? undefined;
+}
+
+function isRunnableTaskStatus(status: string) {
+  return status === "pending-model" || status === "pending-tool";
 }
 
 function toError(error: unknown): Error {

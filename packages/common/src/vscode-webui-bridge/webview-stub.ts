@@ -4,7 +4,6 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type {
   AutoMemoryContext,
   AutoMemoryTaskState,
-  BackgroundTaskState,
   ContextWindowUsage,
   Environment,
   TaskMemoryState,
@@ -468,18 +467,6 @@ const VSCodeHostStub = {
     transcript: string;
   }): Promise<{ transcriptDir: string; filename: string } | undefined> => {
     return undefined;
-  },
-  readBackgroundTaskState: async (
-    _taskId: string,
-  ): Promise<{
-    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
-    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
-  }> => {
-    return {
-      value: {} as ThreadSignalSerialization<BackgroundTaskState | undefined>,
-      setBackgroundTaskState: (_state: BackgroundTaskState) =>
-        Promise.resolve(),
-    };
   },
   readTaskArchived(): Promise<{
     value: ThreadSignalSerialization<Record<string, boolean>>;

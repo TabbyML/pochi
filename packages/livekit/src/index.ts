@@ -1,7 +1,13 @@
 import type { RequestData } from "./types";
 
 export { defaultCatalog as catalog } from "./livestore";
-export { LiveChatKit, type LiveChatKitOptions } from "./chat/live-chat-kit";
+export {
+  LiveChatKit,
+  type LiveChatKitBackgroundTaskOptions,
+  type LiveChatKitMemoryOptions,
+  type LiveChatKitOptions,
+} from "./chat/live-chat-kit";
+export { createAutoMemoryBackendFromManager } from "./background-task/memory/auto-memory";
 export type LLMRequestData = RequestData["llm"];
 export type {
   Message,

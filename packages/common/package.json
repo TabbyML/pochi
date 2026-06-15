@@ -22,9 +22,6 @@
     "./fetch-utils": "./src/fetch-utils.ts",
     "./google-vertex-utils": "./src/google-vertex-utils.ts",
     "./cors-proxy": "./src/cors-proxy/index.ts",
-    "./fork-agent": "./src/fork-agent/index.ts",
-    "./task-memory": "./src/task-memory/index.ts",
-    "./auto-memory": "./src/auto-memory/index.ts",
     "./auto-memory/node": "./src/auto-memory/node.ts",
     "./pochi-file-system": "./src/pochi-file-system/index.ts",
     "./browser": "./src/browser/index.ts"

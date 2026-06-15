@@ -59,7 +59,6 @@ import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
   type AutoMemoryTaskState,
-  type BackgroundTaskState,
   type ContextWindowUsage,
   type Environment,
   type GitStatus,
@@ -1458,22 +1457,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
 
     return result;
-  };
-
-  readBackgroundTaskState = async (
-    taskId: string,
-  ): Promise<{
-    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
-    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
-  }> => {
-    return {
-      value: ThreadSignal.serialize(
-        this.taskStateStore.getBackgroundTaskStateSignal(taskId),
-      ),
-      setBackgroundTaskState: (state: BackgroundTaskState) => {
-        return this.taskStateStore.setBackgroundTaskState(taskId, state);
-      },
-    };
   };
 
   readTaskArchived = async () => {

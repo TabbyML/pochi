@@ -1,7 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import type {
   AutoMemoryTaskState,
-  BackgroundTaskState,
   ContextWindowUsage,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -22,7 +21,6 @@ type TaskStateData = {
   contextWindowUsage?: ContextWindowUsage;
   taskMemoryState?: TaskMemoryState;
   autoMemoryState?: AutoMemoryTaskState;
-  backgroundTaskState?: BackgroundTaskState;
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -254,20 +252,5 @@ export class TaskDataStore {
 
   getAutoMemoryStateSignal(taskId: string) {
     return computed(() => this.state.value[taskId]?.autoMemoryState);
-  }
-
-  getBackgroundTaskState(taskId: string): BackgroundTaskState | undefined {
-    return this.getTaskState(taskId)?.backgroundTaskState;
-  }
-
-  async setBackgroundTaskState(
-    taskId: string,
-    backgroundTaskState: BackgroundTaskState,
-  ): Promise<void> {
-    await this.saveTaskState(taskId, { backgroundTaskState });
-  }
-
-  getBackgroundTaskStateSignal(taskId: string) {
-    return computed(() => this.state.value[taskId]?.backgroundTaskState);
   }
 }

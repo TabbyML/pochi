@@ -19,7 +19,6 @@
     "@ai-sdk/react": "catalog:",
     "@getpochi/common": "workspace:*",
     "@getpochi/livekit": "workspace:*",
-    "@getpochi/task-executor": "workspace:*",
     "@getpochi/vendor-codex": "workspace:*",
     "@getpochi/vendor-gemini-cli": "workspace:*",
     "@getpochi/vendor-github-copilot": "workspace:*",

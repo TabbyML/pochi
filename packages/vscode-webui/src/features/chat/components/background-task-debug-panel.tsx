@@ -21,7 +21,6 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { useIsDevMode } from "@/features/settings";
-import { useBackgroundTaskState } from "@/lib/hooks/use-background-task-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
@@ -217,7 +216,6 @@ function BackgroundTaskDetail({
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
   const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(taskId));
-  const { backgroundTaskState } = useBackgroundTaskState(taskId);
 
   const source = useMemo<TaskThreadSource>(
     () => ({
@@ -266,22 +264,6 @@ function BackgroundTaskDetail({
           label="Updated"
           value={task ? formatRelative(task.updatedAt) : undefined}
         />
-        {backgroundTaskState?.useCase && (
-          <DetailRow label="Use case" value={backgroundTaskState.useCase} />
-        )}
-        {backgroundTaskState?.parentTaskId && (
-          <DetailRow
-            label="Parent"
-            value={backgroundTaskState.parentTaskId.slice(0, 8)}
-            mono
-          />
-        )}
-        {backgroundTaskState?.tools?.length !== undefined && (
-          <DetailRow
-            label="Tools"
-            value={`${backgroundTaskState.tools.length}`}
-          />
-        )}
         {task?.error?.message && (
           <DetailRow label="Error" value={task.error.message} fullWidth />
         )}

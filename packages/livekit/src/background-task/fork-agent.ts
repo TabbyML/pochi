@@ -1,6 +1,6 @@
+import { type ForkAgentUseCase, getLogger } from "@getpochi/common";
 import { type ToolSpecInput, parseToolSpec } from "@getpochi/tools";
 import type { UIMessage } from "ai";
-import { type ForkAgentUseCase, getLogger } from "../base";
 
 const logger = getLogger("ForkAgent");
 
@@ -10,7 +10,7 @@ export type ForkAgentHandle = {
   label: ForkAgentUseCase;
 };
 
-export type ForkAgentInput<TMessage extends UIMessage> = {
+type ForkAgentInput<TMessage extends UIMessage> = {
   label: ForkAgentUseCase;
   initTitle?: string;
   parentTaskId?: string;
@@ -66,7 +66,7 @@ function buildForkMessages<TMessage extends UIMessage>(
   ];
 }
 
-export function countStepStarts(
+function countStepStarts(
   messages: ReadonlyArray<Pick<UIMessage, "parts">>,
 ): number {
   return messages

@@ -38,8 +38,11 @@ describe("useRetry", () => {
     vi.clearAllMocks();
   });
 
-  it("clears the file-state cache before rewriting messages for retry", async () => {
-    const clearFileStateCache = vi.fn();
+  it("prepares the retry message before rewriting messages", async () => {
+    const prepareLastMessageForRetry = vi.fn(async (message: Message) => ({
+      ...message,
+      parts: message.parts.slice(0, 2),
+    }));
     const setMessages = vi.fn();
     const sendMessage = vi.fn();
     const regenerate = vi.fn();
@@ -50,7 +53,7 @@ describe("useRetry", () => {
         setMessages,
         sendMessage,
         regenerate,
-        clearFileStateCache,
+        prepareLastMessageForRetry,
       }),
     );
 
@@ -58,11 +61,11 @@ describe("useRetry", () => {
       await result.current(new Error("retry"));
     });
 
-    expect(clearFileStateCache).toHaveBeenCalledTimes(1);
+    expect(prepareLastMessageForRetry).toHaveBeenCalledTimes(1);
     expect(setMessages).toHaveBeenCalledTimes(1);
     expect(sendMessage).toHaveBeenCalledWith(undefined);
     expect(regenerate).not.toHaveBeenCalled();
-    expect(clearFileStateCache.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(prepareLastMessageForRetry.mock.invocationCallOrder[0]).toBeLessThan(
       setMessages.mock.invocationCallOrder[0],
     );
   });

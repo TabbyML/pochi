@@ -1,10 +1,11 @@
 import type { BackgroundTaskState } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
 import {
   TaskExecutor,
+  type BackgroundTaskFileStateCache,
   type RunningTaskAdaptor,
 } from "../task-executor";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Message } from "../../../types";
 
 const mockState = vi.hoisted(() => ({
   instances: [] as Array<{
@@ -13,91 +14,87 @@ const mockState = vi.hoisted(() => ({
   }>,
 }));
 
-vi.mock("@getpochi/livekit/node", () => {
-  class MockChat {
-    messages: Message[];
-    sendMessageCalls = 0;
+class MockChat {
+  messages: Message[];
+  sendMessageCalls = 0;
 
-    constructor(
-      messages: Message[],
-      private readonly onSendMessage: (messages: Message[]) => void,
-    ) {
-      this.messages = structuredClone(messages);
-    }
+  constructor(
+    messages: Message[],
+    private readonly onSendMessage: (messages: Message[]) => void,
+  ) {
+    this.messages = structuredClone(messages);
+  }
 
-    async stop() {}
+  async stop() {}
 
-    appendOrReplaceMessage(message: Message) {
-      const index = this.messages.findIndex((m) => m.id === message.id);
-      if (index === -1) {
-        this.messages.push(message);
-      } else {
-        this.messages[index] = structuredClone(message);
-      }
-    }
-
-    async addToolOutput({
-      toolCallId,
-      output,
-    }: {
-      tool: string;
-      toolCallId: string;
-      output: unknown;
-    }) {
-      const lastMessage = this.messages.at(-1);
-      if (!lastMessage) return;
-
-      this.messages = [
-        ...this.messages.slice(0, -1),
-        {
-          ...lastMessage,
-          parts: lastMessage.parts.map((part) =>
-            isToolPartForCall(part, toolCallId)
-              ? {
-                  ...part,
-                  state: "output-available",
-                  output,
-                }
-              : part,
-          ),
-        } as Message,
-      ];
-    }
-
-    async sendMessage() {
-      this.sendMessageCalls += 1;
-      this.onSendMessage(this.messages);
+  appendOrReplaceMessage(message: Message) {
+    const index = this.messages.findIndex((m) => m.id === message.id);
+    if (index === -1) {
+      this.messages.push(message);
+    } else {
+      this.messages[index] = structuredClone(message);
     }
   }
 
-  class MockLiveChatKit {
-    readonly taskId: string;
-    readonly chat: MockChat;
-    private readonly store: FakeLiveKitStore;
+  async addToolOutput({
+    toolCallId,
+    output,
+  }: {
+    tool: string;
+    toolCallId: string;
+    output: unknown;
+  }) {
+    const lastMessage = this.messages.at(-1);
+    if (!lastMessage) return;
 
-    constructor(options: {
-      taskId: string;
-      store: FakeLiveKitStore;
-    }) {
-      this.taskId = options.taskId;
-      this.store = options.store;
-      this.chat = new MockChat(
-        this.store.readMessages(this.taskId),
-        (messages) => {
-          this.store.setMessages(this.taskId, messages);
-          this.store.completeTask(this.taskId);
-        },
-      );
-      mockState.instances.push(this);
-    }
-
-    markAsFailed(error: Error) {
-      this.store.failTask(this.taskId, error.message);
-    }
+    this.messages = [
+      ...this.messages.slice(0, -1),
+      {
+        ...lastMessage,
+        parts: lastMessage.parts.map((part) =>
+          isToolPartForCall(part, toolCallId)
+            ? {
+                ...part,
+                state: "output-available",
+                output,
+              }
+            : part,
+        ),
+      } as Message,
+    ];
   }
 
-  return { LiveChatKit: MockLiveChatKit };
-});
+  async sendMessage() {
+    this.sendMessageCalls += 1;
+    this.onSendMessage(this.messages);
+  }
+}
+
+class MockLiveChatKit {
+  readonly taskId: string;
+  readonly chat: MockChat;
+  private readonly store: FakeLiveKitStore;
+
+  constructor(options: {
+    taskId: string;
+    store: FakeLiveKitStore;
+  }) {
+    this.taskId = options.taskId;
+    this.store = options.store;
+    this.chat = new MockChat(
+      this.store.readMessages(this.taskId),
+      (messages) => {
+        this.store.setMessages(this.taskId, messages);
+        this.store.completeTask(this.taskId);
+      },
+    );
+    mockState.instances.push(this);
+  }
+
+  markAsFailed(error: Error) {
+    this.store.failTask(this.taskId, error.message);
+  }
+}
 
 type TestTask = {
   id: string;
@@ -121,14 +118,9 @@ describe("TaskExecutor", () => {
     ]);
 
     const adaptor = makeAdaptor({
-      task: { tools: ["readFile"] },
       executeToolCall: vi.fn(async () => ({ content: "hello" })),
     });
-    const executor = new TaskExecutor({
-      store: store as never,
-      blobStore: {} as never,
-      adaptor,
-    });
+    const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
 
     await executor.drain();
 
@@ -148,14 +140,9 @@ describe("TaskExecutor", () => {
     const pending = deferred<unknown>();
     const executeToolCall = vi.fn(() => pending.promise);
     const adaptor = makeAdaptor({
-      task: { tools: ["readFile"] },
       executeToolCall,
     });
-    const executor = new TaskExecutor({
-      store: store as never,
-      blobStore: {} as never,
-      adaptor,
-    });
+    const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
 
     executor.start();
     await waitFor(() => executeToolCall.mock.calls.length === 1);
@@ -180,14 +167,9 @@ describe("TaskExecutor", () => {
       ]),
     ]);
     const adaptor = makeAdaptor({
-      task: { tools: ["readFile"] },
       executeToolCall: vi.fn(async () => ({ ok: true })),
     });
-    const executor = new TaskExecutor({
-      store: store as never,
-      blobStore: {} as never,
-      adaptor,
-    });
+    const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
 
     await executor.drain();
 
@@ -216,13 +198,10 @@ describe("TaskExecutor", () => {
       ]),
     ]);
     const adaptor = makeAdaptor({
-      task: { tools: ["writeToFile(/repo/allowed.md)"] },
       executeToolCall: vi.fn(async () => ({ ok: true })),
     });
-    const executor = new TaskExecutor({
-      store: store as never,
-      blobStore: {} as never,
-      adaptor,
+    const executor = makeExecutor(store, adaptor, {
+      tools: ["writeToFile(/repo/allowed.md)"],
     });
 
     await executor.drain();
@@ -235,6 +214,45 @@ describe("TaskExecutor", () => {
         })?.error,
       ),
     ).toContain("not allowed");
+    await executor.dispose();
+  });
+
+  it("uses background file-state cache callbacks outside the adaptor", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        {
+          type: "tool-readFile",
+          toolCallId: "read",
+          state: "output-available",
+          input: { path: "a.ts" },
+          output: { content: "hello", isTruncated: false },
+        },
+        { type: "step-start" },
+        makeToolPart("executeCommand", "exec", null, "input-streaming"),
+      ]),
+    ]);
+    const adaptor = makeAdaptor({
+      executeToolCall: vi.fn(async () => ({ ok: true })),
+    });
+    const fileStateCache = {
+      copy: vi.fn(),
+      clear: vi.fn(),
+    };
+    const executor = makeExecutor(
+      store,
+      adaptor,
+      { parentTaskId: "parent" },
+      fileStateCache,
+    );
+
+    await executor.drain();
+
+    expect(fileStateCache.copy).toHaveBeenCalledWith("parent", "task");
+    expect(fileStateCache.clear).toHaveBeenCalledWith("task");
     await executor.dispose();
   });
 });
@@ -320,10 +338,8 @@ class FakeLiveKitStore {
 }
 
 function makeAdaptor({
-  task,
   executeToolCall,
 }: {
-  task: BackgroundTaskState;
   executeToolCall: RunningTaskAdaptor["executeToolCall"];
 }) {
   return {
@@ -337,9 +353,30 @@ function makeAdaptor({
           maxOutputTokens: 4_096,
         }) as never,
     }),
-    readTaskState: () => task,
     executeToolCall,
   } satisfies RunningTaskAdaptor;
+}
+
+function makeExecutor(
+  store: FakeLiveKitStore,
+  adaptor: RunningTaskAdaptor,
+  taskState: BackgroundTaskState,
+  fileStateCache?: BackgroundTaskFileStateCache,
+) {
+  return new TaskExecutor({
+    store: store as never,
+    blobStore: {} as never,
+    backgroundTask: {
+      readState: () => taskState,
+    },
+    adaptor,
+    fileStateCache,
+    createChatKit: ({ taskId, store }) =>
+      new MockLiveChatKit({
+        taskId,
+        store: store as never,
+      }),
+  });
 }
 
 function makeTask({
@@ -368,11 +405,16 @@ function makeAssistantMessage(parts: Message["parts"]): Message {
   } as Message;
 }
 
-function makeToolPart(toolName: string, toolCallId: string, input: unknown) {
+function makeToolPart(
+  toolName: string,
+  toolCallId: string,
+  input: unknown,
+  state = "input-available",
+) {
   return {
     type: `tool-${toolName}`,
     toolCallId,
-    state: "input-available",
+    state,
     input,
   } as Message["parts"][number];
 }

@@ -1,11 +1,6 @@
-import { blobStore } from "@/lib/remote-blob-store";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import { vscodeHost } from "@/lib/vscode";
-import {
-  type AutoMemoryContext,
-  type BackgroundTaskState,
-  getLogger,
-} from "@getpochi/common";
+import { type AutoMemoryContext, getLogger } from "@getpochi/common";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import {
   type CustomAgentFile,
@@ -15,11 +10,7 @@ import {
   isValidCustomAgentFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { LiveKitStore } from "@getpochi/livekit";
-import {
-  type RunningTaskAdaptor,
-  createTaskExecutor as createBackgroundTaskExecutor,
-} from "@getpochi/task-executor";
+import type { LiveChatKitBackgroundTaskOptions } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -28,57 +19,13 @@ import {
 import { displayModelToLLM } from "../features/chat/lib/display-model-to-llm";
 import { useSettingsStore } from "../features/settings/store";
 
-const logger = getLogger("BackgroundTaskService");
+const logger = getLogger("VscodeRunningTaskAdaptor");
 const ModelListLoadTimeoutMs = 10_000;
+type RunningTaskAdaptor = NonNullable<
+  LiveChatKitBackgroundTaskOptions["adaptor"]
+>;
 
-let currentService: VscodeBackgroundTaskService | undefined;
-
-export function setBackgroundTaskStore(store: LiveKitStore | null) {
-  void currentService?.dispose();
-  currentService = undefined;
-
-  if (!store) return;
-
-  const service = new VscodeBackgroundTaskService(store);
-  currentService = service;
-  void service.start();
-}
-
-class VscodeBackgroundTaskService {
-  private readonly adaptor = new VscodeRunningTaskAdaptor();
-  private readonly backgroundTaskExecutor: ReturnType<
-    typeof createBackgroundTaskExecutor
-  >;
-  private disposed = false;
-
-  constructor(store: LiveKitStore) {
-    this.backgroundTaskExecutor = createBackgroundTaskExecutor({
-      store,
-      blobStore,
-      adaptor: this.adaptor,
-    });
-  }
-
-  async start() {
-    try {
-      await this.adaptor.init();
-      if (!this.disposed) {
-        this.backgroundTaskExecutor.start();
-      }
-    } catch (error) {
-      logger.warn("Failed to start background task executor", error);
-    }
-  }
-
-  async dispose() {
-    if (this.disposed) return;
-    this.disposed = true;
-    await this.backgroundTaskExecutor.dispose();
-    this.adaptor.dispose();
-  }
-}
-
-class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
+export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private modelList: DisplayModel[] = [];
   private mcpStatus: McpStatus = {
     connections: {},
@@ -89,20 +36,25 @@ class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private skills: SkillFile[] = [];
   private autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
   private readonly unsubscribers: Array<() => void> = [];
+  private readonly ready: Promise<void>;
+  private disposed = false;
 
-  async init() {
-    await Promise.all([
-      this.initModelList(),
-      this.initMcpStatus(),
-      this.initCustomAgents(),
-      this.initSkills(),
-    ]);
+  constructor() {
+    this.ready = this.init().catch((error) => {
+      logger.warn("Failed to initialize background task adaptor", error);
+    });
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     for (const unsubscribe of this.unsubscribers.splice(0)) {
       unsubscribe();
     }
+  }
+
+  waitUntilReady() {
+    return this.ready;
   }
 
   getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
@@ -127,13 +79,6 @@ class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       getCustomAgents: () => this.customAgents.filter(isValidCustomAgentFile),
       getSkills: () => this.skills.filter(isValidSkillFile),
     };
-  }
-
-  async readTaskState(
-    taskId: string,
-  ): Promise<BackgroundTaskState | undefined> {
-    const result = await vscodeHost.readBackgroundTaskState(taskId);
-    return threadSignal(result.value).value;
   }
 
   async executeToolCall(
@@ -163,12 +108,17 @@ class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return result;
   }
 
-  clearFileStateCache(taskId: string) {
-    return vscodeHost.clearFileStateCache(taskId);
-  }
-
   onTaskError(taskId: string, error: Error) {
     logger.warn({ taskId, error }, "Task execution failed");
+  }
+
+  private async init() {
+    await Promise.all([
+      this.initModelList(),
+      this.initMcpStatus(),
+      this.initCustomAgents(),
+      this.initSkills(),
+    ]);
   }
 
   private async initModelList() {
@@ -177,7 +127,7 @@ class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     const isLoadingSignal = threadSignal(result.isLoading);
 
     this.modelList = modelListSignal.value;
-    this.unsubscribers.push(
+    this.addUnsubscriber(
       modelListSignal.subscribe((modelList) => {
         this.modelList = modelList;
       }),
@@ -195,7 +145,7 @@ class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private async initMcpStatus() {
     const signal = threadSignal(await vscodeHost.readMcpStatus());
     this.mcpStatus = signal.value;
-    this.unsubscribers.push(
+    this.addUnsubscriber(
       signal.subscribe((mcpStatus) => {
         this.mcpStatus = mcpStatus;
       }),
@@ -205,7 +155,7 @@ class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private async initCustomAgents() {
     const signal = threadSignal(await vscodeHost.readCustomAgents());
     this.customAgents = signal.value;
-    this.unsubscribers.push(
+    this.addUnsubscriber(
       signal.subscribe((customAgents) => {
         this.customAgents = customAgents;
       }),
@@ -215,11 +165,19 @@ class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private async initSkills() {
     const signal = threadSignal(await vscodeHost.readSkills());
     this.skills = signal.value;
-    this.unsubscribers.push(
+    this.addUnsubscriber(
       signal.subscribe((skills) => {
         this.skills = skills;
       }),
     );
+  }
+
+  private addUnsubscriber(unsubscribe: () => void) {
+    if (this.disposed) {
+      unsubscribe();
+      return;
+    }
+    this.unsubscribers.push(unsubscribe);
   }
 
   private getLLM() {
@@ -311,10 +269,11 @@ function waitForSignal<T>(
     }, timeoutMs);
 
     const unsubscribe = signal.subscribe((value) => {
-      if (!predicate(value)) return;
-      clearTimeout(timeout);
-      unsubscribe();
-      resolve();
+      if (predicate(value)) {
+        clearTimeout(timeout);
+        unsubscribe();
+        resolve();
+      }
     });
   });
 }

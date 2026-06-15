@@ -1,17 +1,26 @@
-import type { ToolSpecInput } from "@getpochi/tools";
-import { type UIMessage, getStaticToolName, isStaticToolUIPart } from "ai";
 import {
   type AutoMemoryContext,
   type AutoMemoryDreamSession,
   type AutoMemoryTaskState,
+  getLogger,
   prompts,
-} from "../base";
+} from "@getpochi/common";
+import type { ToolSpecInput } from "@getpochi/tools";
+import { type UIMessage, getStaticToolName, isStaticToolUIPart } from "ai";
+import { makeTaskQuery } from "../../livestore/default-queries";
+import type { LiveKitStore, Message } from "../../types";
 import {
   type StartForkAgent,
   buildForkAgentInitTitle,
   createForkAgent,
 } from "../fork-agent";
+import {
+  type MaybePromise,
+  type MemoryStateStore,
+  createMemoryStateStore,
+} from "../state-store";
 
+const logger = getLogger("AutoMemory");
 const ActiveStatuses = new Set(["pending-model", "pending-tool"]);
 const MemoryReadToolNames = [
   "readFile",
@@ -26,16 +35,23 @@ const MaxPartChars = 4_000;
 
 type SetAutoMemoryState = (state: AutoMemoryTaskState) => Promise<void> | void;
 
+type AutoMemoryTranscriptInfo = {
+  transcriptDir: string;
+  filename: string;
+};
+
+type AutoMemoryDreamCandidate = {
+  taskId: string;
+  cwd?: string | null;
+  updatedAt: number;
+  transcriptFilename: string;
+};
+
 type AutoMemoryDreamRun = {
   context: AutoMemoryContext;
   token: string;
   previousLastDreamAt: number;
-  candidates: ReadonlyArray<{
-    taskId: string;
-    cwd?: string | null;
-    updatedAt: number;
-    transcriptFilename: string;
-  }>;
+  candidates: ReadonlyArray<AutoMemoryDreamCandidate>;
 };
 
 type FinishAutoMemoryDream = (options: {
@@ -45,7 +61,80 @@ type FinishAutoMemoryDream = (options: {
   success: boolean;
 }) => Promise<void> | void;
 
-export async function startAutoMemoryExtraction<TMessage extends UIMessage>({
+type AutoMemoryBackgroundTask = {
+  startForkAgent: StartForkAgent<Message>;
+  waitForTaskDone?: (taskId: string) => MaybePromise<void>;
+};
+
+export type AutoMemoryBackend = {
+  readContext(
+    cwd: string | undefined,
+  ): MaybePromise<AutoMemoryContext | undefined>;
+  writeTaskTranscript(options: {
+    taskId: string;
+    cwd: string | undefined;
+    title?: string;
+    updatedAt?: number;
+    transcript: string;
+  }): MaybePromise<AutoMemoryTranscriptInfo | undefined>;
+  beginDreamRun(options: {
+    cwd: string | undefined;
+    sessionUpdatedAts: readonly number[];
+    currentTranscript?: AutoMemoryDreamCandidate;
+  }): MaybePromise<AutoMemoryDreamRun | undefined>;
+  finishDreamRun(options: {
+    memoryDir: string;
+    token: string;
+    previousLastDreamAt: number;
+    success: boolean;
+  }): MaybePromise<void>;
+};
+
+type AutoMemoryManagerLike = {
+  readContext: AutoMemoryBackend["readContext"];
+  writeTaskTranscript: AutoMemoryBackend["writeTaskTranscript"];
+  beginDreamRun(options: {
+    cwd: string | undefined;
+    sessionUpdatedAts: readonly number[];
+  }): MaybePromise<
+    | {
+        context: AutoMemoryContext;
+        token: string;
+        previousLastDreamAt: number;
+      }
+    | undefined
+  >;
+  finishDreamRun: AutoMemoryBackend["finishDreamRun"];
+};
+
+export function createAutoMemoryBackendFromManager(
+  manager: AutoMemoryManagerLike,
+): AutoMemoryBackend {
+  return {
+    readContext: (cwd) => manager.readContext(cwd),
+    writeTaskTranscript: (options) => manager.writeTaskTranscript(options),
+    beginDreamRun: async ({ cwd, sessionUpdatedAts, currentTranscript }) => {
+      const run = await manager.beginDreamRun({ cwd, sessionUpdatedAts });
+      if (!run) return undefined;
+
+      const candidates =
+        currentTranscript &&
+        currentTranscript.updatedAt > run.previousLastDreamAt
+          ? [currentTranscript]
+          : [];
+
+      return {
+        context: run.context,
+        token: run.token,
+        previousLastDreamAt: run.previousLastDreamAt,
+        candidates,
+      };
+    },
+    finishDreamRun: (options) => manager.finishDreamRun(options),
+  };
+}
+
+async function startAutoMemoryExtraction<TMessage extends UIMessage>({
   state,
   setAutoMemoryState,
   startForkAgent,
@@ -106,7 +195,7 @@ export async function startAutoMemoryExtraction<TMessage extends UIMessage>({
   }
 }
 
-export async function startAutoMemoryDream<TMessage extends UIMessage>({
+async function startAutoMemoryDream<TMessage extends UIMessage>({
   state,
   setAutoMemoryState,
   startForkAgent,
@@ -181,7 +270,7 @@ export async function startAutoMemoryDream<TMessage extends UIMessage>({
   }
 }
 
-export function resolveAutoMemoryExtractionState({
+function resolveAutoMemoryExtractionState({
   state,
   activeExtractionTask,
 }: {
@@ -212,7 +301,7 @@ export function resolveAutoMemoryExtractionState({
   };
 }
 
-export function resolveAutoMemoryDreamState({
+function resolveAutoMemoryDreamState({
   state,
   activeDreamTask,
 }: {
@@ -272,7 +361,7 @@ function buildMemoryTools(
   return tools;
 }
 
-export function didConversationWriteMemory(
+function didConversationWriteMemory(
   messages: readonly UIMessage[],
   memoryDir: string,
   cwd?: string,
@@ -292,9 +381,7 @@ export function didConversationWriteMemory(
   );
 }
 
-export function serializeSessionTranscript(
-  messages: readonly UIMessage[],
-): string {
+function serializeSessionTranscript(messages: readonly UIMessage[]): string {
   const chunks = messages.map((message, index) => {
     const parts = message.parts
       .map((part) => truncate(JSON.stringify(sanitizePart(part)), MaxPartChars))
@@ -410,4 +497,220 @@ function truncate(value: string, maxChars: number): string {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object";
+}
+
+const DefaultAutoMemoryState: AutoMemoryTaskState = {
+  lastExtractionMessageCount: 0,
+  isExtracting: false,
+  extractionCount: 0,
+  isDreaming: false,
+};
+
+type AutoMemoryAdaptorOptions = {
+  store: LiveKitStore;
+  backgroundTask: AutoMemoryBackgroundTask;
+  autoMemoryStateStore?: MemoryStateStore<AutoMemoryTaskState>;
+  parentTaskId: string;
+  parentCwd: string | undefined | (() => string | undefined);
+  isSubTask?: boolean;
+  backend: AutoMemoryBackend;
+};
+
+export class AutoMemoryAdaptor {
+  private readonly stateStore: MemoryStateStore<AutoMemoryTaskState>;
+  private currentTranscript: AutoMemoryDreamCandidate | undefined;
+
+  constructor(private readonly options: AutoMemoryAdaptorOptions) {
+    this.stateStore =
+      options.autoMemoryStateStore ??
+      createMemoryStateStore<AutoMemoryTaskState>({
+        ...DefaultAutoMemoryState,
+      });
+  }
+
+  getState() {
+    return this.stateStore.get() ?? { ...DefaultAutoMemoryState };
+  }
+
+  async update(data: { messages: Message[]; status?: string }) {
+    if (this.options.isSubTask) return false;
+    if (data.status && data.status !== "completed") return false;
+
+    const task = this.options.store.query(
+      makeTaskQuery(this.options.parentTaskId),
+    );
+    if (!task || task.status !== "completed") return false;
+
+    try {
+      const parentCwd = this.getParentCwd();
+      const context = await this.options.backend.readContext(parentCwd);
+      if (!context) return false;
+
+      const state = this.getState();
+      const messageCount = data.messages.length;
+      const updatedAt = Date.now();
+      const transcript = serializeSessionTranscript(data.messages);
+      const transcriptInfo = transcript
+        ? await this.options.backend.writeTaskTranscript({
+            taskId: this.options.parentTaskId,
+            cwd: parentCwd,
+            title: task.title ?? undefined,
+            updatedAt,
+            transcript,
+          })
+        : undefined;
+
+      this.currentTranscript = transcriptInfo
+        ? {
+            taskId: this.options.parentTaskId,
+            cwd: parentCwd,
+            updatedAt,
+            transcriptFilename: transcriptInfo.filename,
+          }
+        : undefined;
+
+      if (
+        !state.isExtracting &&
+        messageCount > state.lastExtractionMessageCount
+      ) {
+        if (
+          didConversationWriteMemory(
+            data.messages.slice(state.lastExtractionMessageCount),
+            context.memoryDir,
+            parentCwd,
+          )
+        ) {
+          const nextState = {
+            ...state,
+            lastExtractionMessageCount: messageCount,
+          };
+          await this.setAutoMemoryState(nextState);
+          return this.maybeStartDream(nextState);
+        }
+
+        const handle = await startAutoMemoryExtraction({
+          state,
+          setAutoMemoryState: (nextState) => this.setAutoMemoryState(nextState),
+          startForkAgent: (agent) =>
+            this.options.backgroundTask.startForkAgent(agent),
+          parentTaskId: this.options.parentTaskId,
+          parentCwd,
+          parentTaskTitle: task.title ?? undefined,
+          context,
+          messages: data.messages,
+          previousMessageCount: state.lastExtractionMessageCount,
+          messageCount,
+        });
+        this.watchTaskDone(handle.taskId, "auto-memory extraction");
+        return true;
+      }
+
+      return this.maybeStartDream(state);
+    } catch (error) {
+      logger.warn("Failed to start long-term memory update", error);
+      return false;
+    }
+  }
+
+  async settleAndMaybeContinue() {
+    if (this.options.isSubTask) return false;
+
+    try {
+      const state = this.getState();
+      const extractionResolution = resolveAutoMemoryExtractionState({
+        state,
+        activeExtractionTask: state.activeExtractionTaskId
+          ? this.options.store.query(
+              makeTaskQuery(state.activeExtractionTaskId),
+            )
+          : undefined,
+      });
+      if (extractionResolution) {
+        await this.setAutoMemoryState(extractionResolution.nextState);
+        if (
+          extractionResolution.success &&
+          (await this.maybeStartDream(extractionResolution.nextState))
+        ) {
+          return true;
+        }
+      }
+
+      const nextState = this.getState();
+      const dreamResolution = resolveAutoMemoryDreamState({
+        state: nextState,
+        activeDreamTask: nextState.activeDreamTaskId
+          ? this.options.store.query(makeTaskQuery(nextState.activeDreamTaskId))
+          : undefined,
+      });
+      if (dreamResolution) {
+        await this.options.backend.finishDreamRun(dreamResolution.finish);
+        await this.setAutoMemoryState(dreamResolution.nextState);
+      }
+    } catch (error) {
+      logger.warn("Failed to settle long-term memory update", error);
+    }
+
+    return false;
+  }
+
+  private async maybeStartDream(baseState = this.getState()): Promise<boolean> {
+    if (baseState.isDreaming || baseState.isExtracting) return false;
+
+    const parentCwd = this.getParentCwd();
+    const run = await this.options.backend.beginDreamRun({
+      cwd: parentCwd,
+      sessionUpdatedAts: this.currentTranscript
+        ? [this.currentTranscript.updatedAt]
+        : [],
+      currentTranscript: this.currentTranscript,
+    });
+    if (!run) return false;
+
+    const started = await startAutoMemoryDream<Message>({
+      state: baseState,
+      setAutoMemoryState: (nextState) => this.setAutoMemoryState(nextState),
+      startForkAgent: (agent) =>
+        this.options.backgroundTask.startForkAgent(agent),
+      finishAutoMemoryDream: (finishOptions) =>
+        this.options.backend.finishDreamRun(finishOptions),
+      parentTaskId: this.options.parentTaskId,
+      parentCwd,
+      parentTaskTitle: this.getParentTaskTitle(),
+      run,
+    });
+    if (started) {
+      this.watchTaskDone(
+        this.getState().activeDreamTaskId,
+        "auto-memory dream",
+      );
+    }
+    return started;
+  }
+
+  private watchTaskDone(taskId: string | undefined, label: string) {
+    const { waitForTaskDone } = this.options.backgroundTask;
+    if (!taskId || !waitForTaskDone) return;
+
+    void Promise.resolve(waitForTaskDone(taskId))
+      .then(() => this.settleAndMaybeContinue())
+      .catch((error) => {
+        logger.warn(`Failed to settle ${label}`, error);
+      });
+  }
+
+  private getParentTaskTitle() {
+    const task = this.options.store.query(
+      makeTaskQuery(this.options.parentTaskId),
+    );
+    return task?.title ?? undefined;
+  }
+
+  private setAutoMemoryState(nextState: AutoMemoryTaskState) {
+    return this.stateStore.set(nextState);
+  }
+
+  private getParentCwd() {
+    const { parentCwd } = this.options;
+    return typeof parentCwd === "function" ? parentCwd() : parentCwd;
+  }
 }

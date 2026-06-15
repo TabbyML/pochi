@@ -1,7 +1,7 @@
 import {
   buildForkAgentInitTitle,
   createForkAgent,
-} from "../index";
+} from "../fork-agent";
 import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
 
