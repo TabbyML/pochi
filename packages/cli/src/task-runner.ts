@@ -45,6 +45,7 @@ import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
+import type { StepDurationTracker } from "./lib/step-duration-tracker";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type {
@@ -143,6 +144,8 @@ export interface RunnerOptions {
    * Set to 0 to disable waiting.
    */
   asyncWaitTimeoutInMs?: number;
+
+  stepDurationTracker?: StepDurationTracker;
 }
 
 const logger = getLogger("TaskRunner");
@@ -163,6 +166,8 @@ export class TaskRunner {
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
+  private readonly stepDurationTracker?: StepDurationTracker;
+
   private abortSignal?: AbortSignal;
 
   readonly taskId: string;
@@ -266,6 +271,31 @@ export class TaskRunner {
             }
           : {}),
       },
+
+      onStreamFinish: ({
+        messages,
+        error,
+        startedAt: startAt,
+        finishedAt: finishAt,
+      }) => {
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage !== undefined) {
+          const stepCount = lastMessage.parts.filter(
+            (p) => p.type === "step-start",
+          ).length;
+          if (stepCount > 0 && startAt && finishAt) {
+            this.stepDurationTracker?.trackStep({
+              taskId: this.taskId,
+              messageId: lastMessage.id,
+              stepIndex: stepCount - 1,
+              hasError: error !== undefined,
+              startedAt: startAt,
+              finishedAt: finishAt,
+              duration: finishAt.getTime() - startAt.getTime(),
+            });
+          }
+        }
+      },
     });
     if (options.parts && options.parts.length > 0) {
       if (this.chatKit.inited) {
@@ -284,6 +314,7 @@ export class TaskRunner {
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
     this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 60000;
+    this.stepDurationTracker = options.stepDurationTracker;
     this.abortSignal = options.abortSignal;
   }
 

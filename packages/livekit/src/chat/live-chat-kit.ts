@@ -178,6 +178,8 @@ export type LiveChatKitOptions<T> = {
       messages: Message[];
       error?: Error;
       contextWindowUsage?: ContextWindowUsage;
+      startedAt?: Date;
+      finishedAt?: Date;
     },
   ) => void;
 
@@ -239,6 +241,8 @@ export class LiveChatKit<
       messages: Message[];
       error?: Error;
       contextWindowUsage?: ContextWindowUsage;
+      startedAt?: Date;
+      finishedAt?: Date;
     },
   ) => void;
   readonly compact: () => Promise<string>;
@@ -691,6 +695,9 @@ export class LiveChatKit<
       }
     }
 
+    const { duration, startedAt, finishedAt } =
+      this.captureStepDuration() ?? {};
+
     store.commit(
       events.chatStreamFinished({
         id: this.taskId,
@@ -698,14 +705,10 @@ export class LiveChatKit<
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
-        duration: this.lastStepStartTimestamp
-          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
-          : undefined,
+        duration,
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
-
-    this.clearLastStepTimestamp();
 
     this.onStreamFinish?.({
       id: this.taskId,
@@ -713,16 +716,17 @@ export class LiveChatKit<
       status,
       messages: [...this.chat.messages],
       contextWindowUsage,
+      startedAt,
+      finishedAt,
     });
-  };
-
-  private clearLastStepTimestamp = () => {
-    this.lastStepStartTimestamp = undefined;
   };
 
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
     const lastMessage = this.chat.messages.at(-1) || null;
+
+    const { duration, startedAt, finishedAt } =
+      this.captureStepDuration() ?? {};
 
     this.store.commit(
       events.chatStreamFailed({
@@ -730,14 +734,10 @@ export class LiveChatKit<
         error: toTaskError(error),
         data: lastMessage,
         updatedAt: new Date(),
-        duration: this.lastStepStartTimestamp
-          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
-          : undefined,
+        duration,
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
-
-    this.clearLastStepTimestamp();
 
     this.onStreamFinish?.({
       id: this.taskId,
@@ -745,8 +745,34 @@ export class LiveChatKit<
       status: "failed",
       messages: [...this.chat.messages],
       error,
+      startedAt,
+      finishedAt,
     });
   };
+
+  /**
+   * Captures the current step duration using the recorded start timestamp.
+   */
+  private captureStepDuration():
+    | {
+        startedAt: Date;
+        finishedAt: Date;
+        duration: ReturnType<typeof Duration.millis>;
+      }
+    | undefined {
+    const startTimestamp = this.lastStepStartTimestamp;
+    this.lastStepStartTimestamp = undefined;
+    const finishTimestamp = Date.now();
+
+    if (startTimestamp === undefined) {
+      return undefined;
+    }
+    return {
+      startedAt: new Date(startTimestamp),
+      finishedAt: new Date(finishTimestamp),
+      duration: Duration.millis(finishTimestamp - startTimestamp),
+    };
+  }
 }
 
 // clean checkpoint means after this checkpoint there are no write or execute toolcalls that may cause file edits
