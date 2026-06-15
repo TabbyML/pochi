@@ -32,10 +32,6 @@ import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
-import {
-  isValidCustomAgentFile,
-  isValidSkillFile,
-} from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { ReactRenderer } from "@tiptap/react";
 import {
@@ -61,6 +57,7 @@ import {
   SlashMentionList,
   type SlashMentionListProps,
 } from "./slash-mention/mention-list";
+import { createSlashCandidates } from "./slash-mention/slash-candidates";
 import { SubmitHistoryExtension } from "./submit-history-extension";
 
 const newLineCharacter = "\n";
@@ -722,29 +719,8 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
       threadSignal(await vscodeHost.readCustomAgents()),
       threadSignal(await vscodeHost.readSkills()),
     ]);
-    const options: SlashCandidate[] = [
-      ...customAgents.value
-        .filter((x) => !x.isBuiltIn)
-        .filter((x) => isValidCustomAgentFile(x))
-        .map((x) => ({
-          type: "custom-agent" as const,
-          id: x.name,
-          label: x.name,
-          path: x.filePath,
-          rawData: x,
-        })),
-      ...skills.value
-        .filter((x) => isValidSkillFile(x))
-        .map((x) => ({
-          type: "skill" as const,
-          id: x.name,
-          label: x.name,
-          path: x.filePath,
-          rawData: x,
-        })),
-    ];
     return {
-      options,
+      options: createSlashCandidates(customAgents.value, skills.value),
     };
   },
   1000 * 60,
