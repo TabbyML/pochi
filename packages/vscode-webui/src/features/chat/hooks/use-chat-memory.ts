@@ -1,7 +1,7 @@
 import { useAutoMemoryState } from "@/lib/hooks/use-auto-memory-state";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
-import { vscodeHost } from "@/lib/vscode";
+import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import { VscodeRunningTaskAdaptor } from "@/lib/vscode-running-task-adaptor";
 import type {
   AutoMemoryTaskState,
@@ -15,6 +15,8 @@ import type {
 } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useMemo } from "react";
+
+type MemoryStateSetter<T> = ((state: T) => Promise<void> | void) | undefined;
 
 function createVscodeBackgroundTaskStateStore(): NonNullable<
   LiveChatKitBackgroundTaskOptions["stateStore"]
@@ -47,6 +49,19 @@ function createVscodeBackgroundTaskStateStore(): NonNullable<
   };
 }
 
+function useMemoryStateStore<T>(state: T, setState: MemoryStateSetter<T>) {
+  const stateRef = useLatest(state);
+  const setStateRef = useLatest(setState);
+
+  return useMemo(
+    () => ({
+      get: () => stateRef.current,
+      set: (state: T) => setStateRef.current?.(state),
+    }),
+    [setStateRef, stateRef],
+  );
+}
+
 export function useChatMemory({
   taskId,
   isSubTask,
@@ -58,28 +73,17 @@ export function useChatMemory({
   const { taskMemoryState, setTaskMemoryState } = useTaskMemoryState(taskId, {
     enabled: isRootTask,
   });
-  const taskMemoryStateRef = useLatest(taskMemoryState);
-  const setTaskMemoryStateRef = useLatest(setTaskMemoryState);
-  const taskMemoryStateStore = useMemo(
-    () => ({
-      get: () => taskMemoryStateRef.current,
-      set: (state: TaskMemoryState) => setTaskMemoryStateRef.current?.(state),
-    }),
-    [setTaskMemoryStateRef, taskMemoryStateRef],
+  const taskMemoryStateStore = useMemoryStateStore<TaskMemoryState>(
+    taskMemoryState,
+    setTaskMemoryState,
   );
 
   const { autoMemoryState, setAutoMemoryState } = useAutoMemoryState(taskId, {
     enabled: isRootTask,
   });
-  const autoMemoryStateRef = useLatest(autoMemoryState);
-  const setAutoMemoryStateRef = useLatest(setAutoMemoryState);
-  const autoMemoryStateStore = useMemo(
-    () => ({
-      get: () => autoMemoryStateRef.current,
-      set: (state: AutoMemoryTaskState) =>
-        setAutoMemoryStateRef.current?.(state),
-    }),
-    [autoMemoryStateRef, setAutoMemoryStateRef],
+  const autoMemoryStateStore = useMemoryStateStore<AutoMemoryTaskState>(
+    autoMemoryState,
+    setAutoMemoryState,
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: adaptor lifetime is tied to the task id.
@@ -110,15 +114,7 @@ export function useChatMemory({
       isRootTask
         ? {
             stateStore: autoMemoryStateStore,
-            backend: {
-              readContext: (cwd) => vscodeHost.readAutoMemory({ cwd }),
-              writeTaskTranscript: (options) =>
-                vscodeHost.writeTaskTranscript(options),
-              beginDreamRun: ({ cwd }) =>
-                vscodeHost.beginAutoMemoryDream({ cwd }),
-              finishDreamRun: (options) =>
-                vscodeHost.finishAutoMemoryDream(options),
-            },
+            manager: vscodeAutoMemoryManager,
           }
         : undefined,
     [autoMemoryStateStore, isRootTask],

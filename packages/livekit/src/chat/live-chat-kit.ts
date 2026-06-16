@@ -18,7 +18,7 @@ import {
 } from "ai";
 import type z from "zod";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
-import type { AutoMemoryBackend } from "../background-task/memory/auto-memory";
+import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
 import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
 import { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
 import type {
@@ -80,7 +80,7 @@ export type LiveChatKitTaskMemoryOptions = {
 
 export type LiveChatKitProjectMemoryOptions = {
   stateStore?: MemoryStateStore<AutoMemoryTaskState>;
-  backend: AutoMemoryBackend;
+  manager: AutoMemoryManager;
 };
 
 function createBackgroundTaskStateStore(): NonNullable<
@@ -450,7 +450,7 @@ export class LiveChatKit<
             parentTaskId: taskId,
             parentCwd: defaultMemoryParentCwd,
             isSubTask,
-            backend: projectMemory.backend,
+            manager: projectMemory.manager,
           })
         : undefined;
 

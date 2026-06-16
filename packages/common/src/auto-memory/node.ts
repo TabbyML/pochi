@@ -6,11 +6,14 @@ import simpleGit from "simple-git";
 import {
   constants,
   type AutoMemoryContext,
+  type AutoMemoryDreamCandidate,
+  type AutoMemoryDreamRun,
   AutoMemoryIndexName,
   AutoMemoryLockName,
   type AutoMemoryManifestEntry,
   AutoMemoryMaxManifestEntries,
   AutoMemoryProjectInfoName,
+  type AutoMemoryReadContextOptions,
   AutoMemoryTypeValues,
   getLogger,
   toErrorMessage,
@@ -26,14 +29,6 @@ const DreamIntervalMs = 24 * 60 * 60 * 1000;
 const DreamSessionThreshold = 5;
 const StaleDreamLockMs = 60 * 60 * 1000;
 
-type AutoMemoryDreamRun = {
-  context: AutoMemoryContext;
-  token: string;
-  previousLastDreamAt: number;
-  sessionCount: number;
-  reason: "time" | "sessions";
-};
-
 export type AutoMemoryManagerOptions = {
   projectsRoot?: string;
 };
@@ -45,6 +40,8 @@ type DreamLock = {
   startedAt?: number;
 };
 
+type AcquiredDreamRun = Omit<AutoMemoryDreamRun, "candidates">;
+
 export class AutoMemoryManager {
   private readonly inFlightRepos = new Set<string>();
   private readonly projectsRoot: string;
@@ -55,9 +52,14 @@ export class AutoMemoryManager {
   }
 
   async readContext(
-    cwd: string | undefined,
-    options?: { ensure?: boolean },
+    cwdOrOptions: string | AutoMemoryReadContextOptions | undefined,
+    legacyOptions?: { ensure?: boolean },
   ): Promise<AutoMemoryContext | undefined> {
+    const options =
+      typeof cwdOrOptions === "string" || legacyOptions
+        ? { cwd: cwdOrOptions as string | undefined, ...legacyOptions }
+        : cwdOrOptions;
+    const cwd = options?.cwd;
     if (!cwd) return undefined;
 
     const repoRoot = await resolveMainWorktreePath(cwd);
@@ -112,7 +114,7 @@ export class AutoMemoryManager {
     transcript,
   }: {
     taskId: string;
-    cwd: string | undefined;
+    cwd?: string;
     title?: string;
     updatedAt?: number;
     transcript: string;
@@ -141,23 +143,39 @@ export class AutoMemoryManager {
 
   async beginDreamRun({
     cwd,
+    candidates,
     sessionUpdatedAts,
+    currentTranscript,
   }: {
-    cwd: string | undefined;
-    sessionUpdatedAts: readonly number[];
+    cwd?: string;
+    candidates?: readonly AutoMemoryDreamCandidate[];
+    sessionUpdatedAts?: readonly number[];
+    currentTranscript?: AutoMemoryDreamCandidate;
   }): Promise<AutoMemoryDreamRun | undefined> {
     const context = await this.readContext(cwd);
     if (!context) return undefined;
+
+    const dreamCandidates =
+      candidates ?? (currentTranscript ? [currentTranscript] : []);
+    const updatedAts =
+      sessionUpdatedAts ??
+      dreamCandidates.map((candidate) => candidate.updatedAt);
 
     if (this.inFlightRepos.has(context.repoKey)) return undefined;
     this.inFlightRepos.add(context.repoKey);
 
     try {
-      const run = await this.tryAcquireDreamLock(context, sessionUpdatedAts);
+      const run = await this.tryAcquireDreamLock(context, updatedAts);
       if (!run) {
         this.inFlightRepos.delete(context.repoKey);
+        return undefined;
       }
-      return run;
+      return {
+        ...run,
+        candidates: dreamCandidates
+          .filter((candidate) => candidate.updatedAt > run.previousLastDreamAt)
+          .sort((a, b) => b.updatedAt - a.updatedAt),
+      };
     } catch (error) {
       this.inFlightRepos.delete(context.repoKey);
       throw error;
@@ -167,7 +185,7 @@ export class AutoMemoryManager {
   private async tryAcquireDreamLock(
     context: AutoMemoryContext,
     sessionUpdatedAts: readonly number[],
-  ): Promise<AutoMemoryDreamRun | undefined> {
+  ): Promise<AcquiredDreamRun | undefined> {
     const lockPath = path.join(context.memoryDir, AutoMemoryLockName);
     const now = Date.now();
     const existing = await readDreamLock(lockPath);

@@ -8,7 +8,7 @@ import {
 import { events } from "../../../livestore/default-schema";
 import type { LiveKitStore, Message, Task } from "../../../types";
 import type { ForkAgent } from "../../fork-agent";
-import { AutoMemoryAdaptor, type AutoMemoryBackend } from "../auto-memory";
+import { AutoMemoryAdaptor, type AutoMemoryManager } from "../auto-memory";
 import { TaskMemoryAdaptor } from "../task-memory";
 import { describe, expect, it, vi } from "vitest";
 
@@ -233,7 +233,7 @@ describe("auto-memory adaptor", () => {
       backgroundTask,
       parentTaskId: "parent",
       parentCwd: "/repo",
-      backend: makeAutoMemoryBackend(),
+      manager: makeAutoMemoryManager(),
     });
 
     await expect(
@@ -278,7 +278,7 @@ describe("auto-memory adaptor", () => {
       }),
     ]);
     let autoMemoryState: AutoMemoryTaskState | undefined;
-    const backend = makeAutoMemoryBackend({
+    const manager = makeAutoMemoryManager({
       beginDreamRun: vi.fn(async () => undefined),
     });
     const adaptor = new AutoMemoryAdaptor({
@@ -295,7 +295,7 @@ describe("auto-memory adaptor", () => {
       },
       parentTaskId: "parent",
       parentCwd: "/repo",
-      backend,
+      manager,
     });
 
     await expect(
@@ -324,7 +324,7 @@ describe("auto-memory adaptor", () => {
       lastExtractionMessageCount: 1,
       isExtracting: false,
     });
-    expect(backend.beginDreamRun).toHaveBeenCalledTimes(1);
+    expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
   });
 
   it("writes a sanitized bounded transcript", async () => {
@@ -336,7 +336,7 @@ describe("auto-memory adaptor", () => {
         title: "Build shared runner",
       }),
     ]);
-    const backend = makeAutoMemoryBackend();
+    const manager = makeAutoMemoryManager();
     const adaptor = new AutoMemoryAdaptor({
       store: store as unknown as LiveKitStore,
       backgroundTask: createTestBackgroundTask({
@@ -345,7 +345,7 @@ describe("auto-memory adaptor", () => {
       }),
       parentTaskId: "parent",
       parentCwd: "/repo",
-      backend,
+      manager,
     });
 
     await adaptor.update({
@@ -372,7 +372,7 @@ describe("auto-memory adaptor", () => {
       status: "completed",
     });
 
-    const transcript = vi.mocked(backend.writeTaskTranscript).mock.calls[0]?.[0]
+    const transcript = vi.mocked(manager.writeTaskTranscript).mock.calls[0]?.[0]
       .transcript;
     expect(transcript).toContain("### 1. user");
     expect(transcript).toContain("### 2. assistant");
@@ -390,11 +390,13 @@ describe("auto-memory adaptor", () => {
       }),
     ]);
     const stateStore = new BackgroundTaskStateStore();
-    const backend = makeAutoMemoryBackend({
+    const manager = makeAutoMemoryManager({
       beginDreamRun: vi.fn(async ({ currentTranscript }) => ({
         context: autoMemoryContext,
         token: "dream-token",
         previousLastDreamAt: 0,
+        sessionCount: 1,
+        reason: "sessions" as const,
         candidates: currentTranscript ? [currentTranscript] : [],
       })),
     });
@@ -407,7 +409,7 @@ describe("auto-memory adaptor", () => {
       backgroundTask,
       parentTaskId: "parent",
       parentCwd: "/repo",
-      backend,
+      manager,
     });
 
     await adaptor.update({
@@ -427,12 +429,12 @@ describe("auto-memory adaptor", () => {
       status: "pending-model",
       title: "[Auto Memory Dream]",
     });
-    expect(backend.beginDreamRun).toHaveBeenCalledTimes(1);
+    expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
 
     store.updateTaskStatus(dreamTask?.id ?? "", "completed");
     await expect(adaptor.settleAndMaybeContinue()).resolves.toBe(false);
 
-    expect(backend.finishDreamRun).toHaveBeenCalledWith({
+    expect(manager.finishDreamRun).toHaveBeenCalledWith({
       memoryDir: autoMemoryContext.memoryDir,
       token: "dream-token",
       previousLastDreamAt: 0,
@@ -464,9 +466,9 @@ class BackgroundTaskStateStore {
   }
 }
 
-function makeAutoMemoryBackend(
-  overrides: Partial<AutoMemoryBackend> = {},
-): AutoMemoryBackend {
+function makeAutoMemoryManager(
+  overrides: Partial<AutoMemoryManager> = {},
+): AutoMemoryManager {
   return {
     readContext: vi.fn(async () => autoMemoryContext),
     writeTaskTranscript: vi.fn(async () => ({

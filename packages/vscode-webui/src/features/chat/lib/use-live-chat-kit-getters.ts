@@ -3,7 +3,7 @@ import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
-import { vscodeHost } from "@/lib/vscode";
+import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import type { AutoMemoryContext } from "@getpochi/common";
 import type { Environment } from "@getpochi/common";
 import {
@@ -67,7 +67,7 @@ export function useLiveChatKitGetters({
   > | null>(null);
   const getAutoMemory = useCallback(() => {
     if (autoMemoryCacheRef.current) return autoMemoryCacheRef.current;
-    const pending = vscodeHost.readAutoMemory();
+    const pending = vscodeAutoMemoryManager.readContext();
     autoMemoryCacheRef.current = pending;
     pending.catch(() => {
       // Allow retry on transient failure.

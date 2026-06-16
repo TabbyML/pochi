@@ -2,7 +2,7 @@ import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type {
-  AutoMemoryContext,
+  AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundTaskState,
   ContextWindowUsage,
@@ -407,13 +407,12 @@ const VSCodeHostStub = {
       setTaskMemoryState: (_state: TaskMemoryState) => Promise.resolve(),
     };
   },
-  readAutoMemory: async (_options?: {
-    cwd?: string;
-    ensure?: boolean;
-    force?: boolean;
-  }): Promise<AutoMemoryContext | undefined> => {
-    return undefined;
-  },
+  readAutoMemory: async (): Promise<AutoMemoryManager> => ({
+    readContext: async () => undefined,
+    writeTaskTranscript: async () => undefined,
+    beginDreamRun: async () => undefined,
+    finishDreamRun: async () => undefined,
+  }),
   readAutoMemoryEnabled: async (): Promise<{
     value: ThreadSignalSerialization<boolean>;
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
@@ -433,41 +432,6 @@ const VSCodeHostStub = {
       value: {} as ThreadSignalSerialization<AutoMemoryTaskState | undefined>,
       setAutoMemoryState: (_state: AutoMemoryTaskState) => Promise.resolve(),
     };
-  },
-  beginAutoMemoryDream: async (_options: { cwd?: string }): Promise<
-    | {
-        context: AutoMemoryContext;
-        token: string;
-        previousLastDreamAt: number;
-        sessionCount: number;
-        reason: "time" | "sessions";
-        candidates: ReadonlyArray<{
-          taskId: string;
-          cwd?: string | null;
-          updatedAt: number;
-          transcriptFilename: string;
-        }>;
-      }
-    | undefined
-  > => {
-    return undefined;
-  },
-  finishAutoMemoryDream: async (_options: {
-    memoryDir: string;
-    token: string;
-    previousLastDreamAt: number;
-    success: boolean;
-  }): Promise<void> => {
-    return Promise.resolve();
-  },
-  writeTaskTranscript: async (_options: {
-    taskId: string;
-    cwd?: string;
-    title?: string;
-    updatedAt?: number;
-    transcript: string;
-  }): Promise<{ transcriptDir: string; filename: string } | undefined> => {
-    return undefined;
   },
   readBackgroundTaskState: async (
     _taskId: string,

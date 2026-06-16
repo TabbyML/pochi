@@ -1,6 +1,9 @@
 import {
   type AutoMemoryContext,
+  type AutoMemoryDreamCandidate,
+  type AutoMemoryDreamRun,
   type AutoMemoryDreamSession,
+  type AutoMemoryManager,
   type AutoMemoryTaskState,
   getLogger,
   prompts,
@@ -20,6 +23,8 @@ import {
   createMemoryStateStore,
 } from "../state-store";
 
+export type { AutoMemoryManager } from "@getpochi/common";
+
 const logger = getLogger("AutoMemory");
 const ActiveStatuses = new Set(["pending-model", "pending-tool"]);
 const MemoryReadToolNames = [
@@ -35,55 +40,12 @@ const MaxPartChars = 4_000;
 
 type SetAutoMemoryState = (state: AutoMemoryTaskState) => Promise<void> | void;
 
-type AutoMemoryTranscriptInfo = {
-  transcriptDir: string;
-  filename: string;
-};
-
-type AutoMemoryDreamCandidate = {
-  taskId: string;
-  cwd?: string | null;
-  updatedAt: number;
-  transcriptFilename: string;
-};
-
-type AutoMemoryDreamRun = {
-  context: AutoMemoryContext;
-  token: string;
-  previousLastDreamAt: number;
-  candidates: ReadonlyArray<AutoMemoryDreamCandidate>;
-};
-
 type FinishAutoMemoryDream = (options: {
   memoryDir: string;
   token: string;
   previousLastDreamAt: number;
   success: boolean;
 }) => Promise<void> | void;
-
-export type AutoMemoryBackend = {
-  readContext(
-    cwd: string | undefined,
-  ): MaybePromise<AutoMemoryContext | undefined>;
-  writeTaskTranscript(options: {
-    taskId: string;
-    cwd: string | undefined;
-    title?: string;
-    updatedAt?: number;
-    transcript: string;
-  }): MaybePromise<AutoMemoryTranscriptInfo | undefined>;
-  beginDreamRun(options: {
-    cwd: string | undefined;
-    sessionUpdatedAts: readonly number[];
-    currentTranscript?: AutoMemoryDreamCandidate;
-  }): MaybePromise<AutoMemoryDreamRun | undefined>;
-  finishDreamRun(options: {
-    memoryDir: string;
-    token: string;
-    previousLastDreamAt: number;
-    success: boolean;
-  }): MaybePromise<void>;
-};
 
 async function startAutoMemoryExtraction<TMessage extends UIMessage>({
   state,
@@ -467,7 +429,7 @@ type AutoMemoryAdaptorOptions = {
   parentTaskId: string;
   parentCwd: string | undefined | (() => string | undefined);
   isSubTask?: boolean;
-  backend: AutoMemoryBackend;
+  manager: AutoMemoryManager;
 };
 
 export class AutoMemoryAdaptor {
@@ -497,7 +459,7 @@ export class AutoMemoryAdaptor {
 
     try {
       const parentCwd = this.getParentCwd();
-      const context = await this.options.backend.readContext(parentCwd);
+      const context = await this.options.manager.readContext(parentCwd);
       if (!context) return false;
 
       const state = this.getState();
@@ -505,7 +467,7 @@ export class AutoMemoryAdaptor {
       const updatedAt = Date.now();
       const transcript = serializeSessionTranscript(data.messages);
       const transcriptInfo = transcript
-        ? await this.options.backend.writeTaskTranscript({
+        ? await this.options.manager.writeTaskTranscript({
             taskId: this.options.parentTaskId,
             cwd: parentCwd,
             title: task.title ?? undefined,
@@ -597,7 +559,7 @@ export class AutoMemoryAdaptor {
           : undefined,
       });
       if (dreamResolution) {
-        await this.options.backend.finishDreamRun(dreamResolution.finish);
+        await this.options.manager.finishDreamRun(dreamResolution.finish);
         await this.setAutoMemoryState(dreamResolution.nextState);
       }
     } catch (error) {
@@ -611,7 +573,7 @@ export class AutoMemoryAdaptor {
     if (baseState.isDreaming || baseState.isExtracting) return false;
 
     const parentCwd = this.getParentCwd();
-    const run = await this.options.backend.beginDreamRun({
+    const run = await this.options.manager.beginDreamRun({
       cwd: parentCwd,
       sessionUpdatedAts: this.currentTranscript
         ? [this.currentTranscript.updatedAt]
@@ -626,7 +588,7 @@ export class AutoMemoryAdaptor {
       startForkAgent: (agent) =>
         this.options.backgroundTask.startForkAgent(agent),
       finishAutoMemoryDream: (finishOptions) =>
-        this.options.backend.finishDreamRun(finishOptions),
+        this.options.manager.finishDreamRun(finishOptions),
       parentTaskId: this.options.parentTaskId,
       parentCwd,
       parentTaskTitle: this.getParentTaskTitle(),

@@ -38,7 +38,15 @@ export { toErrorMessage } from "./error";
 export { withTimeout } from "./async-utils";
 
 export * from "./message-context";
-export type { AutoMemoryTaskState, TaskMemoryState } from "./memory";
+export type {
+  AutoMemoryDreamCandidate,
+  AutoMemoryDreamRun,
+  AutoMemoryManager,
+  AutoMemoryReadContextOptions,
+  AutoMemoryTaskState,
+  AutoMemoryTranscriptInfo,
+  TaskMemoryState,
+} from "./memory";
 export { TaskMemoryFileUri } from "./prompts/task-memory";
 
 export const ForkAgentUseCase = z.enum([

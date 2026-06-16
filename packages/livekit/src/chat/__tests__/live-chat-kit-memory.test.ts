@@ -92,7 +92,7 @@ describe("LiveChatKit memory lifecycle", () => {
       taskMemory: {
       },
       projectMemory: {
-        backend: makeAutoMemoryBackend(),
+        manager: makeAutoMemoryManager(),
       },
     });
 
@@ -140,7 +140,7 @@ describe("LiveChatKit memory lifecycle", () => {
         stateStore: backgroundTaskStateStore,
       },
       projectMemory: {
-        backend: makeAutoMemoryBackend(),
+        manager: makeAutoMemoryManager(),
       },
     });
 
@@ -256,7 +256,7 @@ const autoMemoryContext: AutoMemoryContext = {
   transcriptDir: "/repo/.pochi/transcripts",
 };
 
-function makeAutoMemoryBackend() {
+function makeAutoMemoryManager() {
   return {
     readContext: vi.fn(async () => autoMemoryContext),
     writeTaskTranscript: vi.fn(async () => ({

@@ -1,5 +1,5 @@
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
-import { vscodeHost } from "@/lib/vscode";
+import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import { type AutoMemoryContext, getLogger } from "@getpochi/common";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import {
@@ -189,7 +189,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private getAutoMemory() {
     if (this.autoMemoryCache) return this.autoMemoryCache;
 
-    const pending = vscodeHost.readAutoMemory();
+    const pending = vscodeAutoMemoryManager.readContext();
     this.autoMemoryCache = pending;
     pending.catch(() => {
       if (this.autoMemoryCache === pending) {

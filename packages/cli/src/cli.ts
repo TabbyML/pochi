@@ -45,7 +45,6 @@ import type { LLMRequestData, Message } from "@getpochi/livekit";
 import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
-import { createAutoMemoryBackend } from "./auto-memory-backend";
 import { handleShellCompletion } from "./completion";
 import { setFfmpegPath } from "./lib/ffmpeg-mjpeg-to-mp4";
 import {
@@ -366,7 +365,7 @@ const program = new Command()
     const taskMemory = taskMemoryEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
       ? {
-          backend: createAutoMemoryBackend(autoMemoryManager),
+          manager: autoMemoryManager,
         }
       : undefined;
 
