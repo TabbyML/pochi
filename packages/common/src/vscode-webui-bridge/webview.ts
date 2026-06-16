@@ -4,6 +4,7 @@ import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type {
   AutoMemoryContext,
   AutoMemoryTaskState,
+  BackgroundTaskState,
   ContextWindowUsage,
   Environment,
   TaskMemoryState,
@@ -508,6 +509,11 @@ export interface VSCodeHostApi {
       }
     | undefined
   >;
+
+  readBackgroundTaskState(taskId: string): Promise<{
+    value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
+    setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
+  }>;
 
   /**
    * Read and manage archived state for a task.

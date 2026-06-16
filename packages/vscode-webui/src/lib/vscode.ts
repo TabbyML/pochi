@@ -133,6 +133,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "beginAutoMemoryDream",
         "finishAutoMemoryDream",
         "writeTaskTranscript",
+        "readBackgroundTaskState",
         "readTaskArchived",
         "readTaskPinned",
         "readLang",

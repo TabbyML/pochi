@@ -3,11 +3,16 @@ import { useLatest } from "@/lib/hooks/use-latest";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeHost } from "@/lib/vscode";
 import { VscodeRunningTaskAdaptor } from "@/lib/vscode-running-task-adaptor";
-import type { AutoMemoryTaskState, TaskMemoryState } from "@getpochi/common";
+import type {
+  AutoMemoryTaskState,
+  BackgroundTaskState,
+  TaskMemoryState,
+} from "@getpochi/common";
 import type {
   LiveChatKitBackgroundTaskOptions,
   LiveChatKitMemoryOptions,
 } from "@getpochi/livekit";
+import { threadSignal } from "@quilted/threads/signals";
 import { useMemo } from "react";
 
 const vscodeBackgroundTaskFileStateCache: NonNullable<
@@ -15,6 +20,39 @@ const vscodeBackgroundTaskFileStateCache: NonNullable<
 > = {
   clear: (taskId) => vscodeHost.clearFileStateCache(taskId),
 };
+
+type BackgroundTaskStateStore = NonNullable<
+  LiveChatKitBackgroundTaskOptions["stateStore"]
+>;
+
+function createVscodeBackgroundTaskStateStore(): BackgroundTaskStateStore {
+  const entries = new Map<
+    string,
+    Promise<{
+      value: { value: BackgroundTaskState | undefined };
+      setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
+    }>
+  >();
+
+  const getEntry = (taskId: string) => {
+    let entry = entries.get(taskId);
+    if (!entry) {
+      entry = vscodeHost.readBackgroundTaskState(taskId).then((result) => ({
+        value: threadSignal(result.value),
+        setBackgroundTaskState: result.setBackgroundTaskState,
+      }));
+      entries.set(taskId, entry);
+    }
+    return entry;
+  };
+
+  return {
+    read: async (taskId) => (await getEntry(taskId)).value.value,
+    set: async (taskId, state) => {
+      await (await getEntry(taskId)).setBackgroundTaskState(state);
+    },
+  };
+}
 
 export function useChatMemory({
   taskId,
@@ -56,6 +94,7 @@ export function useChatMemory({
         : {
             adaptor: new VscodeRunningTaskAdaptor(),
             fileStateCache: vscodeBackgroundTaskFileStateCache,
+            stateStore: createVscodeBackgroundTaskStateStore(),
           },
     [isSubTask, taskId],
   );
