@@ -3,6 +3,7 @@ import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
+import { useLatest } from "@/lib/hooks/use-latest";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
@@ -60,7 +61,6 @@ import {
   ChatContainerClassName,
   ChatToolbarContainerClassName,
 } from "./styles";
-import { useLatest } from "@/lib/hooks/use-latest";
 
 export function ChatPage(props: ChatProps) {
   return (
@@ -109,7 +109,7 @@ function Chat({ user, uid, info }: ChatProps) {
   useEffect(() => {
     todosRef.current = currentTodos;
   }, [currentTodos]);
-  
+
   // inherit autoApproveSettings from parent task
   useEffect(() => {
     if (isSubTask) {

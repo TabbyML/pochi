@@ -819,8 +819,9 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    const message = prepareAttemptTodoCompletionAuditSubtask({
-      message: filterCompletionTools(originalMessage),
+    const filteredMessage = filterCompletionTools(originalMessage)
+    const message = prepareAttemptTodoCompletionSubtask({
+      message: filteredMessage,
       task: this.task,
       taskId: this.taskId,
       store: this.store,
@@ -1064,7 +1065,7 @@ const getCleanCheckpoint = (messages: Message[]) => {
   }
 };
 
-function prepareAttemptTodoCompletionAuditSubtask({
+function prepareAttemptTodoCompletionSubtask({
   message,
   task,
   taskId,
