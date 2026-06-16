@@ -92,6 +92,7 @@ export const FileList: React.FC<{
     };
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: measure the row height once after first paint
   useLayoutEffect(() => {
     const row = rowRef.current;
     if (!row) return;
@@ -103,7 +104,7 @@ export const FileList: React.FC<{
     ) {
       setRowHeight(measuredRowHeight);
     }
-  });
+  }, []);
 
   const virtualRange = useMemo(
     () =>
