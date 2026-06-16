@@ -1,7 +1,7 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import type { getTodoCompletionUpdate as getTodoCompletionUpdateType } from "./use-add-complete-tool-calls";
+import { getTodoCompletionUpdate } from "./use-add-complete-tool-calls";
 
 vi.mock("@/features/chat", () => ({
   useToolCallLifeCycle: () => ({ completeToolCalls: [] }),
@@ -9,12 +9,6 @@ vi.mock("@/features/chat", () => ({
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({ commit: vi.fn() }),
 }));
-
-let getTodoCompletionUpdate: typeof getTodoCompletionUpdateType;
-
-beforeAll(async () => {
-  ({ getTodoCompletionUpdate } = await import("./use-add-complete-tool-calls"));
-});
 
 const todos: Todo[] = [
   {
