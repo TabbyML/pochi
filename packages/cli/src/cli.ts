@@ -336,7 +336,7 @@ const program = new Command()
       skills,
       mcpHub,
       abortSignal: abortController.signal,
-      isSubTask: selectedAgent !== undefined,
+      isSubTask: false,
       customAgent: selectedAgent,
       outputSchema: options.experimentalOutputSchema
         ? parseOutputSchema(options.experimentalOutputSchema)
