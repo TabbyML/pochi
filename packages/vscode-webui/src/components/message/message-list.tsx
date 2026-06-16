@@ -173,6 +173,7 @@ export const MessageList: React.FC<{
                       }
                       partIndex={index}
                       part={part}
+                      previousPart={m.parts[index - 1]}
                       isLoading={isLoading}
                       isExecuting={isExecuting}
                       messages={renderMessages}
@@ -262,6 +263,7 @@ function Part({
   role,
   part,
   partIndex,
+  previousPart,
   isLastPartInMessages,
   isLoading,
   isExecuting,
@@ -277,6 +279,7 @@ function Part({
   role: Message["role"];
   partIndex: number;
   part: NonNullable<Message["parts"]>[number];
+  previousPart: NonNullable<Message["parts"]>[number] | undefined;
   isLastPartInMessages: boolean;
   isLoading: boolean;
   isExecuting: boolean;
@@ -292,7 +295,8 @@ function Part({
   };
   toolCallCheckpoints: Map<string, ToolCallCheckpoint>;
 }) {
-  const paddingClass = partIndex === 0 ? "" : "mt-2";
+  const paddingClass =
+    partIndex === 0 || previousPart?.type === "data-checkpoint" ? "" : "mt-2";
   if (part.type === "text") {
     return <MemoTextPartUI className={paddingClass} part={part} />;
   }
@@ -314,18 +318,15 @@ function Part({
   if (part.type === "data-checkpoint") {
     if (role === "assistant" && isVSCodeEnvironment() && !isSubTask) {
       return (
-        // Offset the padding of the message container to align the checkpoint UI properly
-        <div className="-mb-2">
-          <CheckpointUI
-            checkpoint={part.data}
-            isLoading={isLoading || isExecuting}
-            forkTask={forkTask}
-            isRestored={
-              lastCheckpointInMessage !== part.data.commit &&
-              latestCheckpoint === part.data.commit
-            }
-          />
-        </div>
+        <CheckpointUI
+          checkpoint={part.data}
+          isLoading={isLoading || isExecuting}
+          forkTask={forkTask}
+          isRestored={
+            lastCheckpointInMessage !== part.data.commit &&
+            latestCheckpoint === part.data.commit
+          }
+        />
       );
     }
     return null;
