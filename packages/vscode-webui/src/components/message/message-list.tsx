@@ -314,15 +314,18 @@ function Part({
   if (part.type === "data-checkpoint") {
     if (role === "assistant" && isVSCodeEnvironment() && !isSubTask) {
       return (
-        <CheckpointUI
-          checkpoint={part.data}
-          isLoading={isLoading || isExecuting}
-          forkTask={forkTask}
-          isRestored={
-            lastCheckpointInMessage !== part.data.commit &&
-            latestCheckpoint === part.data.commit
-          }
-        />
+        // Offset the padding of the message container to align the checkpoint UI properly
+        <div className="-mb-2">
+          <CheckpointUI
+            checkpoint={part.data}
+            isLoading={isLoading || isExecuting}
+            forkTask={forkTask}
+            isRestored={
+              lastCheckpointInMessage !== part.data.commit &&
+              latestCheckpoint === part.data.commit
+            }
+          />
+        </div>
       );
     }
     return null;
