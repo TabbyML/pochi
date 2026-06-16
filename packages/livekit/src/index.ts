@@ -8,7 +8,7 @@ export {
   type LiveChatKitProjectMemoryOptions,
   type LiveChatKitTaskMemoryOptions,
 } from "./chat/live-chat-kit";
-export { createAutoMemoryBackendFromManager } from "./background-task/memory/auto-memory";
+export type { AutoMemoryBackend } from "./background-task/memory/auto-memory";
 export type { RunningTaskAdaptor } from "./background-task/task-executor/task-executor";
 export type LLMRequestData = RequestData["llm"];
 export type {

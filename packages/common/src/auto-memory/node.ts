@@ -34,12 +34,7 @@ type AutoMemoryDreamRun = {
   reason: "time" | "sessions";
 };
 
-export type ResolveMainWorktreePath = (
-  cwd: string,
-) => Promise<string | undefined> | string | undefined;
-
 export type AutoMemoryManagerOptions = {
-  resolveMainWorktreePath?: ResolveMainWorktreePath;
   projectsRoot?: string;
 };
 
@@ -52,11 +47,9 @@ type DreamLock = {
 
 export class AutoMemoryManager {
   private readonly inFlightRepos = new Set<string>();
-  private readonly resolveMainWorktreePath: ResolveMainWorktreePath | undefined;
   private readonly projectsRoot: string;
 
   constructor(options: AutoMemoryManagerOptions = {}) {
-    this.resolveMainWorktreePath = options.resolveMainWorktreePath;
     this.projectsRoot =
       options.projectsRoot ?? path.join(os.homedir(), ".pochi", "projects");
   }
@@ -67,10 +60,7 @@ export class AutoMemoryManager {
   ): Promise<AutoMemoryContext | undefined> {
     if (!cwd) return undefined;
 
-    const repoRoot = await resolveMainWorktreePath(
-      cwd,
-      this.resolveMainWorktreePath,
-    );
+    const repoRoot = await resolveMainWorktreePath(cwd);
     const repoKey = sanitizeMemoryRepoKey(repoRoot);
     const projectRoot = path.join(this.projectsRoot, repoKey);
     const memoryDir = path.join(projectRoot, "memory");
@@ -260,12 +250,9 @@ export class AutoMemoryManager {
   }
 }
 
-export async function resolveMainWorktreePath(
-  cwd: string,
-  getMainWorktreePath?: ResolveMainWorktreePath,
-): Promise<string> {
+export async function resolveMainWorktreePath(cwd: string): Promise<string> {
   const resolvedCwd = path.resolve(cwd);
-  const mainWorktreePath = await getMainWorktreePath?.(resolvedCwd);
+  const mainWorktreePath = await readGitFileMainWorktreePath(resolvedCwd);
   if (mainWorktreePath) return path.resolve(mainWorktreePath);
 
   try {
@@ -273,10 +260,34 @@ export async function resolveMainWorktreePath(
       timeout: { block: constants.GitOperationTimeoutMs },
     });
     const root = (await git.revparse(["--show-toplevel"])).trim();
-    const mainRoot = await getMainWorktreePath?.(root);
+    const mainRoot = await readGitFileMainWorktreePath(root);
     return path.resolve(mainRoot ?? root);
   } catch {
     return resolvedCwd;
+  }
+}
+
+async function readGitFileMainWorktreePath(
+  worktreeRoot: string,
+): Promise<string | undefined> {
+  const gitPath = path.join(worktreeRoot, ".git");
+  try {
+    const stat = await fs.stat(gitPath);
+    if (stat.isDirectory()) return worktreeRoot;
+    if (!stat.isFile()) return undefined;
+
+    const content = await fs.readFile(gitPath, "utf8");
+    const match = content.match(/^gitdir:\s*(.+)$/m);
+    if (!match) return undefined;
+
+    const gitDir = path.resolve(worktreeRoot, match[1].trim());
+    if (path.basename(path.dirname(gitDir)) !== "worktrees") {
+      return undefined;
+    }
+
+    return path.dirname(path.dirname(path.dirname(gitDir)));
+  } catch {
+    return undefined;
   }
 }
 

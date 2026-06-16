@@ -27,6 +27,7 @@ describe("long-term memory helpers", () => {
 describe("AutoMemoryManager project info file", () => {
   let projectsRoot: string;
   let cwd: string;
+  let worktreeCwd: string;
 
   beforeEach(async () => {
     projectsRoot = await fs.mkdtemp(
@@ -35,11 +36,15 @@ describe("AutoMemoryManager project info file", () => {
     cwd = await fs.mkdtemp(
       path.join(os.tmpdir(), "pochi-auto-memory-repo-"),
     );
+    worktreeCwd = await fs.mkdtemp(
+      path.join(os.tmpdir(), "pochi-auto-memory-worktree-"),
+    );
   });
 
   afterEach(async () => {
     await fs.rm(projectsRoot, { recursive: true, force: true });
     await fs.rm(cwd, { recursive: true, force: true });
+    await fs.rm(worktreeCwd, { recursive: true, force: true });
   });
 
   it("writes project.json mapping the repoKey back to the source repo path", async () => {
@@ -74,5 +79,26 @@ describe("AutoMemoryManager project info file", () => {
     await manager.readContext(cwd);
     const secondStat = await fs.stat(infoPath);
     expect(secondStat.mtimeMs).toBe(firstStat.mtimeMs);
+  });
+
+  it("uses the main worktree path for git worktree memory keys", async () => {
+    const worktreeGitDir = path.join(cwd, ".git", "worktrees", "feature");
+    await fs.mkdir(worktreeGitDir, { recursive: true });
+    await fs.writeFile(
+      path.join(worktreeCwd, ".git"),
+      `gitdir: ${worktreeGitDir}\n`,
+    );
+
+    const manager = new AutoMemoryManager({ projectsRoot });
+    const context = await manager.readContext(worktreeCwd);
+    expect(context?.repoKey).toBe(sanitizeMemoryRepoKey(cwd));
+
+    const infoPath = path.join(
+      projectsRoot,
+      context?.repoKey ?? "",
+      AutoMemoryProjectInfoName,
+    );
+    const info = JSON.parse(await fs.readFile(infoPath, "utf8"));
+    expect(info.repoPath).toBe(path.resolve(cwd));
   });
 });
