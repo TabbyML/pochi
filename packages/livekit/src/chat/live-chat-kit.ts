@@ -819,7 +819,7 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    const filteredMessage = filterCompletionTools(originalMessage)
+    const filteredMessage = filterCompletionTools(originalMessage);
     const message = prepareAttemptTodoCompletionSubtask({
       message: filteredMessage,
       task: this.task,
