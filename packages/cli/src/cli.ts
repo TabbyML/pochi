@@ -49,7 +49,6 @@ import {
 import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
 import { registerAuthCommand } from "./auth";
-import { CliBackgroundTaskFileStateCache } from "./background-task-file-state-cache";
 import { handleShellCompletion } from "./completion";
 import { setFfmpegPath } from "./lib/ffmpeg-mjpeg-to-mp4";
 import {
@@ -342,9 +341,18 @@ const program = new Command()
       autoMemoryCache = cached;
       return cached;
     };
-    const backgroundTaskFileStateCache = new CliBackgroundTaskFileStateCache({
+    const backgroundTaskAdaptor = new CliRunningTaskAdaptor({
+      blobStore,
+      llm,
+      cwd: process.cwd(),
+      rg,
+      filesystem,
+      customAgents,
+      skills,
+      mcpHub,
       parentTaskId: uid,
       parentFileStateCache,
+      autoMemoryManager,
     });
     const stepDurationTracker = new StepDurationTracker();
 
@@ -379,19 +387,9 @@ const program = new Command()
       browserSessionStore,
       getAutoMemory,
       backgroundTask: {
-        adaptor: new CliRunningTaskAdaptor({
-          blobStore,
-          llm,
-          cwd: process.cwd(),
-          rg,
-          filesystem,
-          customAgents,
-          skills,
-          mcpHub,
-          fileStateCache: backgroundTaskFileStateCache,
-          autoMemoryManager,
-        }),
-        fileStateCache: backgroundTaskFileStateCache,
+        adaptor: backgroundTaskAdaptor,
+        clearFileStateCache: (taskId) =>
+          backgroundTaskAdaptor.clearFileStateCache(taskId),
       },
       memory: {
         parentCwd: process.cwd(),

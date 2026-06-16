@@ -27,7 +27,6 @@ import type {
 } from "../background-task/state-store";
 import { HeadlessChat } from "../background-task/task-executor/headless-chat";
 import {
-  type BackgroundTaskFileStateCache,
   type RunningTaskAdaptor,
   TaskExecutor,
 } from "../background-task/task-executor/task-executor";
@@ -72,7 +71,7 @@ export type LiveChatKitBackgroundTaskOptions = {
     set(taskId: string, state: BackgroundTaskState): MaybePromise<void>;
   };
   adaptor?: RunningTaskAdaptor & { dispose?: () => void };
-  fileStateCache?: BackgroundTaskFileStateCache;
+  clearFileStateCache?: (taskId: string) => MaybePromise<void>;
 };
 
 export type LiveChatKitMemoryOptions = {
@@ -83,7 +82,7 @@ export type LiveChatKitMemoryOptions = {
 };
 
 type BackgroundTaskRuntime = {
-  readState(taskId: string): MaybePromise<BackgroundTaskState | undefined>;
+  readTaskState(taskId: string): MaybePromise<BackgroundTaskState | undefined>;
   startForkAgent(agent: ForkAgent<Message>): MaybePromise<ForkAgentHandle>;
   waitForTaskDone?: (taskId: string) => MaybePromise<void>;
 };
@@ -143,7 +142,7 @@ function createBackgroundTaskRuntime({
   waitForTaskDone?: (taskId: string) => MaybePromise<void>;
 }): BackgroundTaskRuntime {
   return {
-    readState: (taskId) => stateStore.read(taskId),
+    readTaskState: (taskId) => stateStore.read(taskId),
     startForkAgent: (agent) =>
       createBackgroundTaskFromForkAgent({
         store,
@@ -421,9 +420,9 @@ export class LiveChatKit<
         ? new TaskExecutor({
             store,
             blobStore,
-            backgroundTask: backgroundTaskRuntime,
+            readTaskState: backgroundTaskRuntime.readTaskState,
             adaptor: backgroundTask.adaptor,
-            fileStateCache: backgroundTask.fileStateCache,
+            clearFileStateCache: backgroundTask.clearFileStateCache,
             createChatKit: ({
               taskId,
               store,

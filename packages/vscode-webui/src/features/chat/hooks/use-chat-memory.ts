@@ -15,12 +15,6 @@ import type {
 import { threadSignal } from "@quilted/threads/signals";
 import { useMemo } from "react";
 
-const vscodeBackgroundTaskFileStateCache: NonNullable<
-  LiveChatKitBackgroundTaskOptions["fileStateCache"]
-> = {
-  clear: (taskId) => vscodeHost.clearFileStateCache(taskId),
-};
-
 type BackgroundTaskStateStore = NonNullable<
   LiveChatKitBackgroundTaskOptions["stateStore"]
 >;
@@ -93,7 +87,8 @@ export function useChatMemory({
         ? undefined
         : {
             adaptor: new VscodeRunningTaskAdaptor(),
-            fileStateCache: vscodeBackgroundTaskFileStateCache,
+            clearFileStateCache: (taskId) =>
+              vscodeHost.clearFileStateCache(taskId),
             stateStore: createVscodeBackgroundTaskStateStore(),
           },
     [isSubTask, taskId],

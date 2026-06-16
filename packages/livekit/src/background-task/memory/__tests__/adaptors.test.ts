@@ -489,7 +489,6 @@ function createTestBackgroundTask({
   waitForTaskDone?: (taskId: string) => void | Promise<void>;
 }) {
   return {
-    readState: (taskId: string) => stateStore.read(taskId),
     startForkAgent: async (agent: ForkAgent<Message>) => {
       const taskId = crypto.randomUUID();
       await stateStore.set(taskId, {

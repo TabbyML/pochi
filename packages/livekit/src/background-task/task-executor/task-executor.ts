@@ -59,27 +59,21 @@ export interface RunningTaskAdaptor {
   onTaskError?(taskId: string, error: Error): void | Promise<void>;
 }
 
-export type BackgroundTaskFileStateCache = {
-  copy?(sourceTaskId: string, targetTaskId: string): void | Promise<void>;
-  clear?(taskId: string): void | Promise<void>;
-};
-
 type TaskToolOutput = {
   tool: string;
   toolCallId: string;
   output: unknown;
 };
 type MaybePromiseLike<T> = T | PromiseLike<T>;
-type BackgroundTaskStateReader = {
-  readState(taskId: string): MaybePromiseLike<BackgroundTaskState | undefined>;
-};
 
 type CreateTaskExecutorOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
-  backgroundTask: BackgroundTaskStateReader;
+  readTaskState: (
+    taskId: string,
+  ) => MaybePromiseLike<BackgroundTaskState | undefined>;
   adaptor: RunningTaskAdaptor;
-  fileStateCache?: BackgroundTaskFileStateCache;
+  clearFileStateCache?: (taskId: string) => void | Promise<void>;
   createChatKit: CreateRunningTaskChatKit;
 };
 
@@ -109,9 +103,9 @@ type CreateRunningTaskChatKit = (options: {
 export class TaskExecutor {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
-  private readonly backgroundTask: BackgroundTaskStateReader;
+  private readonly readTaskState: CreateTaskExecutorOptions["readTaskState"];
   private readonly adaptor: RunningTaskAdaptor;
-  private readonly fileStateCache: BackgroundTaskFileStateCache | undefined;
+  private readonly clearFileStateCache: CreateTaskExecutorOptions["clearFileStateCache"];
   private readonly createRunningTaskChatKit: CreateRunningTaskChatKit;
   private readonly runningTasks = new Map<string, RunningTask>();
   private readonly taskDoneWaiters = new Map<string, Set<() => void>>();
@@ -122,16 +116,16 @@ export class TaskExecutor {
   constructor({
     store,
     blobStore,
-    backgroundTask,
+    readTaskState,
     adaptor,
-    fileStateCache,
+    clearFileStateCache,
     createChatKit,
   }: CreateTaskExecutorOptions) {
     this.store = store;
     this.blobStore = blobStore;
-    this.backgroundTask = backgroundTask;
+    this.readTaskState = readTaskState;
     this.adaptor = adaptor;
-    this.fileStateCache = fileStateCache;
+    this.clearFileStateCache = clearFileStateCache;
     this.createRunningTaskChatKit = createChatKit;
   }
 
@@ -232,9 +226,9 @@ export class TaskExecutor {
       taskId,
       store: this.store,
       blobStore: this.blobStore,
-      backgroundTask: this.backgroundTask,
+      readTaskState: this.readTaskState,
       adaptor: this.adaptor,
-      fileStateCache: this.fileStateCache,
+      clearFileStateCache: this.clearFileStateCache,
       createChatKit: this.createRunningTaskChatKit,
     });
     this.runningTasks.set(taskId, runningTask);
@@ -275,23 +269,13 @@ export class TaskExecutor {
   }
 }
 
-type RunningTaskOptions = {
-  taskId: string;
-  store: LiveKitStore;
-  blobStore: BlobStore;
-  backgroundTask: BackgroundTaskStateReader;
-  adaptor: RunningTaskAdaptor;
-  fileStateCache?: BackgroundTaskFileStateCache;
-  createChatKit: CreateRunningTaskChatKit;
-};
-
 class RunningTask {
   private readonly taskId: string;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
-  private readonly backgroundTask: BackgroundTaskStateReader;
+  private readonly readTaskState: CreateTaskExecutorOptions["readTaskState"];
   private readonly adaptor: RunningTaskAdaptor;
-  private readonly fileStateCache: BackgroundTaskFileStateCache | undefined;
+  private readonly clearFileStateCache: CreateTaskExecutorOptions["clearFileStateCache"];
   private readonly createRunningTaskChatKit: CreateRunningTaskChatKit;
   private readonly abortController = new AbortController();
   private readonly toolCallQueue = new ToolCallQueue();
@@ -303,13 +287,21 @@ class RunningTask {
 
   readonly done: Promise<void>;
 
-  constructor(options: RunningTaskOptions) {
+  constructor(options: {
+    taskId: string;
+    store: LiveKitStore;
+    blobStore: BlobStore;
+    readTaskState: CreateTaskExecutorOptions["readTaskState"];
+    adaptor: RunningTaskAdaptor;
+    clearFileStateCache?: CreateTaskExecutorOptions["clearFileStateCache"];
+    createChatKit: CreateRunningTaskChatKit;
+  }) {
     this.taskId = options.taskId;
     this.store = options.store;
     this.blobStore = options.blobStore;
-    this.backgroundTask = options.backgroundTask;
+    this.readTaskState = options.readTaskState;
     this.adaptor = options.adaptor;
-    this.fileStateCache = options.fileStateCache;
+    this.clearFileStateCache = options.clearFileStateCache;
     this.createRunningTaskChatKit = options.createChatKit;
     this.done = this.run();
   }
@@ -325,14 +317,7 @@ class RunningTask {
   private async run() {
     try {
       await this.adaptor.waitUntilReady?.();
-      this.taskState = (await this.backgroundTask.readState(this.taskId)) ?? {};
-      if (this.taskState.parentTaskId && this.fileStateCache?.copy) {
-        await this.fileStateCache.copy(
-          this.taskState.parentTaskId,
-          this.taskId,
-        );
-      }
-
+      this.taskState = (await this.readTaskState(this.taskId)) ?? {};
       this.chatKit = this.createChatKit(this.task);
 
       while (!this.abortController.signal.aborted) {
@@ -599,7 +584,7 @@ class RunningTask {
   }
 
   private replaceLastMessageForRetry(message: Message): void {
-    void this.fileStateCache?.clear?.(this.taskId);
+    void this.clearFileStateCache?.(this.taskId);
     this.chat.appendOrReplaceMessage(message);
   }
 

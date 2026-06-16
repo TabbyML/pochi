@@ -1,9 +1,5 @@
 import type { BackgroundTaskState } from "@getpochi/common";
-import {
-  TaskExecutor,
-  type BackgroundTaskFileStateCache,
-  type RunningTaskAdaptor,
-} from "../task-executor";
+import { TaskExecutor, type RunningTaskAdaptor } from "../task-executor";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "../../../types";
 
@@ -217,7 +213,7 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
-  it("uses background file-state cache callbacks outside the adaptor", async () => {
+  it("clears background file-state cache before retrying a task", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-model" }),
     ]);
@@ -238,21 +234,12 @@ describe("TaskExecutor", () => {
     const adaptor = makeAdaptor({
       executeToolCall: vi.fn(async () => ({ ok: true })),
     });
-    const fileStateCache = {
-      copy: vi.fn(),
-      clear: vi.fn(),
-    };
-    const executor = makeExecutor(
-      store,
-      adaptor,
-      { parentTaskId: "parent" },
-      fileStateCache,
-    );
+    const clearFileStateCache = vi.fn();
+    const executor = makeExecutor(store, adaptor, {}, clearFileStateCache);
 
     await executor.drain();
 
-    expect(fileStateCache.copy).toHaveBeenCalledWith("parent", "task");
-    expect(fileStateCache.clear).toHaveBeenCalledWith("task");
+    expect(clearFileStateCache).toHaveBeenCalledWith("task");
     await executor.dispose();
   });
 });
@@ -361,16 +348,14 @@ function makeExecutor(
   store: FakeLiveKitStore,
   adaptor: RunningTaskAdaptor,
   taskState: BackgroundTaskState,
-  fileStateCache?: BackgroundTaskFileStateCache,
+  clearFileStateCache?: (taskId: string) => void | Promise<void>,
 ) {
   return new TaskExecutor({
     store: store as never,
     blobStore: {} as never,
-    backgroundTask: {
-      readState: () => taskState,
-    },
+    readTaskState: () => taskState,
     adaptor,
-    fileStateCache,
+    clearFileStateCache,
     createChatKit: ({ taskId, store }) =>
       new MockLiveChatKit({
         taskId,

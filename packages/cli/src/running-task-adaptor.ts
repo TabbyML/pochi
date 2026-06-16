@@ -1,7 +1,10 @@
 import { getLogger } from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import type { McpHub } from "@getpochi/common/mcp-utils";
-import { maybePersistToolResult } from "@getpochi/common/tool-utils";
+import {
+  FileStateCache,
+  maybePersistToolResult,
+} from "@getpochi/common/tool-utils";
 import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import {
   type BlobStore,
@@ -12,7 +15,6 @@ import {
 } from "@getpochi/livekit";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
-import type { CliBackgroundTaskFileStateCache } from "./background-task-file-state-cache";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
@@ -33,7 +35,8 @@ interface CliRunningTaskAdaptorOptions {
   customAgents?: CustomAgent[];
   skills?: Skill[];
   mcpHub?: McpHub;
-  fileStateCache: CliBackgroundTaskFileStateCache;
+  parentTaskId?: string;
+  parentFileStateCache?: FileStateCache;
   autoMemoryManager?: AutoMemoryManager;
 }
 
@@ -46,7 +49,9 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly customAgents: CustomAgent[] | undefined;
   private readonly skills: Skill[] | undefined;
   private readonly mcpHub: McpHub | undefined;
-  private readonly fileStateCache: CliBackgroundTaskFileStateCache;
+  private readonly parentTaskId: string | undefined;
+  private readonly parentFileStateCache: FileStateCache | undefined;
+  private readonly fileStateCaches = new Map<string, FileStateCache>();
   private readonly autoMemoryManager: AutoMemoryManager;
   private readonly backgroundJobManagers = new Map<
     string,
@@ -62,7 +67,8 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     this.customAgents = options.customAgents;
     this.skills = options.skills;
     this.mcpHub = options.mcpHub;
-    this.fileStateCache = options.fileStateCache;
+    this.parentTaskId = options.parentTaskId;
+    this.parentFileStateCache = options.parentFileStateCache;
     this.autoMemoryManager =
       options.autoMemoryManager ?? new AutoMemoryManager();
   }
@@ -101,6 +107,10 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
+    if (args.parentTaskId) {
+      this.copyFileStateCacheIfAbsent(args.parentTaskId, args.taskId);
+    }
+
     const tool = {
       type: `tool-${args.toolName}`,
       toolCallId: args.toolCallId,
@@ -131,17 +141,53 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     logger.warn({ taskId, error }, "Task execution failed");
   }
 
+  clearFileStateCache(taskId: string) {
+    this.fileStateCaches.get(taskId)?.clear();
+  }
+
   private createToolCallOptions(taskId: string): ToolCallOptions {
     return {
       rg: this.rg,
       fileSystem: this.filesystem,
-      fileStateCache: this.fileStateCache.get(taskId),
+      fileStateCache: this.getFileStateCache(taskId),
       blobStore: this.blobStore,
       customAgents: this.customAgents,
       skills: this.skills,
       mcpHub: this.mcpHub,
       backgroundJobManager: this.getBackgroundJobManager(taskId),
     };
+  }
+
+  private copyFileStateCacheIfAbsent(
+    sourceTaskId: string,
+    targetTaskId: string,
+  ) {
+    const existingTarget = this.fileStateCaches.get(targetTaskId);
+    if (existingTarget && existingTarget.size > 0) {
+      return;
+    }
+
+    const source =
+      this.fileStateCaches.get(sourceTaskId) ??
+      (sourceTaskId === this.parentTaskId
+        ? this.parentFileStateCache
+        : undefined);
+    const target = new FileStateCache();
+    if (source) {
+      for (const [key, value] of source) {
+        target.set(key, { ...value });
+      }
+    }
+    this.fileStateCaches.set(targetTaskId, target);
+  }
+
+  private getFileStateCache(taskId: string) {
+    let cache = this.fileStateCaches.get(taskId);
+    if (!cache) {
+      cache = new FileStateCache();
+      this.fileStateCaches.set(taskId, cache);
+    }
+    return cache;
   }
 
   private getBackgroundJobManager(taskId: string) {
