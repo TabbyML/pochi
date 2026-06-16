@@ -127,7 +127,7 @@ export const MessageList: React.FC<{
               className="message-list-item flex flex-col"
               aria-label={`chat-message-${m.role}`}
             >
-              <div className={cn(showUserAvatar && "pt-4 pb-2")}>
+              <div className={cn(showUserAvatar && "py-2")}>
                 {showUserAvatar && (
                   <div className="flex items-center gap-2">
                     {m.role === "user" ? (
@@ -433,20 +433,18 @@ const SeparatorWithCheckpoint: React.FC<{
   const part = checkpointMessage.parts.at(-1);
   if (part && part.type === "data-checkpoint" && isVSCodeEnvironment()) {
     return (
-      <div className="mt-1 mb-2">
-        <CheckpointUI
-          checkpoint={part.data}
-          isLoading={isLoading}
-          hideBorderOnHover={false}
-          className="max-w-full"
-          forkTask={forkTask}
-          restoreMessageId={restoreMessageId}
-          isRestored={
-            lastCheckpointInMessage !== part.data.commit &&
-            latestCheckpoint === part.data.commit
-          }
-        />
-      </div>
+      <CheckpointUI
+        checkpoint={part.data}
+        isLoading={isLoading}
+        hideBorderOnHover={false}
+        className="max-w-full"
+        forkTask={forkTask}
+        restoreMessageId={restoreMessageId}
+        isRestored={
+          lastCheckpointInMessage !== part.data.commit &&
+          latestCheckpoint === part.data.commit
+        }
+      />
     );
   }
 

@@ -191,7 +191,7 @@ export const CheckpointUI: React.FC<{
     >
       <div
         className={cn(
-          "-translate-x-1/2 -translate-y-1/2 group absolute top-1/2 left-1/2 z-10 mx-auto flex min-h-5 w-full max-w-[72px] select-none items-center hover:max-w-full",
+          "-translate-x-1/2 -translate-y-1/2 group absolute top-1/2 left-1/2 mx-auto flex w-full max-w-[72px] select-none items-center hover:max-w-full",
           isLoading && "pointer-events-none",
           className,
         )}
