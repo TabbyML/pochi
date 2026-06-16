@@ -11,6 +11,7 @@ import z from "zod";
 
 export function createOutputSchemaMiddleware(
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
   outputSchema: z.ZodAny,
 ): LanguageModelV3Middleware {
@@ -62,6 +63,7 @@ export function createOutputSchemaMiddleware(
                 ...parsedResult.value,
                 result: await ensureOutputSchema(
                   taskId,
+                  storeId,
                   model,
                   outputSchema,
                   result,
@@ -91,6 +93,7 @@ export function createOutputSchemaMiddleware(
 
 async function ensureOutputSchema(
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
   schema: z.ZodAny,
   content: string,
@@ -100,6 +103,7 @@ async function ensureOutputSchema(
       providerOptions: {
         pochi: {
           taskId,
+          storeId,
           client: globalThis.POCHI_CLIENT,
           useCase: "output-schema",
         } satisfies PochiProviderOptions,
