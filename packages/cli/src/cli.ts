@@ -62,6 +62,7 @@ import {
   ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
 } from "./lib/shutdown";
+import { StepDurationTracker } from "./lib/step-duration-tracker";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -316,6 +317,7 @@ const program = new Command()
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
+    const stepDurationTracker = new StepDurationTracker();
 
     const runner = new TaskRunner({
       uid,
@@ -346,6 +348,7 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
+      stepDurationTracker,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
@@ -360,6 +363,7 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
+          stepDurationTracker,
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
