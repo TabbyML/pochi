@@ -198,6 +198,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       providerOptions: {
         pochi: {
           taskId: chatId,
+          storeId: this.store.storeId,
           client: globalThis.POCHI_CLIENT,
           useCase: this.requestUseCase,
         } satisfies PochiProviderOptions,

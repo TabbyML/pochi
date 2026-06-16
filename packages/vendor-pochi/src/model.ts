@@ -46,6 +46,9 @@ export function createPochiModel({
       );
       if (parsedOptions.success) {
         headers[constants.PochiTaskIdHeader] = parsedOptions.data.taskId;
+        if (parsedOptions.data.storeId) {
+          headers[constants.PochiStoreIdHeader] = parsedOptions.data.storeId;
+        }
         headers[constants.PochiClientHeader] = parsedOptions.data.client;
         headers[constants.PochiRequestUseCaseHeader] =
           parsedOptions.data.useCase;
@@ -89,6 +92,9 @@ export function createPochiModel({
       );
       if (parsedOptions.success) {
         headers[constants.PochiTaskIdHeader] = parsedOptions.data.taskId;
+        if (parsedOptions.data.storeId) {
+          headers[constants.PochiStoreIdHeader] = parsedOptions.data.storeId;
+        }
         headers[constants.PochiClientHeader] = parsedOptions.data.client;
         headers[constants.PochiRequestUseCaseHeader] =
           parsedOptions.data.useCase;
