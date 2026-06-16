@@ -582,6 +582,6 @@
   },
   "builtInAgentsSettings": {
     "title": "Built-in Agents",
-    "browser": "Browser"
+    "browser": "browser"
   }
 }

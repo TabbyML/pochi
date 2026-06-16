@@ -69,6 +69,7 @@ import {
   ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
 } from "./lib/shutdown";
+import { StepDurationTracker } from "./lib/step-duration-tracker";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -345,6 +346,7 @@ const program = new Command()
       parentTaskId: uid,
       parentFileStateCache,
     });
+    const stepDurationTracker = new StepDurationTracker();
 
     const runner = new TaskRunner({
       uid,
@@ -397,6 +399,7 @@ const program = new Command()
           createAutoMemoryBackendFromManager(autoMemoryManager),
       },
       fileStateCache: parentFileStateCache,
+      stepDurationTracker,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
@@ -410,6 +413,7 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
+          stepDurationTracker,
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
