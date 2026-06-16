@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 
 /**
@@ -11,7 +11,7 @@ function commandExistsSync(command: string): boolean {
   const checkCommand = isWindows ? "where" : "which";
 
   try {
-    execSync(`${checkCommand} ${command}`, { stdio: "ignore" });
+    execFileSync(checkCommand, [command], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -28,7 +28,7 @@ function getCommandPath(command: string): string | null {
   const checkCommand = isWindows ? "where" : "which";
 
   try {
-    const result = execSync(`${checkCommand} ${command}`, {
+    const result = execFileSync(checkCommand, [command], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
