@@ -24,7 +24,8 @@ import {
   type BlobStore,
   type LLMRequestData,
   type LiveChatKitBackgroundTaskOptions,
-  type LiveChatKitMemoryOptions,
+  type LiveChatKitProjectMemoryOptions,
+  type LiveChatKitTaskMemoryOptions,
   type LiveKitStore,
   type Message,
   type Task,
@@ -158,7 +159,9 @@ export interface RunnerOptions {
 
   backgroundTask?: LiveChatKitBackgroundTaskOptions;
 
-  memory?: LiveChatKitMemoryOptions;
+  taskMemory?: LiveChatKitTaskMemoryOptions;
+
+  projectMemory?: LiveChatKitProjectMemoryOptions;
 
   fileStateCache?: FileStateCache;
 
@@ -213,10 +216,6 @@ export class TaskRunner {
     return this.chatKit.chat.getState();
   }
 
-  getFileStateCache() {
-    return this.toolCallOptions.fileStateCache;
-  }
-
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
     this.llm = options.llm;
@@ -258,7 +257,8 @@ export class TaskRunner {
           onStreamFinish: undefined,
           onCompactFinish: undefined,
           backgroundTask: undefined,
-          memory: undefined,
+          taskMemory: undefined,
+          projectMemory: undefined,
           fileStateCache: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
@@ -286,7 +286,8 @@ export class TaskRunner {
         this.toolCallOptions.fileStateCache.getRecentFiles(),
       clearFileStateCache: () => this.toolCallOptions.fileStateCache.clear(),
       backgroundTask: options.backgroundTask,
-      memory: options.memory,
+      taskMemory: options.taskMemory,
+      projectMemory: options.projectMemory,
 
       getters: {
         getLLM: () => options.llm,

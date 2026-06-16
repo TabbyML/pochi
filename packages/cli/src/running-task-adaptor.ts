@@ -9,7 +9,7 @@ import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
 import {
   type BlobStore,
   type LLMRequestData,
-  type LiveChatKitBackgroundTaskOptions,
+  type RunningTaskAdaptor,
   type UITools,
   processContentOutput,
 } from "@getpochi/livekit";
@@ -22,9 +22,6 @@ import { executeToolCall } from "./tools";
 import type { ToolCallOptions } from "./types";
 
 const logger = getLogger("CliRunningTaskAdaptor");
-type RunningTaskAdaptor = NonNullable<
-  LiveChatKitBackgroundTaskOptions["adaptor"]
->;
 
 interface CliRunningTaskAdaptorOptions {
   blobStore: BlobStore;
@@ -38,6 +35,7 @@ interface CliRunningTaskAdaptorOptions {
   parentTaskId?: string;
   parentFileStateCache?: FileStateCache;
   autoMemoryManager?: AutoMemoryManager;
+  projectMemoryEnabled?: boolean;
 }
 
 export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
@@ -53,6 +51,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly parentFileStateCache: FileStateCache | undefined;
   private readonly fileStateCaches = new Map<string, FileStateCache>();
   private readonly autoMemoryManager: AutoMemoryManager;
+  private readonly projectMemoryEnabled: boolean;
   private readonly backgroundJobManagers = new Map<
     string,
     BackgroundJobManager
@@ -71,6 +70,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     this.parentFileStateCache = options.parentFileStateCache;
     this.autoMemoryManager =
       options.autoMemoryManager ?? new AutoMemoryManager();
+    this.projectMemoryEnabled = options.projectMemoryEnabled ?? true;
   }
 
   dispose() {
@@ -85,13 +85,17 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       getLLM: () => this.llm,
       getEnvironment: async () =>
         readEnvironment({ cwd: context.cwd ?? this.cwd }),
-      getAutoMemory: async () =>
-        this.autoMemoryManager
-          .readContext(context.cwd ?? this.cwd)
-          .catch((error) => {
-            logger.warn("Failed to read long-term memory context", error);
-            return undefined;
-          }),
+      ...(this.projectMemoryEnabled
+        ? {
+            getAutoMemory: async () =>
+              this.autoMemoryManager
+                .readContext(context.cwd ?? this.cwd)
+                .catch((error) => {
+                  logger.warn("Failed to read long-term memory context", error);
+                  return undefined;
+                }),
+          }
+        : {}),
       getMcpInfo: () => {
         const status = this.mcpHub?.status.value;
         return {

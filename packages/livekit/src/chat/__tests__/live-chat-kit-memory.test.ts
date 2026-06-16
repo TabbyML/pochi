@@ -7,16 +7,12 @@ import type { ChatInit, ChatOnFinishCallback } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import {
   type BlobStore,
-  type LiveChatKitBackgroundTaskOptions,
   type LiveKitStore,
   type Message,
+  type RunningTaskAdaptor,
   type Task,
 } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
-
-type RunningTaskAdaptor = NonNullable<
-  LiveChatKitBackgroundTaskOptions["adaptor"]
->;
 
 describe("LiveChatKit memory lifecycle", () => {
   it("starts background task scheduling when an adaptor is provided", async () => {
@@ -93,9 +89,10 @@ describe("LiveChatKit memory lifecycle", () => {
       backgroundTask: {
         stateStore: backgroundTaskStateStore,
       },
-      memory: {
-        parentCwd: "/repo",
-        autoMemoryBackend: makeAutoMemoryBackend(),
+      taskMemory: {
+      },
+      projectMemory: {
+        backend: makeAutoMemoryBackend(),
       },
     });
 
@@ -119,6 +116,48 @@ describe("LiveChatKit memory lifecycle", () => {
         },
       ]),
     );
+  });
+
+  it("can disable task-memory while keeping auto-memory enabled", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    const backgroundTaskStateStore = new BackgroundTaskStateStore();
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+      backgroundTask: {
+        stateStore: backgroundTaskStateStore,
+      },
+      projectMemory: {
+        backend: makeAutoMemoryBackend(),
+      },
+    });
+
+    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.finish(assistantMessage());
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+
+    const memoryTasks = store.backgroundTasks().map((task) => ({
+      title: task.title,
+      useCase: backgroundTaskStateStore.read(task.id)?.useCase,
+    }));
+    expect(memoryTasks).toEqual([
+      {
+        title: "[Auto Memory Extraction] Build shared runner",
+        useCase: "auto-memory",
+      },
+    ]);
   });
 
   it("settles task-memory after the background task completes", async () => {
@@ -149,9 +188,8 @@ describe("LiveChatKit memory lifecycle", () => {
       backgroundTask: {
         stateStore: backgroundTaskStateStore,
       },
-      memory: {
-        parentCwd: "/repo",
-        taskMemoryStateStore,
+      taskMemory: {
+        stateStore: taskMemoryStateStore,
       },
     });
 

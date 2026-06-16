@@ -14,10 +14,14 @@ const defaultAutoMemoryState: AutoMemoryTaskState = {
  * Hook to read and manage long-term memory state for a task.
  * @useSignals this comment is needed to enable signals in this hook
  */
-export const useAutoMemoryState = (taskId: string) => {
+export const useAutoMemoryState = (
+  taskId: string,
+  options: { enabled?: boolean } = {},
+) => {
   const { data, isLoading } = useQuery({
     queryKey: ["autoMemoryState", taskId],
     queryFn: () => fetchAutoMemoryState(taskId),
+    enabled: options.enabled ?? true,
     staleTime: Number.POSITIVE_INFINITY,
   });
 

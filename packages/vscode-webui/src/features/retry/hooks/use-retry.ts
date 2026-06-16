@@ -5,25 +5,20 @@ import type { Message } from "@getpochi/livekit";
 import { useCallback } from "react";
 import { ReadyForRetryError } from "./use-ready-for-retry-error";
 
-type MaybePromise<T> = T | Promise<T>;
-
-function prepareLastMessageForRetryDefault(message: Message) {
-  return defaultPrepareLastMessageForRetry(message) as Message | undefined;
-}
-
 export function useRetry({
   messages,
   setMessages,
   sendMessage,
   regenerate,
-  prepareLastMessageForRetry = prepareLastMessageForRetryDefault,
+  prepareLastMessageForRetry = (message) =>
+    defaultPrepareLastMessageForRetry(message) as Message | undefined,
 }: Pick<
   UseChatHelpers<Message>,
   "messages" | "sendMessage" | "regenerate" | "setMessages"
 > & {
   prepareLastMessageForRetry?: (
     message: Message,
-  ) => MaybePromise<Message | undefined>;
+  ) => Message | undefined | Promise<Message | undefined>;
 }) {
   const retryRequest = useCallback(
     async (error: Error) => {

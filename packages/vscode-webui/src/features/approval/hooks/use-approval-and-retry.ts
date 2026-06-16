@@ -4,8 +4,6 @@ import type { Message } from "@getpochi/livekit";
 import { useCallback } from "react";
 import { usePendingApproval } from "./use-pending-approval";
 
-type MaybePromise<T> = T | Promise<T>;
-
 export function useApprovalAndRetry({
   error,
   messages,
@@ -21,7 +19,7 @@ export function useApprovalAndRetry({
   isSubTask: boolean;
   prepareLastMessageForRetry?: (
     message: Message,
-  ) => MaybePromise<Message | undefined>;
+  ) => Message | undefined | Promise<Message | undefined>;
 } & Pick<
   UseChatHelpers<Message>,
   "error" | "messages" | "sendMessage" | "regenerate" | "status" | "setMessages"

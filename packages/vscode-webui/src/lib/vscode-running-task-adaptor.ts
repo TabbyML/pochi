@@ -10,7 +10,7 @@ import {
   isValidCustomAgentFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { LiveChatKitBackgroundTaskOptions } from "@getpochi/livekit";
+import type { RunningTaskAdaptor } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -21,9 +21,6 @@ import { useSettingsStore } from "../features/settings/store";
 
 const logger = getLogger("VscodeRunningTaskAdaptor");
 const ModelListLoadTimeoutMs = 10_000;
-type RunningTaskAdaptor = NonNullable<
-  LiveChatKitBackgroundTaskOptions["adaptor"]
->;
 
 export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private modelList: DisplayModel[] = [];

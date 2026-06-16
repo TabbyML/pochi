@@ -19,11 +19,7 @@ import {
   buildForkAgentInitTitle,
   createForkAgent,
 } from "../fork-agent";
-import {
-  type MaybePromise,
-  type MemoryStateStore,
-  createMemoryStateStore,
-} from "../state-store";
+import { type MemoryStateStore, createMemoryStateStore } from "../state-store";
 
 const logger = getLogger("TaskMemory");
 
@@ -52,11 +48,6 @@ const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
 const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 
 type SetTaskMemoryState = (state: TaskMemoryState) => Promise<void> | void;
-
-type TaskMemoryBackgroundTask = {
-  startForkAgent: StartForkAgent<Message>;
-  waitForTaskDone?: (taskId: string) => MaybePromise<void>;
-};
 
 function getExtractionMetrics<TMessage extends UIMessage>(data: {
   messages: TMessage[];
@@ -255,7 +246,10 @@ function isTaskMemoryPath(input: unknown): boolean {
 
 type TaskMemoryAdaptorOptions = {
   store: LiveKitStore;
-  backgroundTask: TaskMemoryBackgroundTask;
+  backgroundTask: {
+    startForkAgent: StartForkAgent<Message>;
+    waitForTaskDone?: (taskId: string) => Promise<void> | void;
+  };
   taskMemoryStateStore?: MemoryStateStore<TaskMemoryState>;
   parentTaskId: string;
   parentCwd: string | undefined | (() => string | undefined);

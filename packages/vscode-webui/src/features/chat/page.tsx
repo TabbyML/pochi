@@ -147,10 +147,9 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveSettings,
   });
 
-  const { backgroundTask, memory } = useChatMemory({
+  const { backgroundTask, taskMemory, projectMemory } = useChatMemory({
     taskId: uid,
     isSubTask,
-    parentCwd: task?.cwd ?? undefined,
   });
 
   const [isCompacting, setIsCompacting] = useState(false);
@@ -174,7 +173,8 @@ function Chat({ user, uid, info }: ChatProps) {
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
     clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
     backgroundTask,
-    memory,
+    taskMemory,
+    projectMemory,
     sendAutomaticallyWhen: (x) => {
       if (chatAbortController.current.signal.aborted) {
         return false;

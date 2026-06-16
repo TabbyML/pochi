@@ -21,7 +21,8 @@ export function useLiveChatKit(
       rest.taskId,
       rest.isSubTask,
       rest.backgroundTask,
-      rest.memory,
+      rest.taskMemory,
+      rest.projectMemory,
     ],
   );
 

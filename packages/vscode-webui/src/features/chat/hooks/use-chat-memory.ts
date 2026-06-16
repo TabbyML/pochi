@@ -10,16 +10,15 @@ import type {
 } from "@getpochi/common";
 import type {
   LiveChatKitBackgroundTaskOptions,
-  LiveChatKitMemoryOptions,
+  LiveChatKitProjectMemoryOptions,
+  LiveChatKitTaskMemoryOptions,
 } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
 import { useMemo } from "react";
 
-type BackgroundTaskStateStore = NonNullable<
+function createVscodeBackgroundTaskStateStore(): NonNullable<
   LiveChatKitBackgroundTaskOptions["stateStore"]
->;
-
-function createVscodeBackgroundTaskStateStore(): BackgroundTaskStateStore {
+> {
   const entries = new Map<
     string,
     Promise<{
@@ -51,13 +50,14 @@ function createVscodeBackgroundTaskStateStore(): BackgroundTaskStateStore {
 export function useChatMemory({
   taskId,
   isSubTask,
-  parentCwd,
 }: {
   taskId: string;
   isSubTask: boolean;
-  parentCwd?: string;
 }) {
-  const { taskMemoryState, setTaskMemoryState } = useTaskMemoryState(taskId);
+  const isRootTask = !isSubTask;
+  const { taskMemoryState, setTaskMemoryState } = useTaskMemoryState(taskId, {
+    enabled: isRootTask,
+  });
   const taskMemoryStateRef = useLatest(taskMemoryState);
   const setTaskMemoryStateRef = useLatest(setTaskMemoryState);
   const taskMemoryStateStore = useMemo(
@@ -68,7 +68,9 @@ export function useChatMemory({
     [setTaskMemoryStateRef, taskMemoryStateRef],
   );
 
-  const { autoMemoryState, setAutoMemoryState } = useAutoMemoryState(taskId);
+  const { autoMemoryState, setAutoMemoryState } = useAutoMemoryState(taskId, {
+    enabled: isRootTask,
+  });
   const autoMemoryStateRef = useLatest(autoMemoryState);
   const setAutoMemoryStateRef = useLatest(setAutoMemoryState);
   const autoMemoryStateStore = useMemo(
@@ -83,27 +85,32 @@ export function useChatMemory({
   // biome-ignore lint/correctness/useExhaustiveDependencies: adaptor lifetime is tied to the task id.
   const backgroundTask = useMemo<LiveChatKitBackgroundTaskOptions | undefined>(
     () =>
-      isSubTask
-        ? undefined
-        : {
+      isRootTask
+        ? {
             adaptor: new VscodeRunningTaskAdaptor(),
             clearFileStateCache: (taskId) =>
               vscodeHost.clearFileStateCache(taskId),
             stateStore: createVscodeBackgroundTaskStateStore(),
-          },
-    [isSubTask, taskId],
+          }
+        : undefined,
+    [isRootTask, taskId],
   );
 
-  const parentCwdRef = useLatest(parentCwd);
-  const memory = useMemo<LiveChatKitMemoryOptions | undefined>(
+  const taskMemory = useMemo<LiveChatKitTaskMemoryOptions | undefined>(
     () =>
-      isSubTask
-        ? undefined
-        : {
-            parentCwd: () => parentCwdRef.current,
-            taskMemoryStateStore,
-            autoMemoryStateStore,
-            autoMemoryBackend: {
+      isRootTask
+        ? {
+            stateStore: taskMemoryStateStore,
+          }
+        : undefined,
+    [isRootTask, taskMemoryStateStore],
+  );
+  const projectMemory = useMemo<LiveChatKitProjectMemoryOptions | undefined>(
+    () =>
+      isRootTask
+        ? {
+            stateStore: autoMemoryStateStore,
+            backend: {
               readContext: (cwd) => vscodeHost.readAutoMemory({ cwd }),
               writeTaskTranscript: (options) =>
                 vscodeHost.writeTaskTranscript(options),
@@ -112,12 +119,14 @@ export function useChatMemory({
               finishDreamRun: (options) =>
                 vscodeHost.finishAutoMemoryDream(options),
             },
-          },
-    [autoMemoryStateStore, isSubTask, parentCwdRef, taskMemoryStateStore],
+          }
+        : undefined,
+    [autoMemoryStateStore, isRootTask],
   );
 
   return {
     backgroundTask,
-    memory,
+    taskMemory,
+    projectMemory,
   };
 }

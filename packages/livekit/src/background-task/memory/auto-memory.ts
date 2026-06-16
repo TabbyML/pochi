@@ -61,11 +61,6 @@ type FinishAutoMemoryDream = (options: {
   success: boolean;
 }) => Promise<void> | void;
 
-type AutoMemoryBackgroundTask = {
-  startForkAgent: StartForkAgent<Message>;
-  waitForTaskDone?: (taskId: string) => MaybePromise<void>;
-};
-
 export type AutoMemoryBackend = {
   readContext(
     cwd: string | undefined,
@@ -90,7 +85,7 @@ export type AutoMemoryBackend = {
   }): MaybePromise<void>;
 };
 
-type AutoMemoryManagerLike = {
+export function createAutoMemoryBackendFromManager(manager: {
   readContext: AutoMemoryBackend["readContext"];
   writeTaskTranscript: AutoMemoryBackend["writeTaskTranscript"];
   beginDreamRun(options: {
@@ -105,11 +100,7 @@ type AutoMemoryManagerLike = {
     | undefined
   >;
   finishDreamRun: AutoMemoryBackend["finishDreamRun"];
-};
-
-export function createAutoMemoryBackendFromManager(
-  manager: AutoMemoryManagerLike,
-): AutoMemoryBackend {
+}): AutoMemoryBackend {
   return {
     readContext: (cwd) => manager.readContext(cwd),
     writeTaskTranscript: (options) => manager.writeTaskTranscript(options),
@@ -508,7 +499,10 @@ const DefaultAutoMemoryState: AutoMemoryTaskState = {
 
 type AutoMemoryAdaptorOptions = {
   store: LiveKitStore;
-  backgroundTask: AutoMemoryBackgroundTask;
+  backgroundTask: {
+    startForkAgent: StartForkAgent<Message>;
+    waitForTaskDone?: (taskId: string) => MaybePromise<void>;
+  };
   autoMemoryStateStore?: MemoryStateStore<AutoMemoryTaskState>;
   parentTaskId: string;
   parentCwd: string | undefined | (() => string | undefined);

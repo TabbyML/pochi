@@ -25,7 +25,7 @@ import type {
   MaybePromise,
   MemoryStateStore,
 } from "../background-task/state-store";
-import { HeadlessChat } from "../background-task/task-executor/headless-chat";
+import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
 import {
   type RunningTaskAdaptor,
   TaskExecutor,
@@ -74,17 +74,13 @@ export type LiveChatKitBackgroundTaskOptions = {
   clearFileStateCache?: (taskId: string) => MaybePromise<void>;
 };
 
-export type LiveChatKitMemoryOptions = {
-  parentCwd?: string | (() => string | undefined);
-  taskMemoryStateStore?: MemoryStateStore<TaskMemoryState>;
-  autoMemoryStateStore?: MemoryStateStore<AutoMemoryTaskState>;
-  autoMemoryBackend?: AutoMemoryBackend;
+export type LiveChatKitTaskMemoryOptions = {
+  stateStore?: MemoryStateStore<TaskMemoryState>;
 };
 
-type BackgroundTaskRuntime = {
-  readTaskState(taskId: string): MaybePromise<BackgroundTaskState | undefined>;
-  startForkAgent(agent: ForkAgent<Message>): MaybePromise<ForkAgentHandle>;
-  waitForTaskDone?: (taskId: string) => MaybePromise<void>;
+export type LiveChatKitProjectMemoryOptions = {
+  stateStore?: MemoryStateStore<AutoMemoryTaskState>;
+  backend: AutoMemoryBackend;
 };
 
 function createBackgroundTaskStateStore(): NonNullable<
@@ -112,7 +108,12 @@ async function createBackgroundTaskFromForkAgent({
   taskId?: string;
   createdAt?: Date;
 }): Promise<ForkAgentHandle> {
-  await stateStore.set(taskId, toBackgroundTaskState(agent));
+  await stateStore.set(taskId, {
+    parentTaskId: agent.parentTaskId,
+    tools: agent.tools,
+    useCase: agent.label,
+    baselineStepCount: agent.baselineStepCount,
+  });
 
   store.commit(
     events.taskInited({
@@ -129,36 +130,6 @@ async function createBackgroundTaskFromForkAgent({
     taskId,
     cwd: agent.cwd,
     label: agent.label,
-  };
-}
-
-function createBackgroundTaskRuntime({
-  store,
-  stateStore,
-  waitForTaskDone,
-}: {
-  store: LiveKitStore;
-  stateStore: NonNullable<LiveChatKitBackgroundTaskOptions["stateStore"]>;
-  waitForTaskDone?: (taskId: string) => MaybePromise<void>;
-}): BackgroundTaskRuntime {
-  return {
-    readTaskState: (taskId) => stateStore.read(taskId),
-    startForkAgent: (agent) =>
-      createBackgroundTaskFromForkAgent({
-        store,
-        stateStore,
-        agent,
-      }),
-    waitForTaskDone,
-  };
-}
-
-function toBackgroundTaskState(agent: ForkAgent<Message>): BackgroundTaskState {
-  return {
-    parentTaskId: agent.parentTaskId,
-    tools: agent.tools,
-    useCase: agent.label,
-    baselineStepCount: agent.baselineStepCount,
   };
 }
 
@@ -307,7 +278,9 @@ export type LiveChatKitOptions<T> = {
 
   backgroundTask?: LiveChatKitBackgroundTaskOptions;
 
-  memory?: LiveChatKitMemoryOptions;
+  taskMemory?: LiveChatKitTaskMemoryOptions;
+
+  projectMemory?: LiveChatKitProjectMemoryOptions;
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
@@ -393,7 +366,8 @@ export class LiveChatKit<
     getRecentFilesForCompact,
     clearFileStateCache,
     backgroundTask,
-    memory,
+    taskMemory,
+    projectMemory,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -403,24 +377,28 @@ export class LiveChatKit<
     this.onStreamFinish = onStreamFinish;
     this.clearFileStateCacheCallback = clearFileStateCache;
     this.backgroundTaskAdaptor = backgroundTask?.adaptor;
-    const backgroundTaskRuntime = backgroundTask
-      ? createBackgroundTaskRuntime({
-          store,
-          stateStore:
-            backgroundTask.stateStore ?? createBackgroundTaskStateStore(),
-          waitForTaskDone: backgroundTask.adaptor
-            ? (taskId) =>
-                this.backgroundTaskExecutor?.waitForTaskDone(taskId) ??
-                Promise.resolve()
-            : undefined,
-        })
+    const backgroundTaskStateStore = backgroundTask
+      ? (backgroundTask.stateStore ?? createBackgroundTaskStateStore())
+      : undefined;
+    const startForkAgent = backgroundTaskStateStore
+      ? (agent: ForkAgent<Message>) =>
+          createBackgroundTaskFromForkAgent({
+            store,
+            stateStore: backgroundTaskStateStore,
+            agent,
+          })
+      : undefined;
+    const waitForTaskDone = backgroundTask?.adaptor
+      ? (taskId: string) =>
+          this.backgroundTaskExecutor?.waitForTaskDone(taskId) ??
+          Promise.resolve()
       : undefined;
     this.backgroundTaskExecutor =
-      backgroundTask?.adaptor && backgroundTaskRuntime
+      backgroundTask?.adaptor && backgroundTaskStateStore
         ? new TaskExecutor({
             store,
             blobStore,
-            readTaskState: backgroundTaskRuntime.readTaskState,
+            readTaskState: (taskId) => backgroundTaskStateStore.read(taskId),
             adaptor: backgroundTask.adaptor,
             clearFileStateCache: backgroundTask.clearFileStateCache,
             createChatKit: ({
@@ -431,11 +409,11 @@ export class LiveChatKit<
               requestUseCase,
               getters,
             }) =>
-              new LiveChatKit<HeadlessChat>({
+              new LiveChatKit<InMemoryChat>({
                 taskId,
                 store,
                 blobStore,
-                chatClass: HeadlessChat,
+                chatClass: InMemoryChat,
                 abortSignal,
                 isSubTask: false,
                 requestUseCase,
@@ -445,29 +423,34 @@ export class LiveChatKit<
           })
         : undefined;
     this.backgroundTaskExecutor?.start();
+    const defaultMemoryParentCwd = () => this.task?.cwd ?? undefined;
     this.taskMemoryAdaptor =
-      memory && backgroundTaskRuntime
+      taskMemory && startForkAgent
         ? new TaskMemoryAdaptor({
             store,
-            backgroundTask: backgroundTaskRuntime,
-            taskMemoryStateStore: memory.taskMemoryStateStore,
+            backgroundTask: {
+              startForkAgent,
+              ...(waitForTaskDone ? { waitForTaskDone } : {}),
+            },
+            taskMemoryStateStore: taskMemory.stateStore,
             parentTaskId: taskId,
-            parentCwd: memory.parentCwd ?? (() => this.task?.cwd ?? undefined),
+            parentCwd: defaultMemoryParentCwd,
             isSubTask,
           })
         : undefined;
     this.autoMemoryAdaptor =
-      memory?.autoMemoryBackend &&
-      backgroundTaskRuntime &&
-      !isForkAgentUseCase(requestUseCase)
+      projectMemory && startForkAgent && !isForkAgentUseCase(requestUseCase)
         ? new AutoMemoryAdaptor({
             store,
-            backgroundTask: backgroundTaskRuntime,
-            autoMemoryStateStore: memory.autoMemoryStateStore,
+            backgroundTask: {
+              startForkAgent,
+              ...(waitForTaskDone ? { waitForTaskDone } : {}),
+            },
+            autoMemoryStateStore: projectMemory.stateStore,
             parentTaskId: taskId,
-            parentCwd: memory.parentCwd ?? (() => this.task?.cwd ?? undefined),
+            parentCwd: defaultMemoryParentCwd,
             isSubTask,
-            backend: memory.autoMemoryBackend,
+            backend: projectMemory.backend,
           })
         : undefined;
 

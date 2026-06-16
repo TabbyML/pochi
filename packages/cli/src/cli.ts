@@ -172,6 +172,14 @@ const program = new Command()
     60000,
   )
   .option(
+    "--no-task-memory",
+    "Disable Task Memory background extraction for the current task.",
+  )
+  .option(
+    "--no-project-memory",
+    "Disable Project Memory context injection and auto-memory background extraction.",
+  )
+  .option(
     "--agent <name>",
     "Run the task as a sub-agent using the specified custom agent. This applies the agent's system prompt and tool restrictions, matching the behavior of sub-tasks created via the newTask tool.",
   )
@@ -325,6 +333,8 @@ const program = new Command()
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
     const isSubTask = selectedAgent !== undefined;
+    const taskMemoryEnabled = options.taskMemory;
+    const projectMemoryEnabled = options.projectMemory;
     const autoMemoryManager = new AutoMemoryManager();
     const parentFileStateCache = new FileStateCache();
     let autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
@@ -353,8 +363,15 @@ const program = new Command()
       parentTaskId: uid,
       parentFileStateCache,
       autoMemoryManager,
+      projectMemoryEnabled,
     });
     const stepDurationTracker = new StepDurationTracker();
+    const taskMemory = taskMemoryEnabled ? {} : undefined;
+    const projectMemory = projectMemoryEnabled
+      ? {
+          backend: createAutoMemoryBackendFromManager(autoMemoryManager),
+        }
+      : undefined;
 
     const runner = new TaskRunner({
       uid,
@@ -385,17 +402,14 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
-      getAutoMemory,
+      getAutoMemory: projectMemoryEnabled ? getAutoMemory : undefined,
       backgroundTask: {
         adaptor: backgroundTaskAdaptor,
         clearFileStateCache: (taskId) =>
           backgroundTaskAdaptor.clearFileStateCache(taskId),
       },
-      memory: {
-        parentCwd: process.cwd(),
-        autoMemoryBackend:
-          createAutoMemoryBackendFromManager(autoMemoryManager),
-      },
+      taskMemory,
+      projectMemory,
       fileStateCache: parentFileStateCache,
       stepDurationTracker,
     });

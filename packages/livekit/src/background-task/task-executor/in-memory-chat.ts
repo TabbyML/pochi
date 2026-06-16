@@ -7,7 +7,7 @@ import {
 } from "ai";
 import type { Message } from "../../types";
 
-class HeadlessChatState implements ChatState<Message> {
+class InMemoryChatState implements ChatState<Message> {
   readonly signal = {
     status: signal<ChatStatus>("ready"),
     error: signal<Error | undefined>(undefined),
@@ -61,9 +61,9 @@ class HeadlessChatState implements ChatState<Message> {
   snapshot = <T>(value: T): T => structuredClone(value);
 }
 
-export class HeadlessChat extends AbstractChat<Message> {
+export class InMemoryChat extends AbstractChat<Message> {
   constructor({ messages, ...init }: ChatInit<Message>) {
-    const state = new HeadlessChatState(messages);
+    const state = new InMemoryChatState(messages);
     super({ ...init, state });
   }
 
@@ -77,6 +77,6 @@ export class HeadlessChat extends AbstractChat<Message> {
   }
 
   getState() {
-    return this.state as HeadlessChatState;
+    return this.state as InMemoryChatState;
   }
 }
