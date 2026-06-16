@@ -6,7 +6,9 @@ export function GlobalStoreInitializer() {
   const store = useDefaultStore();
   useEffect(() => {
     setGlobalStore(store);
-    return () => setGlobalStore(null);
+    return () => {
+      setGlobalStore(null);
+    };
   }, [store]);
   return null;
 }

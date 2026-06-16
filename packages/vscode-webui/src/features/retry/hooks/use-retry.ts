@@ -1,6 +1,6 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { prompts } from "@getpochi/common";
-import { prepareLastMessageForRetry } from "@getpochi/common/message-utils";
+import { prepareLastMessageForRetry as defaultPrepareLastMessageForRetry } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
 import { useCallback } from "react";
 import { ReadyForRetryError } from "./use-ready-for-retry-error";
@@ -10,12 +10,15 @@ export function useRetry({
   setMessages,
   sendMessage,
   regenerate,
-  clearFileStateCache,
+  prepareLastMessageForRetry = (message) =>
+    defaultPrepareLastMessageForRetry(message) as Message | undefined,
 }: Pick<
   UseChatHelpers<Message>,
   "messages" | "sendMessage" | "regenerate" | "setMessages"
 > & {
-  clearFileStateCache?: () => Promise<void>;
+  prepareLastMessageForRetry?: (
+    message: Message,
+  ) => Message | undefined | Promise<Message | undefined>;
 }) {
   const retryRequest = useCallback(
     async (error: Error) => {
@@ -39,11 +42,8 @@ export function useRetry({
         });
       }
 
-      const lastMessageForRetry = prepareLastMessageForRetry(lastMessage);
+      const lastMessageForRetry = await prepareLastMessageForRetry(lastMessage);
       if (lastMessageForRetry != null) {
-        if (clearFileStateCache) {
-          await clearFileStateCache();
-        }
         setMessages([...messages.slice(0, -1), lastMessageForRetry]);
         return sendMessage(undefined);
       }
@@ -52,7 +52,13 @@ export function useRetry({
         messageId: lastMessage.id,
       });
     },
-    [messages, setMessages, sendMessage, regenerate, clearFileStateCache],
+    [
+      messages,
+      setMessages,
+      sendMessage,
+      regenerate,
+      prepareLastMessageForRetry,
+    ],
   );
 
   return retryRequest;

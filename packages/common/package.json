@@ -22,6 +22,7 @@
     "./fetch-utils": "./src/fetch-utils.ts",
     "./google-vertex-utils": "./src/google-vertex-utils.ts",
     "./cors-proxy": "./src/cors-proxy/index.ts",
+    "./auto-memory/node": "./src/auto-memory/node.ts",
     "./pochi-file-system": "./src/pochi-file-system/index.ts",
     "./browser": "./src/browser/index.ts"
   },
@@ -58,6 +59,7 @@
     "remark-frontmatter": "^5.0.0",
     "remeda": "catalog:",
     "run-exclusive": "catalog:",
+    "simple-git": "^3.28.0",
     "silver-fleece": "^1.2.1",
     "tslog": "catalog:",
     "unist-util-remove": "^4.0.0",

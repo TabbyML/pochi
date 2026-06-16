@@ -1,12 +1,17 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts, toErrorMessage } from "@getpochi/common";
+import {
+  type AutoMemoryContext,
+  type ContextWindowUsage,
+  getLogger,
+  prompts,
+  toErrorMessage,
+} from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
-  prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import {
@@ -18,12 +23,20 @@ import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
   type LLMRequestData,
+  type LiveChatKitBackgroundTaskOptions,
+  type LiveChatKitProjectMemoryOptions,
+  type LiveChatKitTaskMemoryOptions,
   type LiveKitStore,
   type Message,
+  type Task,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
-import { type BatchedToolCallResult, ToolCallQueue } from "@getpochi/tools";
+import {
+  type BatchedToolCallResult,
+  ToolCallQueue,
+  getToolCallCancelErrorMessage,
+} from "@getpochi/tools";
 import {
   type CompiledToolPolicies,
   type CustomAgent,
@@ -131,6 +144,27 @@ export interface RunnerOptions {
 
   attemptCompletionHook?: string;
 
+  onStreamFinish?: (data: {
+    id: string;
+    cwd: string | null;
+    status: Task["status"];
+    messages: Message[];
+    error?: Error;
+    contextWindowUsage?: ContextWindowUsage;
+  }) => void | Promise<void>;
+
+  onCompactFinish?: (success: boolean) => void | Promise<void>;
+
+  getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
+
+  backgroundTask?: LiveChatKitBackgroundTaskOptions;
+
+  taskMemory?: LiveChatKitTaskMemoryOptions;
+
+  projectMemory?: LiveChatKitProjectMemoryOptions;
+
+  fileStateCache?: FileStateCache;
+
   /**
    * The file system to use for the task runner.
    */
@@ -194,7 +228,7 @@ export class TaskRunner {
     this.toolCallOptions = {
       rg: options.rg,
       fileSystem: this.fileSystem,
-      fileStateCache: new FileStateCache(),
+      fileStateCache: options.fileStateCache ?? new FileStateCache(),
       blobStore: this.blobStore,
 
       customAgents: options.customAgents,
@@ -220,6 +254,12 @@ export class TaskRunner {
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
+          onStreamFinish: undefined,
+          onCompactFinish: undefined,
+          backgroundTask: undefined,
+          taskMemory: undefined,
+          projectMemory: undefined,
+          fileStateCache: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -241,11 +281,13 @@ export class TaskRunner {
 
       abortSignal: options.abortSignal,
 
-      onCompactFinish: (success: boolean) => {
-        if (success) {
-          this.toolCallOptions.fileStateCache.clear();
-        }
-      },
+      onCompactFinish: options.onCompactFinish,
+      getRecentFilesForCompact: () =>
+        this.toolCallOptions.fileStateCache.getRecentFiles(),
+      clearFileStateCache: () => this.toolCallOptions.fileStateCache.clear(),
+      backgroundTask: options.backgroundTask,
+      taskMemory: options.taskMemory,
+      projectMemory: options.projectMemory,
 
       getters: {
         getLLM: () => options.llm,
@@ -259,6 +301,11 @@ export class TaskRunner {
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
+        ...(options.getAutoMemory
+          ? {
+              getAutoMemory: options.getAutoMemory,
+            }
+          : {}),
         ...(options.mcpHub
           ? {
               getMcpInfo: () => {
@@ -272,12 +319,13 @@ export class TaskRunner {
           : {}),
       },
 
-      onStreamFinish: ({
-        messages,
-        error,
-        startedAt: startAt,
-        finishedAt: finishAt,
-      }) => {
+      onStreamFinish: (data) => {
+        const {
+          messages,
+          error,
+          startedAt: startAt,
+          finishedAt: finishAt,
+        } = data;
         const lastMessage = messages[messages.length - 1];
         if (lastMessage !== undefined) {
           const stepCount = lastMessage.parts.filter(
@@ -295,6 +343,7 @@ export class TaskRunner {
             });
           }
         }
+        options.onStreamFinish?.(data);
       },
     });
     if (options.parts && options.parts.length > 0) {
@@ -337,6 +386,7 @@ export class TaskRunner {
           this.stepCount.nextStep();
         }
       }
+      await this.chatKit.drainBackgroundTasksAndSettleMemory();
     } catch (e) {
       const error = toError(e);
       logger.debug("Failed:", error);
@@ -349,6 +399,7 @@ export class TaskRunner {
           this.taskId,
         );
       }
+      await this.chatKit.disposeBackgroundTasks();
     }
   }
 
@@ -400,13 +451,6 @@ export class TaskRunner {
     }
 
     return results.length > 0 ? results.join("\n\n") : undefined;
-  }
-
-  private replaceLastMessageForRetry(message: Message): void {
-    // The retry path may drop the original readFile tool_result from history.
-    // Clear the cache so later reads cannot deduplicate against discarded context.
-    this.toolCallOptions.fileStateCache.clear();
-    this.chat.appendOrReplaceMessage(message);
   }
 
   /**
@@ -494,11 +538,12 @@ export class TaskRunner {
     message: Message,
   ): Promise<"finished" | "next" | "retry"> {
     return (
-      this.processMessage(message) || (await this.processToolCalls(message))
+      (await this.processMessage(message)) ||
+      (await this.processToolCalls(message))
     );
   }
 
-  private processMessage(message: Message) {
+  private async processMessage(message: Message) {
     const { task } = this.chatKit;
     if (!task) {
       throw new Error("Task is not loaded");
@@ -526,9 +571,9 @@ export class TaskRunner {
         "Task is failed, trying to resend last message to resume it.",
         task.error,
       );
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.chatKit.prepareLastMessageForRetry(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed);
+        this.chat.appendOrReplaceMessage(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -552,9 +597,9 @@ export class TaskRunner {
       logger.trace(
         "Last message is assistant with empty parts or partial/completed tool calls, resending it to resume the task.",
       );
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.chatKit.prepareLastMessageForRetry(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed);
+        this.chat.appendOrReplaceMessage(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -607,8 +652,7 @@ export class TaskRunner {
             toolCallId: toolCall.toolCallId,
             output: {
               // @ts-expect-error
-              error:
-                "Tool call was cancelled because a previous tool call failed.",
+              error: getToolCallCancelErrorMessage(reason),
             },
           });
         },

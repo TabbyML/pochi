@@ -16,7 +16,7 @@ import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
 import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
-import { vscodeHost } from "@/lib/vscode";
+import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import { constants, TaskMemoryFileUri } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
@@ -54,13 +54,17 @@ export function TokenUsage({
   const { autoMemoryEnabled, setAutoMemoryEnabled } = useAutoMemoryEnabled();
   const { data: autoMemoryContext } = useQuery({
     queryKey: ["autoMemoryContext"],
-    queryFn: () => vscodeHost.readAutoMemory({ ensure: false, force: true }),
+    queryFn: async () =>
+      vscodeAutoMemoryManager.readContext({
+        ensure: false,
+        force: true,
+      }),
     staleTime: 5_000,
   });
   const autoMemoryAvailable = Boolean(autoMemoryContext);
 
   const handleOpenAutoMemory = async () => {
-    const context = await vscodeHost.readAutoMemory({
+    const context = await vscodeAutoMemoryManager.readContext({
       ensure: true,
       force: true,
     });

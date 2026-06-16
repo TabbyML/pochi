@@ -25,12 +25,14 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import { constants, getLogger } from "@getpochi/common";
+import { constants, type AutoMemoryContext, getLogger } from "@getpochi/common";
+import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   pochiConfig,
   setPochiConfigWorkspacePath,
 } from "@getpochi/common/configuration";
+import { FileStateCache } from "@getpochi/common/tool-utils";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type {
@@ -74,6 +76,7 @@ import {
   TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
+import { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
@@ -163,6 +166,14 @@ const program = new Command()
     "Wait for background jobs to complete before finalizing attemptCompletion. Set to 0 to disable waiting.",
     parseNonNegativeInt,
     60000,
+  )
+  .option(
+    "--no-task-memory",
+    "Disable Task Memory background extraction for the current task.",
+  )
+  .option(
+    "--no-project-memory",
+    "Disable Project Memory context injection and auto-memory background extraction.",
   )
   .option(
     "--agent <name>",
@@ -317,7 +328,46 @@ const program = new Command()
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
+    const isSubTask = selectedAgent !== undefined;
+    const taskMemoryEnabled = options.taskMemory;
+    const projectMemoryEnabled = options.projectMemory;
+    const autoMemoryManager = new AutoMemoryManager();
+    const parentFileStateCache = new FileStateCache();
+    let autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
+    const getAutoMemory = () => {
+      if (autoMemoryCache) return autoMemoryCache;
+      const pending = autoMemoryManager.readContext(process.cwd());
+      const cached = pending.catch((error) => {
+        logger.warn("Failed to read long-term memory context", error);
+        if (autoMemoryCache === cached) {
+          autoMemoryCache = null;
+        }
+        return undefined;
+      });
+      autoMemoryCache = cached;
+      return cached;
+    };
+    const backgroundTaskAdaptor = new CliRunningTaskAdaptor({
+      blobStore,
+      llm,
+      cwd: process.cwd(),
+      rg,
+      filesystem,
+      customAgents,
+      skills,
+      mcpHub,
+      parentTaskId: uid,
+      parentFileStateCache,
+      autoMemoryManager,
+      projectMemoryEnabled,
+    });
     const stepDurationTracker = new StepDurationTracker();
+    const taskMemory = taskMemoryEnabled ? {} : undefined;
+    const projectMemory = projectMemoryEnabled
+      ? {
+          manager: autoMemoryManager,
+        }
+      : undefined;
 
     const runner = new TaskRunner({
       uid,
@@ -336,7 +386,7 @@ const program = new Command()
       skills,
       mcpHub,
       abortSignal: abortController.signal,
-      isSubTask: selectedAgent !== undefined,
+      isSubTask,
       customAgent: selectedAgent,
       outputSchema: options.experimentalOutputSchema
         ? parseOutputSchema(options.experimentalOutputSchema)
@@ -348,13 +398,21 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
+      getAutoMemory: projectMemoryEnabled ? getAutoMemory : undefined,
+      backgroundTask: {
+        adaptor: backgroundTaskAdaptor,
+        clearFileStateCache: (taskId) =>
+          backgroundTaskAdaptor.clearFileStateCache(taskId),
+      },
+      taskMemory,
+      projectMemory,
+      fileStateCache: parentFileStateCache,
       stepDurationTracker,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
-
     let streamRenderer: StreamRenderer | undefined = undefined;
     if (jsonOutputStream) {
       if (options.experimentalStreamTrajectory) {
