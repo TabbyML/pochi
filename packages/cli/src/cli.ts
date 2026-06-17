@@ -168,12 +168,14 @@ const program = new Command()
     60000,
   )
   .option(
-    "--no-task-memory",
-    "Disable Task Memory background extraction for the current task.",
+    "--task-memory",
+    "Enable Task Memory background extraction for the current task.",
+    false,
   )
   .option(
-    "--no-project-memory",
-    "Disable Project Memory context injection and auto-memory background extraction.",
+    "--project-memory",
+    "Enable Project Memory context injection and auto-memory background extraction.",
+    false,
   )
   .option(
     "--agent <name>",
