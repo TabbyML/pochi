@@ -886,8 +886,6 @@ export class LiveChatKit<
       }),
     );
 
-    this.clearLastStepTimestamp();
-
     const finishData = {
       id: this.taskId,
       cwd: this.task?.cwd ?? null,
@@ -991,10 +989,6 @@ export class LiveChatKit<
       logger.warn("Failed to clear file-state cache", error);
     }
   }
-
-  private clearLastStepTimestamp = () => {
-    this.lastStepStartTimestamp = undefined;
-  };
 
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);

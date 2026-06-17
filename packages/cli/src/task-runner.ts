@@ -57,7 +57,7 @@ import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
-import type { StepDurationTracker } from "./lib/step-duration-tracker";
+import type { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type {
@@ -178,7 +178,7 @@ export interface RunnerOptions {
    */
   asyncWaitTimeoutInMs?: number;
 
-  stepDurationTracker?: StepDurationTracker;
+  stepMetadataTracker?: StepMetadataTracker;
 }
 
 const logger = getLogger("TaskRunner");
@@ -199,7 +199,7 @@ export class TaskRunner {
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
-  private readonly stepDurationTracker?: StepDurationTracker;
+  private readonly stepMetadataTracker?: StepMetadataTracker;
 
   private abortSignal?: AbortSignal;
 
@@ -319,26 +319,32 @@ export class TaskRunner {
       },
 
       onStreamFinish: (data) => {
-        const {
-          messages,
-          error,
-          startedAt: startAt,
-          finishedAt: finishAt,
-        } = data;
+        const { messages, error, startedAt, finishedAt } = data;
         const lastMessage = messages[messages.length - 1];
-        if (lastMessage !== undefined) {
-          const stepCount = lastMessage.parts.filter(
-            (p) => p.type === "step-start",
-          ).length;
-          if (stepCount > 0 && startAt && finishAt) {
-            this.stepDurationTracker?.trackStep({
+        if (
+          lastMessage?.metadata &&
+          lastMessage.metadata.kind === "assistant"
+        ) {
+          const stepIndex =
+            lastMessage.parts.filter((p) => p.type === "step-start").length - 1;
+          if (stepIndex >= 0) {
+            this.stepMetadataTracker?.trackStep({
               taskId: this.taskId,
               messageId: lastMessage.id,
-              stepIndex: stepCount - 1,
+              stepIndex,
               hasError: error !== undefined,
-              startedAt: startAt,
-              finishedAt: finishAt,
-              duration: finishAt.getTime() - startAt.getTime(),
+              startedAt,
+              finishedAt,
+              duration:
+                startedAt && finishedAt
+                  ? finishedAt.getTime() - startedAt.getTime()
+                  : undefined,
+              metadata: {
+                finishReason: lastMessage.metadata.finishReason,
+                totalTokens: lastMessage.metadata.totalTokens,
+                systemPromptTokens: lastMessage.metadata.systemPromptTokens,
+                toolsTokens: lastMessage.metadata.toolsTokens,
+              },
             });
           }
         }
@@ -362,7 +368,7 @@ export class TaskRunner {
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
     this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 60000;
-    this.stepDurationTracker = options.stepDurationTracker;
+    this.stepMetadataTracker = options.stepMetadataTracker;
     this.abortSignal = options.abortSignal;
   }
 

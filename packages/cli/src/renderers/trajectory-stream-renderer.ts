@@ -7,10 +7,17 @@ import {
 import * as R from "remeda";
 import * as runExclusive from "run-exclusive";
 import type {
-  StepDurationEntry,
-  StepDurationTracker,
-} from "../lib/step-duration-tracker";
+  StepMetadataEntry,
+  StepMetadataTracker,
+} from "../lib/step-metadata-tracker";
 import type { NodeChatState } from "../livekit/chat.node";
+import type {
+  FilesLine,
+  MessageMetadataLine,
+  MessagePartLine,
+  StepMetadataLine,
+  TrajectoryLine,
+} from "./trajectory-types";
 import type { StreamRenderer } from "./types";
 import { inlineSubTask, mapStoreBlob } from "./utils";
 
@@ -18,7 +25,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
   private runExclusiveGroup = runExclusive.createGroupRef();
   private emittedParts = new Map<string, unknown>();
   private emittedMetadata = new Set<string>();
-  private emittedStepDurationEntryCount = 0;
+  private emittedStepMetadataEntryCount = 0;
   private unsubscribeFns: (() => void)[] | undefined;
 
   constructor(
@@ -26,21 +33,25 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     private readonly store: LiveKitStore,
     private readonly blobStore: BlobStore,
     private readonly state: NodeChatState,
-    stepDurationTracker?: StepDurationTracker,
+    private readonly stepMetadataTracker?: StepMetadataTracker,
   ) {
     this.unsubscribeFns = [
       this.state.signal.messages.subscribe(async (messages: Message[]) => {
         await this.outputTrajectory(messages);
       }),
     ];
-    if (stepDurationTracker) {
+    if (stepMetadataTracker) {
       this.unsubscribeFns.push(
-        stepDurationTracker.entries.subscribe(async (entries) => {
-          await this.outputStepDurationEntries(entries);
+        stepMetadataTracker.entries.subscribe(async (entries) => {
+          await this.outputStepMetadataEntries(entries);
         }),
       );
     }
   }
+
+  private writeTrajectoryLine = (line: TrajectoryLine) => {
+    this.stream.write(`${JSON.stringify(line)}\n`);
+  };
 
   private outputTrajectory = runExclusive.build(
     this.runExclusiveGroup,
@@ -56,32 +67,33 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
 
           const partId = `${message.id}:${i}`;
 
-          const resolvedPart = await mapStoreBlob(this.blobStore, part);
+          const resolvedPart = (await mapStoreBlob(
+            this.blobStore,
+            part,
+          )) as Message["parts"][number];
 
           const cachedPart = this.emittedParts.get(partId);
           if (!R.isDeepEqual(cachedPart, resolvedPart)) {
-            const outputData = {
+            this.writeTrajectoryLine({
               type: "message-part",
-              timestamp: new Date().toISOString(),
+              timestamp: new Date(),
               messageId: message.id,
               role: message.role,
               index: i,
               part: resolvedPart,
-            };
-            this.stream.write(`${JSON.stringify(outputData)}\n`);
+            } satisfies MessagePartLine);
             this.emittedParts.set(partId, R.clone(resolvedPart));
           }
         }
 
         if (isFinalized && !this.emittedMetadata.has(message.id)) {
           if (outputMessage.metadata !== undefined) {
-            const outputData = {
+            this.writeTrajectoryLine({
               type: "message-metadata",
               messageId: message.id,
               role: message.role,
               metadata: outputMessage.metadata,
-            };
-            this.stream.write(`${JSON.stringify(outputData)}\n`);
+            } satisfies MessageMetadataLine);
           }
           this.emittedMetadata.add(message.id);
         }
@@ -89,28 +101,21 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     },
   );
 
-  private outputStepDurationEntries = runExclusive.build(
+  private outputStepMetadataEntries = runExclusive.build(
     this.runExclusiveGroup,
-    async (entries: StepDurationEntry[]) => {
+    async (entries: StepMetadataEntry[]) => {
       for (
-        let i = this.emittedStepDurationEntryCount;
+        let i = this.emittedStepMetadataEntryCount;
         i < entries.length;
         i++
       ) {
         const entry = entries[i];
-        const outputData = {
-          type: "step-duration",
-          taskId: entry.taskId,
-          messageId: entry.messageId,
-          stepIndex: entry.stepIndex,
-          hasError: entry.hasError,
-          startedAt: entry.startedAt.toISOString(),
-          finishedAt: entry.finishedAt.toISOString(),
-          duration: entry.duration,
-        };
-        this.stream.write(`${JSON.stringify(outputData)}\n`);
+        this.writeTrajectoryLine({
+          type: "step-metadata",
+          ...entry,
+        } satisfies StepMetadataLine);
       }
-      this.emittedStepDurationEntryCount = entries.length;
+      this.emittedStepMetadataEntryCount = entries.length;
     },
   );
 
@@ -119,11 +124,10 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     async () => {
       const files = this.store.query(catalog.queries.makeStoreFilesQuery());
       if (files.length > 0) {
-        const data = {
+        this.writeTrajectoryLine({
           type: "files",
           files,
-        };
-        this.stream.write(`${JSON.stringify(data)}\n`);
+        } satisfies FilesLine);
       }
     },
   );
@@ -134,6 +138,11 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
         fn();
       }
       this.unsubscribeFns = undefined;
+    }
+    if (this.stepMetadataTracker) {
+      await this.outputStepMetadataEntries(
+        this.stepMetadataTracker.entries.value,
+      );
     }
     await this.outputTrajectory(this.state.signal.messages.value, true);
     await this.outputFilesData();
