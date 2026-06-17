@@ -70,23 +70,21 @@ Check `~/.pochi/config.jsonc` and use the `browserAgentSettings` key when presen
 - `localChrome.startParams`: empty string
 - `managedBrowser.viewport`: `1280x720`
 
-When `browserAgentSettings.runtime.mode` is `managed`, use the Managed Browser Workflow unless the user explicitly asks for Local Chrome.
-
-When `browserAgentSettings.runtime.mode` is `localChrome`, use the Local Chrome Workflow unless the user explicitly asks for a managed browser.
-
 ## Workflow
 
 Follow this workflow in order:
 
 1. **Read Browser Settings**: Use `readFile` to read `~/.pochi/config.jsonc` and inspect `browserAgentSettings`.
 2. **Check Installation**: Follow the `agent-browser Installation` section before running browser commands.
-3. **Choose Runtime and Continue With Its Workflow**: Use the Managed Browser Workflow or Local Chrome Workflow according to `browserAgentSettings.runtime.mode`, unless the user explicitly asks for a different browser runtime. After choosing the runtime, follow the corresponding workflow below in order.
+3. **Choose Runtime and Continue With Its Workflow**: Use the workflow that matches `browserAgentSettings.runtime.mode`: `managed` uses Managed Browser Workflow, and `localChrome` uses Local Chrome Workflow. If the user explicitly asks for a different browser runtime, use that requested workflow instead. After choosing the runtime, follow the corresponding workflow below in order.
 
 ### agent-browser Installation
 
 Use only `agent-browser` version `0.27.3-pochi`.
 
-Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`, then rerun `agent-browser --version`.
+Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing, also check the agent-browser install directory because the updated PATH may not be active in the current shell. The install directory is `$AGENT_BROWSER_INSTALL_DIR` when set, otherwise `~/.agent-browser/bin`; check for `agent-browser` there and run `<install-dir>/agent-browser --version` directly.
+
+If the discovered version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`. After installing, check both `agent-browser --version` and `<install-dir>/agent-browser --version`; if PATH still does not resolve `agent-browser`, use the direct `<install-dir>/agent-browser` path for subsequent agent-browser commands.
 
 ### Managed Browser Workflow
 
