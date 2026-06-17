@@ -4,11 +4,10 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
-import type { Todo } from "@getpochi/tools";
+import { AttemptTodoCompletionResult, type Todo } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 import type { RefObject } from "react";
 import { useEffect } from "react";
-import { z } from "zod";
 
 const logger = getLogger("UseAddCompleteToolCalls");
 const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
@@ -143,23 +142,6 @@ type TodoCompletionUpdate = {
   output: unknown;
 };
 
-const attemptTodoCompletionOutputSchema = z.object({
-  success: z
-    .boolean()
-    .describe(
-      "Whether automatic todo continuation should stop after this audit.",
-    ),
-  summary: z.string().describe("A concise summary of the todo audit result."),
-  todoUpdates: z
-    .array(
-      z.object({
-        id: z.string().optional(),
-        status: z.enum(["in-progress", "completed", "cancelled"]),
-      }),
-    )
-    .describe("Status update for the active todo."),
-});
-
 export function getTodoCompletionUpdate({
   message,
   toolCallId,
@@ -184,7 +166,7 @@ export function getTodoCompletionUpdate({
     typeof output === "object" && output !== null && "result" in output
       ? output.result
       : undefined;
-  const parsed = attemptTodoCompletionOutputSchema.safeParse(
+  const parsed = AttemptTodoCompletionResult.safeParse(
     parseJsonString(rawResult),
   );
   if (!parsed.success) return undefined;

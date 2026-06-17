@@ -21,7 +21,7 @@ import type { multiApplyDiff } from "./multi-apply-diff";
 import { type CustomAgent, createNewTaskTool } from "./new-task";
 import { renderWidget } from "./render-widget";
 import { searchFiles } from "./search-files";
-export { Todo, TodoUpdate } from "./todo";
+export { AttemptTodoCompletionResult, Todo, TodoUpdate } from "./todo";
 export { MediaOutput } from "./read-file";
 export type {
   ToolFunctionType,

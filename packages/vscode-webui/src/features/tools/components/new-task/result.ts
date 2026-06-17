@@ -1,17 +1,5 @@
-import { z } from "zod";
+import { AttemptTodoCompletionResult } from "@getpochi/tools";
 import { parseJsonObjectString } from "../tool-result-display";
-
-// FIXME: Share this schema with the attemptTodoCompletion agent frontmatter.
-const attemptTodoCompletionResultSchema = z.object({
-  success: z.boolean(),
-  summary: z.string(),
-  todoUpdates: z.array(
-    z.object({
-      id: z.string().optional(),
-      status: z.enum(["in-progress", "completed", "cancelled"]),
-    }),
-  ),
-});
 
 export function hasNewTaskResult(result: unknown): boolean {
   if (typeof result === "string") {
@@ -24,7 +12,7 @@ export function getAttemptTodoCompletionSummary(
   result: unknown,
 ): string | undefined {
   const parsed = parseJsonObjectString(result) ?? result;
-  const parsedResult = attemptTodoCompletionResultSchema.safeParse(parsed);
+  const parsedResult = AttemptTodoCompletionResult.safeParse(parsed);
   if (!parsedResult.success) return undefined;
   return parsedResult.data.summary.trim() || undefined;
 }

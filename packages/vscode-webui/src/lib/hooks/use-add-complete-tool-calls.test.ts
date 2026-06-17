@@ -45,7 +45,7 @@ describe("getTodoCompletionUpdate", () => {
         result: JSON.stringify({
           success: true,
           summary: "Done.",
-          todoUpdates: [{ id: "todo-1", status: "completed" }],
+          todoUpdates: [{ status: "completed" }],
         }),
       },
       todos,

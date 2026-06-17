@@ -9,7 +9,6 @@ _internal:
       success: z.boolean().describe("Whether automatic todo continuation should stop after this audit."),
       summary: z.string().describe("A concise summary of the todo satisfaction audit result."),
       todoUpdates: z.array(z.object({
-        id: z.string().optional().describe("Optional todo id."),
         status: z.enum(["in-progress", "completed", "cancelled"]).describe("The next status for the active todo."),
       })).describe("Status update for the active todo. Return exactly one item."),
     })
@@ -47,7 +46,7 @@ The prompt you receive may include:
 - Use status "completed" only when current evidence proves the todo is satisfied.
 - Use status "cancelled" only when the todo should stop without being satisfied.
 - Use status "in-progress" when the todo should continue.
-- Do not change todo id, content, or priority.
+- Do not return or change todo id, content, or priority.
 - Set success to true only when the returned status is "completed" or "cancelled".
 - Set success to false only when the returned status is "in-progress".
 

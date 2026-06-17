@@ -33,10 +33,25 @@ export const Todo = z.object({
 export type Todo = z.infer<typeof Todo>;
 
 export const TodoUpdate = z.object({
-  id: z.string().describe("The stable identifier of the todo to update."),
   status: z
-    .enum(["completed", "cancelled"])
-    .describe("The terminal state to apply to the todo."),
+    .enum(["in-progress", "completed", "cancelled"])
+    .describe("The next status for the active todo."),
 });
 
 export type TodoUpdate = z.infer<typeof TodoUpdate>;
+
+export const AttemptTodoCompletionResult = z.object({
+  success: z
+    .boolean()
+    .describe(
+      "Whether automatic todo continuation should stop after this audit.",
+    ),
+  summary: z.string().describe("A concise summary of the todo audit result."),
+  todoUpdates: z
+    .array(TodoUpdate)
+    .describe("Status update for the active todo."),
+});
+
+export type AttemptTodoCompletionResult = z.infer<
+  typeof AttemptTodoCompletionResult
+>;

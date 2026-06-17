@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Todo, TodoUpdate } from "../todo";
+import { AttemptTodoCompletionResult, Todo, TodoUpdate } from "../todo";
 
 describe("Todo", () => {
   const todo = {
@@ -13,19 +13,37 @@ describe("Todo", () => {
     expect(Todo.safeParse(todo).success).toBe(true);
   });
 
-  it("accepts terminal todo updates", () => {
+  it("accepts todo status updates", () => {
     expect(
       TodoUpdate.safeParse({
-        id: "collect-information",
         status: "completed",
       }).success,
     ).toBe(true);
     expect(
       TodoUpdate.safeParse({
-        id: "collect-information",
         status: "in-progress",
       }).success,
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      TodoUpdate.parse({
+        id: "collect-information",
+        status: "completed",
+      }),
+    ).toEqual({ status: "completed" });
+  });
+
+  it("accepts attempt todo completion results", () => {
+    expect(
+      AttemptTodoCompletionResult.parse({
+        success: true,
+        summary: "Done.",
+        todoUpdates: [{ id: "collect-information", status: "completed" }],
+      }),
+    ).toEqual({
+      success: true,
+      summary: "Done.",
+      todoUpdates: [{ status: "completed" }],
+    });
   });
 
   it("describes cancelled as a blocked state", () => {
