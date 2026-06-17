@@ -72,6 +72,7 @@ export type PochiRequestUseCase = z.infer<typeof PochiRequestUseCase>;
 
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
+  storeId: z.string(),
   client: z.string(),
   useCase: PochiRequestUseCase,
 });

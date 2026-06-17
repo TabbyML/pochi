@@ -146,7 +146,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     if (this.outputSchema) {
       middlewares.push(
-        createOutputSchemaMiddleware(chatId, model, this.outputSchema),
+        createOutputSchemaMiddleware(
+          chatId,
+          this.store.storeId,
+          model,
+          this.outputSchema,
+        ),
       );
     }
 
@@ -198,6 +203,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       providerOptions: {
         pochi: {
           taskId: chatId,
+          storeId: this.store.storeId,
           client: globalThis.POCHI_CLIENT,
           useCase: this.requestUseCase,
         } satisfies PochiProviderOptions,
@@ -213,7 +219,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       maxRetries: 0,
       // error log is handled in live chat kit.
       onError: () => {},
-      experimental_repairToolCall: makeRepairToolCall(chatId, model),
+      experimental_repairToolCall: makeRepairToolCall(
+        chatId,
+        this.store.storeId,
+        model,
+      ),
       experimental_download: makeDownloadFunction(this.blobStore),
     });
     return stream.toUIMessageStream({

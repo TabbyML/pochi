@@ -537,6 +537,7 @@ export class LiveChatKit<
           await compactTask({
             blobStore: this.blobStore,
             taskId: this.taskId,
+            storeId: this.store.storeId,
             model,
             messages,
             recentFiles: await readRecentFilesForCompact(
@@ -603,6 +604,7 @@ export class LiveChatKit<
         const summary = await compactTask({
           blobStore: this.blobStore,
           taskId: this.taskId,
+          storeId: this.store.storeId,
           model,
           messages,
           recentFiles: await readRecentFilesForCompact(

@@ -56,6 +56,7 @@ export async function repairMermaid({
     // Generate the fixed mermaid diagram
     const fixedMermaid = await generateFixedMermaid(
       taskId,
+      store.storeId,
       model,
       abortSignal,
       chart,
@@ -155,6 +156,7 @@ export async function repairMermaid({
 
 async function generateFixedMermaid(
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   chart: string,
@@ -177,6 +179,7 @@ async function generateFixedMermaid(
     providerOptions: {
       pochi: {
         taskId,
+        storeId,
         client: globalThis.POCHI_CLIENT,
         useCase: "repair-mermaid",
       } satisfies PochiProviderOptions,
