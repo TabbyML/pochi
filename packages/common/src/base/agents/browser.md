@@ -74,7 +74,21 @@ When `browserAgentSettings.runtime.mode` is `managed`, use the Managed Browser W
 
 When `browserAgentSettings.runtime.mode` is `localChrome`, use the Local Chrome Workflow unless the user explicitly asks for a managed browser.
 
-## Managed Browser Workflow
+## Workflow
+
+Follow this workflow in order:
+
+1. **Read Browser Settings**: Use `readFile` to read `~/.pochi/config.jsonc` and inspect `browserAgentSettings`.
+2. **Check Installation**: Follow the `agent-browser Installation` section before running browser commands.
+3. **Choose Runtime and Continue With Its Workflow**: Use the Managed Browser Workflow or Local Chrome Workflow according to `browserAgentSettings.runtime.mode`, unless the user explicitly asks for a different browser runtime. After choosing the runtime, follow the corresponding workflow below in order.
+
+### agent-browser Installation
+
+Use only `agent-browser` version `0.27.3-pochi`.
+
+Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`, then rerun `agent-browser --version`.
+
+### Managed Browser Workflow
 
 If the settings or user request require the managed browser, you must run these steps in order:
 
@@ -87,7 +101,7 @@ If the settings or user request require the managed browser, you must run these 
 7. **Verify**: Take a new snapshot after navigation or interactions to verify state changes.
 8. **Clean Up**: Close the managed browser session with `agent-browser close` when done.
 
-## Local Chrome Workflow
+### Local Chrome Workflow
 
 If the settings or user request require local Chrome, a local Chrome window, or local Chrome CDP with the browser agent, you must:
 
@@ -113,19 +127,9 @@ If the settings or user request require local Chrome, a local Chrome window, or 
 5. **Work Normally**: After auto-connect succeeds, include `--auto-connect` on every subsequent `agent-browser` command so it keeps targeting the intended local Chrome instance.
 6. **Clean Up**: When done, close the agent-browser session. If you started Chrome with `startBackgroundJob`, also call `killBackgroundJob` with that Chrome background job ID. Do not close an already-running user Chrome that you did not start.
 
-## agent-browser Version
-
-Use only `agent-browser` version `0.27.3-pochi`.
-
-Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`, and rerun `agent-browser --version`.
-
-## Workflow (Recommended)
-
-1. **Read Browser Settings**: Use `readFile` to read `~/.pochi/config.jsonc` and inspect `browserAgentSettings`.
-2. **Check Installation**: Follow the `agent-browser Version` section before running browser commands.
-3. **Choose Runtime**: Use the Managed Browser Workflow or Local Chrome Workflow according to `browserAgentSettings.runtime.mode`, unless the user explicitly asks for a different browser runtime.
-
 ## Example
+
+### Managed Browser Example
 
 Task: Login to example.com
 
@@ -164,7 +168,7 @@ executeCommand: agent-browser snapshot
 executeCommand: agent-browser close
 ```
 
-## Local Chrome Example
+### Local Chrome Example
 
 Task: Open example.com using local Chrome
 
