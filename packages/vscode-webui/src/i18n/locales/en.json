@@ -483,7 +483,6 @@
     "copyCheckpointCommand": "Copy Checkpoint Command",
     "copyTodos": "Copy TODOs",
     "noCheckpointAvailable": "No checkpoint available",
-    "noSystemPromptAvailable": "No system prompt available",
     "openStore": "Open Store",
     "reviewChanges": "Review Changes",
     "copySystemPrompt": "Copy System Prompt"

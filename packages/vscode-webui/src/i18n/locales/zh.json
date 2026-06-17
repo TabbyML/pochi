@@ -480,7 +480,6 @@
     "copyCheckpointCommand": "复制检查点命令",
     "copyTodos": "复制待办事项",
     "noCheckpointAvailable": "没有可用的检查点",
-    "noSystemPromptAvailable": "没有可用的系统提示词",
     "openStore": "打开存储",
     "reviewChanges": "审查变更",
     "copySystemPrompt": "复制系统提示词"

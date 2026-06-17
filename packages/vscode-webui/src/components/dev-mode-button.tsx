@@ -17,7 +17,7 @@ import type { Todo } from "@getpochi/tools";
 import { convertToModelMessages } from "ai";
 import { CheckIcon, CopyIcon, FileDiff, Gavel, StoreIcon } from "lucide-react";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 interface UpdatedCopyMenuItemProps {
@@ -76,7 +76,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     return JSON.stringify(todos, null, 2);
   };
 
-  const getSystemPromptContent = useCallback(() => {
+  const systemPrompt = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
       if (
@@ -87,8 +87,8 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
         return msg.metadata.systemPrompt;
       }
     }
-    return t("devModeButton.noSystemPromptAvailable");
-  }, [messages, t]);
+    return null;
+  }, [messages]);
 
   const getCheckpintCommand = useCallback(async () => {
     const checkpointPath = await vscodeHost.readCheckpointPath();
@@ -135,10 +135,12 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
             fetchContent={getTodosContent}
             text={t("devModeButton.copyTodos")}
           />
-          <CopyMenuItem
-            fetchContent={getSystemPromptContent}
-            text={t("devModeButton.copySystemPrompt")}
-          />
+          {systemPrompt && (
+            <CopyMenuItem
+              fetchContent={() => systemPrompt}
+              text={t("devModeButton.copySystemPrompt")}
+            />
+          )}
           <OpenDevStore />
           <ReviewChangesMenuItem />
         </DropdownMenuContent>

@@ -482,7 +482,6 @@
     "copyCheckpointCommand": "チェックポイントコマンドをコピー",
     "copyTodos": "TODOをコピー",
     "noCheckpointAvailable": "利用可能なチェックポイントがありません",
-    "noSystemPromptAvailable": "利用可能なシステムプロンプトがありません",
     "openStore": "ストアを開く",
     "reviewChanges": "変更をレビュー",
     "copySystemPrompt": "システムプロンプトをコピー"
