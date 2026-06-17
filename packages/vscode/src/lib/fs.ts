@@ -1,6 +1,12 @@
+import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import path, { join } from "node:path";
 import * as diff from "diff";
 import * as vscode from "vscode";
+
+import { getLogger } from "./logger";
+
+const fsLogger = getLogger("fs");
 
 /**
  * Ensure a directory exists by creating it if needed
@@ -45,14 +51,69 @@ export async function readFileContent(
   }
 }
 
-export const vscodeRipgrepPath = join(
-  vscode.env.appRoot,
-  "node_modules",
-  "@vscode",
-  "ripgrep",
-  "bin",
-  "rg",
-);
+/**
+ * Resolve the ripgrep binary shipped with VS Code.
+ *
+ * VS Code 1.124 (June 2026) replaced the single-binary `@vscode/ripgrep`
+ * package with the multi-arch `@vscode/ripgrep-universal` package, which lays
+ * binaries out under `bin/<platform>-<arch>/rg[.exe]`. Older VS Code builds
+ * still ship `@vscode/ripgrep/bin/rg`. We probe the new layout first, fall
+ * back to the legacy layout, and finally fall back to the system `rg` on
+ * `PATH` so `searchFiles` keeps working even if VS Code reshuffles things
+ * again.
+ */
+function resolveVscodeRipgrepPath(): string {
+  const exe = process.platform === "win32" ? "rg.exe" : "rg";
+  const archDir = `${process.platform}-${process.arch}`;
+
+  const candidates = [
+    // VS Code >= 1.124: @vscode/ripgrep-universal, per-arch subdir.
+    join(
+      vscode.env.appRoot,
+      "node_modules",
+      "@vscode",
+      "ripgrep-universal",
+      "bin",
+      archDir,
+      exe,
+    ),
+    // VS Code < 1.124: legacy @vscode/ripgrep single-binary layout.
+    join(vscode.env.appRoot, "node_modules", "@vscode", "ripgrep", "bin", exe),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  // Last resort: pick up `rg` from PATH. This keeps `searchFiles` working when
+  // VS Code reorganizes its bundled ripgrep again.
+  try {
+    const which = process.platform === "win32" ? "where" : "which";
+    const resolved = execSync(`${which} rg`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .split(/\r?\n/)[0]
+      ?.trim();
+    if (resolved && existsSync(resolved)) {
+      fsLogger.warn(
+        `Bundled VS Code ripgrep not found at any known path, falling back to system rg: ${resolved}`,
+      );
+      return resolved;
+    }
+  } catch {
+    // ignore — fall through to legacy default
+  }
+
+  fsLogger.warn(
+    `Unable to resolve ripgrep binary; returning legacy path. Tried: ${candidates.join(", ")}`,
+  );
+  return candidates[candidates.length - 1];
+}
+
+export const vscodeRipgrepPath = resolveVscodeRipgrepPath();
 
 export const asRelativePath = (
   uri: vscode.Uri | string,
