@@ -1,6 +1,5 @@
 import { expect, test } from "vitest";
 import { createEnvironmentPrompt } from "../environment";
-import { createNoToolCallsReminderPrompt } from "../index";
 import { createSystemPrompt } from "../system";
 
 test("instructions", () => {
@@ -53,18 +52,6 @@ test("system prompt omits todo guidance when todos are not active", () => {
   const prompt = createSystemPrompt("");
   expect(prompt).not.toContain("TODO OBJECTIVES");
   expect(prompt).not.toContain("You are working with active todos.");
-});
-
-test("no-tool-calls reminder uses todo wording only for active todos", () => {
-  const activeTodoPrompt = createNoToolCallsReminderPrompt({
-    todoModeEnabled: true,
-  });
-  expect(activeTodoPrompt).toContain("active todo");
-  expect(activeTodoPrompt).toContain("attemptCompletion");
-  expect(activeTodoPrompt).not.toContain("askFollowupQuestion");
-
-  const normalPrompt = createNoToolCallsReminderPrompt();
-  expect(normalPrompt).toContain("askFollowupQuestion");
 });
 
 test("custom agent includes custom rules by default", () => {

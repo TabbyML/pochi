@@ -47,7 +47,6 @@ export const prompts = {
   renderUserEdits,
   renderBashOutputs,
   fixMermaidError,
-  noToolCallsReminder: createNoToolCallsReminderPrompt,
   createUseSkillResult,
   attemptTodoCompletion: {
     buildPrompt: buildAttemptTodoCompletionPrompt,
@@ -92,20 +91,6 @@ function isEnvironmentSystemReminder(content: string) {
 
 function isCompact(content: string) {
   return content.startsWith("<compact>") && content.endsWith("</compact>");
-}
-
-export interface NoToolCallsReminderPromptOptions {
-  todoModeEnabled?: boolean;
-}
-
-export function createNoToolCallsReminderPrompt(
-  options?: NoToolCallsReminderPromptOptions,
-) {
-  if (options?.todoModeEnabled) {
-    return "You are working with an active todo and your previous response did not make progress with tools.\n\nContinue working toward the active todo using the available tools. After making progress and before ending the turn, call attemptCompletion so the current state can be audited.";
-  }
-
-  return "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.";
 }
 
 function inlineCompact(
