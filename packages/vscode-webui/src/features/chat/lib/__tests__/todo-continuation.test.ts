@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { Message } from "@getpochi/livekit";
+import { describe, expect, it } from "vitest";
 import { getTodoContinuationDecision } from "../todo-continuation";
 
 function makeAttemptTodoCompletionMessage(output: unknown): Message {

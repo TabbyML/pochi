@@ -19,7 +19,6 @@ import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -31,6 +30,7 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
+import { useTodos } from "../todo";
 import { BackgroundTaskDebugPanel } from "./components/background-task-debug-panel";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
@@ -84,9 +84,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const { jwt } = usePochiCredentials();
 
   const { t } = useTranslation();
-  const todosRef = useRef<Todo[] | undefined>(undefined);
-  const [todoPaused, setTodoPaused] = useState(false);
-  const todoPausedRef = useLatest(todoPaused);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -101,14 +98,12 @@ function Chat({ user, uid, info }: ChatProps) {
   const subtask = useSubtaskInfo(uid, task?.parentId);
 
   const isSubTask = !!task?.parentId;
-  const currentTodos = useMemo(
-    () => toTodoArray(isSubTask ? undefined : getCurrentTodos(task, info)),
-    [isSubTask, task, info],
-  );
-
-  useEffect(() => {
-    todosRef.current = currentTodos;
-  }, [currentTodos]);
+  const { currentTodos, todosRef } = useTodos({
+    task,
+    todosToAdd: info.type === "new-task" ? info.todos : undefined,
+  });
+  const [todoPaused, setTodoPaused] = useState(false);
+  const todoPausedRef = useLatest(todoPaused);
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -314,7 +309,6 @@ function Chat({ user, uid, info }: ChatProps) {
     t,
     setMcpConfigOverride,
     isMcpConfigLoading,
-    todosRef,
   });
 
   useSetSubtaskModel({ isSubTask, customAgent });
@@ -413,7 +407,6 @@ function Chat({ user, uid, info }: ChatProps) {
           chat={chat}
           task={task}
           todos={currentTodos}
-          todosRef={todosRef}
           todoPaused={todoPaused}
           onTodoPausedChange={handleTodoPausedChange}
           compact={chatKit.compact}
@@ -432,23 +425,6 @@ function Chat({ user, uid, info }: ChatProps) {
       <BackgroundTaskDebugPanel />
     </div>
   );
-}
-
-function getCurrentTodos(
-  task: Task | undefined,
-  info: PochiTaskInfo,
-): readonly Todo[] | undefined {
-  if (task?.todos && task.todos.length > 0) {
-    return task.todos;
-  }
-  if (info.type === "new-task" && info.todos) {
-    return info.todos;
-  }
-  return task?.todos;
-}
-
-function toTodoArray(todos?: readonly Todo[]): Todo[] {
-  return todos ? [...todos] : [];
 }
 
 function fromTaskError(task?: Task) {

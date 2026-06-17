@@ -80,7 +80,6 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
   todos: Todo[];
-  todosRef: React.RefObject<Todo[] | undefined>;
   todoPaused: boolean;
   onTodoPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
@@ -100,7 +99,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
   todos,
-  todosRef,
   todoPaused,
   onTodoPausedChange,
   onUpdateIsPublicShared,
@@ -122,7 +120,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const todoControllerActive = !isSubTask && hasActiveTodos(todos);
   const commitTodos = useCallback(
     (nextTodos: Todo[]) => {
-      todosRef.current = nextTodos;
       store.commit(
         catalog.events.updateTodos({
           id: taskId,
@@ -131,7 +128,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         }),
       );
     },
-    [store, taskId, todosRef],
+    [store, taskId],
   );
   const handleEditTodo = useCallback(
     (todoId: string, content: string) => {
@@ -272,7 +269,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     addToolOutput,
     taskId,
     todos,
-    todosRef,
   });
 
   const compactOptions = {

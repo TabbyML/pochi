@@ -258,6 +258,7 @@ function TodoContent({
 function TodoActions({ todo }: { todo: Todo }) {
   const { editingTodoId, setEditingTodoId, onDeleteTodo } =
     useTodoListContext();
+  const canEdit = todo.status === "pending" || todo.status === "in-progress";
 
   if (editingTodoId === todo.id) {
     return null;
@@ -265,19 +266,21 @@ function TodoActions({ todo }: { todo: Todo }) {
 
   return (
     <div className="flex shrink-0 gap-0.5">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Edit todo"
-        className="h-6 w-6"
-        onClickCapture={(event) => {
-          event.stopPropagation();
-          setEditingTodoId(todo.id);
-        }}
-      >
-        <Pencil className="size-3.5" />
-      </Button>
+      {canEdit && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Edit todo"
+          className="h-6 w-6"
+          onClickCapture={(event) => {
+            event.stopPropagation();
+            setEditingTodoId(todo.id);
+          }}
+        >
+          <Pencil className="size-3.5" />
+        </Button>
+      )}
       <Button
         type="button"
         variant="ghost"

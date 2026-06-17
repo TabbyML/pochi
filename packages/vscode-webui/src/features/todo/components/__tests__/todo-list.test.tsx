@@ -24,6 +24,11 @@ const taggedTodo = {
   priority: "medium",
 } as const;
 
+const completedTodo = {
+  ...activeTodo,
+  status: "completed",
+} as const;
+
 describe("TodoList", () => {
   it("shows an expanded todo row with inline actions", () => {
     render(
@@ -102,5 +107,22 @@ describe("TodoList", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Delete todo" })[0]);
 
     expect(onDeleteTodo).toHaveBeenCalledWith("todo-1");
+  });
+
+  it("does not show edit action for a completed todo", () => {
+    render(
+      <TodoList
+        todos={[completedTodo]}
+        todoPaused={false}
+        disableCollapse
+        editable
+        onDeleteTodo={vi.fn()}
+      >
+        <TodoList.Header />
+      </TodoList>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Edit todo" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Delete todo" })).toBeTruthy();
   });
 });

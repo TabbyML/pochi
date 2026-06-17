@@ -6,7 +6,6 @@ import { getLogger } from "@getpochi/common";
 import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
 import { AttemptTodoCompletionResult, type Todo } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
-import type { RefObject } from "react";
 import { useEffect } from "react";
 
 const logger = getLogger("UseAddCompleteToolCalls");
@@ -17,8 +16,7 @@ interface UseAddCompleteToolCallsProps {
   enable: boolean;
   addToolOutput: Chat<Message>["addToolOutput"];
   taskId?: string;
-  todos?: readonly Todo[];
-  todosRef?: RefObject<Todo[] | undefined>;
+  todos?: Todo[];
 }
 
 function isToolStateCall(message: Message, toolCallId: string): boolean {
@@ -42,7 +40,6 @@ export function useAddCompleteToolCalls({
   addToolOutput,
   taskId,
   todos,
-  todosRef,
 }: UseAddCompleteToolCallsProps): void {
   const { completeToolCalls } = useToolCallLifeCycle();
   const store = useDefaultStore();
@@ -65,9 +62,9 @@ export function useAddCompleteToolCalls({
       }));
     if (completedToolCalls.length === 0) return;
 
-    const lastToolPart = getLastInputAvailableToolPart(lastMessage);
+    const lastToolCallId = getLastInputAvailableToolCallId(lastMessage);
     const lastCompletedToolCall = completedToolCalls.find(
-      ({ toolCall }) => toolCall.toolCallId === lastToolPart?.toolCallId,
+      ({ toolCall }) => toolCall.toolCallId === lastToolCallId,
     );
     const todoCompletionUpdate =
       lastCompletedToolCall && taskId && todos
@@ -79,9 +76,6 @@ export function useAddCompleteToolCalls({
           })
         : undefined;
     if (todoCompletionUpdate && taskId) {
-      if (todosRef) {
-        todosRef.current = todoCompletionUpdate.todos;
-      }
       store.commit(
         catalog.events.attemptTodoCompletionFinished({
           id: taskId,
@@ -121,17 +115,17 @@ export function useAddCompleteToolCalls({
     addToolOutput,
     taskId,
     todos,
-    todosRef,
     store,
   ]);
 }
 
-function getLastInputAvailableToolPart(message: Message) {
+function getLastInputAvailableToolCallId(message: Message) {
   if (message.role !== "assistant") return undefined;
 
-  return message.parts.findLast(
+  const part = message.parts.findLast(
     (part) => isStaticToolUIPart(part) && part.state === "input-available",
   );
+  return part && isStaticToolUIPart(part) ? part.toolCallId : undefined;
 }
 
 type TodoCompletionUpdate = {
@@ -151,7 +145,7 @@ export function getTodoCompletionUpdate({
   message: Message;
   toolCallId: string;
   output: unknown;
-  todos: readonly Todo[];
+  todos: Todo[];
 }): TodoCompletionUpdate | undefined {
   const targetIndex = message.parts.findIndex(
     (part) =>
@@ -200,18 +194,15 @@ export function getTodoCompletionUpdate({
 }
 
 function hasSameTodoStatuses(
-  previousTodos: readonly Todo[],
-  nextTodos: readonly Todo[],
+  previousTodos: Todo[],
+  nextTodos: Todo[],
 ): boolean {
   return previousTodos.every(
     (todo, index) => todo.status === nextTodos[index]?.status,
   );
 }
 
-function applyTodoUpdates(
-  todos: readonly Todo[],
-  status: Todo["status"],
-): Todo[] {
+function applyTodoUpdates(todos: Todo[], status: Todo["status"]): Todo[] {
   const [todo, ...rest] = todos;
   if (!todo) return [];
   return [{ ...todo, status }, ...rest];

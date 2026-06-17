@@ -84,7 +84,7 @@ export function useLiveSubTask(
 
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
-  const todosRef = useRef<Todo[] | undefined>(undefined);
+  const todosRef = useRef<Todo[]>([]);
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: true,
