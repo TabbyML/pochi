@@ -64,7 +64,7 @@ import {
   ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
 } from "./lib/shutdown";
-import { StepDurationTracker } from "./lib/step-duration-tracker";
+import { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -363,7 +363,7 @@ const program = new Command()
       autoMemoryManager,
       projectMemoryEnabled,
     });
-    const stepDurationTracker = new StepDurationTracker();
+    const stepMetadataTracker = new StepMetadataTracker();
     const taskMemory = taskMemoryEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
       ? {
@@ -409,7 +409,7 @@ const program = new Command()
       taskMemory,
       projectMemory,
       fileStateCache: parentFileStateCache,
-      stepDurationTracker,
+      stepMetadataTracker,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
@@ -423,7 +423,7 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
-          stepDurationTracker,
+          stepMetadataTracker,
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
