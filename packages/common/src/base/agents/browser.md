@@ -99,9 +99,9 @@ If the settings or user request require local Chrome, a local Chrome window, or 
 
 ## agent-browser Version
 
-Because `agent-browser` has not been formally released yet, use only the verified versions `>= 0.20.0` and `<= 0.24.0`.
+Use only `agent-browser` version `0.27.3-pochi`.
 
-Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing, older than `0.20.0`, or newer than `0.24.0`, install the verified version with `npm install -g agent-browser@0.24.0`, then rerun `agent-browser --version`.
+Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`, and rerun `agent-browser --version`.
 
 ## Workflow (Recommended)
 
