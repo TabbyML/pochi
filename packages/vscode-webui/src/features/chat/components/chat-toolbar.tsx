@@ -23,18 +23,26 @@ import {
   useAutoApprove,
   useSelectedModels,
 } from "@/features/settings";
-import { TodoList, useTodos } from "@/features/todo";
+import { TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
-import type { Message, Task } from "@getpochi/livekit";
+import { type Message, type Task, catalog } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  PaperclipIcon,
+  PauseIcon,
+  PlayIcon,
+  SendHorizonal,
+  StopCircleIcon,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -71,7 +79,10 @@ interface ChatToolbarProps {
   subtask?: SubtaskInfo;
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
+  todos: Todo[];
   todosRef: React.RefObject<Todo[] | undefined>;
+  todoPaused: boolean;
+  onTodoPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
   isRepairingMermaid?: boolean;
@@ -88,13 +99,17 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   task,
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
+  todos,
   todosRef,
+  todoPaused,
+  onTodoPausedChange,
   onUpdateIsPublicShared,
   taskId,
   isRepairingMermaid = false,
   mcpConfigOverride,
 }) => {
   const { t } = useTranslation();
+  const store = useDefaultStore();
 
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
@@ -104,12 +119,34 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
-  // Initialize task with prompt if provided and task doesn't exist yet
-  const { todos } = useTodos({
-    initialTodos: task?.todos,
-    messages,
-    todosRef,
-  });
+  const todoControllerActive = !isSubTask && hasActiveTodos(todos);
+  const commitTodos = useCallback(
+    (nextTodos: Todo[]) => {
+      todosRef.current = nextTodos;
+      store.commit(
+        catalog.events.updateTodos({
+          id: taskId,
+          todos: nextTodos,
+          updatedAt: new Date(),
+        }),
+      );
+    },
+    [store, taskId, todosRef],
+  );
+  const handleEditTodo = useCallback(
+    (todoId: string, content: string) => {
+      commitTodos(
+        todos.map((todo) => (todo.id === todoId ? { ...todo, content } : todo)),
+      );
+    },
+    [commitTodos, todos],
+  );
+  const handleDeleteTodo = useCallback(
+    (todoId: string) => {
+      commitTodos(todos.filter((todo) => todo.id !== todoId));
+    },
+    [commitTodos, todos],
+  );
 
   const {
     groupedModels,
@@ -233,6 +270,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
+    taskId,
+    todos,
+    todosRef,
   });
 
   const compactOptions = {
@@ -308,9 +348,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           )}
         >
           {todos.length > 0 && (
-            <TodoList todos={todos}>
-              <TodoList.Header />
-              <TodoList.Items viewportClassname="max-h-48" />
+            <TodoList
+              todos={todos}
+              todoPaused={todoPaused}
+              disableCollapse
+              editable={!isSubTask}
+              onEditTodo={handleEditTodo}
+              onDeleteTodo={handleDeleteTodo}
+            >
+              <TodoList.Header>
+                {todoControllerActive && (
+                  <TodoPauseButton
+                    todoPaused={todoPaused}
+                    onTodoPausedChange={onTodoPausedChange}
+                  />
+                )}
+              </TodoList.Header>
             </TodoList>
           )}
           <DiffSummary
@@ -451,6 +504,50 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         </div>
       </div>
     </>
+  );
+};
+
+interface TodoPauseButtonProps {
+  todoPaused: boolean;
+  onTodoPausedChange: (paused: boolean) => void;
+}
+
+const TodoPauseButton: React.FC<TodoPauseButtonProps> = ({
+  todoPaused,
+  onTodoPausedChange,
+}) => {
+  const { t } = useTranslation();
+  const label = todoPaused ? t("chat.resumeTodo") : t("chat.pauseTodo");
+
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="button-focus h-6 w-6 p-0"
+            aria-label={label}
+            onClick={() => onTodoPausedChange(!todoPaused)}
+          >
+            {todoPaused ? (
+              <PlayIcon className="size-4" />
+            ) : (
+              <PauseIcon className="size-4" />
+            )}
+          </Button>
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+      >
+        {label}
+      </HoverCardContent>
+    </HoverCard>
   );
 };
 

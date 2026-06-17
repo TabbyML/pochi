@@ -2,6 +2,7 @@ import type { Message } from "@getpochi/livekit";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getReadyForRetryError } from "./use-ready-for-retry-error";
 import { useRetry } from "./use-retry";
 
 function createRetryableAssistantMessage(): Message {
@@ -68,5 +69,101 @@ describe("useRetry", () => {
     expect(prepareLastMessageForRetry.mock.invocationCallOrder[0]).toBeLessThan(
       setMessages.mock.invocationCallOrder[0],
     );
+  });
+});
+
+describe("getReadyForRetryError", () => {
+  it("does not retry a successful attemptTodoCompletion subtask", () => {
+    expect(
+      getReadyForRetryError([
+        {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-newTask",
+              toolCallId: "call-attempt-todo-completion",
+              state: "output-available",
+              input: {
+                description: "Audit todo satisfaction",
+                prompt: "Audit whether the current todo is satisfied.",
+                agentType: "attemptTodoCompletion",
+              },
+              output: {
+                result: {
+                  success: true,
+                  summary: "Done.",
+                  todoUpdates: [{ status: "completed" }],
+                },
+              },
+            },
+          ],
+        } as unknown as Message,
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("continues an incomplete attemptTodoCompletion subtask", () => {
+    expect(
+      getReadyForRetryError([
+        {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-newTask",
+              toolCallId: "call-attempt-todo-completion",
+              state: "output-available",
+              input: {
+                description: "Audit todo satisfaction",
+                prompt: "Audit whether the current todo is satisfied.",
+                agentType: "attemptTodoCompletion",
+              },
+              output: {
+                result: {
+                  success: false,
+                  summary: "More work remains.",
+                  todoUpdates: [{ status: "in-progress" }],
+                },
+              },
+            },
+          ],
+        } as unknown as Message,
+      ]),
+    ).toMatchObject({
+      kind: "tool-calls",
+    });
+  });
+
+  it("continues an incomplete attemptTodoCompletion subtask with a JSON string result", () => {
+    expect(
+      getReadyForRetryError([
+        {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-newTask",
+              toolCallId: "call-attempt-todo-completion",
+              state: "output-available",
+              input: {
+                description: "Audit todo satisfaction",
+                prompt: "Audit whether the current todo is satisfied.",
+                agentType: "attemptTodoCompletion",
+              },
+              output: {
+                result: JSON.stringify({
+                  success: false,
+                  summary: "More work remains.",
+                  todoUpdates: [{ status: "in-progress" }],
+                }),
+              },
+            },
+          ],
+        } as unknown as Message,
+      ]),
+    ).toMatchObject({
+      kind: "tool-calls",
+    });
   });
 });

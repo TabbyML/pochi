@@ -23,6 +23,7 @@ export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
+  extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
   getTaskErrorMessage,

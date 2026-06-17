@@ -31,8 +31,13 @@
     "createPlan": "計画",
     "createPlanTooltip": "このタスクの実装計画を作成",
     "planModeLabel": "計画",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Todoを一時停止",
+    "resumeTodo": "Todoを再開",
+    "autoContinueTodo": "TODOを自動継続",
     "planModeToggleShortcutTooltip": "Shift + Tab で切り替え",
     "planModeSubmitTooltip": "計画として送信",
+    "todoModeSubmitTooltip": "Todoモードで送信",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -452,6 +457,9 @@
   },
   "todoList": {
     "todos": "TODO",
+    "pursuingTodo": "Todoを進行中",
+    "pausing": "一時停止中",
+    "completedTodo": "Todoを満たしました",
     "allDone": "🎉 すべて完了！"
   },
   "commandExecutionPanel": {

@@ -1,10 +1,20 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { cn } from "@/lib/utils";
 
+import { parseTitle } from "@getpochi/common/message-utils";
 import type { Todo } from "@getpochi/tools";
-import { Circle, CircleCheckBig, CircleDot, CircleX } from "lucide-react";
+import {
+  Circle,
+  CircleCheckBig,
+  CircleDot,
+  CircleX,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type ReactNode,
@@ -36,10 +46,13 @@ const todoItemVariants = {
 // Context for sharing state between compound components
 interface TodoListContextValue {
   todos: Todo[];
-  isCollapsed: boolean;
-  setIsCollapsed: (collapsed: boolean) => void;
-  disableCollapse: boolean;
   disableInProgressTodoTitle: boolean;
+  todoPaused: boolean;
+  editable: boolean;
+  editingTodoId: string | undefined;
+  setEditingTodoId: (todoId: string | undefined) => void;
+  onEditTodo?: (todoId: string, content: string) => void;
+  onDeleteTodo?: (todoId: string) => void;
 }
 
 const TodoListContext = createContext<TodoListContextValue | undefined>(
@@ -63,28 +76,33 @@ interface TodoListRootProps {
   children: ReactNode;
   disableCollapse?: boolean;
   disableInProgressTodoTitle?: boolean;
+  todoPaused?: boolean;
+  editable?: boolean;
+  onEditTodo?: (todoId: string, content: string) => void;
+  onDeleteTodo?: (todoId: string) => void;
 }
 
 function TodoListRoot({
   todos,
   className,
   children,
-  disableCollapse,
   disableInProgressTodoTitle,
+  todoPaused = false,
+  editable = false,
+  onEditTodo,
+  onDeleteTodo,
 }: TodoListRootProps) {
-  const pendingTodosNum = todos.filter(
-    (todo) => todo.status === "pending",
-  ).length;
-  const [isCollapsed, setIsCollapsed] = useState(
-    pendingTodosNum === 0 && !disableCollapse && todos.length > 0,
-  );
+  const [editingTodoId, setEditingTodoId] = useState<string | undefined>();
 
   const contextValue: TodoListContextValue = {
     todos,
-    isCollapsed,
-    setIsCollapsed,
-    disableCollapse: !!disableCollapse,
     disableInProgressTodoTitle: !!disableInProgressTodoTitle,
+    todoPaused,
+    editable,
+    editingTodoId,
+    setEditingTodoId,
+    onEditTodo,
+    onDeleteTodo,
   };
 
   return (
@@ -101,74 +119,54 @@ interface TodoListHeaderProps {
 
 function TodoListHeader({ children }: TodoListHeaderProps) {
   const { t } = useTranslation();
-  const {
-    todos,
-    isCollapsed,
-    setIsCollapsed,
-    disableCollapse,
-    disableInProgressTodoTitle,
-  } = useTodoListContext();
+  const { todos, disableInProgressTodoTitle, todoPaused, editable } =
+    useTodoListContext();
 
   // Use draftTodos when in edit mode, otherwise use todos
   const displayTodos = todos.filter((todo) => todo.status !== "cancelled");
 
-  const inProgressTodo = useMemo(
-    () => displayTodos.find((x) => x.status === "in-progress"),
+  const activeTodo = useMemo(
+    () =>
+      displayTodos.find(
+        (x) => x.status === "pending" || x.status === "in-progress",
+      ),
     [displayTodos],
   );
+  const primaryTodo = activeTodo ?? displayTodos[0];
 
-  const pendingTodosNum = useMemo(
-    () => displayTodos.filter((todo) => todo.status === "pending").length,
-    [displayTodos],
-  );
-
-  useEffect(() => {
-    if (pendingTodosNum === 0 && todos.length > 0 && !disableCollapse) {
-      setIsCollapsed(true);
-    }
-  }, [pendingTodosNum, todos, setIsCollapsed, disableCollapse]);
-
-  const toggleCollapse = () => {
-    if (disableCollapse) return;
-    setIsCollapsed(!isCollapsed);
-  };
+  const active = primaryTodo
+    ? primaryTodo.status === "pending" || primaryTodo.status === "in-progress"
+    : false;
+  const statusLabel = disableInProgressTodoTitle
+    ? t("todoList.todos")
+    : todoPaused && active
+      ? t("todoList.pausing")
+      : active
+        ? t("todoList.pursuingTodo")
+        : primaryTodo?.status === "completed"
+          ? t("todoList.completedTodo")
+          : t("todoList.allDone");
 
   return (
-    <div
-      className="group grid w-full cursor-pointer grid-cols-[1fr_auto_1fr] items-center"
-      onClick={toggleCollapse}
-    >
-      <div />
-      <button
-        type="button"
-        className={cn(
-          "flex select-none items-center justify-center overflow-hidden rounded-sm px-4 py-2 transition-colors focus:outline-none",
-          {
-            "pointer-events-none": disableCollapse,
-          },
-        )}
-      >
-        <span className="h-6 truncate font-semibold transition-opacity group-focus-within:opacity-80 group-hover:opacity-80">
-          {inProgressTodo ? (
-            disableInProgressTodoTitle ? (
-              <span>{t("todoList.todos")}</span>
-            ) : (
-              <span className="animated-gradient-text">
-                {inProgressTodo.content}
-              </span>
-            )
-          ) : (
-            <span>
-              {pendingTodosNum > 0
-                ? t("todoList.todos")
-                : t("todoList.allDone")}
-            </span>
+    <div className="group flex w-full items-center gap-2 px-3 py-2">
+      {primaryTodo && <TodoIcon todo={primaryTodo} />}
+      <div className="min-w-0 flex-1 select-none">
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="shrink-0 font-semibold text-sm">{statusLabel}</span>
+          {primaryTodo && !disableInProgressTodoTitle && (
+            <TodoContent
+              todo={primaryTodo}
+              className={cn("truncate text-muted-foreground text-sm", {
+                "line-through": primaryTodo.status === "completed",
+              })}
+            />
           )}
         </span>
-      </button>
-      <div className="flex justify-end">
-        <div className="flex gap-1 p-2" onClick={(e) => e.stopPropagation()}>
+      </div>
+      <div className="flex shrink-0 justify-end">
+        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           {children}
+          {primaryTodo && editable && <TodoActions todo={primaryTodo} />}
         </div>
       </div>
     </div>
@@ -197,29 +195,125 @@ function TodoIcon({ todo }: TodoIconProps) {
 }
 
 // Items component for displaying the todo list
+function getTodoDisplayContent(todo: Todo): string {
+  return parseTitle(todo.content);
+}
+
+function TodoContent({
+  todo,
+  className,
+  readonly = false,
+}: {
+  todo: Todo;
+  className?: string;
+  readonly?: boolean;
+}) {
+  const { editable, editingTodoId, setEditingTodoId, onEditTodo } =
+    useTodoListContext();
+  const displayContent = getTodoDisplayContent(todo);
+  const isEditing = editingTodoId === todo.id;
+  const [draft, setDraft] = useState(displayContent);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraft(displayContent);
+    }
+  }, [displayContent, isEditing]);
+
+  const save = () => {
+    const nextContent = draft.trim();
+    if (nextContent && nextContent !== displayContent) {
+      onEditTodo?.(todo.id, nextContent);
+    }
+    setEditingTodoId(undefined);
+  };
+
+  if (readonly || !editable || !isEditing) {
+    return <span className={className}>{displayContent}</span>;
+  }
+
+  return (
+    <Input
+      aria-label="Edit todo text"
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          save();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setDraft(displayContent);
+          setEditingTodoId(undefined);
+        }
+      }}
+      className="h-7 text-sm"
+      autoFocus
+    />
+  );
+}
+
+function TodoActions({ todo }: { todo: Todo }) {
+  const { editingTodoId, setEditingTodoId, onDeleteTodo } =
+    useTodoListContext();
+
+  if (editingTodoId === todo.id) {
+    return null;
+  }
+
+  return (
+    <div className="flex shrink-0 gap-0.5">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label="Edit todo"
+        className="h-6 w-6"
+        onClickCapture={(event) => {
+          event.stopPropagation();
+          setEditingTodoId(todo.id);
+        }}
+      >
+        <Pencil className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label="Delete todo"
+        className="h-6 w-6"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDeleteTodo?.(todo.id);
+        }}
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
 function TodoListItems({
   className,
   viewportClassname,
 }: { className?: string; viewportClassname?: string }) {
-  const { todos, isCollapsed } = useTodoListContext();
+  const { todos, editable } = useTodoListContext();
 
   // Use draftTodos when in edit mode, otherwise use todos
-  const displayTodos = todos.filter((todo) => todo.status !== "cancelled");
+  const displayTodos = todos
+    .filter((todo) => todo.status !== "cancelled")
+    .slice(0, 1);
 
   return (
     <ScrollArea
-      className={cn(
-        "px-1",
-        {
-          "pb-2": !isCollapsed,
-        },
-        className,
-      )}
+      className={cn("px-1", "pb-2", className)}
       viewportClassname={viewportClassname}
     >
       <motion.div
         initial={false}
-        animate={isCollapsed ? "collapsed" : "open"}
+        animate="open"
         variants={collapsibleSectionVariants}
         className="overflow-hidden"
       >
@@ -253,8 +347,9 @@ function TodoListItems({
                       todo.status === "cancelled",
                   })}
                 >
-                  {todo.content}
+                  <TodoContent todo={todo} />
                 </Label>
+                {editable && <TodoActions todo={todo} />}
               </motion.div>
             ))}
           </AnimatePresence>

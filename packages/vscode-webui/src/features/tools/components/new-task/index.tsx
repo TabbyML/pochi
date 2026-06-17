@@ -1,3 +1,4 @@
+import { MessageMarkdown } from "@/components/message";
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +19,7 @@ import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
+import { getAttemptTodoCompletionSummary, hasNewTaskResult } from "./result";
 import { TodoDetail } from "./todo-detail";
 import { WalkthroughView } from "./walkthrough-view";
 
@@ -85,7 +87,15 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   const completed =
     tool.state === "output-available" &&
     "result" in tool.output &&
-    tool.output.result.trim().length > 0;
+    hasNewTaskResult(tool.output.result);
+  const result =
+    tool.state === "output-available" && "result" in tool.output
+      ? tool.output.result
+      : undefined;
+  const attemptTodoCompletionSummary =
+    agentType === "attemptTodoCompletion"
+      ? getAttemptTodoCompletionSummary(result)
+      : undefined;
 
   const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
     useShowMessageList();
@@ -173,13 +183,20 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   );
 
   return (
-    <ExpandableToolContainer
-      title={title}
-      expandableDetail={expandableDetail}
-      detail={<TodoDetail todos={taskSource?.todos ?? []} />}
-      expanded={showMessageList}
-      onToggle={setShowMessageListImmediately}
-    />
+    <>
+      <ExpandableToolContainer
+        title={title}
+        expandableDetail={expandableDetail}
+        detail={<TodoDetail todos={taskSource?.todos ?? []} />}
+        expanded={showMessageList}
+        onToggle={setShowMessageListImmediately}
+      />
+      {attemptTodoCompletionSummary && (
+        <div className="my-1 py-1 pr-2 pl-6 text-muted-foreground text-sm">
+          <MessageMarkdown>{attemptTodoCompletionSummary}</MessageMarkdown>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -446,39 +446,6 @@ For each api request respone, you are only allowed to return the arguments in JS
 </api-request>
 </api-section>
 
-### EXAMPLE OUTPUT 2
-<api-section>
-<api-request name="todoWrite">
-{
-  "todos": [
-    {
-      "id": "install-dependencies",
-      "content": "Run 'bun install' to ensure all dependencies are installed.",
-      "status": "pending",
-      "priority": "high"
-    },
-    {
-      "id": "implement-footer",
-      "content": "Implement a basic Footer.",
-      "status": "pending",
-      "priority": "low"
-    },
-    {
-      "id": "add-animations",
-      "content": "Integrate framer-motion for animations.",
-      "status": "pending",
-      "priority": "medium"
-    },
-    {
-      "id": "start-dev-server",
-      "content": "Run 'bun dev' to start the development server.",
-      "status": "pending",
-      "priority": "low"
-    }
-  ]
-}
-</api-request>
-</api-section>
 `;
 
 function createStopWordStream(

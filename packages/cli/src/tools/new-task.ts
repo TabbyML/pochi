@@ -145,7 +145,7 @@ export const newTask =
           (part.state === "input-available" ||
             part.state === "output-available")
         ) {
-          result = part.input.result;
+          result = part.input.result as string;
           break;
         }
 
