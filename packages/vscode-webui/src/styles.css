@@ -26,12 +26,10 @@ code {
 }
 
 .message-list-item {
-  content-visibility: auto;
   contain-intrinsic-size: auto 240px;
 }
 
 .perf-content-visibility-off .message-list-item {
-  content-visibility: visible;
   contain-intrinsic-size: none;
 }
 
