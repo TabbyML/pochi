@@ -50,6 +50,7 @@ function CopyMenuItem({ fetchContent, text }: UpdatedCopyMenuItemProps) {
 interface DevModeButtonProps {
   messages: Message[];
   todos: Todo[] | undefined;
+  taskId?: string;
 }
 
 export function DevModeButton({ messages, todos }: DevModeButtonProps) {
@@ -75,13 +76,27 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     return JSON.stringify(todos, null, 2);
   };
 
+  const getSystemPromptContent = useCallback(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (
+        msg.role === "assistant" &&
+        msg.metadata?.kind === "assistant" &&
+        msg.metadata.systemPrompt
+      ) {
+        return msg.metadata.systemPrompt;
+      }
+    }
+    return t("devModeButton.noSystemPromptAvailable");
+  }, [messages, t]);
+
   const getCheckpintCommand = useCallback(async () => {
     const checkpointPath = await vscodeHost.readCheckpointPath();
     if (!checkpointPath) {
       return t("devModeButton.noCheckpointAvailable");
     }
     const workspaceInfo = await vscodeHost.readCurrentWorkspace();
-    return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceInfo.cwd}\\""`;
+    return `alias pgit="git --git-dir=\\\"${checkpointPath}\\\" --work-tree=\\\"${workspaceInfo.cwd}\\\""`;
   }, [t]);
 
   if (!isDevMode) return null;
@@ -119,6 +134,10 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
           <CopyMenuItem
             fetchContent={getTodosContent}
             text={t("devModeButton.copyTodos")}
+          />
+          <CopyMenuItem
+            fetchContent={getSystemPromptContent}
+            text={t("devModeButton.copySystemPrompt")}
           />
           <OpenDevStore />
           <ReviewChangesMenuItem />
