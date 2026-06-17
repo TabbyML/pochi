@@ -7,10 +7,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useSendMessage } from "@/features/chat";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
+import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { prompts } from "@getpochi/common";
 import { isStaticToolUIPart } from "ai";
-import { Check, Footprints, GitPullRequest } from "lucide-react";
+import { Check, Footprints, GitPullRequest, MessageSquare } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ToolProps } from "./types";
@@ -24,6 +25,8 @@ export const AttemptCompletionTool: React.FC<
 
   const { data: currentWorkspace } = useCurrentWorkspace();
   const { worktrees } = useWorktrees();
+  const vscodeSettings = useVSCodeSettings();
+  const reviewAgentEnabled = vscodeSettings?.reviewAgent ?? false;
 
   const currentWorktree = useMemo(() => {
     if (!worktrees || !currentWorkspace) return null;
@@ -62,6 +65,12 @@ export const AttemptCompletionTool: React.FC<
     });
   };
 
+  const onClickReviewChanges = () => {
+    sendMessage({
+      prompt: `${prompts.customAgent("reviewer")} Please review the changes above`,
+    });
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
@@ -84,6 +93,21 @@ export const AttemptCompletionTool: React.FC<
               </TooltipTrigger>
               <TooltipContent>{t("worktree.createWalkthrough")}</TooltipContent>
             </Tooltip>
+            {reviewAgentEnabled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-muted-foreground"
+                    onClick={onClickReviewChanges}
+                  >
+                    <MessageSquare className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("worktree.reviewChanges")}</TooltipContent>
+              </Tooltip>
+            )}
             {!hasPR && (
               <Tooltip>
                 <TooltipTrigger asChild>

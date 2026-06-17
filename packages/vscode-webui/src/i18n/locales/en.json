@@ -112,6 +112,7 @@
   "worktree": {
     "createPr": "Create PR",
     "createWalkthrough": "Create Walkthrough",
+    "reviewChanges": "Review Changes",
     "createDraftPr": "Create Draft PR",
     "createPrManually": "Create PR Manually",
     "installGhCli": "Please install the GitHub CLI to create PRs.",

@@ -915,6 +915,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             this.pochiConfiguration.commentsOpenViewDisabled.value,
           githubCopilotCodeCompletionEnabled:
             this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+          reviewAgent:
+            this.pochiConfiguration.advancedSettings.value.reviewAgent,
         };
       }),
     );

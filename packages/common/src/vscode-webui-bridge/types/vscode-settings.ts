@@ -8,4 +8,5 @@ export interface VSCodeSettings {
   autoSaveDisabled: boolean;
   commentsOpenViewDisabled: boolean;
   githubCopilotCodeCompletionEnabled: boolean;
+  reviewAgent?: boolean;
 }
