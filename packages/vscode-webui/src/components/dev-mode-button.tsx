@@ -96,7 +96,7 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
       return t("devModeButton.noCheckpointAvailable");
     }
     const workspaceInfo = await vscodeHost.readCurrentWorkspace();
-    return `alias pgit="git --git-dir=\\\"${checkpointPath}\\\" --work-tree=\\\"${workspaceInfo.cwd}\\\""`;
+    return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceInfo.cwd}\\""`;
   }, [t]);
 
   if (!isDevMode) return null;
