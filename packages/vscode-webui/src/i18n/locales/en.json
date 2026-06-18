@@ -32,13 +32,8 @@
     "createPlan": "Plan",
     "createPlanTooltip": "Create an implementation plan for this task",
     "planModeLabel": "Plan",
-    "todoModeLabel": "Todo",
-    "pauseTodo": "Pause todo",
-    "resumeTodo": "Resume todo",
-    "autoContinueTodo": "Auto-continue todo",
     "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
     "planModeSubmitTooltip": "Submit as plan",
-    "todoModeSubmitTooltip": "Submit in Todo mode",
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -463,9 +458,6 @@
   },
   "todoList": {
     "todos": "TODOs",
-    "pursuingTodo": "Pursuing todo",
-    "pausing": "Pausing",
-    "completedTodo": "Todo satisfied",
     "allDone": "🎉 All done!"
   },
   "commandExecutionPanel": {

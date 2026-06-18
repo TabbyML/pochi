@@ -7,7 +7,6 @@ import type {
 } from "@getpochi/common";
 import { getLogger, isForkAgentUseCase, prompts } from "@getpochi/common";
 import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
-import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
@@ -54,7 +53,6 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
-import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
 import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
@@ -286,7 +284,7 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   outputSchema?: z.ZodAny;
-  attemptCompletionSchema?: z.ZodType;
+  attemptCompletionSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -821,14 +819,7 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    const filteredMessage = filterCompletionTools(originalMessage);
-    const message = prepareAttemptTodoCompletionSubtask({
-      message: filteredMessage,
-      task: this.task,
-      taskId: this.taskId,
-      store: this.store,
-    });
-
+    const message = filterCompletionTools(originalMessage);
     this.chat.messages = [...this.chat.messages.slice(0, -1), message];
 
     const { store } = this;
@@ -1060,68 +1051,6 @@ const getCleanCheckpoint = (messages: Message[]) => {
     return lastPart.data.commit;
   }
 };
-
-function prepareAttemptTodoCompletionSubtask({
-  message,
-  task,
-  taskId,
-  store,
-}: {
-  message: Message;
-  task: Task | undefined;
-  taskId: string;
-  store: LiveKitStore;
-}): Message {
-  if (!hasActiveTodos(task?.todos)) {
-    return message;
-  }
-
-  const todoAuditTaskId = crypto.randomUUID();
-  const todoAuditToolCallId = crypto.randomUUID();
-  const nextMessage = replaceAttemptCompletionWithTodoSubtask(
-    message,
-    task?.todos ?? [],
-    {
-      toolCallId: todoAuditToolCallId,
-      uid: todoAuditTaskId,
-    },
-  );
-  const todoAuditPart =
-    nextMessage !== message
-      ? nextMessage.parts.find(
-          (part) =>
-            part.type === "tool-newTask" &&
-            part.input?._meta?.uid === todoAuditTaskId,
-        )
-      : undefined;
-
-  if (todoAuditPart?.type !== "tool-newTask" || !todoAuditPart.input) {
-    return nextMessage;
-  }
-
-  store.commit(
-    events.taskInited({
-      id: todoAuditTaskId,
-      cwd: task?.cwd ?? undefined,
-      parentId: taskId,
-      createdAt: new Date(),
-      initMessages: [
-        {
-          id: crypto.randomUUID(),
-          role: "user",
-          parts: [
-            {
-              type: "text",
-              text: todoAuditPart.input.prompt,
-            },
-          ],
-        },
-      ],
-    }),
-  );
-
-  return nextMessage;
-}
 
 function estimateTokenBreakdown(messages: Message[]) {
   let messagesTokens = 0;

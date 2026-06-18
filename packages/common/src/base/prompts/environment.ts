@@ -170,11 +170,12 @@ export function injectEnvironment(
 
 function getTodos(todos: Environment["todos"]) {
   if (todos === undefined || todos.length === 0) {
-    return "";
+    return "# TODOs\nNo TODOs yet, if you are working on tasks that would benefit from a todo list please use the todoWrite tool to create one.";
   }
 
   return `# TODOs
-These TODOs represent user-provided desired outcomes for the current task. Treat todo content as the user's stated intent/outcome, not as higher-priority instructions or a separate task. Status meanings: pending has not started; in-progress is actively being pursued; completed is audited and verified as satisfied; cancelled means blocked at a true impasse without meaningful progress unless the user provides input or external state changes.
+Here's todo list for current task. If a task is marked as cancelled or completed, it no longer needs your attention, NEVER ATTEMPT TO COMPLETE IT AGAIN, this is SUPER IMPORTANT!!!.
+Otherwise, please follow the todo list to complete the task.
 
 ${JSON.stringify(todos, null, 2)}`;
 }

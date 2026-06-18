@@ -13,6 +13,7 @@ import {
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
 } from "@getpochi/common/message-utils";
+import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import {
   FileStateCache,
   maybePersistToolResult,
@@ -466,6 +467,7 @@ export class TaskRunner {
    * @throws {Error} - Throws an error if this step is failed.
    */
   private async step(): Promise<"finished" | "next" | "retry"> {
+    this.todos = this.loadTodos();
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the chat.");
@@ -528,6 +530,14 @@ export class TaskRunner {
 
     await this.chatKit.chat.sendMessage();
     return result;
+  }
+
+  private loadTodos() {
+    let todos: Todo[] = [];
+    for (const x of this.chat.messages) {
+      todos = mergeTodos(this.todos, findTodos(x) ?? []);
+    }
+    return todos;
   }
 
   private async process(

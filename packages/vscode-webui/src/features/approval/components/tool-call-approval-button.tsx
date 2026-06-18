@@ -74,10 +74,13 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const ToolAcceptText: Record<string, string> = {
     writeToFile: t("toolInvocation.save"),
     executeCommand: t("toolInvocation.run"),
+    todoWrite: t("toolInvocation.continue"),
     newTask: t("toolInvocation.run"),
   };
 
-  const ToolRejectText: Record<string, string> = {};
+  const ToolRejectText: Record<string, string> = {
+    todoWrite: "<disabled>",
+  };
 
   const ToolAbortText: Record<string, string> = {};
 

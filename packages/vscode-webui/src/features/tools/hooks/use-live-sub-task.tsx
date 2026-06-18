@@ -11,6 +11,7 @@ import {
   useMixinReadyForRetryError,
   useRetry,
 } from "@/features/retry";
+import { useTodos } from "@/features/todo";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { blobStore } from "@/lib/remote-blob-store";
@@ -26,7 +27,6 @@ import {
   type Todo,
   compileToolPolicies,
   isUserInputToolName,
-  parseOutputSchema,
 } from "@getpochi/tools";
 import {
   getStaticToolName,
@@ -46,19 +46,9 @@ export function useLiveSubTask(
   });
   const batchExecuteManager = useBatchExecuteManager();
 
-  const agentType =
-    tool.state !== "input-streaming" ? tool.input?.agentType : undefined;
-  const {
-    customAgent,
-    customAgentModel,
-    isLoading: isCustomAgentLoading,
-  } = useCustomAgent(agentType);
-  const attemptCompletionSchema = useMemo(() => {
-    const resultSchema = customAgent?.isBuiltIn
-      ? customAgent._internal?.resultSchema
-      : undefined;
-    return resultSchema ? parseOutputSchema(resultSchema) : undefined;
-  }, [customAgent?.isBuiltIn, customAgent?._internal?.resultSchema]);
+  const { customAgent, customAgentModel } = useCustomAgent(
+    tool.state !== "input-streaming" ? tool.input?.agentType : undefined,
+  );
   // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
   const uid = tool.input?._meta?.uid!;
   const abortController = useRef(new AbortController());
@@ -103,7 +93,6 @@ export function useLiveSubTask(
     isSubTask: true,
     customAgent,
     clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
-    attemptCompletionSchema,
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
         lifecycle.streamingResult,
@@ -298,7 +287,6 @@ export function useLiveSubTask(
     enabled:
       tool.state === "input-available" &&
       isExecuting &&
-      !(agentType && isCustomAgentLoading) &&
       currentStepCount <= SubtaskMaxStep &&
       !abortController.current.signal.aborted &&
       // task is not completed or aborted
@@ -306,6 +294,12 @@ export function useLiveSubTask(
         (task?.status === "failed" && task.error?.kind === "AbortError") ||
         task?.status === "completed"
       ),
+  });
+
+  const { todos } = useTodos({
+    initialTodos: task?.todos,
+    messages,
+    todosRef,
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -341,7 +335,7 @@ export function useLiveSubTask(
   return {
     parentId: task.parentId,
     messages,
-    todos: [],
+    todos,
     isLoading,
   };
 }

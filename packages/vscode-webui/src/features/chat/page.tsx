@@ -3,7 +3,6 @@ import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
-import { useLatest } from "@/lib/hooks/use-latest";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
@@ -15,7 +14,6 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { constants, formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -52,10 +50,6 @@ import { useSubtaskInfo } from "./hooks/use-subtask-info";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { getRenderWidgetErrorMessageKey } from "./lib/render-widget-error";
-import {
-  getTodoContinuationDecision,
-  shouldResumeTodoController,
-} from "./lib/todo-continuation";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import {
   ChatContainerClassName,
@@ -85,8 +79,6 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const { t } = useTranslation();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-  const [todoPaused, setTodoPaused] = useState(false);
-  const todoPausedRef = useLatest(todoPaused);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -101,14 +93,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const subtask = useSubtaskInfo(uid, task?.parentId);
 
   const isSubTask = !!task?.parentId;
-  const currentTodos = useMemo(
-    () => toTodoArray(isSubTask ? undefined : getCurrentTodos(task, info)),
-    [isSubTask, task, info],
-  );
-
-  useEffect(() => {
-    todosRef.current = currentTodos;
-  }, [currentTodos]);
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -196,16 +180,6 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      // AI SDK v5 will retry regardless of the status if sendAutomaticallyWhen is set.
-      if (chatKit.chat.status === "error") {
-        return false;
-      }
-
-      const shouldContinueTodo = getTodoContinuationDecision(x.messages);
-      if (shouldContinueTodo !== undefined) {
-        return !todoPausedRef.current && shouldContinueTodo;
-      }
-
       if (shouldStopAutoApprove(x)) {
         autoApproveGuard.current = "stop";
       }
@@ -214,6 +188,10 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
+      // AI SDK v5 will retry regardless of the status if sendAutomaticallyWhen is set.
+      if (chatKit.chat.status === "error") {
+        return false;
+      }
       return lastAssistantMessageIsCompleteWithToolCalls(x);
     },
     onOverrideMessages,
@@ -238,13 +216,8 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { messages, sendMessage, status } = chat;
+  const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
   const isLoading = status === "streaming" || status === "submitted";
-  const hidePendingTodoAttemptCompletion =
-    !isSubTask && isLoading && hasActiveTodos(currentTodos);
-  const renderMessages = useMemo(
-    () => formatters.ui(messages, { hidePendingTodoAttemptCompletion }),
-    [messages, hidePendingTodoAttemptCompletion],
-  );
   const isTaskWithoutContent =
     (info.type === "new-task" && !info.prompt && !info.files?.length) ||
     (info.type === "open-task" && messages.length === 0);
@@ -260,26 +233,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const renderWidgetErrorKind = useRenderWidgetError({
     messages,
   });
-
-  const handleTodoPausedChange = useCallback(
-    (paused: boolean) => {
-      setTodoPaused(paused);
-      if (paused) return;
-
-      // Toggling pause is local UI state, so the SDK will not re-run
-      // sendAutomaticallyWhen by itself. If the last audit asked us to keep
-      // working, resume by sending the next automatic continuation tick.
-      if (
-        shouldResumeTodoController({
-          messages,
-          status,
-        })
-      ) {
-        void sendMessage(undefined);
-      }
-    },
-    [messages, sendMessage, status],
-  );
 
   const { repairMermaid, repairingChart } = useRepairMermaid({
     repairMermaid: chatKit.repairMermaid,
@@ -314,7 +267,6 @@ function Chat({ user, uid, info }: ChatProps) {
     t,
     setMcpConfigOverride,
     isMcpConfigLoading,
-    todosRef,
   });
 
   useSetSubtaskModel({ isSubTask, customAgent });
@@ -412,10 +364,7 @@ function Chat({ user, uid, info }: ChatProps) {
         <ChatToolbar
           chat={chat}
           task={task}
-          todos={currentTodos}
           todosRef={todosRef}
-          todoPaused={todoPaused}
-          onTodoPausedChange={handleTodoPausedChange}
           compact={chatKit.compact}
           approvalAndRetry={approvalAndRetry}
           attachmentUpload={attachmentUpload}
@@ -432,23 +381,6 @@ function Chat({ user, uid, info }: ChatProps) {
       <BackgroundTaskDebugPanel />
     </div>
   );
-}
-
-function getCurrentTodos(
-  task: Task | undefined,
-  info: PochiTaskInfo,
-): readonly Todo[] | undefined {
-  if (task?.todos && task.todos.length > 0) {
-    return task.todos;
-  }
-  if (info.type === "new-task" && info.todos) {
-    return info.todos;
-  }
-  return task?.todos;
-}
-
-function toTodoArray(todos?: readonly Todo[]): Todo[] {
-  return todos ? [...todos] : [];
 }
 
 function fromTaskError(task?: Task) {
