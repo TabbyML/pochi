@@ -76,6 +76,7 @@ import {
   TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
+import { deduplicateMessageParts } from "./renderers/trajectory-post-process";
 import { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
@@ -150,6 +151,13 @@ const program = new Command()
     "Initialize the task with messages parsed from the trajectory file specified by --experimental-stream-trajectory, and append the prompt as a new user message.",
     false,
   )
+  .addOption(
+    new Option(
+      "--experimental-stream-trajectory-strip-duplicates",
+      "Only valid when --experimental-stream-trajectory is used with an output filepath. When set, the trajectory file will be post-processed on exit to strip duplicate message parts.",
+    ).hideHelp(),
+  )
+
   .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
@@ -284,6 +292,15 @@ const program = new Command()
           "The --experimental-stream-trajectory-inherit-context flag requires --experimental-stream-trajectory to be passed a file path.",
         );
       }
+    }
+
+    if (
+      options.experimentalStreamTrajectoryStripDuplicates &&
+      typeof options.experimentalStreamTrajectory !== "string"
+    ) {
+      program.error(
+        "--experimental-stream-trajectory-strip-duplicates requires --experimental-stream-trajectory to be set with an output filepath.",
+      );
     }
 
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
@@ -454,13 +471,26 @@ const program = new Command()
       logger.debug(`Task runner exit with error: ${runtimeError.message}.`);
     } finally {
       logger.debug("Shutting down...");
+
       // Cleanup resources
       outputRenderer.shutdown();
+
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
         jsonOutputStream.end();
         await finished(jsonOutputStream);
       }
+      if (
+        options.experimentalStreamTrajectoryStripDuplicates &&
+        typeof options.experimentalStreamTrajectory === "string"
+      ) {
+        try {
+          await deduplicateMessageParts(options.experimentalStreamTrajectory);
+        } catch {
+          // ignore all errors when shutting down
+        }
+      }
+
       mcpHub?.dispose();
       browserSessionStore.dispose();
       await store.shutdownPromise();
