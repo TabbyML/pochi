@@ -163,8 +163,8 @@ const program = new Command()
     60000,
   )
   .option(
-    "--task-memory",
-    "Enable Task Memory background extraction for the current task.",
+    "--auto-compact",
+    "Enable automatic context compaction and Task Memory background extraction.",
     false,
   )
   .option(
@@ -315,7 +315,7 @@ const program = new Command()
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
     const isSubTask = selectedAgent !== undefined;
-    const taskMemoryEnabled = options.taskMemory;
+    const autoCompactEnabled = options.autoCompact;
     const projectMemoryEnabled = options.projectMemory;
     const autoMemoryManager = new AutoMemoryManager();
     const parentFileStateCache = new FileStateCache();
@@ -348,12 +348,13 @@ const program = new Command()
       projectMemoryEnabled,
     });
     const stepMetadataTracker = new StepMetadataTracker();
-    const taskMemory = taskMemoryEnabled ? {} : undefined;
+    const taskMemory = autoCompactEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
       ? {
           manager: autoMemoryManager,
         }
       : undefined;
+    let outputRenderer: OutputRenderer | undefined;
 
     const runner = new TaskRunner({
       uid,
@@ -366,7 +367,7 @@ const program = new Command()
       maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
       onSubTaskCreated: (runner: TaskRunner) => {
-        outputRenderer.renderSubTask(runner);
+        outputRenderer?.renderSubTask(runner);
       },
       customAgents,
       skills,
@@ -389,11 +390,15 @@ const program = new Command()
       },
       taskMemory,
       projectMemory,
+      disableAutoCompact: !autoCompactEnabled,
+      onCompactStart: () => outputRenderer?.renderCompactStart(),
+      onCompactFinish: (success) =>
+        outputRenderer?.renderCompactFinish(success),
       fileStateCache: parentFileStateCache,
       stepMetadataTracker,
     });
 
-    const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
+    outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
     let streamRenderer: StreamRenderer | undefined = undefined;
@@ -428,7 +433,7 @@ const program = new Command()
     } finally {
       logger.debug("Shutting down...");
       // Cleanup resources
-      outputRenderer.shutdown();
+      outputRenderer?.shutdown();
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
         jsonOutputStream.end();

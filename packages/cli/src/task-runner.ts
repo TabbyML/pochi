@@ -151,6 +151,8 @@ export interface RunnerOptions {
     contextWindowUsage?: ContextWindowUsage;
   }) => void | Promise<void>;
 
+  onCompactStart?: () => void;
+
   onCompactFinish?: (success: boolean) => void | Promise<void>;
 
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
@@ -160,6 +162,8 @@ export interface RunnerOptions {
   taskMemory?: LiveChatKitTaskMemoryOptions;
 
   projectMemory?: LiveChatKitProjectMemoryOptions;
+
+  disableAutoCompact?: boolean;
 
   fileStateCache?: FileStateCache;
 
@@ -253,6 +257,7 @@ export class TaskRunner {
           uid: taskId,
           isSubTask: true,
           onStreamFinish: undefined,
+          onCompactStart: undefined,
           onCompactFinish: undefined,
           backgroundTask: undefined,
           taskMemory: undefined,
@@ -278,6 +283,7 @@ export class TaskRunner {
 
       abortSignal: options.abortSignal,
 
+      onCompactStart: options.onCompactStart,
       onCompactFinish: options.onCompactFinish,
       getRecentFilesForCompact: () =>
         this.toolCallOptions.fileStateCache.getRecentFiles(),
@@ -285,6 +291,7 @@ export class TaskRunner {
       backgroundTask: options.backgroundTask,
       taskMemory: options.taskMemory,
       projectMemory: options.projectMemory,
+      disableAutoCompact: options.disableAutoCompact,
 
       getters: {
         getLLM: () => options.llm,

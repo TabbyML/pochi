@@ -38,6 +38,27 @@ export class OutputRenderer {
   private pendingMessageId = "";
   private pendingPartIndex = -1;
   private spinner: Spinner | undefined = undefined;
+  private compactSpinner: Spinner | undefined = undefined;
+
+  renderCompactStart() {
+    this.spinner?.stopAndPersist();
+    this.compactSpinner = createSpinner({
+      stream: this.stream,
+      text: "🧹 Compacting context",
+    }).start();
+  }
+
+  renderCompactFinish(success: boolean) {
+    const spinner = this.compactSpinner;
+    this.compactSpinner = undefined;
+    if (!spinner) return;
+
+    if (success) {
+      spinner.succeed("Context compacted");
+    } else {
+      spinner.fail("Context compaction failed");
+    }
+  }
 
   renderLastMessage(messages: Message[]) {
     if (this.renderingSubTask) {
@@ -176,6 +197,8 @@ export class OutputRenderer {
     }
     this.spinner?.stopAndPersist();
     this.spinner = undefined;
+    this.compactSpinner?.stopAndPersist();
+    this.compactSpinner = undefined;
   }
 }
 
