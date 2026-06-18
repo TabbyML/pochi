@@ -71,6 +71,9 @@ export function ToolCallLite({
     case "tool-globFiles":
       detail = <GlobFilesTool tool={tool} />;
       break;
+    case "tool-todoWrite":
+      detail = <TodoWriteTool />;
+      break;
     case "tool-editNotebook":
       detail = <EditNotebookTool tool={tool} />;
       break;
@@ -310,6 +313,17 @@ const GlobFilesTool = ({ tool }: ToolCallLiteViewProps<"globFiles">) => {
       <span>
         {t("toolInvocation.searching")} {searchCondition}
       </span>
+    </>
+  );
+};
+
+const TodoWriteTool = () => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <span className="ml-2" />
+      {t("toolInvocation.updatingToDos")}
     </>
   );
 };

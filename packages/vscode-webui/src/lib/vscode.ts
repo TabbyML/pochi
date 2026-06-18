@@ -208,13 +208,7 @@ function createVSCodeHost(): VSCodeHostApi {
           let content: string | undefined;
           let outputError: string | undefined;
           try {
-            const taskResult = extractTaskResult(globalStore, taskId);
-            content =
-              typeof taskResult === "string"
-                ? taskResult
-                : taskResult === undefined
-                  ? undefined
-                  : JSON.stringify(taskResult);
+            content = extractTaskResult(globalStore, taskId);
           } catch (error) {
             logger.warn("Failed to extract task result", error);
             outputError =

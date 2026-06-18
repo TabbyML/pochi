@@ -15,6 +15,7 @@ import { readBackgroundJobOutput } from "./read-background-job-output";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
 import { startBackgroundJob } from "./start-background-job";
+import { todoWrite } from "./todo-write";
 import { useSkill } from "./use-skill";
 
 import { writeToFile } from "./write-to-file";
@@ -30,6 +31,7 @@ const ToolMap: Record<
   globFiles,
   listFiles,
   newTask,
+  todoWrite,
   writeToFile,
   searchFiles,
   executeCommand,

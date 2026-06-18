@@ -49,7 +49,7 @@ export function useCustomAgents(filterValidFiles = false) {
 }
 
 export const useCustomAgent = (name?: string) => {
-  const { customAgents, isLoading } = useCustomAgents(true);
+  const { customAgents } = useCustomAgents(true);
   const { modelList } = useModelList(true);
   const { selectedModel: parentTaskModel } = useSelectedModels({
     isSubTask: false,
@@ -61,7 +61,6 @@ export const useCustomAgent = (name?: string) => {
     return {
       customAgent: undefined,
       customAgentModel: parentTaskModel,
-      isLoading,
     };
   }
 
@@ -76,6 +75,5 @@ export const useCustomAgent = (name?: string) => {
   return {
     customAgent,
     customAgentModel,
-    isLoading,
   };
 };
