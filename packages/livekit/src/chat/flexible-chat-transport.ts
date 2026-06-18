@@ -246,6 +246,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             finishReason: part.finishReason,
             systemPromptTokens,
             toolsTokens,
+            systemPrompt,
           } satisfies Metadata;
         }
       },

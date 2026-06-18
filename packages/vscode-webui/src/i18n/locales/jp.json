@@ -475,7 +475,8 @@
     "copyTodos": "TODOをコピー",
     "noCheckpointAvailable": "利用可能なチェックポイントがありません",
     "openStore": "ストアを開く",
-    "reviewChanges": "変更をレビュー"
+    "reviewChanges": "変更をレビュー",
+    "copySystemPrompt": "システムプロンプトをコピー"
   },
   "devRetryCountdown": {
     "attempts": "試行回数：",

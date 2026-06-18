@@ -476,7 +476,8 @@
     "copyTodos": "Copy TODOs",
     "noCheckpointAvailable": "No checkpoint available",
     "openStore": "Open Store",
-    "reviewChanges": "Review Changes"
+    "reviewChanges": "Review Changes",
+    "copySystemPrompt": "Copy System Prompt"
   },
   "devRetryCountdown": {
     "attempts": "Attempts:",
