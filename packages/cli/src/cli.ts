@@ -303,6 +303,14 @@ const program = new Command()
       );
     }
 
+    let messages: Message[] | undefined = undefined;
+    if (
+      options.experimentalStreamTrajectoryInheritContext &&
+      typeof options.experimentalStreamTrajectory === "string"
+    ) {
+      messages = parseTrajectoryFile(options.experimentalStreamTrajectory);
+    }
+
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
       undefined;
     if (
@@ -321,16 +329,12 @@ const program = new Command()
     ) {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalOutputAttemptCompletionResult,
-        { flags: "a" },
       );
     } else if (options.experimentalStreamTrajectory === true) {
       jsonOutputStream = process.stdout;
     } else if (typeof options.experimentalStreamTrajectory === "string") {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalStreamTrajectory,
-        options.experimentalStreamTrajectoryInheritContext
-          ? { flags: "w" }
-          : { flags: "a" },
       );
     }
 
@@ -389,14 +393,6 @@ const program = new Command()
           manager: autoMemoryManager,
         }
       : undefined;
-
-    let messages: Message[] | undefined = undefined;
-    if (
-      options.experimentalStreamTrajectoryInheritContext &&
-      typeof options.experimentalStreamTrajectory === "string"
-    ) {
-      messages = parseTrajectoryFile(options.experimentalStreamTrajectory);
-    }
 
     const runner = new TaskRunner({
       uid,
