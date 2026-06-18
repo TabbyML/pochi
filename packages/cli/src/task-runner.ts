@@ -138,8 +138,6 @@ export interface RunnerOptions {
    */
   abortSignal?: AbortSignal;
 
-  outputSchema?: z.ZodAny;
-
   attemptCompletionSchema?: z.ZodAny;
 
   attemptCompletionHook?: string;
@@ -276,7 +274,6 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
 
-      outputSchema: options.outputSchema,
       attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,

@@ -283,7 +283,6 @@ export type LiveChatKitOptions<T> = {
   projectMemory?: LiveChatKitProjectMemoryOptions;
 
   customAgent?: CustomAgent;
-  outputSchema?: z.ZodAny;
   attemptCompletionSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
@@ -357,7 +356,6 @@ export class LiveChatKit<
     requestUseCase,
     disableAutoCompact,
     customAgent,
-    outputSchema,
     attemptCompletionSchema,
     onStreamStart,
     onStreamFinish,
@@ -464,7 +462,6 @@ export class LiveChatKit<
       isSubTask,
       requestUseCase,
       customAgent,
-      outputSchema,
       attemptCompletionSchema,
     });
 
