@@ -64,14 +64,13 @@ import {
   ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
 } from "./lib/shutdown";
-import { StepDurationTracker } from "./lib/step-duration-tracker";
+import { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { NodeBlobStore } from "./node-blob-store";
 import {
   AttemptCompletionResultRenderer,
-  JsonRenderer,
   type StreamRenderer,
   TrajectoryStreamRenderer,
 } from "./renderers";
@@ -138,16 +137,12 @@ const program = new Command()
   )
   .optionsGroup("Options:")
   .option(
-    "--stream-json [filepath]",
-    "Stream the output in JSON format. This is useful for parsing the output in scripts. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --experimental-output-attempt-completion-result.",
-  )
-  .option(
     "--experimental-output-attempt-completion-result [filepath]",
-    "Output only the result returned by attemptCompletion tool. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
+    "Output only the result returned by attemptCompletion tool. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --experimental-stream-trajectory.",
   )
   .option(
     "--experimental-stream-trajectory [filepath]",
-    "Stream message parts whenever signal.messages updates. Cannot be used with --stream-json or --experimental-output-attempt-completion-result.",
+    "Stream message parts whenever signal.messages updates. Cannot be used with --experimental-output-attempt-completion-result.",
   )
   .option(
     "--max-steps <number>",
@@ -180,12 +175,6 @@ const program = new Command()
   .option(
     "--agent <name>",
     "Run the task as a sub-agent using the specified custom agent. This applies the agent's system prompt and tool restrictions, matching the behavior of sub-tasks created via the newTask tool.",
-  )
-  .addOption(
-    new Option(
-      "--experimental-output-schema <schema>",
-      "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
-    ).hideHelp(),
   )
   .addOption(
     new Option(
@@ -286,20 +275,15 @@ const program = new Command()
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
       undefined;
     if (
-      (options.streamJson ? 1 : 0) +
-        (options.experimentalOutputAttemptCompletionResult ? 1 : 0) +
+      (options.experimentalOutputAttemptCompletionResult ? 1 : 0) +
         (options.experimentalStreamTrajectory ? 1 : 0) >
       1
     ) {
       program.error(
-        "Cannot use more than one of --stream-json, --experimental-output-attempt-completion-result, or --experimental-stream-trajectory at the same time.",
+        "Cannot use both --experimental-output-attempt-completion-result and --experimental-stream-trajectory at the same time.",
       );
     }
-    if (options.streamJson === true) {
-      jsonOutputStream = process.stdout;
-    } else if (typeof options.streamJson === "string") {
-      jsonOutputStream = fs.createWriteStream(options.streamJson);
-    } else if (options.experimentalOutputAttemptCompletionResult === true) {
+    if (options.experimentalOutputAttemptCompletionResult === true) {
       jsonOutputStream = process.stdout;
     } else if (
       typeof options.experimentalOutputAttemptCompletionResult === "string"
@@ -363,7 +347,7 @@ const program = new Command()
       autoMemoryManager,
       projectMemoryEnabled,
     });
-    const stepDurationTracker = new StepDurationTracker();
+    const stepMetadataTracker = new StepMetadataTracker();
     const taskMemory = taskMemoryEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
       ? {
@@ -390,9 +374,6 @@ const program = new Command()
       abortSignal: abortController.signal,
       isSubTask,
       customAgent: selectedAgent,
-      outputSchema: options.experimentalOutputSchema
-        ? parseOutputSchema(options.experimentalOutputSchema)
-        : undefined,
       attemptCompletionSchema: options.attemptCompletionSchema
         ? parseOutputSchema(options.attemptCompletionSchema)
         : undefined,
@@ -409,7 +390,7 @@ const program = new Command()
       taskMemory,
       projectMemory,
       fileStateCache: parentFileStateCache,
-      stepDurationTracker,
+      stepMetadataTracker,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
@@ -423,7 +404,7 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
-          stepDurationTracker,
+          stepMetadataTracker,
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
@@ -432,13 +413,6 @@ const program = new Command()
           {
             attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
           },
-        );
-      } else {
-        streamRenderer = new JsonRenderer(
-          jsonOutputStream,
-          store,
-          blobStore,
-          runner.state,
         );
       }
     }

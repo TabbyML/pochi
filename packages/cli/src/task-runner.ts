@@ -13,6 +13,7 @@ import {
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
 } from "@getpochi/common/message-utils";
+import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import {
   FileStateCache,
   maybePersistToolResult,
@@ -57,7 +58,7 @@ import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
-import type { StepDurationTracker } from "./lib/step-duration-tracker";
+import type { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type {
@@ -137,8 +138,6 @@ export interface RunnerOptions {
    */
   abortSignal?: AbortSignal;
 
-  outputSchema?: z.ZodAny;
-
   attemptCompletionSchema?: z.ZodAny;
 
   attemptCompletionHook?: string;
@@ -178,7 +177,7 @@ export interface RunnerOptions {
    */
   asyncWaitTimeoutInMs?: number;
 
-  stepDurationTracker?: StepDurationTracker;
+  stepMetadataTracker?: StepMetadataTracker;
 }
 
 const logger = getLogger("TaskRunner");
@@ -199,7 +198,7 @@ export class TaskRunner {
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
-  private readonly stepDurationTracker?: StepDurationTracker;
+  private readonly stepMetadataTracker?: StepMetadataTracker;
 
   private abortSignal?: AbortSignal;
 
@@ -275,7 +274,6 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
 
-      outputSchema: options.outputSchema,
       attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
@@ -319,26 +317,32 @@ export class TaskRunner {
       },
 
       onStreamFinish: (data) => {
-        const {
-          messages,
-          error,
-          startedAt: startAt,
-          finishedAt: finishAt,
-        } = data;
+        const { messages, error, startedAt, finishedAt } = data;
         const lastMessage = messages[messages.length - 1];
-        if (lastMessage !== undefined) {
-          const stepCount = lastMessage.parts.filter(
-            (p) => p.type === "step-start",
-          ).length;
-          if (stepCount > 0 && startAt && finishAt) {
-            this.stepDurationTracker?.trackStep({
+        if (
+          lastMessage?.metadata &&
+          lastMessage.metadata.kind === "assistant"
+        ) {
+          const stepIndex =
+            lastMessage.parts.filter((p) => p.type === "step-start").length - 1;
+          if (stepIndex >= 0) {
+            this.stepMetadataTracker?.trackStep({
               taskId: this.taskId,
               messageId: lastMessage.id,
-              stepIndex: stepCount - 1,
+              stepIndex,
               hasError: error !== undefined,
-              startedAt: startAt,
-              finishedAt: finishAt,
-              duration: finishAt.getTime() - startAt.getTime(),
+              startedAt,
+              finishedAt,
+              duration:
+                startedAt && finishedAt
+                  ? finishedAt.getTime() - startedAt.getTime()
+                  : undefined,
+              metadata: {
+                finishReason: lastMessage.metadata.finishReason,
+                totalTokens: lastMessage.metadata.totalTokens,
+                systemPromptTokens: lastMessage.metadata.systemPromptTokens,
+                toolsTokens: lastMessage.metadata.toolsTokens,
+              },
             });
           }
         }
@@ -362,7 +366,7 @@ export class TaskRunner {
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
     this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 60000;
-    this.stepDurationTracker = options.stepDurationTracker;
+    this.stepMetadataTracker = options.stepMetadataTracker;
     this.abortSignal = options.abortSignal;
   }
 
@@ -460,6 +464,7 @@ export class TaskRunner {
    * @throws {Error} - Throws an error if this step is failed.
    */
   private async step(): Promise<"finished" | "next" | "retry"> {
+    this.todos = this.loadTodos();
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the chat.");
@@ -522,6 +527,14 @@ export class TaskRunner {
 
     await this.chatKit.chat.sendMessage();
     return result;
+  }
+
+  private loadTodos() {
+    let todos: Todo[] = [];
+    for (const x of this.chat.messages) {
+      todos = mergeTodos(this.todos, findTodos(x) ?? []);
+    }
+    return todos;
   }
 
   private async process(

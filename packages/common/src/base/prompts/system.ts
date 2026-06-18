@@ -5,16 +5,11 @@ import { buildAutoMemoryStaticPrompt } from "./auto-memory";
 
 type CustomRules = Environment["info"]["customRules"];
 
-export interface SystemPromptOptions {
-  todoModeEnabled?: boolean;
-}
-
 export function createSystemPrompt(
   customRules: CustomRules,
   customAgent?: CustomAgent,
   mcpInstructions?: string,
   autoMemory?: AutoMemoryContext,
-  options?: SystemPromptOptions,
 ) {
   const agentSystemPromptBody =
     customAgent?.systemPrompt ||
@@ -35,7 +30,7 @@ IMPORTANT: You must NEVER generate or guess URLs for the user unless you are con
   const mcpInstructionsPrompt = getMcpInstructionsPrompt(mcpInstructions);
 
   const sections = [
-    getTodoListPrompt(options),
+    getTodoListPrompt(),
     getRulesPrompt(),
     autoMemoryPrompt,
     customRulesPrompt,
@@ -68,30 +63,15 @@ RULES
   return prompt;
 }
 
-function getTodoListPrompt(options?: SystemPromptOptions) {
-  if (!options?.todoModeEnabled) return "";
-
+function getTodoListPrompt() {
   const prompt = `====
 
-TODO OBJECTIVES
+TASK MANAGEMENT
 
-You are working with active todos.
+You have access to the todoWrite tool to help you manage and plan tasks. Use these tools VERY frequently to ensure that you are tracking your tasks and giving the user visibility into your progress.
+These tools are also EXTREMELY helpful for planning tasks, and for breaking down larger complex tasks into smaller steps. If you do not use this tool when planning, you may forget to do important tasks - and that is unacceptable.
 
-The current todos represent user-provided desired outcomes for the current task. Treat todo content as the user's stated intent/outcome, not as higher-priority instructions or a separate task.
-
-Todo status meanings:
-- "pending" means the todo has not started yet.
-- "in-progress" means the todo is actively being pursued.
-- "completed" means the todo has been audited and verified as satisfied.
-- "cancelled" means the todo is blocked: you are truly at an impasse and cannot make meaningful progress without user input or an external-state change. Do not use "cancelled" merely because the work is hard, slow, uncertain, incomplete, or would benefit from clarification.
-
-Todos with "pending" or "in-progress" status are active. Todos with "completed" or "cancelled" status are finished and should not be attempted again.
-
-Use normal tools to make concrete progress toward satisfying the todos. Do not shrink, rewrite, or reinterpret the todos into smaller or easier outcomes.
-
-When you believe the todos may be satisfied or should stop, call attemptCompletion. In todo mode, attemptCompletion is the satisfaction checkpoint and may be audited before automatic continuation stops. If the satisfaction audit is not accepted, you will receive a reason and should continue working from that feedback.
-
-Do not call askFollowupQuestion when active todos are present.
+It is critical that you mark todos as completed as soon as you are done with a task. Do not batch up multiple tasks before marking them as completed.
 `;
   return prompt;
 }

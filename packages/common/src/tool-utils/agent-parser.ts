@@ -12,11 +12,6 @@ const CustomAgentFrontmatter = z.object({
   model: z.string().optional(),
   tools: z.union([z.string(), z.array(z.string())]).optional(),
   omitAgentsMd: z.boolean().optional(),
-  _internal: z
-    .object({
-      resultSchema: z.string().optional(),
-    })
-    .optional(),
 });
 
 const EmptyFrontmatterMessage =
@@ -97,7 +92,6 @@ export async function parseAgentFile(
     systemPrompt,
     model: frontmatterData.model,
     omitAgentsMd: frontmatterData.omitAgentsMd,
-    _internal: frontmatterData._internal,
   } satisfies ValidCustomAgentFile;
 }
 

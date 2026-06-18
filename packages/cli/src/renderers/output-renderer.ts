@@ -260,6 +260,25 @@ export function renderToolPart(
     };
   }
 
+  if ((part.type as string) === "tool-webFetch") {
+    const { url = "unknown" } = (part.input as { url?: string }) || {};
+    return {
+      text: `🌐 Fetching ${chalk.bold(url)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
+  if ((part.type as string) === "tool-webSearch") {
+    const { query = "" } = (part.input as { query?: string | string[] }) || {};
+    const queryText = Array.isArray(query) ? query.join(", ") : query;
+    return {
+      text: `🔎 Searching the web for ${chalk.bold(queryText)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
   // Interactive tools
   if (part.type === "tool-askFollowupQuestion") {
     const { questions } = part.input || {};
@@ -300,6 +319,14 @@ export function renderToolPart(
     };
   }
 
+  if (part.type === "tool-todoWrite") {
+    const { todos = [] } = part.input || {};
+    return {
+      text: `📋 Updating todo list (${todos.length} items)`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
   // Command execution
   if (part.type === "tool-executeCommand") {
     const { command = "" } = part.input || {};
@@ -324,7 +351,7 @@ export function renderToolPart(
     if (attemptCompletionSchemaOverride) {
       content = JSON.stringify(input.result, null, 2);
     } else {
-      content = input.result as string;
+      content = input.result;
     }
     const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${content}`;
 

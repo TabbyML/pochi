@@ -6,11 +6,12 @@ import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
 import { type ResizeEvent, ShareEvent } from "@getpochi/common/share-utils";
 import type { Message } from "@getpochi/livekit";
+import type { Todo } from "@getpochi/tools";
 import { createChannel } from "bidc";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ErrorMessageView } from "../chat/components/error-message-view";
-import { TodoList } from "../todo";
+import { TodoList, useTodos } from "../todo";
 
 type BIDCChannel = ReturnType<typeof createChannel>;
 
@@ -73,7 +74,13 @@ export function SharePage() {
     [messages],
   );
 
-  const todos = shareData?.todos ?? [];
+  const todosRef = useRef<Todo[]>((shareData?.todos ?? []) as Todo[]);
+
+  const { todos } = useTodos({
+    initialTodos: shareData?.todos,
+    messages: messages as Message[],
+    todosRef,
+  });
 
   return (
     <VSCodeWebProvider>

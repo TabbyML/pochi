@@ -132,7 +132,7 @@ export const CheckpointUI: React.FC<{
     if (isPending && currentAction === "fork") {
       return t("checkpointUI.forking");
     }
-    if (showActionSuccessIcon && currentAction === "restore") {
+    if (showActionSuccessIcon && currentAction === "fork") {
       return t("checkpointUI.success");
     }
     return t("checkpointUI.fork");

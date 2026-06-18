@@ -30,13 +30,8 @@
     "createPlan": "计划",
     "createPlanTooltip": "为此任务创建实施计划",
     "planModeLabel": "计划",
-    "todoModeLabel": "Todo",
-    "pauseTodo": "暂停 Todo",
-    "resumeTodo": "继续 Todo",
-    "autoContinueTodo": "自动推进 Todo",
     "planModeToggleShortcutTooltip": "Shift + Tab 切换",
     "planModeSubmitTooltip": "以计划模式提交",
-    "todoModeSubmitTooltip": "以 Todo 模式提交",
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -455,9 +450,6 @@
   },
   "todoList": {
     "todos": "待办事项",
-    "pursuingTodo": "推进 Todo",
-    "pausing": "暂停中",
-    "completedTodo": "Todo 已满足",
     "allDone": "🎉 全部完成！"
   },
   "commandExecutionPanel": {
@@ -481,7 +473,8 @@
     "copyTodos": "复制待办事项",
     "noCheckpointAvailable": "没有可用的检查点",
     "openStore": "打开存储",
-    "reviewChanges": "审查变更"
+    "reviewChanges": "审查变更",
+    "copySystemPrompt": "复制系统提示词"
   },
   "devRetryCountdown": {
     "attempts": "尝试次数：",

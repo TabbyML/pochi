@@ -6,7 +6,6 @@ import type {
   PochiRequestUseCase,
 } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
-import { hasActiveTodos } from "@getpochi/common/message-utils";
 import * as R from "remeda";
 
 import {
@@ -39,7 +38,6 @@ import {
   createReasoningMiddleware,
   createToolCallMiddleware,
 } from "./middlewares";
-import { createOutputSchemaMiddleware } from "./middlewares/output-schema-middleware";
 import { createModel } from "./models";
 import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
@@ -70,8 +68,7 @@ export type ChatTransportOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
-  outputSchema?: z.ZodAny;
-  attemptCompletionSchema?: z.ZodType;
+  attemptCompletionSchema?: z.ZodAny;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -82,8 +79,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
-  private readonly outputSchema?: z.ZodAny;
-  private readonly attemptCompletionSchema?: z.ZodType;
+  private readonly attemptCompletionSchema?: z.ZodAny;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -94,7 +90,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.store = options.store;
     this.blobStore = options.blobStore;
     this.customAgent = options.customAgent;
-    this.outputSchema = options.outputSchema;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
   }
 
@@ -119,8 +114,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
     const skills = this.getters.getSkills?.();
-    const todoModeEnabled =
-      !this.isSubTask && hasActiveTodos(environment?.todos);
 
     await this.onStart?.({
       messages,
@@ -147,17 +140,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       middlewares.push(createReasoningMiddleware());
     }
 
-    if (this.outputSchema) {
-      middlewares.push(
-        createOutputSchemaMiddleware(
-          chatId,
-          this.store.storeId,
-          model,
-          this.outputSchema,
-        ),
-      );
-    }
-
     if (llm.useToolCallMiddleware) {
       middlewares.push(
         createToolCallMiddleware(llm.type !== "google-vertex-tuning"),
@@ -176,7 +158,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       skills,
       attemptCompletionSchema: this.attemptCompletionSchema,
       mcpTools,
-      todoModeEnabled,
     });
     if (tools.readFile) {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
@@ -187,7 +168,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       this.customAgent,
       mcpInfo?.instructions,
       autoMemory,
-      { todoModeEnabled },
     );
     const systemPromptChars = systemPrompt.length;
     const toolsChars = JSON.stringify(tools).length;
@@ -251,6 +231,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             finishReason: part.finishReason,
             systemPromptTokens,
             toolsTokens,
+            systemPrompt,
           } satisfies Metadata;
         }
       },

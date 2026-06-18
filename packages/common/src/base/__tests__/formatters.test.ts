@@ -126,60 +126,6 @@ describe('formatters', () => {
       expect((formatted[0].parts[0] as any).state).toBe('output-available');
       expect((formatted[0].parts[1] as any).state).toBe('input-available');
     });
-
-    it('should hide a pending todo attemptCompletion when requested', () => {
-      const messages: UIMessage[] = [
-        {
-          id: 'assistant-1',
-          role: 'assistant',
-          parts: [
-            { type: 'text', text: 'Checking the todo...' },
-            createToolPart('attemptCompletion', 'input-available', {
-              result: 'done',
-            }),
-          ],
-        },
-      ];
-
-      const formatted = formatters.ui(messages, {
-        hidePendingTodoAttemptCompletion: true,
-      });
-
-      expect(formatted[0].parts).toEqual([
-        { type: 'text', text: 'Checking the todo...' },
-      ]);
-    });
-
-    it('should hide deprecated todoWrite tool calls', () => {
-      const messages: UIMessage[] = [
-        {
-          id: 'assistant-1',
-          role: 'assistant',
-          parts: [
-            { type: 'text', text: 'Working on todos.' },
-            createToolPart('todoWrite', 'output-available', {
-              todos: [],
-            }),
-          ],
-        },
-        {
-          id: 'assistant-2',
-          role: 'assistant',
-          parts: [
-            createToolPart('todoWrite', 'output-available', {
-              todos: [],
-            }),
-          ],
-        },
-      ];
-
-      const formatted = formatters.ui(messages);
-
-      expect(formatted).toHaveLength(1);
-      expect(formatted[0].parts).toEqual([
-        { type: 'text', text: 'Working on todos.' },
-      ]);
-    });
   });
 
   describe('resolvePendingToolCalls', () => {
@@ -289,63 +235,6 @@ describe('formatters', () => {
       const formatted = formatters.llm(clone(messages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
-    });
-
-    it('should replace attemptTodoCompletion subtasks with attemptCompletion', () => {
-      const auditResult = {
-        success: false,
-        summary: 'More work remains.',
-        todoUpdates: [{ status: 'in-progress' }],
-      };
-      const attemptCompletionInput = {
-        result: 'The implementation is complete.',
-      };
-      const messages: UIMessage[] = [
-        {
-          id: 'assistant-1',
-          role: 'assistant',
-          parts: [
-            createToolPart(
-              'newTask',
-              'output-available',
-              {
-                agentType: 'attemptTodoCompletion',
-                _meta: {
-                  uid: 'audit-task-1',
-                  sourceAttemptCompletion: {
-                    toolCallId: 'attempt-tool-1',
-                    input: attemptCompletionInput,
-                  },
-                },
-              },
-              { result: auditResult },
-            ),
-          ],
-        },
-      ];
-      const toolPart = messages[0].parts[0] as any;
-      toolPart.callProviderMetadata = {
-        google: {
-          thoughtSignature: 'signature-1',
-        },
-      };
-
-      const formatted = formatters.llm(clone(messages));
-      const formattedToolPart = formatted[0].parts[0] as any;
-
-      expect(formattedToolPart.type).toBe('tool-attemptCompletion');
-      expect(formattedToolPart.state).toBe('output-available');
-      expect(formattedToolPart.toolCallId).toBe('attempt-tool-1');
-      expect(formattedToolPart.input).toEqual(attemptCompletionInput);
-      expect(formattedToolPart.output).toEqual({
-        success: false,
-        reason: 'More work remains.',
-      });
-      expect(formattedToolPart.callProviderMetadata).toEqual({
-        google: {
-          thoughtSignature: 'signature-1',
-        },
-      });
     });
   });
 

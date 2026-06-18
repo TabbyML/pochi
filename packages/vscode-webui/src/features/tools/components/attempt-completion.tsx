@@ -1,4 +1,4 @@
-import { CodeBlock, MessageMarkdown } from "@/components/message";
+import { MessageMarkdown } from "@/components/message";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -7,14 +7,12 @@ import {
 } from "@/components/ui/tooltip";
 import { useSendMessage } from "@/features/chat";
 import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { prompts } from "@getpochi/common";
 import { isStaticToolUIPart } from "ai";
-import { Check, Footprints, GitPullRequest, MessageSquare } from "lucide-react";
+import { Check, Footprints, GitPullRequest } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { getAttemptCompletionResultDisplay } from "./tool-result-display";
 import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
@@ -22,13 +20,10 @@ export const AttemptCompletionTool: React.FC<
 > = ({ tool: toolCall, messages, isSubTask }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
-  const resultContent = getAttemptCompletionResultDisplay(result);
   const sendMessage = useSendMessage();
 
   const { data: currentWorkspace } = useCurrentWorkspace();
   const { worktrees } = useWorktrees();
-  const vscodeSettings = useVSCodeSettings();
-  const reviewAgentEnabled = vscodeSettings?.reviewAgent ?? false;
 
   const currentWorktree = useMemo(() => {
     if (!worktrees || !currentWorkspace) return null;
@@ -53,7 +48,7 @@ export const AttemptCompletionTool: React.FC<
   }, [messages, toolCall.toolCallId]);
 
   // Return null if there's nothing to display
-  if (!resultContent.content) {
+  if (!result) {
     return null;
   }
 
@@ -64,12 +59,6 @@ export const AttemptCompletionTool: React.FC<
   const onClickCreateWalkthrough = () => {
     sendMessage({
       prompt: `${prompts.customAgent("walkthrough")} Please create a walkthrough for the changes above`,
-    });
-  };
-
-  const onClickReviewChanges = () => {
-    sendMessage({
-      prompt: `${prompts.customAgent("reviewer")} Please review the changes above`,
     });
   };
 
@@ -95,21 +84,6 @@ export const AttemptCompletionTool: React.FC<
               </TooltipTrigger>
               <TooltipContent>{t("worktree.createWalkthrough")}</TooltipContent>
             </Tooltip>
-            {reviewAgentEnabled && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 text-muted-foreground"
-                    onClick={onClickReviewChanges}
-                  >
-                    <MessageSquare className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t("worktree.reviewChanges")}</TooltipContent>
-              </Tooltip>
-            )}
             {!hasPR && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -128,11 +102,7 @@ export const AttemptCompletionTool: React.FC<
           </div>
         )}
       </div>
-      {resultContent.type === "json" ? (
-        <CodeBlock language="json" value={resultContent.content} />
-      ) : (
-        <MessageMarkdown>{resultContent.content}</MessageMarkdown>
-      )}
+      <MessageMarkdown>{result}</MessageMarkdown>
     </div>
   );
 };
