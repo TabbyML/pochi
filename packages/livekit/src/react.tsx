@@ -20,6 +20,7 @@ export function useLiveChatKit(
       store.storeId,
       rest.taskId,
       rest.isSubTask,
+      rest.enableAutoCompact,
       rest.backgroundTask,
       rest.taskMemory,
       rest.projectMemory,

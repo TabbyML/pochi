@@ -92,6 +92,7 @@ export function useLiveSubTask(
     getters,
     isSubTask: true,
     customAgent,
+    enableAutoCompact: true,
     clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
