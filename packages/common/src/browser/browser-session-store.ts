@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import { signal } from "@preact/signals-core";
 import { getLogger } from "../base";
-import { getCorsProxyUrl } from "../cors-proxy";
 import { isVSCodeEnvironment } from "../env-utils";
 import type { BrowserSession } from "./types";
 import { getAvailablePort } from "./utils";
@@ -35,10 +34,7 @@ export class BrowserSessionStore implements Disposable {
     if (enableStream) {
       const port = await getAvailablePort();
       browserSession.port = port;
-      const streamUrl = `ws://localhost:${port}`;
-      browserSession.streamUrl = isVSCodeEnvironment()
-        ? getCorsProxyUrl(streamUrl)
-        : streamUrl;
+      browserSession.streamUrl = `ws://localhost:${port}`;
     }
 
     this.browserSessions.value = {

@@ -26,7 +26,7 @@ import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
   type Todo,
   compileToolPolicies,
-  isCompletionToolName,
+  isUserInputToolName,
 } from "@getpochi/tools";
 import {
   getStaticToolName,
@@ -92,11 +92,7 @@ export function useLiveSubTask(
     getters,
     isSubTask: true,
     customAgent,
-    onCompactFinish: (success: boolean) => {
-      if (success) {
-        return vscodeHost.clearFileStateCache(uid);
-      }
-    },
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
         lifecycle.streamingResult,
@@ -119,7 +115,7 @@ export function useLiveSubTask(
       }
 
       // completion tools
-      if (isCompletionToolName(toolCall.toolName)) {
+      if (isUserInputToolName(toolCall.toolName)) {
         // no-op
         return;
       }
@@ -189,7 +185,7 @@ export function useLiveSubTask(
     setMessages,
     sendMessage,
     regenerate,
-    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
+    prepareLastMessageForRetry: chatKit.prepareLastMessageForRetry,
   });
   const retry = useCallback(
     (error?: Error) => {

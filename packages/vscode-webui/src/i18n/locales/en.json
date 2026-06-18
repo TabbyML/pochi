@@ -112,6 +112,7 @@
   "worktree": {
     "createPr": "Create PR",
     "createWalkthrough": "Create Walkthrough",
+    "reviewChanges": "Review Changes",
     "createDraftPr": "Create Draft PR",
     "createPrManually": "Create PR Manually",
     "installGhCli": "Please install the GitHub CLI to create PRs.",
@@ -475,7 +476,8 @@
     "copyTodos": "Copy TODOs",
     "noCheckpointAvailable": "No checkpoint available",
     "openStore": "Open Store",
-    "reviewChanges": "Review Changes"
+    "reviewChanges": "Review Changes",
+    "copySystemPrompt": "Copy System Prompt"
   },
   "devRetryCountdown": {
     "attempts": "Attempts:",
@@ -582,6 +584,6 @@
   },
   "builtInAgentsSettings": {
     "title": "Built-in Agents",
-    "browser": "Browser"
+    "browser": "browser"
   }
 }

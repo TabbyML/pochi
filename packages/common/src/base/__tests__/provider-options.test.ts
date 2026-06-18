@@ -5,6 +5,7 @@ describe("PochiProviderOptions", () => {
   it("accepts fork agent labels as request use cases", () => {
     const result = PochiProviderOptions.safeParse({
       taskId: "task-1",
+      storeId: "store-1",
       client: "vscode",
       useCase: "task-memory",
     });
@@ -15,6 +16,7 @@ describe("PochiProviderOptions", () => {
   it("rejects unknown request use cases", () => {
     const result = PochiProviderOptions.safeParse({
       taskId: "task-1",
+      storeId: "store-1",
       client: "vscode",
       useCase: "custom-fork-label",
     });

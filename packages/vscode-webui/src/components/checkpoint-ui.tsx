@@ -132,7 +132,7 @@ export const CheckpointUI: React.FC<{
     if (isPending && currentAction === "fork") {
       return t("checkpointUI.forking");
     }
-    if (showActionSuccessIcon && currentAction === "restore") {
+    if (showActionSuccessIcon && currentAction === "fork") {
       return t("checkpointUI.success");
     }
     return t("checkpointUI.fork");
@@ -185,13 +185,13 @@ export const CheckpointUI: React.FC<{
   return (
     <div
       className={cn(
-        "relative min-h-5 w-full opacity-0 transition-opacity duration-200",
+        "relative w-full opacity-0 transition-opacity duration-200",
         showCheckpoint && "opacity-100",
       )}
     >
       <div
         className={cn(
-          "-translate-x-1/2 -translate-y-1/2 group absolute top-1/2 left-1/2 z-10 mx-auto flex min-h-5 w-full max-w-[72px] select-none items-center hover:max-w-full",
+          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full max-w-[72px] select-none items-center hover:max-w-full",
           isLoading && "pointer-events-none",
           className,
         )}

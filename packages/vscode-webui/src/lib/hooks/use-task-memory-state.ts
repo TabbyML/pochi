@@ -16,10 +16,14 @@ const defaultTaskMemoryState: TaskMemoryState = {
  * Uses ThreadSignal for real-time updates.
  * @useSignals this comment is needed to enable signals in this hook
  */
-export const useTaskMemoryState = (taskId: string) => {
+export const useTaskMemoryState = (
+  taskId: string,
+  options: { enabled?: boolean } = {},
+) => {
   const { data, isLoading } = useQuery({
     queryKey: ["taskMemoryState", taskId],
     queryFn: () => fetchTaskMemoryState(taskId),
+    enabled: options.enabled ?? true,
     staleTime: Number.POSITIVE_INFINITY,
   });
 

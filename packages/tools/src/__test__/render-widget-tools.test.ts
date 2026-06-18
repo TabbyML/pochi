@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createClientTools,
   isAutoSuccessToolName,
-  isCompletionToolName,
-  isCompletionToolPart,
+  isUserInputToolName,
+  isUserInputToolPart,
   isReadonlyToolCall,
   selectAgentTools,
 } from "../index";
@@ -78,10 +78,10 @@ describe("render widget tools", () => {
   });
 
   it("treats renderWidget as a completion and auto-success tool", () => {
-    expect(isCompletionToolName("attemptCompletion")).toBe(true);
-    expect(isCompletionToolName("renderWidget")).toBe(true);
+    expect(isUserInputToolName("attemptCompletion")).toBe(true);
+    expect(isUserInputToolName("renderWidget")).toBe(true);
     expect(
-      isCompletionToolPart({
+      isUserInputToolPart({
         type: "tool-renderWidget",
         toolCallId: "widget-1",
         state: "input-available",

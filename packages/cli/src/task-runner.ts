@@ -1,12 +1,17 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts, toErrorMessage } from "@getpochi/common";
+import {
+  type AutoMemoryContext,
+  type ContextWindowUsage,
+  getLogger,
+  prompts,
+  toErrorMessage,
+} from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
-  prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import {
@@ -18,19 +23,27 @@ import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
   type LLMRequestData,
+  type LiveChatKitBackgroundTaskOptions,
+  type LiveChatKitProjectMemoryOptions,
+  type LiveChatKitTaskMemoryOptions,
   type LiveKitStore,
   type Message,
+  type Task,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
-import { type BatchedToolCallResult, ToolCallQueue } from "@getpochi/tools";
+import {
+  type BatchedToolCallResult,
+  ToolCallQueue,
+  getToolCallCancelErrorMessage,
+} from "@getpochi/tools";
 import {
   type CompiledToolPolicies,
   type CustomAgent,
   type Skill,
   type Todo,
   compileToolPolicies,
-  isCompletionToolPart,
+  isUserInputToolPart,
   validateToolPolicy,
 } from "@getpochi/tools";
 import {
@@ -45,6 +58,7 @@ import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
+import type { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type {
@@ -66,6 +80,9 @@ export interface RunnerOptions {
 
   // The parts to use for creating the task
   parts?: Message["parts"];
+
+  // The seeded messages to initialize the task with
+  messages?: Message[];
 
   /**
    * The current working directory for the task runner.
@@ -124,11 +141,30 @@ export interface RunnerOptions {
    */
   abortSignal?: AbortSignal;
 
-  outputSchema?: z.ZodAny;
-
   attemptCompletionSchema?: z.ZodAny;
 
   attemptCompletionHook?: string;
+
+  onStreamFinish?: (data: {
+    id: string;
+    cwd: string | null;
+    status: Task["status"];
+    messages: Message[];
+    error?: Error;
+    contextWindowUsage?: ContextWindowUsage;
+  }) => void | Promise<void>;
+
+  onCompactFinish?: (success: boolean) => void | Promise<void>;
+
+  getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
+
+  backgroundTask?: LiveChatKitBackgroundTaskOptions;
+
+  taskMemory?: LiveChatKitTaskMemoryOptions;
+
+  projectMemory?: LiveChatKitProjectMemoryOptions;
+
+  fileStateCache?: FileStateCache;
 
   /**
    * The file system to use for the task runner.
@@ -143,6 +179,8 @@ export interface RunnerOptions {
    * Set to 0 to disable waiting.
    */
   asyncWaitTimeoutInMs?: number;
+
+  stepMetadataTracker?: StepMetadataTracker;
 }
 
 const logger = getLogger("TaskRunner");
@@ -163,6 +201,8 @@ export class TaskRunner {
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
+  private readonly stepMetadataTracker?: StepMetadataTracker;
+
   private abortSignal?: AbortSignal;
 
   readonly taskId: string;
@@ -189,7 +229,7 @@ export class TaskRunner {
     this.toolCallOptions = {
       rg: options.rg,
       fileSystem: this.fileSystem,
-      fileStateCache: new FileStateCache(),
+      fileStateCache: options.fileStateCache ?? new FileStateCache(),
       blobStore: this.blobStore,
 
       customAgents: options.customAgents,
@@ -215,6 +255,12 @@ export class TaskRunner {
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
+          onStreamFinish: undefined,
+          onCompactFinish: undefined,
+          backgroundTask: undefined,
+          taskMemory: undefined,
+          projectMemory: undefined,
+          fileStateCache: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -231,16 +277,17 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
 
-      outputSchema: options.outputSchema,
       attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
 
-      onCompactFinish: (success: boolean) => {
-        if (success) {
-          this.toolCallOptions.fileStateCache.clear();
-        }
-      },
+      onCompactFinish: options.onCompactFinish,
+      getRecentFilesForCompact: () =>
+        this.toolCallOptions.fileStateCache.getRecentFiles(),
+      clearFileStateCache: () => this.toolCallOptions.fileStateCache.clear(),
+      backgroundTask: options.backgroundTask,
+      taskMemory: options.taskMemory,
+      projectMemory: options.projectMemory,
 
       getters: {
         getLLM: () => options.llm,
@@ -254,6 +301,11 @@ export class TaskRunner {
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
+        ...(options.getAutoMemory
+          ? {
+              getAutoMemory: options.getAutoMemory,
+            }
+          : {}),
         ...(options.mcpHub
           ? {
               getMcpInfo: () => {
@@ -266,7 +318,46 @@ export class TaskRunner {
             }
           : {}),
       },
+
+      onStreamFinish: (data) => {
+        const { messages, error, startedAt, finishedAt } = data;
+        const lastMessage = messages[messages.length - 1];
+        if (
+          lastMessage?.metadata &&
+          lastMessage.metadata.kind === "assistant"
+        ) {
+          const stepIndex =
+            lastMessage.parts.filter((p) => p.type === "step-start").length - 1;
+          if (stepIndex >= 0) {
+            this.stepMetadataTracker?.trackStep({
+              taskId: this.taskId,
+              messageId: lastMessage.id,
+              stepIndex,
+              hasError: error !== undefined,
+              startedAt,
+              finishedAt,
+              duration:
+                startedAt && finishedAt
+                  ? finishedAt.getTime() - startedAt.getTime()
+                  : undefined,
+              metadata: {
+                finishReason: lastMessage.metadata.finishReason,
+                totalTokens: lastMessage.metadata.totalTokens,
+                systemPromptTokens: lastMessage.metadata.systemPromptTokens,
+                toolsTokens: lastMessage.metadata.toolsTokens,
+              },
+            });
+          }
+        }
+        options.onStreamFinish?.(data);
+      },
     });
+    if (options.messages && options.messages.length > 0) {
+      if (!this.chatKit.inited) {
+        this.chatKit.init(options.cwd, { messages: options.messages });
+      }
+    }
+
     if (options.parts && options.parts.length > 0) {
       if (this.chatKit.inited) {
         this.chatKit.chat.appendOrReplaceMessage({
@@ -284,6 +375,7 @@ export class TaskRunner {
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
     this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 60000;
+    this.stepMetadataTracker = options.stepMetadataTracker;
     this.abortSignal = options.abortSignal;
   }
 
@@ -306,6 +398,7 @@ export class TaskRunner {
           this.stepCount.nextStep();
         }
       }
+      await this.chatKit.drainBackgroundTasksAndSettleMemory();
     } catch (e) {
       const error = toError(e);
       logger.debug("Failed:", error);
@@ -318,6 +411,7 @@ export class TaskRunner {
           this.taskId,
         );
       }
+      await this.chatKit.disposeBackgroundTasks();
     }
   }
 
@@ -369,13 +463,6 @@ export class TaskRunner {
     }
 
     return results.length > 0 ? results.join("\n\n") : undefined;
-  }
-
-  private replaceLastMessageForRetry(message: Message): void {
-    // The retry path may drop the original readFile tool_result from history.
-    // Clear the cache so later reads cannot deduplicate against discarded context.
-    this.toolCallOptions.fileStateCache.clear();
-    this.chat.appendOrReplaceMessage(message);
   }
 
   /**
@@ -463,11 +550,12 @@ export class TaskRunner {
     message: Message,
   ): Promise<"finished" | "next" | "retry"> {
     return (
-      this.processMessage(message) || (await this.processToolCalls(message))
+      (await this.processMessage(message)) ||
+      (await this.processToolCalls(message))
     );
   }
 
-  private processMessage(message: Message) {
+  private async processMessage(message: Message) {
     const { task } = this.chatKit;
     if (!task) {
       throw new Error("Task is not loaded");
@@ -495,9 +583,9 @@ export class TaskRunner {
         "Task is failed, trying to resend last message to resume it.",
         task.error,
       );
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.chatKit.prepareLastMessageForRetry(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed);
+        this.chat.appendOrReplaceMessage(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -521,9 +609,9 @@ export class TaskRunner {
       logger.trace(
         "Last message is assistant with empty parts or partial/completed tool calls, resending it to resume the task.",
       );
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.chatKit.prepareLastMessageForRetry(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed);
+        this.chat.appendOrReplaceMessage(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -576,8 +664,7 @@ export class TaskRunner {
             toolCallId: toolCall.toolCallId,
             output: {
               // @ts-expect-error
-              error:
-                "Tool call was cancelled because a previous tool call failed.",
+              error: getToolCallCancelErrorMessage(reason),
             },
           });
         },
@@ -754,7 +841,7 @@ ${asyncResults}`;
 function isResultMessage(message: Message): boolean {
   return (
     message.role === "assistant" &&
-    (message.parts?.some(isCompletionToolPart) ?? false)
+    (message.parts?.some(isUserInputToolPart) ?? false)
   );
 }
 

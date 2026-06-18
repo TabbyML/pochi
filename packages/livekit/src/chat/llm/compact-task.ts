@@ -23,6 +23,7 @@ const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 export async function compactTask({
   blobStore,
   taskId,
+  storeId,
   model,
   messages,
   recentFiles,
@@ -34,6 +35,7 @@ export async function compactTask({
 }: {
   blobStore: BlobStore;
   taskId: string;
+  storeId: string;
   model: LanguageModelV3;
   messages: Message[];
   recentFiles?: RecentFileState[];
@@ -76,6 +78,7 @@ export async function compactTask({
       summaryText = await createSummary(
         blobStore,
         taskId,
+        storeId,
         model,
         abortSignal,
         inputMessages,
@@ -178,6 +181,7 @@ export function findVerbatimAttachIndex(
 async function createSummary(
   blobStore: BlobStore,
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
@@ -201,6 +205,7 @@ async function createSummary(
     providerOptions: {
       pochi: {
         taskId,
+        storeId,
         client: globalThis.POCHI_CLIENT,
         useCase,
       } satisfies PochiProviderOptions,

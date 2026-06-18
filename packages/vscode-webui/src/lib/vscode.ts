@@ -1,4 +1,4 @@
-import { getLogger } from "@getpochi/common";
+import { type AutoMemoryManager, getLogger } from "@getpochi/common";
 import { validateTaskFilePath } from "@getpochi/common/pochi-file-system";
 import {
   type ExecuteCommandResult,
@@ -130,9 +130,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readAutoMemory",
         "readAutoMemoryEnabled",
         "readAutoMemoryState",
-        "beginAutoMemoryDream",
-        "finishAutoMemoryDream",
-        "writeTaskTranscript",
         "readBackgroundTaskState",
         "readTaskArchived",
         "readTaskPinned",
@@ -263,3 +260,30 @@ function createVSCodeHost(): VSCodeHostApi {
 }
 
 export const vscodeHost = createVSCodeHost();
+
+let autoMemoryManagerPromise: Promise<AutoMemoryManager> | null = null;
+
+function loadAutoMemoryManager() {
+  if (!autoMemoryManagerPromise) {
+    const pending = vscodeHost.readAutoMemory();
+    const cached = pending.catch((error) => {
+      if (autoMemoryManagerPromise === cached) {
+        autoMemoryManagerPromise = null;
+      }
+      throw error;
+    });
+    autoMemoryManagerPromise = cached;
+  }
+  return autoMemoryManagerPromise;
+}
+
+export const vscodeAutoMemoryManager: AutoMemoryManager = {
+  readContext: async (cwdOrOptions) =>
+    (await loadAutoMemoryManager()).readContext(cwdOrOptions),
+  writeTaskTranscript: async (options) =>
+    (await loadAutoMemoryManager()).writeTaskTranscript(options),
+  beginDreamRun: async (options) =>
+    (await loadAutoMemoryManager()).beginDreamRun(options),
+  finishDreamRun: async (options) =>
+    (await loadAutoMemoryManager()).finishDreamRun(options),
+};

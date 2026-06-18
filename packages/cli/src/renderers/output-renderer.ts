@@ -3,7 +3,7 @@ import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { Message, UITools } from "@getpochi/livekit";
-import { isAutoSuccessToolPart, isCompletionToolPart } from "@getpochi/tools";
+import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName, isStaticToolUIPart } from "ai";
 import chalk from "chalk";
 import {
@@ -255,6 +255,25 @@ export function renderToolPart(
       : `${chalk.bold(regex)}`;
     return {
       text: `🔍 Searching for ${searchDesc} in ${formatCliDisplayPath(path)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
+  if ((part.type as string) === "tool-webFetch") {
+    const { url = "unknown" } = (part.input as { url?: string }) || {};
+    return {
+      text: `🌐 Fetching ${chalk.bold(url)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
+  if ((part.type as string) === "tool-webSearch") {
+    const { query = "" } = (part.input as { query?: string | string[] }) || {};
+    const queryText = Array.isArray(query) ? query.join(", ") : query;
+    return {
+      text: `🔎 Searching the web for ${chalk.bold(queryText)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -536,7 +555,7 @@ function renderSubtaskMessages(messages: Message[]): string {
   let output = "";
   for (const x of messages) {
     for (const p of x.parts) {
-      if (isStaticToolUIPart(p) && !isCompletionToolPart(p)) {
+      if (isStaticToolUIPart(p) && !isUserInputToolPart(p)) {
         const { text } = renderToolPart(p);
         const lines = text.split("\n");
         for (const line of lines) {

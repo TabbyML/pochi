@@ -1,4 +1,4 @@
-import { isCompletionToolPart } from "@getpochi/tools";
+import { isUserInputToolPart } from "@getpochi/tools";
 import { getStaticToolName, isStaticToolUIPart } from "ai";
 import type { Message } from "../types";
 
@@ -16,16 +16,16 @@ export function filterCompletionTools(message: Message): Message {
       ? message.parts.slice(lastStepStartIndex)
       : message.parts;
 
-  const hasCompletionTools = parts.some(isCompletionToolPart);
+  const hasCompletionTools = parts.some(isUserInputToolPart);
   const hasOtherTools = parts.some(
     (part) =>
       isStaticToolUIPart(part) &&
       getStaticToolName(part) !== "todoWrite" &&
-      !isCompletionToolPart(part),
+      !isUserInputToolPart(part),
   );
 
   if (hasCompletionTools && hasOtherTools) {
-    const lastStepParts = parts.filter((part) => !isCompletionToolPart(part));
+    const lastStepParts = parts.filter((part) => !isUserInputToolPart(part));
     const prevStepsParts =
       lastStepStartIndex > 0 ? message.parts.slice(0, lastStepStartIndex) : [];
     return {

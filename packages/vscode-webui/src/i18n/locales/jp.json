@@ -112,6 +112,7 @@
   "worktree": {
     "createPr": "PR を作成",
     "createWalkthrough": "ウォークスルーを作成",
+    "reviewChanges": "変更をレビュー",
     "createDraftPr": "ドラフト PR を作成",
     "createPrManually": "手動で PR を作成",
     "installGhCli": "PR を作成するには GitHub CLI をインストールしてください",
@@ -474,7 +475,8 @@
     "copyTodos": "TODOをコピー",
     "noCheckpointAvailable": "利用可能なチェックポイントがありません",
     "openStore": "ストアを開く",
-    "reviewChanges": "変更をレビュー"
+    "reviewChanges": "変更をレビュー",
+    "copySystemPrompt": "システムプロンプトをコピー"
   },
   "devRetryCountdown": {
     "attempts": "試行回数：",

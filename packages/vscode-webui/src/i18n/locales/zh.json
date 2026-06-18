@@ -111,6 +111,7 @@
   "worktree": {
     "createPr": "创建 PR",
     "createWalkthrough": "创建 Walkthrough",
+    "reviewChanges": "审查变更",
     "createDraftPr": "创建草稿 PR",
     "createPrManually": "手动创建 PR",
     "installGhCli": "请安装 GitHub CLI 以创建 PR",
@@ -472,7 +473,8 @@
     "copyTodos": "复制待办事项",
     "noCheckpointAvailable": "没有可用的检查点",
     "openStore": "打开存储",
-    "reviewChanges": "审查变更"
+    "reviewChanges": "审查变更",
+    "copySystemPrompt": "复制系统提示词"
   },
   "devRetryCountdown": {
     "attempts": "尝试次数：",

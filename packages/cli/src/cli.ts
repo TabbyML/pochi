@@ -25,12 +25,14 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import { constants, getLogger } from "@getpochi/common";
+import { constants, type AutoMemoryContext, getLogger } from "@getpochi/common";
+import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   pochiConfig,
   setPochiConfigWorkspacePath,
 } from "@getpochi/common/configuration";
+import { FileStateCache } from "@getpochi/common/tool-utils";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type {
@@ -62,17 +64,20 @@ import {
   ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
 } from "./lib/shutdown";
+import { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
 import { NodeBlobStore } from "./node-blob-store";
 import {
   AttemptCompletionResultRenderer,
-  JsonRenderer,
   type StreamRenderer,
+  TrajectoryLine,
   TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
+import { deduplicateMessageParts } from "./renderers/trajectory-post-process";
+import { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
@@ -134,17 +139,25 @@ const program = new Command()
   )
   .optionsGroup("Options:")
   .option(
-    "--stream-json [filepath]",
-    "Stream the output in JSON format. This is useful for parsing the output in scripts. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --experimental-output-attempt-completion-result.",
-  )
-  .option(
     "--experimental-output-attempt-completion-result [filepath]",
-    "Output only the result returned by attemptCompletion tool. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
+    "Output only the result returned by attemptCompletion tool. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --experimental-stream-trajectory.",
   )
   .option(
     "--experimental-stream-trajectory [filepath]",
-    "Stream message parts whenever signal.messages updates. Cannot be used with --stream-json or --experimental-output-attempt-completion-result.",
+    "Stream message parts whenever signal.messages updates. Cannot be used with --experimental-output-attempt-completion-result.",
   )
+  .option(
+    "--experimental-stream-trajectory-inherit-context",
+    "Initialize the task with messages parsed from the trajectory file specified by --experimental-stream-trajectory, and append the prompt as a new user message.",
+    false,
+  )
+  .addOption(
+    new Option(
+      "--experimental-stream-trajectory-strip-duplicates",
+      "Only valid when --experimental-stream-trajectory is used with an output filepath. When set, the trajectory file will be post-processed on exit to strip duplicate message parts.",
+    ).hideHelp(),
+  )
+
   .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
@@ -164,14 +177,18 @@ const program = new Command()
     60000,
   )
   .option(
+    "--task-memory",
+    "Enable Task Memory background extraction for the current task.",
+    false,
+  )
+  .option(
+    "--project-memory",
+    "Enable Project Memory context injection and auto-memory background extraction.",
+    false,
+  )
+  .option(
     "--agent <name>",
     "Run the task as a sub-agent using the specified custom agent. This applies the agent's system prompt and tool restrictions, matching the behavior of sub-tasks created via the newTask tool.",
-  )
-  .addOption(
-    new Option(
-      "--experimental-output-schema <schema>",
-      "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
-    ).hideHelp(),
   )
   .addOption(
     new Option(
@@ -269,35 +286,51 @@ const program = new Command()
       setFfmpegPath(options.ffmpeg);
     }
 
+    if (options.experimentalStreamTrajectoryInheritContext) {
+      if (typeof options.experimentalStreamTrajectory !== "string") {
+        return program.error(
+          "The --experimental-stream-trajectory-inherit-context flag requires --experimental-stream-trajectory to be passed a file path.",
+        );
+      }
+    }
+
+    if (
+      options.experimentalStreamTrajectoryStripDuplicates &&
+      typeof options.experimentalStreamTrajectory !== "string"
+    ) {
+      program.error(
+        "--experimental-stream-trajectory-strip-duplicates requires --experimental-stream-trajectory to be set with an output filepath.",
+      );
+    }
+
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
       undefined;
     if (
-      (options.streamJson ? 1 : 0) +
-        (options.experimentalOutputAttemptCompletionResult ? 1 : 0) +
+      (options.experimentalOutputAttemptCompletionResult ? 1 : 0) +
         (options.experimentalStreamTrajectory ? 1 : 0) >
       1
     ) {
       program.error(
-        "Cannot use more than one of --stream-json, --experimental-output-attempt-completion-result, or --experimental-stream-trajectory at the same time.",
+        "Cannot use both --experimental-output-attempt-completion-result and --experimental-stream-trajectory at the same time.",
       );
     }
-    if (options.streamJson === true) {
-      jsonOutputStream = process.stdout;
-    } else if (typeof options.streamJson === "string") {
-      jsonOutputStream = fs.createWriteStream(options.streamJson);
-    } else if (options.experimentalOutputAttemptCompletionResult === true) {
+    if (options.experimentalOutputAttemptCompletionResult === true) {
       jsonOutputStream = process.stdout;
     } else if (
       typeof options.experimentalOutputAttemptCompletionResult === "string"
     ) {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalOutputAttemptCompletionResult,
+        { flags: "a" },
       );
     } else if (options.experimentalStreamTrajectory === true) {
       jsonOutputStream = process.stdout;
     } else if (typeof options.experimentalStreamTrajectory === "string") {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalStreamTrajectory,
+        options.experimentalStreamTrajectoryInheritContext
+          ? { flags: "w" }
+          : { flags: "a" },
       );
     }
 
@@ -316,6 +349,54 @@ const program = new Command()
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
+    const isSubTask = selectedAgent !== undefined;
+    const taskMemoryEnabled = options.taskMemory;
+    const projectMemoryEnabled = options.projectMemory;
+    const autoMemoryManager = new AutoMemoryManager();
+    const parentFileStateCache = new FileStateCache();
+    let autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
+    const getAutoMemory = () => {
+      if (autoMemoryCache) return autoMemoryCache;
+      const pending = autoMemoryManager.readContext(process.cwd());
+      const cached = pending.catch((error) => {
+        logger.warn("Failed to read long-term memory context", error);
+        if (autoMemoryCache === cached) {
+          autoMemoryCache = null;
+        }
+        return undefined;
+      });
+      autoMemoryCache = cached;
+      return cached;
+    };
+    const backgroundTaskAdaptor = new CliRunningTaskAdaptor({
+      blobStore,
+      llm,
+      cwd: process.cwd(),
+      rg,
+      filesystem,
+      customAgents,
+      skills,
+      mcpHub,
+      parentTaskId: uid,
+      parentFileStateCache,
+      autoMemoryManager,
+      projectMemoryEnabled,
+    });
+    const stepMetadataTracker = new StepMetadataTracker();
+    const taskMemory = taskMemoryEnabled ? {} : undefined;
+    const projectMemory = projectMemoryEnabled
+      ? {
+          manager: autoMemoryManager,
+        }
+      : undefined;
+
+    let messages: Message[] | undefined = undefined;
+    if (
+      options.experimentalStreamTrajectoryInheritContext &&
+      typeof options.experimentalStreamTrajectory === "string"
+    ) {
+      messages = parseTrajectoryFile(options.experimentalStreamTrajectory);
+    }
 
     const runner = new TaskRunner({
       uid,
@@ -323,6 +404,7 @@ const program = new Command()
       blobStore,
       llm,
       parts,
+      messages,
       cwd: process.cwd(),
       rg,
       maxSteps: options.maxSteps,
@@ -334,11 +416,8 @@ const program = new Command()
       skills,
       mcpHub,
       abortSignal: abortController.signal,
-      isSubTask: selectedAgent !== undefined,
+      isSubTask,
       customAgent: selectedAgent,
-      outputSchema: options.experimentalOutputSchema
-        ? parseOutputSchema(options.experimentalOutputSchema)
-        : undefined,
       attemptCompletionSchema: options.attemptCompletionSchema
         ? parseOutputSchema(options.attemptCompletionSchema)
         : undefined,
@@ -346,12 +425,21 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
+      getAutoMemory: projectMemoryEnabled ? getAutoMemory : undefined,
+      backgroundTask: {
+        adaptor: backgroundTaskAdaptor,
+        clearFileStateCache: (taskId) =>
+          backgroundTaskAdaptor.clearFileStateCache(taskId),
+      },
+      taskMemory,
+      projectMemory,
+      fileStateCache: parentFileStateCache,
+      stepMetadataTracker,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
-
     let streamRenderer: StreamRenderer | undefined = undefined;
     if (jsonOutputStream) {
       if (options.experimentalStreamTrajectory) {
@@ -360,6 +448,7 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
+          stepMetadataTracker,
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
@@ -368,13 +457,6 @@ const program = new Command()
           {
             attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
           },
-        );
-      } else {
-        streamRenderer = new JsonRenderer(
-          jsonOutputStream,
-          store,
-          blobStore,
-          runner.state,
         );
       }
     }
@@ -389,13 +471,26 @@ const program = new Command()
       logger.debug(`Task runner exit with error: ${runtimeError.message}.`);
     } finally {
       logger.debug("Shutting down...");
+
       // Cleanup resources
       outputRenderer.shutdown();
+
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
         jsonOutputStream.end();
         await finished(jsonOutputStream);
       }
+      if (
+        options.experimentalStreamTrajectoryStripDuplicates &&
+        typeof options.experimentalStreamTrajectory === "string"
+      ) {
+        try {
+          await deduplicateMessageParts(options.experimentalStreamTrajectory);
+        } catch {
+          // ignore all errors when shutting down
+        }
+      }
+
       mcpHub?.dispose();
       browserSessionStore.dispose();
       await store.shutdownPromise();
@@ -665,4 +760,66 @@ function parseOutputSchema(outputSchema: string): z.ZodAny {
     `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
   )(z);
   return schema;
+}
+
+export function parseTrajectoryFile(filePath: string): Message[] {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+  const content = fs.readFileSync(filePath, "utf8");
+  const lines = content.split(/\r?\n/);
+  const messagesMap = new Map<
+    string,
+    {
+      id: string;
+      role: Message["role"];
+      parts: Message["parts"];
+      metadata?: Message["metadata"];
+    }
+  >();
+  const messageIds: string[] = [];
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let rawData: unknown;
+    try {
+      rawData = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    const parsed = TrajectoryLine.safeParse(rawData);
+    if (!parsed.success) continue;
+
+    const data = parsed.data;
+    if (data.type === "message-part") {
+      const { messageId, role, index, part } = data;
+      let msg = messagesMap.get(messageId);
+      if (!msg) {
+        msg = { id: messageId, role, parts: [] };
+        messagesMap.set(messageId, msg);
+        messageIds.push(messageId);
+      }
+      msg.parts[index] = part;
+    } else if (data.type === "message-metadata") {
+      const { messageId, role, metadata } = data;
+      let msg = messagesMap.get(messageId);
+      if (!msg) {
+        msg = { id: messageId, role, parts: [] };
+        messagesMap.set(messageId, msg);
+        messageIds.push(messageId);
+      }
+      msg.metadata = metadata;
+    }
+  }
+
+  const messages: Message[] = [];
+  for (const id of messageIds) {
+    const msg = messagesMap.get(id);
+    if (msg) {
+      msg.parts = msg.parts.filter((p) => p !== undefined);
+      messages.push(msg as Message);
+    }
+  }
+  return messages;
 }

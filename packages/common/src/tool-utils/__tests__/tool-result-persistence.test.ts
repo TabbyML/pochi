@@ -80,6 +80,23 @@ describe("maybePersistToolResult", () => {
       expect(result.output.length).toBeLessThan(PersistedToolResultPreviewSize * 3);
     });
 
+    it("preview contains both first and last parts of the large field aligned to newlines", async () => {
+      const firstLines = Array.from({ length: 20 }, (_, i) => `FIRST_LINE_${i}`).join("\n") + "\n";
+      const middle = "x\n".repeat(30000);
+      const lastLines = "\n" + Array.from({ length: 20 }, (_, i) => `LAST_LINE_${i}`).join("\n");
+      const big = firstLines + middle + lastLines;
+      const output = makeOutput(big);
+      const result = await maybePersistToolResult("executeCommand", TOOL_CALL_ID, TASK_ID, output) as typeof output;
+
+      const firstIndex = result.output.indexOf("FIRST_LINE_0");
+      const truncateIndex = result.output.indexOf("[truncated");
+      const lastIndex = result.output.indexOf("LAST_LINE_19");
+
+      expect(firstIndex).toBeGreaterThan(-1);
+      expect(truncateIndex).toBeGreaterThan(firstIndex);
+      expect(lastIndex).toBeGreaterThan(truncateIndex);
+    });
+
     it("skips small string fields", async () => {
       const output: Record<string, unknown> = {};
       const fieldCount = Math.ceil((MaxPersistedToolResultSize + 1) / 100);

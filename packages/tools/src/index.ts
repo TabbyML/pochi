@@ -72,6 +72,7 @@ export {
   BatchExecutionErrorMessages,
   BatchExecutionError,
   executeToolCalls,
+  getToolCallCancelErrorMessage,
   isSafeToBatchToolCall,
   partitionToolCalls,
   ToolCallQueue,
@@ -86,7 +87,7 @@ export type {
   BatchedToolCall,
 } from "./utils/tool-batch";
 
-export function isCompletionToolName(name: string): boolean {
+export function isUserInputToolName(name: string): boolean {
   return (
     name === "askFollowupQuestion" ||
     name === "attemptCompletion" ||
@@ -94,16 +95,14 @@ export function isCompletionToolName(name: string): boolean {
   );
 }
 
-export function isCompletionToolPart(
-  part: UIMessagePart<UIDataTypes, UITools>,
-) {
+export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
   if (!isStaticToolUIPart(part)) return false;
-  return isCompletionToolName(getStaticToolName(part));
+  return isUserInputToolName(getStaticToolName(part));
 }
 
 export function isAutoSuccessToolName(name: string): boolean {
   return (
-    isCompletionToolName(name) ||
+    isUserInputToolName(name) ||
     ToolsByPermission.default.some((tool) => name === tool)
   );
 }

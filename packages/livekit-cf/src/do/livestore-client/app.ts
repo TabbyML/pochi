@@ -10,6 +10,7 @@ import type { InferToolInput } from "ai";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { streamSSE } from "hono/streaming";
 import type { DeepWritable, Env } from "./types";
 
 type RequestVariables = {
@@ -92,6 +93,61 @@ store
   })
   .get("/tasks/:taskId/html", async (c) => {
     return c.env.ASSETS.fetch(c.req.raw);
+  })
+  .get("/tasks/:taskId/events", async (c) => {
+    const store = await c.env.getStore();
+    const taskId = c.req.param("taskId");
+    const task = store.query(catalog.queries.makeTaskQuery(taskId));
+
+    if (!task) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+
+    if (!task.isPublicShared) {
+      if (!c.get("isOwner")) {
+        throw new HTTPException(403, { message: "Task is not public" });
+      }
+    }
+
+    return streamSSE(c, async (stream) => {
+      const iterator = store.events()[Symbol.asyncIterator]();
+      stream.onAbort(() => {
+        if (iterator.return) {
+          iterator.return();
+        }
+      });
+
+      try {
+        while (true) {
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<null>((resolve) => {
+            timeoutId = setTimeout(() => resolve(null), 1000);
+          });
+          const nextPromise = iterator.next();
+
+          const result = await Promise.race([nextPromise, timeoutPromise]);
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+
+          if (result === null) {
+            break;
+          }
+
+          if (result.done) {
+            break;
+          }
+
+          await stream.writeSSE({
+            data: JSON.stringify(result.value),
+          });
+        }
+      } finally {
+        if (iterator.return) {
+          iterator.return();
+        }
+      }
+    });
   });
 
 export const app = new Hono<{ Bindings: Env }>();

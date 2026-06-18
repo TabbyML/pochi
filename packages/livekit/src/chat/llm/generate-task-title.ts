@@ -32,6 +32,7 @@ export async function generateTaskTitle(options: GenerateTaskTitleOptions) {
 }
 
 async function generateTaskTitleImpl({
+  store,
   blobStore,
   taskId,
   title,
@@ -62,6 +63,7 @@ async function generateTaskTitleImpl({
       const title = await generateTitle(
         blobStore,
         taskId,
+        store.storeId,
         model,
         messages,
         abortSignal,
@@ -103,6 +105,7 @@ function isTitleGeneratedByLlm(
 async function generateTitle(
   blobStore: BlobStore,
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
   inputMessages: Message[],
   abortSignal: AbortSignal | undefined,
@@ -125,6 +128,7 @@ async function generateTitle(
     providerOptions: {
       pochi: {
         taskId,
+        storeId,
         client: globalThis.POCHI_CLIENT,
         useCase: "generate-task-title",
       } satisfies PochiProviderOptions,
