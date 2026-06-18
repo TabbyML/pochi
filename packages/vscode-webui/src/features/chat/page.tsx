@@ -168,7 +168,7 @@ function Chat({ user, uid, info }: ChatProps) {
     isSubTask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
-    enableAutoCompact: true,
+    enableAutoCompact: !isSubTask,
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),

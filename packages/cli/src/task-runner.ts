@@ -262,6 +262,7 @@ export class TaskRunner {
           backgroundTask: undefined,
           taskMemory: undefined,
           projectMemory: undefined,
+          enableAutoCompact: false,
           fileStateCache: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
