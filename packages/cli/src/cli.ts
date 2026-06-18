@@ -390,7 +390,7 @@ const program = new Command()
       },
       taskMemory,
       projectMemory,
-      disableAutoCompact: !autoCompactEnabled,
+      enableAutoCompact: autoCompactEnabled,
       onCompactStart: () => outputRenderer?.renderCompactStart(),
       onCompactFinish: (success) =>
         outputRenderer?.renderCompactFinish(success),

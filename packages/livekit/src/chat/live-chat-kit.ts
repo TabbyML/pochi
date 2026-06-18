@@ -235,7 +235,7 @@ export type LiveChatKitOptions<T> = {
 
   isSubTask?: boolean;
   requestUseCase?: PochiRequestUseCase;
-  disableAutoCompact?: boolean;
+  enableAutoCompact?: boolean;
 
   store: LiveKitStore;
 
@@ -354,7 +354,7 @@ export class LiveChatKit<
     getters,
     isSubTask,
     requestUseCase,
-    disableAutoCompact,
+    enableAutoCompact,
     customAgent,
     attemptCompletionSchema,
     onStreamStart,
@@ -415,7 +415,6 @@ export class LiveChatKit<
                 abortSignal,
                 isSubTask: false,
                 requestUseCase,
-                disableAutoCompact: true,
                 getters,
               }),
           })
@@ -497,7 +496,7 @@ export class LiveChatKit<
         lastMessage.metadata.compact === true;
 
       const canAutoCompact =
-        !disableAutoCompact && !isForkAgentUseCase(requestUseCase);
+        enableAutoCompact === true && !isForkAgentUseCase(requestUseCase);
       const isAutoCompact =
         canAutoCompact &&
         !isManualCompact &&

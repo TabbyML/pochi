@@ -163,7 +163,7 @@ export interface RunnerOptions {
 
   projectMemory?: LiveChatKitProjectMemoryOptions;
 
-  disableAutoCompact?: boolean;
+  enableAutoCompact?: boolean;
 
   fileStateCache?: FileStateCache;
 
@@ -291,7 +291,7 @@ export class TaskRunner {
       backgroundTask: options.backgroundTask,
       taskMemory: options.taskMemory,
       projectMemory: options.projectMemory,
-      disableAutoCompact: options.disableAutoCompact,
+      enableAutoCompact: options.enableAutoCompact,
 
       getters: {
         getLLM: () => options.llm,
