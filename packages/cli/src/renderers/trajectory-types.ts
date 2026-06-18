@@ -4,7 +4,7 @@ import { StepMetadataEntry } from "../lib/step-metadata-tracker";
 
 export const MessagePartLine = z.object({
   type: z.literal("message-part"),
-  timestamp: z.date(),
+  timestamp: z.coerce.date(),
   messageId: z.string(),
   role: z.custom<Message["role"]>(),
   index: z.number(),
