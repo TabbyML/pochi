@@ -9,6 +9,7 @@ const mockState = vi.hoisted(() => ({
     chat: { sendMessageCalls: number };
   }>,
 }));
+const TestRunId = "test-run";
 
 class MockChat {
   messages: Message[];
@@ -242,6 +243,39 @@ describe("TaskExecutor", () => {
     expect(clearFileStateCache).toHaveBeenCalledWith("task");
     await executor.dispose();
   });
+
+  it("abandons runnable tasks from a previous task tab session", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([makeToolPart("readFile", "read", { path: "a.ts" })]),
+    ]);
+    const executeToolCall = vi.fn(async () => ({ content: "hello" }));
+    const waitUntilReady = vi.fn(async () => undefined);
+    const adaptor = {
+      ...makeAdaptor({ executeToolCall }),
+      waitUntilReady,
+    } satisfies RunningTaskAdaptor;
+    const executor = makeExecutor(store, adaptor, {
+      ownerRunId: "previous-run",
+      tools: ["readFile"],
+    });
+
+    await executor.drain();
+
+    expect(waitUntilReady).not.toHaveBeenCalled();
+    expect(executeToolCall).not.toHaveBeenCalled();
+    expect(mockState.instances[0].chat.sendMessageCalls).toBe(0);
+    expect(store.readTask("task")).toMatchObject({
+      status: "failed",
+      error: {
+        message:
+          "Background task abandoned because it belongs to a previous task tab session.",
+      },
+    });
+    await executor.dispose();
+  });
 });
 
 class FakeLiveKitStore {
@@ -353,7 +387,8 @@ function makeExecutor(
   return new TaskExecutor({
     store: store as never,
     blobStore: {} as never,
-    readTaskState: () => taskState,
+    currentRunId: TestRunId,
+    readTaskState: () => ({ ownerRunId: TestRunId, ...taskState }),
     adaptor,
     clearFileStateCache,
     createChatKit: ({ taskId, store }) =>

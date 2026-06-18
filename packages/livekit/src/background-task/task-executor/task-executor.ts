@@ -69,6 +69,7 @@ type MaybePromiseLike<T> = T | PromiseLike<T>;
 type CreateTaskExecutorOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
+  currentRunId: string;
   readTaskState: (
     taskId: string,
   ) => MaybePromiseLike<BackgroundTaskState | undefined>;
@@ -103,6 +104,7 @@ type CreateRunningTaskChatKit = (options: {
 export class TaskExecutor {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
+  private readonly currentRunId: string;
   private readonly readTaskState: CreateTaskExecutorOptions["readTaskState"];
   private readonly adaptor: RunningTaskAdaptor;
   private readonly clearFileStateCache: CreateTaskExecutorOptions["clearFileStateCache"];
@@ -116,6 +118,7 @@ export class TaskExecutor {
   constructor({
     store,
     blobStore,
+    currentRunId,
     readTaskState,
     adaptor,
     clearFileStateCache,
@@ -123,6 +126,7 @@ export class TaskExecutor {
   }: CreateTaskExecutorOptions) {
     this.store = store;
     this.blobStore = blobStore;
+    this.currentRunId = currentRunId;
     this.readTaskState = readTaskState;
     this.adaptor = adaptor;
     this.clearFileStateCache = clearFileStateCache;
@@ -226,6 +230,7 @@ export class TaskExecutor {
       taskId,
       store: this.store,
       blobStore: this.blobStore,
+      currentRunId: this.currentRunId,
       readTaskState: this.readTaskState,
       adaptor: this.adaptor,
       clearFileStateCache: this.clearFileStateCache,
@@ -273,6 +278,7 @@ class RunningTask {
   private readonly taskId: string;
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
+  private readonly currentRunId: string;
   private readonly readTaskState: CreateTaskExecutorOptions["readTaskState"];
   private readonly adaptor: RunningTaskAdaptor;
   private readonly clearFileStateCache: CreateTaskExecutorOptions["clearFileStateCache"];
@@ -291,6 +297,7 @@ class RunningTask {
     taskId: string;
     store: LiveKitStore;
     blobStore: BlobStore;
+    currentRunId: string;
     readTaskState: CreateTaskExecutorOptions["readTaskState"];
     adaptor: RunningTaskAdaptor;
     clearFileStateCache?: CreateTaskExecutorOptions["clearFileStateCache"];
@@ -299,6 +306,7 @@ class RunningTask {
     this.taskId = options.taskId;
     this.store = options.store;
     this.blobStore = options.blobStore;
+    this.currentRunId = options.currentRunId;
     this.readTaskState = options.readTaskState;
     this.adaptor = options.adaptor;
     this.clearFileStateCache = options.clearFileStateCache;
@@ -316,9 +324,13 @@ class RunningTask {
 
   private async run() {
     try {
-      await this.adaptor.waitUntilReady?.();
       this.taskState = (await this.readTaskState(this.taskId)) ?? {};
       this.chatKit = this.createChatKit(this.task);
+      if (this.taskState.ownerRunId !== this.currentRunId) {
+        await this.chatKit.markAsFailed(createAbandonedTaskError());
+        return;
+      }
+      await this.adaptor.waitUntilReady?.();
 
       while (!this.abortController.signal.aborted) {
         const stepResult = await this.step();
@@ -640,6 +652,14 @@ function isAbortTaskError(error: unknown) {
     "kind" in error &&
     error.kind === "AbortError"
   );
+}
+
+function createAbandonedTaskError() {
+  const error = new Error(
+    "Background task abandoned because it belongs to a previous task tab session.",
+  );
+  error.name = "AbortError";
+  return error;
 }
 
 function normalizeCwd(cwd: string | null | undefined) {

@@ -99,17 +99,20 @@ async function createBackgroundTaskFromForkAgent({
   store,
   stateStore,
   agent,
+  ownerRunId,
   taskId = crypto.randomUUID(),
   createdAt = new Date(),
 }: {
   store: LiveKitStore;
   stateStore: NonNullable<LiveChatKitBackgroundTaskOptions["stateStore"]>;
   agent: ForkAgent<Message>;
+  ownerRunId: string;
   taskId?: string;
   createdAt?: Date;
 }): Promise<ForkAgentHandle> {
   await stateStore.set(taskId, {
     parentTaskId: agent.parentTaskId,
+    ownerRunId,
     tools: agent.tools,
     useCase: agent.label,
     baselineStepCount: agent.baselineStepCount,
@@ -315,6 +318,7 @@ export class LiveChatKit<
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
   private readonly backgroundTaskExecutor: TaskExecutor | undefined;
+  private readonly backgroundTaskRunId = crypto.randomUUID();
   private readonly backgroundTaskAdaptor:
     | (RunningTaskAdaptor & { dispose?: () => void })
     | undefined;
@@ -384,6 +388,7 @@ export class LiveChatKit<
             store,
             stateStore: backgroundTaskStateStore,
             agent,
+            ownerRunId: this.backgroundTaskRunId,
           })
       : undefined;
     const waitForTaskDone = backgroundTask?.adaptor
@@ -396,6 +401,7 @@ export class LiveChatKit<
         ? new TaskExecutor({
             store,
             blobStore,
+            currentRunId: this.backgroundTaskRunId,
             readTaskState: (taskId) => backgroundTaskStateStore.read(taskId),
             adaptor: backgroundTask.adaptor,
             clearFileStateCache: backgroundTask.clearFileStateCache,

@@ -98,6 +98,7 @@ export type ContextWindowUsage = {
 export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
+  ownerRunId?: string;
   useCase?: ForkAgentUseCase;
   /** Step-start count inherited from the parent, excluded from the max-step guard. */
   baselineStepCount?: number;
