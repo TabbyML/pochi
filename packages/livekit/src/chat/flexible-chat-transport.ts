@@ -68,7 +68,7 @@ export type ChatTransportOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
-  attemptCompletionSchema?: z.ZodType;
+  attemptCompletionSchema?: z.ZodAny;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -79,7 +79,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
-  private readonly attemptCompletionSchema?: z.ZodType;
+  private readonly attemptCompletionSchema?: z.ZodAny;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;

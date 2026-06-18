@@ -283,7 +283,7 @@ export type LiveChatKitOptions<T> = {
   projectMemory?: LiveChatKitProjectMemoryOptions;
 
   customAgent?: CustomAgent;
-  attemptCompletionSchema?: z.ZodType;
+  attemptCompletionSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
