@@ -38,7 +38,6 @@ import {
   createReasoningMiddleware,
   createToolCallMiddleware,
 } from "./middlewares";
-import { createOutputSchemaMiddleware } from "./middlewares/output-schema-middleware";
 import { createModel } from "./models";
 import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
 
@@ -69,8 +68,7 @@ export type ChatTransportOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
   customAgent?: CustomAgent;
-  outputSchema?: z.ZodAny;
-  attemptCompletionSchema?: z.ZodAny;
+  attemptCompletionSchema?: z.ZodType;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -81,8 +79,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly store: LiveKitStore;
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
-  private readonly outputSchema?: z.ZodAny;
-  private readonly attemptCompletionSchema?: z.ZodAny;
+  private readonly attemptCompletionSchema?: z.ZodType;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -93,7 +90,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.store = options.store;
     this.blobStore = options.blobStore;
     this.customAgent = options.customAgent;
-    this.outputSchema = options.outputSchema;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
   }
 
@@ -142,17 +138,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
       middlewares.push(createReasoningMiddleware());
-    }
-
-    if (this.outputSchema) {
-      middlewares.push(
-        createOutputSchemaMiddleware(
-          chatId,
-          this.store.storeId,
-          model,
-          this.outputSchema,
-        ),
-      );
     }
 
     if (llm.useToolCallMiddleware) {

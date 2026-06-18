@@ -178,12 +178,6 @@ const program = new Command()
   )
   .addOption(
     new Option(
-      "--experimental-output-schema <schema>",
-      "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
-    ).hideHelp(),
-  )
-  .addOption(
-    new Option(
       "--attempt-completion-schema <schema>",
       "Specify a JSON schema that attempt-completion will enforce.",
     ).hideHelp(),
@@ -380,9 +374,6 @@ const program = new Command()
       abortSignal: abortController.signal,
       isSubTask,
       customAgent: selectedAgent,
-      outputSchema: options.experimentalOutputSchema
-        ? parseOutputSchema(options.experimentalOutputSchema)
-        : undefined,
       attemptCompletionSchema: options.attemptCompletionSchema
         ? parseOutputSchema(options.attemptCompletionSchema)
         : undefined,
