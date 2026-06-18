@@ -80,6 +80,9 @@ export interface RunnerOptions {
   // The parts to use for creating the task
   parts?: Message["parts"];
 
+  // The seeded messages to initialize the task with
+  messages?: Message[];
+
   /**
    * The current working directory for the task runner.
    * This is used to determine where to read/write files and execute commands.
@@ -351,6 +354,12 @@ export class TaskRunner {
         options.onStreamFinish?.(data);
       },
     });
+    if (options.messages && options.messages.length > 0) {
+      if (!this.chatKit.inited) {
+        this.chatKit.init(options.cwd, { messages: options.messages });
+      }
+    }
+
     if (options.parts && options.parts.length > 0) {
       if (this.chatKit.inited) {
         this.chatKit.chat.appendOrReplaceMessage({
