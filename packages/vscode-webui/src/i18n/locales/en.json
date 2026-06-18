@@ -458,7 +458,19 @@
   },
   "todoList": {
     "todos": "TODOs",
-    "allDone": "🎉 All done!"
+    "allDone": "🎉 All done!",
+    "pursuingTodo": "Pursuing todo",
+    "pausing": "Pausing",
+    "pendingTodo": "Pending todo",
+    "completedTodo": "Todo satisfied",
+    "cancelledTodo": "Todo cancelled",
+    "editTodos": "Edit todos",
+    "saveTodos": "Save todos",
+    "cancelEditing": "Cancel editing",
+    "editTodoContent": "Edit todo content",
+    "deleteTodo": "Delete todo",
+    "pauseTodo": "Pause todo",
+    "resumeTodo": "Resume todo"
   },
   "commandExecutionPanel": {
     "copied": "Copied!",

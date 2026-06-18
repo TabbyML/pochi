@@ -79,6 +79,7 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const { t } = useTranslation();
   const todosRef = useRef<Todo[] | undefined>(undefined);
+  const [todoPaused, setTodoPaused] = useState(false);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -365,6 +366,8 @@ function Chat({ user, uid, info }: ChatProps) {
           chat={chat}
           task={task}
           todosRef={todosRef}
+          todoPaused={todoPaused}
+          onTodoPausedChange={setTodoPaused}
           compact={chatKit.compact}
           approvalAndRetry={approvalAndRetry}
           attachmentUpload={attachmentUpload}

@@ -72,6 +72,8 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
   todosRef: React.RefObject<Todo[] | undefined>;
+  todoPaused: boolean;
+  onTodoPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
   isRepairingMermaid?: boolean;
@@ -89,6 +91,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
   todosRef,
+  todoPaused,
+  onTodoPausedChange,
   onUpdateIsPublicShared,
   taskId,
   isRepairingMermaid = false,
@@ -105,7 +109,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
   // Initialize task with prompt if provided and task doesn't exist yet
-  const { todos } = useTodos({
+  const { todos, setTodos } = useTodos({
     initialTodos: task?.todos,
     messages,
     todosRef,
@@ -308,7 +312,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           )}
         >
           {todos.length > 0 && (
-            <TodoList todos={todos}>
+            <TodoList
+              todos={todos}
+              editable={!isSubTask}
+              onSaveTodos={setTodos}
+              todoPaused={todoPaused}
+              onTodoPausedChange={isSubTask ? undefined : onTodoPausedChange}
+            >
               <TodoList.Header />
               <TodoList.Items viewportClassname="max-h-48" />
             </TodoList>

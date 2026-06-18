@@ -452,7 +452,19 @@
   },
   "todoList": {
     "todos": "TODO",
-    "allDone": "🎉 すべて完了！"
+    "allDone": "🎉 すべて完了！",
+    "pursuingTodo": "Todoを進行中",
+    "pausing": "一時停止中",
+    "pendingTodo": "保留中のTodo",
+    "completedTodo": "Todoを満たしました",
+    "cancelledTodo": "Todoをキャンセルしました",
+    "editTodos": "Todoを編集",
+    "saveTodos": "Todoを保存",
+    "cancelEditing": "編集をキャンセル",
+    "editTodoContent": "Todo内容を編集",
+    "deleteTodo": "Todoを削除",
+    "pauseTodo": "Todoを一時停止",
+    "resumeTodo": "Todoを再開"
   },
   "commandExecutionPanel": {
     "copied": "コピーしました！",

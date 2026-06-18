@@ -85,6 +85,7 @@ export function useTodos({
   return {
     todosRef,
     todos,
+    setTodos,
   };
 }
 
