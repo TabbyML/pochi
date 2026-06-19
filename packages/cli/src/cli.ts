@@ -335,6 +335,9 @@ const program = new Command()
     } else if (typeof options.experimentalStreamTrajectory === "string") {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalStreamTrajectory,
+        options.experimentalStreamTrajectoryInheritContext
+          ? { flags: "a" }
+          : undefined,
       );
     }
 
@@ -445,6 +448,10 @@ const program = new Command()
           blobStore,
           runner.state,
           stepMetadataTracker,
+          {
+            inheritContext:
+              !!options.experimentalStreamTrajectoryInheritContext,
+          },
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
