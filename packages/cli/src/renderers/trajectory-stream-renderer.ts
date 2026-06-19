@@ -1,10 +1,10 @@
+import { createHash } from "node:crypto";
 import {
   type BlobStore,
   type LiveKitStore,
   type Message,
   catalog,
 } from "@getpochi/livekit";
-import * as R from "remeda";
 import * as runExclusive from "run-exclusive";
 import type {
   StepMetadataEntry,
@@ -23,8 +23,8 @@ import { inlineSubTask, mapStoreBlob } from "./utils";
 
 export class TrajectoryStreamRenderer implements StreamRenderer {
   private runExclusiveGroup = runExclusive.createGroupRef();
-  private emittedParts = new Map<string, unknown>();
-  private emittedMetadata = new Map<string, unknown>();
+  private emittedParts = new Map<string, string>();
+  private emittedMetadata = new Map<string, string>();
   private emittedStepMetadataEntryCount = 0;
   private unsubscribeFns: (() => void)[] | undefined;
   private initialized = false;
@@ -55,12 +55,45 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     return `${messageId}:${index}`;
   }
 
-  private shouldEmit<T>(cache: Map<string, T>, key: string, value: T): boolean {
-    const cached = cache.get(key);
-    if (R.isDeepEqual(cached, value)) {
+  private deterministicStringify(val: unknown): string {
+    if (val === undefined) {
+      return "undefined";
+    }
+    if (val === null || typeof val !== "object") {
+      return JSON.stringify(val) ?? "undefined";
+    }
+    if (val instanceof Date) {
+      return val.toISOString();
+    }
+    if (Array.isArray(val)) {
+      return `[${val.map((item) => this.deterministicStringify(item)).join(",")}]`;
+    }
+    const keys = Object.keys(val).sort();
+    const parts = keys.map(
+      (key) =>
+        `${JSON.stringify(key)}:${this.deterministicStringify(
+          (val as Record<string, unknown>)[key],
+        )}`,
+    );
+    return `{${parts.join(",")}}`;
+  }
+
+  private getFingerprint(obj: unknown): string {
+    const serialized = this.deterministicStringify(obj);
+    return createHash("sha1").update(serialized).digest("base64");
+  }
+
+  private shouldEmit(
+    cache: Map<string, string>,
+    key: string,
+    value: unknown,
+  ): boolean {
+    const currentHash = this.getFingerprint(value);
+    const cachedHash = cache.get(key);
+    if (cachedHash === currentHash) {
       return false;
     }
-    cache.set(key, R.clone(value));
+    cache.set(key, currentHash);
     return true;
   }
 
