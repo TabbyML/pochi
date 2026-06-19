@@ -24,7 +24,7 @@ import { inlineSubTask, mapStoreBlob } from "./utils";
 export class TrajectoryStreamRenderer implements StreamRenderer {
   private runExclusiveGroup = runExclusive.createGroupRef();
   private emittedParts = new Map<string, unknown>();
-  private emittedMetadata = new Set<string>();
+  private emittedMetadata = new Map<string, unknown>();
   private emittedStepMetadataEntryCount = 0;
   private unsubscribeFns: (() => void)[] | undefined;
   private initialized = false;
@@ -61,7 +61,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     if (this.options?.inheritContext) {
       const initialMessages = this.state.signal.messages.value;
       for (const message of initialMessages) {
-        this.emittedMetadata.add(message.id);
+        this.emittedMetadata.set(message.id, message.metadata);
         const outputMessage = await inlineSubTask(this.store, message);
         for (let i = 0; i < outputMessage.parts.length; i++) {
           const part = outputMessage.parts[i];
@@ -79,12 +79,11 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
 
   private outputTrajectory = runExclusive.build(
     this.runExclusiveGroup,
-    async (messages: Message[], isFinalFlush = false) => {
+    async (messages: Message[]) => {
       await this.initialize();
 
       for (let msgIdx = 0; msgIdx < messages.length; msgIdx++) {
         const message = messages[msgIdx];
-        const isFinalized = isFinalFlush || msgIdx < messages.length - 1;
 
         const outputMessage = await inlineSubTask(this.store, message);
 
@@ -112,16 +111,15 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
           }
         }
 
-        if (isFinalized && !this.emittedMetadata.has(message.id)) {
-          if (outputMessage.metadata !== undefined) {
-            this.writeTrajectoryLine({
-              type: "message-metadata",
-              messageId: message.id,
-              role: message.role,
-              metadata: outputMessage.metadata,
-            } satisfies MessageMetadataLine);
-          }
-          this.emittedMetadata.add(message.id);
+        const cachedMetadata = this.emittedMetadata.get(message.id);
+        if (!R.isDeepEqual(cachedMetadata, message.metadata)) {
+          this.writeTrajectoryLine({
+            type: "message-metadata",
+            messageId: message.id,
+            role: message.role,
+            metadata: outputMessage.metadata,
+          } satisfies MessageMetadataLine);
+          this.emittedMetadata.set(message.id, message.metadata);
         }
       }
     },
@@ -170,7 +168,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
         this.stepMetadataTracker.entries.value,
       );
     }
-    await this.outputTrajectory(this.state.signal.messages.value, true);
+    await this.outputTrajectory(this.state.signal.messages.value);
     await this.outputFilesData();
   }
 }
