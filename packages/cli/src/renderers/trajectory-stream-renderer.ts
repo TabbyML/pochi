@@ -27,6 +27,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
   private emittedMetadata = new Set<string>();
   private emittedStepMetadataEntryCount = 0;
   private unsubscribeFns: (() => void)[] | undefined;
+  private initialized = false;
 
   constructor(
     private readonly stream: NodeJS.WritableStream,
@@ -34,6 +35,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     private readonly blobStore: BlobStore,
     private readonly state: NodeChatState,
     private readonly stepMetadataTracker?: StepMetadataTracker,
+    private readonly options?: { inheritContext?: boolean },
   ) {
     this.unsubscribeFns = [
       this.state.signal.messages.subscribe(async (messages: Message[]) => {
@@ -49,6 +51,28 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     }
   }
 
+  private getPartId(messageId: string, index: number): string {
+    return `${messageId}:${index}`;
+  }
+
+  private async initialize() {
+    if (this.initialized) return;
+    this.initialized = true;
+    if (this.options?.inheritContext) {
+      const initialMessages = this.state.signal.messages.value;
+      for (const message of initialMessages) {
+        this.emittedMetadata.add(message.id);
+        const outputMessage = await inlineSubTask(this.store, message);
+        for (let i = 0; i < outputMessage.parts.length; i++) {
+          const part = outputMessage.parts[i];
+          const partId = this.getPartId(message.id, i);
+          const resolvedPart = await mapStoreBlob(this.blobStore, part);
+          this.emittedParts.set(partId, R.clone(resolvedPart));
+        }
+      }
+    }
+  }
+
   private writeTrajectoryLine = (line: TrajectoryLine) => {
     this.stream.write(`${JSON.stringify(line)}\n`);
   };
@@ -56,6 +80,8 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
   private outputTrajectory = runExclusive.build(
     this.runExclusiveGroup,
     async (messages: Message[], isFinalFlush = false) => {
+      await this.initialize();
+
       for (let msgIdx = 0; msgIdx < messages.length; msgIdx++) {
         const message = messages[msgIdx];
         const isFinalized = isFinalFlush || msgIdx < messages.length - 1;
@@ -65,7 +91,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
         for (let i = 0; i < outputMessage.parts.length; i++) {
           const part = outputMessage.parts[i];
 
-          const partId = `${message.id}:${i}`;
+          const partId = this.getPartId(message.id, i);
 
           const resolvedPart = (await mapStoreBlob(
             this.blobStore,

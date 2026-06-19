@@ -21,7 +21,6 @@ export type Metadata =
       finishReason: FinishReason;
       systemPromptTokens?: number;
       toolsTokens?: number;
-      systemPrompt?: string;
     }
   | {
       kind: "user";

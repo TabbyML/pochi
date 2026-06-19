@@ -72,9 +72,11 @@ import { NodeBlobStore } from "./node-blob-store";
 import {
   AttemptCompletionResultRenderer,
   type StreamRenderer,
+  TrajectoryLine,
   TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
+import { deduplicateMessageParts } from "./renderers/trajectory-post-process";
 import { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
@@ -144,6 +146,18 @@ const program = new Command()
     "--experimental-stream-trajectory [filepath]",
     "Stream message parts whenever signal.messages updates. Cannot be used with --experimental-output-attempt-completion-result.",
   )
+  .option(
+    "--experimental-stream-trajectory-inherit-context",
+    "Initialize the task with messages parsed from the trajectory file specified by --experimental-stream-trajectory, and append the prompt as a new user message.",
+    false,
+  )
+  .addOption(
+    new Option(
+      "--experimental-stream-trajectory-strip-duplicates",
+      "Only valid when --experimental-stream-trajectory is used with an output filepath. When set, the trajectory file will be post-processed on exit to strip duplicate message parts.",
+    ).hideHelp(),
+  )
+
   .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
@@ -272,6 +286,31 @@ const program = new Command()
       setFfmpegPath(options.ffmpeg);
     }
 
+    if (options.experimentalStreamTrajectoryInheritContext) {
+      if (typeof options.experimentalStreamTrajectory !== "string") {
+        return program.error(
+          "The --experimental-stream-trajectory-inherit-context flag requires --experimental-stream-trajectory to be passed a file path.",
+        );
+      }
+    }
+
+    if (
+      options.experimentalStreamTrajectoryStripDuplicates &&
+      typeof options.experimentalStreamTrajectory !== "string"
+    ) {
+      program.error(
+        "--experimental-stream-trajectory-strip-duplicates requires --experimental-stream-trajectory to be set with an output filepath.",
+      );
+    }
+
+    let messages: Message[] | undefined = undefined;
+    if (
+      options.experimentalStreamTrajectoryInheritContext &&
+      typeof options.experimentalStreamTrajectory === "string"
+    ) {
+      messages = parseTrajectoryFile(options.experimentalStreamTrajectory);
+    }
+
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
       undefined;
     if (
@@ -296,6 +335,9 @@ const program = new Command()
     } else if (typeof options.experimentalStreamTrajectory === "string") {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalStreamTrajectory,
+        options.experimentalStreamTrajectoryInheritContext
+          ? { flags: "a" }
+          : undefined,
       );
     }
 
@@ -361,6 +403,7 @@ const program = new Command()
       blobStore,
       llm,
       parts,
+      messages,
       cwd: process.cwd(),
       rg,
       maxSteps: options.maxSteps,
@@ -405,6 +448,10 @@ const program = new Command()
           blobStore,
           runner.state,
           stepMetadataTracker,
+          {
+            inheritContext:
+              !!options.experimentalStreamTrajectoryInheritContext,
+          },
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
@@ -427,13 +474,26 @@ const program = new Command()
       logger.debug(`Task runner exit with error: ${runtimeError.message}.`);
     } finally {
       logger.debug("Shutting down...");
+
       // Cleanup resources
       outputRenderer.shutdown();
+
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
         jsonOutputStream.end();
         await finished(jsonOutputStream);
       }
+      if (
+        options.experimentalStreamTrajectoryStripDuplicates &&
+        typeof options.experimentalStreamTrajectory === "string"
+      ) {
+        try {
+          await deduplicateMessageParts(options.experimentalStreamTrajectory);
+        } catch {
+          // ignore all errors when shutting down
+        }
+      }
+
       mcpHub?.dispose();
       browserSessionStore.dispose();
       await store.shutdownPromise();
@@ -703,4 +763,66 @@ function parseOutputSchema(outputSchema: string): z.ZodAny {
     `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
   )(z);
   return schema;
+}
+
+export function parseTrajectoryFile(filePath: string): Message[] {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+  const content = fs.readFileSync(filePath, "utf8");
+  const lines = content.split(/\r?\n/);
+  const messagesMap = new Map<
+    string,
+    {
+      id: string;
+      role: Message["role"];
+      parts: Message["parts"];
+      metadata?: Message["metadata"];
+    }
+  >();
+  const messageIds: string[] = [];
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let rawData: unknown;
+    try {
+      rawData = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    const parsed = TrajectoryLine.safeParse(rawData);
+    if (!parsed.success) continue;
+
+    const data = parsed.data;
+    if (data.type === "message-part") {
+      const { messageId, role, index, part } = data;
+      let msg = messagesMap.get(messageId);
+      if (!msg) {
+        msg = { id: messageId, role, parts: [] };
+        messagesMap.set(messageId, msg);
+        messageIds.push(messageId);
+      }
+      msg.parts[index] = part;
+    } else if (data.type === "message-metadata") {
+      const { messageId, role, metadata } = data;
+      let msg = messagesMap.get(messageId);
+      if (!msg) {
+        msg = { id: messageId, role, parts: [] };
+        messagesMap.set(messageId, msg);
+        messageIds.push(messageId);
+      }
+      msg.metadata = metadata;
+    }
+  }
+
+  const messages: Message[] = [];
+  for (const id of messageIds) {
+    const msg = messagesMap.get(id);
+    if (msg) {
+      msg.parts = msg.parts.filter((p) => p !== undefined);
+      messages.push(msg as Message);
+    }
+  }
+  return messages;
 }
