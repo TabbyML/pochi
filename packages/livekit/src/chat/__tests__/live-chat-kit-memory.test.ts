@@ -15,7 +15,7 @@ import {
 import { LiveChatKit } from "../live-chat-kit";
 
 describe("LiveChatKit memory lifecycle", () => {
-  it("starts background task scheduling when an adaptor is provided", async () => {
+  it("starts background task scheduling after the first stream finishes", async () => {
     const store = new FakeStore([
       makeTask({
         id: "parent",
@@ -35,6 +35,11 @@ describe("LiveChatKit memory lifecycle", () => {
         adaptor: makeRunningTaskAdaptor(),
       },
     });
+
+    expect(store.subscriptions).not.toContain("runnableTasks");
+
+    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.finish(assistantMessage());
 
     expect(store.subscriptions).toContain("runnableTasks");
     await chatKit.disposeBackgroundTasks();

@@ -46,6 +46,7 @@ import {
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
+  type FinishedRequestSnapshot,
   FlexibleChatTransport,
   type OnStartCallback,
   type PrepareRequestGetters,
@@ -284,6 +285,7 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
+  systemPromptOverride?: string;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -324,6 +326,8 @@ export class LiveChatKit<
   private readonly clearFileStateCacheCallback:
     | (() => MaybePromise<void>)
     | undefined;
+  private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
+  private backgroundTasksStarted = false;
 
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
@@ -366,6 +370,7 @@ export class LiveChatKit<
     backgroundTask,
     taskMemory,
     projectMemory,
+    systemPromptOverride,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -417,10 +422,10 @@ export class LiveChatKit<
                 requestUseCase,
                 disableAutoCompact: true,
                 getters,
+                systemPromptOverride: this.latestRequestSnapshot?.systemPrompt,
               }),
           })
         : undefined;
-    this.backgroundTaskExecutor?.start();
     const defaultMemoryParentCwd = () => this.task?.cwd ?? undefined;
     this.taskMemoryAdaptor =
       taskMemory && startForkAgent
@@ -463,6 +468,10 @@ export class LiveChatKit<
       requestUseCase,
       customAgent,
       attemptCompletionSchema,
+      systemPromptOverride,
+      onRequestFinished: (snapshot) => {
+        this.latestRequestSnapshot = snapshot;
+      },
     });
 
     this.chat = new chatClass({
@@ -883,6 +892,7 @@ export class LiveChatKit<
     };
 
     this.scheduleMemoryUpdate(finishData);
+    this.startBackgroundTasks();
 
     this.onStreamFinish?.({
       ...finishData,
@@ -915,6 +925,12 @@ export class LiveChatKit<
   async disposeBackgroundTasks(): Promise<void> {
     await this.backgroundTaskExecutor?.dispose();
     this.backgroundTaskAdaptor?.dispose?.();
+  }
+
+  private startBackgroundTasks(): void {
+    if (this.backgroundTasksStarted) return;
+    this.backgroundTasksStarted = true;
+    this.backgroundTaskExecutor?.start();
   }
 
   private scheduleMemoryUpdate(data: {
