@@ -55,19 +55,28 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     return `${messageId}:${index}`;
   }
 
+  private shouldEmit<T>(cache: Map<string, T>, key: string, value: T): boolean {
+    const cached = cache.get(key);
+    if (R.isDeepEqual(cached, value)) {
+      return false;
+    }
+    cache.set(key, R.clone(value));
+    return true;
+  }
+
   private async initialize() {
     if (this.initialized) return;
     this.initialized = true;
     if (this.options?.inheritContext) {
       const initialMessages = this.state.signal.messages.value;
       for (const message of initialMessages) {
-        this.emittedMetadata.set(message.id, message.metadata);
+        this.shouldEmit(this.emittedMetadata, message.id, message.metadata);
         const outputMessage = await inlineSubTask(this.store, message);
         for (let i = 0; i < outputMessage.parts.length; i++) {
           const part = outputMessage.parts[i];
           const partId = this.getPartId(message.id, i);
           const resolvedPart = await mapStoreBlob(this.blobStore, part);
-          this.emittedParts.set(partId, R.clone(resolvedPart));
+          this.shouldEmit(this.emittedParts, partId, resolvedPart);
         }
       }
     }
@@ -97,8 +106,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
             part,
           )) as Message["parts"][number];
 
-          const cachedPart = this.emittedParts.get(partId);
-          if (!R.isDeepEqual(cachedPart, resolvedPart)) {
+          if (this.shouldEmit(this.emittedParts, partId, resolvedPart)) {
             this.writeTrajectoryLine({
               type: "message-part",
               timestamp: new Date(),
@@ -107,19 +115,22 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
               index: i,
               part: resolvedPart,
             } satisfies MessagePartLine);
-            this.emittedParts.set(partId, R.clone(resolvedPart));
           }
         }
 
-        const cachedMetadata = this.emittedMetadata.get(message.id);
-        if (!R.isDeepEqual(cachedMetadata, message.metadata)) {
+        if (
+          this.shouldEmit(
+            this.emittedMetadata,
+            message.id,
+            outputMessage.metadata,
+          )
+        ) {
           this.writeTrajectoryLine({
             type: "message-metadata",
             messageId: message.id,
             role: message.role,
             metadata: outputMessage.metadata,
           } satisfies MessageMetadataLine);
-          this.emittedMetadata.set(message.id, message.metadata);
         }
       }
     },
