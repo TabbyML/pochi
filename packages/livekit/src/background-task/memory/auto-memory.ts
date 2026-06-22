@@ -135,6 +135,7 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
       updatedAt: candidate.updatedAt,
       cwd: candidate.cwd,
       transcriptFilename: candidate.transcriptFilename,
+      title: candidate.title,
     }),
   );
 
@@ -482,6 +483,7 @@ export class AutoMemoryAdaptor {
             cwd: parentCwd,
             updatedAt,
             transcriptFilename: transcriptInfo.filename,
+            title: task.title ?? undefined,
           }
         : undefined;
 

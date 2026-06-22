@@ -44,6 +44,7 @@ export interface AutoMemoryDreamCandidate {
    * The dream agent reads transcripts on demand via the readFile tool.
    */
   transcriptFilename: string;
+  title?: string;
 }
 
 export interface AutoMemoryDreamRun {
