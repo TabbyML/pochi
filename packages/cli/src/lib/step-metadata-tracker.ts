@@ -16,8 +16,6 @@ export const StepMetadataEntry = z.object({
   metadata: z.object({
     finishReason: z.custom<FinishReason>(),
     totalTokens: z.number(),
-    systemPromptTokens: z.number().optional(),
-    toolsTokens: z.number().optional(),
   }),
 });
 export type StepMetadataEntry = z.infer<typeof StepMetadataEntry>;

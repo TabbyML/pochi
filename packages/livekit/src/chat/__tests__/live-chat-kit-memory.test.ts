@@ -102,6 +102,7 @@ describe("LiveChatKit memory lifecycle", () => {
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
+    setLatestRequestSnapshot(chatKit, 20_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -199,6 +200,7 @@ describe("LiveChatKit memory lifecycle", () => {
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
+    setLatestRequestSnapshot(chatKit, 20_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -214,6 +216,26 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 });
+
+function setLatestRequestSnapshot(
+  chatKit: LiveChatKit<FakeChat>,
+  systemPromptTokens: number,
+  toolsTokens: number,
+) {
+  (
+    chatKit as unknown as {
+      latestRequestSnapshot: {
+        systemPrompt: string;
+        systemPromptTokens: number;
+        toolsTokens: number;
+      };
+    }
+  ).latestRequestSnapshot = {
+    systemPrompt: "",
+    systemPromptTokens,
+    toolsTokens,
+  };
+}
 
 class BackgroundTaskStateStore {
   private readonly states = new Map<string, BackgroundTaskState>();
@@ -457,8 +479,6 @@ function assistantMessage(): Message {
     metadata: {
       kind: "assistant",
       finishReason: "stop",
-      systemPromptTokens: 20_000,
-      toolsTokens: 0,
       totalTokens: 20_000,
     },
   } as unknown as Message;

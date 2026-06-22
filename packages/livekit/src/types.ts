@@ -19,8 +19,6 @@ export type Metadata =
       kind: "assistant";
       totalTokens: number;
       finishReason: FinishReason;
-      systemPromptTokens?: number;
-      toolsTokens?: number;
     }
   | {
       kind: "user";
