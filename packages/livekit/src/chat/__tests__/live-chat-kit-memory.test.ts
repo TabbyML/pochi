@@ -13,6 +13,7 @@ import {
   type Task,
 } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
+import type { Metadata } from "../../types";
 
 describe("LiveChatKit memory lifecycle", () => {
   it("starts background task scheduling after the first stream finishes", async () => {
@@ -480,7 +481,9 @@ function assistantMessage(): Message {
       kind: "assistant",
       finishReason: "stop",
       totalTokens: 20_000,
-    },
+      startedAt: new Date(),
+      finishedAt: new Date(),
+    } satisfies Metadata,
   } as unknown as Message;
 }
 

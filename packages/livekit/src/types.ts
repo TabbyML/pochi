@@ -14,16 +14,21 @@ import z from "zod";
 import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
-export type Metadata =
-  | {
-      kind: "assistant";
-      totalTokens: number;
-      finishReason: FinishReason;
-    }
-  | {
-      kind: "user";
-      compact?: boolean;
-    };
+export const ZodMetadata = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("assistant"),
+    totalTokens: z.number(),
+    finishReason: z.custom<FinishReason>(),
+    startedAt: z.coerce.date(),
+    finishedAt: z.coerce.date(),
+  }),
+  z.object({
+    kind: z.literal("user"),
+    compact: z.boolean().optional(),
+  }),
+]);
+
+export type Metadata = z.infer<typeof ZodMetadata>;
 
 export type DataParts = {
   checkpoint: {

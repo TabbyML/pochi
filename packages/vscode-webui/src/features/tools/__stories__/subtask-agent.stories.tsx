@@ -21,6 +21,8 @@ const subtaskMessages: Message[] = [
       kind: "assistant",
       totalTokens: 120,
       finishReason: "tool-calls",
+      startedAt: new Date(),
+      finishedAt: new Date(),
     },
     parts: [
       { type: "step-start" },
@@ -50,6 +52,8 @@ const subtaskMessages: Message[] = [
       kind: "assistant",
       totalTokens: 32,
       finishReason: "stop",
+      startedAt: new Date(),
+      finishedAt: new Date(),
     },
     parts: [
       { type: "step-start" },
@@ -69,6 +73,8 @@ const overviewMessage: Message = {
     kind: "assistant",
     totalTokens: 0,
     finishReason: "tool-calls",
+    startedAt: new Date(),
+    finishedAt: new Date(),
   },
   parts: [
     { type: "step-start" },

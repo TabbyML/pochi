@@ -17,6 +17,8 @@ const messages1: Message[] = [
       kind: "assistant",
       totalTokens: 46401,
       finishReason: "tool-calls",
+      startedAt: new Date(),
+      finishedAt: new Date(),
     },
     role: "assistant",
     parts: [

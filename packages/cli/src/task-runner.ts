@@ -58,7 +58,6 @@ import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
-import type { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type {
@@ -78,11 +77,11 @@ export interface RunnerOptions {
 
   blobStore: BlobStore;
 
-  // The parts to use for creating the task
-  parts?: Message["parts"];
-
   // The seeded messages to initialize the task with
-  messages?: Message[];
+  initMessages?: Message[];
+
+  // The parts of the user message
+  parts?: Message["parts"];
 
   /**
    * The current working directory for the task runner.
@@ -179,8 +178,6 @@ export interface RunnerOptions {
    * Set to 0 to disable waiting.
    */
   asyncWaitTimeoutInMs?: number;
-
-  stepMetadataTracker?: StepMetadataTracker;
 }
 
 const logger = getLogger("TaskRunner");
@@ -201,7 +198,6 @@ export class TaskRunner {
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
-  private readonly stepMetadataTracker?: StepMetadataTracker;
 
   private abortSignal?: AbortSignal;
 
@@ -318,41 +314,10 @@ export class TaskRunner {
             }
           : {}),
       },
-
-      onStreamFinish: (data) => {
-        const { messages, error, startedAt, finishedAt } = data;
-        const lastMessage = messages[messages.length - 1];
-        if (
-          lastMessage?.metadata &&
-          lastMessage.metadata.kind === "assistant"
-        ) {
-          const stepIndex =
-            lastMessage.parts.filter((p) => p.type === "step-start").length - 1;
-          if (stepIndex >= 0) {
-            this.stepMetadataTracker?.trackStep({
-              taskId: this.taskId,
-              messageId: lastMessage.id,
-              stepIndex,
-              hasError: error !== undefined,
-              startedAt,
-              finishedAt,
-              duration:
-                startedAt && finishedAt
-                  ? finishedAt.getTime() - startedAt.getTime()
-                  : undefined,
-              metadata: {
-                finishReason: lastMessage.metadata.finishReason,
-                totalTokens: lastMessage.metadata.totalTokens,
-              },
-            });
-          }
-        }
-        options.onStreamFinish?.(data);
-      },
     });
-    if (options.messages && options.messages.length > 0) {
+    if (options.initMessages && options.initMessages.length > 0) {
       if (!this.chatKit.inited) {
-        this.chatKit.init(options.cwd, { messages: options.messages });
+        this.chatKit.init(options.cwd, { messages: options.initMessages });
       }
     }
 
@@ -373,7 +338,6 @@ export class TaskRunner {
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
     this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 60000;
-    this.stepMetadataTracker = options.stepMetadataTracker;
     this.abortSignal = options.abortSignal;
   }
 

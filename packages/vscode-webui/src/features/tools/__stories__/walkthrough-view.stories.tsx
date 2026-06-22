@@ -98,7 +98,13 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "2",
       role: "assistant",
-      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      metadata: {
+        kind: "assistant",
+        totalTokens: 0,
+        finishReason: "stop",
+        startedAt: new Date(),
+        finishedAt: new Date(),
+      },
       parts: [
         {
           type: "text",
@@ -120,7 +126,13 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "3",
       role: "assistant",
-      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      metadata: {
+        kind: "assistant",
+        totalTokens: 0,
+        finishReason: "stop",
+        startedAt: new Date(),
+        finishedAt: new Date(),
+      },
       parts: [
         {
           type: "text",
@@ -139,7 +151,13 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "7",
       role: "assistant",
-      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
+      metadata: {
+        kind: "assistant",
+        totalTokens: 0,
+        finishReason: "stop",
+        startedAt: new Date(),
+        finishedAt: new Date(),
+      },
       parts: [
         {
           type: "text",

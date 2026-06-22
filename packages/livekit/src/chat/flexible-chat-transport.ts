@@ -195,6 +195,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       ),
     )) as ModelMessage[];
 
+    const requestStartedAt = new Date();
     // Anthropic cache breakpoints are applied server-side based on `useCase`.
     const stream = streamText({
       providerOptions: {
@@ -241,6 +242,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             totalTokens:
               part.totalUsage.totalTokens || estimateTotalTokens(messages),
             finishReason: part.finishReason,
+            startedAt: requestStartedAt,
+            finishedAt: new Date(),
           } satisfies Metadata;
         }
       },
