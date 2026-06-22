@@ -1,4 +1,4 @@
-import { type File, type Message, ZodMetadata } from "@getpochi/livekit";
+import { type File, type Message, MessageMetadata } from "@getpochi/livekit";
 import hashObject from "object-hash";
 import z from "zod";
 
@@ -22,7 +22,7 @@ export const MessageMetadataLine = z.object({
   type: z.literal("message-metadata"),
   messageId: z.string(),
   role: z.custom<Message["role"]>(),
-  metadata: ZodMetadata,
+  metadata: MessageMetadata,
 });
 export type MessageMetadataLine = z.infer<typeof MessageMetadataLine>;
 
