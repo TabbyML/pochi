@@ -22,6 +22,7 @@ export const StepMetadataEntry = z.object({
 });
 export type StepMetadataEntry = z.infer<typeof StepMetadataEntry>;
 
+// FIXME(zhiming): remove StepMetadataTracker in the next version
 export class StepMetadataTracker {
   readonly entries = signal<StepMetadataEntry[]>([]);
 

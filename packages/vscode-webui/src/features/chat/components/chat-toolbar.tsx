@@ -390,7 +390,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               selectedModel={selectedModel}
             />
           )}
-          <DevModeButton messages={messages} todos={todos} taskId={taskId} />
+          <DevModeButton messages={messages} todos={todos} />
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}

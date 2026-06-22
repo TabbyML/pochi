@@ -64,7 +64,6 @@ import {
   ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
 } from "./lib/shutdown";
-import { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -303,6 +302,14 @@ const program = new Command()
       );
     }
 
+    let messages: Message[] | undefined = undefined;
+    if (
+      options.experimentalStreamTrajectoryInheritContext &&
+      typeof options.experimentalStreamTrajectory === "string"
+    ) {
+      messages = parseTrajectoryFile(options.experimentalStreamTrajectory);
+    }
+
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
       undefined;
     if (
@@ -321,7 +328,6 @@ const program = new Command()
     ) {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalOutputAttemptCompletionResult,
-        { flags: "a" },
       );
     } else if (options.experimentalStreamTrajectory === true) {
       jsonOutputStream = process.stdout;
@@ -329,8 +335,8 @@ const program = new Command()
       jsonOutputStream = fs.createWriteStream(
         options.experimentalStreamTrajectory,
         options.experimentalStreamTrajectoryInheritContext
-          ? { flags: "w" }
-          : { flags: "a" },
+          ? { flags: "a" }
+          : undefined,
       );
     }
 
@@ -382,21 +388,12 @@ const program = new Command()
       autoMemoryManager,
       projectMemoryEnabled,
     });
-    const stepMetadataTracker = new StepMetadataTracker();
     const taskMemory = taskMemoryEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
       ? {
           manager: autoMemoryManager,
         }
       : undefined;
-
-    let messages: Message[] | undefined = undefined;
-    if (
-      options.experimentalStreamTrajectoryInheritContext &&
-      typeof options.experimentalStreamTrajectory === "string"
-    ) {
-      messages = parseTrajectoryFile(options.experimentalStreamTrajectory);
-    }
 
     const runner = new TaskRunner({
       uid,
@@ -434,7 +431,7 @@ const program = new Command()
       taskMemory,
       projectMemory,
       fileStateCache: parentFileStateCache,
-      stepMetadataTracker,
+      stepMetadataTracker: undefined,
     });
 
     const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
@@ -448,7 +445,11 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
-          stepMetadataTracker,
+          undefined,
+          {
+            inheritContext:
+              !!options.experimentalStreamTrajectoryInheritContext,
+          },
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
