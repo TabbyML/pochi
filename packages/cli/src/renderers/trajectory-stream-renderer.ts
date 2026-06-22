@@ -1,10 +1,10 @@
+import { createHash } from "node:crypto";
 import {
   type BlobStore,
   type LiveKitStore,
   type Message,
   catalog,
 } from "@getpochi/livekit";
-import * as R from "remeda";
 import * as runExclusive from "run-exclusive";
 import type {
   StepMetadataEntry,
@@ -23,8 +23,8 @@ import { inlineSubTask, mapStoreBlob } from "./utils";
 
 export class TrajectoryStreamRenderer implements StreamRenderer {
   private runExclusiveGroup = runExclusive.createGroupRef();
-  private emittedParts = new Map<string, unknown>();
-  private emittedMetadata = new Set<string>();
+  private emittedParts = new Map<string, string>();
+  private emittedMetadata = new Map<string, string>();
   private emittedStepMetadataEntryCount = 0;
   private unsubscribeFns: (() => void)[] | undefined;
   private initialized = false;
@@ -55,19 +55,61 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     return `${messageId}:${index}`;
   }
 
+  private deterministicStringify(val: unknown): string {
+    if (val === undefined) {
+      return "undefined";
+    }
+    if (val === null || typeof val !== "object") {
+      return JSON.stringify(val) ?? "undefined";
+    }
+    if (val instanceof Date) {
+      return val.toISOString();
+    }
+    if (Array.isArray(val)) {
+      return `[${val.map((item) => this.deterministicStringify(item)).join(",")}]`;
+    }
+    const keys = Object.keys(val).sort();
+    const parts = keys.map(
+      (key) =>
+        `${JSON.stringify(key)}:${this.deterministicStringify(
+          (val as Record<string, unknown>)[key],
+        )}`,
+    );
+    return `{${parts.join(",")}}`;
+  }
+
+  private getFingerprint(obj: unknown): string {
+    const serialized = this.deterministicStringify(obj);
+    return createHash("sha1").update(serialized).digest("base64");
+  }
+
+  private shouldEmit(
+    cache: Map<string, string>,
+    key: string,
+    value: unknown,
+  ): boolean {
+    const currentHash = this.getFingerprint(value);
+    const cachedHash = cache.get(key);
+    if (cachedHash === currentHash) {
+      return false;
+    }
+    cache.set(key, currentHash);
+    return true;
+  }
+
   private async initialize() {
     if (this.initialized) return;
     this.initialized = true;
     if (this.options?.inheritContext) {
       const initialMessages = this.state.signal.messages.value;
       for (const message of initialMessages) {
-        this.emittedMetadata.add(message.id);
+        this.shouldEmit(this.emittedMetadata, message.id, message.metadata);
         const outputMessage = await inlineSubTask(this.store, message);
         for (let i = 0; i < outputMessage.parts.length; i++) {
           const part = outputMessage.parts[i];
           const partId = this.getPartId(message.id, i);
           const resolvedPart = await mapStoreBlob(this.blobStore, part);
-          this.emittedParts.set(partId, R.clone(resolvedPart));
+          this.shouldEmit(this.emittedParts, partId, resolvedPart);
         }
       }
     }
@@ -79,12 +121,11 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
 
   private outputTrajectory = runExclusive.build(
     this.runExclusiveGroup,
-    async (messages: Message[], isFinalFlush = false) => {
+    async (messages: Message[]) => {
       await this.initialize();
 
       for (let msgIdx = 0; msgIdx < messages.length; msgIdx++) {
         const message = messages[msgIdx];
-        const isFinalized = isFinalFlush || msgIdx < messages.length - 1;
 
         const outputMessage = await inlineSubTask(this.store, message);
 
@@ -98,8 +139,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
             part,
           )) as Message["parts"][number];
 
-          const cachedPart = this.emittedParts.get(partId);
-          if (!R.isDeepEqual(cachedPart, resolvedPart)) {
+          if (this.shouldEmit(this.emittedParts, partId, resolvedPart)) {
             this.writeTrajectoryLine({
               type: "message-part",
               timestamp: new Date(),
@@ -108,20 +148,22 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
               index: i,
               part: resolvedPart,
             } satisfies MessagePartLine);
-            this.emittedParts.set(partId, R.clone(resolvedPart));
           }
         }
 
-        if (isFinalized && !this.emittedMetadata.has(message.id)) {
-          if (outputMessage.metadata !== undefined) {
-            this.writeTrajectoryLine({
-              type: "message-metadata",
-              messageId: message.id,
-              role: message.role,
-              metadata: outputMessage.metadata,
-            } satisfies MessageMetadataLine);
-          }
-          this.emittedMetadata.add(message.id);
+        if (
+          this.shouldEmit(
+            this.emittedMetadata,
+            message.id,
+            outputMessage.metadata,
+          )
+        ) {
+          this.writeTrajectoryLine({
+            type: "message-metadata",
+            messageId: message.id,
+            role: message.role,
+            metadata: outputMessage.metadata,
+          } satisfies MessageMetadataLine);
         }
       }
     },
@@ -170,7 +212,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
         this.stepMetadataTracker.entries.value,
       );
     }
-    await this.outputTrajectory(this.state.signal.messages.value, true);
+    await this.outputTrajectory(this.state.signal.messages.value);
     await this.outputFilesData();
   }
 }
