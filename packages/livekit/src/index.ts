@@ -19,6 +19,7 @@ export type {
   LiveKitStore,
   File,
 } from "./types";
+export { ZodMetadata as MessageMetadata } from "./types";
 export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";

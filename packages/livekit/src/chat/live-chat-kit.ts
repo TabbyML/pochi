@@ -255,8 +255,6 @@ export type LiveChatKitOptions<T> = {
       messages: Message[];
       error?: Error;
       contextWindowUsage?: ContextWindowUsage;
-      startedAt?: Date;
-      finishedAt?: Date;
     },
   ) => void;
 
@@ -334,13 +332,10 @@ export class LiveChatKit<
       messages: Message[];
       error?: Error;
       contextWindowUsage?: ContextWindowUsage;
-      startedAt?: Date;
-      finishedAt?: Date;
     },
   ) => void;
   readonly compact: () => Promise<string>;
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
-  private lastStepStartTimestamp: number | undefined;
   private consecutiveAutoCompactFailures = 0;
 
   constructor({
@@ -795,8 +790,6 @@ export class LiveChatKit<
         }),
       );
 
-      this.lastStepStartTimestamp = Date.now();
-
       this.onStreamStart?.({
         id: this.taskId,
         cwd: this.task?.cwd ?? null,
@@ -836,8 +829,13 @@ export class LiveChatKit<
       this.latestRequestSnapshot,
     );
 
-    const { duration, startedAt, finishedAt } =
-      this.captureStepDuration() ?? {};
+    let duration = undefined;
+    if (message.metadata.finishedAt && message.metadata.startedAt) {
+      duration = Duration.millis(
+        message.metadata.finishedAt.getTime() -
+          message.metadata.startedAt.getTime(),
+      );
+    }
 
     store.commit(
       events.chatStreamFinished({
@@ -862,11 +860,7 @@ export class LiveChatKit<
     this.scheduleMemoryUpdate(finishData);
     this.startBackgroundTasks();
 
-    this.onStreamFinish?.({
-      ...finishData,
-      startedAt,
-      finishedAt,
-    });
+    this.onStreamFinish?.(finishData);
   };
 
   private async settleMemoryAndMaybeContinue(): Promise<boolean> {
@@ -966,8 +960,17 @@ export class LiveChatKit<
     logger.error("onError", error);
     const lastMessage = this.chat.messages.at(-1) || null;
 
-    const { duration, startedAt, finishedAt } =
-      this.captureStepDuration() ?? {};
+    let duration = undefined;
+    if (
+      lastMessage?.metadata?.kind === "assistant" &&
+      lastMessage.metadata.finishedAt &&
+      lastMessage.metadata.startedAt
+    ) {
+      duration = Duration.millis(
+        lastMessage.metadata.finishedAt.getTime() -
+          lastMessage.metadata.startedAt.getTime(),
+      );
+    }
 
     this.store.commit(
       events.chatStreamFailed({
@@ -986,34 +989,8 @@ export class LiveChatKit<
       status: "failed",
       messages: [...this.chat.messages],
       error,
-      startedAt,
-      finishedAt,
     });
   };
-
-  /**
-   * Captures the current step duration using the recorded start timestamp.
-   */
-  private captureStepDuration():
-    | {
-        startedAt: Date;
-        finishedAt: Date;
-        duration: ReturnType<typeof Duration.millis>;
-      }
-    | undefined {
-    const startTimestamp = this.lastStepStartTimestamp;
-    this.lastStepStartTimestamp = undefined;
-    const finishTimestamp = Date.now();
-
-    if (startTimestamp === undefined) {
-      return undefined;
-    }
-    return {
-      startedAt: new Date(startTimestamp),
-      finishedAt: new Date(finishTimestamp),
-      duration: Duration.millis(finishTimestamp - startTimestamp),
-    };
-  }
 }
 
 // clean checkpoint means after this checkpoint there are no write or execute toolcalls that may cause file edits
