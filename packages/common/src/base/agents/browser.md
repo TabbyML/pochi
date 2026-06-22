@@ -82,9 +82,9 @@ Follow this workflow in order:
 
 Use only `agent-browser` version `0.27.3-pochi`.
 
-Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing, also check the agent-browser install directory because the updated PATH may not be active in the current shell. The install directory is `$HOME/.pochi/bin`; check for `agent-browser` there and run `$HOME/.pochi/bin/agent-browser --version` directly.
+Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the discovered version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`.
 
-If the discovered version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`. After installing, check both `agent-browser --version` and `$HOME/.pochi/bin/agent-browser --version`; if PATH still does not resolve `agent-browser`, use the direct `$HOME/.pochi/bin/agent-browser` path for subsequent agent-browser commands.
+After installing, run `agent-browser --version` again. If `agent-browser` is still missing because the updated PATH is not active in the current shell, check the install directory `$HOME/.pochi/bin` and run `$HOME/.pochi/bin/agent-browser --version` directly. If the direct path reports version `0.27.3-pochi`, use `$HOME/.pochi/bin/agent-browser` for subsequent agent-browser commands.
 
 ### Managed Browser Workflow
 
