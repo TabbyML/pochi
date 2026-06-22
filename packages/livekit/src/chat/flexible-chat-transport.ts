@@ -48,6 +48,10 @@ export type OnStartCallback = (options: {
   getters: PrepareRequestGetters;
 }) => void;
 
+export type FinishedRequestSnapshot = {
+  systemPrompt: string;
+};
+
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
   getEnvironment?: () => Promise<Environment>;
@@ -69,6 +73,10 @@ export type ChatTransportOptions = {
   blobStore: BlobStore;
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
+  systemPromptOverride?: string;
+  onRequestFinished?: (
+    snapshot: FinishedRequestSnapshot,
+  ) => void | Promise<void>;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -80,6 +88,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
   private readonly attemptCompletionSchema?: z.ZodAny;
+  private readonly systemPromptOverride?: string;
+  private readonly onRequestFinished?: ChatTransportOptions["onRequestFinished"];
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -91,6 +101,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.blobStore = options.blobStore;
     this.customAgent = options.customAgent;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
+    this.systemPromptOverride = options.systemPromptOverride;
+    this.onRequestFinished = options.onRequestFinished;
   }
 
   sendMessages: (
@@ -163,12 +175,13 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
 
-    const systemPrompt = prompts.system(
+    const generatedSystemPrompt = prompts.system(
       environment?.info?.customRules,
       this.customAgent,
       mcpInfo?.instructions,
       autoMemory,
     );
+    const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
     const systemPromptChars = systemPrompt.length;
     const toolsChars = JSON.stringify(tools).length;
     const systemPromptTokens = Math.ceil(systemPromptChars / 4);
@@ -235,7 +248,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         }
       },
       onFinish: async () => {
-        // DO NOTHING
+        await this.onRequestFinished?.({
+          systemPrompt,
+        });
       },
     });
   };
