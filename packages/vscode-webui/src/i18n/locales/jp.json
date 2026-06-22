@@ -459,10 +459,6 @@
   "todoList": {
     "todos": "TODO",
     "allDone": "🎉 すべて完了！",
-    "pursuingTodo": "Todoを進行中",
-    "pausing": "一時停止中",
-    "pendingTodo": "保留中のTodo",
-    "completedTodo": "Todoを満たしました",
     "cancelledTodo": "Todoをキャンセルしました",
     "editTodos": "Todoを編集",
     "saveTodos": "Todoを保存",
@@ -575,6 +571,12 @@
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
     "paused": "一時停止"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Todo を監査中",
+    "satisfied": "Todo は満たされています",
+    "needsWork": "Todo はさらに作業が必要です",
+    "failed": "Todo 監査に失敗しました"
   },
   "browserAgentSettings": {
     "runtimeSection": "ブラウザー実行環境",

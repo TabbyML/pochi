@@ -465,10 +465,6 @@
   "todoList": {
     "todos": "TODOs",
     "allDone": "🎉 All done!",
-    "pursuingTodo": "Pursuing todo",
-    "pausing": "Pausing",
-    "pendingTodo": "Pending todo",
-    "completedTodo": "Todo satisfied",
     "cancelledTodo": "Todo cancelled",
     "editTodos": "Edit todos",
     "saveTodos": "Save todos",
@@ -577,6 +573,12 @@
     "noFrameAvailable": "No frame available",
     "executing": "Executing...",
     "paused": "Paused"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Auditing todo",
+    "satisfied": "Todo satisfied",
+    "needsWork": "Todo needs more work",
+    "failed": "Todo audit failed"
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",

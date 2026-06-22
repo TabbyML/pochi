@@ -457,10 +457,6 @@
   "todoList": {
     "todos": "할 일",
     "allDone": "🎉 모두 완료!",
-    "pursuingTodo": "Todo 진행 중",
-    "pausing": "일시 중지 중",
-    "pendingTodo": "대기 중인 Todo",
-    "completedTodo": "Todo 충족됨",
     "cancelledTodo": "Todo 취소됨",
     "editTodos": "Todo 편집",
     "saveTodos": "Todo 저장",
@@ -568,6 +564,12 @@
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",
     "paused": "일시 중지됨"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Todo 감사 중",
+    "satisfied": "Todo 충족됨",
+    "needsWork": "Todo에 추가 작업 필요",
+    "failed": "Todo 감사 실패"
   },
   "browserAgentSettings": {
     "runtimeSection": "브라우저 런타임",

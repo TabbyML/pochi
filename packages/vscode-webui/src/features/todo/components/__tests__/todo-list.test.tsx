@@ -17,6 +17,11 @@ vi.mock("react-i18next", () => ({
 
 beforeAll(() => {
   window.scrollTo = vi.fn();
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
 });
 
 const activeTodo = {
@@ -69,6 +74,41 @@ describe("TodoList", () => {
     expect(
       screen.queryByRole("button", { name: "todoList.deleteTodo" }),
     ).toBeNull();
+  });
+
+  it("shows pause and resume tooltips", async () => {
+    const { unmount } = render(
+      <TodoList
+        todos={[activeTodo]}
+        todoPaused={false}
+        onTodoPausedChange={vi.fn()}
+      >
+        <TodoList.Header />
+        <TodoList.Items />
+      </TodoList>,
+    );
+
+    fireEvent.pointerMove(
+      screen.getByRole("button", { name: "todoList.pauseTodo" }),
+    );
+    expect(await screen.findAllByText("todoList.pauseTodo")).not.toHaveLength(
+      0,
+    );
+
+    unmount();
+    render(
+      <TodoList todos={[activeTodo]} todoPaused onTodoPausedChange={vi.fn()}>
+        <TodoList.Header />
+        <TodoList.Items />
+      </TodoList>,
+    );
+
+    fireEvent.pointerMove(
+      screen.getByRole("button", { name: "todoList.resumeTodo" }),
+    );
+    expect(await screen.findAllByText("todoList.resumeTodo")).not.toHaveLength(
+      0,
+    );
   });
 
   it("keeps cancelled todos visible", () => {
@@ -220,6 +260,40 @@ describe("TodoList", () => {
     expect(onSaveTodos).toHaveBeenCalledWith([
       { ...activeTodo, content: "Increase coverage" },
     ]);
+  });
+
+  it("keeps completed todo content read-only in edit mode", () => {
+    render(
+      <TodoList todos={[activeTodo, completedTodo]} editable>
+        <TodoList.Header />
+        <TodoList.Items />
+      </TodoList>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodos" }));
+
+    expect(screen.getAllByLabelText("todoList.editTodoContent")).toHaveLength(
+      1,
+    );
+    const completedRow = document.getElementById("todo-item-todo-2");
+    expect(completedRow).toBeTruthy();
+    expect(
+      screen.getByLabelText("todoList.editTodoContent").parentElement
+        ?.className,
+    ).toContain("w-full");
+    expect(
+      within(completedRow as HTMLElement).getByText("Finished work"),
+    ).toBeTruthy();
+    expect(
+      within(completedRow as HTMLElement).queryByLabelText(
+        "todoList.editTodoContent",
+      ),
+    ).toBeNull();
+    expect(
+      within(completedRow as HTMLElement).getByRole("button", {
+        name: "todoList.deleteTodo",
+      }),
+    ).toBeTruthy();
   });
 
   it("deletes todos only from the draft until save", () => {

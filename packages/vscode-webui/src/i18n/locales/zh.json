@@ -457,10 +457,6 @@
   "todoList": {
     "todos": "待办事项",
     "allDone": "🎉 全部完成！",
-    "pursuingTodo": "推进 Todo",
-    "pausing": "暂停中",
-    "pendingTodo": "待推进 Todo",
-    "completedTodo": "Todo 已满足",
     "cancelledTodo": "Todo 已取消",
     "editTodos": "编辑 Todos",
     "saveTodos": "保存 Todos",
@@ -573,6 +569,12 @@
     "noFrameAvailable": "无画面",
     "executing": "执行中...",
     "paused": "暂停"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "正在审计 Todo",
+    "satisfied": "Todo 已满足",
+    "needsWork": "Todo 需要继续推进",
+    "failed": "Todo 审计失败"
   },
   "browserAgentSettings": {
     "runtimeSection": "浏览器运行环境",

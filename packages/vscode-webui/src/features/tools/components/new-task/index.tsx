@@ -1,4 +1,3 @@
-import { MessageMarkdown } from "@/components/message";
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,9 +16,10 @@ import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
+import { AttemptTodoCompletionView } from "./attempt-todo-completion-view";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
-import { getAttemptTodoCompletionSummary, hasNewTaskResult } from "./result";
+import { hasNewTaskResult } from "./result";
 import { TodoDetail } from "./todo-detail";
 import { WalkthroughView } from "./walkthrough-view";
 
@@ -88,15 +88,6 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     tool.state === "output-available" &&
     "result" in tool.output &&
     hasNewTaskResult(tool.output.result);
-  const result =
-    tool.state === "output-available" && "result" in tool.output
-      ? tool.output.result
-      : undefined;
-  const attemptTodoCompletionSummary =
-    agentType === "attemptTodoCompletion"
-      ? getAttemptTodoCompletionSummary(result)
-      : undefined;
-
   const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
     useShowMessageList();
   const throttledTaskSource = useThrottle(taskSource, SubtaskPreviewThrottleMs);
@@ -142,6 +133,10 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     return <WalkthroughView {...props} taskSource={previewSource} />;
   }
 
+  if (agentType === "attemptTodoCompletion") {
+    return <AttemptTodoCompletionView {...props} taskSource={previewSource} />;
+  }
+
   const title = (
     <div className="flex min-w-0 items-start gap-2">
       <StatusIcon
@@ -183,20 +178,13 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   );
 
   return (
-    <>
-      <ExpandableToolContainer
-        title={title}
-        expandableDetail={expandableDetail}
-        detail={<TodoDetail todos={taskSource?.todos ?? []} />}
-        expanded={showMessageList}
-        onToggle={setShowMessageListImmediately}
-      />
-      {attemptTodoCompletionSummary && (
-        <div className="my-1 py-1 pr-2 pl-6 text-muted-foreground text-sm">
-          <MessageMarkdown>{attemptTodoCompletionSummary}</MessageMarkdown>
-        </div>
-      )}
-    </>
+    <ExpandableToolContainer
+      title={title}
+      expandableDetail={expandableDetail}
+      detail={<TodoDetail todos={taskSource?.todos ?? []} />}
+      expanded={showMessageList}
+      onToggle={setShowMessageListImmediately}
+    />
   );
 }
 

@@ -2,6 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { cn } from "@/lib/utils";
 
@@ -359,44 +364,36 @@ function isActiveTodo(todo: Todo): boolean {
   return todo.status === "pending" || todo.status === "in-progress";
 }
 
-function TodoStatusLabel({ todo }: { todo: Todo }) {
-  const { t } = useTranslation();
-  const { todoPaused } = useTodoListContext();
-
-  const label = isActiveTodo(todo)
-    ? todoPaused
-      ? t("todoList.pausing")
-      : t("todoList.pursuingTodo")
-    : todo.status === "completed"
-      ? t("todoList.completedTodo")
-      : todo.status === "cancelled"
-        ? t("todoList.cancelledTodo")
-        : t("todoList.pendingTodo");
-
-  return <span className="shrink-0 font-medium text-sm">{label}</span>;
-}
-
 function TodoPauseButton({ todo }: { todo: Todo }) {
   const { t } = useTranslation();
   const { todoPaused, onTodoPausedChange, isEditMode } = useTodoListContext();
 
   if (isEditMode || !isActiveTodo(todo) || !onTodoPausedChange) return null;
 
+  const label = todoPaused ? t("todoList.resumeTodo") : t("todoList.pauseTodo");
+
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="xs"
-      aria-label={
-        todoPaused ? t("todoList.resumeTodo") : t("todoList.pauseTodo")
-      }
-      onClick={(event) => {
-        event.stopPropagation();
-        onTodoPausedChange(!todoPaused);
-      }}
-    >
-      {todoPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          aria-label={label}
+          onClick={(event) => {
+            event.stopPropagation();
+            onTodoPausedChange(!todoPaused);
+          }}
+        >
+          {todoPaused ? (
+            <Play className="size-4" />
+          ) : (
+            <Pause className="size-4" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -463,7 +460,7 @@ function TodoListItems({
                 id={`todo-item-${todo.id}`}
                 key={todo.id}
                 className={cn(
-                  "flex items-start gap-2.5 rounded-sm px-1 py-0.5 transition-colors",
+                  "flex min-h-8 items-center gap-2.5 rounded-sm px-1 py-0.5 transition-colors",
                   !isEditMode && "hover:bg-accent/5",
                 )}
                 variants={todoItemVariants}
@@ -487,9 +484,8 @@ function TodoListItems({
                         todo.status === "cancelled"),
                   })}
                 >
-                  <span className="flex min-w-0 items-baseline gap-1.5">
-                    <TodoStatusLabel todo={todo} />
-                    {isEditMode ? (
+                  <span className="flex w-full min-w-0 items-center gap-1.5">
+                    {isEditMode && isActiveTodo(todo) ? (
                       <Input
                         id={`todo-item-${todo.id}`}
                         aria-label={t("todoList.editTodoContent")}
@@ -508,10 +504,10 @@ function TodoListItems({
                             cancelEditMode();
                           }
                         }}
-                        className="h-7 min-w-0 flex-1 text-sm"
+                        className="h-7 min-w-0 flex-1 border-muted-foreground/30 bg-background/80 text-sm"
                       />
                     ) : (
-                      <span className="truncate text-muted-foreground">
+                      <span className="truncate text-muted-foreground leading-7">
                         {getTodoDisplayContent(todo)}
                       </span>
                     )}
