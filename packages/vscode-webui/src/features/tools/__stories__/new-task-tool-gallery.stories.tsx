@@ -59,8 +59,6 @@ const mockMessages: Message[] = [
           kind: "assistant",
           totalTokens: 150,
           finishReason: "tool-calls",
-          startedAt: new Date(),
-          finishedAt: new Date(),
         },
         role: "assistant",
         parts: [
@@ -94,8 +92,6 @@ const mockMessages: Message[] = [
       kind: "assistant",
       totalTokens: 150,
       finishReason: "tool-calls",
-      startedAt: new Date(),
-      finishedAt: new Date(),
     },
     role: "assistant",
     parts: [

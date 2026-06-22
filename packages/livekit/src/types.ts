@@ -19,8 +19,8 @@ export const ZodMetadata = z.discriminatedUnion("kind", [
     kind: z.literal("assistant"),
     totalTokens: z.number(),
     finishReason: z.custom<FinishReason>(),
-    startedAt: z.coerce.date(),
-    finishedAt: z.coerce.date(),
+    startedAt: z.coerce.date().optional(),
+    finishedAt: z.coerce.date().optional(),
   }),
   z.object({
     kind: z.literal("user"),

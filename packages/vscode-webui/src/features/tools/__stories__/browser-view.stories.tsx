@@ -141,13 +141,7 @@ export const Default: Story = {
         {
           id: "2",
           role: "assistant",
-          metadata: {
-            kind: "assistant",
-            totalTokens: 0,
-            finishReason: "stop",
-            startedAt: new Date(),
-            finishedAt: new Date(),
-          },
+          metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
           parts: [
             {
               type: "text",
@@ -170,13 +164,7 @@ export const Default: Story = {
         {
           id: "4",
           role: "assistant",
-          metadata: {
-            kind: "assistant",
-            totalTokens: 0,
-            finishReason: "stop",
-            startedAt: new Date(),
-            finishedAt: new Date(),
-          },
+          metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
           parts: [
             {
               type: "text",
@@ -188,13 +176,7 @@ export const Default: Story = {
         {
           id: "5",
           role: "assistant",
-          metadata: {
-            kind: "assistant",
-            totalTokens: 0,
-            finishReason: "stop",
-            startedAt: new Date(),
-            finishedAt: new Date(),
-          },
+          metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
           parts: [
             {
               type: "tool-executeCommand",
@@ -223,13 +205,7 @@ export const Default: Story = {
         {
           id: "7",
           role: "assistant",
-          metadata: {
-            kind: "assistant",
-            totalTokens: 0,
-            finishReason: "stop",
-            startedAt: new Date(),
-            finishedAt: new Date(),
-          },
+          metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
           parts: [
             {
               type: "text",

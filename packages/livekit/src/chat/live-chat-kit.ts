@@ -829,10 +829,13 @@ export class LiveChatKit<
       this.latestRequestSnapshot,
     );
 
-    const duration = Duration.millis(
-      message.metadata.finishedAt.getTime() -
-        message.metadata.startedAt.getTime(),
-    );
+    let duration = undefined;
+    if (message.metadata.finishedAt && message.metadata.startedAt) {
+      duration = Duration.millis(
+        message.metadata.finishedAt.getTime() -
+          message.metadata.startedAt.getTime(),
+      );
+    }
 
     store.commit(
       events.chatStreamFinished({
@@ -958,7 +961,11 @@ export class LiveChatKit<
     const lastMessage = this.chat.messages.at(-1) || null;
 
     let duration = undefined;
-    if (lastMessage?.metadata?.kind === "assistant") {
+    if (
+      lastMessage?.metadata?.kind === "assistant" &&
+      lastMessage.metadata.finishedAt &&
+      lastMessage.metadata.startedAt
+    ) {
       duration = Duration.millis(
         lastMessage.metadata.finishedAt.getTime() -
           lastMessage.metadata.startedAt.getTime(),

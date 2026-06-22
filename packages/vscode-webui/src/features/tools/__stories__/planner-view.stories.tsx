@@ -98,13 +98,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "2",
       role: "assistant",
-      metadata: {
-        kind: "assistant",
-        totalTokens: 0,
-        finishReason: "stop",
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      },
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
       parts: [
         {
           type: "text",
@@ -126,13 +120,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "3",
       role: "assistant",
-      metadata: {
-        kind: "assistant",
-        totalTokens: 0,
-        finishReason: "stop",
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      },
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
       parts: [
         {
           type: "text",
@@ -151,13 +139,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "4",
       role: "assistant",
-      metadata: {
-        kind: "assistant",
-        totalTokens: 0,
-        finishReason: "stop",
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      },
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
       parts: [
         {
           type: "text",
@@ -180,13 +162,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "5",
       role: "assistant",
-      metadata: {
-        kind: "assistant",
-        totalTokens: 0,
-        finishReason: "stop",
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      },
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
       parts: [
         {
           type: "text",
@@ -208,13 +184,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "6",
       role: "assistant",
-      metadata: {
-        kind: "assistant",
-        totalTokens: 0,
-        finishReason: "stop",
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      },
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
       parts: [
         {
           type: "text",
@@ -237,13 +207,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
     {
       id: "7",
       role: "assistant",
-      metadata: {
-        kind: "assistant",
-        totalTokens: 0,
-        finishReason: "stop",
-        startedAt: new Date(),
-        finishedAt: new Date(),
-      },
+      metadata: { kind: "assistant", totalTokens: 0, finishReason: "stop" },
       parts: [
         {
           type: "text",

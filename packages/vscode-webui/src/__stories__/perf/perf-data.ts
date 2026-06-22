@@ -186,8 +186,6 @@ export function makePerfMessages({
         kind: "assistant",
         totalTokens: 0,
         finishReason: "stop",
-        startedAt: new Date(),
-        finishedAt: new Date(),
       },
       parts,
     } satisfies Message;
