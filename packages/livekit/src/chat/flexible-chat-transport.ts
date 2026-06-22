@@ -22,7 +22,6 @@ import {
   type ModelMessage,
   type UIMessageChunk,
   convertToModelMessages,
-  isStaticToolUIPart,
   streamText,
   tool,
   wrapLanguageModel,
@@ -39,7 +38,7 @@ import {
   createToolCallMiddleware,
 } from "./middlewares";
 import { createModel } from "./models";
-import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
+import { estimateTokens, estimateTotalTokens } from "./token-utils";
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -50,6 +49,8 @@ export type OnStartCallback = (options: {
 
 export type FinishedRequestSnapshot = {
   systemPrompt: string;
+  systemPromptTokens: number;
+  toolsTokens: number;
 };
 
 export type PrepareRequestGetters = {
@@ -182,10 +183,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       autoMemory,
     );
     const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
-    const systemPromptChars = systemPrompt.length;
-    const toolsChars = JSON.stringify(tools).length;
-    const systemPromptTokens = Math.ceil(systemPromptChars / 4);
-    const toolsTokens = Math.ceil(toolsChars / 4);
+    const systemPromptTokens = estimateTokens(systemPrompt);
+    const toolsTokens = estimateTokens(JSON.stringify(tools));
 
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
@@ -242,14 +241,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             totalTokens:
               part.totalUsage.totalTokens || estimateTotalTokens(messages),
             finishReason: part.finishReason,
-            systemPromptTokens,
-            toolsTokens,
           } satisfies Metadata;
         }
       },
       onFinish: async () => {
         await this.onRequestFinished?.({
           systemPrompt,
+          systemPromptTokens,
+          toolsTokens,
         });
       },
     });
@@ -277,24 +276,6 @@ function isWellKnownReasoningModel(model?: string): boolean {
     }
   }
   return false;
-}
-
-function estimateTotalTokens(messages: Message[]): number {
-  let totalTokens = 0;
-  for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type === "text") {
-        totalTokens += estimateTokens(part.text);
-      } else if (part.type === "reasoning") {
-        totalTokens += estimateTokens(part.text);
-      } else if (part.type === "file") {
-        totalTokens += ImageEstimatedTokens;
-      } else if (isStaticToolUIPart(part)) {
-        totalTokens += estimateTokens(JSON.stringify(part));
-      }
-    }
-  }
-  return totalTokens;
 }
 
 async function resolvePromise(o: unknown): Promise<unknown> {

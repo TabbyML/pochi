@@ -5,17 +5,12 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { getLogger, isForkAgentUseCase, prompts } from "@getpochi/common";
+import { getLogger, isForkAgentUseCase } from "@getpochi/common";
 import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
-import {
-  type ChatInit,
-  type ChatOnErrorCallback,
-  type ChatOnFinishCallback,
-  isStaticToolUIPart,
-} from "ai";
+import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
@@ -54,7 +49,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
-import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
+import { computeContextWindowUsage, estimateTotalTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
@@ -516,7 +511,7 @@ export class LiveChatKit<
           messages,
           llm: getters.getLLM(),
           task: this.task,
-          estimatedTotalTokens: estimateCurrentMessagesTokens(messages),
+          estimatedTotalTokens: estimateTotalTokens(messages),
         });
 
       if (isManualCompact || isAutoCompact) {
@@ -836,37 +831,10 @@ export class LiveChatKit<
     const finishReason = streamFinishReason ?? message.metadata?.finishReason;
     const status = toTaskStatus(message, finishReason);
 
-    let contextWindowUsage: ContextWindowUsage | undefined = undefined;
-    if (message.metadata?.kind === "assistant") {
-      const {
-        messagesTokens,
-        filesTokens,
-        toolResultsTokens,
-        systemReminderTokens,
-        projectMemoryTokens,
-      } = estimateTokenBreakdown(this.chat.messages);
-      const systemTokens =
-        (message.metadata.systemPromptTokens || 0) + systemReminderTokens;
-      const toolsTokens = message.metadata.toolsTokens || 0;
-
-      const totalTokens =
-        systemTokens +
-        toolsTokens +
-        messagesTokens +
-        filesTokens +
-        toolResultsTokens +
-        projectMemoryTokens;
-      if (totalTokens > 0) {
-        contextWindowUsage = {
-          system: systemTokens,
-          tools: toolsTokens,
-          messages: messagesTokens,
-          files: filesTokens,
-          toolResults: toolResultsTokens,
-          projectMemory: projectMemoryTokens,
-        };
-      }
-    }
+    const contextWindowUsage = computeContextWindowUsage(
+      this.chat.messages,
+      this.latestRequestSnapshot,
+    );
 
     const { duration, startedAt, finishedAt } =
       this.captureStepDuration() ?? {};
@@ -1064,88 +1032,3 @@ const getCleanCheckpoint = (messages: Message[]) => {
     return lastPart.data.commit;
   }
 };
-
-function estimateTokenBreakdown(messages: Message[]) {
-  let messagesTokens = 0;
-  let filesTokens = 0;
-  let toolResultsTokens = 0;
-  let systemReminderTokens = 0;
-  let projectMemoryTokens = 0;
-
-  for (const msg of messages) {
-    for (const part of msg.parts) {
-      if (part.type === "text") {
-        let contentStr = part.text;
-        if (msg.role === "user" && contentStr.includes("<system-reminder>")) {
-          const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
-          const reminders = contentStr.match(reminderRegex);
-          if (reminders) {
-            for (const reminder of reminders) {
-              const tokens = estimateTokens(reminder);
-              if (prompts.isAutoMemorySystemReminder(reminder)) {
-                projectMemoryTokens += tokens;
-              } else {
-                systemReminderTokens += tokens;
-              }
-            }
-            contentStr = contentStr.replace(reminderRegex, "");
-          }
-        }
-        messagesTokens += estimateTokens(contentStr);
-      } else if (part.type === "file") {
-        filesTokens += ImageEstimatedTokens;
-      } else if (isStaticToolUIPart(part)) {
-        messagesTokens += estimateTokens(JSON.stringify(part.input || {}));
-        if (part.state === "output-available" && part.output) {
-          const output = (part as unknown as { output: unknown }).output;
-          let outputTokens = 0;
-
-          if (output instanceof Uint8Array) {
-            outputTokens = ImageEstimatedTokens;
-          } else {
-            const resultStr =
-              typeof output === "string" ? output : JSON.stringify(output);
-            outputTokens = estimateTokens(resultStr);
-          }
-
-          const toolName = part.type.replace(/^tool-/, "");
-          if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {
-            filesTokens += outputTokens;
-          } else {
-            toolResultsTokens += outputTokens;
-          }
-        }
-      } else if (part.type === "reasoning") {
-        messagesTokens += estimateTokens(part.text);
-      } else {
-        messagesTokens += estimateTokens(JSON.stringify(part));
-      }
-    }
-  }
-
-  return {
-    messagesTokens,
-    filesTokens,
-    toolResultsTokens,
-    systemReminderTokens,
-    projectMemoryTokens,
-  };
-}
-
-function estimateCurrentMessagesTokens(messages: Message[]) {
-  const {
-    messagesTokens,
-    filesTokens,
-    toolResultsTokens,
-    systemReminderTokens,
-    projectMemoryTokens,
-  } = estimateTokenBreakdown(messages);
-
-  return (
-    messagesTokens +
-    filesTokens +
-    toolResultsTokens +
-    systemReminderTokens +
-    projectMemoryTokens
-  );
-}

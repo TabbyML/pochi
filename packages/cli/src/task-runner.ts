@@ -343,8 +343,6 @@ export class TaskRunner {
               metadata: {
                 finishReason: lastMessage.metadata.finishReason,
                 totalTokens: lastMessage.metadata.totalTokens,
-                systemPromptTokens: lastMessage.metadata.systemPromptTokens,
-                toolsTokens: lastMessage.metadata.toolsTokens,
               },
             });
           }
