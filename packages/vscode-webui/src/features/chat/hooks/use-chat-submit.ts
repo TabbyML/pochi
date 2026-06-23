@@ -77,16 +77,20 @@ export function useChatSubmit({
 
   const handleStop = useCallback(() => {
     // Compacting is not allowed to be stopped.
-    if (blockingState.isBusy) return;
+    if (blockingState.isBusy) return false;
 
     if (isExecuting) {
-      abortExecutingToolCalls();
-    } else if (isLoading) {
+      void abortExecutingToolCalls();
+      return true;
+    }
+    if (isLoading) {
       stopChat();
       return true;
-    } else if (pendingApproval?.name === "retry") {
+    }
+    if (pendingApproval?.name === "retry") {
       pendingApproval.stopCountdown();
     }
+    return false;
   }, [
     blockingState.isBusy,
     isExecuting,
@@ -124,8 +128,8 @@ export function useChatSubmit({
       if (text.length === 0 && files.length === 0 && reviews.length === 0)
         return;
 
-      const stopIsLoading = handleStop();
-      if (stopIsLoading || isSubmitDisabled) {
+      const stoppedActiveRun = handleStop();
+      if (stoppedActiveRun || isSubmitDisabled) {
         autoApproveGuard.current = "stop";
         if (text.length > 0) {
           setQueuedMessages([text]);
