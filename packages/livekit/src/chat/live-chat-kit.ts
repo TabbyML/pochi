@@ -490,8 +490,7 @@ export class LiveChatKit<
         lastMessage.metadata?.kind === "user" &&
         lastMessage.metadata.compact === true;
 
-      const canAutoCompact =
-        enableAutoCompact === true && !isForkAgentUseCase(requestUseCase);
+      const canAutoCompact = enableAutoCompact === true;
       const isAutoCompact =
         canAutoCompact &&
         !isManualCompact &&
