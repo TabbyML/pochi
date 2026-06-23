@@ -13,7 +13,11 @@ import {
 } from "./auto-memory";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
-import { createEnvironmentPrompt, injectEnvironment } from "./environment";
+import {
+  createEnvironmentPrompt,
+  extractEnvironmentInfo,
+  injectEnvironment,
+} from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
 import { renderReviewComments } from "./review-comments";
@@ -30,6 +34,7 @@ export const prompts = {
   injectEnvironment,
   injectAutoMemory,
   environment: createEnvironmentPrompt,
+  extractEnvironmentInfo,
   createSystemReminder,
   isSystemReminder,
   isEnvironmentSystemReminder,

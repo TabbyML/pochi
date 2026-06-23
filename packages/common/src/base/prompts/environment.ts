@@ -1,8 +1,13 @@
+import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
 import type { TextUIPart, UIMessage } from "ai";
 import type { Environment, GitStatus } from "../environment";
 import { prompts } from "./index";
 
 type User = { name: string; email: string };
+export type EnvironmentInfo = Pick<
+  Environment["info"],
+  "os" | "shell" | "homedir" | "cwd"
+>;
 
 export function createEnvironmentPrompt(
   environment: Environment,
@@ -31,6 +36,57 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
     .filter(Boolean)
     .join("\n\n");
   return sections.trim();
+}
+
+export function extractEnvironmentInfo(
+  prompt: LanguageModelV3CallOptions["prompt"] | undefined,
+): EnvironmentInfo | undefined {
+  if (!prompt) return;
+
+  for (const message of prompt) {
+    const content = message.content;
+    const textParts =
+      typeof content === "string"
+        ? [content]
+        : Array.isArray(content)
+          ? content
+              .filter((part) => part.type === "text")
+              .map((part) => part.text)
+          : [];
+
+    for (const text of textParts) {
+      if (!text.includes("<system-reminder># System Information")) {
+        continue;
+      }
+
+      const os = matchEnvironmentLine(text, "Operating System");
+      const shell = matchEnvironmentLine(text, "Default Shell");
+      const homedir = matchEnvironmentLine(text, "Home Directory");
+      const cwd = matchEnvironmentLine(text, "Current Working Directory");
+
+      if (os && shell && homedir && cwd) {
+        return {
+          os,
+          shell,
+          homedir,
+          cwd,
+        };
+      }
+    }
+  }
+}
+
+function matchEnvironmentLine(text: string, label: string) {
+  const prefix = `${label}:`;
+
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.startsWith(prefix)) {
+      continue;
+    }
+
+    const value = line.slice(prefix.length).trim();
+    return value || undefined;
+  }
 }
 
 function getSystemInfo(environment: Environment) {

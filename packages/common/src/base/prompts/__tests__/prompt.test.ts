@@ -1,5 +1,10 @@
 import { expect, test } from "vitest";
-import { createEnvironmentPrompt } from "../environment";
+import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import type { Environment } from "../../environment";
+import {
+  createEnvironmentPrompt,
+  extractEnvironmentInfo,
+} from "../environment";
 import { createSystemPrompt } from "../system";
 
 test("instructions", () => {
@@ -90,3 +95,83 @@ test("environment", () => {
         }, {name: "Pochi", email: "noreply@getpochi.com"}),
   ).toMatchSnapshot();
 });
+
+test("extractEnvironmentInfo from system message content", () => {
+  const prompt = [
+    {
+      role: "system",
+      content: `<system-reminder>${createEnvironmentPrompt(
+        createTestEnvironment(),
+        undefined,
+      )}</system-reminder>`,
+    },
+  ] satisfies LanguageModelV3CallOptions["prompt"];
+
+  expect(extractEnvironmentInfo(prompt)).toEqual({
+    os: "darwin",
+    shell: "zsh",
+    homedir: "/Users/pochi",
+    cwd: "/Users/pochi/project",
+  });
+});
+
+test("extractEnvironmentInfo from user text parts", () => {
+  const prompt = [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "hello" },
+        {
+          type: "text",
+          text: `<system-reminder>${createEnvironmentPrompt(
+            createTestEnvironment(),
+            undefined,
+          )}</system-reminder>`,
+        },
+      ],
+    },
+  ] satisfies LanguageModelV3CallOptions["prompt"];
+
+  expect(extractEnvironmentInfo(prompt)).toEqual({
+    os: "darwin",
+    shell: "zsh",
+    homedir: "/Users/pochi",
+    cwd: "/Users/pochi/project",
+  });
+});
+
+test("extractEnvironmentInfo ignores missing or incomplete environment prompt", () => {
+  expect(extractEnvironmentInfo(undefined)).toBeUndefined();
+  expect(
+    extractEnvironmentInfo([
+      {
+        role: "system",
+        content:
+          "<system-reminder># System Information\n\nOperating System: darwin</system-reminder>",
+      },
+    ]),
+  ).toBeUndefined();
+  expect(
+    extractEnvironmentInfo([
+      {
+        role: "system",
+        content:
+          "# System Information\n\nOperating System: darwin\nDefault Shell: zsh\nHome Directory: /Users/pochi\nCurrent Working Directory: /Users/pochi/project\nCurrent Time: 2026-06-23T00:00:00.000Z",
+      },
+    ]),
+  ).toBeUndefined();
+});
+
+function createTestEnvironment(): Environment {
+  return {
+    currentTime: "2026-06-23T00:00:00.000Z",
+    workspace: {},
+    todos: [],
+    info: {
+      cwd: "/Users/pochi/project",
+      os: "darwin",
+      homedir: "/Users/pochi",
+      shell: "zsh",
+    },
+  };
+}
