@@ -15,8 +15,8 @@ import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
 import {
   createEnvironmentPrompt,
-  extractEnvironmentInfo,
   injectEnvironment,
+  parseEnvironmentInfo,
 } from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
@@ -34,7 +34,7 @@ export const prompts = {
   injectEnvironment,
   injectAutoMemory,
   environment: createEnvironmentPrompt,
-  extractEnvironmentInfo,
+  parseEnvironmentInfo,
   createSystemReminder,
   isSystemReminder,
   isEnvironmentSystemReminder,

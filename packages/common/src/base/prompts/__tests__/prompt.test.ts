@@ -3,7 +3,7 @@ import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
 import type { Environment } from "../../environment";
 import {
   createEnvironmentPrompt,
-  extractEnvironmentInfo,
+  parseEnvironmentInfo,
 } from "../environment";
 import { createSystemPrompt } from "../system";
 
@@ -96,7 +96,7 @@ test("environment", () => {
   ).toMatchSnapshot();
 });
 
-test("extractEnvironmentInfo from system message content", () => {
+test("parseEnvironmentInfo from system message content", () => {
   const prompt = [
     {
       role: "system",
@@ -107,7 +107,7 @@ test("extractEnvironmentInfo from system message content", () => {
     },
   ] satisfies LanguageModelV3CallOptions["prompt"];
 
-  expect(extractEnvironmentInfo(prompt)).toEqual({
+  expect(parseEnvironmentInfo(prompt)).toEqual({
     os: "darwin",
     shell: "zsh",
     homedir: "/Users/pochi",
@@ -115,7 +115,7 @@ test("extractEnvironmentInfo from system message content", () => {
   });
 });
 
-test("extractEnvironmentInfo from user text parts", () => {
+test("parseEnvironmentInfo from user text parts", () => {
   const prompt = [
     {
       role: "user",
@@ -132,7 +132,7 @@ test("extractEnvironmentInfo from user text parts", () => {
     },
   ] satisfies LanguageModelV3CallOptions["prompt"];
 
-  expect(extractEnvironmentInfo(prompt)).toEqual({
+  expect(parseEnvironmentInfo(prompt)).toEqual({
     os: "darwin",
     shell: "zsh",
     homedir: "/Users/pochi",
@@ -140,10 +140,10 @@ test("extractEnvironmentInfo from user text parts", () => {
   });
 });
 
-test("extractEnvironmentInfo ignores missing or incomplete environment prompt", () => {
-  expect(extractEnvironmentInfo(undefined)).toBeUndefined();
+test("parseEnvironmentInfo ignores missing or incomplete environment prompt", () => {
+  expect(parseEnvironmentInfo(undefined)).toBeUndefined();
   expect(
-    extractEnvironmentInfo([
+    parseEnvironmentInfo([
       {
         role: "system",
         content:
@@ -152,7 +152,7 @@ test("extractEnvironmentInfo ignores missing or incomplete environment prompt", 
     ]),
   ).toBeUndefined();
   expect(
-    extractEnvironmentInfo([
+    parseEnvironmentInfo([
       {
         role: "system",
         content:

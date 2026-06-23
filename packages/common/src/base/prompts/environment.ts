@@ -38,7 +38,7 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
   return sections.trim();
 }
 
-export function extractEnvironmentInfo(
+export function parseEnvironmentInfo(
   prompt: LanguageModelV3CallOptions["prompt"] | undefined,
 ): EnvironmentInfo | undefined {
   if (!prompt) return;
@@ -59,10 +59,11 @@ export function extractEnvironmentInfo(
         continue;
       }
 
-      const os = matchEnvironmentLine(text, "Operating System");
-      const shell = matchEnvironmentLine(text, "Default Shell");
-      const homedir = matchEnvironmentLine(text, "Home Directory");
-      const cwd = matchEnvironmentLine(text, "Current Working Directory");
+      const systemInfo = parseSystemInfoLines(text);
+      const os = systemInfo["Operating System"];
+      const shell = systemInfo["Default Shell"];
+      const homedir = systemInfo["Home Directory"];
+      const cwd = systemInfo["Current Working Directory"];
 
       if (os && shell && homedir && cwd) {
         return {
@@ -76,17 +77,23 @@ export function extractEnvironmentInfo(
   }
 }
 
-function matchEnvironmentLine(text: string, label: string) {
-  const prefix = `${label}:`;
+function parseSystemInfoLines(text: string) {
+  const lines: Record<string, string> = {};
 
   for (const line of text.split(/\r?\n/)) {
-    if (!line.startsWith(prefix)) {
+    const separatorIndex = line.indexOf(":");
+    if (separatorIndex === -1) {
       continue;
     }
 
-    const value = line.slice(prefix.length).trim();
-    return value || undefined;
+    const key = line.slice(0, separatorIndex);
+    const value = line.slice(separatorIndex + 1).trim();
+    if (value) {
+      lines[key] = value;
+    }
   }
+
+  return lines;
 }
 
 function getSystemInfo(environment: Environment) {
