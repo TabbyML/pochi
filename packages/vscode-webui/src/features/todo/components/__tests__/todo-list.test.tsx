@@ -52,7 +52,7 @@ const cancelledTodo = {
 } as const;
 
 describe("TodoList", () => {
-  it("renders edit in the header and pause in the active item row", () => {
+  it("renders pause in the header and only edit in the row hover actions", () => {
     render(
       <TodoList
         todos={[activeTodo]}
@@ -66,13 +66,33 @@ describe("TodoList", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "todoList.editTodos" }),
-    ).toBeTruthy();
-    expect(
       screen.getByRole("button", { name: "todoList.pauseTodo" }),
     ).toBeTruthy();
     expect(
-      screen.queryByRole("button", { name: "todoList.deleteTodo" }),
+      screen.getByRole("button", { name: "todoList.editTodo" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "todoList.editTodos" }),
+    ).toBeNull();
+    const activeRow = document.getElementById("todo-item-todo-1");
+    expect(activeRow).toBeTruthy();
+    expect(
+      within(activeRow as HTMLElement).queryByRole("button", {
+        name: "todoList.pauseTodo",
+      }),
+    ).toBeNull();
+    expect(
+      activeRow?.querySelector(".group-hover\\/todo\\:opacity-100"),
+    ).toBeTruthy();
+    expect(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }).textContent,
+    ).toBe("");
+    expect(
+      within(activeRow as HTMLElement).queryByRole("button", {
+        name: "todoList.deleteTodo",
+      }),
     ).toBeNull();
   });
 
@@ -231,7 +251,7 @@ describe("TodoList", () => {
     ).not.toContain("animated-gradient-text");
   });
 
-  it("edits todo content through a shared edit mode", () => {
+  it("edits todo content through the item edit state", () => {
     const onSaveTodos = vi.fn();
 
     render(
@@ -241,28 +261,51 @@ describe("TodoList", () => {
       </TodoList>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodos" }));
+    const activeRow = document.getElementById("todo-item-todo-1");
+    expect(activeRow).toBeTruthy();
+    fireEvent.click(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    );
 
     expect(
-      screen.getByRole("button", { name: "todoList.saveTodos" }),
-    ).toBeTruthy();
+      screen.getByRole("button", { name: "todoList.saveTodo" }).textContent,
+    ).toBe("todoList.saveTodo");
     expect(
-      screen.getByRole("button", { name: "todoList.cancelEditing" }),
-    ).toBeTruthy();
+      screen.getByRole("button", { name: "todoList.saveTodo" }).className,
+    ).toContain("bg-primary");
+    const leadingActions = activeRow?.firstElementChild as HTMLElement;
+    const editActions = activeRow?.lastElementChild as HTMLElement;
     expect(
-      screen.queryByRole("button", { name: "todoList.pauseTodo" }),
+      within(leadingActions).queryByRole("button", {
+        name: "todoList.deleteTodo",
+      }),
+    ).toBeNull();
+    const deleteButton = within(editActions).getByRole("button", {
+      name: "todoList.deleteTodo",
+    });
+    expect(deleteButton.textContent).toBe("todoList.deleteTodo");
+    expect(deleteButton.className).toContain("bg-background");
+    expect(
+      within(editActions).queryByRole("button", { name: "todoList.cancel" }),
+    ).toBeNull();
+    expect(
+      within(activeRow as HTMLElement).queryByRole("button", {
+        name: "todoList.pauseTodo",
+      }),
     ).toBeNull();
 
     const input = screen.getByLabelText("todoList.editTodoContent");
     fireEvent.change(input, { target: { value: "Increase coverage" } });
-    fireEvent.click(screen.getByRole("button", { name: "todoList.saveTodos" }));
+    fireEvent.click(screen.getByRole("button", { name: "todoList.saveTodo" }));
 
     expect(onSaveTodos).toHaveBeenCalledWith([
       { ...activeTodo, content: "Increase coverage" },
     ]);
   });
 
-  it("keeps completed todo content read-only in edit mode", () => {
+  it("keeps completed todo content read-only in item edit state", () => {
     render(
       <TodoList todos={[activeTodo, completedTodo]} editable>
         <TodoList.Header />
@@ -270,17 +313,20 @@ describe("TodoList", () => {
       </TodoList>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodos" }));
-
-    expect(screen.getAllByLabelText("todoList.editTodoContent")).toHaveLength(
-      1,
-    );
     const completedRow = document.getElementById("todo-item-todo-2");
     expect(completedRow).toBeTruthy();
     expect(
-      screen.getByLabelText("todoList.editTodoContent").parentElement
-        ?.className,
-    ).toContain("w-full");
+      within(completedRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    ).toBeTruthy();
+
+    expect(screen.queryByLabelText("todoList.editTodoContent")).toBeNull();
+    fireEvent.click(
+      within(completedRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    );
     expect(
       within(completedRow as HTMLElement).getByText("Finished work"),
     ).toBeTruthy();
@@ -290,13 +336,21 @@ describe("TodoList", () => {
       ),
     ).toBeNull();
     expect(
-      within(completedRow as HTMLElement).getByRole("button", {
-        name: "todoList.deleteTodo",
+      within(completedRow as HTMLElement).queryByRole("button", {
+        name: "todoList.saveTodo",
       }),
-    ).toBeTruthy();
+    ).toBeNull();
+    const deleteButton = within(completedRow as HTMLElement).getByRole(
+      "button",
+      {
+        name: "todoList.deleteTodo",
+      },
+    );
+    expect(deleteButton.textContent).toBe("todoList.deleteTodo");
+    expect(deleteButton.className).toContain("bg-background");
   });
 
-  it("deletes todos only from the draft until save", () => {
+  it("deletes todos from the item edit state", () => {
     const onSaveTodos = vi.fn();
 
     render(
@@ -310,16 +364,18 @@ describe("TodoList", () => {
       </TodoList>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodos" }));
     const activeRow = document.getElementById("todo-item-todo-1");
     expect(activeRow).toBeTruthy();
+    fireEvent.click(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    );
     fireEvent.click(
       within(activeRow as HTMLElement).getByRole("button", {
         name: "todoList.deleteTodo",
       }),
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "todoList.saveTodos" }));
 
     expect(onSaveTodos).toHaveBeenCalledWith([completedTodo]);
   });
@@ -334,11 +390,16 @@ describe("TodoList", () => {
       </TodoList>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodos" }));
+    const activeRow = document.getElementById("todo-item-todo-1");
+    expect(activeRow).toBeTruthy();
+    fireEvent.click(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    );
     fireEvent.click(
       screen.getByRole("button", { name: "todoList.deleteTodo" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "todoList.saveTodos" }));
 
     expect(onSaveTodos).toHaveBeenCalledWith([]);
   });
@@ -353,12 +414,67 @@ describe("TodoList", () => {
       </TodoList>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodos" }));
+    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodo" }));
     const input = screen.getByLabelText("todoList.editTodoContent");
     fireEvent.change(input, { target: { value: "Draft content" } });
     fireEvent.keyDown(input, { key: "Escape" });
 
     expect(onSaveTodos).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText("Increase tests/basic.test.tsx coverage").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("exits item edit mode on outside click", () => {
+    render(
+      <>
+        <button type="button">outside</button>
+        <TodoList todos={[activeTodo]} editable>
+          <TodoList.Header />
+          <TodoList.Items />
+        </TodoList>
+      </>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodo" }));
+    expect(screen.getByLabelText("todoList.editTodoContent")).toBeTruthy();
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "outside" }));
+
+    expect(screen.queryByLabelText("todoList.editTodoContent")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "todoList.editTodo" }),
+    ).toBeTruthy();
+  });
+
+  it("exits item edit mode when clicking outside the input", () => {
+    const onSaveTodos = vi.fn();
+
+    render(
+      <TodoList
+        todos={[activeTodo, completedTodo]}
+        editable
+        onSaveTodos={onSaveTodos}
+      >
+        <TodoList.Header />
+        <TodoList.Items />
+      </TodoList>,
+    );
+
+    const activeRow = document.getElementById("todo-item-todo-1");
+    expect(activeRow).toBeTruthy();
+    fireEvent.click(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    );
+    const input = screen.getByLabelText("todoList.editTodoContent");
+    fireEvent.change(input, { target: { value: "Draft content" } });
+
+    fireEvent.pointerDown(screen.getByText("Finished work"));
+
+    expect(onSaveTodos).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("todoList.editTodoContent")).toBeNull();
     expect(
       screen.getAllByText("Increase tests/basic.test.tsx coverage").length,
     ).toBeGreaterThan(0);

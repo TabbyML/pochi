@@ -17,17 +17,16 @@ import {
   CircleCheckBig,
   CircleDot,
   CircleX,
+  Edit,
   Pause,
-  Pencil,
   Play,
-  Save,
-  Trash2,
-  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type ReactNode,
+  type RefObject,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -62,14 +61,15 @@ interface TodoListContextValue {
   disableInProgressTodoTitle: boolean;
   todoPaused: boolean;
   editable: boolean;
-  isEditMode: boolean;
-  draftTodos: Todo[];
+  editingTodoId: string | undefined;
+  draftContent: string;
+  editInputRef: RefObject<HTMLInputElement | null>;
   hasInvalidDraftTodo: boolean;
-  enterEditMode: () => void;
+  enterEditMode: (todo: Todo) => void;
   cancelEditMode: () => void;
   saveDraftTodos: () => void;
   updateDraftTodoContent: (todoId: string, content: string) => void;
-  deleteDraftTodo: (todoId: string) => void;
+  deleteTodo: (todoId: string) => void;
   onTodoPausedChange?: (paused: boolean) => void;
 }
 
@@ -115,63 +115,64 @@ function TodoListRoot({
   const [isCollapsed, setIsCollapsed] = useState(
     !hasActiveTodo && !disableCollapse && todos.length > 0,
   );
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [draftTodos, setDraftTodos] = useState<Todo[]>([]);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [editingTodoId, setEditingTodoId] = useState<string>();
+  const [draftContent, setDraftContent] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
 
-  const enterEditMode = () => {
-    setDraftTodos(
-      todos.map((todo) => ({
-        ...todo,
-        content: parseTitle(todo.content),
-      })),
-    );
-    setIsEditMode(true);
+  const enterEditMode = (todo: Todo) => {
+    setEditingTodoId(todo.id);
+    setDraftContent(parseTitle(todo.content));
   };
 
-  const cancelEditMode = () => {
-    setIsEditMode(false);
-    setDraftTodos([]);
-  };
+  const cancelEditMode = useCallback(() => {
+    setEditingTodoId(undefined);
+    setDraftContent("");
+  }, []);
 
-  const hasInvalidDraftTodo = draftTodos.some(
-    (todo) => todo.content.trim().length === 0,
-  );
+  const editingTodo = todos.find((todo) => todo.id === editingTodoId);
+  const hasInvalidDraftTodo =
+    !!editingTodo &&
+    isActiveTodo(editingTodo) &&
+    draftContent.trim().length === 0;
 
   const saveDraftTodos = () => {
-    if (hasInvalidDraftTodo) return;
-    const nextTodos = draftTodos.map((todo) => ({
-      ...todo,
-      content: todo.content.trim(),
-    }));
+    if (!editingTodoId || hasInvalidDraftTodo) return;
+    const nextTodos = todos.map((todo) =>
+      todo.id === editingTodoId && isActiveTodo(todo)
+        ? { ...todo, content: draftContent.trim() }
+        : todo,
+    );
     onSaveTodos?.(nextTodos);
-    setIsEditMode(false);
-    setDraftTodos([]);
+    cancelEditMode();
   };
 
   const updateDraftTodoContent = (todoId: string, content: string) => {
-    setDraftTodos((current) =>
-      current.map((todo) => (todo.id === todoId ? { ...todo, content } : todo)),
-    );
+    if (todoId !== editingTodoId) return;
+    setDraftContent(content);
   };
 
-  const deleteDraftTodo = (todoId: string) => {
-    setDraftTodos((current) => current.filter((todo) => todo.id !== todoId));
+  const deleteTodo = (todoId: string) => {
+    onSaveTodos?.(todos.filter((todo) => todo.id !== todoId));
+    cancelEditMode();
   };
 
   useEffect(() => {
-    if (!isEditMode) return;
+    if (!editingTodoId) return;
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setIsEditMode(false);
-        setDraftTodos([]);
+      const target = event.target as Node;
+      const isEditAction =
+        target instanceof Element &&
+        !!target.closest("[data-todo-edit-action]");
+
+      if (!editInputRef.current?.contains(target) && !isEditAction) {
+        cancelEditMode();
       }
     };
 
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [isEditMode]);
+  }, [editingTodoId, cancelEditMode]);
 
   const contextValue: TodoListContextValue = {
     todos,
@@ -181,22 +182,21 @@ function TodoListRoot({
     disableInProgressTodoTitle: !!disableInProgressTodoTitle,
     todoPaused,
     editable,
-    isEditMode,
-    draftTodos,
+    editingTodoId,
+    draftContent,
+    editInputRef,
     hasInvalidDraftTodo,
     enterEditMode,
     cancelEditMode,
     saveDraftTodos,
     updateDraftTodoContent,
-    deleteDraftTodo,
+    deleteTodo,
     onTodoPausedChange,
   };
 
   return (
     <TodoListContext.Provider value={contextValue}>
-      <div ref={rootRef} className={className}>
-        {children}
-      </div>
+      <div className={className}>{children}</div>
     </TodoListContext.Provider>
   );
 }
@@ -215,12 +215,7 @@ function TodoListHeader({ children }: TodoListHeaderProps) {
     disableCollapse,
     disableInProgressTodoTitle,
     todoPaused,
-    editable,
-    isEditMode,
-    hasInvalidDraftTodo,
-    enterEditMode,
-    cancelEditMode,
-    saveDraftTodos,
+    onTodoPausedChange,
   } = useTodoListContext();
 
   const inProgressTodo = useMemo(
@@ -240,14 +235,13 @@ function TodoListHeader({ children }: TodoListHeaderProps) {
   );
 
   useEffect(() => {
-    if (!hasActiveTodo && todos.length > 0 && !disableCollapse && !isEditMode) {
+    if (!hasActiveTodo && todos.length > 0 && !disableCollapse) {
       setIsCollapsed(true);
     }
-  }, [hasActiveTodo, todos, setIsCollapsed, disableCollapse, isEditMode]);
+  }, [hasActiveTodo, todos, setIsCollapsed, disableCollapse]);
 
   const toggleCollapse = () => {
     if (disableCollapse) return;
-    if (isEditMode) return;
     setIsCollapsed(!isCollapsed);
   };
 
@@ -293,41 +287,12 @@ function TodoListHeader({ children }: TodoListHeaderProps) {
       <div className="flex justify-end">
         <div className="flex gap-1 p-2" onClick={(e) => e.stopPropagation()}>
           {children}
-          {editable &&
-            todos.length > 0 &&
-            (isEditMode ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  aria-label={t("todoList.saveTodos")}
-                  disabled={hasInvalidDraftTodo}
-                  onClick={saveDraftTodos}
-                >
-                  <Save className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  aria-label={t("todoList.cancelEditing")}
-                  onClick={cancelEditMode}
-                >
-                  <X className="size-4" />
-                </Button>
-              </>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                aria-label={t("todoList.editTodos")}
-                onClick={enterEditMode}
-              >
-                <Pencil className="size-4" />
-              </Button>
-            ))}
+          {hasActiveTodo && onTodoPausedChange && (
+            <TodoPauseButton
+              todoPaused={todoPaused}
+              onTodoPausedChange={onTodoPausedChange}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -364,11 +329,14 @@ function isActiveTodo(todo: Todo): boolean {
   return todo.status === "pending" || todo.status === "in-progress";
 }
 
-function TodoPauseButton({ todo }: { todo: Todo }) {
+function TodoPauseButton({
+  todoPaused,
+  onTodoPausedChange,
+}: {
+  todoPaused: boolean;
+  onTodoPausedChange: (paused: boolean) => void;
+}) {
   const { t } = useTranslation();
-  const { todoPaused, onTodoPausedChange, isEditMode } = useTodoListContext();
-
-  if (isEditMode || !isActiveTodo(todo) || !onTodoPausedChange) return null;
 
   const label = todoPaused ? t("todoList.resumeTodo") : t("todoList.pauseTodo");
 
@@ -399,23 +367,123 @@ function TodoPauseButton({ todo }: { todo: Todo }) {
 
 function TodoDeleteButton({ todo }: { todo: Todo }) {
   const { t } = useTranslation();
-  const { isEditMode, deleteDraftTodo } = useTodoListContext();
+  const { editable, editingTodoId, deleteTodo } = useTodoListContext();
 
-  if (!isEditMode) return null;
+  if (!editable || (editingTodoId && editingTodoId !== todo.id)) return null;
+
+  const label = t("todoList.deleteTodo");
 
   return (
     <Button
       type="button"
-      variant="ghost"
+      variant="outline"
       size="xs"
-      aria-label={t("todoList.deleteTodo")}
+      className="h-6 gap-1.5"
+      aria-label={label}
+      data-todo-edit-action
       onClick={(event) => {
         event.stopPropagation();
-        deleteDraftTodo(todo.id);
+        deleteTodo(todo.id);
       }}
     >
-      <Trash2 className="size-4" />
+      {label}
     </Button>
+  );
+}
+
+function TodoEditButton({ todo }: { todo: Todo }) {
+  const { t } = useTranslation();
+  const { editable, editingTodoId, enterEditMode } = useTodoListContext();
+
+  if (!editable || editingTodoId) return null;
+
+  const label = t("todoList.editTodo");
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          aria-label={label}
+          onClick={(event) => {
+            event.stopPropagation();
+            enterEditMode(todo);
+          }}
+        >
+          <Edit className="size-3.5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function TodoSaveButton() {
+  const { t } = useTranslation();
+  const { hasInvalidDraftTodo, saveDraftTodos } = useTodoListContext();
+
+  return (
+    <Button
+      type="button"
+      variant="default"
+      size="xs"
+      className="h-6 gap-1.5"
+      aria-label={t("todoList.saveTodo")}
+      data-todo-edit-action
+      disabled={hasInvalidDraftTodo}
+      onClick={(event) => {
+        event.stopPropagation();
+        saveDraftTodos();
+      }}
+    >
+      {t("todoList.saveTodo")}
+    </Button>
+  );
+}
+
+function TodoLeadingActions({ todo }: { todo: Todo }) {
+  const { editable, editingTodoId } = useTodoListContext();
+
+  if (editingTodoId === todo.id) {
+    return (
+      <div className="relative flex h-6 w-6 shrink-0 items-center justify-center">
+        <TodoIcon todo={todo} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative flex h-6 w-6 shrink-0 items-center justify-center">
+      <div
+        className={cn(
+          "transition-opacity",
+          editable &&
+            "group-focus-within/todo:opacity-0 group-hover/todo:opacity-0",
+        )}
+      >
+        <TodoIcon todo={todo} />
+      </div>
+      {editable && (
+        <div className="absolute left-0 z-10 flex items-center gap-0.5 rounded-sm bg-background/95 opacity-0 shadow-sm transition-opacity group-focus-within/todo:opacity-100 group-hover/todo:opacity-100">
+          <TodoEditButton todo={todo} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TodoTrailingActions({ todo }: { todo: Todo }) {
+  const { editingTodoId } = useTodoListContext();
+
+  if (editingTodoId !== todo.id) return null;
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      {isActiveTodo(todo) && <TodoSaveButton />}
+      <TodoDeleteButton todo={todo} />
+    </div>
   );
 }
 
@@ -427,14 +495,13 @@ function TodoListItems({
   const {
     todos,
     isCollapsed,
-    isEditMode,
-    draftTodos,
+    editingTodoId,
+    draftContent,
+    editInputRef,
     updateDraftTodoContent,
     saveDraftTodos,
     cancelEditMode,
   } = useTodoListContext();
-
-  const displayTodos = isEditMode ? draftTodos : todos;
 
   return (
     <ScrollArea
@@ -455,13 +522,13 @@ function TodoListItems({
       >
         <div className="flex flex-col gap-0.5">
           <AnimatePresence mode="popLayout">
-            {displayTodos.map((todo, idx) => (
+            {todos.map((todo, idx) => (
               <motion.div
                 id={`todo-item-${todo.id}`}
                 key={todo.id}
                 className={cn(
-                  "flex min-h-8 items-center gap-2.5 rounded-sm px-1 py-0.5 transition-colors",
-                  !isEditMode && "hover:bg-accent/5",
+                  "group/todo flex min-h-8 items-center gap-2.5 rounded-sm px-1 py-0.5 transition-colors",
+                  editingTodoId !== todo.id && "hover:bg-accent/5",
                 )}
                 variants={todoItemVariants}
                 initial="initial"
@@ -474,22 +541,23 @@ function TodoListItems({
                   delay: idx * 0.08 + 0.1,
                 }}
               >
-                <TodoIcon todo={todo} />
+                <TodoLeadingActions todo={todo} />
                 <Label
                   htmlFor={`todo-item-${todo.id}`}
                   className={cn("min-w-0 flex-1 text-md", {
                     "text-muted-foreground line-through":
-                      !isEditMode &&
+                      editingTodoId !== todo.id &&
                       (todo.status === "completed" ||
                         todo.status === "cancelled"),
                   })}
                 >
                   <span className="flex w-full min-w-0 items-center gap-1.5">
-                    {isEditMode && isActiveTodo(todo) ? (
+                    {editingTodoId === todo.id && isActiveTodo(todo) ? (
                       <Input
+                        ref={editInputRef}
                         id={`todo-item-${todo.id}`}
                         aria-label={t("todoList.editTodoContent")}
-                        value={todo.content}
+                        value={draftContent}
                         onChange={(event) =>
                           updateDraftTodoContent(todo.id, event.target.value)
                         }
@@ -513,10 +581,7 @@ function TodoListItems({
                     )}
                   </span>
                 </Label>
-                <div className="flex shrink-0 gap-0.5">
-                  <TodoPauseButton todo={todo} />
-                  <TodoDeleteButton todo={todo} />
-                </div>
+                <TodoTrailingActions todo={todo} />
               </motion.div>
             ))}
           </AnimatePresence>
