@@ -350,6 +350,7 @@ export class TaskRunner {
       logger.trace("Start step loop.");
       this.stepCount.reset();
       while (true) {
+        this.abortSignal?.throwIfAborted();
         const stepResult = await this.step();
         if (stepResult === "finished") {
           break;

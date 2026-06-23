@@ -351,7 +351,7 @@ const program = new Command()
 
     // FIXME(zhiming): the abort logic does not work as intent in many cases, need more investigation
     // Create AbortController for task cancellation with graceful shutdown
-    const abortController = createAbortControllerWithGracefulShutdown();
+    const abortController = createAbortControllerWithGracefulShutdown(program);
 
     const llm = await createLLMConfig(program, options, {
       customAgents,
