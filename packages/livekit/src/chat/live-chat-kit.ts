@@ -469,9 +469,14 @@ export class LiveChatKit<
       transport: this.transport,
     });
 
-    abortSignal?.addEventListener("abort", () => {
-      this.chat.stop();
-    });
+    abortSignal?.throwIfAborted();
+    abortSignal?.addEventListener(
+      "abort",
+      () => {
+        this.chat.stop();
+      },
+      { once: true },
+    );
 
     // @ts-expect-error: monkey patch
     const chat = this.chat as {
