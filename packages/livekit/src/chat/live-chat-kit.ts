@@ -687,6 +687,10 @@ export class LiveChatKit<
     return countTask > 0;
   }
 
+  get latestSystemPrompt(): string | undefined {
+    return this.latestRequestSnapshot?.systemPrompt;
+  }
+
   updateIsPublicShared = (isPublicShared: boolean) => {
     this.store.commit(
       events.updateIsPublicShared({

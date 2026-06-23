@@ -376,6 +376,7 @@ function Chat({ user, uid, info }: ChatProps) {
           taskId={uid}
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
+          getSystemPrompt={() => chatKit.latestSystemPrompt}
         />
       </div>
       <BackgroundTaskDebugPanel />
