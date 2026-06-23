@@ -2,6 +2,7 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type {
   ActiveSelection,
   BashOutputs,
+  MessageMetadata,
   Review,
   UserEdits,
 } from "@getpochi/common";
@@ -9,26 +10,10 @@ import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
-import type { FinishReason, InferUITools, UIMessage } from "ai";
+import type { InferUITools, UIMessage } from "ai";
 import z from "zod";
 import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
-
-export const ZodMetadata = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("assistant"),
-    totalTokens: z.number(),
-    finishReason: z.custom<FinishReason>(),
-    startedAt: z.coerce.date().optional(),
-    finishedAt: z.coerce.date().optional(),
-  }),
-  z.object({
-    kind: z.literal("user"),
-    compact: z.boolean().optional(),
-  }),
-]);
-
-export type Metadata = z.infer<typeof ZodMetadata>;
 
 export type DataParts = {
   checkpoint: {
@@ -50,7 +35,7 @@ export type DataParts = {
 
 export type UITools = InferUITools<ClientTools>;
 
-export type Message = UIMessage<Metadata, DataParts, UITools>;
+export type Message = UIMessage<MessageMetadata, DataParts, UITools>;
 
 const RequestData = z.object({
   environment: Environment.optional(),

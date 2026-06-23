@@ -38,7 +38,7 @@ export { toErrorMessage } from "./error";
 export { withTimeout } from "./async-utils";
 export type { MaybePromise } from "./async-utils";
 
-export * from "./message-context";
+export * from "./message";
 export type {
   AutoMemoryDreamCandidate,
   AutoMemoryDreamRun,

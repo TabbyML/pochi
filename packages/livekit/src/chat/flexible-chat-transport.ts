@@ -3,6 +3,7 @@ import type {
   AutoMemoryContext,
   Environment,
   MaybePromise,
+  MessageMetadata,
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
@@ -30,7 +31,7 @@ import {
 import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
-import type { LiveKitStore, Message, Metadata, RequestData } from "../types";
+import type { LiveKitStore, Message, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -243,7 +244,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             finishReason: part.finishReason,
             startedAt: requestStartedAt,
             finishedAt: new Date(),
-          } satisfies Metadata;
+          } satisfies MessageMetadata;
         }
       },
       onFinish: async () => {
