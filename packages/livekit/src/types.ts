@@ -2,6 +2,7 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type {
   ActiveSelection,
   BashOutputs,
+  MessageMetadata,
   Review,
   UserEdits,
 } from "@getpochi/common";
@@ -9,24 +10,10 @@ import { Environment } from "@getpochi/common";
 import { GoogleVertexModel } from "@getpochi/common/configuration";
 import { type ClientTools, McpTool } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
-import type { FinishReason, InferUITools, UIMessage } from "ai";
+import type { InferUITools, UIMessage } from "ai";
 import z from "zod";
 import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
-
-export type Metadata =
-  | {
-      kind: "assistant";
-      totalTokens: number;
-      finishReason: FinishReason;
-      systemPromptTokens?: number;
-      toolsTokens?: number;
-      systemPrompt?: string;
-    }
-  | {
-      kind: "user";
-      compact?: boolean;
-    };
 
 export type DataParts = {
   checkpoint: {
@@ -48,7 +35,7 @@ export type DataParts = {
 
 export type UITools = InferUITools<ClientTools>;
 
-export type Message = UIMessage<Metadata, DataParts, UITools>;
+export type Message = UIMessage<MessageMetadata, DataParts, UITools>;
 
 const RequestData = z.object({
   environment: Environment.optional(),

@@ -76,6 +76,7 @@ interface ChatToolbarProps {
   taskId: string;
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
+  getSystemPrompt?: () => string | undefined;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -93,6 +94,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   taskId,
   isRepairingMermaid = false,
   mcpConfigOverride,
+  getSystemPrompt,
 }) => {
   const { t } = useTranslation();
 
@@ -390,7 +392,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               selectedModel={selectedModel}
             />
           )}
-          <DevModeButton messages={messages} todos={todos} taskId={taskId} />
+          <DevModeButton
+            messages={messages}
+            todos={todos}
+            getSystemPrompt={getSystemPrompt}
+          />
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}

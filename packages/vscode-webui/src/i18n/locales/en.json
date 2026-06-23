@@ -474,10 +474,10 @@
     "copyCoreMessages": "Copy Core Messages",
     "copyCheckpointCommand": "Copy Checkpoint Command",
     "copyTodos": "Copy TODOs",
+    "copySystemPrompt": "Copy System Prompt",
     "noCheckpointAvailable": "No checkpoint available",
     "openStore": "Open Store",
-    "reviewChanges": "Review Changes",
-    "copySystemPrompt": "Copy System Prompt"
+    "reviewChanges": "Review Changes"
   },
   "devRetryCountdown": {
     "attempts": "Attempts:",

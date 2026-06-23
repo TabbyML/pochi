@@ -2,6 +2,8 @@ import { getErrorMessage } from "@ai-sdk/provider";
 import type {
   AutoMemoryContext,
   Environment,
+  MaybePromise,
+  MessageMetadata,
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
@@ -22,7 +24,6 @@ import {
   type ModelMessage,
   type UIMessageChunk,
   convertToModelMessages,
-  isStaticToolUIPart,
   streamText,
   tool,
   wrapLanguageModel,
@@ -30,7 +31,7 @@ import {
 import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
-import type { LiveKitStore, Message, Metadata, RequestData } from "../types";
+import type { LiveKitStore, Message, RequestData } from "../types";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -39,7 +40,7 @@ import {
   createToolCallMiddleware,
 } from "./middlewares";
 import { createModel } from "./models";
-import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
+import { estimateTokens, estimateTotalTokens } from "./token-utils";
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -47,6 +48,12 @@ export type OnStartCallback = (options: {
   abortSignal?: AbortSignal;
   getters: PrepareRequestGetters;
 }) => void;
+
+export type FinishedRequestSnapshot = {
+  systemPrompt: string;
+  systemPromptTokens: number;
+  toolsTokens: number;
+};
 
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
@@ -69,6 +76,8 @@ export type ChatTransportOptions = {
   blobStore: BlobStore;
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
+  systemPromptOverride?: string;
+  onRequestFinished?: (snapshot: FinishedRequestSnapshot) => MaybePromise<void>;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {
@@ -80,6 +89,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly blobStore: BlobStore;
   private readonly customAgent?: CustomAgent;
   private readonly attemptCompletionSchema?: z.ZodAny;
+  private readonly systemPromptOverride?: string;
+  private readonly onRequestFinished?: ChatTransportOptions["onRequestFinished"];
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -91,6 +102,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.blobStore = options.blobStore;
     this.customAgent = options.customAgent;
     this.attemptCompletionSchema = options.attemptCompletionSchema;
+    this.systemPromptOverride = options.systemPromptOverride;
+    this.onRequestFinished = options.onRequestFinished;
   }
 
   sendMessages: (
@@ -163,16 +176,15 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
     }
 
-    const systemPrompt = prompts.system(
+    const generatedSystemPrompt = prompts.system(
       environment?.info?.customRules,
       this.customAgent,
       mcpInfo?.instructions,
       autoMemory,
     );
-    const systemPromptChars = systemPrompt.length;
-    const toolsChars = JSON.stringify(tools).length;
-    const systemPromptTokens = Math.ceil(systemPromptChars / 4);
-    const toolsTokens = Math.ceil(toolsChars / 4);
+    const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
+    const systemPromptTokens = estimateTokens(systemPrompt);
+    const toolsTokens = estimateTokens(JSON.stringify(tools));
 
     const preparedMessages = await prepareMessages(messages);
     const modelMessages = (await resolvePromise(
@@ -183,6 +195,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       ),
     )) as ModelMessage[];
 
+    const requestStartedAt = new Date();
     // Anthropic cache breakpoints are applied server-side based on `useCase`.
     const stream = streamText({
       providerOptions: {
@@ -229,14 +242,17 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             totalTokens:
               part.totalUsage.totalTokens || estimateTotalTokens(messages),
             finishReason: part.finishReason,
-            systemPromptTokens,
-            toolsTokens,
-            systemPrompt,
-          } satisfies Metadata;
+            startedAt: requestStartedAt,
+            finishedAt: new Date(),
+          } satisfies MessageMetadata;
         }
       },
       onFinish: async () => {
-        // DO NOTHING
+        await this.onRequestFinished?.({
+          systemPrompt,
+          systemPromptTokens,
+          toolsTokens,
+        });
       },
     });
   };
@@ -263,24 +279,6 @@ function isWellKnownReasoningModel(model?: string): boolean {
     }
   }
   return false;
-}
-
-function estimateTotalTokens(messages: Message[]): number {
-  let totalTokens = 0;
-  for (const message of messages) {
-    for (const part of message.parts) {
-      if (part.type === "text") {
-        totalTokens += estimateTokens(part.text);
-      } else if (part.type === "reasoning") {
-        totalTokens += estimateTokens(part.text);
-      } else if (part.type === "file") {
-        totalTokens += ImageEstimatedTokens;
-      } else if (isStaticToolUIPart(part)) {
-        totalTokens += estimateTokens(JSON.stringify(part));
-      }
-    }
-  }
-  return totalTokens;
 }
 
 async function resolvePromise(o: unknown): Promise<unknown> {

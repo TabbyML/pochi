@@ -1,5 +1,6 @@
-import type { BackgroundTaskState } from "@getpochi/common";
+import type { BackgroundTaskState, MaybePromise } from "@getpochi/common";
 import { TaskExecutor, type RunningTaskAdaptor } from "../task-executor";
+import type { AbstractChat } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "../../../types";
 
@@ -35,11 +36,7 @@ class MockChat {
   async addToolOutput({
     toolCallId,
     output,
-  }: {
-    tool: string;
-    toolCallId: string;
-    output: unknown;
-  }) {
+  }: Parameters<AbstractChat<Message>["addToolOutput"]>[0]) {
     const lastMessage = this.messages.at(-1);
     if (!lastMessage) return;
 
@@ -348,7 +345,7 @@ function makeExecutor(
   store: FakeLiveKitStore,
   adaptor: RunningTaskAdaptor,
   taskState: BackgroundTaskState,
-  clearFileStateCache?: (taskId: string) => void | Promise<void>,
+  clearFileStateCache?: (taskId: string) => MaybePromise<void>,
 ) {
   return new TaskExecutor({
     store: store as never,

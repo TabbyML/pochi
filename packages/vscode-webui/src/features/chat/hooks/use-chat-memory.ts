@@ -6,6 +6,7 @@ import { VscodeRunningTaskAdaptor } from "@/lib/vscode-running-task-adaptor";
 import type {
   AutoMemoryTaskState,
   BackgroundTaskState,
+  MaybePromise,
   TaskMemoryState,
 } from "@getpochi/common";
 import type {
@@ -16,7 +17,7 @@ import type {
 import { threadSignal } from "@quilted/threads/signals";
 import { useMemo } from "react";
 
-type MemoryStateSetter<T> = ((state: T) => Promise<void> | void) | undefined;
+type MemoryStateSetter<T> = ((state: T) => MaybePromise<void>) | undefined;
 
 function createVscodeBackgroundTaskStateStore(): NonNullable<
   LiveChatKitBackgroundTaskOptions["stateStore"]

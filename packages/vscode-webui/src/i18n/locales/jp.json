@@ -473,10 +473,10 @@
     "copyCoreMessages": "コアメッセージをコピー",
     "copyCheckpointCommand": "チェックポイントコマンドをコピー",
     "copyTodos": "TODOをコピー",
+    "copySystemPrompt": "システムプロンプトをコピー",
     "noCheckpointAvailable": "利用可能なチェックポイントがありません",
     "openStore": "ストアを開く",
-    "reviewChanges": "変更をレビュー",
-    "copySystemPrompt": "システムプロンプトをコピー"
+    "reviewChanges": "変更をレビュー"
   },
   "devRetryCountdown": {
     "attempts": "試行回数：",

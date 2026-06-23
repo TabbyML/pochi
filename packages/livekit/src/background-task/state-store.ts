@@ -1,4 +1,4 @@
-export type MaybePromise<T> = T | Promise<T>;
+import type { MaybePromise } from "@getpochi/common";
 
 export type MemoryStateStore<T> = {
   get(): T | undefined;

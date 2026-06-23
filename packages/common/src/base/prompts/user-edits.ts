@@ -1,4 +1,4 @@
-import type { UserEdits } from "../message-context";
+import type { UserEdits } from "../message";
 
 export function renderUserEdits(userEdits: UserEdits): string {
   if (!userEdits || userEdits.length === 0) {

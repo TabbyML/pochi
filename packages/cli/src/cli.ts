@@ -64,7 +64,6 @@ import {
   ProcessAbortError,
   createAbortControllerWithGracefulShutdown,
 } from "./lib/shutdown";
-import { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { createStore } from "./livekit/store";
 import { initializeMcp, registerMcpCommand } from "./mcp";
 import { registerModelCommand } from "./model";
@@ -75,6 +74,8 @@ import {
   TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
+import { parseTrajectoryFile } from "./renderers/trajectory-parser";
+import { deduplicateMessageParts } from "./renderers/trajectory-post-process";
 import { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
@@ -144,6 +145,18 @@ const program = new Command()
     "--experimental-stream-trajectory [filepath]",
     "Stream message parts whenever signal.messages updates. Cannot be used with --experimental-output-attempt-completion-result.",
   )
+  .option(
+    "--experimental-stream-trajectory-inherit-context",
+    "Initialize the task with messages parsed from the trajectory file specified by --experimental-stream-trajectory, and append the prompt as a new user message.",
+    false,
+  )
+  .addOption(
+    new Option(
+      "--experimental-stream-trajectory-strip-duplicates",
+      "Only valid when --experimental-stream-trajectory is used with an output filepath. When set, the trajectory file will be post-processed on exit to strip duplicate message parts.",
+    ).hideHelp(),
+  )
+
   .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
@@ -244,12 +257,12 @@ const program = new Command()
 
     const store = await createStore(uid);
     const blobStore = new NodeBlobStore(options.blobsDir);
+
     const parts: Message["parts"] = await processAttachments(
       attachments,
       blobStore,
       program,
     );
-
     if (prompt) {
       parts.push({ type: "text", text: prompt });
     }
@@ -270,6 +283,37 @@ const program = new Command()
 
     if (options.ffmpeg) {
       setFfmpegPath(options.ffmpeg);
+    }
+
+    if (options.experimentalStreamTrajectoryInheritContext) {
+      if (typeof options.experimentalStreamTrajectory !== "string") {
+        return program.error(
+          "The --experimental-stream-trajectory-inherit-context flag requires --experimental-stream-trajectory to be passed a file path.",
+        );
+      }
+    }
+
+    if (
+      options.experimentalStreamTrajectoryStripDuplicates &&
+      typeof options.experimentalStreamTrajectory !== "string"
+    ) {
+      program.error(
+        "--experimental-stream-trajectory-strip-duplicates requires --experimental-stream-trajectory to be set with an output filepath.",
+      );
+    }
+
+    let initMessages: Message[] | undefined = undefined;
+    let initTrajectoryFingerprints: string[] | undefined = undefined;
+    if (
+      options.experimentalStreamTrajectoryInheritContext &&
+      typeof options.experimentalStreamTrajectory === "string"
+    ) {
+      const parsedTrajectory = await parseTrajectoryFile(
+        options.experimentalStreamTrajectory,
+      );
+      initMessages = parsedTrajectory.mainTask;
+      initTrajectoryFingerprints = parsedTrajectory.fingerprints;
+      // Ignore parsedTrajectory.subTasks and parsedTrajectory.files for now
     }
 
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
@@ -296,6 +340,9 @@ const program = new Command()
     } else if (typeof options.experimentalStreamTrajectory === "string") {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalStreamTrajectory,
+        options.experimentalStreamTrajectoryInheritContext
+          ? { flags: "a" }
+          : undefined,
       );
     }
 
@@ -304,7 +351,7 @@ const program = new Command()
 
     // FIXME(zhiming): the abort logic does not work as intent in many cases, need more investigation
     // Create AbortController for task cancellation with graceful shutdown
-    const abortController = createAbortControllerWithGracefulShutdown();
+    const abortController = createAbortControllerWithGracefulShutdown(program);
 
     const llm = await createLLMConfig(program, options, {
       customAgents,
@@ -347,7 +394,6 @@ const program = new Command()
       autoMemoryManager,
       projectMemoryEnabled,
     });
-    const stepMetadataTracker = new StepMetadataTracker();
     const taskMemory = autoCompactEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
       ? {
@@ -361,6 +407,7 @@ const program = new Command()
       store,
       blobStore,
       llm,
+      initMessages,
       parts,
       cwd: process.cwd(),
       rg,
@@ -368,6 +415,9 @@ const program = new Command()
       maxRetries: options.maxRetries,
       onSubTaskCreated: (runner: TaskRunner) => {
         outputRenderer?.renderSubTask(runner);
+        if (streamRenderer instanceof TrajectoryStreamRenderer) {
+          streamRenderer.addSubTask(runner.taskId, runner.state);
+        }
       },
       customAgents,
       skills,
@@ -395,7 +445,6 @@ const program = new Command()
       onCompactFinish: (success) =>
         outputRenderer?.renderCompactFinish(success),
       fileStateCache: parentFileStateCache,
-      stepMetadataTracker,
     });
 
     outputRenderer = new OutputRenderer(process.stdout, runner.state, {
@@ -409,7 +458,9 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
-          stepMetadataTracker,
+          {
+            skipLineFingerprints: initTrajectoryFingerprints,
+          },
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
@@ -432,13 +483,26 @@ const program = new Command()
       logger.debug(`Task runner exit with error: ${runtimeError.message}.`);
     } finally {
       logger.debug("Shutting down...");
+
       // Cleanup resources
       outputRenderer?.shutdown();
+
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
         jsonOutputStream.end();
         await finished(jsonOutputStream);
       }
+      if (
+        options.experimentalStreamTrajectoryStripDuplicates &&
+        typeof options.experimentalStreamTrajectory === "string"
+      ) {
+        try {
+          await deduplicateMessageParts(options.experimentalStreamTrajectory);
+        } catch {
+          // ignore all errors when shutting down
+        }
+      }
+
       mcpHub?.dispose();
       browserSessionStore.dispose();
       await store.shutdownPromise();

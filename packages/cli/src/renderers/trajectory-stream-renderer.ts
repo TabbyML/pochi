@@ -4,49 +4,68 @@ import {
   type Message,
   catalog,
 } from "@getpochi/livekit";
-import * as R from "remeda";
 import * as runExclusive from "run-exclusive";
-import type {
-  StepMetadataEntry,
-  StepMetadataTracker,
-} from "../lib/step-metadata-tracker";
 import type { NodeChatState } from "../livekit/chat.node";
-import type {
-  FilesLine,
-  MessageMetadataLine,
-  MessagePartLine,
-  StepMetadataLine,
-  TrajectoryLine,
+import {
+  type FilesLine,
+  type MessageMetadataLine,
+  type MessagePartLine,
+  type TrajectoryLine,
+  getFingerprint,
 } from "./trajectory-types";
 import type { StreamRenderer } from "./types";
-import { inlineSubTask, mapStoreBlob } from "./utils";
+import { mapStoreBlob } from "./utils";
 
 export class TrajectoryStreamRenderer implements StreamRenderer {
-  private runExclusiveGroup = runExclusive.createGroupRef();
-  private emittedParts = new Map<string, unknown>();
-  private emittedMetadata = new Set<string>();
-  private emittedStepMetadataEntryCount = 0;
-  private unsubscribeFns: (() => void)[] | undefined;
+  private readonly unsubscribeFns: (() => void)[] = [];
+  private readonly runExclusiveGroup = runExclusive.createGroupRef();
+
+  // Save fingerprint of each output line
+  private readonly writtenLines: string[] = [];
+  // Skip line fingerprints
+  private readonly skipLines: readonly string[] | undefined;
 
   constructor(
     private readonly stream: NodeJS.WritableStream,
     private readonly store: LiveKitStore,
     private readonly blobStore: BlobStore,
-    private readonly state: NodeChatState,
-    private readonly stepMetadataTracker?: StepMetadataTracker,
+    readonly mainTaskChatState: NodeChatState,
+    readonly options?: {
+      readonly skipLineFingerprints?: readonly string[] | undefined;
+    },
   ) {
-    this.unsubscribeFns = [
-      this.state.signal.messages.subscribe(async (messages: Message[]) => {
-        await this.outputTrajectory(messages);
+    this.skipLines = options?.skipLineFingerprints;
+
+    this.unsubscribeFns.push(
+      mainTaskChatState.signal.messages.subscribe(
+        async (messages: Message[]) => {
+          await this.outputTrajectory(messages, undefined);
+        },
+      ),
+    );
+  }
+
+  addSubTask(taskId: string, taskChatState: NodeChatState) {
+    this.unsubscribeFns.push(
+      taskChatState.signal.messages.subscribe(async (messages: Message[]) => {
+        await this.outputTrajectory(messages, taskId);
       }),
-    ];
-    if (stepMetadataTracker) {
-      this.unsubscribeFns.push(
-        stepMetadataTracker.entries.subscribe(async (entries) => {
-          await this.outputStepMetadataEntries(entries);
-        }),
-      );
+    );
+  }
+
+  private shouldWrite(lineFingerprint: string): boolean {
+    // Scan from the end since duplicates are most likely recent
+    for (let i = this.writtenLines.length - 1; i >= 0; i--) {
+      if (this.writtenLines[i] === lineFingerprint) {
+        return false;
+      }
     }
+
+    if (this.skipLines?.includes(lineFingerprint)) {
+      return false;
+    }
+
+    return true;
   }
 
   private writeTrajectoryLine = (line: TrajectoryLine) => {
@@ -55,67 +74,48 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
 
   private outputTrajectory = runExclusive.build(
     this.runExclusiveGroup,
-    async (messages: Message[], isFinalFlush = false) => {
+    async (messages: Message[], taskId: string | undefined) => {
       for (let msgIdx = 0; msgIdx < messages.length; msgIdx++) {
         const message = messages[msgIdx];
-        const isFinalized = isFinalFlush || msgIdx < messages.length - 1;
-
-        const outputMessage = await inlineSubTask(this.store, message);
-
-        for (let i = 0; i < outputMessage.parts.length; i++) {
-          const part = outputMessage.parts[i];
-
-          const partId = `${message.id}:${i}`;
-
+        for (let i = 0; i < message.parts.length; i++) {
+          const part = message.parts[i];
           const resolvedPart = (await mapStoreBlob(
             this.blobStore,
             part,
           )) as Message["parts"][number];
 
-          const cachedPart = this.emittedParts.get(partId);
-          if (!R.isDeepEqual(cachedPart, resolvedPart)) {
-            this.writeTrajectoryLine({
-              type: "message-part",
-              timestamp: new Date(),
-              messageId: message.id,
-              role: message.role,
-              index: i,
-              part: resolvedPart,
-            } satisfies MessagePartLine);
-            this.emittedParts.set(partId, R.clone(resolvedPart));
+          const line = {
+            type: "message-part",
+            timestamp: new Date(),
+            taskId,
+            messageId: message.id,
+            role: message.role,
+            index: i,
+            part: resolvedPart,
+          } satisfies MessagePartLine;
+
+          const lineFingerprint = getFingerprint(line);
+          if (this.shouldWrite(lineFingerprint)) {
+            this.writeTrajectoryLine(line);
+            this.writtenLines.push(lineFingerprint);
           }
         }
 
-        if (isFinalized && !this.emittedMetadata.has(message.id)) {
-          if (outputMessage.metadata !== undefined) {
-            this.writeTrajectoryLine({
-              type: "message-metadata",
-              messageId: message.id,
-              role: message.role,
-              metadata: outputMessage.metadata,
-            } satisfies MessageMetadataLine);
+        if (message.metadata !== undefined) {
+          const line = {
+            type: "message-metadata",
+            messageId: message.id,
+            role: message.role,
+            metadata: message.metadata,
+          } satisfies MessageMetadataLine;
+
+          const lineFingerprint = getFingerprint(line);
+          if (this.shouldWrite(lineFingerprint)) {
+            this.writeTrajectoryLine(line);
+            this.writtenLines.push(lineFingerprint);
           }
-          this.emittedMetadata.add(message.id);
         }
       }
-    },
-  );
-
-  private outputStepMetadataEntries = runExclusive.build(
-    this.runExclusiveGroup,
-    async (entries: StepMetadataEntry[]) => {
-      for (
-        let i = this.emittedStepMetadataEntryCount;
-        i < entries.length;
-        i++
-      ) {
-        const entry = entries[i];
-        this.writeTrajectoryLine({
-          type: "step-metadata",
-          ...entry,
-        } satisfies StepMetadataLine);
-      }
-      this.emittedStepMetadataEntryCount = entries.length;
     },
   );
 
@@ -124,10 +124,16 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
     async () => {
       const files = this.store.query(catalog.queries.makeStoreFilesQuery());
       if (files.length > 0) {
-        this.writeTrajectoryLine({
+        const line = {
           type: "files",
           files,
-        } satisfies FilesLine);
+        } satisfies FilesLine;
+
+        const lineFingerprint = getFingerprint(line);
+        if (this.shouldWrite(lineFingerprint)) {
+          this.writeTrajectoryLine(line);
+          this.writtenLines.push(lineFingerprint);
+        }
       }
     },
   );
@@ -137,14 +143,7 @@ export class TrajectoryStreamRenderer implements StreamRenderer {
       for (const fn of this.unsubscribeFns) {
         fn();
       }
-      this.unsubscribeFns = undefined;
     }
-    if (this.stepMetadataTracker) {
-      await this.outputStepMetadataEntries(
-        this.stepMetadataTracker.entries.value,
-      );
-    }
-    await this.outputTrajectory(this.state.signal.messages.value, true);
     await this.outputFilesData();
   }
 }

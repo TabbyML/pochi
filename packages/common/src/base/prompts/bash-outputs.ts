@@ -1,4 +1,4 @@
-import type { BashOutputs } from "../message-context";
+import type { BashOutputs } from "../message";
 
 export function renderBashOutputs(bashOutputs: BashOutputs): string {
   if (!bashOutputs?.length) {

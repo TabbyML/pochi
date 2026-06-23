@@ -17,7 +17,7 @@ import type { Todo } from "@getpochi/tools";
 import { convertToModelMessages } from "ai";
 import { CheckIcon, CopyIcon, FileDiff, Gavel, StoreIcon } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 interface UpdatedCopyMenuItemProps {
@@ -50,10 +50,14 @@ function CopyMenuItem({ fetchContent, text }: UpdatedCopyMenuItemProps) {
 interface DevModeButtonProps {
   messages: Message[];
   todos: Todo[] | undefined;
-  taskId?: string;
+  getSystemPrompt?: () => string | undefined;
 }
 
-export function DevModeButton({ messages, todos }: DevModeButtonProps) {
+export function DevModeButton({
+  messages,
+  todos,
+  getSystemPrompt,
+}: DevModeButtonProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const getMessagesContent = () => {
@@ -76,20 +80,6 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     return JSON.stringify(todos, null, 2);
   };
 
-  const systemPrompt = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
-      if (
-        msg.role === "assistant" &&
-        msg.metadata?.kind === "assistant" &&
-        msg.metadata.systemPrompt
-      ) {
-        return msg.metadata.systemPrompt;
-      }
-    }
-    return null;
-  }, [messages]);
-
   const getCheckpintCommand = useCallback(async () => {
     const checkpointPath = await vscodeHost.readCheckpointPath();
     if (!checkpointPath) {
@@ -98,6 +88,10 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     const workspaceInfo = await vscodeHost.readCurrentWorkspace();
     return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceInfo.cwd}\\""`;
   }, [t]);
+
+  const getSystemPromptContent = useCallback(() => {
+    return getSystemPrompt?.() ?? "";
+  }, [getSystemPrompt]);
 
   if (!isDevMode) return null;
 
@@ -135,9 +129,9 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
             fetchContent={getTodosContent}
             text={t("devModeButton.copyTodos")}
           />
-          {systemPrompt && (
+          {getSystemPrompt && (
             <CopyMenuItem
-              fetchContent={() => systemPrompt}
+              fetchContent={getSystemPromptContent}
               text={t("devModeButton.copySystemPrompt")}
             />
           )}

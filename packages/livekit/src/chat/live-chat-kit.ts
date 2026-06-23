@@ -2,29 +2,22 @@ import type {
   AutoMemoryTaskState,
   BackgroundTaskState,
   ContextWindowUsage,
+  MaybePromise,
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { getLogger, isForkAgentUseCase, prompts } from "@getpochi/common";
+import { getLogger, isForkAgentUseCase } from "@getpochi/common";
 import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
-import {
-  type ChatInit,
-  type ChatOnErrorCallback,
-  type ChatOnFinishCallback,
-  isStaticToolUIPart,
-} from "ai";
+import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import type z from "zod";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
 import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
 import { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
-import type {
-  MaybePromise,
-  MemoryStateStore,
-} from "../background-task/state-store";
+import type { MemoryStateStore } from "../background-task/state-store";
 import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
 import {
   type RunningTaskAdaptor,
@@ -46,6 +39,7 @@ import {
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
+  type FinishedRequestSnapshot,
   FlexibleChatTransport,
   type OnStartCallback,
   type PrepareRequestGetters,
@@ -53,7 +47,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
-import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
+import { computeContextWindowUsage, estimateTotalTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
@@ -61,9 +55,7 @@ const OverrideMessagesSideEffectTimeoutMs = 12_000;
 const TaskMemorySettleTimeoutMs = 5_000;
 const TaskMemorySettlePollIntervalMs = 200;
 
-type GetRecentFilesForCompact = () =>
-  | RecentFileState[]
-  | Promise<RecentFileState[]>;
+type GetRecentFilesForCompact = () => MaybePromise<RecentFileState[]>;
 
 export type LiveChatKitBackgroundTaskOptions = {
   stateStore?: {
@@ -248,7 +240,7 @@ export type LiveChatKitOptions<T> = {
     taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
-  }) => void | Promise<void>;
+  }) => MaybePromise<void>;
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
       messages: Message[];
@@ -259,14 +251,12 @@ export type LiveChatKitOptions<T> = {
       messages: Message[];
       error?: Error;
       contextWindowUsage?: ContextWindowUsage;
-      startedAt?: Date;
-      finishedAt?: Date;
     },
   ) => void;
 
   onCompactStart?: () => void;
 
-  onCompactFinish?: (success: boolean) => void | Promise<void>;
+  onCompactFinish?: (success: boolean) => MaybePromise<void>;
 
   /**
    * Returns recent file contents the model saw before compaction.
@@ -284,6 +274,7 @@ export type LiveChatKitOptions<T> = {
 
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
+  systemPromptOverride?: string;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -324,6 +315,8 @@ export class LiveChatKit<
   private readonly clearFileStateCacheCallback:
     | (() => MaybePromise<void>)
     | undefined;
+  private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
+  private backgroundTasksStarted = false;
 
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
@@ -335,13 +328,10 @@ export class LiveChatKit<
       messages: Message[];
       error?: Error;
       contextWindowUsage?: ContextWindowUsage;
-      startedAt?: Date;
-      finishedAt?: Date;
     },
   ) => void;
   readonly compact: () => Promise<string>;
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
-  private lastStepStartTimestamp: number | undefined;
   private consecutiveAutoCompactFailures = 0;
 
   constructor({
@@ -366,6 +356,7 @@ export class LiveChatKit<
     backgroundTask,
     taskMemory,
     projectMemory,
+    systemPromptOverride,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
@@ -416,10 +407,10 @@ export class LiveChatKit<
                 isSubTask: false,
                 requestUseCase,
                 getters,
+                systemPromptOverride: this.latestRequestSnapshot?.systemPrompt,
               }),
           })
         : undefined;
-    this.backgroundTaskExecutor?.start();
     const defaultMemoryParentCwd = () => this.task?.cwd ?? undefined;
     this.taskMemoryAdaptor =
       taskMemory && startForkAgent
@@ -462,6 +453,10 @@ export class LiveChatKit<
       requestUseCase,
       customAgent,
       attemptCompletionSchema,
+      systemPromptOverride,
+      onRequestFinished: (snapshot) => {
+        this.latestRequestSnapshot = snapshot;
+      },
     });
 
     this.chat = new chatClass({
@@ -506,7 +501,7 @@ export class LiveChatKit<
           messages,
           llm: getters.getLLM(),
           task: this.task,
-          estimatedTotalTokens: estimateCurrentMessagesTokens(messages),
+          estimatedTotalTokens: estimateTotalTokens(messages),
         });
 
       if (isManualCompact || isAutoCompact) {
@@ -691,6 +686,10 @@ export class LiveChatKit<
     return countTask > 0;
   }
 
+  get latestSystemPrompt(): string | undefined {
+    return this.latestRequestSnapshot?.systemPrompt;
+  }
+
   updateIsPublicShared = (isPublicShared: boolean) => {
     this.store.commit(
       events.updateIsPublicShared({
@@ -790,8 +789,6 @@ export class LiveChatKit<
         }),
       );
 
-      this.lastStepStartTimestamp = Date.now();
-
       this.onStreamStart?.({
         id: this.taskId,
         cwd: this.task?.cwd ?? null,
@@ -826,40 +823,18 @@ export class LiveChatKit<
     const finishReason = streamFinishReason ?? message.metadata?.finishReason;
     const status = toTaskStatus(message, finishReason);
 
-    let contextWindowUsage: ContextWindowUsage | undefined = undefined;
-    if (message.metadata?.kind === "assistant") {
-      const {
-        messagesTokens,
-        filesTokens,
-        toolResultsTokens,
-        systemReminderTokens,
-        projectMemoryTokens,
-      } = estimateTokenBreakdown(this.chat.messages);
-      const systemTokens =
-        (message.metadata.systemPromptTokens || 0) + systemReminderTokens;
-      const toolsTokens = message.metadata.toolsTokens || 0;
+    const contextWindowUsage = computeContextWindowUsage(
+      this.chat.messages,
+      this.latestRequestSnapshot,
+    );
 
-      const totalTokens =
-        systemTokens +
-        toolsTokens +
-        messagesTokens +
-        filesTokens +
-        toolResultsTokens +
-        projectMemoryTokens;
-      if (totalTokens > 0) {
-        contextWindowUsage = {
-          system: systemTokens,
-          tools: toolsTokens,
-          messages: messagesTokens,
-          files: filesTokens,
-          toolResults: toolResultsTokens,
-          projectMemory: projectMemoryTokens,
-        };
-      }
+    let duration = undefined;
+    if (message.metadata.finishedAt && message.metadata.startedAt) {
+      duration = Duration.millis(
+        message.metadata.finishedAt.getTime() -
+          message.metadata.startedAt.getTime(),
+      );
     }
-
-    const { duration, startedAt, finishedAt } =
-      this.captureStepDuration() ?? {};
 
     store.commit(
       events.chatStreamFinished({
@@ -882,12 +857,9 @@ export class LiveChatKit<
     };
 
     this.scheduleMemoryUpdate(finishData);
+    this.startBackgroundTasks();
 
-    this.onStreamFinish?.({
-      ...finishData,
-      startedAt,
-      finishedAt,
-    });
+    this.onStreamFinish?.(finishData);
   };
 
   private async settleMemoryAndMaybeContinue(): Promise<boolean> {
@@ -914,6 +886,12 @@ export class LiveChatKit<
   async disposeBackgroundTasks(): Promise<void> {
     await this.backgroundTaskExecutor?.dispose();
     this.backgroundTaskAdaptor?.dispose?.();
+  }
+
+  private startBackgroundTasks(): void {
+    if (this.backgroundTasksStarted) return;
+    this.backgroundTasksStarted = true;
+    this.backgroundTaskExecutor?.start();
   }
 
   private scheduleMemoryUpdate(data: {
@@ -955,7 +933,7 @@ export class LiveChatKit<
 
   private async handleCompactFinish(
     success: boolean,
-    onCompactFinish: ((success: boolean) => void | Promise<void>) | undefined,
+    onCompactFinish: ((success: boolean) => MaybePromise<void>) | undefined,
   ) {
     if (success) {
       await this.taskMemoryAdaptor?.resetTokenBaseline();
@@ -981,8 +959,17 @@ export class LiveChatKit<
     logger.error("onError", error);
     const lastMessage = this.chat.messages.at(-1) || null;
 
-    const { duration, startedAt, finishedAt } =
-      this.captureStepDuration() ?? {};
+    let duration = undefined;
+    if (
+      lastMessage?.metadata?.kind === "assistant" &&
+      lastMessage.metadata.finishedAt &&
+      lastMessage.metadata.startedAt
+    ) {
+      duration = Duration.millis(
+        lastMessage.metadata.finishedAt.getTime() -
+          lastMessage.metadata.startedAt.getTime(),
+      );
+    }
 
     this.store.commit(
       events.chatStreamFailed({
@@ -1001,34 +988,8 @@ export class LiveChatKit<
       status: "failed",
       messages: [...this.chat.messages],
       error,
-      startedAt,
-      finishedAt,
     });
   };
-
-  /**
-   * Captures the current step duration using the recorded start timestamp.
-   */
-  private captureStepDuration():
-    | {
-        startedAt: Date;
-        finishedAt: Date;
-        duration: ReturnType<typeof Duration.millis>;
-      }
-    | undefined {
-    const startTimestamp = this.lastStepStartTimestamp;
-    this.lastStepStartTimestamp = undefined;
-    const finishTimestamp = Date.now();
-
-    if (startTimestamp === undefined) {
-      return undefined;
-    }
-    return {
-      startedAt: new Date(startTimestamp),
-      finishedAt: new Date(finishTimestamp),
-      duration: Duration.millis(finishTimestamp - startTimestamp),
-    };
-  }
 }
 
 // clean checkpoint means after this checkpoint there are no write or execute toolcalls that may cause file edits
@@ -1047,88 +1008,3 @@ const getCleanCheckpoint = (messages: Message[]) => {
     return lastPart.data.commit;
   }
 };
-
-function estimateTokenBreakdown(messages: Message[]) {
-  let messagesTokens = 0;
-  let filesTokens = 0;
-  let toolResultsTokens = 0;
-  let systemReminderTokens = 0;
-  let projectMemoryTokens = 0;
-
-  for (const msg of messages) {
-    for (const part of msg.parts) {
-      if (part.type === "text") {
-        let contentStr = part.text;
-        if (msg.role === "user" && contentStr.includes("<system-reminder>")) {
-          const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
-          const reminders = contentStr.match(reminderRegex);
-          if (reminders) {
-            for (const reminder of reminders) {
-              const tokens = estimateTokens(reminder);
-              if (prompts.isAutoMemorySystemReminder(reminder)) {
-                projectMemoryTokens += tokens;
-              } else {
-                systemReminderTokens += tokens;
-              }
-            }
-            contentStr = contentStr.replace(reminderRegex, "");
-          }
-        }
-        messagesTokens += estimateTokens(contentStr);
-      } else if (part.type === "file") {
-        filesTokens += ImageEstimatedTokens;
-      } else if (isStaticToolUIPart(part)) {
-        messagesTokens += estimateTokens(JSON.stringify(part.input || {}));
-        if (part.state === "output-available" && part.output) {
-          const output = (part as unknown as { output: unknown }).output;
-          let outputTokens = 0;
-
-          if (output instanceof Uint8Array) {
-            outputTokens = ImageEstimatedTokens;
-          } else {
-            const resultStr =
-              typeof output === "string" ? output : JSON.stringify(output);
-            outputTokens = estimateTokens(resultStr);
-          }
-
-          const toolName = part.type.replace(/^tool-/, "");
-          if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {
-            filesTokens += outputTokens;
-          } else {
-            toolResultsTokens += outputTokens;
-          }
-        }
-      } else if (part.type === "reasoning") {
-        messagesTokens += estimateTokens(part.text);
-      } else {
-        messagesTokens += estimateTokens(JSON.stringify(part));
-      }
-    }
-  }
-
-  return {
-    messagesTokens,
-    filesTokens,
-    toolResultsTokens,
-    systemReminderTokens,
-    projectMemoryTokens,
-  };
-}
-
-function estimateCurrentMessagesTokens(messages: Message[]) {
-  const {
-    messagesTokens,
-    filesTokens,
-    toolResultsTokens,
-    systemReminderTokens,
-    projectMemoryTokens,
-  } = estimateTokenBreakdown(messages);
-
-  return (
-    messagesTokens +
-    filesTokens +
-    toolResultsTokens +
-    systemReminderTokens +
-    projectMemoryTokens
-  );
-}

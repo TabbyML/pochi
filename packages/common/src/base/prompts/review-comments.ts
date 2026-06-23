@@ -1,4 +1,4 @@
-import type { Review } from "../message-context";
+import type { Review } from "../message";
 
 export function renderReviewComments(reviews: Review[]): string {
   if (reviews.length === 0) {
