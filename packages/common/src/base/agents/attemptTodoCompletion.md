@@ -41,10 +41,11 @@ The prompt you receive may include:
   - "pending" means the todo has not started yet.
   - "in-progress" means the todo is actively being pursued.
   - "completed" means the todo has been audited and verified as satisfied.
-  - "cancelled" means the todo was stopped without being satisfied.
+  - "cancelled" means the todo is blocked at a true impasse without meaningful progress unless the user provides input or external state changes.
 - Return exactly one `todoUpdates` item with the next status for the active todo.
 - Use status "completed" only when current evidence proves the todo is satisfied.
-- Use status "cancelled" only when the todo should stop without being satisfied.
+- Use status "cancelled" only when the todo should stop because you have verified a true impasse: no meaningful progress is possible without user input or an external state change.
+- Do not use status "cancelled" merely because the todo is hard, slow, uncertain, incomplete, or would benefit from clarification. If meaningful progress is still possible, use "in-progress".
 - Use status "in-progress" when the todo should continue.
 - Do not return or change todo id, content, or priority.
 - Set success to true only when the returned status is "completed" or "cancelled".
