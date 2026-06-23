@@ -355,7 +355,7 @@ export class TaskRunner {
           break;
         }
         if (stepResult === "retry") {
-          await this.stepCount.nextRetry();
+          await this.stepCount.nextRetry(this.abortSignal);
         } else {
           this.stepCount.nextStep();
         }
@@ -496,6 +496,7 @@ export class TaskRunner {
       this.stepCount.throwIfReachedMaxRetries();
     }
 
+    this.abortSignal?.throwIfAborted();
     await this.chatKit.chat.sendMessage();
     return result;
   }
@@ -633,6 +634,14 @@ export class TaskRunner {
       });
     }
 
+    this.abortSignal?.throwIfAborted();
+    this.abortSignal?.addEventListener(
+      "abort",
+      () => {
+        queue.abort("user-abort");
+      },
+      { once: true },
+    );
     await queue.start();
 
     logger.trace("All tool calls processed in the last message.");

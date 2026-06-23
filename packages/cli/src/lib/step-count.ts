@@ -70,14 +70,21 @@ export class StepCount implements StepInfo {
     }
   }
 
-  async nextRetry() {
+  async nextRetry(abortSignal?: AbortSignal) {
     this.throwIfReachedMaxRetries();
 
     const baseRetryWaitMs = 3000;
     this.retry++;
-    await new Promise((resolve) =>
-      setTimeout(resolve, baseRetryWaitMs * 2 ** this.retry),
-    );
+    await new Promise((resolve, reject) => {
+      abortSignal?.addEventListener(
+        "abort",
+        () => {
+          reject(new Error("User aborted"));
+        },
+        { once: true },
+      );
+      setTimeout(resolve, baseRetryWaitMs * 2 ** this.retry);
+    }).catch(() => {});
   }
 
   toString() {
