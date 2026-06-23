@@ -2,6 +2,7 @@ import type {
   AutoMemoryTaskState,
   BackgroundTaskState,
   ContextWindowUsage,
+  MaybePromise,
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -16,10 +17,7 @@ import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
 import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
 import { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
-import type {
-  MaybePromise,
-  MemoryStateStore,
-} from "../background-task/state-store";
+import type { MemoryStateStore } from "../background-task/state-store";
 import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
 import {
   type RunningTaskAdaptor,
@@ -57,9 +55,7 @@ const OverrideMessagesSideEffectTimeoutMs = 12_000;
 const TaskMemorySettleTimeoutMs = 5_000;
 const TaskMemorySettlePollIntervalMs = 200;
 
-type GetRecentFilesForCompact = () =>
-  | RecentFileState[]
-  | Promise<RecentFileState[]>;
+type GetRecentFilesForCompact = () => MaybePromise<RecentFileState[]>;
 
 export type LiveChatKitBackgroundTaskOptions = {
   stateStore?: {
@@ -244,7 +240,7 @@ export type LiveChatKitOptions<T> = {
     taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
-  }) => void | Promise<void>;
+  }) => MaybePromise<void>;
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
       messages: Message[];
@@ -262,7 +258,7 @@ export type LiveChatKitOptions<T> = {
 
   onCompactStart?: () => void;
 
-  onCompactFinish?: (success: boolean) => void | Promise<void>;
+  onCompactFinish?: (success: boolean) => MaybePromise<void>;
 
   /**
    * Returns recent file contents the model saw before compaction.
@@ -940,7 +936,7 @@ export class LiveChatKit<
 
   private async handleCompactFinish(
     success: boolean,
-    onCompactFinish: ((success: boolean) => void | Promise<void>) | undefined,
+    onCompactFinish: ((success: boolean) => MaybePromise<void>) | undefined,
   ) {
     if (success) {
       await this.taskMemoryAdaptor?.resetTokenBaseline();

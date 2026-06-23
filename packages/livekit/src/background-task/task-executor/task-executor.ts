@@ -1,5 +1,6 @@
 import {
   type BackgroundTaskState,
+  type MaybePromise,
   getLogger,
   prompts,
   toErrorMessage,
@@ -21,6 +22,7 @@ import {
   validateToolPolicy,
 } from "@getpochi/tools";
 import {
+  type AbstractChat,
   type ToolUIPart,
   getStaticToolName,
   isStaticToolUIPart,
@@ -56,7 +58,7 @@ export interface RunningTaskAdaptor {
     cwd: string | undefined;
   }): PrepareRequestGetters;
   executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
-  onTaskError?(taskId: string, error: Error): void | Promise<void>;
+  onTaskError?(taskId: string, error: Error): MaybePromise<void>;
 }
 
 type TaskToolOutput = {
@@ -64,16 +66,15 @@ type TaskToolOutput = {
   toolCallId: string;
   output: unknown;
 };
-type MaybePromiseLike<T> = T | PromiseLike<T>;
 
 type CreateTaskExecutorOptions = {
   store: LiveKitStore;
   blobStore: BlobStore;
   readTaskState: (
     taskId: string,
-  ) => MaybePromiseLike<BackgroundTaskState | undefined>;
+  ) => MaybePromise<BackgroundTaskState | undefined>;
   adaptor: RunningTaskAdaptor;
-  clearFileStateCache?: (taskId: string) => void | Promise<void>;
+  clearFileStateCache?: (taskId: string) => MaybePromise<void>;
   createChatKit: CreateRunningTaskChatKit;
 };
 
@@ -81,14 +82,14 @@ type RunningTaskChat = {
   messages: Message[];
   stop: () => Promise<void>;
   sendMessage: () => Promise<void>;
-  addToolOutput: (output: never) => MaybePromiseLike<void>;
+  addToolOutput: AbstractChat<Message>["addToolOutput"];
   appendOrReplaceMessage: (message: Message) => void;
 };
 
 type RunningTaskChatKit = {
   chat: RunningTaskChat;
   task?: Task;
-  markAsFailed: (error: Error) => void | Promise<void>;
+  markAsFailed: (error: Error) => MaybePromise<void>;
 };
 
 type CreateRunningTaskChatKit = (options: {

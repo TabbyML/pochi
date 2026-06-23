@@ -47,7 +47,7 @@ describe("task-memory adaptor", () => {
       status: "pending-model",
       title: "[Task Memory Extraction] Build shared runner",
     });
-    expect(stateStore.read(task.id)).toMatchObject({
+    expect(await stateStore.read(task.id)).toMatchObject({
       parentTaskId: "parent",
       useCase: "task-memory",
     });
@@ -249,7 +249,7 @@ describe("auto-memory adaptor", () => {
       status: "pending-model",
       title: "[Auto Memory Extraction] Build shared runner",
     });
-    expect(stateStore.read(task.id)).toMatchObject({
+    expect(await stateStore.read(task.id)).toMatchObject({
       parentTaskId: "parent",
       useCase: "auto-memory",
       tools: [
@@ -421,9 +421,15 @@ describe("auto-memory adaptor", () => {
 
     await expect(adaptor.settleAndMaybeContinue()).resolves.toBe(true);
 
-    const dreamTask = store.backgroundTasks().find((task) => {
-      return stateStore.read(task.id)?.useCase === "auto-memory-dream";
-    });
+    const tasksWithState = await Promise.all(
+      store.backgroundTasks().map(async (task) => ({
+        task,
+        state: await stateStore.read(task.id),
+      })),
+    );
+    const dreamTask = tasksWithState.find(({ state }) => {
+      return state?.useCase === "auto-memory-dream";
+    })?.task;
     expect(dreamTask).toMatchObject({
       background: true,
       status: "pending-model",
@@ -488,7 +494,7 @@ function createTestBackgroundTask({
 }: {
   store: LiveKitStore;
   stateStore: BackgroundTaskStateStore;
-  waitForTaskDone?: (taskId: string) => void | Promise<void>;
+  waitForTaskDone?: (taskId: string) => Promise<void>;
 }) {
   return {
     startForkAgent: async (agent: ForkAgent<Message>) => {
