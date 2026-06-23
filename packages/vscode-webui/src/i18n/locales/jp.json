@@ -473,6 +473,7 @@
     "copyCoreMessages": "コアメッセージをコピー",
     "copyCheckpointCommand": "チェックポイントコマンドをコピー",
     "copyTodos": "TODOをコピー",
+    "copySystemPrompt": "システムプロンプトをコピー",
     "noCheckpointAvailable": "利用可能なチェックポイントがありません",
     "openStore": "ストアを開く",
     "reviewChanges": "変更をレビュー"

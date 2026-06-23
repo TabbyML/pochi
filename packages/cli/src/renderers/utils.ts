@@ -1,50 +1,5 @@
-import type { BlobStore, LiveKitStore, Message } from "@getpochi/livekit";
-import { catalog } from "@getpochi/livekit";
-import type { ClientTools } from "@getpochi/tools";
-import type { InferToolInput } from "ai";
+import type { BlobStore } from "@getpochi/livekit";
 import * as R from "remeda";
-
-export async function inlineSubTask(
-  store: LiveKitStore,
-  message: Message,
-): Promise<Message> {
-  const partsWithSubtasks = message.parts.map((part) => {
-    if (
-      part.type === "tool-newTask" &&
-      part.state !== "input-streaming" &&
-      part.input
-    ) {
-      const input = part.input as InferToolInput<ClientTools["newTask"]>;
-      const subtaskId = input._meta?.uid;
-      if (subtaskId) {
-        const subtask = store.query(catalog.queries.makeTaskQuery(subtaskId));
-        const subtaskMessages = store.query(
-          catalog.queries.makeMessagesQuery(subtaskId),
-        );
-        if (subtask) {
-          return {
-            ...part,
-            input: {
-              ...input,
-              _transient: {
-                task: {
-                  clientTaskId: subtaskId,
-                  messages: subtaskMessages.map((m) => m.data as Message),
-                  todos: subtask.todos.map((t) => ({ ...t })),
-                },
-              },
-            },
-          };
-        }
-      }
-    }
-    return part;
-  });
-  return {
-    ...message,
-    parts: partsWithSubtasks,
-  };
-}
 
 export async function mapStoreBlob(
   store: BlobStore,

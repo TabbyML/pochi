@@ -1,0 +1,86 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`long-term memory prompt helpers > snapshots > buildAutoMemoryDreamDirective with sessions 1`] = `
+"Consolidate long-term memory for this repository.
+
+Memory directory: /home/user/.pochi/projects/repo-key/memory
+Index file: /home/user/.pochi/projects/repo-key/memory/MEMORY.md
+Transcripts directory: /home/user/.pochi/projects/repo-key/transcripts
+
+Existing topic manifest:
+- [project] conventions.md (Project conventions): Coding conventions and folder layout.
+- [feedback] review-feedback.md (Review feedback): Prefer compact plans.
+- [user] bio.md (bio.md)
+
+Source material lives as markdown files in the transcripts directory above. Each file is one task session and starts with a YAML frontmatter block (taskId, cwd, updatedAt, title). The transcripts directory is read-only for this run — use readFile / listFiles / globFiles / searchFiles to inspect only the entries you need, and never edit them.
+
+Strategy:
+- Open transcripts selectively: skim the session titles listed below, then drill into the full transcripts of entries that look durable.
+- Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, and rewrite topic files as needed so future sessions see a concise and accurate MEMORY.md index.
+- Anchor every entry to direct user intent (explicit instructions, preferences, or feedback) — never promote assistant reasoning, plans, or speculation. When new user feedback contradicts an existing entry and you lack a confident read on the current state, proactively delete it rather than keep outdated guidance.
+- Never store ephemeral task status, raw logs, git history, temporary plans, or content already captured by project rules.
+
+Sessions to review (2):
+- task-a.md (taskId=task-a, updated=2024-01-01T12:00:00.000Z, cwd=/repo/a, title="Refactor database schema")
+- task-b.md (taskId=task-b, updated=2024-01-02T12:00:00.000Z, cwd=(unknown))
+
+Finish with attemptCompletion summarizing changed memory files, or state that no durable changes were needed."
+`;
+
+exports[`long-term memory prompt helpers > snapshots > buildAutoMemoryExtractionDirective 1`] = `
+"Extract durable long-term memories from the parent conversation.
+
+Memory directory: /home/user/.pochi/projects/repo-key/memory
+Index file: /home/user/.pochi/projects/repo-key/memory/MEMORY.md
+
+Review the conversation after message index 7. Save only stable information that should help in future sessions. Ignore one-off task progress, transient errors, git history, command output, and information already present in project rules.
+
+Existing topic manifest:
+- [project] conventions.md (Project conventions): Coding conventions and folder layout.
+- [feedback] review-feedback.md (Review feedback): Prefer compact plans.
+- [user] bio.md (bio.md)
+
+Required behavior:
+- Prefer updating existing topic files over creating duplicates.
+- Use markdown topic files under the memory directory only.
+- Every topic file must start with YAML frontmatter:
+---
+name: Short stable name
+description: One sentence summary
+type: user | feedback | project | reference
+---
+- Keep MEMORY.md as an index only.
+- If there is nothing durable to save, do not modify files.
+- Finish with attemptCompletion summarizing whether memory changed."
+`;
+
+exports[`long-term memory prompt helpers > snapshots > buildAutoMemoryPrompt (static + dynamic) 1`] = `
+"====
+
+LONG-TERM MEMORY
+
+Long-term memory is enabled for this workspace. It is stored in local markdown files, shared by all worktrees for this repository.
+
+Memory directory: /home/user/.pochi/projects/repo-key/memory
+Index file: /home/user/.pochi/projects/repo-key/memory/MEMORY.md
+
+Use this memory only for durable information that should carry across future sessions. Do not store one-off task progress, temporary debugging notes, command output, git history, or facts already documented in project rules.
+
+Memory file rules:
+- MEMORY.md is an index only. Keep it concise and link or name topic files.
+- Topic files live in the memory directory as markdown files.
+- Every topic file must begin with YAML frontmatter containing name, description, and type.
+- type must be one of: user, feedback, project, reference.
+- Prefer updating an existing topic file over creating a duplicate.
+
+When the user asks you to remember something, write or update the relevant topic file and update MEMORY.md. When the user asks you to forget something, remove or edit the relevant topic file and update MEMORY.md. Ask a follow-up only if the memory to remove is ambiguous.
+
+The long-term memory directory is an explicit exception to the normal relative-path tool rule. You may use the absolute paths above when reading or writing memory files.
+
+The current MEMORY.md index is delivered separately as its own system reminder on the first user turn. That snapshot is taken at the start of the task and is intentionally NOT refreshed mid-task — new memories you write here become visible only in the next task session.
+
+# Long-term Memory Index (MEMORY.md)
+This snapshot of MEMORY.md was captured at the start of the task and will not be refreshed until the next task session. Topic files referenced here live under /home/user/.pochi/projects/repo-key/memory.
+
+- [project] conventions.md"
+`;

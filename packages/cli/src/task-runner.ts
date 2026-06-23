@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import {
   type AutoMemoryContext,
   type ContextWindowUsage,
+  type MaybePromise,
   getLogger,
   prompts,
   toErrorMessage,
@@ -58,7 +59,6 @@ import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
-import type { StepMetadataTracker } from "./lib/step-metadata-tracker";
 import { Chat } from "./livekit";
 import { executeToolCall } from "./tools";
 import type {
@@ -78,11 +78,11 @@ export interface RunnerOptions {
 
   blobStore: BlobStore;
 
-  // The parts to use for creating the task
-  parts?: Message["parts"];
-
   // The seeded messages to initialize the task with
-  messages?: Message[];
+  initMessages?: Message[];
+
+  // The parts of the user message
+  parts?: Message["parts"];
 
   /**
    * The current working directory for the task runner.
@@ -152,9 +152,11 @@ export interface RunnerOptions {
     messages: Message[];
     error?: Error;
     contextWindowUsage?: ContextWindowUsage;
-  }) => void | Promise<void>;
+  }) => MaybePromise<void>;
 
-  onCompactFinish?: (success: boolean) => void | Promise<void>;
+  onCompactStart?: () => void;
+
+  onCompactFinish?: (success: boolean) => MaybePromise<void>;
 
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
 
@@ -163,6 +165,8 @@ export interface RunnerOptions {
   taskMemory?: LiveChatKitTaskMemoryOptions;
 
   projectMemory?: LiveChatKitProjectMemoryOptions;
+
+  enableAutoCompact?: boolean;
 
   fileStateCache?: FileStateCache;
 
@@ -179,8 +183,6 @@ export interface RunnerOptions {
    * Set to 0 to disable waiting.
    */
   asyncWaitTimeoutInMs?: number;
-
-  stepMetadataTracker?: StepMetadataTracker;
 }
 
 const logger = getLogger("TaskRunner");
@@ -201,7 +203,6 @@ export class TaskRunner {
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
-  private readonly stepMetadataTracker?: StepMetadataTracker;
 
   private abortSignal?: AbortSignal;
 
@@ -256,10 +257,12 @@ export class TaskRunner {
           uid: taskId,
           isSubTask: true,
           onStreamFinish: undefined,
+          onCompactStart: undefined,
           onCompactFinish: undefined,
           backgroundTask: undefined,
           taskMemory: undefined,
           projectMemory: undefined,
+          enableAutoCompact: false,
           fileStateCache: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
@@ -281,6 +284,7 @@ export class TaskRunner {
 
       abortSignal: options.abortSignal,
 
+      onCompactStart: options.onCompactStart,
       onCompactFinish: options.onCompactFinish,
       getRecentFilesForCompact: () =>
         this.toolCallOptions.fileStateCache.getRecentFiles(),
@@ -288,6 +292,7 @@ export class TaskRunner {
       backgroundTask: options.backgroundTask,
       taskMemory: options.taskMemory,
       projectMemory: options.projectMemory,
+      enableAutoCompact: options.enableAutoCompact,
 
       getters: {
         getLLM: () => options.llm,
@@ -318,43 +323,10 @@ export class TaskRunner {
             }
           : {}),
       },
-
-      onStreamFinish: (data) => {
-        const { messages, error, startedAt, finishedAt } = data;
-        const lastMessage = messages[messages.length - 1];
-        if (
-          lastMessage?.metadata &&
-          lastMessage.metadata.kind === "assistant"
-        ) {
-          const stepIndex =
-            lastMessage.parts.filter((p) => p.type === "step-start").length - 1;
-          if (stepIndex >= 0) {
-            this.stepMetadataTracker?.trackStep({
-              taskId: this.taskId,
-              messageId: lastMessage.id,
-              stepIndex,
-              hasError: error !== undefined,
-              startedAt,
-              finishedAt,
-              duration:
-                startedAt && finishedAt
-                  ? finishedAt.getTime() - startedAt.getTime()
-                  : undefined,
-              metadata: {
-                finishReason: lastMessage.metadata.finishReason,
-                totalTokens: lastMessage.metadata.totalTokens,
-                systemPromptTokens: lastMessage.metadata.systemPromptTokens,
-                toolsTokens: lastMessage.metadata.toolsTokens,
-              },
-            });
-          }
-        }
-        options.onStreamFinish?.(data);
-      },
     });
-    if (options.messages && options.messages.length > 0) {
+    if (options.initMessages && options.initMessages.length > 0) {
       if (!this.chatKit.inited) {
-        this.chatKit.init(options.cwd, { messages: options.messages });
+        this.chatKit.init(options.cwd, { messages: options.initMessages });
       }
     }
 
@@ -375,7 +347,6 @@ export class TaskRunner {
     this.attemptCompletionHook = options.attemptCompletionHook;
     this.attemptCompletionSchemaOverride = !!options.attemptCompletionSchema;
     this.asyncWaitTimeoutInMs = options.asyncWaitTimeoutInMs ?? 60000;
-    this.stepMetadataTracker = options.stepMetadataTracker;
     this.abortSignal = options.abortSignal;
   }
 
@@ -388,12 +359,13 @@ export class TaskRunner {
       logger.trace("Start step loop.");
       this.stepCount.reset();
       while (true) {
+        this.abortSignal?.throwIfAborted();
         const stepResult = await this.step();
         if (stepResult === "finished") {
           break;
         }
         if (stepResult === "retry") {
-          await this.stepCount.nextRetry();
+          await this.stepCount.nextRetry(this.abortSignal);
         } else {
           this.stepCount.nextStep();
         }
@@ -534,6 +506,7 @@ export class TaskRunner {
       this.stepCount.throwIfReachedMaxRetries();
     }
 
+    this.abortSignal?.throwIfAborted();
     await this.chatKit.chat.sendMessage();
     return result;
   }
@@ -671,6 +644,14 @@ export class TaskRunner {
       });
     }
 
+    this.abortSignal?.throwIfAborted();
+    this.abortSignal?.addEventListener(
+      "abort",
+      () => {
+        queue.abort("user-abort");
+      },
+      { once: true },
+    );
     await queue.start();
 
     logger.trace("All tool calls processed in the last message.");

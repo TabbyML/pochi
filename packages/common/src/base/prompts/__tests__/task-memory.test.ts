@@ -29,3 +29,7 @@ test("task memory directive requires writing before completion", () => {
   expect(directive).not.toContain("PARALLEL");
   expect(directive).not.toContain("Do NOT wait for the writeToFile result");
 });
+
+test("task memory creation directive snapshot", () => {
+  expect(buildMemoryExtractionDirective()).toMatchSnapshot();
+});

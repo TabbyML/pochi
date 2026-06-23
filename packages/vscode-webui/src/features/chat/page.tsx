@@ -168,6 +168,7 @@ function Chat({ user, uid, info }: ChatProps) {
     isSubTask,
     customAgent,
     abortSignal: chatAbortController.current.signal,
+    enableAutoCompact: !isSubTask,
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
@@ -376,6 +377,7 @@ function Chat({ user, uid, info }: ChatProps) {
           taskId={uid}
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
+          getSystemPrompt={() => chatKit.latestSystemPrompt}
         />
       </div>
       <BackgroundTaskDebugPanel />

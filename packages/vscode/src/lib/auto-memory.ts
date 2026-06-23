@@ -116,6 +116,7 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
         cwd: task.cwd,
         updatedAt: task.updatedAt ?? 0,
         transcriptFilename: `${task.id}.md`,
+        title: task.title ?? undefined,
       });
     }
 

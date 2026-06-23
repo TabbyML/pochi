@@ -71,10 +71,10 @@ import { NodeBlobStore } from "./node-blob-store";
 import {
   AttemptCompletionResultRenderer,
   type StreamRenderer,
-  TrajectoryLine,
   TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
+import { parseTrajectoryFile } from "./renderers/trajectory-parser";
 import { deduplicateMessageParts } from "./renderers/trajectory-post-process";
 import { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { TaskRunner } from "./task-runner";
@@ -176,8 +176,8 @@ const program = new Command()
     60000,
   )
   .option(
-    "--task-memory",
-    "Enable Task Memory background extraction for the current task.",
+    "--auto-compact",
+    "Enable automatic context compaction and Task Memory background extraction.",
     false,
   )
   .option(
@@ -257,12 +257,12 @@ const program = new Command()
 
     const store = await createStore(uid);
     const blobStore = new NodeBlobStore(options.blobsDir);
+
     const parts: Message["parts"] = await processAttachments(
       attachments,
       blobStore,
       program,
     );
-
     if (prompt) {
       parts.push({ type: "text", text: prompt });
     }
@@ -302,12 +302,18 @@ const program = new Command()
       );
     }
 
-    let messages: Message[] | undefined = undefined;
+    let initMessages: Message[] | undefined = undefined;
+    let initTrajectoryFingerprints: string[] | undefined = undefined;
     if (
       options.experimentalStreamTrajectoryInheritContext &&
       typeof options.experimentalStreamTrajectory === "string"
     ) {
-      messages = parseTrajectoryFile(options.experimentalStreamTrajectory);
+      const parsedTrajectory = await parseTrajectoryFile(
+        options.experimentalStreamTrajectory,
+      );
+      initMessages = parsedTrajectory.mainTask;
+      initTrajectoryFingerprints = parsedTrajectory.fingerprints;
+      // Ignore parsedTrajectory.subTasks and parsedTrajectory.files for now
     }
 
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
@@ -345,7 +351,7 @@ const program = new Command()
 
     // FIXME(zhiming): the abort logic does not work as intent in many cases, need more investigation
     // Create AbortController for task cancellation with graceful shutdown
-    const abortController = createAbortControllerWithGracefulShutdown();
+    const abortController = createAbortControllerWithGracefulShutdown(program);
 
     const llm = await createLLMConfig(program, options, {
       customAgents,
@@ -356,7 +362,7 @@ const program = new Command()
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
     const isSubTask = selectedAgent !== undefined;
-    const taskMemoryEnabled = options.taskMemory;
+    const autoCompactEnabled = options.autoCompact;
     const projectMemoryEnabled = options.projectMemory;
     const autoMemoryManager = new AutoMemoryManager();
     const parentFileStateCache = new FileStateCache();
@@ -388,26 +394,30 @@ const program = new Command()
       autoMemoryManager,
       projectMemoryEnabled,
     });
-    const taskMemory = taskMemoryEnabled ? {} : undefined;
+    const taskMemory = autoCompactEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
       ? {
           manager: autoMemoryManager,
         }
       : undefined;
+    let outputRenderer: OutputRenderer | undefined;
 
     const runner = new TaskRunner({
       uid,
       store,
       blobStore,
       llm,
+      initMessages,
       parts,
-      messages,
       cwd: process.cwd(),
       rg,
       maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
       onSubTaskCreated: (runner: TaskRunner) => {
-        outputRenderer.renderSubTask(runner);
+        outputRenderer?.renderSubTask(runner);
+        if (streamRenderer instanceof TrajectoryStreamRenderer) {
+          streamRenderer.addSubTask(runner.taskId, runner.state);
+        }
       },
       customAgents,
       skills,
@@ -430,11 +440,14 @@ const program = new Command()
       },
       taskMemory,
       projectMemory,
+      enableAutoCompact: autoCompactEnabled,
+      onCompactStart: () => outputRenderer?.renderCompactStart(),
+      onCompactFinish: (success) =>
+        outputRenderer?.renderCompactFinish(success),
       fileStateCache: parentFileStateCache,
-      stepMetadataTracker: undefined,
     });
 
-    const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
+    outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
     let streamRenderer: StreamRenderer | undefined = undefined;
@@ -445,10 +458,8 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
-          undefined,
           {
-            inheritContext:
-              !!options.experimentalStreamTrajectoryInheritContext,
+            skipLineFingerprints: initTrajectoryFingerprints,
           },
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
@@ -474,7 +485,7 @@ const program = new Command()
       logger.debug("Shutting down...");
 
       // Cleanup resources
-      outputRenderer.shutdown();
+      outputRenderer?.shutdown();
 
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
@@ -761,66 +772,4 @@ function parseOutputSchema(outputSchema: string): z.ZodAny {
     `function getZodSchema(z) { return ${outputSchema} }; return getZodSchema(...args);`,
   )(z);
   return schema;
-}
-
-export function parseTrajectoryFile(filePath: string): Message[] {
-  if (!fs.existsSync(filePath)) {
-    return [];
-  }
-  const content = fs.readFileSync(filePath, "utf8");
-  const lines = content.split(/\r?\n/);
-  const messagesMap = new Map<
-    string,
-    {
-      id: string;
-      role: Message["role"];
-      parts: Message["parts"];
-      metadata?: Message["metadata"];
-    }
-  >();
-  const messageIds: string[] = [];
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    let rawData: unknown;
-    try {
-      rawData = JSON.parse(line);
-    } catch {
-      continue;
-    }
-
-    const parsed = TrajectoryLine.safeParse(rawData);
-    if (!parsed.success) continue;
-
-    const data = parsed.data;
-    if (data.type === "message-part") {
-      const { messageId, role, index, part } = data;
-      let msg = messagesMap.get(messageId);
-      if (!msg) {
-        msg = { id: messageId, role, parts: [] };
-        messagesMap.set(messageId, msg);
-        messageIds.push(messageId);
-      }
-      msg.parts[index] = part;
-    } else if (data.type === "message-metadata") {
-      const { messageId, role, metadata } = data;
-      let msg = messagesMap.get(messageId);
-      if (!msg) {
-        msg = { id: messageId, role, parts: [] };
-        messagesMap.set(messageId, msg);
-        messageIds.push(messageId);
-      }
-      msg.metadata = metadata;
-    }
-  }
-
-  const messages: Message[] = [];
-  for (const id of messageIds) {
-    const msg = messagesMap.get(id);
-    if (msg) {
-      msg.parts = msg.parts.filter((p) => p !== undefined);
-      messages.push(msg as Message);
-    }
-  }
-  return messages;
 }

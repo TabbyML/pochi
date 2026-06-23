@@ -17,6 +17,7 @@ type EncodedTask = {
   // unix timestamp in milliseconds
   updatedAt: number;
   cwd?: string | null;
+  title?: string | null;
 };
 
 const logger = getLogger("TaskHistoryStore");

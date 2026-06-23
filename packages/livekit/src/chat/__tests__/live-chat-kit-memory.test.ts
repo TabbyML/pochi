@@ -15,7 +15,7 @@ import {
 import { LiveChatKit } from "../live-chat-kit";
 
 describe("LiveChatKit memory lifecycle", () => {
-  it("starts background task scheduling when an adaptor is provided", async () => {
+  it("starts background task scheduling after the first stream finishes", async () => {
     const store = new FakeStore([
       makeTask({
         id: "parent",
@@ -35,6 +35,11 @@ describe("LiveChatKit memory lifecycle", () => {
         adaptor: makeRunningTaskAdaptor(),
       },
     });
+
+    expect(store.subscriptions).not.toContain("runnableTasks");
+
+    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.finish(assistantMessage());
 
     expect(store.subscriptions).toContain("runnableTasks");
     await chatKit.disposeBackgroundTasks();
@@ -97,13 +102,16 @@ describe("LiveChatKit memory lifecycle", () => {
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
+    setLatestRequestSnapshot(chatKit, 20_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
-    const memoryTasks = store.backgroundTasks().map((task) => ({
-      title: task.title,
-      useCase: backgroundTaskStateStore.read(task.id)?.useCase,
-    }));
+    const memoryTasks = await Promise.all(
+      store.backgroundTasks().map(async (task) => ({
+        title: task.title,
+        useCase: (await backgroundTaskStateStore.read(task.id))?.useCase,
+      })),
+    );
     expect(memoryTasks).toEqual(
       expect.arrayContaining([
         {
@@ -148,10 +156,12 @@ describe("LiveChatKit memory lifecycle", () => {
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
-    const memoryTasks = store.backgroundTasks().map((task) => ({
-      title: task.title,
-      useCase: backgroundTaskStateStore.read(task.id)?.useCase,
-    }));
+    const memoryTasks = await Promise.all(
+      store.backgroundTasks().map(async (task) => ({
+        title: task.title,
+        useCase: (await backgroundTaskStateStore.read(task.id))?.useCase,
+      })),
+    );
     expect(memoryTasks).toEqual([
       {
         title: "[Auto Memory Extraction] Build shared runner",
@@ -194,6 +204,7 @@ describe("LiveChatKit memory lifecycle", () => {
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
+    setLatestRequestSnapshot(chatKit, 20_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -209,6 +220,26 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 });
+
+function setLatestRequestSnapshot(
+  chatKit: LiveChatKit<FakeChat>,
+  systemPromptTokens: number,
+  toolsTokens: number,
+) {
+  (
+    chatKit as unknown as {
+      latestRequestSnapshot: {
+        systemPrompt: string;
+        systemPromptTokens: number;
+        toolsTokens: number;
+      };
+    }
+  ).latestRequestSnapshot = {
+    systemPrompt: "",
+    systemPromptTokens,
+    toolsTokens,
+  };
+}
 
 class BackgroundTaskStateStore {
   private readonly states = new Map<string, BackgroundTaskState>();
@@ -452,8 +483,6 @@ function assistantMessage(): Message {
     metadata: {
       kind: "assistant",
       finishReason: "stop",
-      systemPromptTokens: 20_000,
-      toolsTokens: 0,
       totalTokens: 20_000,
     },
   } as unknown as Message;

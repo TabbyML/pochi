@@ -2,8 +2,10 @@ import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
 import {
   type AutoMemoryContext,
+  type AutoMemoryManifestEntry,
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
+  buildAutoMemoryExtractionDirective,
   buildAutoMemoryPrompt,
   buildAutoMemoryStaticPrompt,
   formatAutoMemoryManifest,
@@ -21,6 +23,31 @@ const sampleContext: AutoMemoryContext = {
   indexTruncated: false,
   manifest: [],
   transcriptDir: "/home/user/.pochi/projects/repo-key/transcripts",
+};
+
+const sampleManifest: AutoMemoryManifestEntry[] = [
+  {
+    filename: "conventions.md",
+    name: "Project conventions",
+    description: "Coding conventions and folder layout.",
+    type: "project",
+    updatedAt: 1_700_000_000_000,
+  },
+  {
+    filename: "review-feedback.md",
+    name: "Review feedback",
+    description: "Prefer compact plans.",
+    type: "feedback",
+  },
+  {
+    filename: "bio.md",
+    type: "user",
+  },
+];
+
+const sampleContextWithManifest: AutoMemoryContext = {
+  ...sampleContext,
+  manifest: sampleManifest,
 };
 
 describe("long-term memory prompt helpers", () => {
@@ -188,5 +215,43 @@ describe("long-term memory prompt helpers", () => {
       expect(reminders[0].text).toContain("- [user] bio.md");
       expect(reminders[0].text).not.toContain("- [project] conventions.md");
     }
+  });
+
+  describe("snapshots", () => {
+    it("buildAutoMemoryPrompt (static + dynamic)", () => {
+      expect(buildAutoMemoryPrompt(sampleContext)).toMatchSnapshot();
+    });
+
+    it("buildAutoMemoryExtractionDirective", () => {
+      expect(
+        buildAutoMemoryExtractionDirective({
+          context: sampleContextWithManifest,
+          previousMessageCount: 7,
+        }),
+      ).toMatchSnapshot();
+    });
+
+    it("buildAutoMemoryDreamDirective with sessions", () => {
+      expect(
+        buildAutoMemoryDreamDirective({
+          context: sampleContextWithManifest,
+          sessions: [
+            {
+              taskId: "task-a",
+              updatedAt: Date.UTC(2024, 0, 1, 12, 0, 0),
+              cwd: "/repo/a",
+              transcriptFilename: "task-a.md",
+              title: "Refactor database schema",
+            },
+            {
+              taskId: "task-b",
+              updatedAt: Date.UTC(2024, 0, 2, 12, 0, 0),
+              cwd: null,
+              transcriptFilename: "task-b.md",
+            },
+          ],
+        }),
+      ).toMatchSnapshot();
+    });
   });
 });
