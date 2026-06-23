@@ -10,7 +10,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
-import { parseTitle } from "@getpochi/common/message-utils";
+import { parseMarkdown } from "@getpochi/common/message-utils";
 import type { Todo } from "@getpochi/tools";
 import {
   Circle,
@@ -121,7 +121,7 @@ function TodoListRoot({
 
   const enterEditMode = (todo: Todo) => {
     setEditingTodoId(todo.id);
-    setDraftContent(parseTitle(todo.content));
+    setDraftContent(formatTodoContent(todo.content));
   };
 
   const cancelEditMode = useCallback(() => {
@@ -322,7 +322,11 @@ function TodoIcon({ todo }: TodoIconProps) {
 
 // Items component for displaying the todo list
 function getTodoDisplayContent(todo: Todo): string {
-  return parseTitle(todo.content);
+  return formatTodoContent(todo.content);
+}
+
+function formatTodoContent(content: string): string {
+  return parseMarkdown(content) || "(Untitled)";
 }
 
 function isActiveTodo(todo: Todo): boolean {

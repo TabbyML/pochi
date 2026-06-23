@@ -305,6 +305,35 @@ describe("TodoList", () => {
     ]);
   });
 
+  it("keeps full todo content when displaying and editing", () => {
+    const onSaveTodos = vi.fn();
+    const longContent = `${"A".repeat(260)}\n<file>tests/basic.test.tsx</file>`;
+    const longTodo = {
+      ...activeTodo,
+      content: longContent,
+    };
+
+    render(
+      <TodoList todos={[longTodo]} editable onSaveTodos={onSaveTodos}>
+        <TodoList.Header />
+        <TodoList.Items />
+      </TodoList>,
+    );
+
+    const expectedContent = `${"A".repeat(260)} tests/basic.test.tsx`;
+    expect(screen.getAllByText(expectedContent).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "todoList.editTodo" }));
+    const input = screen.getByLabelText("todoList.editTodoContent");
+    expect((input as HTMLInputElement).value).toBe(expectedContent);
+
+    fireEvent.click(screen.getByRole("button", { name: "todoList.saveTodo" }));
+
+    expect(onSaveTodos).toHaveBeenCalledWith([
+      { ...longTodo, content: expectedContent },
+    ]);
+  });
+
   it("keeps completed todo content read-only in item edit state", () => {
     render(
       <TodoList todos={[activeTodo, completedTodo]} editable>
