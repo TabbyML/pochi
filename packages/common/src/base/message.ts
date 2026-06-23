@@ -1,4 +1,21 @@
+import type { FinishReason } from "ai";
 import { z } from "zod";
+
+export const MessageMetadata = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("assistant"),
+    totalTokens: z.number(),
+    finishReason: z.custom<FinishReason>(),
+    startedAt: z.coerce.date().optional(),
+    finishedAt: z.coerce.date().optional(),
+  }),
+  z.object({
+    kind: z.literal("user"),
+    compact: z.boolean().optional(),
+  }),
+]);
+
+export type MessageMetadata = z.infer<typeof MessageMetadata>;
 
 export const ActiveSelection = z
   .object({

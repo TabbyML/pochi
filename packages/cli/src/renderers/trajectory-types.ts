@@ -1,4 +1,5 @@
-import { type File, type Message, MessageMetadata } from "@getpochi/livekit";
+import { MessageMetadata } from "@getpochi/common";
+import type { File, Message } from "@getpochi/livekit";
 import hashObject from "object-hash";
 import z from "zod";
 
