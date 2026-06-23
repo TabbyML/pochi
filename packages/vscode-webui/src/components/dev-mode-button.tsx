@@ -50,9 +50,14 @@ function CopyMenuItem({ fetchContent, text }: UpdatedCopyMenuItemProps) {
 interface DevModeButtonProps {
   messages: Message[];
   todos: Todo[] | undefined;
+  getSystemPrompt?: () => string | undefined;
 }
 
-export function DevModeButton({ messages, todos }: DevModeButtonProps) {
+export function DevModeButton({
+  messages,
+  todos,
+  getSystemPrompt,
+}: DevModeButtonProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const getMessagesContent = () => {
@@ -83,6 +88,10 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
     const workspaceInfo = await vscodeHost.readCurrentWorkspace();
     return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceInfo.cwd}\\""`;
   }, [t]);
+
+  const getSystemPromptContent = useCallback(() => {
+    return getSystemPrompt?.() ?? "";
+  }, [getSystemPrompt]);
 
   if (!isDevMode) return null;
 
@@ -120,6 +129,12 @@ export function DevModeButton({ messages, todos }: DevModeButtonProps) {
             fetchContent={getTodosContent}
             text={t("devModeButton.copyTodos")}
           />
+          {getSystemPrompt && (
+            <CopyMenuItem
+              fetchContent={getSystemPromptContent}
+              text={t("devModeButton.copySystemPrompt")}
+            />
+          )}
           <OpenDevStore />
           <ReviewChangesMenuItem />
         </DropdownMenuContent>
