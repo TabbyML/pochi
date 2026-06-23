@@ -8,8 +8,9 @@ import {
   getLogger,
   prompts,
 } from "@getpochi/common";
-import type { ToolSpecInput } from "@getpochi/tools";
+import { type ToolSpecInput, ToolsByPermission } from "@getpochi/tools";
 import { type UIMessage, getStaticToolName, isStaticToolUIPart } from "ai";
+import { isPlainObject } from "remeda";
 import { makeTaskQuery } from "../../livestore/default-queries";
 import type { LiveKitStore, Message } from "../../types";
 import {
@@ -17,11 +18,7 @@ import {
   buildForkAgentInitTitle,
   createForkAgent,
 } from "../fork-agent";
-import {
-  type MaybePromise,
-  type MemoryStateStore,
-  createMemoryStateStore,
-} from "../state-store";
+import { type MemoryStateStore, createMemoryStateStore } from "../state-store";
 
 export type { AutoMemoryManager } from "@getpochi/common";
 
@@ -33,19 +30,9 @@ const MemoryReadToolNames = [
   "globFiles",
   "searchFiles",
 ] as const;
-const MemoryWriteToolNames = ["writeToFile", "applyDiff"] as const;
-const MemoryWriteTools = new Set(["writeToFile", "applyDiff", "editNotebook"]);
+const MemoryAgentWriteToolNames = ["writeToFile", "applyDiff"] as const;
 const MaxSessionTranscriptChars = 24_000;
 const MaxPartChars = 4_000;
-
-type SetAutoMemoryState = (state: AutoMemoryTaskState) => Promise<void> | void;
-
-type FinishAutoMemoryDream = (options: {
-  memoryDir: string;
-  token: string;
-  previousLastDreamAt: number;
-  success: boolean;
-}) => Promise<void> | void;
 
 async function startAutoMemoryExtraction<TMessage extends UIMessage>({
   state,
@@ -60,7 +47,7 @@ async function startAutoMemoryExtraction<TMessage extends UIMessage>({
   messageCount,
 }: {
   state: AutoMemoryTaskState;
-  setAutoMemoryState: SetAutoMemoryState;
+  setAutoMemoryState: MemoryStateStore<AutoMemoryTaskState>["set"];
   startForkAgent: StartForkAgent<TMessage>;
   parentTaskId: string;
   parentCwd: string | undefined;
@@ -119,15 +106,15 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
   run,
 }: {
   state: AutoMemoryTaskState;
-  setAutoMemoryState: SetAutoMemoryState;
+  setAutoMemoryState: MemoryStateStore<AutoMemoryTaskState>["set"];
   startForkAgent: StartForkAgent<TMessage>;
-  finishAutoMemoryDream: FinishAutoMemoryDream;
+  finishAutoMemoryDream: AutoMemoryManager["finishDreamRun"];
   parentTaskId: string;
   parentCwd: string | undefined;
   parentTaskTitle?: string;
-  run: AutoMemoryDreamRun | undefined;
+  run: AutoMemoryDreamRun;
 }) {
-  if (!run || state.isDreaming || state.isExtracting) return false;
+  if (state.isDreaming || state.isExtracting) return false;
 
   const sessions: AutoMemoryDreamSession[] = run.candidates.map(
     (candidate) => ({
@@ -224,7 +211,7 @@ function resolveAutoMemoryDreamState({
 }):
   | {
       nextState: AutoMemoryTaskState;
-      finish: Parameters<FinishAutoMemoryDream>[0];
+      finish: Parameters<AutoMemoryManager["finishDreamRun"]>[0];
     }
   | undefined {
   if (
@@ -269,7 +256,7 @@ function buildMemoryTools(
     tools.push(`${name}(${memoryGlob})`);
     tools.push(`${name}(${transcriptGlob})`);
   }
-  for (const name of MemoryWriteToolNames) {
+  for (const name of MemoryAgentWriteToolNames) {
     tools.push(`${name}(${memoryGlob})`);
   }
   return tools;
@@ -282,15 +269,15 @@ function didConversationWriteMemory(
 ): boolean {
   return messages.some((message) =>
     message.parts.some((part) => {
-      const toolName = getToolName(part);
-      if (!toolName || !MemoryWriteTools.has(toolName)) return false;
+      if (!isStaticToolUIPart(part)) return false;
+      if (!ToolsByPermission.write.includes(getStaticToolName(part))) {
+        return false;
+      }
       if (!isSuccessfulToolOutput(part)) return false;
-
-      const inputPath =
-        "input" in part && isObject(part.input) ? part.input.path : undefined;
-      return (
-        typeof inputPath === "string" && isMemoryPath(inputPath, memoryDir, cwd)
-      );
+      if (!isPlainObject(part.input) || typeof part.input.path !== "string") {
+        return false;
+      }
+      return isMemoryPath(part.input.path, memoryDir, cwd);
     }),
   );
 }
@@ -305,14 +292,12 @@ function serializeSessionTranscript(messages: readonly UIMessage[]): string {
   return truncate(chunks.join("\n\n"), MaxSessionTranscriptChars);
 }
 
-function getToolName(part: UIMessage["parts"][number]): string | undefined {
-  return isStaticToolUIPart(part) ? getStaticToolName(part) : undefined;
-}
-
 function isSuccessfulToolOutput(part: UIMessage["parts"][number]): boolean {
   if (!("state" in part) || part.state !== "output-available") return false;
   const output = "output" in part ? part.output : undefined;
-  return isObject(output) && output.success === true && !("error" in output);
+  return (
+    isPlainObject(output) && output.success === true && !("error" in output)
+  );
 }
 
 function isMemoryPath(
@@ -409,10 +394,6 @@ function truncate(value: string, maxChars: number): string {
   return `${value.slice(0, maxChars)}\n[truncated]`;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object";
-}
-
 const DefaultAutoMemoryState: AutoMemoryTaskState = {
   lastExtractionMessageCount: 0,
   isExtracting: false,
@@ -424,7 +405,7 @@ type AutoMemoryAdaptorOptions = {
   store: LiveKitStore;
   backgroundTask: {
     startForkAgent: StartForkAgent<Message>;
-    waitForTaskDone?: (taskId: string) => MaybePromise<void>;
+    waitForTaskDone?: (taskId: string) => Promise<void>;
   };
   autoMemoryStateStore?: MemoryStateStore<AutoMemoryTaskState>;
   parentTaskId: string;
@@ -502,13 +483,13 @@ export class AutoMemoryAdaptor {
             ...state,
             lastExtractionMessageCount: messageCount,
           };
-          await this.setAutoMemoryState(nextState);
+          await this.stateStore.set(nextState);
           return this.maybeStartDream(nextState);
         }
 
         const handle = await startAutoMemoryExtraction({
           state,
-          setAutoMemoryState: (nextState) => this.setAutoMemoryState(nextState),
+          setAutoMemoryState: (nextState) => this.stateStore.set(nextState),
           startForkAgent: (agent) =>
             this.options.backgroundTask.startForkAgent(agent),
           parentTaskId: this.options.parentTaskId,
@@ -544,7 +525,7 @@ export class AutoMemoryAdaptor {
           : undefined,
       });
       if (extractionResolution) {
-        await this.setAutoMemoryState(extractionResolution.nextState);
+        await this.stateStore.set(extractionResolution.nextState);
         if (
           extractionResolution.success &&
           (await this.maybeStartDream(extractionResolution.nextState))
@@ -562,7 +543,7 @@ export class AutoMemoryAdaptor {
       });
       if (dreamResolution) {
         await this.options.manager.finishDreamRun(dreamResolution.finish);
-        await this.setAutoMemoryState(dreamResolution.nextState);
+        await this.stateStore.set(dreamResolution.nextState);
       }
     } catch (error) {
       logger.warn("Failed to settle long-term memory update", error);
@@ -584,16 +565,19 @@ export class AutoMemoryAdaptor {
     });
     if (!run) return false;
 
+    const task = this.options.store.query(
+      makeTaskQuery(this.options.parentTaskId),
+    );
     const started = await startAutoMemoryDream<Message>({
       state: baseState,
-      setAutoMemoryState: (nextState) => this.setAutoMemoryState(nextState),
+      setAutoMemoryState: (nextState) => this.stateStore.set(nextState),
       startForkAgent: (agent) =>
         this.options.backgroundTask.startForkAgent(agent),
       finishAutoMemoryDream: (finishOptions) =>
         this.options.manager.finishDreamRun(finishOptions),
       parentTaskId: this.options.parentTaskId,
       parentCwd,
-      parentTaskTitle: this.getParentTaskTitle(),
+      parentTaskTitle: task?.title ?? undefined,
       run,
     });
     if (started) {
@@ -609,22 +593,11 @@ export class AutoMemoryAdaptor {
     const { waitForTaskDone } = this.options.backgroundTask;
     if (!taskId || !waitForTaskDone) return;
 
-    void Promise.resolve(waitForTaskDone(taskId))
+    void waitForTaskDone(taskId)
       .then(() => this.settleAndMaybeContinue())
       .catch((error) => {
         logger.warn(`Failed to settle ${label}`, error);
       });
-  }
-
-  private getParentTaskTitle() {
-    const task = this.options.store.query(
-      makeTaskQuery(this.options.parentTaskId),
-    );
-    return task?.title ?? undefined;
-  }
-
-  private setAutoMemoryState(nextState: AutoMemoryTaskState) {
-    return this.stateStore.set(nextState);
   }
 
   private getParentCwd() {

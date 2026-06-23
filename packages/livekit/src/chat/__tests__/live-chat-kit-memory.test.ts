@@ -106,10 +106,12 @@ describe("LiveChatKit memory lifecycle", () => {
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
-    const memoryTasks = store.backgroundTasks().map((task) => ({
-      title: task.title,
-      useCase: backgroundTaskStateStore.read(task.id)?.useCase,
-    }));
+    const memoryTasks = await Promise.all(
+      store.backgroundTasks().map(async (task) => ({
+        title: task.title,
+        useCase: (await backgroundTaskStateStore.read(task.id))?.useCase,
+      })),
+    );
     expect(memoryTasks).toEqual(
       expect.arrayContaining([
         {
@@ -154,10 +156,12 @@ describe("LiveChatKit memory lifecycle", () => {
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
-    const memoryTasks = store.backgroundTasks().map((task) => ({
-      title: task.title,
-      useCase: backgroundTaskStateStore.read(task.id)?.useCase,
-    }));
+    const memoryTasks = await Promise.all(
+      store.backgroundTasks().map(async (task) => ({
+        title: task.title,
+        useCase: (await backgroundTaskStateStore.read(task.id))?.useCase,
+      })),
+    );
     expect(memoryTasks).toEqual([
       {
         title: "[Auto Memory Extraction] Build shared runner",

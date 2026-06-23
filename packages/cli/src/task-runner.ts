@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import {
   type AutoMemoryContext,
   type ContextWindowUsage,
+  type MaybePromise,
   getLogger,
   prompts,
   toErrorMessage,
@@ -151,9 +152,9 @@ export interface RunnerOptions {
     messages: Message[];
     error?: Error;
     contextWindowUsage?: ContextWindowUsage;
-  }) => void | Promise<void>;
+  }) => MaybePromise<void>;
 
-  onCompactFinish?: (success: boolean) => void | Promise<void>;
+  onCompactFinish?: (success: boolean) => MaybePromise<void>;
 
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
 

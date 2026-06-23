@@ -1,5 +1,7 @@
 import { getLogger } from "./logger";
 
+export type MaybePromise<T> = T | Promise<T>;
+
 const logger = getLogger("AsyncUtils");
 
 /**

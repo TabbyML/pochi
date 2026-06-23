@@ -6,7 +6,7 @@ import {
   getLogger,
   prompts,
 } from "@getpochi/common";
-import { type ToolSpecInput, isUserInputToolPart } from "@getpochi/tools";
+import type { ToolSpecInput } from "@getpochi/tools";
 import { type UIMessage, isStaticToolUIPart } from "ai";
 import {
   makeMessagesQuery,
@@ -27,7 +27,6 @@ type ExtractionMetrics = {
   tokens: number;
   toolCalls: number;
   trailingMessageId: string | undefined;
-  trailingMessageHasOpenToolCall: boolean;
 };
 
 type TaskMemoryExtractionResult = "pending" | "succeeded" | "failed";
@@ -47,8 +46,6 @@ const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
 
 const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 
-type SetTaskMemoryState = (state: TaskMemoryState) => Promise<void> | void;
-
 function getExtractionMetrics<TMessage extends UIMessage>(data: {
   messages: TMessage[];
   contextWindowUsage?: ContextWindowUsage;
@@ -58,7 +55,6 @@ function getExtractionMetrics<TMessage extends UIMessage>(data: {
     tokens: computeTotalTokens(data.contextWindowUsage),
     toolCalls: countToolCalls(data.messages),
     trailingMessageId: last?.id,
-    trailingMessageHasOpenToolCall: lastMessageHasOpenToolCall(data.messages),
   };
 }
 
@@ -108,7 +104,7 @@ async function startTaskMemoryExtraction<TMessage extends UIMessage>({
 }: {
   state: TaskMemoryState;
   metrics: ExtractionMetrics;
-  setTaskMemoryState: SetTaskMemoryState;
+  setTaskMemoryState: MemoryStateStore<TaskMemoryState>["set"];
   startForkAgent: StartForkAgent<TMessage>;
   parentTaskId: string;
   parentMessages: TMessage[];
@@ -187,11 +183,11 @@ function getTaskMemoryExtractionResult(
 ): TaskMemoryExtractionResult {
   for (const message of messages) {
     for (const part of message.parts) {
-      if (
-        isStaticToolUIPart(part) &&
-        part.state === "output-available" &&
-        isTaskMemoryPath(part.input)
-      ) {
+      if (!isStaticToolUIPart(part) || part.state !== "output-available") {
+        continue;
+      }
+      if (!part.input || typeof part.input !== "object") continue;
+      if ("path" in part.input && part.input.path === TaskMemoryFileUri) {
         return "succeeded";
       }
     }
@@ -203,15 +199,6 @@ function getTaskMemoryExtractionResult(
   }
 
   return "failed";
-}
-
-function lastMessageHasOpenToolCall(messages: UIMessage[]): boolean {
-  const last = messages.at(-1);
-  if (!last || last.role !== "assistant") return false;
-  return last.parts.some((part) => {
-    if (!isStaticToolUIPart(part) || isUserInputToolPart(part)) return false;
-    return part.state !== "output-available" && part.state !== "output-error";
-  });
 }
 
 function computeTotalTokens(usage?: ContextWindowUsage) {
@@ -239,16 +226,11 @@ function countToolCalls(messages: UIMessage[]): number {
   return count;
 }
 
-function isTaskMemoryPath(input: unknown): boolean {
-  if (!input || typeof input !== "object" || !("path" in input)) return false;
-  return input.path === TaskMemoryFileUri;
-}
-
 type TaskMemoryAdaptorOptions = {
   store: LiveKitStore;
   backgroundTask: {
     startForkAgent: StartForkAgent<Message>;
-    waitForTaskDone?: (taskId: string) => Promise<void> | void;
+    waitForTaskDone?: (taskId: string) => Promise<void>;
   };
   taskMemoryStateStore?: MemoryStateStore<TaskMemoryState>;
   parentTaskId: string;
@@ -270,7 +252,7 @@ export class TaskMemoryAdaptor {
   }
 
   resetTokenBaseline() {
-    return this.setTaskMemoryState({
+    return this.stateStore.set({
       ...this.getState(),
       lastExtractionTokens: 0,
     });
@@ -302,7 +284,7 @@ export class TaskMemoryAdaptor {
       const handle = await startTaskMemoryExtraction({
         state,
         metrics,
-        setTaskMemoryState: (nextState) => this.setTaskMemoryState(nextState),
+        setTaskMemoryState: (nextState) => this.stateStore.set(nextState),
         startForkAgent: (agent) =>
           this.options.backgroundTask.startForkAgent(agent),
         parentTaskId: this.options.parentTaskId,
@@ -332,12 +314,8 @@ export class TaskMemoryAdaptor {
     });
     if (!nextState) return false;
 
-    await this.setTaskMemoryState(nextState);
+    await this.stateStore.set(nextState);
     return true;
-  }
-
-  private setTaskMemoryState(nextState: TaskMemoryState) {
-    return this.stateStore.set(nextState);
   }
 
   private getParentCwd() {
@@ -349,7 +327,7 @@ export class TaskMemoryAdaptor {
     const { waitForTaskDone } = this.options.backgroundTask;
     if (!taskId || !waitForTaskDone) return;
 
-    void Promise.resolve(waitForTaskDone(taskId))
+    void waitForTaskDone(taskId)
       .then(() => this.settle())
       .catch((error) => {
         logger.warn("Failed to settle task-memory extraction", error);

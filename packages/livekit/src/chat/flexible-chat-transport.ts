@@ -2,6 +2,7 @@ import { getErrorMessage } from "@ai-sdk/provider";
 import type {
   AutoMemoryContext,
   Environment,
+  MaybePromise,
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
@@ -75,9 +76,7 @@ export type ChatTransportOptions = {
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
   systemPromptOverride?: string;
-  onRequestFinished?: (
-    snapshot: FinishedRequestSnapshot,
-  ) => void | Promise<void>;
+  onRequestFinished?: (snapshot: FinishedRequestSnapshot) => MaybePromise<void>;
 };
 
 export class FlexibleChatTransport implements ChatTransport<Message> {

@@ -1,4 +1,8 @@
-import { type ForkAgentUseCase, getLogger } from "@getpochi/common";
+import {
+  type ForkAgentUseCase,
+  type MaybePromise,
+  getLogger,
+} from "@getpochi/common";
 import { type ToolSpecInput, parseToolSpec } from "@getpochi/tools";
 import type { UIMessage } from "ai";
 
@@ -32,7 +36,7 @@ export type ForkAgent<TMessage extends UIMessage> = {
 
 export type StartForkAgent<TMessage extends UIMessage> = (
   agent: ForkAgent<TMessage>,
-) => Promise<ForkAgentHandle> | ForkAgentHandle;
+) => MaybePromise<ForkAgentHandle>;
 
 const ForkAgentUseCaseLabels: Record<ForkAgentUseCase, string> = {
   "task-memory": "Task Memory Extraction",
