@@ -15,8 +15,6 @@ import z from "zod";
 import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
-export type Metadata = MessageMetadata;
-
 export type DataParts = {
   checkpoint: {
     commit: string;
@@ -37,7 +35,7 @@ export type DataParts = {
 
 export type UITools = InferUITools<ClientTools>;
 
-export type Message = UIMessage<Metadata, DataParts, UITools>;
+export type Message = UIMessage<MessageMetadata, DataParts, UITools>;
 
 const RequestData = z.object({
   environment: Environment.optional(),

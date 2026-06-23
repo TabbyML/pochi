@@ -19,7 +19,6 @@ export type {
   LiveKitStore,
   File,
 } from "./types";
-export { MessageMetadata } from "@getpochi/common";
 export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
