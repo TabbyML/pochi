@@ -1,8 +1,13 @@
+import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
 import type { TextUIPart, UIMessage } from "ai";
 import type { Environment, GitStatus } from "../environment";
 import { prompts } from "./index";
 
 type User = { name: string; email: string };
+export type EnvironmentInfo = Pick<
+  Environment["info"],
+  "os" | "shell" | "homedir" | "cwd"
+>;
 
 export function createEnvironmentPrompt(
   environment: Environment,
@@ -31,6 +36,66 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
     .filter(Boolean)
     .join("\n\n");
   return sections.trim();
+}
+
+export function parseEnvironmentInfo(
+  prompt: LanguageModelV3CallOptions["prompt"] | undefined,
+): EnvironmentInfo | undefined {
+  if (!prompt) return;
+
+  for (const message of prompt) {
+    const content = message.content;
+    const textParts =
+      typeof content === "string"
+        ? [content]
+        : Array.isArray(content)
+          ? content
+              .filter((part) => part.type === "text")
+              .map((part) => part.text)
+          : [];
+
+    for (const text of textParts) {
+      const systemInfo = parseSystemInfoLines(text);
+      const os = systemInfo["Operating System"];
+      const shell = systemInfo["Default Shell"];
+      const homedir = systemInfo["Home Directory"];
+      const cwd = systemInfo["Current Working Directory"];
+
+      if (os && shell && homedir && cwd) {
+        return {
+          os,
+          shell,
+          homedir,
+          cwd,
+        };
+      }
+    }
+  }
+}
+
+function parseSystemInfoLines(text: string) {
+  const headerIndex = text.indexOf("# System Information");
+  if (headerIndex === -1) {
+    return {};
+  }
+
+  const systemInfoText = text.slice(headerIndex).split(/\n\n# /)[0];
+  const lines: Record<string, string> = {};
+
+  for (const line of systemInfoText.split(/\r?\n/)) {
+    const separatorIndex = line.indexOf(":");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex);
+    const value = line.slice(separatorIndex + 1).trim();
+    if (value) {
+      lines[key] = value;
+    }
+  }
+
+  return lines;
 }
 
 function getSystemInfo(environment: Environment) {

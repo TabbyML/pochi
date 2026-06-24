@@ -1,5 +1,10 @@
 import { expect, test } from "vitest";
-import { createEnvironmentPrompt } from "../environment";
+import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import type { Environment } from "../../environment";
+import {
+  createEnvironmentPrompt,
+  parseEnvironmentInfo,
+} from "../environment";
 import { createSystemPrompt } from "../system";
 
 test("instructions", () => {
@@ -90,3 +95,77 @@ test("environment", () => {
         }, {name: "Pochi", email: "noreply@getpochi.com"}),
   ).toMatchSnapshot();
 });
+
+test("parseEnvironmentInfo from system message content", () => {
+  const prompt = [
+    {
+      role: "system",
+      content: createEnvironmentPrompt(createTestEnvironment(), undefined),
+    },
+  ] satisfies LanguageModelV3CallOptions["prompt"];
+
+  expect(parseEnvironmentInfo(prompt)).toEqual({
+    os: "darwin",
+    shell: "zsh",
+    homedir: "/Users/pochi",
+    cwd: "/Users/pochi/project",
+  });
+});
+
+test("parseEnvironmentInfo from user text parts", () => {
+  const prompt = [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "hello" },
+        {
+          type: "text",
+          text: createEnvironmentPrompt(createTestEnvironment(), undefined),
+        },
+      ],
+    },
+  ] satisfies LanguageModelV3CallOptions["prompt"];
+
+  expect(parseEnvironmentInfo(prompt)).toEqual({
+    os: "darwin",
+    shell: "zsh",
+    homedir: "/Users/pochi",
+    cwd: "/Users/pochi/project",
+  });
+});
+
+test("parseEnvironmentInfo ignores missing or incomplete environment prompt", () => {
+  expect(parseEnvironmentInfo(undefined)).toBeUndefined();
+  expect(
+    parseEnvironmentInfo([
+      {
+        role: "system",
+        content:
+          "# System Information\n\nOperating System: darwin\nDefault Shell: zsh",
+      },
+    ]),
+  ).toBeUndefined();
+  expect(
+    parseEnvironmentInfo([
+      {
+        role: "system",
+        content:
+          "# User Information\n\nOperating System: darwin\nDefault Shell: zsh\nHome Directory: /Users/pochi\nCurrent Working Directory: /Users/pochi/project",
+      },
+    ]),
+  ).toBeUndefined();
+});
+
+function createTestEnvironment(): Environment {
+  return {
+    currentTime: "2026-06-23T00:00:00.000Z",
+    workspace: {},
+    todos: [],
+    info: {
+      cwd: "/Users/pochi/project",
+      os: "darwin",
+      homedir: "/Users/pochi",
+      shell: "zsh",
+    },
+  };
+}
