@@ -55,10 +55,6 @@ export function parseEnvironmentInfo(
           : [];
 
     for (const text of textParts) {
-      if (!text.includes("<system-reminder># System Information")) {
-        continue;
-      }
-
       const systemInfo = parseSystemInfoLines(text);
       const os = systemInfo["Operating System"];
       const shell = systemInfo["Default Shell"];
@@ -78,9 +74,15 @@ export function parseEnvironmentInfo(
 }
 
 function parseSystemInfoLines(text: string) {
+  const headerIndex = text.indexOf("# System Information");
+  if (headerIndex === -1) {
+    return {};
+  }
+
+  const systemInfoText = text.slice(headerIndex).split(/\n\n# /)[0];
   const lines: Record<string, string> = {};
 
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of systemInfoText.split(/\r?\n/)) {
     const separatorIndex = line.indexOf(":");
     if (separatorIndex === -1) {
       continue;

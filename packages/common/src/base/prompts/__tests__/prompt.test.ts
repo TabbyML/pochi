@@ -100,10 +100,7 @@ test("parseEnvironmentInfo from system message content", () => {
   const prompt = [
     {
       role: "system",
-      content: `<system-reminder>${createEnvironmentPrompt(
-        createTestEnvironment(),
-        undefined,
-      )}</system-reminder>`,
+      content: createEnvironmentPrompt(createTestEnvironment(), undefined),
     },
   ] satisfies LanguageModelV3CallOptions["prompt"];
 
@@ -123,10 +120,7 @@ test("parseEnvironmentInfo from user text parts", () => {
         { type: "text", text: "hello" },
         {
           type: "text",
-          text: `<system-reminder>${createEnvironmentPrompt(
-            createTestEnvironment(),
-            undefined,
-          )}</system-reminder>`,
+          text: createEnvironmentPrompt(createTestEnvironment(), undefined),
         },
       ],
     },
@@ -147,7 +141,7 @@ test("parseEnvironmentInfo ignores missing or incomplete environment prompt", ()
       {
         role: "system",
         content:
-          "<system-reminder># System Information\n\nOperating System: darwin</system-reminder>",
+          "# System Information\n\nOperating System: darwin\nDefault Shell: zsh",
       },
     ]),
   ).toBeUndefined();
@@ -156,7 +150,7 @@ test("parseEnvironmentInfo ignores missing or incomplete environment prompt", ()
       {
         role: "system",
         content:
-          "# System Information\n\nOperating System: darwin\nDefault Shell: zsh\nHome Directory: /Users/pochi\nCurrent Working Directory: /Users/pochi/project\nCurrent Time: 2026-06-23T00:00:00.000Z",
+          "# User Information\n\nOperating System: darwin\nDefault Shell: zsh\nHome Directory: /Users/pochi\nCurrent Working Directory: /Users/pochi/project",
       },
     ]),
   ).toBeUndefined();
