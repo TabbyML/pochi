@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
-import { ExpandIcon } from "../tool-container";
+import { ExpandIconRight } from "../tool-container";
 
 interface SubAgentViewProps {
   uid?: string;
@@ -146,7 +146,7 @@ export function SubAgentView({
               >
                 {canShowFooterTaskThread && (
                   <div className="flex shrink-0 items-center">
-                    <ExpandIcon
+                    <ExpandIconRight
                       isExpanded={showFooterTaskThread}
                       className="cursor-pointer opacity-100 transition-colors hover:bg-secondary hover:text-foreground"
                     />
