@@ -8,10 +8,6 @@ export {
   type LLMFormatterOptions,
 } from "./formatters";
 export { prompts } from "./prompts";
-export {
-  parseEnvironmentInfo,
-  type EnvironmentInfo,
-} from "./prompts/environment";
 
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
