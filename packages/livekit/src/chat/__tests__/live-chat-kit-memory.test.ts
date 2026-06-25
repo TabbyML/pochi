@@ -3,7 +3,7 @@ import type {
   BackgroundTaskState,
   TaskMemoryState,
 } from "@getpochi/common";
-import type { ChatInit, ChatOnFinishCallback } from "ai";
+import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import {
   type BlobStore,
@@ -71,6 +71,48 @@ describe("LiveChatKit memory lifecycle", () => {
 
     expect(clearFileStateCache).toHaveBeenCalledTimes(1);
     expect(retryMessage).toBeTruthy();
+  });
+
+  it("marks unfinished tool calls as errors when a stream fails", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+    const message = assistantReadFileMessage("input-available");
+    chatKit.chat.messages = [userMessage(), message];
+
+    const abortError = new Error("Transport is aborted");
+    abortError.name = "AbortError";
+    chatKit.chat.fail(abortError);
+
+    expect(chatKit.chat.messages.at(-1)?.parts[0]).toMatchObject({
+      type: "tool-readFile",
+      toolCallId: "call-read-file",
+      state: "output-error",
+      input: { path: "README.md" },
+      errorText: "User aborted the tool call",
+    });
+
+    const savedMessage = store.taskMessages("parent").at(-1);
+    expect(savedMessage?.parts[0]).toMatchObject({
+      type: "tool-readFile",
+      toolCallId: "call-read-file",
+      state: "output-error",
+      input: { path: "README.md" },
+      errorText: "User aborted the tool call",
+    });
   });
 
   it("updates task total tokens from the formatted compact estimate", () => {
@@ -300,10 +342,12 @@ class BackgroundTaskStateStore {
 class FakeChat {
   messages: Message[];
   private readonly onFinish: ChatOnFinishCallback<Message>;
+  private readonly onError: ChatOnErrorCallback;
 
   constructor(init: ChatInit<Message>) {
     this.messages = init.messages ?? [];
     this.onFinish = init.onFinish ?? (() => {});
+    this.onError = init.onError ?? (() => {});
   }
 
   async stop() {}
@@ -317,6 +361,10 @@ class FakeChat {
       isError: false,
       finishReason: "stop",
     });
+  }
+
+  fail(error: Error) {
+    this.onError(error);
   }
 }
 
@@ -401,6 +449,10 @@ class FakeStore {
       this.commitChatStreamFinished(event.args);
       return;
     }
+    if (event.name === "v1.ChatStreamFailed") {
+      this.commitChatStreamFailed(event.args);
+      return;
+    }
     if (event.name === "v1.UpdateTotalTokens") {
       this.commitUpdateTotalTokens(event.args);
       return;
@@ -416,6 +468,10 @@ class FakeStore {
     const task = this.tasks.get(taskId);
     if (!task) throw new Error(`Unknown task ${taskId}`);
     this.tasks.set(taskId, { ...task, status });
+  }
+
+  taskMessages(taskId: string) {
+    return this.messages.get(taskId) ?? [];
   }
 
   private commitTaskInited(args: Record<string, unknown>) {
@@ -454,6 +510,26 @@ class FakeStore {
       ...(this.messages.get(id) ?? []).filter((item) => item.id !== message.id),
       message,
     ]);
+  }
+
+  private commitChatStreamFailed(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const task = this.tasks.get(id);
+    if (!task) throw new Error(`Unknown task ${id}`);
+
+    const message = args.data as Message | null;
+    const updatedAt = args.updatedAt as Date;
+    this.tasks.set(task.id, {
+      ...task,
+      status: "failed",
+      updatedAt,
+    });
+    if (message) {
+      this.messages.set(id, [
+        ...(this.messages.get(id) ?? []).filter((item) => item.id !== message.id),
+        message,
+      ]);
+    }
   }
 
   private commitUpdateTotalTokens(args: Record<string, unknown>) {
@@ -567,6 +643,23 @@ function retryableAssistantMessage(): Message {
         toolCallId: "call-exec",
         state: "input-streaming",
         input: null,
+      },
+    ],
+  } as unknown as Message;
+}
+
+function assistantReadFileMessage(
+  state: "input-streaming" | "input-available",
+): Message {
+  return {
+    id: "assistant-read-file",
+    role: "assistant",
+    parts: [
+      {
+        type: "tool-readFile",
+        toolCallId: "call-read-file",
+        state,
+        input: { path: "README.md" },
       },
     ],
   } as unknown as Message;

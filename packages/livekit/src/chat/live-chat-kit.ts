@@ -9,9 +9,18 @@ import type {
 import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
 import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
-import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  ToolsByPermission,
+  getToolCallCancelErrorMessage,
+} from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
-import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
+import {
+  type ChatInit,
+  type ChatOnErrorCallback,
+  type ChatOnFinishCallback,
+  isToolUIPart,
+} from "ai";
 import type z from "zod";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
@@ -56,6 +65,52 @@ const TaskMemorySettleTimeoutMs = 5_000;
 const TaskMemorySettlePollIntervalMs = 200;
 
 type GetRecentFilesForCompact = () => MaybePromise<RecentFileState[]>;
+
+function normalizeFailedStreamMessage(
+  message: Message | null,
+  error: unknown,
+): Message | null {
+  if (message?.role !== "assistant") {
+    return message;
+  }
+
+  const errorText = getFailedToolCallErrorText(error);
+  return {
+    ...message,
+    parts: message.parts.map((part) => {
+      if (!isToolUIPart(part)) {
+        return part;
+      }
+
+      if (
+        part.state === "output-available" ||
+        part.state === "output-error" ||
+        part.state === "output-denied"
+      ) {
+        return part;
+      }
+
+      const normalizedPart = { ...(part as Record<string, unknown>) };
+      normalizedPart.output = undefined;
+      normalizedPart.errorText = undefined;
+      normalizedPart.approval = undefined;
+
+      return {
+        ...normalizedPart,
+        state: "output-error",
+        errorText,
+      } as unknown as typeof part;
+    }),
+  };
+}
+
+function getFailedToolCallErrorText(error: unknown): string {
+  if (error instanceof Error && error.name === "AbortError") {
+    return getToolCallCancelErrorMessage("user-abort");
+  }
+
+  return error instanceof Error ? error.message : String(error);
+}
 
 export type LiveChatKitBackgroundTaskOptions = {
   stateStore?: {
@@ -972,7 +1027,11 @@ export class LiveChatKit<
 
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
-    const lastMessage = this.chat.messages.at(-1) || null;
+    const rawLastMessage = this.chat.messages.at(-1) || null;
+    const lastMessage = normalizeFailedStreamMessage(rawLastMessage, error);
+    if (lastMessage && rawLastMessage) {
+      this.chat.messages = [...this.chat.messages.slice(0, -1), lastMessage];
+    }
 
     let duration = undefined;
     if (
