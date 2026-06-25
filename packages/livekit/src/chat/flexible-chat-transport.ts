@@ -216,6 +216,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       abortSignal,
       tools,
       maxRetries: 0,
+      timeout: {
+        // Abort if no chunk is received within 15s to prevent indefinitely stalled streams.
+        chunkMs: 15_000,
+      },
       // error log is handled in live chat kit.
       onError: () => {},
       experimental_repairToolCall: makeRepairToolCall(
