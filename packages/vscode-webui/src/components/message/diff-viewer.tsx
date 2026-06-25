@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ScrollBar } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -7,8 +8,9 @@ import {
 import { cn } from "@/lib/utils";
 import { parsePatchFiles, resolveThemes } from "@pierre/diffs";
 import { FileDiff, Virtualizer } from "@pierre/diffs/react";
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { Columns2, Rows2, WrapText } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme-provider";
 import { CodeBlock } from "./code-block";
@@ -25,6 +27,13 @@ let themesResolved = false;
 const patchDiffUnsafeCSS = `
   [data-separator="line-info"] {
     height: 24px;
+  }
+  [data-code] {
+    scrollbar-width: none;
+  }
+  [data-code]::-webkit-scrollbar {
+    width: 0;
+    height: 0;
   }`;
 const patchDiffStyle = {
   "--diffs-font-family": "JetBrains Mono, monospace",
@@ -72,6 +81,9 @@ function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
   const [isReady, setIsReady] = useState(themesResolved);
   const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
   const [lineWrap, setLineWrap] = useState(false);
+  const diffViewerRef = useRef<HTMLDivElement>(null);
+  const horizontalScrollbarViewportRef = useRef<HTMLDivElement>(null);
+  const [horizontalScrollbarWidth, setHorizontalScrollbarWidth] = useState(0);
 
   const fileDiff = useMemo(() => {
     try {
@@ -111,6 +123,128 @@ function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
   const toggleLineWrap = () => {
     setLineWrap((prev) => !prev);
   };
+
+  useEffect(() => {
+    if (!isReady || !fileDiff) return;
+
+    const diffViewer = diffViewerRef.current;
+    const viewport = horizontalScrollbarViewportRef.current;
+    if (!diffViewer || !viewport) return;
+
+    if (lineWrap) {
+      setHorizontalScrollbarWidth(0);
+      return;
+    }
+
+    const observedCodeElements = new Set<HTMLElement>();
+    let scrollSource: "proxy" | "code" | undefined;
+    let resetScrollSourceId: number | undefined;
+
+    const holdScrollSource = (source: "proxy" | "code") => {
+      scrollSource = source;
+      window.clearTimeout(resetScrollSourceId);
+      resetScrollSourceId = window.setTimeout(() => {
+        scrollSource = scrollSource === source ? undefined : scrollSource;
+      }, 150);
+    };
+
+    const syncCodeScrollLeft = (scrollLeft: number) => {
+      for (const codeScrollElement of observedCodeElements) {
+        if (codeScrollElement.scrollLeft !== scrollLeft) {
+          codeScrollElement.scrollLeft = scrollLeft;
+        }
+      }
+    };
+
+    const syncFromProxy = () => {
+      if (scrollSource === "code") return;
+
+      holdScrollSource("proxy");
+      syncCodeScrollLeft(viewport.scrollLeft);
+    };
+
+    const syncFromCode = (event: Event) => {
+      if (scrollSource === "proxy") {
+        syncCodeScrollLeft(viewport.scrollLeft);
+        return;
+      }
+
+      const scrollLeft = (event.currentTarget as HTMLElement).scrollLeft;
+      holdScrollSource("code");
+      viewport.scrollLeft = scrollLeft;
+      syncCodeScrollLeft(scrollLeft);
+    };
+
+    const refreshScrollProxy = () => {
+      resizeObserver.disconnect();
+      resizeObserver.observe(diffViewer);
+      resizeObserver.observe(viewport);
+
+      let maxScrollLeft = 0;
+      const currentCodeElements = new Set<HTMLElement>();
+      for (const fileDiffElement of diffViewer.querySelectorAll<HTMLElement>(
+        ".diff-viewer-file-diff",
+      )) {
+        const shadowRoot = fileDiffElement.shadowRoot;
+        if (!shadowRoot) continue;
+
+        mutationObserver.observe(shadowRoot, {
+          childList: true,
+          subtree: true,
+        });
+
+        for (const codeScrollElement of shadowRoot.querySelectorAll<HTMLElement>(
+          "[data-code]",
+        )) {
+          currentCodeElements.add(codeScrollElement);
+          maxScrollLeft = Math.max(
+            maxScrollLeft,
+            codeScrollElement.scrollWidth - codeScrollElement.clientWidth,
+          );
+          resizeObserver.observe(codeScrollElement);
+          if (!observedCodeElements.has(codeScrollElement)) {
+            codeScrollElement.addEventListener("scroll", syncFromCode, {
+              passive: true,
+            });
+            observedCodeElements.add(codeScrollElement);
+          }
+        }
+      }
+
+      for (const codeScrollElement of observedCodeElements) {
+        if (currentCodeElements.has(codeScrollElement)) continue;
+        codeScrollElement.removeEventListener("scroll", syncFromCode);
+        observedCodeElements.delete(codeScrollElement);
+      }
+
+      const scrollWidth = viewport.clientWidth + Math.max(0, maxScrollLeft);
+      setHorizontalScrollbarWidth(scrollWidth);
+      if (viewport.scrollLeft > maxScrollLeft) {
+        viewport.scrollLeft = maxScrollLeft;
+      }
+      syncCodeScrollLeft(viewport.scrollLeft);
+    };
+
+    viewport.addEventListener("scroll", syncFromProxy, { passive: true });
+
+    const resizeObserver = new ResizeObserver(refreshScrollProxy);
+    const mutationObserver = new MutationObserver(refreshScrollProxy);
+    mutationObserver.observe(diffViewer, { childList: true, subtree: true });
+
+    refreshScrollProxy();
+
+    return () => {
+      viewport.removeEventListener("scroll", syncFromProxy);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      if (resetScrollSourceId !== undefined) {
+        window.clearTimeout(resetScrollSourceId);
+      }
+      for (const codeScrollElement of observedCodeElements) {
+        codeScrollElement.removeEventListener("scroll", syncFromCode);
+      }
+    };
+  }, [fileDiff, isReady, lineWrap]);
 
   // If patch is invalid, fall back to CodeBlock render
   if (!fileDiff) {
@@ -194,14 +328,40 @@ function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
           </div>
         </div>
       )}
-      <Virtualizer className="max-h-60 overflow-auto">
-        <FileDiff
-          fileDiff={fileDiff}
-          options={patchDiffOptions}
-          metrics={patchDiffMetrics}
-          style={patchDiffStyle}
-        />
-      </Virtualizer>
+      <div ref={diffViewerRef} className="min-w-0">
+        <Virtualizer
+          className="diff-viewer-virtualizer max-h-60 overflow-y-auto"
+          contentClassName="min-w-full"
+        >
+          <FileDiff
+            className="diff-viewer-file-diff"
+            fileDiff={fileDiff}
+            options={patchDiffOptions}
+            metrics={patchDiffMetrics}
+            style={patchDiffStyle}
+          />
+        </Virtualizer>
+        <ScrollAreaPrimitive.Root
+          data-slot="scroll-area"
+          data-diff-viewer-horizontal-scrollbar=""
+          type="always"
+          className="relative h-3 min-w-0 bg-[var(--vscode-editor-background)]"
+        >
+          <ScrollAreaPrimitive.Viewport
+            data-slot="scroll-area-viewport"
+            ref={horizontalScrollbarViewportRef}
+            className="h-full w-full rounded-[inherit]"
+          >
+            <div
+              aria-hidden="true"
+              data-diff-viewer-horizontal-scrollbar-spacer=""
+              style={{ height: 1, width: horizontalScrollbarWidth }}
+            />
+          </ScrollAreaPrimitive.Viewport>
+          <ScrollBar orientation="horizontal" />
+          <ScrollAreaPrimitive.Corner />
+        </ScrollAreaPrimitive.Root>
+      </div>
     </div>
   );
 }
