@@ -3,7 +3,12 @@ name: browser
 description: "Web browser automation agent for navigating websites, interacting with pages, and extracting information. Uses agent-browser CLI for browser control, including headless sessions and optional local Chrome auto-connect."
 tools:
   - readFile
-  - executeCommand
+  - "executeCommand(agent-browser *)"
+  - "executeCommand(~/.pochi/bin/agent-browser *)"
+  - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser *)"
+  - "executeCommand(curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash)"
+  - "executeCommand(pgrep -x Google Chrome|chrome|google-chrome|chromium)"
+  - "executeCommand(powershell -NoProfile -Command Get-Process chrome -ErrorAction SilentlyContinue)"
   - startBackgroundJob
   - readBackgroundJobOutput
   - killBackgroundJob
@@ -82,9 +87,9 @@ Follow this workflow in order:
 
 Use only `agent-browser` version `0.27.3-pochi`.
 
-Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the discovered version is not exactly `0.27.3-pochi`, uninstall the previous `agent-browser` installation, then install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`.
+Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the discovered version is not exactly `0.27.3-pochi`, install the verified version with `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`.
 
-After installing, run `agent-browser --version` again. If `agent-browser` is still missing because the updated PATH is not active in the current shell, check the install directory `$HOME/.pochi/bin` and run `$HOME/.pochi/bin/agent-browser --version` directly. If the direct path reports version `0.27.3-pochi`, use `$HOME/.pochi/bin/agent-browser` for subsequent agent-browser commands.
+After installing, run `agent-browser --version` again. If `agent-browser` is still missing because the updated PATH is not active in the current shell, check the install directory directly. On macOS/Linux or PowerShell, run `~/.pochi/bin/agent-browser --version`; on Windows cmd, run `%USERPROFILE%/.pochi/bin/agent-browser --version`. If the direct path reports version `0.27.3-pochi`, use that same direct path for subsequent agent-browser commands.
 
 ### Managed Browser Workflow
 

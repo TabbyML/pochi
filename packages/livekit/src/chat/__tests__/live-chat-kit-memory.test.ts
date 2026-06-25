@@ -115,6 +115,50 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 
+  it("updates task total tokens from the formatted compact estimate", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+    const messages = [
+      {
+        id: "old-user",
+        role: "user",
+        parts: [{ type: "text", text: "x".repeat(100_000) }],
+      },
+      assistantMessage(),
+      {
+        id: "compact-user",
+        role: "user",
+        parts: [
+          { type: "text", text: "<compact>short summary</compact>" },
+          { type: "text", text: "continue" },
+        ],
+      },
+    ] as Message[];
+
+    (
+      chatKit as unknown as {
+        updateTotalTokensEstimate(messages: Message[]): void;
+      }
+    ).updateTotalTokensEstimate(messages);
+
+    expect(chatKit.task?.totalTokens).toBeGreaterThan(0);
+    expect(chatKit.task?.totalTokens).toBeLessThan(100);
+  });
+
   it("starts task-memory and auto-memory from stream finish inside LiveKit", async () => {
     const store = new FakeStore([
       makeTask({
@@ -409,6 +453,10 @@ class FakeStore {
       this.commitChatStreamFailed(event.args);
       return;
     }
+    if (event.name === "v1.UpdateTotalTokens") {
+      this.commitUpdateTotalTokens(event.args);
+      return;
+    }
     throw new Error(`Unsupported event ${event.name}`);
   }
 
@@ -482,6 +530,18 @@ class FakeStore {
         message,
       ]);
     }
+  }
+
+  private commitUpdateTotalTokens(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const task = this.tasks.get(id);
+    if (!task) throw new Error(`Unknown task ${id}`);
+
+    this.tasks.set(task.id, {
+      ...task,
+      totalTokens: args.totalTokens as number,
+      updatedAt: args.updatedAt as Date,
+    });
   }
 
   private extractTaskId(query: { hash?: string }) {

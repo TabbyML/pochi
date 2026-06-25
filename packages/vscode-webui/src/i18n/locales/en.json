@@ -373,7 +373,8 @@
     "noChangesDetected": "No changes detected",
     "compare": "Compare",
     "fork": "Fork",
-    "forking": "Forking"
+    "forking": "Forking",
+    "summary": "Summary"
   },
   "reviewUI": {
     "reviews": "Reviews",

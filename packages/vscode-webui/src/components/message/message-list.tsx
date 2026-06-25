@@ -1,6 +1,5 @@
-import { Loader2, SquareChartGantt, UserIcon } from "lucide-react";
+import { Loader2, UserIcon } from "lucide-react";
 import type React from "react";
-import { useTranslation } from "react-i18next";
 
 import { ReasoningPartUI } from "@/components/reasoning-part.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,14 +13,13 @@ import { ToolInvocationPart } from "@/features/tools";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn } from "@/lib/utils";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
 import { memo, useEffect, useMemo } from "react";
-import { CheckpointUI } from "../checkpoint-ui";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
 import { ActiveSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageMarkdown } from "./markdown";
@@ -155,9 +153,6 @@ export const MessageList: React.FC<{
                     <strong>
                       {m.role === "user" ? user?.name : assistantName}
                     </strong>
-                    {findCompactPart(m) && (
-                      <CompactPartToolTip className="ml-1" message={m} />
-                    )}
                   </div>
                 )}
                 <div
@@ -167,6 +162,7 @@ export const MessageList: React.FC<{
                     <Part
                       role={m.role}
                       key={index}
+                      messageId={m.id}
                       isLastPartInMessages={
                         index === m.parts.length - 1 &&
                         messageIndex === renderMessages.length - 1
@@ -262,6 +258,7 @@ function Part({
   role,
   part,
   partIndex,
+  messageId,
   isLastPartInMessages,
   isLoading,
   isExecuting,
@@ -276,6 +273,7 @@ function Part({
 }: {
   role: Message["role"];
   partIndex: number;
+  messageId: string;
   part: NonNullable<Message["parts"]>[number];
   isLastPartInMessages: boolean;
   isLoading: boolean;
@@ -294,7 +292,14 @@ function Part({
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
-    return <MemoTextPartUI className={paddingClass} part={part} />;
+    return (
+      <MemoTextPartUI
+        className={paddingClass}
+        part={part}
+        role={role}
+        messageId={messageId}
+      />
+    );
   }
 
   if (part.type === "reasoning") {
@@ -366,21 +371,39 @@ function Part({
 function TextPartUI({
   className,
   part,
-}: { part: TextUIPart; className?: string }) {
+  role,
+  messageId,
+}: {
+  part: TextUIPart;
+  role: Message["role"];
+  messageId: string;
+  className?: string;
+}) {
   if (part.text.trim().length === 0) {
     return null; // Skip empty text parts
   }
 
   if (prompts.isCompact(part.text)) {
-    return null; // Skip compact parts
+    // Only render the compact checkpoint inline for assistant messages
+    // (the compact-only user message was merged into the assistant message
+    // by the formatter). For user messages, the compact checkpoint is
+    // rendered by SeparatorWithCheckpoint.
+    if (role === "assistant") {
+      return <CompactCheckpointUI compactPart={part} messageId={messageId} />;
+    }
+    return null;
   }
 
   return <MessageMarkdown className={className}>{part.text}</MessageMarkdown>;
 }
 
-const MemoTextPartUI = memo(TextPartUI, (prev, next) => {
-  return prev.part.text === next.part.text;
-});
+const MemoTextPartUI = memo(
+  TextPartUI,
+  (prev, next) =>
+    prev.part.text === next.part.text &&
+    prev.messageId === next.messageId &&
+    prev.role === next.role,
+);
 MemoTextPartUI.displayName = "MemoTextPartUI";
 
 function ReasoningPartRenderer(props: Parameters<typeof ReasoningPartUI>[0]) {
@@ -428,23 +451,46 @@ const SeparatorWithCheckpoint: React.FC<{
     checkpointMessage = nextMessage;
     restoreMessageId = message.id;
   }
+
+  // When a compact-only user message was merged into an adjacent assistant
+  // message by the formatter, the compact part lives on the assistant message.
+  // The compact checkpoint is then rendered inline by TextPartUI.
   if (!checkpointMessage) return sep;
 
-  const part = checkpointMessage.parts.at(-1);
-  if (part && part.type === "data-checkpoint" && isVSCodeEnvironment()) {
+  const compactPart = findCompactPart(checkpointMessage);
+  const lastPart = checkpointMessage.parts.at(-1);
+
+  if (
+    lastPart &&
+    lastPart.type === "data-checkpoint" &&
+    isVSCodeEnvironment()
+  ) {
     return (
       <div className="mt-1 mb-2">
         <CheckpointUI
-          checkpoint={part.data}
+          checkpoint={lastPart.data}
           isLoading={isLoading}
           hideBorderOnHover={false}
           className="max-w-full"
           forkTask={forkTask}
           restoreMessageId={restoreMessageId}
           isRestored={
-            lastCheckpointInMessage !== part.data.commit &&
-            latestCheckpoint === part.data.commit
+            lastCheckpointInMessage !== lastPart.data.commit &&
+            latestCheckpoint === lastPart.data.commit
           }
+          compactPart={compactPart}
+          compactMessageId={checkpointMessage.id}
+        />
+      </div>
+    );
+  }
+
+  if (compactPart) {
+    return (
+      <div className="mt-1 mb-2">
+        <CompactCheckpointUI
+          compactPart={compactPart}
+          messageId={checkpointMessage.id}
         />
       </div>
     );
@@ -507,35 +553,6 @@ function findCompactPart(message: Message): TextUIPart | undefined {
       return x;
     }
   }
-}
-
-function CompactPartToolTip({
-  message,
-  className,
-}: { message: Message; className?: string }) {
-  const { t } = useTranslation();
-  const compactPart = findCompactPart(message);
-  const parsed = compactPart && prompts.parseInlineCompact(compactPart.text);
-  if (!parsed) return null;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild className={className}>
-        <SquareChartGantt
-          className="size-5 cursor-pointer"
-          onClick={() =>
-            vscodeHost.openFile(`/task-summary-${message.id}.md`, {
-              base64Data: btoa(unescape(encodeURIComponent(parsed.summary))),
-            })
-          }
-        />
-      </TooltipTrigger>
-      <TooltipContent sideOffset={2} side="right">
-        <p className="m-0 w-48">
-          {t("messageList.compactedConversationTooltip")}
-        </p>
-      </TooltipContent>
-    </Tooltip>
-  );
 }
 
 function buildUserEditsCheckpoints(messages: Message[]) {

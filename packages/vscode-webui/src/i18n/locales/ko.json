@@ -365,7 +365,8 @@
     "noChangesDetected": "변경 사항이 감지되지 않았습니다",
     "compare": "비교",
     "fork": "포크하기",
-    "forking": "포크 중..."
+    "forking": "포크 중...",
+    "summary": "요약"
   },
   "reviewUI": {
     "reviews": "리뷰",

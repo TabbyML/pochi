@@ -25,6 +25,8 @@ import {
 } from "./task-memory";
 import { renderUserEdits } from "./user-edits";
 
+export { parseEnvironmentInfo } from "./environment";
+
 export const prompts = {
   system: createSystemPrompt,
   injectEnvironment,

@@ -7,7 +7,7 @@ export {
   formatters,
   type LLMFormatterOptions,
 } from "./formatters";
-export { prompts } from "./prompts";
+export { prompts, parseEnvironmentInfo } from "./prompts";
 
 export { SocialLinks } from "./social";
 export * as constants from "./constants";

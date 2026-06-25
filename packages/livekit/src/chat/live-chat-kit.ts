@@ -6,7 +6,7 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { getLogger, isForkAgentUseCase } from "@getpochi/common";
+import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
 import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import {
@@ -560,7 +560,7 @@ export class LiveChatKit<
           messages,
           llm: getters.getLLM(),
           task: this.task,
-          estimatedTotalTokens: estimateTotalTokens(messages),
+          estimatedTotalTokens: estimateTotalTokens(formatters.llm(messages)),
         });
 
       if (isManualCompact || isAutoCompact) {
@@ -600,6 +600,7 @@ export class LiveChatKit<
             store: this.store,
             useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
+          this.updateTotalTokensEstimate(messages);
           if (isAutoCompact) {
             this.consecutiveAutoCompactFailures = 0;
           }
@@ -989,6 +990,16 @@ export class LiveChatKit<
     await this.clearFileStateCache();
     return prepared as Message;
   };
+
+  private updateTotalTokensEstimate(messages: Message[]) {
+    this.store.commit(
+      events.updateTotalTokens({
+        id: this.taskId,
+        totalTokens: estimateTotalTokens(formatters.llm(messages)),
+        updatedAt: new Date(),
+      }),
+    );
+  }
 
   private async handleCompactFinish(
     success: boolean,
