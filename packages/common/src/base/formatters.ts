@@ -100,13 +100,64 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
     ) {
       return true;
     }
+    // Keep messages that carry a compact checkpoint — the checkpoint
+    // is meaningful UI content even when all other parts were system reminders.
+    if (parts.some((x) => x.type === "text" && prompts.isCompact(x.text))) {
+      return true;
+    }
     return false;
   });
+}
+
+function isCompactOnlyUserMessage(message: UIMessage): boolean {
+  if (message.role !== "user") return false;
+  return message.parts.every(
+    (part) =>
+      (part.type === "text" && prompts.isCompact(part.text)) ||
+      (part.type === "text" && part.text.trim().length === 0) ||
+      part.type === "data-checkpoint",
+  );
 }
 
 function combineConsecutiveAssistantMessages(
   messages: UIMessage[],
 ): UIMessage[] {
+  for (let i = 0; i < messages.length - 1; i++) {
+    if (
+      messages[i].role === "assistant" &&
+      messages[i + 1].role === "assistant"
+    ) {
+      messages[i].parts.push(...messages[i + 1].parts);
+      messages.splice(i + 1, 1);
+      i--;
+    }
+  }
+
+  // Merge compact-only user messages into the adjacent assistant message so
+  // the surrounding assistant messages combine and the compact checkpoint
+  // renders as a separator without a visible user message row.
+  for (let i = 0; i < messages.length; i++) {
+    if (isCompactOnlyUserMessage(messages[i])) {
+      const compactParts = messages[i].parts.filter(
+        (part) => part.type === "text" && prompts.isCompact(part.text),
+      );
+      if (i > 0 && messages[i - 1].role === "assistant") {
+        messages[i - 1].parts.push(...compactParts);
+        messages.splice(i, 1);
+        i--;
+      } else if (
+        i < messages.length - 1 &&
+        messages[i + 1].role === "assistant"
+      ) {
+        messages[i + 1].parts.unshift(...compactParts);
+        messages.splice(i, 1);
+        i--;
+      }
+    }
+  }
+
+  // Re-run consecutive assistant merge now that compact-only user messages
+  // have been removed.
   for (let i = 0; i < messages.length - 1; i++) {
     if (
       messages[i].role === "assistant" &&
