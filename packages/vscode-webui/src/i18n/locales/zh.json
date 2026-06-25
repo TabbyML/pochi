@@ -366,8 +366,7 @@
     "compare": "比较",
     "fork": "新建分支任务",
     "forking": "创建中...",
-    "summary": "摘要",
-    "compact": "压缩"
+    "summary": "摘要"
   },
   "reviewUI": {
     "reviews": "评审",
