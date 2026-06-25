@@ -285,7 +285,7 @@ export const CheckpointUI: React.FC<{
                   }
                 }}
               >
-                {t("checkpointUI.compact")}
+                {t("checkpointUI.summary")}
               </Button>
             </div>
           )}
@@ -360,7 +360,7 @@ export const CompactCheckpointUI: React.FC<{
             className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
             onClick={handleOpenSummary}
           >
-            {t("checkpointUI.compact")}
+            {t("checkpointUI.summary")}
           </Button>
           <span className="group-hover:hidden">
             <SquareChartGantt className="size-3" />
