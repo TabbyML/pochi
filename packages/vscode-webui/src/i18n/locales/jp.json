@@ -367,7 +367,8 @@
     "noChangesDetected": "変更が検出されませんでした",
     "compare": "比較",
     "fork": "フォーク",
-    "forking": "フォーク中..."
+    "forking": "フォーク中...",
+    "summary": "要約"
   },
   "reviewUI": {
     "reviews": "レビュー",

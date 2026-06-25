@@ -187,9 +187,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const toolsTokens = estimateTokens(JSON.stringify(tools));
 
     const preparedMessages = await prepareMessages(messages);
+    const llmMessages = formatters.llm(preparedMessages);
     const modelMessages = (await resolvePromise(
       await convertToModelMessages(
-        formatters.llm(preparedMessages),
+        llmMessages,
         // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
         { tools },
       ),
@@ -240,7 +241,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             // The client only consumes the aggregated total token count here.
             // Detailed usage shape differences are a server/protocol concern.
             totalTokens:
-              part.totalUsage.totalTokens || estimateTotalTokens(messages),
+              part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
             finishReason: part.finishReason,
             startedAt: requestStartedAt,
             finishedAt: new Date(),

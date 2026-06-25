@@ -204,6 +204,14 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  updateTotalTokens: Events.synced({
+    name: "v1.UpdateTotalTokens",
+    schema: Schema.Struct({
+      id: Schema.String,
+      totalTokens: Schema.Number,
+      updatedAt: Schema.Date,
+    }),
+  }),
   _blobInserted: Events.synced({
     name: "v1.BlobInserted",
     schema: Schema.Struct({
@@ -439,6 +447,8 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks.update({ title, updatedAt }).where({ id }),
   "v1.UpdateIsPublicShared": ({ id, isPublicShared, updatedAt }) =>
     tables.tasks.update({ isPublicShared, updatedAt }).where({ id }),
+  "v1.UpdateTotalTokens": ({ id, totalTokens, updatedAt }) =>
+    tables.tasks.update({ totalTokens, updatedAt }).where({ id }),
   // @deprecated materializer kept for backward compatibility
   "v1.WriteTaskFile": ({ filePath, content }) =>
     tables.files
