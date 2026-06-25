@@ -8,6 +8,7 @@ import type {
 } from "@getpochi/common";
 import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
 import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import {
   type CustomAgent,
@@ -56,6 +57,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
+import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
 import { computeContextWindowUsage, estimateTotalTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
@@ -330,6 +332,7 @@ export type LiveChatKitOptions<T> = {
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
   systemPromptOverride?: string;
+  outputSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -358,6 +361,7 @@ export class LiveChatKit<
   protected readonly taskId: string;
   protected readonly store: LiveKitStore;
   protected readonly blobStore: BlobStore;
+  private readonly getters: PrepareRequestGetters;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
   private readonly backgroundTaskExecutor: TaskExecutor | undefined;
@@ -417,6 +421,7 @@ export class LiveChatKit<
     this.taskId = taskId;
     this.store = store;
     this.blobStore = blobStore;
+    this.getters = getters;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
     this.clearFileStateCacheCallback = clearFileStateCache;
@@ -872,7 +877,16 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    const message = filterCompletionTools(originalMessage);
+    const filteredMessage = filterCompletionTools(originalMessage);
+    const message = this.getters.isTodoModeActive?.()
+      ? prepareAttemptTodoCompletionSubtask({
+          message: filteredMessage,
+          task: this.task,
+          taskId: this.taskId,
+          store: this.store,
+        })
+      : filteredMessage;
+
     this.chat.messages = [...this.chat.messages.slice(0, -1), message];
 
     const { store } = this;
@@ -1082,3 +1096,65 @@ const getCleanCheckpoint = (messages: Message[]) => {
     return lastPart.data.commit;
   }
 };
+
+function prepareAttemptTodoCompletionSubtask({
+  message,
+  task,
+  taskId,
+  store,
+}: {
+  message: Message;
+  task: Task | undefined;
+  taskId: string;
+  store: LiveKitStore;
+}): Message {
+  if (!hasActiveTodos(task?.todos)) {
+    return message;
+  }
+
+  const todoAuditTaskId = crypto.randomUUID();
+  const todoAuditToolCallId = crypto.randomUUID();
+  const nextMessage = replaceAttemptCompletionWithTodoSubtask(
+    message,
+    task?.todos ?? [],
+    {
+      toolCallId: todoAuditToolCallId,
+      uid: todoAuditTaskId,
+    },
+  );
+  const todoAuditPart =
+    nextMessage !== message
+      ? nextMessage.parts.find(
+          (part) =>
+            part.type === "tool-newTask" &&
+            part.input?._meta?.uid === todoAuditTaskId,
+        )
+      : undefined;
+
+  if (todoAuditPart?.type !== "tool-newTask" || !todoAuditPart.input) {
+    return nextMessage;
+  }
+
+  store.commit(
+    events.taskInited({
+      id: todoAuditTaskId,
+      cwd: task?.cwd ?? undefined,
+      parentId: taskId,
+      createdAt: new Date(),
+      initMessages: [
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: todoAuditPart.input.prompt,
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
+  return nextMessage;
+}

@@ -30,8 +30,13 @@
     "createPlan": "计划",
     "createPlanTooltip": "为此任务创建实施计划",
     "planModeLabel": "计划",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "暂停 Todo",
+    "resumeTodo": "继续 Todo",
+    "autoContinueTodo": "自动推进 Todo",
     "planModeToggleShortcutTooltip": "Shift + Tab 切换",
     "planModeSubmitTooltip": "以计划模式提交",
+    "todoModeSubmitTooltip": "以 Todo 模式提交",
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -451,7 +456,16 @@
   },
   "todoList": {
     "todos": "待办事项",
-    "allDone": "🎉 全部完成！"
+    "allDone": "🎉 全部完成！",
+    "cancelledTodo": "Todo 已取消",
+    "editTodo": "编辑 Todo",
+    "editTodos": "编辑 Todos",
+    "saveTodo": "保存",
+    "saveTodos": "保存 Todos",
+    "editTodoContent": "编辑 Todo 内容",
+    "deleteTodo": "删除",
+    "pauseTodo": "暂停 Todo",
+    "resumeTodo": "继续 Todo"
   },
   "commandExecutionPanel": {
     "copied": "已复制！",
@@ -556,6 +570,12 @@
     "noFrameAvailable": "无画面",
     "executing": "执行中...",
     "paused": "暂停"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "正在审计 Todo",
+    "satisfied": "Todo 已满足",
+    "needsWork": "Todo 需要继续推进",
+    "failed": "Todo 审计失败"
   },
   "browserAgentSettings": {
     "runtimeSection": "浏览器运行环境",

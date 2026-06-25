@@ -1,3 +1,4 @@
+import type { Todo } from "@getpochi/tools";
 import type { ActiveSelection } from "./message";
 
 export type FileUIPart = {
@@ -21,6 +22,7 @@ export type PochiTaskParams = { cwd: string } & (
       type: "new-task";
       uid?: string;
       prompt?: string;
+      todos?: Todo[];
       files?: FileUIPart[];
       activeSelection?: ActiveSelection;
       mcpConfigOverride?: McpConfigOverride;

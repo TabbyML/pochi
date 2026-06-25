@@ -22,6 +22,7 @@ import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
+import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +40,7 @@ interface CreateTaskInputProps {
 
 const noop = () => {};
 const emptyReviews: Review[] = [];
+type SubmitMode = "default" | "plan" | "todo";
 
 export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   cwd,
@@ -51,8 +53,22 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const { t } = useTranslation();
   const activeSelection = useActiveSelection();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
-  const [planMode, setPlanMode] = useState(false);
-  const togglePlanMode = useCallback(() => setPlanMode((v) => !v), []);
+  const [submitMode, setSubmitMode] = useState<SubmitMode>("default");
+  const planMode = submitMode === "plan";
+  const todoMode = submitMode === "todo";
+  const togglePlanMode = useCallback(() => {
+    setSubmitMode((mode) => (mode === "plan" ? "default" : "plan"));
+  }, []);
+  const toggleTodoMode = useCallback(() => {
+    setSubmitMode((mode) => (mode === "todo" ? "default" : "todo"));
+  }, []);
+  const switchSubmitMode = useCallback(() => {
+    setSubmitMode((mode) => {
+      if (mode === "default") return "plan";
+      if (mode === "plan") return "todo";
+      return "default";
+    });
+  }, []);
   const {
     globalMcpConfig,
     mcpConfigOverride,
@@ -150,8 +166,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         name: string;
         url: string;
       }>;
+      todos?: Todo[];
     }): Promise<boolean> => {
-      const { content, shouldCreateWorktree, uploadedFiles } = params;
+      const { content, shouldCreateWorktree, uploadedFiles, todos } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
       if (shouldCreateWorktree) {
@@ -173,6 +190,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         type: "new-task",
         cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
         prompt: content,
+        todos,
         files: uploadedFiles,
         activeSelection: activeSelection ?? undefined,
         mcpConfigOverride:
@@ -209,9 +227,13 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     async (options?: {
       shouldCreateWorktree?: boolean;
       shouldCreatePlan?: boolean;
+      shouldCreateTodo?: boolean;
     }) => {
       const { shouldCreateWorktree } = options || {};
       const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
+      const shouldCreateTodo = shouldCreatePlan
+        ? false
+        : (options?.shouldCreateTodo ?? todoMode);
 
       if (isCreatingTask) return;
 
@@ -260,14 +282,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         shouldCreateWorktree:
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+        todos: shouldCreateTodo ? initTodoModeTodos(content) : undefined,
       });
 
       // Set isCreatingTask state false
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
       setDebouncedIsCreatingTask(false);
-      // Reset plan mode after each submission
-      setPlanMode(false);
+      // Reset submit mode after each submission
+      setSubmitMode("default");
     },
     [
       input.text,
@@ -281,6 +304,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
       planMode,
+      todoMode,
     ],
   );
 
@@ -329,7 +353,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         onRemoveQueuedMessage={noop}
         onFocus={onFocus}
         reviews={emptyReviews}
-        onTogglePlanMode={togglePlanMode}
+        onSwitchSubmitMode={switchSubmitMode}
         isPlanMode={planMode}
       >
         {files.length > 0 && (
@@ -414,9 +438,23 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             resetMcpTools={resetMcpTools}
             isPlanMode={planMode}
             onTogglePlanMode={togglePlanMode}
+            isTodoMode={todoMode}
+            onToggleTodoMode={toggleTodoMode}
+            onSwitchSubmitMode={switchSubmitMode}
           />
         </div>
       </div>
     </>
   );
 };
+
+function initTodoModeTodos(objective: string): Todo[] {
+  return [
+    {
+      id: crypto.randomUUID(),
+      content: objective,
+      status: "in-progress",
+      priority: "medium",
+    },
+  ];
+}

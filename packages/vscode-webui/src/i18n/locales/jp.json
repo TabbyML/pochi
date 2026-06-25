@@ -31,8 +31,13 @@
     "createPlan": "計画",
     "createPlanTooltip": "このタスクの実装計画を作成",
     "planModeLabel": "計画",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Todoを一時停止",
+    "resumeTodo": "Todoを再開",
+    "autoContinueTodo": "TODOを自動継続",
     "planModeToggleShortcutTooltip": "Shift + Tab で切り替え",
     "planModeSubmitTooltip": "計画として送信",
+    "todoModeSubmitTooltip": "Todoモードで送信",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -453,7 +458,16 @@
   },
   "todoList": {
     "todos": "TODO",
-    "allDone": "🎉 すべて完了！"
+    "allDone": "🎉 すべて完了！",
+    "cancelledTodo": "Todoをキャンセルしました",
+    "editTodo": "Todoを編集",
+    "editTodos": "Todoを編集",
+    "saveTodo": "保存",
+    "saveTodos": "Todoを保存",
+    "editTodoContent": "Todo内容を編集",
+    "deleteTodo": "削除",
+    "pauseTodo": "Todoを一時停止",
+    "resumeTodo": "Todoを再開"
   },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
@@ -558,6 +572,12 @@
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
     "paused": "一時停止"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Todo を監査中",
+    "satisfied": "Todo は満たされています",
+    "needsWork": "Todo はさらに作業が必要です",
+    "failed": "Todo 監査に失敗しました"
   },
   "browserAgentSettings": {
     "runtimeSection": "ブラウザー実行環境",

@@ -30,8 +30,13 @@
     "createPlan": "계획",
     "createPlanTooltip": "이 작업에 대한 구현 계획 생성",
     "planModeLabel": "계획",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Todo 일시 중지",
+    "resumeTodo": "Todo 재개",
+    "autoContinueTodo": "할 일 자동 계속",
     "planModeToggleShortcutTooltip": "Shift + Tab으로 전환",
     "planModeSubmitTooltip": "계획으로 제출",
+    "todoModeSubmitTooltip": "Todo 모드로 제출",
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
@@ -451,7 +456,16 @@
   },
   "todoList": {
     "todos": "할 일",
-    "allDone": "🎉 모두 완료!"
+    "allDone": "🎉 모두 완료!",
+    "cancelledTodo": "Todo 취소됨",
+    "editTodo": "Todo 편집",
+    "editTodos": "Todo 편집",
+    "saveTodo": "저장",
+    "saveTodos": "Todo 저장",
+    "editTodoContent": "Todo 내용 편집",
+    "deleteTodo": "삭제",
+    "pauseTodo": "Todo 일시 중지",
+    "resumeTodo": "Todo 다시 시작"
   },
   "commandExecutionPanel": {
     "copied": "복사됨!",
@@ -551,6 +565,12 @@
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",
     "paused": "일시 중지됨"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Todo 감사 중",
+    "satisfied": "Todo 충족됨",
+    "needsWork": "Todo에 추가 작업 필요",
+    "failed": "Todo 감사 실패"
   },
   "browserAgentSettings": {
     "runtimeSection": "브라우저 런타임",

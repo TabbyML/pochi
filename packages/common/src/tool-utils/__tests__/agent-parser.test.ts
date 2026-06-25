@@ -51,6 +51,29 @@ Agent with array-style tools.`;
     ]);
   });
 
+  it("should parse internal result schema metadata", async () => {
+    const content = `---
+name: result-schema-agent
+description: Agent with structured completion result
+_internal:
+  resultSchema: |
+    z.object({
+      success: z.boolean(),
+      summary: z.string(),
+    })
+---
+
+Agent with internal metadata.`;
+
+    const result = await parseAgentFile("result-schema-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    const validResult = result as ValidCustomAgentFile;
+    expect(validResult._internal?.resultSchema).toContain("success");
+    expect(validResult._internal?.resultSchema).toContain("summary");
+  });
+
   it("should keep scoped tool syntax intact in string tools", async () => {
     const content = `---
 name: scoped-tools-agent

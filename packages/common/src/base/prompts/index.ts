@@ -1,4 +1,5 @@
 import { renderActiveSelection } from "./active-selection";
+import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
 import {
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
@@ -49,6 +50,9 @@ export const prompts = {
   renderBashOutputs,
   fixMermaidError,
   createUseSkillResult,
+  attemptTodoCompletion: {
+    buildPrompt: buildAttemptTodoCompletionPrompt,
+  },
   taskMemory: {
     template: taskMemoryTemplate,
     buildExtractionDirective: buildMemoryExtractionDirective,
@@ -84,7 +88,7 @@ function isSystemReminder(content: string) {
 function isEnvironmentSystemReminder(content: string) {
   // FIXME(meng): this is really a hack to detect if the system reminder is for environment details
   // We should have a better way to detect this
-  return isSystemReminder(content) && content.includes("# TODOs");
+  return isSystemReminder(content) && content.includes("# GIT STATUS");
 }
 
 function isCompact(content: string) {

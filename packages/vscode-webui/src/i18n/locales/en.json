@@ -32,8 +32,13 @@
     "createPlan": "Plan",
     "createPlanTooltip": "Create an implementation plan for this task",
     "planModeLabel": "Plan",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Pause todo",
+    "resumeTodo": "Resume todo",
+    "autoContinueTodo": "Auto-continue todo",
     "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
     "planModeSubmitTooltip": "Submit as plan",
+    "todoModeSubmitTooltip": "Submit in Todo mode",
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -459,7 +464,16 @@
   },
   "todoList": {
     "todos": "TODOs",
-    "allDone": "🎉 All done!"
+    "allDone": "🎉 All done!",
+    "cancelledTodo": "Todo cancelled",
+    "editTodo": "Edit todo",
+    "editTodos": "Edit todos",
+    "saveTodo": "Save",
+    "saveTodos": "Save todos",
+    "editTodoContent": "Edit todo content",
+    "deleteTodo": "Delete",
+    "pauseTodo": "Pause todo",
+    "resumeTodo": "Resume todo"
   },
   "commandExecutionPanel": {
     "copied": "Copied!",
@@ -560,6 +574,12 @@
     "noFrameAvailable": "No frame available",
     "executing": "Executing...",
     "paused": "Paused"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Auditing todo",
+    "satisfied": "Todo satisfied",
+    "needsWork": "Todo needs more work",
+    "failed": "Todo audit failed"
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",

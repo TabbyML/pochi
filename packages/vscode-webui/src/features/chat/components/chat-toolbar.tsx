@@ -28,11 +28,12 @@ import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
+import { useDefaultStore } from "@/lib/use-default-store";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
-import type { Message, Task } from "@getpochi/livekit";
+import { type Message, type Task, catalog } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
 import type React from "react";
@@ -72,6 +73,8 @@ interface ChatToolbarProps {
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
   todosRef: React.RefObject<Todo[] | undefined>;
+  todoPaused: boolean;
+  onTodoPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
   isRepairingMermaid?: boolean;
@@ -90,6 +93,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
   todosRef,
+  todoPaused,
+  onTodoPausedChange,
   onUpdateIsPublicShared,
   taskId,
   isRepairingMermaid = false,
@@ -97,6 +102,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   getSystemPrompt,
 }) => {
   const { t } = useTranslation();
+  const store = useDefaultStore();
 
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
@@ -106,12 +112,24 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
 
-  // Initialize task with prompt if provided and task doesn't exist yet
-  const { todos } = useTodos({
+  const { todos, setTodos } = useTodos({
     initialTodos: task?.todos,
-    messages,
     todosRef,
   });
+
+  const commitTodos = useCallback(
+    (nextTodos: Todo[]) => {
+      setTodos(nextTodos);
+      store.commit(
+        catalog.events.updateTodos({
+          id: taskId,
+          todos: nextTodos,
+          updatedAt: new Date(),
+        }),
+      );
+    },
+    [setTodos, store, taskId],
+  );
 
   const {
     groupedModels,
@@ -235,6 +253,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
+    taskId,
+    todos,
+    todosRef,
   });
 
   const compactOptions = {
@@ -310,7 +331,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           )}
         >
           {todos.length > 0 && (
-            <TodoList todos={todos}>
+            <TodoList
+              todos={todos}
+              editable={!isSubTask}
+              onSaveTodos={commitTodos}
+              todoPaused={todoPaused}
+              onTodoPausedChange={isSubTask ? undefined : onTodoPausedChange}
+            >
               <TodoList.Header />
               <TodoList.Items viewportClassname="max-h-48" />
             </TodoList>

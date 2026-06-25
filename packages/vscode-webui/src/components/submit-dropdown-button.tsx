@@ -29,6 +29,7 @@ import {
   Loader2,
   SendHorizonal,
   Settings2Icon,
+  Target,
   WrenchIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -44,6 +45,9 @@ interface SubmitDropdownButtonProps {
   resetMcpTools: () => void;
   isPlanMode?: boolean;
   onTogglePlanMode?: () => void;
+  isTodoMode?: boolean;
+  onToggleTodoMode?: () => void;
+  onSwitchSubmitMode?: () => void;
 }
 
 export function SubmitDropdownButton({
@@ -56,11 +60,21 @@ export function SubmitDropdownButton({
   resetMcpTools,
   isPlanMode = false,
   onTogglePlanMode,
+  isTodoMode = false,
+  onToggleTodoMode,
+  onSwitchSubmitMode,
 }: SubmitDropdownButtonProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isHoveringRef = useRef(false);
+  const submitMode = isPlanMode ? "plan" : isTodoMode ? "todo" : "default";
+  const submitTooltip =
+    submitMode === "plan"
+      ? t("chat.planModeSubmitTooltip")
+      : submitMode === "todo"
+        ? t("chat.todoModeSubmitTooltip")
+        : t("chat.submitTooltip");
 
   if (isLoading) {
     return (
@@ -126,12 +140,13 @@ export function SubmitDropdownButton({
                       "button-focus relative h-6 w-6 overflow-hidden p-0",
                       isOpen && "bg-accent",
                     )}
+                    aria-label={submitTooltip}
                     onClick={isPlanMode ? onSubmitPlan : onSubmit}
                   >
                     <span
                       className={cn(
                         "absolute inset-0 flex items-center justify-center transition-all duration-200",
-                        isPlanMode
+                        submitMode === "plan"
                           ? "translate-y-0 opacity-100"
                           : "-translate-y-full opacity-0",
                       )}
@@ -141,9 +156,19 @@ export function SubmitDropdownButton({
                     <span
                       className={cn(
                         "absolute inset-0 flex items-center justify-center transition-all duration-200",
-                        isPlanMode
-                          ? "translate-y-full opacity-0"
-                          : "translate-y-0 opacity-100",
+                        submitMode === "todo"
+                          ? "translate-y-0 opacity-100"
+                          : "-translate-y-full opacity-0",
+                      )}
+                    >
+                      <Target className="size-4" />
+                    </span>
+                    <span
+                      className={cn(
+                        "absolute inset-0 flex items-center justify-center transition-all duration-200",
+                        submitMode === "default"
+                          ? "translate-y-0 opacity-100"
+                          : "translate-y-full opacity-0",
                       )}
                     >
                       <SendHorizonal className="size-4" />
@@ -152,11 +177,7 @@ export function SubmitDropdownButton({
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  {isPlanMode
-                    ? t("chat.planModeSubmitTooltip")
-                    : t("chat.submitTooltip")}
-                </p>
+                <p>{submitTooltip}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -169,7 +190,7 @@ export function SubmitDropdownButton({
             onKeyDown={(e) => {
               if (e.key === "Tab" && e.shiftKey) {
                 e.preventDefault();
-                onTogglePlanMode?.();
+                onSwitchSubmitMode?.();
               }
             }}
             side="bottom"
@@ -204,6 +225,23 @@ export function SubmitDropdownButton({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+
+              <DropdownMenuItem
+                className="flex cursor-pointer items-center gap-2 px-2 py-1"
+                onSelect={(e) => e.preventDefault()}
+                onClick={() => onToggleTodoMode?.()}
+              >
+                <Target className="size-3.5 transition-colors duration-200" />
+                <span>{t("chat.todoModeLabel")}</span>
+                <Switch
+                  checked={isTodoMode}
+                  className="ml-auto scale-75"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleTodoMode?.();
+                  }}
+                />
+              </DropdownMenuItem>
 
               <DropdownMenuSeparator />
 

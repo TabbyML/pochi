@@ -1,95 +1,53 @@
-import { prompts } from "@getpochi/common";
-import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useTodos({
   initialTodos,
-  messages,
   todosRef,
 }: {
-  initialTodos?: Readonly<Todo[]>;
-  messages: Message[];
+  initialTodos?: readonly Todo[];
   todosRef: React.RefObject<Todo[] | undefined>;
 }) {
+  const consumedTodoIdsRef = useRef(new Set<string>());
   const [todos, setTodosImpl] = useState<Todo[]>(() => {
-    const newTodos = JSON.parse(JSON.stringify(initialTodos ?? []));
-    todosRef.current = newTodos;
-    return newTodos;
+    const nextTodos = copyTodos(todosRef.current ?? initialTodos);
+    todosRef.current = nextTodos;
+    return nextTodos;
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef): todosRef is a ref
-  const setTodos = useCallback((newTodos: Todo[]) => {
-    todosRef.current = newTodos;
-    setTodosImpl(newTodos);
-  }, []);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef.current): todosRef is a ref
-  const updateTodos = useCallback(
-    (message: Message) => {
-      const newTodos = findTodos(message);
-      if (newTodos !== undefined) {
-        setTodos(mergeTodos(todosRef.current || [], newTodos));
-      }
+  const setTodos = useCallback(
+    (nextTodos: Todo[]) => {
+      const snapshot = copyTodos(nextTodos);
+      todosRef.current = snapshot;
+      setTodosImpl(snapshot);
     },
-    [setTodos],
+    [todosRef],
   );
 
-  const lastMessage = messages.at(-1);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef.current): todosRef is a ref
   useEffect(() => {
-    if (lastMessage && lastMessage.role === "assistant") {
-      updateTodos(lastMessage);
-
-      // Auto-mark todos as completed if this message has attempt completion
-      if (lastMessage.parts.some((x) => x.type === "tool-attemptCompletion")) {
-        const currentTodos = todosRef.current || [];
-        if (currentTodos.length > 0) {
-          const updatedTodos = currentTodos.map((todo) => {
-            if (todo.status !== "cancelled") {
-              return { ...todo, status: "completed" as const };
-            }
-            return todo;
-          });
-
-          const hasChanges = updatedTodos.some(
-            (todo, index) => todo.status !== currentTodos[index]?.status,
-          );
-
-          if (hasChanges) {
-            setTodos(updatedTodos);
-          }
+    if (initialTodos?.length) {
+      const persistedTodoIds = new Set(initialTodos.map((todo) => todo.id));
+      for (const todo of todosRef.current ?? []) {
+        if (persistedTodoIds.has(todo.id)) {
+          consumedTodoIdsRef.current.add(todo.id);
         }
       }
+      setTodos(copyTodos(initialTodos));
+      return;
     }
 
-    if (
-      lastMessage &&
-      lastMessage.role === "user" &&
-      !isSystemReminderMessage(lastMessage)
-    ) {
-      const todos = todosRef.current || [];
-      // Check if all todos is canceled or done.
-      const allTodosDoneOrCanceled = todos.every(
-        (todo) => todo.status === "completed" || todo.status === "cancelled",
-      );
-
-      if (allTodosDoneOrCanceled) {
-        setTodos([]);
-      }
-    }
-  }, [lastMessage, updateTodos, setTodos]);
+    const unpersistedTodos = (todosRef.current ?? []).filter(
+      (todo) => !consumedTodoIdsRef.current.has(todo.id),
+    );
+    setTodos(unpersistedTodos);
+  }, [initialTodos, setTodos, todosRef]);
 
   return {
-    todosRef,
     todos,
+    setTodos,
   };
 }
 
-function isSystemReminderMessage(message: Message): boolean {
-  return message.parts.some(
-    (x) => x.type === "text" && prompts.isSystemReminder(x.text),
-  );
+function copyTodos(todos?: readonly Todo[]): Todo[] {
+  return todos ? [...todos] : [];
 }
