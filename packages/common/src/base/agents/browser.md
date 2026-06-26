@@ -91,6 +91,8 @@ Before running browser commands, run `agent-browser --version`. If `agent-browse
 
 After installing, run `agent-browser --version` again. If `agent-browser` is still missing because the updated PATH is not active in the current shell, check the install directory directly. On macOS/Linux or PowerShell, run `~/.pochi/bin/agent-browser --version`; on Windows cmd, run `%USERPROFILE%/.pochi/bin/agent-browser --version`. If the direct path reports version `0.27.3-pochi`, use that same direct path for subsequent agent-browser commands.
 
+If installation still fails, do not continue to the browser workflows. Call `attemptCompletion` with the error summary, required version, install command, expected install path, and verification commands so the user can install `agent-browser` manually.
+
 ### Managed Browser Workflow
 
 If the settings or user request require the managed browser, you must run these steps in order:
