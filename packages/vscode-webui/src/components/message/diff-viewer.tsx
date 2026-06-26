@@ -55,6 +55,10 @@ const patchDiffMetrics = {
   hunkSeparatorHeight: 24,
   fileGap: 8,
 };
+const nativeScrollbarClassName =
+  "bg-[var(--vscode-editor-background)] pr-3 [scrollbar-color:var(--vscode-scrollbarSlider-background)_var(--vscode-editor-background)] [scrollbar-gutter:stable] [&::-webkit-scrollbar]:h-[10px] [&::-webkit-scrollbar]:w-[10px] [&::-webkit-scrollbar-corner]:bg-[var(--vscode-editor-background)] [&::-webkit-scrollbar-track]:bg-[var(--vscode-editor-background)] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-[var(--vscode-scrollbarSlider-background)] [&::-webkit-scrollbar-thumb]:bg-clip-content [&::-webkit-scrollbar-thumb:active]:bg-[var(--vscode-scrollbarSlider-activeBackground)] [&::-webkit-scrollbar-thumb:hover]:bg-[var(--vscode-scrollbarSlider-hoverBackground)]";
+const radixScrollbarClassName =
+  "bg-[var(--vscode-editor-background)] [&_[data-slot=scroll-area-thumb]]:rounded-full";
 
 const resolveThemesOnce = async () => {
   if (themesResolved) return;
@@ -330,7 +334,10 @@ function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
       )}
       <div ref={diffViewerRef} className="min-w-0">
         <Virtualizer
-          className="diff-viewer-virtualizer max-h-60 overflow-y-auto"
+          className={cn(
+            "diff-viewer-virtualizer max-h-60 overflow-y-scroll",
+            nativeScrollbarClassName,
+          )}
           contentClassName="min-w-full"
         >
           <FileDiff
@@ -345,7 +352,7 @@ function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
           data-slot="scroll-area"
           data-diff-viewer-horizontal-scrollbar=""
           type="always"
-          className="relative h-3 min-w-0 bg-[var(--vscode-editor-background)]"
+          className="relative mr-3 h-3 min-w-0 bg-[var(--vscode-editor-background)]"
         >
           <ScrollAreaPrimitive.Viewport
             data-slot="scroll-area-viewport"
@@ -358,7 +365,10 @@ function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
               style={{ height: 1, width: horizontalScrollbarWidth }}
             />
           </ScrollAreaPrimitive.Viewport>
-          <ScrollBar orientation="horizontal" />
+          <ScrollBar
+            orientation="horizontal"
+            className={radixScrollbarClassName}
+          />
           <ScrollAreaPrimitive.Corner />
         </ScrollAreaPrimitive.Root>
       </div>

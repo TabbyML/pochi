@@ -138,7 +138,7 @@ describe("DiffViewer", () => {
     await screen.findByTestId("file-diff");
 
     expect(screen.getByTestId("virtualizer").className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["max-h-60", "overflow-y-auto"]),
+      expect.arrayContaining(["max-h-60", "overflow-y-scroll", "pr-3"]),
     );
     expect(reactDiffMocks.virtualizer).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -162,9 +162,19 @@ describe("DiffViewer", () => {
     ).not.toBeNull();
     expect(
       document.querySelector(
+        '[data-slot="scroll-area"][data-diff-viewer-horizontal-scrollbar]',
+      )?.className,
+    ).toContain("mr-3");
+    expect(
+      document.querySelector(
         '[data-slot="scroll-area-scrollbar"][data-orientation="horizontal"]',
       ),
     ).not.toBeNull();
+    expect(
+      document.querySelector(
+        '[data-slot="scroll-area-scrollbar"][data-orientation="horizontal"]',
+      )?.className,
+    ).toContain("[&_[data-slot=scroll-area-thumb]]:rounded-full");
     const spacer = document.querySelector<HTMLElement>(
       "[data-diff-viewer-horizontal-scrollbar-spacer]",
     );
