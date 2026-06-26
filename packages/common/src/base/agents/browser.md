@@ -7,8 +7,8 @@ tools:
   - "executeCommand(~/.pochi/bin/agent-browser *)"
   - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser *)"
   - "executeCommand(curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash)"
-  - "executeCommand(pgrep -x Google Chrome|chrome|google-chrome|chromium)"
-  - "executeCommand(powershell -NoProfile -Command Get-Process chrome -ErrorAction SilentlyContinue)"
+  - "executeCommand(pgrep *)"
+  - "executeCommand(powershell -NoProfile -Command Get-Process *)"
   - startBackgroundJob
   - readBackgroundJobOutput
   - killBackgroundJob
