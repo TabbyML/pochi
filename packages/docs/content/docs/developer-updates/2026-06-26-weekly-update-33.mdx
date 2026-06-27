@@ -27,27 +27,29 @@ More below!
 
   It's useful for seeing how custom rules, custom agents, and MCP instructions assemble into the final prompt that Pochi actually sends. [**#1701**](https://github.com/TabbyML/pochi/pull/1701)
 
+<div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Copy System Prompt option in the Developer mode copy menu](https://assets.docs.getpochi.com/docs/d6/d6ae0f4b439b120ad1def9afd470aa864b624ac49641f586a851fde2604d174d)</div>
+
 - **Clearer sub-agent expand toggle:** The expand control on the sub-agent footer now uses a right-pointing chevron, making it clearer that the section opens out. [**#1707**](https://github.com/TabbyML/pochi/pull/1707)
 
-![](https://assets.docs.getpochi.com/docs/34/34ecc20d0f5e9ebff26e8cd6450b1b5b051f48023a1f15499079aea030c01660)
+<div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Sub-agent footer with the right-pointing expand chevron](https://assets.docs.getpochi.com/docs/34/34ecc20d0f5e9ebff26e8cd6450b1b5b051f48023a1f15499079aea030c01660)</div>
 
 ### 🐛 Bug Fixes
 
 - **Browser agent locates its binary after install:** Pochi now checks `$HOME/.pochi/bin` and runs `agent-browser` from there directly when a fresh install hasn't refreshed the shell's PATH yet. Previously it looked in the wrong directory, so the browser agent could fail to find `agent-browser` right after installing it. [**#1692**](https://github.com/TabbyML/pochi/pull/1692)
 
-![](https://assets.docs.getpochi.com/docs/f0/f0d5c9aaa212c2762f3e2d96e1b3387eea141ef8a75972a95a4105099ecb0cf9)
+<div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Browser agent executing scoped agent-browser commands](https://assets.docs.getpochi.com/docs/f0/f0d5c9aaa212c2762f3e2d96e1b3387eea141ef8a75972a95a4105099ecb0cf9)</div>
 
 - **Token usage breakdown corrected:** Pochi now reports the context-window breakdown correctly, the tools segment especially. Each number comes from the resolved request snapshot, so System, Tools, Messages, Files, Tool Results, and Project Memory match what was actually sent.
 
   The old counts came from per-message metadata and could drift, which is why the tools figure looked off. [**#1696**](https://github.com/TabbyML/pochi/pull/1696)
 
-![](https://assets.docs.getpochi.com/docs/4f/4f62207db19e41eac94189040d2afe6f9f9bf79a7ad215249206e92b4c0c63af)
+<div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Context-window usage breakdown by segment](https://assets.docs.getpochi.com/docs/4f/4f62207db19e41eac94189040d2afe6f9f9bf79a7ad215249206e92b4c0c63af)</div>
 
 - **Unfinished tool calls no longer stuck on stream failure:** When a stream fails like a cancel or a dropped transport, Pochi now closes out any tool calls still in flight as errors instead of leaving them to spin forever. An abort reads "User aborted the tool call"; other failures keep their own message and anything already finished is left untouched.
 
   Previously those half-finished calls were saved as-is, so the thread kept showing tool calls that would never resolve. [**#1708**](https://github.com/TabbyML/pochi/pull/1708)
 
-![](https://assets.docs.getpochi.com/docs/5a/5a0438b2776c92b49a2712e7e7a9e37b3877ddc86923a5002c6772c6f6a4734f)
+<div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![A failed stream with tool calls resolved to an aborted state](https://assets.docs.getpochi.com/docs/5a/5a0438b2776c92b49a2712e7e7a9e37b3877ddc86923a5002c6772c6f6a4734f)</div>
 
 ### 👀 Coming Up
 
