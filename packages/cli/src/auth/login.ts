@@ -18,19 +18,21 @@ export async function login(vendorId: string) {
       const platform = process.platform;
       let cmd: string;
 
+      let openCmd: string;
+
       switch (platform) {
         case "darwin": // macOS
-          cmd = `open "${url}"`;
+          openCmd = "open";
           break;
         case "win32": // Windows
-          cmd = `start "${url}"`;
+          openCmd = "start";
           break;
         default: // Linux and others
-          cmd = `xdg-open "${url}"`;
+          openCmd = "xdg-open";
           break;
       }
 
-      childProcess.exec(cmd, (error) => {
+      childProcess.execFile(openCmd, [url], (error) => {
         if (error) {
           console.log(
             chalk.yellow(
