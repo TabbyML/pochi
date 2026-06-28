@@ -440,9 +440,7 @@ class RunningTask {
     if (isAssistantMessageWithNoToolCalls(message)) {
       this.chat.appendOrReplaceMessage(
         createUserMessage(
-          prompts.createSystemReminder(
-            "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
-          ),
+          prompts.createSystemReminder(prompts.toolCallsReminder),
         ),
       );
       return "retry";
