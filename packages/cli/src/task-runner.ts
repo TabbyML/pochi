@@ -586,9 +586,7 @@ export class TaskRunner {
         "Last message is assistant with no tool calls, sending a new user reminder.",
       );
       const message = createUserMessage(
-        prompts.createSystemReminder(
-          "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
-        ),
+        prompts.createSystemReminder(prompts.toolCallsReminder),
       );
       this.chat.appendOrReplaceMessage(message);
       return "retry";

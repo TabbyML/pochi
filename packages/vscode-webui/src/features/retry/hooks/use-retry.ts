@@ -36,9 +36,7 @@ export function useRetry({
         error.kind === "no-tool-calls"
       ) {
         return sendMessage({
-          text: prompts.createSystemReminder(
-            "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
-          ),
+          text: prompts.createSystemReminder(prompts.toolCallsReminder),
         });
       }
 

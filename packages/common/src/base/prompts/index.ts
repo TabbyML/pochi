@@ -67,6 +67,9 @@ export const prompts = {
     truncateIndex: truncateAutoMemoryIndex,
     serializeMessage: serializeMemoryMessage,
   },
+  toolCallsReminder: `You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.
+
+If you have already provided a response or explanation in your text above, do NOT repeat or copy that content into the \`result\` parameter of \`attemptCompletion\`. Instead, simply refer to your response above with a brief sentence (e.g., "See response above." or "The task is completed as described above.") to save output tokens.`,
 };
 
 function createSystemReminder(content: string) {
