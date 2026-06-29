@@ -29,6 +29,8 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
       writeTaskTranscript: (options) => this.writeHostTaskTranscript(options),
       beginDreamRun: (options) => this.beginHostDreamRun(options),
       finishDreamRun: (options) => this.finishDreamRun(options),
+      clearProjectMemory: (options) =>
+        this.clearProjectMemory({ cwd: options?.cwd ?? this.cwd }),
     };
   }
 

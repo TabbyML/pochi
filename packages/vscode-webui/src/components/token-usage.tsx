@@ -20,7 +20,7 @@ import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import { constants, TaskMemoryFileUri } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
-import { CircleAlert, Loader2 } from "lucide-react";
+import { CircleAlert, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
@@ -72,6 +72,17 @@ export function TokenUsage({
       vscodeHost.openFile(context.indexPath);
       setIsOpen(false);
     }
+  };
+
+  const handleClearProjectMemory = async () => {
+    const confirmed = await vscodeHost.showInformationMessage(
+      t("tokenUsage.projectMemoryClear"),
+      { modal: true, detail: t("tokenUsage.projectMemoryClearConfirm") },
+      t("tokenUsage.projectMemoryClear"),
+    );
+    if (!confirmed) return;
+    await vscodeAutoMemoryManager.clearProjectMemory();
+    setIsOpen(false);
   };
   const { t } = useTranslation();
   const contextWindow =
@@ -352,11 +363,34 @@ export function TokenUsage({
                     </TooltipProvider>
                   </div>
 
-                  {autoMemoryAvailable && (
-                    <span className="text-muted-foreground">
-                      {formatPercentage(projectMemoryVal)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {autoMemoryAvailable && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={t("tokenUsage.projectMemoryClear")}
+                              className="inline-flex cursor-pointer items-center text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                void handleClearProjectMemory();
+                              }}
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {t("tokenUsage.projectMemoryClear")}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {autoMemoryAvailable && (
+                      <span className="text-muted-foreground">
+                        {formatPercentage(projectMemoryVal)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Task Memory row (mirrors Project Memory row structure so the tooltip anchors at the same position) */}

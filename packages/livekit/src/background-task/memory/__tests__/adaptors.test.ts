@@ -483,6 +483,7 @@ function makeAutoMemoryManager(
     })),
     beginDreamRun: vi.fn(async () => undefined),
     finishDreamRun: vi.fn(async () => undefined),
+    clearProjectMemory: vi.fn(async () => undefined),
     ...overrides,
   };
 }

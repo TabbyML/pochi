@@ -266,6 +266,30 @@ export class AutoMemoryManager {
       success ? Date.now() : previousLastDreamAt,
     );
   }
+
+  async clearProjectMemory({ cwd }: { cwd?: string } = {}): Promise<void> {
+    const context = await this.readContext(cwd, { ensure: false });
+    if (!context) return;
+
+    const exists = await fs
+      .stat(context.memoryDir)
+      .then(() => true)
+      .catch(() => false);
+    if (!exists) return;
+
+    const entries = await fs.readdir(context.memoryDir).catch(() => []);
+    await Promise.all(
+      entries
+        .filter(
+          (entry) => entry.endsWith(".md") || entry === AutoMemoryLockName,
+        )
+        .map((entry) =>
+          fs.rm(path.join(context.memoryDir, entry), { force: true }),
+        ),
+    );
+    // Re-create the default index file so the memory dir is still usable.
+    await ensureIndexFile(context.indexPath);
+  }
 }
 
 export async function resolveMainWorktreePath(cwd: string): Promise<string> {

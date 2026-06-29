@@ -83,6 +83,8 @@
     "viewProjectMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
     "viewTaskMemoryButtonTooltip": "タスク圧縮時に再利用されるタスクメモリの要約を開きます。",
     "projectMemoryUnavailable": "このワークスペースでタスクを実行するとプロジェクトメモリが利用可能になります。",
+    "projectMemoryClear": "プロジェクトメモリをクリア",
+    "projectMemoryClearConfirm": "すべてのプロジェクトメモリファイル（MEMORY.md およびトピックファイル）が削除されます。この操作は元に戻せません。",
     "taskMemoryUnavailable": "タスクメモリは会話の進行に伴って自動的に生成されます。"
   },
   "modelSelect": {

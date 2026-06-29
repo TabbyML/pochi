@@ -412,6 +412,7 @@ const VSCodeHostStub = {
     writeTaskTranscript: async () => undefined,
     beginDreamRun: async () => undefined,
     finishDreamRun: async () => undefined,
+    clearProjectMemory: async () => undefined,
   }),
   readAutoMemoryEnabled: async (): Promise<{
     value: ThreadSignalSerialization<boolean>;

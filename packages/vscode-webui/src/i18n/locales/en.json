@@ -83,6 +83,8 @@
     "viewProjectMemoryTooltip": "Open the MEMORY.md index for this workspace.",
     "viewTaskMemoryButtonTooltip": "Open the task memory summary that compacting will reuse.",
     "projectMemoryUnavailable": "Project memory becomes available after running a task in this workspace.",
+    "projectMemoryClear": "Clear Project Memory",
+    "projectMemoryClearConfirm": "This will delete all project memory files (MEMORY.md and topic files). This action cannot be undone.",
     "taskMemoryUnavailable": "Task memory is generated automatically as the conversation grows."
   },
   "modelSelect": {
