@@ -57,16 +57,17 @@ export function SharePage() {
       e.preventDefault();
     };
 
-    const handleDrop = (e: DragEvent) => {
+    const handleDrop = async (e: DragEvent) => {
       e.preventDefault();
       dragCounter.current = 0;
 
       const file = e.dataTransfer?.files?.[0];
       if (!file) return;
 
+      const text = await file.text();
       channel.send({
         type: "drop",
-        file,
+        text,
       });
     };
 
