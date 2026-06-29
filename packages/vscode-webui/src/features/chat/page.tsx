@@ -90,6 +90,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const [todoPaused, setTodoPaused] = useState(false);
   const todoPausedRef = useLatest(todoPaused);
   const todoModeActiveRef = useRef(false);
+  const lastAutoContinueStateRef = useRef<string | undefined>(undefined);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -189,21 +190,46 @@ function Chat({ user, uid, info }: ChatProps) {
     taskMemory,
     projectMemory,
     sendAutomaticallyWhen: (x) => {
+      const candidateMessages = x.messages;
+      const candidateLastMessageState = getLastMessageState(candidateMessages);
+      const claimAutoContinue = (shouldContinue: boolean) => {
+        if (
+          !shouldContinue ||
+          !candidateLastMessageState ||
+          lastAutoContinueStateRef.current === candidateLastMessageState
+        ) {
+          return false;
+        }
+
+        lastAutoContinueStateRef.current = candidateLastMessageState;
+        return true;
+      };
+
       if (chatAbortController.current.signal.aborted) {
         return false;
       }
 
-      // AI SDK v5 will retry regardless of the status if sendAutomaticallyWhen is set.
-      if (chatKit.chat.status === "error") {
+      if (chatAbortController.current.signal.aborted) {
         return false;
       }
 
-      const shouldContinueTodo = getTodoContinuationDecision(x.messages);
-      if (shouldContinueTodo !== undefined) {
-        return !todoPausedRef.current && shouldContinueTodo;
+      // AI SDK v5 can ask for automatic continuation after the user has
+      // already submitted a newer message. Only continue from the exact state
+      // that is still the current tail of the stream.
+      if (
+        chatKit.chat.status !== "ready" ||
+        !candidateLastMessageState ||
+        getLastMessageState(chatKit.chat.messages) !== candidateLastMessageState
+      ) {
+        return false;
       }
 
-      if (shouldStopAutoApprove(x)) {
+      const shouldContinueTodo = getTodoContinuationDecision(candidateMessages);
+      if (shouldContinueTodo !== undefined) {
+        return claimAutoContinue(!todoPausedRef.current && shouldContinueTodo);
+      }
+
+      if (shouldStopAutoApprove({ messages: candidateMessages })) {
         autoApproveGuard.current = "stop";
       }
 
@@ -211,7 +237,11 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      return lastAssistantMessageIsCompleteWithToolCalls(x);
+      return claimAutoContinue(
+        lastAssistantMessageIsCompleteWithToolCalls({
+          messages: candidateMessages,
+        }),
+      );
     },
     onOverrideMessages,
     onStreamStart(data) {
@@ -448,4 +478,9 @@ function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
     ) &&
     lastToolPart?.state === "output-available"
   );
+}
+
+function getLastMessageState(messages: Message[]) {
+  const lastMessage = messages.at(-1);
+  return lastMessage ? JSON.stringify(lastMessage) : undefined;
 }
