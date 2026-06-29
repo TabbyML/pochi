@@ -23,6 +23,7 @@ export function SharePage() {
   });
 
   const isChannelCreated = useRef(false);
+  const dragCounter = useRef(0);
 
   useEffect(() => {
     if (isChannelCreated.current) return;
@@ -34,6 +35,85 @@ export function SharePage() {
       console.error(e);
     }
   }, []);
+
+  useEffect(() => {
+    if (!channel) return;
+
+    const handleDragEnter = () => {
+      dragCounter.current += 1;
+      if (dragCounter.current === 1) {
+        channel.send({ type: "dragenter" });
+      }
+    };
+
+    const handleDragLeave = () => {
+      dragCounter.current = Math.max(0, dragCounter.current - 1);
+      if (dragCounter.current === 0) {
+        channel.send({ type: "dragleave" });
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+
+      const file = e.dataTransfer?.files?.[0];
+      if (!file) return;
+
+      channel.send({
+        type: "drop",
+        file,
+      });
+    };
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of Array.from(items)) {
+        if (item.kind === "file") {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            const text = await file.text();
+            channel.send({
+              type: "paste",
+              text,
+            });
+          }
+          return;
+        }
+        if (item.type === "text/plain") {
+          e.preventDefault();
+          item.getAsString((text) => {
+            channel.send({
+              type: "paste",
+              text,
+            });
+          });
+          return;
+        }
+      }
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("drop", handleDrop);
+    window.addEventListener("paste", handlePaste);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("drop", handleDrop);
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [channel]);
 
   // Set up ResizeObserver to monitor content height and send updates to parent
   const monitorHeight = useCallback(
