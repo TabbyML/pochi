@@ -52,6 +52,14 @@ describe("replaceAttemptCompletionWithTodoSubtask", () => {
               result: "The implementation is complete.",
             },
           },
+          todos: [
+            {
+              id: "todo-1",
+              content: "Implement todo mode",
+              status: "in-progress",
+              priority: "medium",
+            },
+          ],
         },
       },
     });

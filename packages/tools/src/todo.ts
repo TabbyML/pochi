@@ -55,3 +55,57 @@ export const AttemptTodoCompletionResult = z.object({
 export type AttemptTodoCompletionResult = z.infer<
   typeof AttemptTodoCompletionResult
 >;
+
+export const ResolvedAttemptTodoCompletionResult =
+  AttemptTodoCompletionResult.pick({
+    success: true,
+    summary: true,
+  }).extend({
+    todos: z.array(Todo).describe("The resolved complete todos list."),
+  });
+
+export type ResolvedAttemptTodoCompletionResult = z.infer<
+  typeof ResolvedAttemptTodoCompletionResult
+>;
+
+export function resolveAttemptTodoCompletionResult(
+  result: unknown,
+  todos: readonly Todo[],
+): ResolvedAttemptTodoCompletionResult {
+  const parsedResult = AttemptTodoCompletionResult.safeParse(
+    parseJsonString(result),
+  );
+  if (!parsedResult.success) {
+    throw new Error("Invalid attemptTodoCompletion result");
+  }
+
+  const update = parsedResult.data.todoUpdates.at(0);
+  const resolvedTodos = update
+    ? applyTodoStatusUpdate(todos, update.status)
+    : todos.map((todo) => ({ ...todo }));
+
+  return ResolvedAttemptTodoCompletionResult.parse({
+    success: parsedResult.data.success,
+    summary: parsedResult.data.summary,
+    todos: resolvedTodos,
+  });
+}
+
+function applyTodoStatusUpdate(
+  todos: readonly Todo[],
+  status: Todo["status"],
+): Todo[] {
+  const [todo, ...rest] = todos;
+  if (!todo) return [];
+  return [{ ...todo, status }, ...rest.map((todo) => ({ ...todo }))];
+}
+
+function parseJsonString(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}

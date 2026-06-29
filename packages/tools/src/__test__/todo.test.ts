@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AttemptTodoCompletionResult, Todo, TodoUpdate } from "../todo";
+import {
+  AttemptTodoCompletionResult,
+  Todo,
+  TodoUpdate,
+  resolveAttemptTodoCompletionResult,
+} from "../todo";
 
 describe("Todo", () => {
   const todo = {
@@ -43,6 +48,28 @@ describe("Todo", () => {
       success: true,
       summary: "Done.",
       todoUpdates: [{ status: "completed" }],
+    });
+  });
+
+  it("resolves todo updates into a full todos list", () => {
+    expect(
+      resolveAttemptTodoCompletionResult(
+        {
+          success: true,
+          summary: "Done.",
+          todoUpdates: [{ status: "completed" }],
+        },
+        [todo],
+      ),
+    ).toEqual({
+      success: true,
+      summary: "Done.",
+      todos: [
+        {
+          ...todo,
+          status: "completed",
+        },
+      ],
     });
   });
 

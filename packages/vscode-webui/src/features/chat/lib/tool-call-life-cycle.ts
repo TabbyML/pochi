@@ -16,6 +16,8 @@ import {
 import {
   type ClientTools,
   type CompiledToolPolicies,
+  type Todo,
+  resolveAttemptTodoCompletionResult,
   validateAgentTypePatternPolicy,
 } from "@getpochi/tools";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -34,8 +36,12 @@ type ExecuteCommandReturnType = {
 type NewTaskParameterType = InferToolInput<ClientTools["newTask"]>;
 type NewTaskReturnType = {
   result: string;
+  agentType?: string;
+  todos?: readonly Todo[];
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
+
+const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
 
 export type StreamingResult =
   | {
@@ -262,7 +268,11 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    return Promise.resolve({ result: uid });
+    return Promise.resolve({
+      result: uid,
+      agentType: args.agentType,
+      todos: args._meta?.todos,
+    });
   }
 
   addResult(result: unknown): void {
@@ -356,8 +366,11 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private onExecuteNewTask({ result }: NewTaskReturnType) {
-    const uid = result;
+  private onExecuteNewTask({
+    result: uid,
+    agentType,
+    todos,
+  }: NewTaskReturnType) {
     if (!uid) {
       throw new Error("Missing uid in newTask result");
     }
@@ -413,8 +426,32 @@ export class ManagedToolCallLifeCycle
         task?.status === "completed" &&
         this.state.type === "execute:streaming"
       ) {
+        if (agentType === AttemptTodoCompletionAgentName && todos) {
+          const result = (() => {
+            try {
+              const rawResult = extractTaskResult(this.store, uid);
+              return {
+                result: resolveAttemptTodoCompletionResult(rawResult, todos),
+              };
+            } catch (error) {
+              return {
+                error: getErrorMessage(error),
+              };
+            }
+          })();
+          this.transitTo("execute:streaming", {
+            type: "complete",
+            result,
+            reason: "execute-finish",
+          });
+
+          cleanup();
+          return;
+        }
+
+        const rawResult = extractTaskResult(this.store, uid);
         const result = {
-          result: extractTaskResult(this.store, uid),
+          result: rawResult,
         };
         this.transitTo("execute:streaming", {
           type: "complete",
@@ -481,4 +518,8 @@ export class ManagedToolCallLifeCycle
     );
     this.emit(this.state.type, this.state);
   }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -18,6 +18,7 @@ export function buildAttemptTodoCompletionInput(
   const meta = options?.uid
     ? {
         uid: options.uid,
+        todos: todos.map((todo) => ({ ...todo })),
         ...(options.sourceAttemptCompletion
           ? { sourceAttemptCompletion: options.sourceAttemptCompletion }
           : {}),

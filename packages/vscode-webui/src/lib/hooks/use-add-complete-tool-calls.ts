@@ -4,7 +4,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
-import { AttemptTodoCompletionResult, type Todo } from "@getpochi/tools";
+import type { Todo } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 import type { RefObject } from "react";
 import { useEffect } from "react";
@@ -142,6 +142,11 @@ type TodoCompletionUpdate = {
   output: unknown;
 };
 
+type ResolvedAttemptTodoCompletionOutput = {
+  success?: boolean;
+  todos?: Todo[];
+};
+
 export function getTodoCompletionUpdate({
   message,
   toolCallId,
@@ -166,17 +171,11 @@ export function getTodoCompletionUpdate({
     typeof output === "object" && output !== null && "result" in output
       ? output.result
       : undefined;
-  const parsed = AttemptTodoCompletionResult.safeParse(
-    parseJsonString(rawResult),
-  );
-  if (!parsed.success) return undefined;
+  const result = rawResult as ResolvedAttemptTodoCompletionOutput | undefined;
+  if (!result?.success) return undefined;
 
-  const result = parsed.data;
-  if (!result.success) return undefined;
-  const update = result.todoUpdates.at(0);
-  if (!update) return undefined;
-
-  const nextTodos = applyTodoUpdates(todos, update.status);
+  const nextTodos = result.todos;
+  if (!nextTodos) return undefined;
   if (hasSameTodoStatuses(todos, nextTodos)) return undefined;
 
   return {
@@ -206,25 +205,6 @@ function hasSameTodoStatuses(
   return previousTodos.every(
     (todo, index) => todo.status === nextTodos[index]?.status,
   );
-}
-
-function applyTodoUpdates(
-  todos: readonly Todo[],
-  status: Todo["status"],
-): Todo[] {
-  const [todo, ...rest] = todos;
-  if (!todo) return [];
-  return [{ ...todo, status }, ...rest];
-}
-
-function parseJsonString(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
 }
 
 function assertUnreachable(_x: never): never {

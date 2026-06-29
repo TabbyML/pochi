@@ -38,15 +38,16 @@ function makeAttemptTodoCompletionMessage(): Message {
 
 describe("getTodoCompletionUpdate", () => {
   it("returns a completion update when attemptTodoCompletion succeeds", () => {
+    const resolvedTodos: Todo[] = [{ ...todos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",
       output: {
-        result: JSON.stringify({
+        result: {
           success: true,
           summary: "Done.",
-          todoUpdates: [{ status: "completed" }],
-        }),
+          todos: resolvedTodos,
+        },
       },
       todos,
     });
@@ -61,15 +62,33 @@ describe("getTodoCompletionUpdate", () => {
     });
   });
 
-  it("does not return a completion update when attemptTodoCompletion rejects completion", () => {
+  it("does not synthesize todos from unresolved attemptTodoCompletion results", () => {
+    const update = getTodoCompletionUpdate({
+      message: makeAttemptTodoCompletionMessage(),
+      toolCallId: "tool-1",
+      output: {
+        result: {
+          success: true,
+          summary: "Done.",
+          todoUpdates: [{ status: "completed" }],
+        },
+      },
+      todos,
+    });
+
+    expect(update).toBeUndefined();
+  });
+
+  it("does not parse stringified attemptTodoCompletion results", () => {
+    const resolvedTodos: Todo[] = [{ ...todos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",
       output: {
         result: JSON.stringify({
-          success: false,
-          summary: "More work remains.",
-          todoUpdates: [{ status: "in-progress" }],
+          success: true,
+          summary: "Done.",
+          todos: resolvedTodos,
         }),
       },
       todos,
@@ -78,20 +97,63 @@ describe("getTodoCompletionUpdate", () => {
     expect(update).toBeUndefined();
   });
 
-  it("does not return a completion update without one todo update", () => {
+  it("uses resolved todos from attemptTodoCompletion results", () => {
+    const resolvedTodos: Todo[] = [
+      {
+        id: "resolved-todo-1",
+        content: "Resolved todo",
+        status: "completed",
+        priority: "medium",
+      },
+    ];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",
       output: {
-        result: JSON.stringify({
+        result: {
           success: true,
           summary: "Done.",
-          todoUpdates: [],
-        }),
+          todos: resolvedTodos,
+        },
+      },
+      todos,
+    });
+
+    expect(update?.todos).toEqual(resolvedTodos);
+  });
+
+  it("does not return a completion update when attemptTodoCompletion rejects completion", () => {
+    const update = getTodoCompletionUpdate({
+      message: makeAttemptTodoCompletionMessage(),
+      toolCallId: "tool-1",
+      output: {
+        result: {
+          success: false,
+          summary: "More work remains.",
+          todos,
+        },
       },
       todos,
     });
 
     expect(update).toBeUndefined();
+  });
+
+  it("uses resolved todos without requiring one todo update", () => {
+    const resolvedTodos: Todo[] = [{ ...todos[0], status: "completed" }];
+    const update = getTodoCompletionUpdate({
+      message: makeAttemptTodoCompletionMessage(),
+      toolCallId: "tool-1",
+      output: {
+        result: {
+          success: true,
+          summary: "Done.",
+          todos: resolvedTodos,
+        },
+      },
+      todos,
+    });
+
+    expect(update?.todos).toEqual(resolvedTodos);
   });
 });
