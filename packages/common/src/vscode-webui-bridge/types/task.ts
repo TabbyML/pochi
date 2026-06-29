@@ -43,6 +43,7 @@ export type PochiTaskParams = { cwd: string } & (
   | {
       type: "compact-task";
       messages: string;
+      modelId?: string;
     }
   | {
       type: "open-task";

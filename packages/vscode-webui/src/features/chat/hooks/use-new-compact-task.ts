@@ -43,6 +43,7 @@ export const useNewCompactTask = ({
         type: "compact-task",
         cwd,
         messages: JSON.stringify(initMessages),
+        modelId: task?.modelId ?? undefined,
       });
     },
   });
