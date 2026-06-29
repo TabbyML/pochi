@@ -20,6 +20,7 @@ import {
   Edit,
   Pause,
   Play,
+  Trash2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -51,6 +52,8 @@ const todoItemVariants = {
   animate: { opacity: 1, y: 0, scale: 1 },
   exit: { opacity: 0, y: -5, scale: 0.97 },
 };
+const TodoEditActionButtonClassName = "h-6 w-14 gap-1.5";
+const TodoEditIconButtonClassName = "ml-2 h-6 w-6 p-0";
 
 // Context for sharing state between compound components
 interface TodoListContextValue {
@@ -111,9 +114,8 @@ function TodoListRoot({
   onSaveTodos,
   onTodoPausedChange,
 }: TodoListRootProps) {
-  const hasActiveTodo = todos.some(isActiveTodo);
   const [isCollapsed, setIsCollapsed] = useState(
-    !hasActiveTodo && !disableCollapse && todos.length > 0,
+    !disableCollapse && todos.length > 0,
   );
   const [editingTodoId, setEditingTodoId] = useState<string>();
   const [draftContent, setDraftContent] = useState("");
@@ -369,29 +371,54 @@ function TodoPauseButton({
   );
 }
 
-function TodoDeleteButton({ todo }: { todo: Todo }) {
+function TodoCancelButton() {
   const { t } = useTranslation();
-  const { editable, editingTodoId, deleteTodo } = useTodoListContext();
-
-  if (!editable || (editingTodoId && editingTodoId !== todo.id)) return null;
-
-  const label = t("todoList.deleteTodo");
+  const { cancelEditMode } = useTodoListContext();
+  const label = t("todoList.cancelTodo");
 
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="secondary"
       size="xs"
-      className="h-6 gap-1.5"
+      className={TodoEditActionButtonClassName}
       aria-label={label}
       data-todo-edit-action
       onClick={(event) => {
         event.stopPropagation();
-        deleteTodo(todo.id);
+        cancelEditMode();
       }}
     >
       {label}
     </Button>
+  );
+}
+
+function TodoDeleteButton({ todo }: { todo: Todo }) {
+  const { t } = useTranslation();
+  const { deleteTodo } = useTodoListContext();
+  const label = t("todoList.deleteTodo");
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className={TodoEditIconButtonClassName}
+          aria-label={label}
+          data-todo-edit-action
+          onClick={(event) => {
+            event.stopPropagation();
+            deleteTodo(todo.id);
+          }}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -433,7 +460,7 @@ function TodoSaveButton() {
       type="button"
       variant="default"
       size="xs"
-      className="h-6 gap-1.5"
+      className={TodoEditActionButtonClassName}
       aria-label={t("todoList.saveTodo")}
       data-todo-edit-action
       disabled={hasInvalidDraftTodo}
@@ -486,6 +513,7 @@ function TodoTrailingActions({ todo }: { todo: Todo }) {
   return (
     <div className="flex shrink-0 items-center gap-1">
       {isActiveTodo(todo) && <TodoSaveButton />}
+      <TodoCancelButton />
       <TodoDeleteButton todo={todo} />
     </div>
   );

@@ -18,7 +18,7 @@ export const Todo = z.object({
         "The state of the todo.",
         '"pending" means the todo has not started yet.',
         '"in-progress" means the todo is actively being pursued.',
-        '"completed" means the todo has been audited and verified as satisfied.',
+        '"completed" means the todo has been audited and verified as complete.',
         '"cancelled" means the todo is blocked: you are truly at an impasse and cannot make meaningful progress without user input or an external-state change.',
         'Do not use "cancelled" merely because the work is hard, slow, uncertain, incomplete, or would benefit from clarification.',
       ].join(" "),

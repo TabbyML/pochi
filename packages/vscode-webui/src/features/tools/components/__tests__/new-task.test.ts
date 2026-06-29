@@ -95,8 +95,8 @@ describe("getAttemptTodoCompletionState", () => {
         }),
       ),
     ).toEqual({
-      status: "satisfied",
-      summary: "Todo is satisfied.",
+      status: "completed",
+      summary: "All todos are complete.",
     });
   });
 

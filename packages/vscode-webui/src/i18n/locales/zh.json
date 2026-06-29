@@ -461,13 +461,14 @@
     "todos": "待办事项",
     "allDone": "🎉 全部完成！",
     "cancelledTodo": "Todo 已取消",
-    "editTodo": "编辑 Todo",
+    "editTodo": "编辑",
     "editTodos": "编辑 Todos",
     "saveTodo": "保存",
     "saveTodos": "保存 Todos",
     "editTodoContent": "编辑 Todo 内容",
+    "cancelTodo": "取消",
     "deleteTodo": "删除",
-    "pauseTodo": "暂停 Todo",
+    "pauseTodo": "暂停",
     "resumeTodo": "继续 Todo"
   },
   "commandExecutionPanel": {
@@ -575,8 +576,8 @@
     "paused": "暂停"
   },
   "attemptTodoCompletionView": {
-    "auditing": "正在审计 Todo",
-    "satisfied": "Todo 已满足",
+    "auditing": "正在审计 Todos",
+    "completed": "所有 Todos 已完成",
     "needsWork": "Todo 需要继续推进",
     "failed": "Todo 审计失败"
   },

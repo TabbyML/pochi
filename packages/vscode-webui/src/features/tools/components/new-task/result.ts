@@ -2,7 +2,7 @@ import { ResolvedAttemptTodoCompletionResult } from "@getpochi/tools";
 import { parseJsonObjectString } from "../tool-result-display";
 
 export type AttemptTodoCompletionState = {
-  status: "satisfied" | "needs-work";
+  status: "completed" | "needs-work";
   summary: string;
 };
 
@@ -28,7 +28,7 @@ export function getAttemptTodoCompletionState(
   const summary = parsedResult.data.summary.trim();
   if (!summary) return undefined;
   return {
-    status: parsedResult.data.success ? "satisfied" : "needs-work",
+    status: parsedResult.data.success ? "completed" : "needs-work",
     summary,
   };
 }

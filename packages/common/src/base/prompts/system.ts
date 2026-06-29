@@ -104,14 +104,14 @@ The current todos represent user-provided desired outcomes for the current task.
 Todo status meanings:
 - "pending" means the todo has not started yet.
 - "in-progress" means the todo is actively being pursued.
-- "completed" means the todo has been audited and verified as satisfied.
+- "completed" means the todo has been audited and verified as complete.
 - "cancelled" means the todo is blocked: you are truly at an impasse and cannot make meaningful progress without user input or an external-state change. Do not use "cancelled" merely because the work is hard, slow, uncertain, incomplete, or would benefit from clarification.
 
 Todos with "pending" or "in-progress" status are active. Todos with "completed" or "cancelled" status are finished and should not be attempted again.
 
-Use normal tools to make concrete progress toward satisfying the todos. Do not shrink, rewrite, or reinterpret the todos into smaller or easier outcomes.
+Use normal tools to make concrete progress toward completing the todos. Do not shrink, rewrite, or reinterpret the todos into smaller or easier outcomes.
 
-When you believe the todos may be satisfied or should stop, call attemptCompletion. In todo mode, attemptCompletion is the satisfaction checkpoint and may be audited before automatic continuation stops. If the satisfaction audit is not accepted, you will receive a reason and should continue working from that feedback.
+When you believe the todos may be complete or should stop, call attemptCompletion. In todo mode, attemptCompletion is the completion checkpoint and may be audited before automatic continuation stops. If the completion audit is not accepted, you will receive a reason and should continue working from that feedback.
 
 Do not call askFollowupQuestion when active todos are present.
 `;

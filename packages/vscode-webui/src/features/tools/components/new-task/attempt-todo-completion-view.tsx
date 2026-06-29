@@ -35,8 +35,8 @@ export function AttemptTodoCompletionView({
 
   let title = t("attemptTodoCompletionView.auditing");
 
-  if (completion?.status === "satisfied") {
-    title = t("attemptTodoCompletionView.satisfied");
+  if (completion?.status === "completed") {
+    title = t("attemptTodoCompletionView.completed");
   } else if (completion?.status === "needs-work") {
     title = t("attemptTodoCompletionView.needsWork");
   } else if (hasAuditFailure) {
