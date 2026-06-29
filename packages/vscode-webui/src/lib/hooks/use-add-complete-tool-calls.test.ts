@@ -10,7 +10,7 @@ vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({ commit: vi.fn() }),
 }));
 
-const todos: Todo[] = [
+const baseTodos: Todo[] = [
   {
     id: "todo-1",
     content: "Implement todo mode",
@@ -36,9 +36,15 @@ function makeAttemptTodoCompletionMessage(): Message {
   } as Message;
 }
 
+function findToolPart(message: Message | undefined, toolCallId: string) {
+  return message?.parts.find(
+    (part) => part.type === "tool-newTask" && part.toolCallId === toolCallId,
+  );
+}
+
 describe("getTodoCompletionUpdate", () => {
   it("returns a completion update when attemptTodoCompletion succeeds", () => {
-    const resolvedTodos: Todo[] = [{ ...todos[0], status: "completed" }];
+    const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",
@@ -56,13 +62,13 @@ describe("getTodoCompletionUpdate", () => {
       status: "completed",
       todos: [{ id: "todo-1", status: "completed" }],
     });
-    expect(update?.message.parts[0]).toMatchObject({
+    expect(findToolPart(update?.message, "tool-1")).toMatchObject({
       state: "output-available",
     });
   });
 
   it("does not parse stringified attemptTodoCompletion results", () => {
-    const resolvedTodos: Todo[] = [{ ...todos[0], status: "completed" }];
+    const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",
@@ -105,7 +111,7 @@ describe("getTodoCompletionUpdate", () => {
   it("returns a completion update when resolved todo statuses are unchanged", () => {
     const resolvedTodos: Todo[] = [
       {
-        ...todos[0],
+        ...baseTodos[0],
       },
     ];
     const update = getTodoCompletionUpdate({
@@ -121,7 +127,7 @@ describe("getTodoCompletionUpdate", () => {
     });
 
     expect(update?.todos).toEqual(resolvedTodos);
-    expect(update?.message.parts[0]).toMatchObject({
+    expect(findToolPart(update?.message, "tool-1")).toMatchObject({
       state: "output-available",
     });
   });
@@ -134,7 +140,7 @@ describe("getTodoCompletionUpdate", () => {
         result: {
           success: false,
           summary: "More work remains.",
-          todos,
+          todos: baseTodos,
         },
       },
     });
@@ -143,7 +149,7 @@ describe("getTodoCompletionUpdate", () => {
   });
 
   it("uses resolved todos without requiring one todo update", () => {
-    const resolvedTodos: Todo[] = [{ ...todos[0], status: "completed" }];
+    const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",

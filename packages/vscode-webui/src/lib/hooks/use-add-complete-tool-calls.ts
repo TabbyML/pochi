@@ -70,27 +70,27 @@ export function useAddCompleteToolCalls({
     const lastCompletedToolCall = completedToolCalls.find(
       ({ toolCall }) => toolCall.toolCallId === lastToolPart?.toolCallId,
     );
-    const todoCompletionUpdate =
-      lastCompletedToolCall && taskId
-        ? getTodoCompletionUpdate({
-            message: lastMessage,
-            toolCallId: lastCompletedToolCall.toolCall.toolCallId,
-            output: lastCompletedToolCall.output,
-          })
-        : undefined;
-    if (todoCompletionUpdate && taskId) {
-      if (todosRef) {
-        todosRef.current = todoCompletionUpdate.todos;
+    let todoCompletionUpdate: TodoCompletionUpdate | undefined;
+    if (lastCompletedToolCall && taskId) {
+      todoCompletionUpdate = getTodoCompletionUpdate({
+        message: lastMessage,
+        toolCallId: lastCompletedToolCall.toolCall.toolCallId,
+        output: lastCompletedToolCall.output,
+      });
+      if (todoCompletionUpdate) {
+        if (todosRef) {
+          todosRef.current = todoCompletionUpdate.todos;
+        }
+        store.commit(
+          catalog.events.attemptTodoCompletionFinished({
+            id: taskId,
+            data: todoCompletionUpdate.message,
+            todos: todoCompletionUpdate.todos,
+            status: todoCompletionUpdate.status,
+            updatedAt: new Date(),
+          }),
+        );
       }
-      store.commit(
-        catalog.events.attemptTodoCompletionFinished({
-          id: taskId,
-          data: todoCompletionUpdate.message,
-          todos: todoCompletionUpdate.todos,
-          status: todoCompletionUpdate.status,
-          updatedAt: new Date(),
-        }),
-      );
     }
 
     for (const { toolCall, output } of completedToolCalls) {

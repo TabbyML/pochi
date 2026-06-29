@@ -1,4 +1,4 @@
-import { AttemptTodoCompletionResult } from "@getpochi/tools";
+import { ResolvedAttemptTodoCompletionResult } from "@getpochi/tools";
 import { parseJsonObjectString } from "../tool-result-display";
 
 export type AttemptTodoCompletionState = {
@@ -23,7 +23,7 @@ export function getAttemptTodoCompletionState(
   result: unknown,
 ): AttemptTodoCompletionState | undefined {
   const parsed = parseJsonObjectString(result) ?? result;
-  const parsedResult = AttemptTodoCompletionResult.safeParse(parsed);
+  const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(parsed);
   if (!parsedResult.success) return undefined;
   const summary = parsedResult.data.summary.trim();
   if (!summary) return undefined;

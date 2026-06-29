@@ -5,6 +5,20 @@ import {
   hasNewTaskResult,
 } from "../new-task/result";
 
+function makeResolvedTodos(status: "completed" | "in-progress") {
+  return [
+    {
+      id: "todo-1",
+      content: "Add one test",
+      status,
+      priority: "medium",
+    },
+  ] as const;
+}
+
+const completedTodos = makeResolvedTodos("completed");
+const inProgressTodos = makeResolvedTodos("in-progress");
+
 describe("hasNewTaskResult", () => {
   it("accepts structured subtask results", () => {
     expect(
@@ -26,7 +40,7 @@ describe("getAttemptTodoCompletionSummary", () => {
       getAttemptTodoCompletionSummary({
         success: false,
         summary: "More work remains.",
-        todoUpdates: [{ status: "in-progress" }],
+        todos: inProgressTodos,
       }),
     ).toBe("More work remains.");
   });
@@ -37,7 +51,7 @@ describe("getAttemptTodoCompletionSummary", () => {
         JSON.stringify({
           success: false,
           summary: "More work remains.",
-          todoUpdates: [{ status: "in-progress" }],
+          todos: inProgressTodos,
         }),
       ),
     ).toBe("More work remains.");
@@ -58,13 +72,26 @@ describe("getAttemptTodoCompletionSummary", () => {
 });
 
 describe("getAttemptTodoCompletionState", () => {
+  it("detects resolved satisfied todo completion results", () => {
+    expect(
+      getAttemptTodoCompletionState({
+        success: true,
+        summary: "Todo is satisfied.",
+        todos: completedTodos,
+      }),
+    ).toEqual({
+      status: "satisfied",
+      summary: "Todo is satisfied.",
+    });
+  });
+
   it("detects satisfied todo completion results", () => {
     expect(
       getAttemptTodoCompletionState(
         JSON.stringify({
           success: true,
           summary: "Todo is satisfied.",
-          todoUpdates: [{ status: "completed" }],
+          todos: completedTodos,
         }),
       ),
     ).toEqual({
@@ -78,7 +105,7 @@ describe("getAttemptTodoCompletionState", () => {
       getAttemptTodoCompletionState({
         success: false,
         summary: "More work remains.",
-        todoUpdates: [{ status: "in-progress" }],
+        todos: inProgressTodos,
       }),
     ).toEqual({
       status: "needs-work",
