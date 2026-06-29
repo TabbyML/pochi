@@ -4,7 +4,10 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
-import type { Todo } from "@getpochi/tools";
+import type {
+  ResolvedAttemptTodoCompletionResult,
+  Todo,
+} from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 import type { RefObject } from "react";
 import { useEffect } from "react";
@@ -17,7 +20,6 @@ interface UseAddCompleteToolCallsProps {
   enable: boolean;
   addToolOutput: Chat<Message>["addToolOutput"];
   taskId?: string;
-  todos?: readonly Todo[];
   todosRef?: RefObject<Todo[] | undefined>;
 }
 
@@ -41,7 +43,6 @@ export function useAddCompleteToolCalls({
   // setMessages,
   addToolOutput,
   taskId,
-  todos,
   todosRef,
 }: UseAddCompleteToolCallsProps): void {
   const { completeToolCalls } = useToolCallLifeCycle();
@@ -70,12 +71,11 @@ export function useAddCompleteToolCalls({
       ({ toolCall }) => toolCall.toolCallId === lastToolPart?.toolCallId,
     );
     const todoCompletionUpdate =
-      lastCompletedToolCall && taskId && todos
+      lastCompletedToolCall && taskId
         ? getTodoCompletionUpdate({
             message: lastMessage,
             toolCallId: lastCompletedToolCall.toolCall.toolCallId,
             output: lastCompletedToolCall.output,
-            todos,
           })
         : undefined;
     if (todoCompletionUpdate && taskId) {
@@ -120,7 +120,6 @@ export function useAddCompleteToolCalls({
     messages,
     addToolOutput,
     taskId,
-    todos,
     todosRef,
     store,
   ]);
@@ -142,21 +141,14 @@ type TodoCompletionUpdate = {
   output: unknown;
 };
 
-type ResolvedAttemptTodoCompletionOutput = {
-  success?: boolean;
-  todos?: Todo[];
-};
-
 export function getTodoCompletionUpdate({
   message,
   toolCallId,
   output,
-  todos,
 }: {
   message: Message;
   toolCallId: string;
   output: unknown;
-  todos: readonly Todo[];
 }): TodoCompletionUpdate | undefined {
   const targetIndex = message.parts.findIndex(
     (part) =>
@@ -171,12 +163,10 @@ export function getTodoCompletionUpdate({
     typeof output === "object" && output !== null && "result" in output
       ? output.result
       : undefined;
-  const result = rawResult as ResolvedAttemptTodoCompletionOutput | undefined;
+  const result = rawResult as ResolvedAttemptTodoCompletionResult | undefined;
   if (!result?.success) return undefined;
 
   const nextTodos = result.todos;
-  if (!nextTodos) return undefined;
-  if (hasSameTodoStatuses(todos, nextTodos)) return undefined;
 
   return {
     toolCallId,
@@ -196,15 +186,6 @@ export function getTodoCompletionUpdate({
     status: "completed",
     output,
   };
-}
-
-function hasSameTodoStatuses(
-  previousTodos: readonly Todo[],
-  nextTodos: readonly Todo[],
-): boolean {
-  return previousTodos.every(
-    (todo, index) => todo.status === nextTodos[index]?.status,
-  );
 }
 
 function assertUnreachable(_x: never): never {

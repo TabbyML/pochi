@@ -254,7 +254,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     enable: allowAddToolResult,
     addToolOutput,
     taskId,
-    todos,
     todosRef,
   });
 

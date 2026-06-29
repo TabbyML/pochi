@@ -49,7 +49,6 @@ describe("getTodoCompletionUpdate", () => {
           todos: resolvedTodos,
         },
       },
-      todos,
     });
 
     expect(update).toMatchObject({
@@ -60,23 +59,6 @@ describe("getTodoCompletionUpdate", () => {
     expect(update?.message.parts[0]).toMatchObject({
       state: "output-available",
     });
-  });
-
-  it("does not synthesize todos from unresolved attemptTodoCompletion results", () => {
-    const update = getTodoCompletionUpdate({
-      message: makeAttemptTodoCompletionMessage(),
-      toolCallId: "tool-1",
-      output: {
-        result: {
-          success: true,
-          summary: "Done.",
-          todoUpdates: [{ status: "completed" }],
-        },
-      },
-      todos,
-    });
-
-    expect(update).toBeUndefined();
   });
 
   it("does not parse stringified attemptTodoCompletion results", () => {
@@ -91,7 +73,6 @@ describe("getTodoCompletionUpdate", () => {
           todos: resolvedTodos,
         }),
       },
-      todos,
     });
 
     expect(update).toBeUndefined();
@@ -116,10 +97,33 @@ describe("getTodoCompletionUpdate", () => {
           todos: resolvedTodos,
         },
       },
-      todos,
     });
 
     expect(update?.todos).toEqual(resolvedTodos);
+  });
+
+  it("returns a completion update when resolved todo statuses are unchanged", () => {
+    const resolvedTodos: Todo[] = [
+      {
+        ...todos[0],
+      },
+    ];
+    const update = getTodoCompletionUpdate({
+      message: makeAttemptTodoCompletionMessage(),
+      toolCallId: "tool-1",
+      output: {
+        result: {
+          success: true,
+          summary: "Done.",
+          todos: resolvedTodos,
+        },
+      },
+    });
+
+    expect(update?.todos).toEqual(resolvedTodos);
+    expect(update?.message.parts[0]).toMatchObject({
+      state: "output-available",
+    });
   });
 
   it("does not return a completion update when attemptTodoCompletion rejects completion", () => {
@@ -133,7 +137,6 @@ describe("getTodoCompletionUpdate", () => {
           todos,
         },
       },
-      todos,
     });
 
     expect(update).toBeUndefined();
@@ -151,7 +154,6 @@ describe("getTodoCompletionUpdate", () => {
           todos: resolvedTodos,
         },
       },
-      todos,
     });
 
     expect(update?.todos).toEqual(resolvedTodos);
