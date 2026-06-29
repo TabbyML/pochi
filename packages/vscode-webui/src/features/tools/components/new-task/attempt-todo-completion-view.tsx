@@ -30,7 +30,8 @@ export function AttemptTodoCompletionView({
     !!getToolPartError(tool) ||
     (tool.state === "output-available" && !completion);
   const showTaskThread =
-    !summary && !!taskSource && taskSource.messages.length > 1;
+    isExecuting && !summary && !!taskSource && taskSource.messages.length > 1;
+  const showFooterTaskThread = !isExecuting;
 
   let title = t("attemptTodoCompletionView.auditing");
 
@@ -50,7 +51,8 @@ export function AttemptTodoCompletionView({
       taskSource={taskSource}
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       assistantName="Todo"
-      showToolCall
+      showToolCall={false}
+      showTaskThread={showFooterTaskThread}
       headerContent={
         <span
           className={cn(
