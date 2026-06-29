@@ -47,8 +47,13 @@ More below!
 
 <div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![A failed stream with tool calls resolved to an aborted state](https://assets.docs.getpochi.com/docs/5a/5a0438b2776c92b49a2712e7e7a9e37b3877ddc86923a5002c6772c6f6a4734f)</div>
 
+- **Stalled streams now time out instead of hanging:** Pochi aborts a stream that goes 15 seconds without receiving a chunk, so a stuck session ends on its own instead of waiting forever.
+
+  Previously a stream that stopped producing chunks had no deadline, so a stalled response could sit open indefinitely with no way to recover short of restarting.
+
+  Most useful on flaky connections or when a provider stalls mid-response, the session fails fast and frees you to retry. [**#1712**](https://github.com/TabbyML/pochi/pull/1712)
+
 ### 👀 Coming Up
 
 - **Todo mode with automated continuation auditing:** When you finish a task that still has open todos, a read-only audit sub-agent will check the workspace (files, tests, command output) before letting it close and pick the work back up if it isn't actually done.
 - **Compaction point shown in the thread:** Pochi will mark the compaction point inline with a separator and a summary action, so you can see exactly where context was compacted mid-task.
-- **Stalled-stream timeout:** Stalled streams will time out on a chunk deadline instead of hanging, so a stuck session ends on its own rather than waiting forever.
