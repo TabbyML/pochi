@@ -12,7 +12,11 @@ import {
   type CreateWorktreeType,
   WorktreeSelect,
 } from "@/components/worktree-select";
-import { useSelectedModels, useSettingsStore } from "@/features/settings";
+import {
+  useIsDevMode,
+  useSelectedModels,
+  useSettingsStore,
+} from "@/features/settings";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
@@ -54,21 +58,27 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const activeSelection = useActiveSelection();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const [submitMode, setSubmitMode] = useState<SubmitMode>("default");
+  const [isDevMode] = useIsDevMode();
+  const canUseTodoMode = isDevMode === true;
   const planMode = submitMode === "plan";
   const todoMode = submitMode === "todo";
   const togglePlanMode = useCallback(() => {
     setSubmitMode((mode) => (mode === "plan" ? "default" : "plan"));
   }, []);
   const toggleTodoMode = useCallback(() => {
+    if (!canUseTodoMode) return;
     setSubmitMode((mode) => (mode === "todo" ? "default" : "todo"));
-  }, []);
+  }, [canUseTodoMode]);
   const switchSubmitMode = useCallback(() => {
     setSubmitMode((mode) => {
       if (mode === "default") return "plan";
-      if (mode === "plan") return "todo";
+      if (mode === "plan" && canUseTodoMode) {
+        // Rotate from plan mode into todo mode.
+        return "todo";
+      }
       return "default";
     });
-  }, []);
+  }, [canUseTodoMode]);
   const {
     globalMcpConfig,
     mcpConfigOverride,
@@ -231,9 +241,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     }) => {
       const { shouldCreateWorktree } = options || {};
       const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
-      const shouldCreateTodo = shouldCreatePlan
-        ? false
-        : (options?.shouldCreateTodo ?? todoMode);
+      const shouldCreateTodo =
+        canUseTodoMode && (options?.shouldCreateTodo ?? todoMode);
 
       if (isCreatingTask) return;
 
@@ -305,6 +314,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       createWorktreeAndOpenTask,
       planMode,
       todoMode,
+      canUseTodoMode,
     ],
   );
 
@@ -438,7 +448,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             resetMcpTools={resetMcpTools}
             isPlanMode={planMode}
             onTogglePlanMode={togglePlanMode}
-            isTodoMode={todoMode}
+            isTodoMode={canUseTodoMode && todoMode}
+            showTodoMode={canUseTodoMode}
             onToggleTodoMode={toggleTodoMode}
             onSwitchSubmitMode={switchSubmitMode}
           />

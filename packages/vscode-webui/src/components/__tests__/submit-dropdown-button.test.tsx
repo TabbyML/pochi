@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SubmitDropdownButton } from "../submit-dropdown-button";
 
@@ -35,5 +35,21 @@ describe("SubmitDropdownButton", () => {
     const targetIcon = button.querySelector(".lucide-target");
     expect(targetIcon).not.toBeNull();
     expect(targetIcon?.parentElement?.className).toContain("opacity-100");
+  });
+
+  it("hides the todo mode toggle by default", () => {
+    render(<SubmitDropdownButton {...defaultProps} />);
+
+    fireEvent.mouseEnter(screen.getByRole("button"));
+
+    expect(screen.queryByText("chat.todoModeLabel")).toBeNull();
+  });
+
+  it("shows the todo mode toggle when todo mode is enabled", () => {
+    render(<SubmitDropdownButton {...defaultProps} showTodoMode />);
+
+    fireEvent.mouseEnter(screen.getByRole("button"));
+
+    expect(screen.getByText("chat.todoModeLabel")).not.toBeNull();
   });
 });
