@@ -365,16 +365,17 @@ export function TokenUsage({
 
                   <div className="flex items-center gap-1.5">
                     {autoMemoryAvailable && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         aria-label={t("tokenUsage.projectMemoryClear")}
-                        className="invisible cursor-pointer text-muted-foreground hover:text-foreground group-hover/project-memory:visible"
+                        className="invisible h-auto px-1.5 py-0.5 text-xs group-hover/project-memory:visible"
                         onClick={() => {
                           void handleClearProjectMemory();
                         }}
                       >
                         {t("tokenUsage.projectMemoryReset")}
-                      </button>
+                      </Button>
                     )}
                     {autoMemoryAvailable && (
                       <span className="text-muted-foreground">
