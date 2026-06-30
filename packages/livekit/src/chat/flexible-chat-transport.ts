@@ -56,6 +56,40 @@ export type FinishedRequestSnapshot = {
   toolsTokens: number;
 };
 
+function createAbortAwareUIStreamTransform(
+  abortSignal: AbortSignal | undefined,
+) {
+  let onAbort: (() => void) | undefined;
+  return new TransformStream<UIMessageChunk, UIMessageChunk>({
+    start(controller) {
+      if (!abortSignal) return;
+      if (abortSignal.aborted) {
+        controller.terminate();
+        return;
+      }
+      onAbort = () => {
+        controller.terminate();
+      };
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+    },
+    transform(chunk, controller) {
+      // `streamText` receives the same abort signal, but provider/SDK chunks can
+      // already be queued locally when abort fires. Gate the UI stream too so
+      // post-abort chunks cannot mutate the chat message state.
+      if (abortSignal?.aborted) {
+        controller.terminate();
+        return;
+      }
+      controller.enqueue(chunk);
+    },
+    flush() {
+      if (onAbort) {
+        abortSignal?.removeEventListener("abort", onAbort);
+      }
+    },
+  });
+}
+
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
   getEnvironment?: () => Promise<Environment>;
@@ -235,37 +269,39 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       ),
       experimental_download: makeDownloadFunction(this.blobStore),
     });
-    return stream.toUIMessageStream({
-      onError: (error) => {
-        if (APICallError.isInstance(error)) {
-          // throw error so we can handle it on Chat class onError
-          throw error;
-        }
-        return getErrorMessage(error);
-      },
-      originalMessages: preparedMessages,
-      messageMetadata: ({ part }) => {
-        if (part.type === "finish") {
-          return {
-            kind: "assistant",
-            // The client only consumes the aggregated total token count here.
-            // Detailed usage shape differences are a server/protocol concern.
-            totalTokens:
-              part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
-            finishReason: part.finishReason,
-            startedAt: requestStartedAt,
-            finishedAt: new Date(),
-          } satisfies MessageMetadata;
-        }
-      },
-      onFinish: async () => {
-        await this.onRequestFinished?.({
-          systemPrompt,
-          systemPromptTokens,
-          toolsTokens,
-        });
-      },
-    });
+    return stream
+      .toUIMessageStream({
+        onError: (error) => {
+          if (APICallError.isInstance(error)) {
+            // throw error so we can handle it on Chat class onError
+            throw error;
+          }
+          return getErrorMessage(error);
+        },
+        originalMessages: preparedMessages,
+        messageMetadata: ({ part }) => {
+          if (part.type === "finish") {
+            return {
+              kind: "assistant",
+              // The client only consumes the aggregated total token count here.
+              // Detailed usage shape differences are a server/protocol concern.
+              totalTokens:
+                part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
+              finishReason: part.finishReason,
+              startedAt: requestStartedAt,
+              finishedAt: new Date(),
+            } satisfies MessageMetadata;
+          }
+        },
+        onFinish: async () => {
+          await this.onRequestFinished?.({
+            systemPrompt,
+            systemPromptTokens,
+            toolsTokens,
+          });
+        },
+      })
+      .pipeThrough(createAbortAwareUIStreamTransform(abortSignal));
   };
 
   reconnectToStream: (

@@ -17,7 +17,7 @@ import {
   isRetryApprovalCountingDown,
   type useApprovalAndRetry,
 } from "@/features/approval";
-import { useAutoApproveGuard } from "@/features/chat";
+import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
 import {
   AutoApproveMenu,
   useAutoApprove,
@@ -107,6 +107,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
+  const { completeToolCalls } = useToolCallLifeCycle();
 
   const { input, setInput, clearInput } = useChatInputState();
 
@@ -231,6 +232,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       status === "ready" &&
       !isExecuting &&
       !isBusyCore &&
+      completeToolCalls.length === 0 &&
       !!selectedModel &&
       (!pendingApproval || pendingApproval.name === "retry");
 
@@ -241,14 +243,14 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     status,
     isExecuting,
     isBusyCore,
+    completeToolCalls.length,
     selectedModel,
     queuedMessages.length,
     pendingApproval,
     handleSubmit,
   ]);
 
-  // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || blockingState.isBusy);
+  const allowAddToolResult = !blockingState.isBusy;
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
@@ -258,6 +260,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     todosRef,
   });
 
+  const allowInteractiveToolAction = !(isLoading || blockingState.isBusy);
   const compactOptions = {
     enabled:
       compactEnabled && !inlineCompactTaskPending && !newCompactTaskPending,
@@ -279,7 +282,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   );
 
   const showRenderWidgetFixButton =
-    !!shouldShowRenderWidgetFixButton && allowAddToolResult && !pendingApproval;
+    !!shouldShowRenderWidgetFixButton &&
+    allowInteractiveToolAction &&
+    !pendingApproval;
 
   const showSubmitReviewButton =
     !isSubmitDisabled &&
@@ -307,7 +312,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <ApprovalButton
             pendingApproval={pendingApproval}
             retry={retry}
-            allowAddToolResult={allowAddToolResult}
+            allowAddToolResult={allowInteractiveToolAction}
             isSubTask={isSubTask}
             task={task}
             subtask={subtask}
