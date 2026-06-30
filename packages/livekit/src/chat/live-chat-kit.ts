@@ -14,6 +14,7 @@ import {
   type CustomAgent,
   ToolsByPermission,
   getToolCallCancelErrorMessage,
+  isUserInputToolPart,
 } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import {
@@ -89,6 +90,10 @@ function normalizeFailedStreamMessage(
         part.state === "output-error" ||
         part.state === "output-denied"
       ) {
+        return part;
+      }
+
+      if (part.state === "input-available" && isUserInputToolPart(part)) {
         return part;
       }
 

@@ -115,6 +115,63 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 
+  it.each([
+    ["tool-attemptCompletion", "completion-1", { result: "Done." }],
+    [
+      "tool-askFollowupQuestion",
+      "question-1",
+      { questions: [{ question: "Continue?", options: [] }] },
+    ],
+    [
+      "tool-renderWidget",
+      "widget-1",
+      { title: "Preview", widgetCode: "<div />", guidelinesRead: true },
+    ],
+  ])(
+    "does not mark available %s as an error when a stream fails",
+    async (type, toolCallId, input) => {
+      const store = new FakeStore([
+        makeTask({
+          id: "parent",
+          status: "pending-model",
+          background: false,
+        }),
+      ]);
+      const chatKit = new LiveChatKit<FakeChat>({
+        taskId: "parent",
+        store: store as unknown as LiveKitStore,
+        blobStore: {} as BlobStore,
+        chatClass: FakeChat,
+        getters: {
+          getLLM: () => ({ id: "test-model" }) as never,
+        },
+      });
+      const message = assistantUserInputToolMessage(type, toolCallId, input);
+      chatKit.chat.messages = [userMessage(), message];
+
+      chatKit.chat.fail(new Error("network error"));
+
+      expect(chatKit.chat.messages.at(-1)?.parts[1]).toMatchObject({
+        type,
+        toolCallId,
+        state: "input-available",
+        input,
+      });
+      expect(chatKit.chat.messages.at(-1)?.parts[1]).not.toHaveProperty(
+        "errorText",
+      );
+
+      const savedMessage = store.taskMessages("parent").at(-1);
+      expect(savedMessage?.parts[1]).toMatchObject({
+        type,
+        toolCallId,
+        state: "input-available",
+        input,
+      });
+      expect(savedMessage?.parts[1]).not.toHaveProperty("errorText");
+    },
+  );
+
   it("updates task total tokens from the formatted compact estimate", () => {
     const store = new FakeStore([
       makeTask({
@@ -622,6 +679,26 @@ function assistantMessage(): Message {
       finishReason: "stop",
       totalTokens: 20_000,
     },
+  } as unknown as Message;
+}
+
+function assistantUserInputToolMessage(
+  type: string,
+  toolCallId: string,
+  input: unknown,
+): Message {
+  return {
+    id: "assistant-user-input-tool",
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type,
+        toolCallId,
+        state: "input-available",
+        input,
+      },
+    ],
   } as unknown as Message;
 }
 
