@@ -20,7 +20,7 @@ import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import { constants, TaskMemoryFileUri } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
-import { CircleAlert, Loader2, Trash2 } from "lucide-react";
+import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
@@ -293,7 +293,7 @@ export function TokenUsage({
                 </div>
 
                 {/* Project Memory row (label + toggle on the left, percentage on the right) */}
-                <div className="ml-3 flex items-center justify-between gap-2">
+                <div className="group/project-memory ml-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
@@ -365,25 +365,16 @@ export function TokenUsage({
 
                   <div className="flex items-center gap-1.5">
                     {autoMemoryAvailable && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              aria-label={t("tokenUsage.projectMemoryClear")}
-                              className="inline-flex cursor-pointer items-center text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                void handleClearProjectMemory();
-                              }}
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {t("tokenUsage.projectMemoryClear")}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <button
+                        type="button"
+                        aria-label={t("tokenUsage.projectMemoryClear")}
+                        className="invisible cursor-pointer text-muted-foreground hover:text-foreground group-hover/project-memory:visible"
+                        onClick={() => {
+                          void handleClearProjectMemory();
+                        }}
+                      >
+                        {t("tokenUsage.projectMemoryReset")}
+                      </button>
                     )}
                     {autoMemoryAvailable && (
                       <span className="text-muted-foreground">

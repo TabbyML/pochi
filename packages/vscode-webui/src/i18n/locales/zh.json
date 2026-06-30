@@ -83,7 +83,8 @@
     "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",
     "projectMemoryUnavailable": "在此工作区运行任务后，项目记忆将可用。",
     "projectMemoryClear": "清除项目记忆",
-    "projectMemoryClearConfirm": "这将删除所有项目记忆文件（MEMORY.md 及主题文件），此操作无法撤销。",
+    "projectMemoryReset": "重置",
+    "projectMemoryClearConfirm": "这将重置所有项目记忆文件（MEMORY.md 及主题文件），此操作无法撤销。",
     "taskMemoryUnavailable": "任务记忆将随着对话进行自动生成。"
   },
   "modelSelect": {
