@@ -1,14 +1,20 @@
 import { Button } from "@/components/ui/button";
+import { ScrollBar } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { parsePatchFiles, resolveThemes } from "@pierre/diffs";
-import { FileDiff, Virtualizer } from "@pierre/diffs/react";
+import {
+  Virtualizer as DiffsVirtualizer,
+  parsePatchFiles,
+  resolveThemes,
+} from "@pierre/diffs";
+import { FileDiff, VirtualizerContext } from "@pierre/diffs/react";
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { Columns2, Rows2, WrapText } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme-provider";
 import { CodeBlock } from "./code-block";
@@ -25,8 +31,46 @@ let themesResolved = false;
 const patchDiffUnsafeCSS = `
   [data-separator="line-info"] {
     height: 24px;
+  }
+  [data-overflow="scroll"] {
+    min-width: 100%;
+    width: max-content;
+    --diffs-code-grid: var(--diffs-grid-number-column-width) max-content;
+  }
+  [data-diff-type="split"][data-overflow="scroll"] {
+    grid-template-columns: max-content max-content;
+  }
+  [data-code] {
+    contain: none;
+    container-type: normal;
+    min-width: 100%;
+    width: max-content;
+    overflow: visible;
+    scrollbar-width: none;
+  }
+  [data-code]::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+  [data-unified] [data-separator="line-info"] [data-separator-wrapper] {
+    width: var(--diffs-column-width, 100%);
+  }
+  [data-overflow="scroll"] [data-additions] [data-gutter] [data-separator="line-info"] [data-separator-wrapper] {
+    width: calc(var(--diffs-column-width, 100%) - var(--diffs-gap-inline, var(--diffs-gap-fallback)));
+  }
+  [data-overflow="scroll"] [data-content] {
+    min-width: max-content;
+  }
+  [data-overflow="scroll"] [data-line] {
+    min-width: max-content;
+  }
+  [data-overflow="scroll"] [data-gutter],
+  [data-overflow="scroll"] [data-annotation-content] {
+    position: static;
   }`;
 const patchDiffStyle = {
+  minWidth: "100%",
+  width: "max-content",
   "--diffs-font-family": "JetBrains Mono, monospace",
   "--diffs-font-size": "11px",
   "--diffs-line-height": 1.5,
@@ -46,7 +90,13 @@ const patchDiffMetrics = {
   hunkSeparatorHeight: 24,
   fileGap: 8,
 };
-
+const diffViewerScrollbarClassName = cn(
+  "[&_[data-slot=scroll-area-thumb]]:transition-colors",
+  "[&_[data-slot=scroll-area-thumb]]:bg-[color-mix(in_srgb,var(--vscode-scrollbarSlider-background)_88%,var(--vscode-editor-foreground)_12%)]",
+  "hover:[&_[data-slot=scroll-area-thumb]]:bg-[color-mix(in_srgb,var(--vscode-scrollbarSlider-hoverBackground)_90%,var(--vscode-editor-foreground)_10%)]",
+  "active:[&_[data-slot=scroll-area-thumb]]:bg-[color-mix(in_srgb,var(--vscode-scrollbarSlider-activeBackground)_88%,var(--vscode-editor-foreground)_12%)]",
+  "[&_[data-slot=scroll-area-thumb]:focus-visible]:bg-[color-mix(in_srgb,var(--vscode-scrollbarSlider-hoverBackground)_90%,var(--vscode-editor-foreground)_10%)]",
+);
 const resolveThemesOnce = async () => {
   if (themesResolved) return;
   try {
@@ -56,6 +106,57 @@ const resolveThemesOnce = async () => {
     console.error("Failed to resolve themes for diff viewer:", err);
   }
 };
+
+function DiffScrollAreaVirtualizer({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [virtualizer] = useState(() =>
+    typeof window === "undefined" ? undefined : new DiffsVirtualizer(),
+  );
+
+  const viewportRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!virtualizer) return;
+
+      if (node) {
+        virtualizer.setup(node, node.firstElementChild ?? undefined);
+        return;
+      }
+
+      virtualizer.cleanUp();
+    },
+    [virtualizer],
+  );
+
+  return (
+    <VirtualizerContext.Provider value={virtualizer}>
+      <ScrollAreaPrimitive.Root
+        data-slot="scroll-area"
+        data-diff-viewer-horizontal-scrollbar=""
+        type="always"
+        className="relative max-h-60 min-w-0"
+      >
+        <ScrollAreaPrimitive.Viewport
+          data-slot="scroll-area-viewport"
+          ref={viewportRef}
+          className="[&>div]:!block max-h-60 w-full rounded-[inherit]"
+        >
+          <div data-diff-viewer-scroll-content="" className="w-max min-w-full">
+            {children}
+          </div>
+        </ScrollAreaPrimitive.Viewport>
+        <ScrollBar className={diffViewerScrollbarClassName} />
+        <ScrollBar
+          orientation="horizontal"
+          className={diffViewerScrollbarClassName}
+        />
+        <ScrollAreaPrimitive.Corner />
+      </ScrollAreaPrimitive.Root>
+    </VirtualizerContext.Provider>
+  );
+}
 
 export const DiffViewer = memo(function DiffViewer({
   patch,
@@ -194,14 +295,15 @@ function DiffViewerImpl({ patch, filePath }: DiffViewerProps) {
           </div>
         </div>
       )}
-      <Virtualizer className="max-h-60 overflow-auto">
+      <DiffScrollAreaVirtualizer>
         <FileDiff
+          className="diff-viewer-file-diff"
           fileDiff={fileDiff}
           options={patchDiffOptions}
           metrics={patchDiffMetrics}
           style={patchDiffStyle}
         />
-      </Virtualizer>
+      </DiffScrollAreaVirtualizer>
     </div>
   );
 }
