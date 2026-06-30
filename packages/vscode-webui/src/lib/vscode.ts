@@ -292,4 +292,6 @@ export const vscodeAutoMemoryManager: AutoMemoryManager = {
     (await loadAutoMemoryManager()).beginDreamRun(options),
   finishDreamRun: async (options) =>
     (await loadAutoMemoryManager()).finishDreamRun(options),
+  clearProjectMemory: async (options) =>
+    (await loadAutoMemoryManager()).clearProjectMemory(options),
 };

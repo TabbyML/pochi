@@ -95,4 +95,5 @@ export interface AutoMemoryManager {
     previousLastDreamAt: number;
     success: boolean;
   }): Promise<void>;
+  clearProjectMemory(options?: { cwd?: string }): Promise<void>;
 }

@@ -73,6 +73,17 @@ export function TokenUsage({
       setIsOpen(false);
     }
   };
+
+  const handleClearProjectMemory = async () => {
+    const confirmed = await vscodeHost.showInformationMessage(
+      t("tokenUsage.projectMemoryClear"),
+      { modal: true, detail: t("tokenUsage.projectMemoryClearConfirm") },
+      t("tokenUsage.projectMemoryClear"),
+    );
+    if (!confirmed) return;
+    await vscodeAutoMemoryManager.clearProjectMemory();
+    setIsOpen(false);
+  };
   const { t } = useTranslation();
   const contextWindow =
     selectedModel.options.contextWindow || constants.DefaultContextWindow;
@@ -282,7 +293,7 @@ export function TokenUsage({
                 </div>
 
                 {/* Project Memory row (label + toggle on the left, percentage on the right) */}
-                <div className="ml-3 flex items-center justify-between gap-2">
+                <div className="group/project-memory ml-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
@@ -352,11 +363,26 @@ export function TokenUsage({
                     </TooltipProvider>
                   </div>
 
-                  {autoMemoryAvailable && (
-                    <span className="text-muted-foreground">
-                      {formatPercentage(projectMemoryVal)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {autoMemoryAvailable && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={t("tokenUsage.projectMemoryClear")}
+                        className="invisible h-auto px-1.5 py-0.5 text-xs group-hover/project-memory:visible"
+                        onClick={() => {
+                          void handleClearProjectMemory();
+                        }}
+                      >
+                        {t("tokenUsage.projectMemoryReset")}
+                      </Button>
+                    )}
+                    {autoMemoryAvailable && (
+                      <span className="text-muted-foreground">
+                        {formatPercentage(projectMemoryVal)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Task Memory row (mirrors Project Memory row structure so the tooltip anchors at the same position) */}
