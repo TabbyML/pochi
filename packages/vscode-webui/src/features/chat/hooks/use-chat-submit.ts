@@ -82,10 +82,14 @@ export function useChatSubmit({
     if (isExecuting) {
       abortExecutingToolCalls();
       return true;
-    } else if (isLoading) {
+    }
+
+    if (isLoading) {
       stopChat();
       return true;
-    } else if (pendingApproval?.name === "retry") {
+    }
+
+    if (pendingApproval?.name === "retry") {
       pendingApproval.stopCountdown();
     }
   }, [
