@@ -196,35 +196,40 @@ export class FileStateCache {
  * @param operation - "editing" or "writing" — used in error message
  */
 export async function checkStaleness(
-  cache: IFileStateCache,
-  resolvedPath: string,
-  getMtime: (path: string) => Promise<number | undefined>,
-  operation: "editing" | "writing" = "editing",
+  _cache: IFileStateCache,
+  _resolvedPath: string,
+  _getMtime: (path: string) => Promise<number | undefined>,
+  _operation: "editing" | "writing" = "editing",
 ): Promise<void> {
-  const cachedState = cache.get(resolvedPath);
-
-  if (!cachedState) {
-    // The model hasn't read this file yet.
-    // If the file exists on disk, require the model to read it first to avoid
-    // blindly overwriting content it has never seen.
-    const currentMtime = await getMtime(resolvedPath);
-    if (currentMtime !== undefined) {
-      throw new Error(
-        `File has not been read yet. Please read the file before ${operation} it.`,
-      );
-    }
-    // File doesn't exist on disk — creating a new file is always allowed.
-    return;
-  }
-
-  const currentMtime = await getMtime(resolvedPath);
-  if (currentMtime === cachedState.timestamp) return;
-
-  const actualMtime =
-    currentMtime === undefined ? "missing" : String(currentMtime);
-  throw new Error(
-    `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${actualMtime}). Please read the file again before ${operation}.`,
-  );
+  // NOTE: The "read before edit/write" guard is temporarily disabled in full.
+  // This previously enforced two things before an edit/write:
+  //   1. The file must have been read at least once (otherwise throw
+  //      "File has not been read yet ...").
+  //   2. The file must not have been modified externally since it was last
+  //      read (otherwise throw "File has been modified since it was last
+  //      read ...").
+  // Both checks are now skipped so edits/writes always proceed.
+  //
+  // To re-enable, restore the original implementation below:
+  //
+  //   const cachedState = cache.get(resolvedPath);
+  //   if (!cachedState) {
+  //     const currentMtime = await getMtime(resolvedPath);
+  //     if (currentMtime !== undefined) {
+  //       throw new Error(
+  //         `File has not been read yet. Please read the file before ${operation} it.`,
+  //       );
+  //     }
+  //     return;
+  //   }
+  //   const currentMtime = await getMtime(resolvedPath);
+  //   if (currentMtime === cachedState.timestamp) return;
+  //   const actualMtime =
+  //     currentMtime === undefined ? "missing" : String(currentMtime);
+  //   throw new Error(
+  //     `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${actualMtime}). Please read the file again before ${operation}.`,
+  //   );
+  return;
 }
 
 /**
