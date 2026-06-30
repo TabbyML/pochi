@@ -214,6 +214,10 @@ export const CheckpointUI: React.FC<{
         <span
           className={cn(
             "flex items-center text-muted-foreground/60 group-hover:px-2.5 group-hover:text-foreground",
+            // The compact icon (size-3) is smaller than the git-commit icon
+            // (size-5), so it needs a tiny symmetric gap from the border lines
+            // when unhovered. The git-commit icon stays flush.
+            compactPart && "px-1",
             (isPending || showActionSuccessIcon) &&
               "pointer-events-none px-2.5",
           )}
@@ -248,7 +252,7 @@ export const CheckpointUI: React.FC<{
           </Button>
 
           {forkTask && (
-            <div className="ml-1 flex items-center">
+            <div className="ml-1 hidden items-center group-hover:flex">
               <span className="hidden group-hover:flex">{getForkIcon()}</span>
               <Button
                 size="sm"
@@ -263,7 +267,7 @@ export const CheckpointUI: React.FC<{
           )}
 
           {compactPart && (
-            <div className="ml-1 flex items-center">
+            <div className="ml-1 hidden items-center group-hover:flex">
               <span className="hidden group-hover:flex">
                 <SquareChartGantt className="size-3" />
               </span>
