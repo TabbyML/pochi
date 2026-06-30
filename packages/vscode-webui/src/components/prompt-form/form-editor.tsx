@@ -493,6 +493,12 @@ export function FormEditor({
             }
           }
 
+          // A document change without a navigation tag is a real user edit:
+          // end navigation so the new content becomes the live draft again.
+          if (!trMeta && props.transaction.docChanged) {
+            props.editor.commands.resetSubmitHistoryNavigation();
+          }
+
           props.editor.commands.updateCurrentDraft(
             JSON.stringify(props.editor.getJSON()),
           );

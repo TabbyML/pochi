@@ -7,15 +7,25 @@ interface SubmitHistoryOptions {
 }
 
 interface SubmitHistoryStorage {
+  // Persisted submit history, oldest first.
   history: string[];
+  // Current navigation position; see DraftIndex / EmptyIndex below.
   currentIndex: number;
+  // Whether the user is browsing history (entered via ArrowUp).
   isNavigating: boolean;
-  currentDraft: string; // Store current user input
+  // Snapshot of the unsent draft, retained while navigating and after clearing.
+  currentDraft: string;
 }
 
 export const extensionName = "submitHistory";
 
 const logger = getLogger("submit-history-extension");
+
+// Navigation positions for `currentIndex`. The unsent draft behaves like a
+// temporary entry appended to the end (newest) of the submit history:
+//   [Empty] <-> [Draft] <-> [history newest] <-> ... <-> [history oldest]
+const DraftIndex = -1; // showing the live/unsent draft
+const EmptyIndex = -2; // one step below the draft: input cleared, draft retained
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -24,6 +34,7 @@ declare module "@tiptap/core" {
       navigateSubmitHistory: (direction: "up" | "down") => ReturnType;
       clearSubmitHistory: () => ReturnType;
       updateCurrentDraft: (content: string) => ReturnType;
+      resetSubmitHistoryNavigation: () => ReturnType;
     };
   }
 }
@@ -43,7 +54,7 @@ export const SubmitHistoryExtension = Extension.create<
   addStorage() {
     return {
       history: [] as string[],
-      currentIndex: -1,
+      currentIndex: DraftIndex,
       isNavigating: false,
       currentDraft: "",
     };
@@ -69,8 +80,8 @@ export const SubmitHistoryExtension = Extension.create<
       addToSubmitHistory: (content: string) => () => {
         const storage = this.storage;
 
-        // Reset navigation index
-        storage.currentIndex = -1;
+        // End any in-progress navigation; the input is about to be cleared.
+        storage.currentIndex = DraftIndex;
         storage.isNavigating = false;
 
         // Don't add empty content or duplicate consecutive entries
@@ -107,88 +118,83 @@ export const SubmitHistoryExtension = Extension.create<
 
           if (historyLength === 0) return false;
 
-          // Always update current draft to capture any changes made during navigation
           const currentContent = JSON.stringify(tr.doc.toJSON());
 
-          // Store current content as draft when starting navigation
-          if (!storage.isNavigating) {
-            storage.currentDraft = currentContent;
-            storage.isNavigating = true;
-          } else if (storage.currentIndex === -1) {
-            // If we're at the current draft position, update it with current content
-            storage.currentDraft = currentContent;
-          }
-
-          if (direction === "up") {
-            // Navigate backwards in history (older entries)
-            if (storage.currentIndex < historyLength - 1) {
-              storage.currentIndex++;
-            }
-          } else {
-            // Navigate forwards in history (newer entries)
-            if (storage.currentIndex > 0) {
-              storage.currentIndex--;
-            } else if (storage.currentIndex === 0) {
-              // Check if current content is already the latest history content
-              // If so, don't clear input - just return false to allow default cursor behavior
-              const latestHistoryContent = storage.history[historyLength - 1];
-              if (currentContent === latestHistoryContent) {
-                return false;
-              }
-
-              // Go back to current draft
-              storage.currentIndex = -1;
-              storage.isNavigating = false;
-
-              try {
-                const node = state.schema.nodeFromJSON(
-                  JSON.parse(storage.currentDraft),
-                );
-
-                const transaction = tr.replaceWith(
-                  0,
-                  tr.doc.content.size,
-                  node,
-                );
-
-                if (dispatch) {
-                  dispatch(transaction);
-                }
-              } catch (error) {
-                logger.warn("Failed to save current draft to storage:", error);
-              }
-
-              return true;
-            } else {
-              // Already at current draft, can't go further down
-              return false;
-            }
-          }
-
-          if (
-            storage.currentIndex >= 0 &&
-            storage.currentIndex < historyLength
-          ) {
+          // Replace the whole document with `json` (empty string => empty doc)
+          // and tag the transaction as a programmatic navigation so the editor's
+          // onUpdate handler won't mistake it for a user edit.
+          const renderFromJSON = (json: string) => {
             try {
-              const historyContent =
-                storage.history[historyLength - 1 - storage.currentIndex];
-              const node = state.schema.nodeFromJSON(
-                JSON.parse(historyContent),
-              );
+              const node = json
+                ? state.schema.nodeFromJSON(JSON.parse(json))
+                : state.schema.topNodeType.createAndFill();
+              if (!node) return;
 
-              // Use transaction to replace content safely and position cursor appropriately
               const transaction = tr.replaceWith(0, tr.doc.content.size, node);
               transaction.setMeta(extensionName, { direction });
-
               if (dispatch) {
                 dispatch(transaction);
               }
             } catch (error) {
-              logger.warn("Failed to navigate submit history:", error);
+              logger.warn("Failed to render submit history content:", error);
             }
+          };
+
+          const renderHistory = () => {
+            renderFromJSON(
+              storage.history[historyLength - 1 - storage.currentIndex],
+            );
+          };
+
+          if (direction === "up") {
+            // From the cleared slot, Up brings the retained draft back.
+            if (storage.currentIndex === EmptyIndex) {
+              storage.currentIndex = DraftIndex;
+              renderFromJSON(storage.currentDraft);
+              return true;
+            }
+
+            // Capture the draft when navigation starts, or refresh it if the
+            // user edited the draft before navigating up again.
+            if (!storage.isNavigating) {
+              storage.currentDraft = currentContent;
+              storage.isNavigating = true;
+            } else if (storage.currentIndex === DraftIndex) {
+              storage.currentDraft = currentContent;
+            }
+
+            // Move to an older entry (if any) and show it.
+            if (storage.currentIndex < historyLength - 1) {
+              storage.currentIndex++;
+              renderHistory();
+            }
+            return true;
           }
 
-          return true;
+          // direction === "down": move toward newer entries.
+          if (storage.currentIndex > 0) {
+            storage.currentIndex--;
+            renderHistory();
+            return true;
+          }
+
+          if (storage.currentIndex === 0) {
+            // Back from the newest history entry to the unsent draft.
+            storage.currentIndex = DraftIndex;
+            renderFromJSON(storage.currentDraft);
+            return true;
+          }
+
+          if (storage.currentIndex === DraftIndex && storage.isNavigating) {
+            // Past the draft: clear the input but keep the draft so Up can
+            // recover it (the draft behaves like a temporary history entry).
+            storage.currentIndex = EmptyIndex;
+            renderFromJSON("");
+            return true;
+          }
+
+          // Empty slot, or not navigating: nothing newer to show.
+          return false;
         },
 
       clearSubmitHistory: () => () => {
@@ -211,9 +217,18 @@ export const SubmitHistoryExtension = Extension.create<
       updateCurrentDraft: (content: string) => () => {
         const storage = this.storage;
         // Only update draft if we're currently at the draft position (not viewing history)
-        if (storage.currentIndex === -1) {
+        if (storage.currentIndex === DraftIndex) {
           storage.currentDraft = content;
         }
+        return true;
+      },
+
+      // End navigation and treat the current content as the live draft again.
+      // Used when the user manually edits the input while browsing history.
+      resetSubmitHistoryNavigation: () => () => {
+        const storage = this.storage;
+        storage.currentIndex = DraftIndex;
+        storage.isNavigating = false;
         return true;
       },
     };
