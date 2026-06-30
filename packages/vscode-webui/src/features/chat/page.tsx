@@ -209,10 +209,6 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      if (chatAbortController.current.signal.aborted) {
-        return false;
-      }
-
       // AI SDK v5 can ask for automatic continuation after the user has
       // already submitted a newer message. Only continue from the exact state
       // that is still the current tail of the stream.
@@ -482,5 +478,20 @@ function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
 
 function getLastMessageState(messages: Message[]) {
   const lastMessage = messages.at(-1);
-  return lastMessage ? JSON.stringify(lastMessage) : undefined;
+  if (!lastMessage) {
+    return undefined;
+  }
+
+  // Build a lightweight fingerprint instead of serializing the whole message,
+  // whose tool outputs / text parts can be large. This still changes whenever a
+  // part is added, a tool part transitions state, or streamed text grows, which
+  // is all the auto-continue decision depends on.
+  const partsFingerprint = lastMessage.parts
+    .map((part) => {
+      const state = "state" in part ? part.state : "";
+      const size = "text" in part ? part.text.length : 0;
+      return `${part.type}:${state}:${size}`;
+    })
+    .join("|");
+  return `${lastMessage.id}@${partsFingerprint}`;
 }
