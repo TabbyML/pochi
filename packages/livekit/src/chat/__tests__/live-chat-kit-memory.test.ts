@@ -172,6 +172,36 @@ describe("LiveChatKit memory lifecycle", () => {
     },
   );
 
+  it("keeps the user message when the stream finishes before the assistant placeholder is added", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+
+    // Reproduces an early abort during task init: the abort-aware UI stream
+    // terminates with zero chunks (isAbort=false), so the streamed assistant
+    // message was never pushed into chat.messages, leaving only the user
+    // message when onFinish runs.
+    chatKit.chat.messages = [userMessage()];
+    chatKit.chat.finish(blankAssistantMessage());
+
+    expect(chatKit.chat.messages.map((message) => message.id)).toContain(
+      "user-1",
+    );
+  });
+
   it("updates task total tokens from the formatted compact estimate", () => {
     const store = new FakeStore([
       makeTask({
@@ -699,6 +729,14 @@ function assistantUserInputToolMessage(
         input,
       },
     ],
+  } as unknown as Message;
+}
+
+function blankAssistantMessage(): Message {
+  return {
+    id: "assistant-blank",
+    role: "assistant",
+    parts: [],
   } as unknown as Message;
 }
 
