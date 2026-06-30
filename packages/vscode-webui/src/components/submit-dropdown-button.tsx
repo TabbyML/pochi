@@ -46,6 +46,7 @@ interface SubmitDropdownButtonProps {
   isPlanMode?: boolean;
   onTogglePlanMode?: () => void;
   isTodoMode?: boolean;
+  showTodoMode?: boolean;
   onToggleTodoMode?: () => void;
   onSwitchSubmitMode?: () => void;
 }
@@ -61,6 +62,7 @@ export function SubmitDropdownButton({
   isPlanMode = false,
   onTogglePlanMode,
   isTodoMode = false,
+  showTodoMode = false,
   onToggleTodoMode,
   onSwitchSubmitMode,
 }: SubmitDropdownButtonProps) {
@@ -226,22 +228,24 @@ export function SubmitDropdownButton({
                 </Tooltip>
               </TooltipProvider>
 
-              <DropdownMenuItem
-                className="flex cursor-pointer items-center gap-2 px-2 py-1"
-                onSelect={(e) => e.preventDefault()}
-                onClick={() => onToggleTodoMode?.()}
-              >
-                <Target className="size-3.5 transition-colors duration-200" />
-                <span>{t("chat.todoModeLabel")}</span>
-                <Switch
-                  checked={isTodoMode}
-                  className="ml-auto scale-75"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleTodoMode?.();
-                  }}
-                />
-              </DropdownMenuItem>
+              {showTodoMode && (
+                <DropdownMenuItem
+                  className="flex cursor-pointer items-center gap-2 px-2 py-1"
+                  onSelect={(e) => e.preventDefault()}
+                  onClick={() => onToggleTodoMode?.()}
+                >
+                  <Target className="size-3.5 transition-colors duration-200" />
+                  <span>{t("chat.todoModeLabel")}</span>
+                  <Switch
+                    checked={isTodoMode}
+                    className="ml-auto scale-75"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleTodoMode?.();
+                    }}
+                  />
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuSeparator />
 
