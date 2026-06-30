@@ -16,16 +16,19 @@ const logger = getLogger("BrowserRecordingManager");
 
 const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
-const WhiteScreenCheckInterval = 500;
+const InvalidFrameCheckInterval = 500;
+const InvalidFrameSampleSize = 32;
+const InvalidFrameColorTolerance = 5;
+const RecordingStartDelayAfterInvalidFrameMs = 1000;
 const WebsocketRetryInterval = 2500;
 
 type BrowserRecordingOptions = {
   viewport?: BrowserAgentSettings["managedBrowser"]["viewport"];
 };
 
-function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
-  const width = 32;
-  const height = 32;
+function isInvalidRecordingFrame(imageBitmap: ImageBitmap): boolean {
+  const width = InvalidFrameSampleSize;
+  const height = InvalidFrameSampleSize;
   let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
     null;
 
@@ -44,13 +47,20 @@ function isWhiteScreen(imageBitmap: ImageBitmap): boolean {
   ctx.drawImage(imageBitmap, 0, 0, width, height);
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
+  const baseR = data[0];
+  const baseG = data[1];
+  const baseB = data[2];
 
-  // Check if all pixels are white
-  for (let i = 0; i < data.length; i += 4) {
+  for (let i = 4; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
-    if (r < 250 || g < 250 || b < 250) {
+
+    if (
+      Math.abs(r - baseR) > InvalidFrameColorTolerance ||
+      Math.abs(g - baseG) > InvalidFrameColorTolerance ||
+      Math.abs(b - baseB) > InvalidFrameColorTolerance
+    ) {
       return false;
     }
   }
@@ -114,7 +124,8 @@ export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
-  private lastWhiteScreenCheckTime = 0;
+  private lastInvalidFrameCheckTime = 0;
+  private validFrameStartTime = 0;
   private recordingUnavailable = false;
 
   // WebSocket related
@@ -150,7 +161,7 @@ export class BrowserRecordingSession {
             if (data.type === "frame") {
               const frame = data.data;
               void this.addFrame(frame);
-              // Only notify subscribers after recording has started (passed white screen check)
+              // Only notify subscribers after recording has started (passed invalid frame check)
               if (this.muxer) {
                 this.notifyFrame(frame);
               }
@@ -188,10 +199,10 @@ export class BrowserRecordingSession {
 
       if (!this.muxer) {
         const now = Date.now();
-        if (now - this.lastWhiteScreenCheckTime < WhiteScreenCheckInterval) {
+        if (now - this.lastInvalidFrameCheckTime < InvalidFrameCheckInterval) {
           return;
         }
-        this.lastWhiteScreenCheckTime = now;
+        this.lastInvalidFrameCheckTime = now;
       }
 
       const binaryString = window.atob(frame);
@@ -204,7 +215,16 @@ export class BrowserRecordingSession {
       const imageBitmap = await createImageBitmap(blob);
 
       if (!this.muxer) {
-        if (isWhiteScreen(imageBitmap)) {
+        const now = Date.now();
+        this.validFrameStartTime = isInvalidRecordingFrame(imageBitmap)
+          ? 0
+          : this.validFrameStartTime || now;
+
+        if (
+          !this.validFrameStartTime ||
+          now - this.validFrameStartTime <
+            RecordingStartDelayAfterInvalidFrameMs
+        ) {
           imageBitmap.close();
           return;
         }
