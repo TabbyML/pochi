@@ -81,6 +81,7 @@ export function useChatSubmit({
 
     if (isExecuting) {
       abortExecutingToolCalls();
+      return true;
     } else if (isLoading) {
       stopChat();
       return true;
