@@ -24,7 +24,6 @@ export const QuestionSchema = z.object({
     ),
   header: z
     .string()
-    .max(12)
     .describe(
       'Very short label displayed as a chip/tag (max 12 chars). Examples: "Auth method", "Library", "Approach".',
     ),
