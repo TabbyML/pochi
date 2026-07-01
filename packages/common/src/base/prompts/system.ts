@@ -1,4 +1,5 @@
-import type { CustomAgent } from "@getpochi/tools";
+import type { CustomAgent, Todo } from "@getpochi/tools";
+import { AttemptTodoCompletionAgentName } from "../constants";
 import type { Environment } from "../environment";
 import type { AutoMemoryContext } from "./auto-memory";
 import { buildAutoMemoryStaticPrompt } from "./auto-memory";
@@ -7,7 +8,10 @@ type CustomRules = Environment["info"]["customRules"];
 
 export interface SystemPromptOptions {
   todoModeEnabled?: boolean;
+  todos?: readonly Todo[];
 }
+
+const TodosPlaceholder = "{{TODOS}}";
 
 export function createSystemPrompt(
   customRules: CustomRules,
@@ -16,13 +20,18 @@ export function createSystemPrompt(
   autoMemory?: AutoMemoryContext,
   options?: SystemPromptOptions,
 ) {
-  const agentSystemPromptBody =
+  const rawAgentSystemPrompt =
     customAgent?.systemPrompt ||
     `You are Pochi, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
 
 IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are for helping the user with programming. You may use URLs provided by the user in their messages or local files.
 
 `.trim();
+  const agentSystemPromptBody = replaceTodoAuditTodosPlaceholder(
+    rawAgentSystemPrompt,
+    customAgent,
+    options,
+  );
   const agentSystemPrompt =
     customAgent?.systemPrompt && customAgent.filePath
       ? `${agentSystemPromptBody.trim()}\n\n[Agent location: ${customAgent.filePath}]\nUse the directory containing this agent's source file as the base directory for resolving any reference files mentioned above (e.g. \`references/<name>.md\` → \`<dir>/references/<name>.md\`).`
@@ -46,6 +55,19 @@ IMPORTANT: You must NEVER generate or guess URLs for the user unless you are con
     .trim();
 
   return `${agentSystemPrompt.trim()}\n\n${sections}`.trim();
+}
+
+function replaceTodoAuditTodosPlaceholder(
+  prompt: string,
+  customAgent?: CustomAgent,
+  options?: SystemPromptOptions,
+) {
+  if (customAgent?.name !== AttemptTodoCompletionAgentName) return prompt;
+
+  return prompt.replaceAll(
+    TodosPlaceholder,
+    JSON.stringify(options?.todos ?? [], null, 2),
+  );
 }
 
 function getRulesPrompt() {

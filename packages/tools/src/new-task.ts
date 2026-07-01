@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import type { Todo } from "./todo";
+import { Todo } from "./todo";
 import { defineClientTool } from "./types";
 
 export type SubTask = {
@@ -80,6 +80,7 @@ export const inputSchema = z.object({
         })
         .optional()
         .describe("Internal source attemptCompletion call metadata."),
+      todos: z.array(Todo).optional().describe("Internal source todos."),
     })
     .optional(),
   _transient: z

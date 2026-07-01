@@ -5,7 +5,6 @@ import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import type { AutoMemoryContext } from "@getpochi/common";
-import type { Environment } from "@getpochi/common";
 import {
   type DisplayModel,
   type McpConfigOverride,
@@ -56,11 +55,16 @@ export function useLiveChatKitGetters({
       taskId: taskId || undefined,
     });
 
+    const currentTodos = todos.current;
+    if (!currentTodos) {
+      return environment;
+    }
+
     return {
       ...environment,
-      todos: isSubTask ? undefined : todos.current,
-    } satisfies Environment;
-  }, [todos, isSubTask, omitCustomRules, taskId]);
+      todos: currentTodos,
+    };
+  }, [todos, omitCustomRules, taskId]);
 
   // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
   // the cached system+tools prefix. New memory shows on next mount.

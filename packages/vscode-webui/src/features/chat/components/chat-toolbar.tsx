@@ -256,7 +256,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     enable: allowAddToolResult,
     addToolOutput,
     taskId,
-    todos,
     todosRef,
   });
 
@@ -299,6 +298,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   // If there are pending reviews, we prioritize submitting them over completing the subtask.
   const showCompleteSubtaskButton =
     useShowCompleteSubtaskButton(subtask, messages) && !showSubmitReviewButton;
+  const visibleTodos = isSubTask ? [] : todos;
+  const hasVisibleTodos = visibleTodos.length > 0;
+  const hasVisibleChangedFiles =
+    useTaskChangedFilesHelpers.visibleChangedFiles.length > 0;
 
   return (
     <>
@@ -328,20 +331,19 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {(todos.length > 0 ||
-        useTaskChangedFilesHelpers.visibleChangedFiles.length > 0) && (
+      {(hasVisibleTodos || hasVisibleChangedFiles) && (
         <div
           className={cn(
             "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
           )}
         >
-          {todos.length > 0 && (
+          {hasVisibleTodos && (
             <TodoList
-              todos={todos}
-              editable={!isSubTask}
+              todos={visibleTodos}
+              editable
               onSaveTodos={commitTodos}
               todoPaused={todoPaused}
-              onTodoPausedChange={isSubTask ? undefined : onTodoPausedChange}
+              onTodoPausedChange={onTodoPausedChange}
             >
               <TodoList.Header />
               <TodoList.Items viewportClassname="max-h-48" />
@@ -350,7 +352,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <DiffSummary
             {...useTaskChangedFilesHelpers}
             className={cn({
-              "rounded-t-none border-border border-t": todos.length > 0,
+              "rounded-t-none border-border border-t": hasVisibleTodos,
             })}
           />
         </div>
@@ -375,9 +377,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         taskId={taskId}
         lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
         className={cn({
-          "rounded-t-none":
-            todos.length > 0 ||
-            useTaskChangedFilesHelpers.visibleChangedFiles.length > 0,
+          "rounded-t-none": hasVisibleTodos || hasVisibleChangedFiles,
         })}
       >
         {files.length > 0 && (

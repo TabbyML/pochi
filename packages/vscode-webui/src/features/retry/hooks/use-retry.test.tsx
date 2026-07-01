@@ -93,7 +93,7 @@ describe("getReadyForRetryError", () => {
                 result: {
                   success: true,
                   summary: "Done.",
-                  todoUpdates: [{ status: "completed" }],
+                  todoUpdates: [{ id: "todo-1", status: "completed" }],
                 },
               },
             },
@@ -123,7 +123,7 @@ describe("getReadyForRetryError", () => {
                 result: {
                   success: false,
                   summary: "More work remains.",
-                  todoUpdates: [{ status: "in-progress" }],
+                  todoUpdates: [{ id: "todo-1", status: "in-progress" }],
                 },
               },
             },
@@ -155,7 +155,7 @@ describe("getReadyForRetryError", () => {
                 result: JSON.stringify({
                   success: false,
                   summary: "More work remains.",
-                  todoUpdates: [{ status: "in-progress" }],
+                  todoUpdates: [{ id: "todo-1", status: "in-progress" }],
                 }),
               },
             },

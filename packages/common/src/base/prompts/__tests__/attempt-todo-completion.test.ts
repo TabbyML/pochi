@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { prompts } from "../index";
 
 describe("attemptTodoCompletion prompt", () => {
-  it("renders the active todo and quotes the prior summary", () => {
+  it("asks to audit the todo without exposing system prompt details", () => {
     const prompt = prompts.attemptTodoCompletion.buildPrompt(
       [
         {
@@ -17,15 +17,12 @@ describe("attemptTodoCompletion prompt", () => {
 
     expect(prompt).toBe(
       [
-        "Audit whether the todo below is satisfied in the current workspace:",
-        "Implement todo mode",
+        "Audit whether the todo is satisfied in the current workspace.",
         "",
-        "> Prior work summary",
-        "> First line.",
-        "> Second line.",
         "",
-        "**Verification rule**",
-        "Treat the summary as context, not proof. Verify the current workspace state before deciding the todo status.",
+        "**Prior work summary**",
+        "First line.",
+        "Second line.",
       ].join("\n"),
     );
   });

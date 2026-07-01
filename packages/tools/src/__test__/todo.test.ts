@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AttemptTodoCompletionResult, Todo, TodoUpdate } from "../todo";
+import {
+  AttemptTodoCompletionResult,
+  Todo,
+  TodoUpdate,
+  resolveAttemptTodoCompletionResult,
+} from "../todo";
 
 describe("Todo", () => {
   const todo = {
@@ -18,9 +23,10 @@ describe("Todo", () => {
       TodoUpdate.safeParse({
         status: "completed",
       }).success,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       TodoUpdate.safeParse({
+        id: "collect-information",
         status: "in-progress",
       }).success,
     ).toBe(true);
@@ -29,7 +35,7 @@ describe("Todo", () => {
         id: "collect-information",
         status: "completed",
       }),
-    ).toEqual({ status: "completed" });
+    ).toEqual({ id: "collect-information", status: "completed" });
   });
 
   it("accepts attempt todo completion results", () => {
@@ -42,8 +48,73 @@ describe("Todo", () => {
     ).toEqual({
       success: true,
       summary: "Done.",
-      todoUpdates: [{ status: "completed" }],
+      todoUpdates: [{ id: "collect-information", status: "completed" }],
     });
+  });
+
+  it("resolves todo updates by id into a full todos list", () => {
+    expect(
+      resolveAttemptTodoCompletionResult(
+        {
+          success: false,
+          summary: "Done.",
+          todoUpdates: [
+            { id: "review-changes", status: "in-progress" },
+            { id: "collect-information", status: "completed" },
+          ],
+        },
+        [
+          todo,
+          {
+            id: "review-changes",
+            content: "Review changes",
+            status: "pending",
+            priority: "medium",
+          },
+        ],
+      ),
+    ).toEqual({
+      success: false,
+      summary: "Done.",
+      todos: [
+        {
+          ...todo,
+          status: "completed",
+        },
+        {
+          id: "review-changes",
+          content: "Review changes",
+          status: "in-progress",
+          priority: "medium",
+        },
+      ],
+    });
+  });
+
+  it("rejects todo updates for unknown ids", () => {
+    expect(() =>
+      resolveAttemptTodoCompletionResult(
+        {
+          success: true,
+          summary: "Done.",
+          todoUpdates: [{ id: "missing", status: "completed" }],
+        },
+        [todo],
+      ),
+    ).toThrow("Invalid attemptTodoCompletion result");
+  });
+
+  it("rejects successful results when resolved todos still need work", () => {
+    expect(() =>
+      resolveAttemptTodoCompletionResult(
+        {
+          success: true,
+          summary: "Done.",
+          todoUpdates: [],
+        },
+        [todo],
+      ),
+    ).toThrow("Invalid attemptTodoCompletion result");
   });
 
   it("describes cancelled as a blocked state", () => {

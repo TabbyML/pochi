@@ -4,7 +4,10 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
-import { AttemptTodoCompletionResult, type Todo } from "@getpochi/tools";
+import {
+  ResolvedAttemptTodoCompletionResult,
+  type Todo,
+} from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 import type { RefObject } from "react";
 import { useEffect } from "react";
@@ -17,7 +20,6 @@ interface UseAddCompleteToolCallsProps {
   enable: boolean;
   addToolOutput: Chat<Message>["addToolOutput"];
   taskId?: string;
-  todos?: readonly Todo[];
   todosRef?: RefObject<Todo[] | undefined>;
 }
 
@@ -41,7 +43,6 @@ export function useAddCompleteToolCalls({
   // setMessages,
   addToolOutput,
   taskId,
-  todos,
   todosRef,
 }: UseAddCompleteToolCallsProps): void {
   const { completeToolCalls } = useToolCallLifeCycle();
@@ -69,28 +70,27 @@ export function useAddCompleteToolCalls({
     const lastCompletedToolCall = completedToolCalls.find(
       ({ toolCall }) => toolCall.toolCallId === lastToolPart?.toolCallId,
     );
-    const todoCompletionUpdate =
-      lastCompletedToolCall && taskId && todos
-        ? getTodoCompletionUpdate({
-            message: lastMessage,
-            toolCallId: lastCompletedToolCall.toolCall.toolCallId,
-            output: lastCompletedToolCall.output,
-            todos,
-          })
-        : undefined;
-    if (todoCompletionUpdate && taskId) {
-      if (todosRef) {
-        todosRef.current = todoCompletionUpdate.todos;
+    let todoCompletionUpdate: TodoCompletionUpdate | undefined;
+    if (lastCompletedToolCall && taskId) {
+      todoCompletionUpdate = getTodoCompletionUpdate({
+        message: lastMessage,
+        toolCallId: lastCompletedToolCall.toolCall.toolCallId,
+        output: lastCompletedToolCall.output,
+      });
+      if (todoCompletionUpdate) {
+        if (todosRef) {
+          todosRef.current = todoCompletionUpdate.todos;
+        }
+        store.commit(
+          catalog.events.attemptTodoCompletionFinished({
+            id: taskId,
+            data: todoCompletionUpdate.message,
+            todos: todoCompletionUpdate.todos,
+            status: todoCompletionUpdate.status,
+            updatedAt: new Date(),
+          }),
+        );
       }
-      store.commit(
-        catalog.events.attemptTodoCompletionFinished({
-          id: taskId,
-          data: todoCompletionUpdate.message,
-          todos: todoCompletionUpdate.todos,
-          status: todoCompletionUpdate.status,
-          updatedAt: new Date(),
-        }),
-      );
     }
 
     for (const { toolCall, output } of completedToolCalls) {
@@ -120,7 +120,6 @@ export function useAddCompleteToolCalls({
     messages,
     addToolOutput,
     taskId,
-    todos,
     todosRef,
     store,
   ]);
@@ -146,12 +145,10 @@ export function getTodoCompletionUpdate({
   message,
   toolCallId,
   output,
-  todos,
 }: {
   message: Message;
   toolCallId: string;
   output: unknown;
-  todos: readonly Todo[];
 }): TodoCompletionUpdate | undefined {
   const targetIndex = message.parts.findIndex(
     (part) =>
@@ -166,18 +163,11 @@ export function getTodoCompletionUpdate({
     typeof output === "object" && output !== null && "result" in output
       ? output.result
       : undefined;
-  const parsed = AttemptTodoCompletionResult.safeParse(
-    parseJsonString(rawResult),
-  );
-  if (!parsed.success) return undefined;
+  const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(rawResult);
+  if (!parsedResult.success || !parsedResult.data.success) return undefined;
+  const result = parsedResult.data;
 
-  const result = parsed.data;
-  if (!result.success) return undefined;
-  const update = result.todoUpdates.at(0);
-  if (!update) return undefined;
-
-  const nextTodos = applyTodoUpdates(todos, update.status);
-  if (hasSameTodoStatuses(todos, nextTodos)) return undefined;
+  const nextTodos = result.todos;
 
   return {
     toolCallId,
@@ -197,34 +187,6 @@ export function getTodoCompletionUpdate({
     status: "completed",
     output,
   };
-}
-
-function hasSameTodoStatuses(
-  previousTodos: readonly Todo[],
-  nextTodos: readonly Todo[],
-): boolean {
-  return previousTodos.every(
-    (todo, index) => todo.status === nextTodos[index]?.status,
-  );
-}
-
-function applyTodoUpdates(
-  todos: readonly Todo[],
-  status: Todo["status"],
-): Todo[] {
-  const [todo, ...rest] = todos;
-  if (!todo) return [];
-  return [{ ...todo, status }, ...rest];
-}
-
-function parseJsonString(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
 }
 
 function assertUnreachable(_x: never): never {

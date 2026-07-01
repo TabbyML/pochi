@@ -1,8 +1,6 @@
-import { prompts } from "@getpochi/common";
+import { constants, prompts } from "@getpochi/common";
 import type { Todo } from "@getpochi/tools";
 import type { Message } from "../types";
-
-export const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
 
 export function buildAttemptTodoCompletionInput(
   todos: readonly Todo[],
@@ -18,6 +16,7 @@ export function buildAttemptTodoCompletionInput(
   const meta = options?.uid
     ? {
         uid: options.uid,
+        todos: todos.map((todo) => ({ ...todo })),
         ...(options.sourceAttemptCompletion
           ? { sourceAttemptCompletion: options.sourceAttemptCompletion }
           : {}),
@@ -26,7 +25,7 @@ export function buildAttemptTodoCompletionInput(
 
   return {
     description: "",
-    agentType: AttemptTodoCompletionAgentName,
+    agentType: constants.AttemptTodoCompletionAgentName,
     prompt: prompts.attemptTodoCompletion.buildPrompt(todos, completionResult),
     ...(meta ? { _meta: meta } : {}),
   };

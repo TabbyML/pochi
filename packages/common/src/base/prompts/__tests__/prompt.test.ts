@@ -80,6 +80,33 @@ test("custom agent can omit custom rules", () => {
   ).not.toContain("USER'S CUSTOM INSTRUCTIONS");
 });
 
+test("attemptTodoCompletion custom agent replaces todo audit placeholder", () => {
+  const prompt = createSystemPrompt(
+    "",
+    {
+      name: "attemptTodoCompletion",
+      description: "audit todos",
+      systemPrompt: "Todos to audit:\n{{TODOS}}",
+    },
+    undefined,
+    undefined,
+    {
+      todos: [
+        {
+          id: "todo-1",
+          content: "Implement todo mode",
+          status: "in-progress",
+          priority: "medium",
+        },
+      ],
+    },
+  );
+
+  expect(prompt).toContain('"id": "todo-1"');
+  expect(prompt).toContain('"content": "Implement todo mode"');
+  expect(prompt).not.toContain("{{TODOS}}");
+});
+
 test("environment", () => {
   expect(
     createEnvironmentPrompt({

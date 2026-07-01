@@ -356,7 +356,14 @@ describe('formatters', () => {
       const auditResult = {
         success: false,
         summary: 'More work remains.',
-        todoUpdates: [{ status: 'in-progress' }],
+        todos: [
+          {
+            id: 'todo-1',
+            content: 'Implement todo mode',
+            status: 'in-progress',
+            priority: 'medium',
+          },
+        ],
       };
       const attemptCompletionInput = {
         result: 'The implementation is complete.',
@@ -401,6 +408,14 @@ describe('formatters', () => {
       expect(formattedToolPart.output).toEqual({
         success: false,
         reason: 'More work remains.',
+        todos: [
+          {
+            id: 'todo-1',
+            content: 'Implement todo mode',
+            status: 'in-progress',
+            priority: 'medium',
+          },
+        ],
       });
       expect(formattedToolPart.callProviderMetadata).toEqual({
         google: {

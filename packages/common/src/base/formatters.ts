@@ -6,7 +6,7 @@ import {
   isStaticToolUIPart,
 } from "ai";
 import { clone } from "remeda";
-import { KnownTags } from "./constants";
+import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
 import { prompts } from "./prompts";
 
 function resolvePendingToolCalls(
@@ -315,7 +315,7 @@ function isAttemptTodoCompletionNewTaskPart(
     typeof part.input === "object" &&
     part.input !== null &&
     "agentType" in part.input &&
-    part.input.agentType === "attemptTodoCompletion"
+    part.input.agentType === AttemptTodoCompletionAgentName
   );
 }
 
@@ -354,19 +354,25 @@ type AttemptTodoCompletionOutput = {
   result?: {
     success?: boolean;
     summary?: string;
+    todos?: unknown;
   };
 };
 
 function getReplacementAttemptCompletionOutput(part: ToolUIPart) {
   const output = part.output as AttemptTodoCompletionOutput | undefined;
+  const todos =
+    output?.result && "todos" in output.result
+      ? { todos: output.result.todos }
+      : {};
   if (output?.result?.success === false) {
     return {
       success: false,
       reason: output.result.summary ?? "Todo completion was not accepted.",
+      ...todos,
     };
   }
 
-  return { success: true };
+  return { success: true, ...todos };
 }
 
 function getCallProviderMetadataWithThoughtSignature(part: ToolUIPart) {

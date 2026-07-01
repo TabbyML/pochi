@@ -85,6 +85,11 @@ export function useLiveSubTask(
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   const todosRef = useRef<Todo[] | undefined>(undefined);
+  todosRef.current =
+    tool.state !== "input-streaming" &&
+    agentType === constants.AttemptTodoCompletionAgentName
+      ? tool.input?._meta?.todos
+      : undefined;
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     isSubTask: true,
