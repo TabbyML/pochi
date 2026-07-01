@@ -167,7 +167,9 @@ export function getTodoCompletionUpdate({
   if (!parsedResult.success || !parsedResult.data.success) return undefined;
   const result = parsedResult.data;
 
-  const nextTodos = result.todos;
+  const nextTodos = result.todos.every((todo) => todo.status === "completed")
+    ? []
+    : result.todos;
 
   return {
     toolCallId,
