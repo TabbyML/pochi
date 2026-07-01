@@ -43,7 +43,7 @@ function findToolPart(message: Message | undefined, toolCallId: string) {
 }
 
 describe("getTodoCompletionUpdate", () => {
-  it("returns a completion update when attemptTodoCompletion succeeds", () => {
+  it("clears todos when attemptTodoCompletion completes all todos", () => {
     const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
@@ -60,7 +60,7 @@ describe("getTodoCompletionUpdate", () => {
     expect(update).toMatchObject({
       toolCallId: "tool-1",
       status: "completed",
-      todos: [{ id: "todo-1", status: "completed" }],
+      todos: [],
     });
     expect(findToolPart(update?.message, "tool-1")).toMatchObject({
       state: "output-available",
@@ -84,12 +84,18 @@ describe("getTodoCompletionUpdate", () => {
     expect(update).toBeUndefined();
   });
 
-  it("uses resolved todos from attemptTodoCompletion results", () => {
+  it("keeps resolved todos unless every todo is completed", () => {
     const resolvedTodos: Todo[] = [
       {
         id: "resolved-todo-1",
         content: "Resolved todo",
         status: "completed",
+        priority: "medium",
+      },
+      {
+        id: "blocked-todo-1",
+        content: "Blocked todo",
+        status: "cancelled",
         priority: "medium",
       },
     ];
@@ -169,6 +175,6 @@ describe("getTodoCompletionUpdate", () => {
       },
     });
 
-    expect(update?.todos).toEqual(resolvedTodos);
+    expect(update?.todos).toEqual([]);
   });
 });
