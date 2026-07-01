@@ -54,6 +54,7 @@ vi.mock("@/features/approval", () => ({
 }));
 vi.mock("@/features/chat", () => ({
   useAutoApproveGuard: () => ({ current: "stop" }),
+  useToolCallLifeCycle: () => ({ completeToolCalls: [] }),
 }));
 vi.mock("@/features/settings", () => ({
   AutoApproveMenu: () => null,
