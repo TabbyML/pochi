@@ -85,8 +85,8 @@ describe("getReadyForRetryError", () => {
               toolCallId: "call-attempt-todo-completion",
               state: "output-available",
               input: {
-                description: "Audit todo satisfaction",
-                prompt: "Audit whether the current todo is satisfied.",
+                description: "Audit todo completion",
+                prompt: "Audit whether the current todo is complete.",
                 agentType: "attemptTodoCompletion",
               },
               output: {
@@ -115,8 +115,8 @@ describe("getReadyForRetryError", () => {
               toolCallId: "call-attempt-todo-completion",
               state: "output-available",
               input: {
-                description: "Audit todo satisfaction",
-                prompt: "Audit whether the current todo is satisfied.",
+                description: "Audit todo completion",
+                prompt: "Audit whether the current todo is complete.",
                 agentType: "attemptTodoCompletion",
               },
               output: {
@@ -147,8 +147,8 @@ describe("getReadyForRetryError", () => {
               toolCallId: "call-attempt-todo-completion",
               state: "output-available",
               input: {
-                description: "Audit todo satisfaction",
-                prompt: "Audit whether the current todo is satisfied.",
+                description: "Audit todo completion",
+                prompt: "Audit whether the current todo is complete.",
                 agentType: "attemptTodoCompletion",
               },
               output: {

@@ -146,7 +146,7 @@ describe("TodoList", () => {
     expect(screen.queryByText("todoList.allDone")).toBeNull();
   });
 
-  it("collapses and expands todos from the header", async () => {
+  it("defaults todo lists to collapsed and toggles from the header", async () => {
     render(
       <TodoList todos={[pendingTodo]}>
         <TodoList.Header />
@@ -157,7 +157,6 @@ describe("TodoList", () => {
     const row = document.getElementById("todo-item-todo-4");
     expect(row).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button"));
     await waitFor(() =>
       expect(
         row?.parentElement?.parentElement?.getAttribute("style"),
@@ -182,9 +181,18 @@ describe("TodoList", () => {
 
     const row = document.getElementById("todo-item-todo-1");
     expect(row).toBeTruthy();
-    expect(
-      row?.parentElement?.parentElement?.getAttribute("style"),
-    ).not.toContain("height: 0px");
+    await waitFor(() =>
+      expect(
+        row?.parentElement?.parentElement?.getAttribute("style"),
+      ).toContain("height: 0px"),
+    );
+
+    fireEvent.click(screen.getByRole("button"));
+    await waitFor(() =>
+      expect(
+        row?.parentElement?.parentElement?.getAttribute("style"),
+      ).not.toContain("height: 0px"),
+    );
 
     rerender(
       <TodoList
@@ -282,13 +290,40 @@ describe("TodoList", () => {
         name: "todoList.deleteTodo",
       }),
     ).toBeNull();
+    expect(
+      within(editActions)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual([
+      "todoList.saveTodo",
+      "todoList.cancelTodo",
+      "todoList.deleteTodo",
+    ]);
+    const saveButton = within(editActions).getByRole("button", {
+      name: "todoList.saveTodo",
+    });
+    expect(saveButton.className).toContain("h-6");
+    expect(saveButton.className).toContain("w-14");
+    const cancelButton = within(editActions).getByRole("button", {
+      name: "todoList.cancelTodo",
+    });
+    expect(cancelButton.textContent).toBe("todoList.cancelTodo");
+    expect(cancelButton.className).toContain("h-6");
+    expect(cancelButton.className).toContain("w-14");
+    expect(cancelButton.className).toContain("bg-secondary");
+    expect(cancelButton.className.split(/\s+/)).not.toContain("border");
     const deleteButton = within(editActions).getByRole("button", {
       name: "todoList.deleteTodo",
     });
-    expect(deleteButton.textContent).toBe("todoList.deleteTodo");
-    expect(deleteButton.className).toContain("bg-background");
+    expect(deleteButton.textContent).toBe("");
+    expect(deleteButton.className).toContain("h-6");
+    expect(deleteButton.className).toContain("w-6");
+    expect(deleteButton.className).toContain("ml-2");
+    expect(deleteButton.className.split(/\s+/)).not.toContain("border");
     expect(
-      within(editActions).queryByRole("button", { name: "todoList.cancel" }),
+      within(editActions).queryByRole("button", {
+        name: "todoList.editTodo",
+      }),
     ).toBeNull();
     expect(
       within(activeRow as HTMLElement).queryByRole("button", {
@@ -369,17 +404,29 @@ describe("TodoList", () => {
         name: "todoList.saveTodo",
       }),
     ).toBeNull();
+    expect(
+      within(completedRow as HTMLElement)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["todoList.deleteTodo"]);
     const deleteButton = within(completedRow as HTMLElement).getByRole(
       "button",
       {
         name: "todoList.deleteTodo",
       },
     );
-    expect(deleteButton.textContent).toBe("todoList.deleteTodo");
-    expect(deleteButton.className).toContain("bg-background");
+    expect(deleteButton.textContent).toBe("");
+    expect(deleteButton.className).toContain("w-6");
+    expect(deleteButton.className).toContain("ml-2");
+    expect(deleteButton.className.split(/\s+/)).not.toContain("border");
+    expect(
+      within(completedRow as HTMLElement).queryByRole("button", {
+        name: "todoList.cancelTodo",
+      }),
+    ).toBeNull();
   });
 
-  it("deletes todos from the item edit state", () => {
+  it("deletes todos from the trailing delete action", () => {
     const onSaveTodos = vi.fn();
 
     render(
@@ -409,7 +456,7 @@ describe("TodoList", () => {
     expect(onSaveTodos).toHaveBeenCalledWith([completedTodo]);
   });
 
-  it("can delete the only todo", () => {
+  it("can delete the only todo from the trailing delete action", () => {
     const onSaveTodos = vi.fn();
 
     render(
@@ -427,10 +474,83 @@ describe("TodoList", () => {
       }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "todoList.deleteTodo" }),
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.deleteTodo",
+      }),
     );
 
     expect(onSaveTodos).toHaveBeenCalledWith([]);
+  });
+
+  it("cancels draft changes from the item edit state", () => {
+    const onSaveTodos = vi.fn();
+
+    render(
+      <TodoList
+        todos={[activeTodo, completedTodo]}
+        editable
+        onSaveTodos={onSaveTodos}
+      >
+        <TodoList.Header />
+        <TodoList.Items />
+      </TodoList>,
+    );
+
+    const activeRow = document.getElementById("todo-item-todo-1");
+    expect(activeRow).toBeTruthy();
+    fireEvent.click(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    );
+    fireEvent.click(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.cancelTodo",
+      }),
+    );
+
+    expect(onSaveTodos).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText("Increase tests/basic.test.tsx coverage").length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "todoList.cancelTodo" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "todoList.deleteTodo" }),
+    ).toBeNull();
+  });
+
+  it("can cancel editing the only todo", () => {
+    const onSaveTodos = vi.fn();
+
+    render(
+      <TodoList todos={[activeTodo]} editable onSaveTodos={onSaveTodos}>
+        <TodoList.Header />
+        <TodoList.Items />
+      </TodoList>,
+    );
+
+    const activeRow = document.getElementById("todo-item-todo-1");
+    expect(activeRow).toBeTruthy();
+    fireEvent.click(
+      within(activeRow as HTMLElement).getByRole("button", {
+        name: "todoList.editTodo",
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "todoList.cancelTodo" }),
+    );
+
+    expect(onSaveTodos).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText("Increase tests/basic.test.tsx coverage").length,
+    ).toBeGreaterThan(0);
   });
 
   it("cancels draft changes with Escape", () => {

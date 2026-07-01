@@ -463,13 +463,14 @@
     "todos": "TODO",
     "allDone": "🎉 すべて完了！",
     "cancelledTodo": "Todoをキャンセルしました",
-    "editTodo": "Todoを編集",
+    "editTodo": "編集",
     "editTodos": "Todoを編集",
     "saveTodo": "保存",
     "saveTodos": "Todoを保存",
     "editTodoContent": "Todo内容を編集",
+    "cancelTodo": "キャンセル",
     "deleteTodo": "削除",
-    "pauseTodo": "Todoを一時停止",
+    "pauseTodo": "一時停止",
     "resumeTodo": "Todoを再開"
   },
   "commandExecutionPanel": {
@@ -577,8 +578,8 @@
     "paused": "一時停止"
   },
   "attemptTodoCompletionView": {
-    "auditing": "Todo を監査中",
-    "satisfied": "Todo は満たされています",
+    "auditing": "Todos を監査中",
+    "completed": "すべての Todos が完了しました",
     "needsWork": "Todo はさらに作業が必要です",
     "failed": "Todo 監査に失敗しました"
   },

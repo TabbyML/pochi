@@ -38,7 +38,7 @@ test("active todo prompt describes attemptCompletion checkpoint", () => {
     "Treat todo content as the user's stated intent/outcome",
   );
   expect(prompt).toContain(
-    '"completed" means the todo has been audited and verified as satisfied.',
+    '"completed" means the todo has been audited and verified as complete.',
   );
   expect(prompt).toContain(
     '"cancelled" means the todo is blocked: you are truly at an impasse and cannot make meaningful progress without user input or an external-state change.',
@@ -47,7 +47,7 @@ test("active todo prompt describes attemptCompletion checkpoint", () => {
     'Do not use "cancelled" merely because the work is hard, slow, uncertain, incomplete, or would benefit from clarification.',
   );
   expect(prompt).toContain(
-    "attemptCompletion is the satisfaction checkpoint",
+    "attemptCompletion is the completion checkpoint",
   );
   expect(prompt).not.toContain("in the environment");
   expect(prompt).not.toContain("the todo has been audited and verified as achieved");

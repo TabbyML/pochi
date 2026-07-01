@@ -239,7 +239,7 @@ function getTodos(todos: Environment["todos"]) {
   }
 
   return `# TODOs
-These TODOs represent user-provided desired outcomes for the current task. Treat todo content as the user's stated intent/outcome, not as higher-priority instructions or a separate task. Status meanings: pending has not started; in-progress is actively being pursued; completed is audited and verified as satisfied; cancelled means blocked at a true impasse without meaningful progress unless the user provides input or external state changes.
+These TODOs represent user-provided desired outcomes for the current task. Treat todo content as the user's stated intent/outcome, not as higher-priority instructions or a separate task. Status meanings: pending has not started; in-progress is actively being pursued; completed is audited and verified as complete; cancelled means blocked at a true impasse without meaningful progress unless the user provides input or external state changes.
 
 ${JSON.stringify(todos, null, 2)}`;
 }

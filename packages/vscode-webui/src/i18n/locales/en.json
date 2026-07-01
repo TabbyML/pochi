@@ -469,13 +469,14 @@
     "todos": "TODOs",
     "allDone": "🎉 All done!",
     "cancelledTodo": "Todo cancelled",
-    "editTodo": "Edit todo",
+    "editTodo": "Edit",
     "editTodos": "Edit todos",
     "saveTodo": "Save",
     "saveTodos": "Save todos",
     "editTodoContent": "Edit todo content",
+    "cancelTodo": "Cancel",
     "deleteTodo": "Delete",
-    "pauseTodo": "Pause todo",
+    "pauseTodo": "Pause",
     "resumeTodo": "Resume todo"
   },
   "commandExecutionPanel": {
@@ -579,8 +580,8 @@
     "paused": "Paused"
   },
   "attemptTodoCompletionView": {
-    "auditing": "Auditing todo",
-    "satisfied": "Todo satisfied",
+    "auditing": "Auditing todos",
+    "completed": "All todos completed",
     "needsWork": "Todo needs more work",
     "failed": "Todo audit failed"
   },
