@@ -2,9 +2,6 @@ import { constants, prompts } from "@getpochi/common";
 import type { Todo } from "@getpochi/tools";
 import type { Message } from "../types";
 
-export const AttemptTodoCompletionAgentName =
-  constants.AttemptTodoCompletionAgentName;
-
 export function buildAttemptTodoCompletionInput(
   todos: readonly Todo[],
   completionResult: unknown,
@@ -28,7 +25,7 @@ export function buildAttemptTodoCompletionInput(
 
   return {
     description: "",
-    agentType: AttemptTodoCompletionAgentName,
+    agentType: constants.AttemptTodoCompletionAgentName,
     prompt: prompts.attemptTodoCompletion.buildPrompt(todos, completionResult),
     ...(meta ? { _meta: meta } : {}),
   };
