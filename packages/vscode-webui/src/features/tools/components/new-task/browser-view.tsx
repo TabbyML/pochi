@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
 import { SubAgentView } from "./sub-agent-view";
 
+const BrowserRecordingVideoOffsetSeconds = 4.5;
+
 export function BrowserView(props: NewTaskToolViewProps) {
   const { taskSource, uid, tool, toolCallStatusRegistryRef, isExecuting } =
     props;
@@ -36,7 +38,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
         {!isExecuting && videoUrl ? (
           // biome-ignore lint/a11y/useMediaCaption: No audio track available
           <video
-            src={videoUrl}
+            src={`${videoUrl}#t=${BrowserRecordingVideoOffsetSeconds}`}
             controls
             playsInline
             className="h-full w-full object-contain"
