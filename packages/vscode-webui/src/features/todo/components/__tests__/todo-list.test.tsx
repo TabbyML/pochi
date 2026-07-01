@@ -408,7 +408,7 @@ describe("TodoList", () => {
       within(completedRow as HTMLElement)
         .getAllByRole("button")
         .map((button) => button.getAttribute("aria-label")),
-    ).toEqual(["todoList.cancelTodo", "todoList.deleteTodo"]);
+    ).toEqual(["todoList.deleteTodo"]);
     const deleteButton = within(completedRow as HTMLElement).getByRole(
       "button",
       {
@@ -419,15 +419,11 @@ describe("TodoList", () => {
     expect(deleteButton.className).toContain("w-6");
     expect(deleteButton.className).toContain("ml-2");
     expect(deleteButton.className.split(/\s+/)).not.toContain("border");
-    const cancelButton = within(completedRow as HTMLElement).getByRole(
-      "button",
-      {
+    expect(
+      within(completedRow as HTMLElement).queryByRole("button", {
         name: "todoList.cancelTodo",
-      },
-    );
-    expect(cancelButton.textContent).toBe("todoList.cancelTodo");
-    expect(cancelButton.className).toContain("bg-secondary");
-    expect(cancelButton.className.split(/\s+/)).not.toContain("border");
+      }),
+    ).toBeNull();
   });
 
   it("deletes todos from the trailing delete action", () => {

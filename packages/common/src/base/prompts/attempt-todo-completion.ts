@@ -10,7 +10,7 @@ export function buildAttemptTodoCompletionPrompt(
       : JSON.stringify(completionResult);
 
   return [
-    "Audit whether the todo is satisfied in the current workspace.",
+    "Audit whether the todo is complete in the current workspace.",
     "",
     "",
     renderPriorSummary(resultText ?? ""),

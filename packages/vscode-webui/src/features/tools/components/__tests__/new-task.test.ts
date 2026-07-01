@@ -72,25 +72,25 @@ describe("getAttemptTodoCompletionSummary", () => {
 });
 
 describe("getAttemptTodoCompletionState", () => {
-  it("detects resolved satisfied todo completion results", () => {
+  it("detects resolved completed todo completion results", () => {
     expect(
       getAttemptTodoCompletionState({
         success: true,
-        summary: "Todo is satisfied.",
+        summary: "All todos are complete.",
         todos: completedTodos,
       }),
     ).toEqual({
-      status: "satisfied",
-      summary: "Todo is satisfied.",
+      status: "completed",
+      summary: "All todos are complete.",
     });
   });
 
-  it("detects satisfied todo completion results", () => {
+  it("detects completed todo completion results", () => {
     expect(
       getAttemptTodoCompletionState(
         JSON.stringify({
           success: true,
-          summary: "Todo is satisfied.",
+          summary: "All todos are complete.",
           todos: completedTodos,
         }),
       ),

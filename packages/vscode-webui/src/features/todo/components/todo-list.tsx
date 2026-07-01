@@ -512,8 +512,12 @@ function TodoTrailingActions({ todo }: { todo: Todo }) {
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      {isActiveTodo(todo) && <TodoSaveButton />}
-      <TodoCancelButton />
+      {isActiveTodo(todo) && (
+        <>
+          <TodoSaveButton />
+          <TodoCancelButton />
+        </>
+      )}
       <TodoDeleteButton todo={todo} />
     </div>
   );

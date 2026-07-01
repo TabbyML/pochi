@@ -17,7 +17,7 @@ describe("attemptTodoCompletion prompt", () => {
 
     expect(prompt).toBe(
       [
-        "Audit whether the todo is satisfied in the current workspace.",
+        "Audit whether the todo is complete in the current workspace.",
         "",
         "",
         "**Prior work summary**",
