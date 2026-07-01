@@ -16,57 +16,11 @@ const logger = getLogger("BrowserRecordingManager");
 
 const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 
-const InvalidFrameCheckInterval = 500;
-const InvalidFrameSampleSize = 32;
-const InvalidFrameColorTolerance = 5;
-const RecordingStartDelayAfterInvalidFrameMs = 1000;
 const WebsocketRetryInterval = 2500;
 
 type BrowserRecordingOptions = {
   viewport?: BrowserAgentSettings["managedBrowser"]["viewport"];
 };
-
-function isInvalidRecordingFrame(imageBitmap: ImageBitmap): boolean {
-  const width = InvalidFrameSampleSize;
-  const height = InvalidFrameSampleSize;
-  let ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null =
-    null;
-
-  if (typeof OffscreenCanvas !== "undefined") {
-    const canvas = new OffscreenCanvas(width, height);
-    ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
-  } else {
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    ctx = canvas.getContext("2d");
-  }
-
-  if (!ctx) return false;
-
-  ctx.drawImage(imageBitmap, 0, 0, width, height);
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const data = imageData.data;
-  const baseR = data[0];
-  const baseG = data[1];
-  const baseB = data[2];
-
-  for (let i = 4; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-
-    if (
-      Math.abs(r - baseR) > InvalidFrameColorTolerance ||
-      Math.abs(g - baseG) > InvalidFrameColorTolerance ||
-      Math.abs(b - baseB) > InvalidFrameColorTolerance
-    ) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 async function createRecordingImageBitmap(
   imageBitmap: ImageBitmap,
@@ -124,8 +78,6 @@ export class BrowserRecordingSession {
   private muxer: Muxer<ArrayBufferTarget> | null = null;
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
-  private lastInvalidFrameCheckTime = 0;
-  private validFrameStartTime = 0;
   private recordingUnavailable = false;
 
   // WebSocket related
@@ -161,7 +113,6 @@ export class BrowserRecordingSession {
             if (data.type === "frame") {
               const frame = data.data;
               void this.addFrame(frame);
-              // Only notify subscribers after recording has started (passed invalid frame check)
               if (this.muxer) {
                 this.notifyFrame(frame);
               }
@@ -197,14 +148,6 @@ export class BrowserRecordingSession {
         return;
       }
 
-      if (!this.muxer) {
-        const now = Date.now();
-        if (now - this.lastInvalidFrameCheckTime < InvalidFrameCheckInterval) {
-          return;
-        }
-        this.lastInvalidFrameCheckTime = now;
-      }
-
       const binaryString = window.atob(frame);
       const len = binaryString.length;
       const bytes = new Uint8Array(len);
@@ -213,22 +156,6 @@ export class BrowserRecordingSession {
       }
       const blob = new Blob([bytes], { type: "image/jpeg" });
       const imageBitmap = await createImageBitmap(blob);
-
-      if (!this.muxer) {
-        const now = Date.now();
-        this.validFrameStartTime = isInvalidRecordingFrame(imageBitmap)
-          ? 0
-          : this.validFrameStartTime || now;
-
-        if (
-          !this.validFrameStartTime ||
-          now - this.validFrameStartTime <
-            RecordingStartDelayAfterInvalidFrameMs
-        ) {
-          imageBitmap.close();
-          return;
-        }
-      }
 
       const recordingImageBitmap = await createRecordingImageBitmap(
         imageBitmap,
