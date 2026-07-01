@@ -187,6 +187,36 @@ describe("long-term memory prompt helpers", () => {
     expect(messages[0].parts).toHaveLength(1);
   });
 
+  it("injectAutoMemory strips a persisted reminder when memory is disabled", () => {
+    // Simulate a reminder that was injected on turn 1 and persisted, then
+    // followed by more turns (so the length !== 1 guard would skip re-injection).
+    const messages: UIMessage[] = [makeUserMessage("first")];
+    injectAutoMemory(messages, sampleContext);
+    expect(
+      messages[0].parts.some(
+        (p) => p.type === "text" && isAutoMemorySystemReminder(p.text),
+      ),
+    ).toBe(true);
+
+    messages.push(
+      { id: "asst-1", role: "assistant", parts: [{ type: "text", text: "ok" }] },
+      makeUserMessage("second"),
+    );
+
+    // Disabling memory (context undefined) should remove the persisted reminder.
+    injectAutoMemory(messages, undefined);
+    expect(
+      messages[0].parts.some(
+        (p) => p.type === "text" && isAutoMemorySystemReminder(p.text),
+      ),
+    ).toBe(false);
+    // The user's original text is preserved.
+    expect(messages[0].parts).toHaveLength(1);
+    const userPart = messages[0].parts[0];
+    if (userPart.type !== "text") throw new Error("expected text part");
+    expect(userPart.text).toBe("first");
+  });
+
   it("injectAutoMemory only fires on the first user turn", () => {
     const messages: UIMessage[] = [
       makeUserMessage("first"),

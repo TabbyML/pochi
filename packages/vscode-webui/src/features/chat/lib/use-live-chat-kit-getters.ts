@@ -1,4 +1,5 @@
 import { useSelectedModels } from "@/features/settings";
+import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
@@ -62,12 +63,24 @@ export function useLiveChatKitGetters({
     } satisfies Environment;
   }, [todos, isSubTask, omitCustomRules, taskId]);
 
+  // Read the current enable state so disabling the checkbox takes effect for
+  // the current task (not just on the next mount).
+  const { autoMemoryEnabled } = useAutoMemoryEnabled();
+  const autoMemoryEnabledRef = useLatest(autoMemoryEnabled);
+
   // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
   // the cached system+tools prefix. New memory shows on next mount.
   const autoMemoryCacheRef = useRef<Promise<
     AutoMemoryContext | undefined
   > | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies(autoMemoryEnabledRef.current): ref is stable.
   const getAutoMemory = useCallback(() => {
+    // When project memory is disabled, drop any cached context so it is no
+    // longer injected into the prompt and re-enabling reads it fresh.
+    if (!autoMemoryEnabledRef.current) {
+      autoMemoryCacheRef.current = null;
+      return Promise.resolve(undefined);
+    }
     if (autoMemoryCacheRef.current) return autoMemoryCacheRef.current;
     const pending = vscodeAutoMemoryManager.readContext();
     autoMemoryCacheRef.current = pending;
