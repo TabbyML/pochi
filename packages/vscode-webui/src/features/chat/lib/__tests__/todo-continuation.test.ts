@@ -54,7 +54,7 @@ describe("getTodoContinuationDecision", () => {
           result: JSON.stringify({
             success: false,
             summary: "More work remains.",
-            todoUpdates: [{ status: "in-progress" }],
+            todoUpdates: [{ id: "todo-1", status: "in-progress" }],
           }),
         }),
       ]),

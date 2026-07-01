@@ -19,7 +19,7 @@ import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
+import { type Todo, parseOutputSchema } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -119,7 +119,21 @@ function Chat({ user, uid, info }: ChatProps) {
   } = useSelectedModels({
     isSubTask,
   });
-  const { customAgent } = useCustomAgent(subtask?.agent);
+  const { customAgent, isLoading: isCustomAgentLoading } = useCustomAgent(
+    subtask?.agent,
+  );
+  const attemptCompletionSchema = useMemo(() => {
+    const resultSchema = customAgent?.isBuiltIn
+      ? customAgent._internal?.resultSchema
+      : undefined;
+    return resultSchema ? parseOutputSchema(resultSchema) : undefined;
+  }, [customAgent?.isBuiltIn, customAgent?._internal?.resultSchema]);
+  if (isSubTask) {
+    todosRef.current =
+      subtask?.agent === constants.AttemptTodoCompletionAgentName
+        ? subtask.todos
+        : undefined;
+  }
   const autoApproveGuard = useAutoApproveGuard();
 
   // Get mcpConfigOverride from TaskStateStore
@@ -179,6 +193,7 @@ function Chat({ user, uid, info }: ChatProps) {
     getters,
     isSubTask,
     customAgent,
+    attemptCompletionSchema,
     abortSignal: chatAbortController.current.signal,
     enableAutoCompact: !isSubTask,
     onCompactStart,
@@ -324,7 +339,8 @@ function Chat({ user, uid, info }: ChatProps) {
       messages.length === 1 &&
       !isModelsLoading &&
       !!selectedModel &&
-      info.type !== "fork-task",
+      info.type !== "fork-task" &&
+      (!isSubTask || (!!subtask && !(subtask.agent && isCustomAgentLoading))),
     task,
     retry,
   });

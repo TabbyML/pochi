@@ -33,9 +33,10 @@ export const Todo = z.object({
 export type Todo = z.infer<typeof Todo>;
 
 export const TodoUpdate = z.object({
+  id: z.string().describe("The id of the todo whose status should be updated."),
   status: z
     .enum(["in-progress", "completed", "cancelled"])
-    .describe("The next status for the active todo."),
+    .describe("The next status for the todo."),
 });
 
 export type TodoUpdate = z.infer<typeof TodoUpdate>;
@@ -49,7 +50,7 @@ export const AttemptTodoCompletionResult = z.object({
   summary: z.string().describe("A concise summary of the todo audit result."),
   todoUpdates: z
     .array(TodoUpdate)
-    .describe("Status update for the active todo."),
+    .describe("Status updates for audited todos."),
 });
 
 export type AttemptTodoCompletionResult = z.infer<
@@ -60,9 +61,14 @@ export const ResolvedAttemptTodoCompletionResult =
   AttemptTodoCompletionResult.pick({
     success: true,
     summary: true,
-  }).extend({
-    todos: z.array(Todo).describe("The resolved complete todos list."),
-  });
+  })
+    .extend({
+      todos: z.array(Todo).describe("The resolved complete todos list."),
+    })
+    .refine(
+      (result) => result.success === result.todos.every(isTodoResolved),
+      "Success must match whether all resolved todos are completed or cancelled.",
+    );
 
 export type ResolvedAttemptTodoCompletionResult = z.infer<
   typeof ResolvedAttemptTodoCompletionResult
@@ -79,25 +85,41 @@ export function resolveAttemptTodoCompletionResult(
     throw new Error("Invalid attemptTodoCompletion result");
   }
 
-  const update = parsedResult.data.todoUpdates.at(0);
-  const resolvedTodos = update
-    ? applyTodoStatusUpdate(todos, update.status)
-    : todos.map((todo) => ({ ...todo }));
+  const resolvedTodos = applyTodoStatusUpdates(
+    todos,
+    parsedResult.data.todoUpdates,
+  );
 
-  return ResolvedAttemptTodoCompletionResult.parse({
+  const resolvedResult = ResolvedAttemptTodoCompletionResult.safeParse({
     success: parsedResult.data.success,
     summary: parsedResult.data.summary,
     todos: resolvedTodos,
   });
+  if (!resolvedResult.success) {
+    throw new Error("Invalid attemptTodoCompletion result");
+  }
+
+  return resolvedResult.data;
 }
 
-function applyTodoStatusUpdate(
+function applyTodoStatusUpdates(
   todos: readonly Todo[],
-  status: Todo["status"],
+  updates: readonly TodoUpdate[],
 ): Todo[] {
-  const [todo, ...rest] = todos;
-  if (!todo) return [];
-  return [{ ...todo, status }, ...rest.map((todo) => ({ ...todo }))];
+  const todoIds = new Set(todos.map((todo) => todo.id));
+  const statusById = new Map<string, Todo["status"]>();
+
+  for (const update of updates) {
+    if (!todoIds.has(update.id) || statusById.has(update.id)) {
+      throw new Error("Invalid attemptTodoCompletion result");
+    }
+    statusById.set(update.id, update.status);
+  }
+
+  return todos.map((todo) => ({
+    ...todo,
+    status: statusById.get(todo.id) ?? todo.status,
+  }));
 }
 
 function parseJsonString(value: unknown): unknown {
@@ -108,4 +130,8 @@ function parseJsonString(value: unknown): unknown {
   } catch {
     return value;
   }
+}
+
+function isTodoResolved(todo: Todo) {
+  return todo.status === "completed" || todo.status === "cancelled";
 }

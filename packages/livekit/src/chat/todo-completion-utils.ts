@@ -1,8 +1,9 @@
-import { prompts } from "@getpochi/common";
+import { constants, prompts } from "@getpochi/common";
 import type { Todo } from "@getpochi/tools";
 import type { Message } from "../types";
 
-export const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
+export const AttemptTodoCompletionAgentName =
+  constants.AttemptTodoCompletionAgentName;
 
 export function buildAttemptTodoCompletionInput(
   todos: readonly Todo[],

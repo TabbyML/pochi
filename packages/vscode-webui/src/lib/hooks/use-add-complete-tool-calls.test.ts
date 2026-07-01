@@ -108,12 +108,7 @@ describe("getTodoCompletionUpdate", () => {
     expect(update?.todos).toEqual(resolvedTodos);
   });
 
-  it("returns a completion update when resolved todo statuses are unchanged", () => {
-    const resolvedTodos: Todo[] = [
-      {
-        ...baseTodos[0],
-      },
-    ];
+  it("does not return a completion update when resolved todos still need work", () => {
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",
@@ -121,15 +116,27 @@ describe("getTodoCompletionUpdate", () => {
         result: {
           success: true,
           summary: "Done.",
-          todos: resolvedTodos,
+          todos: baseTodos,
         },
       },
     });
 
-    expect(update?.todos).toEqual(resolvedTodos);
-    expect(findToolPart(update?.message, "tool-1")).toMatchObject({
-      state: "output-available",
+    expect(update).toBeUndefined();
+  });
+
+  it("does not return a completion update for malformed resolved results", () => {
+    const update = getTodoCompletionUpdate({
+      message: makeAttemptTodoCompletionMessage(),
+      toolCallId: "tool-1",
+      output: {
+        result: {
+          success: true,
+          summary: "Done.",
+        },
+      },
     });
+
+    expect(update).toBeUndefined();
   });
 
   it("does not return a completion update when attemptTodoCompletion rejects completion", () => {

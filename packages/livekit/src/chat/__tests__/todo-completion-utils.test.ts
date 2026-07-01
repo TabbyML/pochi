@@ -70,18 +70,15 @@ describe("replaceAttemptCompletionWithTodoSubtask", () => {
       >
     ).input?.prompt;
     expect(prompt).toBe([
-      "Audit whether the todo below is satisfied in the current workspace:",
-      "Implement todo mode",
+      "Audit whether the todo is satisfied in the current workspace.",
       "",
-      "> Prior work summary",
-      "> The implementation is complete.",
       "",
-      "**Verification rule**",
-      "Treat the summary as context, not proof. Verify the current workspace state before deciding the todo status.",
+      "**Prior work summary**",
+      "The implementation is complete.",
     ].join("\n"));
   });
 
-  it("quotes multi-line prior summaries without XML tags", () => {
+  it("renders multi-line prior summaries without XML tags or blockquotes", () => {
     const message: Message = {
       id: "assistant-1",
       role: "assistant",
@@ -116,7 +113,8 @@ describe("replaceAttemptCompletionWithTodoSubtask", () => {
         { type: "tool-newTask" }
       >
     ).input?.prompt;
-    expect(prompt).toContain("> First line.\n> Second line.");
+    expect(prompt).toContain("**Prior work summary**\nFirst line.\nSecond line.");
+    expect(prompt).not.toContain("> First line.");
     expect(prompt).not.toContain("<attemptCompletionResult>");
   });
 

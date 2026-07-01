@@ -295,7 +295,7 @@ describe("selectAgentTools", () => {
         }),
         createAgent({
           name: "attemptTodoCompletion",
-          description: "Audit whether the active todo is satisfied.",
+          description: "Audit whether the main task todos are satisfied.",
         }),
       ],
     });
@@ -303,7 +303,7 @@ describe("selectAgentTools", () => {
     expect(tools.newTask?.description).toContain("child-agent");
     expect(tools.newTask?.description).not.toContain("attemptTodoCompletion");
     expect(tools.newTask?.description).not.toContain(
-      "Audit whether the active todo is satisfied.",
+      "Audit whether the main task todos are satisfied.",
     );
   });
 

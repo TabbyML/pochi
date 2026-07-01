@@ -1,6 +1,6 @@
 import { blobStore } from "@/lib/remote-blob-store";
 import { vscodeHost } from "@/lib/vscode";
-import { getLogger } from "@getpochi/common";
+import { constants, getLogger, toErrorMessage } from "@getpochi/common";
 import type {
   BuiltinSubAgentInfo,
   ExecuteCommandResult,
@@ -40,8 +40,6 @@ type NewTaskReturnType = {
   todos?: readonly Todo[];
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
-
-const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
 
 export type StreamingResult =
   | {
@@ -426,7 +424,7 @@ export class ManagedToolCallLifeCycle
         task?.status === "completed" &&
         this.state.type === "execute:streaming"
       ) {
-        if (agentType === AttemptTodoCompletionAgentName && todos) {
+        if (agentType === constants.AttemptTodoCompletionAgentName && todos) {
           const result = (() => {
             try {
               const rawResult = extractTaskResult(this.store, uid);
@@ -435,7 +433,7 @@ export class ManagedToolCallLifeCycle
               };
             } catch (error) {
               return {
-                error: getErrorMessage(error),
+                error: toErrorMessage(error),
               };
             }
           })();
@@ -518,8 +516,4 @@ export class ManagedToolCallLifeCycle
     );
     this.emit(this.state.type, this.state);
   }
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

@@ -6,7 +6,7 @@ import {
   isStaticToolUIPart,
 } from "ai";
 import { clone } from "remeda";
-import { KnownTags } from "./constants";
+import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
 import { prompts } from "./prompts";
 
 function resolvePendingToolCalls(
@@ -315,7 +315,7 @@ function isAttemptTodoCompletionNewTaskPart(
     typeof part.input === "object" &&
     part.input !== null &&
     "agentType" in part.input &&
-    part.input.agentType === "attemptTodoCompletion"
+    part.input.agentType === AttemptTodoCompletionAgentName
   );
 }
 

@@ -67,7 +67,7 @@ describe("ManagedToolCallLifeCycle", () => {
             result: {
               success: true,
               summary: "Done.",
-              todoUpdates: [{ status: "completed" }],
+              todoUpdates: [{ id: "todo-1", status: "completed" }],
             },
           },
         },

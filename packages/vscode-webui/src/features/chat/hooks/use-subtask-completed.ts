@@ -1,10 +1,15 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import type { UseChatHelpers } from "@ai-sdk/react";
+import { constants, toErrorMessage } from "@getpochi/common";
 import { type Message, catalog, extractTaskResult } from "@getpochi/livekit";
+import {
+  Todo as TodoSchema,
+  resolveAttemptTodoCompletionResult,
+} from "@getpochi/tools";
 import { getStaticToolName } from "ai";
 import { useEffect, useMemo } from "react";
 import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
-import type { SubtaskInfo } from "./use-subtask-info";
+import type { NewTaskTool, SubtaskInfo } from "./use-subtask-info";
 
 // Detect if subtask is completed (in subtask)
 export const useShowCompleteSubtaskButton = (
@@ -73,8 +78,27 @@ export const useAddSubtaskResult = ({
       const result = extractTaskResult(store, subtaskUid);
       if (result) {
         autoApproveGuard.current = "auto";
-        lifecycle.addResult({ result });
+        lifecycle.addResult(getSubtaskToolOutput(toolPart, result));
       }
     }
   }, [autoApproveGuard, messages, getToolCallLifeCycle, store]);
 };
+
+function getSubtaskToolOutput(toolPart: NewTaskTool, result: unknown) {
+  if (toolPart.input?.agentType !== constants.AttemptTodoCompletionAgentName) {
+    return { result };
+  }
+
+  const todos = TodoSchema.array().safeParse(toolPart.input?._meta?.todos);
+  if (!todos.success) return { result };
+
+  try {
+    return {
+      result: resolveAttemptTodoCompletionResult(result, todos.data),
+    };
+  } catch (error) {
+    return {
+      error: toErrorMessage(error),
+    };
+  }
+}

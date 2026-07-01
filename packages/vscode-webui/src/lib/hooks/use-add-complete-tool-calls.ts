@@ -4,9 +4,9 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
-import type {
+import {
   ResolvedAttemptTodoCompletionResult,
-  Todo,
+  type Todo,
 } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 import type { RefObject } from "react";
@@ -163,8 +163,9 @@ export function getTodoCompletionUpdate({
     typeof output === "object" && output !== null && "result" in output
       ? output.result
       : undefined;
-  const result = rawResult as ResolvedAttemptTodoCompletionResult | undefined;
-  if (!result?.success) return undefined;
+  const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(rawResult);
+  if (!parsedResult.success || !parsedResult.data.success) return undefined;
+  const result = parsedResult.data;
 
   const nextTodos = result.todos;
 
