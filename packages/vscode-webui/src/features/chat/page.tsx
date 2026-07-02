@@ -155,7 +155,7 @@ function Chat({ user, uid, info }: ChatProps) {
     taskId: uid,
   });
 
-  useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
+  useRestoreTaskModel(task, info, isModelsLoading, updateSelectedModelId);
 
   const { autoApproveActive, autoApproveSettings } = useAutoApprove({
     autoApproveGuard: autoApproveGuard.current === "auto",
