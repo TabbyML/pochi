@@ -892,7 +892,13 @@ export class LiveChatKit<
         })
       : filteredMessage;
 
-    this.chat.messages = [...this.chat.messages.slice(0, -1), message];
+    // Replace the streamed assistant message only when it is the last one;
+    // otherwise append so an early-abort empty stream can't drop the user message.
+    const lastMessage = this.chat.messages.at(-1);
+    this.chat.messages =
+      lastMessage?.id === message.id
+        ? [...this.chat.messages.slice(0, -1), message]
+        : [...this.chat.messages, message];
 
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {
