@@ -48,7 +48,6 @@ export interface SettingsState {
 const SettingsStorageName = "ragdoll-settings-storage";
 
 const excludeFields = [
-  "autoApproveActive",
   "subtaskAutoApproveActive",
   "subtaskAutoApproveSettings",
 ];
@@ -180,7 +179,6 @@ export const useSettingsStore = create<SettingsState>()(
         return {
           ...currentState,
           ...(persistedState as object),
-          autoApproveActive: true,
         };
       },
       version: 1,
