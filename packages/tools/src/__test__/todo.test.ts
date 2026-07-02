@@ -147,30 +147,14 @@ describe("Todo", () => {
     );
   });
 
-  it("creates initial todo mode todos with short incremental ids", () => {
-    const [firstTodo] = initTodoModeTodos("Ship todo mode");
-    const [secondTodo] = initTodoModeTodos("Follow up");
+  it("creates an initial todo mode todo with a short random id", () => {
+    const [todo] = initTodoModeTodos("Ship todo mode");
 
-    expect(firstTodo).toMatchObject({
+    expect(todo).toMatchObject({
       content: "Ship todo mode",
       status: "in-progress",
       priority: "medium",
     });
-    expect(secondTodo).toMatchObject({
-      content: "Follow up",
-      status: "in-progress",
-      priority: "medium",
-    });
-
-    const firstId = getTodoIdNumber(firstTodo?.id);
-    const secondId = getTodoIdNumber(secondTodo?.id);
-
-    expect(firstId).toBeGreaterThan(0);
-    expect(secondId).toBe(firstId + 1);
+    expect(todo?.id).toMatch(/^[0-9a-f]{8}$/);
   });
 });
-
-function getTodoIdNumber(id: string | undefined): number {
-  expect(id).toMatch(/^todo-\d+$/);
-  return Number(id?.slice("todo-".length));
-}

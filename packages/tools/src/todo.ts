@@ -32,13 +32,10 @@ export const Todo = z.object({
 
 export type Todo = z.infer<typeof Todo>;
 
-const TodoIdPrefix = "todo-";
-let nextTodoId = 1;
-
 export function initTodoModeTodos(objective: string): Todo[] {
   return [
     {
-      id: `${TodoIdPrefix}${nextTodoId++}`,
+      id: crypto.randomUUID().slice(0, 8),
       content: objective,
       status: "in-progress",
       priority: "medium",
