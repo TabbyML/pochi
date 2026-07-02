@@ -6,7 +6,6 @@ omitAgentsMd: true
 _internal:
   resultSchema: |
     z.object({
-      success: z.boolean().describe("Whether automatic todo continuation should stop after this audit."),
       summary: z.string().describe("A concise summary of the todo completion audit result."),
       todoUpdates: z.array(z.object({
         id: z.string().describe("The id of the todo whose status should be updated."),
@@ -48,13 +47,13 @@ The prompt you receive may include a prior work summary for lightweight referenc
   - "cancelled" means the todo is blocked at a true impasse without meaningful progress unless the user provides input or external state changes.
 - Return `todoUpdates` items with the exact `id` values from the todos listed above.
 - Include a `todoUpdates` item for each todo whose status should change.
+- When all todos are resolved, include `todoUpdates` entries that mark the resolved todos as "completed" or "cancelled" so the controller can infer completion.
 - Use status "completed" only when current evidence proves the todo is complete.
 - Use status "cancelled" only when the todo should stop because you have verified a true impasse: no meaningful progress is possible without user input or an external state change.
 - Do not use status "cancelled" merely because the todo is hard, slow, uncertain, incomplete, or would benefit from clarification. If meaningful progress is still possible, use "in-progress".
 - Use status "in-progress" when the todo should continue.
 - Do not return or change todo content or priority.
-- Set success to true only when all todos listed above are resolved as "completed" or "cancelled".
-- Set success to false when any todo listed above should remain "in-progress".
+- Do not return a success field. The controller infers completion from the resolved todo statuses.
 
 ## Completion
 
