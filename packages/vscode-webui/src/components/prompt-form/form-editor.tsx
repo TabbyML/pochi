@@ -479,18 +479,13 @@ export function FormEditor({
           )
         ) {
           const trMeta = props.transaction.getMeta(SubmitHistoryExtension.name);
+          // Place the caret so repeated presses keep navigating in the same
+          // direction: at the start after Up (ready for another Up), at the end
+          // after Down (ready for another Down).
           if (trMeta?.direction === "up") {
-            const { doc } = props.editor.state;
-            const firstNode = doc.firstChild;
-            if (firstNode) {
-              const endOfFirstLine = 1 + firstNode.content.size;
-              props.editor
-                .chain()
-                .focus()
-                .setTextSelection(endOfFirstLine)
-                .scrollIntoView()
-                .run();
-            }
+            props.editor.chain().focus("start").scrollIntoView().run();
+          } else if (trMeta?.direction === "down") {
+            props.editor.chain().focus("end").scrollIntoView().run();
           }
 
           // A document change without a navigation tag is a real user edit:

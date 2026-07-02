@@ -1,6 +1,6 @@
 import { vscodeHost } from "@/lib/vscode";
 import { getLogger } from "@getpochi/common";
-import { Extension } from "@tiptap/react";
+import { type Editor, Extension } from "@tiptap/react";
 
 interface SubmitHistoryOptions {
   maxHistorySize: number;
@@ -26,6 +26,37 @@ const logger = getLogger("submit-history-extension");
 //   [Empty] <-> [Draft] <-> [history newest] <-> ... <-> [history oldest]
 const DraftIndex = -1; // showing the live/unsent draft
 const EmptyIndex = -2; // one step below the draft: input cleared, draft retained
+
+// Determine whether the caret sits on the first/last *visual* line, accounting
+// for soft-wrapped paragraphs. A single logical line (paragraph) can wrap into
+// several visual rows, so we compare the caret's vertical position with the
+// top/bottom of the rendered content instead of relying on paragraph nodes.
+function isCaretOnFirstVisualLine(editor: Editor): boolean {
+  if (editor.isEmpty) return true;
+  try {
+    const { view } = editor;
+    const caret = view.coordsAtPos(view.state.selection.head);
+    const firstLineTop = view.coordsAtPos(1).top;
+    const lineHeight = caret.bottom - caret.top || 1;
+    // Within half a line height of the first row => still on the first line.
+    return caret.top - firstLineTop < lineHeight / 2;
+  } catch {
+    return false;
+  }
+}
+
+function isCaretOnLastVisualLine(editor: Editor): boolean {
+  if (editor.isEmpty) return true;
+  try {
+    const { view } = editor;
+    const caret = view.coordsAtPos(view.state.selection.head);
+    const lastLineBottom = view.coordsAtPos(view.state.doc.content.size).bottom;
+    const lineHeight = caret.bottom - caret.top || 1;
+    return lastLineBottom - caret.bottom < lineHeight / 2;
+  } catch {
+    return false;
+  }
+}
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -237,50 +268,19 @@ export const SubmitHistoryExtension = Extension.create<
   addKeyboardShortcuts() {
     return {
       ArrowUp: ({ editor }) => {
-        const { from, to } = editor.state.selection;
-        const doc = editor.state.doc;
-        const isEmpty = editor.isEmpty;
-
-        // Handle empty editor or cursor at start (TipTap uses 1-based indexing)
-        const isAtStart = from === 1 && to === 1;
-        if (isEmpty || isAtStart) {
+        // Navigate history only when the caret is on the first visual line, so
+        // that a soft-wrapped first paragraph still lets Up move between rows.
+        if (isCaretOnFirstVisualLine(editor)) {
           return editor.commands.navigateSubmitHistory("up");
         }
-
-        // Check if cursor is anywhere in the first line
-        // In TipTap, each paragraph is a separate node, so check if cursor is in first paragraph
-        const firstParagraph = doc.content.firstChild;
-        if (firstParagraph) {
-          const firstLineStart = 1; // First position in document
-          const firstLineEnd = firstParagraph.nodeSize;
-          const isInFirstLine = from >= firstLineStart && from <= firstLineEnd;
-
-          if (isInFirstLine) {
-            return editor.commands.navigateSubmitHistory("up");
-          }
-        }
-
         return false;
       },
 
       ArrowDown: ({ editor }) => {
-        const { from } = editor.state.selection;
-        const doc = editor.state.doc;
-
-        // Check if cursor is anywhere in the last line
-        // Find the last paragraph and check if cursor is within it
-        const lastParagraph = doc.content.lastChild;
-        if (lastParagraph) {
-          const docSize = doc.content.size;
-          const lastLineStart = docSize - lastParagraph.nodeSize + 1;
-          const lastLineEnd = docSize;
-          const isInLastLine = from >= lastLineStart && from <= lastLineEnd;
-
-          if (isInLastLine) {
-            return editor.commands.navigateSubmitHistory("down");
-          }
+        // Navigate history only when the caret is on the last visual line.
+        if (isCaretOnLastVisualLine(editor)) {
+          return editor.commands.navigateSubmitHistory("down");
         }
-
         return false;
       },
     };
