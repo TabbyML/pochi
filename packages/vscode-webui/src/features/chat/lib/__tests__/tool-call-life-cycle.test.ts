@@ -65,7 +65,6 @@ describe("ManagedToolCallLifeCycle", () => {
           state: "output-available",
           input: {
             result: {
-              success: true,
               summary: "Done.",
               todoUpdates: [{ id: "todo-1", status: "completed" }],
             },
@@ -123,7 +122,6 @@ describe("ManagedToolCallLifeCycle", () => {
           state: "output-available",
           input: {
             result: {
-              success: true,
               summary: "Missing todo updates.",
             },
           },
