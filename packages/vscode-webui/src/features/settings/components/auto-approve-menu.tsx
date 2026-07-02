@@ -18,6 +18,7 @@ import {
   FileEdit,
   type LucideIcon,
   RotateCcw,
+  ShieldCheck,
   SquareChevronRightIcon,
   Terminal,
 } from "lucide-react";
@@ -114,6 +115,7 @@ export function AutoApproveMenu({
     if (isSaving) return;
     setIsSaving(true);
     await GlobalStateStorage.persist({
+      autoApproveActive,
       autoApproveSettings,
       subtaskOffhand,
     });
@@ -122,6 +124,7 @@ export function AutoApproveMenu({
       setIsDirty(false);
       // After persisting, the current state is the new "initial" state
       setInitialSettings({
+        autoApproveActive,
         autoApproveSettings,
         subtaskOffhand,
       });
@@ -145,11 +148,13 @@ export function AutoApproveMenu({
 
   const [isDirty, setIsDirty] = useState(false);
   type SettingsSnapshot = {
+    autoApproveActive: boolean;
     autoApproveSettings: AutoApprove;
     subtaskOffhand: boolean;
   };
   const [initialSettings, setInitialSettings] =
     useState<SettingsSnapshot | null>({
+      autoApproveActive,
       autoApproveSettings,
       subtaskOffhand,
     });
@@ -160,6 +165,7 @@ export function AutoApproveMenu({
     // If the initialSettings are not correctly loaded, establish default settings
     if (open && !initialSettings?.autoApproveSettings) {
       setInitialSettings({
+        autoApproveActive,
         autoApproveSettings,
         subtaskOffhand,
       });
@@ -170,13 +176,20 @@ export function AutoApproveMenu({
     if (isSubTask || !initialSettings) return;
 
     const currentSnapshot = {
+      autoApproveActive,
       autoApproveSettings,
       subtaskOffhand,
     };
     const hasChanges =
       JSON.stringify(currentSnapshot) !== JSON.stringify(initialSettings);
     setIsDirty(hasChanges);
-  }, [autoApproveSettings, subtaskOffhand, initialSettings, isSubTask]);
+  }, [
+    autoApproveActive,
+    autoApproveSettings,
+    subtaskOffhand,
+    initialSettings,
+    isSubTask,
+  ]);
 
   return (
     <Popover onOpenChange={onOpenChange}>
@@ -228,6 +241,25 @@ export function AutoApproveMenu({
         side="top"
         align="end"
       >
+        <div className="flex h-7 items-center pl-1">
+          <Checkbox
+            id="auto-approve-active-dialog"
+            checked={autoApproveActive}
+            onCheckedChange={(checked) => {
+              updateAutoApproveActive(!!checked);
+            }}
+          />
+          <label
+            htmlFor="auto-approve-active-dialog"
+            className="ml-4 flex cursor-pointer select-none items-center gap-2 font-semibold text-foreground text-sm"
+          >
+            <ShieldCheck className="size-4 shrink-0" />
+            <span className="whitespace-nowrap">
+              {t("settings.autoApprove.title")}
+            </span>
+          </label>
+        </div>
+        <Separator className="my-3" />
         <div className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:grid-cols-2">
           {coreActionSettings
             .filter((s) => s.id !== "mcp")
