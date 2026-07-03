@@ -11,13 +11,15 @@ export const useAutoMemoryEnabled = () => {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const [overrideDisabled, setOverrideDisabled] = useState(false);
+  const [overrideEnabled, setOverrideEnabled] = useState<boolean | undefined>(
+    undefined,
+  );
 
   const globalEnabled = data?.value.value ?? true;
   return {
-    autoMemoryEnabled: globalEnabled && !overrideDisabled,
+    autoMemoryEnabled: overrideEnabled ?? globalEnabled,
     setAutoMemoryEnabled: data
-      ? (enabled: boolean) => setOverrideDisabled(!enabled)
+      ? (enabled: boolean) => setOverrideEnabled(enabled)
       : undefined,
   };
 };
