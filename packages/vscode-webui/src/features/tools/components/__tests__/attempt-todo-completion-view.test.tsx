@@ -194,6 +194,36 @@ describe("AttemptTodoCompletionView", () => {
     ).toBeTruthy();
   });
 
+  it("renders a completed title for resolved audit results", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAttemptTodoCompletionTool(
+          JSON.stringify({
+            summary: "All todos are complete.",
+            todos: [
+              {
+                id: "todo-1",
+                content: "Add one test",
+                status: "completed",
+                priority: "medium",
+              },
+            ],
+          }),
+        )}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("All todos are complete.")).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.completed"),
+    ).toBeTruthy();
+  });
+
   it("keeps the auditing title while the audit is still executing", () => {
     render(
       <AttemptTodoCompletionView

@@ -1,14 +1,15 @@
 import { MessageMarkdown } from "@/components/message";
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
-import { getToolPartError } from "@/lib/tool-call-error";
-import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
-import type { NewTaskToolViewProps } from ".";
 import {
   getAttemptTodoCompletionSummary,
-  isAttemptTodoCompletionResolved,
-} from "./result";
+  parseAttemptTodoCompletionResult,
+} from "@/lib/todos-utils";
+import { getToolPartError } from "@/lib/tool-call-error";
+import { cn } from "@/lib/utils";
+import { isTodoListResolved } from "@getpochi/tools";
+import { useTranslation } from "react-i18next";
+import type { NewTaskToolViewProps } from ".";
 import { SubAgentView } from "./sub-agent-view";
 
 interface AttemptTodoCompletionViewProps extends NewTaskToolViewProps {
@@ -28,7 +29,10 @@ export function AttemptTodoCompletionView({
       ? tool.output.result
       : undefined;
   const summary = getAttemptTodoCompletionSummary(result);
-  const resolved = isAttemptTodoCompletionResolved(result);
+  const parsedResult = parseAttemptTodoCompletionResult(result);
+  const resolved = parsedResult
+    ? isTodoListResolved(parsedResult.todos)
+    : undefined;
   const hasAuditFailure =
     !!getToolPartError(tool) ||
     (tool.state === "output-available" && resolved === undefined);

@@ -1,13 +1,10 @@
+import { isAttemptTodoCompletionResolved } from "@/lib/todos-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
 } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
-import {
-  ResolvedAttemptTodoCompletionResult,
-  isTodoListResolved,
-} from "@getpochi/tools";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useMemo } from "react";
 
@@ -39,7 +36,7 @@ export function getReadyForRetryError(messages: Message[]) {
   const attemptTodoCompletionPart =
     getLastAttemptTodoCompletionPart(lastMessage);
   if (attemptTodoCompletionPart) {
-    const resolved = getAttemptTodoCompletionResolved(
+    const resolved = isAttemptTodoCompletionResolved(
       attemptTodoCompletionPart.output,
     );
     return resolved === false
@@ -75,53 +72,4 @@ function getLastAttemptTodoCompletionPart(message: Message) {
   ) {
     return part;
   }
-}
-
-function getAttemptTodoCompletionResolved(outputValue: unknown) {
-  const output = unwrapJsonOutput(outputValue);
-  const result =
-    isRecord(output) && "result" in output
-      ? unwrapJsonOutput(output.result)
-      : undefined;
-
-  for (const candidate of [result, output]) {
-    const parsedResult =
-      ResolvedAttemptTodoCompletionResult.safeParse(candidate);
-    if (parsedResult.success) {
-      return isTodoListResolved(parsedResult.data.todos);
-    }
-
-    const legacySuccess = getLegacyAttemptTodoCompletionSuccess(candidate);
-    if (legacySuccess !== undefined) return legacySuccess;
-  }
-}
-
-function getLegacyAttemptTodoCompletionSuccess(candidate: unknown) {
-  if (
-    isRecord(candidate) &&
-    "success" in candidate &&
-    typeof candidate.success === "boolean"
-  ) {
-    return candidate.success;
-  }
-}
-
-function unwrapJsonOutput(output: unknown): unknown {
-  if (isRecord(output) && output.type === "json" && "value" in output) {
-    return output.value;
-  }
-
-  if (typeof output === "string") {
-    try {
-      return JSON.parse(output);
-    } catch {
-      return output;
-    }
-  }
-
-  return output;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

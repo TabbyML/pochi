@@ -1,7 +1,4 @@
-import {
-  ResolvedAttemptTodoCompletionResult,
-  isTodoListResolved,
-} from "@getpochi/tools";
+import { isAttemptTodoCompletionResolved } from "@/lib/todos-utils";
 
 export type ToolResultDisplay =
   | {
@@ -52,19 +49,7 @@ export function isAttemptTodoCompletionRejected(tool: {
     return false;
   }
 
-  const result = getToolOutputResult(tool.output);
-  const parsed = parseJsonObjectString(result) ?? result;
-  const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(parsed);
-  if (parsedResult.success) {
-    return !isTodoListResolved(parsedResult.data.todos);
-  }
-
-  return (
-    !!parsed &&
-    typeof parsed === "object" &&
-    !Array.isArray(parsed) &&
-    (parsed as { success?: unknown }).success === false
-  );
+  return isAttemptTodoCompletionResolved(tool.output) === false;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -87,12 +72,4 @@ export function parseJsonObjectString(value: unknown): object | undefined {
   } catch {
     return undefined;
   }
-}
-
-function getToolOutputResult(output: unknown): unknown {
-  if (!output || typeof output !== "object" || !("result" in output)) {
-    return undefined;
-  }
-
-  return output.result;
 }
