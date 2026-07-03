@@ -119,11 +119,7 @@
   },
   "worktree": {
     "createPr": "Create PR",
-<<<<<<< HEAD
-=======
-    "createWalkthrough": "Create Walkthrough",
     "reviewChanges": "Review Changes",
->>>>>>> origin/main
     "createDraftPr": "Create Draft PR",
     "createPrManually": "Create PR Manually",
     "installGhCli": "Please install the GitHub CLI to create PRs.",

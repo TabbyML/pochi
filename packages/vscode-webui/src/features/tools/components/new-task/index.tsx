@@ -128,17 +128,10 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     return <PlannerView {...props} taskSource={previewSource} />;
   }
 
-<<<<<<< HEAD
-=======
-  if (agentType === "walkthrough") {
-    return <WalkthroughView {...props} taskSource={previewSource} />;
-  }
-
   if (agentType === "attemptTodoCompletion") {
     return <AttemptTodoCompletionView {...props} taskSource={previewSource} />;
   }
 
->>>>>>> origin/main
   const title = (
     <div className="flex min-w-0 items-start gap-2">
       <StatusIcon
