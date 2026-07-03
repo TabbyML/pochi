@@ -34,11 +34,16 @@ import { constants } from "@getpochi/common";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  PaperclipIcon,
+  SendHorizonal,
+  ShieldCheck,
+  ShieldOff,
+  StopCircleIcon,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TbShieldCog } from "react-icons/tb";
 import {
   type BlockingOperation,
   useBlockingOperations,
@@ -181,6 +186,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting ||
     totalTokens < constants.CompactTaskMinTokens
   );
+  const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
   const { handleSubmit, handleStop } = useChatSubmit({
     chat,
@@ -414,6 +420,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}
+            tooltip={t(
+              autoApproveActive
+                ? "settings.autoApprove.toolbarTooltipEnabled"
+                : "settings.autoApprove.toolbarTooltipDisabled",
+            )}
             trigger={
               <Button
                 type="button"
@@ -425,7 +436,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 )}
                 aria-label={t("settings.autoApprove.approvals")}
               >
-                <TbShieldCog className="size-4 shrink-0 transition-colors duration-200" />
+                <AutoApproveIcon className="size-4 shrink-0 transition-colors duration-200" />
               </Button>
             }
           />
