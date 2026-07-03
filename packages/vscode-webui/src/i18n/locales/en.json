@@ -34,7 +34,7 @@
     "planModeLabel": "Plan",
     "todoModeLabel": "Todo",
     "pauseTodo": "Pause todo",
-    "resumeTodo": "Resume todo",
+    "resumeTodo": "Resume",
     "autoContinueTodo": "Auto-continue todo",
     "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
     "planModeSubmitTooltip": "Submit as plan",
@@ -477,7 +477,7 @@
     "cancelTodo": "Cancel",
     "deleteTodo": "Delete",
     "pauseTodo": "Pause",
-    "resumeTodo": "Resume todo"
+    "resumeTodo": "Resume"
   },
   "commandExecutionPanel": {
     "copied": "Copied!",

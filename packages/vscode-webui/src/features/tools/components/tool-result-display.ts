@@ -1,3 +1,8 @@
+import {
+  ResolvedAttemptTodoCompletionResult,
+  isTodoListResolved,
+} from "@getpochi/tools";
+
 export type ToolResultDisplay =
   | {
       type: "json";
@@ -49,6 +54,11 @@ export function isAttemptTodoCompletionRejected(tool: {
 
   const result = getToolOutputResult(tool.output);
   const parsed = parseJsonObjectString(result) ?? result;
+  const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(parsed);
+  if (parsedResult.success) {
+    return !isTodoListResolved(parsedResult.data.todos);
+  }
+
   return (
     !!parsed &&
     typeof parsed === "object" &&

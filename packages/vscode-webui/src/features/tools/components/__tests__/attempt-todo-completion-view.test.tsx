@@ -9,11 +9,18 @@ const subAgentViewMock = vi.hoisted(() =>
   vi.fn(
     ({
       children,
+      headerContent,
       showTaskThread,
     }: {
       children: ReactNode;
+      headerContent?: ReactNode;
       showTaskThread?: boolean;
-    }) => <div data-show-task-thread={String(showTaskThread)}>{children}</div>,
+    }) => (
+      <div data-show-task-thread={String(showTaskThread)}>
+        {headerContent}
+        {children}
+      </div>
+    ),
   ),
 );
 
@@ -55,6 +62,21 @@ function makeAttemptTodoCompletionTool() {
     input: {
       agentType: "attemptTodoCompletion",
       description: "Audit todo completion",
+    },
+  } as never;
+}
+
+function makeCompletedAttemptTodoCompletionTool(result: unknown) {
+  return {
+    type: "tool-newTask",
+    toolCallId: "attempt-todo-completion",
+    state: "output-available",
+    input: {
+      agentType: "attemptTodoCompletion",
+      description: "Audit todo completion",
+    },
+    output: {
+      result,
     },
   } as never;
 }
@@ -115,5 +137,88 @@ describe("AttemptTodoCompletionView", () => {
     expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
       showTaskThread: true,
     });
+  });
+
+  it("renders a needs-work title after an unresolved audit stops", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAttemptTodoCompletionTool({
+          summary: "More work remains.",
+          todos: [
+            {
+              id: "todo-1",
+              content: "Add one test",
+              status: "in-progress",
+              priority: "medium",
+            },
+          ],
+        })}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("More work remains.")).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.needsWork"),
+    ).toBeTruthy();
+  });
+
+  it("renders a needs-work title after an unresolved audit stops while chat is still loading", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAttemptTodoCompletionTool({
+          summary: "More work remains.",
+          todos: [
+            {
+              id: "todo-1",
+              content: "Add one test",
+              status: "in-progress",
+              priority: "medium",
+            },
+          ],
+        })}
+        isExecuting={false}
+        isLoading={true}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(
+      screen.getByText("attemptTodoCompletionView.needsWork"),
+    ).toBeTruthy();
+  });
+
+  it("keeps the auditing title while the audit is still executing", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAttemptTodoCompletionTool({
+          summary: "More work remains.",
+          todos: [
+            {
+              id: "todo-1",
+              content: "Add one test",
+              status: "in-progress",
+              priority: "medium",
+            },
+          ],
+        })}
+        isExecuting={true}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("attemptTodoCompletionView.auditing")).toBeTruthy();
+    expect(
+      screen.queryByText("attemptTodoCompletionView.needsWork"),
+    ).toBeNull();
   });
 });

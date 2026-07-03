@@ -1,4 +1,8 @@
 import type { Message } from "@getpochi/livekit";
+import {
+  ResolvedAttemptTodoCompletionResult,
+  isTodoListResolved,
+} from "@getpochi/tools";
 
 export function shouldResumeTodoController({
   messages,
@@ -16,10 +20,10 @@ export function getTodoContinuationDecision(
 ): boolean | undefined {
   const attemptTodoCompletion = getLastAttemptTodoCompletion(messages);
   if (attemptTodoCompletion) {
-    const success = getAttemptTodoCompletionSuccess(
+    const resolved = getAttemptTodoCompletionResolved(
       attemptTodoCompletion.part.output,
     );
-    return success === false;
+    return resolved === false;
   }
 
   return undefined;
@@ -39,7 +43,9 @@ function getLastAttemptTodoCompletion(messages: Message[]) {
   }
 }
 
-function getAttemptTodoCompletionSuccess(output: unknown): boolean | undefined {
+function getAttemptTodoCompletionResolved(
+  output: unknown,
+): boolean | undefined {
   const normalizedOutput = unwrapJsonOutput(output);
   const result =
     isRecord(normalizedOutput) && "result" in normalizedOutput
@@ -47,13 +53,26 @@ function getAttemptTodoCompletionSuccess(output: unknown): boolean | undefined {
       : undefined;
 
   for (const candidate of [result, normalizedOutput]) {
-    if (
-      isRecord(candidate) &&
-      "success" in candidate &&
-      typeof candidate.success === "boolean"
-    ) {
-      return candidate.success;
+    const parsedResult =
+      ResolvedAttemptTodoCompletionResult.safeParse(candidate);
+    if (parsedResult.success) {
+      return isTodoListResolved(parsedResult.data.todos);
     }
+
+    const legacySuccess = getLegacyAttemptTodoCompletionSuccess(candidate);
+    if (legacySuccess !== undefined) return legacySuccess;
+  }
+}
+
+function getLegacyAttemptTodoCompletionSuccess(
+  candidate: unknown,
+): boolean | undefined {
+  if (
+    isRecord(candidate) &&
+    "success" in candidate &&
+    typeof candidate.success === "boolean"
+  ) {
+    return candidate.success;
   }
 }
 

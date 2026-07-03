@@ -1,10 +1,8 @@
-import { ResolvedAttemptTodoCompletionResult } from "@getpochi/tools";
+import {
+  ResolvedAttemptTodoCompletionResult,
+  isTodoListResolved,
+} from "@getpochi/tools";
 import { parseJsonObjectString } from "../tool-result-display";
-
-export type AttemptTodoCompletionState = {
-  status: "completed" | "needs-work";
-  summary: string;
-};
 
 export function hasNewTaskResult(result: unknown): boolean {
   if (typeof result === "string") {
@@ -16,19 +14,20 @@ export function hasNewTaskResult(result: unknown): boolean {
 export function getAttemptTodoCompletionSummary(
   result: unknown,
 ): string | undefined {
-  return getAttemptTodoCompletionState(result)?.summary;
+  const summary = parseAttemptTodoCompletionResult(result)?.summary.trim();
+  return summary || undefined;
 }
 
-export function getAttemptTodoCompletionState(
+export function isAttemptTodoCompletionResolved(
   result: unknown,
-): AttemptTodoCompletionState | undefined {
+): boolean | undefined {
+  const parsedResult = parseAttemptTodoCompletionResult(result);
+  return parsedResult ? isTodoListResolved(parsedResult.todos) : undefined;
+}
+
+function parseAttemptTodoCompletionResult(result: unknown) {
   const parsed = parseJsonObjectString(result) ?? result;
   const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(parsed);
   if (!parsedResult.success) return undefined;
-  const summary = parsedResult.data.summary.trim();
-  if (!summary) return undefined;
-  return {
-    status: parsedResult.data.success ? "completed" : "needs-work",
-    summary,
-  };
+  return parsedResult.data;
 }

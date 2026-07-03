@@ -60,7 +60,6 @@ describe("getTodoCompletionUpdate", () => {
       toolCallId: "tool-1",
       output: {
         result: {
-          success: true,
           summary: "Done.",
           todos: resolvedTodos,
         },
@@ -84,7 +83,6 @@ describe("getTodoCompletionUpdate", () => {
       toolCallId: "tool-1",
       output: {
         result: JSON.stringify({
-          success: true,
           summary: "Done.",
           todos: resolvedTodos,
         }),
@@ -94,7 +92,7 @@ describe("getTodoCompletionUpdate", () => {
     expect(update).toBeUndefined();
   });
 
-  it("keeps resolved todos unless every todo is completed", () => {
+  it("clears todos when every todo is resolved", () => {
     const resolvedTodos: Todo[] = [
       {
         id: "resolved-todo-1",
@@ -114,14 +112,13 @@ describe("getTodoCompletionUpdate", () => {
       toolCallId: "tool-1",
       output: {
         result: {
-          success: true,
           summary: "Done.",
           todos: resolvedTodos,
         },
       },
     });
 
-    expect(update?.todos).toEqual(resolvedTodos);
+    expect(update?.todos).toEqual([]);
   });
 
   it("does not return a completion update when resolved todos still need work", () => {
@@ -130,7 +127,6 @@ describe("getTodoCompletionUpdate", () => {
       toolCallId: "tool-1",
       output: {
         result: {
-          success: true,
           summary: "Done.",
           todos: baseTodos,
         },
@@ -146,7 +142,6 @@ describe("getTodoCompletionUpdate", () => {
       toolCallId: "tool-1",
       output: {
         result: {
-          success: true,
           summary: "Done.",
         },
       },
@@ -155,13 +150,12 @@ describe("getTodoCompletionUpdate", () => {
     expect(update).toBeUndefined();
   });
 
-  it("does not return a completion update when attemptTodoCompletion rejects completion", () => {
+  it("does not return a completion update when resolved todos still need work", () => {
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
       toolCallId: "tool-1",
       output: {
         result: {
-          success: false,
           summary: "More work remains.",
           todos: baseTodos,
         },
@@ -178,7 +172,6 @@ describe("getTodoCompletionUpdate", () => {
       toolCallId: "tool-1",
       output: {
         result: {
-          success: true,
           summary: "Done.",
           todos: resolvedTodos,
         },
@@ -208,7 +201,6 @@ describe("useAddCompleteToolCalls", () => {
           reason: "execute-finish",
           result: {
             result: {
-              success: true,
               summary: "Done.",
               todos: resolvedTodos,
             },
@@ -240,7 +232,6 @@ describe("useAddCompleteToolCalls", () => {
       toolCallId: "tool-1",
       output: {
         result: {
-          success: true,
           summary: "Done.",
           todos: resolvedTodos,
         },

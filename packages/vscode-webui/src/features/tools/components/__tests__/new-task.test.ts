@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  getAttemptTodoCompletionState,
   getAttemptTodoCompletionSummary,
   hasNewTaskResult,
+  isAttemptTodoCompletionResolved,
 } from "../new-task/result";
 
 function makeResolvedTodos(status: "completed" | "in-progress") {
@@ -38,7 +38,6 @@ describe("getAttemptTodoCompletionSummary", () => {
   it("returns summary from structured results", () => {
     expect(
       getAttemptTodoCompletionSummary({
-        success: false,
         summary: "More work remains.",
         todos: inProgressTodos,
       }),
@@ -49,7 +48,6 @@ describe("getAttemptTodoCompletionSummary", () => {
     expect(
       getAttemptTodoCompletionSummary(
         JSON.stringify({
-          success: false,
           summary: "More work remains.",
           todos: inProgressTodos,
         }),
@@ -60,7 +58,6 @@ describe("getAttemptTodoCompletionSummary", () => {
   it("ignores incomplete structured results", () => {
     expect(
       getAttemptTodoCompletionSummary({
-        success: false,
         summary: "More work remains.",
       }),
     ).toBeUndefined();
@@ -71,49 +68,37 @@ describe("getAttemptTodoCompletionSummary", () => {
   });
 });
 
-describe("getAttemptTodoCompletionState", () => {
+describe("isAttemptTodoCompletionResolved", () => {
   it("detects resolved completed todo completion results", () => {
     expect(
-      getAttemptTodoCompletionState({
-        success: true,
+      isAttemptTodoCompletionResolved({
         summary: "All todos are complete.",
         todos: completedTodos,
       }),
-    ).toEqual({
-      status: "completed",
-      summary: "All todos are complete.",
-    });
+    ).toBe(true);
   });
 
   it("detects completed todo completion results", () => {
     expect(
-      getAttemptTodoCompletionState(
+      isAttemptTodoCompletionResolved(
         JSON.stringify({
-          success: true,
           summary: "All todos are complete.",
           todos: completedTodos,
         }),
       ),
-    ).toEqual({
-      status: "completed",
-      summary: "All todos are complete.",
-    });
+    ).toBe(true);
   });
 
-  it("detects todo completion results that need more work", () => {
+  it("detects unresolved todo completion results", () => {
     expect(
-      getAttemptTodoCompletionState({
-        success: false,
+      isAttemptTodoCompletionResolved({
         summary: "More work remains.",
         todos: inProgressTodos,
       }),
-    ).toEqual({
-      status: "needs-work",
-      summary: "More work remains.",
-    });
+    ).toBe(false);
   });
 
   it("ignores malformed todo completion results", () => {
-    expect(getAttemptTodoCompletionState("Done")).toBeUndefined();
+    expect(isAttemptTodoCompletionResolved("Done")).toBeUndefined();
   });
 });

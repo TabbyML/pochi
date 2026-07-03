@@ -3,6 +3,7 @@ import {
   AttemptTodoCompletionResult,
   Todo,
   TodoUpdate,
+  isTodoListResolved,
   initTodoModeTodos,
   resolveAttemptTodoCompletionResult,
 } from "../todo";
@@ -51,7 +52,7 @@ describe("Todo", () => {
     });
   });
 
-  it("resolves todo updates by id into a full todos list and infers success", () => {
+  it("resolves todo updates by id into a full todos list", () => {
     expect(
       resolveAttemptTodoCompletionResult(
         {
@@ -72,7 +73,6 @@ describe("Todo", () => {
         ],
       ),
     ).toEqual({
-      success: false,
       summary: "Done.",
       todos: [
         {
@@ -89,7 +89,7 @@ describe("Todo", () => {
     });
   });
 
-  it("infers success when todo updates resolve every todo", () => {
+  it("resolves completed todo updates without a success field", () => {
     expect(
       resolveAttemptTodoCompletionResult(
         {
@@ -99,7 +99,6 @@ describe("Todo", () => {
         [todo],
       ),
     ).toEqual({
-      success: true,
       summary: "Done.",
       todos: [
         {
@@ -122,7 +121,7 @@ describe("Todo", () => {
     ).toThrow("Invalid attemptTodoCompletion result");
   });
 
-  it("infers failure when resolved todos still need work", () => {
+  it("resolves empty todo updates without a success field", () => {
     expect(
       resolveAttemptTodoCompletionResult(
         {
@@ -132,10 +131,19 @@ describe("Todo", () => {
         [todo],
       ),
     ).toEqual({
-      success: false,
       summary: "Done.",
       todos: [todo],
     });
+  });
+
+  it("detects whether all todos are resolved", () => {
+    expect(
+      isTodoListResolved([
+        { ...todo, status: "completed" },
+        { ...todo, id: "blocked", status: "cancelled" },
+      ]),
+    ).toBe(true);
+    expect(isTodoListResolved([todo])).toBe(false);
   });
 
   it("describes cancelled as a blocked state", () => {

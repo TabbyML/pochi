@@ -4,6 +4,10 @@ import {
   isAssistantMessageWithPartialToolCalls,
 } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
+import {
+  ResolvedAttemptTodoCompletionResult,
+  isTodoListResolved,
+} from "@getpochi/tools";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useMemo } from "react";
 
@@ -35,10 +39,12 @@ export function getReadyForRetryError(messages: Message[]) {
   const attemptTodoCompletionPart =
     getLastAttemptTodoCompletionPart(lastMessage);
   if (attemptTodoCompletionPart) {
-    const success = getAttemptTodoCompletionSuccess(
+    const resolved = getAttemptTodoCompletionResolved(
       attemptTodoCompletionPart.output,
     );
-    return success === false ? new ReadyForRetryError("tool-calls") : undefined;
+    return resolved === false
+      ? new ReadyForRetryError("tool-calls")
+      : undefined;
   }
   if (lastMessage.role === "user") return new ReadyForRetryError();
   if (isAssistantMessageWithEmptyParts(lastMessage)) {
@@ -71,7 +77,7 @@ function getLastAttemptTodoCompletionPart(message: Message) {
   }
 }
 
-function getAttemptTodoCompletionSuccess(outputValue: unknown) {
+function getAttemptTodoCompletionResolved(outputValue: unknown) {
   const output = unwrapJsonOutput(outputValue);
   const result =
     isRecord(output) && "result" in output
@@ -79,13 +85,24 @@ function getAttemptTodoCompletionSuccess(outputValue: unknown) {
       : undefined;
 
   for (const candidate of [result, output]) {
-    if (
-      isRecord(candidate) &&
-      "success" in candidate &&
-      typeof candidate.success === "boolean"
-    ) {
-      return candidate.success;
+    const parsedResult =
+      ResolvedAttemptTodoCompletionResult.safeParse(candidate);
+    if (parsedResult.success) {
+      return isTodoListResolved(parsedResult.data.todos);
     }
+
+    const legacySuccess = getLegacyAttemptTodoCompletionSuccess(candidate);
+    if (legacySuccess !== undefined) return legacySuccess;
+  }
+}
+
+function getLegacyAttemptTodoCompletionSuccess(candidate: unknown) {
+  if (
+    isRecord(candidate) &&
+    "success" in candidate &&
+    typeof candidate.success === "boolean"
+  ) {
+    return candidate.success;
   }
 }
 
