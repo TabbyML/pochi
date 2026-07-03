@@ -59,6 +59,7 @@ vi.mock("@/features/chat", () => ({
 vi.mock("@/features/settings", () => ({
   AutoApproveMenu: () => null,
   useAutoApprove: () => ({ autoApproveActive: false }),
+  useIsDevMode: () => [false, vi.fn()],
   useSelectedModels: () => ({
     groupedModels: [],
     selectedModel: { id: "model-1" },
