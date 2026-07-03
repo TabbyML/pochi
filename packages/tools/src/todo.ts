@@ -32,6 +32,17 @@ export const Todo = z.object({
 
 export type Todo = z.infer<typeof Todo>;
 
+export function initTodoModeTodos(objective: string): Todo[] {
+  return [
+    {
+      id: crypto.randomUUID().slice(0, 8),
+      content: objective,
+      status: "in-progress",
+      priority: "medium",
+    },
+  ];
+}
+
 export const TodoUpdate = z.object({
   id: z.string().describe("The id of the todo whose status should be updated."),
   status: z
@@ -42,11 +53,6 @@ export const TodoUpdate = z.object({
 export type TodoUpdate = z.infer<typeof TodoUpdate>;
 
 export const AttemptTodoCompletionResult = z.object({
-  success: z
-    .boolean()
-    .describe(
-      "Whether automatic todo continuation should stop after this audit.",
-    ),
   summary: z.string().describe("A concise summary of the todo audit result."),
   todoUpdates: z
     .array(TodoUpdate)
@@ -59,16 +65,10 @@ export type AttemptTodoCompletionResult = z.infer<
 
 export const ResolvedAttemptTodoCompletionResult =
   AttemptTodoCompletionResult.pick({
-    success: true,
     summary: true,
-  })
-    .extend({
-      todos: z.array(Todo).describe("The resolved complete todos list."),
-    })
-    .refine(
-      (result) => result.success === result.todos.every(isTodoResolved),
-      "Success must match whether all resolved todos are completed or cancelled.",
-    );
+  }).extend({
+    todos: z.array(Todo).describe("The resolved complete todos list."),
+  });
 
 export type ResolvedAttemptTodoCompletionResult = z.infer<
   typeof ResolvedAttemptTodoCompletionResult
@@ -89,9 +89,7 @@ export function resolveAttemptTodoCompletionResult(
     todos,
     parsedResult.data.todoUpdates,
   );
-
   const resolvedResult = ResolvedAttemptTodoCompletionResult.safeParse({
-    success: parsedResult.data.success,
     summary: parsedResult.data.summary,
     todos: resolvedTodos,
   });
@@ -130,6 +128,10 @@ function parseJsonString(value: unknown): unknown {
   } catch {
     return value;
   }
+}
+
+export function isTodoListResolved(todos: readonly Todo[]) {
+  return todos.every(isTodoResolved);
 }
 
 function isTodoResolved(todo: Todo) {

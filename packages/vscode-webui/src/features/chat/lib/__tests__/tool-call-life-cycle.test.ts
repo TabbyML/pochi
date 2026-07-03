@@ -65,7 +65,6 @@ describe("ManagedToolCallLifeCycle", () => {
           state: "output-available",
           input: {
             result: {
-              success: true,
               summary: "Done.",
               todoUpdates: [{ id: "todo-1", status: "completed" }],
             },
@@ -93,7 +92,6 @@ describe("ManagedToolCallLifeCycle", () => {
     await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
     expect(lifecycle.complete.result).toEqual({
       result: {
-        success: true,
         summary: "Done.",
         todos: [
           {
@@ -123,7 +121,6 @@ describe("ManagedToolCallLifeCycle", () => {
           state: "output-available",
           input: {
             result: {
-              success: true,
               summary: "Missing todo updates.",
             },
           },

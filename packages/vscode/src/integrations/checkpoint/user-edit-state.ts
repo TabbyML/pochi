@@ -78,7 +78,7 @@ export class UserEditState implements vscode.Disposable {
 
         const newEdits = { ...this.edits.value };
         for (const uid of this.trackingTasks.keys()) {
-          if (!tasks[uid] || !tasks[uid].active) {
+          if (!tasks[uid] || tasks[uid].cwd !== this.cwd) {
             this.trackingTasks.delete(uid);
             delete newEdits[uid];
           }
@@ -89,8 +89,8 @@ export class UserEditState implements vscode.Disposable {
 
         let isDirty = false;
         for (const [uid, task] of Object.entries(tasks)) {
-          const { cwd, lastCheckpointHash: hash, active } = task;
-          if (active && cwd === this.cwd) {
+          const { cwd, lastCheckpointHash: hash } = task;
+          if (cwd === this.cwd) {
             logger.trace(
               `Updating edits for task ${uid} with hash ${hash}, original: ${this.trackingTasks.get(uid)}`,
             );

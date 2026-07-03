@@ -21,7 +21,6 @@ import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
 import { hasNewTaskResult } from "./result";
 import { TodoDetail } from "./todo-detail";
-import { WalkthroughView } from "./walkthrough-view";
 
 const SubtaskPreviewThrottleMs = 300;
 
@@ -127,10 +126,6 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
 
   if (agentType === "planner") {
     return <PlannerView {...props} taskSource={previewSource} />;
-  }
-
-  if (agentType === "walkthrough") {
-    return <WalkthroughView {...props} taskSource={previewSource} />;
   }
 
   if (agentType === "attemptTodoCompletion") {

@@ -97,7 +97,7 @@ export function WorktreeList({
   const [showArchivedTasks, setShowArchivedTasks] = useState(false);
   const { setTaskArchived, hasArchivableTasks } = useTaskArchived();
 
-  // Archive all tasks older than 7 days across all worktrees (no cwd = all worktrees)
+  // Archive all tasks older than 7 days in the current repository.
   const handleArchiveAllOldTasks = () => {
     setTaskArchived?.({ type: "batch" });
   };

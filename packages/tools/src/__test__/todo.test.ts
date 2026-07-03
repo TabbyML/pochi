@@ -3,6 +3,8 @@ import {
   AttemptTodoCompletionResult,
   Todo,
   TodoUpdate,
+  isTodoListResolved,
+  initTodoModeTodos,
   resolveAttemptTodoCompletionResult,
 } from "../todo";
 
@@ -41,12 +43,10 @@ describe("Todo", () => {
   it("accepts attempt todo completion results", () => {
     expect(
       AttemptTodoCompletionResult.parse({
-        success: true,
         summary: "Done.",
         todoUpdates: [{ id: "collect-information", status: "completed" }],
       }),
     ).toEqual({
-      success: true,
       summary: "Done.",
       todoUpdates: [{ id: "collect-information", status: "completed" }],
     });
@@ -56,7 +56,6 @@ describe("Todo", () => {
     expect(
       resolveAttemptTodoCompletionResult(
         {
-          success: false,
           summary: "Done.",
           todoUpdates: [
             { id: "review-changes", status: "in-progress" },
@@ -74,7 +73,6 @@ describe("Todo", () => {
         ],
       ),
     ).toEqual({
-      success: false,
       summary: "Done.",
       todos: [
         {
@@ -91,11 +89,30 @@ describe("Todo", () => {
     });
   });
 
+  it("resolves completed todo updates without a success field", () => {
+    expect(
+      resolveAttemptTodoCompletionResult(
+        {
+          summary: "Done.",
+          todoUpdates: [{ id: "collect-information", status: "completed" }],
+        },
+        [todo],
+      ),
+    ).toEqual({
+      summary: "Done.",
+      todos: [
+        {
+          ...todo,
+          status: "completed",
+        },
+      ],
+    });
+  });
+
   it("rejects todo updates for unknown ids", () => {
     expect(() =>
       resolveAttemptTodoCompletionResult(
         {
-          success: true,
           summary: "Done.",
           todoUpdates: [{ id: "missing", status: "completed" }],
         },
@@ -104,17 +121,29 @@ describe("Todo", () => {
     ).toThrow("Invalid attemptTodoCompletion result");
   });
 
-  it("rejects successful results when resolved todos still need work", () => {
-    expect(() =>
+  it("resolves empty todo updates without a success field", () => {
+    expect(
       resolveAttemptTodoCompletionResult(
         {
-          success: true,
           summary: "Done.",
           todoUpdates: [],
         },
         [todo],
       ),
-    ).toThrow("Invalid attemptTodoCompletion result");
+    ).toEqual({
+      summary: "Done.",
+      todos: [todo],
+    });
+  });
+
+  it("detects whether all todos are resolved", () => {
+    expect(
+      isTodoListResolved([
+        { ...todo, status: "completed" },
+        { ...todo, id: "blocked", status: "cancelled" },
+      ]),
+    ).toBe(true);
+    expect(isTodoListResolved([todo])).toBe(false);
   });
 
   it("describes cancelled as a blocked state", () => {
@@ -124,5 +153,16 @@ describe("Todo", () => {
     expect(Todo.shape.status.description).toContain(
       "cannot make meaningful progress without user input or an external-state change",
     );
+  });
+
+  it("creates an initial todo mode todo with a short random id", () => {
+    const [todo] = initTodoModeTodos("Ship todo mode");
+
+    expect(todo).toMatchObject({
+      content: "Ship todo mode",
+      status: "in-progress",
+      priority: "medium",
+    });
+    expect(todo?.id).toMatch(/^[0-9a-f]{8}$/);
   });
 });

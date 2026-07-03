@@ -20,26 +20,44 @@ function makeAttemptTodoCompletionMessage(output: unknown): Message {
   } as Message;
 }
 
+const completedTodos = [
+  {
+    id: "todo-1",
+    content: "Add one test",
+    status: "completed",
+    priority: "medium",
+  },
+] as const;
+
+const activeTodos = [
+  {
+    id: "todo-1",
+    content: "Add one test",
+    status: "in-progress",
+    priority: "medium",
+  },
+] as const;
+
 describe("getTodoContinuationDecision", () => {
-  it("stops when attemptTodoCompletion succeeds", () => {
+  it("stops when attemptTodoCompletion resolves every todo", () => {
     expect(
       getTodoContinuationDecision([
         makeAttemptTodoCompletionMessage({
           result: {
-            success: true,
             summary: "Done.",
+            todos: completedTodos,
           },
         }),
       ]),
     ).toBe(false);
   });
 
-  it("continues when attemptTodoCompletion rejects completion", () => {
+  it("continues when attemptTodoCompletion leaves active todos", () => {
     const messages = [
       makeAttemptTodoCompletionMessage({
         result: {
-          success: false,
           summary: "More work remains.",
+          todos: activeTodos,
         },
       }),
     ];
@@ -52,9 +70,8 @@ describe("getTodoContinuationDecision", () => {
       getTodoContinuationDecision([
         makeAttemptTodoCompletionMessage({
           result: JSON.stringify({
-            success: false,
             summary: "More work remains.",
-            todoUpdates: [{ id: "todo-1", status: "in-progress" }],
+            todos: activeTodos,
           }),
         }),
       ]),
@@ -68,8 +85,8 @@ describe("getTodoContinuationDecision", () => {
           type: "json",
           value: {
             result: {
-              success: true,
               summary: "Done.",
+              todos: completedTodos,
             },
           },
         }),

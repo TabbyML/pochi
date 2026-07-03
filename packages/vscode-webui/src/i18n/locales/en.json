@@ -34,7 +34,7 @@
     "planModeLabel": "Plan",
     "todoModeLabel": "Todo",
     "pauseTodo": "Pause todo",
-    "resumeTodo": "Resume todo",
+    "resumeTodo": "Resume",
     "autoContinueTodo": "Auto-continue todo",
     "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
     "planModeSubmitTooltip": "Submit as plan",
@@ -119,7 +119,6 @@
   },
   "worktree": {
     "createPr": "Create PR",
-    "createWalkthrough": "Create Walkthrough",
     "reviewChanges": "Review Changes",
     "createDraftPr": "Create Draft PR",
     "createPrManually": "Create PR Manually",
@@ -178,6 +177,8 @@
     "autoApprove": {
       "title": "Auto-Approve",
       "approvals": "Permissions",
+      "toolbarTooltipEnabled": "Auto-approve is enabled. Permission prompts will be approved automatically.",
+      "toolbarTooltipDisabled": "Auto-approve is disabled. Click to approve permission prompts automatically.",
       "disabled": "Disabled",
       "noActionsSelected": "No actions selected",
       "readFiles": "Read files",
@@ -477,7 +478,7 @@
     "cancelTodo": "Cancel",
     "deleteTodo": "Delete",
     "pauseTodo": "Pause",
-    "resumeTodo": "Resume todo"
+    "resumeTodo": "Resume"
   },
   "commandExecutionPanel": {
     "copied": "Copied!",
@@ -568,11 +569,6 @@
     "openPlan": "Open",
     "creatingPlan": "Analyzing your code and creating a plan...",
     "planCreationPaused": "Plan creation paused"
-  },
-  "walkthroughView": {
-    "openWalkthrough": "Open",
-    "creatingWalkthrough": "Creating walkthrough...",
-    "walkthroughCreationPaused": "Walkthrough creation paused"
   },
   "browserView": {
     "noFrameAvailable": "No frame available",

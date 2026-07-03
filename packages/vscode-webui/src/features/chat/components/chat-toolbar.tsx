@@ -23,23 +23,27 @@ import {
   useAutoApprove,
   useSelectedModels,
 } from "@/features/settings";
-import { TodoList, useTodos } from "@/features/todo";
+import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
-import { useDefaultStore } from "@/lib/use-default-store";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, type Task, catalog } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import {
+  PaperclipIcon,
+  SendHorizonal,
+  ShieldCheck,
+  ShieldOff,
+  StopCircleIcon,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TbShieldCog } from "react-icons/tb";
 import {
   type BlockingOperation,
   useBlockingOperations,
@@ -72,7 +76,9 @@ interface ChatToolbarProps {
   subtask?: SubtaskInfo;
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
-  todosRef: React.RefObject<Todo[] | undefined>;
+  todos: Todo[];
+  updateTodos: (todos: Todo[]) => void;
+  updateTodoCompletion: (update: TodoCompletionUpdate) => void;
   todoPaused: boolean;
   onTodoPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
@@ -92,7 +98,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   task,
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
-  todosRef,
+  todos,
+  updateTodos,
+  updateTodoCompletion,
   todoPaused,
   onTodoPausedChange,
   onUpdateIsPublicShared,
@@ -102,7 +110,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   getSystemPrompt,
 }) => {
   const { t } = useTranslation();
-  const store = useDefaultStore();
 
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
@@ -112,25 +119,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { input, setInput, clearInput } = useChatInputState();
 
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
-
-  const { todos, setTodos } = useTodos({
-    initialTodos: task?.todos,
-    todosRef,
-  });
-
-  const commitTodos = useCallback(
-    (nextTodos: Todo[]) => {
-      setTodos(nextTodos);
-      store.commit(
-        catalog.events.updateTodos({
-          id: taskId,
-          todos: nextTodos,
-          updatedAt: new Date(),
-        }),
-      );
-    },
-    [setTodos, store, taskId],
-  );
 
   const {
     groupedModels,
@@ -198,6 +186,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting ||
     totalTokens < constants.CompactTaskMinTokens
   );
+  const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
   const { handleSubmit, handleStop } = useChatSubmit({
     chat,
@@ -255,8 +244,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
-    taskId,
-    todosRef,
+    updateTodoCompletion,
   });
 
   const allowInteractiveToolAction = !(isLoading || blockingState.isBusy);
@@ -341,7 +329,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             <TodoList
               todos={visibleTodos}
               editable
-              onSaveTodos={commitTodos}
+              onSaveTodos={updateTodos}
               todoPaused={todoPaused}
               onTodoPausedChange={onTodoPausedChange}
             >
@@ -432,6 +420,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}
+            tooltip={t(
+              autoApproveActive
+                ? "settings.autoApprove.toolbarTooltipEnabled"
+                : "settings.autoApprove.toolbarTooltipDisabled",
+            )}
             trigger={
               <Button
                 type="button"
@@ -443,7 +436,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 )}
                 aria-label={t("settings.autoApprove.approvals")}
               >
-                <TbShieldCog className="size-4 shrink-0 transition-colors duration-200" />
+                <AutoApproveIcon className="size-4 shrink-0 transition-colors duration-200" />
               </Button>
             }
           />

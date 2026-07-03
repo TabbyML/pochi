@@ -42,12 +42,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const lineRange =
-    startLine !== undefined
-      ? endLine && startLine !== endLine
-        ? `:${startLine}-${endLine}`
-        : `:${startLine}`
-      : "";
+  const lineRange = formatLineRange(startLine, endLine);
   const displayLabel = label || getFileBadgeDisplayLabel(path);
 
   const defaultOnClick = async () => {
@@ -106,4 +101,24 @@ export function getFileBadgeDisplayLabel(path: string) {
   return formatPochiFileDisplayPath(path, {
     homeDir: globalThis.POCHI_HOME_DIR,
   });
+}
+
+/**
+ * Formats the line range suffix shown after a file path.
+ * - both provided: `:start` when equal, otherwise `:start-end`
+ * - only startLine: `:start-` (from the given line to the end of the file)
+ * - only endLine: `:1-end` (from the beginning of the file to the given line)
+ * - neither: empty string
+ */
+function formatLineRange(startLine?: number, endLine?: number) {
+  if (startLine !== undefined && endLine !== undefined) {
+    return startLine === endLine ? `:${startLine}` : `:${startLine}-${endLine}`;
+  }
+  if (startLine !== undefined) {
+    return `:${startLine}-`;
+  }
+  if (endLine !== undefined) {
+    return `:1-${endLine}`;
+  }
+  return "";
 }

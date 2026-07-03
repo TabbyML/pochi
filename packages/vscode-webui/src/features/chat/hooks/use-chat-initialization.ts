@@ -3,9 +3,8 @@ import { prepareMessageParts } from "@/lib/message-utils";
 import { getOrLoadTaskStore } from "@/lib/use-default-store";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
 import type { StoreRegistry } from "@livestore/livestore";
-import { type RefObject, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { useTranslation } from "react-i18next";
 
 interface UseChatInitializationProps {
@@ -18,7 +17,6 @@ interface UseChatInitializationProps {
     typeof useTaskMcpConfigOverride
   >["setMcpConfigOverride"];
   isMcpConfigLoading: boolean;
-  todosRef: RefObject<Todo[] | undefined>;
 }
 
 export function useChatInitialization({
@@ -29,7 +27,6 @@ export function useChatInitialization({
   t,
   setMcpConfigOverride,
   isMcpConfigLoading,
-  todosRef,
 }: UseChatInitializationProps) {
   const [isInitializing, setIsInitializing] = useState(
     info.type === "fork-task",
@@ -53,9 +50,6 @@ export function useChatInitialization({
       }
 
       const activeSelection = info.activeSelection;
-      if (info.todos) {
-        todosRef.current = info.todos;
-      }
       const files = info.files?.map((file) => ({
         type: "file" as const,
         filename: file.name,
@@ -142,7 +136,6 @@ export function useChatInitialization({
     jwt,
     setMcpConfigOverride,
     isMcpConfigLoading,
-    todosRef,
   ]);
 
   return { isInitializing };

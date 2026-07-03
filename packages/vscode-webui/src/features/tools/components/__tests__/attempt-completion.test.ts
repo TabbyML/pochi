@@ -32,7 +32,7 @@ describe("getAttemptCompletionResultDisplay", () => {
 });
 
 describe("isAttemptTodoCompletionRejected", () => {
-  it("detects rejected attemptTodoCompletion JSON string results", () => {
+  it("detects unresolved attemptTodoCompletion JSON string results", () => {
     expect(
       isAttemptTodoCompletionRejected({
         type: "tool-newTask",
@@ -42,15 +42,22 @@ describe("isAttemptTodoCompletionRejected", () => {
         },
         output: {
           result: JSON.stringify({
-            success: false,
             summary: "More work remains.",
+            todos: [
+              {
+                id: "todo-1",
+                content: "Add one test",
+                status: "in-progress",
+                priority: "medium",
+              },
+            ],
           }),
         },
       } as any),
     ).toBe(true);
   });
 
-  it("does not reject successful attemptTodoCompletion results", () => {
+  it("does not reject resolved attemptTodoCompletion results", () => {
     expect(
       isAttemptTodoCompletionRejected({
         type: "tool-newTask",
@@ -60,8 +67,15 @@ describe("isAttemptTodoCompletionRejected", () => {
         },
         output: {
           result: {
-            success: true,
             summary: "Done.",
+            todos: [
+              {
+                id: "todo-1",
+                content: "Add one test",
+                status: "completed",
+                priority: "medium",
+              },
+            ],
           },
         },
       } as any),

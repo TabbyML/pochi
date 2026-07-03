@@ -118,7 +118,6 @@
   },
   "worktree": {
     "createPr": "PR 생성",
-    "createWalkthrough": "워크스루 생성",
     "reviewChanges": "변경 사항 검토",
     "createDraftPr": "초안 PR 생성",
     "createPrManually": "수동으로 PR 생성",
@@ -174,6 +173,8 @@
     "autoApprove": {
       "title": "자동 승인",
       "approvals": "권한",
+      "toolbarTooltipEnabled": "자동 승인이 활성화되어 있습니다. 권한 요청은 자동으로 승인됩니다.",
+      "toolbarTooltipDisabled": "자동 승인이 비활성화되어 있습니다. 클릭하면 권한 요청을 자동으로 승인합니다.",
       "disabled": "비활성화됨",
       "noActionsSelected": "선택된 작업 없음",
       "readFiles": "파일 읽기",
@@ -559,11 +560,6 @@
     "executePlan": "계획 실행",
     "creatingPlan": "코드를 분석하고 계획을 수립 중입니다...",
     "planCreationPaused": "계획 수립이 일시 중지되었습니다"
-  },
-  "walkthroughView": {
-    "openWalkthrough": "열기",
-    "creatingWalkthrough": "워크스루 생성 중...",
-    "walkthroughCreationPaused": "워크스루 생성이 일시 중지되었습니다"
   },
   "browserView": {
     "noFrameAvailable": "프레임 없음",

@@ -107,7 +107,6 @@ export function useLiveSubTask(
     getters,
     isSubTask: true,
     customAgent,
-    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
     attemptCompletionSchema,
     sendAutomaticallyWhen: (x) => {
       const streamingResult = ensureNewTaskStreamingResult(
@@ -201,7 +200,7 @@ export function useLiveSubTask(
     setMessages,
     sendMessage,
     regenerate,
-    prepareLastMessageForRetry: chatKit.prepareLastMessageForRetry,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
   const retry = useCallback(
     (error?: Error) => {

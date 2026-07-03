@@ -354,7 +354,6 @@ describe('formatters', () => {
     
     it('should replace attemptTodoCompletion subtasks with attemptCompletion', () => {
       const auditResult = {
-        success: false,
         summary: 'More work remains.',
         todos: [
           {
