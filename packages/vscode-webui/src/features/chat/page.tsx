@@ -183,9 +183,18 @@ function Chat({ user, uid, info }: ChatProps) {
   const onCompactStart = useCallback(() => {
     setIsCompacting(true);
   }, []);
-  const onCompactFinish = useCallback(() => {
-    setIsCompacting(false);
-  }, []);
+  const onCompactFinish = useCallback(
+    async (success: boolean) => {
+      try {
+        if (success) {
+          await vscodeHost.clearFileStateCache(uid);
+        }
+      } finally {
+        setIsCompacting(false);
+      }
+    },
+    [uid],
+  );
 
   const chatKit = useLiveChatKit({
     store,
@@ -200,7 +209,6 @@ function Chat({ user, uid, info }: ChatProps) {
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
-    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
     backgroundTask,
     taskMemory,
     projectMemory,
@@ -293,7 +301,7 @@ function Chat({ user, uid, info }: ChatProps) {
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
     isSubTask,
-    prepareLastMessageForRetry: chatKit.prepareLastMessageForRetry,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
 
   const { pendingApproval, retry } = approvalAndRetry;

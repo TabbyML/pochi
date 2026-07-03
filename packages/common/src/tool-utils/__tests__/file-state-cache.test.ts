@@ -44,9 +44,9 @@ describe("FileStateCache", () => {
     expect(cache.sizeBytes).toBe(0);
   });
 
-  // The staleness guard is temporarily disabled in full, so a deleted/modified
-  // file no longer throws.
-  it("no longer treats deleted files as stale", async () => {
+  // The staleness guard treats a file whose mtime no longer matches (including
+  // a deleted file) as stale and requires a re-read.
+  it("treats deleted files as stale", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/file.txt", {
       content: "hello",
@@ -57,7 +57,7 @@ describe("FileStateCache", () => {
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => undefined, "writing"),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow("File has been modified since it was last read");
   });
 
   it("allows edits when the mtime still matches the cached state", async () => {
@@ -74,22 +74,22 @@ describe("FileStateCache", () => {
     ).resolves.toBeUndefined();
   });
 
-  // The "read before edit/write" guard is temporarily disabled, so editing or
-  // writing a file that was never read no longer throws.
-  it("allows editing a file that was never read but exists on disk", async () => {
+  // The "read before edit/write" guard requires the file to have been read
+  // first when it exists on disk.
+  it("throws when editing a file that was never read but exists on disk", async () => {
     const cache = new FileStateCache();
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "editing"),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow("File has not been read yet");
   });
 
-  it("allows writing a file that was never read but exists on disk", async () => {
+  it("throws when writing a file that was never read but exists on disk", async () => {
     const cache = new FileStateCache();
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "writing"),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow("File has not been read yet");
   });
 
   it("allows writing a new file that does not exist on disk and was never read", async () => {
@@ -134,9 +134,9 @@ describe("FileStateCache", () => {
 });
 
 describe("withFileStateCacheGuard", () => {
-  // The "read before edit/write" guard is temporarily disabled, so editing an
-  // existing file that was never read no longer throws.
-  it("allows editing an existing file that was never read", async () => {
+  // The "read before edit/write" guard rejects editing an existing file that
+  // was never read.
+  it("throws when editing an existing file that was never read", async () => {
     const cache = new FileStateCache();
     const getMtime = async (_path: string) => 1000;
 
@@ -152,7 +152,7 @@ describe("withFileStateCacheGuard", () => {
           fileCacheContent: "new content",
         }),
       }),
-    ).resolves.toEqual({ success: true });
+    ).rejects.toThrow("File has not been read yet");
   });
 
   it("allows writing a brand-new file that does not yet exist on disk", async () => {

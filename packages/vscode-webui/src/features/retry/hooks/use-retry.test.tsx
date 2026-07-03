@@ -34,27 +34,54 @@ function createRetryableAssistantMessage(): Message {
   } as Message;
 }
 
+function createRetryMessageThatStripsReadFile(): Message {
+  return {
+    id: "assistant-2",
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type: "tool-readFile",
+        toolCallId: "call-read-kept",
+        state: "output-available",
+        input: { path: "src/kept.ts" },
+        output: { content: "const kept = 1;", isTruncated: false },
+      },
+      { type: "step-start" },
+      {
+        type: "tool-readFile",
+        toolCallId: "call-read-stripped",
+        state: "output-available",
+        input: { path: "src/stripped.ts" },
+        output: { content: "const stripped = 2;", isTruncated: false },
+      },
+      {
+        type: "tool-executeCommand",
+        toolCallId: "call-exec",
+        state: "input-streaming",
+        input: null,
+      },
+    ],
+  } as Message;
+}
+
 describe("useRetry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("prepares the retry message before rewriting messages", async () => {
-    const prepareLastMessageForRetry = vi.fn(async (message: Message) => ({
-      ...message,
-      parts: message.parts.slice(0, 2),
-    }));
     const setMessages = vi.fn();
     const sendMessage = vi.fn();
     const regenerate = vi.fn();
+    const originalMessage = createRetryableAssistantMessage();
 
     const { result } = renderHook(() =>
       useRetry({
-        messages: [createRetryableAssistantMessage()],
+        messages: [originalMessage],
         setMessages,
         sendMessage,
         regenerate,
-        prepareLastMessageForRetry,
       }),
     );
 
@@ -62,11 +89,39 @@ describe("useRetry", () => {
       await result.current(new Error("retry"));
     });
 
-    expect(prepareLastMessageForRetry).toHaveBeenCalledTimes(1);
     expect(setMessages).toHaveBeenCalledTimes(1);
+    expect(setMessages).toHaveBeenCalledWith([
+      {
+        ...originalMessage,
+        parts: originalMessage.parts.slice(0, 2),
+      },
+    ]);
     expect(sendMessage).toHaveBeenCalledWith(undefined);
     expect(regenerate).not.toHaveBeenCalled();
-    expect(prepareLastMessageForRetry.mock.invocationCallOrder[0]).toBeLessThan(
+  });
+
+  it("clears file-state cache when retry preparation strips a completed readFile", async () => {
+    const clearFileStateCache = vi.fn();
+    const setMessages = vi.fn();
+    const sendMessage = vi.fn();
+    const regenerate = vi.fn();
+
+    const { result } = renderHook(() =>
+      useRetry({
+        messages: [createRetryMessageThatStripsReadFile()],
+        setMessages,
+        sendMessage,
+        regenerate,
+        clearFileStateCache,
+      }),
+    );
+
+    await act(async () => {
+      await result.current(new Error("retry"));
+    });
+
+    expect(clearFileStateCache).toHaveBeenCalledTimes(1);
+    expect(clearFileStateCache.mock.invocationCallOrder[0]).toBeLessThan(
       setMessages.mock.invocationCallOrder[0],
     );
   });

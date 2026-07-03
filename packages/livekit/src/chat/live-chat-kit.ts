@@ -7,7 +7,6 @@ import type {
   TaskMemoryState,
 } from "@getpochi/common";
 import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
-import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import {
@@ -322,11 +321,9 @@ export type LiveChatKitOptions<T> = {
 
   /**
    * Returns recent file contents the model saw before compaction.
-   * They are appended to the compact block before the cache is cleared.
+   * They are appended to the compact block before onCompactFinish runs.
    */
   getRecentFilesForCompact?: GetRecentFilesForCompact;
-
-  clearFileStateCache?: () => MaybePromise<void>;
 
   backgroundTask?: LiveChatKitBackgroundTaskOptions;
 
@@ -376,9 +373,6 @@ export class LiveChatKit<
   private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
   private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
-  private readonly clearFileStateCacheCallback:
-    | (() => MaybePromise<void>)
-    | undefined;
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private backgroundTasksStarted = false;
 
@@ -416,7 +410,6 @@ export class LiveChatKit<
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact,
-    clearFileStateCache,
     backgroundTask,
     taskMemory,
     projectMemory,
@@ -429,7 +422,6 @@ export class LiveChatKit<
     this.getters = getters;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
-    this.clearFileStateCacheCallback = clearFileStateCache;
     this.backgroundTaskAdaptor = backgroundTask?.adaptor;
     const backgroundTaskStateStore = backgroundTask
       ? (backgroundTask.stateStore ?? createBackgroundTaskStateStore())
@@ -1001,15 +993,6 @@ export class LiveChatKit<
     this.pendingMemoryOperations.add(tracked);
   }
 
-  prepareLastMessageForRetry = async (
-    message: Message,
-  ): Promise<Message | undefined> => {
-    const prepared = prepareMessageForRetry(message);
-    if (!prepared) return undefined;
-    await this.clearFileStateCache();
-    return prepared as Message;
-  };
-
   private updateTotalTokensEstimate(messages: Message[]) {
     this.store.commit(
       events.updateTotalTokens({
@@ -1026,21 +1009,12 @@ export class LiveChatKit<
   ) {
     if (success) {
       await this.taskMemoryAdaptor?.resetTokenBaseline();
-      await this.clearFileStateCache();
     }
 
     try {
       await onCompactFinish?.(success);
     } catch (notifyErr) {
       logger.warn("onCompactFinish callback threw", notifyErr);
-    }
-  }
-
-  private async clearFileStateCache() {
-    try {
-      await this.clearFileStateCacheCallback?.();
-    } catch (error) {
-      logger.warn("Failed to clear file-state cache", error);
     }
   }
 

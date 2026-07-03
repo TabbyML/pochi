@@ -13,6 +13,7 @@ import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
+  prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import {
   FileStateCache,
@@ -213,6 +214,15 @@ export class TaskRunner {
     return this.chatKit.chat;
   }
 
+  private async prepareRetryMessage(
+    message: Message,
+  ): Promise<Message | undefined> {
+    const retryMessage = await prepareLastMessageForRetry(message, () =>
+      this.toolCallOptions.fileStateCache.clear(),
+    );
+    return retryMessage ? (retryMessage as Message) : undefined;
+  }
+
   get state() {
     return this.chatKit.chat.getState();
   }
@@ -284,10 +294,14 @@ export class TaskRunner {
       abortSignal: options.abortSignal,
 
       onCompactStart: options.onCompactStart,
-      onCompactFinish: options.onCompactFinish,
+      onCompactFinish: async (success) => {
+        if (success) {
+          this.toolCallOptions.fileStateCache.clear();
+        }
+        await options.onCompactFinish?.(success);
+      },
       getRecentFilesForCompact: () =>
         this.toolCallOptions.fileStateCache.getRecentFiles(),
-      clearFileStateCache: () => this.toolCallOptions.fileStateCache.clear(),
       backgroundTask: options.backgroundTask,
       taskMemory: options.taskMemory,
       projectMemory: options.projectMemory,
@@ -546,7 +560,7 @@ export class TaskRunner {
         "Task is failed, trying to resend last message to resume it.",
         task.error,
       );
-      const processed = await this.chatKit.prepareLastMessageForRetry(message);
+      const processed = await this.prepareRetryMessage(message);
       if (processed) {
         this.chat.appendOrReplaceMessage(processed);
       } else {
@@ -572,7 +586,7 @@ export class TaskRunner {
       logger.trace(
         "Last message is assistant with empty parts or partial/completed tool calls, resending it to resume the task.",
       );
-      const processed = await this.chatKit.prepareLastMessageForRetry(message);
+      const processed = await this.prepareRetryMessage(message);
       if (processed) {
         this.chat.appendOrReplaceMessage(processed);
       } else {
