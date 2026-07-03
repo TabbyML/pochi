@@ -1,15 +1,13 @@
 import { type ToolCallLifeCycle, useToolCallLifeCycle } from "@/features/chat";
 import { getToolCallErrorMessage } from "@/lib/tool-call-error";
-import { useDefaultStore } from "@/lib/use-default-store";
 import type { Chat } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
-import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
+import type { Message, TaskStatusLike } from "@getpochi/livekit";
 import {
   ResolvedAttemptTodoCompletionResult,
   type Todo,
 } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
-import type { RefObject } from "react";
 import { useEffect } from "react";
 
 const logger = getLogger("UseAddCompleteToolCalls");
@@ -19,8 +17,7 @@ interface UseAddCompleteToolCallsProps {
   messages: Message[];
   enable: boolean;
   addToolOutput: Chat<Message>["addToolOutput"];
-  taskId?: string;
-  todosRef?: RefObject<Todo[] | undefined>;
+  updateTodoCompletion?: (update: TodoCompletionUpdate) => void;
 }
 
 function isToolStateCall(message: Message, toolCallId: string): boolean {
@@ -42,11 +39,9 @@ export function useAddCompleteToolCalls({
   enable,
   // setMessages,
   addToolOutput,
-  taskId,
-  todosRef,
+  updateTodoCompletion,
 }: UseAddCompleteToolCallsProps): void {
   const { completeToolCalls } = useToolCallLifeCycle();
-  const store = useDefaultStore();
 
   useEffect(() => {
     if (!enable || completeToolCalls.length === 0) return;
@@ -71,25 +66,14 @@ export function useAddCompleteToolCalls({
       ({ toolCall }) => toolCall.toolCallId === lastToolPart?.toolCallId,
     );
     let todoCompletionUpdate: TodoCompletionUpdate | undefined;
-    if (lastCompletedToolCall && taskId) {
+    if (lastCompletedToolCall) {
       todoCompletionUpdate = getTodoCompletionUpdate({
         message: lastMessage,
         toolCallId: lastCompletedToolCall.toolCall.toolCallId,
         output: lastCompletedToolCall.output,
       });
       if (todoCompletionUpdate) {
-        if (todosRef) {
-          todosRef.current = todoCompletionUpdate.todos;
-        }
-        store.commit(
-          catalog.events.attemptTodoCompletionFinished({
-            id: taskId,
-            data: todoCompletionUpdate.message,
-            todos: todoCompletionUpdate.todos,
-            status: todoCompletionUpdate.status,
-            updatedAt: new Date(),
-          }),
-        );
+        updateTodoCompletion?.(todoCompletionUpdate);
       }
     }
 
@@ -119,9 +103,7 @@ export function useAddCompleteToolCalls({
     completeToolCalls,
     messages,
     addToolOutput,
-    taskId,
-    todosRef,
-    store,
+    updateTodoCompletion,
   ]);
 }
 
@@ -133,7 +115,7 @@ function getLastInputAvailableToolPart(message: Message) {
   );
 }
 
-type TodoCompletionUpdate = {
+export type TodoCompletionUpdate = {
   toolCallId: string;
   message: Message;
   todos: Todo[];

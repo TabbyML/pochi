@@ -189,7 +189,9 @@ function renderToolbar(isSubTask: boolean) {
         { id: "task-1", todos: undefined, totalTokens: 0 } as unknown as Task
       }
       displayError={undefined}
-      todosRef={{ current: [auditTodo] }}
+      todos={[auditTodo]}
+      updateTodos={vi.fn()}
+      updateTodoCompletion={vi.fn()}
       todoPaused={false}
       onTodoPausedChange={vi.fn()}
       taskId="task-1"
