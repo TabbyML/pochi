@@ -92,7 +92,6 @@ describe("ManagedToolCallLifeCycle", () => {
     await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
     expect(lifecycle.complete.result).toEqual({
       result: {
-        success: true,
         summary: "Done.",
         todos: [
           {

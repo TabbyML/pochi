@@ -1,6 +1,6 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
-import type { Todo } from "@getpochi/tools";
+import { type Todo, isTodoListResolved } from "@getpochi/tools";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type TodoCompletionUpdate = {
@@ -89,6 +89,14 @@ export function useTodos({
     }
 
     if (persistedTodos.length > 0) {
+      if (isTodoListResolved(persistedTodos)) {
+        for (const todo of persistedTodos) {
+          consumedTodoIdsRef.current.add(todo.id);
+        }
+        updateTodos([]);
+        return;
+      }
+
       const persistedTodoIds = new Set(persistedTodos.map((todo) => todo.id));
       for (const todo of todosRef.current ?? []) {
         if (persistedTodoIds.has(todo.id)) {
@@ -111,7 +119,7 @@ export function useTodos({
       (todo) => !consumedTodoIdsRef.current.has(todo.id),
     );
     setTodos(unpersistedTodos);
-  }, [persistedTodos, pendingTodos, setTodos]);
+  }, [persistedTodos, pendingTodos, setTodos, updateTodos]);
 
   return {
     todos,
@@ -147,6 +155,10 @@ function getInitialTodos(
 ): Todo[] {
   if (persistedTodos === undefined) {
     return copyTodos(pendingTodos);
+  }
+
+  if (persistedTodos.length > 0 && isTodoListResolved(persistedTodos)) {
+    return [];
   }
 
   if (persistedTodos.length > 0 || !pendingTodos?.length) {

@@ -80,7 +80,6 @@ describe("useAddSubtaskResult", () => {
     await waitFor(() => expect(addResultMock).toHaveBeenCalled());
     expect(addResultMock).toHaveBeenCalledWith({
       result: {
-        success: true,
         summary: "Done.",
         todos: [{ ...auditTodo, status: "completed" }],
       },

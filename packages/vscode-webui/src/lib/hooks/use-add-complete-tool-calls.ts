@@ -6,6 +6,7 @@ import type { Message, TaskStatusLike } from "@getpochi/livekit";
 import {
   ResolvedAttemptTodoCompletionResult,
   type Todo,
+  isTodoListResolved,
 } from "@getpochi/tools";
 import { isStaticToolUIPart } from "ai";
 import { useEffect } from "react";
@@ -146,12 +147,9 @@ export function getTodoCompletionUpdate({
       ? output.result
       : undefined;
   const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(rawResult);
-  if (!parsedResult.success || !parsedResult.data.success) return undefined;
-  const result = parsedResult.data;
-
-  const nextTodos = result.todos.every((todo) => todo.status === "completed")
-    ? []
-    : result.todos;
+  if (!parsedResult.success || !isTodoListResolved(parsedResult.data.todos)) {
+    return undefined;
+  }
 
   return {
     toolCallId,
@@ -167,7 +165,7 @@ export function getTodoCompletionUpdate({
           : part,
       ),
     },
-    todos: nextTodos,
+    todos: [],
     status: "completed",
     output,
   };

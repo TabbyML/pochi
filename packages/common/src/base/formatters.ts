@@ -1,4 +1,9 @@
-import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
+import {
+  ResolvedAttemptTodoCompletionResult,
+  isAutoSuccessToolPart,
+  isTodoListResolved,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import {
   type ToolUIPart,
   type UIMessage,
@@ -360,6 +365,23 @@ type AttemptTodoCompletionOutput = {
 
 function getReplacementAttemptCompletionOutput(part: ToolUIPart) {
   const output = part.output as AttemptTodoCompletionOutput | undefined;
+  const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(
+    output?.result,
+  );
+  if (parsedResult.success) {
+    const todos = { todos: parsedResult.data.todos };
+    if (!isTodoListResolved(parsedResult.data.todos)) {
+      return {
+        success: false,
+        reason:
+          parsedResult.data.summary || "Todo completion was not accepted.",
+        ...todos,
+      };
+    }
+
+    return { success: true, ...todos };
+  }
+
   const todos =
     output?.result && "todos" in output.result
       ? { todos: output.result.todos }

@@ -66,17 +66,9 @@ export type AttemptTodoCompletionResult = z.infer<
 export const ResolvedAttemptTodoCompletionResult =
   AttemptTodoCompletionResult.pick({
     summary: true,
-  })
-    .extend({
-      success: z
-        .boolean()
-        .describe("Whether automatic todo continuation should stop."),
-      todos: z.array(Todo).describe("The resolved complete todos list."),
-    })
-    .refine(
-      (result) => result.success === result.todos.every(isTodoResolved),
-      "Success must match whether all resolved todos are completed or cancelled.",
-    );
+  }).extend({
+    todos: z.array(Todo).describe("The resolved complete todos list."),
+  });
 
 export type ResolvedAttemptTodoCompletionResult = z.infer<
   typeof ResolvedAttemptTodoCompletionResult
@@ -97,12 +89,7 @@ export function resolveAttemptTodoCompletionResult(
     todos,
     parsedResult.data.todoUpdates,
   );
-  const success =
-    parsedResult.data.todoUpdates.length > 0 &&
-    resolvedTodos.every(isTodoResolved);
-
   const resolvedResult = ResolvedAttemptTodoCompletionResult.safeParse({
-    success,
     summary: parsedResult.data.summary,
     todos: resolvedTodos,
   });
@@ -141,6 +128,10 @@ function parseJsonString(value: unknown): unknown {
   } catch {
     return value;
   }
+}
+
+export function isTodoListResolved(todos: readonly Todo[]) {
+  return todos.every(isTodoResolved);
 }
 
 function isTodoResolved(todo: Todo) {

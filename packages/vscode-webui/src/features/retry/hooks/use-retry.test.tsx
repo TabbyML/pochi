@@ -91,7 +91,6 @@ describe("getReadyForRetryError", () => {
               },
               output: {
                 result: {
-                  success: true,
                   summary: "Done.",
                   todos: [
                     {
@@ -128,7 +127,6 @@ describe("getReadyForRetryError", () => {
               },
               output: {
                 result: {
-                  success: false,
                   summary: "More work remains.",
                   todos: [
                     {
@@ -167,7 +165,6 @@ describe("getReadyForRetryError", () => {
               },
               output: {
                 result: JSON.stringify({
-                  success: false,
                   summary: "More work remains.",
                   todos: [
                     {

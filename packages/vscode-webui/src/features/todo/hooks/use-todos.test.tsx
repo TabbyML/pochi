@@ -105,6 +105,69 @@ describe("useTodos", () => {
     });
   });
 
+  it("clears persisted todos when every todo is resolved", () => {
+    const resolvedTodos: Todo[] = [
+      {
+        ...activeTodo,
+        status: "completed",
+      },
+      {
+        id: "todo-2",
+        content: "Wait for user input",
+        status: "cancelled",
+        priority: "medium",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useTodos({
+        persistedTodos: resolvedTodos,
+        taskId: "task-1",
+      }),
+    );
+
+    expect(result.current.todos).toEqual([]);
+    expect(result.current.todosRef.current).toEqual([]);
+    expect(storeCommitMock).toHaveBeenCalledTimes(1);
+    expect(storeCommitMock.mock.calls[0]?.[0]).toMatchObject({
+      name: "v1.UpdateTodos",
+      args: {
+        id: "task-1",
+        todos: [],
+      },
+    });
+  });
+
+  it("does not restore pending todos after clearing resolved persisted todos", () => {
+    const resolvedTodos: Todo[] = [
+      {
+        ...activeTodo,
+        status: "completed",
+      },
+    ];
+
+    const { result, rerender } = renderHook(
+      ({ persistedTodos }: { persistedTodos: readonly Todo[] }) =>
+        useTodos({
+          persistedTodos,
+          pendingTodos: [activeTodo],
+          taskId: "task-1",
+        }),
+      {
+        initialProps: {
+          persistedTodos: resolvedTodos,
+        },
+      },
+    );
+
+    expect(result.current.todos).toEqual([]);
+
+    rerender({ persistedTodos: [] });
+
+    expect(result.current.todos).toEqual([]);
+    expect(result.current.todosRef.current).toEqual([]);
+  });
+
   it("keeps explicit pending todos visible until they are persisted", () => {
     const { result, rerender } = renderHook(
       ({ persistedTodos }: { persistedTodos?: readonly Todo[] }) =>

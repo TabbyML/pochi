@@ -1,3 +1,4 @@
+import { isAttemptTodoCompletionResolved } from "@/lib/todos-utils";
 import type { Message } from "@getpochi/livekit";
 
 export function shouldResumeTodoController({
@@ -16,10 +17,10 @@ export function getTodoContinuationDecision(
 ): boolean | undefined {
   const attemptTodoCompletion = getLastAttemptTodoCompletion(messages);
   if (attemptTodoCompletion) {
-    const success = getAttemptTodoCompletionSuccess(
+    const resolved = isAttemptTodoCompletionResolved(
       attemptTodoCompletion.part.output,
     );
-    return success === false;
+    return resolved === false;
   }
 
   return undefined;
@@ -37,42 +38,4 @@ function getLastAttemptTodoCompletion(messages: Message[]) {
   ) {
     return { message, part };
   }
-}
-
-function getAttemptTodoCompletionSuccess(output: unknown): boolean | undefined {
-  const normalizedOutput = unwrapJsonOutput(output);
-  const result =
-    isRecord(normalizedOutput) && "result" in normalizedOutput
-      ? unwrapJsonOutput(normalizedOutput.result)
-      : undefined;
-
-  for (const candidate of [result, normalizedOutput]) {
-    if (
-      isRecord(candidate) &&
-      "success" in candidate &&
-      typeof candidate.success === "boolean"
-    ) {
-      return candidate.success;
-    }
-  }
-}
-
-function unwrapJsonOutput(output: unknown): unknown {
-  if (isRecord(output) && output.type === "json" && "value" in output) {
-    return output.value;
-  }
-
-  if (typeof output === "string") {
-    try {
-      return JSON.parse(output);
-    } catch {
-      return output;
-    }
-  }
-
-  return output;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

@@ -26,6 +26,7 @@ export {
   ResolvedAttemptTodoCompletionResult,
   Todo,
   TodoUpdate,
+  isTodoListResolved,
   initTodoModeTodos,
   resolveAttemptTodoCompletionResult,
 } from "./todo";

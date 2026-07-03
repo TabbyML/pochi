@@ -1,11 +1,15 @@
 import { MessageMarkdown } from "@/components/message";
 import { TaskThread } from "@/components/task-thread";
 import { FixedStateChatContextProvider } from "@/features/chat";
+import {
+  getAttemptTodoCompletionSummary,
+  parseAttemptTodoCompletionResult,
+} from "@/lib/todos-utils";
 import { getToolPartError } from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
+import { isTodoListResolved } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
-import { getAttemptTodoCompletionState } from "./result";
 import { SubAgentView } from "./sub-agent-view";
 
 interface AttemptTodoCompletionViewProps extends NewTaskToolViewProps {
@@ -24,20 +28,23 @@ export function AttemptTodoCompletionView({
     tool.state === "output-available" && "result" in tool.output
       ? tool.output.result
       : undefined;
-  const completion = getAttemptTodoCompletionState(result);
-  const summary = completion?.summary;
+  const summary = getAttemptTodoCompletionSummary(result);
+  const parsedResult = parseAttemptTodoCompletionResult(result);
+  const resolved = parsedResult
+    ? isTodoListResolved(parsedResult.todos)
+    : undefined;
   const hasAuditFailure =
     !!getToolPartError(tool) ||
-    (tool.state === "output-available" && !completion);
+    (tool.state === "output-available" && resolved === undefined);
   const showTaskThread =
     isExecuting && !summary && !!taskSource && taskSource.messages.length > 1;
   const showFooterTaskThread = !isExecuting;
 
   let title = t("attemptTodoCompletionView.auditing");
 
-  if (completion?.status === "completed") {
+  if (resolved) {
     title = t("attemptTodoCompletionView.completed");
-  } else if (completion?.status === "needs-work") {
+  } else if (resolved === false && !isExecuting) {
     title = t("attemptTodoCompletionView.needsWork");
   } else if (hasAuditFailure) {
     title = t("attemptTodoCompletionView.failed");
@@ -65,12 +72,7 @@ export function AttemptTodoCompletionView({
       }
     >
       {summary ? (
-        <div
-          className={cn(
-            "px-3 py-2 text-muted-foreground leading-6",
-            completion?.status === "needs-work" && "text-error",
-          )}
-        >
+        <div className="px-3 py-2 text-muted-foreground leading-6">
           <MessageMarkdown>{summary}</MessageMarkdown>
         </div>
       ) : (
