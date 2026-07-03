@@ -49,6 +49,11 @@ interface UseChatSubmitProps {
   setQueuedMessages: React.Dispatch<React.SetStateAction<QueuedMessage[]>>;
   reviews: Review[];
   taskId: string;
+  /**
+   * Invoked with the final submitted text right before the message is sent.
+   * Used e.g. to seed a todo from the message when todo mode is selected.
+   */
+  onBeforeSendText?: (text: string) => void;
 }
 
 export function useChatSubmit({
@@ -64,6 +69,7 @@ export function useChatSubmit({
   setQueuedMessages,
   reviews,
   taskId,
+  onBeforeSendText,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { isExecuting } = useToolCallLifeCycle();
@@ -243,6 +249,10 @@ export function useChatSubmit({
         clearInput();
       }
 
+      if (text.length > 0) {
+        onBeforeSendText?.(text);
+      }
+
       if (messageFiles.length > 0) {
         try {
           logger.debug("Uploading files...");
@@ -310,6 +320,7 @@ export function useChatSubmit({
       isExecuting,
       queueCurrentInput,
       pendingApproval,
+      onBeforeSendText,
     ],
   );
 

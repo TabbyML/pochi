@@ -2,14 +2,10 @@ import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { DevModeButton } from "@/components/dev-mode-button";
 import { DiffSummary } from "@/components/diff-summary";
 import { ModelSelect } from "@/components/model-select";
+import { TodoModeBadge } from "@/components/prompt-form/todo-mode-badge";
 import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApprovalButton,
@@ -21,6 +17,7 @@ import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
 import {
   AutoApproveMenu,
   useAutoApprove,
+  useIsDevMode,
   useSelectedModels,
 } from "@/features/settings";
 import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
@@ -31,11 +28,11 @@ import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
-import type { Todo } from "@getpochi/tools";
+import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import {
-  PaperclipIcon,
   SendHorizonal,
   ShieldCheck,
   ShieldOff,
@@ -121,6 +118,30 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
 
+  const [isDevMode] = useIsDevMode();
+  const canUseTodoMode = isDevMode === true;
+  const [todoModeSelected, setTodoModeSelected] = useState(false);
+  const canSelectTodoMode =
+    canUseTodoMode && !isSubTask && !hasActiveTodos(todos);
+
+  useEffect(() => {
+    if (!canSelectTodoMode && todoModeSelected) {
+      setTodoModeSelected(false);
+    }
+  }, [canSelectTodoMode, todoModeSelected]);
+
+  const createTodoBeforeSend = useCallback(
+    (text: string) => {
+      if (!todoModeSelected) return;
+
+      setTodoModeSelected(false);
+      if (hasActiveTodos(todos)) return;
+
+      updateTodos(initTodoModeTodos(text));
+    },
+    [todoModeSelected, todos, updateTodos],
+  );
+
   const {
     groupedModels,
     selectedModel,
@@ -202,6 +223,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     setQueuedMessages,
     reviews,
     taskId: taskId,
+    onBeforeSendText: createTodoBeforeSend,
   });
 
   const autoApproveGuard = useAutoApproveGuard();
@@ -377,6 +399,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           reviews={reviews}
           taskId={taskId}
           lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
+          onAttachFile={() => fileInputRef.current?.click()}
+          onSelectTodoMode={
+            canSelectTodoMode ? () => setTodoModeSelected(true) : undefined
+          }
+          contextMenuSide="top"
           className={cn({
             "rounded-t-none": hasVisibleContextPanel || hasQueuedMessages,
           })}
@@ -414,6 +441,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             onChange={updateSelectedModelId}
             reloadModels={reloadModels}
           />
+          {canSelectTodoMode && todoModeSelected && (
+            <TodoModeBadge onRemove={() => setTodoModeSelected(false)} />
+          )}
         </div>
 
         <div className={FooterRightClassName}>
@@ -463,30 +493,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               onUpdateIsPublicShared={onUpdateIsPublicShared}
             />
           )}
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="button-focus relative h-6 w-6 p-0"
-                >
-                  <span className="size-4">
-                    <PaperclipIcon className="size-4 translate-y-[1.5px] scale-105" />
-                  </span>
-                </Button>
-              </span>
-            </HoverCardTrigger>
-            <HoverCardContent
-              side="top"
-              align="start"
-              sideOffset={6}
-              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-            >
-              {t("chat.attachmentTooltip")}
-            </HoverCardContent>
-          </HoverCard>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
             showStopButton={showStopButton}

@@ -437,6 +437,17 @@
     "cell": "セル",
     "addContext": "コンテキストを追加"
   },
+  "todoModeBadge": {
+    "remove": "Todoモードを削除"
+  },
+  "addContextMenu": {
+    "trigger": "追加",
+    "files": "ファイルとフォルダー",
+    "filesDescription": "@ でワークスペースのファイルとフォルダーを検索",
+    "attach": "ファイルを添付",
+    "attachDescription": "コンピューターから画像・PDF・動画をアップロード",
+    "todoDescription": "このTodoに向けてPochiが作業を続けます"
+  },
   "mentionList": {
     "noResultsFound": "結果が見つかりません",
     "typeToSearch": "入力して検索...",

@@ -33,19 +33,15 @@ const defaultProps = {
 };
 
 describe("SubmitDropdownButton", () => {
-  it("shows the todo icon when todo mode is active", () => {
-    render(<SubmitDropdownButton {...defaultProps} isTodoMode />);
+  it("shows the plan mode toggle in the dropdown", () => {
+    render(<SubmitDropdownButton {...defaultProps} />);
 
-    const button = screen.getByRole("button", {
-      name: "chat.todoModeSubmitTooltip",
-    });
+    fireEvent.mouseEnter(screen.getByRole("button"));
 
-    const targetIcon = button.querySelector(".lucide-target");
-    expect(targetIcon).not.toBeNull();
-    expect(targetIcon?.parentElement?.className).toContain("opacity-100");
+    expect(screen.getByText("chat.planModeLabel")).not.toBeNull();
   });
 
-  it("hides the todo mode toggle by default", () => {
+  it("no longer renders the todo mode toggle", () => {
     render(<SubmitDropdownButton {...defaultProps} />);
 
     fireEvent.mouseEnter(screen.getByRole("button"));
@@ -53,12 +49,12 @@ describe("SubmitDropdownButton", () => {
     expect(screen.queryByText("chat.todoModeLabel")).toBeNull();
   });
 
-  it("shows the todo mode toggle when todo mode is enabled", () => {
-    render(<SubmitDropdownButton {...defaultProps} showTodoMode />);
+  it("shows the plan submit tooltip when plan mode is active", () => {
+    render(<SubmitDropdownButton {...defaultProps} isPlanMode />);
 
-    fireEvent.mouseEnter(screen.getByRole("button"));
-
-    expect(screen.getByText("chat.todoModeLabel")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "chat.planModeSubmitTooltip" }),
+    ).not.toBeNull();
   });
 
   it("shows the mode switch shortcut when hovering the todo mode toggle", async () => {

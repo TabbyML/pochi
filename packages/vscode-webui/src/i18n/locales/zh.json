@@ -435,6 +435,17 @@
     "cell": "单元格",
     "addContext": "添加上下文"
   },
+  "todoModeBadge": {
+    "remove": "移除 Todo 模式"
+  },
+  "addContextMenu": {
+    "trigger": "添加",
+    "files": "文件和文件夹",
+    "filesDescription": "使用 @ 搜索工作区文件和文件夹",
+    "attach": "附加文件",
+    "attachDescription": "从电脑上传图片、PDF 或视频",
+    "todoDescription": "让 Pochi 持续推进这个 Todo"
+  },
   "mentionList": {
     "noResultsFound": "未找到结果",
     "typeToSearch": "输入以搜索...",

@@ -443,6 +443,17 @@
     "cell": "Cell",
     "addContext": "Add Context"
   },
+  "todoModeBadge": {
+    "remove": "Remove todo mode"
+  },
+  "addContextMenu": {
+    "trigger": "Add",
+    "files": "Files and folders",
+    "filesDescription": "Search workspace files and folders with @",
+    "attach": "Attach files",
+    "attachDescription": "Upload images, PDFs, or videos from your computer",
+    "todoDescription": "Ask Pochi to keep working toward this todo"
+  },
   "mentionList": {
     "noResultsFound": "No results found",
     "typeToSearch": "Type to search...",
