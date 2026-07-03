@@ -59,6 +59,7 @@ import {
 } from "./slash-mention/mention-list";
 import { createSlashCandidates } from "./slash-mention/slash-candidates";
 import { SubmitHistoryExtension } from "./submit-history-extension";
+import { createPlainTextSlice, shouldPasteAsPlainText } from "./utils";
 
 const newLineCharacter = "\n";
 
@@ -414,6 +415,26 @@ export function FormEditor({
         attributes: {
           class:
             "prose max-w-full min-h-[3.5em] font-sans dark:prose-invert focus:outline-none prose-p:my-0 leading-[1.25]",
+        },
+        handlePaste: (view, event) => {
+          const clipboardData = event.clipboardData;
+          if (!clipboardData) return false;
+
+          const text = clipboardData.getData("text/plain");
+          const html = clipboardData.getData("text/html");
+          if (
+            !shouldPasteAsPlainText({
+              text,
+              html,
+              hasFiles: clipboardData.files.length > 0,
+            })
+          ) {
+            return false;
+          }
+
+          const slice = createPlainTextSlice(view.state.schema, text);
+          view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView());
+          return true;
         },
         handleDOMEvents: {
           dragenter: (_view, event) => {
