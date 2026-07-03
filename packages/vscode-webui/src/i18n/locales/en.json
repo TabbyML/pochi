@@ -178,6 +178,8 @@
     "autoApprove": {
       "title": "Auto-Approve",
       "approvals": "Permissions",
+      "toolbarTooltipEnabled": "Auto-approve is enabled. Permission prompts will be approved automatically.",
+      "toolbarTooltipDisabled": "Auto-approve is disabled. Click to approve permission prompts automatically.",
       "disabled": "Disabled",
       "noActionsSelected": "No actions selected",
       "readFiles": "Read files",
