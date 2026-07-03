@@ -1,6 +1,7 @@
 import { FilesProvider } from "@/components/files-provider";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
+import { useTodos } from "@/features/todo";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
@@ -19,7 +20,7 @@ import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import { type Todo, parseOutputSchema } from "@getpochi/tools";
+import { parseOutputSchema } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -84,9 +85,6 @@ function Chat({ user, uid, info }: ChatProps) {
   const { jwt } = usePochiCredentials();
 
   const { t } = useTranslation();
-  const todosRef = useRef<Todo[] | undefined>(
-    info.type === "new-task" ? info.todos : undefined,
-  );
   const [todoPaused, setTodoPaused] = useState(false);
   const todoPausedRef = useLatest(todoPaused);
   const todoModeActiveRef = useRef(false);
@@ -129,12 +127,18 @@ function Chat({ user, uid, info }: ChatProps) {
       : undefined;
     return resultSchema ? parseOutputSchema(resultSchema) : undefined;
   }, [customAgent?.isBuiltIn, customAgent?._internal?.resultSchema]);
-  if (isSubTask) {
-    todosRef.current =
-      subtask?.agent === constants.AttemptTodoCompletionAgentName
-        ? subtask.todos
-        : undefined;
-  }
+  const pendingTodos = isSubTask
+    ? subtask?.agent === constants.AttemptTodoCompletionAgentName
+      ? subtask.todos
+      : undefined
+    : info.type === "new-task"
+      ? info.todos
+      : undefined;
+  const { todos, todosRef, updateTodos, updateTodoCompletion } = useTodos({
+    persistedTodos: isSubTask ? undefined : task?.todos,
+    pendingTodos,
+    taskId: uid,
+  });
   const autoApproveGuard = useAutoApproveGuard();
 
   // Get mcpConfigOverride from TaskStateStore
@@ -155,7 +159,7 @@ function Chat({ user, uid, info }: ChatProps) {
     taskId: uid,
   });
 
-  useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
+  useRestoreTaskModel(task, info, isModelsLoading, updateSelectedModelId);
 
   const { autoApproveActive, autoApproveSettings } = useAutoApprove({
     autoApproveGuard: autoApproveGuard.current === "auto",
@@ -362,7 +366,6 @@ function Chat({ user, uid, info }: ChatProps) {
     t,
     setMcpConfigOverride,
     isMcpConfigLoading,
-    todosRef,
   });
 
   useSetSubtaskModel({ isSubTask, customAgent });
@@ -461,7 +464,9 @@ function Chat({ user, uid, info }: ChatProps) {
         <ChatToolbar
           chat={chat}
           task={task}
-          todosRef={todosRef}
+          todos={todos}
+          updateTodos={updateTodos}
+          updateTodoCompletion={updateTodoCompletion}
           todoPaused={todoPaused}
           onTodoPausedChange={handleTodoPausedChange}
           compact={chatKit.compact}
@@ -493,9 +498,7 @@ function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   return (
     lastToolPart?.type === "tool-newTask" &&
-    ["planner", "reviewer", "walkthrough"].includes(
-      lastToolPart?.input?.agentType || "",
-    ) &&
+    ["planner", "reviewer"].includes(lastToolPart?.input?.agentType || "") &&
     lastToolPart?.state === "output-available"
   );
 }

@@ -71,7 +71,6 @@ function makeParentMessage(): Message {
 describe("useAddSubtaskResult", () => {
   it("resolves attemptTodoCompletion subtask output before completing the parent tool call", async () => {
     extractTaskResultMock.mockReturnValue({
-      success: true,
       summary: "Done.",
       todoUpdates: [{ id: "todo-1", status: "completed" }],
     });

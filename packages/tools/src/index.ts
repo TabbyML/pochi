@@ -26,6 +26,7 @@ export {
   ResolvedAttemptTodoCompletionResult,
   Todo,
   TodoUpdate,
+  initTodoModeTodos,
   resolveAttemptTodoCompletionResult,
 } from "./todo";
 export { MediaOutput } from "./read-file";

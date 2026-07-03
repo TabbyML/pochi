@@ -26,7 +26,7 @@ import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
-import type { Todo } from "@getpochi/tools";
+import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import { PaperclipIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -458,14 +458,3 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     </>
   );
 };
-
-function initTodoModeTodos(objective: string): Todo[] {
-  return [
-    {
-      id: crypto.randomUUID(),
-      content: objective,
-      status: "in-progress",
-      priority: "medium",
-    },
-  ];
-}

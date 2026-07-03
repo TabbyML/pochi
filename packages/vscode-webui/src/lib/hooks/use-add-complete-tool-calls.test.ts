@@ -1,13 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+// @vitest-environment jsdom
+import { renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { getTodoCompletionUpdate } from "./use-add-complete-tool-calls";
+import {
+  getTodoCompletionUpdate,
+  useAddCompleteToolCalls,
+} from "./use-add-complete-tool-calls";
+
+const mocks = vi.hoisted(() => ({
+  completeToolCalls: [] as unknown[],
+}));
 
 vi.mock("@/features/chat", () => ({
-  useToolCallLifeCycle: () => ({ completeToolCalls: [] }),
-}));
-vi.mock("@/lib/use-default-store", () => ({
-  useDefaultStore: () => ({ commit: vi.fn() }),
+  useToolCallLifeCycle: () => ({ completeToolCalls: mocks.completeToolCalls }),
 }));
 
 const baseTodos: Todo[] = [
@@ -43,6 +49,10 @@ function findToolPart(message: Message | undefined, toolCallId: string) {
 }
 
 describe("getTodoCompletionUpdate", () => {
+  beforeEach(() => {
+    mocks.completeToolCalls = [];
+  });
+
   it("clears todos when attemptTodoCompletion completes all todos", () => {
     const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
@@ -176,5 +186,66 @@ describe("getTodoCompletionUpdate", () => {
     });
 
     expect(update?.todos).toEqual([]);
+  });
+});
+
+describe("useAddCompleteToolCalls", () => {
+  beforeEach(() => {
+    mocks.completeToolCalls = [];
+  });
+
+  it("reports todo completion updates through one action", async () => {
+    const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
+    const dispose = vi.fn();
+    const addToolOutput = vi.fn();
+    const updateTodoCompletion = vi.fn();
+    mocks.completeToolCalls = [
+      {
+        status: "complete",
+        toolName: "newTask",
+        toolCallId: "tool-1",
+        complete: {
+          reason: "execute-finish",
+          result: {
+            result: {
+              success: true,
+              summary: "Done.",
+              todos: resolvedTodos,
+            },
+          },
+        },
+        dispose,
+      },
+    ];
+
+    renderHook(() =>
+      useAddCompleteToolCalls({
+        messages: [makeAttemptTodoCompletionMessage()],
+        enable: true,
+        addToolOutput,
+        updateTodoCompletion,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(updateTodoCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          todos: [],
+          status: "completed",
+        }),
+      ),
+    );
+    expect(addToolOutput).toHaveBeenCalledWith({
+      tool: "newTask",
+      toolCallId: "tool-1",
+      output: {
+        result: {
+          success: true,
+          summary: "Done.",
+          todos: resolvedTodos,
+        },
+      },
+    });
+    expect(dispose).toHaveBeenCalledTimes(1);
   });
 });
