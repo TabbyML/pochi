@@ -126,6 +126,45 @@ describe("FileBadge", () => {
     expect(visibleText(container)).toContain("pochi://-/memory.md");
   });
 
+  it("renders the full line range when both startLine and endLine are provided", () => {
+    const { container } = render(
+      <FileBadge path="src/main.tsx" startLine={10} endLine={60} />,
+    );
+
+    expect(visibleText(container)).toContain("src/main.tsx:10-60");
+  });
+
+  it("renders a single line when startLine equals endLine", () => {
+    const { container } = render(
+      <FileBadge path="src/main.tsx" startLine={42} endLine={42} />,
+    );
+
+    expect(visibleText(container)).toContain("src/main.tsx:42");
+  });
+
+  it("renders an open-ended range when only startLine is provided", () => {
+    const { container } = render(
+      <FileBadge path="src/main.tsx" startLine={10} />,
+    );
+
+    expect(visibleText(container)).toContain("src/main.tsx:10-");
+  });
+
+  it("renders a range from the beginning when only endLine is provided", () => {
+    const { container } = render(
+      <FileBadge path="src/main.tsx" endLine={60} />,
+    );
+
+    expect(visibleText(container)).toContain("src/main.tsx:1-60");
+  });
+
+  it("renders no line range when neither startLine nor endLine is provided", () => {
+    const { container } = render(<FileBadge path="src/main.tsx" />);
+
+    expect(visibleText(container)).toContain("src/main.tsx");
+    expect(visibleText(container)).not.toContain(":");
+  });
+
   it("keeps normal paths and explicit labels unchanged", () => {
     const normal = render(
       <FileBadge path="packages/vscode-webui/src/main.tsx" />,
