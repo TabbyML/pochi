@@ -115,6 +115,23 @@ export class FileStateCache {
     this.currentSizeBytes = 0;
   }
 
+  /**
+   * Downgrade every cached entry to "written" state (`fromWrite: true`).
+   *
+   * Used when the read tool_results that populated the cache are about to
+   * leave the conversation — a compaction summary, or a retry that strips a
+   * completed read. Keeping the entries preserves the edit/write staleness
+   * guard (so a later edit of an already-read file is not falsely rejected
+   * with "File has not been read yet"), while `fromWrite: true` stops them
+   * from producing a "File unchanged" dedup stub that would dangle onto a
+   * tool_result no longer present in the conversation.
+   */
+  markAllAsWritten(): void {
+    for (const entry of this.entries.values()) {
+      entry.fromWrite = true;
+    }
+  }
+
   get size(): number {
     return this.entries.size;
   }

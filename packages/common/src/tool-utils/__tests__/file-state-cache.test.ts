@@ -3,6 +3,7 @@ import {
   checkStaleness,
   FileStateCache,
   withFileStateCacheGuard,
+  withReadFileCache,
 } from "../file-state-cache";
 
 describe("FileStateCache", () => {
@@ -130,6 +131,48 @@ describe("FileStateCache", () => {
       "/tmp/c.txt",
     ]);
     expect(cache.getRecentFiles(1)[0]?.isTruncated).toBe(true);
+  });
+
+  // markAllAsWritten is used when the read tool_results that populated the
+  // cache leave the conversation (compaction / retry-strip). It must retain
+  // the entries (so edits are not falsely rejected) while disabling dedup.
+  it("keeps entries editable but stops read dedup after markAllAsWritten", async () => {
+    const cache = new FileStateCache();
+    cache.set("/tmp/file.txt", {
+      content: "hello",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+
+    cache.markAllAsWritten();
+
+    // Entry is retained and downgraded to a write-sourced state.
+    expect(cache.get("/tmp/file.txt")?.fromWrite).toBe(true);
+
+    // Editing an already-read file is still allowed (no false "not read").
+    await expect(
+      checkStaleness(cache, "/tmp/file.txt", async () => 1, "editing"),
+    ).resolves.toBeUndefined();
+
+    // A re-read of the same range is no longer deduplicated, so it cannot
+    // dangle onto a tool_result that left the conversation.
+    const result = await withReadFileCache({
+      cache,
+      path: "/tmp/file.txt",
+      cwd: "/tmp",
+      startLine: 1,
+      endLine: 1,
+      getMtime: async () => 1,
+      doRead: async () => ({
+        result: { content: "hello" },
+        fileCacheContent: "hello",
+      }),
+    });
+    expect(result).toEqual({
+      result: { content: "hello" },
+      deduplicated: false,
+    });
   });
 });
 

@@ -146,7 +146,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   }
 
   clearFileStateCache(taskId: string) {
-    this.fileStateCaches.get(taskId)?.clear();
+    this.fileStateCaches.get(taskId)?.markAllAsWritten();
   }
 
   private createToolCallOptions(taskId: string): ToolCallOptions {

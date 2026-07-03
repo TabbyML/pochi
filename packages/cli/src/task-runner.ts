@@ -218,7 +218,7 @@ export class TaskRunner {
     message: Message,
   ): Promise<Message | undefined> {
     const retryMessage = await prepareLastMessageForRetry(message, () =>
-      this.toolCallOptions.fileStateCache.clear(),
+      this.toolCallOptions.fileStateCache.markAllAsWritten(),
     );
     return retryMessage ? (retryMessage as Message) : undefined;
   }
@@ -296,7 +296,7 @@ export class TaskRunner {
       onCompactStart: options.onCompactStart,
       onCompactFinish: async (success) => {
         if (success) {
-          this.toolCallOptions.fileStateCache.clear();
+          this.toolCallOptions.fileStateCache.markAllAsWritten();
         }
         await options.onCompactFinish?.(success);
       },
