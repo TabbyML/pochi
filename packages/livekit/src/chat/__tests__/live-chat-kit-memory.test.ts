@@ -45,34 +45,6 @@ describe("LiveChatKit memory lifecycle", () => {
     await chatKit.disposeBackgroundTasks();
   });
 
-  it("clears file-state cache before returning a retry message", async () => {
-    const clearFileStateCache = vi.fn();
-    const store = new FakeStore([
-      makeTask({
-        id: "parent",
-        status: "pending-model",
-        background: false,
-      }),
-    ]);
-    const chatKit = new LiveChatKit<FakeChat>({
-      taskId: "parent",
-      store: store as unknown as LiveKitStore,
-      blobStore: {} as BlobStore,
-      chatClass: FakeChat,
-      getters: {
-        getLLM: () => ({ id: "test-model" }) as never,
-      },
-      clearFileStateCache,
-    });
-
-    const retryMessage = await chatKit.prepareLastMessageForRetry(
-      retryableAssistantMessage(),
-    );
-
-    expect(clearFileStateCache).toHaveBeenCalledTimes(1);
-    expect(retryMessage).toBeTruthy();
-  });
-
   it("marks unfinished tool calls as errors when a stream fails", async () => {
     const store = new FakeStore([
       makeTask({
@@ -737,30 +709,6 @@ function blankAssistantMessage(): Message {
     id: "assistant-blank",
     role: "assistant",
     parts: [],
-  } as unknown as Message;
-}
-
-function retryableAssistantMessage(): Message {
-  return {
-    id: "assistant-retry",
-    role: "assistant",
-    parts: [
-      { type: "step-start" },
-      {
-        type: "tool-readFile",
-        toolCallId: "call-read-file",
-        state: "output-available",
-        input: { path: "src/app.ts" },
-        output: { content: "const answer = 42;", isTruncated: false },
-      },
-      { type: "step-start" },
-      {
-        type: "tool-executeCommand",
-        toolCallId: "call-exec",
-        state: "input-streaming",
-        input: null,
-      },
-    ],
   } as unknown as Message;
 }
 

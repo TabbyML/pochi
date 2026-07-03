@@ -79,7 +79,6 @@ vi.mock("@getpochi/livekit", () => ({
 vi.mock("@getpochi/livekit/react", () => ({
   useLiveChatKit: () => ({
     chat: {},
-    prepareLastMessageForRetry: vi.fn(),
   }),
 }));
 

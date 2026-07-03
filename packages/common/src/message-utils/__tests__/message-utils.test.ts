@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { parseTitle, prepareLastMessageForRetry } from "..";
 import type { UIMessage } from "ai";
+import { describe, expect, it, vi } from "vitest";
+import { parseTitle, prepareLastMessageForRetry } from "..";
 
 describe("message-utils", () => {
   describe("toUIMessageTitle", () => {
@@ -13,7 +13,7 @@ describe("message-utils", () => {
   });
 
   describe("prepareLastMessageForRetry", () => {
-    it("should keep last step", () => {
+    it("should keep last step", async () => {
       const lastMessage: UIMessage = {
         "id": "a8ed4356-72ab-487a-9bb4-b98d61948eba",
         "metadata": {
@@ -62,9 +62,86 @@ describe("message-utils", () => {
 
       const before = lastMessage?.parts.filter((part) => part.type === "step-start").length || 0;
       expect(before).toBe(2);
-      const message = prepareLastMessageForRetry(lastMessage)
+      const message = await prepareLastMessageForRetry(lastMessage)
       const after = message?.parts.filter((part) => part.type === "step-start").length || 0;
       expect(after).toBe(1);
     })
+
+    it("does not run clean when completed readFile remains in the retry message", async () => {
+      const clean = vi.fn();
+      const message = await prepareLastMessageForRetry(
+        retryableAssistantMessage(),
+        clean,
+      );
+
+      expect(message).toBeTruthy();
+      expect(clean).not.toHaveBeenCalled();
+    });
+
+    it("runs clean when completed readFile is stripped from the retry message", async () => {
+      const clean = vi.fn();
+      const message = await prepareLastMessageForRetry(
+        retryStrippingCompletedReadMessage(),
+        clean,
+      );
+
+      expect(message).toBeTruthy();
+      expect(clean).toHaveBeenCalledTimes(1);
+    });
   })
 })
+
+function retryableAssistantMessage(): UIMessage {
+  return {
+    id: "assistant-retry",
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type: "tool-readFile",
+        toolCallId: "call-read-file",
+        state: "output-available",
+        input: { path: "src/app.ts" },
+        output: { content: "const answer = 42;", isTruncated: false },
+      },
+      { type: "step-start" },
+      {
+        type: "tool-executeCommand",
+        toolCallId: "call-exec",
+        state: "input-streaming",
+        input: null,
+      },
+    ],
+  } as unknown as UIMessage;
+}
+
+function retryStrippingCompletedReadMessage(): UIMessage {
+  return {
+    id: "assistant-retry-read",
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type: "tool-readFile",
+        toolCallId: "call-read-kept",
+        state: "output-available",
+        input: { path: "src/kept.ts" },
+        output: { content: "const kept = 1;", isTruncated: false },
+      },
+      { type: "step-start" },
+      {
+        type: "tool-readFile",
+        toolCallId: "call-read-stripped",
+        state: "output-available",
+        input: { path: "src/stripped.ts" },
+        output: { content: "const stripped = 2;", isTruncated: false },
+      },
+      {
+        type: "tool-executeCommand",
+        toolCallId: "call-exec",
+        state: "input-streaming",
+        input: null,
+      },
+    ],
+  } as unknown as UIMessage;
+}
