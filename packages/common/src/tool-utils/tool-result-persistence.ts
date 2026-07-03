@@ -22,23 +22,36 @@ function generatePreview(
   if (content.length <= maxSize) {
     return { preview: content, hasMore: false };
   }
-  const truncated = content.slice(0, maxSize);
-  const lastNewline = truncated.lastIndexOf("\n");
-  const cutPoint = lastNewline > maxSize * 0.5 ? lastNewline : maxSize;
-  return { preview: content.slice(0, cutPoint), hasMore: true };
+  const halfSize = Math.floor(maxSize / 2);
+
+  // Get first part up to halfSize, aligned to the last newline
+  let firstPart = content.slice(0, halfSize);
+  const lastNewlineFirst = firstPart.lastIndexOf("\n");
+  if (lastNewlineFirst > halfSize * 0.5) {
+    firstPart = firstPart.slice(0, lastNewlineFirst);
+  }
+
+  // Get last part from content.length - halfSize to end, aligned to the first newline
+  let lastPart = content.slice(-halfSize);
+  const firstNewlineLast = lastPart.indexOf("\n");
+  if (firstNewlineLast !== -1 && firstNewlineLast < halfSize * 0.5) {
+    lastPart = lastPart.slice(firstNewlineLast + 1);
+  }
+
+  const preview = `${firstPart}\n\n... [truncated ${content.length - firstPart.length - lastPart.length} chars] ...\n\n${lastPart}`;
+  return { preview, hasMore: true };
 }
 
 function buildTruncatedValue(fieldValue: string, filePath: string): string {
-  const { preview, hasMore } = generatePreview(
+  const { preview } = generatePreview(
     fieldValue,
     PersistedToolResultPreviewSize,
   );
   let message = `[Output too large: ${fieldValue.length} chars. Full content saved to: ${filePath}\n`;
   message += "Use readFile to access the full content if needed.\n\n";
-  message += `Preview (first ${PersistedToolResultPreviewSize} chars):\n`;
+  message += `Preview (first and last ~${Math.floor(PersistedToolResultPreviewSize / 2)} chars):\n`;
   message += preview;
-  if (hasMore) message += "\n...]";
-  else message += "]";
+  message += "]";
   return message;
 }
 

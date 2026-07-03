@@ -1,20 +1,11 @@
-// Register the models
-import "@getpochi/vendor-pochi/edge";
-import "@getpochi/vendor-tabby/edge";
-import "@getpochi/vendor-gemini-cli/edge";
-import "@getpochi/vendor-codex/edge";
-import "@getpochi/vendor-github-copilot/edge";
-import "@getpochi/vendor-qwen-code/edge";
-
 import { useSelectedModels } from "@/features/settings";
+import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
-import { vscodeHost } from "@/lib/vscode";
-import { constants, type Environment } from "@getpochi/common";
+import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import type { AutoMemoryContext } from "@getpochi/common";
-import { createModel } from "@getpochi/common/vendor/edge";
 import {
   type DisplayModel,
   type McpConfigOverride,
@@ -23,9 +14,11 @@ import {
 import type { LLMRequestData } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { useCallback, useRef } from "react";
+import { displayModelToLLM } from "./display-model-to-llm";
 
 export function useLiveChatKitGetters({
   todos,
+  todoModeActive,
   isSubTask,
   omitCustomRules,
   modelOverride,
@@ -33,6 +26,7 @@ export function useLiveChatKitGetters({
   taskId,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
+  todoModeActive?: React.RefObject<boolean>;
   isSubTask: boolean;
   omitCustomRules?: boolean;
   modelOverride?: DisplayModel;
@@ -62,20 +56,37 @@ export function useLiveChatKitGetters({
       taskId: taskId || undefined,
     });
 
+    const currentTodos = todos.current;
+    if (!currentTodos) {
+      return environment;
+    }
+
     return {
-      todos: todos.current,
       ...environment,
-    } satisfies Environment;
+      todos: currentTodos,
+    };
   }, [todos, omitCustomRules, taskId]);
+
+  // Read the current enable state so disabling the checkbox takes effect for
+  // the current task (not just on the next mount).
+  const { autoMemoryEnabled } = useAutoMemoryEnabled();
+  const autoMemoryEnabledRef = useLatest(autoMemoryEnabled);
 
   // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
   // the cached system+tools prefix. New memory shows on next mount.
   const autoMemoryCacheRef = useRef<Promise<
     AutoMemoryContext | undefined
   > | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies(autoMemoryEnabledRef.current): ref is stable.
   const getAutoMemory = useCallback(() => {
+    // When project memory is disabled, drop any cached context so it is no
+    // longer injected into the prompt and re-enabling reads it fresh.
+    if (!autoMemoryEnabledRef.current) {
+      autoMemoryCacheRef.current = null;
+      return Promise.resolve(undefined);
+    }
     if (autoMemoryCacheRef.current) return autoMemoryCacheRef.current;
-    const pending = vscodeHost.readAutoMemory();
+    const pending = vscodeAutoMemoryManager.readContext();
     autoMemoryCacheRef.current = pending;
     pending.catch(() => {
       // Allow retry on transient failure.
@@ -93,6 +104,11 @@ export function useLiveChatKitGetters({
     getEnvironment,
 
     getAutoMemory,
+
+    isTodoModeActive: useCallback(
+      () => todoModeActive?.current === true,
+      [todoModeActive],
+    ),
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
     getMcpInfo: useCallback(() => {
@@ -127,79 +143,8 @@ function useLLM({
   const model = modelOverride || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!model) return undefined as never;
-    if (model.type === "vendor") {
-      return {
-        id: model.id,
-        type: "vendor",
-        contextWindow: model.options.contextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        getModel: () =>
-          createModel(model.vendorId, {
-            modelId: model.modelId,
-            getCredentials: model.getCredentials,
-          }),
-        contentType: model.contentType,
-      };
-    }
-
-    const { provider } = model;
-    if (provider.kind === "google-vertex-tuning") {
-      return {
-        id: model.id,
-        type: "google-vertex-tuning" as const,
-        modelId: model.modelId,
-        vertex: provider.vertex,
-        maxOutputTokens:
-          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          model.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        contentType: model.contentType,
-      };
-    }
-
-    if (provider.kind === "ai-gateway") {
-      return {
-        id: model.id,
-        type: "ai-gateway" as const,
-        modelId: model.modelId,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          model.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        contentType: model.contentType,
-      };
-    }
-
-    if (
-      provider.kind === undefined ||
-      provider.kind === "openai" ||
-      provider.kind === "anthropic" ||
-      provider.kind === "openai-responses"
-    ) {
-      return {
-        id: model.id,
-        type: provider.kind || "openai",
-        modelId: model.modelId,
-        baseURL: provider.baseURL,
-        apiKey: provider.apiKey,
-        maxOutputTokens:
-          model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
-        contextWindow:
-          model.options.contextWindow ?? constants.DefaultContextWindow,
-        useToolCallMiddleware: model.options.useToolCallMiddleware,
-        contentType: model.contentType,
-      };
-    }
-
-    assertUnreachable(provider.kind);
+    return displayModelToLLM(model);
   })();
 
   return useLatest(llmFromSelectedModel);
-}
-
-function assertUnreachable(_x: never): never {
-  throw new Error("Didn't expect to get here");
 }

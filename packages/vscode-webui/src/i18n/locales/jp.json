@@ -31,8 +31,13 @@
     "createPlan": "計画",
     "createPlanTooltip": "このタスクの実装計画を作成",
     "planModeLabel": "計画",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Todoを一時停止",
+    "resumeTodo": "Todoを再開",
+    "autoContinueTodo": "TODOを自動継続",
     "planModeToggleShortcutTooltip": "Shift + Tab で切り替え",
     "planModeSubmitTooltip": "計画として送信",
+    "todoModeSubmitTooltip": "Todoモードで送信",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -78,6 +83,9 @@
     "viewProjectMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
     "viewTaskMemoryButtonTooltip": "タスク圧縮時に再利用されるタスクメモリの要約を開きます。",
     "projectMemoryUnavailable": "このワークスペースでタスクを実行するとプロジェクトメモリが利用可能になります。",
+    "projectMemoryClear": "プロジェクトメモリをクリア",
+    "projectMemoryReset": "リセット",
+    "projectMemoryClearConfirm": "すべてのプロジェクトメモリファイル（MEMORY.md およびトピックファイル）がリセットされます。この操作は元に戻せません。",
     "taskMemoryUnavailable": "タスクメモリは会話の進行に伴って自動的に生成されます。"
   },
   "modelSelect": {
@@ -111,6 +119,11 @@
   },
   "worktree": {
     "createPr": "PR を作成",
+<<<<<<< HEAD
+=======
+    "createWalkthrough": "ウォークスルーを作成",
+    "reviewChanges": "変更をレビュー",
+>>>>>>> origin/main
     "createDraftPr": "ドラフト PR を作成",
     "createPrManually": "手動で PR を作成",
     "installGhCli": "PR を作成するには GitHub CLI をインストールしてください",
@@ -365,7 +378,8 @@
     "noChangesDetected": "変更が検出されませんでした",
     "compare": "比較",
     "fork": "フォーク",
-    "forking": "フォーク中..."
+    "forking": "フォーク中...",
+    "summary": "要約"
   },
   "reviewUI": {
     "reviews": "レビュー",
@@ -450,7 +464,17 @@
   },
   "todoList": {
     "todos": "TODO",
-    "allDone": "🎉 すべて完了！"
+    "allDone": "🎉 すべて完了！",
+    "cancelledTodo": "Todoをキャンセルしました",
+    "editTodo": "編集",
+    "editTodos": "Todoを編集",
+    "saveTodo": "保存",
+    "saveTodos": "Todoを保存",
+    "editTodoContent": "Todo内容を編集",
+    "cancelTodo": "キャンセル",
+    "deleteTodo": "削除",
+    "pauseTodo": "一時停止",
+    "resumeTodo": "Todoを再開"
   },
   "commandExecutionPanel": {
     "copied": "コピーしました！",
@@ -471,6 +495,7 @@
     "copyCoreMessages": "コアメッセージをコピー",
     "copyCheckpointCommand": "チェックポイントコマンドをコピー",
     "copyTodos": "TODOをコピー",
+    "copySystemPrompt": "システムプロンプトをコピー",
     "noCheckpointAvailable": "利用可能なチェックポイントがありません",
     "openStore": "ストアを開く",
     "reviewChanges": "変更をレビュー"
@@ -549,6 +574,12 @@
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
     "paused": "一時停止"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Todos を監査中",
+    "completed": "すべての Todos が完了しました",
+    "needsWork": "Todo はさらに作業が必要です",
+    "failed": "Todo 監査に失敗しました"
   },
   "browserAgentSettings": {
     "runtimeSection": "ブラウザー実行環境",

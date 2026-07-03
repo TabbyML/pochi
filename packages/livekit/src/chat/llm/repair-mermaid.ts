@@ -37,8 +37,9 @@ export async function repairMermaid({
           part.text.includes("```mermaid") &&
           part.text.includes(chart)) ||
         (part.type === "tool-attemptCompletion" &&
-          part.input?.result?.includes("```mermaid") &&
-          part.input?.result.includes(chart)),
+          typeof part.input?.result === "string" &&
+          part.input.result.includes("```mermaid") &&
+          part.input.result.includes(chart)),
     ),
   );
 
@@ -56,6 +57,7 @@ export async function repairMermaid({
     // Generate the fixed mermaid diagram
     const fixedMermaid = await generateFixedMermaid(
       taskId,
+      store.storeId,
       model,
       abortSignal,
       chart,
@@ -95,6 +97,7 @@ export async function repairMermaid({
         }
         if (
           part.type === "tool-attemptCompletion" &&
+          typeof part.input?.result === "string" &&
           part.input?.result?.includes(chart)
         ) {
           // Escape special regex characters in the chart content
@@ -155,6 +158,7 @@ export async function repairMermaid({
 
 async function generateFixedMermaid(
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   chart: string,
@@ -177,6 +181,7 @@ async function generateFixedMermaid(
     providerOptions: {
       pochi: {
         taskId,
+        storeId,
         client: globalThis.POCHI_CLIENT,
         useCase: "repair-mermaid",
       } satisfies PochiProviderOptions,

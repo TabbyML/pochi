@@ -1,6 +1,7 @@
 import { FilesProvider } from "@/components/files-provider";
 import { ChatContextProvider, useHandleChatEvents } from "@/features/chat";
 import { usePendingModelAutoStart } from "@/features/retry";
+import { useTodos } from "@/features/todo";
 import { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgent } from "@/lib/hooks/use-custom-agents";
 import { useLatest } from "@/lib/hooks/use-latest";
@@ -15,10 +16,11 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { constants, formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import type { Todo } from "@getpochi/tools";
+import { parseOutputSchema } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -31,15 +33,14 @@ import {
   useSettingsStore,
 } from "../settings";
 import { BackgroundTaskDebugPanel } from "./components/background-task-debug-panel";
-import { BackgroundTaskRunner } from "./components/background-task-runner";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
-import { useAutoMemory } from "./hooks/use-auto-memory";
 import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
+import { useChatMemory } from "./hooks/use-chat-memory";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
 import { useForkTask } from "./hooks/use-fork-task";
 import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
@@ -49,10 +50,13 @@ import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
 import { useSetSubtaskModel } from "./hooks/use-set-subtask-model";
 import { useAddSubtaskResult } from "./hooks/use-subtask-completed";
 import { useSubtaskInfo } from "./hooks/use-subtask-info";
-import { useTaskMemory } from "./hooks/use-task-memory";
 import { useAutoApproveGuard, useChatAbortController } from "./lib/chat-state";
 import { onOverrideMessages } from "./lib/on-override-messages";
 import { getRenderWidgetErrorMessageKey } from "./lib/render-widget-error";
+import {
+  getTodoContinuationDecision,
+  shouldResumeTodoController,
+} from "./lib/todo-continuation";
 import { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
 import {
   ChatContainerClassName,
@@ -81,7 +85,10 @@ function Chat({ user, uid, info }: ChatProps) {
   const { jwt } = usePochiCredentials();
 
   const { t } = useTranslation();
-  const todosRef = useRef<Todo[] | undefined>(undefined);
+  const [todoPaused, setTodoPaused] = useState(false);
+  const todoPausedRef = useLatest(todoPaused);
+  const todoModeActiveRef = useRef(false);
+  const lastAutoContinueStateRef = useRef<string | undefined>(undefined);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -95,7 +102,7 @@ function Chat({ user, uid, info }: ChatProps) {
   useKeepTaskEditor(task);
   const subtask = useSubtaskInfo(uid, task?.parentId);
 
-  const isSubTask = !!subtask;
+  const isSubTask = !!task?.parentId;
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -111,7 +118,27 @@ function Chat({ user, uid, info }: ChatProps) {
   } = useSelectedModels({
     isSubTask,
   });
-  const { customAgent } = useCustomAgent(subtask?.agent);
+  const { customAgent, isLoading: isCustomAgentLoading } = useCustomAgent(
+    subtask?.agent,
+  );
+  const attemptCompletionSchema = useMemo(() => {
+    const resultSchema = customAgent?.isBuiltIn
+      ? customAgent._internal?.resultSchema
+      : undefined;
+    return resultSchema ? parseOutputSchema(resultSchema) : undefined;
+  }, [customAgent?.isBuiltIn, customAgent?._internal?.resultSchema]);
+  const pendingTodos = isSubTask
+    ? subtask?.agent === constants.AttemptTodoCompletionAgentName
+      ? subtask.todos
+      : undefined
+    : info.type === "new-task"
+      ? info.todos
+      : undefined;
+  const { todos, todosRef, updateTodos, updateTodoCompletion } = useTodos({
+    persistedTodos: isSubTask ? undefined : task?.todos,
+    pendingTodos,
+    taskId: uid,
+  });
   const autoApproveGuard = useAutoApproveGuard();
 
   // Get mcpConfigOverride from TaskStateStore
@@ -125,13 +152,14 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const getters = useLiveChatKitGetters({
     todos: todosRef,
+    todoModeActive: todoModeActiveRef,
     isSubTask,
     omitCustomRules: isSubTask && customAgent?.omitAgentsMd === true,
     mcpConfigOverride,
     taskId: uid,
   });
 
-  useRestoreTaskModel(task, isModelsLoading, updateSelectedModelId);
+  useRestoreTaskModel(task, info, isModelsLoading, updateSelectedModelId);
 
   const { autoApproveActive, autoApproveSettings } = useAutoApprove({
     autoApproveGuard: autoApproveGuard.current === "auto",
@@ -150,41 +178,18 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveSettings,
   });
 
-  const { tryExtractTaskMemory, taskMemoryState, setTaskMemoryState } =
-    useTaskMemory({
-      isSubTask,
-      taskId: uid,
-      parentCwd: task?.cwd ?? undefined,
-    });
-  const tryExtractTaskMemoryRef = useLatest(tryExtractTaskMemory);
-  const taskMemoryStateRef = useLatest(taskMemoryState);
-  const setTaskMemoryStateRef = useLatest(setTaskMemoryState);
-  const { tryUpdateAutoMemory } = useAutoMemory({
-    isSubTask,
+  const { backgroundTask, taskMemory, projectMemory } = useChatMemory({
     taskId: uid,
-    parentCwd: task?.cwd ?? undefined,
+    isSubTask,
   });
-  const tryUpdateAutoMemoryRef = useLatest(tryUpdateAutoMemory);
 
   const [isCompacting, setIsCompacting] = useState(false);
   const onCompactStart = useCallback(() => {
     setIsCompacting(true);
   }, []);
-  const onCompactFinish = useCallback(
-    async (success: boolean) => {
-      setIsCompacting(false);
-      if (!success) return;
-      await vscodeHost.clearFileStateCache(uid);
-      // Token usage drops at compact, so rebase the baseline against the
-      // post-compact view; tool-call count is monotonic and unaffected.
-      const setter = setTaskMemoryStateRef.current;
-      const current = taskMemoryStateRef.current;
-      if (setter && current) {
-        setter({ ...current, lastExtractionTokens: 0 });
-      }
-    },
-    [uid, setTaskMemoryStateRef, taskMemoryStateRef],
-  );
+  const onCompactFinish = useCallback(() => {
+    setIsCompacting(false);
+  }, []);
 
   const chatKit = useLiveChatKit({
     store,
@@ -193,17 +198,53 @@ function Chat({ user, uid, info }: ChatProps) {
     getters,
     isSubTask,
     customAgent,
+    attemptCompletionSchema,
     abortSignal: chatAbortController.current.signal,
+    enableAutoCompact: !isSubTask,
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
-    getTaskMemoryState: () => taskMemoryStateRef.current,
+    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
+    backgroundTask,
+    taskMemory,
+    projectMemory,
     sendAutomaticallyWhen: (x) => {
+      const candidateMessages = x.messages;
+      const candidateLastMessageState = getLastMessageState(candidateMessages);
+      const claimAutoContinue = (shouldContinue: boolean) => {
+        if (
+          !shouldContinue ||
+          !candidateLastMessageState ||
+          lastAutoContinueStateRef.current === candidateLastMessageState
+        ) {
+          return false;
+        }
+
+        lastAutoContinueStateRef.current = candidateLastMessageState;
+        return true;
+      };
+
       if (chatAbortController.current.signal.aborted) {
         return false;
       }
 
-      if (shouldStopAutoApprove(x)) {
+      // AI SDK v5 can ask for automatic continuation after the user has
+      // already submitted a newer message. Only continue from the exact state
+      // that is still the current tail of the stream.
+      if (
+        chatKit.chat.status !== "ready" ||
+        !candidateLastMessageState ||
+        getLastMessageState(chatKit.chat.messages) !== candidateLastMessageState
+      ) {
+        return false;
+      }
+
+      const shouldContinueTodo = getTodoContinuationDecision(candidateMessages);
+      if (shouldContinueTodo !== undefined) {
+        return claimAutoContinue(!todoPausedRef.current && shouldContinueTodo);
+      }
+
+      if (shouldStopAutoApprove({ messages: candidateMessages })) {
         autoApproveGuard.current = "stop";
       }
 
@@ -211,11 +252,11 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      // AI SDK v5 will retry regardless of the status if sendAutomaticallyWhen is set.
-      if (chatKit.chat.status === "error") {
-        return false;
-      }
-      return lastAssistantMessageIsCompleteWithToolCalls(x);
+      return claimAutoContinue(
+        lastAssistantMessageIsCompleteWithToolCalls({
+          messages: candidateMessages,
+        }),
+      );
     },
     onOverrideMessages,
     onStreamStart(data) {
@@ -226,8 +267,6 @@ function Chat({ user, uid, info }: ChatProps) {
       if (data.contextWindowUsage) {
         setContextWindowUsage.current(data.contextWindowUsage);
       }
-      tryExtractTaskMemoryRef.current(data);
-      tryUpdateAutoMemoryRef.current(data);
     },
   });
 
@@ -241,8 +280,15 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { messages, sendMessage, status } = chat;
-  const renderMessages = useMemo(() => formatters.ui(messages), [messages]);
   const isLoading = status === "streaming" || status === "submitted";
+  const todoModeActive =
+    !isSubTask && !todoPaused && hasActiveTodos(todosRef.current);
+  const hidePendingTodoAttemptCompletion = isLoading && todoModeActive;
+  todoModeActiveRef.current = todoModeActive;
+  const renderMessages = useMemo(
+    () => formatters.ui(messages, { hidePendingTodoAttemptCompletion }),
+    [messages, hidePendingTodoAttemptCompletion],
+  );
   const isTaskWithoutContent =
     (info.type === "new-task" && !info.prompt && !info.files?.length) ||
     (info.type === "open-task" && messages.length === 0);
@@ -251,13 +297,33 @@ function Chat({ user, uid, info }: ChatProps) {
     ...chat,
     showApproval: !isLoading && !isModelsLoading && !!selectedModel,
     isSubTask,
-    clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
+    prepareLastMessageForRetry: chatKit.prepareLastMessageForRetry,
   });
 
   const { pendingApproval, retry } = approvalAndRetry;
   const renderWidgetErrorKind = useRenderWidgetError({
     messages,
   });
+
+  const handleTodoPausedChange = useCallback(
+    (paused: boolean) => {
+      setTodoPaused(paused);
+      if (paused) return;
+
+      // Toggling pause is local UI state, so the SDK will not re-run
+      // sendAutomaticallyWhen by itself. If the last audit asked us to keep
+      // working, resume by sending the next automatic continuation tick.
+      if (
+        shouldResumeTodoController({
+          messages,
+          status,
+        })
+      ) {
+        void sendMessage(undefined);
+      }
+    },
+    [messages, sendMessage, status],
+  );
 
   const { repairMermaid, repairingChart } = useRepairMermaid({
     repairMermaid: chatKit.repairMermaid,
@@ -302,7 +368,8 @@ function Chat({ user, uid, info }: ChatProps) {
       messages.length === 1 &&
       !isModelsLoading &&
       !!selectedModel &&
-      info.type !== "fork-task",
+      info.type !== "fork-task" &&
+      (!isSubTask || (!!subtask && !(subtask.agent && isCustomAgentLoading))),
     task,
     retry,
   });
@@ -389,7 +456,11 @@ function Chat({ user, uid, info }: ChatProps) {
         <ChatToolbar
           chat={chat}
           task={task}
-          todosRef={todosRef}
+          todos={todos}
+          updateTodos={updateTodos}
+          updateTodoCompletion={updateTodoCompletion}
+          todoPaused={todoPaused}
+          onTodoPausedChange={handleTodoPausedChange}
           compact={chatKit.compact}
           approvalAndRetry={approvalAndRetry}
           attachmentUpload={attachmentUpload}
@@ -401,9 +472,9 @@ function Chat({ user, uid, info }: ChatProps) {
           taskId={uid}
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
+          getSystemPrompt={() => chatKit.latestSystemPrompt}
         />
       </div>
-      <BackgroundTaskRunner />
       <BackgroundTaskDebugPanel />
     </div>
   );
@@ -419,7 +490,33 @@ function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   return (
     lastToolPart?.type === "tool-newTask" &&
+<<<<<<< HEAD
     lastToolPart?.input?.agentType === "planner" &&
+=======
+    ["planner", "reviewer", "walkthrough"].includes(
+      lastToolPart?.input?.agentType || "",
+    ) &&
+>>>>>>> origin/main
     lastToolPart?.state === "output-available"
   );
+}
+
+function getLastMessageState(messages: Message[]) {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage) {
+    return undefined;
+  }
+
+  // Build a lightweight fingerprint instead of serializing the whole message,
+  // whose tool outputs / text parts can be large. This still changes whenever a
+  // part is added, a tool part transitions state, or streamed text grows, which
+  // is all the auto-continue decision depends on.
+  const partsFingerprint = lastMessage.parts
+    .map((part) => {
+      const state = "state" in part ? part.state : "";
+      const size = "text" in part ? part.text.length : 0;
+      return `${part.type}:${state}:${size}`;
+    })
+    .join("|");
+  return `${lastMessage.id}@${partsFingerprint}`;
 }

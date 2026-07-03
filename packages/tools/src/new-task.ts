@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import type { Todo } from "./todo-write";
+import { Todo } from "./todo";
 import { defineClientTool } from "./types";
 
 export type SubTask = {
@@ -27,6 +27,17 @@ export const CustomAgent = z.object({
     .describe(
       "Whether to omit workspace agent markdown such as AGENTS.md and README.pochi.md from the agent system prompt.",
     ),
+  _internal: z
+    .object({
+      resultSchema: z
+        .string()
+        .optional()
+        .describe(
+          "Internal zod schema expression for the attemptCompletion result.",
+        ),
+    })
+    .optional()
+    .describe("Internal built-in agent metadata."),
   filePath: z
     .string()
     .optional()
@@ -62,6 +73,14 @@ export const inputSchema = z.object({
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),
+      sourceAttemptCompletion: z
+        .object({
+          toolCallId: z.string(),
+          input: z.unknown(),
+        })
+        .optional()
+        .describe("Internal source attemptCompletion call metadata."),
+      todos: z.array(Todo).optional().describe("Internal source todos."),
     })
     .optional(),
   _transient: z

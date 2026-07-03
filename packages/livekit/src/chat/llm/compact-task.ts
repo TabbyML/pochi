@@ -11,6 +11,7 @@ import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
 import { makeStoreFileQuery } from "../../livestore/default-queries";
+import { events } from "../../livestore/default-schema";
 import { makeDownloadFunction } from "../../store-blob";
 import type { LiveKitStore, Message } from "../../types";
 
@@ -23,6 +24,7 @@ const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 export async function compactTask({
   blobStore,
   taskId,
+  storeId,
   model,
   messages,
   recentFiles,
@@ -34,6 +36,7 @@ export async function compactTask({
 }: {
   blobStore: BlobStore;
   taskId: string;
+  storeId: string;
   model: LanguageModelV3;
   messages: Message[];
   recentFiles?: RecentFileState[];
@@ -76,6 +79,7 @@ export async function compactTask({
       summaryText = await createSummary(
         blobStore,
         taskId,
+        storeId,
         model,
         abortSignal,
         inputMessages,
@@ -102,6 +106,7 @@ export async function compactTask({
           { verbatimTail: true },
         );
         memoryAttachMessage.parts.unshift({ type: "text", text });
+        persistInlineCompactMessage(store, memoryAttachMessage);
         logger.debug(
           `Inline compact attached at index ${memoryAttachIndex}; preserving ${
             messages.length - memoryAttachIndex
@@ -121,6 +126,7 @@ export async function compactTask({
         attachIndex < messages.length - 1 ? { verbatimTail: true } : undefined,
       );
       attachMessage.parts.unshift({ type: "text", text });
+      persistInlineCompactMessage(store, attachMessage);
       return;
     }
 
@@ -134,6 +140,14 @@ export async function compactTask({
     logger.warn("Failed to create summary", err);
     throw err;
   }
+}
+
+function persistInlineCompactMessage(
+  store: LiveKitStore | undefined,
+  message: Message,
+) {
+  if (!store) return;
+  store.commit(events.updateMessages({ messages: [message] }));
 }
 
 export function findInlineCompactAttachIndex(
@@ -178,6 +192,7 @@ export function findVerbatimAttachIndex(
 async function createSummary(
   blobStore: BlobStore,
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
   abortSignal: AbortSignal | undefined,
   inputMessages: Message[],
@@ -201,6 +216,7 @@ async function createSummary(
     providerOptions: {
       pochi: {
         taskId,
+        storeId,
         client: globalThis.POCHI_CLIENT,
         useCase,
       } satisfies PochiProviderOptions,

@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import { TextDecoder, TextEncoder } from "node:util";
-import { removeTaskTranscripts } from "@/lib/auto-memory";
 import { isFileExists } from "@/lib/fs";
 import { taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
+import { removeTaskTranscripts } from "@getpochi/common/auto-memory/node";
 import { getTaskDataDir } from "@getpochi/common/tool-utils";
 import { signal } from "@preact/signals-core";
 import { funnel } from "remeda";
@@ -17,6 +17,11 @@ type EncodedTask = {
   // unix timestamp in milliseconds
   updatedAt: number;
   cwd?: string | null;
+  title?: string | null;
+  // Used to scope tasks to the current repository.
+  git?: {
+    worktree?: { gitdir?: string } | null;
+  } | null;
 };
 
 const logger = getLogger("TaskHistoryStore");

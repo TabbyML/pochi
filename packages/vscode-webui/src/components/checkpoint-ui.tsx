@@ -7,13 +7,16 @@ import {
   GitBranchPlus,
   GitCommitHorizontal,
   Loader2,
+  SquareChartGantt,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { useIsDevMode } from "@/features/settings";
 import { cn } from "@/lib/utils";
+import { prompts } from "@getpochi/common";
 import type { DataParts } from "@getpochi/livekit";
+import type { TextUIPart } from "ai";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 
 type ActionType = "compare" | "restore" | "fork";
@@ -26,6 +29,8 @@ export const CheckpointUI: React.FC<{
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   restoreMessageId?: string;
   isRestored?: boolean;
+  compactPart?: TextUIPart;
+  compactMessageId?: string;
 }> = ({
   checkpoint,
   isLoading,
@@ -34,6 +39,8 @@ export const CheckpointUI: React.FC<{
   forkTask,
   restoreMessageId,
   isRestored,
+  compactPart,
+  compactMessageId,
 }) => {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -132,7 +139,7 @@ export const CheckpointUI: React.FC<{
     if (isPending && currentAction === "fork") {
       return t("checkpointUI.forking");
     }
-    if (showActionSuccessIcon && currentAction === "restore") {
+    if (showActionSuccessIcon && currentAction === "fork") {
       return t("checkpointUI.success");
     }
     return t("checkpointUI.fork");
@@ -179,19 +186,22 @@ export const CheckpointUI: React.FC<{
         <Check className="size-4 text-emerald-700 dark:text-emerald-300" />
       );
     }
+    if (compactPart) {
+      return <SquareChartGantt className="size-3" />;
+    }
     return <GitCommitHorizontal className="size-5" />;
   };
 
   return (
     <div
       className={cn(
-        "relative min-h-5 w-full opacity-0 transition-opacity duration-200",
+        "relative w-full opacity-0 transition-opacity duration-200",
         showCheckpoint && "opacity-100",
       )}
     >
       <div
         className={cn(
-          "-translate-x-1/2 -translate-y-1/2 group absolute top-1/2 left-1/2 z-10 mx-auto flex min-h-5 w-full max-w-[72px] select-none items-center hover:max-w-full",
+          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full max-w-[72px] select-none items-center hover:max-w-full",
           isLoading && "pointer-events-none",
           className,
         )}
@@ -204,6 +214,10 @@ export const CheckpointUI: React.FC<{
         <span
           className={cn(
             "flex items-center text-muted-foreground/60 group-hover:px-2.5 group-hover:text-foreground",
+            // The compact icon (size-3) is smaller than the git-commit icon
+            // (size-5), so it needs a tiny symmetric gap from the border lines
+            // when unhovered. The git-commit icon stays flush.
+            compactPart && "px-1",
             (isPending || showActionSuccessIcon) &&
               "pointer-events-none px-2.5",
           )}
@@ -238,7 +252,7 @@ export const CheckpointUI: React.FC<{
           </Button>
 
           {forkTask && (
-            <div className="ml-1 flex items-center">
+            <div className="ml-1 hidden items-center group-hover:flex">
               <span className="hidden group-hover:flex">{getForkIcon()}</span>
               <Button
                 size="sm"
@@ -248,6 +262,34 @@ export const CheckpointUI: React.FC<{
                 className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
               >
                 {getForkText()}
+              </Button>
+            </div>
+          )}
+
+          {compactPart && (
+            <div className="ml-1 hidden items-center group-hover:flex">
+              <span className="hidden group-hover:flex">
+                <SquareChartGantt className="size-3" />
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
+                onClick={() => {
+                  const parsed = prompts.parseInlineCompact(compactPart.text);
+                  if (parsed && compactMessageId) {
+                    vscodeHost.openFile(
+                      `/task-summary-${compactMessageId}.md`,
+                      {
+                        base64Data: btoa(
+                          unescape(encodeURIComponent(parsed.summary)),
+                        ),
+                      },
+                    );
+                  }
+                }}
+              >
+                {t("checkpointUI.summary")}
               </Button>
             </div>
           )}
@@ -291,3 +333,45 @@ function Border({
     />
   );
 }
+
+export const CompactCheckpointUI: React.FC<{
+  compactPart: TextUIPart;
+  messageId: string;
+  className?: string;
+}> = ({ compactPart, messageId, className }) => {
+  const { t } = useTranslation();
+
+  const handleOpenSummary = () => {
+    const parsed = prompts.parseInlineCompact(compactPart.text);
+    if (parsed) {
+      vscodeHost.openFile(`/task-summary-${messageId}.md`, {
+        base64Data: btoa(unescape(encodeURIComponent(parsed.summary))),
+      });
+    }
+  };
+
+  return (
+    <div className={cn("relative w-full", className)}>
+      <div className="-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full max-w-[72px] select-none items-center hover:max-w-full">
+        <Border hide={false} hideOnHover />
+        <span className="flex items-center px-1 text-muted-foreground/60 group-hover:px-2.5 group-hover:text-foreground">
+          <span className="hidden group-hover:flex">
+            <SquareChartGantt className="size-3" />
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
+            onClick={handleOpenSummary}
+          >
+            {t("checkpointUI.summary")}
+          </Button>
+          <span className="group-hover:hidden">
+            <SquareChartGantt className="size-3" />
+          </span>
+        </span>
+        <Border hide={false} hideOnHover />
+      </div>
+    </div>
+  );
+};

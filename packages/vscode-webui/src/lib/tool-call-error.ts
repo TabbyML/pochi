@@ -1,4 +1,7 @@
-import type { ToolCallCancelReason } from "@getpochi/tools";
+import {
+  type ToolCallCancelReason,
+  getToolCallCancelErrorMessage,
+} from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
 
 export function getToolPartError(tool: ToolUIPart): string | undefined {
@@ -39,11 +42,10 @@ export function getToolCallErrorMessage(
 ): string {
   switch (reason) {
     case "user-abort":
-      return "User aborted the tool call";
+    case "previous-tool-call-failed":
+      return getToolCallCancelErrorMessage(reason);
     case "user-reject":
       return "User rejected the tool call";
-    case "previous-tool-call-failed":
-      return "Tool call was cancelled because a previous tool call failed.";
     default:
       return "Tool call was cancelled";
   }

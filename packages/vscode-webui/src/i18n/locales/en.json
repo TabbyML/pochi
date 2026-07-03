@@ -32,8 +32,13 @@
     "createPlan": "Plan",
     "createPlanTooltip": "Create an implementation plan for this task",
     "planModeLabel": "Plan",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Pause todo",
+    "resumeTodo": "Resume todo",
+    "autoContinueTodo": "Auto-continue todo",
     "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
     "planModeSubmitTooltip": "Submit as plan",
+    "todoModeSubmitTooltip": "Submit in Todo mode",
     "queuedMessages": "Queued Messages ({{count}})",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -78,6 +83,9 @@
     "viewProjectMemoryTooltip": "Open the MEMORY.md index for this workspace.",
     "viewTaskMemoryButtonTooltip": "Open the task memory summary that compacting will reuse.",
     "projectMemoryUnavailable": "Project memory becomes available after running a task in this workspace.",
+    "projectMemoryClear": "Clear Project Memory",
+    "projectMemoryReset": "Reset",
+    "projectMemoryClearConfirm": "This will reset all project memory files (MEMORY.md and topic files). This action cannot be undone.",
     "taskMemoryUnavailable": "Task memory is generated automatically as the conversation grows."
   },
   "modelSelect": {
@@ -111,6 +119,11 @@
   },
   "worktree": {
     "createPr": "Create PR",
+<<<<<<< HEAD
+=======
+    "createWalkthrough": "Create Walkthrough",
+    "reviewChanges": "Review Changes",
+>>>>>>> origin/main
     "createDraftPr": "Create Draft PR",
     "createPrManually": "Create PR Manually",
     "installGhCli": "Please install the GitHub CLI to create PRs.",
@@ -371,7 +384,8 @@
     "noChangesDetected": "No changes detected",
     "compare": "Compare",
     "fork": "Fork",
-    "forking": "Forking"
+    "forking": "Forking",
+    "summary": "Summary"
   },
   "reviewUI": {
     "reviews": "Reviews",
@@ -456,7 +470,17 @@
   },
   "todoList": {
     "todos": "TODOs",
-    "allDone": "🎉 All done!"
+    "allDone": "🎉 All done!",
+    "cancelledTodo": "Todo cancelled",
+    "editTodo": "Edit",
+    "editTodos": "Edit todos",
+    "saveTodo": "Save",
+    "saveTodos": "Save todos",
+    "editTodoContent": "Edit todo content",
+    "cancelTodo": "Cancel",
+    "deleteTodo": "Delete",
+    "pauseTodo": "Pause",
+    "resumeTodo": "Resume todo"
   },
   "commandExecutionPanel": {
     "copied": "Copied!",
@@ -472,6 +496,7 @@
     "copyCoreMessages": "Copy Core Messages",
     "copyCheckpointCommand": "Copy Checkpoint Command",
     "copyTodos": "Copy TODOs",
+    "copySystemPrompt": "Copy System Prompt",
     "noCheckpointAvailable": "No checkpoint available",
     "openStore": "Open Store",
     "reviewChanges": "Review Changes"
@@ -552,6 +577,12 @@
     "executing": "Executing...",
     "paused": "Paused"
   },
+  "attemptTodoCompletionView": {
+    "auditing": "Auditing todos",
+    "completed": "All todos completed",
+    "needsWork": "Todo needs more work",
+    "failed": "Todo audit failed"
+  },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",
     "localChromeSection": "Local Chrome",
@@ -576,6 +607,6 @@
   },
   "builtInAgentsSettings": {
     "title": "Built-in Agents",
-    "browser": "Browser"
+    "browser": "browser"
   }
 }

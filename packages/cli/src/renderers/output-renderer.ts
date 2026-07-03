@@ -38,6 +38,27 @@ export class OutputRenderer {
   private pendingMessageId = "";
   private pendingPartIndex = -1;
   private spinner: Spinner | undefined = undefined;
+  private compactSpinner: Spinner | undefined = undefined;
+
+  renderCompactStart() {
+    this.spinner?.stopAndPersist();
+    this.compactSpinner = createSpinner({
+      stream: this.stream,
+      text: "🧹 Compacting context",
+    }).start();
+  }
+
+  renderCompactFinish(success: boolean) {
+    const spinner = this.compactSpinner;
+    this.compactSpinner = undefined;
+    if (!spinner) return;
+
+    if (success) {
+      spinner.succeed("Context compacted");
+    } else {
+      spinner.fail("Context compaction failed");
+    }
+  }
 
   renderLastMessage(messages: Message[]) {
     if (this.renderingSubTask) {
@@ -176,6 +197,8 @@ export class OutputRenderer {
     }
     this.spinner?.stopAndPersist();
     this.spinner = undefined;
+    this.compactSpinner?.stopAndPersist();
+    this.compactSpinner = undefined;
   }
 }
 
@@ -260,6 +283,25 @@ export function renderToolPart(
     };
   }
 
+  if ((part.type as string) === "tool-webFetch") {
+    const { url = "unknown" } = (part.input as { url?: string }) || {};
+    return {
+      text: `🌐 Fetching ${chalk.bold(url)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
+  if ((part.type as string) === "tool-webSearch") {
+    const { query = "" } = (part.input as { query?: string | string[] }) || {};
+    const queryText = Array.isArray(query) ? query.join(", ") : query;
+    return {
+      text: `🔎 Searching the web for ${chalk.bold(queryText)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
   // Interactive tools
   if (part.type === "tool-askFollowupQuestion") {
     const { questions } = part.input || {};
@@ -300,14 +342,6 @@ export function renderToolPart(
     };
   }
 
-  if (part.type === "tool-todoWrite") {
-    const { todos = [] } = part.input || {};
-    return {
-      text: `📋 Updating todo list (${todos.length} items)`,
-      stop: hasError ? "fail" : "succeed",
-      error: errorText,
-    };
-  }
   // Command execution
   if (part.type === "tool-executeCommand") {
     const { command = "" } = part.input || {};
@@ -332,7 +366,7 @@ export function renderToolPart(
     if (attemptCompletionSchemaOverride) {
       content = JSON.stringify(input.result, null, 2);
     } else {
-      content = input.result;
+      content = input.result as string;
     }
     const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${content}`;
 

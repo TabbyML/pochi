@@ -1,0 +1,59 @@
+---
+title: 'Weekly Update #33'
+---
+# Weekly Update #33
+
+### TL;DR
+
+This release tightens the everyday edges. Pochi now counts context tokens accurately, closes out tool calls when a stream dies, reuses the parent's prompt across background agents to cut costs and keeps the browser agent inside a tighter command boundary.
+
+More below!
+
+### ✨ Enhancements
+
+- **Background agents reuse the parent's system prompt:** Pochi now reuses the parent's system prompt when it spins up a background agent, instead of rebuilding one from scratch. It captures the resolved prompt once the parent's first request finishes and passes it down, so the cached prefix on Anthropic and OpenAI stays warm.
+
+  Background scheduling waits for that snapshot before anything spins off. Previously each background agent built its own prompt and broke the shared cache prefix.
+
+  Most noticeable in workflows that launch background agents often; every reused prefix is a cache hit instead of a full re-bill. [**#1691**](https://github.com/TabbyML/pochi/pull/1691)
+
+- **Scoped commands for the browser agent:** Pochi now keeps the browser agent inside a tight command boundary. Its `executeCommand` is limited to what it actually needs (`agent-browser` commands, the installer, and Chrome process checks) with the right paths for Windows (cmd and PowerShell) and macOS/Linux.
+
+  Previously its command surface was wide open, far broader than the browsing work it does.
+
+  It's the same scoped-tool-access idea behind custom agents, now applied to the browser agent so it stays predictable when it's working in a real project. [**#1710**](https://github.com/TabbyML/pochi/pull/1710)
+
+- **Clearer sub-agent expand toggle:** The expand control on the sub-agent footer now uses a right-pointing chevron, making it clearer that the section opens out. [**#1707**](https://github.com/TabbyML/pochi/pull/1707)
+
+<div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Sub-agent footer with the right-pointing expand chevron](https://assets.docs.getpochi.com/docs/34/34ecc20d0f5e9ebff26e8cd6450b1b5b051f48023a1f15499079aea030c01660)</div>
+
+### 🐛 Bug Fixes
+
+- **Browser agent locates its binary after install:** Pochi now checks `$HOME/.pochi/bin` and runs `agent-browser` from there directly when a fresh install hasn't refreshed the shell's PATH yet.
+
+  Previously it looked in the wrong directory, so the browser agent could fail to find `agent-browser` right after installing it. [**#1692**](https://github.com/TabbyML/pochi/pull/1692)
+
+<div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Browser agent executing scoped agent-browser commands](https://assets.docs.getpochi.com/docs/f0/f0d5c9aaa212c2762f3e2d96e1b3387eea141ef8a75972a95a4105099ecb0cf9)</div>
+
+- **Token usage breakdown corrected:** Pochi now reports the context-window breakdown correctly, the tools segment especially. Each number comes from the resolved request snapshot, so System, Tools, Messages, Files, Tool Results, and Project Memory match what was actually sent.
+
+  The old counts came from per-message metadata and could drift, which is why the tools figure looked off. [**#1696**](https://github.com/TabbyML/pochi/pull/1696)
+
+<div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Context-window usage breakdown by segment](https://assets.docs.getpochi.com/docs/4f/4f62207db19e41eac94189040d2afe6f9f9bf79a7ad215249206e92b4c0c63af)</div>
+
+- **Unfinished tool calls no longer stuck on stream failure:** When a stream fails like a cancel or a dropped transport, Pochi now closes out any tool calls still in flight as errors instead of leaving them to spin forever. An abort reads "User aborted the tool call"; other failures keep their own message and anything already finished is left untouched.
+
+  Previously those half-finished calls were saved as-is, so the thread kept showing tool calls that would never resolve. [**#1708**](https://github.com/TabbyML/pochi/pull/1708)
+
+<div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![A failed stream with tool calls resolved to an aborted state](https://assets.docs.getpochi.com/docs/5a/5a0438b2776c92b49a2712e7e7a9e37b3877ddc86923a5002c6772c6f6a4734f)</div>
+
+- **Stalled streams now time out instead of hanging:** Pochi aborts a stream that goes 15 seconds without receiving a chunk, so a stuck session ends on its own instead of waiting forever.
+
+  Previously a stream that stopped producing chunks had no deadline, so a stalled response could sit open indefinitely with no way to recover short of restarting.
+
+  Most useful on flaky connections or when a provider stalls mid-response, the session fails fast and frees you to retry. [**#1712**](https://github.com/TabbyML/pochi/pull/1712)
+
+### 👀 Coming Up
+
+- **Todo mode with automated continuation auditing:** When you finish a task that still has open todos, a read-only audit sub-agent will check the workspace (files, tests, command output) before letting it close and pick the work back up if it isn't actually done.
+- **Compaction point shown in the thread:** Pochi will mark the compaction point inline with a separator and a summary action, so you can see exactly where context was compacted mid-task.

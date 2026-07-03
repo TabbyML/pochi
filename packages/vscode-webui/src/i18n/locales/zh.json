@@ -30,8 +30,13 @@
     "createPlan": "计划",
     "createPlanTooltip": "为此任务创建实施计划",
     "planModeLabel": "计划",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "暂停 Todo",
+    "resumeTodo": "继续 Todo",
+    "autoContinueTodo": "自动推进 Todo",
     "planModeToggleShortcutTooltip": "Shift + Tab 切换",
     "planModeSubmitTooltip": "以计划模式提交",
+    "todoModeSubmitTooltip": "以 Todo 模式提交",
     "queuedMessages": "排队中的消息 ({{count}})",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -77,6 +82,9 @@
     "viewProjectMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
     "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",
     "projectMemoryUnavailable": "在此工作区运行任务后，项目记忆将可用。",
+    "projectMemoryClear": "清除项目记忆",
+    "projectMemoryReset": "重置",
+    "projectMemoryClearConfirm": "这将重置所有项目记忆文件（MEMORY.md 及主题文件），此操作无法撤销。",
     "taskMemoryUnavailable": "任务记忆将随着对话进行自动生成。"
   },
   "modelSelect": {
@@ -110,6 +118,11 @@
   },
   "worktree": {
     "createPr": "创建 PR",
+<<<<<<< HEAD
+=======
+    "createWalkthrough": "创建 Walkthrough",
+    "reviewChanges": "审查变更",
+>>>>>>> origin/main
     "createDraftPr": "创建草稿 PR",
     "createPrManually": "手动创建 PR",
     "installGhCli": "请安装 GitHub CLI 以创建 PR",
@@ -363,7 +376,8 @@
     "noChangesDetected": "未检测到更改",
     "compare": "比较",
     "fork": "新建分支任务",
-    "forking": "创建中..."
+    "forking": "创建中...",
+    "summary": "摘要"
   },
   "reviewUI": {
     "reviews": "评审",
@@ -448,7 +462,17 @@
   },
   "todoList": {
     "todos": "待办事项",
-    "allDone": "🎉 全部完成！"
+    "allDone": "🎉 全部完成！",
+    "cancelledTodo": "Todo 已取消",
+    "editTodo": "编辑",
+    "editTodos": "编辑 Todos",
+    "saveTodo": "保存",
+    "saveTodos": "保存 Todos",
+    "editTodoContent": "编辑 Todo 内容",
+    "cancelTodo": "取消",
+    "deleteTodo": "删除",
+    "pauseTodo": "暂停",
+    "resumeTodo": "继续 Todo"
   },
   "commandExecutionPanel": {
     "copied": "已复制！",
@@ -469,6 +493,7 @@
     "copyCoreMessages": "复制核心消息",
     "copyCheckpointCommand": "复制检查点命令",
     "copyTodos": "复制待办事项",
+    "copySystemPrompt": "复制系统提示词",
     "noCheckpointAvailable": "没有可用的检查点",
     "openStore": "打开存储",
     "reviewChanges": "审查变更"
@@ -547,6 +572,12 @@
     "noFrameAvailable": "无画面",
     "executing": "执行中...",
     "paused": "暂停"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "正在审计 Todos",
+    "completed": "所有 Todos 已完成",
+    "needsWork": "Todo 需要继续推进",
+    "failed": "Todo 审计失败"
   },
   "browserAgentSettings": {
     "runtimeSection": "浏览器运行环境",

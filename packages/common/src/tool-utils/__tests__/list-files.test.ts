@@ -68,6 +68,21 @@ describe("listFiles", () => {
     expect(result.isTruncated).toBe(true);
   });
 
+  it("should truncate results when exceeding maxCharLength limit", async () => {
+    ignoreWalkMock.mockResolvedValue([
+      { filepath: path.join(fakedCwd, "verylongfilename1.txt"), isDir: false, relativePath: "verylongfilename1.txt" },
+      { filepath: path.join(fakedCwd, "verylongfilename2.txt"), isDir: false, relativePath: "verylongfilename2.txt" },
+    ]);
+    const result = await listFiles({
+      cwd: fakedCwd,
+      path: ".",
+      maxCharLength: 25, // only first file (length 22) fits, second file will exceed 25 limit
+    });
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]).toBe("verylongfilename1.txt");
+    expect(result.isTruncated).toBe(true);
+  });
+
   it("should throw an error when ignoreWalk fails", async () => {
     ignoreWalkMock.mockRejectedValue(new Error("Failed to walk"));
     await expect(
@@ -103,6 +118,20 @@ describe("listWorkspaceFiles", () => {
   it("should respect the maxItems option", async () => {
     const result = await listWorkspaceFiles({ cwd: fakedCwd, maxItems: 15 });
     expect(result.files).toHaveLength(15);
+    expect(result.isTruncated).toBe(true);
+  });
+
+  it("should respect the maxCharLength option", async () => {
+    ignoreWalkMock.mockResolvedValue([
+      { filepath: path.join(fakedCwd, "file1.txt"), isDir: false, relativePath: "file1.txt" },
+      { filepath: path.join(fakedCwd, "file2.txt"), isDir: false, relativePath: "file2.txt" },
+    ]);
+    const result = await listWorkspaceFiles({
+      cwd: fakedCwd,
+      maxCharLength: 10, // only first file (length 9) fits
+    });
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]).toBe("file1.txt");
     expect(result.isTruncated).toBe(true);
   });
 

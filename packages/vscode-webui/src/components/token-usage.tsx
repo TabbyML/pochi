@@ -16,7 +16,7 @@ import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
 import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
-import { vscodeHost } from "@/lib/vscode";
+import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import { constants, TaskMemoryFileUri } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useQuery } from "@tanstack/react-query";
@@ -54,13 +54,17 @@ export function TokenUsage({
   const { autoMemoryEnabled, setAutoMemoryEnabled } = useAutoMemoryEnabled();
   const { data: autoMemoryContext } = useQuery({
     queryKey: ["autoMemoryContext"],
-    queryFn: () => vscodeHost.readAutoMemory({ ensure: false, force: true }),
+    queryFn: async () =>
+      vscodeAutoMemoryManager.readContext({
+        ensure: false,
+        force: true,
+      }),
     staleTime: 5_000,
   });
   const autoMemoryAvailable = Boolean(autoMemoryContext);
 
   const handleOpenAutoMemory = async () => {
-    const context = await vscodeHost.readAutoMemory({
+    const context = await vscodeAutoMemoryManager.readContext({
       ensure: true,
       force: true,
     });
@@ -68,6 +72,17 @@ export function TokenUsage({
       vscodeHost.openFile(context.indexPath);
       setIsOpen(false);
     }
+  };
+
+  const handleClearProjectMemory = async () => {
+    const confirmed = await vscodeHost.showInformationMessage(
+      t("tokenUsage.projectMemoryClear"),
+      { modal: true, detail: t("tokenUsage.projectMemoryClearConfirm") },
+      t("tokenUsage.projectMemoryClear"),
+    );
+    if (!confirmed) return;
+    await vscodeAutoMemoryManager.clearProjectMemory();
+    setIsOpen(false);
   };
   const { t } = useTranslation();
   const contextWindow =
@@ -278,7 +293,7 @@ export function TokenUsage({
                 </div>
 
                 {/* Project Memory row (label + toggle on the left, percentage on the right) */}
-                <div className="ml-3 flex items-center justify-between gap-2">
+                <div className="group/project-memory ml-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
@@ -348,11 +363,26 @@ export function TokenUsage({
                     </TooltipProvider>
                   </div>
 
-                  {autoMemoryAvailable && (
-                    <span className="text-muted-foreground">
-                      {formatPercentage(projectMemoryVal)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {autoMemoryAvailable && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={t("tokenUsage.projectMemoryClear")}
+                        className="invisible h-auto px-1.5 py-0.5 text-xs group-hover/project-memory:visible"
+                        onClick={() => {
+                          void handleClearProjectMemory();
+                        }}
+                      >
+                        {t("tokenUsage.projectMemoryReset")}
+                      </Button>
+                    )}
+                    {autoMemoryAvailable && (
+                      <span className="text-muted-foreground">
+                        {formatPercentage(projectMemoryVal)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Task Memory row (mirrors Project Memory row structure so the tooltip anchors at the same position) */}

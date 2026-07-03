@@ -21,7 +21,6 @@ import { readFileTool } from "./read-file";
 import { RenderWidgetTool } from "./render-widget";
 import { searchFilesTool } from "./search-files";
 import { StartBackgroundJobTool } from "./start-background-job";
-import { todoWriteTool } from "./todo-write";
 import type { ToolProps } from "./types";
 import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
@@ -122,7 +121,6 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,
   globFiles: globFilesTool,
-  todoWrite: todoWriteTool,
   renderWidget: RenderWidgetTool,
   createReview: createReviewTool,
   editNotebook: editNotebookTool,

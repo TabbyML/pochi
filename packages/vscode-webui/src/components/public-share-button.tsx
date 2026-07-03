@@ -73,8 +73,7 @@ export function PublicShareButton({
     const shareUrl = `${getServerBaseUrl()}/share/${shareId}`;
 
     const environmentInfo = prompts.environment(environment, undefined);
-    const supportInfo = `Support Information
-=================
+    const supportInfo = `# Support Information
 
 **Extension version**: ${version ?? "N/A"}
 

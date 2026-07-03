@@ -35,7 +35,7 @@ interface ChatInputFormProps {
   reviews: Review[];
   taskId?: string;
   lastCheckpointHash?: string;
-  onTogglePlanMode?: () => void;
+  onSwitchSubmitMode?: () => void;
   isPlanMode?: boolean;
   className?: string;
 }
@@ -68,7 +68,7 @@ export const ChatInputForm = forwardRef<
     taskId,
     lastCheckpointHash,
     children,
-    onTogglePlanMode,
+    onSwitchSubmitMode,
     className,
   },
   ref,
@@ -99,7 +99,7 @@ export const ChatInputForm = forwardRef<
       messageContent={messageContent}
       isSubTask={isSubTask}
       onFocus={onFocus}
-      onTogglePlanMode={onTogglePlanMode}
+      onSwitchSubmitMode={onSwitchSubmitMode}
       className={className}
     >
       <div className="mt-1 flex select-none flex-wrap items-center gap-1.5 pl-2">

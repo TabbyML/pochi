@@ -2,7 +2,7 @@ import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type {
-  AutoMemoryContext,
+  AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundTaskState,
   ContextWindowUsage,
@@ -105,6 +105,25 @@ export interface VSCodeHostApi {
       fileStateCacheSourceTaskId?: string;
     },
   ): Promise<unknown>;
+
+  /**
+   * Compute a preview diff for a file-editing tool call (applyDiff,
+   * multiApplyDiff, writeToFile) WITHOUT writing to disk.
+   *
+   * This is used to show the diff before the user approves the tool call.
+   * Returns `undefined` when no preview can be computed (e.g. non-editing tool,
+   * search content does not match, or there are no changes).
+   */
+  previewEdit(
+    toolName: string,
+    input: unknown,
+  ): Promise<
+    | {
+        edit: string;
+        editSummary: { added: number; removed: number };
+      }
+    | undefined
+  >;
 
   listFilesInWorkspace(): Promise<
     {
@@ -438,17 +457,6 @@ export interface VSCodeHostApi {
     setTaskMemoryState: (state: TaskMemoryState) => Promise<void>;
   }>;
 
-  readAutoMemory(options?: {
-    cwd?: string;
-    ensure?: boolean;
-    /**
-     * When true, bypass the user's Project Memory enabled preference and
-     * return the context regardless. Used by UI surfaces that need to
-     * surface the memory index file even when the feature is disabled.
-     */
-    force?: boolean;
-  }): Promise<AutoMemoryContext | undefined>;
-
   readAutoMemoryEnabled(): Promise<{
     value: ThreadSignalSerialization<boolean>;
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
@@ -459,56 +467,7 @@ export interface VSCodeHostApi {
     setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;
   }>;
 
-  beginAutoMemoryDream(options: { cwd?: string }): Promise<
-    | {
-        context: AutoMemoryContext;
-        token: string;
-        previousLastDreamAt: number;
-        sessionCount: number;
-        reason: "time" | "sessions";
-        /**
-         * Metadata for tasks the dream agent should consider, filtered to
-         * the same `repoKey` and to sessions touched after the previous
-         * consolidation. The agent reads each transcript on demand from
-         * {@link AutoMemoryContext.transcriptDir} via the readFile tool.
-         */
-        candidates: ReadonlyArray<{
-          taskId: string;
-          cwd?: string | null;
-          updatedAt: number;
-          transcriptFilename: string;
-        }>;
-      }
-    | undefined
-  >;
-
-  finishAutoMemoryDream(options: {
-    memoryDir: string;
-    token: string;
-    previousLastDreamAt: number;
-    success: boolean;
-  }): Promise<void>;
-
-  /**
-   * Persist the current task's transcript to the on-disk transcripts
-   * directory. The owning task panel is the only writer for its own
-   * transcript; the dream agent reads it later via the readFile tool.
-   * Returns metadata identifying the written file (or undefined if
-   * long-term memory is disabled / write failed).
-   */
-  writeTaskTranscript(options: {
-    taskId: string;
-    cwd?: string;
-    title?: string;
-    updatedAt?: number;
-    transcript: string;
-  }): Promise<
-    | {
-        transcriptDir: string;
-        filename: string;
-      }
-    | undefined
-  >;
+  readAutoMemory(): Promise<AutoMemoryManager>;
 
   readBackgroundTaskState(taskId: string): Promise<{
     value: ThreadSignalSerialization<BackgroundTaskState | undefined>;

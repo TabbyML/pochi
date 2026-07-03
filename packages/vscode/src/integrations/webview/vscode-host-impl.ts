@@ -25,6 +25,7 @@ import { ModelList } from "@/lib/model-list";
 import { PochiLanguage } from "@/lib/pochi-language";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+import { computePreviewEdit } from "@/lib/preview-edit";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -54,7 +55,6 @@ import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
-import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
@@ -219,12 +219,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.workspaceScope.cwd;
   }
 
-  private isAutoMemoryEnabled() {
-    return (
-      this.pochiConfiguration.advancedSettings.value.memory?.enabled !== false
-    );
-  }
-
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
   };
@@ -282,8 +276,64 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     await this.context.globalState.update(key, value);
   };
 
+  /**
+   * Scope of the currently opened repository: all worktree paths plus the
+   * gitdir prefix used by its worktrees. Undefined when no folder is open.
+   */
+  private getCurrentRepoScope():
+    | { worktreePaths: Set<string>; worktreesGitdirPrefix: string }
+    | undefined {
+    const worktrees = this.worktreeManager.worktrees.value;
+    const repoRoot =
+      worktrees.find((wt) => wt.isMain)?.path ??
+      this.workspaceScope.workspacePath ??
+      undefined;
+    if (!repoRoot) {
+      return undefined;
+    }
+    const worktreePaths = new Set(worktrees.map((wt) => wt.path));
+    worktreePaths.add(repoRoot);
+    return {
+      worktreePaths,
+      worktreesGitdirPrefix: `${repoRoot}/.git/worktrees`,
+    };
+  }
+
+  /**
+   * A task belongs to the current repo when its cwd is one of the repo's
+   * worktrees, or its gitdir points under the repo's `.git/worktrees` (covers
+   * deleted worktrees).
+   */
+  private isTaskInRepoScope(
+    task: {
+      cwd?: string | null;
+      git?: { worktree?: { gitdir?: string } | null } | null;
+    },
+    scope: { worktreePaths: Set<string>; worktreesGitdirPrefix: string },
+  ): boolean {
+    return (
+      (!!task.cwd && scope.worktreePaths.has(task.cwd)) ||
+      !!task.git?.worktree?.gitdir?.startsWith(scope.worktreesGitdirPrefix)
+    );
+  }
+
   readTasks = async () => {
-    return ThreadSignal.serialize(this.taskHistoryStore.tasks);
+    return ThreadSignal.serialize(
+      computed(() => {
+        const tasks = this.taskHistoryStore.tasks.value;
+        const scope = this.getCurrentRepoScope();
+        if (!scope) {
+          return tasks;
+        }
+        const result: typeof tasks = {};
+        for (const [id, task] of Object.entries(tasks)) {
+          if (this.isTaskInRepoScope(task, scope)) {
+            result[id] = task;
+          }
+        }
+        return result;
+      }),
+    );
   };
 
   readBrowserSession = async (taskId: string) => {
@@ -589,6 +639,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     });
 
     return result;
+  };
+
+  previewEdit = async (
+    toolName: string,
+    input: unknown,
+  ): Promise<
+    | { edit: string; editSummary: { added: number; removed: number } }
+    | undefined
+  > => {
+    if (!this.cwd) {
+      return undefined;
+    }
+    return computePreviewEdit(toolName, input, this.cwd);
   };
 
   openFile = async (
@@ -921,6 +984,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             this.pochiConfiguration.commentsOpenViewDisabled.value,
           githubCopilotCodeCompletionEnabled:
             this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+          reviewAgent:
+            this.pochiConfiguration.advancedSettings.value.reviewAgent,
         };
       }),
     );
@@ -1316,18 +1381,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readAutoMemory = async (options?: {
-    cwd?: string;
-    ensure?: boolean;
-    force?: boolean;
-  }) => {
-    if (!options?.force && !this.isAutoMemoryEnabled()) return undefined;
-    return this.autoMemoryManager.readContext(
-      options?.cwd ?? this.cwd ?? undefined,
-      {
-        ensure: options?.ensure,
-      },
-    );
+  readAutoMemory = async () => {
+    return this.autoMemoryManager.readHostApi();
   };
 
   readAutoMemoryEnabled = async (): Promise<{
@@ -1370,96 +1425,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  beginAutoMemoryDream = async (options: { cwd?: string }) => {
-    if (!this.isAutoMemoryEnabled()) return undefined;
-    const cwd = options.cwd ?? this.cwd ?? undefined;
-
-    // Walk the host-owned task list once, filter to top-level tasks under
-    // the same repoKey as the current cwd, and keep only sessions touched
-    // since the previous dream. The webview no longer needs cross-store
-    // hydration to gather candidates.
-    const candidates = await this.collectDreamCandidates(cwd);
-    const run = await this.autoMemoryManager.beginDreamRun({
-      cwd,
-      sessionUpdatedAts: candidates.map((task) => task.updatedAt ?? 0),
-    });
-    if (!run) return undefined;
-
-    const filtered = candidates
-      .filter((task) => (task.updatedAt ?? 0) > run.previousLastDreamAt)
-      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
-      .map((task) => ({
-        taskId: task.id,
-        cwd: task.cwd,
-        updatedAt: task.updatedAt ?? 0,
-        transcriptFilename: `${task.id}.md`,
-      }));
-
-    return { ...run, candidates: filtered };
-  };
-
-  finishAutoMemoryDream = async (options: {
-    memoryDir: string;
-    token: string;
-    previousLastDreamAt: number;
-    success: boolean;
-  }) => {
-    return this.autoMemoryManager.finishDreamRun(options);
-  };
-
-  writeTaskTranscript = async (options: {
-    taskId: string;
-    cwd?: string;
-    title?: string;
-    updatedAt?: number;
-    transcript: string;
-  }) => {
-    if (!this.isAutoMemoryEnabled()) return undefined;
-    return this.autoMemoryManager.writeTaskTranscript({
-      taskId: options.taskId,
-      cwd: options.cwd ?? this.cwd ?? undefined,
-      title: options.title,
-      updatedAt: options.updatedAt,
-      transcript: options.transcript,
-    });
-  };
-
-  /**
-   * Walk TaskHistoryStore and pick top-level tasks whose `cwd` resolves to
-   * the same repoKey as the dream's `cwd`. Subtasks are skipped — they
-   * don't represent independent user sessions.
-   */
-  private collectDreamCandidates = async (
-    cwd: string | undefined,
-  ): Promise<
-    Array<{ id: string; cwd?: string | null; updatedAt?: number }>
-  > => {
-    const baseContext = await this.autoMemoryManager.readContext(cwd, {
-      ensure: false,
-    });
-    if (!baseContext) return [];
-
-    const tasks = Object.values(this.taskHistoryStore.tasks.value);
-    const result: Array<{
-      id: string;
-      cwd?: string | null;
-      updatedAt?: number;
-    }> = [];
-
-    for (const task of tasks) {
-      if (!task.id || task.parentId) continue;
-      const taskCwd = task.cwd ?? cwd;
-      if (!taskCwd) continue;
-      const taskContext = await this.autoMemoryManager
-        .readContext(taskCwd, { ensure: false })
-        .catch(() => undefined);
-      if (taskContext?.repoKey !== baseContext.repoKey) continue;
-      result.push({ id: task.id, cwd: task.cwd, updatedAt: task.updatedAt });
-    }
-
-    return result;
-  };
-
   readBackgroundTaskState = async (
     taskId: string,
   ): Promise<{
@@ -1470,9 +1435,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       value: ThreadSignal.serialize(
         this.taskStateStore.getBackgroundTaskStateSignal(taskId),
       ),
-      setBackgroundTaskState: (state: BackgroundTaskState) => {
-        return this.taskStateStore.setBackgroundTaskState(taskId, state);
-      },
+      setBackgroundTaskState: (state: BackgroundTaskState) =>
+        this.taskStateStore.setBackgroundTaskState(taskId, state),
     };
   };
 
@@ -1485,10 +1449,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           const tasks = this.taskHistoryStore.tasks.value;
           const archived = this.taskStateStore.getArchivedSignal().value;
           const pinned = this.taskStateStore.getPinnedSignal().value;
+          const scope = this.getCurrentRepoScope();
           return Object.values(tasks).some((task) => {
             if (task.parentId !== null) return false;
             if (archived[task.id]) return false;
             if (pinned[task.id]) return false;
+            if (scope && !this.isTaskInRepoScope(task, scope)) return false;
             return task.updatedAt < oneWeekAgo;
           });
         }),
@@ -1510,13 +1476,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         } else if (params.type === "batch") {
           const tasks = this.taskHistoryStore.tasks.value;
           const pinned = this.taskStateStore.getPinnedSignal().value;
+          const scope = this.getCurrentRepoScope();
           const updates: Record<string, boolean> = {};
 
           for (const [taskId, task] of Object.entries(tasks)) {
             if (
               task.updatedAt < oneWeekAgo &&
               !pinned[taskId] &&
-              (!params.cwd || task.cwd === params.cwd)
+              (!scope || this.isTaskInRepoScope(task, scope))
             ) {
               updates[taskId] = true;
             }
@@ -1628,7 +1595,6 @@ const ToolMap: Record<
   renderWidget,
   writeToFile,
   applyDiff,
-  todoWrite,
   editNotebook,
   useSkill,
   createReview,

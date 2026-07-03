@@ -17,13 +17,13 @@ import {
   isRetryApprovalCountingDown,
   type useApprovalAndRetry,
 } from "@/features/approval";
-import { useAutoApproveGuard } from "@/features/chat";
+import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
 import {
   AutoApproveMenu,
   useAutoApprove,
   useSelectedModels,
 } from "@/features/settings";
-import { TodoList, useTodos } from "@/features/todo";
+import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
@@ -71,11 +71,16 @@ interface ChatToolbarProps {
   subtask?: SubtaskInfo;
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
-  todosRef: React.RefObject<Todo[] | undefined>;
+  todos: Todo[];
+  updateTodos: (todos: Todo[]) => void;
+  updateTodoCompletion: (update: TodoCompletionUpdate) => void;
+  todoPaused: boolean;
+  onTodoPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
+  getSystemPrompt?: () => string | undefined;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -88,28 +93,27 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   task,
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
-  todosRef,
+  todos,
+  updateTodos,
+  updateTodoCompletion,
+  todoPaused,
+  onTodoPausedChange,
   onUpdateIsPublicShared,
   taskId,
   isRepairingMermaid = false,
   mcpConfigOverride,
+  getSystemPrompt,
 }) => {
   const { t } = useTranslation();
 
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
+  const { completeToolCalls } = useToolCallLifeCycle();
 
   const { input, setInput, clearInput } = useChatInputState();
 
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
-
-  // Initialize task with prompt if provided and task doesn't exist yet
-  const { todos } = useTodos({
-    initialTodos: task?.todos,
-    messages,
-    todosRef,
-  });
 
   const {
     groupedModels,
@@ -211,6 +215,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       status === "ready" &&
       !isExecuting &&
       !isBusyCore &&
+      completeToolCalls.length === 0 &&
       !!selectedModel &&
       (!pendingApproval || pendingApproval.name === "retry");
 
@@ -221,20 +226,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     status,
     isExecuting,
     isBusyCore,
+    completeToolCalls.length,
     selectedModel,
     queuedMessages.length,
     pendingApproval,
     handleSubmit,
   ]);
 
-  // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || blockingState.isBusy);
+  const allowAddToolResult = !blockingState.isBusy;
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
+    updateTodoCompletion,
   });
 
+  const allowInteractiveToolAction = !(isLoading || blockingState.isBusy);
   const compactOptions = {
     enabled:
       compactEnabled && !inlineCompactTaskPending && !newCompactTaskPending,
@@ -256,7 +263,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   );
 
   const showRenderWidgetFixButton =
-    !!shouldShowRenderWidgetFixButton && allowAddToolResult && !pendingApproval;
+    !!shouldShowRenderWidgetFixButton &&
+    allowInteractiveToolAction &&
+    !pendingApproval;
 
   const showSubmitReviewButton =
     !isSubmitDisabled &&
@@ -271,6 +280,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   // If there are pending reviews, we prioritize submitting them over completing the subtask.
   const showCompleteSubtaskButton =
     useShowCompleteSubtaskButton(subtask, messages) && !showSubmitReviewButton;
+  const visibleTodos = isSubTask ? [] : todos;
+  const hasVisibleTodos = visibleTodos.length > 0;
+  const hasVisibleChangedFiles =
+    useTaskChangedFilesHelpers.visibleChangedFiles.length > 0;
 
   return (
     <>
@@ -284,7 +297,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <ApprovalButton
             pendingApproval={pendingApproval}
             retry={retry}
-            allowAddToolResult={allowAddToolResult}
+            allowAddToolResult={allowInteractiveToolAction}
             isSubTask={isSubTask}
             task={task}
             subtask={subtask}
@@ -300,15 +313,20 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {(todos.length > 0 ||
-        useTaskChangedFilesHelpers.visibleChangedFiles.length > 0) && (
+      {(hasVisibleTodos || hasVisibleChangedFiles) && (
         <div
           className={cn(
             "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
           )}
         >
-          {todos.length > 0 && (
-            <TodoList todos={todos}>
+          {hasVisibleTodos && (
+            <TodoList
+              todos={visibleTodos}
+              editable
+              onSaveTodos={updateTodos}
+              todoPaused={todoPaused}
+              onTodoPausedChange={onTodoPausedChange}
+            >
               <TodoList.Header />
               <TodoList.Items viewportClassname="max-h-48" />
             </TodoList>
@@ -316,7 +334,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <DiffSummary
             {...useTaskChangedFilesHelpers}
             className={cn({
-              "rounded-t-none border-border border-t": todos.length > 0,
+              "rounded-t-none border-border border-t": hasVisibleTodos,
             })}
           />
         </div>
@@ -341,9 +359,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         taskId={taskId}
         lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
         className={cn({
-          "rounded-t-none":
-            todos.length > 0 ||
-            useTaskChangedFilesHelpers.visibleChangedFiles.length > 0,
+          "rounded-t-none": hasVisibleTodos || hasVisibleChangedFiles,
         })}
       >
         {files.length > 0 && (
@@ -390,7 +406,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               selectedModel={selectedModel}
             />
           )}
-          <DevModeButton messages={messages} todos={todos} />
+          <DevModeButton
+            messages={messages}
+            todos={todos}
+            getSystemPrompt={getSystemPrompt}
+          />
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}

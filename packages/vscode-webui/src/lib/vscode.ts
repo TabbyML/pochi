@@ -1,10 +1,11 @@
-import { getLogger } from "@getpochi/common";
+import { type AutoMemoryManager, getLogger } from "@getpochi/common";
 import { validateTaskFilePath } from "@getpochi/common/pochi-file-system";
 import {
   type ExecuteCommandResult,
   type VSCodeHostApi,
   type WebviewHostApi,
   resolvePochiUri,
+  resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   catalog,
@@ -70,6 +71,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "setGlobalState",
         "readEnvironment",
         "executeToolCall",
+        "previewEdit",
         "executeBashCommand",
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
@@ -130,9 +132,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "readAutoMemory",
         "readAutoMemoryEnabled",
         "readAutoMemoryState",
-        "beginAutoMemoryDream",
-        "finishAutoMemoryDream",
-        "writeTaskTranscript",
         "readBackgroundTaskState",
         "readTaskArchived",
         "readTaskPinned",
@@ -211,7 +210,13 @@ function createVSCodeHost(): VSCodeHostApi {
           let content: string | undefined;
           let outputError: string | undefined;
           try {
-            content = extractTaskResult(globalStore, taskId);
+            const taskResult = extractTaskResult(globalStore, taskId);
+            content =
+              typeof taskResult === "string"
+                ? taskResult
+                : taskResult === undefined
+                  ? undefined
+                  : JSON.stringify(taskResult);
           } catch (error) {
             logger.warn("Failed to extract task result", error);
             outputError =
@@ -256,10 +261,47 @@ function createVSCodeHost(): VSCodeHostApi {
     );
   };
 
+  const previewEdit: VSCodeHostApi["previewEdit"] = async (toolName, input) => {
+    return vscodeHostApi.previewEdit(
+      toolName,
+      resolveToolCallArgs(input, globalStore?.storeId ?? ""),
+    );
+  };
+
   return {
     ...vscodeHostApi,
     openFile,
+    previewEdit,
   };
 }
 
 export const vscodeHost = createVSCodeHost();
+
+let autoMemoryManagerPromise: Promise<AutoMemoryManager> | null = null;
+
+function loadAutoMemoryManager() {
+  if (!autoMemoryManagerPromise) {
+    const pending = vscodeHost.readAutoMemory();
+    const cached = pending.catch((error) => {
+      if (autoMemoryManagerPromise === cached) {
+        autoMemoryManagerPromise = null;
+      }
+      throw error;
+    });
+    autoMemoryManagerPromise = cached;
+  }
+  return autoMemoryManagerPromise;
+}
+
+export const vscodeAutoMemoryManager: AutoMemoryManager = {
+  readContext: async (cwdOrOptions) =>
+    (await loadAutoMemoryManager()).readContext(cwdOrOptions),
+  writeTaskTranscript: async (options) =>
+    (await loadAutoMemoryManager()).writeTaskTranscript(options),
+  beginDreamRun: async (options) =>
+    (await loadAutoMemoryManager()).beginDreamRun(options),
+  finishDreamRun: async (options) =>
+    (await loadAutoMemoryManager()).finishDreamRun(options),
+  clearProjectMemory: async (options) =>
+    (await loadAutoMemoryManager()).clearProjectMemory(options),
+};

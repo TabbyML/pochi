@@ -107,6 +107,37 @@ describe('formatters', () => {
       expect(formatted.find((m) => m.id === 'user-2')).toBeUndefined();
     });
 
+    it('should merge compact-only user messages into adjacent assistant messages with compact between the two responses', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'First assistant response' }],
+        },
+        {
+          id: 'user-compact',
+          role: 'user',
+          parts: [
+            { type: 'text', text: '<compact>Previous conversation summary (5 messages):\nSummary here\n</compact>' },
+            { type: 'text', text: '<system-reminder>Environment details</system-reminder>' },
+          ],
+        },
+        {
+          id: 'assistant-2',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'Second assistant response' }],
+        },
+      ];
+      const formatted = formatters.ui(clone(messages));
+      expect(formatted.find((m) => m.id === 'user-compact')).toBeUndefined();
+      expect(formatted.filter((m) => m.role === 'assistant')).toHaveLength(1);
+      const textParts = formatted[0].parts.filter((p) => p.type === 'text');
+      expect(textParts).toHaveLength(3);
+      expect((textParts[0] as any).text).toBe('First assistant response');
+      expect((textParts[1] as any).text).toContain('<compact>');
+      expect((textParts[2] as any).text).toBe('Second assistant response');
+    });
+
     it('should resolve pending tool calls and combine messages', () => {
       const messages: UIMessage[] = [
         {
@@ -125,6 +156,60 @@ describe('formatters', () => {
       expect(formatted[0].parts).toHaveLength(2);
       expect((formatted[0].parts[0] as any).state).toBe('output-available');
       expect((formatted[0].parts[1] as any).state).toBe('input-available');
+    });
+
+    it('should hide a pending todo attemptCompletion when requested', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'text', text: 'Checking the todo...' },
+            createToolPart('attemptCompletion', 'input-available', {
+              result: 'done',
+            }),
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(messages, {
+        hidePendingTodoAttemptCompletion: true,
+      });
+
+      expect(formatted[0].parts).toEqual([
+        { type: 'text', text: 'Checking the todo...' },
+      ]);
+    });
+
+    it('should hide deprecated todoWrite tool calls', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'text', text: 'Working on todos.' },
+            createToolPart('todoWrite', 'output-available', {
+              todos: [],
+            }),
+          ],
+        },
+        {
+          id: 'assistant-2',
+          role: 'assistant',
+          parts: [
+            createToolPart('todoWrite', 'output-available', {
+              todos: [],
+            }),
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(messages);
+
+      expect(formatted).toHaveLength(1);
+      expect(formatted[0].parts).toEqual([
+        { type: 'text', text: 'Working on todos.' },
+      ]);
     });
   });
 
@@ -235,6 +320,108 @@ describe('formatters', () => {
       const formatted = formatters.llm(clone(messages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
+    });
+
+    it('should keep only messages from the latest compact block onward', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'old request' }],
+        },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'old response' }],
+        },
+        {
+          id: 'user-compact',
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: '<compact>Previous conversation summary</compact>',
+            },
+            { type: 'text', text: 'current request' },
+          ],
+        },
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+
+      expect(formatted.map((m) => m.id)).toEqual(['user-compact']);
+    });
+    
+    it('should replace attemptTodoCompletion subtasks with attemptCompletion', () => {
+      const auditResult = {
+        success: false,
+        summary: 'More work remains.',
+        todos: [
+          {
+            id: 'todo-1',
+            content: 'Implement todo mode',
+            status: 'in-progress',
+            priority: 'medium',
+          },
+        ],
+      };
+      const attemptCompletionInput = {
+        result: 'The implementation is complete.',
+      };
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            createToolPart(
+              'newTask',
+              'output-available',
+              {
+                agentType: 'attemptTodoCompletion',
+                _meta: {
+                  uid: 'audit-task-1',
+                  sourceAttemptCompletion: {
+                    toolCallId: 'attempt-tool-1',
+                    input: attemptCompletionInput,
+                  },
+                },
+              },
+              { result: auditResult },
+            ),
+          ],
+        },
+      ];
+      const toolPart = messages[0].parts[0] as any;
+      toolPart.callProviderMetadata = {
+        google: {
+          thoughtSignature: 'signature-1',
+        },
+      };
+
+      const formatted = formatters.llm(clone(messages));
+      const formattedToolPart = formatted[0].parts[0] as any;
+
+      expect(formattedToolPart.type).toBe('tool-attemptCompletion');
+      expect(formattedToolPart.state).toBe('output-available');
+      expect(formattedToolPart.toolCallId).toBe('attempt-tool-1');
+      expect(formattedToolPart.input).toEqual(attemptCompletionInput);
+      expect(formattedToolPart.output).toEqual({
+        success: false,
+        reason: 'More work remains.',
+        todos: [
+          {
+            id: 'todo-1',
+            content: 'Implement todo mode',
+            status: 'in-progress',
+            priority: 'medium',
+          },
+        ],
+      });
+      expect(formattedToolPart.callProviderMetadata).toEqual({
+        google: {
+          thoughtSignature: 'signature-1',
+        },
+      });
     });
   });
 

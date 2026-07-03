@@ -1,14 +1,19 @@
 import { spawn } from "node:child_process";
-import { getLogger, prompts, toErrorMessage } from "@getpochi/common";
+import {
+  type AutoMemoryContext,
+  type ContextWindowUsage,
+  type MaybePromise,
+  getLogger,
+  prompts,
+  toErrorMessage,
+} from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
-  prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
-import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import {
   FileStateCache,
   maybePersistToolResult,
@@ -18,12 +23,20 @@ import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
   type LLMRequestData,
+  type LiveChatKitBackgroundTaskOptions,
+  type LiveChatKitProjectMemoryOptions,
+  type LiveChatKitTaskMemoryOptions,
   type LiveKitStore,
   type Message,
+  type Task,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
-import { type BatchedToolCallResult, ToolCallQueue } from "@getpochi/tools";
+import {
+  type BatchedToolCallResult,
+  ToolCallQueue,
+  getToolCallCancelErrorMessage,
+} from "@getpochi/tools";
 import {
   type CompiledToolPolicies,
   type CustomAgent,
@@ -64,7 +77,10 @@ export interface RunnerOptions {
 
   blobStore: BlobStore;
 
-  // The parts to use for creating the task
+  // The seeded messages to initialize the task with
+  initMessages?: Message[];
+
+  // The parts of the user message
   parts?: Message["parts"];
 
   /**
@@ -124,11 +140,34 @@ export interface RunnerOptions {
    */
   abortSignal?: AbortSignal;
 
-  outputSchema?: z.ZodAny;
-
   attemptCompletionSchema?: z.ZodAny;
 
   attemptCompletionHook?: string;
+
+  onStreamFinish?: (data: {
+    id: string;
+    cwd: string | null;
+    status: Task["status"];
+    messages: Message[];
+    error?: Error;
+    contextWindowUsage?: ContextWindowUsage;
+  }) => MaybePromise<void>;
+
+  onCompactStart?: () => void;
+
+  onCompactFinish?: (success: boolean) => MaybePromise<void>;
+
+  getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
+
+  backgroundTask?: LiveChatKitBackgroundTaskOptions;
+
+  taskMemory?: LiveChatKitTaskMemoryOptions;
+
+  projectMemory?: LiveChatKitProjectMemoryOptions;
+
+  enableAutoCompact?: boolean;
+
+  fileStateCache?: FileStateCache;
 
   /**
    * The file system to use for the task runner.
@@ -163,6 +202,7 @@ export class TaskRunner {
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
+
   private abortSignal?: AbortSignal;
 
   readonly taskId: string;
@@ -189,7 +229,7 @@ export class TaskRunner {
     this.toolCallOptions = {
       rg: options.rg,
       fileSystem: this.fileSystem,
-      fileStateCache: new FileStateCache(),
+      fileStateCache: options.fileStateCache ?? new FileStateCache(),
       blobStore: this.blobStore,
 
       customAgents: options.customAgents,
@@ -215,6 +255,14 @@ export class TaskRunner {
           parts: undefined, // should not use parts from parent
           uid: taskId,
           isSubTask: true,
+          onStreamFinish: undefined,
+          onCompactStart: undefined,
+          onCompactFinish: undefined,
+          backgroundTask: undefined,
+          taskMemory: undefined,
+          projectMemory: undefined,
+          enableAutoCompact: false,
+          fileStateCache: undefined,
         });
         this.attemptCompletionHook = options.attemptCompletionHook;
 
@@ -231,16 +279,19 @@ export class TaskRunner {
       isSubTask: options.isSubTask,
       customAgent: options.customAgent,
 
-      outputSchema: options.outputSchema,
       attemptCompletionSchema: options.attemptCompletionSchema,
 
       abortSignal: options.abortSignal,
 
-      onCompactFinish: (success: boolean) => {
-        if (success) {
-          this.toolCallOptions.fileStateCache.clear();
-        }
-      },
+      onCompactStart: options.onCompactStart,
+      onCompactFinish: options.onCompactFinish,
+      getRecentFilesForCompact: () =>
+        this.toolCallOptions.fileStateCache.getRecentFiles(),
+      clearFileStateCache: () => this.toolCallOptions.fileStateCache.clear(),
+      backgroundTask: options.backgroundTask,
+      taskMemory: options.taskMemory,
+      projectMemory: options.projectMemory,
+      enableAutoCompact: options.enableAutoCompact,
 
       getters: {
         getLLM: () => options.llm,
@@ -254,6 +305,11 @@ export class TaskRunner {
         }),
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
+        ...(options.getAutoMemory
+          ? {
+              getAutoMemory: options.getAutoMemory,
+            }
+          : {}),
         ...(options.mcpHub
           ? {
               getMcpInfo: () => {
@@ -267,6 +323,12 @@ export class TaskRunner {
           : {}),
       },
     });
+    if (options.initMessages && options.initMessages.length > 0) {
+      if (!this.chatKit.inited) {
+        this.chatKit.init(options.cwd, { messages: options.initMessages });
+      }
+    }
+
     if (options.parts && options.parts.length > 0) {
       if (this.chatKit.inited) {
         this.chatKit.chat.appendOrReplaceMessage({
@@ -296,16 +358,18 @@ export class TaskRunner {
       logger.trace("Start step loop.");
       this.stepCount.reset();
       while (true) {
+        this.abortSignal?.throwIfAborted();
         const stepResult = await this.step();
         if (stepResult === "finished") {
           break;
         }
         if (stepResult === "retry") {
-          await this.stepCount.nextRetry();
+          await this.stepCount.nextRetry(this.abortSignal);
         } else {
           this.stepCount.nextStep();
         }
       }
+      await this.chatKit.drainBackgroundTasksAndSettleMemory();
     } catch (e) {
       const error = toError(e);
       logger.debug("Failed:", error);
@@ -318,6 +382,7 @@ export class TaskRunner {
           this.taskId,
         );
       }
+      await this.chatKit.disposeBackgroundTasks();
     }
   }
 
@@ -371,13 +436,6 @@ export class TaskRunner {
     return results.length > 0 ? results.join("\n\n") : undefined;
   }
 
-  private replaceLastMessageForRetry(message: Message): void {
-    // The retry path may drop the original readFile tool_result from history.
-    // Clear the cache so later reads cannot deduplicate against discarded context.
-    this.toolCallOptions.fileStateCache.clear();
-    this.chat.appendOrReplaceMessage(message);
-  }
-
   /**
    * @returns
    *  - "finished" if the task is finished and no more steps are needed.
@@ -386,7 +444,6 @@ export class TaskRunner {
    * @throws {Error} - Throws an error if this step is failed.
    */
   private async step(): Promise<"finished" | "next" | "retry"> {
-    this.todos = this.loadTodos();
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the chat.");
@@ -447,27 +504,21 @@ export class TaskRunner {
       this.stepCount.throwIfReachedMaxRetries();
     }
 
+    this.abortSignal?.throwIfAborted();
     await this.chatKit.chat.sendMessage();
     return result;
-  }
-
-  private loadTodos() {
-    let todos: Todo[] = [];
-    for (const x of this.chat.messages) {
-      todos = mergeTodos(this.todos, findTodos(x) ?? []);
-    }
-    return todos;
   }
 
   private async process(
     message: Message,
   ): Promise<"finished" | "next" | "retry"> {
     return (
-      this.processMessage(message) || (await this.processToolCalls(message))
+      (await this.processMessage(message)) ||
+      (await this.processToolCalls(message))
     );
   }
 
-  private processMessage(message: Message) {
+  private async processMessage(message: Message) {
     const { task } = this.chatKit;
     if (!task) {
       throw new Error("Task is not loaded");
@@ -495,9 +546,9 @@ export class TaskRunner {
         "Task is failed, trying to resend last message to resume it.",
         task.error,
       );
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.chatKit.prepareLastMessageForRetry(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed);
+        this.chat.appendOrReplaceMessage(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -521,9 +572,9 @@ export class TaskRunner {
       logger.trace(
         "Last message is assistant with empty parts or partial/completed tool calls, resending it to resume the task.",
       );
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.chatKit.prepareLastMessageForRetry(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed);
+        this.chat.appendOrReplaceMessage(processed);
       } else {
         // skip, the last message is ready to be resent
       }
@@ -535,9 +586,7 @@ export class TaskRunner {
         "Last message is assistant with no tool calls, sending a new user reminder.",
       );
       const message = createUserMessage(
-        prompts.createSystemReminder(
-          "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
-        ),
+        prompts.createSystemReminder(prompts.toolCallsReminder),
       );
       this.chat.appendOrReplaceMessage(message);
       return "retry";
@@ -576,14 +625,21 @@ export class TaskRunner {
             toolCallId: toolCall.toolCallId,
             output: {
               // @ts-expect-error
-              error:
-                "Tool call was cancelled because a previous tool call failed.",
+              error: getToolCallCancelErrorMessage(reason),
             },
           });
         },
       });
     }
 
+    this.abortSignal?.throwIfAborted();
+    this.abortSignal?.addEventListener(
+      "abort",
+      () => {
+        queue.abort("user-abort");
+      },
+      { once: true },
+    );
     await queue.start();
 
     logger.trace("All tool calls processed in the last message.");

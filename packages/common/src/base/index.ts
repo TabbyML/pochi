@@ -7,7 +7,7 @@ export {
   formatters,
   type LLMFormatterOptions,
 } from "./formatters";
-export { prompts } from "./prompts";
+export { prompts, parseEnvironmentInfo } from "./prompts";
 
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
@@ -36,9 +36,18 @@ export { WebsiteTaskCreateEvent } from "./event";
 export { toErrorMessage } from "./error";
 
 export { withTimeout } from "./async-utils";
+export type { MaybePromise } from "./async-utils";
 
-export * from "./message-context";
-export type { AutoMemoryTaskState, TaskMemoryState } from "./memory";
+export * from "./message";
+export type {
+  AutoMemoryDreamCandidate,
+  AutoMemoryDreamRun,
+  AutoMemoryManager,
+  AutoMemoryReadContextOptions,
+  AutoMemoryTaskState,
+  AutoMemoryTranscriptInfo,
+  TaskMemoryState,
+} from "./memory";
 export { TaskMemoryFileUri } from "./prompts/task-memory";
 
 export const ForkAgentUseCase = z.enum([
@@ -64,6 +73,7 @@ export type PochiRequestUseCase = z.infer<typeof PochiRequestUseCase>;
 
 export const PochiProviderOptions = z.object({
   taskId: z.string(),
+  storeId: z.string(),
   client: z.string(),
   useCase: PochiRequestUseCase,
 });

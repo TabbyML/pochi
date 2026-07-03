@@ -2,8 +2,10 @@ import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
 import {
   type AutoMemoryContext,
+  type AutoMemoryManifestEntry,
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
+  buildAutoMemoryExtractionDirective,
   buildAutoMemoryPrompt,
   buildAutoMemoryStaticPrompt,
   formatAutoMemoryManifest,
@@ -21,6 +23,31 @@ const sampleContext: AutoMemoryContext = {
   indexTruncated: false,
   manifest: [],
   transcriptDir: "/home/user/.pochi/projects/repo-key/transcripts",
+};
+
+const sampleManifest: AutoMemoryManifestEntry[] = [
+  {
+    filename: "conventions.md",
+    name: "Project conventions",
+    description: "Coding conventions and folder layout.",
+    type: "project",
+    updatedAt: 1_700_000_000_000,
+  },
+  {
+    filename: "review-feedback.md",
+    name: "Review feedback",
+    description: "Prefer compact plans.",
+    type: "feedback",
+  },
+  {
+    filename: "bio.md",
+    type: "user",
+  },
+];
+
+const sampleContextWithManifest: AutoMemoryContext = {
+  ...sampleContext,
+  manifest: sampleManifest,
 };
 
 describe("long-term memory prompt helpers", () => {
@@ -160,6 +187,36 @@ describe("long-term memory prompt helpers", () => {
     expect(messages[0].parts).toHaveLength(1);
   });
 
+  it("injectAutoMemory strips a persisted reminder when memory is disabled", () => {
+    // Simulate a reminder that was injected on turn 1 and persisted, then
+    // followed by more turns (so the length !== 1 guard would skip re-injection).
+    const messages: UIMessage[] = [makeUserMessage("first")];
+    injectAutoMemory(messages, sampleContext);
+    expect(
+      messages[0].parts.some(
+        (p) => p.type === "text" && isAutoMemorySystemReminder(p.text),
+      ),
+    ).toBe(true);
+
+    messages.push(
+      { id: "asst-1", role: "assistant", parts: [{ type: "text", text: "ok" }] },
+      makeUserMessage("second"),
+    );
+
+    // Disabling memory (context undefined) should remove the persisted reminder.
+    injectAutoMemory(messages, undefined);
+    expect(
+      messages[0].parts.some(
+        (p) => p.type === "text" && isAutoMemorySystemReminder(p.text),
+      ),
+    ).toBe(false);
+    // The user's original text is preserved.
+    expect(messages[0].parts).toHaveLength(1);
+    const userPart = messages[0].parts[0];
+    if (userPart.type !== "text") throw new Error("expected text part");
+    expect(userPart.text).toBe("first");
+  });
+
   it("injectAutoMemory only fires on the first user turn", () => {
     const messages: UIMessage[] = [
       makeUserMessage("first"),
@@ -188,5 +245,43 @@ describe("long-term memory prompt helpers", () => {
       expect(reminders[0].text).toContain("- [user] bio.md");
       expect(reminders[0].text).not.toContain("- [project] conventions.md");
     }
+  });
+
+  describe("snapshots", () => {
+    it("buildAutoMemoryPrompt (static + dynamic)", () => {
+      expect(buildAutoMemoryPrompt(sampleContext)).toMatchSnapshot();
+    });
+
+    it("buildAutoMemoryExtractionDirective", () => {
+      expect(
+        buildAutoMemoryExtractionDirective({
+          context: sampleContextWithManifest,
+          previousMessageCount: 7,
+        }),
+      ).toMatchSnapshot();
+    });
+
+    it("buildAutoMemoryDreamDirective with sessions", () => {
+      expect(
+        buildAutoMemoryDreamDirective({
+          context: sampleContextWithManifest,
+          sessions: [
+            {
+              taskId: "task-a",
+              updatedAt: Date.UTC(2024, 0, 1, 12, 0, 0),
+              cwd: "/repo/a",
+              transcriptFilename: "task-a.md",
+              title: "Refactor database schema",
+            },
+            {
+              taskId: "task-b",
+              updatedAt: Date.UTC(2024, 0, 2, 12, 0, 0),
+              cwd: null,
+              transcriptFilename: "task-b.md",
+            },
+          ],
+        }),
+      ).toMatchSnapshot();
+    });
   });
 });

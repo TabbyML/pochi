@@ -32,10 +32,6 @@ import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
-import {
-  isValidCustomAgentFile,
-  isValidSkillFile,
-} from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { ReactRenderer } from "@tiptap/react";
 import {
@@ -61,6 +57,7 @@ import {
   SlashMentionList,
   type SlashMentionListProps,
 } from "./slash-mention/mention-list";
+import { createSlashCandidates } from "./slash-mention/slash-candidates";
 import { SubmitHistoryExtension } from "./submit-history-extension";
 
 const newLineCharacter = "\n";
@@ -117,7 +114,7 @@ interface FormEditorProps {
   onFocus?: (event: FocusEvent) => void;
   messageContent?: string;
   isSubTask: boolean;
-  onTogglePlanMode?: () => void;
+  onSwitchSubmitMode?: () => void;
   className?: string;
 }
 
@@ -138,7 +135,7 @@ export function FormEditor({
   onFileDrop,
   messageContent = "",
   isSubTask,
-  onTogglePlanMode,
+  onSwitchSubmitMode,
   className,
 }: FormEditorProps) {
   const { t } = useTranslation();
@@ -482,18 +479,19 @@ export function FormEditor({
           )
         ) {
           const trMeta = props.transaction.getMeta(SubmitHistoryExtension.name);
+          // Place the caret so repeated presses keep navigating in the same
+          // direction: at the start after Up (ready for another Up), at the end
+          // after Down (ready for another Down).
           if (trMeta?.direction === "up") {
-            const { doc } = props.editor.state;
-            const firstNode = doc.firstChild;
-            if (firstNode) {
-              const endOfFirstLine = 1 + firstNode.content.size;
-              props.editor
-                .chain()
-                .focus()
-                .setTextSelection(endOfFirstLine)
-                .scrollIntoView()
-                .run();
-            }
+            props.editor.chain().focus("start").scrollIntoView().run();
+          } else if (trMeta?.direction === "down") {
+            props.editor.chain().focus("end").scrollIntoView().run();
+          }
+
+          // A document change without a navigation tag is a real user edit:
+          // end navigation so the new content becomes the live draft again.
+          if (!trMeta && props.transaction.docChanged) {
+            props.editor.commands.resetSubmitHistoryNavigation();
           }
 
           props.editor.commands.updateCurrentDraft(
@@ -653,7 +651,7 @@ export function FormEditor({
       onKeyDown={(e) => {
         if (e.key === "Tab" && e.shiftKey) {
           e.preventDefault();
-          onTogglePlanMode?.();
+          onSwitchSubmitMode?.();
         }
       }}
     >
@@ -722,29 +720,8 @@ export const debouncedListSlashCommand = debounceWithCachedValue(
       threadSignal(await vscodeHost.readCustomAgents()),
       threadSignal(await vscodeHost.readSkills()),
     ]);
-    const options: SlashCandidate[] = [
-      ...customAgents.value
-        .filter((x) => !x.isBuiltIn)
-        .filter((x) => isValidCustomAgentFile(x))
-        .map((x) => ({
-          type: "custom-agent" as const,
-          id: x.name,
-          label: x.name,
-          path: x.filePath,
-          rawData: x,
-        })),
-      ...skills.value
-        .filter((x) => isValidSkillFile(x))
-        .map((x) => ({
-          type: "skill" as const,
-          id: x.name,
-          label: x.name,
-          path: x.filePath,
-          rawData: x,
-        })),
-    ];
     return {
-      options,
+      options: createSlashCandidates(customAgents.value, skills.value),
     };
   },
   1000 * 60,

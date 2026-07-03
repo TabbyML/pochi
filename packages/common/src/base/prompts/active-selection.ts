@@ -1,4 +1,4 @@
-import type { ActiveSelection } from "../message-context";
+import type { ActiveSelection } from "../message";
 
 export function renderActiveSelection(selection: ActiveSelection): string {
   if (!selection) {

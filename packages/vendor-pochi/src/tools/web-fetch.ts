@@ -3,10 +3,13 @@ import z from "zod";
 
 export const makeWebFetch = (getToken: () => Promise<string>) => ({
   description: `
-- Fetches content from a specified URL and converts HTML to markdown
-- Use this tool when you need to retrieve and analyze web content
+- Fetches the readable content of a public web page and converts HTML to markdown
+- Use this tool ONLY to retrieve and analyze the textual content of a web page (e.g. documentation, articles, references)
 
 Usage notes:
+  - This tool is a content-fetching mechanism ONLY. Do NOT use it for API calls, sending non-GET requests, or interacting with endpoints. For those, use \`curl\` via the terminal.
+  - Do NOT use this tool to access localhost, 127.0.0.1, or other local/internal network addresses. Use \`curl\` (for simple requests) or the browser agent (for pages requiring rendering/interaction) instead.
+  - For web pages that require JavaScript rendering, authentication, or interaction, use the browser agent instead.
   - IMPORTANT: If an MCP-provided web fetch tool is available, prefer using that tool instead of this one, as it may have fewer restrictions.
   - The URL must be a fully-formed valid URL
   - The prompt should describe what information you want to extract from the page

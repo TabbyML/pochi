@@ -2,7 +2,7 @@ import path from "node:path";
 import { getLogger } from "../base";
 import { resolvePath, validateRelativePath } from "./fs";
 import { ignoreWalk } from "./ignore-walk";
-import { MaxListFileItems } from "./limits";
+import { MaxListFileCharLength, MaxListFileItems } from "./limits";
 
 const logger = getLogger("listFiles");
 
@@ -14,6 +14,8 @@ interface ListFilesOptions {
   recursive?: boolean;
   /** AbortSignal for cancellation */
   abortSignal?: AbortSignal;
+  /** Maximum total character length of files to return before truncating */
+  maxCharLength?: number;
 }
 
 interface ListFilesResult {
@@ -31,7 +33,13 @@ interface ListFilesResult {
 export async function listFiles(
   options: ListFilesOptions,
 ): Promise<ListFilesResult> {
-  const { cwd, path: dirPath, recursive, abortSignal } = options;
+  const {
+    cwd,
+    path: dirPath,
+    recursive,
+    abortSignal,
+    maxCharLength = MaxListFileCharLength,
+  } = options;
 
   logger.debug(
     "handling listFile with dirPath",
@@ -57,10 +65,22 @@ export async function listFiles(
       usePochiignore: false,
     });
 
-    const isTruncated = fileResults.length > MaxListFileItems;
-    const files = fileResults
-      .slice(0, MaxListFileItems)
-      .map((x) => path.relative(cwd, x.filepath));
+    const allFiles = fileResults.map((x) => path.relative(cwd, x.filepath));
+
+    let totalChars = 0;
+    const files: string[] = [];
+    for (const file of allFiles) {
+      if (files.length >= MaxListFileItems) {
+        break;
+      }
+      if (files.length > 0 && totalChars + file.length > maxCharLength) {
+        break;
+      }
+      files.push(file);
+      totalChars += file.length;
+    }
+
+    const isTruncated = fileResults.length > files.length;
 
     return { files, isTruncated };
   } catch (error) {
@@ -79,6 +99,8 @@ interface WorkspaceFilesOptions {
   abortSignal?: AbortSignal;
   /** Maximum number of files to return before truncating */
   maxItems?: number;
+  /** Maximum total character length of files to return before truncating */
+  maxCharLength?: number;
   /** Extra ignore patterns to apply on top of gitignore/pochiignore rules */
   extraIgnorePatterns?: string[];
 }
@@ -102,10 +124,18 @@ export async function listWorkspaceFiles(
     recursive = true,
     abortSignal,
     maxItems = MaxListFileItems,
+    maxCharLength = MaxListFileCharLength,
     extraIgnorePatterns,
   } = options;
 
-  logger.debug("Listing workspace files from", cwd, "with maxItems", maxItems);
+  logger.debug(
+    "Listing workspace files from",
+    cwd,
+    "with maxItems",
+    maxItems,
+    "and maxCharLength",
+    maxCharLength,
+  );
 
   try {
     const results = await ignoreWalk({
@@ -115,10 +145,22 @@ export async function listWorkspaceFiles(
       extraIgnorePatterns,
     });
 
-    const isTruncated = results.length > maxItems;
-    const files = results.slice(0, maxItems).map((res) => {
-      return path.relative(cwd, res.filepath);
-    });
+    const allFiles = results.map((res) => path.relative(cwd, res.filepath));
+
+    let totalChars = 0;
+    const files: string[] = [];
+    for (const file of allFiles) {
+      if (files.length >= maxItems) {
+        break;
+      }
+      if (files.length > 0 && totalChars + file.length > maxCharLength) {
+        break;
+      }
+      files.push(file);
+      totalChars += file.length;
+    }
+
+    const isTruncated = results.length > files.length;
 
     return { files, isTruncated };
   } catch (error) {

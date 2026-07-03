@@ -1,19 +1,39 @@
 import type {
+  AutoMemoryTaskState,
+  BackgroundTaskState,
   ContextWindowUsage,
+  MaybePromise,
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { getLogger, isForkAgentUseCase, prompts } from "@getpochi/common";
+import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
+import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
-import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  ToolsByPermission,
+  getToolCallCancelErrorMessage,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import {
   type ChatInit,
   type ChatOnErrorCallback,
   type ChatOnFinishCallback,
-  isStaticToolUIPart,
+  isToolUIPart,
 } from "ai";
 import type z from "zod";
+import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
+import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
+import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
+import { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
+import type { MemoryStateStore } from "../background-task/state-store";
+import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
+import {
+  type RunningTaskAdaptor,
+  TaskExecutor,
+} from "../background-task/task-executor/task-executor";
 import type { BlobStore } from "../blob-store";
 import {
   makeAllDataQuery,
@@ -22,7 +42,6 @@ import {
 } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
-
 import type { LiveKitStore, Message, Task } from "../types";
 import {
   MaxConsecutiveAutoCompactFailures,
@@ -31,6 +50,7 @@ import {
 import { scheduleGenerateTitleJob } from "./background-job";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
+  type FinishedRequestSnapshot,
   FlexibleChatTransport,
   type OnStartCallback,
   type PrepareRequestGetters,
@@ -38,7 +58,8 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
-import { ImageEstimatedTokens, estimateTokens } from "./token-utils";
+import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
+import { computeContextWindowUsage, estimateTotalTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
@@ -46,11 +67,125 @@ const OverrideMessagesSideEffectTimeoutMs = 12_000;
 const TaskMemorySettleTimeoutMs = 5_000;
 const TaskMemorySettlePollIntervalMs = 200;
 
-type GetRecentFilesForCompact = () =>
-  | RecentFileState[]
-  | Promise<RecentFileState[]>;
+type GetRecentFilesForCompact = () => MaybePromise<RecentFileState[]>;
 
-type GetTaskMemoryState = () => TaskMemoryState | undefined;
+function normalizeFailedStreamMessage(
+  message: Message | null,
+  error: unknown,
+): Message | null {
+  if (message?.role !== "assistant") {
+    return message;
+  }
+
+  const errorText = getFailedToolCallErrorText(error);
+  return {
+    ...message,
+    parts: message.parts.map((part) => {
+      if (!isToolUIPart(part)) {
+        return part;
+      }
+
+      if (
+        part.state === "output-available" ||
+        part.state === "output-error" ||
+        part.state === "output-denied"
+      ) {
+        return part;
+      }
+
+      if (part.state === "input-available" && isUserInputToolPart(part)) {
+        return part;
+      }
+
+      const normalizedPart = { ...(part as Record<string, unknown>) };
+      normalizedPart.output = undefined;
+      normalizedPart.errorText = undefined;
+      normalizedPart.approval = undefined;
+
+      return {
+        ...normalizedPart,
+        state: "output-error",
+        errorText,
+      } as unknown as typeof part;
+    }),
+  };
+}
+
+function getFailedToolCallErrorText(error: unknown): string {
+  if (error instanceof Error && error.name === "AbortError") {
+    return getToolCallCancelErrorMessage("user-abort");
+  }
+
+  return error instanceof Error ? error.message : String(error);
+}
+
+export type LiveChatKitBackgroundTaskOptions = {
+  stateStore?: {
+    read(taskId: string): MaybePromise<BackgroundTaskState | undefined>;
+    set(taskId: string, state: BackgroundTaskState): MaybePromise<void>;
+  };
+  adaptor?: RunningTaskAdaptor & { dispose?: () => void };
+  clearFileStateCache?: (taskId: string) => MaybePromise<void>;
+};
+
+export type LiveChatKitTaskMemoryOptions = {
+  stateStore?: MemoryStateStore<TaskMemoryState>;
+};
+
+export type LiveChatKitProjectMemoryOptions = {
+  stateStore?: MemoryStateStore<AutoMemoryTaskState>;
+  manager: AutoMemoryManager;
+};
+
+function createBackgroundTaskStateStore(): NonNullable<
+  LiveChatKitBackgroundTaskOptions["stateStore"]
+> {
+  const states = new Map<string, BackgroundTaskState>();
+  return {
+    read: (taskId) => states.get(taskId),
+    set: (taskId, state) => {
+      states.set(taskId, state);
+    },
+  };
+}
+
+async function createBackgroundTaskFromForkAgent({
+  store,
+  stateStore,
+  agent,
+  taskId = crypto.randomUUID(),
+  createdAt = new Date(),
+}: {
+  store: LiveKitStore;
+  stateStore: NonNullable<LiveChatKitBackgroundTaskOptions["stateStore"]>;
+  agent: ForkAgent<Message>;
+  taskId?: string;
+  createdAt?: Date;
+}): Promise<ForkAgentHandle> {
+  await stateStore.set(taskId, {
+    parentTaskId: agent.parentTaskId,
+    tools: agent.tools,
+    useCase: agent.label,
+    baselineStepCount: agent.baselineStepCount,
+  });
+
+  store.commit(
+    events.taskInited({
+      id: taskId,
+      cwd: agent.cwd,
+      background: true,
+      createdAt,
+      initMessages: agent.initMessages,
+      initTitle: agent.initTitle,
+    }),
+  );
+
+  return {
+    taskId,
+    cwd: agent.cwd,
+    label: agent.label,
+  };
+}
 
 async function readRecentFilesForCompact(
   getRecentFilesForCompact: GetRecentFilesForCompact | undefined,
@@ -67,14 +202,14 @@ async function readRecentFilesForCompact(
 
 /** Polls until no extraction is in progress or `timeoutMs` elapses. */
 async function settleTaskMemoryExtraction(
-  getTaskMemoryState: GetTaskMemoryState | undefined,
+  readTaskMemoryState: (() => TaskMemoryState | undefined) | undefined,
   timeoutMs: number,
 ): Promise<void> {
-  if (!getTaskMemoryState) return;
-  if (!getTaskMemoryState()?.isExtracting) return;
+  if (!readTaskMemoryState) return;
+  if (!readTaskMemoryState()?.isExtracting) return;
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    if (!getTaskMemoryState()?.isExtracting) return;
+    if (!readTaskMemoryState()?.isExtracting) return;
     await new Promise<void>((resolve) =>
       setTimeout(resolve, TaskMemorySettlePollIntervalMs),
     );
@@ -154,7 +289,7 @@ export type LiveChatKitOptions<T> = {
 
   isSubTask?: boolean;
   requestUseCase?: PochiRequestUseCase;
-  disableAutoCompact?: boolean;
+  enableAutoCompact?: boolean;
 
   store: LiveKitStore;
 
@@ -167,7 +302,7 @@ export type LiveChatKitOptions<T> = {
     taskId: string;
     messages: Message[];
     abortSignal: AbortSignal;
-  }) => void | Promise<void>;
+  }) => MaybePromise<void>;
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
       messages: Message[];
@@ -183,7 +318,7 @@ export type LiveChatKitOptions<T> = {
 
   onCompactStart?: () => void;
 
-  onCompactFinish?: (success: boolean) => void | Promise<void>;
+  onCompactFinish?: (success: boolean) => MaybePromise<void>;
 
   /**
    * Returns recent file contents the model saw before compaction.
@@ -191,12 +326,18 @@ export type LiveChatKitOptions<T> = {
    */
   getRecentFilesForCompact?: GetRecentFilesForCompact;
 
-  /** Latest `TaskMemoryState` snapshot — provides the verbatim boundary and the `isExtracting` flag. */
-  getTaskMemoryState?: GetTaskMemoryState;
+  clearFileStateCache?: () => MaybePromise<void>;
+
+  backgroundTask?: LiveChatKitBackgroundTaskOptions;
+
+  taskMemory?: LiveChatKitTaskMemoryOptions;
+
+  projectMemory?: LiveChatKitProjectMemoryOptions;
 
   customAgent?: CustomAgent;
-  outputSchema?: z.ZodAny;
   attemptCompletionSchema?: z.ZodAny;
+  systemPromptOverride?: string;
+  outputSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -225,9 +366,21 @@ export class LiveChatKit<
   protected readonly taskId: string;
   protected readonly store: LiveKitStore;
   protected readonly blobStore: BlobStore;
+  private readonly getters: PrepareRequestGetters;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-  private readonly requestUseCase: PochiRequestUseCase | undefined;
+  private readonly backgroundTaskExecutor: TaskExecutor | undefined;
+  private readonly backgroundTaskAdaptor:
+    | (RunningTaskAdaptor & { dispose?: () => void })
+    | undefined;
+  private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
+  private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
+  private readonly pendingMemoryOperations = new Set<Promise<void>>();
+  private readonly clearFileStateCacheCallback:
+    | (() => MaybePromise<void>)
+    | undefined;
+  private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
+  private backgroundTasksStarted = false;
 
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
@@ -243,7 +396,6 @@ export class LiveChatKit<
   ) => void;
   readonly compact: () => Promise<string>;
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
-  private lastStepStartTimestamp: number | undefined;
   private consecutiveAutoCompactFailures = 0;
 
   constructor({
@@ -256,24 +408,107 @@ export class LiveChatKit<
     getters,
     isSubTask,
     requestUseCase,
-    disableAutoCompact,
+    enableAutoCompact,
     customAgent,
-    outputSchema,
     attemptCompletionSchema,
     onStreamStart,
     onStreamFinish,
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact,
-    getTaskMemoryState,
+    clearFileStateCache,
+    backgroundTask,
+    taskMemory,
+    projectMemory,
+    systemPromptOverride,
     ...chatInit
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
     this.blobStore = blobStore;
-    this.requestUseCase = requestUseCase;
+    this.getters = getters;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
+    this.clearFileStateCacheCallback = clearFileStateCache;
+    this.backgroundTaskAdaptor = backgroundTask?.adaptor;
+    const backgroundTaskStateStore = backgroundTask
+      ? (backgroundTask.stateStore ?? createBackgroundTaskStateStore())
+      : undefined;
+    const startForkAgent = backgroundTaskStateStore
+      ? (agent: ForkAgent<Message>) =>
+          createBackgroundTaskFromForkAgent({
+            store,
+            stateStore: backgroundTaskStateStore,
+            agent,
+          })
+      : undefined;
+    const waitForTaskDone = backgroundTask?.adaptor
+      ? (taskId: string) =>
+          this.backgroundTaskExecutor?.waitForTaskDone(taskId) ??
+          Promise.resolve()
+      : undefined;
+    this.backgroundTaskExecutor =
+      backgroundTask?.adaptor && backgroundTaskStateStore
+        ? new TaskExecutor({
+            store,
+            blobStore,
+            readTaskState: (taskId) => backgroundTaskStateStore.read(taskId),
+            adaptor: backgroundTask.adaptor,
+            clearFileStateCache: backgroundTask.clearFileStateCache,
+            createChatKit: ({
+              taskId,
+              store,
+              blobStore,
+              abortSignal,
+              requestUseCase,
+              getters,
+            }) =>
+              new LiveChatKit<InMemoryChat>({
+                taskId,
+                store,
+                blobStore,
+                chatClass: InMemoryChat,
+                abortSignal,
+                isSubTask: false,
+                requestUseCase,
+                getters,
+                systemPromptOverride: this.latestRequestSnapshot?.systemPrompt,
+              }),
+          })
+        : undefined;
+    const defaultMemoryParentCwd = () => this.task?.cwd ?? undefined;
+    this.taskMemoryAdaptor =
+      taskMemory && startForkAgent
+        ? new TaskMemoryAdaptor({
+            store,
+            backgroundTask: {
+              startForkAgent,
+              ...(waitForTaskDone ? { waitForTaskDone } : {}),
+            },
+            taskMemoryStateStore: taskMemory.stateStore,
+            parentTaskId: taskId,
+            parentCwd: defaultMemoryParentCwd,
+            isSubTask,
+          })
+        : undefined;
+    this.autoMemoryAdaptor =
+      projectMemory && startForkAgent && !isForkAgentUseCase(requestUseCase)
+        ? new AutoMemoryAdaptor({
+            store,
+            backgroundTask: {
+              startForkAgent,
+              ...(waitForTaskDone ? { waitForTaskDone } : {}),
+            },
+            autoMemoryStateStore: projectMemory.stateStore,
+            parentTaskId: taskId,
+            parentCwd: defaultMemoryParentCwd,
+            isSubTask,
+            manager: projectMemory.manager,
+          })
+        : undefined;
+
+    const readEffectiveTaskMemoryState = () =>
+      this.taskMemoryAdaptor?.getState();
     this.transport = new FlexibleChatTransport({
       store,
       blobStore,
@@ -282,8 +517,11 @@ export class LiveChatKit<
       isSubTask,
       requestUseCase,
       customAgent,
-      outputSchema,
       attemptCompletionSchema,
+      systemPromptOverride,
+      onRequestFinished: (snapshot) => {
+        this.latestRequestSnapshot = snapshot;
+      },
     });
 
     this.chat = new chatClass({
@@ -296,9 +534,14 @@ export class LiveChatKit<
       transport: this.transport,
     });
 
-    abortSignal?.addEventListener("abort", () => {
-      this.chat.stop();
-    });
+    abortSignal?.throwIfAborted();
+    abortSignal?.addEventListener(
+      "abort",
+      () => {
+        this.chat.stop();
+      },
+      { once: true },
+    );
 
     // @ts-expect-error: monkey patch
     const chat = this.chat as {
@@ -317,8 +560,7 @@ export class LiveChatKit<
         lastMessage.metadata?.kind === "user" &&
         lastMessage.metadata.compact === true;
 
-      const canAutoCompact =
-        !disableAutoCompact && !isForkAgentUseCase(requestUseCase);
+      const canAutoCompact = enableAutoCompact === true;
       const isAutoCompact =
         canAutoCompact &&
         !isManualCompact &&
@@ -328,7 +570,7 @@ export class LiveChatKit<
           messages,
           llm: getters.getLLM(),
           task: this.task,
-          estimatedTotalTokens: estimateCurrentMessagesTokens(messages),
+          estimatedTotalTokens: estimateTotalTokens(formatters.llm(messages)),
         });
 
       if (isManualCompact || isAutoCompact) {
@@ -341,7 +583,7 @@ export class LiveChatKit<
         try {
           // Wait briefly so memory.md and boundary id are fresh.
           await settleTaskMemoryExtraction(
-            getTaskMemoryState,
+            readEffectiveTaskMemoryState,
             TaskMemorySettleTimeoutMs,
           );
           const model = createModel({ llm: getters.getLLM() });
@@ -355,18 +597,20 @@ export class LiveChatKit<
           await compactTask({
             blobStore: this.blobStore,
             taskId: this.taskId,
+            storeId: this.store.storeId,
             model,
             messages,
             recentFiles: await readRecentFilesForCompact(
               getRecentFilesForCompact,
             ),
             taskMemoryBoundaryMessageId:
-              getTaskMemoryState?.()?.lastExtractionMessageId,
+              readEffectiveTaskMemoryState()?.lastExtractionMessageId,
             abortSignal,
             inline: true,
             store: this.store,
             useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
+          this.updateTotalTokensEstimate(messages);
           if (isAutoCompact) {
             this.consecutiveAutoCompactFailures = 0;
           }
@@ -383,11 +627,7 @@ export class LiveChatKit<
             throw err;
           }
         } finally {
-          try {
-            await onCompactFinish?.(compactSucceeded);
-          } catch (notifyErr) {
-            logger.warn("onCompactFinish callback threw", notifyErr);
-          }
+          await this.handleCompactFinish(compactSucceeded, onCompactFinish);
         }
       }
       if (onOverrideMessages) {
@@ -418,20 +658,21 @@ export class LiveChatKit<
         const { messages } = this.chat;
         // Wait briefly so memory.md and boundary id are fresh.
         await settleTaskMemoryExtraction(
-          getTaskMemoryState,
+          readEffectiveTaskMemoryState,
           TaskMemorySettleTimeoutMs,
         );
         const model = createModel({ llm: getters.getLLM() });
         const summary = await compactTask({
           blobStore: this.blobStore,
           taskId: this.taskId,
+          storeId: this.store.storeId,
           model,
           messages,
           recentFiles: await readRecentFilesForCompact(
             getRecentFilesForCompact,
           ),
           taskMemoryBoundaryMessageId:
-            getTaskMemoryState?.()?.lastExtractionMessageId,
+            readEffectiveTaskMemoryState()?.lastExtractionMessageId,
           store: this.store,
         });
 
@@ -441,11 +682,7 @@ export class LiveChatKit<
         compactSucceeded = true;
         return summary;
       } finally {
-        try {
-          await onCompactFinish?.(compactSucceeded);
-        } catch (notifyErr) {
-          logger.warn("onCompactFinish callback threw", notifyErr);
-        }
+        await this.handleCompactFinish(compactSucceeded, onCompactFinish);
       }
     };
 
@@ -517,6 +754,10 @@ export class LiveChatKit<
       tables.tasks.where("id", "=", this.taskId).count(),
     );
     return countTask > 0;
+  }
+
+  get latestSystemPrompt(): string | undefined {
+    return this.latestRequestSnapshot?.systemPrompt;
   }
 
   updateIsPublicShared = (isPublicShared: boolean) => {
@@ -618,8 +859,6 @@ export class LiveChatKit<
         }),
       );
 
-      this.lastStepStartTimestamp = Date.now();
-
       this.onStreamStart?.({
         id: this.taskId,
         cwd: this.task?.cwd ?? null,
@@ -643,13 +882,23 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    // Fork-agent background tasks emit `writeToFile + attemptCompletion`
-    // as parallel tool calls; stripping `attemptCompletion` would lock the
-    // task at `pending-tool` forever, so skip the filter for them.
-    const message = isForkAgentUseCase(this.requestUseCase)
-      ? originalMessage
-      : filterCompletionTools(originalMessage);
-    this.chat.messages = [...this.chat.messages.slice(0, -1), message];
+    const filteredMessage = filterCompletionTools(originalMessage);
+    const message = this.getters.isTodoModeActive?.()
+      ? prepareAttemptTodoCompletionSubtask({
+          message: filteredMessage,
+          task: this.task,
+          taskId: this.taskId,
+          store: this.store,
+        })
+      : filteredMessage;
+
+    // Replace the streamed assistant message only when it is the last one;
+    // otherwise append so an early-abort empty stream can't drop the user message.
+    const lastMessage = this.chat.messages.at(-1);
+    this.chat.messages =
+      lastMessage?.id === message.id
+        ? [...this.chat.messages.slice(0, -1), message]
+        : [...this.chat.messages, message];
 
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {
@@ -659,36 +908,17 @@ export class LiveChatKit<
     const finishReason = streamFinishReason ?? message.metadata?.finishReason;
     const status = toTaskStatus(message, finishReason);
 
-    let contextWindowUsage: ContextWindowUsage | undefined = undefined;
-    if (message.metadata?.kind === "assistant") {
-      const {
-        messagesTokens,
-        filesTokens,
-        toolResultsTokens,
-        systemReminderTokens,
-        projectMemoryTokens,
-      } = estimateTokenBreakdown(this.chat.messages);
-      const systemTokens =
-        (message.metadata.systemPromptTokens || 0) + systemReminderTokens;
-      const toolsTokens = message.metadata.toolsTokens || 0;
+    const contextWindowUsage = computeContextWindowUsage(
+      this.chat.messages,
+      this.latestRequestSnapshot,
+    );
 
-      const totalTokens =
-        systemTokens +
-        toolsTokens +
-        messagesTokens +
-        filesTokens +
-        toolResultsTokens +
-        projectMemoryTokens;
-      if (totalTokens > 0) {
-        contextWindowUsage = {
-          system: systemTokens,
-          tools: toolsTokens,
-          messages: messagesTokens,
-          files: filesTokens,
-          toolResults: toolResultsTokens,
-          projectMemory: projectMemoryTokens,
-        };
-      }
+    let duration = undefined;
+    if (message.metadata.finishedAt && message.metadata.startedAt) {
+      duration = Duration.millis(
+        message.metadata.finishedAt.getTime() -
+          message.metadata.startedAt.getTime(),
+      );
     }
 
     store.commit(
@@ -698,31 +928,147 @@ export class LiveChatKit<
         data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
-        duration: this.lastStepStartTimestamp
-          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
-          : undefined,
+        duration,
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
 
-    this.clearLastStepTimestamp();
-
-    this.onStreamFinish?.({
+    const finishData = {
       id: this.taskId,
       cwd: this.task?.cwd ?? null,
       status,
       messages: [...this.chat.messages],
       contextWindowUsage,
-    });
+    };
+
+    this.scheduleMemoryUpdate(finishData);
+    this.startBackgroundTasks();
+
+    this.onStreamFinish?.(finishData);
   };
 
-  private clearLastStepTimestamp = () => {
-    this.lastStepStartTimestamp = undefined;
+  private async settleMemoryAndMaybeContinue(): Promise<boolean> {
+    await this.waitForMemoryOperations();
+    await this.taskMemoryAdaptor?.settle();
+    return (await this.autoMemoryAdaptor?.settleAndMaybeContinue()) ?? false;
+  }
+
+  private async waitForMemoryOperations(): Promise<void> {
+    while (this.pendingMemoryOperations.size > 0) {
+      await Promise.allSettled([...this.pendingMemoryOperations]);
+    }
+  }
+
+  async drainBackgroundTasksAndSettleMemory(): Promise<void> {
+    await this.waitForMemoryOperations();
+    await this.backgroundTaskExecutor?.drain();
+    while (await this.settleMemoryAndMaybeContinue()) {
+      await this.backgroundTaskExecutor?.drain();
+    }
+    await this.settleMemoryAndMaybeContinue();
+  }
+
+  async disposeBackgroundTasks(): Promise<void> {
+    await this.backgroundTaskExecutor?.dispose();
+    this.backgroundTaskAdaptor?.dispose?.();
+  }
+
+  private startBackgroundTasks(): void {
+    if (this.backgroundTasksStarted) return;
+    this.backgroundTasksStarted = true;
+    this.backgroundTaskExecutor?.start();
+  }
+
+  private scheduleMemoryUpdate(data: {
+    messages: Message[];
+    status?: string;
+    contextWindowUsage?: ContextWindowUsage;
+  }) {
+    if (!this.taskMemoryAdaptor && !this.autoMemoryAdaptor) return;
+
+    const promise = Promise.all([
+      this.taskMemoryAdaptor?.update({
+        messages: data.messages,
+        contextWindowUsage: data.contextWindowUsage,
+      }),
+      this.autoMemoryAdaptor?.update({
+        messages: data.messages,
+        status: data.status,
+      }),
+    ])
+      .catch((error) => {
+        logger.warn("Memory update failed", error);
+      })
+      .then(() => undefined);
+
+    const tracked = promise.finally(() => {
+      this.pendingMemoryOperations.delete(tracked);
+    });
+    this.pendingMemoryOperations.add(tracked);
+  }
+
+  prepareLastMessageForRetry = async (
+    message: Message,
+  ): Promise<Message | undefined> => {
+    const prepared = prepareMessageForRetry(message);
+    if (!prepared) return undefined;
+    await this.clearFileStateCache();
+    return prepared as Message;
   };
+
+  private updateTotalTokensEstimate(messages: Message[]) {
+    this.store.commit(
+      events.updateTotalTokens({
+        id: this.taskId,
+        totalTokens: estimateTotalTokens(formatters.llm(messages)),
+        updatedAt: new Date(),
+      }),
+    );
+  }
+
+  private async handleCompactFinish(
+    success: boolean,
+    onCompactFinish: ((success: boolean) => MaybePromise<void>) | undefined,
+  ) {
+    if (success) {
+      await this.taskMemoryAdaptor?.resetTokenBaseline();
+      await this.clearFileStateCache();
+    }
+
+    try {
+      await onCompactFinish?.(success);
+    } catch (notifyErr) {
+      logger.warn("onCompactFinish callback threw", notifyErr);
+    }
+  }
+
+  private async clearFileStateCache() {
+    try {
+      await this.clearFileStateCacheCallback?.();
+    } catch (error) {
+      logger.warn("Failed to clear file-state cache", error);
+    }
+  }
 
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
-    const lastMessage = this.chat.messages.at(-1) || null;
+    const rawLastMessage = this.chat.messages.at(-1) || null;
+    const lastMessage = normalizeFailedStreamMessage(rawLastMessage, error);
+    if (lastMessage && rawLastMessage) {
+      this.chat.messages = [...this.chat.messages.slice(0, -1), lastMessage];
+    }
+
+    let duration = undefined;
+    if (
+      lastMessage?.metadata?.kind === "assistant" &&
+      lastMessage.metadata.finishedAt &&
+      lastMessage.metadata.startedAt
+    ) {
+      duration = Duration.millis(
+        lastMessage.metadata.finishedAt.getTime() -
+          lastMessage.metadata.startedAt.getTime(),
+      );
+    }
 
     this.store.commit(
       events.chatStreamFailed({
@@ -730,14 +1076,10 @@ export class LiveChatKit<
         error: toTaskError(error),
         data: lastMessage,
         updatedAt: new Date(),
-        duration: this.lastStepStartTimestamp
-          ? Duration.millis(Date.now() - this.lastStepStartTimestamp)
-          : undefined,
+        duration,
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
-
-    this.clearLastStepTimestamp();
 
     this.onStreamFinish?.({
       id: this.taskId,
@@ -766,87 +1108,64 @@ const getCleanCheckpoint = (messages: Message[]) => {
   }
 };
 
-function estimateTokenBreakdown(messages: Message[]) {
-  let messagesTokens = 0;
-  let filesTokens = 0;
-  let toolResultsTokens = 0;
-  let systemReminderTokens = 0;
-  let projectMemoryTokens = 0;
-
-  for (const msg of messages) {
-    for (const part of msg.parts) {
-      if (part.type === "text") {
-        let contentStr = part.text;
-        if (msg.role === "user" && contentStr.includes("<system-reminder>")) {
-          const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
-          const reminders = contentStr.match(reminderRegex);
-          if (reminders) {
-            for (const reminder of reminders) {
-              const tokens = estimateTokens(reminder);
-              if (prompts.isAutoMemorySystemReminder(reminder)) {
-                projectMemoryTokens += tokens;
-              } else {
-                systemReminderTokens += tokens;
-              }
-            }
-            contentStr = contentStr.replace(reminderRegex, "");
-          }
-        }
-        messagesTokens += estimateTokens(contentStr);
-      } else if (part.type === "file") {
-        filesTokens += ImageEstimatedTokens;
-      } else if (isStaticToolUIPart(part)) {
-        messagesTokens += estimateTokens(JSON.stringify(part.input || {}));
-        if (part.state === "output-available" && part.output) {
-          const output = (part as unknown as { output: unknown }).output;
-          let outputTokens = 0;
-
-          if (output instanceof Uint8Array) {
-            outputTokens = ImageEstimatedTokens;
-          } else {
-            const resultStr =
-              typeof output === "string" ? output : JSON.stringify(output);
-            outputTokens = estimateTokens(resultStr);
-          }
-
-          const toolName = part.type.replace(/^tool-/, "");
-          if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {
-            filesTokens += outputTokens;
-          } else {
-            toolResultsTokens += outputTokens;
-          }
-        }
-      } else if (part.type === "reasoning") {
-        messagesTokens += estimateTokens(part.text);
-      } else {
-        messagesTokens += estimateTokens(JSON.stringify(part));
-      }
-    }
+function prepareAttemptTodoCompletionSubtask({
+  message,
+  task,
+  taskId,
+  store,
+}: {
+  message: Message;
+  task: Task | undefined;
+  taskId: string;
+  store: LiveKitStore;
+}): Message {
+  if (!hasActiveTodos(task?.todos)) {
+    return message;
   }
 
-  return {
-    messagesTokens,
-    filesTokens,
-    toolResultsTokens,
-    systemReminderTokens,
-    projectMemoryTokens,
-  };
-}
-
-function estimateCurrentMessagesTokens(messages: Message[]) {
-  const {
-    messagesTokens,
-    filesTokens,
-    toolResultsTokens,
-    systemReminderTokens,
-    projectMemoryTokens,
-  } = estimateTokenBreakdown(messages);
-
-  return (
-    messagesTokens +
-    filesTokens +
-    toolResultsTokens +
-    systemReminderTokens +
-    projectMemoryTokens
+  const todoAuditTaskId = crypto.randomUUID();
+  const todoAuditToolCallId = crypto.randomUUID();
+  const nextMessage = replaceAttemptCompletionWithTodoSubtask(
+    message,
+    task?.todos ?? [],
+    {
+      toolCallId: todoAuditToolCallId,
+      uid: todoAuditTaskId,
+    },
   );
+  const todoAuditPart =
+    nextMessage !== message
+      ? nextMessage.parts.find(
+          (part) =>
+            part.type === "tool-newTask" &&
+            part.input?._meta?.uid === todoAuditTaskId,
+        )
+      : undefined;
+
+  if (todoAuditPart?.type !== "tool-newTask" || !todoAuditPart.input) {
+    return nextMessage;
+  }
+
+  store.commit(
+    events.taskInited({
+      id: todoAuditTaskId,
+      cwd: task?.cwd ?? undefined,
+      parentId: taskId,
+      createdAt: new Date(),
+      initMessages: [
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: todoAuditPart.input.prompt,
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
+  return nextMessage;
 }

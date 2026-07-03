@@ -25,12 +25,14 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import { constants, getLogger } from "@getpochi/common";
+import { constants, type AutoMemoryContext, getLogger } from "@getpochi/common";
+import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
   pochiConfig,
   setPochiConfigWorkspacePath,
 } from "@getpochi/common/configuration";
+import { FileStateCache } from "@getpochi/common/tool-utils";
 import { getVendor, getVendors } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import type {
@@ -68,11 +70,13 @@ import { registerModelCommand } from "./model";
 import { NodeBlobStore } from "./node-blob-store";
 import {
   AttemptCompletionResultRenderer,
-  JsonRenderer,
   type StreamRenderer,
   TrajectoryStreamRenderer,
 } from "./renderers";
 import { OutputRenderer } from "./renderers";
+import { parseTrajectoryFile } from "./renderers/trajectory-parser";
+import { deduplicateMessageParts } from "./renderers/trajectory-post-process";
+import { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { TaskRunner } from "./task-runner";
 import { checkForUpdates, registerUpgradeCommand } from "./upgrade";
 
@@ -134,17 +138,25 @@ const program = new Command()
   )
   .optionsGroup("Options:")
   .option(
-    "--stream-json [filepath]",
-    "Stream the output in JSON format. This is useful for parsing the output in scripts. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --experimental-output-attempt-completion-result.",
-  )
-  .option(
     "--experimental-output-attempt-completion-result [filepath]",
-    "Output only the result returned by attemptCompletion tool. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --stream-json.",
+    "Output only the result returned by attemptCompletion tool. If filepath is not specified, the output will be written to stdout, mixed with normal UI output. Cannot be used with --experimental-stream-trajectory.",
   )
   .option(
     "--experimental-stream-trajectory [filepath]",
-    "Stream message parts whenever signal.messages updates. Cannot be used with --stream-json or --experimental-output-attempt-completion-result.",
+    "Stream message parts whenever signal.messages updates. Cannot be used with --experimental-output-attempt-completion-result.",
   )
+  .option(
+    "--experimental-stream-trajectory-inherit-context",
+    "Initialize the task with messages parsed from the trajectory file specified by --experimental-stream-trajectory, and append the prompt as a new user message.",
+    false,
+  )
+  .addOption(
+    new Option(
+      "--experimental-stream-trajectory-strip-duplicates",
+      "Only valid when --experimental-stream-trajectory is used with an output filepath. When set, the trajectory file will be post-processed on exit to strip duplicate message parts.",
+    ).hideHelp(),
+  )
+
   .option(
     "--max-steps <number>",
     "Set the maximum number of steps for a task. The task will stop if it exceeds this limit.",
@@ -164,14 +176,18 @@ const program = new Command()
     60000,
   )
   .option(
+    "--auto-compact",
+    "Enable automatic context compaction and Task Memory background extraction.",
+    false,
+  )
+  .option(
+    "--project-memory",
+    "Enable Project Memory context injection and auto-memory background extraction.",
+    false,
+  )
+  .option(
     "--agent <name>",
     "Run the task as a sub-agent using the specified custom agent. This applies the agent's system prompt and tool restrictions, matching the behavior of sub-tasks created via the newTask tool.",
-  )
-  .addOption(
-    new Option(
-      "--experimental-output-schema <schema>",
-      "Specify a JSON schema for the output of the task. The task will be validated against this schema.",
-    ).hideHelp(),
   )
   .addOption(
     new Option(
@@ -241,12 +257,12 @@ const program = new Command()
 
     const store = await createStore(uid);
     const blobStore = new NodeBlobStore(options.blobsDir);
+
     const parts: Message["parts"] = await processAttachments(
       attachments,
       blobStore,
       program,
     );
-
     if (prompt) {
       parts.push({ type: "text", text: prompt });
     }
@@ -269,23 +285,49 @@ const program = new Command()
       setFfmpegPath(options.ffmpeg);
     }
 
+    if (options.experimentalStreamTrajectoryInheritContext) {
+      if (typeof options.experimentalStreamTrajectory !== "string") {
+        return program.error(
+          "The --experimental-stream-trajectory-inherit-context flag requires --experimental-stream-trajectory to be passed a file path.",
+        );
+      }
+    }
+
+    if (
+      options.experimentalStreamTrajectoryStripDuplicates &&
+      typeof options.experimentalStreamTrajectory !== "string"
+    ) {
+      program.error(
+        "--experimental-stream-trajectory-strip-duplicates requires --experimental-stream-trajectory to be set with an output filepath.",
+      );
+    }
+
+    let initMessages: Message[] | undefined = undefined;
+    let initTrajectoryFingerprints: string[] | undefined = undefined;
+    if (
+      options.experimentalStreamTrajectoryInheritContext &&
+      typeof options.experimentalStreamTrajectory === "string"
+    ) {
+      const parsedTrajectory = await parseTrajectoryFile(
+        options.experimentalStreamTrajectory,
+      );
+      initMessages = parsedTrajectory.mainTask;
+      initTrajectoryFingerprints = parsedTrajectory.fingerprints;
+      // Ignore parsedTrajectory.subTasks and parsedTrajectory.files for now
+    }
+
     let jsonOutputStream: fs.WriteStream | typeof process.stdout | undefined =
       undefined;
     if (
-      (options.streamJson ? 1 : 0) +
-        (options.experimentalOutputAttemptCompletionResult ? 1 : 0) +
+      (options.experimentalOutputAttemptCompletionResult ? 1 : 0) +
         (options.experimentalStreamTrajectory ? 1 : 0) >
       1
     ) {
       program.error(
-        "Cannot use more than one of --stream-json, --experimental-output-attempt-completion-result, or --experimental-stream-trajectory at the same time.",
+        "Cannot use both --experimental-output-attempt-completion-result and --experimental-stream-trajectory at the same time.",
       );
     }
-    if (options.streamJson === true) {
-      jsonOutputStream = process.stdout;
-    } else if (typeof options.streamJson === "string") {
-      jsonOutputStream = fs.createWriteStream(options.streamJson);
-    } else if (options.experimentalOutputAttemptCompletionResult === true) {
+    if (options.experimentalOutputAttemptCompletionResult === true) {
       jsonOutputStream = process.stdout;
     } else if (
       typeof options.experimentalOutputAttemptCompletionResult === "string"
@@ -298,6 +340,9 @@ const program = new Command()
     } else if (typeof options.experimentalStreamTrajectory === "string") {
       jsonOutputStream = fs.createWriteStream(
         options.experimentalStreamTrajectory,
+        options.experimentalStreamTrajectoryInheritContext
+          ? { flags: "a" }
+          : undefined,
       );
     }
 
@@ -306,7 +351,7 @@ const program = new Command()
 
     // FIXME(zhiming): the abort logic does not work as intent in many cases, need more investigation
     // Create AbortController for task cancellation with graceful shutdown
-    const abortController = createAbortControllerWithGracefulShutdown();
+    const abortController = createAbortControllerWithGracefulShutdown(program);
 
     const llm = await createLLMConfig(program, options, {
       customAgents,
@@ -316,29 +361,70 @@ const program = new Command()
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
+    const isSubTask = selectedAgent !== undefined;
+    const autoCompactEnabled = options.autoCompact;
+    const projectMemoryEnabled = options.projectMemory;
+    const autoMemoryManager = new AutoMemoryManager();
+    const parentFileStateCache = new FileStateCache();
+    let autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
+    const getAutoMemory = () => {
+      if (autoMemoryCache) return autoMemoryCache;
+      const pending = autoMemoryManager.readContext(process.cwd());
+      const cached = pending.catch((error) => {
+        logger.warn("Failed to read long-term memory context", error);
+        if (autoMemoryCache === cached) {
+          autoMemoryCache = null;
+        }
+        return undefined;
+      });
+      autoMemoryCache = cached;
+      return cached;
+    };
+    const backgroundTaskAdaptor = new CliRunningTaskAdaptor({
+      blobStore,
+      llm,
+      cwd: process.cwd(),
+      rg,
+      filesystem,
+      customAgents,
+      skills,
+      mcpHub,
+      parentTaskId: uid,
+      parentFileStateCache,
+      autoMemoryManager,
+      projectMemoryEnabled,
+    });
+    const taskMemory = autoCompactEnabled ? {} : undefined;
+    const projectMemory = projectMemoryEnabled
+      ? {
+          manager: autoMemoryManager,
+        }
+      : undefined;
+    let outputRenderer: OutputRenderer | undefined;
 
     const runner = new TaskRunner({
       uid,
       store,
       blobStore,
       llm,
+      initMessages,
       parts,
       cwd: process.cwd(),
       rg,
       maxSteps: options.maxSteps,
       maxRetries: options.maxRetries,
       onSubTaskCreated: (runner: TaskRunner) => {
-        outputRenderer.renderSubTask(runner);
+        outputRenderer?.renderSubTask(runner);
+        if (streamRenderer instanceof TrajectoryStreamRenderer) {
+          streamRenderer.addSubTask(runner.taskId, runner.state);
+        }
       },
       customAgents,
       skills,
       mcpHub,
       abortSignal: abortController.signal,
-      isSubTask: selectedAgent !== undefined,
+      isSubTask,
       customAgent: selectedAgent,
-      outputSchema: options.experimentalOutputSchema
-        ? parseOutputSchema(options.experimentalOutputSchema)
-        : undefined,
       attemptCompletionSchema: options.attemptCompletionSchema
         ? parseOutputSchema(options.attemptCompletionSchema)
         : undefined,
@@ -346,12 +432,24 @@ const program = new Command()
       asyncWaitTimeoutInMs: options.asyncWaitTimeout,
       filesystem,
       browserSessionStore,
+      getAutoMemory: projectMemoryEnabled ? getAutoMemory : undefined,
+      backgroundTask: {
+        adaptor: backgroundTaskAdaptor,
+        clearFileStateCache: (taskId) =>
+          backgroundTaskAdaptor.clearFileStateCache(taskId),
+      },
+      taskMemory,
+      projectMemory,
+      enableAutoCompact: autoCompactEnabled,
+      onCompactStart: () => outputRenderer?.renderCompactStart(),
+      onCompactFinish: (success) =>
+        outputRenderer?.renderCompactFinish(success),
+      fileStateCache: parentFileStateCache,
     });
 
-    const outputRenderer = new OutputRenderer(process.stdout, runner.state, {
+    outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
     });
-
     let streamRenderer: StreamRenderer | undefined = undefined;
     if (jsonOutputStream) {
       if (options.experimentalStreamTrajectory) {
@@ -360,6 +458,9 @@ const program = new Command()
           store,
           blobStore,
           runner.state,
+          {
+            skipLineFingerprints: initTrajectoryFingerprints,
+          },
         );
       } else if (options.experimentalOutputAttemptCompletionResult) {
         streamRenderer = new AttemptCompletionResultRenderer(
@@ -368,13 +469,6 @@ const program = new Command()
           {
             attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
           },
-        );
-      } else {
-        streamRenderer = new JsonRenderer(
-          jsonOutputStream,
-          store,
-          blobStore,
-          runner.state,
         );
       }
     }
@@ -389,13 +483,26 @@ const program = new Command()
       logger.debug(`Task runner exit with error: ${runtimeError.message}.`);
     } finally {
       logger.debug("Shutting down...");
+
       // Cleanup resources
-      outputRenderer.shutdown();
+      outputRenderer?.shutdown();
+
       await streamRenderer?.shutdown();
       if (jsonOutputStream && jsonOutputStream instanceof fs.WriteStream) {
         jsonOutputStream.end();
         await finished(jsonOutputStream);
       }
+      if (
+        options.experimentalStreamTrajectoryStripDuplicates &&
+        typeof options.experimentalStreamTrajectory === "string"
+      ) {
+        try {
+          await deduplicateMessageParts(options.experimentalStreamTrajectory);
+        } catch {
+          // ignore all errors when shutting down
+        }
+      }
+
       mcpHub?.dispose();
       browserSessionStore.dispose();
       await store.shutdownPromise();

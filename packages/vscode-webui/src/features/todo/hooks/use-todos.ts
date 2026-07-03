@@ -1,95 +1,157 @@
-import { prompts } from "@getpochi/common";
-import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
-import type { Message } from "@getpochi/livekit";
+import { useDefaultStore } from "@/lib/use-default-store";
+import { type Message, type TaskStatusLike, catalog } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export type TodoCompletionUpdate = {
+  message: Message;
+  todos: Todo[];
+  status: Extract<TaskStatusLike, "completed" | "pending-input">;
+};
 
 export function useTodos({
-  initialTodos,
-  messages,
-  todosRef,
+  persistedTodos,
+  pendingTodos,
+  taskId,
 }: {
-  initialTodos?: Readonly<Todo[]>;
-  messages: Message[];
-  todosRef: React.RefObject<Todo[] | undefined>;
+  persistedTodos?: readonly Todo[];
+  pendingTodos?: readonly Todo[];
+  taskId?: string;
 }) {
+  const store = useDefaultStore();
+  const todosRef = useRef<Todo[] | undefined>(undefined);
+  const consumedTodoIdsRef = useRef(new Set<string>());
+  const appliedPendingTodosRef = useRef(copyTodos(pendingTodos));
   const [todos, setTodosImpl] = useState<Todo[]>(() => {
-    const newTodos = JSON.parse(JSON.stringify(initialTodos ?? []));
-    todosRef.current = newTodos;
-    return newTodos;
+    const nextTodos = getInitialTodos(persistedTodos, pendingTodos);
+    todosRef.current = nextTodos;
+    return nextTodos;
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef): todosRef is a ref
-  const setTodos = useCallback((newTodos: Todo[]) => {
-    todosRef.current = newTodos;
-    setTodosImpl(newTodos);
+  const setTodos = useCallback((nextTodos: Todo[]): Todo[] => {
+    const snapshot = copyTodos(nextTodos);
+    todosRef.current = snapshot;
+    setTodosImpl((current) =>
+      areTodosEqual(current, snapshot) ? current : snapshot,
+    );
+    return snapshot;
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef.current): todosRef is a ref
   const updateTodos = useCallback(
-    (message: Message) => {
-      const newTodos = findTodos(message);
-      if (newTodos !== undefined) {
-        setTodos(mergeTodos(todosRef.current || [], newTodos));
-      }
+    (nextTodos: Todo[]) => {
+      const snapshot = setTodos(nextTodos);
+      if (!taskId) return;
+      store.commit(
+        catalog.events.updateTodos({
+          id: taskId,
+          todos: snapshot,
+          updatedAt: new Date(),
+        }),
+      );
     },
-    [setTodos],
+    [setTodos, store, taskId],
   );
 
-  const lastMessage = messages.at(-1);
+  const updateTodoCompletion = useCallback(
+    (update: TodoCompletionUpdate) => {
+      const snapshot = setTodos(update.todos);
+      if (!taskId) return;
+      store.commit(
+        catalog.events.attemptTodoCompletionFinished({
+          id: taskId,
+          data: update.message,
+          todos: snapshot,
+          status: update.status,
+          updatedAt: new Date(),
+        }),
+      );
+    },
+    [setTodos, store, taskId],
+  );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(todosRef.current): todosRef is a ref
   useEffect(() => {
-    if (lastMessage && lastMessage.role === "assistant") {
-      updateTodos(lastMessage);
+    if (persistedTodos === undefined) {
+      if (!pendingTodos?.length) {
+        appliedPendingTodosRef.current = [];
+        setTodos(copyTodos(todosRef.current));
+        return;
+      }
 
-      // Auto-mark todos as completed if this message has attempt completion
-      if (lastMessage.parts.some((x) => x.type === "tool-attemptCompletion")) {
-        const currentTodos = todosRef.current || [];
-        if (currentTodos.length > 0) {
-          const updatedTodos = currentTodos.map((todo) => {
-            if (todo.status !== "cancelled") {
-              return { ...todo, status: "completed" as const };
-            }
-            return todo;
-          });
+      const pendingSnapshot = copyTodos(pendingTodos);
+      if (!areTodosEqual(appliedPendingTodosRef.current, pendingSnapshot)) {
+        appliedPendingTodosRef.current = pendingSnapshot;
+        setTodos(pendingSnapshot);
+        return;
+      }
 
-          const hasChanges = updatedTodos.some(
-            (todo, index) => todo.status !== currentTodos[index]?.status,
-          );
+      setTodos(copyTodos(todosRef.current));
+      return;
+    }
 
-          if (hasChanges) {
-            setTodos(updatedTodos);
-          }
+    if (persistedTodos.length > 0) {
+      const persistedTodoIds = new Set(persistedTodos.map((todo) => todo.id));
+      for (const todo of todosRef.current ?? []) {
+        if (persistedTodoIds.has(todo.id)) {
+          consumedTodoIdsRef.current.add(todo.id);
         }
       }
+      setTodos(copyTodos(persistedTodos));
+      return;
     }
 
-    if (
-      lastMessage &&
-      lastMessage.role === "user" &&
-      !isSystemReminderMessage(lastMessage)
-    ) {
-      const todos = todosRef.current || [];
-      // Check if all todos is canceled or done.
-      const allTodosDoneOrCanceled = todos.every(
-        (todo) => todo.status === "completed" || todo.status === "cancelled",
-      );
-
-      if (allTodosDoneOrCanceled) {
-        setTodos([]);
-      }
+    if (!pendingTodos?.length) {
+      appliedPendingTodosRef.current = [];
+      setTodos([]);
+      return;
     }
-  }, [lastMessage, updateTodos, setTodos]);
+
+    const pendingSnapshot = copyTodos(pendingTodos);
+    appliedPendingTodosRef.current = pendingSnapshot;
+    const unpersistedTodos = pendingSnapshot.filter(
+      (todo) => !consumedTodoIdsRef.current.has(todo.id),
+    );
+    setTodos(unpersistedTodos);
+  }, [persistedTodos, pendingTodos, setTodos]);
 
   return {
-    todosRef,
     todos,
+    todosRef,
+    updateTodos,
+    updateTodoCompletion,
   };
 }
 
-function isSystemReminderMessage(message: Message): boolean {
-  return message.parts.some(
-    (x) => x.type === "text" && prompts.isSystemReminder(x.text),
+function copyTodos(todos?: readonly Todo[]): Todo[] {
+  return todos ? [...todos] : [];
+}
+
+function areTodosEqual(left: readonly Todo[], right: readonly Todo[]) {
+  return (
+    left.length === right.length &&
+    left.every((todo, index) => {
+      const other = right[index];
+      if (!other) return false;
+      return (
+        todo.id === other.id &&
+        todo.content === other.content &&
+        todo.status === other.status &&
+        todo.priority === other.priority
+      );
+    })
   );
+}
+
+function getInitialTodos(
+  persistedTodos: readonly Todo[] | undefined,
+  pendingTodos: readonly Todo[] | undefined,
+): Todo[] {
+  if (persistedTodos === undefined) {
+    return copyTodos(pendingTodos);
+  }
+
+  if (persistedTodos.length > 0 || !pendingTodos?.length) {
+    return copyTodos(persistedTodos);
+  }
+
+  return copyTodos(pendingTodos);
 }

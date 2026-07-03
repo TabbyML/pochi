@@ -13,7 +13,10 @@ export const DefaultMaxOutputTokens = 4096;
 
 export const StreamingUpdateThrottleMs = 100;
 
+export const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
+
 export const PochiTaskIdHeader = "x-pochi-task-id";
+export const PochiStoreIdHeader = "x-pochi-store-id";
 export const PochiClientHeader = "x-pochi-client";
 export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
 

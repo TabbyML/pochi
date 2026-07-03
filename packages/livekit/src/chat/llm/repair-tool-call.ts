@@ -11,9 +11,10 @@ import {
 
 export const makeRepairToolCall: (
   taskId: string,
+  storeId: string,
   model: LanguageModelV3,
 ) => ToolCallRepairFunction<Record<string, Tool>> =
-  (taskId, model) =>
+  (taskId, storeId, model) =>
   async ({ toolCall, inputSchema, error }) => {
     if (NoSuchToolError.isInstance(error)) {
       return null; // do not attempt to fix invalid tool names
@@ -27,6 +28,7 @@ export const makeRepairToolCall: (
       providerOptions: {
         pochi: {
           taskId,
+          storeId,
           client: globalThis.POCHI_CLIENT,
           useCase: "repair-tool-call",
         } satisfies PochiProviderOptions,

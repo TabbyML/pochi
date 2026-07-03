@@ -11,13 +11,14 @@ import { useEffect, useRef, useState } from "react";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
-import { ExpandIcon } from "../tool-container";
+import { ExpandIconRight } from "../tool-container";
 
 interface SubAgentViewProps {
   uid?: string;
   tool: NewTaskToolViewProps["tool"];
   isExecuting: NewTaskToolViewProps["isExecuting"];
   children: React.ReactNode;
+  headerContent?: React.ReactNode;
   headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
@@ -33,6 +34,7 @@ export function SubAgentView({
   tool,
   isExecuting,
   children,
+  headerContent,
   headerActions,
   footerActions,
   taskSource,
@@ -106,16 +108,20 @@ export function SubAgentView({
           iconClassName="size-3.5"
         />
         <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
-          <Badge
-            variant="secondary"
-            className={cn("mr-2 inline-flex py-0 align-middle")}
-          >
-            {toolTitle}
-          </Badge>
-          {description && (
-            <span className="break-words align-middle group-hover:underline">
-              {description}
-            </span>
+          {headerContent ?? (
+            <>
+              <Badge
+                variant="secondary"
+                className={cn("mr-2 inline-flex py-0 align-middle")}
+              >
+                {toolTitle}
+              </Badge>
+              {description && (
+                <span className="break-words align-middle group-hover:underline">
+                  {description}
+                </span>
+              )}
+            </>
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -146,7 +152,7 @@ export function SubAgentView({
               >
                 {canShowFooterTaskThread && (
                   <div className="flex shrink-0 items-center">
-                    <ExpandIcon
+                    <ExpandIconRight
                       isExpanded={showFooterTaskThread}
                       className="cursor-pointer opacity-100 transition-colors hover:bg-secondary hover:text-foreground"
                     />
