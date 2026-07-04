@@ -9,6 +9,7 @@ const toolDef = {
 - Filter files by pattern with the include parameter (eg. "*.js", "*.{ts,tsx}")
 - Returns file paths with at least one match sorted by modification time
 - Use this tool when you need to find files containing specific patterns
+- Respects .gitignore, so git-ignored content is not searched. To search git-ignored content, use grep or rg with the appropriate flags (e.g. rg --no-ignore) via the terminal.
 - Craft your regex patterns carefully to balance specificity and flexibility.
 - Based on the user's task you may use it to find code patterns, TODO comments, function definitions, or any text-based information across the project. The results include context, so analyze the surrounding code to better understand the matches. Leverage the this tool in combination with other tools for more comprehensive analysis. For example, use it to find specific code patterns, then use readFile to examine the full context of interesting matches before using applyDiff or writeToFile to make informed changes.
 
