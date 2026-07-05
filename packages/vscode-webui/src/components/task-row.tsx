@@ -267,12 +267,21 @@ function TaskStatusView({
 function formatDuration(task: Task): string {
   const { executionDuration, createdAt, updatedAt } = task;
   const completedDurations = executionDuration?.completedDurations;
-  const lastCompletedDuration =
+  const lastCompletedEntry =
     completedDurations && completedDurations.length > 0
-      ? completedDurations[completedDurations.length - 1].value
+      ? completedDurations[completedDurations.length - 1]
       : undefined;
-  const durationMs =
-    executionDuration?.currentAccumulatedDuration ?? lastCompletedDuration;
+  const lastCompletedDuration = lastCompletedEntry
+    ? lastCompletedEntry.value.streamingDuration +
+      lastCompletedEntry.value.toolCallsDuration
+    : undefined;
+  const current = executionDuration?.current;
+  const currentAccumulated =
+    current != null
+      ? (current.streaming?.accumulatedDuration ?? 0) +
+        (current.toolCall?.accumulatedDuration ?? 0)
+      : null;
+  const durationMs = currentAccumulated ?? lastCompletedDuration;
 
   const created = new Date(createdAt).getTime();
   const updated = new Date(updatedAt).getTime();

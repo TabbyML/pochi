@@ -772,29 +772,26 @@ export class LiveChatKit<
   };
 
   /**
-   * Mark the start of an execution step.
-   * Sets `currentExecutionStartedAt` to now.
+   * Mark the start of a tool-calls execution segment.
    */
   markStartToolsExecution = () => {
     this.store.commit(
       events.executionStarted({
         id: this.taskId,
         startedAt: new Date(),
+        executionType: "toolCall",
       }),
     );
   };
 
   /**
-   * Mark the end of an execution step.
-   * Accumulates elapsed time into `currentAccumulatedDuration` and resets
-   * `currentExecutionStartedAt` to null.
-   * Must only be called when `currentExecutionStartedAt` is not null.
+   * Mark the end of a tool-calls execution segment.
    */
   markEndToolsExecution = () => {
     const task = this.task;
-    if (!task?.executionDuration?.currentExecutionStartedAt) {
+    if (!task?.executionDuration?.current?.toolCall?.startedAt) {
       logger.warn(
-        "endExecution called but currentExecutionStartedAt is null – skipping",
+        "markEndToolsExecution called but toolCall startedAt is null – skipping",
       );
       return;
     }
@@ -802,21 +799,25 @@ export class LiveChatKit<
       events.executionEnded({
         id: this.taskId,
         endedAt: new Date(),
+        executionType: "toolCall",
       }),
     );
   };
 
   /**
    * Mark the current accumulated execution as complete.
-   * Moves `currentAccumulatedDuration` into `completedDurations` under the
-   * provided `completionToolCallId` and resets the accumulator to zero.
-   * Must only be called when `currentExecutionStartedAt` is null.
+   * Moves accumulated durations into `completedDurations` under the
+   * provided `completionToolCallId` and resets the current tracker.
+   * Must only be called when no segment is in progress.
    */
   private markTaskExecutionComplete = (completionToolCallId: string) => {
     const task = this.task;
-    if (task?.executionDuration?.currentExecutionStartedAt != null) {
+    if (
+      task?.executionDuration?.current?.streaming?.startedAt != null ||
+      task?.executionDuration?.current?.toolCall?.startedAt != null
+    ) {
       logger.warn(
-        "markExecutionComplete called but currentExecutionStartedAt is not null – skipping",
+        "markExecutionComplete called but a segment is still in progress – skipping",
       );
       return;
     }
@@ -909,6 +910,7 @@ export class LiveChatKit<
         events.executionStarted({
           id: this.taskId,
           startedAt: now,
+          executionType: "streaming",
         }),
       );
 
@@ -979,6 +981,7 @@ export class LiveChatKit<
       events.executionEnded({
         id: this.taskId,
         endedAt: now,
+        executionType: "streaming",
       }),
     );
 
@@ -1115,6 +1118,7 @@ export class LiveChatKit<
       events.executionEnded({
         id: this.taskId,
         endedAt: now,
+        executionType: "streaming",
       }),
     );
 

@@ -256,27 +256,29 @@ export const events = {
     }),
   }),
   /**
-   * Mark the start of a new execution step.
-   * Sets `currentExecutionStartedAt` to the current timestamp.
+   * Mark the start of a new execution segment.
+   * Sets `startedAt` on the appropriate tracker (streaming or toolCall).
    */
   executionStarted: Events.synced({
     name: "v1.ExecutionStarted",
     schema: Schema.Struct({
       id: Schema.String,
       startedAt: Schema.Date,
+      executionType: Schema.Literal("streaming", "toolCall"),
     }),
   }),
   /**
-   * Mark the end of an execution step.
-   * Accumulates elapsed time into `currentAccumulatedDuration` and resets
-   * `currentExecutionStartedAt` to null.
-   * Must only be called when `currentExecutionStartedAt` is not null.
+   * Mark the end of an execution segment.
+   * Accumulates elapsed time into the appropriate tracker and resets its
+   * `startedAt` to null.
+   * Must only be called when the tracker's `startedAt` is not null.
    */
   executionEnded: Events.synced({
     name: "v1.ExecutionEnded",
     schema: Schema.Struct({
       id: Schema.String,
       endedAt: Schema.Date,
+      executionType: Schema.Literal("streaming", "toolCall"),
     }),
   }),
   /**
@@ -560,32 +562,76 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
-  "v1.ExecutionStarted": ({ id, startedAt }, { query }) => {
+  "v1.ExecutionStarted": ({ id, startedAt, executionType }, { query }) => {
     const existing = query(tables.tasks.select().where({ id }).first());
     const prev = existing?.executionDuration;
+    const currentStreaming = prev?.current?.streaming ?? null;
+    const currentToolCall = prev?.current?.toolCall ?? null;
     return tables.tasks
       .update({
         executionDuration: {
           completedDurations: prev?.completedDurations ?? null,
-          currentAccumulatedDuration: prev?.currentAccumulatedDuration ?? null,
-          currentExecutionStartedAt: startedAt,
+          current: {
+            streaming:
+              executionType === "streaming"
+                ? {
+                    accumulatedDuration:
+                      currentStreaming?.accumulatedDuration ?? null,
+                    startedAt,
+                  }
+                : currentStreaming,
+            toolCall:
+              executionType === "toolCall"
+                ? {
+                    accumulatedDuration:
+                      currentToolCall?.accumulatedDuration ?? null,
+                    startedAt,
+                  }
+                : currentToolCall,
+          },
         },
       })
       .where({ id });
   },
-  "v1.ExecutionEnded": ({ id, endedAt }, { query }) => {
+  "v1.ExecutionEnded": ({ id, endedAt, executionType }, { query }) => {
     const existing = query(tables.tasks.select().where({ id }).first());
     const prev = existing?.executionDuration;
-    if (!prev?.currentExecutionStartedAt) return [];
-    const elapsed =
-      endedAt.getTime() - prev.currentExecutionStartedAt.getTime();
+    const currentStreaming = prev?.current?.streaming ?? null;
+    const currentToolCall = prev?.current?.toolCall ?? null;
+    if (executionType === "streaming") {
+      if (!currentStreaming?.startedAt) return [];
+      const elapsed = endedAt.getTime() - currentStreaming.startedAt.getTime();
+      return tables.tasks
+        .update({
+          executionDuration: {
+            completedDurations: prev?.completedDurations ?? null,
+            current: {
+              streaming: {
+                accumulatedDuration:
+                  (currentStreaming.accumulatedDuration ?? 0) + elapsed,
+                startedAt: null,
+              },
+              toolCall: currentToolCall,
+            },
+          },
+        })
+        .where({ id });
+    }
+    // executionType === "toolCall"
+    if (!currentToolCall?.startedAt) return [];
+    const elapsed = endedAt.getTime() - currentToolCall.startedAt.getTime();
     return tables.tasks
       .update({
         executionDuration: {
-          completedDurations: prev.completedDurations,
-          currentAccumulatedDuration:
-            prev.currentAccumulatedDuration ?? 0 + elapsed,
-          currentExecutionStartedAt: null,
+          completedDurations: prev?.completedDurations ?? null,
+          current: {
+            streaming: currentStreaming,
+            toolCall: {
+              accumulatedDuration:
+                (currentToolCall.accumulatedDuration ?? 0) + elapsed,
+              startedAt: null,
+            },
+          },
         },
       })
       .where({ id });
@@ -593,16 +639,20 @@ const materializers = State.SQLite.materializers(events, {
   "v1.ExecutionCompleted": ({ id, completionToolCallId }, { query }) => {
     const existing = query(tables.tasks.select().where({ id }).first());
     const prev = existing?.executionDuration;
-    const accumulated = prev?.currentAccumulatedDuration ?? 0;
+    const streamingDuration =
+      prev?.current?.streaming?.accumulatedDuration ?? 0;
+    const toolCallsDuration = prev?.current?.toolCall?.accumulatedDuration ?? 0;
     return tables.tasks
       .update({
         executionDuration: {
           completedDurations: [
             ...(prev?.completedDurations ?? []),
-            { key: completionToolCallId, value: accumulated },
+            {
+              key: completionToolCallId,
+              value: { streamingDuration, toolCallsDuration },
+            },
           ],
-          currentAccumulatedDuration: null,
-          currentExecutionStartedAt: null,
+          current: null,
         },
       })
       .where({ id });

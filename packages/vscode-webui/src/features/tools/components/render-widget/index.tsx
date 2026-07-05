@@ -181,7 +181,8 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
       task?.executionDuration?.completedDurations ?? null;
     if (!completedDurations) return null;
     const entry = completedDurations.find((d) => d.key === tool.toolCallId);
-    return entry?.value ?? null;
+    if (!entry) return null;
+    return entry.value.streamingDuration + entry.value.toolCallsDuration;
   }, [task?.executionDuration?.completedDurations, tool.toolCallId]);
 
   useEffect(() => {

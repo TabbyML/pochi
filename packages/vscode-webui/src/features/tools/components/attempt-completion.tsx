@@ -56,7 +56,8 @@ export const AttemptCompletionTool: React.FC<
       task?.executionDuration?.completedDurations ?? null;
     if (!completedDurations) return null;
     const entry = completedDurations.find((d) => d.key === toolCall.toolCallId);
-    return entry?.value ?? null;
+    if (!entry) return null;
+    return entry.value.streamingDuration + entry.value.toolCallsDuration;
   }, [task?.executionDuration?.completedDurations, toolCall.toolCallId]);
 
   // Return null if there's nothing to display

@@ -627,14 +627,25 @@ class FakeStore {
     const task = this.tasks.get(id);
     if (!task) throw new Error(`Unknown task ${id}`);
     const startedAt = args.startedAt as Date;
-    const prev = task.executionDuration ?? {
-      completedDurations: null,
-      currentAccumulatedDuration: null,
-      currentExecutionStartedAt: null,
-    };
+    const executionType = args.executionType as "streaming" | "toolCall";
+    const prev = task.executionDuration;
+    const currentStreaming = prev?.current?.streaming ?? null;
+    const currentToolCall = prev?.current?.toolCall ?? null;
     this.tasks.set(id, {
       ...task,
-      executionDuration: { ...prev, currentExecutionStartedAt: startedAt },
+      executionDuration: {
+        completedDurations: prev?.completedDurations ?? null,
+        current: {
+          streaming:
+            executionType === "streaming"
+              ? { accumulatedDuration: currentStreaming?.accumulatedDuration ?? null, startedAt }
+              : currentStreaming,
+          toolCall:
+            executionType === "toolCall"
+              ? { accumulatedDuration: currentToolCall?.accumulatedDuration ?? null, startedAt }
+              : currentToolCall,
+        },
+      },
     });
   }
 
@@ -643,18 +654,43 @@ class FakeStore {
     const task = this.tasks.get(id);
     if (!task) throw new Error(`Unknown task ${id}`);
     const endedAt = args.endedAt as Date;
+    const executionType = args.executionType as "streaming" | "toolCall";
     const prev = task.executionDuration;
-    if (!prev?.currentExecutionStartedAt) return;
-    const elapsed = endedAt.getTime() - prev.currentExecutionStartedAt.getTime();
-    const accumulated = (prev.currentAccumulatedDuration ?? 0) + elapsed;
-    this.tasks.set(id, {
-      ...task,
-      executionDuration: {
-        ...prev,
-        currentAccumulatedDuration: accumulated,
-        currentExecutionStartedAt: null,
-      },
-    });
+    const currentStreaming = prev?.current?.streaming ?? null;
+    const currentToolCall = prev?.current?.toolCall ?? null;
+    if (executionType === "streaming") {
+      if (!currentStreaming?.startedAt) return;
+      const elapsed = endedAt.getTime() - currentStreaming.startedAt.getTime();
+      this.tasks.set(id, {
+        ...task,
+        executionDuration: {
+          completedDurations: prev?.completedDurations ?? null,
+          current: {
+            streaming: {
+              accumulatedDuration: (currentStreaming.accumulatedDuration ?? 0) + elapsed,
+              startedAt: null,
+            },
+            toolCall: currentToolCall,
+          },
+        },
+      });
+    } else {
+      if (!currentToolCall?.startedAt) return;
+      const elapsed = endedAt.getTime() - currentToolCall.startedAt.getTime();
+      this.tasks.set(id, {
+        ...task,
+        executionDuration: {
+          completedDurations: prev?.completedDurations ?? null,
+          current: {
+            streaming: currentStreaming,
+            toolCall: {
+              accumulatedDuration: (currentToolCall.accumulatedDuration ?? 0) + elapsed,
+              startedAt: null,
+            },
+          },
+        },
+      });
+    }
   }
 
   private commitExecutionCompleted(args: Record<string, unknown>) {
@@ -663,14 +699,17 @@ class FakeStore {
     if (!task) throw new Error(`Unknown task ${id}`);
     const completionToolCallId = args.completionToolCallId as string;
     const prev = task.executionDuration;
-    const accumulated = prev?.currentAccumulatedDuration ?? 0;
+    const streamingDuration = prev?.current?.streaming?.accumulatedDuration ?? 0;
+    const toolCallsDuration = prev?.current?.toolCall?.accumulatedDuration ?? 0;
     const existing = prev?.completedDurations ?? [];
     this.tasks.set(id, {
       ...task,
       executionDuration: {
-        completedDurations: [...existing, { key: completionToolCallId, value: accumulated }],
-        currentAccumulatedDuration: null,
-        currentExecutionStartedAt: null,
+        completedDurations: [
+          ...existing,
+          { key: completionToolCallId, value: { streamingDuration, toolCallsDuration } },
+        ],
+        current: null,
       },
     });
   }

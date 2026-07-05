@@ -87,28 +87,45 @@ export const taskInitFields = {
   modelId: Schema.optional(Schema.String),
 };
 
+const ExecutionDurationTracker = Schema.Struct({
+  /**
+   * Accumulated duration (in ms) for this execution type.
+   * Null when nothing has been accumulated yet.
+   */
+  accumulatedDuration: Schema.NullOr(Schema.Number),
+  /**
+   * Timestamp when the current segment started.
+   * Null when no segment is in progress.
+   */
+  startedAt: Schema.NullOr(Schema.Date),
+});
+
 export const ExecutionDuration = Schema.Struct({
   /**
    * Completed step durations keyed by the tool-call id of the attemptCompletion tool call.
+   * Each entry records tool-call and streaming time separately.
    */
   completedDurations: Schema.NullOr(
     Schema.Array(
       Schema.Struct({
         key: Schema.String,
-        value: Schema.Number,
+        value: Schema.Struct({
+          streamingDuration: Schema.Number,
+          toolCallsDuration: Schema.Number,
+        }),
       }),
     ),
   ),
   /**
-   * Accumulated duration (in ms) for the current in-flight execution steps.
-   * Null when no execution step has been accumulated.
+   * Per-type trackers for the currently in-flight execution step.
+   * Null when no execution step is in progress.
    */
-  currentAccumulatedDuration: Schema.NullOr(Schema.Number),
-  /**
-   * Timestamp when the current step execution started.
-   * Null when no execution is in progress.
-   */
-  currentExecutionStartedAt: Schema.NullOr(Schema.Date),
+  current: Schema.NullOr(
+    Schema.Struct({
+      streaming: Schema.NullOr(ExecutionDurationTracker),
+      toolCall: Schema.NullOr(ExecutionDurationTracker),
+    }),
+  ),
 });
 
 export type ExecutionDurationType = Schema.Schema.Type<

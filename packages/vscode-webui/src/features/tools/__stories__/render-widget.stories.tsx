@@ -53,9 +53,13 @@ const mockTask: Task = {
   lineChanges: null,
   lastStepDuration: null,
   executionDuration: {
-    completedDurations: [{ key: widgetToolCallId, value: 14200 }],
-    currentAccumulatedDuration: null,
-    currentExecutionStartedAt: null,
+    completedDurations: [
+      {
+        key: widgetToolCallId,
+        value: { streamingDuration: 9200, toolCallsDuration: 5000 },
+      },
+    ],
+    current: null,
   },
   totalTokens: 10000,
   error: null,

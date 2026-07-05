@@ -90,9 +90,13 @@ const mockTasks = [
     lineChanges: null,
     lastStepDuration: null,
     executionDuration: {
-      completedDurations: [{ key: "", value: 14200 }],
-      currentAccumulatedDuration: null,
-      currentExecutionStartedAt: null,
+      completedDurations: [
+        {
+          key: "",
+          value: { streamingDuration: 9200, toolCallsDuration: 5000 },
+        },
+      ],
+      current: null,
     },
     totalTokens: 10000,
     error: null,
@@ -119,8 +123,10 @@ const mockTasks = [
     lastStepDuration: null,
     executionDuration: {
       completedDurations: [],
-      currentAccumulatedDuration: 10240,
-      currentExecutionStartedAt: null,
+      current: {
+        streaming: { accumulatedDuration: 6240, startedAt: null },
+        toolCall: { accumulatedDuration: 4000, startedAt: null },
+      },
     },
     totalTokens: 10000,
     error: null,
