@@ -8,6 +8,7 @@ import {
 import {
   DBMessage,
   DBUIPart,
+  ExecutionDuration,
   Git,
   LineChanges,
   TaskError,
@@ -52,9 +53,14 @@ export const tables = {
         schema: LineChanges,
       }),
       totalTokens: State.SQLite.integer({ nullable: true }),
+      // @deprecated
       lastStepDuration: State.SQLite.integer({
         nullable: true,
         schema: Schema.DurationFromMillis,
+      }),
+      executionDuration: State.SQLite.json({
+        nullable: true,
+        schema: ExecutionDuration,
       }),
       lastCheckpointHash: State.SQLite.text({
         nullable: true,
@@ -175,6 +181,7 @@ export const events = {
       totalTokens: Schema.NullOr(Schema.Number),
       status: TaskStatus,
       updatedAt: Schema.Date,
+      // @deprecated
       duration: Schema.optional(Schema.DurationFromMillis),
       lastCheckpointHash: Schema.optional(Schema.String),
     }),
@@ -186,6 +193,7 @@ export const events = {
       error: TaskError,
       data: Schema.NullOr(DBMessage),
       updatedAt: Schema.Date,
+      // @deprecated
       duration: Schema.optional(Schema.DurationFromMillis),
       lastCheckpointHash: Schema.optional(Schema.String),
     }),
@@ -245,6 +253,44 @@ export const events = {
       id: Schema.String,
       lineChanges: LineChanges,
       updatedAt: Schema.Date,
+    }),
+  }),
+  /**
+   * Mark the start of a new execution step.
+   * Sets `currentExecutionStartedAt` to the current timestamp.
+   */
+  executionStarted: Events.synced({
+    name: "v1.ExecutionStarted",
+    schema: Schema.Struct({
+      id: Schema.String,
+      startedAt: Schema.Date,
+    }),
+  }),
+  /**
+   * Mark the end of an execution step.
+   * Accumulates elapsed time into `currentAccumulatedDuration` and resets
+   * `currentExecutionStartedAt` to null.
+   * Must only be called when `currentExecutionStartedAt` is not null.
+   */
+  executionEnded: Events.synced({
+    name: "v1.ExecutionEnded",
+    schema: Schema.Struct({
+      id: Schema.String,
+      endedAt: Schema.Date,
+    }),
+  }),
+  /**
+   * Mark the current accumulated execution as complete.
+   * Moves `currentAccumulatedDuration` into `completedDurations` under the
+   * provided `completionToolCallId` and resets the accumulator.
+   * Must only be called when `currentExecutionStartedAt` is null.
+   */
+  executionCompleted: Events.synced({
+    name: "v1.ExecutionCompleted",
+    schema: Schema.Struct({
+      id: Schema.String,
+      /** The tool-call id of the `attemptCompletion` tool call. */
+      completionToolCallId: Schema.String,
     }),
   }),
   // @deprecated use writeStoreFile instead
@@ -514,6 +560,53 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
+  "v1.ExecutionStarted": ({ id, startedAt }, { query }) => {
+    const existing = query(tables.tasks.select().where({ id }).first());
+    const prev = existing?.executionDuration;
+    return tables.tasks
+      .update({
+        executionDuration: {
+          completedDurations: prev?.completedDurations ?? null,
+          currentAccumulatedDuration: prev?.currentAccumulatedDuration ?? null,
+          currentExecutionStartedAt: startedAt,
+        },
+      })
+      .where({ id });
+  },
+  "v1.ExecutionEnded": ({ id, endedAt }, { query }) => {
+    const existing = query(tables.tasks.select().where({ id }).first());
+    const prev = existing?.executionDuration;
+    if (!prev?.currentExecutionStartedAt) return [];
+    const elapsed =
+      endedAt.getTime() - prev.currentExecutionStartedAt.getTime();
+    return tables.tasks
+      .update({
+        executionDuration: {
+          completedDurations: prev.completedDurations,
+          currentAccumulatedDuration:
+            prev.currentAccumulatedDuration ?? 0 + elapsed,
+          currentExecutionStartedAt: null,
+        },
+      })
+      .where({ id });
+  },
+  "v1.ExecutionCompleted": ({ id, completionToolCallId }, { query }) => {
+    const existing = query(tables.tasks.select().where({ id }).first());
+    const prev = existing?.executionDuration;
+    const accumulated = prev?.currentAccumulatedDuration ?? 0;
+    return tables.tasks
+      .update({
+        executionDuration: {
+          completedDurations: [
+            ...(prev?.completedDurations ?? []),
+            { key: completionToolCallId, value: accumulated },
+          ],
+          currentAccumulatedDuration: null,
+          currentExecutionStartedAt: null,
+        },
+      })
+      .where({ id });
+  },
   "v1.UpdateMessages": ({ messages }) =>
     messages.map((message) =>
       tables.messages

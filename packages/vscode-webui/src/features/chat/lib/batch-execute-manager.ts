@@ -26,7 +26,7 @@ export class BatchExecuteManager {
 
   /** Start processing the queue for `taskId`. */
   processQueue(taskId: string) {
-    this.queues.get(taskId)?.start();
+    return this.queues.get(taskId)?.start();
   }
 
   /** Abort queued tool calls for `taskId` by clearing pending items that have not started yet. */

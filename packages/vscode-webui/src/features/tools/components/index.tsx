@@ -32,6 +32,7 @@ type ToolInvocationPartBaseProps = {
   changes?: ToolCallCheckpoint;
   isSubTask?: boolean;
   isLastPart?: boolean;
+  task?: ToolProps<ToolName>["task"];
 };
 
 type ToolRendererProps = ToolInvocationPartBaseProps & {
@@ -52,6 +53,7 @@ function ToolInvocationRenderer({
   changes,
   isSubTask,
   isLastPart,
+  task,
 }: ToolRendererProps) {
   return C ? (
     <C
@@ -62,6 +64,7 @@ function ToolInvocationRenderer({
       messages={messages}
       isSubTask={isSubTask}
       isLastPart={isLastPart}
+      task={task}
     />
   ) : (
     <McpToolCall
@@ -81,6 +84,7 @@ export function ToolInvocationPart({
   changes,
   isSubTask,
   isLastPart,
+  task,
 }: ToolInvocationPartProps) {
   const toolName = getStaticToolName(tool);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
@@ -101,6 +105,7 @@ export function ToolInvocationPart({
         messages={messages}
         isSubTask={isSubTask}
         isLastPart={isLastPart}
+        task={task}
       />
     </div>
   );

@@ -265,11 +265,14 @@ function TaskStatusView({
 }
 
 function formatDuration(task: Task): string {
-  const { lastStepDuration, createdAt, updatedAt } = task;
-  const durationMs =
-    lastStepDuration && lastStepDuration.value._tag === "Millis"
-      ? lastStepDuration.value.millis
+  const { executionDuration, createdAt, updatedAt } = task;
+  const completedDurations = executionDuration?.completedDurations;
+  const lastCompletedDuration =
+    completedDurations && completedDurations.length > 0
+      ? completedDurations[completedDurations.length - 1].value
       : undefined;
+  const durationMs =
+    executionDuration?.currentAccumulatedDuration ?? lastCompletedDuration;
 
   const created = new Date(createdAt).getTime();
   const updated = new Date(updatedAt).getTime();

@@ -500,7 +500,13 @@ class FakeStore {
     return () => {};
   }
 
-  commit(event: { name: string; args: Record<string, unknown> }) {
+  commit(...events: { name: string; args: Record<string, unknown> }[]) {
+    for (const event of events) {
+      this.commitOne(event);
+    }
+  }
+
+  private commitOne(event: { name: string; args: Record<string, unknown> }) {
     if (event.name === "v1.TaskInited") {
       this.commitTaskInited(event.args);
       return;
@@ -515,6 +521,18 @@ class FakeStore {
     }
     if (event.name === "v1.UpdateTotalTokens") {
       this.commitUpdateTotalTokens(event.args);
+      return;
+    }
+    if (event.name === "v1.ExecutionStarted") {
+      this.commitExecutionStarted(event.args);
+      return;
+    }
+    if (event.name === "v1.ExecutionEnded") {
+      this.commitExecutionEnded(event.args);
+      return;
+    }
+    if (event.name === "v1.ExecutionCompleted") {
+      this.commitExecutionCompleted(event.args);
       return;
     }
     throw new Error(`Unsupported event ${event.name}`);
@@ -604,6 +622,59 @@ class FakeStore {
     });
   }
 
+  private commitExecutionStarted(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const task = this.tasks.get(id);
+    if (!task) throw new Error(`Unknown task ${id}`);
+    const startedAt = args.startedAt as Date;
+    const prev = task.executionDuration ?? {
+      completedDurations: null,
+      currentAccumulatedDuration: null,
+      currentExecutionStartedAt: null,
+    };
+    this.tasks.set(id, {
+      ...task,
+      executionDuration: { ...prev, currentExecutionStartedAt: startedAt },
+    });
+  }
+
+  private commitExecutionEnded(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const task = this.tasks.get(id);
+    if (!task) throw new Error(`Unknown task ${id}`);
+    const endedAt = args.endedAt as Date;
+    const prev = task.executionDuration;
+    if (!prev?.currentExecutionStartedAt) return;
+    const elapsed = endedAt.getTime() - prev.currentExecutionStartedAt.getTime();
+    const accumulated = (prev.currentAccumulatedDuration ?? 0) + elapsed;
+    this.tasks.set(id, {
+      ...task,
+      executionDuration: {
+        ...prev,
+        currentAccumulatedDuration: accumulated,
+        currentExecutionStartedAt: null,
+      },
+    });
+  }
+
+  private commitExecutionCompleted(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const task = this.tasks.get(id);
+    if (!task) throw new Error(`Unknown task ${id}`);
+    const completionToolCallId = args.completionToolCallId as string;
+    const prev = task.executionDuration;
+    const accumulated = prev?.currentAccumulatedDuration ?? 0;
+    const existing = prev?.completedDurations ?? [];
+    this.tasks.set(id, {
+      ...task,
+      executionDuration: {
+        completedDurations: [...existing, { key: completionToolCallId, value: accumulated }],
+        currentAccumulatedDuration: null,
+        currentExecutionStartedAt: null,
+      },
+    });
+  }
+
   private extractTaskId(query: { hash?: string }) {
     for (const taskId of this.tasks.keys()) {
       if (query.hash?.includes(taskId)) return taskId;
@@ -647,6 +718,7 @@ function makeTask({
     lastStepDuration: null,
     lastCheckpointHash: null,
     error: null,
+    executionDuration: null,
     createdAt,
     updatedAt,
     modelId: null,

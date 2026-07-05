@@ -459,6 +459,7 @@ function Chat({ user, uid, info }: ChatProps) {
         isSubTask={isSubTask}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
+        task={task}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar
@@ -481,6 +482,8 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
+          onToolsExecutionStarted={chatKit.markStartToolsExecution}
+          onToolsExecutionEnded={chatKit.markEndToolsExecution}
         />
       </div>
       <BackgroundTaskDebugPanel />

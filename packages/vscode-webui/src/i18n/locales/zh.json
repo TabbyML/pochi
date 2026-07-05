@@ -302,6 +302,7 @@
   "toolInvocation": {
     "requiresApproval": "需要批准",
     "taskCompleted": "任务完成",
+    "taskCompletedIn": "任务完成，耗时 {{duration}}",
     "reading": "正在读取 ",
 
     "writing": "正在写入 ",

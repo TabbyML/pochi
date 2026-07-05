@@ -636,6 +636,7 @@ function makeTask({
     lastStepDuration: null,
     lastCheckpointHash: null,
     error: null,
+    executionDuration: null,
     createdAt,
     updatedAt,
     modelId: null,

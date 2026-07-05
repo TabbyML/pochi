@@ -1,5 +1,18 @@
 import { isAttemptTodoCompletionResolved } from "@/lib/todos-utils";
 
+export function formatExecutionDuration(ms: number): string {
+  const seconds = ms / 1000;
+  if (seconds < 60) {
+    return `${seconds.toFixed(1)}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h`;
+}
+
 export type ToolResultDisplay =
   | {
       type: "json";

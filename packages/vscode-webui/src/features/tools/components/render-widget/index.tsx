@@ -19,6 +19,7 @@ import { Lock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StatusIcon } from "../status-icon";
+import { formatExecutionDuration } from "../tool-result-display";
 import type { ToolProps } from "../types";
 // This intentionally borrows Vite's worker bundling pipeline only to get a
 // standalone module URL. No Web Worker is created; the renderer is loaded as a
@@ -87,6 +88,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isLoading,
   isLastPart,
   messages,
+  task,
 }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -173,6 +175,14 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   const isInteractiveRef = useRef(isInteractive);
   isInteractiveRef.current = isInteractive;
+
+  const executionDurationMs = useMemo(() => {
+    const completedDurations =
+      task?.executionDuration?.completedDurations ?? null;
+    if (!completedDurations) return null;
+    const entry = completedDurations.find((d) => d.key === tool.toolCallId);
+    return entry?.value ?? null;
+  }, [task?.executionDuration?.completedDurations, tool.toolCallId]);
 
   useEffect(() => {
     if (!import.meta.env.PROD) return;
@@ -454,6 +464,13 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
             </TooltipTrigger>
             <TooltipContent>{t("toolInvocation.widgetFrozen")}</TooltipContent>
           </Tooltip>
+        ) : null}
+        {executionDurationMs != null && isFinal ? (
+          <span className="ml-auto shrink-0 text-muted-foreground text-xs">
+            {t("toolInvocation.taskCompletedIn", {
+              duration: formatExecutionDuration(executionDurationMs),
+            })}
+          </span>
         ) : null}
       </div>
       {iframeSrc ? (

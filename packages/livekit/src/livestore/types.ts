@@ -87,6 +87,34 @@ export const taskInitFields = {
   modelId: Schema.optional(Schema.String),
 };
 
+export const ExecutionDuration = Schema.Struct({
+  /**
+   * Completed step durations keyed by the tool-call id of the attemptCompletion tool call.
+   */
+  completedDurations: Schema.NullOr(
+    Schema.Array(
+      Schema.Struct({
+        key: Schema.String,
+        value: Schema.Number,
+      }),
+    ),
+  ),
+  /**
+   * Accumulated duration (in ms) for the current in-flight execution steps.
+   * Null when no execution step has been accumulated.
+   */
+  currentAccumulatedDuration: Schema.NullOr(Schema.Number),
+  /**
+   * Timestamp when the current step execution started.
+   * Null when no execution is in progress.
+   */
+  currentExecutionStartedAt: Schema.NullOr(Schema.Date),
+});
+
+export type ExecutionDurationType = Schema.Schema.Type<
+  typeof ExecutionDuration
+>;
+
 export const taskFullFields = {
   ...taskInitFields,
   background: Schema.optional(Schema.Boolean),
@@ -102,6 +130,7 @@ export const taskFullFields = {
   lastStepDuration: Schema.optional(Schema.DurationFromMillis),
   lastCheckpointHash: Schema.optional(Schema.String),
   error: Schema.optional(TaskError),
+  executionDuration: Schema.optional(ExecutionDuration),
   updatedAt: Schema.Date,
   displayId: Schema.optional(Schema.Number).pipe(
     deprecated("Concept of displayId is removed"),

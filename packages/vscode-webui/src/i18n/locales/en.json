@@ -309,6 +309,7 @@
   "toolInvocation": {
     "requiresApproval": "Requires Approval",
     "taskCompleted": "Task Completed",
+    "taskCompletedIn": "Task completed in {{duration}}",
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",

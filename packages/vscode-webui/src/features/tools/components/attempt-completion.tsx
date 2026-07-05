@@ -12,12 +12,15 @@ import { isStaticToolUIPart } from "ai";
 import { Check, GitPullRequest } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { getAttemptCompletionResultDisplay } from "./tool-result-display";
+import {
+  formatExecutionDuration,
+  getAttemptCompletionResultDisplay,
+} from "./tool-result-display";
 import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
   ToolProps<"attemptCompletion">
-> = ({ tool: toolCall, messages, isSubTask }) => {
+> = ({ tool: toolCall, messages, isSubTask, task }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
   const resultContent = getAttemptCompletionResultDisplay(result);
@@ -48,6 +51,14 @@ export const AttemptCompletionTool: React.FC<
     return partIndex === lastMessage.parts.length - 1;
   }, [messages, toolCall.toolCallId]);
 
+  const executionDurationMs = useMemo(() => {
+    const completedDurations =
+      task?.executionDuration?.completedDurations ?? null;
+    if (!completedDurations) return null;
+    const entry = completedDurations.find((d) => d.key === toolCall.toolCallId);
+    return entry?.value ?? null;
+  }, [task?.executionDuration?.completedDurations, toolCall.toolCallId]);
+
   // Return null if there's nothing to display
   if (!resultContent.content) {
     return null;
@@ -62,7 +73,11 @@ export const AttemptCompletionTool: React.FC<
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 font-bold text-emerald-700 text-sm dark:text-emerald-300">
           <Check className="size-4" />
-          {t("toolInvocation.taskCompleted")}
+          {executionDurationMs != null
+            ? t("toolInvocation.taskCompletedIn", {
+                duration: formatExecutionDuration(executionDurationMs),
+              })
+            : t("toolInvocation.taskCompleted")}
         </span>
         {!!currentWorkspace && isLastPart && !isSubTask && (
           <div className="flex items-center gap-1">

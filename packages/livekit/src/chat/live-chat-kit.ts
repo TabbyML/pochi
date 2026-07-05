@@ -15,7 +15,6 @@ import {
   getToolCallCancelErrorMessage,
   isUserInputToolPart,
 } from "@getpochi/tools";
-import { Duration } from "@livestore/utils/effect";
 import {
   type ChatInit,
   type ChatOnErrorCallback,
@@ -772,6 +771,63 @@ export class LiveChatKit<
     );
   };
 
+  /**
+   * Mark the start of an execution step.
+   * Sets `currentExecutionStartedAt` to now.
+   */
+  markStartToolsExecution = () => {
+    this.store.commit(
+      events.executionStarted({
+        id: this.taskId,
+        startedAt: new Date(),
+      }),
+    );
+  };
+
+  /**
+   * Mark the end of an execution step.
+   * Accumulates elapsed time into `currentAccumulatedDuration` and resets
+   * `currentExecutionStartedAt` to null.
+   * Must only be called when `currentExecutionStartedAt` is not null.
+   */
+  markEndToolsExecution = () => {
+    const task = this.task;
+    if (!task?.executionDuration?.currentExecutionStartedAt) {
+      logger.warn(
+        "endExecution called but currentExecutionStartedAt is null – skipping",
+      );
+      return;
+    }
+    this.store.commit(
+      events.executionEnded({
+        id: this.taskId,
+        endedAt: new Date(),
+      }),
+    );
+  };
+
+  /**
+   * Mark the current accumulated execution as complete.
+   * Moves `currentAccumulatedDuration` into `completedDurations` under the
+   * provided `completionToolCallId` and resets the accumulator to zero.
+   * Must only be called when `currentExecutionStartedAt` is null.
+   */
+  private markTaskExecutionComplete = (completionToolCallId: string) => {
+    const task = this.task;
+    if (task?.executionDuration?.currentExecutionStartedAt != null) {
+      logger.warn(
+        "markExecutionComplete called but currentExecutionStartedAt is not null – skipping",
+      );
+      return;
+    }
+    this.store.commit(
+      events.executionCompleted({
+        id: this.taskId,
+        completionToolCallId,
+      }),
+    );
+  };
+
   fork = (
     sourceStore: LiveKitStore,
     forkTaskParams: {
@@ -840,14 +896,19 @@ export class LiveChatKit<
         });
       }
 
+      const now = new Date();
       store.commit(
         events.chatStreamStarted({
           id: this.taskId,
           data: lastMessage,
           todos: environment?.todos || [],
           git: toTaskGitInfo(environment?.workspace.gitStatus),
-          updatedAt: new Date(),
+          updatedAt: now,
           modelId: llm.id,
+        }),
+        events.executionStarted({
+          id: this.taskId,
+          startedAt: now,
         }),
       );
 
@@ -905,25 +966,35 @@ export class LiveChatKit<
       this.latestRequestSnapshot,
     );
 
-    let duration = undefined;
-    if (message.metadata.finishedAt && message.metadata.startedAt) {
-      duration = Duration.millis(
-        message.metadata.finishedAt.getTime() -
-          message.metadata.startedAt.getTime(),
-      );
-    }
-
+    const now = new Date();
     store.commit(
       events.chatStreamFinished({
         id: this.taskId,
         status,
         data: message,
         totalTokens: message.metadata.totalTokens,
-        updatedAt: new Date(),
-        duration,
+        updatedAt: now,
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
+      events.executionEnded({
+        id: this.taskId,
+        endedAt: now,
+      }),
     );
+
+    if (status === "completed" && lastMessage) {
+      const lastStepStartIndex = lastMessage.parts.findLastIndex(
+        (part) => part.type === "step-start",
+      );
+      const lastStepParts =
+        lastStepStartIndex > 0
+          ? message.parts.slice(lastStepStartIndex)
+          : message.parts;
+      const lastCompletionTool = lastStepParts.findLast(isUserInputToolPart);
+      if (lastCompletionTool) {
+        this.markTaskExecutionComplete(lastCompletionTool.toolCallId);
+      }
+    }
 
     const finishData = {
       id: this.taskId,
@@ -1032,26 +1103,18 @@ export class LiveChatKit<
       this.chat.messages = [...this.chat.messages.slice(0, -1), lastMessage];
     }
 
-    let duration = undefined;
-    if (
-      lastMessage?.metadata?.kind === "assistant" &&
-      lastMessage.metadata.finishedAt &&
-      lastMessage.metadata.startedAt
-    ) {
-      duration = Duration.millis(
-        lastMessage.metadata.finishedAt.getTime() -
-          lastMessage.metadata.startedAt.getTime(),
-      );
-    }
-
+    const now = new Date();
     this.store.commit(
       events.chatStreamFailed({
         id: this.taskId,
         error: toTaskError(error),
         data: lastMessage,
-        updatedAt: new Date(),
-        duration,
+        updatedAt: now,
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
+      }),
+      events.executionEnded({
+        id: this.taskId,
+        endedAt: now,
       }),
     );
 

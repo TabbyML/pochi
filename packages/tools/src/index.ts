@@ -2,7 +2,9 @@ export { McpTool } from "./mcp-tools";
 import { ToolsByPermission } from "./constants";
 export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
 import {
+  type InferUITools,
   type Tool,
+  type ToolUIPart,
   type UIDataTypes,
   type UIMessagePart,
   type UITools,
@@ -95,17 +97,23 @@ export type {
   BatchedToolCall,
 } from "./utils/tool-batch";
 
-export function isUserInputToolName(name: string): boolean {
-  return (
-    name === "askFollowupQuestion" ||
-    name === "attemptCompletion" ||
-    name === "renderWidget"
-  );
+const UserInputToolNames = [
+  "askFollowupQuestion",
+  "attemptCompletion",
+  "renderWidget",
+] as const;
+
+type UserInputToolName = (typeof UserInputToolNames)[number];
+
+export function isUserInputToolName(name: string): name is UserInputToolName {
+  return (UserInputToolNames as readonly string[]).includes(name);
 }
 
-export function isUserInputToolPart(part: UIMessagePart<UIDataTypes, UITools>) {
+export function isUserInputToolPart(
+  part: UIMessagePart<UIDataTypes, UITools>,
+): part is ToolUIPart<InferUITools<Pick<ClientTools, UserInputToolName>>> {
   if (!isStaticToolUIPart(part)) return false;
-  return isUserInputToolName(getStaticToolName(part));
+  return isUserInputToolName(getStaticToolName(part) as string);
 }
 
 export function isAutoSuccessToolName(name: string): boolean {

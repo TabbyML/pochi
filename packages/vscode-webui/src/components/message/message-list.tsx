@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
 import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
@@ -55,6 +55,7 @@ export const MessageList: React.FC<{
   hideUserEditsActions?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
+  task?: Task;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -71,6 +72,7 @@ export const MessageList: React.FC<{
   hideUserEditsActions,
   repairMermaid,
   repairingChart,
+  task,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -179,6 +181,7 @@ export const MessageList: React.FC<{
                       lastCheckpointInMessage={lastCheckpointInMessage}
                       userEditsCheckpoint={userEditsCheckpoints[messageIndex]}
                       toolCallCheckpoints={toolCallCheckpoints}
+                      task={task}
                     />
                   ))}
                 </div>
@@ -270,6 +273,7 @@ function Part({
   hideUserEditsActions,
   userEditsCheckpoint,
   toolCallCheckpoints,
+  task,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -289,6 +293,7 @@ function Part({
     modified: string | undefined;
   };
   toolCallCheckpoints: Map<string, ToolCallCheckpoint>;
+  task?: Task;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -361,6 +366,7 @@ function Part({
         messages={messages}
         isSubTask={isSubTask}
         isLastPart={isLastPartInMessages}
+        task={task}
       />
     );
   }

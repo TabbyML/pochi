@@ -2,7 +2,7 @@ import { EmptyChatPlaceholder } from "@/components/empty-chat-placeholder";
 import type { MermaidContext } from "@/components/message/mermaid-context";
 import { MessageList } from "@/components/message/message-list";
 import { useResourceURI } from "@/lib/hooks/use-resource-uri";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import type React from "react";
 
 interface ChatAreaProps {
@@ -17,6 +17,7 @@ interface ChatAreaProps {
   isSubTask?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
+  task?: Task;
 }
 
 export function ChatArea({
@@ -31,6 +32,7 @@ export function ChatArea({
   isSubTask,
   repairMermaid,
   repairingChart,
+  task,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -54,6 +56,7 @@ export function ChatArea({
         isSubTask={isSubTask}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
+        task={task}
       />
     </>
   );

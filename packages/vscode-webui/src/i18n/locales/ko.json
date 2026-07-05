@@ -303,6 +303,7 @@
   "toolInvocation": {
     "requiresApproval": "승인 대기 중",
     "taskCompleted": "작업 완료",
+    "taskCompletedIn": "작업이 {{duration}} 만에 완료되었습니다",
     "reading": "읽는 중 ",
     "writing": "쓰는 중 ",
     "continue": "계속",

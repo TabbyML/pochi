@@ -304,6 +304,7 @@
   "toolInvocation": {
     "requiresApproval": "承認待ち",
     "taskCompleted": "タスク完了",
+    "taskCompletedIn": "タスクが {{duration}} で完了しました",
     "reading": "読み込み中 ",
 
     "writing": "書き込み中 ",

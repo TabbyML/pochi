@@ -86,6 +86,8 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
+  onToolsExecutionStarted?: () => void;
+  onToolsExecutionEnded?: () => void;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -108,6 +110,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
+  onToolsExecutionStarted,
+  onToolsExecutionEnded,
 }) => {
   const { t } = useTranslation();
 
@@ -307,6 +311,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             isSubTask={isSubTask}
             task={task}
             subtask={subtask}
+            onToolsExecutionStarted={onToolsExecutionStarted}
+            onToolsExecutionEnded={onToolsExecutionEnded}
           />
           {showRenderWidgetFixButton ? (
             <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
