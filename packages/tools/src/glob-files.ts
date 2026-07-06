@@ -3,7 +3,7 @@ import { defineClientTool } from "./types";
 
 const toolDef = {
   description:
-    "Request to find files matching a glob pattern within a specified directory. Use this to get a list of files based on a pattern.",
+    "Request to find files matching a glob pattern within a specified directory. Use this to get a list of files based on a pattern. This tool respects .gitignore, so git-ignored files are excluded from the results. To include git-ignored files, use a command like `git ls-files` or `rg --files --no-ignore -g <pattern>` via the terminal.",
   inputSchema: z.object({
     path: z
       .string()
