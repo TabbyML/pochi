@@ -39,6 +39,7 @@
     "planModeSubmitTooltip": "計画として送信",
     "todoModeSubmitTooltip": "Todoモードで送信",
     "queuedMessages": "キュー内のメッセージ ({{count}})",
+    "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
     "pleaseCheckFiles": "これらの添付ファイルを確認してください。",

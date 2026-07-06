@@ -40,6 +40,7 @@
     "planModeSubmitTooltip": "Submit as plan",
     "todoModeSubmitTooltip": "Submit in Todo mode",
     "queuedMessages": "Queued Messages ({{count}})",
+    "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
     "pleaseCheckFiles": "Please check these attachments.",

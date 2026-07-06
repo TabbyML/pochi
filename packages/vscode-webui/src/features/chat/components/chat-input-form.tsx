@@ -13,7 +13,6 @@ import { UserEditsBadge } from "@/components/prompt-form/user-edits";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import type { ChatInput } from "../hooks/use-chat-input-state";
-import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
   input: ChatInput;
@@ -28,8 +27,6 @@ interface ChatInputFormProps {
   status: UseChatHelpers<Message>["status"];
   onFileDrop?: (files: File[]) => boolean;
   messageContent?: string;
-  queuedMessages: string[];
-  onRemoveQueuedMessage: (index: number) => void;
   isSubTask: boolean;
   children?: ReactNode;
   reviews: Review[];
@@ -61,8 +58,6 @@ export const ChatInputForm = forwardRef<
     status,
     onFileDrop,
     messageContent,
-    queuedMessages,
-    onRemoveQueuedMessage,
     isSubTask,
     reviews,
     taskId,
@@ -114,12 +109,6 @@ export const ChatInputForm = forwardRef<
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
-      {queuedMessages.length > 0 && (
-        <QueuedMessages
-          messages={queuedMessages}
-          onRemove={onRemoveQueuedMessage}
-        />
-      )}
       {children}
     </FormEditor>
   );

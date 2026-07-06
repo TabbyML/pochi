@@ -25,6 +25,10 @@ type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
 
 type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 
+interface SubmitOptions {
+  flushQueuedMessages?: boolean;
+}
+
 interface UseChatSubmitProps {
   chat: UseChatReturn;
   input: ChatInput;
@@ -101,12 +105,24 @@ export function useChatSubmit({
     stopChat,
   ]);
 
+  const queueCurrentInput = useCallback(() => {
+    const content = input.text.trim();
+    if (!content) return false;
+
+    setQueuedMessages((prev) => [...prev, content]);
+    clearInput();
+    return true;
+  }, [clearInput, input.text, setQueuedMessages]);
+
   /**
    * Handles form submission, sending both the current input and any queued messages.
    * This function supports text and file attachments.
    */
   const handleSubmit = useCallback(
-    async (e?: React.FormEvent<HTMLFormElement>) => {
+    async (
+      e?: React.FormEvent<HTMLFormElement>,
+      options: SubmitOptions = {},
+    ) => {
       e?.preventDefault();
 
       logger.debug("handleSubmit");
@@ -114,28 +130,55 @@ export function useChatSubmit({
       // Uploading / Compacting is not allowed to be stopped.
       if (blockingState.isBusy || isUploading) return;
 
-      const allMessages = [...queuedMessages];
-      // Clear queued messages after adding them to allMessages
-      setQueuedMessages([]);
+      if (isLoading || isExecuting) {
+        // The queued message store only supports text. Keep attachments and
+        // review submissions in the editor until the current run is ready.
+        if (files.length === 0 && reviews.length === 0) {
+          queueCurrentInput();
+        }
+        return;
+      }
 
       const content = input.text.trim();
-      if (content) {
-        allMessages.push(content);
-        clearInput();
+      const shouldQueueCurrentInput =
+        !options.flushQueuedMessages &&
+        queuedMessages.length > 0 &&
+        content.length > 0;
+      if (shouldQueueCurrentInput) {
+        // When a queue already exists, an explicit user submission keeps
+        // building the queue. The ready effect is responsible for flushing it.
+        if (files.length === 0 && reviews.length === 0) {
+          queueCurrentInput();
+        }
+        return;
       }
-      const text = allMessages.join("\n\n").trim();
+
+      const hasQueuedMessages = queuedMessages.length > 0;
+      const text = options.flushQueuedMessages
+        ? (queuedMessages[0]?.trim() ?? "")
+        : hasQueuedMessages
+          ? content.length > 0
+            ? ""
+            : (queuedMessages[0]?.trim() ?? "")
+          : content;
 
       // Disallow empty submissions
       if (text.length === 0 && files.length === 0 && reviews.length === 0)
         return;
 
-      const stopIsLoading = handleStop();
-      if (stopIsLoading || isSubmitDisabled) {
-        autoApproveGuard.current = "stop";
-        if (text.length > 0) {
-          setQueuedMessages([text]);
-        }
+      if (isSubmitDisabled) {
         return;
+      }
+
+      if (pendingApproval?.name === "retry") {
+        pendingApproval.stopCountdown();
+      }
+
+      // Send queued messages one at a time. The ready effect will flush the
+      // next queued message after the current one finishes.
+      setQueuedMessages(hasQueuedMessages ? queuedMessages.slice(1) : []);
+      if (!options.flushQueuedMessages && content) {
+        clearInput();
       }
 
       if (files.length > 0) {
@@ -161,7 +204,7 @@ export function useChatSubmit({
           // Error is already handled by the hook
           return;
         }
-      } else if (allMessages.length > 0 || reviews.length > 0) {
+      } else if (text.length > 0 || reviews.length > 0) {
         clearUploadError();
         const parts = prepareMessageParts(
           t,
@@ -180,7 +223,6 @@ export function useChatSubmit({
     },
     [
       isSubmitDisabled,
-      handleStop,
       files.length,
       input,
       autoApproveGuard,
@@ -197,11 +239,49 @@ export function useChatSubmit({
       reviews,
       userEdits,
       activeSelection,
+      isLoading,
+      isExecuting,
+      queueCurrentInput,
+      pendingApproval,
+    ],
+  );
+
+  const handleSteerSubmit = useCallback(
+    async (e?: React.FormEvent<HTMLFormElement>) => {
+      e?.preventDefault();
+
+      logger.debug("handleSteerSubmit");
+
+      if (blockingState.isBusy || isUploading) return;
+
+      if (isLoading || isExecuting) {
+        if (files.length === 0 && reviews.length === 0) {
+          queueCurrentInput();
+        }
+        autoApproveGuard.current = "stop";
+        handleStop();
+        return;
+      }
+
+      await handleSubmit(e);
+    },
+    [
+      autoApproveGuard,
+      blockingState.isBusy,
+      files.length,
+      handleStop,
+      handleSubmit,
+      isExecuting,
+      isLoading,
+      isUploading,
+      queueCurrentInput,
+      reviews.length,
     ],
   );
 
   return {
     handleSubmit,
+    handleSteerSubmit,
     handleStop,
   };
 }
