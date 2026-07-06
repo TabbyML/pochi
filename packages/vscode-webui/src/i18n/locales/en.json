@@ -453,7 +453,7 @@
     "attach": "Attach files",
     "attachDescription": "Upload images, PDFs, or videos from your computer",
     "todoDescription": "Ask Pochi to keep working toward this todo",
-    "todoDisabledDescription": "Unavailable while this task already has active todos"
+    "todoDisabledDescription": "Finish the current todos before starting a new one"
   },
   "mentionList": {
     "noResultsFound": "No results found",

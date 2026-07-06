@@ -4,8 +4,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { AtSign, Paperclip, Plus, Target } from "lucide-react";
+import { AtSign, Info, Paperclip, Plus, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 
@@ -96,13 +101,30 @@ export function AddContextMenu({
           >
             <Target className="mt-0.5 size-4" />
             <div className="min-w-0">
-              <div className="font-medium">{t("chat.todoModeLabel")}</div>
-              <div className="truncate text-muted-foreground text-xs">
-                {t(
-                  todoModeDisabled
-                    ? "addContextMenu.todoDisabledDescription"
-                    : "addContextMenu.todoDescription",
+              <div className="flex items-center gap-1 font-medium">
+                <span>{t("chat.todoModeLabel")}</span>
+                {todoModeDisabled && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* Re-enable pointer events; the disabled item and its
+                          svgs are pointer-events-none, which would otherwise
+                          swallow the hover. */}
+                      <span
+                        className="pointer-events-auto inline-flex"
+                        aria-label={t("addContextMenu.todoDisabledDescription")}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <Info className="size-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {t("addContextMenu.todoDisabledDescription")}
+                    </TooltipContent>
+                  </Tooltip>
                 )}
+              </div>
+              <div className="truncate text-muted-foreground text-xs">
+                {t("addContextMenu.todoDescription")}
               </div>
             </div>
           </DropdownMenuItem>

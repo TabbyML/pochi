@@ -447,7 +447,7 @@
     "attach": "ファイルを添付",
     "attachDescription": "コンピューターから画像・PDF・動画をアップロード",
     "todoDescription": "このTodoに向けてPochiが作業を続けます",
-    "todoDisabledDescription": "このタスクには進行中のTodoがあるため利用できません"
+    "todoDisabledDescription": "現在のTodoを完了してから新しく開始できます"
   },
   "mentionList": {
     "noResultsFound": "結果が見つかりません",

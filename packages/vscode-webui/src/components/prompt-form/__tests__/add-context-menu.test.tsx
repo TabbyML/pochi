@@ -92,7 +92,28 @@ describe("AddContextMenu", () => {
     expect(todoItem).not.toBeNull();
     expect(todoItem?.getAttribute("data-disabled")).not.toBeNull();
 
+    // The disabled reason is exposed via a hover tooltip trigger next to the
+    // label rather than an always-visible line.
+    expect(
+      screen.getByLabelText("addContextMenu.todoDisabledDescription"),
+    ).not.toBeNull();
+
     fireEvent.click(screen.getByText("chat.todoModeLabel"));
     expect(onSelectTodoMode).not.toHaveBeenCalled();
+  });
+
+  it("does not render the disabled hint trigger when enabled", () => {
+    render(
+      <AddContextMenu
+        onAddFilesAndFolders={vi.fn()}
+        onSelectTodoMode={vi.fn()}
+      />,
+    );
+
+    openMenu();
+
+    expect(
+      screen.queryByLabelText("addContextMenu.todoDisabledDescription"),
+    ).toBeNull();
   });
 });
