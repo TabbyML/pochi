@@ -446,7 +446,8 @@
     "filesDescription": "@ でワークスペースのファイルとフォルダーを検索",
     "attach": "ファイルを添付",
     "attachDescription": "コンピューターから画像・PDF・動画をアップロード",
-    "todoDescription": "このTodoに向けてPochiが作業を続けます"
+    "todoDescription": "このTodoに向けてPochiが作業を続けます",
+    "todoDisabledDescription": "このタスクには進行中のTodoがあるため利用できません"
   },
   "mentionList": {
     "noResultsFound": "結果が見つかりません",

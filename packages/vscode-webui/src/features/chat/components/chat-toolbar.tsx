@@ -121,8 +121,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const [isDevMode] = useIsDevMode();
   const canUseTodoMode = isDevMode === true;
   const [todoModeSelected, setTodoModeSelected] = useState(false);
-  const canSelectTodoMode =
-    canUseTodoMode && !isSubTask && !hasActiveTodos(todos);
+  // Show the todo mode entry in dev mode, but disable it (rather than hide it)
+  // while the task already has active todos so it stays discoverable.
+  const showTodoMode = canUseTodoMode && !isSubTask;
+  const todoModeDisabled = hasActiveTodos(todos);
+  const canSelectTodoMode = showTodoMode && !todoModeDisabled;
 
   useEffect(() => {
     if (!canSelectTodoMode && todoModeSelected) {
@@ -401,8 +404,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
           onAttachFile={() => fileInputRef.current?.click()}
           onSelectTodoMode={
-            canSelectTodoMode ? () => setTodoModeSelected(true) : undefined
+            showTodoMode ? () => setTodoModeSelected(true) : undefined
           }
+          todoModeDisabled={todoModeDisabled}
           contextMenuSide="top"
           className={cn({
             "rounded-t-none": hasVisibleContextPanel || hasQueuedMessages,

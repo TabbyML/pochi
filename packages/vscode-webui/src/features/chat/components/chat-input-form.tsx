@@ -37,6 +37,7 @@ interface ChatInputFormProps {
   onSwitchSubmitMode?: () => void;
   isPlanMode?: boolean;
   onSelectTodoMode?: () => void;
+  todoModeDisabled?: boolean;
   onAttachFile?: () => void;
   contextMenuSide?: "top" | "bottom";
   className?: string;
@@ -70,6 +71,7 @@ export const ChatInputForm = forwardRef<
     children,
     onSwitchSubmitMode,
     onSelectTodoMode,
+    todoModeDisabled,
     onAttachFile,
     contextMenuSide = "top",
     className,
@@ -128,6 +130,7 @@ export const ChatInputForm = forwardRef<
                 }
               : undefined
           }
+          todoModeDisabled={todoModeDisabled}
         />
         <ActiveSelectionBadge />
         {taskId && lastCheckpointHash && (

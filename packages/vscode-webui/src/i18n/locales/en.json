@@ -452,7 +452,8 @@
     "filesDescription": "Search workspace files and folders with @",
     "attach": "Attach files",
     "attachDescription": "Upload images, PDFs, or videos from your computer",
-    "todoDescription": "Ask Pochi to keep working toward this todo"
+    "todoDescription": "Ask Pochi to keep working toward this todo",
+    "todoDisabledDescription": "Unavailable while this task already has active todos"
   },
   "mentionList": {
     "noResultsFound": "No results found",

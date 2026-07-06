@@ -13,6 +13,11 @@ interface AddContextMenuProps {
   onAddFilesAndFolders: () => void;
   onAttachFile?: () => void;
   onSelectTodoMode?: () => void;
+  /**
+   * When true, the todo mode item is rendered but not selectable (e.g. the task
+   * already has active todos). The item stays visible for discoverability.
+   */
+  todoModeDisabled?: boolean;
   showLabel?: boolean;
   /**
    * Which side of the trigger the menu opens on. Hardcode "bottom" for the
@@ -26,6 +31,7 @@ export function AddContextMenu({
   onAddFilesAndFolders,
   onAttachFile,
   onSelectTodoMode,
+  todoModeDisabled = false,
   showLabel = false,
   side = "top",
 }: AddContextMenuProps) {
@@ -85,13 +91,18 @@ export function AddContextMenu({
         {onSelectTodoMode && (
           <DropdownMenuItem
             className="cursor-pointer items-start gap-2 px-2 py-1.5"
+            disabled={todoModeDisabled}
             onSelect={onSelectTodoMode}
           >
             <Target className="mt-0.5 size-4" />
             <div className="min-w-0">
               <div className="font-medium">{t("chat.todoModeLabel")}</div>
               <div className="truncate text-muted-foreground text-xs">
-                {t("addContextMenu.todoDescription")}
+                {t(
+                  todoModeDisabled
+                    ? "addContextMenu.todoDisabledDescription"
+                    : "addContextMenu.todoDescription",
+                )}
               </div>
             </div>
           </DropdownMenuItem>

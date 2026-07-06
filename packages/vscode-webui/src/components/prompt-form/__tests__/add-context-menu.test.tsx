@@ -73,4 +73,26 @@ describe("AddContextMenu", () => {
 
     expect(onSelectTodoMode).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps the todo mode option visible but not selectable when disabled", () => {
+    const onSelectTodoMode = vi.fn();
+    render(
+      <AddContextMenu
+        onAddFilesAndFolders={vi.fn()}
+        onSelectTodoMode={onSelectTodoMode}
+        todoModeDisabled
+      />,
+    );
+
+    openMenu();
+
+    const todoItem = screen
+      .getByText("chat.todoModeLabel")
+      .closest("[role='menuitem']");
+    expect(todoItem).not.toBeNull();
+    expect(todoItem?.getAttribute("data-disabled")).not.toBeNull();
+
+    fireEvent.click(screen.getByText("chat.todoModeLabel"));
+    expect(onSelectTodoMode).not.toHaveBeenCalled();
+  });
 });

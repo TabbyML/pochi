@@ -444,7 +444,8 @@
     "filesDescription": "使用 @ 搜索工作区文件和文件夹",
     "attach": "附加文件",
     "attachDescription": "从电脑上传图片、PDF 或视频",
-    "todoDescription": "让 Pochi 持续推进这个 Todo"
+    "todoDescription": "让 Pochi 持续推进这个 Todo",
+    "todoDisabledDescription": "当前任务已有进行中的 Todo，暂不可用"
   },
   "mentionList": {
     "noResultsFound": "未找到结果",
