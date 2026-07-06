@@ -152,6 +152,126 @@ describe("prepareForkTaskData", () => {
     expect(newSubTaskMessage?.taskId).toBe(newSubTask?.id);
   });
 
+  it("should not copy background tasks and their messages", () => {
+    const subTaskId = "sub-task-id";
+    const backgroundTaskId = "background-task-id";
+    const tasks = [
+      mockTask,
+      {
+        id: subTaskId,
+        parentId: oldTaskId,
+        status: "completed",
+        createdAt: new Date(),
+      },
+      {
+        // Background tasks are independent root tasks (no parentId).
+        id: backgroundTaskId,
+        background: true,
+        status: "completed",
+        createdAt: new Date(),
+      },
+    ] as any;
+
+    const subTaskMessage = {
+      id: "msg-sub",
+      taskId: subTaskId,
+      data: {
+        id: "msg-sub",
+        role: "user",
+        parts: [{ type: "text", text: "subtask message" }],
+      },
+    } as any;
+
+    const backgroundTaskMessage = {
+      id: "msg-background",
+      taskId: backgroundTaskId,
+      data: {
+        id: "msg-background",
+        role: "user",
+        parts: [{ type: "text", text: "background message" }],
+      },
+    } as any;
+
+    const messages = [...mockMessages, subTaskMessage, backgroundTaskMessage];
+
+    const result = prepareForkTaskData({
+      tasks,
+      messages,
+      files: [],
+      oldTaskId,
+      commitId,
+      messageId: undefined,
+      newTaskId,
+      newTaskTitle: "New Task",
+    });
+
+    // Only main task and normal subtask are copied, the background task is dropped.
+    expect(result.tasks).toHaveLength(2);
+    expect(
+      result.tasks.some((t: any) => t.id === backgroundTaskId),
+    ).toBe(false);
+
+    // Background task messages are not copied.
+    expect(
+      result.messages.some((m) => m.id === "msg-background"),
+    ).toBe(false);
+    // Normal subtask messages are still copied.
+    expect(result.messages.some((m) => m.id === "msg-sub")).toBe(true);
+  });
+
+  it("should not copy subtasks of background tasks", () => {
+    const backgroundTaskId = "background-task-id";
+    const backgroundSubTaskId = "background-sub-task-id";
+    const tasks = [
+      mockTask,
+      {
+        // Background tasks are independent root tasks (no parentId).
+        id: backgroundTaskId,
+        background: true,
+        status: "completed",
+        createdAt: new Date(),
+      },
+      {
+        // A subtask spawned by the background task should also be dropped,
+        // otherwise its parentId would reference a removed task.
+        id: backgroundSubTaskId,
+        parentId: backgroundTaskId,
+        status: "completed",
+        createdAt: new Date(),
+      },
+    ] as any;
+
+    const backgroundSubTaskMessage = {
+      id: "msg-background-sub",
+      taskId: backgroundSubTaskId,
+      data: {
+        id: "msg-background-sub",
+        role: "user",
+        parts: [{ type: "text", text: "background subtask message" }],
+      },
+    } as any;
+
+    const messages = [...mockMessages, backgroundSubTaskMessage];
+
+    const result = prepareForkTaskData({
+      tasks,
+      messages,
+      files: [],
+      oldTaskId,
+      commitId,
+      messageId: undefined,
+      newTaskId,
+      newTaskTitle: "New Task",
+    });
+
+    // Only the main task is copied.
+    expect(result.tasks).toHaveLength(1);
+    expect(result.tasks[0].id).toBe(newTaskId);
+    expect(
+      result.messages.some((m) => m.id === "msg-background-sub"),
+    ).toBe(false);
+  });
+
   it("should replace taskId in tool-newTask parts", () => {
     const subTaskId = "sub-task-id";
     const tasks = [
