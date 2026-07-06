@@ -94,15 +94,6 @@ const VSCodeHostStub = {
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
   },
-  previewEdit: (
-    _toolName: string,
-    _input: unknown,
-  ): Promise<
-    | { edit: string; editSummary: { added: number; removed: number } }
-    | undefined
-  > => {
-    return Promise.resolve(undefined);
-  },
   executeBashCommand: (
     _command: string,
     _abortSignal: ThreadAbortSignalSerialization,

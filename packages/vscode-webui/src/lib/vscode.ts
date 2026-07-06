@@ -5,7 +5,6 @@ import {
   type VSCodeHostApi,
   type WebviewHostApi,
   resolvePochiUri,
-  resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   catalog,
@@ -71,7 +70,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "setGlobalState",
         "readEnvironment",
         "executeToolCall",
-        "previewEdit",
         "executeBashCommand",
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
@@ -261,17 +259,9 @@ function createVSCodeHost(): VSCodeHostApi {
     );
   };
 
-  const previewEdit: VSCodeHostApi["previewEdit"] = async (toolName, input) => {
-    return vscodeHostApi.previewEdit(
-      toolName,
-      resolveToolCallArgs(input, globalStore?.storeId ?? ""),
-    );
-  };
-
   return {
     ...vscodeHostApi,
     openFile,
-    previewEdit,
   };
 }
 

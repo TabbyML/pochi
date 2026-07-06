@@ -25,7 +25,6 @@ import { ModelList } from "@/lib/model-list";
 import { PochiLanguage } from "@/lib/pochi-language";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
-import { computePreviewEdit } from "@/lib/preview-edit";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -583,19 +582,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     });
 
     return result;
-  };
-
-  previewEdit = async (
-    toolName: string,
-    input: unknown,
-  ): Promise<
-    | { edit: string; editSummary: { added: number; removed: number } }
-    | undefined
-  > => {
-    if (!this.cwd) {
-      return undefined;
-    }
-    return computePreviewEdit(toolName, input, this.cwd);
   };
 
   openFile = async (
