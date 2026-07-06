@@ -669,33 +669,38 @@ export class TaskRunner {
       `Found tool call: ${toolName} with args: ${JSON.stringify(toolCall.input)}`,
     );
 
+    let validateToolPolicyError: unknown;
     try {
       validateToolPolicy(toolName, toolCall.input, toolPolicies, {
         cwd: this.cwd,
       });
     } catch (error) {
-      return {
-        kind: "error",
-        error: toErrorMessage(error),
-      };
+      validateToolPolicyError = error;
     }
 
-    const resolvedInput = resolveToolCallArgs(
-      toolCall.input,
-      this.store.storeId,
-    );
+    let toolResult: unknown;
+    if (validateToolPolicyError) {
+      toolResult = {
+        error: toErrorMessage(validateToolPolicyError),
+      };
+    } else {
+      const resolvedInput = resolveToolCallArgs(
+        toolCall.input,
+        this.store.storeId,
+      );
 
-    let envs: Record<string, string> | undefined;
-    if (this.customAgent?.name === "browser") {
-      envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
-        this.taskId,
+      let envs: Record<string, string> | undefined;
+      if (this.customAgent?.name === "browser") {
+        envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
+          this.taskId,
+        );
+      }
+
+      toolResult = await this.executeToolCallItem(
+        { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+        envs,
       );
     }
-
-    const toolResult = await this.executeToolCallItem(
-      { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
-      envs,
-    );
 
     const persistedToolResult = await maybePersistToolResult(
       toolName,
