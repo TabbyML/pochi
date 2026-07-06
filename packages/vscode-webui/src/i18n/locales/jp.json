@@ -174,8 +174,8 @@
     "autoApprove": {
       "title": "自動承認",
       "approvals": "権限",
-      "toolbarTooltipEnabled": "自動承認は有効です。権限プロンプトは自動的に承認されます。",
-      "toolbarTooltipDisabled": "自動承認は無効です。クリックすると権限プロンプトを自動承認します。",
+      "toolbarTooltipEnabled": "自動承認オン。クリックでオフ。",
+      "toolbarTooltipDisabled": "自動承認オフ。クリックでオン。",
       "disabled": "無効",
       "noActionsSelected": "アクションが選択されていません",
       "readFiles": "ファイルを読む",
