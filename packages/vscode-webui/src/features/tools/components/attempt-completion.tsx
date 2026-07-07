@@ -1,17 +1,9 @@
 import { CodeBlock, MessageMarkdown } from "@/components/message";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useSendMessage } from "@/features/chat";
-import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { isStaticToolUIPart } from "ai";
-import { Check, GitPullRequest } from "lucide-react";
+import { Check } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { CreatePrAction } from "./create-pr-action";
 import { getAttemptCompletionResultDisplay } from "./tool-result-display";
 import type { ToolProps } from "./types";
 
@@ -21,17 +13,6 @@ export const AttemptCompletionTool: React.FC<
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
   const resultContent = getAttemptCompletionResultDisplay(result);
-  const sendMessage = useSendMessage();
-
-  const { data: currentWorkspace } = useCurrentWorkspace();
-  const { worktrees } = useWorktrees();
-
-  const currentWorktree = useMemo(() => {
-    if (!worktrees || !currentWorkspace) return null;
-    return worktrees.find((wt) => wt.path === currentWorkspace.cwd);
-  }, [worktrees, currentWorkspace]);
-
-  const hasPR = !!currentWorktree?.data?.github?.pullRequest;
 
   const isLastPart = useMemo(() => {
     if (!messages || messages.length === 0) return false;
@@ -53,10 +34,6 @@ export const AttemptCompletionTool: React.FC<
     return null;
   }
 
-  const onClickCreatePR = () => {
-    sendMessage({ prompt: "Please create a PR for the changes above" });
-  };
-
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
@@ -64,23 +41,9 @@ export const AttemptCompletionTool: React.FC<
           <Check className="size-4" />
           {t("toolInvocation.taskCompleted")}
         </span>
-        {!!currentWorkspace && isLastPart && !isSubTask && (
+        {isLastPart && !isSubTask && (
           <div className="flex items-center gap-1">
-            {!hasPR && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 text-muted-foreground"
-                    onClick={onClickCreatePR}
-                  >
-                    <GitPullRequest className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t("worktree.createPr")}</TooltipContent>
-              </Tooltip>
-            )}
+            <CreatePrAction />
           </div>
         )}
       </div>
