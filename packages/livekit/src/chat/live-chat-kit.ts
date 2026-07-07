@@ -901,7 +901,7 @@ export class LiveChatKit<
     const status = toTaskStatus(message, finishReason);
 
     const contextWindowUsage = computeContextWindowUsage(
-      this.chat.messages,
+      formatters.llm(this.chat.messages),
       this.latestRequestSnapshot,
     );
 
