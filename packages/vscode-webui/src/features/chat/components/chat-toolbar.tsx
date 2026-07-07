@@ -50,7 +50,7 @@ import {
 } from "../hooks/use-blocking-operations";
 import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
-import { useChatSubmit } from "../hooks/use-chat-submit";
+import { type QueuedMessage, useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
@@ -119,7 +119,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const { input, setInput, clearInput } = useChatInputState();
 
-  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
 
   const {
     groupedModels,

@@ -1,6 +1,7 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { prepareMessageParts } from "@/lib/message-utils";
+import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
@@ -25,6 +26,12 @@ type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
 
 type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 
+export interface QueuedMessage {
+  text: string;
+  files: File[];
+  reviews: Review[];
+}
+
 interface SubmitOptions {
   flushQueuedMessages?: boolean;
 }
@@ -38,8 +45,8 @@ interface UseChatSubmitProps {
   isLoading: boolean;
   blockingState: BlockingState;
   pendingApproval: PendingApproval | undefined;
-  queuedMessages: string[];
-  setQueuedMessages: React.Dispatch<React.SetStateAction<string[]>>;
+  queuedMessages: QueuedMessage[];
+  setQueuedMessages: React.Dispatch<React.SetStateAction<QueuedMessage[]>>;
   reviews: Review[];
   taskId: string;
 }
@@ -75,6 +82,7 @@ export function useChatSubmit({
     files,
     isUploading,
     upload,
+    uploadFiles,
     clearFiles,
     clearError: clearUploadError,
   } = attachmentUpload;
@@ -106,13 +114,30 @@ export function useChatSubmit({
   ]);
 
   const queueCurrentInput = useCallback(() => {
-    const content = input.text.trim();
-    if (!content) return false;
+    const queuedMessage: QueuedMessage = {
+      text: input.text.trim(),
+      files: [...files],
+      reviews: [...reviews],
+    };
 
-    setQueuedMessages((prev) => [...prev, content]);
+    if (
+      queuedMessage.text.length === 0 &&
+      queuedMessage.files.length === 0 &&
+      queuedMessage.reviews.length === 0
+    ) {
+      return false;
+    }
+
+    setQueuedMessages((prev) => [...prev, queuedMessage]);
     clearInput();
+    if (files.length > 0) {
+      clearFiles();
+    }
+    if (reviews.length > 0) {
+      vscodeHost.deleteReviews(reviews.map((review) => review.id));
+    }
     return true;
-  }, [clearInput, input.text, setQueuedMessages]);
+  }, [clearFiles, clearInput, files, input.text, reviews, setQueuedMessages]);
 
   /**
    * Handles form submission, sending both the current input and any queued messages.
@@ -131,40 +156,44 @@ export function useChatSubmit({
       if (blockingState.isBusy || isUploading) return;
 
       if (isLoading || isExecuting) {
-        // The queued message store only supports text. Keep attachments and
-        // review submissions in the editor until the current run is ready.
-        if (files.length === 0 && reviews.length === 0) {
-          queueCurrentInput();
-        }
+        queueCurrentInput();
         return;
       }
 
       const content = input.text.trim();
+      const hasQueueableCurrentMessage =
+        content.length > 0 || files.length > 0 || reviews.length > 0;
       const shouldQueueCurrentInput =
         !options.flushQueuedMessages &&
         queuedMessages.length > 0 &&
-        content.length > 0;
+        hasQueueableCurrentMessage;
       if (shouldQueueCurrentInput) {
         // When a queue already exists, an explicit user submission keeps
         // building the queue. The ready effect is responsible for flushing it.
-        if (files.length === 0 && reviews.length === 0) {
-          queueCurrentInput();
-        }
+        queueCurrentInput();
         return;
       }
 
       const hasQueuedMessages = queuedMessages.length > 0;
-      const text = options.flushQueuedMessages
-        ? (queuedMessages[0]?.trim() ?? "")
+      const queuedMessage = options.flushQueuedMessages
+        ? queuedMessages[0]
         : hasQueuedMessages
           ? content.length > 0
-            ? ""
-            : (queuedMessages[0]?.trim() ?? "")
-          : content;
+            ? undefined
+            : queuedMessages[0]
+          : undefined;
+      const text = queuedMessage?.text ?? content;
+      const messageFiles = queuedMessage?.files ?? files;
+      const messageReviews = queuedMessage?.reviews ?? reviews;
 
       // Disallow empty submissions
-      if (text.length === 0 && files.length === 0 && reviews.length === 0)
+      if (
+        text.length === 0 &&
+        messageFiles.length === 0 &&
+        messageReviews.length === 0
+      ) {
         return;
+      }
 
       if (isSubmitDisabled) {
         return;
@@ -181,21 +210,25 @@ export function useChatSubmit({
         clearInput();
       }
 
-      if (files.length > 0) {
+      if (messageFiles.length > 0) {
         try {
           logger.debug("Uploading files...");
-          const uploadedAttachments = await upload();
+          const uploadedAttachments = queuedMessage
+            ? await uploadFiles(messageFiles)
+            : await upload();
           const parts = prepareMessageParts(
             t,
             text,
             uploadedAttachments,
-            reviews,
+            messageReviews,
             userEdits,
             activeSelection,
           );
           logger.debug("Sending message with files");
 
-          clearFiles();
+          if (!queuedMessage) {
+            clearFiles();
+          }
           autoApproveGuard.current = "auto";
           await sendMessage({
             parts,
@@ -210,7 +243,7 @@ export function useChatSubmit({
           t,
           text,
           [],
-          reviews,
+          messageReviews,
           userEdits,
           activeSelection,
         );
@@ -223,10 +256,11 @@ export function useChatSubmit({
     },
     [
       isSubmitDisabled,
-      files.length,
+      files,
       input,
       autoApproveGuard,
       upload,
+      uploadFiles,
       sendMessage,
       clearInput,
       clearUploadError,
@@ -255,9 +289,7 @@ export function useChatSubmit({
       if (blockingState.isBusy || isUploading) return;
 
       if (isLoading || isExecuting) {
-        if (files.length === 0 && reviews.length === 0) {
-          queueCurrentInput();
-        }
+        queueCurrentInput();
         autoApproveGuard.current = "stop";
         handleStop();
         return;
@@ -268,14 +300,12 @@ export function useChatSubmit({
     [
       autoApproveGuard,
       blockingState.isBusy,
-      files.length,
       handleStop,
       handleSubmit,
       isExecuting,
       isLoading,
       isUploading,
       queueCurrentInput,
-      reviews.length,
     ],
   );
 
