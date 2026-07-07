@@ -11,19 +11,20 @@ export type TodoCompletionUpdate = {
 
 export function useTodos({
   persistedTodos,
-  pendingTodos,
+  initialTodos,
   taskId,
 }: {
   persistedTodos?: readonly Todo[];
-  pendingTodos?: readonly Todo[];
+  // Bootstrap todos from task creation or subtask metadata before persisted todos exist.
+  initialTodos?: readonly Todo[];
   taskId?: string;
 }) {
   const store = useDefaultStore();
   const todosRef = useRef<Todo[] | undefined>(undefined);
-  const consumedTodoIdsRef = useRef(new Set<string>());
-  const appliedPendingTodosRef = useRef(copyTodos(pendingTodos));
+  const appliedInitialTodosRef = useRef(copyTodos(initialTodos));
+  const consumedInitialTodosRef = useRef<Todo[] | undefined>(undefined);
   const [todos, setTodosImpl] = useState<Todo[]>(() => {
-    const nextTodos = getInitialTodos(persistedTodos, pendingTodos);
+    const nextTodos = getInitialTodoState(persistedTodos, initialTodos);
     todosRef.current = nextTodos;
     return nextTodos;
   });
@@ -32,14 +33,32 @@ export function useTodos({
     const snapshot = copyTodos(nextTodos);
     todosRef.current = snapshot;
     setTodosImpl((current) =>
-      areTodosEqual(current, snapshot) ? current : snapshot,
+      isTodoListEqual(current, snapshot) ? current : snapshot,
     );
     return snapshot;
+  }, []);
+
+  const markInitialTodosConsumed = useCallback(() => {
+    if (appliedInitialTodosRef.current.length > 0) {
+      consumedInitialTodosRef.current = copyTodos(
+        appliedInitialTodosRef.current,
+      );
+    }
+  }, []);
+
+  const isInitialTodosConsumed = useCallback((initialSnapshot: Todo[]) => {
+    return (
+      consumedInitialTodosRef.current !== undefined &&
+      isTodoListEqual(consumedInitialTodosRef.current, initialSnapshot)
+    );
   }, []);
 
   const updateTodos = useCallback(
     (nextTodos: Todo[]) => {
       const snapshot = setTodos(nextTodos);
+      if (snapshot.length === 0) {
+        markInitialTodosConsumed();
+      }
       if (!taskId) return;
       store.commit(
         catalog.events.updateTodos({
@@ -49,12 +68,15 @@ export function useTodos({
         }),
       );
     },
-    [setTodos, store, taskId],
+    [markInitialTodosConsumed, setTodos, store, taskId],
   );
 
   const updateTodoCompletion = useCallback(
     (update: TodoCompletionUpdate) => {
       const snapshot = setTodos(update.todos);
+      if (snapshot.length === 0 || isTodoListResolved(snapshot)) {
+        markInitialTodosConsumed();
+      }
       if (!taskId) return;
       store.commit(
         catalog.events.attemptTodoCompletionFinished({
@@ -66,21 +88,26 @@ export function useTodos({
         }),
       );
     },
-    [setTodos, store, taskId],
+    [markInitialTodosConsumed, setTodos, store, taskId],
   );
 
   useEffect(() => {
     if (persistedTodos === undefined) {
-      if (!pendingTodos?.length) {
-        appliedPendingTodosRef.current = [];
+      if (!initialTodos?.length) {
+        appliedInitialTodosRef.current = [];
         setTodos(copyTodos(todosRef.current));
         return;
       }
 
-      const pendingSnapshot = copyTodos(pendingTodos);
-      if (!areTodosEqual(appliedPendingTodosRef.current, pendingSnapshot)) {
-        appliedPendingTodosRef.current = pendingSnapshot;
-        setTodos(pendingSnapshot);
+      const initialSnapshot = copyTodos(initialTodos);
+      if (isInitialTodosConsumed(initialSnapshot)) {
+        setTodos(copyTodos(todosRef.current));
+        return;
+      }
+
+      if (!isTodoListEqual(appliedInitialTodosRef.current, initialSnapshot)) {
+        appliedInitialTodosRef.current = initialSnapshot;
+        setTodos(initialSnapshot);
         return;
       }
 
@@ -90,36 +117,35 @@ export function useTodos({
 
     if (persistedTodos.length > 0) {
       if (isTodoListResolved(persistedTodos)) {
-        for (const todo of persistedTodos) {
-          consumedTodoIdsRef.current.add(todo.id);
-        }
         updateTodos([]);
         return;
       }
 
-      const persistedTodoIds = new Set(persistedTodos.map((todo) => todo.id));
-      for (const todo of todosRef.current ?? []) {
-        if (persistedTodoIds.has(todo.id)) {
-          consumedTodoIdsRef.current.add(todo.id);
-        }
-      }
       setTodos(copyTodos(persistedTodos));
       return;
     }
 
-    if (!pendingTodos?.length) {
-      appliedPendingTodosRef.current = [];
+    if (!initialTodos?.length) {
+      appliedInitialTodosRef.current = [];
       setTodos([]);
       return;
     }
 
-    const pendingSnapshot = copyTodos(pendingTodos);
-    appliedPendingTodosRef.current = pendingSnapshot;
-    const unpersistedTodos = pendingSnapshot.filter(
-      (todo) => !consumedTodoIdsRef.current.has(todo.id),
-    );
-    setTodos(unpersistedTodos);
-  }, [persistedTodos, pendingTodos, setTodos, updateTodos]);
+    const initialSnapshot = copyTodos(initialTodos);
+    if (isInitialTodosConsumed(initialSnapshot)) {
+      setTodos([]);
+      return;
+    }
+
+    appliedInitialTodosRef.current = initialSnapshot;
+    setTodos(initialSnapshot);
+  }, [
+    persistedTodos,
+    initialTodos,
+    isInitialTodosConsumed,
+    setTodos,
+    updateTodos,
+  ]);
 
   return {
     todos,
@@ -133,7 +159,7 @@ function copyTodos(todos?: readonly Todo[]): Todo[] {
   return todos ? [...todos] : [];
 }
 
-function areTodosEqual(left: readonly Todo[], right: readonly Todo[]) {
+function isTodoListEqual(left: readonly Todo[], right: readonly Todo[]) {
   return (
     left.length === right.length &&
     left.every((todo, index) => {
@@ -149,21 +175,21 @@ function areTodosEqual(left: readonly Todo[], right: readonly Todo[]) {
   );
 }
 
-function getInitialTodos(
+function getInitialTodoState(
   persistedTodos: readonly Todo[] | undefined,
-  pendingTodos: readonly Todo[] | undefined,
+  initialTodos: readonly Todo[] | undefined,
 ): Todo[] {
   if (persistedTodos === undefined) {
-    return copyTodos(pendingTodos);
+    return copyTodos(initialTodos);
   }
 
   if (persistedTodos.length > 0 && isTodoListResolved(persistedTodos)) {
     return [];
   }
 
-  if (persistedTodos.length > 0 || !pendingTodos?.length) {
+  if (persistedTodos.length > 0 || !initialTodos?.length) {
     return copyTodos(persistedTodos);
   }
 
-  return copyTodos(pendingTodos);
+  return copyTodos(initialTodos);
 }
