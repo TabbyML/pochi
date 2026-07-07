@@ -361,7 +361,6 @@ const program = new Command()
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
-    const isSubTask = selectedAgent !== undefined;
     const autoCompactEnabled = options.autoCompact;
     const projectMemoryEnabled = options.projectMemory;
     const autoMemoryManager = new AutoMemoryManager();
@@ -423,7 +422,7 @@ const program = new Command()
       skills,
       mcpHub,
       abortSignal: abortController.signal,
-      isSubTask,
+      isSubTask: false,
       customAgent: selectedAgent,
       attemptCompletionSchema: options.attemptCompletionSchema
         ? parseOutputSchema(options.attemptCompletionSchema)

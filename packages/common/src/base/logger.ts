@@ -10,6 +10,14 @@ const isConsoleLogDisabled = () => {
 
 const mainLogger = new Logger({
   type: isVSCodeEnvironment() || isConsoleLogDisabled() ? "hidden" : "pretty",
+  // Disable tslog's value masking. Masking shallow-clones every logged
+  // argument via `Object.create(Object.getPrototypeOf(source))`, which turns a
+  // `DOMException` into a fake object carrying `DOMException.prototype` but that
+  // is not a real instance. Rendering that clone through `util.inspect` on Bun
+  // throws "The DOMException.name getter can only be used on instances of
+  // DOMException" and crashes the logger. We don't log secret-bearing keys, so
+  // dropping the default `["password"]` masking is safe here.
+  maskValuesOfKeys: [],
 });
 
 function stringToLogLevel(level: string) {

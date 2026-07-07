@@ -11,10 +11,3 @@ export function hasActiveTodos(todos?: readonly Todo[]): boolean {
     ) ?? false
   );
 }
-
-export function areTodosFinished(todos?: readonly Todo[]): boolean {
-  if (!todos?.length) return false;
-  return todos.every(
-    (todo) => todo.status === "completed" || todo.status === "cancelled",
-  );
-}

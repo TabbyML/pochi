@@ -50,13 +50,14 @@ import {
 } from "../hooks/use-blocking-operations";
 import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
-import { useChatSubmit } from "../hooks/use-chat-submit";
+import { type QueuedMessage, useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
+import { QueuedMessages } from "./queued-messages";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
@@ -118,7 +119,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const { input, setInput, clearInput } = useChatInputState();
 
-  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
 
   const {
     groupedModels,
@@ -188,7 +189,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   );
   const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
-  const { handleSubmit, handleStop } = useChatSubmit({
+  const { handleSubmit, handleSteerSubmit, handleStop } = useChatSubmit({
     chat,
     input,
     clearInput,
@@ -203,17 +204,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     taskId: taskId,
   });
 
-  const handleQueueMessage = useCallback(
-    async (e?: React.FormEvent<HTMLFormElement>) => {
-      e?.preventDefault();
-
-      const message = input.text;
-      if (message.trim()) {
-        setQueuedMessages((prev) => [...prev, message]);
-        clearInput();
-      }
+  const autoApproveGuard = useAutoApproveGuard();
+  const handleSteerQueuedMessage = useCallback(
+    (index: number) => {
+      setQueuedMessages((prev) => {
+        const message = prev[index];
+        if (!message) return prev;
+        return [message, ...prev.filter((_, i) => i !== index)];
+      });
+      autoApproveGuard.current = "stop";
+      handleStop();
     },
-    [input, clearInput],
+    [autoApproveGuard, handleStop],
   );
 
   useEffect(() => {
@@ -226,7 +228,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       (!pendingApproval || pendingApproval.name === "retry");
 
     if (isReady && queuedMessages.length > 0) {
-      handleSubmit();
+      handleSubmit(undefined, { flushQueuedMessages: true });
     }
   }, [
     status,
@@ -345,39 +347,49 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       )}
-      <ChatInputForm
-        input={input}
-        setInput={setInput}
-        onSubmit={handleSubmit}
-        onCtrlSubmit={handleQueueMessage}
-        isLoading={isLoading || isExecuting}
-        onPaste={handlePasteAttachment}
-        pendingApproval={pendingApproval}
-        status={status}
-        onFileDrop={handleFileDrop}
-        messageContent={messageContent}
-        queuedMessages={queuedMessages}
-        onRemoveQueuedMessage={(index) =>
-          setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
-        }
-        isSubTask={isSubTask}
-        reviews={reviews}
-        taskId={taskId}
-        lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
-        className={cn({
-          "rounded-t-none": hasVisibleTodos || hasVisibleChangedFiles,
-        })}
-      >
-        {files.length > 0 && (
-          <div className="px-3">
-            <AttachmentPreviewList
-              files={files}
-              onRemove={removeFile}
-              isUploading={isUploadingAttachments}
-            />
-          </div>
-        )}
-      </ChatInputForm>
+      {queuedMessages.length > 0 && (
+        <QueuedMessages
+          messages={queuedMessages}
+          onRemove={(index) =>
+            setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
+          }
+          onSteer={handleSteerQueuedMessage}
+        />
+      )}
+      <div className="relative z-10">
+        <ChatInputForm
+          input={input}
+          setInput={setInput}
+          onSubmit={handleSubmit}
+          onCtrlSubmit={handleSteerSubmit}
+          isLoading={isLoading || isExecuting}
+          onPaste={handlePasteAttachment}
+          pendingApproval={pendingApproval}
+          status={status}
+          onFileDrop={handleFileDrop}
+          messageContent={messageContent}
+          isSubTask={isSubTask}
+          reviews={reviews}
+          taskId={taskId}
+          lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
+          className={cn({
+            "rounded-t-none":
+              hasVisibleTodos ||
+              hasVisibleChangedFiles ||
+              queuedMessages.length > 0,
+          })}
+        >
+          {files.length > 0 && (
+            <div className="px-3">
+              <AttachmentPreviewList
+                files={files}
+                onRemove={removeFile}
+                isUploading={isUploadingAttachments}
+              />
+            </div>
+          )}
+        </ChatInputForm>
+      </div>
 
       {/* Hidden file input for image uploads */}
       <input
@@ -556,9 +568,7 @@ export function ChatToolBarSkeleton() {
         onCtrlSubmit={async () => {}}
         isLoading={true}
         onPaste={() => {}}
-        onRemoveQueuedMessage={() => {}}
         status="streaming"
-        queuedMessages={[]}
         isSubTask={false}
         pendingApproval={undefined}
         reviews={[]}

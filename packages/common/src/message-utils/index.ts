@@ -6,4 +6,4 @@ export {
   prepareLastMessageForRetry,
   fixCodeGenerationOutput,
 } from "./assistant-message";
-export { areTodosFinished, hasActiveTodos, hasTodos } from "./todo";
+export { hasActiveTodos, hasTodos } from "./todo";

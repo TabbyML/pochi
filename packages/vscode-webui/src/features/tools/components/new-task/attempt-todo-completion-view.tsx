@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { isTodoListResolved } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
+import { CreatePrAction } from "../create-pr-action";
 import { SubAgentView } from "./sub-agent-view";
 
 interface AttemptTodoCompletionViewProps extends NewTaskToolViewProps {
@@ -22,6 +23,8 @@ export function AttemptTodoCompletionView({
   isExecuting,
   taskSource,
   toolCallStatusRegistryRef,
+  isSubTask,
+  isLastPart,
 }: AttemptTodoCompletionViewProps) {
   const { t } = useTranslation();
   const result =
@@ -60,6 +63,11 @@ export function AttemptTodoCompletionView({
       assistantName="Todo"
       showToolCall={false}
       showTaskThread={showFooterTaskThread}
+      headerActions={
+        resolved && !isExecuting && !isSubTask && isLastPart ? (
+          <CreatePrAction />
+        ) : undefined
+      }
       headerContent={
         <span
           className={cn(

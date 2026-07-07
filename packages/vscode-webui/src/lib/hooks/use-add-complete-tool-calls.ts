@@ -165,7 +165,7 @@ export function getTodoCompletionUpdate({
           : part,
       ),
     },
-    todos: [],
+    todos: parsedResult.data.todos,
     status: "completed",
     output,
   };

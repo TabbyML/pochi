@@ -1,67 +1,94 @@
-import { Layers, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { parseTitle } from "@getpochi/common/message-utils";
+import { CornerDownRight, ListEnd, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { parseTitle } from "@getpochi/common/message-utils";
+import type { QueuedMessage } from "../hooks/use-chat-submit";
 
 interface QueuedMessagesProps {
-  messages: string[];
+  messages: QueuedMessage[];
   onRemove: (index: number) => void;
+  onSteer?: (index: number) => void;
 }
 
 export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   messages,
   onRemove,
+  onSteer,
 }) => {
   const { t } = useTranslation();
-  const renderMessage = useMemo(() => {
-    return messages.map((x) => parseTitle(x));
-  }, [messages]);
+  const renderMessages = useMemo(() => {
+    return messages.map(({ text, files, reviews }) => {
+      const title = text.trim() ? parseTitle(text) : t("chat.noMessage");
+      const details = [
+        files.length > 0 ? t("chat.fileCount", { count: files.length }) : "",
+        reviews.length > 0
+          ? t("chat.reviewCount", { count: reviews.length })
+          : "",
+      ].filter(Boolean);
+
+      return {
+        title,
+        details: details.join(" · "),
+      };
+    });
+  }, [messages, t]);
 
   return (
-    <div className="mx-2 mt-2 overflow-hidden rounded-lg border border-border/60 bg-gradient-to-r from-muted/40 to-muted/20">
-      {/* Header */}
-      <div className="flex items-center border-border/30 border-b bg-muted/30 px-3 py-1.5">
-        <div className="flex items-center gap-2 font-medium text-muted-foreground text-xs">
-          <Layers className="size-3.5" />
-          <span>
-            {t("chat.queuedMessages", { count: renderMessage.length })}
-          </span>
-        </div>
-      </div>
-
-      {/* Messages List */}
-      <ScrollArea
-        className="flex-1 overflow-hidden"
-        viewportClassname="max-h-32"
-      >
-        <div>
-          {renderMessage.map((msg, index) => (
-            <div
-              key={index}
-              className="group flex items-center gap-3 px-3 py-1 transition-colors hover:bg-muted/50"
+    <div className="mx-5 flex max-h-28 flex-col gap-0.5 overflow-y-auto rounded-t-sm border border-[var(--input-border)] border-b-0 bg-input px-3 pt-1.5 pb-1.5 shadow-lg">
+      {renderMessages.map((message, index) => (
+        <div
+          key={index}
+          className="group flex h-6 items-center gap-2 text-muted-foreground"
+        >
+          <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <p
+              className="min-w-0 truncate text-sm"
+              title={
+                message.details
+                  ? `${message.title} (${message.details})`
+                  : message.title
+              }
             >
-              {/* Message content */}
-              <p className="flex-1 truncate text-sm" title={msg}>
-                {msg}
-              </p>
-
-              {/* Remove button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={() => onRemove(index)}
-                className="h-6 w-6 shrink-0"
-              >
-                <X className="size-3" />
-              </Button>
-            </div>
-          ))}
+              {message.title}
+            </p>
+            {message.details ? (
+              <span className="shrink-0 text-muted-foreground/70 text-xs">
+                {message.details}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="xs"
+              type="button"
+              onClick={() => onSteer?.(index)}
+              aria-label={t("chat.steer")}
+              disabled={!onSteer}
+              className={cn(
+                "h-7 gap-1 rounded-full px-1.5 text-muted-foreground text-sm",
+                "hover:bg-transparent hover:text-foreground",
+              )}
+            >
+              <CornerDownRight className="size-3.5" />
+              <span>{t("chat.steer")}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              aria-label="Remove queued message"
+              onClick={() => onRemove(index)}
+              className="h-7 w-7 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
         </div>
-      </ScrollArea>
+      ))}
     </div>
   );
 };

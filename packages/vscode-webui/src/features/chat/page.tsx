@@ -9,6 +9,7 @@ import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { blobStore } from "@/lib/remote-blob-store";
+import { getInitialTodos } from "@/lib/todos-utils";
 import { useManageBrowserSession } from "@/lib/use-browser-session";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
@@ -103,6 +104,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const subtask = useSubtaskInfo(uid, task?.parentId);
 
   const isSubTask = !!task?.parentId;
+  const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(uid));
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {
@@ -127,16 +129,16 @@ function Chat({ user, uid, info }: ChatProps) {
       : undefined;
     return resultSchema ? parseOutputSchema(resultSchema) : undefined;
   }, [customAgent?.isBuiltIn, customAgent?._internal?.resultSchema]);
-  const pendingTodos = isSubTask
-    ? subtask?.agent === constants.AttemptTodoCompletionAgentName
-      ? subtask.todos
-      : undefined
-    : info.type === "new-task"
-      ? info.todos
-      : undefined;
+  const initialTodos = getInitialTodos({
+    info,
+    isSubTask,
+    subtask,
+    task,
+    messageRows,
+  });
   const { todos, todosRef, updateTodos, updateTodoCompletion } = useTodos({
     persistedTodos: isSubTask ? undefined : task?.todos,
-    pendingTodos,
+    initialTodos,
     taskId: uid,
   });
   const autoApproveGuard = useAutoApproveGuard();
@@ -149,7 +151,6 @@ function Chat({ user, uid, info }: ChatProps) {
   } = useTaskMcpConfigOverride(uid);
 
   const { setContextWindowUsage } = useTaskContextWindowUsage(uid);
-
   const getters = useLiveChatKitGetters({
     todos: todosRef,
     todoModeActive: todoModeActiveRef,

@@ -33,9 +33,35 @@ export const prepareForkTaskData = ({
 }) => {
   const now = new Date();
 
+  // Background tasks (e.g. fork-agent memory jobs) should not be copied when
+  // forking. They are currently independent root tasks, but we also defensively
+  // exclude any subtasks they might spawn in the future so a copied subtask
+  // never ends up referencing a removed parent. The task being forked
+  // (oldTaskId) is always kept even if it is a background task.
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  const isBackgroundDescendant = (task: (typeof tasks)[number]): boolean => {
+    const visited = new Set<string>();
+    let current: (typeof tasks)[number] | undefined = task;
+    while (current) {
+      if (current.id === oldTaskId) {
+        return false;
+      }
+      if (current.background) {
+        return true;
+      }
+      if (!current.parentId || visited.has(current.id)) {
+        break;
+      }
+      visited.add(current.id);
+      current = taskById.get(current.parentId);
+    }
+    return false;
+  };
+  const forkableTasks = tasks.filter((task) => !isBackgroundDescendant(task));
+
   const taskIdMap = new Map<string, string>();
   taskIdMap.set(oldTaskId, newTaskId);
-  for (const task of tasks) {
+  for (const task of forkableTasks) {
     if (!taskIdMap.has(task.id)) {
       taskIdMap.set(task.id, crypto.randomUUID());
     }
@@ -48,7 +74,7 @@ export const prepareForkTaskData = ({
     return newId;
   };
 
-  const newTasks = tasks.map((task) =>
+  const newTasks = forkableTasks.map((task) =>
     task.id === oldTaskId
       ? {
           id: newTaskId,
@@ -77,7 +103,8 @@ export const prepareForkTaskData = ({
   for (const message of messages) {
     if (message.taskId === oldTaskId) {
       mainTaskMessages.push(message as DBMessageShape);
-    } else {
+    } else if (taskIdMap.has(message.taskId)) {
+      // Skip messages that belong to tasks excluded from the fork (e.g. background tasks).
       subTaskMessages.push(message as DBMessageShape);
     }
   }

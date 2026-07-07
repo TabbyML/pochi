@@ -42,7 +42,6 @@ interface CreateTaskInputProps {
   deletingWorktreePaths: Set<string>;
 }
 
-const noop = () => {};
 const emptyReviews: Review[] = [];
 type SubmitMode = "default" | "plan" | "todo";
 
@@ -357,10 +356,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         onPaste={handlePasteAttachment}
         status="ready"
         onFileDrop={handleFileDrop}
-        queuedMessages={[]}
         pendingApproval={undefined}
         isSubTask={false}
-        onRemoveQueuedMessage={noop}
         onFocus={onFocus}
         reviews={emptyReviews}
         onSwitchSubmitMode={switchSubmitMode}

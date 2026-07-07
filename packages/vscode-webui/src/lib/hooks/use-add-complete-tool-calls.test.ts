@@ -53,7 +53,7 @@ describe("getTodoCompletionUpdate", () => {
     mocks.completeToolCalls = [];
   });
 
-  it("clears todos when attemptTodoCompletion completes all todos", () => {
+  it("returns resolved todos when attemptTodoCompletion completes all todos", () => {
     const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
     const update = getTodoCompletionUpdate({
       message: makeAttemptTodoCompletionMessage(),
@@ -69,7 +69,7 @@ describe("getTodoCompletionUpdate", () => {
     expect(update).toMatchObject({
       toolCallId: "tool-1",
       status: "completed",
-      todos: [],
+      todos: resolvedTodos,
     });
     expect(findToolPart(update?.message, "tool-1")).toMatchObject({
       state: "output-available",
@@ -92,7 +92,7 @@ describe("getTodoCompletionUpdate", () => {
     expect(update).toBeUndefined();
   });
 
-  it("clears todos when every todo is resolved", () => {
+  it("returns todos when every todo is resolved", () => {
     const resolvedTodos: Todo[] = [
       {
         id: "resolved-todo-1",
@@ -118,7 +118,7 @@ describe("getTodoCompletionUpdate", () => {
       },
     });
 
-    expect(update?.todos).toEqual([]);
+    expect(update?.todos).toEqual(resolvedTodos);
   });
 
   it("does not return a completion update when resolved todos still need work", () => {
@@ -148,37 +148,6 @@ describe("getTodoCompletionUpdate", () => {
     });
 
     expect(update).toBeUndefined();
-  });
-
-  it("does not return a completion update when resolved todos still need work", () => {
-    const update = getTodoCompletionUpdate({
-      message: makeAttemptTodoCompletionMessage(),
-      toolCallId: "tool-1",
-      output: {
-        result: {
-          summary: "More work remains.",
-          todos: baseTodos,
-        },
-      },
-    });
-
-    expect(update).toBeUndefined();
-  });
-
-  it("uses resolved todos without requiring one todo update", () => {
-    const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
-    const update = getTodoCompletionUpdate({
-      message: makeAttemptTodoCompletionMessage(),
-      toolCallId: "tool-1",
-      output: {
-        result: {
-          summary: "Done.",
-          todos: resolvedTodos,
-        },
-      },
-    });
-
-    expect(update?.todos).toEqual([]);
   });
 });
 
@@ -222,7 +191,7 @@ describe("useAddCompleteToolCalls", () => {
     await waitFor(() =>
       expect(updateTodoCompletion).toHaveBeenCalledWith(
         expect.objectContaining({
-          todos: [],
+          todos: resolvedTodos,
           status: "completed",
         }),
       ),
