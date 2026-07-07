@@ -24,7 +24,7 @@ describe("useTodos", () => {
 
   it("updates local todos and ref without persistence when no task id", () => {
     const { result } = renderHook(() =>
-      useTodos({ pendingTodos: [activeTodo] }),
+      useTodos({ initialTodos: [activeTodo] }),
     );
     const nextTodos = [
       {
@@ -50,7 +50,7 @@ describe("useTodos", () => {
 
     const { result } = renderHook(() =>
       useTodos({
-        pendingTodos: [activeTodo],
+        initialTodos: [activeTodo],
         taskId: "task-1",
       }),
     );
@@ -75,10 +75,16 @@ describe("useTodos", () => {
       role: "assistant",
       parts: [],
     } as unknown as Message;
+    const resolvedTodos: Todo[] = [
+      {
+        ...activeTodo,
+        status: "completed",
+      },
+    ];
 
     const { result } = renderHook(() =>
       useTodos({
-        pendingTodos: [activeTodo],
+        initialTodos: [activeTodo],
         taskId: "task-1",
       }),
     );
@@ -86,20 +92,20 @@ describe("useTodos", () => {
     act(() =>
       result.current.updateTodoCompletion({
         message: completionMessage,
-        todos: [],
+        todos: resolvedTodos,
         status: "completed",
       }),
     );
 
-    expect(result.current.todos).toEqual([]);
-    expect(result.current.todosRef.current).toEqual([]);
+    expect(result.current.todos).toEqual(resolvedTodos);
+    expect(result.current.todosRef.current).toEqual(resolvedTodos);
     expect(storeCommitMock).toHaveBeenCalledTimes(1);
     expect(storeCommitMock.mock.calls[0]?.[0]).toMatchObject({
       name: "v1.AttemptTodoCompletionFinished",
       args: {
         id: "task-1",
         data: completionMessage,
-        todos: [],
+        todos: resolvedTodos,
         status: "completed",
       },
     });
@@ -138,7 +144,7 @@ describe("useTodos", () => {
     });
   });
 
-  it("does not restore pending todos after clearing resolved persisted todos", () => {
+  it("does not restore initial todos after clearing resolved persisted todos", () => {
     const resolvedTodos: Todo[] = [
       {
         ...activeTodo,
@@ -147,76 +153,101 @@ describe("useTodos", () => {
     ];
 
     const { result, rerender } = renderHook(
-      ({ persistedTodos }: { persistedTodos: readonly Todo[] }) =>
+      ({
+        persistedTodos,
+        initialTodos,
+      }: {
+        persistedTodos: readonly Todo[];
+        initialTodos?: readonly Todo[];
+      }) =>
         useTodos({
           persistedTodos,
-          pendingTodos: [activeTodo],
+          initialTodos,
           taskId: "task-1",
         }),
       {
         initialProps: {
           persistedTodos: resolvedTodos,
+          initialTodos: [activeTodo],
         },
       },
     );
 
     expect(result.current.todos).toEqual([]);
 
-    rerender({ persistedTodos: [] });
+    rerender({ persistedTodos: [], initialTodos: [activeTodo] });
 
     expect(result.current.todos).toEqual([]);
     expect(result.current.todosRef.current).toEqual([]);
   });
 
-  it("keeps explicit pending todos visible until they are persisted", () => {
-    const { result, rerender } = renderHook(
-      ({ persistedTodos }: { persistedTodos?: readonly Todo[] }) =>
-        useTodos({ persistedTodos, pendingTodos: [activeTodo] }),
+  it("does not restore initial todos after resolved completion todos are cleared", () => {
+    const completionMessage = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [],
+    } as unknown as Message;
+    const resolvedTodos: Todo[] = [
       {
-        initialProps: {
-          persistedTodos: undefined as readonly Todo[] | undefined,
-        },
+        ...activeTodo,
+        status: "completed",
       },
-    );
+    ];
 
-    expect(result.current.todos).toEqual([activeTodo]);
-    expect(result.current.todosRef.current).toEqual([activeTodo]);
-
-    rerender({ persistedTodos: [] });
-
-    expect(result.current.todos).toEqual([activeTodo]);
-    expect(result.current.todosRef.current).toEqual([activeTodo]);
-  });
-
-  it("clears pending todos when persisted todos are empty and no pending source remains", () => {
     const { result, rerender } = renderHook(
       ({
         persistedTodos,
-        pendingTodos,
+        initialTodos,
       }: {
         persistedTodos?: readonly Todo[];
-        pendingTodos?: readonly Todo[];
-      }) => useTodos({ persistedTodos, pendingTodos }),
+        initialTodos?: readonly Todo[];
+      }) =>
+        useTodos({
+          persistedTodos,
+          initialTodos,
+          taskId: "task-1",
+        }),
       {
         initialProps: {
           persistedTodos: undefined as readonly Todo[] | undefined,
-          pendingTodos: [activeTodo] as readonly Todo[] | undefined,
+          initialTodos: [activeTodo] as readonly Todo[] | undefined,
         },
       },
     );
 
     expect(result.current.todos).toEqual([activeTodo]);
 
-    rerender({ persistedTodos: [], pendingTodos: undefined });
+    act(() =>
+      result.current.updateTodoCompletion({
+        message: completionMessage,
+        todos: resolvedTodos,
+        status: "completed",
+      }),
+    );
+
+    expect(result.current.todos).toEqual(resolvedTodos);
+
+    rerender({
+      persistedTodos: resolvedTodos,
+      initialTodos: [activeTodo],
+    });
+
+    expect(result.current.todos).toEqual([]);
+    expect(result.current.todosRef.current).toEqual([]);
+
+    rerender({
+      persistedTodos: [],
+      initialTodos: [activeTodo],
+    });
 
     expect(result.current.todos).toEqual([]);
     expect(result.current.todosRef.current).toEqual([]);
   });
 
-  it("does not restore consumed pending todos after deletion", () => {
+  it("keeps initial todos visible until they are persisted", () => {
     const { result, rerender } = renderHook(
       ({ persistedTodos }: { persistedTodos?: readonly Todo[] }) =>
-        useTodos({ persistedTodos, pendingTodos: [activeTodo] }),
+        useTodos({ persistedTodos, initialTodos: [activeTodo] }),
       {
         initialProps: {
           persistedTodos: undefined as readonly Todo[] | undefined,
@@ -224,11 +255,68 @@ describe("useTodos", () => {
       },
     );
 
-    rerender({ persistedTodos: [activeTodo] });
+    expect(result.current.todos).toEqual([activeTodo]);
+    expect(result.current.todosRef.current).toEqual([activeTodo]);
+
+    rerender({ persistedTodos: [] });
+
+    expect(result.current.todos).toEqual([activeTodo]);
+    expect(result.current.todosRef.current).toEqual([activeTodo]);
+  });
+
+  it("clears todos when persisted todos are empty and no initial source remains", () => {
+    const { result, rerender } = renderHook(
+      ({
+        persistedTodos,
+        initialTodos,
+      }: {
+        persistedTodos?: readonly Todo[];
+        initialTodos?: readonly Todo[];
+      }) => useTodos({ persistedTodos, initialTodos }),
+      {
+        initialProps: {
+          persistedTodos: undefined as readonly Todo[] | undefined,
+          initialTodos: [activeTodo] as readonly Todo[] | undefined,
+        },
+      },
+    );
+
+    expect(result.current.todos).toEqual([activeTodo]);
+
+    rerender({ persistedTodos: [], initialTodos: undefined });
+
+    expect(result.current.todos).toEqual([]);
+    expect(result.current.todosRef.current).toEqual([]);
+  });
+
+  it("keeps todos cleared after deletion even while the initial source remains", () => {
+    const { result, rerender } = renderHook(
+      ({
+        persistedTodos,
+        initialTodos,
+      }: {
+        persistedTodos?: readonly Todo[];
+        initialTodos?: readonly Todo[];
+      }) => useTodos({ persistedTodos, initialTodos }),
+      {
+        initialProps: {
+          persistedTodos: undefined as readonly Todo[] | undefined,
+          initialTodos: [activeTodo] as readonly Todo[] | undefined,
+        },
+      },
+    );
+
+    rerender({
+      persistedTodos: [activeTodo],
+      initialTodos: undefined,
+    });
     expect(result.current.todos).toEqual([activeTodo]);
 
     act(() => result.current.updateTodos([]));
-    rerender({ persistedTodos: [] });
+    rerender({
+      persistedTodos: [],
+      initialTodos: [activeTodo],
+    });
 
     expect(result.current.todos).toEqual([]);
     expect(result.current.todosRef.current).toEqual([]);

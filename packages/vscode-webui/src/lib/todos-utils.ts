@@ -1,6 +1,9 @@
+import { constants } from "@getpochi/common";
+import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import {
   ResolvedAttemptTodoCompletionResult,
   type ResolvedAttemptTodoCompletionResult as ResolvedAttemptTodoCompletionResultData,
+  type Todo,
   isTodoListResolved,
 } from "@getpochi/tools";
 
@@ -33,6 +36,44 @@ export function isAttemptTodoCompletionResolved(
     const resolved = isCandidateResolved(candidate);
     if (resolved !== undefined) return resolved;
   }
+}
+
+export function getInitialTodos({
+  info,
+  isSubTask,
+  subtask,
+  task,
+  messageRows,
+}: {
+  info: PochiTaskInfo;
+  isSubTask: boolean;
+  subtask?: { agent?: string; todos?: readonly Todo[] };
+  task?: { todos?: readonly Todo[] };
+  messageRows: readonly { data?: unknown }[];
+}): readonly Todo[] | undefined {
+  if (isSubTask) {
+    return subtask?.agent === constants.AttemptTodoCompletionAgentName
+      ? subtask.todos
+      : undefined;
+  }
+
+  if (info.type !== "new-task") return undefined;
+  if (hasAssistantMessage(messageRows)) return undefined;
+  if (!task) return info.todos;
+  if (task.todos && task.todos.length > 0) return undefined;
+  return info.todos;
+}
+
+function hasAssistantMessage(messageRows: readonly { data?: unknown }[]) {
+  return messageRows.some((row) => {
+    const data = row.data;
+    return (
+      typeof data === "object" &&
+      data !== null &&
+      "role" in data &&
+      data.role === "assistant"
+    );
+  });
 }
 
 function isCandidateResolved(candidate: unknown) {
