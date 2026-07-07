@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { SubmitDropdownButton } from "../submit-dropdown-button";
 
 vi.mock("@/lib/hooks/use-mcp", () => ({
@@ -15,6 +15,14 @@ vi.mock("react-i18next", () => ({
     t: (key: string) => key,
   }),
 }));
+
+beforeAll(() => {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+});
 
 const defaultProps = {
   onSubmit: vi.fn(),
@@ -51,5 +59,22 @@ describe("SubmitDropdownButton", () => {
     fireEvent.mouseEnter(screen.getByRole("button"));
 
     expect(screen.getByText("chat.todoModeLabel")).not.toBeNull();
+  });
+
+  it("shows the mode switch shortcut when hovering the todo mode toggle", async () => {
+    render(<SubmitDropdownButton {...defaultProps} showTodoMode />);
+
+    fireEvent.mouseEnter(screen.getByRole("button"));
+    const todoModeItem = screen
+      .getByText("chat.todoModeLabel")
+      .closest("[role='menuitem']");
+    expect(todoModeItem).not.toBeNull();
+    fireEvent.pointerMove(todoModeItem as Element);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("chat.planModeToggleShortcutTooltip").length,
+      ).toBeGreaterThan(0);
+    });
   });
 });
