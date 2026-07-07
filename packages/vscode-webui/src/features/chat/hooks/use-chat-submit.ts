@@ -237,7 +237,7 @@ export function useChatSubmit({
           // Error is already handled by the hook
           return;
         }
-      } else if (text.length > 0 || reviews.length > 0) {
+      } else if (text.length > 0 || messageReviews.length > 0) {
         clearUploadError();
         const parts = prepareMessageParts(
           t,
