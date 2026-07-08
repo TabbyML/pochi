@@ -292,6 +292,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const hasVisibleTodos = visibleTodos.length > 0;
   const hasVisibleChangedFiles =
     useTaskChangedFilesHelpers.visibleChangedFiles.length > 0;
+  const hasVisibleContextPanel = hasVisibleTodos || hasVisibleChangedFiles;
+  const hasQueuedMessages = queuedMessages.length > 0;
 
   return (
     <>
@@ -321,10 +323,22 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {(hasVisibleTodos || hasVisibleChangedFiles) && (
+      {hasQueuedMessages && (
+        <QueuedMessages
+          messages={queuedMessages}
+          onRemove={(index) =>
+            setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
+          }
+          onSteer={handleSteerQueuedMessage}
+        />
+      )}
+      {hasVisibleContextPanel && (
         <div
           className={cn(
             "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
+            {
+              "mt-0": hasQueuedMessages,
+            },
           )}
         >
           {hasVisibleTodos && (
@@ -347,15 +361,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       )}
-      {queuedMessages.length > 0 && (
-        <QueuedMessages
-          messages={queuedMessages}
-          onRemove={(index) =>
-            setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
-          }
-          onSteer={handleSteerQueuedMessage}
-        />
-      )}
       <div className="relative z-10">
         <ChatInputForm
           input={input}
@@ -373,10 +378,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           taskId={taskId}
           lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
           className={cn({
-            "rounded-t-none":
-              hasVisibleTodos ||
-              hasVisibleChangedFiles ||
-              queuedMessages.length > 0,
+            "rounded-t-none": hasVisibleContextPanel || hasQueuedMessages,
           })}
         >
           {files.length > 0 && (
