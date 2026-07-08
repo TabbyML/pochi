@@ -10,7 +10,7 @@ import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useAutoApproveGuard,
@@ -69,6 +69,7 @@ export function useChatSubmit({
   const { isExecuting } = useToolCallLifeCycle();
   const batchExecuteManager = useBatchExecuteManager();
   const { t } = useTranslation();
+  const pendingSteerMessageRef = useRef<QueuedMessage | undefined>(undefined);
 
   const abortExecutingToolCalls = useCallback(() => {
     batchExecuteManager.abort(taskId, "user-abort");
@@ -113,31 +114,56 @@ export function useChatSubmit({
     stopChat,
   ]);
 
-  const queueCurrentInput = useCallback(() => {
-    const queuedMessage: QueuedMessage = {
+  const createCurrentMessage = useCallback(() => {
+    const currentMessage: QueuedMessage = {
       text: input.text.trim(),
       files: [...files],
       reviews: [...reviews],
     };
 
     if (
-      queuedMessage.text.length === 0 &&
-      queuedMessage.files.length === 0 &&
-      queuedMessage.reviews.length === 0
+      currentMessage.text.length === 0 &&
+      currentMessage.files.length === 0 &&
+      currentMessage.reviews.length === 0
     ) {
-      return false;
+      return undefined;
     }
 
+    return currentMessage;
+  }, [files, input.text, reviews]);
+
+  const clearCurrentMessage = useCallback(
+    (currentMessage: QueuedMessage) => {
+      clearInput();
+      if (currentMessage.files.length > 0) {
+        clearFiles();
+      }
+      if (currentMessage.reviews.length > 0) {
+        vscodeHost.deleteReviews(
+          currentMessage.reviews.map((review) => review.id),
+        );
+      }
+    },
+    [clearFiles, clearInput],
+  );
+
+  const queueCurrentInput = useCallback(() => {
+    const queuedMessage = createCurrentMessage();
+    if (!queuedMessage) return false;
+
     setQueuedMessages((prev) => [...prev, queuedMessage]);
-    clearInput();
-    if (files.length > 0) {
-      clearFiles();
-    }
-    if (reviews.length > 0) {
-      vscodeHost.deleteReviews(reviews.map((review) => review.id));
-    }
+    clearCurrentMessage(queuedMessage);
     return true;
-  }, [clearFiles, clearInput, files, input.text, reviews, setQueuedMessages]);
+  }, [clearCurrentMessage, createCurrentMessage, setQueuedMessages]);
+
+  const queuePendingSteerInput = useCallback(() => {
+    const queuedMessage = createCurrentMessage();
+    if (!queuedMessage) return false;
+
+    pendingSteerMessageRef.current = queuedMessage;
+    clearCurrentMessage(queuedMessage);
+    return true;
+  }, [clearCurrentMessage, createCurrentMessage]);
 
   /**
    * Handles form submission, sending both the current input and any queued messages.
@@ -175,13 +201,16 @@ export function useChatSubmit({
       }
 
       const hasQueuedMessages = queuedMessages.length > 0;
-      const queuedMessage = options.flushQueuedMessages
-        ? queuedMessages[0]
-        : hasQueuedMessages
-          ? content.length > 0
-            ? undefined
-            : queuedMessages[0]
-          : undefined;
+      const pendingSteerMessage = options.flushQueuedMessages
+        ? pendingSteerMessageRef.current
+        : undefined;
+      const shouldUseQueuedMessage =
+        options.flushQueuedMessages ||
+        (hasQueuedMessages && !hasQueueableCurrentMessage);
+      const queuedMessage =
+        pendingSteerMessage ??
+        (shouldUseQueuedMessage ? queuedMessages[0] : undefined);
+      const hasPendingSteerMessage = !!pendingSteerMessage;
       const text = queuedMessage?.text ?? content;
       const messageFiles = queuedMessage?.files ?? files;
       const messageReviews = queuedMessage?.reviews ?? reviews;
@@ -205,7 +234,11 @@ export function useChatSubmit({
 
       // Send queued messages one at a time. The ready effect will flush the
       // next queued message after the current one finishes.
-      setQueuedMessages(hasQueuedMessages ? queuedMessages.slice(1) : []);
+      if (hasPendingSteerMessage) {
+        pendingSteerMessageRef.current = undefined;
+      } else {
+        setQueuedMessages(hasQueuedMessages ? queuedMessages.slice(1) : []);
+      }
       if (!options.flushQueuedMessages && content) {
         clearInput();
       }
@@ -288,14 +321,27 @@ export function useChatSubmit({
 
       if (blockingState.isBusy || isUploading) return;
 
-      if (isLoading || isExecuting) {
-        queueCurrentInput();
-        autoApproveGuard.current = "stop";
-        handleStop();
+      const hasVisibleQueue = queuedMessages.length > 0;
+      const isRunActive = isLoading || isExecuting;
+
+      if (!hasVisibleQueue && !isRunActive) {
+        await handleSubmit(e);
         return;
       }
 
-      await handleSubmit(e);
+      const didCaptureMessage = hasVisibleQueue
+        ? queuePendingSteerInput()
+        : queueCurrentInput();
+      const shouldInterrupt =
+        isRunActive && (hasVisibleQueue || didCaptureMessage);
+      const shouldPauseAutoApprove = didCaptureMessage || shouldInterrupt;
+      if (!shouldPauseAutoApprove) return;
+
+      autoApproveGuard.current = "stop";
+      if (shouldInterrupt) {
+        handleStop();
+        return;
+      }
     },
     [
       autoApproveGuard,
@@ -306,6 +352,8 @@ export function useChatSubmit({
       isLoading,
       isUploading,
       queueCurrentInput,
+      queuePendingSteerInput,
+      queuedMessages.length,
     ],
   );
 
