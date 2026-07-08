@@ -87,6 +87,89 @@ describe("useChatSubmit", () => {
     expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
   });
 
+  it("does not interrupt Command+Enter when there is no current or queued message", async () => {
+    const context = setup({ isLoading: true, inputText: "" });
+
+    await act(async () => {
+      await context.hook.result.current.handleSteerSubmit();
+    });
+
+    expect(context.queuedMessages).toEqual([]);
+    expect(context.clearInput).not.toHaveBeenCalled();
+    expect(context.stopChat).not.toHaveBeenCalled();
+    expect(context.sendMessage).not.toHaveBeenCalled();
+    expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+  });
+
+  it("keeps the visible queue stable when Command+Enter interrupts with queued messages", async () => {
+    const firstQueuedMessage = queuedMessage({ text: "first queued message" });
+    const context = setup({
+      isLoading: true,
+      queuedMessages: [firstQueuedMessage],
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSteerSubmit();
+    });
+
+    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
+    expect(context.clearInput).toHaveBeenCalledOnce();
+    expect(context.stopChat).toHaveBeenCalledOnce();
+    expect(context.sendMessage).not.toHaveBeenCalled();
+    expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
+
+    context.setIsLoading(false);
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+
+    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
+    expect(context.sendMessage).toHaveBeenNthCalledWith(1, {
+      parts: ["text:follow up"],
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+
+    expect(context.queuedMessages).toEqual([]);
+    expect(context.sendMessage).toHaveBeenNthCalledWith(2, {
+      parts: ["text:first queued message"],
+    });
+  });
+
+  it("stores Command+Enter submissions as hidden pending messages while idle with queued messages", async () => {
+    const firstQueuedMessage = queuedMessage({ text: "first queued message" });
+    const context = setup({
+      isLoading: false,
+      queuedMessages: [firstQueuedMessage],
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSteerSubmit();
+    });
+
+    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
+    expect(context.clearInput).toHaveBeenCalledOnce();
+    expect(context.stopChat).not.toHaveBeenCalled();
+    expect(context.sendMessage).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+
+    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
+    expect(context.sendMessage).toHaveBeenCalledWith({
+      parts: ["text:follow up"],
+    });
+  });
+
   it("keeps adding Enter submissions when queued messages already exist", async () => {
     const context = setup({
       isLoading: false,
@@ -191,7 +274,7 @@ describe("useChatSubmit", () => {
 });
 
 function setup({
-  isLoading,
+  isLoading: initialIsLoading,
   inputText: initialInputText = " follow up ",
   queuedMessages: initialQueuedMessages = [],
   files = [],
@@ -206,6 +289,7 @@ function setup({
   uploadFiles?: ReturnType<typeof vi.fn>;
 }) {
   let queuedMessages = initialQueuedMessages;
+  let isLoading = initialIsLoading;
   const setQueuedMessages = vi.fn(
     (value: React.SetStateAction<QueuedMessage[]>) => {
       queuedMessages =
@@ -260,6 +344,10 @@ function setup({
     uploadFiles,
     sendMessage,
     stopChat,
+    setIsLoading(value: boolean) {
+      isLoading = value;
+      hook.rerender();
+    },
   };
 }
 
