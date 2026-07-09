@@ -21,7 +21,6 @@ interface SubAgentViewProps {
   headerContent?: React.ReactNode;
   headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
-  footerTaskThreadLabel?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
   toolCallStatusRegistryRef?: NewTaskToolViewProps["toolCallStatusRegistryRef"];
   assistantName?: string;
@@ -38,7 +37,6 @@ export function SubAgentView({
   headerContent,
   headerActions,
   footerActions,
-  footerTaskThreadLabel,
   taskSource,
   toolCallStatusRegistryRef,
   assistantName = tool.input?.agentType ?? "Pochi",
@@ -174,17 +172,6 @@ export function SubAgentView({
                       showCommandDetails
                       showStatusIcon={false}
                     />
-                  </div>
-                )}
-                {!showToolCallLite && footerTaskThreadLabel && (
-                  <div
-                    className={cn(
-                      "min-w-0 flex-1 truncate text-xs",
-                      canShowFooterTaskThread &&
-                        "group-hover:underline group-hover:underline-offset-2",
-                    )}
-                  >
-                    {footerTaskThreadLabel}
                   </div>
                 )}
               </div>

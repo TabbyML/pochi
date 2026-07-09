@@ -582,8 +582,7 @@
     "stopped": "Todo 审计已停止",
     "stoppedDescription": "审计在生成总结前已停止。",
     "unavailable": "Todo 审计结果不可用",
-    "unavailableDescription": "审计结束了，但没有返回可读取的总结。",
-    "auditDetails": "审计详情"
+    "unavailableDescription": "审计结束了，但没有返回可读取的总结。"
   },
   "browserAgentSettings": {
     "runtimeSection": "浏览器运行环境",

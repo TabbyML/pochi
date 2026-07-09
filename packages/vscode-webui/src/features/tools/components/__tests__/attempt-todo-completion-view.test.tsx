@@ -10,18 +10,15 @@ const subAgentViewMock = vi.hoisted(() =>
   vi.fn(
     ({
       children,
-      footerTaskThreadLabel,
       headerContent,
       showTaskThread,
     }: {
       children: ReactNode;
-      footerTaskThreadLabel?: ReactNode;
       headerContent?: ReactNode;
       showTaskThread?: boolean;
     }) => (
       <div data-show-task-thread={String(showTaskThread)}>
         {headerContent}
-        {footerTaskThreadLabel}
         {children}
       </div>
     ),
@@ -262,14 +259,8 @@ describe("AttemptTodoCompletionView", () => {
       screen.getByText("attemptTodoCompletionView.stoppedDescription"),
     ).toBeTruthy();
     expect(
-      screen.getByText("attemptTodoCompletionView.auditDetails"),
-    ).toBeTruthy();
-    expect(
       screen.queryByText("attemptTodoCompletionView.unavailable"),
     ).toBeNull();
-    expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
-      footerTaskThreadLabel: "attemptTodoCompletionView.auditDetails",
-    });
   });
 
   it("renders a stopped title after cancellation caused by a previous tool failure", () => {
@@ -309,9 +300,6 @@ describe("AttemptTodoCompletionView", () => {
     ).toBeTruthy();
     expect(
       screen.getByText("attemptTodoCompletionView.unavailableDescription"),
-    ).toBeTruthy();
-    expect(
-      screen.getByText("attemptTodoCompletionView.auditDetails"),
     ).toBeTruthy();
   });
 

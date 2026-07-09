@@ -584,8 +584,7 @@
     "stopped": "Todo 監査を停止しました",
     "stoppedDescription": "監査はサマリーを生成する前に停止しました。",
     "unavailable": "Todo 監査結果を利用できません",
-    "unavailableDescription": "監査は終了しましたが、読み取れるサマリーが返されませんでした。",
-    "auditDetails": "監査の詳細"
+    "unavailableDescription": "監査は終了しましたが、読み取れるサマリーが返されませんでした。"
   },
   "browserAgentSettings": {
     "runtimeSection": "ブラウザー実行環境",
