@@ -5,7 +5,10 @@ import {
   getAttemptTodoCompletionSummary,
   parseAttemptTodoCompletionResult,
 } from "@/lib/todos-utils";
-import { getToolPartError } from "@/lib/tool-call-error";
+import {
+  getToolPartError,
+  isUserCancelledToolCallError,
+} from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
 import { isTodoListResolved } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
@@ -36,9 +39,12 @@ export function AttemptTodoCompletionView({
   const resolved = parsedResult
     ? isTodoListResolved(parsedResult.todos)
     : undefined;
+  const auditError = getToolPartError(tool);
+  const wasStopped = isUserCancelledToolCallError(auditError);
   const hasAuditFailure =
-    !!getToolPartError(tool) ||
-    (tool.state === "output-available" && resolved === undefined);
+    !wasStopped &&
+    (!!auditError ||
+      (tool.state === "output-available" && resolved === undefined));
   const showTaskThread =
     isExecuting && !summary && !!taskSource && taskSource.messages.length > 1;
   const showFooterTaskThread = !isExecuting;
@@ -49,9 +55,17 @@ export function AttemptTodoCompletionView({
     title = t("attemptTodoCompletionView.completed");
   } else if (resolved === false && !isExecuting) {
     title = t("attemptTodoCompletionView.needsWork");
+  } else if (wasStopped) {
+    title = t("attemptTodoCompletionView.stopped");
   } else if (hasAuditFailure) {
     title = t("attemptTodoCompletionView.failed");
   }
+
+  const fallbackDescription = wasStopped
+    ? t("attemptTodoCompletionView.stoppedDescription")
+    : hasAuditFailure
+      ? t("attemptTodoCompletionView.failedDescription")
+      : undefined;
 
   return (
     <SubAgentView
@@ -78,10 +92,16 @@ export function AttemptTodoCompletionView({
           {title}
         </span>
       }
+      footerTaskThreadLabel={t("attemptTodoCompletionView.auditDetails")}
+      statusIconVariant={wasStopped ? "muted" : undefined}
     >
       {summary ? (
         <div className="px-3 py-2 text-muted-foreground leading-6">
           <MessageMarkdown>{summary}</MessageMarkdown>
+        </div>
+      ) : fallbackDescription && !showTaskThread ? (
+        <div className="px-3 py-2 text-muted-foreground leading-6">
+          {fallbackDescription}
         </div>
       ) : (
         showTaskThread && (

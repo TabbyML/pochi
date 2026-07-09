@@ -26,6 +26,7 @@ interface StatusIconProps {
   isExecuting: boolean;
   className?: string;
   iconClassName?: string;
+  variant?: "default" | "muted";
 }
 
 export function StatusIcon({
@@ -33,6 +34,7 @@ export function StatusIcon({
   isExecuting,
   className,
   iconClassName,
+  variant = "default",
 }: StatusIconProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -65,7 +67,13 @@ export function StatusIcon({
       className={cn("size-4 text-zinc-500 dark:text-zinc-400", iconClassName)}
     />
   );
-  if (error || rejectedAttemptTodoCompletion) {
+  if (variant === "muted") {
+    statusIcon = (
+      <Pause
+        className={cn("size-4 text-zinc-500 dark:text-zinc-400", iconClassName)}
+      />
+    );
+  } else if (error || rejectedAttemptTodoCompletion) {
     statusIcon = (
       <X
         className={cn(

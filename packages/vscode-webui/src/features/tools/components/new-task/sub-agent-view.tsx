@@ -21,12 +21,14 @@ interface SubAgentViewProps {
   headerContent?: React.ReactNode;
   headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
+  footerTaskThreadLabel?: React.ReactNode;
   taskSource: NewTaskToolViewProps["taskSource"];
   toolCallStatusRegistryRef?: NewTaskToolViewProps["toolCallStatusRegistryRef"];
   assistantName?: string;
   showToolCall?: boolean;
   showTaskThread?: boolean;
   showTodos?: boolean;
+  statusIconVariant?: "default" | "muted";
 }
 
 export function SubAgentView({
@@ -37,11 +39,13 @@ export function SubAgentView({
   headerContent,
   headerActions,
   footerActions,
+  footerTaskThreadLabel,
   taskSource,
   toolCallStatusRegistryRef,
   assistantName = tool.input?.agentType ?? "Pochi",
   showToolCall,
   showTaskThread = true,
+  statusIconVariant,
 }: SubAgentViewProps) {
   const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
   const [showFooterTaskThread, setShowFooterTaskThread] = useState(false);
@@ -106,6 +110,7 @@ export function SubAgentView({
           isExecuting={isExecuting}
           className="mt-1 self-start leading-none"
           iconClassName="size-3.5"
+          variant={statusIconVariant}
         />
         <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
           {headerContent ?? (
@@ -172,6 +177,17 @@ export function SubAgentView({
                       showCommandDetails
                       showStatusIcon={false}
                     />
+                  </div>
+                )}
+                {!showToolCallLite && footerTaskThreadLabel && (
+                  <div
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-xs",
+                      canShowFooterTaskThread &&
+                        "group-hover:underline group-hover:underline-offset-2",
+                    )}
+                  >
+                    {footerTaskThreadLabel}
                   </div>
                 )}
               </div>

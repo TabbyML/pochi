@@ -583,7 +583,11 @@
     "auditing": "Auditing todos",
     "completed": "All todos completed",
     "needsWork": "Todo needs more work",
-    "failed": "Todo audit failed"
+    "stopped": "Todo audit stopped",
+    "stoppedDescription": "The audit was stopped before it could produce a summary.",
+    "failed": "Could not complete todo audit",
+    "failedDescription": "The audit ended without a readable summary.",
+    "auditDetails": "Audit details"
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",

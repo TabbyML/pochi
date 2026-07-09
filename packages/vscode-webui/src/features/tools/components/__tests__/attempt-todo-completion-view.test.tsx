@@ -9,15 +9,19 @@ const subAgentViewMock = vi.hoisted(() =>
   vi.fn(
     ({
       children,
+      footerTaskThreadLabel,
       headerContent,
       showTaskThread,
     }: {
       children: ReactNode;
+      footerTaskThreadLabel?: ReactNode;
       headerContent?: ReactNode;
+      statusIconVariant?: string;
       showTaskThread?: boolean;
     }) => (
       <div data-show-task-thread={String(showTaskThread)}>
         {headerContent}
+        {footerTaskThreadLabel}
         {children}
       </div>
     ),
@@ -77,6 +81,21 @@ function makeCompletedAttemptTodoCompletionTool(result: unknown) {
     },
     output: {
       result,
+    },
+  } as never;
+}
+
+function makeErroredAttemptTodoCompletionTool(error: string) {
+  return {
+    type: "tool-newTask",
+    toolCallId: "attempt-todo-completion",
+    state: "output-available",
+    input: {
+      agentType: "attemptTodoCompletion",
+      description: "Audit todo completion",
+    },
+    output: {
+      error,
     },
   } as never;
 }
@@ -221,6 +240,55 @@ describe("AttemptTodoCompletionView", () => {
     expect(screen.getByText("All todos are complete.")).toBeTruthy();
     expect(
       screen.getByText("attemptTodoCompletionView.completed"),
+    ).toBeTruthy();
+  });
+
+  it("renders a stopped title with a neutral status icon after user cancellation", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeErroredAttemptTodoCompletionTool(
+          "User aborted the tool call",
+        )}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("attemptTodoCompletionView.stopped")).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.stoppedDescription"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.auditDetails"),
+    ).toBeTruthy();
+    expect(screen.queryByText("attemptTodoCompletionView.failed")).toBeNull();
+    expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
+      statusIconVariant: "muted",
+      footerTaskThreadLabel: "attemptTodoCompletionView.auditDetails",
+    });
+  });
+
+  it("renders a failure title for malformed audit results", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAttemptTodoCompletionTool("not valid audit output")}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("attemptTodoCompletionView.failed")).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.failedDescription"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.auditDetails"),
     ).toBeTruthy();
   });
 

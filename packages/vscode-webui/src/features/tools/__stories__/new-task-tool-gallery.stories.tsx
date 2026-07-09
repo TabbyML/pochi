@@ -3,25 +3,29 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { TaskThreadSource } from "@/components/task-thread";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import type { ToolUIPart } from "ai";
 import { newTaskTool } from "../components/new-task";
 import type { ToolProps } from "../components/types";
 
 const NewTaskTool = newTaskTool;
+type NewTaskProp = ToolProps<"newTask">;
+type StoryTool = NewTaskProp["tool"] & {
+  isExecuting?: boolean;
+  taskThreadSource?: TaskThreadSource;
+};
 
 const ToolsGallery: React.FC<{
-  tools: ToolUIPart[];
+  tools: StoryTool[];
 }> = ({ tools = [] }) => {
   return (
     <div className="mt-3 ml-1 flex flex-col gap-2">
-      {tools.map((tool, index) => (
+      {tools.map(({ isExecuting, taskThreadSource, ...tool }, index) => (
         <NewTaskTool
-          // @ts-ignore
           tool={tool}
           key={tool.toolCallId + index}
-          taskThreadSource={
-            (tool as { taskThreadSource?: TaskThreadSource }).taskThreadSource
-          }
+          isExecuting={isExecuting ?? false}
+          isLoading={false}
+          messages={[]}
+          taskThreadSource={taskThreadSource}
         />
       ))}
     </div>
@@ -36,7 +40,6 @@ const meta: Meta<typeof ToolsGallery> = {
 export default meta;
 
 type Story = StoryObj<typeof ToolsGallery>;
-type NewTaskProp = ToolProps<"newTask">;
 
 // Mock data for TaskThreadSource stories
 const mockMessages: Message[] = [
@@ -213,20 +216,80 @@ export const Variants: Story = {
       {
         ...newTaskProps1,
         toolCallId: `${newTaskProps1.toolCallId}-completed`,
-        // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSource,
       },
       {
         ...newTaskProps2,
         toolCallId: `${newTaskProps2.toolCallId}-loading`,
-        // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSourceLoading,
       },
       {
         ...newTaskProps3,
         toolCallId: `${newTaskProps3.toolCallId}-empty`,
-        // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSourceEmpty,
+      },
+    ],
+  },
+};
+
+const auditTodos: Todo[] = [
+  {
+    id: "todo-1",
+    content: "Add regression coverage for todo audit cancellation",
+    status: "in-progress",
+    priority: "medium",
+  },
+];
+
+const attemptTodoCompletionTool: NewTaskProp["tool"] = {
+  state: "input-available",
+  toolCallId: "tool_attempt_todo_completion",
+  type: "tool-newTask",
+  input: {
+    agentType: "attemptTodoCompletion",
+    description: "Audit todo completion",
+    prompt: "Audit whether the current todo list is complete.",
+  },
+};
+
+export const TodoAuditStates: Story = {
+  args: {
+    tools: [
+      {
+        ...attemptTodoCompletionTool,
+        toolCallId: "tool_attempt_todo_completion-running",
+        isExecuting: true,
+        taskThreadSource: mockTaskThreadSource,
+      },
+      {
+        ...attemptTodoCompletionTool,
+        toolCallId: "tool_attempt_todo_completion-needs-work",
+        state: "output-available",
+        output: {
+          result: {
+            summary: "The audit found one todo that still needs work.",
+            todos: auditTodos,
+          },
+        } as never,
+        taskThreadSource: mockTaskThreadSource,
+      },
+      {
+        ...attemptTodoCompletionTool,
+        toolCallId: "tool_attempt_todo_completion-stopped",
+        state: "output-available",
+        output: {
+          error: "User aborted the tool call",
+        } as never,
+        taskThreadSource: mockTaskThreadSource,
+      },
+      {
+        ...attemptTodoCompletionTool,
+        toolCallId: "tool_attempt_todo_completion-unavailable",
+        state: "output-available",
+        output: {
+          result: "not valid audit output",
+        },
+        taskThreadSource: mockTaskThreadSource,
       },
     ],
   },
