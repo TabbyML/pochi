@@ -209,7 +209,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       skills,
       attemptCompletionSchema: this.attemptCompletionSchema,
       mcpTools,
-      todoModeEnabled,
     });
     if (tools.readFile) {
       tools.readFile = handleReadFileOutput(this.blobStore, tools.readFile);
