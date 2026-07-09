@@ -195,18 +195,21 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         }
       }
 
-      vscodeHost.openTaskInPanel({
-        type: "new-task",
-        cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
-        prompt: content,
-        todos,
-        files: uploadedFiles,
-        activeSelection: activeSelection ?? undefined,
-        mcpConfigOverride:
-          Object.keys(mcpConfigOverride).length > 0
-            ? mcpConfigOverride
-            : globalMcpConfig,
-      });
+      vscodeHost.openTaskInPanel(
+        {
+          type: "new-task",
+          cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
+          prompt: content,
+          todos,
+          files: uploadedFiles,
+          activeSelection: activeSelection ?? undefined,
+          mcpConfigOverride:
+            Object.keys(mcpConfigOverride).length > 0
+              ? mcpConfigOverride
+              : globalMcpConfig,
+        },
+        { preview: false },
+      );
 
       // Clear files if they were uploaded
       if (uploadedFiles && uploadedFiles.length > 0) {
