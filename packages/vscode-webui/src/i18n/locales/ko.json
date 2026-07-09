@@ -576,8 +576,8 @@
     "needsWork": "Todo에 추가 작업 필요",
     "stopped": "Todo 감사 중지됨",
     "stoppedDescription": "감사가 요약을 생성하기 전에 중지되었습니다.",
-    "failed": "Todo 감사를 완료할 수 없음",
-    "failedDescription": "감사가 종료되었지만 읽을 수 있는 요약을 반환하지 않았습니다.",
+    "unavailable": "Todo 감사 결과를 사용할 수 없음",
+    "unavailableDescription": "감사가 종료되었지만 읽을 수 있는 요약을 반환하지 않았습니다.",
     "auditDetails": "감사 세부 정보"
   },
   "browserAgentSettings": {

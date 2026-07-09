@@ -7,7 +7,7 @@ import {
 } from "@/lib/todos-utils";
 import {
   getToolPartError,
-  isUserCancelledToolCallError,
+  isToolCallCancellationError,
 } from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
 import { isTodoListResolved } from "@getpochi/tools";
@@ -40,7 +40,7 @@ export function AttemptTodoCompletionView({
     ? isTodoListResolved(parsedResult.todos)
     : undefined;
   const auditError = getToolPartError(tool);
-  const wasStopped = isUserCancelledToolCallError(auditError);
+  const wasStopped = isToolCallCancellationError(auditError);
   const hasAuditFailure =
     !wasStopped &&
     (!!auditError ||
@@ -58,13 +58,13 @@ export function AttemptTodoCompletionView({
   } else if (wasStopped) {
     title = t("attemptTodoCompletionView.stopped");
   } else if (hasAuditFailure) {
-    title = t("attemptTodoCompletionView.failed");
+    title = t("attemptTodoCompletionView.unavailable");
   }
 
   const fallbackDescription = wasStopped
     ? t("attemptTodoCompletionView.stoppedDescription")
     : hasAuditFailure
-      ? t("attemptTodoCompletionView.failedDescription")
+      ? t("attemptTodoCompletionView.unavailableDescription")
       : undefined;
 
   return (
@@ -93,7 +93,6 @@ export function AttemptTodoCompletionView({
         </span>
       }
       footerTaskThreadLabel={t("attemptTodoCompletionView.auditDetails")}
-      statusIconVariant={wasStopped ? "muted" : undefined}
     >
       {summary ? (
         <div className="px-3 py-2 text-muted-foreground leading-6">

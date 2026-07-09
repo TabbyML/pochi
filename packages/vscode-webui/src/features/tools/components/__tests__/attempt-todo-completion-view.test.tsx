@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { TaskThreadSource } from "@/components/task-thread";
+import { getToolCallErrorMessage } from "@/lib/tool-call-error";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,7 +17,6 @@ const subAgentViewMock = vi.hoisted(() =>
       children: ReactNode;
       footerTaskThreadLabel?: ReactNode;
       headerContent?: ReactNode;
-      statusIconVariant?: string;
       showTaskThread?: boolean;
     }) => (
       <div data-show-task-thread={String(showTaskThread)}>
@@ -243,7 +243,7 @@ describe("AttemptTodoCompletionView", () => {
     ).toBeTruthy();
   });
 
-  it("renders a stopped title with a neutral status icon after user cancellation", () => {
+  it("renders a stopped title with an error status icon after user cancellation", () => {
     render(
       <AttemptTodoCompletionView
         uid="attempt-uid"
@@ -264,14 +264,35 @@ describe("AttemptTodoCompletionView", () => {
     expect(
       screen.getByText("attemptTodoCompletionView.auditDetails"),
     ).toBeTruthy();
-    expect(screen.queryByText("attemptTodoCompletionView.failed")).toBeNull();
+    expect(
+      screen.queryByText("attemptTodoCompletionView.unavailable"),
+    ).toBeNull();
     expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
-      statusIconVariant: "muted",
       footerTaskThreadLabel: "attemptTodoCompletionView.auditDetails",
     });
   });
 
-  it("renders a failure title for malformed audit results", () => {
+  it("renders a stopped title after cancellation caused by a previous tool failure", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeErroredAttemptTodoCompletionTool(
+          getToolCallErrorMessage("previous-tool-call-failed"),
+        )}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("attemptTodoCompletionView.stopped")).toBeTruthy();
+    expect(
+      screen.queryByText("attemptTodoCompletionView.unavailable"),
+    ).toBeNull();
+  });
+
+  it("renders an unavailable title for malformed audit results", () => {
     render(
       <AttemptTodoCompletionView
         uid="attempt-uid"
@@ -283,9 +304,11 @@ describe("AttemptTodoCompletionView", () => {
       />,
     );
 
-    expect(screen.getByText("attemptTodoCompletionView.failed")).toBeTruthy();
     expect(
-      screen.getByText("attemptTodoCompletionView.failedDescription"),
+      screen.getByText("attemptTodoCompletionView.unavailable"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.unavailableDescription"),
     ).toBeTruthy();
     expect(
       screen.getByText("attemptTodoCompletionView.auditDetails"),

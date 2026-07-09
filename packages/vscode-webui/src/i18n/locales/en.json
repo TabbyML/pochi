@@ -585,8 +585,8 @@
     "needsWork": "Todo needs more work",
     "stopped": "Todo audit stopped",
     "stoppedDescription": "The audit was stopped before it could produce a summary.",
-    "failed": "Could not complete todo audit",
-    "failedDescription": "The audit ended without a readable summary.",
+    "unavailable": "Todo audit result unavailable",
+    "unavailableDescription": "The audit ended without a readable summary.",
     "auditDetails": "Audit details"
   },
   "browserAgentSettings": {

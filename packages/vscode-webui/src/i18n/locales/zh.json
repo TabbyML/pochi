@@ -581,8 +581,8 @@
     "needsWork": "Todo 需要继续推进",
     "stopped": "Todo 审计已停止",
     "stoppedDescription": "审计在生成总结前已停止。",
-    "failed": "无法完成 Todo 审计",
-    "failedDescription": "审计结束了，但没有返回可读取的总结。",
+    "unavailable": "Todo 审计结果不可用",
+    "unavailableDescription": "审计结束了，但没有返回可读取的总结。",
     "auditDetails": "审计详情"
   },
   "browserAgentSettings": {

@@ -28,7 +28,6 @@ interface SubAgentViewProps {
   showToolCall?: boolean;
   showTaskThread?: boolean;
   showTodos?: boolean;
-  statusIconVariant?: "default" | "muted";
 }
 
 export function SubAgentView({
@@ -45,7 +44,6 @@ export function SubAgentView({
   assistantName = tool.input?.agentType ?? "Pochi",
   showToolCall,
   showTaskThread = true,
-  statusIconVariant,
 }: SubAgentViewProps) {
   const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
   const [showFooterTaskThread, setShowFooterTaskThread] = useState(false);
@@ -110,7 +108,6 @@ export function SubAgentView({
           isExecuting={isExecuting}
           className="mt-1 self-start leading-none"
           iconClassName="size-3.5"
-          variant={statusIconVariant}
         />
         <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
           {headerContent ?? (
