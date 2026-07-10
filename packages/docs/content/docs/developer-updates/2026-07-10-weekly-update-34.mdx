@@ -1,0 +1,68 @@
+---
+title: 'Weekly Update #34'
+---
+# Weekly Update #34
+
+### TL;DR
+
+Pochi is getting better at proving its work instead of just asserting it. This release keeps the agent from calling a task complete on its own say-so, and gives you more visibility into what it changes before those changes land, not after.
+
+More below!
+
+### 🚀 Features
+
+- **Todo mode with automated completion auditing:** When you work through a task that still has open todos, Pochi now runs a required completion checkpoint before it can close. A read-only audit sub-agent inspects the actual workspace, reading files, test output, and command results, and only lets the task finish when the work is genuinely done. If it isn't, Pochi picks the work back up and keeps going.
+
+  Previously the agent could call a task done off its own summary, with nothing checking that summary against the real state of your files. A task could "complete" with todos still open and tests still failing.
+
+  Most useful on long, multi-step tasks where it's easy to lose track of what's actually finished. The audit checks the work against real evidence before closing, so "done" means done. [**#1697**](https://github.com/TabbyML/pochi/pull/1697)
+
+  <video controls style={{ width: "100%", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+    <source src="https://assets.docs.getpochi.com/docs/40/40f77e3121db362b70fa60def155187f48fce36f84c5b9a97c8bfefd19ad1641.mp4" type="video/mp4" />
+  </video>
+
+### 🐛 Bug Fixes
+
+- **Diff preview before approval:** You now see the exact change Pochi is about to make before you approve it. Edits from `writeToFile`, `applyDiff`, and `multiApplyDiff` render their full diff in a viewer while they wait for approval, so you Accept or Reject with the change in front of you.
+
+  Previously the diff only appeared after the edit had already run, so approving a pending change meant approving it partly blind.
+
+  The preview is computed in memory without touching disk, so nothing is written until you approve. [**#1745**](https://github.com/TabbyML/pochi/pull/1745)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Diff preview shown with Accept / Reject before the edit is applied](https://assets.docs.getpochi.com/docs/3c/3c26bf2c927dd0d6d910ee9a2c97d4fa8606a0d3307a3e0adb54253af52924be)</div>
+
+- **One-click auto-approve toggle:** The toolbar shield icon now toggles auto-approve directly on click, with a hover tooltip showing whether it's currently enabled or disabled. The full permissions menu is still one right-click away.
+
+  Before, the icon only opened the popover, so flipping the master state took an extra step and there was no at-a-glance indication of the current mode. [**#1746**](https://github.com/TabbyML/pochi/pull/1746)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Toolbar shield tooltip showing auto-approve enabled](https://assets.docs.getpochi.com/docs/3c/3c879f8ceb9597afd56d3e2494cd9e9b7f881c2af379bbcc773c841837de206b)</div>
+
+- **Read-before-write guard restored:** Pochi again blocks a write to a file it hasn't read, and re-checks that the file hasn't changed on disk since it was last read, prompting a fresh read before the edit goes through.
+
+  This staleness check had been temporarily disabled, which let edits run against a file the agent had never actually opened. [**#1748**](https://github.com/TabbyML/pochi/pull/1748)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Write blocked because the file has not been read yet](https://assets.docs.getpochi.com/docs/31/3124e3b913a345d94d6f6e9d1a7316426460b5d8d623f0158b0915989c278ab9)</div>
+
+- **Task list scoped to the current repository:** Pinned and archived tasks now only show for the repository you have open, instead of leaking across every project.
+
+  The task list previously returned every task regardless of workspace, so pins and archives from unrelated repos showed up together. [**#1742**](https://github.com/TabbyML/pochi/pull/1742)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Task list scoped to the open repository](https://assets.docs.getpochi.com/docs/94/94825f2df9a0772be276586697952b63d5bb569b173cd711a334e49e0f95b63e)</div>
+
+- **User edits tracked by workspace, not the active tab:** Your manual edits since the last checkpoint are now tracked based on the workspace the task belongs to, so opening or focusing another file no longer drops that tracking.
+
+  Tracking was gated on the Pochi task being the active editor tab. The moment you focused a file to edit it, the task went inactive and its edits were cleared, exactly when the changes were being made. [**#1740**](https://github.com/TabbyML/pochi/pull/1740)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![File shown with a user-edit badge](https://assets.docs.getpochi.com/docs/a6/a6e04cb835737c778441a6c0e0114164cb8ed5e8684a99e5843502bdd9eb7252)</div>
+
+- **Project memory disable applies to the current task:** Turning off the Project Memory checkbox now takes effect immediately for the task you're in, rather than only the next one.
+
+  The project-memory context was cached per panel mount, so toggling it off didn't stop injection until you remounted the panel. [**#1739**](https://github.com/TabbyML/pochi/pull/1739)
+
+  <div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Context window panel with the Project memory toggle](https://assets.docs.getpochi.com/docs/4c/4c266cae61b1df00455f18e3cf464044fa7a7769b124829bb369fcbc2e869433)</div>
+
+- **User message kept on an early stream abort:** If a stream finishes before the assistant's reply is added (for example, an immediate abort at task start), your message is now preserved instead of being dropped from the thread. [**#1733**](https://github.com/TabbyML/pochi/pull/1733)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![User message preserved after an early stream abort](https://assets.docs.getpochi.com/docs/2a/2ae7737b2cef260f092a132d6add6de1337ba069b2167ee73b0198d776cc4a98)</div>
+
+- **Model preserved when compacting a task:** A task you compact into a new one now keeps the model you had selected on the parent, instead of resetting to the default. [**#1725**](https://github.com/TabbyML/pochi/pull/1725)
