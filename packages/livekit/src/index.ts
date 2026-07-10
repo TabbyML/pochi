@@ -8,6 +8,7 @@ export {
   type LiveChatKitProjectMemoryOptions,
   type LiveChatKitTaskMemoryOptions,
 } from "./chat/live-chat-kit";
+export { getAutoCompactThreshold } from "./chat/auto-compact-policy";
 export type { AutoMemoryManager } from "@getpochi/common";
 export type { RunningTaskAdaptor } from "./background-task/task-executor/task-executor";
 export type LLMRequestData = RequestData["llm"];

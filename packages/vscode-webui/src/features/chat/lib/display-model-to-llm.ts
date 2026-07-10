@@ -17,6 +17,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
       id: model.id,
       type: "vendor",
       contextWindow: model.options.contextWindow,
+      effectiveContextWindow: model.options.effectiveContextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
       getModel: () =>
         createModel(model.vendorId, {
@@ -38,6 +39,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
         model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
       contextWindow:
         model.options.contextWindow ?? constants.DefaultContextWindow,
+      effectiveContextWindow: model.options.effectiveContextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
       contentType: model.contentType,
     };
@@ -53,6 +55,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
         model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
       contextWindow:
         model.options.contextWindow ?? constants.DefaultContextWindow,
+      effectiveContextWindow: model.options.effectiveContextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
       contentType: model.contentType,
     };
@@ -74,6 +77,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
         model.options.maxTokens ?? constants.DefaultMaxOutputTokens,
       contextWindow:
         model.options.contextWindow ?? constants.DefaultContextWindow,
+      effectiveContextWindow: model.options.effectiveContextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
       contentType: model.contentType,
     };

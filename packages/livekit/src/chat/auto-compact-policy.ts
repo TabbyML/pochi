@@ -6,17 +6,44 @@ export const MaxSummaryOutputTokens = 20_000;
 
 export const AutoCompactBufferTokens = 13_000;
 
+// The absolute buffer alone kicks in far too late on large context windows,
+// so the threshold is also capped at this fraction of the effective window.
+export const AutoCompactRatio = 0.8;
+
+// Most models degrade on agentic tasks well before very large declared
+// windows are exhausted. When a model does not declare an explicit
+// effectiveContextWindow, cap the window used for auto-compaction here.
+export const DefaultEffectiveContextWindow = 200_000;
+
 export const MaxConsecutiveAutoCompactFailures = 3;
 
-export function getAutoCompactThreshold(contextWindow: number): number {
-  const effective = Math.max(contextWindow - MaxSummaryOutputTokens, 0);
-  return Math.max(effective - AutoCompactBufferTokens, 0);
+export function getAutoCompactThreshold(
+  contextWindow: number,
+  effectiveContextWindow?: number,
+): number {
+  const window = Math.min(
+    effectiveContextWindow || DefaultEffectiveContextWindow,
+    contextWindow,
+  );
+  const byBuffer = window - MaxSummaryOutputTokens - AutoCompactBufferTokens;
+  const byRatio = Math.floor(window * AutoCompactRatio);
+  return Math.max(Math.min(byBuffer, byRatio), 0);
 }
 
-function resolveContextWindow(llm: RequestData["llm"] | undefined): number {
+function resolveContextWindow(llm: RequestData["llm"] | undefined): {
+  contextWindow: number;
+  effectiveContextWindow?: number;
+} {
   const declared =
     llm && "contextWindow" in llm ? llm.contextWindow : undefined;
-  return declared || constants.DefaultContextWindow;
+  const effective =
+    llm && "effectiveContextWindow" in llm
+      ? llm.effectiveContextWindow
+      : undefined;
+  return {
+    contextWindow: declared || constants.DefaultContextWindow,
+    effectiveContextWindow: effective,
+  };
 }
 
 export function shouldAutoCompact({
@@ -50,8 +77,10 @@ export function shouldAutoCompact({
   );
   if (totalTokens < constants.CompactTaskMinTokens) return false;
 
-  const contextWindow = resolveContextWindow(llm);
-  if (totalTokens < getAutoCompactThreshold(contextWindow)) {
+  const { contextWindow, effectiveContextWindow } = resolveContextWindow(llm);
+  if (
+    totalTokens < getAutoCompactThreshold(contextWindow, effectiveContextWindow)
+  ) {
     return false;
   }
 

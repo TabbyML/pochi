@@ -22,6 +22,12 @@ const BaseModelSettings = z.object({
         .number()
         .optional()
         .describe("Context window size for the model"),
+      effectiveContextWindow: z
+        .number()
+        .optional()
+        .describe(
+          "Context window size used for auto-compaction; set below contextWindow when the model degrades before its declared limit",
+        ),
       useToolCallMiddleware: z
         .boolean()
         .optional()

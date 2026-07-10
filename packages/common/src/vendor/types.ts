@@ -3,6 +3,7 @@ import z from "zod";
 export const ModelOptions = z.object({
   label: z.string().optional(),
   contextWindow: z.number().optional(),
+  effectiveContextWindow: z.number().optional(),
   useToolCallMiddleware: z.boolean().optional(),
   contentType: z.array(z.string()).optional(),
 });
