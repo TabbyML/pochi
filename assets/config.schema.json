@@ -81,6 +81,10 @@
                       "description": "Context window size for the model",
                       "type": "number"
                     },
+                    "effectiveContextWindow": {
+                      "description": "Context window size used for auto-compaction; set below contextWindow when the model degrades before its declared limit",
+                      "type": "number"
+                    },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
@@ -139,6 +143,10 @@
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "effectiveContextWindow": {
+                      "description": "Context window size used for auto-compaction; set below contextWindow when the model degrades before its declared limit",
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -202,6 +210,10 @@
                       "description": "Context window size for the model",
                       "type": "number"
                     },
+                    "effectiveContextWindow": {
+                      "description": "Context window size used for auto-compaction; set below contextWindow when the model degrades before its declared limit",
+                      "type": "number"
+                    },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
@@ -261,6 +273,10 @@
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "effectiveContextWindow": {
+                      "description": "Context window size used for auto-compaction; set below contextWindow when the model degrades before its declared limit",
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
@@ -391,6 +407,10 @@
                     },
                     "contextWindow": {
                       "description": "Context window size for the model",
+                      "type": "number"
+                    },
+                    "effectiveContextWindow": {
+                      "description": "Context window size used for auto-compaction; set below contextWindow when the model degrades before its declared limit",
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
