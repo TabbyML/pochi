@@ -57,7 +57,7 @@ More below!
 
 - **Project memory disable applies to the current task:** Turning off the Project Memory checkbox now removes project memory from the task you're in right away, instead of only taking effect on your next task.
 
-  The project-memory context was cached per panel mount, so toggling it off didn't drop it from the current task until you remounted the panel. [**#1739**](https://github.com/TabbyML/pochi/pull/1739)
+  The context was cached per panel mount and the MEMORY.md snapshot was also persisted into the task's first message, so toggling it off never removed it from the task you were in — disabling only took effect once you started a new task. [**#1739**](https://github.com/TabbyML/pochi/pull/1739)
 
   <div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Context window panel with the Project memory toggle](https://assets.docs.getpochi.com/docs/4c/4c266cae61b1df00455f18e3cf464044fa7a7769b124829bb369fcbc2e869433)</div>
 
