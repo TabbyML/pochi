@@ -80,6 +80,41 @@ describe('formatters', () => {
       expect(assistantMessages[0].parts).toHaveLength(4); // reasoning, text, tool1, tool2
     });
 
+    it('should keep the last message id when combining consecutive assistant messages', () => {
+      const formatted = formatters.ui(clone(baseMessages));
+      const assistantMessages = formatted.filter((m) => m.role === 'assistant');
+      expect(assistantMessages).toHaveLength(1);
+      // The surviving message must carry the id of the last (most recent)
+      // assistant message so that fork truncation and checkpoint tracking
+      // reference the correct DB record.
+      expect(assistantMessages[0].id).toBe('assistant-2');
+    });
+
+    it('should keep the last message id when combining three or more consecutive assistant messages', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'first' }],
+        },
+        {
+          id: 'assistant-b',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'second' }],
+        },
+        {
+          id: 'assistant-c',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'third' }],
+        },
+      ];
+      const formatted = formatters.ui(clone(messages));
+      expect(formatted).toHaveLength(1);
+      expect(formatted[0].id).toBe('assistant-c');
+      const textParts = formatted[0].parts.filter((p) => p.type === 'text');
+      expect(textParts.map((p) => (p as any).text)).toEqual(['first', 'second', 'third']);
+    });
+
     it('should remove empty reasoning parts with provider metadata', () => {
       const messages: UIMessage[] = [
         {

@@ -132,8 +132,8 @@ function combineConsecutiveAssistantMessages(
       messages[i].role === "assistant" &&
       messages[i + 1].role === "assistant"
     ) {
-      messages[i].parts.push(...messages[i + 1].parts);
-      messages.splice(i + 1, 1);
+      messages[i + 1].parts.unshift(...messages[i].parts);
+      messages.splice(i, 1);
       i--;
     }
   }
@@ -168,8 +168,8 @@ function combineConsecutiveAssistantMessages(
       messages[i].role === "assistant" &&
       messages[i + 1].role === "assistant"
     ) {
-      messages[i].parts.push(...messages[i + 1].parts);
-      messages.splice(i + 1, 1);
+      messages[i + 1].parts.unshift(...messages[i].parts);
+      messages.splice(i, 1);
       i--;
     }
   }
