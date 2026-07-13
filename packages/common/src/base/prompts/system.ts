@@ -113,7 +113,6 @@ Use normal tools to make concrete progress toward completing the todos. Do not s
 
 When you believe the todos may be complete or should stop, call attemptCompletion. In todo mode, attemptCompletion is the completion checkpoint and may be audited before automatic continuation stops. If the completion audit is not accepted, you will receive a reason and should continue working from that feedback.
 
-Do not call askFollowupQuestion when active todos are present.
 `;
   return prompt;
 }

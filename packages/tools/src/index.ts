@@ -132,7 +132,6 @@ export interface CreateClientToolOptions {
   contentType?: string[];
   attemptCompletionSchema?: z.ZodType;
   agent?: CustomAgent;
-  todoModeEnabled?: boolean;
 }
 
 const HiddenNewTaskAgentNames = new Set(["attemptTodoCompletion"]);
@@ -191,23 +190,12 @@ type SelectAgentToolsOptions = {
 
 const RequiredAgentTools = ["attemptCompletion", "useSkill"];
 
-function isTodoModeToolSelectionEnabled(
-  todoModeEnabled: boolean | undefined,
-  isSubTask: boolean,
-): boolean {
-  return !!todoModeEnabled && !isSubTask;
-}
-
 function isAgentToolDisabled(
   agentName: string,
   toolName: string,
   isSubTask: boolean,
-  todoModeEnabled?: boolean,
 ): boolean {
   if (isSubTask && toolName === "newTask") return true;
-  if (todoModeEnabled) {
-    return toolName === "askFollowupQuestion";
-  }
 
   const canAskFollowupQuestion =
     agentName === "planner" || agentName === "guide";
@@ -217,7 +205,6 @@ function isAgentToolDisabled(
 function getAgentToolAllowList(
   agent: CustomAgent | undefined,
   isSubTask: boolean,
-  todoModeEnabled?: boolean,
 ): Set<string> | undefined {
   /**
    * if no agent or no tools specified, we don't filter any tools.
@@ -231,7 +218,7 @@ function getAgentToolAllowList(
 
   for (const tool of agent.tools) {
     const { name } = parseToolSpec(tool);
-    if (isAgentToolDisabled(agent.name, name, isSubTask, todoModeEnabled)) {
+    if (isAgentToolDisabled(agent.name, name, isSubTask)) {
       continue;
     }
     if (RequiredAgentTools.includes(name)) continue;
@@ -260,26 +247,12 @@ export const selectAgentTools = (
   options: SelectAgentToolsOptions,
 ): AgentTools => {
   const { agent, mcpTools, isSubTask, ...toolOptions } = options;
-  const todoModeEnabled = isTodoModeToolSelectionEnabled(
-    options.todoModeEnabled,
-    options.isSubTask,
-  );
-  const allowList = getAgentToolAllowList(
-    agent,
-    options.isSubTask,
-    todoModeEnabled,
-  );
+  const allowList = getAgentToolAllowList(agent, options.isSubTask);
 
-  let avaliableTools: AgentTools = {
+  const avaliableTools: AgentTools = {
     ...createClientTools(toolOptions),
     ...(mcpTools ?? {}),
   };
-
-  if (todoModeEnabled) {
-    const { askFollowupQuestion: _askFollowupQuestion, ...rest } =
-      avaliableTools;
-    avaliableTools = rest;
-  }
 
   if (agent?.name === "reviewer") {
     avaliableTools.createReview = createReview;
