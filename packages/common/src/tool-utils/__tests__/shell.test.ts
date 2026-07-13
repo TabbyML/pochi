@@ -31,16 +31,19 @@ describe("getShellPath", () => {
 });
 
 describe("buildShellCommand", () => {
-  it("should build a powershell command on Windows", () => {
+  it("should build a powershell command on Windows with UTF-8 output", () => {
     vi.stubGlobal("process", { platform: "win32", env: {} });
     const command = buildShellCommand("echo 'hello'");
     expect(command).toEqual({
       command: "powershell.exe",
-      args: ["-Command", "echo 'hello'"],
+      args: [
+        "-Command",
+        "$OutputEncoding=[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);echo 'hello'",
+      ],
     });
   });
 
-  it("should build a cmd command on Windows", () => {
+  it("should build a cmd command on Windows with UTF-8 codepage", () => {
     vi.stubGlobal("process", {
       platform: "win32",
       env: { ComSpec: "cmd.exe" },
@@ -48,7 +51,7 @@ describe("buildShellCommand", () => {
     const command = buildShellCommand("echo 'hello'");
     expect(command).toEqual({
       command: "cmd.exe",
-      args: ["/d", "/s", "/c", "echo 'hello'"],
+      args: ["/d", "/s", "/c", "chcp 65001>nul & echo 'hello'"],
     });
   });
 
