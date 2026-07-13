@@ -37,6 +37,8 @@ export class TerminalJob implements vscode.Disposable {
 
   private readonly terminal: vscode.Terminal;
   private disposables: vscode.Disposable[] = [];
+  private closeListener: vscode.Disposable | undefined;
+  private disposed = false;
   private shellIntegration: vscode.TerminalShellIntegration | undefined;
   private execution: vscode.TerminalShellExecution | undefined;
   private outputManager: OutputManager;
@@ -69,6 +71,16 @@ export class TerminalJob implements vscode.Disposable {
       iconPath: new vscode.ThemeIcon("piano"),
       hideFromUser: false,
       isTransient: false,
+    });
+
+    // Keep the job registered (and thus its terminal <-> backgroundJobId
+    // association) alive as long as the terminal is open, so the UI can keep
+    // highlighting the active terminal and jump to it even after the command
+    // has finished executing.
+    this.closeListener = vscode.window.onDidCloseTerminal((terminal) => {
+      if (terminal === this.terminal) {
+        this.dispose();
+      }
     });
 
     this.terminal.show();
@@ -106,8 +118,21 @@ export class TerminalJob implements vscode.Disposable {
       }
     } finally {
       this.outputManager.finalize(executionError);
-      this.dispose();
+      // Only tear down the execution-scoped listeners here. The job itself
+      // stays registered until the terminal is closed (see closeListener),
+      // so the UI can still highlight and reopen the terminal.
+      this.cleanupExecution();
     }
+  }
+
+  /**
+   * Dispose of the execution-scoped listeners while keeping the job registered.
+   */
+  private cleanupExecution(): void {
+    for (const d of this.disposables) {
+      d.dispose();
+    }
+    this.disposables = [];
   }
 
   /**
@@ -168,12 +193,18 @@ export class TerminalJob implements vscode.Disposable {
    * Dispose of the terminal and clean up resources
    */
   dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+
     TerminalJob.jobs.delete(this.id);
     TerminalJob.onDidDisposeEmitter.fire(this);
-    for (const d of this.disposables) {
-      d.dispose();
-    }
-    this.disposables = [];
+
+    this.closeListener?.dispose();
+    this.closeListener = undefined;
+
+    this.cleanupExecution();
 
     logger.debug(`Disposed terminal job "${this.config.name}"`);
   }
