@@ -346,6 +346,7 @@
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",
     "readBackground": "正在读取后台任务输出",
+    "readTerminal": "正在读取终端输出",
     "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
     "backgroundExecuting": "正在后台执行命令",

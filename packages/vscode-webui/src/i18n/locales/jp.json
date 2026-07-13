@@ -348,6 +348,7 @@
     "result_one": "{{count}}件の結果",
     "result_other": "{{count}}件の結果",
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
+    "readTerminal": "ターミナル出力を読み込み中",
     "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",

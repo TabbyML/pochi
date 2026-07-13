@@ -9,13 +9,16 @@ export const ReadBackgroundJobOutputTool: React.FC<
   ToolProps<"readBackgroundJobOutput">
 > = ({ tool, isExecuting }) => {
   const { t } = useTranslation();
-  const { regex } = tool.input || {};
-  const backgroundJobId =
-    tool.state !== "input-streaming" ? tool.input?.backgroundJobId : undefined;
+  const { backgroundJobId, regex } = tool.input || {};
+  const isUserTerminal = backgroundJobId?.startsWith("term-");
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2">{t("toolInvocation.readBackground")}</span>
+      <span className="ml-2">
+        {isUserTerminal
+          ? t("toolInvocation.readTerminal")
+          : t("toolInvocation.readBackground")}
+      </span>
       {regex && (
         <>
           {" "}
@@ -26,13 +29,16 @@ export const ReadBackgroundJobOutputTool: React.FC<
     </>
   );
 
+  const finalJobId =
+    tool.state !== "input-streaming" ? backgroundJobId : undefined;
+
   return (
     <ExpandableToolContainer
       title={title}
       detail={
-        backgroundJobId ? (
+        finalJobId ? (
           <BackgroundJobPanel
-            backgroundJobId={backgroundJobId}
+            backgroundJobId={finalJobId}
             output={tool.output?.output}
           />
         ) : null

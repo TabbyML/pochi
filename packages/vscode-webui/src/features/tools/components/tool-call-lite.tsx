@@ -220,10 +220,15 @@ const ReadBackgroundJobTool = ({
   tool,
 }: ToolCallLiteViewProps<"readBackgroundJobOutput">) => {
   const { t } = useTranslation();
-  const { regex } = tool.input || {};
+  const { backgroundJobId, regex } = tool.input || {};
+  const isUserTerminal = backgroundJobId?.startsWith("term-");
   return (
     <>
-      <span className="ml-2">{t("toolInvocation.readBackground")}</span>
+      <span className="ml-2">
+        {isUserTerminal
+          ? t("toolInvocation.readTerminal")
+          : t("toolInvocation.readBackground")}
+      </span>
       {regex && (
         <>
           {" "}
