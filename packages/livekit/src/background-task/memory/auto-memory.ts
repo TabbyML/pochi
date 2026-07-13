@@ -441,7 +441,12 @@ export class AutoMemoryAdaptor {
 
     try {
       const parentCwd = this.getParentCwd();
-      const context = await this.options.manager.readContext(parentCwd);
+      // Extraction keeps running even when Project Memory injection is
+      // disabled, so bypass the enabled preference when reading context.
+      const context = await this.options.manager.readContext({
+        cwd: parentCwd,
+        force: true,
+      });
       if (!context) return false;
 
       const state = this.getState();

@@ -61,8 +61,9 @@ export interface AutoMemoryReadContextOptions {
   ensure?: boolean;
   /**
    * When true, bypass the user's Project Memory enabled preference and
-   * return the context regardless. Used by UI surfaces that need to
-   * surface the memory index file even when the feature is disabled.
+   * return the context regardless. Used by UI surfaces that need to surface
+   * the memory index file, and by background extraction which keeps running
+   * even when memory injection is disabled.
    */
   force?: boolean;
 }
