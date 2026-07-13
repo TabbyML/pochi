@@ -127,54 +127,44 @@ function isCompactOnlyUserMessage(message: UIMessage): boolean {
 function combineConsecutiveAssistantMessages(
   messages: UIMessage[],
 ): UIMessage[] {
-  for (let i = 0; i < messages.length - 1; i++) {
-    if (
-      messages[i].role === "assistant" &&
-      messages[i + 1].role === "assistant"
-    ) {
-      messages[i + 1].parts.unshift(...messages[i].parts);
-      messages.splice(i, 1);
-      i--;
-    }
-  }
+  const result: UIMessage[] = [];
 
-  // Merge compact-only user messages into the adjacent assistant message so
-  // the surrounding assistant messages combine and the compact checkpoint
-  // renders as a separator without a visible user message row.
   for (let i = 0; i < messages.length; i++) {
-    if (isCompactOnlyUserMessage(messages[i])) {
-      const compactParts = messages[i].parts.filter(
+    const message = messages[i];
+    const prev = result[result.length - 1];
+
+    // Fold a compact-only user message's checkpoint parts into an adjacent
+    // assistant message so the surrounding assistant messages combine and the
+    // compact checkpoint renders as a separator without a visible user row.
+    if (isCompactOnlyUserMessage(message)) {
+      const compactParts = message.parts.filter(
         (part) => part.type === "text" && prompts.isCompact(part.text),
       );
-      if (i > 0 && messages[i - 1].role === "assistant") {
-        messages[i - 1].parts.push(...compactParts);
-        messages.splice(i, 1);
-        i--;
-      } else if (
-        i < messages.length - 1 &&
-        messages[i + 1].role === "assistant"
-      ) {
-        messages[i + 1].parts.unshift(...compactParts);
-        messages.splice(i, 1);
-        i--;
+      const next = messages[i + 1];
+      if (prev?.role === "assistant") {
+        prev.parts.push(...compactParts);
+        continue;
       }
+      if (next?.role === "assistant") {
+        next.parts.unshift(...compactParts);
+        continue;
+      }
+      result.push(message);
+      continue;
     }
+
+    // Merge into the previous assistant message, keeping the later message's id
+    // and prepending the earlier message's parts.
+    if (message.role === "assistant" && prev?.role === "assistant") {
+      message.parts.unshift(...prev.parts);
+      result[result.length - 1] = message;
+      continue;
+    }
+
+    result.push(message);
   }
 
-  // Re-run consecutive assistant merge now that compact-only user messages
-  // have been removed.
-  for (let i = 0; i < messages.length - 1; i++) {
-    if (
-      messages[i].role === "assistant" &&
-      messages[i + 1].role === "assistant"
-    ) {
-      messages[i + 1].parts.unshift(...messages[i].parts);
-      messages.splice(i, 1);
-      i--;
-    }
-  }
-
-  return messages;
+  return result;
 }
 
 function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
