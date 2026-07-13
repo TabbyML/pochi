@@ -1,4 +1,5 @@
 import { getLogger } from "@/lib/logger";
+import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import { MaxTerminalOutputSize } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
@@ -132,6 +133,7 @@ export class OutputManager {
   private chunks: string[] = [];
   private truncator = new OutputTruncator();
   private lastReadLength = 0; // tracks byte length, not character length
+  private lastReadAt = 0;
 
   private constructor(options: OutputManagerOptions) {
     this.id = options.id;
@@ -164,6 +166,13 @@ export class OutputManager {
   } {
     const currentOutput = this.output.value.content;
     const currentOutputBytes = Buffer.byteLength(currentOutput, "utf8");
+    const now = Date.now();
+    const previousReadAt = this.lastReadAt === 0 ? undefined : this.lastReadAt;
+    assertBackgroundJobReadInterval({
+      now,
+      previousReadAt,
+      status: this.output.value.status,
+    });
 
     // Get the substring based on byte position
     let newOutput = "";
@@ -178,6 +187,7 @@ export class OutputManager {
     }
 
     this.lastReadLength = currentOutputBytes;
+    this.lastReadAt = now;
 
     if (regex) {
       /**
@@ -199,6 +209,7 @@ export class OutputManager {
 
       newOutput = filteredParts.join("");
     }
+
     return {
       output: newOutput,
       isTruncated: this.output.value.isTruncated ?? false,

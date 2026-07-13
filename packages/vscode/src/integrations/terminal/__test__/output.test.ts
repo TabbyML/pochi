@@ -1,7 +1,52 @@
-import * as assert from "assert";
-import { describe, it, beforeEach } from "mocha";
-import { OutputTruncator } from "../output";
 import { MaxTerminalOutputSize } from "@getpochi/common/tool-utils";
+import * as assert from "assert";
+import { beforeEach, describe, it } from "mocha";
+import { OutputManager, OutputTruncator } from "../output";
+
+describe("OutputManager", () => {
+  it("throws when a running job is read repeatedly without new output", () => {
+    const manager = OutputManager.create({
+      id: "rapid-read-test",
+      command: "bun run dev",
+    });
+
+    manager.addChunk("Starting development server...\n");
+
+    const firstRead = manager.readOutput();
+    assert.strictEqual(firstRead.output, "Starting development server...\n");
+    assert.strictEqual(firstRead.error, undefined);
+
+    assert.throws(
+      () => manager.readOutput(),
+      /executeCommand to run `sleep 1`/,
+    );
+
+    OutputManager.delete("rapid-read-test");
+  });
+
+  it("preserves new output when a rapid read is rejected", () => {
+    const manager = OutputManager.create({
+      id: "rapid-read-with-output-test",
+      command: "bun run dev",
+    });
+
+    manager.addChunk("Starting development server...\n");
+    manager.readOutput();
+    manager.addChunk("Ready\n");
+
+    assert.throws(
+      () => manager.readOutput(),
+      /executeCommand to run `sleep 1`/,
+    );
+
+    (manager as unknown as { lastReadAt: number }).lastReadAt = Date.now() - 1000;
+    const secondRead = manager.readOutput();
+    assert.strictEqual(secondRead.output, "Ready\n");
+    assert.strictEqual(secondRead.error, undefined);
+
+    OutputManager.delete("rapid-read-with-output-test");
+  });
+});
 
 describe("OutputTruncator", () => {
   let truncator: OutputTruncator;

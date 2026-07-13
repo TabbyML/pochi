@@ -7,7 +7,11 @@ export {
   formatters,
   type LLMFormatterOptions,
 } from "./formatters";
-export { prompts, parseEnvironmentInfo } from "./prompts";
+export {
+  assertBackgroundJobReadInterval,
+  prompts,
+  parseEnvironmentInfo,
+} from "./prompts";
 
 export { SocialLinks } from "./social";
 export * as constants from "./constants";

@@ -1,5 +1,6 @@
 import { renderActiveSelection } from "./active-selection";
 import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
+export { assertBackgroundJobReadInterval } from "./background-job";
 import {
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
