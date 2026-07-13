@@ -3,6 +3,7 @@ import { getLogger } from "@/lib/logger";
 import { writeTextDocument } from "@/lib/write-text-document";
 import { parseDiffAndApply } from "@getpochi/common/diff-utils";
 import {
+  isVirtualPath,
   validateTextFile,
   withFileStateCacheGuard,
 } from "@getpochi/common/tool-utils";
@@ -24,8 +25,13 @@ export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
     getMtime: getVscodeFileMtime,
     operation: "editing",
     doWork: async (resolvedPath) => {
-      const fileUri = vscode.Uri.file(resolvedPath);
-      await ensureFileDirectoryExists(fileUri);
+      const isVirtual = isVirtualPath(resolvedPath);
+      const fileUri = isVirtual
+        ? vscode.Uri.parse(resolvedPath)
+        : vscode.Uri.file(resolvedPath);
+      if (!isVirtual) {
+        await ensureFileDirectoryExists(fileUri);
+      }
 
       const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
       validateTextFile(fileBuffer);
