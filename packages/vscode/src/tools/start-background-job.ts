@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { getViewColumnForTerminal } from "@/integrations/layout";
 import { TerminalJob } from "@/integrations/terminal/terminal-job";
+import { getBackgroundJobTerminalName } from "@/lib/background-job-terminal-name";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const startBackgroundJob: ToolFunctionType<
@@ -20,7 +21,7 @@ export const startBackgroundJob: ToolFunctionType<
   const location = viewColumn ? { viewColumn } : undefined;
 
   const job = TerminalJob.create({
-    name: command,
+    name: getBackgroundJobTerminalName(command),
     command,
     cwd,
     location,
