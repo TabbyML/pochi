@@ -346,6 +346,7 @@
     "result_one": "{{count}}개 결과",
     "result_other": "{{count}}개 결과",
     "readBackground": "백그라운드 작업 출력 읽는 중",
+    "readTerminal": "터미널 출력 읽는 중",
     "withRegexFilter": "정규식 필터 사용",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
     "backgroundExecuting": "백그라운드에서 명령 실행 중",

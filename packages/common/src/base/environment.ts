@@ -59,7 +59,7 @@ export const Environment = z.object({
               .string()
               .optional()
               .describe(
-                "The ID of the background job associated with the terminal.",
+                'A stable id for the terminal. Pass it to `readBackgroundJobOutput` to read the terminal\'s most recent command output. Ids prefixed with "bgjob-" are Pochi-started background jobs and can also be killed with `killBackgroundJob`; ids prefixed with "term-" are user-opened terminals and are read-only.',
               ),
           }),
         )

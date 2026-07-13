@@ -20,8 +20,13 @@ export const readBackgroundJobOutput: ToolFunctionType<
     };
   }
 
-  if (backgroundJobId.startsWith("bgjob-")) {
-    throw new Error(`Background job with ID "${backgroundJobId}" not found.`);
+  if (
+    backgroundJobId.startsWith("bgjob-") ||
+    backgroundJobId.startsWith("term-")
+  ) {
+    throw new Error(
+      `No output available for terminal/background job "${backgroundJobId}". It may have been closed, no command has run in it yet, or shell integration is not active for it.`,
+    );
   }
 
   const taskOutput = await readTaskOutput(backgroundJobId);
