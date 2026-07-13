@@ -133,16 +133,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     }
   }, [canSelectTodoMode, todoModeSelected]);
 
+  const resetTodoMode = useCallback(() => {
+    setTodoModeSelected(false);
+  }, []);
+
   const createTodoBeforeSend = useCallback(
     (text: string) => {
-      if (!todoModeSelected) return;
-
-      setTodoModeSelected(false);
+      resetTodoMode();
       if (hasActiveTodos(todos)) return;
 
       updateTodos(initTodoModeTodos(text));
     },
-    [todoModeSelected, todos, updateTodos],
+    [resetTodoMode, todos, updateTodos],
   );
 
   const {
@@ -226,6 +228,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     setQueuedMessages,
     reviews,
     taskId: taskId,
+    isTodoMode: todoModeSelected,
+    canCreateTodo: !todoModeDisabled,
+    onTodoModeQueued: resetTodoMode,
     onBeforeSendText: createTodoBeforeSend,
   });
 

@@ -27,6 +27,7 @@ export const Default: Story = {
       ),
       queuedMessage(`This is a prompt with multi line.
       This is another line`),
+      queuedMessage("This is a todo mode prompt", true),
       queuedMessage("This is a prompt"),
       queuedMessage("This is a prompt"),
       queuedMessage("This is a prompt"),
@@ -35,10 +36,11 @@ export const Default: Story = {
   },
 };
 
-function queuedMessage(text: string): QueuedMessage {
+function queuedMessage(text: string, isTodoMode = false): QueuedMessage {
   return {
     text,
     files: [],
     reviews: [],
+    isTodoMode,
   };
 }

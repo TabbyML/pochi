@@ -2,8 +2,16 @@ import type { Message, Task } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatToolbar } from "./chat-toolbar";
+
+const chatSubmitMocks = vi.hoisted(() => ({
+  useChatSubmit: vi.fn(() => ({
+    handleSubmit: vi.fn(),
+    handleSteerSubmit: vi.fn(),
+    handleStop: vi.fn(),
+  })),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -119,10 +127,7 @@ vi.mock("../hooks/use-chat-status", () => ({
   }),
 }));
 vi.mock("../hooks/use-chat-submit", () => ({
-  useChatSubmit: () => ({
-    handleSubmit: vi.fn(),
-    handleStop: vi.fn(),
-  }),
+  useChatSubmit: chatSubmitMocks.useChatSubmit,
 }));
 vi.mock("../hooks/use-inline-compact-task", () => ({
   useInlineCompactTask: () => ({
@@ -201,6 +206,10 @@ function renderToolbar(isSubTask: boolean) {
 }
 
 describe("ChatToolbar", () => {
+  beforeEach(() => {
+    chatSubmitMocks.useChatSubmit.mockClear();
+  });
+
   it("renders todos in root task pages", () => {
     renderToolbar(false);
 
@@ -211,5 +220,15 @@ describe("ChatToolbar", () => {
     renderToolbar(true);
 
     expect(screen.queryByTestId("todo-list")).toBeNull();
+  });
+
+  it("disables todo creation while active todos exist", () => {
+    renderToolbar(false);
+
+    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canCreateTodo: false,
+      }),
+    );
   });
 });

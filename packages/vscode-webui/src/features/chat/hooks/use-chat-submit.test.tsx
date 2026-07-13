@@ -234,6 +234,85 @@ describe("useChatSubmit", () => {
     expect(context.sendMessage).not.toHaveBeenCalled();
   });
 
+  it("captures todo mode on queued submissions", async () => {
+    const context = setup({ isLoading: true, isTodoMode: true });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit();
+    });
+
+    expect(context.queuedMessages).toEqual([
+      queuedMessage({ text: "follow up", isTodoMode: true }),
+    ]);
+  });
+
+  it("resets todo mode after queueing a todo submission", async () => {
+    const onTodoModeQueued = vi.fn();
+    const context = setup({
+      isLoading: true,
+      isTodoMode: true,
+      onTodoModeQueued,
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit();
+    });
+
+    expect(onTodoModeQueued).toHaveBeenCalledOnce();
+  });
+
+  it("uses queued todo mode when flushing queued messages", async () => {
+    const onBeforeSendText = vi.fn();
+    const context = setup({
+      isLoading: false,
+      isTodoMode: true,
+      onBeforeSendText,
+      queuedMessages: [
+        queuedMessage({ text: "regular queued message", isTodoMode: false }),
+        queuedMessage({ text: "todo queued message", isTodoMode: true }),
+      ],
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+    expect(onBeforeSendText).not.toHaveBeenCalled();
+
+    context.hook.rerender();
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+    expect(onBeforeSendText).toHaveBeenCalledWith("todo queued message");
+  });
+
+  it("does not apply queued todo mode when todo creation is disabled", async () => {
+    const onBeforeSendText = vi.fn();
+    const context = setup({
+      isLoading: false,
+      canCreateTodo: false,
+      onBeforeSendText,
+      queuedMessages: [
+        queuedMessage({ text: "todo queued message", isTodoMode: true }),
+      ],
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+
+    expect(onBeforeSendText).not.toHaveBeenCalled();
+    expect(context.sendMessage).toHaveBeenCalledWith({
+      parts: ["text:todo queued message"],
+    });
+  });
+
   it("flushes queued files and reviews from the queued item", async () => {
     const file = new File(["image"], "queued.png", { type: "image/png" });
     const review = createReview("review-1");
@@ -279,6 +358,10 @@ function setup({
   queuedMessages: initialQueuedMessages = [],
   files = [],
   reviews = [],
+  isTodoMode = false,
+  canCreateTodo = true,
+  onTodoModeQueued,
+  onBeforeSendText,
   uploadFiles = vi.fn(() => Promise.resolve([])),
 }: {
   isLoading: boolean;
@@ -286,6 +369,10 @@ function setup({
   queuedMessages?: QueuedMessage[];
   files?: File[];
   reviews?: Review[];
+  isTodoMode?: boolean;
+  canCreateTodo?: boolean;
+  onTodoModeQueued?: () => void;
+  onBeforeSendText?: (text: string) => void;
   uploadFiles?: ReturnType<typeof vi.fn>;
 }) {
   let queuedMessages = initialQueuedMessages;
@@ -331,6 +418,10 @@ function setup({
       setQueuedMessages,
       reviews,
       taskId: "task-1",
+      isTodoMode,
+      canCreateTodo,
+      onTodoModeQueued,
+      onBeforeSendText,
     }),
   );
 
@@ -355,15 +446,18 @@ function queuedMessage({
   text,
   files = [],
   reviews = [],
+  isTodoMode = false,
 }: {
   text: string;
   files?: File[];
   reviews?: Review[];
+  isTodoMode?: boolean;
 }): QueuedMessage {
   return {
     text,
     files,
     reviews,
+    isTodoMode,
   };
 }
 
