@@ -60,6 +60,9 @@ describe("OutputManager registry (readBackgroundJobOutput backing store)", () =>
     assert.ok(manager.readOutput().output.includes("first"));
 
     manager.addChunk("second\n");
+    // Simulate time passing so the rapid-read guard does not reject the read
+    (manager as unknown as { lastReadAt: number }).lastReadAt =
+      Date.now() - 1000;
     const second = manager.readOutput();
     assert.ok(second.output.includes("second"));
     assert.ok(
