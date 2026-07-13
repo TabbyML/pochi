@@ -429,7 +429,8 @@
     "disableLineWrap": "Disable Line Wrap"
   },
   "messageList": {
-    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"
+    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage",
+    "completedIn": "Completed in {{duration}}"
   },
   "markdown": {
     "codeOmitted": "... {{language}} code omitted ( {{bytes}} bytes ) ..."

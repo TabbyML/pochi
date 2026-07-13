@@ -421,7 +421,8 @@
     "disableLineWrap": "禁用自动换行"
   },
   "messageList": {
-    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"
+    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量",
+    "completedIn": "完成于 {{duration}}"
   },
   "markdown": {
     "codeOmitted": "... {{language}} 代码已省略 ( {{bytes}} 字节 ) ..."

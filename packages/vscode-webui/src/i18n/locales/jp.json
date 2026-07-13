@@ -423,7 +423,8 @@
     "disableLineWrap": "折り返しを無効にする"
   },
   "messageList": {
-    "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています"
+    "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています",
+    "completedIn": "{{duration}} で完了"
   },
   "markdown": {
     "codeOmitted": "... {{language}} コードが省略されました ( {{bytes}} バイト ) ..."

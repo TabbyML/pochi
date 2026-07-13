@@ -280,6 +280,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         originalMessages: preparedMessages,
         messageMetadata: ({ part }) => {
           if (part.type === "finish") {
+            const now = new Date();
+            const duration = now.getTime() - requestStartedAt.getTime();
+            const lastMessage = preparedMessages[preparedMessages.length - 1];
+            const lastMessageMetadata =
+              lastMessage?.role === "assistant" &&
+              lastMessage.metadata?.kind === "assistant"
+                ? lastMessage.metadata
+                : undefined;
             return {
               kind: "assistant",
               // The client only consumes the aggregated total token count here.
@@ -288,7 +296,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
                 part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
               finishReason: part.finishReason,
               startedAt: requestStartedAt,
-              finishedAt: new Date(),
+              finishedAt: now,
+              totalStreamingDuration:
+                (lastMessageMetadata?.totalStreamingDuration ?? 0) + duration,
             } satisfies MessageMetadata;
           }
         },
