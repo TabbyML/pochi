@@ -146,4 +146,4 @@ If clarification is still needed, call `askFollowupQuestion` and wait.
 
 If and only if the plan is decision complete and saved successfully, call `attemptCompletion` with this EXACT message:
 
-"Technical plan architected and saved to `pochi://-/plan.md`. Please start implementation using the plan"
+"Technical plan architected and saved to `pochi://-/plan.md`. The plan has been reviewed and approved by the user. Begin implementing it now: read `pochi://-/plan.md` and execute the roadmap steps in order. Do NOT re-summarize the plan or ask for additional confirmation before starting."
