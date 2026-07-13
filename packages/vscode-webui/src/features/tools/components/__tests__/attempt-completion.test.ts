@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getAttemptCompletionResultDisplay,
-  isAttemptTodoCompletionRejected,
+  isAttemptTodoCompletionUnsuccessful,
 } from "../tool-result-display";
 
 describe("getAttemptCompletionResultDisplay", () => {
@@ -31,10 +31,10 @@ describe("getAttemptCompletionResultDisplay", () => {
   });
 });
 
-describe("isAttemptTodoCompletionRejected", () => {
+describe("isAttemptTodoCompletionUnsuccessful", () => {
   it("detects unresolved attemptTodoCompletion JSON string results", () => {
     expect(
-      isAttemptTodoCompletionRejected({
+      isAttemptTodoCompletionUnsuccessful({
         type: "tool-newTask",
         state: "output-available",
         input: {
@@ -57,9 +57,24 @@ describe("isAttemptTodoCompletionRejected", () => {
     ).toBe(true);
   });
 
+  it("detects unavailable attemptTodoCompletion results", () => {
+    expect(
+      isAttemptTodoCompletionUnsuccessful({
+        type: "tool-newTask",
+        state: "output-available",
+        input: {
+          agentType: "attemptTodoCompletion",
+        },
+        output: {
+          result: "not valid audit output",
+        },
+      } as any),
+    ).toBe(true);
+  });
+
   it("does not reject resolved attemptTodoCompletion results", () => {
     expect(
-      isAttemptTodoCompletionRejected({
+      isAttemptTodoCompletionUnsuccessful({
         type: "tool-newTask",
         state: "output-available",
         input: {

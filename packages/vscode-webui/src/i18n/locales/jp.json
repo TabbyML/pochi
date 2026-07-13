@@ -582,7 +582,10 @@
     "auditing": "Todos を監査中",
     "completed": "すべての Todos が完了しました",
     "needsWork": "Todo はさらに作業が必要です",
-    "failed": "Todo 監査に失敗しました"
+    "stopped": "Todo 監査を停止しました",
+    "stoppedDescription": "監査はサマリーを生成する前に停止しました。",
+    "unavailable": "Todo 監査結果を利用できません",
+    "unavailableDescription": "監査は終了しましたが、読み取れるサマリーが返されませんでした。"
   },
   "browserAgentSettings": {
     "runtimeSection": "ブラウザー実行環境",

@@ -3,25 +3,29 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { TaskThreadSource } from "@/components/task-thread";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import type { ToolUIPart } from "ai";
 import { newTaskTool } from "../components/new-task";
 import type { ToolProps } from "../components/types";
 
 const NewTaskTool = newTaskTool;
+type NewTaskProp = ToolProps<"newTask">;
+type StoryTool = NewTaskProp["tool"] & {
+  isExecuting?: boolean;
+  taskThreadSource?: TaskThreadSource;
+};
 
 const ToolsGallery: React.FC<{
-  tools: ToolUIPart[];
+  tools: StoryTool[];
 }> = ({ tools = [] }) => {
   return (
     <div className="mt-3 ml-1 flex flex-col gap-2">
-      {tools.map((tool, index) => (
+      {tools.map(({ isExecuting, taskThreadSource, ...tool }, index) => (
         <NewTaskTool
-          // @ts-ignore
           tool={tool}
           key={tool.toolCallId + index}
-          taskThreadSource={
-            (tool as { taskThreadSource?: TaskThreadSource }).taskThreadSource
-          }
+          isExecuting={isExecuting ?? false}
+          isLoading={false}
+          messages={[]}
+          taskThreadSource={taskThreadSource}
         />
       ))}
     </div>
@@ -36,7 +40,6 @@ const meta: Meta<typeof ToolsGallery> = {
 export default meta;
 
 type Story = StoryObj<typeof ToolsGallery>;
-type NewTaskProp = ToolProps<"newTask">;
 
 // Mock data for TaskThreadSource stories
 const mockMessages: Message[] = [
@@ -213,19 +216,16 @@ export const Variants: Story = {
       {
         ...newTaskProps1,
         toolCallId: `${newTaskProps1.toolCallId}-completed`,
-        // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSource,
       },
       {
         ...newTaskProps2,
         toolCallId: `${newTaskProps2.toolCallId}-loading`,
-        // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSourceLoading,
       },
       {
         ...newTaskProps3,
         toolCallId: `${newTaskProps3.toolCallId}-empty`,
-        // @ts-expect-error - Adding custom prop for Storybook
         taskThreadSource: mockTaskThreadSourceEmpty,
       },
     ],

@@ -584,7 +584,10 @@
     "auditing": "Auditing todos",
     "completed": "All todos completed",
     "needsWork": "Todo needs more work",
-    "failed": "Todo audit failed"
+    "stopped": "Todo audit stopped",
+    "stoppedDescription": "The audit was stopped before it could produce a summary.",
+    "unavailable": "Todo audit result unavailable",
+    "unavailableDescription": "The audit ended without a readable summary."
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",
