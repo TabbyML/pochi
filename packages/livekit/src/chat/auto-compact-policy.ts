@@ -11,8 +11,8 @@ export const AutoCompactBufferTokens = 13_000;
 export const AutoCompactRatio = 0.8;
 
 // Most models degrade on agentic tasks well before very large declared
-// windows are exhausted. When a model does not declare an explicit
-// effectiveContextWindow, cap the window used for auto-compaction here.
+// windows are exhausted. When no effectiveContextWindow is configured, cap
+// the window used for auto-compaction here.
 export const DefaultEffectiveContextWindow = 200_000;
 
 export const MaxConsecutiveAutoCompactFailures = 3;

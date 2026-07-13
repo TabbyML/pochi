@@ -462,6 +462,13 @@ export interface VSCodeHostApi {
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
   }>;
 
+  /**
+   * Read the global effective context window (in tokens) used to cap
+   * auto-compaction. Returns undefined when not configured, in which case the
+   * built-in default is used.
+   */
+  readEffectiveContextWindow(): Promise<number | undefined>;
+
   readAutoMemoryState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
     setAutoMemoryState: (state: AutoMemoryTaskState) => Promise<void>;

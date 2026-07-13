@@ -656,7 +656,7 @@ async function createLLMConfigWithVendors(
       id: `${vendorId}/${modelId}`,
       type: "vendor",
       contextWindow: options.contextWindow,
-      effectiveContextWindow: options.effectiveContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: () =>
         createModel(vendorId, {
@@ -680,7 +680,7 @@ async function createLLMConfigWithPochi(
       id: `${vendorId}/${model}`,
       type: "vendor",
       contextWindow: pochiModelOptions.contextWindow,
-      effectiveContextWindow: pochiModelOptions.effectiveContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: () =>
         createModel(vendorId, {
@@ -718,7 +718,7 @@ async function createLLMConfigWithProviders(
       apiKey: modelProvider.apiKey,
       contextWindow:
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
-      effectiveContextWindow: modelSetting.effectiveContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       contentType: modelSetting.contentType,
@@ -733,7 +733,7 @@ async function createLLMConfigWithProviders(
       vertex: modelProvider.vertex,
       contextWindow:
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
-      effectiveContextWindow: modelSetting.effectiveContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
@@ -755,7 +755,7 @@ async function createLLMConfigWithProviders(
       apiKey: modelProvider.apiKey,
       contextWindow:
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
-      effectiveContextWindow: modelSetting.effectiveContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,

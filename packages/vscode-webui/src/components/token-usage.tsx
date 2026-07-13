@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
+import { useEffectiveContextWindow } from "@/lib/hooks/use-effective-context-window";
 import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
@@ -89,9 +90,10 @@ export function TokenUsage({
   const contextWindow =
     selectedModel.options.contextWindow || constants.DefaultContextWindow;
   const percentage = Math.ceil((totalTokens / contextWindow) * 100);
+  const effectiveContextWindow = useEffectiveContextWindow();
   const autoCompactThreshold = getAutoCompactThreshold(
     contextWindow,
-    selectedModel.options.effectiveContextWindow,
+    effectiveContextWindow,
   );
   const autoCompactPct = (autoCompactThreshold / contextWindow) * 100;
   const [isOpen, setIsOpen] = useState(false);

@@ -51,7 +51,7 @@ const RequestData = z.object({
         .number()
         .optional()
         .describe(
-          "Effective context window used for auto-compaction; overrides the default cap derived from contextWindow.",
+          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
         ),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
@@ -74,7 +74,7 @@ const RequestData = z.object({
         .number()
         .optional()
         .describe(
-          "Effective context window used for auto-compaction; overrides the default cap derived from contextWindow.",
+          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
         ),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
@@ -97,7 +97,7 @@ const RequestData = z.object({
         .number()
         .optional()
         .describe(
-          "Effective context window used for auto-compaction; overrides the default cap derived from contextWindow.",
+          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
         ),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
@@ -119,7 +119,7 @@ const RequestData = z.object({
         .number()
         .optional()
         .describe(
-          "Effective context window used for auto-compaction; overrides the default cap derived from contextWindow.",
+          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
         ),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
@@ -141,7 +141,7 @@ const RequestData = z.object({
         .number()
         .optional()
         .describe(
-          "Effective context window used for auto-compaction; overrides the default cap derived from contextWindow.",
+          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
         ),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
@@ -164,7 +164,7 @@ const RequestData = z.object({
         .number()
         .optional()
         .describe(
-          "Effective context window used for auto-compaction; overrides the default cap derived from contextWindow.",
+          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
         ),
       useToolCallMiddleware: z
         .boolean()
