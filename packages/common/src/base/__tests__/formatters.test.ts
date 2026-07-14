@@ -216,6 +216,217 @@ describe('formatters', () => {
       ]);
     });
 
+    describe('message metadata merging', () => {
+      it('should merge assistant metadata when combining consecutive assistant messages', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              totalStreamingDuration: 100,
+              totalToolsExecutionDuration: 50,
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              totalStreamingDuration: 200,
+              totalToolsExecutionDuration: 75,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.kind).toBe('assistant');
+        expect(merged.totalTokens).toBe(20); // last value wins for non-summed fields
+        expect(merged.totalStreamingDuration).toBe(300); // 100 + 200
+        expect(merged.totalToolsExecutionDuration).toBe(125); // 50 + 75
+      });
+
+      it('should sum totalStreamingDuration when only one side has the value', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              totalStreamingDuration: 150,
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              // totalStreamingDuration intentionally absent
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalStreamingDuration).toBe(150); // 150 + 0
+      });
+
+      it('should sum totalToolsExecutionDuration when only the second message has the value', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              // totalToolsExecutionDuration intentionally absent
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              totalToolsExecutionDuration: 80,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalToolsExecutionDuration).toBe(80); // 0 + 80
+      });
+
+      it('should leave duration fields undefined when neither message has them', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 5,
+              finishReason: 'stop',
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 15,
+              finishReason: 'stop',
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalStreamingDuration).toBeUndefined();
+        expect(merged.totalToolsExecutionDuration).toBeUndefined();
+      });
+
+      it('should use the metadata from the only message that has it', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            // no metadata
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 30,
+              finishReason: 'length',
+              totalStreamingDuration: 500,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.kind).toBe('assistant');
+        expect(merged.totalTokens).toBe(30);
+        expect(merged.totalStreamingDuration).toBe(500);
+      });
+
+      it('should accumulate durations correctly across three consecutive assistant messages', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              totalStreamingDuration: 100,
+              totalToolsExecutionDuration: 10,
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              totalStreamingDuration: 200,
+              totalToolsExecutionDuration: 20,
+            },
+          },
+          {
+            id: 'assistant-3',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Third' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 30,
+              finishReason: 'stop',
+              totalStreamingDuration: 300,
+              totalToolsExecutionDuration: 30,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        expect(formatted[0].id).toBe('assistant-3');
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalStreamingDuration).toBe(600); // 100 + 200 + 300
+        expect(merged.totalToolsExecutionDuration).toBe(60); // 10 + 20 + 30
+      });
+    });
+
     it('should hide deprecated todoWrite tool calls', () => {
       const messages: UIMessage[] = [
         {

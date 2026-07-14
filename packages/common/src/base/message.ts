@@ -8,6 +8,8 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
     finishReason: z.custom<FinishReason>(),
     startedAt: z.coerce.date().optional(),
     finishedAt: z.coerce.date().optional(),
+    totalStreamingDuration: z.number().optional(),
+    totalToolsExecutionDuration: z.number().optional(),
   }),
   z.object({
     kind: z.literal("user"),

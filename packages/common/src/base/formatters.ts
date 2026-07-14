@@ -12,6 +12,7 @@ import {
 } from "ai";
 import { clone } from "remeda";
 import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
+import type { MessageMetadata } from "./message";
 import { prompts } from "./prompts";
 
 function resolvePendingToolCalls(
@@ -124,6 +125,39 @@ function isCompactOnlyUserMessage(message: UIMessage): boolean {
   );
 }
 
+type AssistantMessageMetadata = Extract<MessageMetadata, { kind: "assistant" }>;
+
+function isAssistantMetadata(m: unknown): m is AssistantMessageMetadata {
+  return (
+    typeof m === "object" &&
+    m !== null &&
+    (m as { kind?: string }).kind === "assistant"
+  );
+}
+
+function mergeAssistantMetadata(
+  a: AssistantMessageMetadata | undefined,
+  b: AssistantMessageMetadata | undefined,
+): AssistantMessageMetadata | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    ...a,
+    ...b,
+    totalStreamingDuration:
+      a?.totalStreamingDuration !== undefined ||
+      b?.totalStreamingDuration !== undefined
+        ? (a?.totalStreamingDuration ?? 0) + (b?.totalStreamingDuration ?? 0)
+        : undefined,
+    totalToolsExecutionDuration:
+      a?.totalToolsExecutionDuration !== undefined ||
+      b?.totalToolsExecutionDuration !== undefined
+        ? (a?.totalToolsExecutionDuration ?? 0) +
+          (b?.totalToolsExecutionDuration ?? 0)
+        : undefined,
+  };
+}
+
 function combineConsecutiveAssistantMessages(
   messages: UIMessage[],
 ): UIMessage[] {
@@ -157,6 +191,20 @@ function combineConsecutiveAssistantMessages(
     // and prepending the earlier message's parts.
     if (message.role === "assistant" && prev?.role === "assistant") {
       message.parts.unshift(...prev.parts);
+
+      const prevMessageMetadata = isAssistantMetadata(prev.metadata)
+        ? prev.metadata
+        : undefined;
+      const messageMetadata = isAssistantMetadata(message.metadata)
+        ? message.metadata
+        : undefined;
+      if (prevMessageMetadata || messageMetadata) {
+        message.metadata = mergeAssistantMetadata(
+          prevMessageMetadata,
+          messageMetadata,
+        );
+      }
+
       result[result.length - 1] = message;
       continue;
     }
