@@ -338,6 +338,7 @@ describe('formatters', () => {
         {
           id: 'assistant-1',
           role: 'assistant',
+          metadata: { kind: 'assistant' },
           parts: [
             {
               type: 'reasoning',
@@ -350,11 +351,84 @@ describe('formatters', () => {
               providerMetadata: { openai: { itemId: 'msg_abc123' } },
             },
           ],
-        },
+        } as UIMessage,
       ];
       const formatted = formatters.llm(clone(messages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
+    });
+
+    it('should strip OpenAI item references from unfinished assistant messages', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'reasoning',
+              text: '',
+              providerMetadata: {
+                openai: {
+                  itemId: 'rs_interrupted',
+                  reasoningEncryptedContent: 'encrypted-reasoning',
+                },
+              },
+              providerOptions: {
+                openai: {
+                  itemId: 'rs_interrupted',
+                  reasoningEncryptedContent: 'encrypted-reasoning',
+                },
+              },
+            },
+            {
+              type: 'text',
+              text: 'Response',
+              providerMetadata: { openai: { itemId: 'msg_interrupted' } },
+            },
+          ],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const reasoningPart = formatted[0].parts.find(
+        (part) => part.type === 'reasoning',
+      ) as any;
+      const textPart = formatted[0].parts.find(
+        (part) => part.type === 'text',
+      ) as any;
+
+      expect(reasoningPart.providerMetadata.openai).toEqual({
+        reasoningEncryptedContent: 'encrypted-reasoning',
+      });
+      expect(reasoningPart.providerOptions.openai).toEqual({
+        reasoningEncryptedContent: 'encrypted-reasoning',
+      });
+      expect(textPart.providerMetadata).toBeUndefined();
+    });
+
+    it('should keep OpenAI reasoning item references for finished assistant messages', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [
+            {
+              type: 'reasoning',
+              text: '',
+              providerMetadata: { openai: { itemId: 'rs_finished' } },
+            },
+            { type: 'text', text: 'Response' },
+          ],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const reasoningPart = formatted[0].parts.find(
+        (part) => part.type === 'reasoning',
+      ) as any;
+
+      expect(reasoningPart.providerMetadata.openai.itemId).toBe('rs_finished');
     });
 
     it('should keep only messages from the latest compact block onward', () => {
