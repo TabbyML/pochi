@@ -437,6 +437,18 @@
     "cell": "셀",
     "addContext": "컨텍스트 추가"
   },
+  "todoModeBadge": {
+    "remove": "Todo 모드 제거"
+  },
+  "addContextMenu": {
+    "trigger": "추가",
+    "files": "파일 및 폴더",
+    "filesDescription": "@로 작업 영역 파일 및 폴더 검색",
+    "attach": "파일 첨부",
+    "attachDescription": "컴퓨터에서 이미지, PDF 또는 동영상 업로드",
+    "todoDescription": "Pochi가 이 Todo를 계속 진행하도록 합니다",
+    "todoDisabledDescription": "현재 Todo를 완료한 후 새로 시작할 수 있습니다"
+  },
   "mentionList": {
     "noResultsFound": "결과를 찾을 수 없습니다",
     "typeToSearch": "입력하여 검색...",
