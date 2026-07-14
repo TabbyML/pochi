@@ -805,11 +805,12 @@ export class LiveChatKit<
     this.currentToolsExecution = undefined;
     if (toolsExecution) {
       const duration = Date.now() - toolsExecution.startedAt.getTime();
-      const messageToUpdate = this.messages.find(
+      const messages = this.chat.messages;
+      const messageToUpdate = messages.find(
         (m) => m.id === toolsExecution.messageId,
       );
       if (messageToUpdate) {
-        const updatedMessages = this.messages.map((m) => {
+        const updatedMessages = messages.map((m) => {
           if (m.id === toolsExecution.messageId) {
             return {
               ...m,
@@ -826,7 +827,8 @@ export class LiveChatKit<
           return m;
         });
         this.store.commit(events.updateMessages({ messages: updatedMessages }));
-        this.chat.messages = this.messages;
+        const updatedMessagesFromStore = this.messages;
+        this.chat.messages = updatedMessagesFromStore;
       }
     }
   };
@@ -964,27 +966,14 @@ export class LiveChatKit<
       this.latestRequestSnapshot,
     );
 
-    const metadataToMerge = this.messages.find(
-      (m) => m.id === message.id,
-    )?.metadata;
-    const messageWithMergedMetadata = metadataToMerge
-      ? {
-          ...message,
-          metadata: {
-            ...metadataToMerge,
-            ...message.metadata,
-          },
-        }
-      : message;
-
     let duration = undefined;
     if (
-      messageWithMergedMetadata.metadata?.kind === "assistant" &&
-      messageWithMergedMetadata.metadata.totalStreamingDuration !== undefined
+      message.metadata?.kind === "assistant" &&
+      message.metadata.totalStreamingDuration !== undefined
     ) {
       duration = Duration.millis(
-        messageWithMergedMetadata.metadata.totalStreamingDuration +
-          (messageWithMergedMetadata.metadata.totalToolsExecutionDuration ?? 0),
+        message.metadata.totalStreamingDuration +
+          (message.metadata.totalToolsExecutionDuration ?? 0),
       );
     }
 
@@ -992,7 +981,7 @@ export class LiveChatKit<
       events.chatStreamFinished({
         id: this.taskId,
         status,
-        data: messageWithMergedMetadata,
+        data: message,
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
         duration,
@@ -1107,32 +1096,14 @@ export class LiveChatKit<
       this.chat.messages = [...this.chat.messages.slice(0, -1), lastMessage];
     }
 
-    let lastMessageWithMergedMetadata = lastMessage;
-    if (lastMessage) {
-      const metadataToMerge = this.messages.find(
-        (m) => m.id === lastMessage.id,
-      )?.metadata;
-      if (metadataToMerge) {
-        lastMessageWithMergedMetadata = {
-          ...lastMessage,
-          metadata: {
-            ...metadataToMerge,
-            ...lastMessage.metadata,
-          },
-        };
-      }
-    }
-
     let duration = undefined;
     if (
-      lastMessageWithMergedMetadata?.metadata?.kind === "assistant" &&
-      lastMessageWithMergedMetadata.metadata.totalStreamingDuration !==
-        undefined
+      lastMessage?.metadata?.kind === "assistant" &&
+      lastMessage.metadata.totalStreamingDuration !== undefined
     ) {
       duration = Duration.millis(
-        lastMessageWithMergedMetadata.metadata.totalStreamingDuration +
-          (lastMessageWithMergedMetadata.metadata.totalToolsExecutionDuration ??
-            0),
+        lastMessage.metadata.totalStreamingDuration +
+          (lastMessage.metadata.totalToolsExecutionDuration ?? 0),
       );
     }
 
@@ -1140,7 +1111,7 @@ export class LiveChatKit<
       events.chatStreamFailed({
         id: this.taskId,
         error: toTaskError(error),
-        data: lastMessageWithMergedMetadata,
+        data: lastMessage,
         updatedAt: new Date(),
         duration,
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
