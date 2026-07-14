@@ -1,6 +1,7 @@
 import { useSelectedModels } from "@/features/settings";
 import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useEffectiveContextWindow } from "@/lib/hooks/use-effective-context-window";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
@@ -139,11 +140,12 @@ function useLLM({
   modelOverride?: DisplayModel;
 }): React.RefObject<LLMRequestData> {
   const { selectedModel } = useSelectedModels({ isSubTask });
+  const effectiveContextWindow = useEffectiveContextWindow();
 
   const model = modelOverride || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!model) return undefined as never;
-    return displayModelToLLM(model);
+    return displayModelToLLM(model, effectiveContextWindow);
   })();
 
   return useLatest(llmFromSelectedModel);
