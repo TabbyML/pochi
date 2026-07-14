@@ -29,6 +29,7 @@
     "ai": "catalog:",
     "react": "catalog:",
     "remeda": "catalog:",
+    "vercel-minimax-ai-provider": "^0.0.2",
     "zod": "catalog:"
   }
 }

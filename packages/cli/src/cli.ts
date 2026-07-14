@@ -745,7 +745,8 @@ async function createLLMConfigWithProviders(
     modelProvider.kind === undefined ||
     modelProvider.kind === "openai" ||
     modelProvider.kind === "openai-responses" ||
-    modelProvider.kind === "anthropic"
+    modelProvider.kind === "anthropic" ||
+    modelProvider.kind === "minimax"
   ) {
     return {
       id: `${providerId}/${modelId}`,
