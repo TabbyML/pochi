@@ -1,3 +1,4 @@
+import { blobStore } from "@/lib/remote-blob-store";
 import {
   getToolCallErrorMessage,
   getToolResultError,
@@ -8,6 +9,7 @@ import type {
   BuiltinSubAgentInfo,
   ExecuteCommandResult,
 } from "@getpochi/common/vscode-webui-bridge";
+import { processContentOutput } from "@getpochi/livekit";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
 import type {
   BatchedToolCall,
@@ -240,13 +242,19 @@ export function createSubtaskBatchedToolCall({
           isExecuting: false,
         });
 
+        const processedResult = await processContentOutput(
+          blobStore,
+          result,
+          abortSignal,
+        );
+
         addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
-          output: result,
+          output: processedResult,
         });
 
-        const error = getToolResultError(result);
+        const error = getToolResultError(processedResult);
         if (error) {
           return {
             kind: "error",
