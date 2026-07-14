@@ -74,10 +74,10 @@ Important:
 - Only use skills listed in "Available skills" below
 - Check compatibility requirements before using a skill - ensure the skill is compatible with the current OS/environment
 - After calling this tool, follow the returned instructions step by step
-- The skill file location is shown in the [Location: filepath] section of each skill listing below - use it to decide how to resolve any resource files (e.g. a \`references/<name>.md\` reference in the instructions) the skill mentions:
-  * Built-in skills (shipped with Pochi; [Location] lives inside the extension's bundled \`assets/skills/...\`): address resources with the \`pochi://\` schema, i.e. \`pochi://skills/<skill-name>/<resource-path>\` (e.g. \`pochi://skills/<skill-name>/references/<name>.md\`)
-  * Project/user skills ([Location] is a workspace or home path such as \`.pochi/skills/...\` or \`~/.pochi/skills/...\`): resolve resources as normal filesystem paths relative to the [Location] directory
-- NEVER use the \`pochi://\` schema for a project/user skill - \`pochi://skills/...\` resolves ONLY to built-in skills
+- Resolve resource files (e.g. a \`references/<name>.md\` referenced in the instructions) based on the skill's [Location]:
+  * Built-in skills (provided by Pochi): address resources with the \`pochi://\` schema, e.g. \`pochi://skills/<skill-name>/references/<name>.md\`
+  * Project/user skills: resolve resources as filesystem paths relative to the [Location] directory
+- NEVER use the \`pochi://\` schema for a project/user skill; \`pochi://skills/...\` resolves ONLY to built-in skills
 - Proactively explore the skill directory for optional resources that enhance task completion:
   * scripts/ - executable code that agents can run (Python, Bash, JavaScript, etc.)
   * references/ - on-demand documentation (REFERENCE.md, FORMS.md, domain-specific files)
