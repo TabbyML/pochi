@@ -33,3 +33,4 @@ export type {
   BackgroundJobStatus,
   TaskStatusLike,
 } from "./task-utils";
+export { toTaskStatus } from "./task";
