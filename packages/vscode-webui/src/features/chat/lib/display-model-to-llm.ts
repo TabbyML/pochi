@@ -68,7 +68,8 @@ export function displayModelToLLM(
     provider.kind === undefined ||
     provider.kind === "openai" ||
     provider.kind === "anthropic" ||
-    provider.kind === "openai-responses"
+    provider.kind === "openai-responses" ||
+    provider.kind === "minimax"
   ) {
     return {
       id: model.id,
