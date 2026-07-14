@@ -1,11 +1,12 @@
 import { useSelectedModels } from "@/features/settings";
+import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
+import { useEffectiveContextWindow } from "@/lib/hooks/use-effective-context-window";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import type { AutoMemoryContext } from "@getpochi/common";
-import type { Environment } from "@getpochi/common";
 import {
   type DisplayModel,
   type McpConfigOverride,
@@ -18,6 +19,7 @@ import { displayModelToLLM } from "./display-model-to-llm";
 
 export function useLiveChatKitGetters({
   todos,
+  todoModeActive,
   isSubTask,
   omitCustomRules,
   modelOverride,
@@ -25,6 +27,7 @@ export function useLiveChatKitGetters({
   taskId,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
+  todoModeActive?: React.RefObject<boolean>;
   isSubTask: boolean;
   omitCustomRules?: boolean;
   modelOverride?: DisplayModel;
@@ -54,18 +57,35 @@ export function useLiveChatKitGetters({
       taskId: taskId || undefined,
     });
 
+    const currentTodos = todos.current;
+    if (!currentTodos) {
+      return environment;
+    }
+
     return {
-      todos: todos.current,
       ...environment,
-    } satisfies Environment;
+      todos: currentTodos,
+    };
   }, [todos, omitCustomRules, taskId]);
+
+  // Read the current enable state so disabling the checkbox takes effect for
+  // the current task (not just on the next mount).
+  const { autoMemoryEnabled } = useAutoMemoryEnabled();
+  const autoMemoryEnabledRef = useLatest(autoMemoryEnabled);
 
   // Snapshot once per task panel so mid-task MEMORY.md rewrites don't bust
   // the cached system+tools prefix. New memory shows on next mount.
   const autoMemoryCacheRef = useRef<Promise<
     AutoMemoryContext | undefined
   > | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies(autoMemoryEnabledRef.current): ref is stable.
   const getAutoMemory = useCallback(() => {
+    // When project memory is disabled, drop any cached context so it is no
+    // longer injected into the prompt and re-enabling reads it fresh.
+    if (!autoMemoryEnabledRef.current) {
+      autoMemoryCacheRef.current = null;
+      return Promise.resolve(undefined);
+    }
     if (autoMemoryCacheRef.current) return autoMemoryCacheRef.current;
     const pending = vscodeAutoMemoryManager.readContext();
     autoMemoryCacheRef.current = pending;
@@ -85,6 +105,11 @@ export function useLiveChatKitGetters({
     getEnvironment,
 
     getAutoMemory,
+
+    isTodoModeActive: useCallback(
+      () => todoModeActive?.current === true,
+      [todoModeActive],
+    ),
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(mcpInfo.current): mcpInfo is ref.
     getMcpInfo: useCallback(() => {
@@ -115,11 +140,12 @@ function useLLM({
   modelOverride?: DisplayModel;
 }): React.RefObject<LLMRequestData> {
   const { selectedModel } = useSelectedModels({ isSubTask });
+  const effectiveContextWindow = useEffectiveContextWindow();
 
   const model = modelOverride || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!model) return undefined as never;
-    return displayModelToLLM(model);
+    return displayModelToLLM(model, effectiveContextWindow);
   })();
 
   return useLatest(llmFromSelectedModel);

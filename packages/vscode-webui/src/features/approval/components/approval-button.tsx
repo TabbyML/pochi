@@ -15,6 +15,8 @@ interface ApprovalButtonProps {
   isSubTask: boolean;
   task?: Task;
   subtask?: SubtaskInfo;
+  onToolsExecutionStarted?: () => void;
+  onToolsExecutionEnded?: () => void;
 }
 
 export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
@@ -24,6 +26,8 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   retry,
   isSubTask,
   subtask,
+  onToolsExecutionStarted,
+  onToolsExecutionEnded,
 }) => {
   const shouldShowApprovalButton = pendingApproval && allowAddToolResult;
 
@@ -51,6 +55,8 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
           isSubTask={isSubTask}
           parentUid={task?.parentId ?? undefined}
           subtask={subtask}
+          onToolsExecutionStarted={onToolsExecutionStarted}
+          onToolsExecutionEnded={onToolsExecutionEnded}
         />
       )}
     </div>

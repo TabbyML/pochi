@@ -13,8 +13,8 @@ import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
+  prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
-import { findTodos, mergeTodos } from "@getpochi/common/message-utils";
 import {
   FileStateCache,
   maybePersistToolResult,
@@ -214,6 +214,15 @@ export class TaskRunner {
     return this.chatKit.chat;
   }
 
+  private async prepareRetryMessage(
+    message: Message,
+  ): Promise<Message | undefined> {
+    const retryMessage = await prepareLastMessageForRetry(message, () =>
+      this.toolCallOptions.fileStateCache.markAllAsWritten(),
+    );
+    return retryMessage ? (retryMessage as Message) : undefined;
+  }
+
   get state() {
     return this.chatKit.chat.getState();
   }
@@ -285,10 +294,14 @@ export class TaskRunner {
       abortSignal: options.abortSignal,
 
       onCompactStart: options.onCompactStart,
-      onCompactFinish: options.onCompactFinish,
+      onCompactFinish: async (success) => {
+        if (success) {
+          this.toolCallOptions.fileStateCache.markAllAsWritten();
+        }
+        await options.onCompactFinish?.(success);
+      },
       getRecentFilesForCompact: () =>
         this.toolCallOptions.fileStateCache.getRecentFiles(),
-      clearFileStateCache: () => this.toolCallOptions.fileStateCache.clear(),
       backgroundTask: options.backgroundTask,
       taskMemory: options.taskMemory,
       projectMemory: options.projectMemory,
@@ -445,7 +458,6 @@ export class TaskRunner {
    * @throws {Error} - Throws an error if this step is failed.
    */
   private async step(): Promise<"finished" | "next" | "retry"> {
-    this.todos = this.loadTodos();
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the chat.");
@@ -511,14 +523,6 @@ export class TaskRunner {
     return result;
   }
 
-  private loadTodos() {
-    let todos: Todo[] = [];
-    for (const x of this.chat.messages) {
-      todos = mergeTodos(this.todos, findTodos(x) ?? []);
-    }
-    return todos;
-  }
-
   private async process(
     message: Message,
   ): Promise<"finished" | "next" | "retry"> {
@@ -556,7 +560,7 @@ export class TaskRunner {
         "Task is failed, trying to resend last message to resume it.",
         task.error,
       );
-      const processed = await this.chatKit.prepareLastMessageForRetry(message);
+      const processed = await this.prepareRetryMessage(message);
       if (processed) {
         this.chat.appendOrReplaceMessage(processed);
       } else {
@@ -582,7 +586,7 @@ export class TaskRunner {
       logger.trace(
         "Last message is assistant with empty parts or partial/completed tool calls, resending it to resume the task.",
       );
-      const processed = await this.chatKit.prepareLastMessageForRetry(message);
+      const processed = await this.prepareRetryMessage(message);
       if (processed) {
         this.chat.appendOrReplaceMessage(processed);
       } else {
@@ -596,9 +600,7 @@ export class TaskRunner {
         "Last message is assistant with no tool calls, sending a new user reminder.",
       );
       const message = createUserMessage(
-        prompts.createSystemReminder(
-          "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
-        ),
+        prompts.createSystemReminder(prompts.toolCallsReminder),
       );
       this.chat.appendOrReplaceMessage(message);
       return "retry";
@@ -652,7 +654,10 @@ export class TaskRunner {
       },
       { once: true },
     );
+
+    this.chatKit.markStartToolsExecution();
     await queue.start();
+    this.chatKit.markEndToolsExecution();
 
     logger.trace("All tool calls processed in the last message.");
     return "next" as const;
@@ -667,33 +672,38 @@ export class TaskRunner {
       `Found tool call: ${toolName} with args: ${JSON.stringify(toolCall.input)}`,
     );
 
+    let validateToolPolicyError: unknown;
     try {
       validateToolPolicy(toolName, toolCall.input, toolPolicies, {
         cwd: this.cwd,
       });
     } catch (error) {
-      return {
-        kind: "error",
-        error: toErrorMessage(error),
-      };
+      validateToolPolicyError = error;
     }
 
-    const resolvedInput = resolveToolCallArgs(
-      toolCall.input,
-      this.store.storeId,
-    );
+    let toolResult: unknown;
+    if (validateToolPolicyError) {
+      toolResult = {
+        error: toErrorMessage(validateToolPolicyError),
+      };
+    } else {
+      const resolvedInput = resolveToolCallArgs(
+        toolCall.input,
+        this.store.storeId,
+      );
 
-    let envs: Record<string, string> | undefined;
-    if (this.customAgent?.name === "browser") {
-      envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
-        this.taskId,
+      let envs: Record<string, string> | undefined;
+      if (this.customAgent?.name === "browser") {
+        envs = this.toolCallOptions.browserSessionStore?.getAgentBrowserEnvs(
+          this.taskId,
+        );
+      }
+
+      toolResult = await this.executeToolCallItem(
+        { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
+        envs,
       );
     }
-
-    const toolResult = await this.executeToolCallItem(
-      { ...toolCall, input: resolvedInput } as ToolUIPart<UITools>,
-      envs,
-    );
 
     const persistedToolResult = await maybePersistToolResult(
       toolName,

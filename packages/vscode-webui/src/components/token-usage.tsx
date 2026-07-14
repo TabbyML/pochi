@@ -13,12 +13,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAutoMemoryEnabled } from "@/lib/hooks/use-auto-memory-enabled";
+import { useEffectiveContextWindow } from "@/lib/hooks/use-effective-context-window";
 import { useRules } from "@/lib/hooks/use-rules";
 import { useTaskContextWindowUsage } from "@/lib/hooks/use-task-context-window-usage";
 import { useTaskMemoryState } from "@/lib/hooks/use-task-memory-state";
 import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import { constants, TaskMemoryFileUri } from "@getpochi/common";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
+import { getAutoCompactThreshold } from "@getpochi/livekit";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -73,10 +75,27 @@ export function TokenUsage({
       setIsOpen(false);
     }
   };
+
+  const handleClearProjectMemory = async () => {
+    const confirmed = await vscodeHost.showInformationMessage(
+      t("tokenUsage.projectMemoryClear"),
+      { modal: true, detail: t("tokenUsage.projectMemoryClearConfirm") },
+      t("tokenUsage.projectMemoryClear"),
+    );
+    if (!confirmed) return;
+    await vscodeAutoMemoryManager.clearProjectMemory();
+    setIsOpen(false);
+  };
   const { t } = useTranslation();
   const contextWindow =
     selectedModel.options.contextWindow || constants.DefaultContextWindow;
   const percentage = Math.ceil((totalTokens / contextWindow) * 100);
+  const effectiveContextWindow = useEffectiveContextWindow();
+  const autoCompactThreshold = getAutoCompactThreshold(
+    contextWindow,
+    effectiveContextWindow,
+  );
+  const autoCompactPct = (autoCompactThreshold / contextWindow) * 100;
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -226,7 +245,30 @@ export function TokenUsage({
                 {percentage}%
               </span>
             </div>
-            <Progress value={percentage} className="mb-3" />
+            <div className="relative mb-3">
+              <Progress value={percentage} />
+              {autoCompactThreshold > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className="group -translate-x-1/2 -inset-y-0.5 absolute flex w-3 cursor-default justify-center"
+                        style={{ left: `${autoCompactPct}%` }}
+                      >
+                        <div className="h-full w-[3px] rounded-full bg-muted-foreground/60 transition-all duration-150 group-hover:scale-x-125 group-hover:bg-foreground/90" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        {t("tokenUsage.autoCompactAt", {
+                          tokens: formatTokens(autoCompactThreshold),
+                        })}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
 
             <div className="mt-1 flex flex-col gap-y-3">
               {showSystemSection && (
@@ -282,7 +324,7 @@ export function TokenUsage({
                 </div>
 
                 {/* Project Memory row (label + toggle on the left, percentage on the right) */}
-                <div className="ml-3 flex items-center justify-between gap-2">
+                <div className="group/project-memory ml-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
@@ -352,11 +394,26 @@ export function TokenUsage({
                     </TooltipProvider>
                   </div>
 
-                  {autoMemoryAvailable && (
-                    <span className="text-muted-foreground">
-                      {formatPercentage(projectMemoryVal)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {autoMemoryAvailable && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={t("tokenUsage.projectMemoryClear")}
+                        className="invisible h-auto px-1.5 py-0.5 text-xs group-hover/project-memory:visible"
+                        onClick={() => {
+                          void handleClearProjectMemory();
+                        }}
+                      >
+                        {t("tokenUsage.projectMemoryReset")}
+                      </Button>
+                    )}
+                    {autoMemoryAvailable && (
+                      <span className="text-muted-foreground">
+                        {formatPercentage(projectMemoryVal)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Task Memory row (mirrors Project Memory row structure so the tooltip anchors at the same position) */}

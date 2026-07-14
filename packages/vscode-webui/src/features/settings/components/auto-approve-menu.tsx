@@ -1,11 +1,16 @@
 import { McpServerList } from "@/components/mcp-server-list";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -21,7 +26,7 @@ import {
   SquareChevronRightIcon,
   Terminal,
 } from "lucide-react";
-import type React from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAutoApprove } from "../hooks/use-auto-approve";
@@ -38,13 +43,15 @@ interface CoreActionSetting {
 interface AutoApproveMenuProps {
   isSubTask: boolean;
   mcpConfigOverride?: McpConfigOverride;
-  trigger?: React.ReactNode;
+  trigger?: ReactNode;
+  tooltip?: ReactNode;
 }
 
 export function AutoApproveMenu({
   isSubTask,
   mcpConfigOverride,
   trigger,
+  tooltip,
 }: AutoApproveMenuProps) {
   const { t } = useTranslation();
   const {
@@ -57,6 +64,7 @@ export function AutoApproveMenu({
   const [currentMaxRetry, setCurrentMaxRetry] = useState(
     autoApproveSettings.maxRetryLimit.toString(),
   );
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     setCurrentMaxRetry(autoApproveSettings.maxRetryLimit.toString());
@@ -154,11 +162,9 @@ export function AutoApproveMenu({
       subtaskOffhand,
     });
 
-  const onOpenChange = (open: boolean) => {
-    if (isSubTask) return;
-
-    // If the initialSettings are not correctly loaded, establish default settings
-    if (open && !initialSettings?.autoApproveSettings) {
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && !isSubTask && !initialSettings?.autoApproveSettings) {
       setInitialSettings({
         autoApproveSettings,
         subtaskOffhand,
@@ -178,55 +184,107 @@ export function AutoApproveMenu({
     setIsDirty(hasChanges);
   }, [autoApproveSettings, subtaskOffhand, initialSettings, isSubTask]);
 
-  return (
-    <Popover onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        {trigger ?? (
-          <div
-            className={cn(
-              "relative flex cursor-pointer select-none items-center justify-between py-2.5",
+  const handleTriggerClick = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const nextAutoApproveActive = !autoApproveActive;
+    updateAutoApproveActive(nextAutoApproveActive);
+    handleOpenChange(false);
+  };
+
+  const handleTriggerContextMenu = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handleOpenChange(!isOpen);
+  };
+
+  // Let trigger clicks/right-clicks handle open state instead of closing as outside interactions.
+  const handleInteractOutside: ComponentProps<
+    typeof PopoverContent
+  >["onInteractOutside"] = (event) => {
+    if (
+      event.target instanceof Element &&
+      event.target.closest("[data-auto-approve-menu-trigger]")
+    ) {
+      event.preventDefault();
+    }
+  };
+
+  const defaultTrigger = (
+    <div
+      className={cn(
+        "relative flex cursor-pointer select-none items-center justify-between py-2.5",
+      )}
+    >
+      <div className="flex w-full overflow-x-hidden">
+        <label
+          htmlFor="auto-approve-main-checkbox-trigger-dialog"
+          className="flex shrink-0 cursor-pointer items-center pr-3 pl-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Checkbox
+            id="auto-approve-main-checkbox-trigger-dialog"
+            checked={autoApproveActive}
+            onCheckedChange={(checked) => {
+              updateAutoApproveActive(!!checked);
+            }}
+          />
+        </label>
+        <div className="flex flex-1 flex-nowrap items-center gap-1 overflow-hidden font-medium hover:text-foreground/80">
+          <div className="flex-1 truncate">
+            <span className="whitespace-nowrap">
+              {t("settings.autoApprove.title")}:
+            </span>
+            {autoApproveActive && enabledOptionsSummary.length > 0 ? (
+              <span className="ml-1">{enabledOptionsSummary.join(", ")}</span>
+            ) : (
+              <span className="ml-1 text-[var(--vscode-descriptionForeground)]">
+                {autoApproveActive
+                  ? t("settings.autoApprove.noActionsSelected")
+                  : t("settings.autoApprove.disabled")}
+              </span>
             )}
-          >
-            <div className="flex w-full overflow-x-hidden">
-              <label
-                htmlFor="auto-approve-main-checkbox-trigger-dialog"
-                className="flex shrink-0 cursor-pointer items-center pr-3 pl-1"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Checkbox
-                  id="auto-approve-main-checkbox-trigger-dialog"
-                  checked={autoApproveActive}
-                  onCheckedChange={(checked) => {
-                    updateAutoApproveActive(!!checked);
-                  }}
-                />
-              </label>
-              <div className="flex flex-1 flex-nowrap items-center gap-1 overflow-hidden font-medium hover:text-foreground/80">
-                <div className="flex-1 truncate">
-                  <span className="whitespace-nowrap">
-                    {t("settings.autoApprove.title")}:
-                  </span>
-                  {autoApproveActive && enabledOptionsSummary.length > 0 ? (
-                    <span className="ml-1">
-                      {enabledOptionsSummary.join(", ")}
-                    </span>
-                  ) : (
-                    <span className="ml-1 text-[var(--vscode-descriptionForeground)]">
-                      {autoApproveActive
-                        ? t("settings.autoApprove.noActionsSelected")
-                        : t("settings.autoApprove.disabled")}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
           </div>
-        )}
-      </PopoverTrigger>
+        </div>
+      </div>
+    </div>
+  );
+
+  const triggerWithHandlers = (
+    <span
+      data-auto-approve-menu-trigger=""
+      className="inline-flex"
+      onClick={handleTriggerClick}
+      onContextMenu={handleTriggerContextMenu}
+    >
+      {trigger ?? defaultTrigger}
+    </span>
+  );
+
+  return (
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+      {tooltip ? (
+        <HoverCard>
+          <PopoverAnchor asChild>
+            <HoverCardTrigger asChild>{triggerWithHandlers}</HoverCardTrigger>
+          </PopoverAnchor>
+          <HoverCardContent
+            side="top"
+            align="start"
+            sideOffset={6}
+            className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
+          >
+            {tooltip}
+          </HoverCardContent>
+        </HoverCard>
+      ) : (
+        <PopoverAnchor asChild>{triggerWithHandlers}</PopoverAnchor>
+      )}
       <PopoverContent
         className="[@media(min-width:400px)]:w-[400px]"
         side="top"
         align="end"
+        onInteractOutside={handleInteractOutside}
       >
         <div className="grid grid-cols-1 gap-2.5 [@media(min-width:400px)]:grid-cols-2">
           {coreActionSettings

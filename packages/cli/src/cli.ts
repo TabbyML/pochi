@@ -361,7 +361,6 @@ const program = new Command()
     const taskFs = new TaskFileSystem(store);
     const filesystem = new CompoundFileSystem(localFs, taskFs);
     const browserSessionStore = new BrowserSessionStore();
-    const isSubTask = selectedAgent !== undefined;
     const autoCompactEnabled = options.autoCompact;
     const projectMemoryEnabled = options.projectMemory;
     const autoMemoryManager = new AutoMemoryManager();
@@ -423,7 +422,7 @@ const program = new Command()
       skills,
       mcpHub,
       abortSignal: abortController.signal,
-      isSubTask,
+      isSubTask: false,
       customAgent: selectedAgent,
       attemptCompletionSchema: options.attemptCompletionSchema
         ? parseOutputSchema(options.attemptCompletionSchema)
@@ -657,6 +656,7 @@ async function createLLMConfigWithVendors(
       id: `${vendorId}/${modelId}`,
       type: "vendor",
       contextWindow: options.contextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       useToolCallMiddleware: options.useToolCallMiddleware,
       getModel: () =>
         createModel(vendorId, {
@@ -680,6 +680,7 @@ async function createLLMConfigWithPochi(
       id: `${vendorId}/${model}`,
       type: "vendor",
       contextWindow: pochiModelOptions.contextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
       getModel: () =>
         createModel(vendorId, {
@@ -717,6 +718,7 @@ async function createLLMConfigWithProviders(
       apiKey: modelProvider.apiKey,
       contextWindow:
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       contentType: modelSetting.contentType,
@@ -731,6 +733,7 @@ async function createLLMConfigWithProviders(
       vertex: modelProvider.vertex,
       contextWindow:
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
@@ -742,7 +745,8 @@ async function createLLMConfigWithProviders(
     modelProvider.kind === undefined ||
     modelProvider.kind === "openai" ||
     modelProvider.kind === "openai-responses" ||
-    modelProvider.kind === "anthropic"
+    modelProvider.kind === "anthropic" ||
+    modelProvider.kind === "minimax"
   ) {
     return {
       id: `${providerId}/${modelId}`,
@@ -752,6 +756,7 @@ async function createLLMConfigWithProviders(
       apiKey: modelProvider.apiKey,
       contextWindow:
         modelSetting.contextWindow ?? constants.DefaultContextWindow,
+      effectiveContextWindow: pochiConfig.value.effectiveContextWindow,
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,

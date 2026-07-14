@@ -1,18 +1,10 @@
-import { MessageMarkdown } from "@/components/message";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useSendMessage } from "@/features/chat";
-import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
-import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { prompts } from "@getpochi/common";
+import { CodeBlock, MessageMarkdown } from "@/components/message";
 import { isStaticToolUIPart } from "ai";
-import { Check, Footprints, GitPullRequest } from "lucide-react";
+import { Check } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { CreatePrAction } from "./create-pr-action";
+import { getAttemptCompletionResultDisplay } from "./tool-result-display";
 import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
@@ -20,17 +12,7 @@ export const AttemptCompletionTool: React.FC<
 > = ({ tool: toolCall, messages, isSubTask }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
-  const sendMessage = useSendMessage();
-
-  const { data: currentWorkspace } = useCurrentWorkspace();
-  const { worktrees } = useWorktrees();
-
-  const currentWorktree = useMemo(() => {
-    if (!worktrees || !currentWorkspace) return null;
-    return worktrees.find((wt) => wt.path === currentWorkspace.cwd);
-  }, [worktrees, currentWorkspace]);
-
-  const hasPR = !!currentWorktree?.data?.github?.pullRequest;
+  const resultContent = getAttemptCompletionResultDisplay(result);
 
   const isLastPart = useMemo(() => {
     if (!messages || messages.length === 0) return false;
@@ -48,19 +30,9 @@ export const AttemptCompletionTool: React.FC<
   }, [messages, toolCall.toolCallId]);
 
   // Return null if there's nothing to display
-  if (!result) {
+  if (!resultContent.content) {
     return null;
   }
-
-  const onClickCreatePR = () => {
-    sendMessage({ prompt: "Please create a PR for the changes above" });
-  };
-
-  const onClickCreateWalkthrough = () => {
-    sendMessage({
-      prompt: `${prompts.customAgent("walkthrough")} Please create a walkthrough for the changes above`,
-    });
-  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -69,40 +41,17 @@ export const AttemptCompletionTool: React.FC<
           <Check className="size-4" />
           {t("toolInvocation.taskCompleted")}
         </span>
-        {!!currentWorkspace && isLastPart && !isSubTask && (
+        {isLastPart && !isSubTask && (
           <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 text-muted-foreground"
-                  onClick={onClickCreateWalkthrough}
-                >
-                  <Footprints className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("worktree.createWalkthrough")}</TooltipContent>
-            </Tooltip>
-            {!hasPR && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 text-muted-foreground"
-                    onClick={onClickCreatePR}
-                  >
-                    <GitPullRequest className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t("worktree.createPr")}</TooltipContent>
-              </Tooltip>
-            )}
+            <CreatePrAction />
           </div>
         )}
       </div>
-      <MessageMarkdown>{result}</MessageMarkdown>
+      {resultContent.type === "json" ? (
+        <CodeBlock language="json" value={resultContent.content} />
+      ) : (
+        <MessageMarkdown>{resultContent.content}</MessageMarkdown>
+      )}
     </div>
   );
 };

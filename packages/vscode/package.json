@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.53.0-dev",
+  "version": "0.59.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -893,7 +893,8 @@
     "publish-prerelease": "bun run vscode:publish-prerelease && bun run ovsx:publish-prerelease",
     "watch:webui": "cd ../vscode-webui && bun run start",
     "watch:vscode": "bun build ./src/extension.ts --outdir ./dist --external vscode --format cjs --target node --watch",
-    "watch": "bun run copy:assets && npm-run-all --parallel watch:vscode watch:webui",
+    "watch:assets": "bun ./scripts/watch-assets.js",
+    "watch": "npm-run-all --parallel watch:vscode watch:webui watch:assets",
     "start": "code --extensionDevelopmentPath=$PWD",
     "dev": "npm-run-all --parallel watch start",
     "tsc": "tsc --noEmit",

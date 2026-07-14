@@ -1,4 +1,5 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
+import { prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import { useState } from "react";
 
@@ -13,7 +14,9 @@ export const useInlineCompactTask = ({
     setIsPending(true);
     try {
       await sendMessage({
-        text: "I've summarized the task and please analysis the current status, and use askFollowupQuestion with me to confirm the next steps",
+        text: prompts.createSystemReminder(
+          "The task has been summarized. Please analyze the current status, then use askFollowupQuestion to confirm the next steps with the user.",
+        ),
         metadata: {
           kind: "user",
           compact: true,

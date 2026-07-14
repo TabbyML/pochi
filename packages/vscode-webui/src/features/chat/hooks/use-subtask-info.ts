@@ -1,6 +1,7 @@
 import { useSubtaskOffhand } from "@/features/settings";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { type Message, type UITools, catalog } from "@getpochi/livekit";
+import { type Todo, Todo as TodoSchema } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
 
 export interface SubtaskInfo {
@@ -9,6 +10,7 @@ export interface SubtaskInfo {
   manualRun: boolean;
   agent?: string;
   description?: string;
+  todos?: Todo[];
 }
 
 export type NewTaskTool = Extract<
@@ -31,6 +33,7 @@ export function useSubtaskInfo(
     | undefined;
   const agent = newtaskTool?.input?.agentType;
   const description = newtaskTool?.input?.description;
+  const todos = TodoSchema.array().safeParse(newtaskTool?.input?._meta?.todos);
   const isSubTask = !!parentUid;
   const { subtaskOffhand } = useSubtaskOffhand();
 
@@ -43,5 +46,6 @@ export function useSubtaskInfo(
     manualRun: isSubTask && subtaskOffhand === false,
     agent,
     description,
+    todos: todos.success ? todos.data : undefined,
   };
 }

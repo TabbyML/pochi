@@ -6,12 +6,24 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { getLogger, isForkAgentUseCase } from "@getpochi/common";
-import { prepareLastMessageForRetry as prepareMessageForRetry } from "@getpochi/common/message-utils";
+import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
-import { type CustomAgent, ToolsByPermission } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  ToolsByPermission,
+  getToolCallCancelErrorMessage,
+  isReadonlyToolCall,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
-import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
+import {
+  type ChatInit,
+  type ChatOnErrorCallback,
+  type ChatOnFinishCallback,
+  getToolName,
+  isToolUIPart,
+} from "ai";
 import type z from "zod";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
@@ -47,6 +59,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
+import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
 import { computeContextWindowUsage, estimateTotalTokens } from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
@@ -56,6 +69,56 @@ const TaskMemorySettleTimeoutMs = 5_000;
 const TaskMemorySettlePollIntervalMs = 200;
 
 type GetRecentFilesForCompact = () => MaybePromise<RecentFileState[]>;
+
+function normalizeFailedStreamMessage(
+  message: Message | null,
+  error: unknown,
+): Message | null {
+  if (message?.role !== "assistant") {
+    return message;
+  }
+
+  const errorText = getFailedToolCallErrorText(error);
+  return {
+    ...message,
+    parts: message.parts.map((part) => {
+      if (!isToolUIPart(part)) {
+        return part;
+      }
+
+      if (
+        part.state === "output-available" ||
+        part.state === "output-error" ||
+        part.state === "output-denied"
+      ) {
+        return part;
+      }
+
+      if (part.state === "input-available" && isUserInputToolPart(part)) {
+        return part;
+      }
+
+      const normalizedPart = { ...(part as Record<string, unknown>) };
+      normalizedPart.output = undefined;
+      normalizedPart.errorText = undefined;
+      normalizedPart.approval = undefined;
+
+      return {
+        ...normalizedPart,
+        state: "output-error",
+        errorText,
+      } as unknown as typeof part;
+    }),
+  };
+}
+
+function getFailedToolCallErrorText(error: unknown): string {
+  if (error instanceof Error && error.name === "AbortError") {
+    return getToolCallCancelErrorMessage("user-abort");
+  }
+
+  return error instanceof Error ? error.message : String(error);
+}
 
 export type LiveChatKitBackgroundTaskOptions = {
   stateStore?: {
@@ -260,11 +323,9 @@ export type LiveChatKitOptions<T> = {
 
   /**
    * Returns recent file contents the model saw before compaction.
-   * They are appended to the compact block before the cache is cleared.
+   * They are appended to the compact block before onCompactFinish runs.
    */
   getRecentFilesForCompact?: GetRecentFilesForCompact;
-
-  clearFileStateCache?: () => MaybePromise<void>;
 
   backgroundTask?: LiveChatKitBackgroundTaskOptions;
 
@@ -275,6 +336,7 @@ export type LiveChatKitOptions<T> = {
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
   systemPromptOverride?: string;
+  outputSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -303,6 +365,7 @@ export class LiveChatKit<
   protected readonly taskId: string;
   protected readonly store: LiveKitStore;
   protected readonly blobStore: BlobStore;
+  private readonly getters: PrepareRequestGetters;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
   private readonly backgroundTaskExecutor: TaskExecutor | undefined;
@@ -312,11 +375,11 @@ export class LiveChatKit<
   private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
   private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
-  private readonly clearFileStateCacheCallback:
-    | (() => MaybePromise<void>)
-    | undefined;
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private backgroundTasksStarted = false;
+  private currentToolsExecution:
+    | { messageId: string; startedAt: Date }
+    | undefined = undefined;
 
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
@@ -352,7 +415,6 @@ export class LiveChatKit<
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact,
-    clearFileStateCache,
     backgroundTask,
     taskMemory,
     projectMemory,
@@ -362,9 +424,9 @@ export class LiveChatKit<
     this.taskId = taskId;
     this.store = store;
     this.blobStore = blobStore;
+    this.getters = getters;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
-    this.clearFileStateCacheCallback = clearFileStateCache;
     this.backgroundTaskAdaptor = backgroundTask?.adaptor;
     const backgroundTaskStateStore = backgroundTask
       ? (backgroundTask.stateStore ?? createBackgroundTaskStateStore())
@@ -505,7 +567,7 @@ export class LiveChatKit<
           messages,
           llm: getters.getLLM(),
           task: this.task,
-          estimatedTotalTokens: estimateTotalTokens(messages),
+          estimatedTotalTokens: estimateTotalTokens(formatters.llm(messages)),
         });
 
       if (isManualCompact || isAutoCompact) {
@@ -545,6 +607,7 @@ export class LiveChatKit<
             store: this.store,
             useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
+          this.updateTotalTokensEstimate(messages);
           if (isAutoCompact) {
             this.consecutiveAutoCompactFailures = 0;
           }
@@ -714,6 +777,62 @@ export class LiveChatKit<
     );
   };
 
+  /**
+   * Mark the start of a tool-calls execution.
+   */
+  markStartToolsExecution = () => {
+    const messages = this.messages;
+    const lastMessage = messages[messages.length - 1];
+    if (
+      lastMessage?.role === "assistant" &&
+      lastMessage.parts.some(
+        (p) =>
+          "toolCallId" in p && p.toolCallId && p.state === "input-available",
+      )
+    ) {
+      this.currentToolsExecution = {
+        messageId: lastMessage.id,
+        startedAt: new Date(),
+      };
+    }
+  };
+
+  /**
+   * Mark the end of a tool-calls execution.
+   */
+  markEndToolsExecution = () => {
+    const toolsExecution = this.currentToolsExecution;
+    this.currentToolsExecution = undefined;
+    if (toolsExecution) {
+      const duration = Date.now() - toolsExecution.startedAt.getTime();
+      const messages = this.chat.messages;
+      const messageToUpdate = messages.find(
+        (m) => m.id === toolsExecution.messageId,
+      );
+      if (messageToUpdate) {
+        const updatedMessages = messages.map((m) => {
+          if (m.id === toolsExecution.messageId) {
+            return {
+              ...m,
+              metadata: {
+                ...m.metadata,
+                totalToolsExecutionDuration:
+                  m.metadata?.kind === "assistant" &&
+                  m.metadata.totalToolsExecutionDuration !== undefined
+                    ? m.metadata.totalToolsExecutionDuration + duration
+                    : duration,
+              },
+            };
+          }
+          return m;
+        });
+        this.store.commit(events.updateMessages({ messages: updatedMessages }));
+        const updatedMessagesFromStore = this.messages;
+        this.chat.messages = updatedMessagesFromStore;
+      }
+    }
+  };
+
   fork = (
     sourceStore: LiveKitStore,
     forkTaskParams: {
@@ -816,8 +935,23 @@ export class LiveChatKit<
 
     if (isError) return; // handled in onError already.
 
-    const message = filterCompletionTools(originalMessage);
-    this.chat.messages = [...this.chat.messages.slice(0, -1), message];
+    const filteredMessage = filterCompletionTools(originalMessage);
+    const message = this.getters.isTodoModeActive?.()
+      ? prepareAttemptTodoCompletionSubtask({
+          message: filteredMessage,
+          task: this.task,
+          taskId: this.taskId,
+          store: this.store,
+        })
+      : filteredMessage;
+
+    // Replace the streamed assistant message only when it is the last one;
+    // otherwise append so an early-abort empty stream can't drop the user message.
+    const lastMessage = this.chat.messages.at(-1);
+    this.chat.messages =
+      lastMessage?.id === message.id
+        ? [...this.chat.messages.slice(0, -1), message]
+        : [...this.chat.messages, message];
 
     const { store } = this;
     if (message.metadata?.kind !== "assistant") {
@@ -828,15 +962,18 @@ export class LiveChatKit<
     const status = toTaskStatus(message, finishReason);
 
     const contextWindowUsage = computeContextWindowUsage(
-      this.chat.messages,
+      formatters.llm(this.chat.messages),
       this.latestRequestSnapshot,
     );
 
     let duration = undefined;
-    if (message.metadata.finishedAt && message.metadata.startedAt) {
+    if (
+      message.metadata?.kind === "assistant" &&
+      message.metadata.totalStreamingDuration !== undefined
+    ) {
       duration = Duration.millis(
-        message.metadata.finishedAt.getTime() -
-          message.metadata.startedAt.getTime(),
+        message.metadata.totalStreamingDuration +
+          (message.metadata.totalToolsExecutionDuration ?? 0),
       );
     }
 
@@ -926,14 +1063,15 @@ export class LiveChatKit<
     this.pendingMemoryOperations.add(tracked);
   }
 
-  prepareLastMessageForRetry = async (
-    message: Message,
-  ): Promise<Message | undefined> => {
-    const prepared = prepareMessageForRetry(message);
-    if (!prepared) return undefined;
-    await this.clearFileStateCache();
-    return prepared as Message;
-  };
+  private updateTotalTokensEstimate(messages: Message[]) {
+    this.store.commit(
+      events.updateTotalTokens({
+        id: this.taskId,
+        totalTokens: estimateTotalTokens(formatters.llm(messages)),
+        updatedAt: new Date(),
+      }),
+    );
+  }
 
   private async handleCompactFinish(
     success: boolean,
@@ -941,7 +1079,6 @@ export class LiveChatKit<
   ) {
     if (success) {
       await this.taskMemoryAdaptor?.resetTokenBaseline();
-      await this.clearFileStateCache();
     }
 
     try {
@@ -951,27 +1088,22 @@ export class LiveChatKit<
     }
   }
 
-  private async clearFileStateCache() {
-    try {
-      await this.clearFileStateCacheCallback?.();
-    } catch (error) {
-      logger.warn("Failed to clear file-state cache", error);
-    }
-  }
-
   private readonly onError: ChatOnErrorCallback = (error) => {
     logger.error("onError", error);
-    const lastMessage = this.chat.messages.at(-1) || null;
+    const rawLastMessage = this.chat.messages.at(-1) || null;
+    const lastMessage = normalizeFailedStreamMessage(rawLastMessage, error);
+    if (lastMessage && rawLastMessage) {
+      this.chat.messages = [...this.chat.messages.slice(0, -1), lastMessage];
+    }
 
     let duration = undefined;
     if (
       lastMessage?.metadata?.kind === "assistant" &&
-      lastMessage.metadata.finishedAt &&
-      lastMessage.metadata.startedAt
+      lastMessage.metadata.totalStreamingDuration !== undefined
     ) {
       duration = Duration.millis(
-        lastMessage.metadata.finishedAt.getTime() -
-          lastMessage.metadata.startedAt.getTime(),
+        lastMessage.metadata.totalStreamingDuration +
+          (lastMessage.metadata.totalToolsExecutionDuration ?? 0),
       );
     }
 
@@ -997,18 +1129,95 @@ export class LiveChatKit<
 }
 
 // clean checkpoint means after this checkpoint there are no write or execute toolcalls that may cause file edits
-const getCleanCheckpoint = (messages: Message[]) => {
+/**
+ * Whether a message part is a tool call that may have modified files, i.e. a
+ * write tool or a non-read-only execute tool. A read-only command (e.g. `echo`
+ * or `ls`) does not dirty the working tree relative to the last checkpoint, so
+ * it must not invalidate it.
+ */
+const isDirtyingToolPart = (part: Message["parts"][number]): boolean => {
+  if (!isToolUIPart(part)) {
+    return false;
+  }
+  const toolName = getToolName(part);
+  if (
+    !ToolsByPermission.write.includes(toolName) &&
+    !ToolsByPermission.execute.includes(toolName)
+  ) {
+    return false;
+  }
+  return !isReadonlyToolCall(toolName, part.input);
+};
+
+export const getCleanCheckpoint = (messages: Message[]) => {
   const lastPart = messages
     .flatMap((m) => m.parts)
-    .filter(
-      (p) =>
-        p.type === "data-checkpoint" ||
-        ToolsByPermission.write.some((tool) => p.type === `tool-${tool}`) ||
-        ToolsByPermission.execute.some((tool) => p.type === `tool-${tool}`),
-    )
+    .filter((p) => p.type === "data-checkpoint" || isDirtyingToolPart(p))
     .at(-1);
 
   if (lastPart?.type === "data-checkpoint") {
     return lastPart.data.commit;
   }
 };
+
+function prepareAttemptTodoCompletionSubtask({
+  message,
+  task,
+  taskId,
+  store,
+}: {
+  message: Message;
+  task: Task | undefined;
+  taskId: string;
+  store: LiveKitStore;
+}): Message {
+  if (!hasActiveTodos(task?.todos)) {
+    return message;
+  }
+
+  const todoAuditTaskId = crypto.randomUUID();
+  const todoAuditToolCallId = crypto.randomUUID();
+  const nextMessage = replaceAttemptCompletionWithTodoSubtask(
+    message,
+    task?.todos ?? [],
+    {
+      toolCallId: todoAuditToolCallId,
+      uid: todoAuditTaskId,
+    },
+  );
+  const todoAuditPart =
+    nextMessage !== message
+      ? nextMessage.parts.find(
+          (part) =>
+            part.type === "tool-newTask" &&
+            part.input?._meta?.uid === todoAuditTaskId,
+        )
+      : undefined;
+
+  if (todoAuditPart?.type !== "tool-newTask" || !todoAuditPart.input) {
+    return nextMessage;
+  }
+
+  store.commit(
+    events.taskInited({
+      id: todoAuditTaskId,
+      cwd: task?.cwd ?? undefined,
+      parentId: taskId,
+      createdAt: new Date(),
+      initMessages: [
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: todoAuditPart.input.prompt,
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
+  return nextMessage;
+}

@@ -30,9 +30,18 @@
     "createPlan": "计划",
     "createPlanTooltip": "为此任务创建实施计划",
     "planModeLabel": "计划",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "暂停 Todo",
+    "resumeTodo": "继续 Todo",
+    "autoContinueTodo": "自动推进 Todo",
     "planModeToggleShortcutTooltip": "Shift + Tab 切换",
     "planModeSubmitTooltip": "以计划模式提交",
+    "todoModeSubmitTooltip": "以 Todo 模式提交",
     "queuedMessages": "排队中的消息 ({{count}})",
+    "noMessage": "无消息",
+    "fileCount": "{{count}} 个文件",
+    "reviewCount": "{{count}} 条评审",
+    "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",
     "pleaseCheckFiles": "请检查这些附件。",
@@ -53,6 +62,7 @@
     "ofUsed": "已使用 {{used}} / {{total}}",
     "newTaskWithSummary": "新建任务并生成摘要",
     "compactTask": "压缩任务",
+    "autoCompactAt": "达到约 {{tokens}} tokens 时将自动压缩",
     "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话",
     "defaultContextWindowWarning": "上下文窗口值是默认值，对于您的自定义模型可能不准确。为了精确的 token 管理，请根据您的模型提供商的文档在设置中进行调整。",
     "tokensUsed": "已使用 {{used}} / {{total}} tokens",
@@ -77,6 +87,9 @@
     "viewProjectMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
     "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",
     "projectMemoryUnavailable": "在此工作区运行任务后，项目记忆将可用。",
+    "projectMemoryClear": "清除项目记忆",
+    "projectMemoryReset": "重置",
+    "projectMemoryClearConfirm": "这将重置所有项目记忆文件（MEMORY.md 及主题文件），此操作无法撤销。",
     "taskMemoryUnavailable": "任务记忆将随着对话进行自动生成。"
   },
   "modelSelect": {
@@ -110,7 +123,6 @@
   },
   "worktree": {
     "createPr": "创建 PR",
-    "createWalkthrough": "创建 Walkthrough",
     "reviewChanges": "审查变更",
     "createDraftPr": "创建草稿 PR",
     "createPrManually": "手动创建 PR",
@@ -166,6 +178,8 @@
     "autoApprove": {
       "title": "自动批准",
       "approvals": "权限",
+      "toolbarTooltipEnabled": "自动批准已开启。点击关闭。",
+      "toolbarTooltipDisabled": "自动批准已关闭。点击开启。",
       "disabled": "已禁用",
       "noActionsSelected": "未选择任何操作",
       "readFiles": "读取文件",
@@ -333,6 +347,7 @@
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",
     "readBackground": "正在读取后台任务输出",
+    "readTerminal": "正在读取终端输出",
     "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
     "backgroundExecuting": "正在后台执行命令",
@@ -365,7 +380,8 @@
     "noChangesDetected": "未检测到更改",
     "compare": "比较",
     "fork": "新建分支任务",
-    "forking": "创建中..."
+    "forking": "创建中...",
+    "summary": "摘要"
   },
   "reviewUI": {
     "reviews": "评审",
@@ -406,7 +422,8 @@
     "disableLineWrap": "禁用自动换行"
   },
   "messageList": {
-    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"
+    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量",
+    "completedIn": "完成于 {{duration}}"
   },
   "markdown": {
     "codeOmitted": "... {{language}} 代码已省略 ( {{bytes}} 字节 ) ..."
@@ -420,6 +437,18 @@
   "activeSelectionBadge": {
     "cell": "单元格",
     "addContext": "添加上下文"
+  },
+  "todoModeBadge": {
+    "remove": "移除 Todo 模式"
+  },
+  "addContextMenu": {
+    "trigger": "添加",
+    "files": "文件和文件夹",
+    "filesDescription": "使用 @ 搜索工作区文件和文件夹",
+    "attach": "附加文件",
+    "attachDescription": "从电脑上传图片、PDF 或视频",
+    "todoDescription": "让 Pochi 持续推进这个 Todo",
+    "todoDisabledDescription": "完成当前 Todo 后才能开始新的"
   },
   "mentionList": {
     "noResultsFound": "未找到结果",
@@ -450,7 +479,17 @@
   },
   "todoList": {
     "todos": "待办事项",
-    "allDone": "🎉 全部完成！"
+    "allDone": "🎉 全部完成！",
+    "cancelledTodo": "Todo 已取消",
+    "editTodo": "编辑",
+    "editTodos": "编辑 Todos",
+    "saveTodo": "保存",
+    "saveTodos": "保存 Todos",
+    "editTodoContent": "编辑 Todo 内容",
+    "cancelTodo": "取消",
+    "deleteTodo": "删除",
+    "pauseTodo": "暂停",
+    "resumeTodo": "继续 Todo"
   },
   "commandExecutionPanel": {
     "copied": "已复制！",
@@ -546,15 +585,19 @@
     "creatingPlan": "正在分析您的代码并制定计划...",
     "planCreationPaused": "计划创建已暂停"
   },
-  "walkthroughView": {
-    "openWalkthrough": "打开",
-    "creatingWalkthrough": "正在创建 Walkthrough...",
-    "walkthroughCreationPaused": "Walkthrough 创建已暂停"
-  },
   "browserView": {
     "noFrameAvailable": "无画面",
     "executing": "执行中...",
     "paused": "暂停"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "正在审计 Todos",
+    "completed": "所有 Todos 已完成",
+    "needsWork": "Todo 需要继续推进",
+    "stopped": "Todo 审计已停止",
+    "stoppedDescription": "审计在生成总结前已停止。",
+    "unavailable": "Todo 审计结果不可用",
+    "unavailableDescription": "审计结束了，但没有返回可读取的总结。"
   },
   "browserAgentSettings": {
     "runtimeSection": "浏览器运行环境",

@@ -3,6 +3,7 @@ import { forwardRef, useImperativeHandle, useRef } from "react";
 
 import { DevRetryCountdown } from "@/components/dev-retry-countdown";
 import { ActiveSelectionBadge } from "@/components/prompt-form/active-selection-badge";
+import { AddContextMenu } from "@/components/prompt-form/add-context-menu";
 import { FormEditor } from "@/components/prompt-form/form-editor";
 import type { useApprovalAndRetry } from "@/features/approval";
 import type { UseChatHelpers } from "@ai-sdk/react";
@@ -10,10 +11,10 @@ import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
 import { UserEditsBadge } from "@/components/prompt-form/user-edits";
+import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import type { ChatInput } from "../hooks/use-chat-input-state";
-import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
   input: ChatInput;
@@ -28,15 +29,17 @@ interface ChatInputFormProps {
   status: UseChatHelpers<Message>["status"];
   onFileDrop?: (files: File[]) => boolean;
   messageContent?: string;
-  queuedMessages: string[];
-  onRemoveQueuedMessage: (index: number) => void;
   isSubTask: boolean;
   children?: ReactNode;
   reviews: Review[];
   taskId?: string;
   lastCheckpointHash?: string;
-  onTogglePlanMode?: () => void;
+  onSwitchSubmitMode?: () => void;
   isPlanMode?: boolean;
+  onSelectTodoMode?: () => void;
+  todoModeDisabled?: boolean;
+  onAttachFile?: () => void;
+  contextMenuSide?: "top" | "bottom";
   className?: string;
 }
 
@@ -61,19 +64,23 @@ export const ChatInputForm = forwardRef<
     status,
     onFileDrop,
     messageContent,
-    queuedMessages,
-    onRemoveQueuedMessage,
     isSubTask,
     reviews,
     taskId,
     lastCheckpointHash,
     children,
-    onTogglePlanMode,
+    onSwitchSubmitMode,
+    onSelectTodoMode,
+    todoModeDisabled,
+    onAttachFile,
+    contextMenuSide = "top",
     className,
   },
   ref,
 ) {
   const editorRef = useRef<Editor | null>(null);
+  const activeSelection = useActiveSelection();
+  const showAddContextLabel = !activeSelection;
 
   useImperativeHandle(ref, () => ({
     addToSubmitHistory: () => {
@@ -99,27 +106,39 @@ export const ChatInputForm = forwardRef<
       messageContent={messageContent}
       isSubTask={isSubTask}
       onFocus={onFocus}
-      onTogglePlanMode={onTogglePlanMode}
+      onSwitchSubmitMode={onSwitchSubmitMode}
       className={className}
     >
       <div className="mt-1 flex select-none flex-wrap items-center gap-1.5 pl-2">
-        <ActiveSelectionBadge
-          onClick={() => {
+        <AddContextMenu
+          side={contextMenuSide}
+          showLabel={showAddContextLabel}
+          onAddFilesAndFolders={() => {
             editorRef.current?.commands.insertContent(" @");
+            setTimeout(() => {
+              editorRef.current?.commands.focus();
+            }, 0);
           }}
+          onAttachFile={onAttachFile}
+          onSelectTodoMode={
+            onSelectTodoMode
+              ? () => {
+                  onSelectTodoMode();
+                  setTimeout(() => {
+                    editorRef.current?.commands.focus();
+                  }, 0);
+                }
+              : undefined
+          }
+          todoModeDisabled={todoModeDisabled}
         />
+        <ActiveSelectionBadge />
         {taskId && lastCheckpointHash && (
           <UserEditsBadge taskId={taskId} lastCheckpoint={lastCheckpointHash} />
         )}
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
-      {queuedMessages.length > 0 && (
-        <QueuedMessages
-          messages={queuedMessages}
-          onRemove={onRemoveQueuedMessage}
-        />
-      )}
       {children}
     </FormEditor>
   );

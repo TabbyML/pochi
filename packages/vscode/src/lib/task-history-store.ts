@@ -18,6 +18,10 @@ type EncodedTask = {
   updatedAt: number;
   cwd?: string | null;
   title?: string | null;
+  // Used to scope tasks to the current repository.
+  git?: {
+    worktree?: { gitdir?: string } | null;
+  } | null;
 };
 
 const logger = getLogger("TaskHistoryStore");

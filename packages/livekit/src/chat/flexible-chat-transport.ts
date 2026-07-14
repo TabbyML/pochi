@@ -8,6 +8,7 @@ import type {
   PochiRequestUseCase,
 } from "@getpochi/common";
 import { formatters, prompts } from "@getpochi/common";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import * as R from "remeda";
 
 import {
@@ -55,10 +56,45 @@ export type FinishedRequestSnapshot = {
   toolsTokens: number;
 };
 
+function createAbortAwareUIStreamTransform(
+  abortSignal: AbortSignal | undefined,
+) {
+  let onAbort: (() => void) | undefined;
+  return new TransformStream<UIMessageChunk, UIMessageChunk>({
+    start(controller) {
+      if (!abortSignal) return;
+      if (abortSignal.aborted) {
+        controller.terminate();
+        return;
+      }
+      onAbort = () => {
+        controller.terminate();
+      };
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+    },
+    transform(chunk, controller) {
+      // `streamText` receives the same abort signal, but provider/SDK chunks can
+      // already be queued locally when abort fires. Gate the UI stream too so
+      // post-abort chunks cannot mutate the chat message state.
+      if (abortSignal?.aborted) {
+        controller.terminate();
+        return;
+      }
+      controller.enqueue(chunk);
+    },
+    flush() {
+      if (onAbort) {
+        abortSignal?.removeEventListener("abort", onAbort);
+      }
+    },
+  });
+}
+
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
   getEnvironment?: () => Promise<Environment>;
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
+  isTodoModeActive?: () => boolean;
   getMcpInfo?: () => {
     toolset: Record<string, McpTool>;
     instructions: string;
@@ -127,6 +163,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
     const skills = this.getters.getSkills?.();
+    const todoModeEnabled =
+      !this.isSubTask && hasActiveTodos(environment?.todos);
 
     await this.onStart?.({
       messages,
@@ -181,15 +219,17 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       this.customAgent,
       mcpInfo?.instructions,
       autoMemory,
+      { todoModeEnabled, todos: environment?.todos },
     );
     const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
     const systemPromptTokens = estimateTokens(systemPrompt);
     const toolsTokens = estimateTokens(JSON.stringify(tools));
 
     const preparedMessages = await prepareMessages(messages);
+    const llmMessages = formatters.llm(preparedMessages);
     const modelMessages = (await resolvePromise(
       await convertToModelMessages(
-        formatters.llm(preparedMessages),
+        llmMessages,
         // toModelOutput is invoked within convertToModelMessages, thus we need to pass the tools here.
         { tools },
       ),
@@ -215,6 +255,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       abortSignal,
       tools,
       maxRetries: 0,
+      timeout: {
+        // Abort if no chunk is received within 15s to prevent indefinitely stalled streams.
+        chunkMs: 15_000,
+      },
       // error log is handled in live chat kit.
       onError: () => {},
       experimental_repairToolCall: makeRepairToolCall(
@@ -224,37 +268,49 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       ),
       experimental_download: makeDownloadFunction(this.blobStore),
     });
-    return stream.toUIMessageStream({
-      onError: (error) => {
-        if (APICallError.isInstance(error)) {
-          // throw error so we can handle it on Chat class onError
-          throw error;
-        }
-        return getErrorMessage(error);
-      },
-      originalMessages: preparedMessages,
-      messageMetadata: ({ part }) => {
-        if (part.type === "finish") {
-          return {
-            kind: "assistant",
-            // The client only consumes the aggregated total token count here.
-            // Detailed usage shape differences are a server/protocol concern.
-            totalTokens:
-              part.totalUsage.totalTokens || estimateTotalTokens(messages),
-            finishReason: part.finishReason,
-            startedAt: requestStartedAt,
-            finishedAt: new Date(),
-          } satisfies MessageMetadata;
-        }
-      },
-      onFinish: async () => {
-        await this.onRequestFinished?.({
-          systemPrompt,
-          systemPromptTokens,
-          toolsTokens,
-        });
-      },
-    });
+    return stream
+      .toUIMessageStream({
+        onError: (error) => {
+          if (APICallError.isInstance(error)) {
+            // throw error so we can handle it on Chat class onError
+            throw error;
+          }
+          return getErrorMessage(error);
+        },
+        originalMessages: preparedMessages,
+        messageMetadata: ({ part }) => {
+          if (part.type === "finish") {
+            const now = new Date();
+            const duration = now.getTime() - requestStartedAt.getTime();
+            const lastMessage = preparedMessages[preparedMessages.length - 1];
+            const lastMessageMetadata =
+              lastMessage?.role === "assistant" &&
+              lastMessage.metadata?.kind === "assistant"
+                ? lastMessage.metadata
+                : undefined;
+            return {
+              kind: "assistant",
+              // The client only consumes the aggregated total token count here.
+              // Detailed usage shape differences are a server/protocol concern.
+              totalTokens:
+                part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
+              finishReason: part.finishReason,
+              startedAt: requestStartedAt,
+              finishedAt: now,
+              totalStreamingDuration:
+                (lastMessageMetadata?.totalStreamingDuration ?? 0) + duration,
+            } satisfies MessageMetadata;
+          }
+        },
+        onFinish: async () => {
+          await this.onRequestFinished?.({
+            systemPrompt,
+            systemPromptTokens,
+            toolsTokens,
+          });
+        },
+      })
+      .pipeThrough(createAbortAwareUIStreamTransform(abortSignal));
   };
 
   reconnectToStream: (

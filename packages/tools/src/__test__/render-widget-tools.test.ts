@@ -89,7 +89,6 @@ describe("render widget tools", () => {
       } as never),
     ).toBe(true);
     expect(isAutoSuccessToolName("attemptCompletion")).toBe(true);
-    expect(isAutoSuccessToolName("todoWrite")).toBe(true);
     expect(isAutoSuccessToolName("renderWidget")).toBe(true);
   });
 
@@ -115,7 +114,7 @@ describe("render widget tools", () => {
     });
 
     expect(toolNames(tools)).toEqual(
-      ["attemptCompletion", "renderWidget", "todoWrite", "useSkill"].sort(),
+      ["attemptCompletion", "renderWidget", "useSkill"].sort(),
     );
   });
 });

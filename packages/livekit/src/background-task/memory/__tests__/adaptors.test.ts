@@ -268,6 +268,49 @@ describe("auto-memory adaptor", () => {
     });
   });
 
+  it("reads context with force so extraction runs while injection is disabled", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "completed",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    // Simulate the host gating injection: readContext only resolves when the
+    // caller explicitly bypasses the enabled preference via `force`.
+    const readContext = vi.fn(
+      async (cwdOrOptions?: string | { force?: boolean }) => {
+        const force =
+          typeof cwdOrOptions === "object" ? cwdOrOptions?.force : false;
+        return force ? autoMemoryContext : undefined;
+      },
+    );
+    const manager = makeAutoMemoryManager({ readContext });
+    const adaptor = new AutoMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      manager,
+    });
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        status: "completed",
+      }),
+    ).resolves.toBe(true);
+
+    expect(readContext).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: "/repo", force: true }),
+    );
+    expect(store.backgroundTasks()).toHaveLength(1);
+  });
+
   it("records direct memory writes without starting extraction", async () => {
     const store = new FakeStore([
       makeTask({
@@ -483,6 +526,7 @@ function makeAutoMemoryManager(
     })),
     beginDreamRun: vi.fn(async () => undefined),
     finishDreamRun: vi.fn(async () => undefined),
+    clearProjectMemory: vi.fn(async () => undefined),
     ...overrides,
   };
 }

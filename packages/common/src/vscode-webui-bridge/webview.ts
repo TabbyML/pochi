@@ -106,6 +106,25 @@ export interface VSCodeHostApi {
     },
   ): Promise<unknown>;
 
+  /**
+   * Compute a preview diff for a file-editing tool call (applyDiff,
+   * multiApplyDiff, writeToFile) WITHOUT writing to disk.
+   *
+   * This is used to show the diff before the user approves the tool call.
+   * Returns `undefined` when no preview can be computed (e.g. non-editing tool,
+   * search content does not match, or there are no changes).
+   */
+  previewEdit(
+    toolName: string,
+    input: unknown,
+  ): Promise<
+    | {
+        edit: string;
+        editSummary: { added: number; removed: number };
+      }
+    | undefined
+  >;
+
   listFilesInWorkspace(): Promise<
     {
       filepath: string;
@@ -442,6 +461,13 @@ export interface VSCodeHostApi {
     value: ThreadSignalSerialization<boolean>;
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;
   }>;
+
+  /**
+   * Read the global effective context window (in tokens) used to cap
+   * auto-compaction. Returns undefined when not configured, in which case the
+   * built-in default is used.
+   */
+  readEffectiveContextWindow(): Promise<number | undefined>;
 
   readAutoMemoryState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;

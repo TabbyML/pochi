@@ -31,6 +31,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   };
   private customAgents: CustomAgentFile[] = [];
   private skills: SkillFile[] = [];
+  private effectiveContextWindow: number | undefined = undefined;
   private autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
   private readonly unsubscribers: Array<() => void> = [];
   private readonly ready: Promise<void>;
@@ -115,7 +116,12 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       this.initMcpStatus(),
       this.initCustomAgents(),
       this.initSkills(),
+      this.initEffectiveContextWindow(),
     ]);
+  }
+
+  private async initEffectiveContextWindow() {
+    this.effectiveContextWindow = await vscodeHost.readEffectiveContextWindow();
   }
 
   private async initModelList() {
@@ -183,7 +189,9 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       resolveModelFromId(selectedModelId, this.modelList) ??
       this.modelList.at(0);
 
-    return selectedModel ? displayModelToLLM(selectedModel) : undefined;
+    return selectedModel
+      ? displayModelToLLM(selectedModel, this.effectiveContextWindow)
+      : undefined;
   }
 
   private getAutoMemory() {

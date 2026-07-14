@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { isAttemptTodoCompletionUnsuccessful } from "./tool-result-display";
 
 interface StatusIconProps {
   tool: ToolUIPart;
@@ -37,6 +38,8 @@ export function StatusIcon({
   const [isDevMode] = useIsDevMode();
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
   const error = getToolPartError(tool);
+  const unsuccessfulAttemptTodoCompletion =
+    isAttemptTodoCompletionUnsuccessful(tool);
 
   const tooltipContent = [];
 
@@ -63,11 +66,19 @@ export function StatusIcon({
       className={cn("size-4 text-zinc-500 dark:text-zinc-400", iconClassName)}
     />
   );
-  if (error) {
+  if (error || unsuccessfulAttemptTodoCompletion) {
     statusIcon = (
-      <X className={cn("size-4 cursor-help text-error", iconClassName)} />
+      <X
+        className={cn(
+          "size-4 text-error",
+          error && "cursor-help",
+          iconClassName,
+        )}
+      />
     );
-    tooltipContent.push(<p>{error}</p>);
+    if (error) {
+      tooltipContent.push(<p>{error}</p>);
+    }
   } else if (tool.state === "output-available") {
     statusIcon = (
       <Check

@@ -17,6 +17,8 @@ const messages1: Message[] = [
       kind: "assistant",
       totalTokens: 46401,
       finishReason: "tool-calls",
+      totalStreamingDuration: 5_000,
+      totalToolsExecutionDuration: 5_000,
     },
     role: "assistant",
     parts: [
@@ -264,6 +266,7 @@ export const Messages1: Story = {
     },
     isLoading: false,
     sendMessage: async () => null,
+    showLastStepDuration: true,
   },
   parameters: {
     backgrounds: { disable: true },

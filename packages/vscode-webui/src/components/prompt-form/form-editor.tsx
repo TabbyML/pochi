@@ -59,6 +59,7 @@ import {
 } from "./slash-mention/mention-list";
 import { createSlashCandidates } from "./slash-mention/slash-candidates";
 import { SubmitHistoryExtension } from "./submit-history-extension";
+import { createPlainTextSlice, shouldPasteAsPlainText } from "./utils";
 
 const newLineCharacter = "\n";
 
@@ -114,7 +115,7 @@ interface FormEditorProps {
   onFocus?: (event: FocusEvent) => void;
   messageContent?: string;
   isSubTask: boolean;
-  onTogglePlanMode?: () => void;
+  onSwitchSubmitMode?: () => void;
   className?: string;
 }
 
@@ -135,7 +136,7 @@ export function FormEditor({
   onFileDrop,
   messageContent = "",
   isSubTask,
-  onTogglePlanMode,
+  onSwitchSubmitMode,
   className,
 }: FormEditorProps) {
   const { t } = useTranslation();
@@ -415,6 +416,26 @@ export function FormEditor({
           class:
             "prose max-w-full min-h-[3.5em] font-sans dark:prose-invert focus:outline-none prose-p:my-0 leading-[1.25]",
         },
+        handlePaste: (view, event) => {
+          const clipboardData = event.clipboardData;
+          if (!clipboardData) return false;
+
+          const text = clipboardData.getData("text/plain");
+          const html = clipboardData.getData("text/html");
+          if (
+            !shouldPasteAsPlainText({
+              text,
+              html,
+              hasFiles: clipboardData.files.length > 0,
+            })
+          ) {
+            return false;
+          }
+
+          const slice = createPlainTextSlice(view.state.schema, text);
+          view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView());
+          return true;
+        },
         handleDOMEvents: {
           dragenter: (_view, event) => {
             const dataTransfer = (event as DragEvent).dataTransfer;
@@ -479,18 +500,19 @@ export function FormEditor({
           )
         ) {
           const trMeta = props.transaction.getMeta(SubmitHistoryExtension.name);
+          // Place the caret so repeated presses keep navigating in the same
+          // direction: at the start after Up (ready for another Up), at the end
+          // after Down (ready for another Down).
           if (trMeta?.direction === "up") {
-            const { doc } = props.editor.state;
-            const firstNode = doc.firstChild;
-            if (firstNode) {
-              const endOfFirstLine = 1 + firstNode.content.size;
-              props.editor
-                .chain()
-                .focus()
-                .setTextSelection(endOfFirstLine)
-                .scrollIntoView()
-                .run();
-            }
+            props.editor.chain().focus("start").scrollIntoView().run();
+          } else if (trMeta?.direction === "down") {
+            props.editor.chain().focus("end").scrollIntoView().run();
+          }
+
+          // A document change without a navigation tag is a real user edit:
+          // end navigation so the new content becomes the live draft again.
+          if (!trMeta && props.transaction.docChanged) {
+            props.editor.commands.resetSubmitHistoryNavigation();
           }
 
           props.editor.commands.updateCurrentDraft(
@@ -650,7 +672,7 @@ export function FormEditor({
       onKeyDown={(e) => {
         if (e.key === "Tab" && e.shiftKey) {
           e.preventDefault();
-          onTogglePlanMode?.();
+          onSwitchSubmitMode?.();
         }
       }}
     >

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Message } from "../../types";
 import {
+  compactTask,
   findInlineCompactAttachIndex,
   findVerbatimAttachIndex,
 } from "../llm/compact-task";
@@ -151,5 +152,46 @@ describe("findInlineCompactAttachIndex", () => {
   it("returns undefined when no user message exists", () => {
     const messages = [assistantMsg("a0"), assistantMsg("a1")];
     expect(findInlineCompactAttachIndex(messages)).toBeUndefined();
+  });
+});
+
+describe("compactTask", () => {
+  it("persists an inline compact block attached to a historical user message", async () => {
+    const messages = [
+      userMsg("u0"),
+      assistantMsg("a0"),
+      userMsg("u1"),
+      assistantMsg("a1"),
+      userMsg("u2"),
+    ];
+    const commits: Array<{ name: string; args: { messages?: Message[] } }> =
+      [];
+    const store = {
+      query: () => ({ content: "memory summary" }),
+      commit: (event: { name: string; args: { messages?: Message[] } }) => {
+        commits.push(event);
+      },
+    };
+
+    await compactTask({
+      blobStore: {} as never,
+      taskId: "task-1",
+      storeId: "store-1",
+      model: {} as never,
+      messages,
+      taskMemoryBoundaryMessageId: "u1",
+      inline: true,
+      store: store as never,
+    });
+
+    expect(messages[2].parts[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("<compact>"),
+    });
+    expect(commits).toHaveLength(1);
+    expect(commits[0]).toMatchObject({
+      name: "v1.UpdateMessages",
+      args: { messages: [messages[2]] },
+    });
   });
 });

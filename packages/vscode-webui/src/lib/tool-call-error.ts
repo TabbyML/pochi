@@ -50,3 +50,13 @@ export function getToolCallErrorMessage(
       return "Tool call was cancelled";
   }
 }
+
+export function isToolCallCancellationError(
+  error: string | undefined,
+): boolean {
+  return (
+    error === getToolCallErrorMessage("user-abort") ||
+    error === getToolCallErrorMessage("previous-tool-call-failed") ||
+    error === "Tool call was cancelled"
+  );
+}

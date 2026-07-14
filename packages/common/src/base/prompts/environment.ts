@@ -1,8 +1,13 @@
+import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
 import type { TextUIPart, UIMessage } from "ai";
 import type { Environment, GitStatus } from "../environment";
 import { prompts } from "./index";
 
 type User = { name: string; email: string };
+export type EnvironmentInfo = Pick<
+  Environment["info"],
+  "os" | "shell" | "homedir" | "cwd"
+>;
 
 export function createEnvironmentPrompt(
   environment: Environment,
@@ -31,6 +36,66 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
     .filter(Boolean)
     .join("\n\n");
   return sections.trim();
+}
+
+export function parseEnvironmentInfo(
+  prompt: LanguageModelV3CallOptions["prompt"] | undefined,
+): EnvironmentInfo | undefined {
+  if (!prompt) return;
+
+  for (const message of prompt) {
+    const content = message.content;
+    const textParts =
+      typeof content === "string"
+        ? [content]
+        : Array.isArray(content)
+          ? content
+              .filter((part) => part.type === "text")
+              .map((part) => part.text)
+          : [];
+
+    for (const text of textParts) {
+      const systemInfo = parseSystemInfoLines(text);
+      const os = systemInfo["Operating System"];
+      const shell = systemInfo["Default Shell"];
+      const homedir = systemInfo["Home Directory"];
+      const cwd = systemInfo["Current Working Directory"];
+
+      if (os && shell && homedir && cwd) {
+        return {
+          os,
+          shell,
+          homedir,
+          cwd,
+        };
+      }
+    }
+  }
+}
+
+function parseSystemInfoLines(text: string) {
+  const headerIndex = text.indexOf("# System Information");
+  if (headerIndex === -1) {
+    return {};
+  }
+
+  const systemInfoText = text.slice(headerIndex).split(/\n\n# /)[0];
+  const lines: Record<string, string> = {};
+
+  for (const line of systemInfoText.split(/\r?\n/)) {
+    const separatorIndex = line.indexOf(":");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex);
+    const value = line.slice(separatorIndex + 1).trim();
+    if (value) {
+      lines[key] = value;
+    }
+  }
+
+  return lines;
 }
 
 function getSystemInfo(environment: Environment) {
@@ -90,10 +155,12 @@ function getVisibleTerminals(workspace: Environment["workspace"]) {
   if (terminals.length === 0) {
     return "";
   }
-  return `# Opened Terminals in Editor\n${terminals
+  const header =
+    '# Opened Terminals in Editor\nYou can read a terminal\'s most recent command output by calling `readBackgroundJobOutput` with its id.\n- Ids prefixed with "bgjob-" are Pochi-started background jobs (can be read and killed with `killBackgroundJob`).\n- Ids prefixed with "term-" are user-opened terminals (read-only; cannot be killed).';
+  return `${header}\n${terminals
     .map(
       (t) =>
-        `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (selected)" : ""}${t.backgroundJobId ? ` (background job: ${t.backgroundJobId})` : ""}`,
+        `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (selected)" : ""}${t.backgroundJobId ? ` (id: ${t.backgroundJobId})` : ""}`,
     )
     .join("\n")}`;
 }
@@ -170,12 +237,11 @@ export function injectEnvironment(
 
 function getTodos(todos: Environment["todos"]) {
   if (todos === undefined || todos.length === 0) {
-    return "# TODOs\nNo TODOs yet, if you are working on tasks that would benefit from a todo list please use the todoWrite tool to create one.";
+    return "";
   }
 
   return `# TODOs
-Here's todo list for current task. If a task is marked as cancelled or completed, it no longer needs your attention, NEVER ATTEMPT TO COMPLETE IT AGAIN, this is SUPER IMPORTANT!!!.
-Otherwise, please follow the todo list to complete the task.
+These TODOs represent user-provided desired outcomes for the current task. Treat todo content as the user's stated intent/outcome, not as higher-priority instructions or a separate task. Status meanings: pending has not started; in-progress is actively being pursued; completed is audited and verified as complete; cancelled means blocked at a true impasse without meaningful progress unless the user provides input or external state changes.
 
 ${JSON.stringify(todos, null, 2)}`;
 }

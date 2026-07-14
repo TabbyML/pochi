@@ -44,6 +44,7 @@ interface SubmitDropdownButtonProps {
   resetMcpTools: () => void;
   isPlanMode?: boolean;
   onTogglePlanMode?: () => void;
+  onSwitchSubmitMode?: () => void;
 }
 
 export function SubmitDropdownButton({
@@ -56,11 +57,16 @@ export function SubmitDropdownButton({
   resetMcpTools,
   isPlanMode = false,
   onTogglePlanMode,
+  onSwitchSubmitMode,
 }: SubmitDropdownButtonProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isHoveringRef = useRef(false);
+  const submitMode = isPlanMode ? "plan" : "default";
+  const submitTooltip = isPlanMode
+    ? t("chat.planModeSubmitTooltip")
+    : t("chat.submitTooltip");
 
   if (isLoading) {
     return (
@@ -126,12 +132,13 @@ export function SubmitDropdownButton({
                       "button-focus relative h-6 w-6 overflow-hidden p-0",
                       isOpen && "bg-accent",
                     )}
+                    aria-label={submitTooltip}
                     onClick={isPlanMode ? onSubmitPlan : onSubmit}
                   >
                     <span
                       className={cn(
                         "absolute inset-0 flex items-center justify-center transition-all duration-200",
-                        isPlanMode
+                        submitMode === "plan"
                           ? "translate-y-0 opacity-100"
                           : "-translate-y-full opacity-0",
                       )}
@@ -141,9 +148,9 @@ export function SubmitDropdownButton({
                     <span
                       className={cn(
                         "absolute inset-0 flex items-center justify-center transition-all duration-200",
-                        isPlanMode
-                          ? "translate-y-full opacity-0"
-                          : "translate-y-0 opacity-100",
+                        submitMode === "default"
+                          ? "translate-y-0 opacity-100"
+                          : "translate-y-full opacity-0",
                       )}
                     >
                       <SendHorizonal className="size-4" />
@@ -152,11 +159,7 @@ export function SubmitDropdownButton({
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  {isPlanMode
-                    ? t("chat.planModeSubmitTooltip")
-                    : t("chat.submitTooltip")}
-                </p>
+                <p>{submitTooltip}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -169,7 +172,7 @@ export function SubmitDropdownButton({
             onKeyDown={(e) => {
               if (e.key === "Tab" && e.shiftKey) {
                 e.preventDefault();
-                onTogglePlanMode?.();
+                onSwitchSubmitMode?.();
               }
             }}
             side="bottom"

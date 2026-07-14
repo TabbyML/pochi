@@ -16,10 +16,11 @@ import { useLiveSubTask } from "../../hooks/use-live-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
+import { AttemptTodoCompletionView } from "./attempt-todo-completion-view";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
+import { hasNewTaskResult } from "./result";
 import { TodoDetail } from "./todo-detail";
-import { WalkthroughView } from "./walkthrough-view";
 
 const SubtaskPreviewThrottleMs = 300;
 
@@ -85,8 +86,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   const completed =
     tool.state === "output-available" &&
     "result" in tool.output &&
-    tool.output.result.trim().length > 0;
-
+    hasNewTaskResult(tool.output.result);
   const [showMessageList, setShowMessageList, setShowMessageListImmediately] =
     useShowMessageList();
   const throttledTaskSource = useThrottle(taskSource, SubtaskPreviewThrottleMs);
@@ -128,8 +128,8 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     return <PlannerView {...props} taskSource={previewSource} />;
   }
 
-  if (agentType === "walkthrough") {
-    return <WalkthroughView {...props} taskSource={previewSource} />;
+  if (agentType === "attemptTodoCompletion") {
+    return <AttemptTodoCompletionView {...props} taskSource={previewSource} />;
   }
 
   const title = (

@@ -29,6 +29,8 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
       writeTaskTranscript: (options) => this.writeHostTaskTranscript(options),
       beginDreamRun: (options) => this.beginHostDreamRun(options),
       finishDreamRun: (options) => this.finishDreamRun(options),
+      clearProjectMemory: (options) =>
+        this.clearProjectMemory({ cwd: options?.cwd ?? this.cwd }),
     };
   }
 
@@ -58,7 +60,8 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
     updatedAt?: number;
     transcript: string;
   }) {
-    if (!this.isEnabled()) return undefined;
+    // Extraction keeps running even when injection is disabled, so this is
+    // intentionally not gated by the Project Memory enabled preference.
     return this.writeTaskTranscript({
       taskId: options.taskId,
       cwd: options.cwd ?? this.cwd,
@@ -74,8 +77,8 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
     sessionUpdatedAts?: readonly number[];
     currentTranscript?: AutoMemoryDreamCandidate;
   }) {
-    if (!this.isEnabled()) return undefined;
-
+    // Dreaming is part of extraction and keeps running even when injection is
+    // disabled, so it is intentionally not gated by the enabled preference.
     const cwd = options.cwd ?? this.cwd;
     const candidates = [
       ...(await this.collectDreamCandidates(cwd)),

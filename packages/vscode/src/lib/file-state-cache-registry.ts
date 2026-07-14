@@ -35,8 +35,8 @@ export class FileStateCacheRegistry implements vscode.Disposable {
     this.caches.set(targetTaskId, target);
   }
 
-  clear(taskId: string): void {
-    this.caches.get(taskId)?.clear();
+  markAllAsWritten(taskId: string): void {
+    this.caches.get(taskId)?.markAllAsWritten();
   }
 
   getRecentFiles(taskId: string): RecentFileState[] {

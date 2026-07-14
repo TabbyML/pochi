@@ -32,9 +32,18 @@
     "createPlan": "Plan",
     "createPlanTooltip": "Create an implementation plan for this task",
     "planModeLabel": "Plan",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Pause todo",
+    "resumeTodo": "Resume",
+    "autoContinueTodo": "Auto-continue todo",
     "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
     "planModeSubmitTooltip": "Submit as plan",
+    "todoModeSubmitTooltip": "Submit in Todo mode",
     "queuedMessages": "Queued Messages ({{count}})",
+    "noMessage": "No message",
+    "fileCount": "{{count}} files",
+    "reviewCount": "{{count}} reviews",
+    "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
     "pleaseCheckFiles": "Please check these attachments.",
@@ -54,6 +63,7 @@
     "contextWindow": "Context Window",
     "newTaskWithSummary": "New Task with Summary",
     "compactTask": "Compact Task",
+    "autoCompactAt": "Auto-compact triggers at ~{{tokens}} tokens",
     "minTokensRequired": "At least {{minTokens}} tokens are required to compact the conversation",
     "defaultContextWindowWarning": "The context window value is a default and may not be accurate for your custom model. For precise token management, please adjust it in the settings according to your model provider's documentation.",
     "tokensUsed": "{{used}} / {{total}} tokens",
@@ -78,6 +88,9 @@
     "viewProjectMemoryTooltip": "Open the MEMORY.md index for this workspace.",
     "viewTaskMemoryButtonTooltip": "Open the task memory summary that compacting will reuse.",
     "projectMemoryUnavailable": "Project memory becomes available after running a task in this workspace.",
+    "projectMemoryClear": "Clear Project Memory",
+    "projectMemoryReset": "Reset",
+    "projectMemoryClearConfirm": "This will reset all project memory files (MEMORY.md and topic files). This action cannot be undone.",
     "taskMemoryUnavailable": "Task memory is generated automatically as the conversation grows."
   },
   "modelSelect": {
@@ -111,7 +124,6 @@
   },
   "worktree": {
     "createPr": "Create PR",
-    "createWalkthrough": "Create Walkthrough",
     "reviewChanges": "Review Changes",
     "createDraftPr": "Create Draft PR",
     "createPrManually": "Create PR Manually",
@@ -170,6 +182,8 @@
     "autoApprove": {
       "title": "Auto-Approve",
       "approvals": "Permissions",
+      "toolbarTooltipEnabled": "Auto-approve on. Click to turn off.",
+      "toolbarTooltipDisabled": "Auto-approve off. Click to turn on.",
       "disabled": "Disabled",
       "noActionsSelected": "No actions selected",
       "readFiles": "Read files",
@@ -339,6 +353,7 @@
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
+    "readTerminal": "Reading terminal output",
     "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
@@ -373,7 +388,8 @@
     "noChangesDetected": "No changes detected",
     "compare": "Compare",
     "fork": "Fork",
-    "forking": "Forking"
+    "forking": "Forking",
+    "summary": "Summary"
   },
   "reviewUI": {
     "reviews": "Reviews",
@@ -414,7 +430,8 @@
     "disableLineWrap": "Disable Line Wrap"
   },
   "messageList": {
-    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"
+    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage",
+    "completedIn": "Completed in {{duration}}"
   },
   "markdown": {
     "codeOmitted": "... {{language}} code omitted ( {{bytes}} bytes ) ..."
@@ -428,6 +445,18 @@
   "activeSelectionBadge": {
     "cell": "Cell",
     "addContext": "Add Context"
+  },
+  "todoModeBadge": {
+    "remove": "Remove todo mode"
+  },
+  "addContextMenu": {
+    "trigger": "Add",
+    "files": "Files and folders",
+    "filesDescription": "Search workspace files and folders with @",
+    "attach": "Attach files",
+    "attachDescription": "Upload images, PDFs, or videos from your computer",
+    "todoDescription": "Ask Pochi to keep working toward this todo",
+    "todoDisabledDescription": "Finish the current todos before starting a new one"
   },
   "mentionList": {
     "noResultsFound": "No results found",
@@ -458,7 +487,17 @@
   },
   "todoList": {
     "todos": "TODOs",
-    "allDone": "🎉 All done!"
+    "allDone": "🎉 All done!",
+    "cancelledTodo": "Todo cancelled",
+    "editTodo": "Edit",
+    "editTodos": "Edit todos",
+    "saveTodo": "Save",
+    "saveTodos": "Save todos",
+    "editTodoContent": "Edit todo content",
+    "cancelTodo": "Cancel",
+    "deleteTodo": "Delete",
+    "pauseTodo": "Pause",
+    "resumeTodo": "Resume"
   },
   "commandExecutionPanel": {
     "copied": "Copied!",
@@ -550,15 +589,19 @@
     "creatingPlan": "Analyzing your code and creating a plan...",
     "planCreationPaused": "Plan creation paused"
   },
-  "walkthroughView": {
-    "openWalkthrough": "Open",
-    "creatingWalkthrough": "Creating walkthrough...",
-    "walkthroughCreationPaused": "Walkthrough creation paused"
-  },
   "browserView": {
     "noFrameAvailable": "No frame available",
     "executing": "Executing...",
     "paused": "Paused"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Auditing todos",
+    "completed": "All todos completed",
+    "needsWork": "Todo needs more work",
+    "stopped": "Todo audit stopped",
+    "stoppedDescription": "The audit was stopped before it could produce a summary.",
+    "unavailable": "Todo audit result unavailable",
+    "unavailableDescription": "The audit ended without a readable summary."
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",

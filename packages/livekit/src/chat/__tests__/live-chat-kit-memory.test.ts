@@ -3,7 +3,7 @@ import type {
   BackgroundTaskState,
   TaskMemoryState,
 } from "@getpochi/common";
-import type { ChatInit, ChatOnFinishCallback } from "ai";
+import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import {
   type BlobStore,
@@ -45,8 +45,7 @@ describe("LiveChatKit memory lifecycle", () => {
     await chatKit.disposeBackgroundTasks();
   });
 
-  it("clears file-state cache before returning a retry message", async () => {
-    const clearFileStateCache = vi.fn();
+  it("marks unfinished tool calls as errors when a stream fails", async () => {
     const store = new FakeStore([
       makeTask({
         id: "parent",
@@ -62,15 +61,161 @@ describe("LiveChatKit memory lifecycle", () => {
       getters: {
         getLLM: () => ({ id: "test-model" }) as never,
       },
-      clearFileStateCache,
+    });
+    const message = assistantReadFileMessage("input-available");
+    chatKit.chat.messages = [userMessage(), message];
+
+    const abortError = new Error("Transport is aborted");
+    abortError.name = "AbortError";
+    chatKit.chat.fail(abortError);
+
+    expect(chatKit.chat.messages.at(-1)?.parts[0]).toMatchObject({
+      type: "tool-readFile",
+      toolCallId: "call-read-file",
+      state: "output-error",
+      input: { path: "README.md" },
+      errorText: "User aborted the tool call",
     });
 
-    const retryMessage = await chatKit.prepareLastMessageForRetry(
-      retryableAssistantMessage(),
-    );
+    const savedMessage = store.taskMessages("parent").at(-1);
+    expect(savedMessage?.parts[0]).toMatchObject({
+      type: "tool-readFile",
+      toolCallId: "call-read-file",
+      state: "output-error",
+      input: { path: "README.md" },
+      errorText: "User aborted the tool call",
+    });
+  });
 
-    expect(clearFileStateCache).toHaveBeenCalledTimes(1);
-    expect(retryMessage).toBeTruthy();
+  it.each([
+    ["tool-attemptCompletion", "completion-1", { result: "Done." }],
+    [
+      "tool-askFollowupQuestion",
+      "question-1",
+      { questions: [{ question: "Continue?", options: [] }] },
+    ],
+    [
+      "tool-renderWidget",
+      "widget-1",
+      { title: "Preview", widgetCode: "<div />", guidelinesRead: true },
+    ],
+  ])(
+    "does not mark available %s as an error when a stream fails",
+    async (type, toolCallId, input) => {
+      const store = new FakeStore([
+        makeTask({
+          id: "parent",
+          status: "pending-model",
+          background: false,
+        }),
+      ]);
+      const chatKit = new LiveChatKit<FakeChat>({
+        taskId: "parent",
+        store: store as unknown as LiveKitStore,
+        blobStore: {} as BlobStore,
+        chatClass: FakeChat,
+        getters: {
+          getLLM: () => ({ id: "test-model" }) as never,
+        },
+      });
+      const message = assistantUserInputToolMessage(type, toolCallId, input);
+      chatKit.chat.messages = [userMessage(), message];
+
+      chatKit.chat.fail(new Error("network error"));
+
+      expect(chatKit.chat.messages.at(-1)?.parts[1]).toMatchObject({
+        type,
+        toolCallId,
+        state: "input-available",
+        input,
+      });
+      expect(chatKit.chat.messages.at(-1)?.parts[1]).not.toHaveProperty(
+        "errorText",
+      );
+
+      const savedMessage = store.taskMessages("parent").at(-1);
+      expect(savedMessage?.parts[1]).toMatchObject({
+        type,
+        toolCallId,
+        state: "input-available",
+        input,
+      });
+      expect(savedMessage?.parts[1]).not.toHaveProperty("errorText");
+    },
+  );
+
+  it("keeps the user message when the stream finishes before the assistant placeholder is added", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+
+    // Reproduces an early abort during task init: the abort-aware UI stream
+    // terminates with zero chunks (isAbort=false), so the streamed assistant
+    // message was never pushed into chat.messages, leaving only the user
+    // message when onFinish runs.
+    chatKit.chat.messages = [userMessage()];
+    chatKit.chat.finish(blankAssistantMessage());
+
+    expect(chatKit.chat.messages.map((message) => message.id)).toContain(
+      "user-1",
+    );
+  });
+
+  it("updates task total tokens from the formatted compact estimate", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+    const messages = [
+      {
+        id: "old-user",
+        role: "user",
+        parts: [{ type: "text", text: "x".repeat(100_000) }],
+      },
+      assistantMessage(),
+      {
+        id: "compact-user",
+        role: "user",
+        parts: [
+          { type: "text", text: "<compact>short summary</compact>" },
+          { type: "text", text: "continue" },
+        ],
+      },
+    ] as Message[];
+
+    (
+      chatKit as unknown as {
+        updateTotalTokensEstimate(messages: Message[]): void;
+      }
+    ).updateTotalTokensEstimate(messages);
+
+    expect(chatKit.task?.totalTokens).toBeGreaterThan(0);
+    expect(chatKit.task?.totalTokens).toBeLessThan(100);
   });
 
   it("starts task-memory and auto-memory from stream finish inside LiveKit", async () => {
@@ -256,10 +401,12 @@ class BackgroundTaskStateStore {
 class FakeChat {
   messages: Message[];
   private readonly onFinish: ChatOnFinishCallback<Message>;
+  private readonly onError: ChatOnErrorCallback;
 
   constructor(init: ChatInit<Message>) {
     this.messages = init.messages ?? [];
     this.onFinish = init.onFinish ?? (() => {});
+    this.onError = init.onError ?? (() => {});
   }
 
   async stop() {}
@@ -273,6 +420,10 @@ class FakeChat {
       isError: false,
       finishReason: "stop",
     });
+  }
+
+  fail(error: Error) {
+    this.onError(error);
   }
 }
 
@@ -296,6 +447,7 @@ function makeAutoMemoryManager() {
     })),
     beginDreamRun: vi.fn(async () => undefined),
     finishDreamRun: vi.fn(async () => undefined),
+    clearProjectMemory: vi.fn(async () => undefined),
   };
 }
 
@@ -357,6 +509,14 @@ class FakeStore {
       this.commitChatStreamFinished(event.args);
       return;
     }
+    if (event.name === "v1.ChatStreamFailed") {
+      this.commitChatStreamFailed(event.args);
+      return;
+    }
+    if (event.name === "v1.UpdateTotalTokens") {
+      this.commitUpdateTotalTokens(event.args);
+      return;
+    }
     throw new Error(`Unsupported event ${event.name}`);
   }
 
@@ -368,6 +528,10 @@ class FakeStore {
     const task = this.tasks.get(taskId);
     if (!task) throw new Error(`Unknown task ${taskId}`);
     this.tasks.set(taskId, { ...task, status });
+  }
+
+  taskMessages(taskId: string) {
+    return this.messages.get(taskId) ?? [];
   }
 
   private commitTaskInited(args: Record<string, unknown>) {
@@ -406,6 +570,38 @@ class FakeStore {
       ...(this.messages.get(id) ?? []).filter((item) => item.id !== message.id),
       message,
     ]);
+  }
+
+  private commitChatStreamFailed(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const task = this.tasks.get(id);
+    if (!task) throw new Error(`Unknown task ${id}`);
+
+    const message = args.data as Message | null;
+    const updatedAt = args.updatedAt as Date;
+    this.tasks.set(task.id, {
+      ...task,
+      status: "failed",
+      updatedAt,
+    });
+    if (message) {
+      this.messages.set(id, [
+        ...(this.messages.get(id) ?? []).filter((item) => item.id !== message.id),
+        message,
+      ]);
+    }
+  }
+
+  private commitUpdateTotalTokens(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const task = this.tasks.get(id);
+    if (!task) throw new Error(`Unknown task ${id}`);
+
+    this.tasks.set(task.id, {
+      ...task,
+      totalTokens: args.totalTokens as number,
+      updatedAt: args.updatedAt as Date,
+    });
   }
 
   private extractTaskId(query: { hash?: string }) {
@@ -488,25 +684,46 @@ function assistantMessage(): Message {
   } as unknown as Message;
 }
 
-function retryableAssistantMessage(): Message {
+function assistantUserInputToolMessage(
+  type: string,
+  toolCallId: string,
+  input: unknown,
+): Message {
   return {
-    id: "assistant-retry",
+    id: "assistant-user-input-tool",
     role: "assistant",
     parts: [
       { type: "step-start" },
       {
+        type,
+        toolCallId,
+        state: "input-available",
+        input,
+      },
+    ],
+  } as unknown as Message;
+}
+
+function blankAssistantMessage(): Message {
+  return {
+    id: "assistant-blank",
+    role: "assistant",
+    parts: [],
+  } as unknown as Message;
+}
+
+function assistantReadFileMessage(
+  state: "input-streaming" | "input-available",
+): Message {
+  return {
+    id: "assistant-read-file",
+    role: "assistant",
+    parts: [
+      {
         type: "tool-readFile",
         toolCallId: "call-read-file",
-        state: "output-available",
-        input: { path: "src/app.ts" },
-        output: { content: "const answer = 42;", isTruncated: false },
-      },
-      { type: "step-start" },
-      {
-        type: "tool-executeCommand",
-        toolCallId: "call-exec",
-        state: "input-streaming",
-        input: null,
+        state,
+        input: { path: "README.md" },
       },
     ],
   } as unknown as Message;

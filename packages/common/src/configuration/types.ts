@@ -42,5 +42,11 @@ export function makePochiConfig(strict = false) {
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
     browserAgentSettings: BrowserAgentSettingsConfig.optional(),
+    effectiveContextWindow: z
+      .number()
+      .optional()
+      .describe(
+        "Effective context window (in tokens) used to cap auto-compaction. Auto-compaction triggers before this many tokens even when the model declares a larger context window, since models tend to degrade earlier. Defaults to 200000.",
+      ),
   });
 }

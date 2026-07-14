@@ -1,18 +1,16 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { ModelSelect } from "@/components/model-select";
+import { TodoModeBadge } from "@/components/prompt-form/todo-mode-badge";
 import { SubmitDropdownButton } from "@/components/submit-dropdown-button";
-import { Button } from "@/components/ui/button";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-
 import {
   type CreateWorktreeType,
   WorktreeSelect,
 } from "@/components/worktree-select";
-import { useSelectedModels, useSettingsStore } from "@/features/settings";
+import {
+  useIsDevMode,
+  useSelectedModels,
+  useSettingsStore,
+} from "@/features/settings";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
@@ -22,10 +20,9 @@ import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
-import { PaperclipIcon } from "lucide-react";
+import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 
 interface CreateTaskInputProps {
@@ -37,7 +34,6 @@ interface CreateTaskInputProps {
   deletingWorktreePaths: Set<string>;
 }
 
-const noop = () => {};
 const emptyReviews: Review[] = [];
 
 export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
@@ -48,11 +44,31 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   setUserSelectedWorktree,
   deletingWorktreePaths,
 }) => {
-  const { t } = useTranslation();
   const activeSelection = useActiveSelection();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const [planMode, setPlanMode] = useState(false);
-  const togglePlanMode = useCallback(() => setPlanMode((v) => !v), []);
+  const [todoModeSelected, setTodoModeSelected] = useState(false);
+  const [isDevMode] = useIsDevMode();
+  const canUseTodoMode = isDevMode === true;
+  const todoMode = canUseTodoMode && todoModeSelected;
+  const togglePlanMode = useCallback(() => {
+    setPlanMode((enabled) => {
+      const nextEnabled = !enabled;
+      if (nextEnabled) {
+        setTodoModeSelected(false);
+      }
+      return nextEnabled;
+    });
+  }, []);
+  const switchSubmitMode = useCallback(() => {
+    setTodoModeSelected(false);
+    setPlanMode((enabled) => !enabled);
+  }, []);
+  const selectTodoMode = useCallback(() => {
+    if (!canUseTodoMode) return;
+    setPlanMode(false);
+    setTodoModeSelected(true);
+  }, [canUseTodoMode]);
   const {
     globalMcpConfig,
     mcpConfigOverride,
@@ -150,8 +166,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         name: string;
         url: string;
       }>;
+      todos?: Todo[];
     }): Promise<boolean> => {
-      const { content, shouldCreateWorktree, uploadedFiles } = params;
+      const { content, shouldCreateWorktree, uploadedFiles, todos } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
       if (shouldCreateWorktree) {
@@ -169,17 +186,21 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         }
       }
 
-      vscodeHost.openTaskInPanel({
-        type: "new-task",
-        cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
-        prompt: content,
-        files: uploadedFiles,
-        activeSelection: activeSelection ?? undefined,
-        mcpConfigOverride:
-          Object.keys(mcpConfigOverride).length > 0
-            ? mcpConfigOverride
-            : globalMcpConfig,
-      });
+      vscodeHost.openTaskInPanel(
+        {
+          type: "new-task",
+          cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
+          prompt: content,
+          todos,
+          files: uploadedFiles,
+          activeSelection: activeSelection ?? undefined,
+          mcpConfigOverride:
+            Object.keys(mcpConfigOverride).length > 0
+              ? mcpConfigOverride
+              : globalMcpConfig,
+        },
+        { preview: false },
+      );
 
       // Clear files if they were uploaded
       if (uploadedFiles && uploadedFiles.length > 0) {
@@ -209,9 +230,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     async (options?: {
       shouldCreateWorktree?: boolean;
       shouldCreatePlan?: boolean;
+      shouldCreateTodo?: boolean;
     }) => {
       const { shouldCreateWorktree } = options || {};
       const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
+      const shouldCreateTodo =
+        canUseTodoMode && (options?.shouldCreateTodo ?? todoMode);
 
       if (isCreatingTask) return;
 
@@ -260,14 +284,16 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         shouldCreateWorktree:
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+        todos: shouldCreateTodo ? initTodoModeTodos(content) : undefined,
       });
 
       // Set isCreatingTask state false
       // Hide loading and unfreeze input
       setIsCreatingTask(false);
       setDebouncedIsCreatingTask(false);
-      // Reset plan mode after each submission
+      // Reset submit mode after each submission
       setPlanMode(false);
+      setTodoModeSelected(false);
     },
     [
       input.text,
@@ -281,6 +307,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
       planMode,
+      todoMode,
+      canUseTodoMode,
     ],
   );
 
@@ -323,14 +351,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         onPaste={handlePasteAttachment}
         status="ready"
         onFileDrop={handleFileDrop}
-        queuedMessages={[]}
         pendingApproval={undefined}
         isSubTask={false}
-        onRemoveQueuedMessage={noop}
         onFocus={onFocus}
         reviews={emptyReviews}
-        onTogglePlanMode={togglePlanMode}
+        onSwitchSubmitMode={switchSubmitMode}
         isPlanMode={planMode}
+        onSelectTodoMode={canUseTodoMode ? selectTodoMode : undefined}
+        onAttachFile={() => fileInputRef.current?.click()}
+        contextMenuSide="bottom"
       >
         {files.length > 0 && (
           <div className="px-3">
@@ -354,7 +383,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       />
 
       <div className="my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden">
-        <div className="flex items-center gap-4 overflow-x-hidden truncate">
+        <div className="flex items-center gap-2 overflow-x-hidden truncate">
           <ModelSelect
             value={selectedModel || selectedModelFromStore}
             models={groupedModels}
@@ -365,6 +394,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             reloadModels={reloadModels}
             triggerClassName="sidebar-model-select"
           />
+          {todoMode && (
+            <TodoModeBadge onRemove={() => setTodoModeSelected(false)} />
+          )}
         </div>
 
         <div className="mr-1 flex shrink-0 items-center gap-0.5">
@@ -382,28 +414,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               onBaseBranchChange={setBaseBranch}
             />
           )}
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                className="button-focus relative h-6 w-6 p-0"
-              >
-                <span className="size-4">
-                  <PaperclipIcon className="size-4" />
-                </span>
-              </Button>
-            </HoverCardTrigger>
-            <HoverCardContent
-              side="top"
-              align="start"
-              sideOffset={6}
-              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-            >
-              {t("chat.attachmentTooltip")}
-            </HoverCardContent>
-          </HoverCard>
           <SubmitDropdownButton
             isLoading={debouncedIsCreatingTask}
             disabled={!selectedModel || isUploadingAttachments}
@@ -414,6 +424,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             resetMcpTools={resetMcpTools}
             isPlanMode={planMode}
             onTogglePlanMode={togglePlanMode}
+            onSwitchSubmitMode={switchSubmitMode}
           />
         </div>
       </div>

@@ -210,7 +210,7 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
-  it("clears background file-state cache before retrying a task", async () => {
+  it("keeps background file-state cache when retry keeps completed readFile", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-model" }),
     ]);
@@ -225,6 +225,43 @@ describe("TaskExecutor", () => {
           output: { content: "hello", isTruncated: false },
         },
         { type: "step-start" },
+        makeToolPart("executeCommand", "exec", null, "input-streaming"),
+      ]),
+    ]);
+    const adaptor = makeAdaptor({
+      executeToolCall: vi.fn(async () => ({ ok: true })),
+    });
+    const clearFileStateCache = vi.fn();
+    const executor = makeExecutor(store, adaptor, {}, clearFileStateCache);
+
+    await executor.drain();
+
+    expect(clearFileStateCache).not.toHaveBeenCalled();
+    await executor.dispose();
+  });
+
+  it("clears background file-state cache when retry strips completed readFile", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        {
+          type: "tool-readFile",
+          toolCallId: "read-kept",
+          state: "output-available",
+          input: { path: "a.ts" },
+          output: { content: "hello", isTruncated: false },
+        },
+        { type: "step-start" },
+        {
+          type: "tool-readFile",
+          toolCallId: "read-stripped",
+          state: "output-available",
+          input: { path: "b.ts" },
+          output: { content: "world", isTruncated: false },
+        },
         makeToolPart("executeCommand", "exec", null, "input-streaming"),
       ]),
     ]);

@@ -24,6 +24,8 @@ export function useLiveChatKit(
       rest.backgroundTask,
       rest.taskMemory,
       rest.projectMemory,
+      rest.customAgent,
+      rest.attemptCompletionSchema,
     ],
   );
 

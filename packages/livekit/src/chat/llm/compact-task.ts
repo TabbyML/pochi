@@ -11,6 +11,7 @@ import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
 import { makeStoreFileQuery } from "../../livestore/default-queries";
+import { events } from "../../livestore/default-schema";
 import { makeDownloadFunction } from "../../store-blob";
 import type { LiveKitStore, Message } from "../../types";
 
@@ -105,6 +106,7 @@ export async function compactTask({
           { verbatimTail: true },
         );
         memoryAttachMessage.parts.unshift({ type: "text", text });
+        persistInlineCompactMessage(store, memoryAttachMessage);
         logger.debug(
           `Inline compact attached at index ${memoryAttachIndex}; preserving ${
             messages.length - memoryAttachIndex
@@ -124,6 +126,7 @@ export async function compactTask({
         attachIndex < messages.length - 1 ? { verbatimTail: true } : undefined,
       );
       attachMessage.parts.unshift({ type: "text", text });
+      persistInlineCompactMessage(store, attachMessage);
       return;
     }
 
@@ -137,6 +140,14 @@ export async function compactTask({
     logger.warn("Failed to create summary", err);
     throw err;
   }
+}
+
+function persistInlineCompactMessage(
+  store: LiveKitStore | undefined,
+  message: Message,
+) {
+  if (!store) return;
+  store.commit(events.updateMessages({ messages: [message] }));
 }
 
 export function findInlineCompactAttachIndex(

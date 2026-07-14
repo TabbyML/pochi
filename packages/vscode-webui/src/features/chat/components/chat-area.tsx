@@ -17,6 +17,7 @@ interface ChatAreaProps {
   isSubTask?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
+  showLastStepDuration?: boolean;
 }
 
 export function ChatArea({
@@ -31,6 +32,7 @@ export function ChatArea({
   isSubTask,
   repairMermaid,
   repairingChart,
+  showLastStepDuration,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -54,6 +56,7 @@ export function ChatArea({
         isSubTask={isSubTask}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
+        showLastStepDuration={showLastStepDuration}
       />
     </>
   );

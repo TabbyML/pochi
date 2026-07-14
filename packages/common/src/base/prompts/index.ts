@@ -1,4 +1,6 @@
 import { renderActiveSelection } from "./active-selection";
+import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
+export { assertBackgroundJobReadInterval } from "./background-job";
 import {
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
@@ -25,6 +27,8 @@ import {
 } from "./task-memory";
 import { renderUserEdits } from "./user-edits";
 
+export { parseEnvironmentInfo } from "./environment";
+
 export const prompts = {
   system: createSystemPrompt,
   injectEnvironment,
@@ -47,6 +51,9 @@ export const prompts = {
   renderBashOutputs,
   fixMermaidError,
   createUseSkillResult,
+  attemptTodoCompletion: {
+    buildPrompt: buildAttemptTodoCompletionPrompt,
+  },
   taskMemory: {
     template: taskMemoryTemplate,
     buildExtractionDirective: buildMemoryExtractionDirective,
@@ -61,6 +68,9 @@ export const prompts = {
     truncateIndex: truncateAutoMemoryIndex,
     serializeMessage: serializeMemoryMessage,
   },
+  toolCallsReminder: `You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.
+
+If you have already provided a response or explanation in your text above, do NOT repeat or copy that content into the \`result\` parameter of \`attemptCompletion\`. Instead, simply refer to your response above with a brief sentence (e.g., "See response above." or "The task is completed as described above.") to save output tokens.`,
 };
 
 function createSystemReminder(content: string) {
@@ -82,7 +92,7 @@ function isSystemReminder(content: string) {
 function isEnvironmentSystemReminder(content: string) {
   // FIXME(meng): this is really a hack to detect if the system reminder is for environment details
   // We should have a better way to detect this
-  return isSystemReminder(content) && content.includes("# TODOs");
+  return isSystemReminder(content) && content.includes("# GIT STATUS");
 }
 
 function isCompact(content: string) {

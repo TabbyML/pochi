@@ -2,14 +2,10 @@ import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { DevModeButton } from "@/components/dev-mode-button";
 import { DiffSummary } from "@/components/diff-summary";
 import { ModelSelect } from "@/components/model-select";
+import { TodoModeBadge } from "@/components/prompt-form/todo-mode-badge";
 import { PublicShareButton } from "@/components/public-share-button";
 import { TokenUsage } from "@/components/token-usage";
 import { Button } from "@/components/ui/button";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApprovalButton,
@@ -17,13 +13,14 @@ import {
   isRetryApprovalCountingDown,
   type useApprovalAndRetry,
 } from "@/features/approval";
-import { useAutoApproveGuard } from "@/features/chat";
+import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
 import {
   AutoApproveMenu,
   useAutoApprove,
+  useIsDevMode,
   useSelectedModels,
 } from "@/features/settings";
-import { TodoList, useTodos } from "@/features/todo";
+import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
@@ -31,27 +28,33 @@ import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
+import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
-import type { Todo } from "@getpochi/tools";
-import { PaperclipIcon, SendHorizonal, StopCircleIcon } from "lucide-react";
+import { type Todo, initTodoModeTodos } from "@getpochi/tools";
+import {
+  SendHorizonal,
+  ShieldCheck,
+  ShieldOff,
+  StopCircleIcon,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TbShieldCog } from "react-icons/tb";
 import {
   type BlockingOperation,
   useBlockingOperations,
 } from "../hooks/use-blocking-operations";
 import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
-import { useChatSubmit } from "../hooks/use-chat-submit";
+import { type QueuedMessage, useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
+import { QueuedMessages } from "./queued-messages";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
@@ -71,12 +74,18 @@ interface ChatToolbarProps {
   subtask?: SubtaskInfo;
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
-  todosRef: React.RefObject<Todo[] | undefined>;
+  todos: Todo[];
+  updateTodos: (todos: Todo[]) => void;
+  updateTodoCompletion: (update: TodoCompletionUpdate) => void;
+  todoPaused: boolean;
+  onTodoPausedChange: (paused: boolean) => void;
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
   taskId: string;
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
+  onToolsExecutionStarted?: () => void;
+  onToolsExecutionEnded?: () => void;
 }
 
 export const ChatToolbar: React.FC<ChatToolbarProps> = ({
@@ -89,29 +98,58 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   task,
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
-  todosRef,
+  todos,
+  updateTodos,
+  updateTodoCompletion,
+  todoPaused,
+  onTodoPausedChange,
   onUpdateIsPublicShared,
   taskId,
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
+  onToolsExecutionStarted,
+  onToolsExecutionEnded,
 }) => {
   const { t } = useTranslation();
 
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
+  const { completeToolCalls } = useToolCallLifeCycle();
 
   const { input, setInput, clearInput } = useChatInputState();
 
-  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
 
-  // Initialize task with prompt if provided and task doesn't exist yet
-  const { todos } = useTodos({
-    initialTodos: task?.todos,
-    messages,
-    todosRef,
-  });
+  const [isDevMode] = useIsDevMode();
+  const canUseTodoMode = isDevMode === true;
+  const [todoModeSelected, setTodoModeSelected] = useState(false);
+  // Show the todo mode entry in dev mode, but disable it (rather than hide it)
+  // while the task already has active todos so it stays discoverable.
+  const showTodoMode = canUseTodoMode && !isSubTask;
+  const todoModeDisabled = hasActiveTodos(todos);
+  const canSelectTodoMode = showTodoMode && !todoModeDisabled;
+
+  useEffect(() => {
+    if (!canSelectTodoMode && todoModeSelected) {
+      setTodoModeSelected(false);
+    }
+  }, [canSelectTodoMode, todoModeSelected]);
+
+  const resetTodoMode = useCallback(() => {
+    setTodoModeSelected(false);
+  }, []);
+
+  const createTodoBeforeSend = useCallback(
+    (text: string) => {
+      resetTodoMode();
+      if (hasActiveTodos(todos)) return;
+
+      updateTodos(initTodoModeTodos(text));
+    },
+    [resetTodoMode, todos, updateTodos],
+  );
 
   const {
     groupedModels,
@@ -179,8 +217,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isExecuting ||
     totalTokens < constants.CompactTaskMinTokens
   );
+  const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
-  const { handleSubmit, handleStop } = useChatSubmit({
+  const { handleSubmit, handleSteerSubmit, handleStop } = useChatSubmit({
     chat,
     input,
     clearInput,
@@ -193,19 +232,24 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     setQueuedMessages,
     reviews,
     taskId: taskId,
+    isTodoMode: todoModeSelected,
+    canCreateTodo: !todoModeDisabled,
+    onTodoModeQueued: resetTodoMode,
+    onBeforeSendText: createTodoBeforeSend,
   });
 
-  const handleQueueMessage = useCallback(
-    async (e?: React.FormEvent<HTMLFormElement>) => {
-      e?.preventDefault();
-
-      const message = input.text;
-      if (message.trim()) {
-        setQueuedMessages((prev) => [...prev, message]);
-        clearInput();
-      }
+  const autoApproveGuard = useAutoApproveGuard();
+  const handleSteerQueuedMessage = useCallback(
+    (index: number) => {
+      setQueuedMessages((prev) => {
+        const message = prev[index];
+        if (!message) return prev;
+        return [message, ...prev.filter((_, i) => i !== index)];
+      });
+      autoApproveGuard.current = "stop";
+      handleStop();
     },
-    [input, clearInput],
+    [autoApproveGuard, handleStop],
   );
 
   useEffect(() => {
@@ -213,30 +257,33 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       status === "ready" &&
       !isExecuting &&
       !isBusyCore &&
+      completeToolCalls.length === 0 &&
       !!selectedModel &&
       (!pendingApproval || pendingApproval.name === "retry");
 
     if (isReady && queuedMessages.length > 0) {
-      handleSubmit();
+      handleSubmit(undefined, { flushQueuedMessages: true });
     }
   }, [
     status,
     isExecuting,
     isBusyCore,
+    completeToolCalls.length,
     selectedModel,
     queuedMessages.length,
     pendingApproval,
     handleSubmit,
   ]);
 
-  // Only allow adding tool results when not loading
-  const allowAddToolResult = !(isLoading || blockingState.isBusy);
+  const allowAddToolResult = !blockingState.isBusy;
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
+    updateTodoCompletion,
   });
 
+  const allowInteractiveToolAction = !(isLoading || blockingState.isBusy);
   const compactOptions = {
     enabled:
       compactEnabled && !inlineCompactTaskPending && !newCompactTaskPending,
@@ -258,7 +305,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   );
 
   const showRenderWidgetFixButton =
-    !!shouldShowRenderWidgetFixButton && allowAddToolResult && !pendingApproval;
+    !!shouldShowRenderWidgetFixButton &&
+    allowInteractiveToolAction &&
+    !pendingApproval;
 
   const showSubmitReviewButton =
     !isSubmitDisabled &&
@@ -273,6 +322,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   // If there are pending reviews, we prioritize submitting them over completing the subtask.
   const showCompleteSubtaskButton =
     useShowCompleteSubtaskButton(subtask, messages) && !showSubmitReviewButton;
+  const visibleTodos = isSubTask ? [] : todos;
+  const hasVisibleTodos = visibleTodos.length > 0;
+  const hasVisibleChangedFiles =
+    useTaskChangedFilesHelpers.visibleChangedFiles.length > 0;
+  const hasVisibleContextPanel = hasVisibleTodos || hasVisibleChangedFiles;
+  const hasQueuedMessages = queuedMessages.length > 0;
 
   return (
     <>
@@ -286,10 +341,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <ApprovalButton
             pendingApproval={pendingApproval}
             retry={retry}
-            allowAddToolResult={allowAddToolResult}
+            allowAddToolResult={allowInteractiveToolAction}
             isSubTask={isSubTask}
             task={task}
             subtask={subtask}
+            onToolsExecutionStarted={onToolsExecutionStarted}
+            onToolsExecutionEnded={onToolsExecutionEnded}
           />
           {showRenderWidgetFixButton ? (
             <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
@@ -302,15 +359,32 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {(todos.length > 0 ||
-        useTaskChangedFilesHelpers.visibleChangedFiles.length > 0) && (
+      {hasQueuedMessages && (
+        <QueuedMessages
+          messages={queuedMessages}
+          onRemove={(index) =>
+            setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
+          }
+          onSteer={handleSteerQueuedMessage}
+        />
+      )}
+      {hasVisibleContextPanel && (
         <div
           className={cn(
             "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
+            {
+              "mt-0": hasQueuedMessages,
+            },
           )}
         >
-          {todos.length > 0 && (
-            <TodoList todos={todos}>
+          {hasVisibleTodos && (
+            <TodoList
+              todos={visibleTodos}
+              editable
+              onSaveTodos={updateTodos}
+              todoPaused={todoPaused}
+              onTodoPausedChange={onTodoPausedChange}
+            >
               <TodoList.Header />
               <TodoList.Items viewportClassname="max-h-48" />
             </TodoList>
@@ -318,46 +392,48 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <DiffSummary
             {...useTaskChangedFilesHelpers}
             className={cn({
-              "rounded-t-none border-border border-t": todos.length > 0,
+              "rounded-t-none border-border border-t": hasVisibleTodos,
             })}
           />
         </div>
       )}
-      <ChatInputForm
-        input={input}
-        setInput={setInput}
-        onSubmit={handleSubmit}
-        onCtrlSubmit={handleQueueMessage}
-        isLoading={isLoading || isExecuting}
-        onPaste={handlePasteAttachment}
-        pendingApproval={pendingApproval}
-        status={status}
-        onFileDrop={handleFileDrop}
-        messageContent={messageContent}
-        queuedMessages={queuedMessages}
-        onRemoveQueuedMessage={(index) =>
-          setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
-        }
-        isSubTask={isSubTask}
-        reviews={reviews}
-        taskId={taskId}
-        lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
-        className={cn({
-          "rounded-t-none":
-            todos.length > 0 ||
-            useTaskChangedFilesHelpers.visibleChangedFiles.length > 0,
-        })}
-      >
-        {files.length > 0 && (
-          <div className="px-3">
-            <AttachmentPreviewList
-              files={files}
-              onRemove={removeFile}
-              isUploading={isUploadingAttachments}
-            />
-          </div>
-        )}
-      </ChatInputForm>
+      <div className="relative z-10">
+        <ChatInputForm
+          input={input}
+          setInput={setInput}
+          onSubmit={handleSubmit}
+          onCtrlSubmit={handleSteerSubmit}
+          isLoading={isLoading || isExecuting}
+          onPaste={handlePasteAttachment}
+          pendingApproval={pendingApproval}
+          status={status}
+          onFileDrop={handleFileDrop}
+          messageContent={messageContent}
+          isSubTask={isSubTask}
+          reviews={reviews}
+          taskId={taskId}
+          lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
+          onAttachFile={() => fileInputRef.current?.click()}
+          onSelectTodoMode={
+            showTodoMode ? () => setTodoModeSelected(true) : undefined
+          }
+          todoModeDisabled={todoModeDisabled}
+          contextMenuSide="top"
+          className={cn({
+            "rounded-t-none": hasVisibleContextPanel || hasQueuedMessages,
+          })}
+        >
+          {files.length > 0 && (
+            <div className="px-3">
+              <AttachmentPreviewList
+                files={files}
+                onRemove={removeFile}
+                isUploading={isUploadingAttachments}
+              />
+            </div>
+          )}
+        </ChatInputForm>
+      </div>
 
       {/* Hidden file input for image uploads */}
       <input
@@ -380,6 +456,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             onChange={updateSelectedModelId}
             reloadModels={reloadModels}
           />
+          {canSelectTodoMode && todoModeSelected && (
+            <TodoModeBadge onRemove={() => setTodoModeSelected(false)} />
+          )}
         </div>
 
         <div className={FooterRightClassName}>
@@ -400,6 +479,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}
+            tooltip={t(
+              autoApproveActive
+                ? "settings.autoApprove.toolbarTooltipEnabled"
+                : "settings.autoApprove.toolbarTooltipDisabled",
+            )}
             trigger={
               <Button
                 type="button"
@@ -411,7 +495,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
                 )}
                 aria-label={t("settings.autoApprove.approvals")}
               >
-                <TbShieldCog className="size-4 shrink-0 transition-colors duration-200" />
+                <AutoApproveIcon className="size-4 shrink-0 transition-colors duration-200" />
               </Button>
             }
           />
@@ -424,30 +508,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
               onUpdateIsPublicShared={onUpdateIsPublicShared}
             />
           )}
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="button-focus relative h-6 w-6 p-0"
-                >
-                  <span className="size-4">
-                    <PaperclipIcon className="size-4 translate-y-[1.5px] scale-105" />
-                  </span>
-                </Button>
-              </span>
-            </HoverCardTrigger>
-            <HoverCardContent
-              side="top"
-              align="start"
-              sideOffset={6}
-              className="!w-auto max-w-sm bg-background px-3 py-1.5 text-xs"
-            >
-              {t("chat.attachmentTooltip")}
-            </HoverCardContent>
-          </HoverCard>
           <SubmitStopButton
             isSubmitDisabled={isSubmitDisabled}
             showStopButton={showStopButton}
@@ -531,9 +591,7 @@ export function ChatToolBarSkeleton() {
         onCtrlSubmit={async () => {}}
         isLoading={true}
         onPaste={() => {}}
-        onRemoveQueuedMessage={() => {}}
         status="streaming"
-        queuedMessages={[]}
         isSubTask={false}
         pendingApproval={undefined}
         reviews={[]}

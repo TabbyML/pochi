@@ -1,3 +1,4 @@
+import type { Todo } from "@getpochi/tools";
 import type { ActiveSelection } from "./message";
 
 export type FileUIPart = {
@@ -21,6 +22,7 @@ export type PochiTaskParams = { cwd: string } & (
       type: "new-task";
       uid?: string;
       prompt?: string;
+      todos?: Todo[];
       files?: FileUIPart[];
       activeSelection?: ActiveSelection;
       mcpConfigOverride?: McpConfigOverride;
@@ -41,6 +43,7 @@ export type PochiTaskParams = { cwd: string } & (
   | {
       type: "compact-task";
       messages: string;
+      modelId?: string;
     }
   | {
       type: "open-task";
@@ -99,7 +102,7 @@ export type TaskStates = Record<string, TaskState>;
 
 export type TaskArchivedParams =
   | { type: "single"; taskId: string; archived: boolean }
-  | { type: "batch"; cwd?: string };
+  | { type: "batch" };
 
 export type TaskPinnedParams = {
   taskId: string;

@@ -158,16 +158,38 @@ ${indexContent}`;
 }
 
 /**
+ * Remove any previously-injected auto-memory reminder from user messages.
+ * Used when project memory is disabled so the snapshot (which may have been
+ * persisted into the first user message on an earlier turn) stops being sent.
+ */
+function stripAutoMemoryReminders(messages: UIMessage[]): UIMessage[] {
+  for (const message of messages) {
+    if (message.role !== "user") continue;
+    const parts = message.parts ?? [];
+    const filtered = parts.filter(
+      (part) =>
+        part.type !== "text" || !isAutoMemorySystemReminder(part.text ?? ""),
+    );
+    if (filtered.length !== parts.length) {
+      message.parts = filtered;
+    }
+  }
+  return messages;
+}
+
+/**
  * Inject the MEMORY.md snapshot as a dedicated system reminder on the first
  * user turn. Idempotent — replaces any prior auto-memory reminder.
+ *
+ * When memory is disabled (no context), strips any previously-injected
+ * reminder instead, so it stops being sent for the current task.
  */
 export function injectAutoMemory(
   messages: UIMessage[],
   context: AutoMemoryContext | undefined,
 ): UIMessage[] {
-  if (!context) return messages;
-  const memoryBlock = buildAutoMemoryDynamicPrompt(context);
-  if (!memoryBlock) return messages;
+  const memoryBlock = context ? buildAutoMemoryDynamicPrompt(context) : "";
+  if (!memoryBlock) return stripAutoMemoryReminders(messages);
   if (messages.length !== 1) return messages;
 
   const messageToInject = messages.at(-1);

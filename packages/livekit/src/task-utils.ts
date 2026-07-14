@@ -1,4 +1,5 @@
 import type { AskFollowupQuestionInput, Question } from "@getpochi/tools";
+import type { z } from "zod";
 import { defaultCatalog as catalog } from "./livestore";
 import type { LiveKitStore, Message } from "./types";
 
@@ -57,10 +58,56 @@ export function getTaskErrorMessage(error: unknown): string | undefined {
  * Extract the last step's attemptCompletion / askFollowupQuestion result.
  * Throws when no messages exist for the task.
  */
-export function extractTaskResult(
+export function extractTaskResult(store: LiveKitStore, uid: string): unknown {
+  const result = extractRawAttemptCompletionResult(store, uid);
+  if (result !== undefined) {
+    return result;
+  }
+
+  const lastMessage = store
+    .query(catalog.queries.makeMessagesQuery(uid))
+    .map((x) => x.data as Message)
+    .at(-1);
+  if (!lastMessage) {
+    throw new Error(`No message found for uid ${uid}`);
+  }
+
+  const lastStepStart = lastMessage.parts.findLastIndex(
+    (x) => x.type === "step-start",
+  );
+
+  for (const part of lastMessage.parts.slice(lastStepStart + 1)) {
+    if (
+      part.type === "tool-askFollowupQuestion" &&
+      (part.state === "input-available" || part.state === "output-available")
+    ) {
+      return formatFollowupQuestions(part.input);
+    }
+  }
+}
+
+export function extractAttemptCompletionResult<T>(
   store: LiveKitStore,
   uid: string,
-): string | undefined {
+  schema: z.ZodType<T>,
+): T | undefined {
+  const result = extractRawAttemptCompletionResult(store, uid);
+  if (result === undefined) return undefined;
+
+  const parsed = schema.safeParse(result);
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid attemptCompletion result: ${parsed.error.message}`,
+    );
+  }
+
+  return parsed.data;
+}
+
+function extractRawAttemptCompletionResult(
+  store: LiveKitStore,
+  uid: string,
+): unknown {
   const lastMessage = store
     .query(catalog.queries.makeMessagesQuery(uid))
     .map((x) => x.data as Message)
@@ -79,13 +126,6 @@ export function extractTaskResult(
       (part.state === "input-available" || part.state === "output-available")
     ) {
       return part.input.result;
-    }
-
-    if (
-      part.type === "tool-askFollowupQuestion" &&
-      (part.state === "input-available" || part.state === "output-available")
-    ) {
-      return formatFollowupQuestions(part.input);
     }
   }
 }

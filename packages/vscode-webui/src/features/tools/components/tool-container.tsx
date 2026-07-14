@@ -26,11 +26,17 @@ export const ToolTitle: React.FC<{
   );
 };
 
-export const ExpandIcon: React.FC<{
+interface ExpandIconBaseProps {
   isExpanded: boolean;
   onClick?: () => void;
   className?: string;
-}> = ({ isExpanded, onClick, className }) => {
+}
+
+export const ExpandIcon: React.FC<ExpandIconBaseProps> = ({
+  isExpanded,
+  onClick,
+  className,
+}) => {
   return (
     <span
       className={cn(
@@ -45,6 +51,27 @@ export const ExpandIcon: React.FC<{
           "size-3 transition-transform",
           isExpanded ? "rotate-90" : "rotate-180",
         )}
+      />
+    </span>
+  );
+};
+
+export const ExpandIconRight: React.FC<ExpandIconBaseProps> = ({
+  isExpanded,
+  onClick,
+  className,
+}) => {
+  return (
+    <span
+      className={cn(
+        "mt-0.5 self-start rounded bg-muted p-1 transition-opacity hover:bg-secondary",
+        !isExpanded && "opacity-0 group-hover:opacity-100",
+        className,
+      )}
+      onClick={onClick}
+    >
+      <ChevronRight
+        className={cn("size-3 transition-transform", isExpanded && "rotate-90")}
       />
     </span>
   );

@@ -394,11 +394,14 @@ class RunningTask {
     }
 
     return (
-      this.processMessage(lastMessage) ?? this.processToolCalls(lastMessage)
+      (await this.processMessage(lastMessage)) ??
+      (await this.processToolCalls(lastMessage))
     );
   }
 
-  private processMessage(message: Message): "finished" | "retry" | undefined {
+  private async processMessage(
+    message: Message,
+  ): Promise<"finished" | "retry" | undefined> {
     const task = this.task;
     if (!task) {
       throw new Error("Task is not loaded.");
@@ -412,9 +415,9 @@ class RunningTask {
       if (isAbortTaskError(task.error)) {
         throw toError(task.error);
       }
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.prepareRetryMessage(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed as Message);
+        this.replaceLastMessageForRetry(processed);
       }
       return "retry";
     }
@@ -430,9 +433,9 @@ class RunningTask {
         messages: this.chat.messages,
       })
     ) {
-      const processed = prepareLastMessageForRetry(message);
+      const processed = await this.prepareRetryMessage(message);
       if (processed) {
-        this.replaceLastMessageForRetry(processed as Message);
+        this.replaceLastMessageForRetry(processed);
       }
       return "retry";
     }
@@ -440,9 +443,7 @@ class RunningTask {
     if (isAssistantMessageWithNoToolCalls(message)) {
       this.chat.appendOrReplaceMessage(
         createUserMessage(
-          prompts.createSystemReminder(
-            "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
-          ),
+          prompts.createSystemReminder(prompts.toolCallsReminder),
         ),
       );
       return "retry";
@@ -585,8 +586,16 @@ class RunningTask {
   }
 
   private replaceLastMessageForRetry(message: Message): void {
-    void this.clearFileStateCache?.(this.taskId);
     this.chat.appendOrReplaceMessage(message);
+  }
+
+  private async prepareRetryMessage(
+    message: Message,
+  ): Promise<Message | undefined> {
+    const retryMessage = await prepareLastMessageForRetry(message, () =>
+      this.clearFileStateCache?.(this.taskId),
+    );
+    return retryMessage ? (retryMessage as Message) : undefined;
   }
 
   private throwIfMaxStepReached() {

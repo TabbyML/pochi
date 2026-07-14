@@ -157,6 +157,16 @@ export const events = {
       ),
     }),
   }),
+  attemptTodoCompletionFinished: Events.synced({
+    name: "v1.AttemptTodoCompletionFinished",
+    schema: Schema.Struct({
+      id: Schema.String,
+      data: DBMessage,
+      todos: Todos,
+      status: Schema.optional(TaskStatus),
+      updatedAt: Schema.Date,
+    }),
+  }),
   chatStreamFinished: Events.synced({
     name: "v1.ChatStreamFinished",
     schema: Schema.Struct({
@@ -196,11 +206,27 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  updateTodos: Events.synced({
+    name: "v1.UpdateTodos",
+    schema: Schema.Struct({
+      id: Schema.String,
+      todos: Todos,
+      updatedAt: Schema.Date,
+    }),
+  }),
   updateIsPublicShared: Events.synced({
     name: "v1.UpdateIsPublicShared",
     schema: Schema.Struct({
       id: Schema.String,
       isPublicShared: Schema.Boolean,
+      updatedAt: Schema.Date,
+    }),
+  }),
+  updateTotalTokens: Events.synced({
+    name: "v1.UpdateTotalTokens",
+    schema: Schema.Struct({
+      id: Schema.String,
+      totalTokens: Schema.Number,
       updatedAt: Schema.Date,
     }),
   }),
@@ -227,7 +253,7 @@ export const events = {
     schema: Schema.Struct({
       taskId: Schema.String,
       filePath: Schema.Union(
-        Schema.Literal("/plan.md", "/walkthrough.md", "/memory.md"),
+        Schema.Literal("/plan.md", "/memory.md"),
         Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
       ),
       content: Schema.String,
@@ -238,7 +264,7 @@ export const events = {
     name: "v1.WriteStoreFile",
     schema: Schema.Struct({
       filePath: Schema.Union(
-        Schema.Literal("/plan.md", "/walkthrough.md", "/memory.md"),
+        Schema.Literal("/plan.md", "/memory.md"),
         Schema.TemplateLiteral("/browser-session/", Schema.String, ".mp4"),
       ),
       content: Schema.String,
@@ -376,6 +402,28 @@ const materializers = State.SQLite.materializers(events, {
       })
       .onConflict("id", "replace"),
   ],
+  "v1.AttemptTodoCompletionFinished": ({
+    id,
+    data,
+    todos,
+    status,
+    updatedAt,
+  }) => [
+    tables.tasks
+      .update({
+        todos,
+        status,
+        updatedAt,
+      })
+      .where({ id }),
+    tables.messages
+      .insert({
+        id: data.id,
+        taskId: id,
+        data,
+      })
+      .onConflict("id", "replace"),
+  ],
   "v1.ChatStreamFinished": ({
     id,
     data,
@@ -437,8 +485,12 @@ const materializers = State.SQLite.materializers(events, {
     tables.tasks.update({ shareId, updatedAt }).where({ id, shareId: null }),
   "v1.UpdateTitle": ({ id, title, updatedAt }) =>
     tables.tasks.update({ title, updatedAt }).where({ id }),
+  "v1.UpdateTodos": ({ id, todos, updatedAt }) =>
+    tables.tasks.update({ todos, updatedAt }).where({ id }),
   "v1.UpdateIsPublicShared": ({ id, isPublicShared, updatedAt }) =>
     tables.tasks.update({ isPublicShared, updatedAt }).where({ id }),
+  "v1.UpdateTotalTokens": ({ id, totalTokens, updatedAt }) =>
+    tables.tasks.update({ totalTokens, updatedAt }).where({ id }),
   // @deprecated materializer kept for backward compatibility
   "v1.WriteTaskFile": ({ filePath, content }) =>
     tables.files

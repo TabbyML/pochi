@@ -73,7 +73,7 @@ describe("filterCompletionTools", () => {
     });
   });
 
-  it("should ignore todoWrite when deciding whether to filter", () => {
+  it("should treat legacy todoWrite as another tool when deciding whether to filter", () => {
     const message: Message = {
       id: "4",
       role: "assistant",
@@ -95,7 +95,14 @@ describe("filterCompletionTools", () => {
     } as any;
 
     const result = filterCompletionTools(message);
-    expect(result).toEqual(message);
+    expect(result.parts).toHaveLength(2);
+    expect(result.parts[0]).toEqual({ type: "step-start" });
+    expect(result.parts[1]).toEqual({
+      type: "tool-todoWrite",
+      toolCallId: "tool-1",
+      state: "input-available",
+      input: {},
+    });
   });
 
   it("should handle multiple steps and only filter the last step", () => {

@@ -12,6 +12,12 @@ export const DBMessage = Schema.Struct({
   id: Schema.String,
   role: Schema.Literal("user", "assistant", "system"),
   parts: Schema.Array(DBUIPart),
+  metadata: Schema.optional(
+    Schema.Record({
+      key: Schema.String,
+      value: Schema.Any,
+    }),
+  ),
 });
 
 export const Todo = Schema.Struct({

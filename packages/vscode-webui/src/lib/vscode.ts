@@ -5,6 +5,7 @@ import {
   type VSCodeHostApi,
   type WebviewHostApi,
   resolvePochiUri,
+  resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   catalog,
@@ -70,6 +71,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "setGlobalState",
         "readEnvironment",
         "executeToolCall",
+        "previewEdit",
         "executeBashCommand",
         "listFilesInWorkspace",
         "listAutoCompleteCandidates",
@@ -130,6 +132,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readAutoMemory",
         "readAutoMemoryEnabled",
         "readAutoMemoryState",
+        "readEffectiveContextWindow",
         "readBackgroundTaskState",
         "readTaskArchived",
         "readTaskPinned",
@@ -208,7 +211,13 @@ function createVSCodeHost(): VSCodeHostApi {
           let content: string | undefined;
           let outputError: string | undefined;
           try {
-            content = extractTaskResult(globalStore, taskId);
+            const taskResult = extractTaskResult(globalStore, taskId);
+            content =
+              typeof taskResult === "string"
+                ? taskResult
+                : taskResult === undefined
+                  ? undefined
+                  : JSON.stringify(taskResult);
           } catch (error) {
             logger.warn("Failed to extract task result", error);
             outputError =
@@ -253,9 +262,17 @@ function createVSCodeHost(): VSCodeHostApi {
     );
   };
 
+  const previewEdit: VSCodeHostApi["previewEdit"] = async (toolName, input) => {
+    return vscodeHostApi.previewEdit(
+      toolName,
+      resolveToolCallArgs(input, globalStore?.storeId ?? ""),
+    );
+  };
+
   return {
     ...vscodeHostApi,
     openFile,
+    previewEdit,
   };
 }
 
@@ -286,4 +303,6 @@ export const vscodeAutoMemoryManager: AutoMemoryManager = {
     (await loadAutoMemoryManager()).beginDreamRun(options),
   finishDreamRun: async (options) =>
     (await loadAutoMemoryManager()).finishDreamRun(options),
+  clearProjectMemory: async (options) =>
+    (await loadAutoMemoryManager()).clearProjectMemory(options),
 };

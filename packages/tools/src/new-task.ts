@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import type { Todo } from "./todo-write";
+import { Todo } from "./todo";
 import { defineClientTool } from "./types";
 
 export type SubTask = {
@@ -27,6 +27,17 @@ export const CustomAgent = z.object({
     .describe(
       "Whether to omit workspace agent markdown such as AGENTS.md and README.pochi.md from the agent system prompt.",
     ),
+  _internal: z
+    .object({
+      resultSchema: z
+        .string()
+        .optional()
+        .describe(
+          "Internal zod schema expression for the attemptCompletion result.",
+        ),
+    })
+    .optional()
+    .describe("Internal built-in agent metadata."),
   filePath: z
     .string()
     .optional()
@@ -41,7 +52,7 @@ function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
   if (!customAgents || customAgents.length === 0)
     return "No custom agents are available. You shall always leave the agentType parameter empty to use the default agent.";
 
-  return `When using the newTask tool, you may specify a agentType parameter to select which agent type to use.
+  return `When using the newTask tool, the agentType parameter is optional. Leave it empty (None) to launch a generic sub agent, or specify one of the available agent types below to select a specialized agent.
 Available agent types and the tools they have access to:
 
 ${(customAgents ?? [])
@@ -58,10 +69,20 @@ export const inputSchema = z.object({
   agentType: z
     .string()
     .optional()
-    .describe("The type of the specialized agent to use for the task."),
+    .describe(
+      "Optional. The type of the specialized agent to use for the task. Leave empty (None) to launch a generic sub agent for the task.",
+    ),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),
+      sourceAttemptCompletion: z
+        .object({
+          toolCallId: z.string(),
+          input: z.unknown(),
+        })
+        .optional()
+        .describe("Internal source attemptCompletion call metadata."),
+      todos: z.array(Todo).optional().describe("Internal source todos."),
     })
     .optional(),
   _transient: z

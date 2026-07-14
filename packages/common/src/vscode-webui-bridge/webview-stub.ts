@@ -94,6 +94,15 @@ const VSCodeHostStub = {
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
   },
+  previewEdit: (
+    _toolName: string,
+    _input: unknown,
+  ): Promise<
+    | { edit: string; editSummary: { added: number; removed: number } }
+    | undefined
+  > => {
+    return Promise.resolve(undefined);
+  },
   executeBashCommand: (
     _command: string,
     _abortSignal: ThreadAbortSignalSerialization,
@@ -412,6 +421,7 @@ const VSCodeHostStub = {
     writeTaskTranscript: async () => undefined,
     beginDreamRun: async () => undefined,
     finishDreamRun: async () => undefined,
+    clearProjectMemory: async () => undefined,
   }),
   readAutoMemoryEnabled: async (): Promise<{
     value: ThreadSignalSerialization<boolean>;
@@ -422,6 +432,8 @@ const VSCodeHostStub = {
       setAutoMemoryEnabled: (_enabled: boolean) => Promise.resolve(),
     };
   },
+  readEffectiveContextWindow: async (): Promise<number | undefined> =>
+    undefined,
   readAutoMemoryState: async (
     _taskId: string,
   ): Promise<{

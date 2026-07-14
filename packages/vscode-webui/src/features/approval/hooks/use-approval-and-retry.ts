@@ -13,13 +13,11 @@ export function useApprovalAndRetry({
   sendMessage,
   showApproval,
   isSubTask,
-  prepareLastMessageForRetry,
+  clearFileStateCache,
 }: {
   showApproval: boolean;
   isSubTask: boolean;
-  prepareLastMessageForRetry?: (
-    message: Message,
-  ) => Message | undefined | Promise<Message | undefined>;
+  clearFileStateCache?: () => void | Promise<void>;
 } & Pick<
   UseChatHelpers<Message>,
   "error" | "messages" | "sendMessage" | "regenerate" | "status" | "setMessages"
@@ -36,7 +34,7 @@ export function useApprovalAndRetry({
     setMessages,
     sendMessage,
     regenerate,
-    prepareLastMessageForRetry,
+    clearFileStateCache,
   });
 
   const retry = useCallback(

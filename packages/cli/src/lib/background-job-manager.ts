@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import * as crypto from "node:crypto";
+import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import { getShellPath } from "@getpochi/common/tool-utils";
 
@@ -10,6 +11,7 @@ export interface BackgroundJob {
   output: string;
   startTime: number;
   status: "running" | "completed";
+  lastReadAt?: number;
 }
 
 export class BackgroundJobManager {
@@ -78,6 +80,14 @@ export class BackgroundJobManager {
       return null;
     }
 
+    const now = Date.now();
+    const previousReadAt = job.lastReadAt;
+    assertBackgroundJobReadInterval({
+      now,
+      previousReadAt,
+      status: job.status,
+    });
+
     let outputToReturn = job.output;
 
     if (regex) {
@@ -87,6 +97,7 @@ export class BackgroundJobManager {
     }
 
     job.output = ""; // Clear buffer
+    job.lastReadAt = now;
 
     return {
       output: outputToReturn,

@@ -25,6 +25,7 @@ import { ModelList } from "@/lib/model-list";
 import { PochiLanguage } from "@/lib/pochi-language";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
+import { computePreviewEdit } from "@/lib/preview-edit";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -54,7 +55,6 @@ import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
 import { startBackgroundJob } from "@/tools/start-background-job";
-import { todoWrite } from "@/tools/todo-write";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
@@ -276,8 +276,64 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     await this.context.globalState.update(key, value);
   };
 
+  /**
+   * Scope of the currently opened repository: all worktree paths plus the
+   * gitdir prefix used by its worktrees. Undefined when no folder is open.
+   */
+  private getCurrentRepoScope():
+    | { worktreePaths: Set<string>; worktreesGitdirPrefix: string }
+    | undefined {
+    const worktrees = this.worktreeManager.worktrees.value;
+    const repoRoot =
+      worktrees.find((wt) => wt.isMain)?.path ??
+      this.workspaceScope.workspacePath ??
+      undefined;
+    if (!repoRoot) {
+      return undefined;
+    }
+    const worktreePaths = new Set(worktrees.map((wt) => wt.path));
+    worktreePaths.add(repoRoot);
+    return {
+      worktreePaths,
+      worktreesGitdirPrefix: `${repoRoot}/.git/worktrees`,
+    };
+  }
+
+  /**
+   * A task belongs to the current repo when its cwd is one of the repo's
+   * worktrees, or its gitdir points under the repo's `.git/worktrees` (covers
+   * deleted worktrees).
+   */
+  private isTaskInRepoScope(
+    task: {
+      cwd?: string | null;
+      git?: { worktree?: { gitdir?: string } | null } | null;
+    },
+    scope: { worktreePaths: Set<string>; worktreesGitdirPrefix: string },
+  ): boolean {
+    return (
+      (!!task.cwd && scope.worktreePaths.has(task.cwd)) ||
+      !!task.git?.worktree?.gitdir?.startsWith(scope.worktreesGitdirPrefix)
+    );
+  }
+
   readTasks = async () => {
-    return ThreadSignal.serialize(this.taskHistoryStore.tasks);
+    return ThreadSignal.serialize(
+      computed(() => {
+        const tasks = this.taskHistoryStore.tasks.value;
+        const scope = this.getCurrentRepoScope();
+        if (!scope) {
+          return tasks;
+        }
+        const result: typeof tasks = {};
+        for (const [id, task] of Object.entries(tasks)) {
+          if (this.isTaskInRepoScope(task, scope)) {
+            result[id] = task;
+          }
+        }
+        return result;
+      }),
+    );
   };
 
   readBrowserSession = async (taskId: string) => {
@@ -368,7 +424,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   clearFileStateCache = async (taskId: string): Promise<void> => {
-    this.fileStateCacheRegistry.clear(taskId);
+    this.fileStateCacheRegistry.markAllAsWritten(taskId);
   };
 
   readRecentFilesForCompact = async (taskId: string) => {
@@ -583,6 +639,19 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     });
 
     return result;
+  };
+
+  previewEdit = async (
+    toolName: string,
+    input: unknown,
+  ): Promise<
+    | { edit: string; editSummary: { added: number; removed: number } }
+    | undefined
+  > => {
+    if (!this.cwd) {
+      return undefined;
+    }
+    return computePreviewEdit(toolName, input, this.cwd);
   };
 
   openFile = async (
@@ -1341,6 +1410,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
+  readEffectiveContextWindow = async (): Promise<number | undefined> => {
+    return pochiConfig.value.effectiveContextWindow;
+  };
+
   readAutoMemoryState = async (
     taskId: string,
   ): Promise<{
@@ -1380,10 +1453,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           const tasks = this.taskHistoryStore.tasks.value;
           const archived = this.taskStateStore.getArchivedSignal().value;
           const pinned = this.taskStateStore.getPinnedSignal().value;
+          const scope = this.getCurrentRepoScope();
           return Object.values(tasks).some((task) => {
             if (task.parentId !== null) return false;
             if (archived[task.id]) return false;
             if (pinned[task.id]) return false;
+            if (scope && !this.isTaskInRepoScope(task, scope)) return false;
             return task.updatedAt < oneWeekAgo;
           });
         }),
@@ -1405,13 +1480,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         } else if (params.type === "batch") {
           const tasks = this.taskHistoryStore.tasks.value;
           const pinned = this.taskStateStore.getPinnedSignal().value;
+          const scope = this.getCurrentRepoScope();
           const updates: Record<string, boolean> = {};
 
           for (const [taskId, task] of Object.entries(tasks)) {
             if (
               task.updatedAt < oneWeekAgo &&
               !pinned[taskId] &&
-              (!params.cwd || task.cwd === params.cwd)
+              (!scope || this.isTaskInRepoScope(task, scope))
             ) {
               updates[taskId] = true;
             }
@@ -1523,7 +1599,6 @@ const ToolMap: Record<
   renderWidget,
   writeToFile,
   applyDiff,
-  todoWrite,
   editNotebook,
   useSkill,
   createReview,

@@ -30,9 +30,18 @@
     "createPlan": "계획",
     "createPlanTooltip": "이 작업에 대한 구현 계획 생성",
     "planModeLabel": "계획",
+    "todoModeLabel": "Todo",
+    "pauseTodo": "Todo 일시 중지",
+    "resumeTodo": "Todo 재개",
+    "autoContinueTodo": "할 일 자동 계속",
     "planModeToggleShortcutTooltip": "Shift + Tab으로 전환",
     "planModeSubmitTooltip": "계획으로 제출",
+    "todoModeSubmitTooltip": "Todo 모드로 제출",
     "queuedMessages": "대기 중인 메시지 ({{count}})",
+    "noMessage": "메시지 없음",
+    "fileCount": "파일 {{count}}개",
+    "reviewCount": "리뷰 {{count}}개",
+    "steer": "개입",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
     "pleaseCheckFiles": "이 첨부 파일들을 확인해 주세요.",
@@ -53,6 +62,7 @@
     "ofUsed": "{{total}} 중 {{used}} 사용됨",
     "newTaskWithSummary": "새 작업 및 요약",
     "compactTask": "작업 압축",
+    "autoCompactAt": "약 {{tokens}} tokens에서 자동 압축됩니다",
     "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} tokens 이상 필요합니다",
     "defaultContextWindowWarning": "컨텍스트 창 값은 기본값이며 사용자 지정 모델에 대해 정확하지 않을 수 있습니다. 정확한 token 관리를 위해 모델 공급자의 설명서에 따라 설정에서 조정하십시오.",
     "tokensUsed": "{{used}} / {{total}} tokens",
@@ -77,6 +87,9 @@
     "viewProjectMemoryTooltip": "이 워크스페이스의 MEMORY.md 인덱스를 엽니다.",
     "viewTaskMemoryButtonTooltip": "작업 압축 시 재사용되는 작업 메모리 요약을 엽니다.",
     "projectMemoryUnavailable": "이 워크스페이스에서 작업을 실행하면 프로젝트 메모리를 사용할 수 있습니다.",
+    "projectMemoryClear": "프로젝트 메모리 초기화",
+    "projectMemoryReset": "초기화",
+    "projectMemoryClearConfirm": "모든 프로젝트 메모리 파일(MEMORY.md 및 주제 파일)이 초기화됩니다. 이 작업은 취소할 수 없습니다.",
     "taskMemoryUnavailable": "작업 메모리는 대화가 진행됨에 따라 자동으로 생성됩니다."
   },
   "modelSelect": {
@@ -110,7 +123,6 @@
   },
   "worktree": {
     "createPr": "PR 생성",
-    "createWalkthrough": "워크스루 생성",
     "reviewChanges": "변경 사항 검토",
     "createDraftPr": "초안 PR 생성",
     "createPrManually": "수동으로 PR 생성",
@@ -166,6 +178,8 @@
     "autoApprove": {
       "title": "자동 승인",
       "approvals": "권한",
+      "toolbarTooltipEnabled": "자동 승인 켜짐. 클릭하면 끕니다.",
+      "toolbarTooltipDisabled": "자동 승인 꺼짐. 클릭하면 켭니다.",
       "disabled": "비활성화됨",
       "noActionsSelected": "선택된 작업 없음",
       "readFiles": "파일 읽기",
@@ -333,6 +347,7 @@
     "result_one": "{{count}}개 결과",
     "result_other": "{{count}}개 결과",
     "readBackground": "백그라운드 작업 출력 읽는 중",
+    "readTerminal": "터미널 출력 읽는 중",
     "withRegexFilter": "정규식 필터 사용",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
     "backgroundExecuting": "백그라운드에서 명령 실행 중",
@@ -365,7 +380,8 @@
     "noChangesDetected": "변경 사항이 감지되지 않았습니다",
     "compare": "비교",
     "fork": "포크하기",
-    "forking": "포크 중..."
+    "forking": "포크 중...",
+    "summary": "요약"
   },
   "reviewUI": {
     "reviews": "리뷰",
@@ -406,7 +422,8 @@
     "disableLineWrap": "줄 바꿈 비활성화"
   },
   "messageList": {
-    "compactedConversationTooltip": "토큰 사용량을 줄이기 위해 이 지점부터 대화가 압축되었습니다"
+    "compactedConversationTooltip": "토큰 사용량을 줄이기 위해 이 지점부터 대화가 압축되었습니다",
+    "completedIn": "{{duration}} 만에 완료"
   },
   "markdown": {
     "codeOmitted": "... {{language}} 코드 생략됨 ( {{bytes}} 바이트 ) ..."
@@ -420,6 +437,18 @@
   "activeSelectionBadge": {
     "cell": "셀",
     "addContext": "컨텍스트 추가"
+  },
+  "todoModeBadge": {
+    "remove": "Todo 모드 제거"
+  },
+  "addContextMenu": {
+    "trigger": "추가",
+    "files": "파일 및 폴더",
+    "filesDescription": "@로 작업 영역 파일 및 폴더 검색",
+    "attach": "파일 첨부",
+    "attachDescription": "컴퓨터에서 이미지, PDF 또는 동영상 업로드",
+    "todoDescription": "Pochi가 이 Todo를 계속 진행하도록 합니다",
+    "todoDisabledDescription": "현재 Todo를 완료한 후 새로 시작할 수 있습니다"
   },
   "mentionList": {
     "noResultsFound": "결과를 찾을 수 없습니다",
@@ -450,7 +479,17 @@
   },
   "todoList": {
     "todos": "할 일",
-    "allDone": "🎉 모두 완료!"
+    "allDone": "🎉 모두 완료!",
+    "cancelledTodo": "Todo 취소됨",
+    "editTodo": "편집",
+    "editTodos": "Todo 편집",
+    "saveTodo": "저장",
+    "saveTodos": "Todo 저장",
+    "editTodoContent": "Todo 내용 편집",
+    "cancelTodo": "취소",
+    "deleteTodo": "삭제",
+    "pauseTodo": "일시 중지",
+    "resumeTodo": "Todo 다시 시작"
   },
   "commandExecutionPanel": {
     "copied": "복사됨!",
@@ -541,15 +580,19 @@
     "creatingPlan": "코드를 분석하고 계획을 수립 중입니다...",
     "planCreationPaused": "계획 수립이 일시 중지되었습니다"
   },
-  "walkthroughView": {
-    "openWalkthrough": "열기",
-    "creatingWalkthrough": "워크스루 생성 중...",
-    "walkthroughCreationPaused": "워크스루 생성이 일시 중지되었습니다"
-  },
   "browserView": {
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",
     "paused": "일시 중지됨"
+  },
+  "attemptTodoCompletionView": {
+    "auditing": "Todos 감사 중",
+    "completed": "모든 Todos 완료됨",
+    "needsWork": "Todo에 추가 작업 필요",
+    "stopped": "Todo 감사 중지됨",
+    "stoppedDescription": "감사가 요약을 생성하기 전에 중지되었습니다.",
+    "unavailable": "Todo 감사 결과를 사용할 수 없음",
+    "unavailableDescription": "감사가 종료되었지만 읽을 수 있는 요약을 반환하지 않았습니다."
   },
   "browserAgentSettings": {
     "runtimeSection": "브라우저 런타임",

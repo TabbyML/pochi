@@ -115,6 +115,23 @@ export class FileStateCache {
     this.currentSizeBytes = 0;
   }
 
+  /**
+   * Downgrade every cached entry to "written" state (`fromWrite: true`).
+   *
+   * Used when the read tool_results that populated the cache are about to
+   * leave the conversation — a compaction summary, or a retry that strips a
+   * completed read. Keeping the entries preserves the edit/write staleness
+   * guard (so a later edit of an already-read file is not falsely rejected
+   * with "File has not been read yet"), while `fromWrite: true` stops them
+   * from producing a "File unchanged" dedup stub that would dangle onto a
+   * tool_result no longer present in the conversation.
+   */
+  markAllAsWritten(): void {
+    for (const entry of this.entries.values()) {
+      entry.fromWrite = true;
+    }
+  }
+
   get size(): number {
     return this.entries.size;
   }
@@ -202,18 +219,15 @@ export async function checkStaleness(
   operation: "editing" | "writing" = "editing",
 ): Promise<void> {
   const cachedState = cache.get(resolvedPath);
-
   if (!cachedState) {
-    // The model hasn't read this file yet.
-    // If the file exists on disk, require the model to read it first to avoid
-    // blindly overwriting content it has never seen.
     const currentMtime = await getMtime(resolvedPath);
+    // If the file exists on disk but was never read, require a read first.
+    // A missing mtime means the file doesn't exist yet, so creating it is fine.
     if (currentMtime !== undefined) {
       throw new Error(
         `File has not been read yet. Please read the file before ${operation} it.`,
       );
     }
-    // File doesn't exist on disk — creating a new file is always allowed.
     return;
   }
 

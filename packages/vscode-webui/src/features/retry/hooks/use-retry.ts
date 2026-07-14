@@ -1,6 +1,6 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { prompts } from "@getpochi/common";
-import { prepareLastMessageForRetry as defaultPrepareLastMessageForRetry } from "@getpochi/common/message-utils";
+import { prepareLastMessageForRetry } from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
 import { useCallback } from "react";
 import { ReadyForRetryError } from "./use-ready-for-retry-error";
@@ -10,15 +10,12 @@ export function useRetry({
   setMessages,
   sendMessage,
   regenerate,
-  prepareLastMessageForRetry = (message) =>
-    defaultPrepareLastMessageForRetry(message) as Message | undefined,
+  clearFileStateCache,
 }: Pick<
   UseChatHelpers<Message>,
   "messages" | "sendMessage" | "regenerate" | "setMessages"
 > & {
-  prepareLastMessageForRetry?: (
-    message: Message,
-  ) => Message | undefined | Promise<Message | undefined>;
+  clearFileStateCache?: () => void | Promise<void>;
 }) {
   const retryRequest = useCallback(
     async (error: Error) => {
@@ -36,13 +33,14 @@ export function useRetry({
         error.kind === "no-tool-calls"
       ) {
         return sendMessage({
-          text: prompts.createSystemReminder(
-            "You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.",
-          ),
+          text: prompts.createSystemReminder(prompts.toolCallsReminder),
         });
       }
 
-      const lastMessageForRetry = await prepareLastMessageForRetry(lastMessage);
+      const lastMessageForRetry = await prepareLastMessageForRetry(
+        lastMessage,
+        clearFileStateCache,
+      );
       if (lastMessageForRetry != null) {
         setMessages([...messages.slice(0, -1), lastMessageForRetry]);
         return sendMessage(undefined);
@@ -52,13 +50,7 @@ export function useRetry({
         messageId: lastMessage.id,
       });
     },
-    [
-      messages,
-      setMessages,
-      sendMessage,
-      regenerate,
-      prepareLastMessageForRetry,
-    ],
+    [messages, setMessages, sendMessage, regenerate, clearFileStateCache],
   );
 
   return retryRequest;

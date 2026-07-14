@@ -31,6 +31,8 @@ interface ToolCallApprovalButtonProps {
   taskId?: string;
   parentUid?: string;
   subtask?: SubtaskInfo;
+  onToolsExecutionStarted?: () => void;
+  onToolsExecutionEnded?: () => void;
 }
 
 // Component
@@ -40,6 +42,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   isSubTask,
   parentUid,
   subtask,
+  onToolsExecutionStarted,
+  onToolsExecutionEnded,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -74,13 +78,10 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const ToolAcceptText: Record<string, string> = {
     writeToFile: t("toolInvocation.save"),
     executeCommand: t("toolInvocation.run"),
-    todoWrite: t("toolInvocation.continue"),
     newTask: t("toolInvocation.run"),
   };
 
-  const ToolRejectText: Record<string, string> = {
-    todoWrite: "<disabled>",
-  };
+  const ToolRejectText: Record<string, string> = {};
 
   const ToolAbortText: Record<string, string> = {};
 
@@ -166,7 +167,13 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     }
 
     if (taskId) {
-      batchExecuteManager.processQueue(taskId);
+      const promise = batchExecuteManager.processQueue(taskId);
+      if (promise) {
+        onToolsExecutionStarted?.();
+        promise.catch(/*ignore*/).then(() => {
+          onToolsExecutionEnded?.();
+        });
+      }
     }
   }, [
     tools,
@@ -180,6 +187,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
     builtinSubAgentInfo,
     toolPolicies,
     batchExecuteManager,
+    onToolsExecutionStarted,
+    onToolsExecutionEnded,
   ]);
 
   const onReject = useCallback(() => {

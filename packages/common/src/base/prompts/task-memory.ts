@@ -67,6 +67,7 @@ CRITICAL RULES:
 - NEVER modify, delete, or add section headers (the lines starting with '#')
 - NEVER modify or delete the italic _section description_ lines
 - ONLY update the actual content that appears BELOW the italic _section descriptions_ within each section
+- ALWAYS leave a blank line between the italic _section description_ and the content you add below it, so the content renders as its own paragraph instead of being joined onto the description line
 - Do NOT add any new sections or information outside the existing structure
 - Do NOT reference this note-taking process anywhere in the notes
 - Skip updating a section if there are no substantial new insights to add — leave it blank

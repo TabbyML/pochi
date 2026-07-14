@@ -36,6 +36,20 @@ describe("BackgroundJobManager", () => {
     expect(result2?.output).toBe("");
   });
 
+  it("should guide agents away from rapid empty reads", () => {
+    const manager = new BackgroundJobManager();
+    const id = manager.start("sleep 10", ".");
+
+    const firstResult = manager.readOutput(id);
+    expect(firstResult?.output).toBe("");
+
+    expect(() => manager.readOutput(id)).toThrow(
+      /executeCommand to run `sleep 1`/,
+    );
+
+    manager.kill(id);
+  });
+
   it("should wait for all jobs to complete", async () => {
     const manager = new BackgroundJobManager();
     manager.start("sleep 0.1", ".");

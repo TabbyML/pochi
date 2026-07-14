@@ -1,5 +1,6 @@
 import {
   type UIMessage,
+  getStaticToolName,
   isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
@@ -32,9 +33,10 @@ export function isAssistantMessageWithPartialToolCalls(lastMessage: UIMessage) {
   );
 }
 
-export function prepareLastMessageForRetry<T extends UIMessage>(
+export async function prepareLastMessageForRetry<T extends UIMessage>(
   lastMessage: T,
-): T | null {
+  clean?: () => void | Promise<void>,
+): Promise<T | null> {
   const message = {
     ...lastMessage,
     parts: [...lastMessage.parts],
@@ -42,10 +44,16 @@ export function prepareLastMessageForRetry<T extends UIMessage>(
 
   do {
     if (lastAssistantMessageIsCompleteWithToolCalls({ messages: [message] })) {
+      if (clean && retryStripsCompletedFileRead(lastMessage, message)) {
+        await clean();
+      }
       return message;
     }
 
     if (isAssistantMessageWithNoToolCalls(message)) {
+      if (clean && retryStripsCompletedFileRead(lastMessage, message)) {
+        await clean();
+      }
       return message;
     }
 
@@ -56,7 +64,24 @@ export function prepareLastMessageForRetry<T extends UIMessage>(
     message.parts = message.parts.slice(0, lastStepStartIndex);
   } while (message.parts.length > 0);
 
+  if (clean && retryStripsCompletedFileRead(lastMessage, null)) {
+    await clean();
+  }
   return null;
+}
+
+function retryStripsCompletedFileRead(
+  original: UIMessage,
+  prepared: UIMessage | null | undefined,
+): boolean {
+  return original.parts
+    .slice(prepared?.parts.length ?? 0)
+    .some(
+      (part) =>
+        isStaticToolUIPart(part) &&
+        part.state === "output-available" &&
+        getStaticToolName(part) === "readFile",
+    );
 }
 
 /**

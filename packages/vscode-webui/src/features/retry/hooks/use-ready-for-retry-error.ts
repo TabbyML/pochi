@@ -1,3 +1,4 @@
+import { isAttemptTodoCompletionResolved } from "@/lib/todos-utils";
 import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
@@ -32,6 +33,16 @@ export function useMixinReadyForRetryError(
 export function getReadyForRetryError(messages: Message[]) {
   const lastMessage = messages.at(-1);
   if (!lastMessage) return;
+  const attemptTodoCompletionPart =
+    getLastAttemptTodoCompletionPart(lastMessage);
+  if (attemptTodoCompletionPart) {
+    const resolved = isAttemptTodoCompletionResolved(
+      attemptTodoCompletionPart.output,
+    );
+    return resolved === false
+      ? new ReadyForRetryError("tool-calls")
+      : undefined;
+  }
   if (lastMessage.role === "user") return new ReadyForRetryError();
   if (isAssistantMessageWithEmptyParts(lastMessage)) {
     return new ReadyForRetryError();
@@ -47,5 +58,18 @@ export function getReadyForRetryError(messages: Message[]) {
 
   if (isAssistantMessageWithNoToolCalls(lastMessage)) {
     return new ReadyForRetryError("no-tool-calls");
+  }
+}
+
+function getLastAttemptTodoCompletionPart(message: Message) {
+  if (message.role !== "assistant") return undefined;
+
+  const part = message.parts.at(-1);
+  if (
+    part?.type === "tool-newTask" &&
+    part.state === "output-available" &&
+    part.input?.agentType === "attemptTodoCompletion"
+  ) {
+    return part;
   }
 }

@@ -1,4 +1,9 @@
-import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
+import {
+  ResolvedAttemptTodoCompletionResult,
+  isAutoSuccessToolPart,
+  isTodoListResolved,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import {
   type ToolUIPart,
   type UIMessage,
@@ -6,7 +11,8 @@ import {
   isStaticToolUIPart,
 } from "ai";
 import { clone } from "remeda";
-import { KnownTags } from "./constants";
+import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
+import type { MessageMetadata } from "./message";
 import { prompts } from "./prompts";
 
 function resolvePendingToolCalls(
@@ -100,25 +106,113 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
     ) {
       return true;
     }
+    // Keep messages that carry a compact checkpoint — the checkpoint
+    // is meaningful UI content even when all other parts were system reminders.
+    if (parts.some((x) => x.type === "text" && prompts.isCompact(x.text))) {
+      return true;
+    }
     return false;
   });
+}
+
+function isCompactOnlyUserMessage(message: UIMessage): boolean {
+  if (message.role !== "user") return false;
+  return message.parts.every(
+    (part) =>
+      (part.type === "text" && prompts.isCompact(part.text)) ||
+      (part.type === "text" && part.text.trim().length === 0) ||
+      part.type === "data-checkpoint",
+  );
+}
+
+type AssistantMessageMetadata = Extract<MessageMetadata, { kind: "assistant" }>;
+
+function isAssistantMetadata(m: unknown): m is AssistantMessageMetadata {
+  return (
+    typeof m === "object" &&
+    m !== null &&
+    (m as { kind?: string }).kind === "assistant"
+  );
+}
+
+function mergeAssistantMetadata(
+  a: AssistantMessageMetadata | undefined,
+  b: AssistantMessageMetadata | undefined,
+): AssistantMessageMetadata | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    ...a,
+    ...b,
+    totalStreamingDuration:
+      a?.totalStreamingDuration !== undefined ||
+      b?.totalStreamingDuration !== undefined
+        ? (a?.totalStreamingDuration ?? 0) + (b?.totalStreamingDuration ?? 0)
+        : undefined,
+    totalToolsExecutionDuration:
+      a?.totalToolsExecutionDuration !== undefined ||
+      b?.totalToolsExecutionDuration !== undefined
+        ? (a?.totalToolsExecutionDuration ?? 0) +
+          (b?.totalToolsExecutionDuration ?? 0)
+        : undefined,
+  };
 }
 
 function combineConsecutiveAssistantMessages(
   messages: UIMessage[],
 ): UIMessage[] {
-  for (let i = 0; i < messages.length - 1; i++) {
-    if (
-      messages[i].role === "assistant" &&
-      messages[i + 1].role === "assistant"
-    ) {
-      messages[i].parts.push(...messages[i + 1].parts);
-      messages.splice(i + 1, 1);
-      i--;
+  const result: UIMessage[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    const prev = result[result.length - 1];
+
+    // Fold a compact-only user message's checkpoint parts into an adjacent
+    // assistant message so the surrounding assistant messages combine and the
+    // compact checkpoint renders as a separator without a visible user row.
+    if (isCompactOnlyUserMessage(message)) {
+      const compactParts = message.parts.filter(
+        (part) => part.type === "text" && prompts.isCompact(part.text),
+      );
+      const next = messages[i + 1];
+      if (prev?.role === "assistant") {
+        prev.parts.push(...compactParts);
+        continue;
+      }
+      if (next?.role === "assistant") {
+        next.parts.unshift(...compactParts);
+        continue;
+      }
+      result.push(message);
+      continue;
     }
+
+    // Merge into the previous assistant message, keeping the later message's id
+    // and prepending the earlier message's parts.
+    if (message.role === "assistant" && prev?.role === "assistant") {
+      message.parts.unshift(...prev.parts);
+
+      const prevMessageMetadata = isAssistantMetadata(prev.metadata)
+        ? prev.metadata
+        : undefined;
+      const messageMetadata = isAssistantMetadata(message.metadata)
+        ? message.metadata
+        : undefined;
+      if (prevMessageMetadata || messageMetadata) {
+        message.metadata = mergeAssistantMetadata(
+          prevMessageMetadata,
+          messageMetadata,
+        );
+      }
+
+      result[result.length - 1] = message;
+      continue;
+    }
+
+    result.push(message);
   }
 
-  return messages;
+  return result;
 }
 
 function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
@@ -209,6 +303,161 @@ function removeToolCallResultTransientData(messages: UIMessage[]): UIMessage[] {
     });
     return message;
   });
+}
+
+function replaceAttemptTodoCompletionForLLM(
+  messages: UIMessage[],
+): UIMessage[] {
+  return messages.map((message) => {
+    if (message.role !== "assistant") return message;
+
+    const parts = message.parts.map((part) => {
+      if (!isAttemptTodoCompletionNewTaskPart(part)) return part;
+
+      const attemptCompletion = getSavedAttemptCompletion(part);
+      const callProviderMetadata =
+        getCallProviderMetadataWithThoughtSignature(part);
+      const replacementPart = {
+        type: "tool-attemptCompletion",
+        toolCallId: attemptCompletion?.toolCallId ?? part.toolCallId,
+        input: attemptCompletion?.input ?? {},
+        ...(callProviderMetadata ? { callProviderMetadata } : {}),
+      };
+
+      if (part.state === "output-available") {
+        return {
+          ...replacementPart,
+          state: "output-available",
+          output: getReplacementAttemptCompletionOutput(part),
+        } as UIMessage["parts"][number];
+      }
+
+      return {
+        ...replacementPart,
+        state: "input-available",
+      } as UIMessage["parts"][number];
+    });
+
+    return {
+      ...message,
+      parts,
+    };
+  });
+}
+
+function isAttemptTodoCompletionNewTaskPart(
+  part: UIMessage["parts"][number],
+): part is ToolUIPart & {
+  input: {
+    agentType?: unknown;
+  };
+} {
+  return (
+    isStaticToolUIPart(part) &&
+    getStaticToolName(part) === "newTask" &&
+    typeof part.input === "object" &&
+    part.input !== null &&
+    "agentType" in part.input &&
+    part.input.agentType === AttemptTodoCompletionAgentName
+  );
+}
+
+type SavedAttemptCompletion = {
+  toolCallId: string;
+  input: unknown;
+};
+
+type AttemptTodoCompletionInput = {
+  _meta?: {
+    sourceAttemptCompletion?: {
+      toolCallId?: string;
+      input?: unknown;
+    };
+  };
+};
+
+function getSavedAttemptCompletion(
+  part: ToolUIPart & {
+    input: {
+      agentType?: unknown;
+    };
+  },
+): SavedAttemptCompletion | undefined {
+  const attemptCompletion = (part.input as AttemptTodoCompletionInput)._meta
+    ?.sourceAttemptCompletion;
+  if (typeof attemptCompletion?.toolCallId !== "string") return undefined;
+
+  return {
+    toolCallId: attemptCompletion.toolCallId,
+    input: attemptCompletion.input,
+  };
+}
+
+type AttemptTodoCompletionOutput = {
+  result?: {
+    success?: boolean;
+    summary?: string;
+    todos?: unknown;
+  };
+};
+
+function getReplacementAttemptCompletionOutput(part: ToolUIPart) {
+  const output = part.output as AttemptTodoCompletionOutput | undefined;
+  const parsedResult = ResolvedAttemptTodoCompletionResult.safeParse(
+    output?.result,
+  );
+  if (parsedResult.success) {
+    const todos = { todos: parsedResult.data.todos };
+    if (!isTodoListResolved(parsedResult.data.todos)) {
+      return {
+        success: false,
+        reason:
+          parsedResult.data.summary || "Todo completion was not accepted.",
+        ...todos,
+      };
+    }
+
+    return { success: true, ...todos };
+  }
+
+  const todos =
+    output?.result && "todos" in output.result
+      ? { todos: output.result.todos }
+      : {};
+  if (output?.result?.success === false) {
+    return {
+      success: false,
+      reason: output.result.summary ?? "Todo completion was not accepted.",
+      ...todos,
+    };
+  }
+
+  return { success: true, ...todos };
+}
+
+function getCallProviderMetadataWithThoughtSignature(part: ToolUIPart) {
+  const source = part as ToolUIPart & {
+    providerMetadata?: Record<string, Record<string, unknown>>;
+    callProviderMetadata?: Record<string, Record<string, unknown>>;
+  };
+  const metadata = source.providerMetadata;
+  const existingMetadata = source.callProviderMetadata;
+  let callProviderMetadata = existingMetadata
+    ? { ...existingMetadata }
+    : undefined;
+
+  for (const [provider, value] of Object.entries(metadata ?? {})) {
+    const thoughtSignature = value?.thoughtSignature;
+    if (typeof thoughtSignature !== "string") continue;
+
+    callProviderMetadata ??= {};
+    callProviderMetadata[provider] = {
+      ...callProviderMetadata[provider],
+      thoughtSignature,
+    };
+  }
+
+  return callProviderMetadata;
 }
 
 function removeInvalidCharForStorage(messages: UIMessage[]): UIMessage[] {
@@ -386,12 +635,56 @@ function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
 }
 
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
+
+function removePendingTodoAttemptCompletion(
+  messages: UIMessage[],
+): UIMessage[] {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage || lastMessage.role !== "assistant") return messages;
+
+  const lastPart = lastMessage.parts.at(-1);
+  if (
+    lastPart?.type !== "tool-attemptCompletion" ||
+    lastPart.state === "output-available" ||
+    lastPart.state === "output-error"
+  ) {
+    return messages;
+  }
+
+  // In todo mode the visible audit call is a replacement subtask; hide the
+  // transient attemptCompletion part before the replacement arrives.
+  return [
+    ...messages.slice(0, -1),
+    {
+      ...lastMessage,
+      parts: lastMessage.parts.slice(0, -1),
+    },
+  ];
+}
+
+function removeDeprecatedTodoWriteToolCalls(
+  messages: UIMessage[],
+): UIMessage[] {
+  return removeEmptyMessages(
+    messages.map((message) => ({
+      ...message,
+      parts: message.parts.filter(
+        (part) =>
+          !(
+            isStaticToolUIPart(part) && getStaticToolName(part) === "todoWrite"
+          ),
+      ),
+    })),
+  );
+}
+
 const LLMFormatOps: FormatOp[] = [
   removeEmptyTextParts,
   removeEmptyMessages,
   refineDetectedNewPromblems,
   extractCompactMessages,
   removeMessagesWithoutTextOrToolCall,
+  replaceAttemptTodoCompletionForLLM,
   resolvePendingToolCalls,
   stripKnownXMLTags,
   removeToolCallResultMetadata,
@@ -423,14 +716,26 @@ function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
   return ops.reduce((acc, op) => op(acc), clone(messages));
 }
 
+export interface UIFormatterOptions {
+  hidePendingTodoAttemptCompletion?: boolean;
+}
+
 export interface LLMFormatterOptions {
   removeSystemReminder?: boolean;
 }
 
 export const formatters = {
   // Format messages for the Front-end UI rendering.
-  ui: <T extends UIMessage>(messages: T[]) =>
-    formatMessages(messages, UIFormatOps) as T[],
+  ui: <T extends UIMessage>(messages: T[], options?: UIFormatterOptions) => {
+    const uiFormatOps = [
+      ...UIFormatOps,
+      removeDeprecatedTodoWriteToolCalls,
+      ...(options?.hidePendingTodoAttemptCompletion
+        ? [removePendingTodoAttemptCompletion, removeEmptyMessages]
+        : []),
+    ];
+    return formatMessages(messages, uiFormatOps) as T[];
+  },
 
   shareUI: <T extends UIMessage>(messages: T[]) =>
     formatMessages(messages, ShareUIFormatOps) as T[],
