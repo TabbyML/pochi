@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
 import { relative, resolve } from "node:path";
 import { getLogger } from "../base";
-import { MaxRipgrepItems } from "./limits";
+import { MaxRipgrepCharLength, MaxRipgrepItems } from "./limits";
 
 const logger = getLogger("RipgrepUtils");
+const TruncatedContextMarker = "\n... [truncated] ...\n";
 
 // Define an interface for the relevant parts of the rg JSON output
 interface RipgrepMatchData {
@@ -54,6 +55,40 @@ interface RipgrepOutput {
 
 type RipgrepMatch = { file: string; line: number; context: string };
 
+function fitMatchWithinSerializedLength(
+  match: RipgrepMatch,
+  maxSerializedLength: number,
+): RipgrepMatch | undefined {
+  if (JSON.stringify(match).length <= maxSerializedLength) {
+    return match;
+  }
+
+  let low = 0;
+  let high = match.context.length;
+  let fittedMatch: RipgrepMatch | undefined;
+
+  while (low <= high) {
+    const retainedChars = Math.floor((low + high) / 2);
+    const firstPartLength = Math.ceil(retainedChars / 2);
+    const lastPartLength = Math.floor(retainedChars / 2);
+    const candidate: RipgrepMatch = {
+      ...match,
+      context: `${match.context.slice(0, firstPartLength)}${TruncatedContextMarker}${match.context.slice(
+        match.context.length - lastPartLength,
+      )}`,
+    };
+
+    if (JSON.stringify(candidate).length <= maxSerializedLength) {
+      fittedMatch = candidate;
+      low = retainedChars + 1;
+    } else {
+      high = retainedChars - 1;
+    }
+  }
+
+  return fittedMatch;
+}
+
 function parseRipgrepLine(
   line: string,
   workspacePath: string,
@@ -92,6 +127,10 @@ export async function searchFilesWithRipgrep(
   logger.debug("searchFiles", path, regex, filePattern);
   const matches: RipgrepMatch[] = [];
   let isTruncated = false;
+  let serializedLength = JSON.stringify({
+    matches: [],
+    isTruncated: false,
+  }).length;
 
   const args = [
     "--json",
@@ -130,8 +169,28 @@ export async function searchFilesWithRipgrep(
         return;
       }
 
-      matches.push(match);
-      if (matches.length > MaxRipgrepItems) {
+      if (matches.length >= MaxRipgrepItems) {
+        isTruncated = true;
+        stopAfterLimit();
+        return;
+      }
+
+      const separatorLength = matches.length > 0 ? 1 : 0;
+      const remainingLength =
+        MaxRipgrepCharLength - serializedLength - separatorLength;
+      const fittedMatch = fitMatchWithinSerializedLength(
+        match,
+        remainingLength,
+      );
+      if (!fittedMatch) {
+        isTruncated = true;
+        stopAfterLimit();
+        return;
+      }
+
+      matches.push(fittedMatch);
+      serializedLength += separatorLength + JSON.stringify(fittedMatch).length;
+      if (fittedMatch !== match) {
         isTruncated = true;
         stopAfterLimit();
       }
@@ -186,7 +245,7 @@ export async function searchFilesWithRipgrep(
   });
 
   return {
-    matches: matches.slice(0, MaxRipgrepItems),
+    matches,
     isTruncated,
   };
 }
