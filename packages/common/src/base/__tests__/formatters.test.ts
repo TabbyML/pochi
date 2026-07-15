@@ -90,6 +90,71 @@ describe('formatters', () => {
       expect(assistantMessages[0].id).toBe('assistant-2');
     });
 
+    it('should combine consecutive reasoning parts', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'reasoning', text: 'First reasoning paragraph.' },
+            {
+              type: 'reasoning',
+              text: 'Second reasoning paragraph.',
+              providerMetadata: { openai: { itemId: 'rs_abc123' } },
+            },
+            { type: 'text', text: 'Done' },
+            { type: 'reasoning', text: 'Third reasoning paragraph.' },
+            { type: 'reasoning', text: 'Fourth reasoning paragraph.' },
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(clone(messages));
+
+      expect(formatted[0].parts).toHaveLength(3);
+      expect(formatted[0].parts[0]).toEqual({
+        type: 'reasoning',
+        text: 'First reasoning paragraph.\nSecond reasoning paragraph.',
+        providerMetadata: { openai: { itemId: 'rs_abc123' } },
+      });
+      expect(formatted[0].parts[1]).toEqual({ type: 'text', text: 'Done' });
+      expect(formatted[0].parts[2]).toEqual({
+        type: 'reasoning',
+        text: 'Third reasoning paragraph.\nFourth reasoning paragraph.',
+      });
+    });
+
+    it('should use the latest reasoning state when combining consecutive reasoning parts', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'reasoning',
+              text: 'Finished reasoning paragraph.',
+              state: 'done',
+            },
+            {
+              type: 'reasoning',
+              text: 'Streaming reasoning paragraph.',
+              state: 'streaming',
+            },
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(clone(messages));
+
+      expect(formatted[0].parts).toEqual([
+        {
+          type: 'reasoning',
+          text: 'Finished reasoning paragraph.\nStreaming reasoning paragraph.',
+          state: 'streaming',
+        },
+      ]);
+    });
+
     it('should keep the last message id when combining three or more consecutive assistant messages', () => {
       const messages: UIMessage[] = [
         {

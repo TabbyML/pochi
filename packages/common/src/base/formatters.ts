@@ -215,6 +215,49 @@ function combineConsecutiveAssistantMessages(
   return result;
 }
 
+function combineConsecutiveReasoningParts(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    const parts: UIMessage["parts"] = [];
+
+    for (const part of message.parts) {
+      const prev = parts.at(-1);
+      if (part.type === "reasoning" && prev?.type === "reasoning") {
+        // This merge is only for UI rendering. A shallow merge may overwrite
+        // nested providerMetadata from earlier reasoning parts, but losing that
+        // metadata here is acceptable because LLM/storage formatting does not
+        // use this UI-only operation.
+        const providerMetadata =
+          prev.providerMetadata || part.providerMetadata
+            ? {
+                ...prev.providerMetadata,
+                ...part.providerMetadata,
+              }
+            : undefined;
+        const {
+          providerMetadata: _providerMetadata,
+          state: _state,
+          ...prevPart
+        } = prev;
+
+        parts[parts.length - 1] = {
+          ...prevPart,
+          text: `${prev.text}\n${part.text}`,
+          ...(part.state ? { state: part.state } : {}),
+          ...(providerMetadata ? { providerMetadata } : {}),
+        };
+        continue;
+      }
+
+      parts.push(part);
+    }
+
+    return {
+      ...message,
+      parts,
+    };
+  });
+}
+
 function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
   return messages.filter((message) => message.parts.length > 0);
 }
@@ -793,6 +836,7 @@ const UIFormatOps = [
   resolvePendingToolCalls,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
+  combineConsecutiveReasoningParts,
 ];
 const ShareUIFormatOps = [...UIFormatOps, resolvePendingToolCallsForShareUI];
 const StorageFormatOps = [
