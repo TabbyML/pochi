@@ -511,10 +511,36 @@ type PartWithProviderMetadata = UIMessage["parts"][number] & {
   resultProviderMetadata?: ProviderMetadataMap;
 };
 
+const ProviderMetadataFields = [
+  "providerMetadata",
+  "providerOptions",
+  "callProviderMetadata",
+  "resultProviderMetadata",
+] as const;
+
+function getOpenAIItemIds(part: UIMessage["parts"][number]): string[] {
+  const partWithMetadata = part as PartWithProviderMetadata;
+  const itemIds = new Set<string>();
+
+  for (const field of ProviderMetadataFields) {
+    const itemId = partWithMetadata[field]?.openai?.itemId;
+    if (typeof itemId === "string") itemIds.add(itemId);
+  }
+
+  return [...itemIds];
+}
+
 function removeOpenAIItemId(
   metadata: ProviderMetadataMap | undefined,
+  unstableItemIds?: ReadonlySet<string>,
 ): ProviderMetadataMap | undefined {
-  if (!metadata?.openai || !("itemId" in metadata.openai)) {
+  const itemId = metadata?.openai?.itemId;
+  if (
+    !metadata?.openai ||
+    !("itemId" in metadata.openai) ||
+    (unstableItemIds &&
+      (typeof itemId !== "string" || !unstableItemIds.has(itemId)))
+  ) {
     return metadata;
   }
 
@@ -536,29 +562,55 @@ function isUnfinishedAssistantMessage(message: UIMessage): boolean {
   return metadata?.kind !== "assistant";
 }
 
+function isStreamingPart(part: UIMessage["parts"][number]): boolean {
+  if (part.type === "text" || part.type === "reasoning") {
+    return part.state === "streaming";
+  }
+
+  return "state" in part && part.state === "input-streaming";
+}
+
 function removeUnstableOpenAIItemReferences(
   messages: UIMessage[],
 ): UIMessage[] {
   // OpenAI Responses item references can point at output items that were never
-  // committed server-side when a stream was interrupted or failed. Remove only
-  // the fragile item id for unfinished messages and keep other metadata such as
-  // reasoningEncryptedContent so the SDK can resend the reasoning payload.
+  // committed server-side when a stream was interrupted or failed. Keep other
+  // metadata such as reasoningEncryptedContent so the SDK can resend it.
   return messages.map((message) => {
-    if (!isUnfinishedAssistantMessage(message)) return message;
+    if (message.role !== "assistant") return message;
+
+    const stripAllItemIds = isUnfinishedAssistantMessage(message);
+    // The SDK reuses the previous assistant message while continuing a task,
+    // so message-level completion metadata may be stale. A streaming part is
+    // authoritative; remove its id everywhere because one OpenAI reasoning
+    // item can be split into several UI parts that all share the same id.
+    const unstableItemIds = stripAllItemIds
+      ? undefined
+      : new Set(
+          message.parts
+            .filter(isStreamingPart)
+            .flatMap((part) => getOpenAIItemIds(part)),
+        );
+
+    if (!stripAllItemIds && unstableItemIds?.size === 0) return message;
 
     message.parts = message.parts.map((part) => {
       const partWithMetadata = part as PartWithProviderMetadata;
       const providerMetadata = removeOpenAIItemId(
         partWithMetadata.providerMetadata,
+        unstableItemIds,
       );
       const providerOptions = removeOpenAIItemId(
         partWithMetadata.providerOptions,
+        unstableItemIds,
       );
       const callProviderMetadata = removeOpenAIItemId(
         partWithMetadata.callProviderMetadata,
+        unstableItemIds,
       );
       const resultProviderMetadata = removeOpenAIItemId(
         partWithMetadata.resultProviderMetadata,
+        unstableItemIds,
       );
 
       if (
