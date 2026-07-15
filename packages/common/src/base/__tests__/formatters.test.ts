@@ -431,6 +431,82 @@ describe('formatters', () => {
       expect(reasoningPart.providerMetadata.openai.itemId).toBe('rs_finished');
     });
 
+    it('should strip OpenAI item references from unfinished tool call parts', () => {
+      const toolPart = createToolPart('testTool', 'input-available', {
+        arg: 1,
+      });
+      toolPart.callProviderMetadata = {
+        openai: { itemId: 'fc_interrupted' },
+        google: { thoughtSignature: 'signature-1' },
+      };
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [toolPart],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const formattedToolPart = formatted[0].parts[0] as any;
+
+      expect(formattedToolPart.callProviderMetadata).toEqual({
+        google: { thoughtSignature: 'signature-1' },
+      });
+      expect(formattedToolPart.callProviderMetadata.openai).toBeUndefined();
+    });
+
+    it('should keep OpenAI item references for finished tool call parts', () => {
+      const toolPart = createToolPart('testTool', 'input-available', {
+        arg: 1,
+      });
+      toolPart.callProviderMetadata = {
+        openai: { itemId: 'fc_finished' },
+      };
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [toolPart],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const formattedToolPart = formatted[0].parts[0] as any;
+
+      expect(formattedToolPart.callProviderMetadata.openai.itemId).toBe(
+        'fc_finished',
+      );
+    });
+
+    it('should strip OpenAI item references from unfinished provider-executed tool results', () => {
+      const toolPart = createToolPart(
+        'testTool',
+        'output-available',
+        { arg: 1 },
+        { result: 'ok' },
+      );
+      toolPart.providerExecuted = true;
+      toolPart.resultProviderMetadata = {
+        openai: { itemId: 'fc_result_interrupted', customField: 'preserved' },
+      };
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [toolPart],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const formattedToolPart = formatted[0].parts[0] as any;
+
+      expect(formattedToolPart.resultProviderMetadata).toEqual({
+        openai: { customField: 'preserved' },
+      });
+    });
+
     it('should keep only messages from the latest compact block onward', () => {
       const messages: UIMessage[] = [
         {

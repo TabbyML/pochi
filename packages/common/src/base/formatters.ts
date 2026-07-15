@@ -464,6 +464,13 @@ type ProviderMetadataMap = Record<string, Record<string, unknown>>;
 type PartWithProviderMetadata = UIMessage["parts"][number] & {
   providerMetadata?: ProviderMetadataMap;
   providerOptions?: ProviderMetadataMap;
+  // Tool-call parts carry their provider metadata (e.g. OpenAI itemId) here.
+  // The SDK maps it back to providerOptions when converting to model messages.
+  callProviderMetadata?: ProviderMetadataMap;
+  // Provider-executed tool results carry their metadata here; the SDK maps it
+  // into the tool-result providerOptions. Kept for defense-in-depth in case
+  // provider-executed OpenAI tools are ever enabled.
+  resultProviderMetadata?: ProviderMetadataMap;
 };
 
 function removeOpenAIItemId(
@@ -509,10 +516,18 @@ function removeUnstableOpenAIItemReferences(
       const providerOptions = removeOpenAIItemId(
         partWithMetadata.providerOptions,
       );
+      const callProviderMetadata = removeOpenAIItemId(
+        partWithMetadata.callProviderMetadata,
+      );
+      const resultProviderMetadata = removeOpenAIItemId(
+        partWithMetadata.resultProviderMetadata,
+      );
 
       if (
         providerMetadata === partWithMetadata.providerMetadata &&
-        providerOptions === partWithMetadata.providerOptions
+        providerOptions === partWithMetadata.providerOptions &&
+        callProviderMetadata === partWithMetadata.callProviderMetadata &&
+        resultProviderMetadata === partWithMetadata.resultProviderMetadata
       ) {
         return part;
       }
@@ -520,12 +535,16 @@ function removeUnstableOpenAIItemReferences(
       const {
         providerMetadata: _providerMetadata,
         providerOptions: _providerOptions,
+        callProviderMetadata: _callProviderMetadata,
+        resultProviderMetadata: _resultProviderMetadata,
         ...partWithoutOpenAIItemIds
       } = partWithMetadata;
       return {
         ...partWithoutOpenAIItemIds,
         ...(providerMetadata ? { providerMetadata } : {}),
         ...(providerOptions ? { providerOptions } : {}),
+        ...(callProviderMetadata ? { callProviderMetadata } : {}),
+        ...(resultProviderMetadata ? { resultProviderMetadata } : {}),
       } as UIMessage["parts"][number];
     });
     return message;
