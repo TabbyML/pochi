@@ -6,14 +6,10 @@ export const MaxSummaryOutputTokens = 20_000;
 
 export const AutoCompactBufferTokens = 13_000;
 
-// The absolute buffer alone kicks in far too late on large context windows,
-// so the threshold is also capped at this fraction of the effective window.
-export const AutoCompactRatio = 0.8;
-
 // Most models degrade on agentic tasks well before very large declared
-// windows are exhausted. When no effectiveContextWindow is configured, cap
-// the window used for auto-compaction here.
-export const DefaultEffectiveContextWindow = 200_000;
+// windows are exhausted. When no effectiveContextWindow is configured,
+// auto-compaction triggers at this token count.
+export const DefaultEffectiveContextWindow = 160_000;
 
 export const MaxConsecutiveAutoCompactFailures = 3;
 
@@ -21,13 +17,13 @@ export function getAutoCompactThreshold(
   contextWindow: number,
   effectiveContextWindow?: number,
 ): number {
-  const window = Math.min(
-    effectiveContextWindow || DefaultEffectiveContextWindow,
-    contextWindow,
-  );
-  const byBuffer = window - MaxSummaryOutputTokens - AutoCompactBufferTokens;
-  const byRatio = Math.floor(window * AutoCompactRatio);
-  return Math.max(Math.min(byBuffer, byRatio), 0);
+  // The effective window is the point where auto-compaction triggers. When the
+  // model's real context window is too small to hold that point plus the
+  // summary output, back off so the compaction request itself doesn't overflow.
+  const triggerPoint = effectiveContextWindow ?? DefaultEffectiveContextWindow;
+  const bufferLimit =
+    contextWindow - MaxSummaryOutputTokens - AutoCompactBufferTokens;
+  return Math.max(Math.min(triggerPoint, bufferLimit), 0);
 }
 
 function resolveContextWindow(llm: RequestData["llm"] | undefined): {

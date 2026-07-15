@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { Message, RequestData, Task } from "../../types";
 import {
   AutoCompactBufferTokens,
-  AutoCompactRatio,
   DefaultEffectiveContextWindow,
   MaxSummaryOutputTokens,
   findAutoCompactAttachIndex,
@@ -64,29 +63,24 @@ const openaiLlm = (contextWindow: number): RequestData["llm"] =>
   }) as RequestData["llm"];
 
 describe("getAutoCompactThreshold", () => {
-  it("subtracts summary reserve + buffer from small context windows", () => {
+  it("triggers at DefaultEffectiveContextWindow for large declared windows", () => {
+    expect(getAutoCompactThreshold(1_000_000)).toBe(
+      DefaultEffectiveContextWindow,
+    );
+  });
+
+  it("subtracts summary reserve + buffer when the context window is smaller than the effective window", () => {
     expect(getAutoCompactThreshold(100_000)).toBe(
       100_000 - MaxSummaryOutputTokens - AutoCompactBufferTokens,
     );
-  });
-
-  it("caps the threshold at AutoCompactRatio of the window when the absolute buffer is proportionally small", () => {
-    expect(getAutoCompactThreshold(200_000)).toBe(200_000 * AutoCompactRatio);
-  });
-
-  it("caps very large declared windows at DefaultEffectiveContextWindow", () => {
-    expect(getAutoCompactThreshold(1_000_000)).toBe(
-      DefaultEffectiveContextWindow * AutoCompactRatio,
+    expect(getAutoCompactThreshold(40_000)).toBe(
+      40_000 - MaxSummaryOutputTokens - AutoCompactBufferTokens,
     );
   });
 
-  it("uses an explicit effectiveContextWindow instead of the default cap", () => {
-    expect(getAutoCompactThreshold(1_000_000, 400_000)).toBe(
-      400_000 * AutoCompactRatio,
-    );
-    expect(getAutoCompactThreshold(1_000_000, 100_000)).toBe(
-      100_000 - MaxSummaryOutputTokens - AutoCompactBufferTokens,
-    );
+  it("uses an explicit effectiveContextWindow as the trigger point", () => {
+    expect(getAutoCompactThreshold(1_000_000, 400_000)).toBe(400_000);
+    expect(getAutoCompactThreshold(1_000_000, 100_000)).toBe(100_000);
   });
 
   it("never lets effectiveContextWindow exceed the declared window", () => {
@@ -191,7 +185,7 @@ describe("shouldAutoCompact", () => {
     ).toBe(false);
   });
 
-  it("uses an explicit vendor contextWindow when one is provided", () => {
+  it("caps an explicit vendor contextWindow at the default effective window", () => {
     const messages = [assistantMessage(), userMessage()];
     const vendorLlm = {
       id: "vendor-cli",
@@ -199,14 +193,23 @@ describe("shouldAutoCompact", () => {
       contextWindow: 1_000_000,
       getModel: () => ({}) as never,
     } as RequestData["llm"];
+    const threshold = getAutoCompactThreshold(1_000_000);
 
     expect(
       shouldAutoCompact({
         messages,
         llm: vendorLlm,
-        task: task(constants.CompactTaskMinTokens * 2),
+        task: task(threshold - 1),
       }),
     ).toBe(false);
+
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm: vendorLlm,
+        task: task(threshold),
+      }),
+    ).toBe(true);
   });
 
   it("respects an explicit effectiveContextWindow on the llm", () => {
@@ -233,13 +236,19 @@ describe("shouldAutoCompact", () => {
     ).toBe(false);
   });
 
-  it("does not trigger when totalTokens is below the buffer-based threshold", () => {
+  it("does not trigger when totalTokens is below the effective threshold", () => {
     const messages = [assistantMessage(), userMessage()];
+    const llm = {
+      ...openaiLlm(1_000_000),
+      effectiveContextWindow: 100_000,
+    } as RequestData["llm"];
+    const threshold = getAutoCompactThreshold(1_000_000, 100_000);
+
     expect(
       shouldAutoCompact({
         messages,
-        llm: openaiLlm(1_000_000),
-        task: task(minTokens + 1),
+        llm,
+        task: task(threshold - 1),
       }),
     ).toBe(false);
   });
