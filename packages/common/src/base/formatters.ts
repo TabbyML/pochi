@@ -215,6 +215,49 @@ function combineConsecutiveAssistantMessages(
   return result;
 }
 
+function combineConsecutiveReasoningParts(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    const parts: UIMessage["parts"] = [];
+
+    for (const part of message.parts) {
+      const prev = parts.at(-1);
+      if (part.type === "reasoning" && prev?.type === "reasoning") {
+        // This merge is only for UI rendering. A shallow merge may overwrite
+        // nested providerMetadata from earlier reasoning parts, but losing that
+        // metadata here is acceptable because LLM/storage formatting does not
+        // use this UI-only operation.
+        const providerMetadata =
+          prev.providerMetadata || part.providerMetadata
+            ? {
+                ...prev.providerMetadata,
+                ...part.providerMetadata,
+              }
+            : undefined;
+        const {
+          providerMetadata: _providerMetadata,
+          state: _state,
+          ...prevPart
+        } = prev;
+
+        parts[parts.length - 1] = {
+          ...prevPart,
+          text: `${prev.text}\n${part.text}`,
+          ...(part.state ? { state: part.state } : {}),
+          ...(providerMetadata ? { providerMetadata } : {}),
+        };
+        continue;
+      }
+
+      parts.push(part);
+    }
+
+    return {
+      ...message,
+      parts,
+    };
+  });
+}
+
 function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
   return messages.filter((message) => message.parts.length > 0);
 }
@@ -497,6 +540,98 @@ function extractCompactMessages(messages: UIMessage[]) {
   return messages;
 }
 
+type ProviderMetadataMap = Record<string, Record<string, unknown>>;
+
+type PartWithProviderMetadata = UIMessage["parts"][number] & {
+  providerMetadata?: ProviderMetadataMap;
+  providerOptions?: ProviderMetadataMap;
+  // Tool-call parts carry their provider metadata (e.g. OpenAI itemId) here.
+  // The SDK maps it back to providerOptions when converting to model messages.
+  callProviderMetadata?: ProviderMetadataMap;
+  // Provider-executed tool results carry their metadata here; the SDK maps it
+  // into the tool-result providerOptions. Kept for defense-in-depth in case
+  // provider-executed OpenAI tools are ever enabled.
+  resultProviderMetadata?: ProviderMetadataMap;
+};
+
+function removeOpenAIItemId(
+  metadata: ProviderMetadataMap | undefined,
+): ProviderMetadataMap | undefined {
+  if (!metadata?.openai || !("itemId" in metadata.openai)) {
+    return metadata;
+  }
+
+  const { itemId: _itemId, ...openaiWithoutItemId } = metadata.openai;
+  const { openai: _openai, ...metadataWithoutOpenAI } = metadata;
+  const nextMetadata =
+    Object.keys(openaiWithoutItemId).length > 0
+      ? { ...metadataWithoutOpenAI, openai: openaiWithoutItemId }
+      : metadataWithoutOpenAI;
+
+  return Object.keys(nextMetadata).length > 0 ? nextMetadata : undefined;
+}
+
+function isUnfinishedAssistantMessage(message: UIMessage): boolean {
+  if (message.role !== "assistant") return false;
+
+  const metadata = (message as UIMessage & { metadata?: { kind?: unknown } })
+    .metadata;
+  return metadata?.kind !== "assistant";
+}
+
+function removeUnstableOpenAIItemReferences(
+  messages: UIMessage[],
+): UIMessage[] {
+  // OpenAI Responses item references can point at output items that were never
+  // committed server-side when a stream was interrupted or failed. Remove only
+  // the fragile item id for unfinished messages and keep other metadata such as
+  // reasoningEncryptedContent so the SDK can resend the reasoning payload.
+  return messages.map((message) => {
+    if (!isUnfinishedAssistantMessage(message)) return message;
+
+    message.parts = message.parts.map((part) => {
+      const partWithMetadata = part as PartWithProviderMetadata;
+      const providerMetadata = removeOpenAIItemId(
+        partWithMetadata.providerMetadata,
+      );
+      const providerOptions = removeOpenAIItemId(
+        partWithMetadata.providerOptions,
+      );
+      const callProviderMetadata = removeOpenAIItemId(
+        partWithMetadata.callProviderMetadata,
+      );
+      const resultProviderMetadata = removeOpenAIItemId(
+        partWithMetadata.resultProviderMetadata,
+      );
+
+      if (
+        providerMetadata === partWithMetadata.providerMetadata &&
+        providerOptions === partWithMetadata.providerOptions &&
+        callProviderMetadata === partWithMetadata.callProviderMetadata &&
+        resultProviderMetadata === partWithMetadata.resultProviderMetadata
+      ) {
+        return part;
+      }
+
+      const {
+        providerMetadata: _providerMetadata,
+        providerOptions: _providerOptions,
+        callProviderMetadata: _callProviderMetadata,
+        resultProviderMetadata: _resultProviderMetadata,
+        ...partWithoutOpenAIItemIds
+      } = partWithMetadata;
+      return {
+        ...partWithoutOpenAIItemIds,
+        ...(providerMetadata ? { providerMetadata } : {}),
+        ...(providerOptions ? { providerOptions } : {}),
+        ...(callProviderMetadata ? { callProviderMetadata } : {}),
+        ...(resultProviderMetadata ? { resultProviderMetadata } : {}),
+      } as UIMessage["parts"][number];
+    });
+    return message;
+  });
+}
+
 function removeEmptyTextParts(messages: UIMessage[]) {
   return messages.map((message) => {
     message.parts = message.parts.filter((part) => {
@@ -505,7 +640,7 @@ function removeEmptyTextParts(messages: UIMessage[]) {
       }
       if (part.type === "reasoning") {
         // Keep reasoning parts that have providerMetadata (e.g. OpenAI itemId),
-        // because they need to be included as item_reference in subsequent API calls,
+        // because they need to be included in subsequent API calls,
         // even if their text content is empty.
         if (
           part.providerMetadata &&
@@ -679,6 +814,7 @@ function removeDeprecatedTodoWriteToolCalls(
 }
 
 const LLMFormatOps: FormatOp[] = [
+  removeUnstableOpenAIItemReferences,
   removeEmptyTextParts,
   removeEmptyMessages,
   refineDetectedNewPromblems,
@@ -700,6 +836,7 @@ const UIFormatOps = [
   resolvePendingToolCalls,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
+  combineConsecutiveReasoningParts,
 ];
 const ShareUIFormatOps = [...UIFormatOps, resolvePendingToolCallsForShareUI];
 const StorageFormatOps = [
