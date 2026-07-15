@@ -6,7 +6,11 @@ import {
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import {
+  type ClientTools,
+  ExecuteCommandDefaultTimeoutSec,
+  type ToolFunctionType,
+} from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
 import {
   ThreadSignal,
@@ -31,10 +35,9 @@ type CompletedCommandOutput = {
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
-  { command, cwd = ".", timeout },
+  { command, cwd = ".", timeout = ExecuteCommandDefaultTimeoutSec },
   { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
 ) => {
-  const defaultTimeout = 120;
   if (!command) {
     throw new Error("Command is required to execute.");
   }
@@ -94,7 +97,7 @@ export const executeCommand: ToolFunctionType<
     executeCommandImpl({
       command,
       cwd,
-      timeout: timeout ?? defaultTimeout,
+      timeout,
       abortSignal,
       envs,
       onData: (data) => {

@@ -1,6 +1,31 @@
 import { z } from "zod";
 import { defineClientTool } from "./types";
 
+function resolveExecuteCommandDefaultTimeoutSec(): number {
+  const fallback = 60;
+  const envValue =
+    typeof process !== "undefined"
+      ? process.env.POCHI_EXECUTE_COMMAND_TIMEOUT_SEC
+      : undefined;
+
+  if (!envValue) {
+    return fallback;
+  }
+
+  const parsed = Number(envValue);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
+ * Default timeout (in seconds) for the `executeCommand` tool, used when the
+ * model does not specify a `timeout` for a given command.
+ *
+ * Can be overridden via the `POCHI_EXECUTE_COMMAND_TIMEOUT_SEC` environment
+ * variable.
+ */
+export const ExecuteCommandDefaultTimeoutSec =
+  resolveExecuteCommandDefaultTimeoutSec();
+
 const toolDef = {
   description:
     `Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.
@@ -25,7 +50,7 @@ Before executing the command, please follow these steps:
 
 Usage notes:
 - The command argument is required.
-- You can specify an optional timeout in seconds (up to 300s / 5 minutes). If not specified, commands will timeout after 60s (1 minute).
+- You can specify an optional timeout in seconds (up to 300s). If not specified, commands will timeout after ${ExecuteCommandDefaultTimeoutSec}s.
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands:
   - If the commands are independent and can run in parallel, make multiple executeCommand tool calls in a single message. For example, if you need to run "git status" and "git diff", send a single message with two executeCommand tool calls in parallel.
@@ -145,7 +170,7 @@ Important:
       .max(60 * 5)
       .optional()
       .describe(
-        "Optional timeout in seconds, max 300 seconds. By default the timeout is 120 seconds.",
+        `Optional timeout in seconds, max 300 seconds. By default the timeout is ${ExecuteCommandDefaultTimeoutSec} seconds.`,
       ),
   }),
   outputSchema: z.object({
