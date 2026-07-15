@@ -63,15 +63,13 @@ const openaiLlm = (contextWindow: number): RequestData["llm"] =>
   }) as RequestData["llm"];
 
 describe("getAutoCompactThreshold", () => {
-  it("caps large declared windows at DefaultEffectiveContextWindow", () => {
+  it("triggers at DefaultEffectiveContextWindow for large declared windows", () => {
     expect(getAutoCompactThreshold(1_000_000)).toBe(
-      DefaultEffectiveContextWindow -
-        MaxSummaryOutputTokens -
-        AutoCompactBufferTokens,
+      DefaultEffectiveContextWindow,
     );
   });
 
-  it("subtracts summary reserve + buffer when the context window is smaller than the effective cap", () => {
+  it("subtracts summary reserve + buffer when the context window is smaller than the effective window", () => {
     expect(getAutoCompactThreshold(100_000)).toBe(
       100_000 - MaxSummaryOutputTokens - AutoCompactBufferTokens,
     );
@@ -80,13 +78,9 @@ describe("getAutoCompactThreshold", () => {
     );
   });
 
-  it("uses an explicit effectiveContextWindow instead of the default cap", () => {
-    expect(getAutoCompactThreshold(1_000_000, 400_000)).toBe(
-      400_000 - MaxSummaryOutputTokens - AutoCompactBufferTokens,
-    );
-    expect(getAutoCompactThreshold(1_000_000, 100_000)).toBe(
-      100_000 - MaxSummaryOutputTokens - AutoCompactBufferTokens,
-    );
+  it("uses an explicit effectiveContextWindow as the trigger point", () => {
+    expect(getAutoCompactThreshold(1_000_000, 400_000)).toBe(400_000);
+    expect(getAutoCompactThreshold(1_000_000, 100_000)).toBe(100_000);
   });
 
   it("never lets effectiveContextWindow exceed the declared window", () => {
