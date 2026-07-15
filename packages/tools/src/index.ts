@@ -1,6 +1,7 @@
 export { McpTool } from "./mcp-tools";
 import { ToolsByPermission } from "./constants";
 export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
+export { ExecuteCommandDefaultTimeoutSec } from "./execute-command";
 import {
   type Tool,
   type UIDataTypes,
