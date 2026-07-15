@@ -11,6 +11,7 @@ import {
   isStaticToolUIPart,
 } from "ai";
 import { clone } from "remeda";
+import { stripOpenAIItemReferencesFromLastStep } from "../message-utils/openai-item-references";
 import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
 import type { MessageMetadata } from "./message";
 import { prompts } from "./prompts";
@@ -540,63 +541,6 @@ function extractCompactMessages(messages: UIMessage[]) {
   return messages;
 }
 
-type ProviderMetadataMap = Record<string, Record<string, unknown>>;
-
-type PartWithProviderMetadata = UIMessage["parts"][number] & {
-  providerMetadata?: ProviderMetadataMap;
-  providerOptions?: ProviderMetadataMap;
-  // Tool-call parts carry their provider metadata (e.g. OpenAI itemId) here.
-  // The SDK maps it back to providerOptions when converting to model messages.
-  callProviderMetadata?: ProviderMetadataMap;
-  // Provider-executed tool results carry their metadata here; the SDK maps it
-  // into the tool-result providerOptions. Kept for defense-in-depth in case
-  // provider-executed OpenAI tools are ever enabled.
-  resultProviderMetadata?: ProviderMetadataMap;
-};
-
-const ProviderMetadataFields = [
-  "providerMetadata",
-  "providerOptions",
-  "callProviderMetadata",
-  "resultProviderMetadata",
-] as const;
-
-function getOpenAIItemIds(part: UIMessage["parts"][number]): string[] {
-  const partWithMetadata = part as PartWithProviderMetadata;
-  const itemIds = new Set<string>();
-
-  for (const field of ProviderMetadataFields) {
-    const itemId = partWithMetadata[field]?.openai?.itemId;
-    if (typeof itemId === "string") itemIds.add(itemId);
-  }
-
-  return [...itemIds];
-}
-
-function removeOpenAIItemId(
-  metadata: ProviderMetadataMap | undefined,
-  unstableItemIds?: ReadonlySet<string>,
-): ProviderMetadataMap | undefined {
-  const itemId = metadata?.openai?.itemId;
-  if (
-    !metadata?.openai ||
-    !("itemId" in metadata.openai) ||
-    (unstableItemIds &&
-      (typeof itemId !== "string" || !unstableItemIds.has(itemId)))
-  ) {
-    return metadata;
-  }
-
-  const { itemId: _itemId, ...openaiWithoutItemId } = metadata.openai;
-  const { openai: _openai, ...metadataWithoutOpenAI } = metadata;
-  const nextMetadata =
-    Object.keys(openaiWithoutItemId).length > 0
-      ? { ...metadataWithoutOpenAI, openai: openaiWithoutItemId }
-      : metadataWithoutOpenAI;
-
-  return Object.keys(nextMetadata).length > 0 ? nextMetadata : undefined;
-}
-
 function isUnfinishedAssistantMessage(message: UIMessage): boolean {
   if (message.role !== "assistant") return false;
 
@@ -622,65 +566,17 @@ function removeUnstableOpenAIItemReferences(
   return messages.map((message) => {
     if (message.role !== "assistant") return message;
 
-    const stripAllItemIds = isUnfinishedAssistantMessage(message);
-    // The SDK reuses the previous assistant message while continuing a task,
-    // so message-level completion metadata may be stale. A streaming part is
-    // authoritative; remove its id everywhere because one OpenAI reasoning
-    // item can be split into several UI parts that all share the same id.
-    const unstableItemIds = stripAllItemIds
-      ? undefined
-      : new Set(
-          message.parts
-            .filter(isStreamingPart)
-            .flatMap((part) => getOpenAIItemIds(part)),
-        );
+    // Completion metadata can be stale after a failed stream. If any part is
+    // still streaming, the latest step is the current LLM call. Strip every
+    // item id in that step: a "done" reasoning part only means that part's
+    // stream ended, not that the containing OpenAI response was committed.
+    const shouldStripLastStep =
+      isUnfinishedAssistantMessage(message) ||
+      message.parts.some(isStreamingPart);
 
-    if (!stripAllItemIds && unstableItemIds?.size === 0) return message;
-
-    message.parts = message.parts.map((part) => {
-      const partWithMetadata = part as PartWithProviderMetadata;
-      const providerMetadata = removeOpenAIItemId(
-        partWithMetadata.providerMetadata,
-        unstableItemIds,
-      );
-      const providerOptions = removeOpenAIItemId(
-        partWithMetadata.providerOptions,
-        unstableItemIds,
-      );
-      const callProviderMetadata = removeOpenAIItemId(
-        partWithMetadata.callProviderMetadata,
-        unstableItemIds,
-      );
-      const resultProviderMetadata = removeOpenAIItemId(
-        partWithMetadata.resultProviderMetadata,
-        unstableItemIds,
-      );
-
-      if (
-        providerMetadata === partWithMetadata.providerMetadata &&
-        providerOptions === partWithMetadata.providerOptions &&
-        callProviderMetadata === partWithMetadata.callProviderMetadata &&
-        resultProviderMetadata === partWithMetadata.resultProviderMetadata
-      ) {
-        return part;
-      }
-
-      const {
-        providerMetadata: _providerMetadata,
-        providerOptions: _providerOptions,
-        callProviderMetadata: _callProviderMetadata,
-        resultProviderMetadata: _resultProviderMetadata,
-        ...partWithoutOpenAIItemIds
-      } = partWithMetadata;
-      return {
-        ...partWithoutOpenAIItemIds,
-        ...(providerMetadata ? { providerMetadata } : {}),
-        ...(providerOptions ? { providerOptions } : {}),
-        ...(callProviderMetadata ? { callProviderMetadata } : {}),
-        ...(resultProviderMetadata ? { resultProviderMetadata } : {}),
-      } as UIMessage["parts"][number];
-    });
-    return message;
+    return shouldStripLastStep
+      ? stripOpenAIItemReferencesFromLastStep(message)
+      : message;
   });
 }
 
