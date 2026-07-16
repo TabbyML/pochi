@@ -87,6 +87,78 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 
+  it("strips OpenAI item references from the failed step before saving", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+    const message = {
+      id: "assistant-1",
+      role: "assistant",
+      metadata: { kind: "assistant" },
+      parts: [
+        { type: "step-start" },
+        {
+          type: "reasoning",
+          text: "Committed reasoning",
+          state: "done",
+          providerMetadata: { openai: { itemId: "rs_committed" } },
+        },
+        { type: "step-start" },
+        {
+          type: "reasoning",
+          text: "Done part from failed response",
+          state: "done",
+          providerMetadata: {
+            openai: {
+              itemId: "rs_done_but_uncommitted",
+              reasoningEncryptedContent: "encrypted-reasoning",
+            },
+          },
+        },
+        {
+          type: "text",
+          text: "Partial response",
+          state: "done",
+          providerMetadata: {
+            openai: { itemId: "msg_uncommitted" },
+            google: { custom: "preserved" },
+          },
+        },
+      ],
+    } as Message;
+    chatKit.chat.messages = [userMessage(), message];
+
+    chatKit.chat.fail(new Error("network error"));
+
+    for (const failedMessage of [
+      chatKit.chat.messages.at(-1),
+      store.taskMessages("parent").at(-1),
+    ]) {
+      expect((failedMessage?.parts[1] as any).providerMetadata).toEqual({
+        openai: { itemId: "rs_committed" },
+      });
+      expect((failedMessage?.parts[3] as any).providerMetadata).toEqual({
+        openai: { reasoningEncryptedContent: "encrypted-reasoning" },
+      });
+      expect((failedMessage?.parts[4] as any).providerMetadata).toEqual({
+        google: { custom: "preserved" },
+      });
+    }
+  });
+
   it.each([
     ["tool-attemptCompletion", "completion-1", { result: "Done." }],
     [

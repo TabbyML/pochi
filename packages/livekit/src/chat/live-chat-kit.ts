@@ -7,7 +7,10 @@ import type {
   TaskMemoryState,
 } from "@getpochi/common";
 import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
-import { hasActiveTodos } from "@getpochi/common/message-utils";
+import {
+  hasActiveTodos,
+  stripOpenAIItemReferencesFromLastStep,
+} from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import {
   type CustomAgent,
@@ -79,7 +82,7 @@ function normalizeFailedStreamMessage(
   }
 
   const errorText = getFailedToolCallErrorText(error);
-  return {
+  const normalizedMessage = {
     ...message,
     parts: message.parts.map((part) => {
       if (!isToolUIPart(part)) {
@@ -110,6 +113,8 @@ function normalizeFailedStreamMessage(
       } as unknown as typeof part;
     }),
   };
+
+  return stripOpenAIItemReferencesFromLastStep(normalizedMessage);
 }
 
 function getFailedToolCallErrorText(error: unknown): string {

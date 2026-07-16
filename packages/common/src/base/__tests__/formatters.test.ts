@@ -707,6 +707,60 @@ describe('formatters', () => {
       expect(reasoningPart.providerMetadata.openai.itemId).toBe('rs_finished');
     });
 
+    it('should strip every OpenAI item reference from the step containing a streaming part', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [
+            { type: 'step-start' },
+            {
+              type: 'reasoning',
+              text: 'Committed reasoning',
+              state: 'done',
+              providerMetadata: {
+                openai: { itemId: 'rs_committed' },
+              },
+            },
+            { type: 'step-start' },
+            {
+              type: 'reasoning',
+              text: 'Finished summary part',
+              state: 'done',
+              providerOptions: {
+                openai: {
+                  itemId: 'rs_done_but_uncommitted',
+                  reasoningEncryptedContent: 'encrypted-reasoning',
+                },
+              },
+            },
+            {
+              type: 'reasoning',
+              text: 'Streaming summary part',
+              state: 'streaming',
+              providerMetadata: {
+                openai: { itemId: 'rs_streaming' },
+              },
+            },
+            { type: 'text', text: 'Response' },
+          ],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const [, committedPart, , finishedPart, streamingPart] = formatted[0]
+        .parts as any[];
+
+      expect(committedPart.providerMetadata.openai.itemId).toBe(
+        'rs_committed',
+      );
+      expect(finishedPart.providerOptions.openai).toEqual({
+        reasoningEncryptedContent: 'encrypted-reasoning',
+      });
+      expect(streamingPart.providerMetadata).toBeUndefined();
+    });
+
     it('should strip OpenAI item references from unfinished tool call parts', () => {
       const toolPart = createToolPart('testTool', 'input-available', {
         arg: 1,
