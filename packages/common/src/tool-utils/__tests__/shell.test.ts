@@ -38,7 +38,7 @@ describe("buildShellCommand", () => {
       command: "powershell.exe",
       args: [
         "-Command",
-        "$OutputEncoding=[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);echo 'hello'",
+        "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);echo 'hello'",
       ],
     });
   });

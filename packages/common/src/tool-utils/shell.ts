@@ -41,7 +41,7 @@ export const buildShellCommand = (
         command: shellPath,
         args: [
           "-Command",
-          `$OutputEncoding=[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);${commandString}`,
+          `[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);${commandString}`,
         ],
       };
     }
