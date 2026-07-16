@@ -97,7 +97,7 @@ function Chat({ user, uid, info }: ChatProps) {
   };
 
   const chatAbortController = useChatAbortController();
-  useAbortBeforeNavigation(chatAbortController.current);
+  useAbortBeforeNavigation(chatAbortController.current, uid);
 
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
   useKeepTaskEditor(task);
