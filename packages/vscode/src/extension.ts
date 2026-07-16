@@ -38,6 +38,10 @@ import { PochiTaskEditorProvider } from "./integrations/webview/webview-panel";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import "./lib/file-logger";
 import { createBrowserSessionStore } from "./integrations/browser";
+import {
+  EditorPredictionsAvailable,
+  EditorPredictionsAvailableContextKey,
+} from "./lib/feature-availability";
 import { getLogger } from "./lib/logger";
 import { PostInstallActions } from "./lib/post-install-actions";
 import { WorkspaceScope } from "./lib/workspace-scoped";
@@ -50,6 +54,12 @@ const logger = getLogger("Extension");
 export async function activate(context: vscode.ExtensionContext) {
   const workspaceUri = vscode.workspace.workspaceFolders?.[0].uri;
   const cwd = workspaceUri?.fsPath;
+
+  await vscode.commands.executeCommand(
+    "setContext",
+    EditorPredictionsAvailableContextKey,
+    EditorPredictionsAvailable,
+  );
 
   // Container will dispose all the registered instances when itself is disposed
   context.subscriptions.push(container);
@@ -79,7 +89,9 @@ export async function activate(context: vscode.ExtensionContext) {
     useFactory: instanceCachingFactory(createBrowserSessionStore),
   });
   container.resolve(PochiWebviewSidebar);
-  container.resolve(StatusBarItem);
+  if (EditorPredictionsAvailable) {
+    container.resolve(StatusBarItem);
+  }
   container.resolve(PochiAuthenticationProvider);
   container.resolve(RagdollUriHandler);
   container.resolve(CommandManager);
@@ -89,7 +101,9 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(WorktreeManager);
   container.resolve(ReviewController);
   container.resolve(PochiFileSystemProvider);
-  container.resolve(TabCompletionManager);
+  if (EditorPredictionsAvailable) {
+    container.resolve(TabCompletionManager);
+  }
   container.resolve(LayoutManager);
 }
 

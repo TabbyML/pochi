@@ -401,37 +401,37 @@
       {
         "command": "pochi.tabCompletion.reveal",
         "key": "tab",
-        "when": "editorTextFocus && pochiTabCompletionState === 'scrollIndicatorVisible'"
+        "when": "pochiEditorPredictionsAvailable && editorTextFocus && pochiTabCompletionState === 'scrollIndicatorVisible'"
       },
       {
         "command": "pochi.tabCompletion.accept",
         "key": "tab",
-        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible'"
+        "when": "pochiEditorPredictionsAvailable && editorTextFocus && pochiTabCompletionState === 'diffVisible'"
       },
       {
         "command": "pochi.tabCompletion.reject",
         "key": "escape",
-        "when": "editorTextFocus && (pochiTabCompletionState || inlineSuggestionVisible)"
+        "when": "pochiEditorPredictionsAvailable && editorTextFocus && (pochiTabCompletionState || inlineSuggestionVisible)"
       },
       {
         "command": "pochi.tabCompletion.nextChoice",
         "key": "alt+]",
-        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible'"
+        "when": "pochiEditorPredictionsAvailable && editorTextFocus && pochiTabCompletionState === 'diffVisible'"
       },
       {
         "command": "pochi.tabCompletion.prevChoice",
         "key": "alt+[",
-        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible'"
+        "when": "pochiEditorPredictionsAvailable && editorTextFocus && pochiTabCompletionState === 'diffVisible'"
       },
       {
         "command": "pochi.tabCompletion.nextChoice",
         "key": "right",
-        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible' && pochiTabCompletionHasMultipleChoices"
+        "when": "pochiEditorPredictionsAvailable && editorTextFocus && pochiTabCompletionState === 'diffVisible' && pochiTabCompletionHasMultipleChoices"
       },
       {
         "command": "pochi.tabCompletion.prevChoice",
         "key": "left",
-        "when": "editorTextFocus && pochiTabCompletionState === 'diffVisible' && pochiTabCompletionHasMultipleChoices"
+        "when": "pochiEditorPredictionsAvailable && editorTextFocus && pochiTabCompletionState === 'diffVisible' && pochiTabCompletionHasMultipleChoices"
       },
       {
         "command": "pochi.applyPochiLayoutWithCycleFocus",
@@ -503,6 +503,7 @@
               "tabCompletion": {
                 "type": "object",
                 "default": {},
+                "description": "Tab Completion and Next Edit Suggestions are currently unavailable. These settings are retained for compatibility but are ignored.",
                 "additionalProperties": false,
                 "properties": {
                   "disabled": {

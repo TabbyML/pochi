@@ -4,6 +4,7 @@ import type { AuthClient } from "@/lib/auth-client";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
 import { getWorkspaceRulesFileUri } from "@/lib/env";
+import { EditorPredictionsAvailable } from "@/lib/feature-availability";
 import { getLogger, showOutputPanel } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
@@ -11,7 +12,6 @@ import { NewProjectRegistry, prepareProject } from "@/lib/new-project";
 import { PostHog } from "@/lib/posthog";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import {
   type OnDidAcceptInlineCompletionItemParams,
   TabCompletionManager,
@@ -28,7 +28,7 @@ import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type { PochiTaskParams } from "@getpochi/common/vscode-webui-bridge";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
-import { inject, injectable, singleton } from "tsyringe";
+import { container, inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { type PochiAdvanceSettings, PochiConfiguration } from "./configuration";
@@ -69,13 +69,15 @@ export class CommandManager implements vscode.Disposable {
     private readonly mcpHub: McpHub,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly posthog: PostHog,
-    private readonly tabCompletionManager: TabCompletionManager,
     private readonly worktreeManager: WorktreeManager,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly reviewController: ReviewController,
     private readonly layoutManager: LayoutManager,
   ) {
     this.registerCommands();
+    if (EditorPredictionsAvailable) {
+      this.disposables.push(...this.registerEditorPredictionCommands());
+    }
   }
 
   private async prepareProjectAndOpenTask(
@@ -448,94 +450,6 @@ export class CommandManager implements vscode.Disposable {
         }
       }),
 
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.onDidAccept",
-        async (params: OnDidAcceptInlineCompletionItemParams) => {
-          this.posthog.capture("acceptCodeCompletion");
-          this.tabCompletionManager.handleDidAcceptInlineCompletion(params);
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.resolveConflicts",
-        async () => {
-          const githubCopilotCodeCompletionEnabled =
-            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value;
-          if (!githubCopilotCodeCompletionEnabled) {
-            return;
-          }
-          const selection = await vscode.window.showWarningMessage(
-            "Pochi Tab Completion is unavailable due to conflict with **GitHub Copilot Code Completion**. You can disable conflicting features to use Pochi Tab Completion.",
-            "Disable Conflicting Features",
-            "Disable Pochi Tab Completion",
-          );
-          if (selection === "Disable Conflicting Features") {
-            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value = false;
-          } else if (selection === "Disable Pochi Tab Completion") {
-            vscode.commands.executeCommand(
-              "pochi.tabCompletion.toggleEnabled",
-              false,
-            );
-          }
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.toggleEnabled",
-        async (enabled?: boolean | undefined) => {
-          const current = this.pochiConfiguration.advancedSettings.value;
-          const disabled =
-            enabled === undefined ? !current.tabCompletion?.disabled : !enabled;
-          const newSettings = {
-            ...current,
-            tabCompletion: {
-              ...current.tabCompletion,
-              disabled,
-            },
-          };
-          this.pochiConfiguration.advancedSettings.value = newSettings;
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.toggleLanguageEnabled",
-        async (language?: string | undefined) => {
-          const languageId =
-            language ?? vscode.window.activeTextEditor?.document.languageId;
-
-          if (!languageId) {
-            return;
-          }
-
-          const current = this.pochiConfiguration.advancedSettings.value;
-          let newSettings: PochiAdvanceSettings;
-          if (current.tabCompletion?.disabledLanguages?.includes(languageId)) {
-            newSettings = {
-              ...current,
-              tabCompletion: {
-                ...current.tabCompletion,
-                disabledLanguages:
-                  current.tabCompletion.disabledLanguages.filter(
-                    (lang) => lang !== languageId,
-                  ),
-              },
-            };
-          } else {
-            newSettings = {
-              ...current,
-              tabCompletion: {
-                ...current.tabCompletion,
-                disabledLanguages: [
-                  ...(current.tabCompletion?.disabledLanguages ?? []),
-                  languageId,
-                ],
-              },
-            };
-          }
-          this.pochiConfiguration.advancedSettings.value = newSettings;
-        },
-      ),
-
       vscode.commands.registerCommand("pochi.openFileFromDiff", async () => {
         const activeTab = vscode.window.tabGroups.activeTabGroup.activeTab;
         logger.debug("openFileFromDiff", { activeTab });
@@ -593,41 +507,6 @@ export class CommandManager implements vscode.Disposable {
             type: "new-task",
             cwd,
           });
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.reveal",
-        async () => {
-          this.tabCompletionManager.reveal();
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.accept",
-        async () => {
-          this.tabCompletionManager.accept();
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.reject",
-        async () => {
-          this.tabCompletionManager.reject();
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.nextChoice",
-        async () => {
-          this.tabCompletionManager.nextChoice();
-        },
-      ),
-
-      vscode.commands.registerCommand(
-        "pochi.tabCompletion.prevChoice",
-        async () => {
-          this.tabCompletionManager.prevChoice();
         },
       ),
 
@@ -763,6 +642,118 @@ export class CommandManager implements vscode.Disposable {
         },
       ),
     );
+  }
+
+  private registerEditorPredictionCommands(): vscode.Disposable[] {
+    const tabCompletionManager = container.resolve(TabCompletionManager);
+    return [
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.onDidAccept",
+        async (params: OnDidAcceptInlineCompletionItemParams) => {
+          this.posthog.capture("acceptCodeCompletion");
+          tabCompletionManager.handleDidAcceptInlineCompletion(params);
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.resolveConflicts",
+        async () => {
+          const githubCopilotCodeCompletionEnabled =
+            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value;
+          if (!githubCopilotCodeCompletionEnabled) return;
+
+          const selection = await vscode.window.showWarningMessage(
+            "Pochi Tab Completion is unavailable due to conflict with **GitHub Copilot Code Completion**. You can disable conflicting features to use Pochi Tab Completion.",
+            "Disable Conflicting Features",
+            "Disable Pochi Tab Completion",
+          );
+          if (selection === "Disable Conflicting Features") {
+            this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value = false;
+          } else if (selection === "Disable Pochi Tab Completion") {
+            vscode.commands.executeCommand(
+              "pochi.tabCompletion.toggleEnabled",
+              false,
+            );
+          }
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.toggleEnabled",
+        async (enabled?: boolean | undefined) => {
+          const current = this.pochiConfiguration.advancedSettings.value;
+          const disabled =
+            enabled === undefined ? !current.tabCompletion?.disabled : !enabled;
+          this.pochiConfiguration.advancedSettings.value = {
+            ...current,
+            tabCompletion: { ...current.tabCompletion, disabled },
+          };
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.toggleLanguageEnabled",
+        async (language?: string | undefined) => {
+          const languageId =
+            language ?? vscode.window.activeTextEditor?.document.languageId;
+          if (!languageId) return;
+
+          const current = this.pochiConfiguration.advancedSettings.value;
+          let newSettings: PochiAdvanceSettings;
+          if (current.tabCompletion?.disabledLanguages?.includes(languageId)) {
+            newSettings = {
+              ...current,
+              tabCompletion: {
+                ...current.tabCompletion,
+                disabledLanguages:
+                  current.tabCompletion.disabledLanguages.filter(
+                    (lang) => lang !== languageId,
+                  ),
+              },
+            };
+          } else {
+            newSettings = {
+              ...current,
+              tabCompletion: {
+                ...current.tabCompletion,
+                disabledLanguages: [
+                  ...(current.tabCompletion?.disabledLanguages ?? []),
+                  languageId,
+                ],
+              },
+            };
+          }
+          this.pochiConfiguration.advancedSettings.value = newSettings;
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.reveal",
+        async () => {
+          tabCompletionManager.reveal();
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.accept",
+        async () => {
+          tabCompletionManager.accept();
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.reject",
+        async () => {
+          tabCompletionManager.reject();
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.nextChoice",
+        async () => {
+          tabCompletionManager.nextChoice();
+        },
+      ),
+      vscode.commands.registerCommand(
+        "pochi.tabCompletion.prevChoice",
+        async () => {
+          tabCompletionManager.prevChoice();
+        },
+      ),
+    ];
   }
 
   private async ensureDefaultCustomModelSettings() {
