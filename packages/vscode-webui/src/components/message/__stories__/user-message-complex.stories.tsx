@@ -28,7 +28,7 @@ const complexUserMessage: Message = {
       type: "text",
       text: "Here is a complex request involving multiple context items. I've found some issues and I'm providing context via active selection, user edits, reviews, and attachments.",
     },
-    // Active Selection
+    // Active Selection (both a text-file selection and a terminal selection)
     {
       type: "data-active-selection",
       data: {
@@ -45,6 +45,11 @@ const complexUserMessage: Message = {
     </button>
   );
 };`,
+        },
+        activeTerminalTextSelection: {
+          terminalName: "bash",
+          backgroundJobId: "term-story-terminal",
+          content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
         },
       },
     },
@@ -138,6 +143,39 @@ const complexUserMessage: Message = {
 export const AllParts: Story = {
   args: {
     messages: [complexUserMessage],
+    isLoading: false,
+    user: {
+      name: "Developer",
+      image: "https://github.com/shadcn.png",
+    },
+  },
+};
+
+const terminalOnlySelectionMessage: Message = {
+  id: "msg-terminal-only-selection",
+  role: "user",
+  parts: [
+    {
+      type: "text",
+      text: "Here's the error I'm seeing in the terminal:",
+    },
+    {
+      type: "data-active-selection",
+      data: {
+        activeTerminalTextSelection: {
+          terminalName: "npm run dev",
+          backgroundJobId: "bgjob-story-terminal",
+          content:
+            "Error: Cannot find module 'foo'\n    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:1075:15)\n    at Function.Module._load (node:internal/modules/cjs/loader:920:27)",
+        },
+      },
+    },
+  ],
+};
+
+export const TerminalSelectionOnly: Story = {
+  args: {
+    messages: [terminalOnlySelectionMessage],
     isLoading: false,
     user: {
       name: "Developer",

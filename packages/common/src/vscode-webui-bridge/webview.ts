@@ -44,7 +44,7 @@ import type {
   DiffCheckpointOptions,
   GithubIssue,
 } from "./types/git";
-import type { ActiveSelection } from "./types/message";
+import type { ActiveSelection, TerminalTextSelection } from "./types/message";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { VSCodeSettings } from "./types/vscode-settings";
@@ -178,6 +178,16 @@ export interface VSCodeHostApi {
   readActiveSelection(): Promise<
     ThreadSignalSerialization<ActiveSelection | undefined>
   >;
+
+  /**
+   * Reads the text currently selected in the active terminal, if any.
+   *
+   * This is a one-shot, on-demand read (not reactive): VS Code has no stable
+   * API to observe or read a terminal's current selection. It works by
+   * briefly copying the terminal selection to the clipboard and restoring
+   * the clipboard's original content afterwards.
+   */
+  readTerminalSelection(): Promise<TerminalTextSelection | undefined>;
 
   readVisibleTerminals(): Promise<{
     terminals: ThreadSignalSerialization<

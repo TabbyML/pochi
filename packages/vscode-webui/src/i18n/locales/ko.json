@@ -436,7 +436,8 @@
   },
   "activeSelectionBadge": {
     "cell": "셀",
-    "addContext": "컨텍스트 추가"
+    "addContext": "컨텍스트 추가",
+    "terminal": "터미널"
   },
   "todoModeBadge": {
     "remove": "Todo 모드 제거"

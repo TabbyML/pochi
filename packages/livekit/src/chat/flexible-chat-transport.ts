@@ -390,35 +390,47 @@ function handleReadFileOutput(
   });
 }
 
+type MessagePart = Message["parts"][number];
+
+/** @internal exported for testing */
+export function convertDataPartToText(
+  part: MessagePart,
+): MessagePart | MessagePart[] {
+  if (part.type === "data-reviews") {
+    return {
+      type: "text" as const,
+      text: prompts.renderReviewComments(part.data.reviews),
+    };
+  }
+  if (part.type === "data-user-edits") {
+    return {
+      type: "text" as const,
+      text: prompts.renderUserEdits(part.data.userEdits),
+    };
+  }
+  if (part.type === "data-active-selection") {
+    const texts = [
+      part.data.activeSelection &&
+        prompts.renderActiveSelection(part.data.activeSelection),
+      part.data.activeTerminalTextSelection &&
+        prompts.renderTerminalTextSelection(
+          part.data.activeTerminalTextSelection,
+        ),
+    ].filter((text): text is string => !!text);
+    return texts.map((text) => ({ type: "text" as const, text }));
+  }
+  if (part.type === "data-bash-outputs") {
+    return {
+      type: "text" as const,
+      text: prompts.renderBashOutputs(part.data.bashOutputs),
+    };
+  }
+  return part;
+}
+
 function convertDataReviewsToText(messages: Message[]): Message[] {
   return messages.map((message) => ({
     ...message,
-    parts: message.parts.flatMap((part) => {
-      if (part.type === "data-reviews") {
-        return {
-          type: "text" as const,
-          text: prompts.renderReviewComments(part.data.reviews),
-        };
-      }
-      if (part.type === "data-user-edits") {
-        return {
-          type: "text" as const,
-          text: prompts.renderUserEdits(part.data.userEdits),
-        };
-      }
-      if (part.type === "data-active-selection") {
-        return {
-          type: "text" as const,
-          text: prompts.renderActiveSelection(part.data.activeSelection),
-        };
-      }
-      if (part.type === "data-bash-outputs") {
-        return {
-          type: "text" as const,
-          text: prompts.renderBashOutputs(part.data.bashOutputs),
-        };
-      }
-      return part;
-    }),
+    parts: message.parts.flatMap(convertDataPartToText),
   }));
 }

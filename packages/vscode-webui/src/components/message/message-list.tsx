@@ -16,12 +16,15 @@ import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn, formatExecutionDuration } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
-import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ActiveSelection,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
-import { memo, useEffect, useMemo } from "react";
+import { Fragment, memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
-import { ActiveSelectionPart } from "./active-selection";
+import { ActiveSelectionPart, TerminalSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
@@ -247,17 +250,28 @@ function UserActiveSelections({ message }: { message: Message }) {
     (part) => part.type === "data-active-selection",
   ) as {
     type: "data-active-selection";
-    data: { activeSelection: ActiveSelection };
+    data: {
+      activeSelection?: ActiveSelection;
+      activeTerminalTextSelection?: TerminalTextSelection;
+    };
   }[];
 
   if (message.role === "user" && selectionParts.length) {
     return (
       <div className="mt-2 flex flex-wrap gap-2">
         {selectionParts.map((part, index) => (
-          <ActiveSelectionPart
-            key={index}
-            activeSelection={part.data.activeSelection}
-          />
+          <Fragment key={index}>
+            {part.data.activeSelection && (
+              <ActiveSelectionPart
+                activeSelection={part.data.activeSelection}
+              />
+            )}
+            {part.data.activeTerminalTextSelection && (
+              <TerminalSelectionPart
+                terminalTextSelection={part.data.activeTerminalTextSelection}
+              />
+            )}
+          </Fragment>
         ))}
       </div>
     );

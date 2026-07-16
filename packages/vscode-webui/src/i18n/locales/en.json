@@ -444,7 +444,8 @@
   },
   "activeSelectionBadge": {
     "cell": "Cell",
-    "addContext": "Add Context"
+    "addContext": "Add Context",
+    "terminal": "Terminal"
   },
   "todoModeBadge": {
     "remove": "Remove todo mode"

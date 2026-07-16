@@ -68,6 +68,21 @@ export const ActiveSelection = z
 
 export type ActiveSelection = z.infer<typeof ActiveSelection>;
 
+export const TerminalTextSelection = z.object({
+  terminalName: z
+    .string()
+    .describe("Name of the terminal the text was selected in."),
+  backgroundJobId: z
+    .string()
+    .optional()
+    .describe(
+      "Stable id of the terminal (see TerminalState.getTerminalId / environment.workspace.terminals), usable with readBackgroundJobOutput.",
+    ),
+  content: z.string().describe("The selected text content in the terminal."),
+});
+
+export type TerminalTextSelection = z.infer<typeof TerminalTextSelection>;
+
 export const UserEdits = z
   .array(
     z.object({

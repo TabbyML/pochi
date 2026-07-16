@@ -5,13 +5,18 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { FileBadge } from "@/features/tools";
+import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { getActiveSelectionLabel } from "@/lib/utils/active-selection";
 import {
   getFileExtension,
   languageIdFromExtension,
 } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ActiveSelection,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
+import { TerminalIcon } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -59,6 +64,57 @@ export const ActiveSelectionPart: React.FC<Props> = ({ activeSelection }) => {
         <div className="max-h-[60vh] overflow-auto">
           <CodeBlock
             language={language}
+            value={content}
+            isMinimalView={true}
+            className="m-0 border-none"
+          />
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+
+interface TerminalSelectionProps {
+  terminalTextSelection: TerminalTextSelection;
+}
+
+export const TerminalSelectionPart: React.FC<TerminalSelectionProps> = ({
+  terminalTextSelection,
+}) => {
+  const { t } = useTranslation();
+  const { terminalName, backgroundJobId, content } = terminalTextSelection;
+  const { openBackgroundJobTerminal } = useVisibleTerminals();
+
+  if (content.length === 0) {
+    return null;
+  }
+
+  const onClick = () => {
+    if (!isVSCodeEnvironment() || !backgroundJobId) return;
+    openBackgroundJobTerminal?.(backgroundJobId);
+  };
+
+  return (
+    <HoverCard openDelay={300} closeDelay={200}>
+      <HoverCardTrigger asChild>
+        <div className="inline-block">
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+            aria-label={`${t("activeSelectionBadge.terminal")}: ${terminalName}`}
+            className="mx-px cursor-pointer rounded-sm border border-border box-decoration-clone p-0.5 text-sm/6 hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700"
+          >
+            <TerminalIcon className="inline-block size-3.5 align-text-bottom" />
+            <span className="ml-0.5 break-words">{terminalName}</span>
+          </span>
+        </div>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-auto max-w-[90vw] p-0" align="start">
+        <div className="max-h-[60vh] overflow-auto">
+          <CodeBlock
+            language="shell"
             value={content}
             isMinimalView={true}
             className="m-0 border-none"

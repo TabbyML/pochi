@@ -75,7 +75,12 @@ export {
   getTaskDisplayTitle,
   WorktreePrefix,
 } from "./task-utils";
-export { ActiveSelection, BashOutputs, UserEdits } from "./types/message";
+export {
+  ActiveSelection,
+  BashOutputs,
+  TerminalTextSelection,
+  UserEdits,
+} from "./types/message";
 export type { VSCodeSettings } from "./types/vscode-settings";
 export {
   buildTaskScopedMcpInfo,

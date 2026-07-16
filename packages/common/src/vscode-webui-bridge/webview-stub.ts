@@ -41,7 +41,7 @@ import type {
   BrowserAgentSettings,
   BrowserAgentSettingsUpdate,
 } from "./types/browser-agent-settings";
-import type { ActiveSelection } from "./types/message";
+import type { ActiveSelection, TerminalTextSelection } from "./types/message";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
@@ -145,6 +145,9 @@ const VSCodeHostStub = {
     return Promise.resolve(
       {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
+  },
+  readTerminalSelection: (): Promise<TerminalTextSelection | undefined> => {
+    return Promise.resolve(undefined);
   },
   openFile: (
     _filePath: string,
