@@ -535,6 +535,10 @@ export class LiveChatKit<
     abortSignal?.addEventListener(
       "abort",
       () => {
+        logger.warn("Chat abort signal received; stopping transport", {
+          abortOrigin: "external-abort-signal",
+          taskId: this.taskId,
+        });
         this.chat.stop();
       },
       { once: true },
@@ -930,6 +934,11 @@ export class LiveChatKit<
     abortError.name = "AbortError";
 
     if (isAbort) {
+      logger.warn("Provider reported chat transport abort", {
+        abortOrigin: "provider-isAbort",
+        taskId: this.taskId,
+        assistantMessageId: originalMessage.id,
+      });
       return this.onError(abortError);
     }
 
