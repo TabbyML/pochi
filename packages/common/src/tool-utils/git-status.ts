@@ -1,7 +1,7 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { constants, type GitStatus, getLogger, withTimeout } from "../base";
-import { parseGitOriginUrl } from "../git-utils";
+import { normalizePathForComparison, parseGitOriginUrl } from "../git-utils";
 
 export interface GitStatusReaderOptions {
   cwd: string;
@@ -174,7 +174,8 @@ export class GitStatusReader {
       userEmail,
       worktree:
         this.webviewKind === "pane" &&
-        this.cwd === worktreeDir &&
+        normalizePathForComparison(this.cwd) ===
+          normalizePathForComparison(worktreeDir) &&
         worktreeGitdir
           ? { gitdir: worktreeGitdir }
           : undefined,

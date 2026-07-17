@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { join, resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,6 +11,7 @@ vi.mock("node:child_process", () => ({
   spawn: spawnMock,
 }));
 
+import { MaxRipgrepCharLength } from "../limits";
 import { searchFilesWithRipgrep } from "../ripgrep";
 
 class MockChildProcess extends EventEmitter {
@@ -75,7 +77,17 @@ function mockSpawnResult({
 
 describe("searchFilesWithRipgrep", () => {
   const rgPath = "/usr/bin/rg";
-  const workspacePath = "/workspace";
+  // Resolve to a platform-appropriate absolute path so assertions work on
+  // both POSIX and Windows (e.g. "C:\\workspace" on Windows).
+  const workspacePath = resolve("/workspace");
+
+  const baseArgs = [
+    "--json",
+    "--case-sensitive",
+    "--binary",
+    "--sortr",
+    "modified",
+  ];
 
   beforeEach(() => {
     spawnMock.mockClear();
@@ -90,7 +102,7 @@ describe("searchFilesWithRipgrep", () => {
       {
         type: "match",
         data: {
-          path: { text: "/workspace/src/index.ts" },
+          path: { text: join(workspacePath, "src", "index.ts") },
           lines: { text: "console.log('hello world');\n" },
           line_number: 10,
         },
@@ -98,7 +110,7 @@ describe("searchFilesWithRipgrep", () => {
       {
         type: "match",
         data: {
-          path: { text: "/workspace/src/app.ts" },
+          path: { text: join(workspacePath, "src", "app.ts") },
           lines: { text: "console.log('hello');\n" },
           line_number: 5,
         },
@@ -118,28 +130,20 @@ describe("searchFilesWithRipgrep", () => {
 
     expect(result.matches).toEqual([
       {
-        file: "src/index.ts",
+        file: join("src", "index.ts"),
         line: 10,
         context: "console.log('hello world');",
       },
       {
-        file: "src/app.ts",
+        file: join("src", "app.ts"),
         line: 5,
         context: "console.log('hello');",
       },
     ]);
     expect(result.isTruncated).toBe(false);
     expect(spawnMock).toHaveBeenCalledWith(
-      "/usr/bin/rg",
-      [
-        "--json",
-        "--case-sensitive",
-        "--binary",
-        "--sortr",
-        "modified",
-        "hello",
-        "/workspace",
-      ],
+      rgPath,
+      [...baseArgs, "hello", workspacePath],
       { signal: undefined },
     );
   });
@@ -161,27 +165,11 @@ describe("searchFilesWithRipgrep", () => {
   it("should include filePattern in the command when provided", async () => {
     mockSpawnResult({ stdout: "" });
 
-    await searchFilesWithRipgrep(
-      ".",
-      "hello",
-      rgPath,
-      workspacePath,
-      "**/*.ts",
-    );
+    await searchFilesWithRipgrep(".", "hello", rgPath, workspacePath, "**/*.ts");
 
     expect(spawnMock).toHaveBeenCalledWith(
-      "/usr/bin/rg",
-      [
-        "--json",
-        "--case-sensitive",
-        "--binary",
-        "--sortr",
-        "modified",
-        "--glob",
-        "**/*.ts",
-        "hello",
-        "/workspace",
-      ],
+      rgPath,
+      [...baseArgs, "--glob", "**/*.ts", "hello", workspacePath],
       { signal: undefined },
     );
   });
@@ -190,7 +178,7 @@ describe("searchFilesWithRipgrep", () => {
     const mockRgOutput = Array.from({ length: 501 }, (_, i) => ({
       type: "match",
       data: {
-        path: { text: `/workspace/file${i}.ts` },
+        path: { text: join(workspacePath, `file${i}.ts`) },
         lines: { text: `line ${i}\n` },
         line_number: i + 1,
       },
@@ -212,6 +200,65 @@ describe("searchFilesWithRipgrep", () => {
     expect(child.kill).toHaveBeenCalled();
   });
 
+  it("should truncate a single oversized match to the character limit", async () => {
+    const context = `${"start".repeat(4_000)}${"end".repeat(4_000)}`;
+    const mockRgOutput = JSON.stringify({
+      type: "match",
+      data: {
+        path: { text: "/workspace/generated.js" },
+        lines: { text: `${context}\n` },
+        line_number: 1,
+      },
+    });
+    const child = mockSpawnResult({ stdout: mockRgOutput });
+
+    const result = await searchFilesWithRipgrep(
+      ".",
+      "hello",
+      rgPath,
+      workspacePath,
+    );
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].context).toContain("... [truncated] ...");
+    expect(result.matches[0].context).toMatch(/^start/);
+    expect(result.matches[0].context).toMatch(/end$/);
+    expect(result.isTruncated).toBe(true);
+    expect(JSON.stringify(result).length).toBeLessThanOrEqual(
+      MaxRipgrepCharLength,
+    );
+    expect(child.kill).toHaveBeenCalled();
+  });
+
+  it("should stop when multiple matches reach the character limit", async () => {
+    const mockRgOutput = Array.from({ length: 10 }, (_, i) => ({
+      type: "match",
+      data: {
+        path: { text: `/workspace/file${i}.ts` },
+        lines: { text: `${"content".repeat(1_000)}\n` },
+        line_number: i + 1,
+      },
+    }))
+      .map((o) => JSON.stringify(o))
+      .join("\n");
+    const child = mockSpawnResult({ stdout: mockRgOutput });
+
+    const result = await searchFilesWithRipgrep(
+      ".",
+      "hello",
+      rgPath,
+      workspacePath,
+    );
+
+    expect(result.matches.length).toBeLessThan(10);
+    expect(result.matches.at(-1)?.context).toContain("... [truncated] ...");
+    expect(result.isTruncated).toBe(true);
+    expect(JSON.stringify(result).length).toBeLessThanOrEqual(
+      MaxRipgrepCharLength,
+    );
+    expect(child.kill).toHaveBeenCalled();
+  });
+
   it("should throw an error when rg fails with code > 1", async () => {
     mockSpawnResult({ code: 2, stderr: "A critical error occurred" });
 
@@ -226,7 +273,7 @@ describe("searchFilesWithRipgrep", () => {
       JSON.stringify({
         type: "match",
         data: {
-          path: { text: "/workspace/src/app.ts" },
+          path: { text: join(workspacePath, "src", "app.ts") },
           lines: { text: "console.log('hello');\n" },
           line_number: 5,
         },
@@ -242,14 +289,14 @@ describe("searchFilesWithRipgrep", () => {
     );
 
     expect(result.matches.length).toBe(1);
-    expect(result.matches[0].file).toBe("src/app.ts");
+    expect(result.matches[0].file).toBe(join("src", "app.ts"));
   });
 
   it("should process stdout when rg exits with code 1", async () => {
     const mockRgOutput = JSON.stringify({
       type: "match",
       data: {
-        path: { text: "/workspace/src/app.ts" },
+        path: { text: join(workspacePath, "src", "app.ts") },
         lines: { text: "console.log('hello');\n" },
         line_number: 5,
       },
@@ -270,7 +317,7 @@ describe("searchFilesWithRipgrep", () => {
 
     expect(result.matches).toEqual([
       {
-        file: "src/app.ts",
+        file: join("src", "app.ts"),
         line: 5,
         context: "console.log('hello');",
       },

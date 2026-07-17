@@ -1,4 +1,5 @@
 import { type ChildProcess, exec, spawn } from "node:child_process";
+import { StringDecoder } from "node:string_decoder";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
   buildShellCommand,
@@ -68,6 +69,11 @@ export const executeCommandWithNode = async ({
       let output = "";
       let timeoutId: NodeJS.Timeout | undefined;
 
+      // Decode stdout/stderr with a StringDecoder so multi-byte characters
+      // (e.g. Chinese/Japanese) split across data chunks are not corrupted.
+      const stdoutDecoder = new StringDecoder("utf8");
+      const stderrDecoder = new StringDecoder("utf8");
+
       // Set up timeout
       if (timeout > 0) {
         timeoutId = setTimeout(() => {
@@ -85,14 +91,16 @@ export const executeCommandWithNode = async ({
 
       // Stream stdout
       child.stdout?.on("data", (data: Buffer) => {
-        const chunk = data.toString();
+        const chunk = stdoutDecoder.write(data);
+        if (!chunk) return;
         output = fixExecuteCommandOutput(output + chunk);
         onData?.(truncateOutput(output));
       });
 
       // Stream stderr
       child.stderr?.on("data", (data: Buffer) => {
-        const chunk = data.toString();
+        const chunk = stderrDecoder.write(data);
+        if (!chunk) return;
         output = fixExecuteCommandOutput(output + chunk);
         onData?.(truncateOutput(output));
       });
@@ -100,6 +108,13 @@ export const executeCommandWithNode = async ({
       child.on("close", (code) => {
         if (timeoutId) clearTimeout(timeoutId);
         abortSignal?.removeEventListener("abort", onAbort);
+
+        // Flush any bytes buffered for an incomplete multi-byte sequence.
+        const remaining = stdoutDecoder.end() + stderrDecoder.end();
+        if (remaining) {
+          output = fixExecuteCommandOutput(output + remaining);
+          onData?.(truncateOutput(output));
+        }
 
         if (code === 0) {
           resolve(truncateOutput(output));

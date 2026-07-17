@@ -1,3 +1,4 @@
+import { normalizePathForComparison } from "@getpochi/common/git-utils";
 import type { Task } from "@getpochi/livekit";
 import { useCallback, useState } from "react";
 import { useTasks } from "../use-tasks";
@@ -28,11 +29,16 @@ export function usePaginatedTasks({
   const { isTaskArchived } = useTaskArchived();
   const { isTaskPinned } = useTaskPinned();
 
+  // `cwd` originates from the git worktree list (forward slashes, upper-cased
+  // drive on Windows) while `t.cwd` originates from VS Code (back slashes,
+  // lower-cased drive). Normalize both before comparing so tasks are not hidden
+  // on Windows due to path-format mismatch.
+  const normalizedCwd = normalizePathForComparison(cwd);
   const tasks = useTasks()
     .filter(
       (t) =>
         t.parentId === null &&
-        t.cwd === cwd &&
+        normalizePathForComparison(t.cwd) === normalizedCwd &&
         !!t.title?.trim() &&
         // Pinned tasks live in their own top-level section.
         !isTaskPinned(t.id) &&

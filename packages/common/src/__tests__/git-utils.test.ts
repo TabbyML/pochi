@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   getWorktreeNameFromGitDir,
   getWorktreeNameFromWorktreePath,
+  normalizePathForComparison,
   parseGitOriginUrl,
 } from "../git-utils";
 
@@ -80,6 +81,49 @@ describe("git-utils", () => {
       const result = getWorktreeNameFromWorktreePath(path);
       
       expect(result).toBe("worktree-name");
+    });
+  });
+
+  describe("normalizePathForComparison", () => {
+    test("should convert backslashes to forward slashes", () => {
+      expect(normalizePathForComparison("C:\\Users\\foo\\repo")).toBe(
+        "c:/Users/foo/repo",
+      );
+    });
+
+    test("should lower-case Windows drive letters", () => {
+      expect(normalizePathForComparison("C:/Users/foo/repo")).toBe(
+        "c:/Users/foo/repo",
+      );
+    });
+
+    test("should treat git and VS Code Windows paths as equal", () => {
+      // git emits forward-slash, upper-cased-drive paths
+      const gitPath = "C:/Users/foo/repo";
+      // VS Code Uri.fsPath emits back-slash, lower-cased-drive paths
+      const vscodePath = "c:\\Users\\foo\\repo";
+      expect(normalizePathForComparison(gitPath)).toBe(
+        normalizePathForComparison(vscodePath),
+      );
+    });
+
+    test("should strip trailing slashes", () => {
+      expect(normalizePathForComparison("/path/to/repo/")).toBe(
+        "/path/to/repo",
+      );
+      expect(normalizePathForComparison("C:\\repo\\")).toBe("c:/repo");
+    });
+
+    test("should leave POSIX paths unchanged", () => {
+      expect(normalizePathForComparison("/Users/foo/repo")).toBe(
+        "/Users/foo/repo",
+      );
+    });
+
+    test("should return empty string for null or undefined", () => {
+      expect(normalizePathForComparison(null)).toBe("");
+      expect(normalizePathForComparison(undefined)).toBe("");
+      expect(normalizePathForComparison("")).toBe("");
     });
   });
 

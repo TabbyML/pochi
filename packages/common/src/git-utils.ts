@@ -141,3 +141,26 @@ export const getWorktreeNameFromWorktreePath = (
   if (!worktreePath) return undefined;
   return worktreePath.split(/[\\|/]/).pop();
 };
+
+/**
+ * Normalize a filesystem path for equality comparison across sources that may
+ * disagree on path separators or drive-letter casing.
+ *
+ * On Windows this matters because git emits forward-slash, upper-cased-drive
+ * paths (e.g. `C:/Users/foo/repo`) while VS Code's `Uri.fsPath` emits
+ * back-slash, lower-cased-drive paths (e.g. `c:\\Users\\foo\\repo`). Without
+ * normalization these never match, which previously hid tasks from the task
+ * list when the workspace was a git repository.
+ */
+export const normalizePathForComparison = (
+  filePath?: string | null,
+): string => {
+  if (!filePath) return "";
+  // Unify separators and drop any trailing slashes.
+  let normalized = filePath.replace(/\\/g, "/").replace(/\/+$/, "");
+  // Lower-case Windows drive letters (`C:` -> `c:`).
+  if (/^[a-zA-Z]:/.test(normalized)) {
+    normalized = normalized.charAt(0).toLowerCase() + normalized.slice(1);
+  }
+  return normalized;
+};

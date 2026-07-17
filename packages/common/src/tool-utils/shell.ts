@@ -34,16 +34,25 @@ export const buildShellCommand = (
     // Determine shell type and appropriate arguments using RegExp for precise matching
     const shellName = shellPath.toLowerCase();
     if (/powershell(\.exe)?$|pwsh(\.exe)?$/.test(shellName)) {
+      // Force UTF-8 output so non-ASCII text (e.g. localized error messages)
+      // is not mangled by the console's OEM codepage (e.g. GBK/CP936 on
+      // Chinese Windows). Use a BOM-less UTF8Encoding to avoid emitting a BOM.
       return {
         command: shellPath,
-        args: ["-Command", commandString],
+        args: [
+          "-Command",
+          `[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);${commandString}`,
+        ],
       };
     }
 
     if (/cmd(\.exe)?$/.test(shellName)) {
+      // Switch the console codepage to UTF-8 (65001) before running the
+      // command so non-ASCII output is emitted as UTF-8 instead of the OEM
+      // codepage (e.g. GBK/CP936 on Chinese Windows).
       return {
         command: shellPath,
-        args: ["/d", "/s", "/c", commandString],
+        args: ["/d", "/s", "/c", `chcp 65001>nul & ${commandString}`],
       };
     }
 
