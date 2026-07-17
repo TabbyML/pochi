@@ -577,6 +577,7 @@ export class LiveChatKit<
           llm: getters.getLLM(),
           task: this.task,
           estimatedTotalTokens: estimateTotalTokens(formatters.llm(messages)),
+          effectiveContextWindow: getters.getEffectiveContextWindow?.(),
         });
 
       if (isManualCompact || isAutoCompact) {

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { Message, RequestData, Task } from "../../types";
 import {
   AutoCompactBufferTokens,
-  DefaultEffectiveContextWindow,
   MaxSummaryOutputTokens,
   findAutoCompactAttachIndex,
   getAutoCompactThreshold,
@@ -65,7 +64,7 @@ const openaiLlm = (contextWindow: number): RequestData["llm"] =>
 describe("getAutoCompactThreshold", () => {
   it("triggers at DefaultEffectiveContextWindow for large declared windows", () => {
     expect(getAutoCompactThreshold(1_000_000)).toBe(
-      DefaultEffectiveContextWindow,
+      constants.DefaultEffectiveContextWindow,
     );
   });
 
@@ -212,18 +211,16 @@ describe("shouldAutoCompact", () => {
     ).toBe(true);
   });
 
-  it("respects an explicit effectiveContextWindow on the llm", () => {
+  it("respects an explicit effectiveContextWindow param", () => {
     const messages = [assistantMessage(), userMessage()];
-    const llm = {
-      ...openaiLlm(1_000_000),
-      effectiveContextWindow: 100_000,
-    } as RequestData["llm"];
+    const llm = openaiLlm(1_000_000);
 
     expect(
       shouldAutoCompact({
         messages,
         llm,
         task: task(getAutoCompactThreshold(1_000_000, 100_000)),
+        effectiveContextWindow: 100_000,
       }),
     ).toBe(true);
 
@@ -232,16 +229,14 @@ describe("shouldAutoCompact", () => {
         messages,
         llm,
         task: task(getAutoCompactThreshold(1_000_000, 100_000) - 1),
+        effectiveContextWindow: 100_000,
       }),
     ).toBe(false);
   });
 
   it("does not trigger when totalTokens is below the effective threshold", () => {
     const messages = [assistantMessage(), userMessage()];
-    const llm = {
-      ...openaiLlm(1_000_000),
-      effectiveContextWindow: 100_000,
-    } as RequestData["llm"];
+    const llm = openaiLlm(1_000_000);
     const threshold = getAutoCompactThreshold(1_000_000, 100_000);
 
     expect(
@@ -249,6 +244,7 @@ describe("shouldAutoCompact", () => {
         messages,
         llm,
         task: task(threshold - 1),
+        effectiveContextWindow: 100_000,
       }),
     ).toBe(false);
   });

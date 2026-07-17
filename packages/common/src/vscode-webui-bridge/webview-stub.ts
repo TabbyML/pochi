@@ -432,8 +432,11 @@ const VSCodeHostStub = {
       setAutoMemoryEnabled: (_enabled: boolean) => Promise.resolve(),
     };
   },
-  readEffectiveContextWindow: async (): Promise<number | undefined> =>
-    undefined,
+  readEffectiveContextWindow: async (): Promise<
+    ThreadSignalSerialization<number | undefined>
+  > => {
+    return {} as ThreadSignalSerialization<number | undefined>;
+  },
   readAutoMemoryState: async (
     _taskId: string,
   ): Promise<{

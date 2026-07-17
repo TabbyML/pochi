@@ -1,4 +1,8 @@
 import z from "zod";
+import {
+  DefaultEffectiveContextWindow,
+  MinEffectiveContextWindow,
+} from "../base/constants";
 import { BrowserAgentSettingsConfig } from "../vscode-webui-bridge/types/browser-agent-settings";
 import { McpServerConfig } from "./mcp";
 import { CustomModelSetting } from "./model";
@@ -42,11 +46,15 @@ export function makePochiConfig(strict = false) {
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
     browserAgentSettings: BrowserAgentSettingsConfig.optional(),
-    effectiveContextWindow: z
-      .number()
+    effectiveContextWindow: (strict
+      ? z.number()
+      : z
+          .number()
+          .transform((value) => Math.max(value, MinEffectiveContextWindow))
+    )
       .optional()
       .describe(
-        "Token count at which auto-compaction triggers, even when the model declares a larger context window (models tend to degrade earlier on agentic tasks). Models whose real context window is smaller trigger earlier to leave room for the summary. Defaults to 160000.",
+        `Token count at which auto-compaction triggers, even when the model declares a larger context window (models tend to degrade earlier on agentic tasks). Models whose real context window is smaller trigger earlier to leave room for the summary. Minimum ${MinEffectiveContextWindow}, defaults to ${DefaultEffectiveContextWindow}.`,
       ),
   });
 }

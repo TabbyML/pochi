@@ -614,7 +614,7 @@
       "additionalProperties": false
     },
     "effectiveContextWindow": {
-      "description": "Token count at which auto-compaction triggers, even when the model declares a larger context window (models tend to degrade earlier on agentic tasks). Models whose real context window is smaller trigger earlier to leave room for the summary. Defaults to 160000.",
+      "description": "Token count at which auto-compaction triggers, even when the model declares a larger context window (models tend to degrade earlier on agentic tasks). Models whose real context window is smaller trigger earlier to leave room for the summary. Minimum 64000, defaults to 160000.",
       "type": "number"
     }
   },
