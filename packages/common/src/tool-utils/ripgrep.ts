@@ -132,6 +132,13 @@ export async function searchFilesWithRipgrep(
     isTruncated: false,
   }).length;
 
+  // Build the rg arguments as an array and spawn rg directly (no shell).
+  // Using an argument array avoids shell-specific quoting issues: manually
+  // quoting with single quotes breaks on Windows because the default shell
+  // (cmd.exe) does not strip single quotes, so rg would receive literal
+  // quotes around the path and fail with "path not found".
+  // - --case-sensitive matches the original implementation's RegExp usage.
+  // - --binary skips binary files, similar to the original file-type check.
   const args = [
     "--json",
     "--case-sensitive",
@@ -145,6 +152,7 @@ export async function searchFilesWithRipgrep(
   }
 
   const absPath = resolve(workspacePath, path);
+  // regex and path are passed as distinct arguments, no quoting required.
   args.push(regex, absPath);
   logger.debug("command", rgPath, args);
 
