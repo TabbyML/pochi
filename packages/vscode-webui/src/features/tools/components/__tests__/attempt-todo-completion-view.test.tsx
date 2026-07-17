@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { TaskThreadSource } from "@/components/task-thread";
+import { getToolCallErrorMessage } from "@/lib/tool-call-error";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -77,6 +78,21 @@ function makeCompletedAttemptTodoCompletionTool(result: unknown) {
     },
     output: {
       result,
+    },
+  } as never;
+}
+
+function makeErroredAttemptTodoCompletionTool(error: string) {
+  return {
+    type: "tool-newTask",
+    toolCallId: "attempt-todo-completion",
+    state: "output-available",
+    input: {
+      agentType: "attemptTodoCompletion",
+      description: "Audit todo completion",
+    },
+    output: {
+      error,
     },
   } as never;
 }
@@ -221,6 +237,69 @@ describe("AttemptTodoCompletionView", () => {
     expect(screen.getByText("All todos are complete.")).toBeTruthy();
     expect(
       screen.getByText("attemptTodoCompletionView.completed"),
+    ).toBeTruthy();
+  });
+
+  it("renders a stopped title with an error status icon after user cancellation", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeErroredAttemptTodoCompletionTool(
+          "User aborted the tool call",
+        )}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("attemptTodoCompletionView.stopped")).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.stoppedDescription"),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("attemptTodoCompletionView.unavailable"),
+    ).toBeNull();
+  });
+
+  it("renders a stopped title after cancellation caused by a previous tool failure", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeErroredAttemptTodoCompletionTool(
+          getToolCallErrorMessage("previous-tool-call-failed"),
+        )}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(screen.getByText("attemptTodoCompletionView.stopped")).toBeTruthy();
+    expect(
+      screen.queryByText("attemptTodoCompletionView.unavailable"),
+    ).toBeNull();
+  });
+
+  it("renders an unavailable title for malformed audit results", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAttemptTodoCompletionTool("not valid audit output")}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(
+      screen.getByText("attemptTodoCompletionView.unavailable"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("attemptTodoCompletionView.unavailableDescription"),
     ).toBeTruthy();
   });
 

@@ -62,6 +62,7 @@
     "ofUsed": "{{total}} 중 {{used}} 사용됨",
     "newTaskWithSummary": "새 작업 및 요약",
     "compactTask": "작업 압축",
+    "autoCompactAt": "약 {{tokens}} tokens에서 자동 압축됩니다",
     "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} tokens 이상 필요합니다",
     "defaultContextWindowWarning": "컨텍스트 창 값은 기본값이며 사용자 지정 모델에 대해 정확하지 않을 수 있습니다. 정확한 token 관리를 위해 모델 공급자의 설명서에 따라 설정에서 조정하십시오.",
     "tokensUsed": "{{used}} / {{total}} tokens",
@@ -346,6 +347,7 @@
     "result_one": "{{count}}개 결과",
     "result_other": "{{count}}개 결과",
     "readBackground": "백그라운드 작업 출력 읽는 중",
+    "readTerminal": "터미널 출력 읽는 중",
     "withRegexFilter": "정규식 필터 사용",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
     "backgroundExecuting": "백그라운드에서 명령 실행 중",
@@ -420,7 +422,8 @@
     "disableLineWrap": "줄 바꿈 비활성화"
   },
   "messageList": {
-    "compactedConversationTooltip": "토큰 사용량을 줄이기 위해 이 지점부터 대화가 압축되었습니다"
+    "compactedConversationTooltip": "토큰 사용량을 줄이기 위해 이 지점부터 대화가 압축되었습니다",
+    "completedIn": "{{duration}} 만에 완료"
   },
   "markdown": {
     "codeOmitted": "... {{language}} 코드 생략됨 ( {{bytes}} 바이트 ) ..."
@@ -434,6 +437,18 @@
   "activeSelectionBadge": {
     "cell": "셀",
     "addContext": "컨텍스트 추가"
+  },
+  "todoModeBadge": {
+    "remove": "Todo 모드 제거"
+  },
+  "addContextMenu": {
+    "trigger": "추가",
+    "files": "파일 및 폴더",
+    "filesDescription": "@로 작업 영역 파일 및 폴더 검색",
+    "attach": "파일 첨부",
+    "attachDescription": "컴퓨터에서 이미지, PDF 또는 동영상 업로드",
+    "todoDescription": "Pochi가 이 Todo를 계속 진행하도록 합니다",
+    "todoDisabledDescription": "현재 Todo를 완료한 후 새로 시작할 수 있습니다"
   },
   "mentionList": {
     "noResultsFound": "결과를 찾을 수 없습니다",
@@ -574,7 +589,10 @@
     "auditing": "Todos 감사 중",
     "completed": "모든 Todos 완료됨",
     "needsWork": "Todo에 추가 작업 필요",
-    "failed": "Todo 감사 실패"
+    "stopped": "Todo 감사 중지됨",
+    "stoppedDescription": "감사가 요약을 생성하기 전에 중지되었습니다.",
+    "unavailable": "Todo 감사 결과를 사용할 수 없음",
+    "unavailableDescription": "감사가 종료되었지만 읽을 수 있는 요약을 반환하지 않았습니다."
   },
   "browserAgentSettings": {
     "runtimeSection": "브라우저 런타임",

@@ -52,7 +52,7 @@ function makeCustomAgentToolDescription(customAgents?: CustomAgent[]) {
   if (!customAgents || customAgents.length === 0)
     return "No custom agents are available. You shall always leave the agentType parameter empty to use the default agent.";
 
-  return `When using the newTask tool, you may specify a agentType parameter to select which agent type to use.
+  return `When using the newTask tool, the agentType parameter is optional. Leave it empty (None) to launch a generic sub agent, or specify one of the available agent types below to select a specialized agent.
 Available agent types and the tools they have access to:
 
 ${(customAgents ?? [])
@@ -69,7 +69,9 @@ export const inputSchema = z.object({
   agentType: z
     .string()
     .optional()
-    .describe("The type of the specialized agent to use for the task."),
+    .describe(
+      "Optional. The type of the specialized agent to use for the task. Leave empty (None) to launch a generic sub agent for the task.",
+    ),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),

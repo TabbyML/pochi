@@ -654,7 +654,10 @@ export class TaskRunner {
       },
       { once: true },
     );
+
+    this.chatKit.markStartToolsExecution();
     await queue.start();
+    this.chatKit.markEndToolsExecution();
 
     logger.trace("All tool calls processed in the last message.");
     return "next" as const;

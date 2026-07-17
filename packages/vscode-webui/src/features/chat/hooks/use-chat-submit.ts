@@ -30,6 +30,7 @@ export interface QueuedMessage {
   text: string;
   files: File[];
   reviews: Review[];
+  isTodoMode: boolean;
 }
 
 interface SubmitOptions {
@@ -49,6 +50,14 @@ interface UseChatSubmitProps {
   setQueuedMessages: React.Dispatch<React.SetStateAction<QueuedMessage[]>>;
   reviews: Review[];
   taskId: string;
+  isTodoMode?: boolean;
+  canCreateTodo?: boolean;
+  onTodoModeQueued?: () => void;
+  /**
+   * Invoked with the final submitted text right before the message is sent.
+   * Used e.g. to seed a todo from the message when todo mode is selected.
+   */
+  onBeforeSendText?: (text: string) => void;
 }
 
 export function useChatSubmit({
@@ -64,6 +73,10 @@ export function useChatSubmit({
   setQueuedMessages,
   reviews,
   taskId,
+  isTodoMode = false,
+  canCreateTodo = true,
+  onTodoModeQueued,
+  onBeforeSendText,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { isExecuting } = useToolCallLifeCycle();
@@ -119,6 +132,7 @@ export function useChatSubmit({
       text: input.text.trim(),
       files: [...files],
       reviews: [...reviews],
+      isTodoMode,
     };
 
     if (
@@ -130,7 +144,7 @@ export function useChatSubmit({
     }
 
     return currentMessage;
-  }, [files, input.text, reviews]);
+  }, [files, input.text, isTodoMode, reviews]);
 
   const clearCurrentMessage = useCallback(
     (currentMessage: QueuedMessage) => {
@@ -153,8 +167,16 @@ export function useChatSubmit({
 
     setQueuedMessages((prev) => [...prev, queuedMessage]);
     clearCurrentMessage(queuedMessage);
+    if (queuedMessage.isTodoMode) {
+      onTodoModeQueued?.();
+    }
     return true;
-  }, [clearCurrentMessage, createCurrentMessage, setQueuedMessages]);
+  }, [
+    clearCurrentMessage,
+    createCurrentMessage,
+    onTodoModeQueued,
+    setQueuedMessages,
+  ]);
 
   const queuePendingSteerInput = useCallback(() => {
     const queuedMessage = createCurrentMessage();
@@ -162,8 +184,11 @@ export function useChatSubmit({
 
     pendingSteerMessageRef.current = queuedMessage;
     clearCurrentMessage(queuedMessage);
+    if (queuedMessage.isTodoMode) {
+      onTodoModeQueued?.();
+    }
     return true;
-  }, [clearCurrentMessage, createCurrentMessage]);
+  }, [clearCurrentMessage, createCurrentMessage, onTodoModeQueued]);
 
   /**
    * Handles form submission, sending both the current input and any queued messages.
@@ -214,6 +239,8 @@ export function useChatSubmit({
       const text = queuedMessage?.text ?? content;
       const messageFiles = queuedMessage?.files ?? files;
       const messageReviews = queuedMessage?.reviews ?? reviews;
+      const shouldCreateTodo =
+        (queuedMessage?.isTodoMode ?? isTodoMode) && canCreateTodo;
 
       // Disallow empty submissions
       if (
@@ -241,6 +268,10 @@ export function useChatSubmit({
       }
       if (!options.flushQueuedMessages && content) {
         clearInput();
+      }
+
+      if (text.length > 0 && shouldCreateTodo) {
+        onBeforeSendText?.(text);
       }
 
       if (messageFiles.length > 0) {
@@ -310,6 +341,9 @@ export function useChatSubmit({
       isExecuting,
       queueCurrentInput,
       pendingApproval,
+      onBeforeSendText,
+      isTodoMode,
+      canCreateTodo,
     ],
   );
 

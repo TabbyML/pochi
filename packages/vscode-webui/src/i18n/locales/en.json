@@ -63,6 +63,7 @@
     "contextWindow": "Context Window",
     "newTaskWithSummary": "New Task with Summary",
     "compactTask": "Compact Task",
+    "autoCompactAt": "Auto-compact triggers at ~{{tokens}} tokens",
     "minTokensRequired": "At least {{minTokens}} tokens are required to compact the conversation",
     "defaultContextWindowWarning": "The context window value is a default and may not be accurate for your custom model. For precise token management, please adjust it in the settings according to your model provider's documentation.",
     "tokensUsed": "{{used}} / {{total}} tokens",
@@ -352,6 +353,7 @@
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
+    "readTerminal": "Reading terminal output",
     "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
@@ -428,7 +430,8 @@
     "disableLineWrap": "Disable Line Wrap"
   },
   "messageList": {
-    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage"
+    "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage",
+    "completedIn": "Completed in {{duration}}"
   },
   "markdown": {
     "codeOmitted": "... {{language}} code omitted ( {{bytes}} bytes ) ..."
@@ -442,6 +445,18 @@
   "activeSelectionBadge": {
     "cell": "Cell",
     "addContext": "Add Context"
+  },
+  "todoModeBadge": {
+    "remove": "Remove todo mode"
+  },
+  "addContextMenu": {
+    "trigger": "Add",
+    "files": "Files and folders",
+    "filesDescription": "Search workspace files and folders with @",
+    "attach": "Attach files",
+    "attachDescription": "Upload images, PDFs, or videos from your computer",
+    "todoDescription": "Ask Pochi to keep working toward this todo",
+    "todoDisabledDescription": "Finish the current todos before starting a new one"
   },
   "mentionList": {
     "noResultsFound": "No results found",
@@ -583,7 +598,10 @@
     "auditing": "Auditing todos",
     "completed": "All todos completed",
     "needsWork": "Todo needs more work",
-    "failed": "Todo audit failed"
+    "stopped": "Todo audit stopped",
+    "stoppedDescription": "The audit was stopped before it could produce a summary.",
+    "unavailable": "Todo audit result unavailable",
+    "unavailableDescription": "The audit ended without a readable summary."
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",

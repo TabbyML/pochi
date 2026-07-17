@@ -42,5 +42,11 @@ export function makePochiConfig(strict = false) {
     providers: looseRecord(CustomModelSetting, strict).optional(),
     mcp: looseRecord(McpServerConfig, strict).optional(),
     browserAgentSettings: BrowserAgentSettingsConfig.optional(),
+    effectiveContextWindow: z
+      .number()
+      .optional()
+      .describe(
+        "Token count at which auto-compaction triggers, even when the model declares a larger context window (models tend to degrade earlier on agentic tasks). Models whose real context window is smaller trigger earlier to leave room for the summary. Defaults to 160000.",
+      ),
   });
 }

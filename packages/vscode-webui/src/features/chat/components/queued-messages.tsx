@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { parseTitle } from "@getpochi/common/message-utils";
-import { CornerDownRight, ListEnd, Trash2 } from "lucide-react";
+import { CornerDownRight, ListEnd, Target, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { QueuedMessage } from "../hooks/use-chat-submit";
@@ -19,7 +19,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
 }) => {
   const { t } = useTranslation();
   const renderMessages = useMemo(() => {
-    return messages.map(({ text, files, reviews }) => {
+    return messages.map(({ text, files, reviews, isTodoMode }) => {
       const title = text.trim() ? parseTitle(text) : t("chat.noMessage");
       const details = [
         files.length > 0 ? t("chat.fileCount", { count: files.length }) : "",
@@ -31,6 +31,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
       return {
         title,
         details: details.join(" · "),
+        isTodoMode,
       };
     });
   }, [messages, t]);
@@ -42,7 +43,11 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
           key={index}
           className="group flex h-6 items-center gap-2 text-muted-foreground"
         >
-          <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
+          {message.isTodoMode ? (
+            <Target className="size-3.5 shrink-0" />
+          ) : (
+            <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
+          )}
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <p
               className="min-w-0 truncate text-sm"

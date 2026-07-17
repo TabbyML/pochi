@@ -10,7 +10,11 @@ import {
   fixExecuteCommandOutput,
   getShellPath,
 } from "@getpochi/common/tool-utils";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import {
+  type ClientTools,
+  ExecuteCommandDefaultTimeoutSec,
+  type ToolFunctionType,
+} from "@getpochi/tools";
 
 export class ExecuteCommandError extends Error {
   public code: number;
@@ -38,7 +42,7 @@ export class ExecuteCommandError extends Error {
 export const executeCommand =
   (): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
-    { command, cwd = ".", timeout = 120 },
+    { command, cwd = ".", timeout = ExecuteCommandDefaultTimeoutSec },
     { abortSignal, cwd: workspaceDir, envs },
   ) => {
     if (!command) {

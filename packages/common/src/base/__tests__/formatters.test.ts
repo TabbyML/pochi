@@ -80,6 +80,106 @@ describe('formatters', () => {
       expect(assistantMessages[0].parts).toHaveLength(4); // reasoning, text, tool1, tool2
     });
 
+    it('should keep the last message id when combining consecutive assistant messages', () => {
+      const formatted = formatters.ui(clone(baseMessages));
+      const assistantMessages = formatted.filter((m) => m.role === 'assistant');
+      expect(assistantMessages).toHaveLength(1);
+      // The surviving message must carry the id of the last (most recent)
+      // assistant message so that fork truncation and checkpoint tracking
+      // reference the correct DB record.
+      expect(assistantMessages[0].id).toBe('assistant-2');
+    });
+
+    it('should combine consecutive reasoning parts', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            { type: 'reasoning', text: 'First reasoning paragraph.' },
+            {
+              type: 'reasoning',
+              text: 'Second reasoning paragraph.',
+              providerMetadata: { openai: { itemId: 'rs_abc123' } },
+            },
+            { type: 'text', text: 'Done' },
+            { type: 'reasoning', text: 'Third reasoning paragraph.' },
+            { type: 'reasoning', text: 'Fourth reasoning paragraph.' },
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(clone(messages));
+
+      expect(formatted[0].parts).toHaveLength(3);
+      expect(formatted[0].parts[0]).toEqual({
+        type: 'reasoning',
+        text: 'First reasoning paragraph.\nSecond reasoning paragraph.',
+        providerMetadata: { openai: { itemId: 'rs_abc123' } },
+      });
+      expect(formatted[0].parts[1]).toEqual({ type: 'text', text: 'Done' });
+      expect(formatted[0].parts[2]).toEqual({
+        type: 'reasoning',
+        text: 'Third reasoning paragraph.\nFourth reasoning paragraph.',
+      });
+    });
+
+    it('should use the latest reasoning state when combining consecutive reasoning parts', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'reasoning',
+              text: 'Finished reasoning paragraph.',
+              state: 'done',
+            },
+            {
+              type: 'reasoning',
+              text: 'Streaming reasoning paragraph.',
+              state: 'streaming',
+            },
+          ],
+        },
+      ];
+
+      const formatted = formatters.ui(clone(messages));
+
+      expect(formatted[0].parts).toEqual([
+        {
+          type: 'reasoning',
+          text: 'Finished reasoning paragraph.\nStreaming reasoning paragraph.',
+          state: 'streaming',
+        },
+      ]);
+    });
+
+    it('should keep the last message id when combining three or more consecutive assistant messages', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-a',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'first' }],
+        },
+        {
+          id: 'assistant-b',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'second' }],
+        },
+        {
+          id: 'assistant-c',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'third' }],
+        },
+      ];
+      const formatted = formatters.ui(clone(messages));
+      expect(formatted).toHaveLength(1);
+      expect(formatted[0].id).toBe('assistant-c');
+      const textParts = formatted[0].parts.filter((p) => p.type === 'text');
+      expect(textParts.map((p) => (p as any).text)).toEqual(['first', 'second', 'third']);
+    });
+
     it('should remove empty reasoning parts with provider metadata', () => {
       const messages: UIMessage[] = [
         {
@@ -179,6 +279,217 @@ describe('formatters', () => {
       expect(formatted[0].parts).toEqual([
         { type: 'text', text: 'Checking the todo...' },
       ]);
+    });
+
+    describe('message metadata merging', () => {
+      it('should merge assistant metadata when combining consecutive assistant messages', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              totalStreamingDuration: 100,
+              totalToolsExecutionDuration: 50,
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              totalStreamingDuration: 200,
+              totalToolsExecutionDuration: 75,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.kind).toBe('assistant');
+        expect(merged.totalTokens).toBe(20); // last value wins for non-summed fields
+        expect(merged.totalStreamingDuration).toBe(300); // 100 + 200
+        expect(merged.totalToolsExecutionDuration).toBe(125); // 50 + 75
+      });
+
+      it('should sum totalStreamingDuration when only one side has the value', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              totalStreamingDuration: 150,
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              // totalStreamingDuration intentionally absent
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalStreamingDuration).toBe(150); // 150 + 0
+      });
+
+      it('should sum totalToolsExecutionDuration when only the second message has the value', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              // totalToolsExecutionDuration intentionally absent
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              totalToolsExecutionDuration: 80,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalToolsExecutionDuration).toBe(80); // 0 + 80
+      });
+
+      it('should leave duration fields undefined when neither message has them', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 5,
+              finishReason: 'stop',
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 15,
+              finishReason: 'stop',
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalStreamingDuration).toBeUndefined();
+        expect(merged.totalToolsExecutionDuration).toBeUndefined();
+      });
+
+      it('should use the metadata from the only message that has it', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            // no metadata
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 30,
+              finishReason: 'length',
+              totalStreamingDuration: 500,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        const merged = formatted[0].metadata as any;
+        expect(merged.kind).toBe('assistant');
+        expect(merged.totalTokens).toBe(30);
+        expect(merged.totalStreamingDuration).toBe(500);
+      });
+
+      it('should accumulate durations correctly across three consecutive assistant messages', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'First' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 10,
+              finishReason: 'stop',
+              totalStreamingDuration: 100,
+              totalToolsExecutionDuration: 10,
+            },
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Second' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 20,
+              finishReason: 'stop',
+              totalStreamingDuration: 200,
+              totalToolsExecutionDuration: 20,
+            },
+          },
+          {
+            id: 'assistant-3',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Third' }],
+            metadata: {
+              kind: 'assistant',
+              totalTokens: 30,
+              finishReason: 'stop',
+              totalStreamingDuration: 300,
+              totalToolsExecutionDuration: 30,
+            },
+          },
+        ];
+
+        const formatted = formatters.ui(clone(messages));
+        expect(formatted).toHaveLength(1);
+        expect(formatted[0].id).toBe('assistant-3');
+        const merged = formatted[0].metadata as any;
+        expect(merged.totalStreamingDuration).toBe(600); // 100 + 200 + 300
+        expect(merged.totalToolsExecutionDuration).toBe(60); // 10 + 20 + 30
+      });
     });
 
     it('should hide deprecated todoWrite tool calls', () => {
@@ -303,6 +614,7 @@ describe('formatters', () => {
         {
           id: 'assistant-1',
           role: 'assistant',
+          metadata: { kind: 'assistant' },
           parts: [
             {
               type: 'reasoning',
@@ -315,11 +627,214 @@ describe('formatters', () => {
               providerMetadata: { openai: { itemId: 'msg_abc123' } },
             },
           ],
-        },
+        } as UIMessage,
       ];
       const formatted = formatters.llm(clone(messages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
+    });
+
+    it('should strip OpenAI item references from unfinished assistant messages', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'reasoning',
+              text: '',
+              providerMetadata: {
+                openai: {
+                  itemId: 'rs_interrupted',
+                  reasoningEncryptedContent: 'encrypted-reasoning',
+                },
+              },
+              providerOptions: {
+                openai: {
+                  itemId: 'rs_interrupted',
+                  reasoningEncryptedContent: 'encrypted-reasoning',
+                },
+              },
+            },
+            {
+              type: 'text',
+              text: 'Response',
+              providerMetadata: { openai: { itemId: 'msg_interrupted' } },
+            },
+          ],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const reasoningPart = formatted[0].parts.find(
+        (part) => part.type === 'reasoning',
+      ) as any;
+      const textPart = formatted[0].parts.find(
+        (part) => part.type === 'text',
+      ) as any;
+
+      expect(reasoningPart.providerMetadata.openai).toEqual({
+        reasoningEncryptedContent: 'encrypted-reasoning',
+      });
+      expect(reasoningPart.providerOptions.openai).toEqual({
+        reasoningEncryptedContent: 'encrypted-reasoning',
+      });
+      expect(textPart.providerMetadata).toBeUndefined();
+    });
+
+    it('should keep OpenAI reasoning item references for finished assistant messages', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [
+            {
+              type: 'reasoning',
+              text: '',
+              providerMetadata: { openai: { itemId: 'rs_finished' } },
+            },
+            { type: 'text', text: 'Response' },
+          ],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const reasoningPart = formatted[0].parts.find(
+        (part) => part.type === 'reasoning',
+      ) as any;
+
+      expect(reasoningPart.providerMetadata.openai.itemId).toBe('rs_finished');
+    });
+
+    it('should strip every OpenAI item reference from the step containing a streaming part', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [
+            { type: 'step-start' },
+            {
+              type: 'reasoning',
+              text: 'Committed reasoning',
+              state: 'done',
+              providerMetadata: {
+                openai: { itemId: 'rs_committed' },
+              },
+            },
+            { type: 'step-start' },
+            {
+              type: 'reasoning',
+              text: 'Finished summary part',
+              state: 'done',
+              providerOptions: {
+                openai: {
+                  itemId: 'rs_done_but_uncommitted',
+                  reasoningEncryptedContent: 'encrypted-reasoning',
+                },
+              },
+            },
+            {
+              type: 'reasoning',
+              text: 'Streaming summary part',
+              state: 'streaming',
+              providerMetadata: {
+                openai: { itemId: 'rs_streaming' },
+              },
+            },
+            { type: 'text', text: 'Response' },
+          ],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const [, committedPart, , finishedPart, streamingPart] = formatted[0]
+        .parts as any[];
+
+      expect(committedPart.providerMetadata.openai.itemId).toBe(
+        'rs_committed',
+      );
+      expect(finishedPart.providerOptions.openai).toEqual({
+        reasoningEncryptedContent: 'encrypted-reasoning',
+      });
+      expect(streamingPart.providerMetadata).toBeUndefined();
+    });
+
+    it('should strip OpenAI item references from unfinished tool call parts', () => {
+      const toolPart = createToolPart('testTool', 'input-available', {
+        arg: 1,
+      });
+      toolPart.callProviderMetadata = {
+        openai: { itemId: 'fc_interrupted' },
+        google: { thoughtSignature: 'signature-1' },
+      };
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [toolPart],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const formattedToolPart = formatted[0].parts[0] as any;
+
+      expect(formattedToolPart.callProviderMetadata).toEqual({
+        google: { thoughtSignature: 'signature-1' },
+      });
+      expect(formattedToolPart.callProviderMetadata.openai).toBeUndefined();
+    });
+
+    it('should keep OpenAI item references for finished tool call parts', () => {
+      const toolPart = createToolPart('testTool', 'input-available', {
+        arg: 1,
+      });
+      toolPart.callProviderMetadata = {
+        openai: { itemId: 'fc_finished' },
+      };
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [toolPart],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const formattedToolPart = formatted[0].parts[0] as any;
+
+      expect(formattedToolPart.callProviderMetadata.openai.itemId).toBe(
+        'fc_finished',
+      );
+    });
+
+    it('should strip OpenAI item references from unfinished provider-executed tool results', () => {
+      const toolPart = createToolPart(
+        'testTool',
+        'output-available',
+        { arg: 1 },
+        { result: 'ok' },
+      );
+      toolPart.providerExecuted = true;
+      toolPart.resultProviderMetadata = {
+        openai: { itemId: 'fc_result_interrupted', customField: 'preserved' },
+      };
+      const messages: UIMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          parts: [toolPart],
+        } as UIMessage,
+      ];
+
+      const formatted = formatters.llm(clone(messages));
+      const formattedToolPart = formatted[0].parts[0] as any;
+
+      expect(formattedToolPart.resultProviderMetadata).toEqual({
+        openai: { customField: 'preserved' },
+      });
     });
 
     it('should keep only messages from the latest compact block onward', () => {

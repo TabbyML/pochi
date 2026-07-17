@@ -34,7 +34,7 @@ export function getAttemptCompletionResultDisplay(
   };
 }
 
-export function isAttemptTodoCompletionRejected(tool: {
+export function isAttemptTodoCompletionUnsuccessful(tool: {
   type: string;
   state?: string;
   input?: unknown;
@@ -49,7 +49,7 @@ export function isAttemptTodoCompletionRejected(tool: {
     return false;
   }
 
-  return isAttemptTodoCompletionResolved(tool.output) === false;
+  return isAttemptTodoCompletionResolved(tool.output) !== true;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

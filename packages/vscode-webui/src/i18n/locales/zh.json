@@ -62,6 +62,7 @@
     "ofUsed": "已使用 {{used}} / {{total}}",
     "newTaskWithSummary": "新建任务并生成摘要",
     "compactTask": "压缩任务",
+    "autoCompactAt": "达到约 {{tokens}} tokens 时将自动压缩",
     "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话",
     "defaultContextWindowWarning": "上下文窗口值是默认值，对于您的自定义模型可能不准确。为了精确的 token 管理，请根据您的模型提供商的文档在设置中进行调整。",
     "tokensUsed": "已使用 {{used}} / {{total}} tokens",
@@ -346,6 +347,7 @@
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",
     "readBackground": "正在读取后台任务输出",
+    "readTerminal": "正在读取终端输出",
     "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
     "backgroundExecuting": "正在后台执行命令",
@@ -420,7 +422,8 @@
     "disableLineWrap": "禁用自动换行"
   },
   "messageList": {
-    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量"
+    "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量",
+    "completedIn": "完成于 {{duration}}"
   },
   "markdown": {
     "codeOmitted": "... {{language}} 代码已省略 ( {{bytes}} 字节 ) ..."
@@ -434,6 +437,18 @@
   "activeSelectionBadge": {
     "cell": "单元格",
     "addContext": "添加上下文"
+  },
+  "todoModeBadge": {
+    "remove": "移除 Todo 模式"
+  },
+  "addContextMenu": {
+    "trigger": "添加",
+    "files": "文件和文件夹",
+    "filesDescription": "使用 @ 搜索工作区文件和文件夹",
+    "attach": "附加文件",
+    "attachDescription": "从电脑上传图片、PDF 或视频",
+    "todoDescription": "让 Pochi 持续推进这个 Todo",
+    "todoDisabledDescription": "完成当前 Todo 后才能开始新的"
   },
   "mentionList": {
     "noResultsFound": "未找到结果",
@@ -579,7 +594,10 @@
     "auditing": "正在审计 Todos",
     "completed": "所有 Todos 已完成",
     "needsWork": "Todo 需要继续推进",
-    "failed": "Todo 审计失败"
+    "stopped": "Todo 审计已停止",
+    "stoppedDescription": "审计在生成总结前已停止。",
+    "unavailable": "Todo 审计结果不可用",
+    "unavailableDescription": "审计结束了，但没有返回可读取的总结。"
   },
   "browserAgentSettings": {
     "runtimeSection": "浏览器运行环境",

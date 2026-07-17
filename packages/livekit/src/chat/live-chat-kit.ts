@@ -7,7 +7,10 @@ import type {
   TaskMemoryState,
 } from "@getpochi/common";
 import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
-import { hasActiveTodos } from "@getpochi/common/message-utils";
+import {
+  hasActiveTodos,
+  stripOpenAIItemReferencesFromLastStep,
+} from "@getpochi/common/message-utils";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import {
   type CustomAgent,
@@ -79,7 +82,7 @@ function normalizeFailedStreamMessage(
   }
 
   const errorText = getFailedToolCallErrorText(error);
-  return {
+  const normalizedMessage = {
     ...message,
     parts: message.parts.map((part) => {
       if (!isToolUIPart(part)) {
@@ -110,6 +113,8 @@ function normalizeFailedStreamMessage(
       } as unknown as typeof part;
     }),
   };
+
+  return stripOpenAIItemReferencesFromLastStep(normalizedMessage);
 }
 
 function getFailedToolCallErrorText(error: unknown): string {
@@ -377,6 +382,9 @@ export class LiveChatKit<
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private backgroundTasksStarted = false;
+  private currentToolsExecution:
+    | { messageId: string; startedAt: Date }
+    | undefined = undefined;
 
   onStreamStart?: (
     data: Pick<Task, "id" | "cwd"> & {
@@ -774,6 +782,62 @@ export class LiveChatKit<
     );
   };
 
+  /**
+   * Mark the start of a tool-calls execution.
+   */
+  markStartToolsExecution = () => {
+    const messages = this.messages;
+    const lastMessage = messages[messages.length - 1];
+    if (
+      lastMessage?.role === "assistant" &&
+      lastMessage.parts.some(
+        (p) =>
+          "toolCallId" in p && p.toolCallId && p.state === "input-available",
+      )
+    ) {
+      this.currentToolsExecution = {
+        messageId: lastMessage.id,
+        startedAt: new Date(),
+      };
+    }
+  };
+
+  /**
+   * Mark the end of a tool-calls execution.
+   */
+  markEndToolsExecution = () => {
+    const toolsExecution = this.currentToolsExecution;
+    this.currentToolsExecution = undefined;
+    if (toolsExecution) {
+      const duration = Date.now() - toolsExecution.startedAt.getTime();
+      const messages = this.chat.messages;
+      const messageToUpdate = messages.find(
+        (m) => m.id === toolsExecution.messageId,
+      );
+      if (messageToUpdate) {
+        const updatedMessages = messages.map((m) => {
+          if (m.id === toolsExecution.messageId) {
+            return {
+              ...m,
+              metadata: {
+                ...m.metadata,
+                totalToolsExecutionDuration:
+                  m.metadata?.kind === "assistant" &&
+                  m.metadata.totalToolsExecutionDuration !== undefined
+                    ? m.metadata.totalToolsExecutionDuration + duration
+                    : duration,
+              },
+            };
+          }
+          return m;
+        });
+        this.store.commit(events.updateMessages({ messages: updatedMessages }));
+        const updatedMessagesFromStore = this.messages;
+        this.chat.messages = updatedMessagesFromStore;
+      }
+    }
+  };
+
   fork = (
     sourceStore: LiveKitStore,
     forkTaskParams: {
@@ -908,10 +972,13 @@ export class LiveChatKit<
     );
 
     let duration = undefined;
-    if (message.metadata.finishedAt && message.metadata.startedAt) {
+    if (
+      message.metadata?.kind === "assistant" &&
+      message.metadata.totalStreamingDuration !== undefined
+    ) {
       duration = Duration.millis(
-        message.metadata.finishedAt.getTime() -
-          message.metadata.startedAt.getTime(),
+        message.metadata.totalStreamingDuration +
+          (message.metadata.totalToolsExecutionDuration ?? 0),
       );
     }
 
@@ -1037,12 +1104,11 @@ export class LiveChatKit<
     let duration = undefined;
     if (
       lastMessage?.metadata?.kind === "assistant" &&
-      lastMessage.metadata.finishedAt &&
-      lastMessage.metadata.startedAt
+      lastMessage.metadata.totalStreamingDuration !== undefined
     ) {
       duration = Duration.millis(
-        lastMessage.metadata.finishedAt.getTime() -
-          lastMessage.metadata.startedAt.getTime(),
+        lastMessage.metadata.totalStreamingDuration +
+          (lastMessage.metadata.totalToolsExecutionDuration ?? 0),
       );
     }
 

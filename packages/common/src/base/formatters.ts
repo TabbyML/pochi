@@ -11,7 +11,9 @@ import {
   isStaticToolUIPart,
 } from "ai";
 import { clone } from "remeda";
+import { stripOpenAIItemReferencesFromLastStep } from "../message-utils/openai-item-references";
 import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
+import type { MessageMetadata } from "./message";
 import { prompts } from "./prompts";
 
 function resolvePendingToolCalls(
@@ -124,57 +126,137 @@ function isCompactOnlyUserMessage(message: UIMessage): boolean {
   );
 }
 
+type AssistantMessageMetadata = Extract<MessageMetadata, { kind: "assistant" }>;
+
+function isAssistantMetadata(m: unknown): m is AssistantMessageMetadata {
+  return (
+    typeof m === "object" &&
+    m !== null &&
+    (m as { kind?: string }).kind === "assistant"
+  );
+}
+
+function mergeAssistantMetadata(
+  a: AssistantMessageMetadata | undefined,
+  b: AssistantMessageMetadata | undefined,
+): AssistantMessageMetadata | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    ...a,
+    ...b,
+    totalStreamingDuration:
+      a?.totalStreamingDuration !== undefined ||
+      b?.totalStreamingDuration !== undefined
+        ? (a?.totalStreamingDuration ?? 0) + (b?.totalStreamingDuration ?? 0)
+        : undefined,
+    totalToolsExecutionDuration:
+      a?.totalToolsExecutionDuration !== undefined ||
+      b?.totalToolsExecutionDuration !== undefined
+        ? (a?.totalToolsExecutionDuration ?? 0) +
+          (b?.totalToolsExecutionDuration ?? 0)
+        : undefined,
+  };
+}
+
 function combineConsecutiveAssistantMessages(
   messages: UIMessage[],
 ): UIMessage[] {
-  for (let i = 0; i < messages.length - 1; i++) {
-    if (
-      messages[i].role === "assistant" &&
-      messages[i + 1].role === "assistant"
-    ) {
-      messages[i].parts.push(...messages[i + 1].parts);
-      messages.splice(i + 1, 1);
-      i--;
-    }
-  }
+  const result: UIMessage[] = [];
 
-  // Merge compact-only user messages into the adjacent assistant message so
-  // the surrounding assistant messages combine and the compact checkpoint
-  // renders as a separator without a visible user message row.
   for (let i = 0; i < messages.length; i++) {
-    if (isCompactOnlyUserMessage(messages[i])) {
-      const compactParts = messages[i].parts.filter(
+    const message = messages[i];
+    const prev = result[result.length - 1];
+
+    // Fold a compact-only user message's checkpoint parts into an adjacent
+    // assistant message so the surrounding assistant messages combine and the
+    // compact checkpoint renders as a separator without a visible user row.
+    if (isCompactOnlyUserMessage(message)) {
+      const compactParts = message.parts.filter(
         (part) => part.type === "text" && prompts.isCompact(part.text),
       );
-      if (i > 0 && messages[i - 1].role === "assistant") {
-        messages[i - 1].parts.push(...compactParts);
-        messages.splice(i, 1);
-        i--;
-      } else if (
-        i < messages.length - 1 &&
-        messages[i + 1].role === "assistant"
-      ) {
-        messages[i + 1].parts.unshift(...compactParts);
-        messages.splice(i, 1);
-        i--;
+      const next = messages[i + 1];
+      if (prev?.role === "assistant") {
+        prev.parts.push(...compactParts);
+        continue;
       }
+      if (next?.role === "assistant") {
+        next.parts.unshift(...compactParts);
+        continue;
+      }
+      result.push(message);
+      continue;
     }
+
+    // Merge into the previous assistant message, keeping the later message's id
+    // and prepending the earlier message's parts.
+    if (message.role === "assistant" && prev?.role === "assistant") {
+      message.parts.unshift(...prev.parts);
+
+      const prevMessageMetadata = isAssistantMetadata(prev.metadata)
+        ? prev.metadata
+        : undefined;
+      const messageMetadata = isAssistantMetadata(message.metadata)
+        ? message.metadata
+        : undefined;
+      if (prevMessageMetadata || messageMetadata) {
+        message.metadata = mergeAssistantMetadata(
+          prevMessageMetadata,
+          messageMetadata,
+        );
+      }
+
+      result[result.length - 1] = message;
+      continue;
+    }
+
+    result.push(message);
   }
 
-  // Re-run consecutive assistant merge now that compact-only user messages
-  // have been removed.
-  for (let i = 0; i < messages.length - 1; i++) {
-    if (
-      messages[i].role === "assistant" &&
-      messages[i + 1].role === "assistant"
-    ) {
-      messages[i].parts.push(...messages[i + 1].parts);
-      messages.splice(i + 1, 1);
-      i--;
-    }
-  }
+  return result;
+}
 
-  return messages;
+function combineConsecutiveReasoningParts(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    const parts: UIMessage["parts"] = [];
+
+    for (const part of message.parts) {
+      const prev = parts.at(-1);
+      if (part.type === "reasoning" && prev?.type === "reasoning") {
+        // This merge is only for UI rendering. A shallow merge may overwrite
+        // nested providerMetadata from earlier reasoning parts, but losing that
+        // metadata here is acceptable because LLM/storage formatting does not
+        // use this UI-only operation.
+        const providerMetadata =
+          prev.providerMetadata || part.providerMetadata
+            ? {
+                ...prev.providerMetadata,
+                ...part.providerMetadata,
+              }
+            : undefined;
+        const {
+          providerMetadata: _providerMetadata,
+          state: _state,
+          ...prevPart
+        } = prev;
+
+        parts[parts.length - 1] = {
+          ...prevPart,
+          text: `${prev.text}\n${part.text}`,
+          ...(part.state ? { state: part.state } : {}),
+          ...(providerMetadata ? { providerMetadata } : {}),
+        };
+        continue;
+      }
+
+      parts.push(part);
+    }
+
+    return {
+      ...message,
+      parts,
+    };
+  });
 }
 
 function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
@@ -459,6 +541,45 @@ function extractCompactMessages(messages: UIMessage[]) {
   return messages;
 }
 
+function isUnfinishedAssistantMessage(message: UIMessage): boolean {
+  if (message.role !== "assistant") return false;
+
+  const metadata = (message as UIMessage & { metadata?: { kind?: unknown } })
+    .metadata;
+  return metadata?.kind !== "assistant";
+}
+
+function isStreamingPart(part: UIMessage["parts"][number]): boolean {
+  if (part.type === "text" || part.type === "reasoning") {
+    return part.state === "streaming";
+  }
+
+  return "state" in part && part.state === "input-streaming";
+}
+
+function removeUnstableOpenAIItemReferences(
+  messages: UIMessage[],
+): UIMessage[] {
+  // OpenAI Responses item references can point at output items that were never
+  // committed server-side when a stream was interrupted or failed. Keep other
+  // metadata such as reasoningEncryptedContent so the SDK can resend it.
+  return messages.map((message) => {
+    if (message.role !== "assistant") return message;
+
+    // Completion metadata can be stale after a failed stream. If any part is
+    // still streaming, the latest step is the current LLM call. Strip every
+    // item id in that step: a "done" reasoning part only means that part's
+    // stream ended, not that the containing OpenAI response was committed.
+    const shouldStripLastStep =
+      isUnfinishedAssistantMessage(message) ||
+      message.parts.some(isStreamingPart);
+
+    return shouldStripLastStep
+      ? stripOpenAIItemReferencesFromLastStep(message)
+      : message;
+  });
+}
+
 function removeEmptyTextParts(messages: UIMessage[]) {
   return messages.map((message) => {
     message.parts = message.parts.filter((part) => {
@@ -467,7 +588,7 @@ function removeEmptyTextParts(messages: UIMessage[]) {
       }
       if (part.type === "reasoning") {
         // Keep reasoning parts that have providerMetadata (e.g. OpenAI itemId),
-        // because they need to be included as item_reference in subsequent API calls,
+        // because they need to be included in subsequent API calls,
         // even if their text content is empty.
         if (
           part.providerMetadata &&
@@ -641,6 +762,7 @@ function removeDeprecatedTodoWriteToolCalls(
 }
 
 const LLMFormatOps: FormatOp[] = [
+  removeUnstableOpenAIItemReferences,
   removeEmptyTextParts,
   removeEmptyMessages,
   refineDetectedNewPromblems,
@@ -662,6 +784,7 @@ const UIFormatOps = [
   resolvePendingToolCalls,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
+  combineConsecutiveReasoningParts,
 ];
 const ShareUIFormatOps = [...UIFormatOps, resolvePendingToolCallsForShareUI];
 const StorageFormatOps = [

@@ -1419,6 +1419,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
+  readEffectiveContextWindow = async (): Promise<number | undefined> => {
+    return pochiConfig.value.effectiveContextWindow;
+  };
+
   readAutoMemoryState = async (
     taskId: string,
   ): Promise<{

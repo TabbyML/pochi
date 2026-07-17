@@ -63,6 +63,7 @@
     "ofUsed": "{{total}} のうち {{used}} 使用済み",
     "newTaskWithSummary": "新しいタスクと要約",
     "compactTask": "タスクを圧縮",
+    "autoCompactAt": "約 {{tokens}} tokens で自動圧縮されます",
     "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} tokens が必要です",
     "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
     "tokensUsed": "{{used}} / {{total}} tokens",
@@ -348,6 +349,7 @@
     "result_one": "{{count}}件の結果",
     "result_other": "{{count}}件の結果",
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
+    "readTerminal": "ターミナル出力を読み込み中",
     "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
@@ -422,7 +424,8 @@
     "disableLineWrap": "折り返しを無効にする"
   },
   "messageList": {
-    "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています"
+    "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています",
+    "completedIn": "{{duration}} で完了"
   },
   "markdown": {
     "codeOmitted": "... {{language}} コードが省略されました ( {{bytes}} バイト ) ..."
@@ -436,6 +439,18 @@
   "activeSelectionBadge": {
     "cell": "セル",
     "addContext": "コンテキストを追加"
+  },
+  "todoModeBadge": {
+    "remove": "Todoモードを削除"
+  },
+  "addContextMenu": {
+    "trigger": "追加",
+    "files": "ファイルとフォルダー",
+    "filesDescription": "@ でワークスペースのファイルとフォルダーを検索",
+    "attach": "ファイルを添付",
+    "attachDescription": "コンピューターから画像・PDF・動画をアップロード",
+    "todoDescription": "このTodoに向けてPochiが作業を続けます",
+    "todoDisabledDescription": "現在のTodoを完了してから新しく開始できます"
   },
   "mentionList": {
     "noResultsFound": "結果が見つかりません",
@@ -581,7 +596,10 @@
     "auditing": "Todos を監査中",
     "completed": "すべての Todos が完了しました",
     "needsWork": "Todo はさらに作業が必要です",
-    "failed": "Todo 監査に失敗しました"
+    "stopped": "Todo 監査を停止しました",
+    "stoppedDescription": "監査はサマリーを生成する前に停止しました。",
+    "unavailable": "Todo 監査結果を利用できません",
+    "unavailableDescription": "監査は終了しましたが、読み取れるサマリーが返されませんでした。"
   },
   "browserAgentSettings": {
     "runtimeSection": "ブラウザー実行環境",

@@ -1,5 +1,6 @@
 import { Loader2, UserIcon } from "lucide-react";
 import type React from "react";
+import { useTranslation } from "react-i18next";
 
 import { ReasoningPartUI } from "@/components/reasoning-part.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +13,7 @@ import {
 import { ToolInvocationPart } from "@/features/tools";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
-import { cn } from "@/lib/utils";
+import { cn, formatExecutionDuration } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
@@ -55,6 +56,7 @@ export const MessageList: React.FC<{
   hideUserEditsActions?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
+  showLastStepDuration?: boolean;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -71,6 +73,7 @@ export const MessageList: React.FC<{
   hideUserEditsActions,
   repairMermaid,
   repairingChart,
+  showLastStepDuration,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -186,7 +189,7 @@ export const MessageList: React.FC<{
                 <UserAttachments message={m} />
                 <UserActiveSelections message={m} />
               </div>
-              {messageIndex < renderMessages.length - 1 && (
+              {messageIndex < renderMessages.length - 1 ? (
                 <SeparatorWithCheckpoint
                   messageIndex={messageIndex}
                   message={m}
@@ -197,6 +200,13 @@ export const MessageList: React.FC<{
                   latestCheckpoint={latestCheckpoint}
                   lastCheckpointInMessage={lastCheckpointInMessage}
                 />
+              ) : (
+                showLastStepDuration &&
+                !(isLoading || isExecuting) && (
+                  <OptionalSeparatorWithExecutionDuration
+                    duration={computeExecutionDuration(m)}
+                  />
+                )
               )}
             </div>
           ))}
@@ -459,6 +469,7 @@ const SeparatorWithCheckpoint: React.FC<{
 
   const compactPart = findCompactPart(checkpointMessage);
   const lastPart = checkpointMessage.parts.at(-1);
+  const executionDuration = computeExecutionDuration(message);
 
   if (
     lastPart &&
@@ -480,6 +491,7 @@ const SeparatorWithCheckpoint: React.FC<{
           }
           compactPart={compactPart}
           compactMessageId={checkpointMessage.id}
+          executionDuration={executionDuration}
         />
       </div>
     );
@@ -496,7 +508,30 @@ const SeparatorWithCheckpoint: React.FC<{
     );
   }
 
+  if (executionDuration) {
+    return (
+      <OptionalSeparatorWithExecutionDuration duration={executionDuration} />
+    );
+  }
+
   return sep;
+};
+
+const OptionalSeparatorWithExecutionDuration: React.FC<{
+  duration: number | undefined;
+}> = ({ duration }) => {
+  const { t } = useTranslation();
+  if (duration == null) return null;
+  const label = t("messageList.completedIn", {
+    duration: formatExecutionDuration(duration),
+  });
+  return (
+    <div className="mt-1 mb-2 flex items-center gap-2 text-muted-foreground/60 text-xs">
+      <div className="flex-1 border-border border-t" />
+      <span>{label}</span>
+      <div className="flex-1 border-border border-t" />
+    </div>
+  );
 };
 
 export interface ToolCallCheckpoint {
@@ -589,4 +624,12 @@ function buildUserEditsCheckpoints(messages: Message[]) {
   }
 
   return userEditsCheckpoints;
+}
+
+function computeExecutionDuration(message: Message) {
+  return message.metadata?.kind === "assistant" &&
+    message.metadata.totalStreamingDuration !== undefined
+    ? message.metadata.totalStreamingDuration +
+        (message.metadata.totalToolsExecutionDuration ?? 0)
+    : undefined;
 }

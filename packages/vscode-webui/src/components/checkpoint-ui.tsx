@@ -12,7 +12,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { useIsDevMode } from "@/features/settings";
-import { cn } from "@/lib/utils";
+import { cn, formatExecutionDuration } from "@/lib/utils";
 import { prompts } from "@getpochi/common";
 import type { DataParts } from "@getpochi/livekit";
 import type { TextUIPart } from "ai";
@@ -31,6 +31,7 @@ export const CheckpointUI: React.FC<{
   isRestored?: boolean;
   compactPart?: TextUIPart;
   compactMessageId?: string;
+  executionDuration?: number;
 }> = ({
   checkpoint,
   isLoading,
@@ -41,6 +42,7 @@ export const CheckpointUI: React.FC<{
   isRestored,
   compactPart,
   compactMessageId,
+  executionDuration,
 }) => {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -172,9 +174,9 @@ export const CheckpointUI: React.FC<{
   };
 
   /**
-   * Return the icon on unhover state
+   * Return the label for normal (non-hover) state
    */
-  const getIcon = () => {
+  const getNormalStateLabel = () => {
     if (isPending) {
       return <Loader2 className="size-3 animate-spin" />;
     }
@@ -189,6 +191,12 @@ export const CheckpointUI: React.FC<{
     if (compactPart) {
       return <SquareChartGantt className="size-3" />;
     }
+    if (executionDuration) {
+      const label = t("messageList.completedIn", {
+        duration: formatExecutionDuration(executionDuration),
+      });
+      return <span>{label}</span>;
+    }
     return <GitCommitHorizontal className="size-5" />;
   };
 
@@ -201,7 +209,8 @@ export const CheckpointUI: React.FC<{
     >
       <div
         className={cn(
-          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full max-w-[72px] select-none items-center hover:max-w-full",
+          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full select-none items-center hover:max-w-full",
+          executionDuration && !compactPart ? "max-w-[140px]" : "max-w-[72px]",
           isLoading && "pointer-events-none",
           className,
         )}
@@ -298,9 +307,10 @@ export const CheckpointUI: React.FC<{
             className={cn(
               "group-hover:hidden",
               isRestored && "text-primary/60",
+              executionDuration && !compactPart && "px-2 text-xs",
             )}
           >
-            {getIcon()}
+            {getNormalStateLabel()}
           </span>
         </span>
         <Border

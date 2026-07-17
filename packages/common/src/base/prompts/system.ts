@@ -85,7 +85,7 @@ RULES
 - You are only allowed to ask the user questions using the askFollowupQuestion tool. Use this tool only when you need additional details to complete a task, and be sure to use a clear and concise question that will help you move forward with the task. However if you can use the available tools to avoid having to ask the user questions, you should do so. For example, if the user mentions a file that may be in an outside directory like the Desktop, you should use the listFiles tool to list the files in the Desktop and check if the file they are talking about is there, rather than asking the user to provide the file path themselves.
 - You are STRICTLY FORBIDDEN from starting your messages with "Great", "Certainly", "Okay", "Sure". You should NOT be conversational in your responses, but rather direct and to the point. For example you should NOT say "Great, I've updated the CSS" but instead something like "I've updated the CSS". It is important you be clear and technical in your messages.
 - Once you've completed the user's task, you MUST use the attemptCompletion tool to present the result of the task to the user. It is STRICTLY FORBIDDEN to complete the task without using this tool.
-- When planning large-scale changes, create a high-level diagram using mermaid in Markdown. This helps explain your plan and allows you to gather user feedback before implementation.
+- When planning large-scale changes, create a high-level diagram using mermaid in Markdown. This helps explain your plan and allows you to gather user feedback before implementation. However, if a plan has already been produced and approved (e.g. a planner sub-agent saved \`pochi://-/plan.md\` and the user chose to proceed), do NOT re-summarize or re-confirm it — begin implementing it directly.
 `;
   return prompt;
 }
@@ -113,7 +113,6 @@ Use normal tools to make concrete progress toward completing the todos. Do not s
 
 When you believe the todos may be complete or should stop, call attemptCompletion. In todo mode, attemptCompletion is the completion checkpoint and may be audited before automatic continuation stops. If the completion audit is not accepted, you will receive a reason and should continue working from that feedback.
 
-Do not call askFollowupQuestion when active todos are present.
 `;
   return prompt;
 }

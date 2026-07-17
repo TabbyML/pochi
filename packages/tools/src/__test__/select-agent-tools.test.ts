@@ -24,8 +24,6 @@ const ClientToolNames = [
 
 const RequiredAgentToolNames = ["attemptCompletion", "useSkill"].sort();
 
-const TodoModeRequiredAgentToolNames = ["attemptCompletion", "useSkill"].sort();
-
 function createAgent(overrides: Partial<CustomAgent> = {}): CustomAgent {
   return {
     name: "test-agent",
@@ -307,39 +305,16 @@ describe("selectAgentTools", () => {
     );
   });
 
-  it("uses todo mode tools when active todos are present", () => {
-    const tools = selectAgentTools({
-      isSubTask: false,
-      todoModeEnabled: true,
-    });
-
-    expect(toolNames(tools)).toContain("attemptCompletion");
-    expect(toolNames(tools)).toContain("useSkill");
-    expect(tools).not.toHaveProperty("todoWrite");
-    expect(tools).not.toHaveProperty("askFollowupQuestion");
-  });
-
-  it("does not use todo mode tools for subtasks", () => {
-    const tools = selectAgentTools({
-      isSubTask: true,
-      todoModeEnabled: true,
-    });
-
-    expect(toolNames(tools)).toContain("attemptCompletion");
-    expect(toolNames(tools)).toContain("useSkill");
-  });
-
-  it("uses todo mode required tools for filtered agents", () => {
+  it("always injects required tools even when agent allowList omits them", () => {
     const tools = selectAgentTools({
       agent: createAgent({
-        tools: ["readFile", "attemptCompletion", "askFollowupQuestion"],
+        tools: ["readFile"],
       }),
       isSubTask: false,
-      todoModeEnabled: true,
     });
 
     expect(toolNames(tools)).toEqual(
-      [...TodoModeRequiredAgentToolNames, "readFile"].sort(),
+      [...RequiredAgentToolNames, "readFile"].sort(),
     );
   });
 });

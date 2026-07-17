@@ -1,10 +1,7 @@
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { relative, resolve } from "node:path";
-import { promisify } from "node:util";
 import { getLogger } from "../base";
 import { MaxRipgrepItems } from "./limits";
-
-const execFileAsync = promisify(execFile);
 
 const logger = getLogger("RipgrepUtils");
 
@@ -55,11 +52,30 @@ interface RipgrepOutput {
     | RipgrepSummaryData;
 }
 
-// Define a type for the error caught from execAsync
-interface ExecError extends Error {
-  code?: number;
-  stdout?: string;
-  stderr?: string;
+type RipgrepMatch = { file: string; line: number; context: string };
+
+function parseRipgrepLine(
+  line: string,
+  workspacePath: string,
+): RipgrepMatch | undefined {
+  try {
+    const output = JSON.parse(line) as RipgrepOutput;
+
+    if (output.type !== "match") {
+      return undefined;
+    }
+
+    const matchData = output.data as RipgrepMatchData;
+    return {
+      file: relative(workspacePath, matchData.path.text),
+      line: matchData.line_number,
+      // rg includes the newline in lines.text, trim it
+      context: matchData.lines.text.replace(/\r?\n$/, ""),
+    };
+  } catch (parseError) {
+    logger.error(`Failed to parse rg JSON output line: ${line}`, parseError);
+    return undefined;
+  }
 }
 
 export async function searchFilesWithRipgrep(
@@ -70,13 +86,14 @@ export async function searchFilesWithRipgrep(
   filePattern?: string,
   abortSignal?: AbortSignal,
 ): Promise<{
-  matches: { file: string; line: number; context: string }[];
+  matches: RipgrepMatch[];
   isTruncated: boolean;
 }> {
   logger.debug("searchFiles", path, regex, filePattern);
-  const matches: { file: string; line: number; context: string }[] = [];
+  const matches: RipgrepMatch[] = [];
+  let isTruncated = false;
 
-  // Build the rg arguments as an array and run rg via execFile (no shell).
+  // Build the rg arguments as an array and spawn rg directly (no shell).
   // Using an argument array avoids shell-specific quoting issues: manually
   // quoting with single quotes breaks on Windows because the default shell
   // (cmd.exe) does not strip single quotes, so rg would receive literal
@@ -100,83 +117,84 @@ export async function searchFilesWithRipgrep(
   args.push(regex, absPath);
   logger.debug("command", rgPath, args);
 
-  try {
-    const { stdout, stderr } = await execFileAsync(rgPath, args, {
-      // Set a reasonable maxBuffer size in case of large output
-      // Consider streaming if output can be extremely large
-      maxBuffer: 1024 * 1024 * 10, // 10M
-      signal: abortSignal, // Pass the abort signal
+  await new Promise<void>((resolvePromise, rejectPromise) => {
+    const child = spawn(rgPath, args, { signal: abortSignal });
+    let pendingStdout = "";
+    let stderr = "";
+    let stoppedAfterLimit = false;
+
+    const stopAfterLimit = () => {
+      stoppedAfterLimit = true;
+      child.kill();
+    };
+
+    const processLine = (line: string) => {
+      if (!line) {
+        return;
+      }
+
+      const match = parseRipgrepLine(line, workspacePath);
+      if (!match) {
+        return;
+      }
+
+      matches.push(match);
+      if (matches.length > MaxRipgrepItems) {
+        isTruncated = true;
+        stopAfterLimit();
+      }
+    };
+
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      pendingStdout += chunk;
+      const lines = pendingStdout.split("\n");
+      pendingStdout = lines.pop() ?? "";
+
+      for (const line of lines) {
+        processLine(line);
+        if (stoppedAfterLimit) {
+          return;
+        }
+      }
     });
 
-    if (stderr) {
-      logger.warn("rg command stderr: ", stderr.slice(0, 1000)); // Log first 1000 chars of stderr
-    }
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      stderr = (stderr + chunk).slice(-10_000);
+    });
 
-    // rg --json outputs newline-separated JSON objects
-    const outputLines = stdout.trim().split("\n");
+    child.on("error", (error) => {
+      rejectPromise(error);
+    });
 
-    for (const line of outputLines) {
-      try {
-        const output = JSON.parse(line) as RipgrepOutput;
-
-        if (output.type === "match") {
-          const matchData = output.data as RipgrepMatchData;
-          matches.push({
-            file: relative(workspacePath, matchData.path.text),
-            line: matchData.line_number,
-            // rg includes the newline in lines.text, trim it
-            context: matchData.lines.text.replace(/\r?\n$/, ""),
-          });
-        }
-      } catch (parseError) {
-        logger.error(
-          `Failed to parse rg JSON output line: ${line}`,
-          parseError,
-        );
-        // Continue processing other lines
+    child.on("close", (code, signal) => {
+      if (!stoppedAfterLimit && pendingStdout) {
+        processLine(pendingStdout);
       }
-    }
-    // biome-ignore lint/suspicious/noExplicitAny: exception catch has to be any
-  } catch (error: any) {
-    if (!(error satisfies ExecError)) {
-      logger.error("rg command error: ", error);
-      throw error;
-    }
 
-    // Handle errors, e.g., rg not found, command execution failure
-    // error.code === 1 often means rg found matches but encountered non-fatal errors (like permission denied on a dir)
-    // error.code > 1 usually indicates a more serious issue.
-    // rg exits with 0 if matches are found, 1 if no matches are found, >1 for errors.
-    // The original function returns empty matches if none found, so exit code 1 is not an error here.
-    if (error.code && error.code > 1) {
-      // Rethrow or handle more specific errors if needed
-      // Include stderr in the error message for better debugging
-      throw new Error(
-        `rg command failed with code ${error.code}: ${error.stderr || error.message}`,
+      if (stderr) {
+        logger.warn("rg command stderr: ", stderr.slice(0, 1000));
+      }
+
+      // rg exits with 0 if matches are found, 1 if no matches are found, >1 for errors.
+      if (stoppedAfterLimit || code === 0 || code === 1) {
+        resolvePromise();
+        return;
+      }
+
+      rejectPromise(
+        new Error(
+          `rg command failed with code ${code ?? `signal ${signal}`}: ${
+            stderr || "Unknown error"
+          }`,
+        ),
       );
-    }
-    if (!error.code && error.stderr) {
-      // Log stderr even if code is 0 (e.g., warnings)
-      logger.warn(`rg command stderr (exit code 0): ${error.stderr}`);
-    } else if (error.code === 1 && !error.stdout && !error.stderr) {
-      // Exit code 1 and no output means no matches found, which is not an error for this function.
-      // console.log("rg command finished with exit code 1 (no matches found).");
-    } else if (error.code === 1 && error.stdout) {
-      // Exit code 1 but there was output (matches were found, but maybe some errors occurred)
-      // We already processed stdout, so just log stderr if present
-      if (error.stderr) {
-        logger.warn(`rg command stderr (exit code 1): ${error.stderr}`);
-      }
-    } else {
-      // Other unexpected errors
-      logger.error("Error executing rg command: ", error);
-      throw error; // Rethrow unexpected errors
-    }
-    // If error.code is 1 (no matches), we fall through and return the empty matches array, which is correct.
-  }
+    });
+  });
 
   return {
     matches: matches.slice(0, MaxRipgrepItems),
-    isTruncated: matches.length > MaxRipgrepItems,
+    isTruncated,
   };
 }

@@ -3,7 +3,7 @@ import type { Workbench } from "wdio-vscode-service";
 import { PochiSidebar } from "../../pageobjects/pochi-sidebar";
 import { PochiPanel } from "../../pageobjects/pochi-panel";
 
-describe("Freebie User Swift Model Tests", () => {
+describe("Test User Model Access Tests", () => {
   let workbench: Workbench;
 
   beforeEach(async () => {
@@ -73,7 +73,7 @@ describe("Freebie User Swift Model Tests", () => {
 
     // Wait for the task to appear in the sidebar task list
     await sidebar.waitForTaskToAppear(60000);
-    
+
     // Switch back to main content
     await sidebar.close();
 
@@ -110,7 +110,7 @@ describe("Freebie User Swift Model Tests", () => {
     await panel.close();
   });
 
-  it("should not see super models for freebie user", async () => {
+  it("should see Super models for the test user", async () => {
     const sidebar = new PochiSidebar();
     await sidebar.open();
 
@@ -143,7 +143,7 @@ describe("Freebie User Swift Model Tests", () => {
       }
     }
 
-    expect(superHeader).toBeUndefined();
+    expect(superHeader).toBeDefined();
     await sidebar.close();
   });
 });

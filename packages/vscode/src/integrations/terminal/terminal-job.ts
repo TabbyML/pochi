@@ -36,7 +36,11 @@ export class TerminalJob implements vscode.Disposable {
   static readonly onDidDispose = TerminalJob.onDidDisposeEmitter.event;
 
   private readonly terminal: vscode.Terminal;
+  private readonly terminalClosed: Promise<never>;
   private disposables: vscode.Disposable[] = [];
+  private closeListener: vscode.Disposable | undefined;
+  private rejectTerminalClosed: ((error: ExecutionError) => void) | undefined;
+  private disposed = false;
   private shellIntegration: vscode.TerminalShellIntegration | undefined;
   private execution: vscode.TerminalShellExecution | undefined;
   private outputManager: OutputManager;
@@ -71,6 +75,26 @@ export class TerminalJob implements vscode.Disposable {
       isTransient: false,
     });
 
+    this.terminalClosed = new Promise<never>((_, reject) => {
+      this.rejectTerminalClosed = reject;
+    });
+
+    // Keep the job registered (and thus its terminal <-> backgroundJobId
+    // association) alive as long as the terminal is open, so the UI can keep
+    // highlighting the active terminal and jump to it even after the command
+    // has finished executing.
+    this.closeListener = vscode.window.onDidCloseTerminal((terminal) => {
+      if (terminal === this.terminal) {
+        this.rejectTerminalClosed?.(
+          ExecutionError.create(
+            "Background job finished as user closed terminal.",
+          ),
+        );
+        this.rejectTerminalClosed = undefined;
+        this.dispose();
+      }
+    });
+
     this.terminal.show();
 
     this.execute();
@@ -81,20 +105,24 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   async execute(): Promise<void> {
-    // Wait for shell integration if not available
-    const shellIntegration = await this.waitForShellIntegration();
-
-    this.execution = shellIntegration.executeCommand(this.config.command);
-    logger.debug(
-      `Executed command in terminal "${this.config.name}": ${this.config.command}`,
-    );
-    this.processOutputStream(this.execution.read());
-
     let executionError: ExecutionError | undefined;
     try {
+      // Wait for shell integration if not available
+      const shellIntegration = await Promise.race([
+        this.waitForShellIntegration(),
+        this.terminalClosed,
+      ]);
+
+      this.execution = shellIntegration.executeCommand(this.config.command);
+      logger.debug(
+        `Executed command in terminal "${this.config.name}": ${this.config.command}`,
+      );
+      this.processOutputStream(this.execution.read());
+
       await Promise.race([
         this.waitForExecutionFinish(),
         this.createAbortPromise(),
+        this.terminalClosed,
       ]);
     } catch (error) {
       if (error instanceof ExecutionError) {
@@ -106,8 +134,21 @@ export class TerminalJob implements vscode.Disposable {
       }
     } finally {
       this.outputManager.finalize(executionError);
-      this.dispose();
+      // Only tear down the execution-scoped listeners here. The job itself
+      // stays registered until the terminal is closed (see closeListener),
+      // so the UI can still highlight and reopen the terminal.
+      this.cleanupExecution();
     }
+  }
+
+  /**
+   * Dispose of the execution-scoped listeners while keeping the job registered.
+   */
+  private cleanupExecution(): void {
+    for (const d of this.disposables) {
+      d.dispose();
+    }
+    this.disposables = [];
   }
 
   /**
@@ -168,12 +209,18 @@ export class TerminalJob implements vscode.Disposable {
    * Dispose of the terminal and clean up resources
    */
   dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+
     TerminalJob.jobs.delete(this.id);
     TerminalJob.onDidDisposeEmitter.fire(this);
-    for (const d of this.disposables) {
-      d.dispose();
-    }
-    this.disposables = [];
+
+    this.closeListener?.dispose();
+    this.closeListener = undefined;
+
+    this.cleanupExecution();
 
     logger.debug(`Disposed terminal job "${this.config.name}"`);
   }
@@ -215,19 +262,6 @@ export class TerminalJob implements vscode.Disposable {
 
   private waitForExecutionFinish(): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Listen for terminal close events
-      this.disposables.push(
-        vscode.window.onDidCloseTerminal((terminal) => {
-          if (terminal === this.terminal) {
-            reject(
-              ExecutionError.create(
-                "Background job finished as user closed terminal.",
-              ),
-            );
-          }
-        }),
-      );
-
       // Listen for shell execution end.
       this.disposables.push(
         vscode.window.onDidEndTerminalShellExecution((event) => {
