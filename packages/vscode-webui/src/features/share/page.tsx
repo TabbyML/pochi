@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
 import { type ResizeEvent, ShareEvent } from "@getpochi/common/share-utils";
 import type { Message } from "@getpochi/livekit";
+import { toTaskStatus } from "@getpochi/livekit";
 import { createChannel } from "bidc";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -156,6 +157,17 @@ export function SharePage() {
 
   const todos = shareData?.todos ?? [];
 
+  const lastMessage = (messages as Message[])[messages.length - 1];
+  const lastMessageFinishReason =
+    lastMessage?.metadata?.kind === "assistant"
+      ? lastMessage.metadata.finishReason
+      : undefined;
+  const showLastStepDuration =
+    !!lastMessage &&
+    !isLoading &&
+    !error &&
+    toTaskStatus(lastMessage, lastMessageFinishReason) === "completed";
+
   return (
     <VSCodeWebProvider>
       <ChatContextProvider>
@@ -184,6 +196,7 @@ export function SharePage() {
                     messages={renderMessages}
                     isLoading={isLoading}
                     hideUserEditsActions
+                    showLastStepDuration={showLastStepDuration}
                   />
                   <ErrorMessageView error={error ?? undefined} />
                 </div>
