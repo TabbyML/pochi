@@ -2,6 +2,7 @@ import type { RequestData } from "../../types";
 import { createAiGatewayModel } from "./ai-gateway";
 import { createAnthropicModel } from "./anthropic";
 import { createGoogleVertexTuningModel } from "./google-vertex-tuning";
+import { createMiniMaxModel } from "./minimax";
 import { createOpenAIModel } from "./openai";
 import { createOpenAIResponsesModel } from "./openai-responses";
 
@@ -28,6 +29,10 @@ export function createModel({ llm }: { llm: RequestData["llm"] }) {
 
   if (llm.type === "openai-responses") {
     return createOpenAIResponsesModel(llm);
+  }
+
+  if (llm.type === "minimax") {
+    return createMiniMaxModel(llm);
   }
 
   assertUnreachable(llm);

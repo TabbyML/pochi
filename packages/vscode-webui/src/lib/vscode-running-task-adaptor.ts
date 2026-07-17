@@ -64,6 +64,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
         }
         return llm;
       },
+      getEffectiveContextWindow: () => this.effectiveContextWindow,
       getEnvironment: () =>
         vscodeHost.readEnvironment({
           webviewKind: globalThis.POCHI_WEBVIEW_KIND,
@@ -121,7 +122,13 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   }
 
   private async initEffectiveContextWindow() {
-    this.effectiveContextWindow = await vscodeHost.readEffectiveContextWindow();
+    const signal = threadSignal(await vscodeHost.readEffectiveContextWindow());
+    this.effectiveContextWindow = signal.value;
+    this.addUnsubscriber(
+      signal.subscribe((effectiveContextWindow) => {
+        this.effectiveContextWindow = effectiveContextWindow;
+      }),
+    );
   }
 
   private async initModelList() {
@@ -189,9 +196,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       resolveModelFromId(selectedModelId, this.modelList) ??
       this.modelList.at(0);
 
-    return selectedModel
-      ? displayModelToLLM(selectedModel, this.effectiveContextWindow)
-      : undefined;
+    return selectedModel ? displayModelToLLM(selectedModel) : undefined;
   }
 
   private getAutoMemory() {

@@ -86,6 +86,52 @@ describe("execute-command-with-node", () => {
     assert.strictEqual(spawnOptions.env?.GCM_INTERACTIVE, "never");
   });
 
+  it("should decode multi-byte output split across chunks", async () => {
+    // "无法将" encoded in UTF-8, split so a multi-byte character straddles
+    // two data chunks.
+    const fullBytes = Buffer.from("无法将", "utf8");
+    const firstChunk = fullBytes.subarray(0, 4); // "无" + first byte of "法"
+    const secondChunk = fullBytes.subarray(4);
+
+    const spawnStub = sinon.stub().callsFake(() => {
+      const child = createMockChildProcess({ withStdin: false });
+      queueMicrotask(() => {
+        child.stdout?.emit("data", firstChunk);
+        child.stdout?.emit("data", secondChunk);
+        child.emit("close", 0);
+      });
+      return child;
+    });
+
+    const executeCommandWithNode = proxyquire
+      .noCallThru()
+      .load("../execute-command-with-node", {
+        "node:child_process": {
+          spawn: spawnStub,
+          exec: sinon.stub(),
+        },
+        "@getpochi/common/tool-utils": {
+          buildShellCommand: () => ({
+            command: "/bin/bash",
+            args: ["-c", "echo hello"],
+          }),
+          fixExecuteCommandOutput: (output: string) => output,
+        },
+        "@getpochi/common/env-utils": {
+          getTerminalEnv: () => ({}),
+        },
+      }).executeCommandWithNode as typeof import("../execute-command-with-node").executeCommandWithNode;
+
+    const result = await executeCommandWithNode({
+      command: "echo hello",
+      cwd: process.cwd(),
+      timeout: 0,
+      color: false,
+    });
+
+    assert.strictEqual(result.output, "无法将");
+  });
+
   it("should close stdin in exec fallback path", async () => {
     const child = createMockChildProcess({ withStdin: true });
     const execStub = sinon.stub().callsFake(() => {

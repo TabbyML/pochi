@@ -44,6 +44,9 @@ export function useLiveChatKitGetters({
   });
   const llm = useLLM({ isSubTask, modelOverride });
 
+  const effectiveContextWindow = useEffectiveContextWindow();
+  const effectiveContextWindowRef = useLatest(effectiveContextWindow);
+
   const { customAgents } = useCustomAgents(true);
   const customAgentsRef = useLatest(customAgents);
 
@@ -102,6 +105,12 @@ export function useLiveChatKitGetters({
     // biome-ignore lint/correctness/useExhaustiveDependencies(llm.current): llm is ref.
     getLLM: useCallback(() => llm.current, []),
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies(effectiveContextWindowRef.current): ref is stable.
+    getEffectiveContextWindow: useCallback(
+      () => effectiveContextWindowRef.current,
+      [],
+    ),
+
     getEnvironment,
 
     getAutoMemory,
@@ -140,12 +149,11 @@ function useLLM({
   modelOverride?: DisplayModel;
 }): React.RefObject<LLMRequestData> {
   const { selectedModel } = useSelectedModels({ isSubTask });
-  const effectiveContextWindow = useEffectiveContextWindow();
 
   const model = modelOverride || selectedModel;
   const llmFromSelectedModel = ((): LLMRequestData => {
     if (!model) return undefined as never;
-    return displayModelToLLM(model, effectiveContextWindow);
+    return displayModelToLLM(model);
   })();
 
   return useLatest(llmFromSelectedModel);

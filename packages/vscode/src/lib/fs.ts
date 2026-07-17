@@ -61,16 +61,23 @@ export async function readFileContent(
  * back to the legacy layout, and finally fall back to the system `rg` on
  * `PATH` so `searchFiles` keeps working even if VS Code reshuffles things
  * again.
+ *
+ * VS Code also bundles its own code inside an asar archive, so native
+ * binaries such as ripgrep are extracted alongside it under
+ * `node_modules.asar.unpacked` rather than plain `node_modules`. We probe
+ * both directory names for every layout.
  */
 function resolveVscodeRipgrepPath(): string {
   const exe = process.platform === "win32" ? "rg.exe" : "rg";
   const archDir = `${process.platform}-${process.arch}`;
 
-  const candidates = [
+  const nodeModuleDirs = ["node_modules.asar.unpacked", "node_modules"];
+
+  const candidates = nodeModuleDirs.flatMap((nodeModules) => [
     // VS Code >= 1.124: @vscode/ripgrep-universal, per-arch subdir.
     join(
       vscode.env.appRoot,
-      "node_modules",
+      nodeModules,
       "@vscode",
       "ripgrep-universal",
       "bin",
@@ -78,8 +85,8 @@ function resolveVscodeRipgrepPath(): string {
       exe,
     ),
     // VS Code < 1.124: legacy @vscode/ripgrep single-binary layout.
-    join(vscode.env.appRoot, "node_modules", "@vscode", "ripgrep", "bin", exe),
-  ];
+    join(vscode.env.appRoot, nodeModules, "@vscode", "ripgrep", "bin", exe),
+  ]);
 
   for (const candidate of candidates) {
     if (existsSync(candidate)) {

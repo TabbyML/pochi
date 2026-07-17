@@ -92,6 +92,7 @@ function createAbortAwareUIStreamTransform(
 
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
+  getEffectiveContextWindow?: () => number | undefined;
   getEnvironment?: () => Promise<Environment>;
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
   isTodoModeActive?: () => boolean;
@@ -256,8 +257,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       tools,
       maxRetries: 0,
       timeout: {
-        // Abort if no chunk is received within 15s to prevent indefinitely stalled streams.
-        chunkMs: 15_000,
+        // Abort if no new chunk is received within 30s to prevent indefinitely stalled streams.
+        // See https://ai-sdk.dev/docs/ai-sdk-core/settings#timeout
+        chunkMs: 30_000,
       },
       // error log is handled in live chat kit.
       onError: () => {},

@@ -74,7 +74,10 @@ import {
   pochiConfig,
   updatePochiConfig,
 } from "@getpochi/common/configuration";
-import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import {
+  getWorktreeNameFromWorktreePath,
+  normalizePathForComparison,
+} from "@getpochi/common/git-utils";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
@@ -291,11 +294,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (!repoRoot) {
       return undefined;
     }
-    const worktreePaths = new Set(worktrees.map((wt) => wt.path));
-    worktreePaths.add(repoRoot);
+    const worktreePaths = new Set(
+      worktrees.map((wt) => normalizePathForComparison(wt.path)),
+    );
+    worktreePaths.add(normalizePathForComparison(repoRoot));
     return {
       worktreePaths,
-      worktreesGitdirPrefix: `${repoRoot}/.git/worktrees`,
+      worktreesGitdirPrefix: `${normalizePathForComparison(repoRoot)}/.git/worktrees`,
     };
   }
 
@@ -312,8 +317,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     scope: { worktreePaths: Set<string>; worktreesGitdirPrefix: string },
   ): boolean {
     return (
-      (!!task.cwd && scope.worktreePaths.has(task.cwd)) ||
-      !!task.git?.worktree?.gitdir?.startsWith(scope.worktreesGitdirPrefix)
+      (!!task.cwd &&
+        scope.worktreePaths.has(normalizePathForComparison(task.cwd))) ||
+      (!!task.git?.worktree?.gitdir &&
+        normalizePathForComparison(task.git.worktree.gitdir).startsWith(
+          scope.worktreesGitdirPrefix,
+        ))
     );
   }
 
@@ -1410,8 +1419,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readEffectiveContextWindow = async (): Promise<number | undefined> => {
-    return pochiConfig.value.effectiveContextWindow;
+  readEffectiveContextWindow = async (): Promise<
+    ThreadSignalSerialization<number | undefined>
+  > => {
+    return ThreadSignal.serialize(
+      computed(() => pochiConfig.value.effectiveContextWindow),
+    );
   };
 
   readAutoMemoryState = async (

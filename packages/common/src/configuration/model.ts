@@ -59,6 +59,10 @@ const AnthropicModelSettings = ExtendedModelSettings.extend({
   kind: z.literal("anthropic"),
 });
 
+const MiniMaxModelSettings = ExtendedModelSettings.extend({
+  kind: z.literal("minimax"),
+});
+
 export const GoogleVertexModel = z
   .discriminatedUnion("type", [
     z.object({
@@ -121,6 +125,7 @@ export const CustomModelSetting = z.discriminatedUnion("kind", [
   AnthropicModelSettings,
   GoogleVertexTuningModelSettings,
   AiGatewayModelSettings,
+  MiniMaxModelSettings,
 ]);
 
 /**

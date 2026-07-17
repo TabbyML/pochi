@@ -1,4 +1,5 @@
 export const MaxRipgrepItems = 500;
+export const MaxRipgrepCharLength = 30_000;
 export const MaxListFileItems = 1500;
 export const MaxListFileCharLength = 30_000;
 export const MaxGlobFileItems = 500;

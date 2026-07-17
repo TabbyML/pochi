@@ -466,8 +466,12 @@ export interface VSCodeHostApi {
    * Read the global effective context window (in tokens) used to cap
    * auto-compaction. Returns undefined when not configured, in which case the
    * built-in default is used.
+   *
+   * Returns a signal so the UI can react to configuration changes in real time.
    */
-  readEffectiveContextWindow(): Promise<number | undefined>;
+  readEffectiveContextWindow(): Promise<
+    ThreadSignalSerialization<number | undefined>
+  >;
 
   readAutoMemoryState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;

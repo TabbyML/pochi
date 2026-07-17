@@ -1,5 +1,6 @@
 import { getLogger } from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
+import { pochiConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   FileStateCache,
@@ -83,6 +84,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
     return {
       getLLM: () => this.llm,
+      getEffectiveContextWindow: () => pochiConfig.value.effectiveContextWindow,
       getEnvironment: async () =>
         readEnvironment({ cwd: context.cwd ?? this.cwd }),
       ...(this.projectMemoryEnabled

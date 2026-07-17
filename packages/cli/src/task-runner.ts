@@ -8,6 +8,7 @@ import {
   toErrorMessage,
 } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
+import { pochiConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
@@ -309,6 +310,8 @@ export class TaskRunner {
 
       getters: {
         getLLM: () => options.llm,
+        getEffectiveContextWindow: () =>
+          pochiConfig.value.effectiveContextWindow,
         getEnvironment: async () => ({
           ...(await readEnvironment({
             cwd: options.cwd,
@@ -654,7 +657,10 @@ export class TaskRunner {
       },
       { once: true },
     );
+
+    this.chatKit.markStartToolsExecution();
     await queue.start();
+    this.chatKit.markEndToolsExecution();
 
     logger.trace("All tool calls processed in the last message.");
     return "next" as const;

@@ -11,6 +11,9 @@ export const CompactTaskMinTokens = 50_000;
 export const DefaultContextWindow = 100_000;
 export const DefaultMaxOutputTokens = 4096;
 
+export const DefaultEffectiveContextWindow = 160_000;
+export const MinEffectiveContextWindow = 64_000;
+
 export const StreamingUpdateThrottleMs = 100;
 
 export const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
