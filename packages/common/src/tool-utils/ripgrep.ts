@@ -1,10 +1,10 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import { getLogger } from "../base";
 import { MaxRipgrepItems } from "./limits";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const logger = getLogger("RipgrepUtils");
 
@@ -76,28 +76,32 @@ export async function searchFilesWithRipgrep(
   logger.debug("searchFiles", path, regex, filePattern);
   const matches: { file: string; line: number; context: string }[] = [];
 
-  // Construct the rg command
-  // Use single quotes to wrap regex and path to handle potential spaces or special characters
-  // Escape single quotes within the regex itself if necessary (though rg might handle this)
-  // Using --multiline to ensure regex can span multiple lines if needed, though the output format focuses on single line matches
-  // Using --fixed-strings might be safer if the input 'regex' isn't meant to be a regex, but the param name suggests it is.
-  // Added --case-sensitive based on original implementation's RegExp usage (default is case-sensitive)
-  // Added --binary to skip binary files, similar to the original file-type check
-  // Need to quote rgPath in case env.appRoot contains spaces
-  let command = `"${rgPath.replace(/"/g, '\\"')}" --json --case-sensitive --binary --sortr modified `; // Quote rgPath
+  // Build the rg arguments as an array and run rg via execFile (no shell).
+  // Using an argument array avoids shell-specific quoting issues: manually
+  // quoting with single quotes breaks on Windows because the default shell
+  // (cmd.exe) does not strip single quotes, so rg would receive literal
+  // quotes around the path and fail with "path not found".
+  // - --case-sensitive matches the original implementation's RegExp usage.
+  // - --binary skips binary files, similar to the original file-type check.
+  const args = [
+    "--json",
+    "--case-sensitive",
+    "--binary",
+    "--sortr",
+    "modified",
+  ];
 
   if (filePattern) {
-    // Add glob pattern. Ensure it's properly quoted.
-    command += `--glob '${filePattern.replace(/'/g, "'\\''")}' `; // Escape single quotes in pattern
+    args.push("--glob", filePattern);
   }
 
-  const absPath = resolve(workspacePath, path.replace(/'/g, "'\\''"));
-  // Add regex and path. Ensure they are properly quoted.
-  command += `'${regex.replace(/'/g, "'\\''")}' '${absPath}'`;
-  logger.debug("command", command);
+  const absPath = resolve(workspacePath, path);
+  // regex and path are passed as distinct arguments, no quoting required.
+  args.push(regex, absPath);
+  logger.debug("command", rgPath, args);
 
   try {
-    const { stdout, stderr } = await execAsync(command, {
+    const { stdout, stderr } = await execFileAsync(rgPath, args, {
       // Set a reasonable maxBuffer size in case of large output
       // Consider streaming if output can be extremely large
       maxBuffer: 1024 * 1024 * 10, // 10M

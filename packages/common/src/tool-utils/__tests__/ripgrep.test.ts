@@ -1,3 +1,4 @@
+import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { execAsyncMock } = vi.hoisted(() => {
@@ -12,7 +13,17 @@ import { searchFilesWithRipgrep } from "../ripgrep";
 
 describe("searchFilesWithRipgrep", () => {
   const rgPath = "/usr/bin/rg";
-  const workspacePath = "/workspace";
+  // Resolve to a platform-appropriate absolute path so assertions work on
+  // both POSIX and Windows (e.g. "C:\\workspace" on Windows).
+  const workspacePath = resolve("/workspace");
+
+  const baseArgs = [
+    "--json",
+    "--case-sensitive",
+    "--binary",
+    "--sortr",
+    "modified",
+  ];
 
   beforeEach(() => {
     execAsyncMock.mockClear();
@@ -27,7 +38,7 @@ describe("searchFilesWithRipgrep", () => {
       {
         type: "match",
         data: {
-          path: { text: "/workspace/src/index.ts" },
+          path: { text: join(workspacePath, "src", "index.ts") },
           lines: { text: "console.log('hello world');\n" },
           line_number: 10,
         },
@@ -35,7 +46,7 @@ describe("searchFilesWithRipgrep", () => {
       {
         type: "match",
         data: {
-          path: { text: "/workspace/src/app.ts" },
+          path: { text: join(workspacePath, "src", "app.ts") },
           lines: { text: "console.log('hello');\n" },
           line_number: 5,
         },
@@ -55,19 +66,20 @@ describe("searchFilesWithRipgrep", () => {
 
     expect(result.matches).toEqual([
       {
-        file: "src/index.ts",
+        file: join("src", "index.ts"),
         line: 10,
         context: "console.log('hello world');",
       },
       {
-        file: "src/app.ts",
+        file: join("src", "app.ts"),
         line: 5,
         context: "console.log('hello');",
       },
     ]);
     expect(result.isTruncated).toBe(false);
     expect(execAsyncMock).toHaveBeenCalledWith(
-      `"/usr/bin/rg" --json --case-sensitive --binary --sortr modified 'hello' '/workspace'`,
+      rgPath,
+      [...baseArgs, "hello", workspacePath],
       expect.any(Object),
     );
   });
@@ -89,16 +101,11 @@ describe("searchFilesWithRipgrep", () => {
   it("should include filePattern in the command when provided", async () => {
     execAsyncMock.mockResolvedValue({ stdout: "", stderr: "" });
 
-    await searchFilesWithRipgrep(
-      ".",
-      "hello",
-      rgPath,
-      workspacePath,
-      "**/*.ts",
-    );
+    await searchFilesWithRipgrep(".", "hello", rgPath, workspacePath, "**/*.ts");
 
     expect(execAsyncMock).toHaveBeenCalledWith(
-      `"/usr/bin/rg" --json --case-sensitive --binary --sortr modified --glob '**/*.ts' 'hello' '/workspace'`,
+      rgPath,
+      [...baseArgs, "--glob", "**/*.ts", "hello", workspacePath],
       expect.any(Object),
     );
   });
@@ -107,7 +114,7 @@ describe("searchFilesWithRipgrep", () => {
     const mockRgOutput = Array.from({ length: 501 }, (_, i) => ({
       type: "match",
       data: {
-        path: { text: `/workspace/file${i}.ts` },
+        path: { text: join(workspacePath, `file${i}.ts`) },
         lines: { text: `line ${i}\n` },
         line_number: i + 1,
       },
@@ -142,11 +149,11 @@ describe("searchFilesWithRipgrep", () => {
 
   it("should handle JSON parsing errors gracefully", async () => {
     const mockRgOutput =
-      'invalid-json\n' +
+      "invalid-json\n" +
       JSON.stringify({
         type: "match",
         data: {
-          path: { text: "/workspace/src/app.ts" },
+          path: { text: join(workspacePath, "src", "app.ts") },
           lines: { text: "console.log('hello');\n" },
           line_number: 5,
         },
@@ -162,14 +169,14 @@ describe("searchFilesWithRipgrep", () => {
     );
 
     expect(result.matches.length).toBe(1);
-    expect(result.matches[0].file).toBe("src/app.ts");
+    expect(result.matches[0].file).toBe(join("src", "app.ts"));
   });
 
   it("should handle exit code 1 with stdout", async () => {
     const mockRgOutput = JSON.stringify({
       type: "match",
       data: {
-        path: { text: "/workspace/src/app.ts" },
+        path: { text: join(workspacePath, "src", "app.ts") },
         lines: { text: "console.log('hello');\n" },
         line_number: 5,
       },

@@ -40,6 +40,7 @@ import { getBaseName } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import {
   getWorktreeNameFromWorktreePath,
+  normalizePathForComparison,
   parseGitOriginUrl,
 } from "@getpochi/common/git-utils";
 import {
@@ -112,10 +113,18 @@ export function WorktreeList({
   } = useWorktrees();
 
   const workspacePath = currentWorkspace?.workspacePath;
-  const isOpenCurrentWorkspace = !!workspacePath && cwd === workspacePath;
+  // `cwd` / `workspacePath` come from VS Code (back slashes, lower-cased drive)
+  // while worktree paths come from git (forward slashes, upper-cased drive), so
+  // normalize before comparing to avoid Windows path-format mismatches.
+  const normalizedCwd = normalizePathForComparison(cwd);
+  const isOpenCurrentWorkspace =
+    !!workspacePath &&
+    normalizePathForComparison(workspacePath) === normalizedCwd;
   const isOpenMainWorktree =
     isOpenCurrentWorkspace &&
-    worktrees?.find((x: GitWorktree) => x.isMain)?.path === cwd;
+    normalizePathForComparison(
+      worktrees?.find((x: GitWorktree) => x.isMain)?.path,
+    ) === normalizedCwd;
   const isGitWorkspace = !!worktrees?.length;
 
   const groups = useMemo(() => {
@@ -183,7 +192,8 @@ export function WorktreeList({
   // If so, we don't need to set a max-height for the section
   const containsOnlyWorkspaceGroup =
     optimisticGroups.length === 1 &&
-    optimisticGroups[0].path === (workspacePath || cwd);
+    normalizePathForComparison(optimisticGroups[0].path) ===
+      normalizePathForComparison(workspacePath || cwd);
 
   const archivedTasks = useArchivedTasks();
   const pinnedTasks = usePinnedTasks();
