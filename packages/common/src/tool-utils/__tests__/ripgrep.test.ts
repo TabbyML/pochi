@@ -10,6 +10,7 @@ vi.mock("node:child_process", () => ({
   spawn: spawnMock,
 }));
 
+import { MaxRipgrepCharLength } from "../limits";
 import { searchFilesWithRipgrep } from "../ripgrep";
 
 class MockChildProcess extends EventEmitter {
@@ -209,6 +210,65 @@ describe("searchFilesWithRipgrep", () => {
 
     expect(result.matches.length).toBe(500);
     expect(result.isTruncated).toBe(true);
+    expect(child.kill).toHaveBeenCalled();
+  });
+
+  it("should truncate a single oversized match to the character limit", async () => {
+    const context = `${"start".repeat(4_000)}${"end".repeat(4_000)}`;
+    const mockRgOutput = JSON.stringify({
+      type: "match",
+      data: {
+        path: { text: "/workspace/generated.js" },
+        lines: { text: `${context}\n` },
+        line_number: 1,
+      },
+    });
+    const child = mockSpawnResult({ stdout: mockRgOutput });
+
+    const result = await searchFilesWithRipgrep(
+      ".",
+      "hello",
+      rgPath,
+      workspacePath,
+    );
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].context).toContain("... [truncated] ...");
+    expect(result.matches[0].context).toMatch(/^start/);
+    expect(result.matches[0].context).toMatch(/end$/);
+    expect(result.isTruncated).toBe(true);
+    expect(JSON.stringify(result).length).toBeLessThanOrEqual(
+      MaxRipgrepCharLength,
+    );
+    expect(child.kill).toHaveBeenCalled();
+  });
+
+  it("should stop when multiple matches reach the character limit", async () => {
+    const mockRgOutput = Array.from({ length: 10 }, (_, i) => ({
+      type: "match",
+      data: {
+        path: { text: `/workspace/file${i}.ts` },
+        lines: { text: `${"content".repeat(1_000)}\n` },
+        line_number: i + 1,
+      },
+    }))
+      .map((o) => JSON.stringify(o))
+      .join("\n");
+    const child = mockSpawnResult({ stdout: mockRgOutput });
+
+    const result = await searchFilesWithRipgrep(
+      ".",
+      "hello",
+      rgPath,
+      workspacePath,
+    );
+
+    expect(result.matches.length).toBeLessThan(10);
+    expect(result.matches.at(-1)?.context).toContain("... [truncated] ...");
+    expect(result.isTruncated).toBe(true);
+    expect(JSON.stringify(result).length).toBeLessThanOrEqual(
+      MaxRipgrepCharLength,
+    );
     expect(child.kill).toHaveBeenCalled();
   });
 
