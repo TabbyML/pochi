@@ -47,12 +47,7 @@ const RequestData = z.object({
       baseURL: z.string().optional(),
       apiKey: z.string().optional(),
       contextWindow: z.number().describe("Context window of the model."),
-      effectiveContextWindow: z
-        .number()
-        .optional()
-        .describe(
-          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
-        ),
+
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
         .boolean()
@@ -70,12 +65,7 @@ const RequestData = z.object({
       baseURL: z.string().optional(),
       apiKey: z.string().optional(),
       contextWindow: z.number().describe("Context window of the model."),
-      effectiveContextWindow: z
-        .number()
-        .optional()
-        .describe(
-          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
-        ),
+
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
         .boolean()
@@ -93,12 +83,7 @@ const RequestData = z.object({
       baseURL: z.string().optional(),
       apiKey: z.string().optional(),
       contextWindow: z.number().describe("Context window of the model."),
-      effectiveContextWindow: z
-        .number()
-        .optional()
-        .describe(
-          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
-        ),
+
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
         .boolean()
@@ -115,12 +100,7 @@ const RequestData = z.object({
       modelId: z.string(),
       vertex: GoogleVertexModel,
       contextWindow: z.number().describe("Context window of the model."),
-      effectiveContextWindow: z
-        .number()
-        .optional()
-        .describe(
-          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
-        ),
+
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
         .boolean()
@@ -137,12 +117,7 @@ const RequestData = z.object({
       modelId: z.string(),
       apiKey: z.string().optional(),
       contextWindow: z.number().describe("Context window of the model."),
-      effectiveContextWindow: z
-        .number()
-        .optional()
-        .describe(
-          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
-        ),
+
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
         .boolean()
@@ -177,12 +152,7 @@ const RequestData = z.object({
         .number()
         .optional()
         .describe("Context window of the model."),
-      effectiveContextWindow: z
-        .number()
-        .optional()
-        .describe(
-          "Effective context window used to cap auto-compaction; sourced from the global Pochi setting.",
-        ),
+
       useToolCallMiddleware: z
         .boolean()
         .optional()

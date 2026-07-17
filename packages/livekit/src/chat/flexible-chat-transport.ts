@@ -92,6 +92,7 @@ function createAbortAwareUIStreamTransform(
 
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
+  getEffectiveContextWindow?: () => number | undefined;
   getEnvironment?: () => Promise<Environment>;
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
   isTodoModeActive?: () => boolean;

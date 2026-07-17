@@ -6,11 +6,6 @@ export const MaxSummaryOutputTokens = 20_000;
 
 export const AutoCompactBufferTokens = 13_000;
 
-// Most models degrade on agentic tasks well before very large declared
-// windows are exhausted. When no effectiveContextWindow is configured,
-// auto-compaction triggers at this token count.
-export const DefaultEffectiveContextWindow = 160_000;
-
 export const MaxConsecutiveAutoCompactFailures = 3;
 
 export function getAutoCompactThreshold(
@@ -20,26 +15,17 @@ export function getAutoCompactThreshold(
   // The effective window is the point where auto-compaction triggers. When the
   // model's real context window is too small to hold that point plus the
   // summary output, back off so the compaction request itself doesn't overflow.
-  const triggerPoint = effectiveContextWindow ?? DefaultEffectiveContextWindow;
+  const triggerPoint =
+    effectiveContextWindow ?? constants.DefaultEffectiveContextWindow;
   const bufferLimit =
     contextWindow - MaxSummaryOutputTokens - AutoCompactBufferTokens;
   return Math.max(Math.min(triggerPoint, bufferLimit), 0);
 }
 
-function resolveContextWindow(llm: RequestData["llm"] | undefined): {
-  contextWindow: number;
-  effectiveContextWindow?: number;
-} {
+function resolveContextWindow(llm: RequestData["llm"] | undefined): number {
   const declared =
     llm && "contextWindow" in llm ? llm.contextWindow : undefined;
-  const effective =
-    llm && "effectiveContextWindow" in llm
-      ? llm.effectiveContextWindow
-      : undefined;
-  return {
-    contextWindow: declared || constants.DefaultContextWindow,
-    effectiveContextWindow: effective,
-  };
+  return declared || constants.DefaultContextWindow;
 }
 
 export function shouldAutoCompact({
@@ -47,11 +33,13 @@ export function shouldAutoCompact({
   llm,
   task,
   estimatedTotalTokens,
+  effectiveContextWindow,
 }: {
   messages: Message[];
   llm: RequestData["llm"] | undefined;
   task: Task | null | undefined;
   estimatedTotalTokens?: number;
+  effectiveContextWindow?: number;
 }): boolean {
   const attachIndex = findAutoCompactAttachIndex(messages);
   if (attachIndex === undefined) return false;
@@ -73,7 +61,7 @@ export function shouldAutoCompact({
   );
   if (totalTokens < constants.CompactTaskMinTokens) return false;
 
-  const { contextWindow, effectiveContextWindow } = resolveContextWindow(llm);
+  const contextWindow = resolveContextWindow(llm);
   if (
     totalTokens < getAutoCompactThreshold(contextWindow, effectiveContextWindow)
   ) {
