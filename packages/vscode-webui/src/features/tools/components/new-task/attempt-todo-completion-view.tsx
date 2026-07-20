@@ -41,30 +41,23 @@ export function AttemptTodoCompletionView({
     : undefined;
   const auditError = getToolPartError(tool);
   const wasStopped = isToolCallCancellationError(auditError);
-  const hasAuditFailure =
-    !wasStopped &&
-    (!!auditError ||
-      (tool.state === "output-available" && resolved === undefined));
+  const hasAuditFailure = !wasStopped && !!auditError;
   let title = t("attemptTodoCompletionView.auditing");
 
-  if (resolved) {
-    title = t("attemptTodoCompletionView.completed");
-  } else if (resolved === false && !isExecuting) {
-    title = t("attemptTodoCompletionView.needsWork");
-  } else if (wasStopped) {
+  if (wasStopped) {
     title = t("attemptTodoCompletionView.stopped");
   } else if (hasAuditFailure) {
     title = t("attemptTodoCompletionView.unavailable");
+  } else if (resolved) {
+    title = t("attemptTodoCompletionView.completed");
+  } else if (resolved === false && !isExecuting) {
+    title = t("attemptTodoCompletionView.needsWork");
   }
 
-  const auditStatusDescription = wasStopped
-    ? t("attemptTodoCompletionView.stoppedDescription")
-    : hasAuditFailure
-      ? t("attemptTodoCompletionView.unavailableDescription")
-      : undefined;
   const hasTaskThread = !!taskSource && taskSource.messages.length > 1;
-  const showInlineTaskThread = !summary && hasTaskThread;
-  const showFooterTaskThread = !showInlineTaskThread && hasTaskThread;
+  const showSummary = !!summary && !auditError;
+  const showInlineTaskThread = !showSummary && hasTaskThread;
+  const showFooterTaskThread = showSummary && hasTaskThread;
   const isAuditInProgress =
     isExecuting && !wasStopped && !hasAuditFailure && resolved !== true;
 
@@ -94,7 +87,7 @@ export function AttemptTodoCompletionView({
         </span>
       }
     >
-      {summary ? (
+      {showSummary ? (
         <div className="px-3 py-2 text-muted-foreground leading-6">
           <MessageMarkdown>{summary}</MessageMarkdown>
         </div>
@@ -109,13 +102,11 @@ export function AttemptTodoCompletionView({
             assistant={{ name: "Todo" }}
           />
         </FixedStateChatContextProvider>
-      ) : (
-        auditStatusDescription && (
-          <div className="px-4 py-3 text-muted-foreground leading-6">
-            {auditStatusDescription}
-          </div>
-        )
-      )}
+      ) : auditError ? (
+        <div className="px-4 py-3 text-muted-foreground leading-6">
+          {auditError}
+        </div>
+      ) : null}
     </SubAgentView>
   );
 }

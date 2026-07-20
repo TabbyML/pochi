@@ -72,7 +72,7 @@ const taskMessages: Message[] = [
     parts: [
       {
         type: "text",
-        text: "The audit is checking the workspace state.",
+        text: "This is message list",
         state: "done",
       },
     ],
@@ -156,13 +156,13 @@ export const States: Story = {
           },
         } as never,
       }),
-      makeProps("Stopped after summary", {
+      makeProps("Stopped after result with thread", {
         ...baseTool,
         toolCallId: "tool_attempt_todo_completion-stopped-after-summary",
         state: "output-available",
         output: {
           result: {
-            summary: "The audit produced a summary before it was stopped.",
+            summary: "Cancelled audit summary that should stay hidden.",
             todos: auditTodos,
           },
           error: "User aborted the tool call",
@@ -193,8 +193,8 @@ export const States: Story = {
         toolCallId: "tool_attempt_todo_completion-unavailable",
         state: "output-available",
         output: {
-          result: "not valid audit output",
-        },
+          error: "Invalid attemptTodoCompletion result",
+        } as never,
       }),
       makeProps(
         "Unavailable result fallback",
@@ -203,8 +203,8 @@ export const States: Story = {
           toolCallId: "tool_attempt_todo_completion-unavailable-fallback",
           state: "output-available",
           output: {
-            result: "not valid audit output",
-          },
+            error: "Invalid attemptTodoCompletion result",
+          } as never,
         },
         { taskSource: emptyTaskSource },
       ),
