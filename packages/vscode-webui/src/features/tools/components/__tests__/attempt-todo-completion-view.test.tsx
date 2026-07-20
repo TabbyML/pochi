@@ -97,6 +97,25 @@ function makeErroredAttemptTodoCompletionTool(error: string) {
   } as never;
 }
 
+function makeCompletedAndErroredAttemptTodoCompletionTool(
+  result: unknown,
+  error: string,
+) {
+  return {
+    type: "tool-newTask",
+    toolCallId: "attempt-todo-completion",
+    state: "output-available",
+    input: {
+      agentType: "attemptTodoCompletion",
+      description: "Audit todo completion",
+    },
+    output: {
+      result,
+      error,
+    },
+  } as never;
+}
+
 const taskSource: TaskThreadSource = {
   messages: [
     {
@@ -110,6 +129,11 @@ const taskSource: TaskThreadSource = {
       parts: [{ type: "text", text: "Still checking" }],
     },
   ],
+  todos: [],
+};
+
+const emptyTaskSource: TaskThreadSource = {
+  messages: [],
   todos: [],
 };
 
@@ -137,7 +161,7 @@ describe("AttemptTodoCompletionView", () => {
     });
   });
 
-  it("enables the footer thread drawer after the audit stops running", () => {
+  it("keeps the audit thread inline after the audit stops without a summary", () => {
     render(
       <AttemptTodoCompletionView
         uid="attempt-uid"
@@ -149,9 +173,9 @@ describe("AttemptTodoCompletionView", () => {
       />,
     );
 
-    expect(screen.queryByTestId("task-thread")).toBeNull();
+    expect(screen.getByTestId("task-thread")).toBeTruthy();
     expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
-      showTaskThread: true,
+      showTaskThread: false,
     });
   });
 
@@ -255,12 +279,104 @@ describe("AttemptTodoCompletionView", () => {
     );
 
     expect(screen.getByText("attemptTodoCompletionView.stopped")).toBeTruthy();
+    expect(screen.getByTestId("task-thread")).toBeTruthy();
     expect(
-      screen.getByText("attemptTodoCompletionView.stoppedDescription"),
-    ).toBeTruthy();
+      screen.queryByText("attemptTodoCompletionView.stoppedDescription"),
+    ).toBeNull();
     expect(
       screen.queryByText("attemptTodoCompletionView.unavailable"),
     ).toBeNull();
+    expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
+      showTaskThread: false,
+    });
+  });
+
+  it("keeps stopped audit content in the card body after user cancellation while still executing", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeErroredAttemptTodoCompletionTool(
+          "User aborted the tool call",
+        )}
+        isExecuting={true}
+        isLoading={true}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(
+      screen.getByText("attemptTodoCompletionView.stopped").className,
+    ).not.toContain("animated-gradient-text");
+    expect(screen.getByTestId("task-thread")).toBeTruthy();
+    expect(
+      screen.queryByText("attemptTodoCompletionView.stoppedDescription"),
+    ).toBeNull();
+    expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
+      showTaskThread: false,
+    });
+  });
+
+  it("renders a padded stopped fallback when cancellation has no thread messages", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeErroredAttemptTodoCompletionTool(
+          "User aborted the tool call",
+        )}
+        isExecuting={true}
+        isLoading={true}
+        messages={[]}
+        taskSource={emptyTaskSource}
+      />,
+    );
+
+    const fallback = screen.getByText(
+      "attemptTodoCompletionView.stoppedDescription",
+    );
+    expect(fallback.className).toContain("px-4");
+    expect(fallback.className).toContain("py-3");
+    expect(screen.queryByTestId("task-thread")).toBeNull();
+    expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
+      showTaskThread: false,
+    });
+  });
+
+  it("renders a tool result summary before cancellation fallback text", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAndErroredAttemptTodoCompletionTool(
+          {
+            summary: "The audit produced a summary before cancellation.",
+            todos: [
+              {
+                id: "todo-1",
+                content: "Add one test",
+                status: "completed",
+                priority: "medium",
+              },
+            ],
+          },
+          "User aborted the tool call",
+        )}
+        isExecuting={true}
+        isLoading={true}
+        messages={[]}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(
+      screen.getByText("The audit produced a summary before cancellation."),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("attemptTodoCompletionView.stoppedDescription"),
+    ).toBeNull();
+    expect(screen.queryByTestId("task-thread")).toBeNull();
+    expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
+      showTaskThread: true,
+    });
   });
 
   it("renders a stopped title after cancellation caused by a previous tool failure", () => {
@@ -283,7 +399,7 @@ describe("AttemptTodoCompletionView", () => {
     ).toBeNull();
   });
 
-  it("renders an unavailable title for malformed audit results", () => {
+  it("keeps the audit thread inline for malformed audit results with messages", () => {
     render(
       <AttemptTodoCompletionView
         uid="attempt-uid"
@@ -298,9 +414,39 @@ describe("AttemptTodoCompletionView", () => {
     expect(
       screen.getByText("attemptTodoCompletionView.unavailable"),
     ).toBeTruthy();
+    expect(screen.getByTestId("task-thread")).toBeTruthy();
     expect(
-      screen.getByText("attemptTodoCompletionView.unavailableDescription"),
+      screen.queryByText("attemptTodoCompletionView.unavailableDescription"),
+    ).toBeNull();
+    expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
+      showTaskThread: false,
+    });
+  });
+
+  it("renders a padded unavailable fallback for malformed audit results without thread messages", () => {
+    render(
+      <AttemptTodoCompletionView
+        uid="attempt-uid"
+        tool={makeCompletedAttemptTodoCompletionTool("not valid audit output")}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+        taskSource={emptyTaskSource}
+      />,
+    );
+
+    expect(
+      screen.getByText("attemptTodoCompletionView.unavailable"),
     ).toBeTruthy();
+    const fallback = screen.getByText(
+      "attemptTodoCompletionView.unavailableDescription",
+    );
+    expect(fallback.className).toContain("px-4");
+    expect(fallback.className).toContain("py-3");
+    expect(
+      screen.queryByText("attemptTodoCompletionView.stoppedDescription"),
+    ).toBeNull();
+    expect(screen.queryByTestId("task-thread")).toBeNull();
   });
 
   it("keeps the auditing title while the audit is still executing", () => {

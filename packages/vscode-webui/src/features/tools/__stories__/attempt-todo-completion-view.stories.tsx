@@ -85,6 +85,12 @@ const taskSource: TaskThreadSource = {
   isLoading: false,
 };
 
+const emptyTaskSource: TaskThreadSource = {
+  messages: [],
+  todos: auditTodos,
+  isLoading: false,
+};
+
 const baseTool: NewTaskToolViewProps["tool"] = {
   state: "input-available",
   toolCallId: "tool_attempt_todo_completion",
@@ -99,16 +105,20 @@ const baseTool: NewTaskToolViewProps["tool"] = {
 function makeProps(
   label: string,
   tool: NewTaskToolViewProps["tool"],
-  isExecuting = false,
+  options: {
+    isExecuting?: boolean;
+    isLoading?: boolean;
+    taskSource?: AttemptTodoCompletionProps["taskSource"];
+  } = {},
 ): AttemptTodoCompletionProps {
   return {
     label,
     uid: tool.toolCallId,
     tool,
-    isExecuting,
-    isLoading: false,
+    isExecuting: options.isExecuting ?? false,
+    isLoading: options.isLoading ?? false,
     messages: [],
-    taskSource,
+    taskSource: options.taskSource ?? taskSource,
     isLastPart: true,
   };
 }
@@ -117,12 +127,12 @@ export const States: Story = {
   args: {
     variants: [
       makeProps(
-        "Auditing",
+        "Auditing with thread",
         {
           ...baseTool,
           toolCallId: "tool_attempt_todo_completion-auditing",
         },
-        true,
+        { isExecuting: true },
       ),
       makeProps("Completed", {
         ...baseTool,
@@ -146,7 +156,19 @@ export const States: Story = {
           },
         } as never,
       }),
-      makeProps("Stopped before summary", {
+      makeProps("Stopped after summary", {
+        ...baseTool,
+        toolCallId: "tool_attempt_todo_completion-stopped-after-summary",
+        state: "output-available",
+        output: {
+          result: {
+            summary: "The audit produced a summary before it was stopped.",
+            todos: auditTodos,
+          },
+          error: "User aborted the tool call",
+        } as never,
+      }),
+      makeProps("Stopped before summary with thread", {
         ...baseTool,
         toolCallId: "tool_attempt_todo_completion-stopped",
         state: "output-available",
@@ -154,7 +176,19 @@ export const States: Story = {
           error: "User aborted the tool call",
         } as never,
       }),
-      makeProps("Unavailable summary", {
+      makeProps(
+        "Stopped before summary fallback",
+        {
+          ...baseTool,
+          toolCallId: "tool_attempt_todo_completion-stopped-fallback",
+          state: "output-available",
+          output: {
+            error: "User aborted the tool call",
+          } as never,
+        },
+        { isExecuting: true, isLoading: true, taskSource: emptyTaskSource },
+      ),
+      makeProps("Unavailable result with thread", {
         ...baseTool,
         toolCallId: "tool_attempt_todo_completion-unavailable",
         state: "output-available",
@@ -162,6 +196,18 @@ export const States: Story = {
           result: "not valid audit output",
         },
       }),
+      makeProps(
+        "Unavailable result fallback",
+        {
+          ...baseTool,
+          toolCallId: "tool_attempt_todo_completion-unavailable-fallback",
+          state: "output-available",
+          output: {
+            result: "not valid audit output",
+          },
+        },
+        { taskSource: emptyTaskSource },
+      ),
     ],
   },
 };

@@ -45,10 +45,6 @@ export function AttemptTodoCompletionView({
     !wasStopped &&
     (!!auditError ||
       (tool.state === "output-available" && resolved === undefined));
-  const showTaskThread =
-    isExecuting && !summary && !!taskSource && taskSource.messages.length > 1;
-  const showFooterTaskThread = !isExecuting;
-
   let title = t("attemptTodoCompletionView.auditing");
 
   if (resolved) {
@@ -61,11 +57,16 @@ export function AttemptTodoCompletionView({
     title = t("attemptTodoCompletionView.unavailable");
   }
 
-  const fallbackDescription = wasStopped
+  const auditStatusDescription = wasStopped
     ? t("attemptTodoCompletionView.stoppedDescription")
     : hasAuditFailure
       ? t("attemptTodoCompletionView.unavailableDescription")
       : undefined;
+  const hasTaskThread = !!taskSource && taskSource.messages.length > 1;
+  const showInlineTaskThread = !summary && hasTaskThread;
+  const showFooterTaskThread = !showInlineTaskThread && hasTaskThread;
+  const isAuditInProgress =
+    isExecuting && !wasStopped && !hasAuditFailure && resolved !== true;
 
   return (
     <SubAgentView
@@ -86,7 +87,7 @@ export function AttemptTodoCompletionView({
         <span
           className={cn(
             "break-words align-middle font-medium text-foreground group-hover:underline",
-            isExecuting && "animated-gradient-text",
+            isAuditInProgress && "animated-gradient-text",
           )}
         >
           {title}
@@ -97,22 +98,22 @@ export function AttemptTodoCompletionView({
         <div className="px-3 py-2 text-muted-foreground leading-6">
           <MessageMarkdown>{summary}</MessageMarkdown>
         </div>
-      ) : fallbackDescription && !showTaskThread ? (
-        <div className="px-3 py-2 text-muted-foreground leading-6">
-          {fallbackDescription}
-        </div>
+      ) : showInlineTaskThread ? (
+        <FixedStateChatContextProvider
+          toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+        >
+          <TaskThread
+            source={{ ...taskSource, isLoading: false }}
+            showMessageList={true}
+            scrollAreaClassName="my-0 max-h-[180px] border-none"
+            assistant={{ name: "Todo" }}
+          />
+        </FixedStateChatContextProvider>
       ) : (
-        showTaskThread && (
-          <FixedStateChatContextProvider
-            toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-          >
-            <TaskThread
-              source={{ ...taskSource, isLoading: false }}
-              showMessageList={true}
-              scrollAreaClassName="my-0 max-h-[180px] border-none"
-              assistant={{ name: "Todo" }}
-            />
-          </FixedStateChatContextProvider>
+        auditStatusDescription && (
+          <div className="px-4 py-3 text-muted-foreground leading-6">
+            {auditStatusDescription}
+          </div>
         )
       )}
     </SubAgentView>
