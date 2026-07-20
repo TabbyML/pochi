@@ -145,7 +145,11 @@ export async function repairMermaid({
 
     // Commit all updated messages to the database in a single transaction
     if (updatedMessages.length > 0) {
-      store.commit(events.updateMessages({ messages: updatedMessages }));
+      store.commit(
+        events.mermaidRepaired({
+          repairs: updatedMessages.map(({ id, parts }) => ({ id, parts })),
+        }),
+      );
       logger.debug(
         `Committed ${updatedMessages.length} updated message(s) to database`,
       );

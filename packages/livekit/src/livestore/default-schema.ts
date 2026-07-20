@@ -5,6 +5,7 @@ import {
   deprecated,
   makeSchema,
 } from "@livestore/livestore";
+import { Duration } from "@livestore/utils/effect";
 import {
   DBMessage,
   DBUIPart,
@@ -270,10 +271,38 @@ export const events = {
       content: Schema.String,
     }),
   }),
-  updateMessages: Events.synced({
+  // @deprecated kept for backward compatibility with existing event logs
+  _updateMessages: Events.synced({
     name: "v1.UpdateMessages",
     schema: Schema.Struct({
       messages: Schema.Array(DBMessage),
+    }),
+    deprecated:
+      "Use inlineCompactAttached, mermaidRepaired, or toolsExecutionDurationRecorded instead",
+  }),
+  inlineCompactAttached: Events.synced({
+    name: "v1.InlineCompactAttached",
+    schema: Schema.Struct({
+      id: Schema.String,
+      text: Schema.String,
+    }),
+  }),
+  mermaidRepaired: Events.synced({
+    name: "v1.MermaidRepaired",
+    schema: Schema.Struct({
+      repairs: Schema.Array(
+        Schema.Struct({
+          id: Schema.String,
+          parts: Schema.Array(DBUIPart),
+        }),
+      ),
+    }),
+  }),
+  toolsExecutionDurationRecorded: Events.synced({
+    name: "v1.ToolsExecutionDurationRecorded",
+    schema: Schema.Struct({
+      id: Schema.String,
+      duration: Schema.DurationFromMillis,
     }),
   }),
   forkTaskInited: Events.synced({
@@ -514,6 +543,7 @@ const materializers = State.SQLite.materializers(events, {
         updatedAt,
       })
       .where({ id }),
+  // @deprecated materializer kept for backward compatibility
   "v1.UpdateMessages": ({ messages }) =>
     messages.map((message) =>
       tables.messages
@@ -522,6 +552,52 @@ const materializers = State.SQLite.materializers(events, {
         })
         .where({ id: message.id }),
     ),
+  "v1.InlineCompactAttached": ({ id, text }, ctx) => {
+    const row = ctx.query(
+      tables.messages.where("id", "=", id).first({ behaviour: "undefined" }),
+    );
+    if (!row) return [];
+    return tables.messages
+      .update({
+        data: {
+          ...row.data,
+          parts: [{ type: "text", text }, ...row.data.parts],
+        },
+      })
+      .where({ id });
+  },
+  "v1.MermaidRepaired": ({ repairs }, ctx) =>
+    repairs.flatMap(({ id, parts }) => {
+      const row = ctx.query(
+        tables.messages.where("id", "=", id).first({ behaviour: "undefined" }),
+      );
+      if (!row) return [];
+      return tables.messages
+        .update({ data: { ...row.data, parts: [...parts] } })
+        .where({ id });
+    }),
+  "v1.ToolsExecutionDurationRecorded": ({ id, duration }, ctx) => {
+    const row = ctx.query(
+      tables.messages.where("id", "=", id).first({ behaviour: "undefined" }),
+    );
+    if (!row) return [];
+    const previousDuration =
+      row.data.metadata?.kind === "assistant"
+        ? row.data.metadata.totalToolsExecutionDuration
+        : undefined;
+    return tables.messages
+      .update({
+        data: {
+          ...row.data,
+          metadata: {
+            ...row.data.metadata,
+            totalToolsExecutionDuration:
+              (previousDuration ?? 0) + Duration.toMillis(duration),
+          },
+        },
+      })
+      .where({ id });
+  },
   "v1.ForkTaskInited": ({ tasks, messages, files }) => [
     ...tasks.map((task) =>
       tables.tasks.insert({
