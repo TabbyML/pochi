@@ -193,7 +193,7 @@ export const States: Story = {
         toolCallId: "tool_attempt_todo_completion-unavailable",
         state: "output-available",
         output: {
-          error: "Invalid attemptTodoCompletion result",
+          error: "Todo audit failed",
         } as never,
       }),
       makeProps(
@@ -203,7 +203,7 @@ export const States: Story = {
           toolCallId: "tool_attempt_todo_completion-unavailable-fallback",
           state: "output-available",
           output: {
-            error: "Invalid attemptTodoCompletion result",
+            error: "Todo audit failed",
           } as never,
         },
         { taskSource: emptyTaskSource },

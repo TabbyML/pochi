@@ -388,9 +388,7 @@ describe("AttemptTodoCompletionView", () => {
     render(
       <AttemptTodoCompletionView
         uid="attempt-uid"
-        tool={makeErroredAttemptTodoCompletionTool(
-          "Invalid attemptTodoCompletion result",
-        )}
+        tool={makeErroredAttemptTodoCompletionTool("Todo audit failed")}
         isExecuting={false}
         isLoading={false}
         messages={[]}
@@ -402,9 +400,7 @@ describe("AttemptTodoCompletionView", () => {
       screen.getByText("attemptTodoCompletionView.unavailable"),
     ).toBeTruthy();
     expect(screen.getByTestId("task-thread")).toBeTruthy();
-    expect(
-      screen.queryByText("Invalid attemptTodoCompletion result"),
-    ).toBeNull();
+    expect(screen.queryByText("Todo audit failed")).toBeNull();
     expect(subAgentViewMock.mock.calls[0]?.[0]).toMatchObject({
       showTaskThread: false,
     });
@@ -414,9 +410,7 @@ describe("AttemptTodoCompletionView", () => {
     render(
       <AttemptTodoCompletionView
         uid="attempt-uid"
-        tool={makeErroredAttemptTodoCompletionTool(
-          "Invalid attemptTodoCompletion result",
-        )}
+        tool={makeErroredAttemptTodoCompletionTool("Todo audit failed")}
         isExecuting={false}
         isLoading={false}
         messages={[]}
@@ -427,7 +421,7 @@ describe("AttemptTodoCompletionView", () => {
     expect(
       screen.getByText("attemptTodoCompletionView.unavailable"),
     ).toBeTruthy();
-    const fallback = screen.getByText("Invalid attemptTodoCompletion result");
+    const fallback = screen.getByText("Todo audit failed");
     expect(fallback.className).toContain("px-4");
     expect(fallback.className).toContain("py-3");
     expect(screen.queryByTestId("task-thread")).toBeNull();
