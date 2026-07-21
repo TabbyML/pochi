@@ -1355,6 +1355,8 @@ icon: "Code"
 
 # Tab Completion
 
+> **Unavailable:** Tab Completion and Next Edit Suggestions are turned off in current releases. Pochi does not provide editor predictions or display the associated status bar indicator. The documentation below is retained for reference.
+
 **Tab Completion** is Pochi's in-editor inline code completion feature that provides AI-powered suggestions as you type, helping you write code faster and more efficiently.
 
 Pochi uses a state-of-the-art model that adapts to your coding patterns in real time,
