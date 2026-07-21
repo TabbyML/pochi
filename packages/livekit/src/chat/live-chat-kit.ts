@@ -816,15 +816,32 @@ export class LiveChatKit<
     if (toolsExecution) {
       const duration = Date.now() - toolsExecution.startedAt.getTime();
       const messages = this.chat.messages;
-      if (messages.some((m) => m.id === toolsExecution.messageId)) {
+      const messageToUpdate = messages.find(
+        (message) => message.id === toolsExecution.messageId,
+      );
+      if (messageToUpdate) {
+        const updatedMessages = messages.map((message) =>
+          message.id === toolsExecution.messageId
+            ? ({
+                ...message,
+                metadata: {
+                  ...message.metadata,
+                  totalToolsExecutionDuration:
+                    message.metadata?.kind === "assistant" &&
+                    message.metadata.totalToolsExecutionDuration !== undefined
+                      ? message.metadata.totalToolsExecutionDuration + duration
+                      : duration,
+                },
+              } as Message)
+            : message,
+        );
         this.store.commit(
           events.toolsExecutionDurationRecorded({
             id: toolsExecution.messageId,
             duration: Duration.millis(duration),
           }),
         );
-        const updatedMessagesFromStore = this.messages;
-        this.chat.messages = updatedMessagesFromStore;
+        this.chat.messages = updatedMessages;
       }
     }
   };
