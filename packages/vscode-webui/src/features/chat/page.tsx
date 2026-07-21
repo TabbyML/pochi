@@ -394,10 +394,13 @@ function Chat({ user, uid, info }: ChatProps) {
     messages,
   });
 
+  const lastMessage = messages.at(-1);
+  const lastUserMessageId =
+    lastMessage?.role === "user" ? lastMessage.id : undefined;
+
   useScrollToBottom({
     messagesContainerRef,
-    isLoading,
-    pendingApprovalName: pendingApproval?.name,
+    lastUserMessageId,
   });
   const showRenderWidgetFixButton =
     !isLoading && !pendingApproval && !!renderWidgetErrorKind;
