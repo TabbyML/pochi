@@ -50,6 +50,7 @@ interface UseChatSubmitProps {
   setQueuedMessages: React.Dispatch<React.SetStateAction<QueuedMessage[]>>;
   reviews: Review[];
   taskId: string;
+  includeUserEdits?: boolean;
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
@@ -73,6 +74,7 @@ export function useChatSubmit({
   setQueuedMessages,
   reviews,
   taskId,
+  includeUserEdits = true,
   isTodoMode = false,
   canCreateTodo = true,
   onTodoModeQueued,
@@ -285,7 +287,7 @@ export function useChatSubmit({
             text,
             uploadedAttachments,
             messageReviews,
-            userEdits,
+            includeUserEdits ? userEdits : [],
             activeSelection,
           );
           logger.debug("Sending message with files");
@@ -308,7 +310,7 @@ export function useChatSubmit({
           text,
           [],
           messageReviews,
-          userEdits,
+          includeUserEdits ? userEdits : [],
           activeSelection,
         );
 
@@ -336,6 +338,7 @@ export function useChatSubmit({
       clearFiles,
       reviews,
       userEdits,
+      includeUserEdits,
       activeSelection,
       isLoading,
       isExecuting,

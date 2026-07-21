@@ -16,6 +16,14 @@ const messageUtilsMocks = vi.hoisted(() => ({
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
 }));
+const userEditsMocks = vi.hoisted(() => ({
+  userEdits: [] as Array<{
+    filepath: string;
+    diff: string;
+    added: number;
+    removed: number;
+  }>,
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -26,7 +34,7 @@ vi.mock("@/lib/hooks/use-active-selection", () => ({
 }));
 
 vi.mock("@/lib/hooks/use-user-edits", () => ({
-  useUserEdits: () => [],
+  useUserEdits: () => userEditsMocks.userEdits,
 }));
 
 vi.mock("@/lib/message-utils", () => ({
@@ -52,6 +60,7 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
+    userEditsMocks.userEdits = [];
   });
 
   it("queues Enter submissions while the chat is busy without stopping", async () => {
@@ -350,6 +359,34 @@ describe("useChatSubmit", () => {
       parts: ["text:check this"],
     });
   });
+
+  it("excludes user edits after they are removed from the input", async () => {
+    userEditsMocks.userEdits = [
+      {
+        filepath: "src/example.ts",
+        diff: "+const value = 1;",
+        added: 1,
+        removed: 0,
+      },
+    ];
+    const context = setup({
+      isLoading: false,
+      includeUserEdits: false,
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit();
+    });
+
+    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+      expect.any(Function),
+      "follow up",
+      [],
+      [],
+      [],
+      undefined,
+    );
+  });
 });
 
 function setup({
@@ -358,6 +395,7 @@ function setup({
   queuedMessages: initialQueuedMessages = [],
   files = [],
   reviews = [],
+  includeUserEdits = true,
   isTodoMode = false,
   canCreateTodo = true,
   onTodoModeQueued,
@@ -369,6 +407,7 @@ function setup({
   queuedMessages?: QueuedMessage[];
   files?: File[];
   reviews?: Review[];
+  includeUserEdits?: boolean;
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
@@ -418,6 +457,7 @@ function setup({
       setQueuedMessages,
       reviews,
       taskId: "task-1",
+      includeUserEdits,
       isTodoMode,
       canCreateTodo,
       onTodoModeQueued,

@@ -34,6 +34,8 @@ interface ChatInputFormProps {
   reviews: Review[];
   taskId?: string;
   lastCheckpointHash?: string;
+  includeUserEdits?: boolean;
+  onRemoveUserEdits?: () => void;
   onSwitchSubmitMode?: () => void;
   isPlanMode?: boolean;
   onSelectTodoMode?: () => void;
@@ -68,6 +70,8 @@ export const ChatInputForm = forwardRef<
     reviews,
     taskId,
     lastCheckpointHash,
+    includeUserEdits = true,
+    onRemoveUserEdits,
     children,
     onSwitchSubmitMode,
     onSelectTodoMode,
@@ -133,8 +137,12 @@ export const ChatInputForm = forwardRef<
           todoModeDisabled={todoModeDisabled}
         />
         <ActiveSelectionBadge />
-        {taskId && lastCheckpointHash && (
-          <UserEditsBadge taskId={taskId} lastCheckpoint={lastCheckpointHash} />
+        {includeUserEdits && taskId && lastCheckpointHash && (
+          <UserEditsBadge
+            taskId={taskId}
+            lastCheckpoint={lastCheckpointHash}
+            onRemove={onRemoveUserEdits}
+          />
         )}
         <ReviewBadges reviews={reviews} />
       </div>

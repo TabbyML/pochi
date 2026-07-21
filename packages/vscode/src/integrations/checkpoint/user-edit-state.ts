@@ -1,3 +1,4 @@
+import * as path from "node:path";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { getLogger } from "@getpochi/common";
@@ -10,6 +11,8 @@ import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskActivityTracker } from "../editor/task-activity-tracker";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { GitState } from "../git/git-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { CheckpointService } from "./checkpoint-service";
 
 const logger = getLogger("UserEditState");
@@ -21,12 +24,19 @@ export class UserEditState implements vscode.Disposable {
 
   // Mapping from task uid to hash.
   private trackingTasks = new Map<string, string | undefined>();
+  private branchBaselines = new Map<
+    string,
+    { taskCheckpoint: string | undefined; baseline: string }
+  >();
+  private branchBaselinePending = false;
+  private branchBaselineRevision = 0;
   private disposables: vscode.Disposable[] = [];
 
   constructor(
     private readonly workspaceScope: WorkspaceScope,
     private readonly checkpointService: CheckpointService,
     private readonly taskActivityTracker: TaskActivityTracker,
+    private readonly gitState: GitState,
   ) {
     this.setupEventListeners();
   }
@@ -80,6 +90,7 @@ export class UserEditState implements vscode.Disposable {
         for (const uid of this.trackingTasks.keys()) {
           if (!tasks[uid] || tasks[uid].cwd !== this.cwd) {
             this.trackingTasks.delete(uid);
+            this.branchBaselines.delete(uid);
             delete newEdits[uid];
           }
         }
@@ -97,6 +108,7 @@ export class UserEditState implements vscode.Disposable {
             if (this.trackingTasks.get(uid) !== hash) {
               logger.trace(`Adding/updating tracking task ${uid}`, { hash });
               this.trackingTasks.set(uid, hash);
+              this.branchBaselines.delete(uid);
               isDirty = true;
             }
           }
@@ -115,7 +127,46 @@ export class UserEditState implements vscode.Disposable {
         this.triggerUpdate.call();
       }),
     });
+
+    this.disposables.push(
+      this.gitState.onDidChangeBranch(({ repository }) => {
+        const cwd = this.cwd;
+        if (!cwd) return;
+
+        const relativePath = path.relative(repository, cwd);
+        if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+          return;
+        }
+
+        this.resetBaselineAfterBranchChange();
+      }),
+    );
   }
+
+  private resetBaselineAfterBranchChange = runExclusive.build(async () => {
+    this.branchBaselinePending = true;
+    this.branchBaselineRevision++;
+    const trackingTasks = new Map<string, string | undefined>(
+      this.trackingTasks,
+    );
+    this.edits.value = Object.fromEntries(
+      Array.from(trackingTasks.keys(), (uid) => [uid, []]),
+    );
+
+    try {
+      const baseline = await this.checkpointService.saveUserEditBaseline();
+      for (const [uid, taskCheckpoint] of trackingTasks) {
+        if (this.trackingTasks.get(uid) === taskCheckpoint) {
+          this.branchBaselines.set(uid, { taskCheckpoint, baseline });
+        }
+      }
+    } catch (error) {
+      logger.error("Failed to reset user edits after branch change", error);
+    } finally {
+      this.branchBaselinePending = false;
+      this.triggerUpdate.call();
+    }
+  });
 
   private triggerUpdate = funnel(() => this.updateEdits(), {
     minGapMs: 1000,
@@ -123,25 +174,35 @@ export class UserEditState implements vscode.Disposable {
   });
 
   private updateEdits = runExclusive.build(async () => {
-    if (this.trackingTasks.size === 0) {
+    if (this.trackingTasks.size === 0 || this.branchBaselinePending) {
       return;
     }
 
+    const branchBaselineRevision = this.branchBaselineRevision;
     const nextEdits = { ...this.edits.value };
 
     for (const [uid, hash] of this.trackingTasks.entries()) {
       try {
         const latestCheckpoint = this.checkpointService.latestCheckpoint.value;
+        const storedBranchBaseline = this.branchBaselines.get(uid);
+        const branchBaseline =
+          storedBranchBaseline?.taskCheckpoint === hash
+            ? storedBranchBaseline
+            : undefined;
+        const effectiveHash = branchBaseline?.baseline ?? hash;
         logger.trace(
-          `Updating edits for task ${uid} with hash ${hash}, latest ${latestCheckpoint}`,
+          `Updating edits for task ${uid} with hash ${effectiveHash}, latest ${latestCheckpoint}`,
         );
         // If the checkpoint hash is not the latest, or if there's no checkpoint yet,
         // we cannot guarantee the diffs are accurate, so we clear them.
-        if (!hash || hash !== latestCheckpoint) {
+        if (
+          !effectiveHash ||
+          (!branchBaseline && effectiveHash !== latestCheckpoint)
+        ) {
           nextEdits[uid] = [];
         } else {
           const diffs = await this.checkpointService.getCheckpointFileEdits(
-            hash,
+            effectiveHash,
             undefined,
             {
               maxSizeLimit: 20 * 1024,
@@ -150,13 +211,17 @@ export class UserEditState implements vscode.Disposable {
           );
 
           if (this.trackingTasks.has(uid)) {
-            logger.trace("set diffs for task", uid, hash);
+            logger.trace("set diffs for task", uid, effectiveHash);
             nextEdits[uid] = diffs ?? [];
           }
         }
       } catch (error) {
         logger.error(`Failed to update user edits for hash ${hash}`, error);
       }
+    }
+
+    if (branchBaselineRevision !== this.branchBaselineRevision) {
+      return;
     }
 
     // Clean up any hashes that are no longer tracked

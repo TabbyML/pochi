@@ -25,6 +25,7 @@ import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
+import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
@@ -121,6 +122,30 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { input, setInput, clearInput } = useChatInputState();
 
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [excludedUserEditsContext, setExcludedUserEditsContext] =
+    useState<string>();
+  const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
+  const userEdits = useUserEdits(taskId);
+  const userEditsContext = useMemo(() => {
+    if (!lastCheckpointHash || userEdits.length === 0) return undefined;
+
+    return JSON.stringify([
+      taskId,
+      lastCheckpointHash,
+      userEdits.map(({ filepath, diff }) => [filepath, diff]),
+    ]);
+  }, [lastCheckpointHash, taskId, userEdits]);
+  const includeUserEdits =
+    !userEditsContext || excludedUserEditsContext !== userEditsContext;
+
+  useEffect(() => {
+    if (
+      excludedUserEditsContext &&
+      excludedUserEditsContext !== userEditsContext
+    ) {
+      setExcludedUserEditsContext(undefined);
+    }
+  }, [excludedUserEditsContext, userEditsContext]);
 
   const [isDevMode] = useIsDevMode();
   const canUseTodoMode = isDevMode === true;
@@ -232,6 +257,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     setQueuedMessages,
     reviews,
     taskId: taskId,
+    includeUserEdits,
     isTodoMode: todoModeSelected,
     canCreateTodo: !todoModeDisabled,
     onTodoModeQueued: resetTodoMode,
@@ -412,7 +438,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           isSubTask={isSubTask}
           reviews={reviews}
           taskId={taskId}
-          lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
+          lastCheckpointHash={lastCheckpointHash}
+          includeUserEdits={includeUserEdits}
+          onRemoveUserEdits={() =>
+            setExcludedUserEditsContext(userEditsContext)
+          }
           onAttachFile={() => fileInputRef.current?.click()}
           onSelectTodoMode={
             showTodoMode ? () => setTodoModeSelected(true) : undefined

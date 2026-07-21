@@ -557,6 +557,7 @@
     "filesEdited_one": "已编辑 {{count}} 个文件",
     "filesEdited_other": "已编辑 {{count}} 个文件",
     "tooltip": "您的编辑已被跟踪，并将包含在上下文中",
+    "remove": "从上下文中移除用户编辑",
     "showDiff": "显示差异",
     "diffTitle": "用户编辑"
   },
