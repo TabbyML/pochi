@@ -278,7 +278,7 @@ export const events = {
       messages: Schema.Array(DBMessage),
     }),
     deprecated:
-      "Use inlineCompactAttached, mermaidRepaired, or toolsExecutionDurationRecorded instead",
+      "Use inlineCompactAttached, mermaidRepaired, or toolsExecutionFinished instead",
   }),
   inlineCompactAttached: Events.synced({
     name: "v1.InlineCompactAttached",
@@ -298,10 +298,11 @@ export const events = {
       ),
     }),
   }),
-  toolsExecutionDurationRecorded: Events.synced({
-    name: "v1.ToolsExecutionDurationRecorded",
+  toolsExecutionFinished: Events.synced({
+    name: "v1.ToolsExecutionFinished",
     schema: Schema.Struct({
       id: Schema.String,
+      parts: Schema.Array(DBUIPart),
       duration: Schema.DurationFromMillis,
     }),
   }),
@@ -576,7 +577,7 @@ const materializers = State.SQLite.materializers(events, {
         .update({ data: { ...row.data, parts: [...parts] } })
         .where({ id });
     }),
-  "v1.ToolsExecutionDurationRecorded": ({ id, duration }, ctx) => {
+  "v1.ToolsExecutionFinished": ({ id, parts, duration }, ctx) => {
     const row = ctx.query(
       tables.messages.where("id", "=", id).first({ behaviour: "undefined" }),
     );
@@ -589,6 +590,7 @@ const materializers = State.SQLite.materializers(events, {
       .update({
         data: {
           ...row.data,
+          parts: [...parts],
           metadata: {
             ...row.data.metadata,
             totalToolsExecutionDuration:

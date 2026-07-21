@@ -88,7 +88,7 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 
-  it("preserves in-memory tool results when recording execution duration", () => {
+  it("persists tool results when recording execution duration", () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date(1_000));
@@ -141,7 +141,8 @@ describe("LiveChatKit memory lifecycle", () => {
         totalToolsExecutionDuration: 250,
       });
       expect(store.taskMessages("parent").at(-1)?.parts[0]).toMatchObject({
-        state: "input-available",
+        state: "output-available",
+        output: { content: "README contents" },
       });
       expect(store.taskMessages("parent").at(-1)?.metadata).toMatchObject({
         totalToolsExecutionDuration: 250,
@@ -653,8 +654,8 @@ class FakeStore {
       this.commitUpdateTotalTokens(event.args);
       return;
     }
-    if (event.name === "v1.ToolsExecutionDurationRecorded") {
-      this.commitToolsExecutionDurationRecorded(event.args);
+    if (event.name === "v1.ToolsExecutionFinished") {
+      this.commitToolsExecutionFinished(event.args);
       return;
     }
     throw new Error(`Unsupported event ${event.name}`);
@@ -748,8 +749,9 @@ class FakeStore {
     });
   }
 
-  private commitToolsExecutionDurationRecorded(args: Record<string, unknown>) {
+  private commitToolsExecutionFinished(args: Record<string, unknown>) {
     const id = args.id as string;
+    const parts = args.parts as Message["parts"];
     const duration = Duration.toMillis(args.duration as Duration.Duration);
     for (const [taskId, messages] of this.messages) {
       if (!messages.some((message) => message.id === id)) continue;
@@ -759,6 +761,7 @@ class FakeStore {
           message.id === id
             ? ({
                 ...message,
+                parts,
                 metadata: {
                   ...message.metadata,
                   totalToolsExecutionDuration:

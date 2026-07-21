@@ -836,8 +836,9 @@ export class LiveChatKit<
             : message,
         );
         this.store.commit(
-          events.toolsExecutionDurationRecorded({
+          events.toolsExecutionFinished({
             id: toolsExecution.messageId,
+            parts: messageToUpdate.parts,
             duration: Duration.millis(duration),
           }),
         );
