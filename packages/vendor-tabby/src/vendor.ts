@@ -162,8 +162,14 @@ export class Tabby extends VendorBase {
     );
   }
 
-  override async fetchModels(): Promise<Record<string, ModelOptions>> {
-    if (!this.cachedModels || Object.keys(this.cachedModels).length === 0) {
+  override async fetchModels(
+    forceRefresh?: boolean,
+  ): Promise<Record<string, ModelOptions>> {
+    if (
+      forceRefresh ||
+      !this.cachedModels ||
+      Object.keys(this.cachedModels).length === 0
+    ) {
       const creds = (await this.getCredentials()) as TabbyCredentials;
 
       const endpoints = await withRetry(() => this.fetchEndpoints(creds), {
