@@ -398,7 +398,7 @@ function Chat({ user, uid, info }: ChatProps) {
   const lastUserMessageId =
     lastMessage?.role === "user" ? lastMessage.id : undefined;
 
-  useScrollToBottom({
+  const { onToolCallApprovalVisible } = useScrollToBottom({
     messagesContainerRef,
     lastUserMessageId,
   });
@@ -486,6 +486,7 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
+          onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}
         />

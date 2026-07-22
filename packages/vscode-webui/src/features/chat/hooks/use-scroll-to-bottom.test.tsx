@@ -102,7 +102,7 @@ describe("useScrollToBottom", () => {
 
     expect(context.scrollTo).toHaveBeenCalledWith({
       top: 1000,
-      behavior: "smooth",
+      behavior: "auto",
     });
   });
 
@@ -115,6 +115,21 @@ describe("useScrollToBottom", () => {
     expect(context.scrollTo).toHaveBeenCalledWith({
       top: 1000,
       behavior: "auto",
+    });
+  });
+
+  it("scrolls when tool call approval buttons become visible", () => {
+    const context = setup();
+
+    context.scrollTo.mockClear();
+
+    act(() => {
+      context.onToolCallApprovalVisible();
+    });
+
+    expect(context.scrollTo).toHaveBeenCalledWith({
+      top: 1000,
+      behavior: "smooth",
     });
   });
 });
@@ -138,7 +153,7 @@ function setup(
   const hook = renderHook(
     ({ lastUserMessageId }: HookProps) => {
       const ref = useRef<HTMLDivElement | null>(container);
-      useScrollToBottom({
+      return useScrollToBottom({
         messagesContainerRef: ref,
         lastUserMessageId,
       });
@@ -152,12 +167,18 @@ function setup(
 
   return {
     container,
+    onToolCallApprovalVisible:
+      hook.result.current?.onToolCallApprovalVisible ?? missingApprovalCallback,
     rerender: hook.rerender,
     resizeObserver: ResizeObserverMock.instances[0],
     scrollTo,
     setScrollTop,
     userScrollTo,
   };
+}
+
+function missingApprovalCallback() {
+  throw new Error("onToolCallApprovalVisible is not available");
 }
 
 function createScrollContainer() {

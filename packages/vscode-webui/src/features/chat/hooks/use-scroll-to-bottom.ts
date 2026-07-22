@@ -1,6 +1,6 @@
 import { useIsAtBottom } from "@/lib/hooks/use-is-at-bottom";
 import type React from "react";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 interface UseScrollToBottomProps {
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -43,7 +43,7 @@ export function useScrollToBottom({
     }
 
     lastObservedUserMessageIdRef.current = lastUserMessageId;
-    scrollToBottom();
+    scrollToBottom(false);
   }, [lastUserMessageId, scrollToBottom]);
 
   // Initial scroll to bottom once when component mounts (without smooth behavior)
@@ -52,4 +52,12 @@ export function useScrollToBottom({
       scrollToBottom(false); // false = not smooth
     }
   }, [scrollToBottom, messagesContainerRef]);
+
+  const onToolCallApprovalVisible = useCallback(() => {
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  return {
+    onToolCallApprovalVisible,
+  };
 }
