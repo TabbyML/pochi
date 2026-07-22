@@ -193,11 +193,16 @@ describe("selectAgentTools", () => {
     );
   });
 
-  it("exposes createReview only for reviewer agents that declare it", () => {
+  it("exposes declared review source tools to reviewer agents", () => {
     const reviewerTools = selectAgentTools({
       agent: createAgent({
         name: "reviewer",
-        tools: ["createReview", "readFile"],
+        tools: [
+          "createReview",
+          "executeCommand(gh pr diff *)",
+          "executeCommand(sh */worktree-isolation/scripts/create-worktree.sh *)",
+          "readFile",
+        ],
       }),
       isSubTask: false,
     });
@@ -217,7 +222,12 @@ describe("selectAgentTools", () => {
     });
 
     expect(toolNames(reviewerTools)).toEqual(
-      [...RequiredAgentToolNames, "createReview", "readFile"].sort(),
+      [
+        ...RequiredAgentToolNames,
+        "createReview",
+        "executeCommand",
+        "readFile",
+      ].sort(),
     );
     expect(toolNames(reviewerWithoutCreateReview)).toEqual(
       [...RequiredAgentToolNames, "readFile"].sort(),

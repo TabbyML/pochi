@@ -129,6 +129,8 @@ build_exe() {
                 --banner='import * as undici from "undici";' \
                 --asset-naming="[dir]/[name].[ext]" \
                 --loader .md:file \
+                --loader .ps1:file \
+                --loader .sh:file \
                 --external lightningcss \
                 --compile \
                 --outfile ./dist/pochi \
