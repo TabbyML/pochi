@@ -41,31 +41,25 @@ export function AttemptTodoCompletionView({
     : undefined;
   const auditError = getToolPartError(tool);
   const wasStopped = isToolCallCancellationError(auditError);
-  const hasAuditFailure =
-    !wasStopped &&
-    (!!auditError ||
-      (tool.state === "output-available" && resolved === undefined));
-  const showTaskThread =
-    isExecuting && !summary && !!taskSource && taskSource.messages.length > 1;
-  const showFooterTaskThread = !isExecuting;
-
+  const hasAuditFailure = !wasStopped && !!auditError;
   let title = t("attemptTodoCompletionView.auditing");
 
-  if (resolved) {
-    title = t("attemptTodoCompletionView.completed");
-  } else if (resolved === false && !isExecuting) {
-    title = t("attemptTodoCompletionView.needsWork");
-  } else if (wasStopped) {
+  if (wasStopped) {
     title = t("attemptTodoCompletionView.stopped");
   } else if (hasAuditFailure) {
     title = t("attemptTodoCompletionView.unavailable");
+  } else if (resolved) {
+    title = t("attemptTodoCompletionView.completed");
+  } else if (resolved === false && !isExecuting) {
+    title = t("attemptTodoCompletionView.needsWork");
   }
 
-  const fallbackDescription = wasStopped
-    ? t("attemptTodoCompletionView.stoppedDescription")
-    : hasAuditFailure
-      ? t("attemptTodoCompletionView.unavailableDescription")
-      : undefined;
+  const hasTaskThread = !!taskSource && taskSource.messages.length > 1;
+  const showSummary = !!summary && !auditError;
+  const showInlineTaskThread = !showSummary && hasTaskThread;
+  const showFooterTaskThread = showSummary && hasTaskThread;
+  const isAuditInProgress =
+    isExecuting && !wasStopped && !hasAuditFailure && resolved !== true;
 
   return (
     <SubAgentView
@@ -86,35 +80,33 @@ export function AttemptTodoCompletionView({
         <span
           className={cn(
             "break-words align-middle font-medium text-foreground group-hover:underline",
-            isExecuting && "animated-gradient-text",
+            isAuditInProgress && "animated-gradient-text",
           )}
         >
           {title}
         </span>
       }
     >
-      {summary ? (
+      {showSummary ? (
         <div className="px-3 py-2 text-muted-foreground leading-6">
           <MessageMarkdown>{summary}</MessageMarkdown>
         </div>
-      ) : fallbackDescription && !showTaskThread ? (
-        <div className="px-3 py-2 text-muted-foreground leading-6">
-          {fallbackDescription}
+      ) : showInlineTaskThread ? (
+        <FixedStateChatContextProvider
+          toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+        >
+          <TaskThread
+            source={{ ...taskSource, isLoading: false }}
+            showMessageList={true}
+            scrollAreaClassName="my-0 max-h-[180px] border-none"
+            assistant={{ name: "Todo" }}
+          />
+        </FixedStateChatContextProvider>
+      ) : auditError ? (
+        <div className="px-4 py-3 text-muted-foreground leading-6">
+          {auditError}
         </div>
-      ) : (
-        showTaskThread && (
-          <FixedStateChatContextProvider
-            toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-          >
-            <TaskThread
-              source={{ ...taskSource, isLoading: false }}
-              showMessageList={true}
-              scrollAreaClassName="my-0 max-h-[180px] border-none"
-              assistant={{ name: "Todo" }}
-            />
-          </FixedStateChatContextProvider>
-        )
-      )}
+      ) : null}
     </SubAgentView>
   );
 }

@@ -36,6 +36,8 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const { t } = useTranslation();
   const store = useDefaultStore();
   const file = useStoreFile("/plan.md");
+  const planContent = file?.content;
+  const showPlanArtifact = !!planContent;
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const { count, incrementCount } = useReviewPlanTutorialCounter();
@@ -74,6 +76,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
       isExecuting={isExecuting}
       taskSource={taskSource}
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
+      showTaskThread={showPlanArtifact}
       headerActions={
         isVSCodeEnvironment() &&
         file && (
@@ -145,10 +148,10 @@ export function PlannerView(props: NewTaskToolViewProps) {
         )
       }
     >
-      {file?.content ? (
+      {showPlanArtifact ? (
         <ScrollArea viewportClassname="h-[300px]">
           <div className="p-3 text-xs">
-            <MessageMarkdown>{file.content}</MessageMarkdown>
+            <MessageMarkdown>{planContent}</MessageMarkdown>
           </div>
         </ScrollArea>
       ) : taskSource && taskSource.messages.length > 1 ? (

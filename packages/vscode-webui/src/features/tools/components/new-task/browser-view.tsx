@@ -24,6 +24,11 @@ export function BrowserView(props: NewTaskToolViewProps) {
 
   const file = useStoreFile(`/browser-session/${tool.toolCallId}.mp4`);
   const videoUrl = file?.content;
+  const hasToolSettled =
+    tool.state === "output-available" || tool.state === "output-error";
+  const showRecordingVideo = !!videoUrl && (!isExecuting || hasToolSettled);
+  const showBrowserFrame = !!frame;
+  const showBrowserArtifact = showRecordingVideo || showBrowserFrame;
 
   return (
     <SubAgentView
@@ -32,10 +37,11 @@ export function BrowserView(props: NewTaskToolViewProps) {
       isExecuting={isExecuting}
       taskSource={taskSource}
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
-      showToolCall
+      showToolCall={showBrowserArtifact}
+      showTaskThread={showBrowserArtifact}
     >
       <div className="aspect-video w-full overflow-hidden">
-        {!isExecuting && videoUrl ? (
+        {showRecordingVideo ? (
           // biome-ignore lint/a11y/useMediaCaption: No audio track available
           <video
             src={`${videoUrl}#t=${BrowserRecordingVideoOffsetSeconds}`}
@@ -43,7 +49,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
             playsInline
             className="h-full w-full object-contain"
           />
-        ) : frame ? (
+        ) : showBrowserFrame ? (
           <img
             src={`data:image/jpeg;base64,${frame}`}
             alt="Browser view"
