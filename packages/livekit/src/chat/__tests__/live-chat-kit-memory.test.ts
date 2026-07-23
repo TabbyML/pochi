@@ -3,6 +3,7 @@ import type {
   BackgroundTaskState,
   TaskMemoryState,
 } from "@getpochi/common";
+import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -85,6 +86,70 @@ describe("LiveChatKit memory lifecycle", () => {
       input: { path: "README.md" },
       errorText: "User aborted the tool call",
     });
+  });
+
+  it("persists tool results when recording execution duration", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(1_000));
+      const store = new FakeStore([
+        makeTask({
+          id: "parent",
+          status: "pending-tool",
+          background: false,
+        }),
+      ]);
+      store.setTaskMessages("parent", [
+        userMessage(),
+        assistantReadFileMessage("input-available"),
+      ]);
+      const chatKit = new LiveChatKit<FakeChat>({
+        taskId: "parent",
+        store: store as unknown as LiveKitStore,
+        blobStore: {} as BlobStore,
+        chatClass: FakeChat,
+        getters: {
+          getLLM: () => ({ id: "test-model" }) as never,
+        },
+      });
+
+      chatKit.markStartToolsExecution();
+      vi.setSystemTime(new Date(1_250));
+      chatKit.chat.messages = [
+        userMessage(),
+        {
+          ...assistantReadFileMessage("input-available"),
+          parts: [
+            {
+              type: "tool-readFile",
+              toolCallId: "call-read-file",
+              state: "output-available",
+              input: { path: "README.md" },
+              output: { content: "README contents" },
+            },
+          ],
+        } as unknown as Message,
+      ];
+
+      chatKit.markEndToolsExecution();
+
+      expect(chatKit.chat.messages.at(-1)?.parts[0]).toMatchObject({
+        state: "output-available",
+        output: { content: "README contents" },
+      });
+      expect(chatKit.chat.messages.at(-1)?.metadata).toMatchObject({
+        totalToolsExecutionDuration: 250,
+      });
+      expect(store.taskMessages("parent").at(-1)?.parts[0]).toMatchObject({
+        state: "output-available",
+        output: { content: "README contents" },
+      });
+      expect(store.taskMessages("parent").at(-1)?.metadata).toMatchObject({
+        totalToolsExecutionDuration: 250,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("strips OpenAI item references from the failed step before saving", () => {
@@ -589,6 +654,10 @@ class FakeStore {
       this.commitUpdateTotalTokens(event.args);
       return;
     }
+    if (event.name === "v1.ToolsExecutionFinished") {
+      this.commitToolsExecutionFinished(event.args);
+      return;
+    }
     throw new Error(`Unsupported event ${event.name}`);
   }
 
@@ -604,6 +673,10 @@ class FakeStore {
 
   taskMessages(taskId: string) {
     return this.messages.get(taskId) ?? [];
+  }
+
+  setTaskMessages(taskId: string, messages: Message[]) {
+    this.messages.set(taskId, messages);
   }
 
   private commitTaskInited(args: Record<string, unknown>) {
@@ -674,6 +747,34 @@ class FakeStore {
       totalTokens: args.totalTokens as number,
       updatedAt: args.updatedAt as Date,
     });
+  }
+
+  private commitToolsExecutionFinished(args: Record<string, unknown>) {
+    const id = args.id as string;
+    const parts = args.parts as Message["parts"];
+    const duration = Duration.toMillis(args.duration as Duration.Duration);
+    for (const [taskId, messages] of this.messages) {
+      if (!messages.some((message) => message.id === id)) continue;
+      this.messages.set(
+        taskId,
+        messages.map((message) =>
+          message.id === id
+            ? ({
+                ...message,
+                parts,
+                metadata: {
+                  ...message.metadata,
+                  totalToolsExecutionDuration:
+                    (message.metadata?.kind === "assistant"
+                      ? (message.metadata.totalToolsExecutionDuration ?? 0)
+                      : 0) + duration,
+                },
+              } as Message)
+            : message,
+        ),
+      );
+      return;
+    }
   }
 
   private extractTaskId(query: { hash?: string }) {

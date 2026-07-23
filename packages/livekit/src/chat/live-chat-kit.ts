@@ -817,28 +817,32 @@ export class LiveChatKit<
       const duration = Date.now() - toolsExecution.startedAt.getTime();
       const messages = this.chat.messages;
       const messageToUpdate = messages.find(
-        (m) => m.id === toolsExecution.messageId,
+        (message) => message.id === toolsExecution.messageId,
       );
       if (messageToUpdate) {
-        const updatedMessages = messages.map((m) => {
-          if (m.id === toolsExecution.messageId) {
-            return {
-              ...m,
-              metadata: {
-                ...m.metadata,
-                totalToolsExecutionDuration:
-                  m.metadata?.kind === "assistant" &&
-                  m.metadata.totalToolsExecutionDuration !== undefined
-                    ? m.metadata.totalToolsExecutionDuration + duration
-                    : duration,
-              },
-            };
-          }
-          return m;
-        });
-        this.store.commit(events.updateMessages({ messages: updatedMessages }));
-        const updatedMessagesFromStore = this.messages;
-        this.chat.messages = updatedMessagesFromStore;
+        const updatedMessages = messages.map((message) =>
+          message.id === toolsExecution.messageId
+            ? ({
+                ...message,
+                metadata: {
+                  ...message.metadata,
+                  totalToolsExecutionDuration:
+                    message.metadata?.kind === "assistant" &&
+                    message.metadata.totalToolsExecutionDuration !== undefined
+                      ? message.metadata.totalToolsExecutionDuration + duration
+                      : duration,
+                },
+              } as Message)
+            : message,
+        );
+        this.store.commit(
+          events.toolsExecutionFinished({
+            id: toolsExecution.messageId,
+            parts: messageToUpdate.parts,
+            duration: Duration.millis(duration),
+          }),
+        );
+        this.chat.messages = updatedMessages;
       }
     }
   };
