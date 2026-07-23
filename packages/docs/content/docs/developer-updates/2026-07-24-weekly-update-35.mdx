@@ -1,0 +1,68 @@
+---
+title: 'Weekly Update #35'
+---
+# Weekly Update #35
+
+### TL;DR
+
+This release makes long-running work more transparent and controllable. You get a clearer picture of where a task spends its context and its time, and quicker access to the controls that shape it.
+
+More below!
+
+### 🚀 Features
+
+- **Pochi can read your existing terminals:** Pochi can now inspect output from any terminal that is already open in VS Code, not only background jobs it started itself. Your own terminals stay read-only to Pochi, so it can read their output but can never close or kill them.
+
+  Previously Pochi could only read output from background jobs it had started. A dev server or test watcher running in a terminal you opened yourself was invisible to it, so it had to spin up a duplicate process to see comparable output.
+
+  Most useful when a development server, test watcher, or build is already running and you want Pochi to diagnose its latest output without starting a duplicate process. [**#1779**](https://github.com/TabbyML/pochi/pull/1779)
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    }}
+  >
+    <source src="https://assets.docs.getpochi.com/docs/85/85ebbd14f25f3499b2d0f2a742b08f813bb1c6f09d3be34d7e76516848c896f6.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+- **Predictable compaction for long tasks:** You can now see and set the point where Pochi compacts a long conversation. The token-usage bar shows where compaction will trigger, and the default is 160k tokens, which advanced users can raise for models with larger context windows.
+
+  Previously the compaction point was derived from the model's declared context window rather than a value you could see on the bar or set yourself. A long task could get summarized deep in the model's context window, the least reliable part.
+
+  This keeps very long tasks from pushing models into the least reliable part of their context window while still allowing larger windows when needed. [**#1774**](https://github.com/TabbyML/pochi/pull/1774), [**#1796**](https://github.com/TabbyML/pochi/pull/1796)
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    }}
+  >
+    <source src="https://assets.docs.getpochi.com/docs/23/23684ffed6bdc3bef5560b8b1d1f167f6b48acea79ee764dbcd0033a3277c443.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+### ✨ Enhancements
+
+- **See how long each task step took:** Completed steps and tasks now show how long they took, so you can see where Pochi spent its time across model responses and tool work. [**#1775**](https://github.com/TabbyML/pochi/pull/1775)
+
+  <div class="w-1/2 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Completed steps showing how long each one took](https://assets.docs.getpochi.com/docs/c9/c9226ed76f6e208fc28c010f495ed224a7a855166cd8b114250e1d90ac375970)</div>
+
+- **One menu for context and working modes:** The new **Add Context** menu lets you attach the active selection, files, or folders and switch Todo or Plan mode, all from the prompt toolbar.
+
+  Clear badges show which context and mode will be used before you submit, and the Todo toggle that used to sit in the toolbar now lives inside this menu so the controls are in one place. [**#1753**](https://github.com/TabbyML/pochi/pull/1753)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![The open Add Context menu with attach and mode options](https://assets.docs.getpochi.com/docs/37/37c36c2e11786fc132ecd30f80dff57c64b87b4bd3d97914ea6b54ec44ac9e6c)</div>
+
+### 🐛 Bug Fixes
+
+- **Cleaner, persistent background-job terminals:** Background-job tabs now use concise command names instead of filling the terminal bar with long commands. Their links also remain active after a command finishes, so you can still reopen the correct terminal until you close it. [**#1784**](https://github.com/TabbyML/pochi/pull/1784), [**#1782**](https://github.com/TabbyML/pochi/pull/1782)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Background-job terminal tabs with concise command names](https://assets.docs.getpochi.com/docs/7d/7df488a9e0344a045509091d2aac646ec7915661f9d85271b50abd47371f1599)</div>
+
+- **New sidebar tasks stay open:** Tasks created from the sidebar now open as pinned tabs, so opening another editor no longer replaces the task you just started. [**#1771**](https://github.com/TabbyML/pochi/pull/1771)
