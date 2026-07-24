@@ -60,7 +60,9 @@ def fibonacci(n):
       "gh pr diff 123",
       "gh pr diff feature-branch --patch",
       'sh "/opt/pochi/skills/worktree-isolation/scripts/create-worktree.sh" --topic "review auth" --base HEAD',
+      'sh "/opt/pochi/skills/worktree-isolation/scripts/create-worktree.sh" --topic "review auth" --base HEAD --init',
       'powershell -ExecutionPolicy Bypass -File "C:\\pochi\\skills\\worktree-isolation\\scripts\\create-worktree-windows.ps1" -Topic "review auth" -Base HEAD',
+      'powershell -ExecutionPolicy Bypass -File "C:\\pochi\\skills\\worktree-isolation\\scripts\\create-worktree-windows.ps1" -Topic "review auth" -Base HEAD -Initialize',
     ];
 
     for (const command of allowedCommands) {

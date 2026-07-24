@@ -1,6 +1,7 @@
 param(
   [string]$Topic = "",
-  [string]$Base = "HEAD"
+  [string]$Base = "HEAD",
+  [switch]$Initialize
 )
 
 $ErrorActionPreference = "Stop"
@@ -85,10 +86,12 @@ try {
   New-Item -ItemType Directory -Path $worktreeParent -Force | Out-Null
   Invoke-Git -GitArgs @("worktree", "add", "-b", $branch, $worktreePath, $Base) | Out-Host
 
-  $includeFile = Join-Path $mainWorktree ".worktreeinclude"
-  if (Test-Path -LiteralPath $includeFile -PathType Leaf) {
-    try {
+  if ($Initialize) {
+    $includeFile = Join-Path $mainWorktree ".worktreeinclude"
+    if (Test-Path -LiteralPath $includeFile -PathType Leaf) {
       $includedFiles = @(Invoke-Git -GitArgs @(
+        "-c",
+        "core.quotePath=false",
         "-C",
         $mainWorktree,
         "ls-files",
@@ -103,35 +106,29 @@ try {
         }
         $segments = $relativePath -split "[\\/]"
         if ([IO.Path]::IsPathRooted($relativePath) -or $segments -contains "..") {
-          Write-Warning "Skipping unsafe .worktreeinclude path: $relativePath"
-          continue
+          throw "Unsafe .worktreeinclude path: $relativePath"
         }
 
         $sourcePath = Join-Path $mainWorktree $relativePath
         $destinationPath = Join-Path $worktreePath $relativePath
-        try {
-          New-Item -ItemType Directory -Path (Split-Path -Parent $destinationPath) -Force | Out-Null
-          Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
-        } catch {
-          Write-Warning "Failed to copy .worktreeinclude file $relativePath`: $($_.Exception.Message)"
-        }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destinationPath) -Force | Out-Null
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
       }
-    } catch {
-      Write-Warning "Failed to list .worktreeinclude files; continuing without them."
     }
-  }
 
-  $initScript = Join-Path $worktreePath ".pochi/init.ps1"
-  if (Test-Path -LiteralPath $initScript -PathType Leaf) {
-    Push-Location -LiteralPath $worktreePath
-    try {
-      & powershell -ExecutionPolicy Bypass -File ./.pochi/init.ps1
-      if ($LASTEXITCODE -ne 0) {
-        throw "The worktree init script failed."
+    $initScript = Join-Path $worktreePath ".pochi/init.ps1"
+    if (Test-Path -LiteralPath $initScript -PathType Leaf) {
+      Push-Location -LiteralPath $worktreePath
+      try {
+        & powershell -ExecutionPolicy Bypass -File ./.pochi/init.ps1
+        if ($LASTEXITCODE -ne 0) {
+          throw "The worktree init script failed."
+        }
+      } finally {
+        Pop-Location
       }
-    } finally {
-      Pop-Location
     }
+
     $initialized = $true
   }
 

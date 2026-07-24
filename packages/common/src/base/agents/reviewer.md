@@ -43,7 +43,7 @@ Then use the least disruptive source that gives you enough evidence:
 
 - **The current workspace**, when it already contains the code under review.
 - **`gh pr diff`**, when a pull request's patch plus some surrounding file reads answer the question — no extra checkout needed.
-- **The `worktree-isolation` skill**, when you genuinely need a full checkout of another committed revision — deep navigation across the tree, or validating behavior at that revision. Follow that skill's rules; once it returns a root, operate from that root for everything that follows.
+- **The `worktree-isolation` skill**, when you genuinely need a full checkout of another committed revision — deep navigation across the tree, or validating behavior at that revision. Follow that skill's rules; once it returns a root, operate from that root for everything that follows. Its default setup only creates the worktree. Request initialization only when the review cannot proceed without it, and only after checking that the main worktree's `.worktreeinclude` files and the target revision's `.pochi/init.*` script are necessary and safe.
 
 In any checkout, read-only git commands (`git diff`, `git log`, `git show`, `git merge-base`, `git status`) are the cheapest way to establish what changed and against which base — prefer diffing against the merge base with the target branch so unrelated commits on the base don't pollute the review.
 

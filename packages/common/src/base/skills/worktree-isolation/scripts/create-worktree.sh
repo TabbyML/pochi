@@ -4,6 +4,7 @@ set -eu
 
 topic=""
 base="HEAD"
+initialize=false
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -16,6 +17,10 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -ge 2 ] || { echo "Missing value for --base" >&2; exit 2; }
       base=$2
       shift 2
+      ;;
+    --init)
+      initialize=true
+      shift
       ;;
     *)
       echo "Unknown argument: $1" >&2
@@ -104,21 +109,27 @@ if ! git worktree add -b "$branch" "$worktree_path" "$base"; then
   exit 1
 fi
 
-include_file="$main_worktree/.worktreeinclude"
-if [ -f "$include_file" ]; then
-  if included_files=$(git -C "$main_worktree" ls-files --others --ignored --exclude-from="$include_file"); then
-    printf '%s\n' "$included_files" | while IFS= read -r relative_path; do
+initialized=false
+if [ "$initialize" = true ]; then
+  include_file="$main_worktree/.worktreeinclude"
+  if [ -f "$include_file" ]; then
+    if ! included_files=$(git -c core.quotePath=false -C "$main_worktree" ls-files --others --ignored --exclude-from="$include_file"); then
+      emit_result false "$worktree_path" "$branch" "$base" false "Failed to list .worktreeinclude files."
+      exit 1
+    fi
+
+    if ! printf '%s\n' "$included_files" | while IFS= read -r relative_path; do
       [ -n "$relative_path" ] || continue
       case "$relative_path" in
         /*|../*|..)
-          echo "Skipping unsafe .worktreeinclude path: $relative_path" >&2
-          continue
+          echo "Unsafe .worktreeinclude path: $relative_path" >&2
+          exit 1
           ;;
       esac
       case "/$relative_path/" in
         */../*)
-          echo "Skipping unsafe .worktreeinclude path: $relative_path" >&2
-          continue
+          echo "Unsafe .worktreeinclude path: $relative_path" >&2
+          exit 1
           ;;
       esac
 
@@ -126,19 +137,21 @@ if [ -f "$include_file" ]; then
       destination_path="$worktree_path/$relative_path"
       if ! mkdir -p "$(dirname "$destination_path")" || ! cp "$source_path" "$destination_path"; then
         echo "Failed to copy .worktreeinclude file: $relative_path" >&2
+        exit 1
       fi
-    done
-  else
-    echo "Failed to list .worktreeinclude files; continuing without them." >&2
+    done; then
+      emit_result false "$worktree_path" "$branch" "$base" false "Failed to copy .worktreeinclude files."
+      exit 1
+    fi
   fi
-fi
 
-initialized=false
-if [ -f "$worktree_path/.pochi/init.sh" ]; then
-  if ! (cd "$worktree_path" && sh ./.pochi/init.sh); then
-    emit_result false "$worktree_path" "$branch" "$base" false "The worktree init script failed."
-    exit 1
+  if [ -f "$worktree_path/.pochi/init.sh" ]; then
+    if ! (cd "$worktree_path" && sh ./.pochi/init.sh); then
+      emit_result false "$worktree_path" "$branch" "$base" false "The worktree init script failed."
+      exit 1
+    fi
   fi
+
   initialized=true
 fi
 

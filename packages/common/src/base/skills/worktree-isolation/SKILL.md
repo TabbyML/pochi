@@ -23,10 +23,11 @@ Whether the task is read-only does not decide this; what decides it is where the
 
 These hold no matter how you reached this skill:
 
-1. Worktrees are created **only** by the trusted script below. Never run `git worktree add`, create the branch, or prepare the destination yourself — the script owns setup, ignored-file propagation (`.worktreeinclude`), and project initialization.
+1. Worktrees are created **only** by the trusted script below. Never run `git worktree add`, create the branch, or prepare the destination yourself — the script owns setup and the optional initialization phase.
 2. Preparing or using a worktree must never modify, discard, or migrate any existing tracked or untracked changes in the user's workspace.
 3. Do not commit in the worktree unless the user explicitly asks for a commit.
 4. Leave the worktree and its branch in place when you finish — even after a failure, do not remove a partially created worktree. Cleanup is the user's decision.
+5. Initialization is opt-in. By default the script must not copy `.worktreeinclude` files or run project scripts.
 
 ## Creating it
 
@@ -36,6 +37,13 @@ Resolve the script relative to this `SKILL.md` and run exactly one command with 
 - Windows: `powershell -ExecutionPolicy Bypass -File <skill-directory>/scripts/create-worktree-windows.ps1 -Topic <short-topic> -Base <committed-base>`
 
 Pass the exact committed base the task requires; use `HEAD` only when the current commit really is the intended base. Do not pass shell fragments.
+
+Without an initialization flag, these commands only create the worktree and return `initialized: false`. If the task cannot proceed without project initialization, inspect the main worktree's `.worktreeinclude` and the target revision's `.pochi/init.sh` or `.pochi/init.ps1` before creating the worktree. Only after deciding that both the copied files and executed commands are necessary and safe, add the platform-specific initialization flag to the creation command:
+
+- POSIX: add `--init`
+- Windows: add `-Initialize`
+
+Initialization first copies the `.worktreeinclude` files, then runs the platform's initialization script when present. If either step fails, the script returns `ok: false` and leaves the worktree in place.
 
 The script prints a JSON result: `{ok, root, branch, base, initialized, error}`. If `ok` is false, stop and report the error.
 
