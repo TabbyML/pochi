@@ -3,7 +3,7 @@ import { getLogger } from "@/lib/logger";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
-import { OutputManager } from "./output";
+import { TerminalHistoryManager } from "./terminal-history";
 import { TerminalJob } from "./terminal-job";
 import { ExecutionError } from "./utils";
 
@@ -35,12 +35,12 @@ export class TerminalState implements vscode.Disposable {
   private readonly terminalIds = new WeakMap<vscode.Terminal, string>();
 
   /**
-   * Maps an in-flight shell execution to the OutputManager collecting its
-   * output, so it can be finalized when the execution ends.
+   * Maps an in-flight shell execution to the TerminalHistoryManager
+   * collecting its output, so it can be finalized when the execution ends.
    */
   private readonly runningExecutions = new Map<
     vscode.TerminalShellExecution,
-    OutputManager
+    TerminalHistoryManager
   >();
 
   // Signal containing the current active terminals
@@ -97,7 +97,7 @@ export class TerminalState implements vscode.Disposable {
   private onTerminalClosed = (terminal: vscode.Terminal) => {
     const id = this.terminalIds.get(terminal);
     if (id) {
-      OutputManager.delete(id);
+      TerminalHistoryManager.delete(id);
     }
     this.onTerminalChanged();
   };
@@ -111,14 +111,17 @@ export class TerminalState implements vscode.Disposable {
     }
 
     const id = this.getTerminalId(event.terminal);
-    // Start a fresh capture for this execution so a read returns the output of
-    // the most recent command run in the terminal.
-    const outputManager = OutputManager.create({
-      id,
-      command: event.execution.commandLine.value,
-    });
-    this.runningExecutions.set(event.execution, outputManager);
-    this.captureExecutionOutput(event.execution, outputManager);
+    const command = event.execution.commandLine.value;
+    // Reuse the same manager across commands so a regular terminal's history
+    // (cwd + command + output for each command run in it) accumulates over
+    // time, the same way it would look in the terminal itself, instead of
+    // being wiped out by the next command.
+    const history = TerminalHistoryManager.getOrCreate(id);
+    const cwd = event.terminal.shellIntegration?.cwd?.fsPath;
+    history.beginCommand(command, cwd);
+
+    this.runningExecutions.set(event.execution, history);
+    this.captureExecutionOutput(event.execution, history);
     // Reflect the newly readable terminal in the environment.
     this.onTerminalChanged();
   };
@@ -126,24 +129,24 @@ export class TerminalState implements vscode.Disposable {
   private onShellExecutionEnd = (
     event: vscode.TerminalShellExecutionEndEvent,
   ) => {
-    const outputManager = this.runningExecutions.get(event.execution);
-    if (!outputManager) return;
+    const history = this.runningExecutions.get(event.execution);
+    if (!history) return;
     this.runningExecutions.delete(event.execution);
 
     const error =
       event.exitCode === undefined || event.exitCode === 0
         ? undefined
         : ExecutionError.create(`Command exited with code ${event.exitCode}.`);
-    outputManager.finalize(error);
+    history.finalize(error);
   };
 
   private async captureExecutionOutput(
     execution: vscode.TerminalShellExecution,
-    outputManager: OutputManager,
+    history: TerminalHistoryManager,
   ): Promise<void> {
     try {
       for await (const chunk of execution.read()) {
-        outputManager.addChunk(chunk);
+        history.addChunk(chunk);
       }
     } catch (error) {
       logger.debug(`Failed to read terminal shell execution output: ${error}`);
