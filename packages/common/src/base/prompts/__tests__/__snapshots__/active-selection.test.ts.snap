@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderActiveSelection renders a file location and content 1`] = `
+"The user has an active selection in their editor. This selection context is provided to help you understand what code the user is currently focused on or referring to.
+
+<active-selection location="src/main.ts:10-25">
+\`\`\`
+const x = 1;
+\`\`\`
+</active-selection>"
+`;
+
+exports[`renderTerminalTextSelection renders the terminal name and content 1`] = `
+"The user has selected text in their integrated terminal. This context is provided to help you understand what the user is currently focused on or referring to.
+
+<terminal-selection terminal="bash">
+\`\`\`
+npm run build
+Build succeeded.
+\`\`\`
+</terminal-selection>"
+`;

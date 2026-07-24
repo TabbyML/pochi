@@ -2,6 +2,7 @@ import { prompts } from "@getpochi/common";
 import type {
   ActiveSelection,
   Review,
+  TerminalTextSelection,
   UserEdits,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
@@ -16,6 +17,7 @@ export function prepareMessageParts(
   reviews: Review[],
   userEdits?: UserEdits,
   activeSelection?: ActiveSelection,
+  activeTerminalTextSelection?: TerminalTextSelection,
 ) {
   const parts: Message["parts"] = [];
   for (const x of files) {
@@ -45,10 +47,10 @@ export function prepareMessageParts(
     });
   }
 
-  if (activeSelection) {
+  if (activeSelection || activeTerminalTextSelection) {
     parts.push({
       type: "data-active-selection",
-      data: { activeSelection },
+      data: { activeSelection, activeTerminalTextSelection },
     });
   }
 

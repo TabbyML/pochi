@@ -436,7 +436,8 @@
   },
   "activeSelectionBadge": {
     "cell": "单元格",
-    "addContext": "添加上下文"
+    "addContext": "添加上下文",
+    "terminal": "终端"
   },
   "todoModeBadge": {
     "remove": "移除 Todo 模式"

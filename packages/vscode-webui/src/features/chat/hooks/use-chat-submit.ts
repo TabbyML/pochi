@@ -1,7 +1,7 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { prepareMessageParts } from "@/lib/message-utils";
-import { vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
@@ -274,6 +274,12 @@ export function useChatSubmit({
         onBeforeSendText?.(text);
       }
 
+      // Terminal selection can only be read on demand (there's no reactive
+      // VS Code API for it), so capture it once at send time.
+      const activeTerminalTextSelection = isVSCodeEnvironment()
+        ? await vscodeHost.readTerminalSelection()
+        : undefined;
+
       if (messageFiles.length > 0) {
         try {
           logger.debug("Uploading files...");
@@ -287,6 +293,7 @@ export function useChatSubmit({
             messageReviews,
             userEdits,
             activeSelection,
+            activeTerminalTextSelection,
           );
           logger.debug("Sending message with files");
 
@@ -310,6 +317,7 @@ export function useChatSubmit({
           messageReviews,
           userEdits,
           activeSelection,
+          activeTerminalTextSelection,
         );
 
         autoApproveGuard.current = "auto";

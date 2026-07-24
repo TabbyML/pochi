@@ -15,6 +15,7 @@ const messageUtilsMocks = vi.hoisted(() => ({
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
+  readTerminalSelection: vi.fn(async () => undefined),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -34,8 +35,10 @@ vi.mock("@/lib/message-utils", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
+  isVSCodeEnvironment: () => false,
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
+    readTerminalSelection: vscodeMocks.readTerminalSelection,
   },
 }));
 
@@ -52,6 +55,8 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
+    vscodeMocks.readTerminalSelection.mockReset();
+    vscodeMocks.readTerminalSelection.mockResolvedValue(undefined);
   });
 
   it("queues Enter submissions while the chat is busy without stopping", async () => {
@@ -343,6 +348,7 @@ describe("useChatSubmit", () => {
       [uploadedFile],
       [review],
       [],
+      undefined,
       undefined,
     );
     expect(context.clearFiles).not.toHaveBeenCalled();

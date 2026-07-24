@@ -438,7 +438,8 @@
   },
   "activeSelectionBadge": {
     "cell": "セル",
-    "addContext": "コンテキストを追加"
+    "addContext": "コンテキストを追加",
+    "terminal": "ターミナル"
   },
   "todoModeBadge": {
     "remove": "Todoモードを削除"

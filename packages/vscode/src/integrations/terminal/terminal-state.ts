@@ -154,7 +154,7 @@ export class TerminalState implements vscode.Disposable {
    * Resolves a stable id for a terminal. Background job terminals use their job
    * id; regular terminals are assigned a `bgjob-` id lazily.
    */
-  private getTerminalId(terminal: vscode.Terminal): string {
+  getTerminalId(terminal: vscode.Terminal): string {
     const job = TerminalJob.get(terminal);
     if (job) return job.id;
 
