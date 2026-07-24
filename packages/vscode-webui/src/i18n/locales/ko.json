@@ -553,6 +553,7 @@
     "filesEdited_one": "{{count}}개 파일 편집됨",
     "filesEdited_other": "{{count}}개 파일 편집됨",
     "tooltip": "편집 내용이 추적되어 컨텍스트에 포함됩니다",
+    "remove": "컨텍스트에서 사용자 편집 제거",
     "showDiff": "차이 보기",
     "diffTitle": "사용자 편집"
   },

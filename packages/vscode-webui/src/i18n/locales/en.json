@@ -561,6 +561,7 @@
     "filesEdited_one": "{{count}} file edited",
     "filesEdited_other": "{{count}} files edited",
     "tooltip": "Your edits are tracked and will be included in the context",
+    "remove": "Remove user edits from context",
     "showDiff": "Show Diff",
     "diffTitle": "User Edits"
   },

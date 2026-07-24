@@ -39,6 +39,7 @@ function queuedMessage({
     text,
     files: [],
     reviews: [],
+    userEdits: [],
     isTodoMode,
   };
 }

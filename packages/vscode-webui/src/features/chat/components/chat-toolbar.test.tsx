@@ -100,6 +100,9 @@ vi.mock("@/lib/hooks/use-add-complete-tool-calls", () => ({
 vi.mock("@/lib/hooks/use-reviews", () => ({
   useReviews: () => [],
 }));
+vi.mock("@/lib/hooks/use-user-edits", () => ({
+  useUserEdits: () => [],
+}));
 vi.mock("@/lib/hooks/use-task-changed-files", () => ({
   useTaskChangedFiles: () => ({
     visibleChangedFiles: [],
