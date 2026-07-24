@@ -1,15 +1,47 @@
+import { CodeBlock } from "@/components/message";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { cn } from "@/lib/utils";
+import { getActiveSelectionLabel } from "@/lib/utils/active-selection";
+import {
+  getFileExtension,
+  languageIdFromExtension,
+} from "@/lib/utils/languages";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
-import { CornerDownRight, ListEnd, Target, Trash2 } from "lucide-react";
+import type {
+  ActiveSelection,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
+import {
+  CornerDownRight,
+  FileCode,
+  ListEnd,
+  Target,
+  TerminalIcon,
+  Trash2,
+} from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { QueuedMessage } from "../hooks/use-chat-submit";
+import type { DraftMessage } from "../hooks/use-chat-submit";
 
 interface QueuedMessagesProps {
-  messages: QueuedMessage[];
+  messages: DraftMessage[];
   onRemove: (index: number) => void;
   onSteer?: (index: number) => void;
+}
+
+interface RenderMessage {
+  title: string;
+  details: string;
+  isTodoMode?: boolean;
+  activeSelection?: ActiveSelection;
+  activeTerminalTextSelection?: TerminalTextSelection;
 }
 
 export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
@@ -18,26 +50,34 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   onSteer,
 }) => {
   const { t } = useTranslation();
-  const renderMessages = useMemo(() => {
-    return messages.map(({ text, files, reviews, isTodoMode }) => {
+  const renderMessages = useMemo<RenderMessage[]>(() => {
+    return messages.map(({ raw }) => {
+      const {
+        text = "",
+        filesCount = 0,
+        reviewsCount = 0,
+        isTodoMode,
+        activeSelection,
+        activeTerminalTextSelection,
+      } = raw;
       const title = text.trim() ? parseTitle(text) : t("chat.noMessage");
       const details = [
-        files.length > 0 ? t("chat.fileCount", { count: files.length }) : "",
-        reviews.length > 0
-          ? t("chat.reviewCount", { count: reviews.length })
-          : "",
+        filesCount > 0 ? t("chat.fileCount", { count: filesCount }) : "",
+        reviewsCount > 0 ? t("chat.reviewCount", { count: reviewsCount }) : "",
       ].filter(Boolean);
 
       return {
         title,
         details: details.join(" · "),
         isTodoMode,
+        activeSelection,
+        activeTerminalTextSelection,
       };
     });
   }, [messages, t]);
 
   return (
-    <div className="mx-5 flex max-h-28 flex-col gap-0.5 overflow-y-auto rounded-t-sm border border-[var(--input-border)] border-b-0 bg-input px-3 pt-1.5 pb-1.5 shadow-lg">
+    <div className="mx-1 mt-1 mb-1.5 flex max-h-28 flex-col gap-0.5 overflow-y-auto rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
       {renderMessages.map((message, index) => (
         <div
           key={index}
@@ -65,6 +105,16 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
               </span>
             ) : null}
           </div>
+          {message.activeSelection && (
+            <ActiveSelectionPreviewIcon
+              activeSelection={message.activeSelection}
+            />
+          )}
+          {message.activeTerminalTextSelection && (
+            <TerminalSelectionPreviewIcon
+              terminalTextSelection={message.activeTerminalTextSelection}
+            />
+          )}
           <div className="flex shrink-0 items-center gap-1">
             <Button
               variant="ghost"
@@ -95,5 +145,117 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         </div>
       ))}
     </div>
+  );
+};
+
+interface ActiveSelectionPreviewIconProps {
+  activeSelection: ActiveSelection;
+}
+
+const ActiveSelectionPreviewIcon: React.FC<ActiveSelectionPreviewIconProps> = ({
+  activeSelection,
+}) => {
+  const { t } = useTranslation();
+
+  if (!activeSelection) {
+    return null;
+  }
+
+  const { filepath, range, content, notebookCell } = activeSelection;
+
+  if (content.length === 0) {
+    return null;
+  }
+
+  const extension = getFileExtension(filepath);
+  const language = languageIdFromExtension(extension) || "typescript";
+  const label = getActiveSelectionLabel(activeSelection, t);
+
+  const onClick = () => {
+    if (!isVSCodeEnvironment()) return;
+    vscodeHost.openFile(filepath, {
+      start: range.start.line + 1,
+      end: range.end.line + 1,
+      cellId: notebookCell?.cellId,
+    });
+  };
+
+  return (
+    <HoverCard openDelay={300} closeDelay={200}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={filepath}
+          className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700"
+        >
+          <FileCode className="size-3.5" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-auto max-w-[90vw] p-0" align="end">
+        <div className="flex max-w-[300px] items-center gap-1.5 truncate border-b px-2 py-1.5 font-medium text-xs">
+          <FileCode className="size-3.5 shrink-0" />
+          <span className="truncate">{label}</span>
+        </div>
+        <div className="max-h-[60vh] overflow-auto">
+          <CodeBlock
+            language={language}
+            value={content}
+            isMinimalView={true}
+            className="m-0 border-none"
+          />
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+
+interface TerminalSelectionPreviewIconProps {
+  terminalTextSelection: TerminalTextSelection;
+}
+
+const TerminalSelectionPreviewIcon: React.FC<
+  TerminalSelectionPreviewIconProps
+> = ({ terminalTextSelection }) => {
+  const { t } = useTranslation();
+  const { terminalName, backgroundJobId, content } = terminalTextSelection;
+  const { openBackgroundJobTerminal } = useVisibleTerminals();
+
+  if (content.length === 0) {
+    return null;
+  }
+
+  const onClick = () => {
+    if (!isVSCodeEnvironment() || !backgroundJobId) return;
+    openBackgroundJobTerminal?.(backgroundJobId);
+  };
+
+  return (
+    <HoverCard openDelay={300} closeDelay={200}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={`${t("activeSelectionBadge.terminal")}: ${terminalName}`}
+          className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700"
+        >
+          <TerminalIcon className="size-3.5" />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-auto max-w-[90vw] p-0" align="end">
+        <div className="flex max-w-[300px] items-center gap-1.5 truncate border-b px-2 py-1.5 font-medium text-xs">
+          <TerminalIcon className="size-3.5 shrink-0" />
+          <span className="truncate">{terminalName}</span>
+        </div>
+        <div className="max-h-[60vh] overflow-auto">
+          <CodeBlock
+            language="shell"
+            value={content}
+            isMinimalView={true}
+            className="m-0 border-none"
+          />
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 };

@@ -15,6 +15,8 @@ import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { Review } from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import type { ChatInput } from "../hooks/use-chat-input-state";
+import type { DraftMessage } from "../hooks/use-chat-submit";
+import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
   input: ChatInput;
@@ -43,6 +45,9 @@ interface ChatInputFormProps {
   onAttachFile?: () => void;
   contextMenuSide?: "top" | "bottom";
   className?: string;
+  queuedMessages?: DraftMessage[];
+  onRemoveQueuedMessage?: (index: number) => void;
+  onSteerQueuedMessage?: (index: number) => void;
 }
 
 export interface ChatInputFormHandle {
@@ -79,6 +84,9 @@ export const ChatInputForm = forwardRef<
     onAttachFile,
     contextMenuSide = "top",
     className,
+    queuedMessages = [],
+    onRemoveQueuedMessage,
+    onSteerQueuedMessage,
   },
   ref,
 ) {
@@ -147,6 +155,17 @@ export const ChatInputForm = forwardRef<
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
+      {queuedMessages.length > 0 && (
+        <QueuedMessages
+          messages={queuedMessages}
+          onRemove={(index) => onRemoveQueuedMessage?.(index)}
+          onSteer={
+            onSteerQueuedMessage
+              ? (index) => onSteerQueuedMessage(index)
+              : undefined
+          }
+        />
+      )}
       {children}
     </FormEditor>
   );

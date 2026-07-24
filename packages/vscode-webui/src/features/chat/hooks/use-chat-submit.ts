@@ -8,9 +8,14 @@ import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
-import type { FileDiff, Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ActiveSelection,
+  Review,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
+import type { FileUIPart } from "ai";
 import type React from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useAutoApproveGuard,
@@ -23,19 +28,19 @@ import type { ChatInput } from "./use-chat-input-state";
 const logger = getLogger("UseChatSubmit");
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
-
 type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 
-export interface QueuedMessage {
-  text: string;
-  files: File[];
-  reviews: Review[];
-  userEdits: FileDiff[];
-  isTodoMode: boolean;
-}
-
-interface SubmitOptions {
-  flushQueuedMessages?: boolean;
+export interface DraftMessage {
+  parts: Message["parts"];
+  raw: {
+    text?: string;
+    filesCount?: number;
+    reviewsCount?: number;
+    userEditsCount?: number;
+    isTodoMode?: boolean;
+    activeSelection?: ActiveSelection;
+    activeTerminalTextSelection?: TerminalTextSelection;
+  };
 }
 
 interface UseChatSubmitProps {
@@ -47,8 +52,8 @@ interface UseChatSubmitProps {
   isLoading: boolean;
   blockingState: BlockingState;
   pendingApproval: PendingApproval | undefined;
-  queuedMessages: QueuedMessage[];
-  setQueuedMessages: React.Dispatch<React.SetStateAction<QueuedMessage[]>>;
+  queuedMessages: DraftMessage[];
+  setQueuedMessages: React.Dispatch<React.SetStateAction<DraftMessage[]>>;
   reviews: Review[];
   taskId: string;
   includeUserEdits?: boolean;
@@ -85,7 +90,6 @@ export function useChatSubmit({
   const { isExecuting } = useToolCallLifeCycle();
   const batchExecuteManager = useBatchExecuteManager();
   const { t } = useTranslation();
-  const pendingSteerMessageRef = useRef<QueuedMessage | undefined>(undefined);
 
   const abortExecutingToolCalls = useCallback(() => {
     batchExecuteManager.abort(taskId, "user-abort");
@@ -99,28 +103,51 @@ export function useChatSubmit({
     files,
     isUploading,
     upload,
-    uploadFiles,
     clearFiles,
     clearError: clearUploadError,
   } = attachmentUpload;
 
-  const handleStop = useCallback(() => {
+  const readyResolvers = useRef<(() => void)[]>([]);
+
+  useEffect(() => {
+    if (!isLoading && !isExecuting && readyResolvers.current.length > 0) {
+      const resolvers = readyResolvers.current;
+      readyResolvers.current = [];
+      for (const resolve of resolvers) {
+        resolve();
+      }
+    }
+  }, [isLoading, isExecuting]);
+
+  const waitForReady = useCallback(() => {
+    if (!isLoading && !isExecuting) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      readyResolvers.current.push(resolve);
+    });
+  }, [isLoading, isExecuting]);
+
+  const handleStop = useCallback(async () => {
+    autoApproveGuard.current = "stop";
+
     // Compacting is not allowed to be stopped.
-    if (blockingState.isBusy) return;
+    if (blockingState.isBusy) {
+      return false;
+    }
 
     if (isExecuting) {
       abortExecutingToolCalls();
-      return true;
-    }
-
-    if (isLoading) {
+    } else if (isLoading) {
       stopChat();
-      return true;
     }
 
     if (pendingApproval?.name === "retry") {
       pendingApproval.stopCountdown();
     }
+
+    await waitForReady();
+    return true;
   }, [
     blockingState.isBusy,
     isExecuting,
@@ -128,81 +155,125 @@ export function useChatSubmit({
     pendingApproval,
     abortExecutingToolCalls,
     stopChat,
+    autoApproveGuard,
+    waitForReady,
   ]);
 
-  const createCurrentMessage = useCallback(() => {
-    const currentMessage: QueuedMessage = {
-      text: input.text.trim(),
-      files: [...files],
-      reviews: [...reviews],
-      userEdits: includeUserEdits ? [...userEdits] : [],
-      isTodoMode,
-    };
+  const createMessage = useCallback(async (): Promise<
+    DraftMessage | undefined
+  > => {
+    const text = input.text.trim();
+    const currentFiles = [...files];
+    const currentReviews = [...reviews];
 
     if (
-      currentMessage.text.length === 0 &&
-      currentMessage.files.length === 0 &&
-      currentMessage.reviews.length === 0
+      text.length === 0 &&
+      currentFiles.length === 0 &&
+      currentReviews.length === 0
     ) {
       return undefined;
     }
 
-    return currentMessage;
-  }, [files, includeUserEdits, input.text, isTodoMode, reviews, userEdits]);
+    // Capture the user's selection context (editor + terminal) right now.
+    const currentUserEdits = includeUserEdits ? [...userEdits] : [];
+    const currentSelection = activeSelection;
 
-  const clearCurrentMessage = useCallback(
-    (currentMessage: QueuedMessage) => {
-      clearInput();
-      if (currentMessage.files.length > 0) {
+    // Terminal selection can only be read on demand (there's no reactive
+    // VS Code API for it), so this is the only chance to snapshot it.
+    const currentTerminalTextSelection = isVSCodeEnvironment()
+      ? await vscodeHost.readTerminalSelection()
+      : undefined;
+
+    let uploadedAttachments: FileUIPart[] = [];
+    if (currentFiles.length > 0) {
+      try {
+        logger.debug("Uploading files...");
+        uploadedAttachments = await upload();
+        logger.debug("Files uploaded.");
         clearFiles();
+      } catch (error) {
+        // Error is already handled by the hook
+        return undefined;
       }
-      if (currentMessage.reviews.length > 0) {
-        vscodeHost.deleteReviews(
-          currentMessage.reviews.map((review) => review.id),
-        );
-      }
-    },
-    [clearFiles, clearInput],
-  );
-
-  const queueCurrentInput = useCallback(() => {
-    const queuedMessage = createCurrentMessage();
-    if (!queuedMessage) return false;
-
-    setQueuedMessages((prev) => [...prev, queuedMessage]);
-    clearCurrentMessage(queuedMessage);
-    if (queuedMessage.isTodoMode) {
-      onTodoModeQueued?.();
     }
-    return true;
+
+    clearUploadError();
+    clearInput();
+    if (currentReviews.length > 0) {
+      vscodeHost.deleteReviews(currentReviews.map((review) => review.id));
+    }
+
+    const raw = {
+      text,
+      filesCount: currentFiles.length,
+      reviewsCount: currentReviews.length,
+      userEditsCount: currentUserEdits.length,
+      isTodoMode,
+      activeSelection: currentSelection,
+      activeTerminalTextSelection: currentTerminalTextSelection,
+    };
+    const parts = prepareMessageParts(
+      t,
+      text,
+      uploadedAttachments,
+      currentReviews,
+      currentUserEdits,
+      currentSelection,
+      currentTerminalTextSelection,
+    );
+
+    return { parts, raw };
   }, [
-    clearCurrentMessage,
-    createCurrentMessage,
-    onTodoModeQueued,
-    setQueuedMessages,
+    t,
+    input.text,
+    files,
+    reviews,
+    userEdits,
+    includeUserEdits,
+    activeSelection,
+    upload,
+    clearFiles,
+    clearUploadError,
+    clearInput,
+    isTodoMode,
   ]);
 
-  const queuePendingSteerInput = useCallback(() => {
-    const queuedMessage = createCurrentMessage();
-    if (!queuedMessage) return false;
+  const sendChatMessage = useCallback(
+    async (message: DraftMessage) => {
+      if (isSubmitDisabled) {
+        return;
+      }
 
-    pendingSteerMessageRef.current = queuedMessage;
-    clearCurrentMessage(queuedMessage);
-    if (queuedMessage.isTodoMode) {
-      onTodoModeQueued?.();
-    }
-    return true;
-  }, [clearCurrentMessage, createCurrentMessage, onTodoModeQueued]);
+      const shouldCreateTodo = message.raw.isTodoMode && canCreateTodo;
+      if (message.raw.text && shouldCreateTodo) {
+        onBeforeSendText?.(message.raw.text);
+      }
+
+      if (pendingApproval?.name === "retry") {
+        pendingApproval.stopCountdown();
+      }
+
+      autoApproveGuard.current = "auto";
+      await sendMessage({
+        parts: message.parts,
+      });
+    },
+    [
+      isSubmitDisabled,
+      canCreateTodo,
+      onBeforeSendText,
+      pendingApproval,
+      autoApproveGuard,
+      sendMessage,
+    ],
+  );
 
   /**
-   * Handles form submission, sending both the current input and any queued messages.
-   * This function supports text and file attachments.
+   * Handles form submission, send the current input to chat if not running, otherwise send it to the message queue.
+   * Including text input, file attachments, reviews and active selections.
    */
   const handleSubmit = useCallback(
-    async (
-      e?: React.FormEvent<HTMLFormElement>,
-      options: SubmitOptions = {},
-    ) => {
+    async (e?: React.FormEvent<HTMLFormElement>) => {
       e?.preventDefault();
 
       logger.debug("handleSubmit");
@@ -210,155 +281,30 @@ export function useChatSubmit({
       // Uploading / Compacting is not allowed to be stopped.
       if (blockingState.isBusy || isUploading) return;
 
+      const message = await createMessage();
+      if (!message) {
+        return;
+      }
+
       if (isLoading || isExecuting) {
-        queueCurrentInput();
-        return;
-      }
-
-      const content = input.text.trim();
-      const hasQueueableCurrentMessage =
-        content.length > 0 || files.length > 0 || reviews.length > 0;
-      const shouldQueueCurrentInput =
-        !options.flushQueuedMessages &&
-        queuedMessages.length > 0 &&
-        hasQueueableCurrentMessage;
-      if (shouldQueueCurrentInput) {
-        // When a queue already exists, an explicit user submission keeps
-        // building the queue. The ready effect is responsible for flushing it.
-        queueCurrentInput();
-        return;
-      }
-
-      const hasQueuedMessages = queuedMessages.length > 0;
-      const pendingSteerMessage = options.flushQueuedMessages
-        ? pendingSteerMessageRef.current
-        : undefined;
-      const shouldUseQueuedMessage =
-        options.flushQueuedMessages ||
-        (hasQueuedMessages && !hasQueueableCurrentMessage);
-      const queuedMessage =
-        pendingSteerMessage ??
-        (shouldUseQueuedMessage ? queuedMessages[0] : undefined);
-      const hasPendingSteerMessage = !!pendingSteerMessage;
-      const text = queuedMessage?.text ?? content;
-      const messageFiles = queuedMessage?.files ?? files;
-      const messageReviews = queuedMessage?.reviews ?? reviews;
-      const messageUserEdits =
-        queuedMessage?.userEdits ?? (includeUserEdits ? userEdits : []);
-      const shouldCreateTodo =
-        (queuedMessage?.isTodoMode ?? isTodoMode) && canCreateTodo;
-
-      // Disallow empty submissions
-      if (
-        text.length === 0 &&
-        messageFiles.length === 0 &&
-        messageReviews.length === 0
-      ) {
-        return;
-      }
-
-      if (isSubmitDisabled) {
-        return;
-      }
-
-      if (pendingApproval?.name === "retry") {
-        pendingApproval.stopCountdown();
-      }
-
-      // Send queued messages one at a time. The ready effect will flush the
-      // next queued message after the current one finishes.
-      if (hasPendingSteerMessage) {
-        pendingSteerMessageRef.current = undefined;
-      } else {
-        setQueuedMessages(hasQueuedMessages ? queuedMessages.slice(1) : []);
-      }
-      if (!options.flushQueuedMessages && content) {
-        clearInput();
-      }
-
-      if (text.length > 0 && shouldCreateTodo) {
-        onBeforeSendText?.(text);
-      }
-
-      // Terminal selection can only be read on demand (there's no reactive
-      // VS Code API for it), so capture it once at send time.
-      const activeTerminalTextSelection = isVSCodeEnvironment()
-        ? await vscodeHost.readTerminalSelection()
-        : undefined;
-
-      if (messageFiles.length > 0) {
-        try {
-          logger.debug("Uploading files...");
-          const uploadedAttachments = queuedMessage
-            ? await uploadFiles(messageFiles)
-            : await upload();
-          const parts = prepareMessageParts(
-            t,
-            text,
-            uploadedAttachments,
-            messageReviews,
-            messageUserEdits,
-            activeSelection,
-            activeTerminalTextSelection,
-          );
-          logger.debug("Sending message with files");
-
-          if (!queuedMessage) {
-            clearFiles();
-          }
-          autoApproveGuard.current = "auto";
-          await sendMessage({
-            parts,
-          });
-        } catch (error) {
-          // Error is already handled by the hook
-          return;
+        setQueuedMessages((prev) => [...prev, message]);
+        if (message.raw.isTodoMode) {
+          onTodoModeQueued?.();
         }
-      } else if (text.length > 0 || messageReviews.length > 0) {
-        clearUploadError();
-        const parts = prepareMessageParts(
-          t,
-          text,
-          [],
-          messageReviews,
-          messageUserEdits,
-          activeSelection,
-          activeTerminalTextSelection,
-        );
-
-        autoApproveGuard.current = "auto";
-        await sendMessage({
-          parts,
-        });
+        return;
       }
+
+      sendChatMessage(message);
     },
     [
-      isSubmitDisabled,
-      files,
-      input,
-      autoApproveGuard,
-      upload,
-      uploadFiles,
-      sendMessage,
-      clearInput,
-      clearUploadError,
       blockingState.isBusy,
-      queuedMessages,
-      setQueuedMessages,
       isUploading,
-      t,
-      clearFiles,
-      reviews,
-      userEdits,
-      includeUserEdits,
-      activeSelection,
       isLoading,
       isExecuting,
-      queueCurrentInput,
-      pendingApproval,
-      onBeforeSendText,
-      isTodoMode,
-      canCreateTodo,
+      sendChatMessage,
+      setQueuedMessages,
+      createMessage,
+      onTodoModeQueued,
     ],
   );
 
@@ -370,45 +316,70 @@ export function useChatSubmit({
 
       if (blockingState.isBusy || isUploading) return;
 
-      const hasVisibleQueue = queuedMessages.length > 0;
-      const isRunActive = isLoading || isExecuting;
-
-      if (!hasVisibleQueue && !isRunActive) {
-        await handleSubmit(e);
+      const message = await createMessage();
+      if (!message) {
         return;
       }
 
-      const didCaptureMessage = hasVisibleQueue
-        ? queuePendingSteerInput()
-        : queueCurrentInput();
-      const shouldInterrupt =
-        isRunActive && (hasVisibleQueue || didCaptureMessage);
-      const shouldPauseAutoApprove = didCaptureMessage || shouldInterrupt;
-      if (!shouldPauseAutoApprove) return;
+      let ready = !isLoading && !isExecuting;
+      if (!ready) {
+        ready = await handleStop();
+      }
 
-      autoApproveGuard.current = "stop";
-      if (shouldInterrupt) {
-        handleStop();
-        return;
+      if (ready) {
+        sendChatMessage(message);
+      } else {
+        setQueuedMessages((messages) => [...messages, message]);
       }
     },
     [
-      autoApproveGuard,
       blockingState.isBusy,
-      handleStop,
-      handleSubmit,
-      isExecuting,
-      isLoading,
       isUploading,
-      queueCurrentInput,
-      queuePendingSteerInput,
-      queuedMessages.length,
+      isLoading,
+      isExecuting,
+      sendChatMessage,
+      createMessage,
+      handleStop,
+      setQueuedMessages,
+    ],
+  );
+
+  const handleSteerQueuedMessage = useCallback(
+    async (index: number) => {
+      if (blockingState.isBusy) return;
+
+      const messages = [...queuedMessages];
+      const message = messages[index];
+      if (message) {
+        const updatedMessages = messages.filter((_, i) => i !== index);
+        setQueuedMessages(updatedMessages);
+
+        let ready = !isLoading && !isExecuting;
+        if (!ready) {
+          ready = await handleStop();
+        }
+        if (ready) {
+          sendChatMessage(message);
+        } else {
+          setQueuedMessages(messages);
+        }
+      }
+    },
+    [
+      blockingState.isBusy,
+      isLoading,
+      isExecuting,
+      handleStop,
+      queuedMessages,
+      setQueuedMessages,
+      sendChatMessage,
     ],
   );
 
   return {
     handleSubmit,
     handleSteerSubmit,
+    handleSteerQueuedMessage,
     handleStop,
   };
 }

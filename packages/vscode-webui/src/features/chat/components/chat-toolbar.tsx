@@ -13,7 +13,7 @@ import {
   isRetryApprovalCountingDown,
   type useApprovalAndRetry,
 } from "@/features/approval";
-import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
+import { useToolCallLifeCycle } from "@/features/chat";
 import {
   AutoApproveMenu,
   useAutoApprove,
@@ -48,14 +48,13 @@ import {
 } from "../hooks/use-blocking-operations";
 import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
-import { type QueuedMessage, useChatSubmit } from "../hooks/use-chat-submit";
+import { type DraftMessage, useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
-import { QueuedMessages } from "./queued-messages";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
@@ -123,7 +122,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const { input, setInput, clearInput } = useChatInputState();
 
-  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
   const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
@@ -246,7 +245,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   );
   const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
-  const { handleSubmit, handleSteerSubmit, handleStop } = useChatSubmit({
+  const {
+    handleSubmit,
+    handleSteerSubmit,
+    handleSteerQueuedMessage,
+    handleStop,
+  } = useChatSubmit({
     chat,
     input,
     clearInput,
@@ -266,20 +270,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     onBeforeSendText: createTodoBeforeSend,
   });
 
-  const autoApproveGuard = useAutoApproveGuard();
-  const handleSteerQueuedMessage = useCallback(
-    (index: number) => {
-      setQueuedMessages((prev) => {
-        const message = prev[index];
-        if (!message) return prev;
-        return [message, ...prev.filter((_, i) => i !== index)];
-      });
-      autoApproveGuard.current = "stop";
-      handleStop();
-    },
-    [autoApproveGuard, handleStop],
-  );
-
+  // Auto dequeue when ready
   useEffect(() => {
     const isReady =
       status === "ready" &&
@@ -287,10 +278,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       !isBusyCore &&
       completeToolCalls.length === 0 &&
       !!selectedModel &&
-      (!pendingApproval || pendingApproval.name === "retry");
+      (!pendingApproval || pendingApproval.name === "retry") &&
+      (task?.status === "pending-input" || task?.status === "completed");
 
     if (isReady && queuedMessages.length > 0) {
-      handleSubmit(undefined, { flushQueuedMessages: true });
+      handleSteerQueuedMessage(0);
     }
   }, [
     status,
@@ -298,10 +290,19 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isBusyCore,
     completeToolCalls.length,
     selectedModel,
-    queuedMessages.length,
     pendingApproval,
-    handleSubmit,
+    task?.status,
+    queuedMessages,
+    handleSteerQueuedMessage,
   ]);
+
+  // Remove a message from queue
+  const handleRemoveQueuedMessage = useCallback(
+    (index: number) => {
+      setQueuedMessages(queuedMessages.filter((_, i) => i !== index));
+    },
+    [queuedMessages],
+  );
 
   const allowAddToolResult = !blockingState.isBusy;
   useAddCompleteToolCalls({
@@ -355,7 +356,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const hasVisibleChangedFiles =
     useTaskChangedFilesHelpers.visibleChangedFiles.length > 0;
   const hasVisibleContextPanel = hasVisibleTodos || hasVisibleChangedFiles;
-  const hasQueuedMessages = queuedMessages.length > 0;
 
   return (
     <>
@@ -388,24 +388,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {hasQueuedMessages && (
-        <QueuedMessages
-          messages={queuedMessages}
-          onRemove={(index) =>
-            setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
-          }
-          onSteer={handleSteerQueuedMessage}
-        />
-      )}
       {hasVisibleContextPanel && (
-        <div
-          className={cn(
-            "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
-            {
-              "mt-0": hasQueuedMessages,
-            },
-          )}
-        >
+        <div className="mt-1.5 rounded-sm rounded-b-none border border-border border-b-0">
           {hasVisibleTodos && (
             <TodoList
               todos={visibleTodos}
@@ -446,6 +430,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           onRemoveUserEdits={() =>
             setExcludedUserEditsContext(userEditsContext)
           }
+          queuedMessages={queuedMessages}
+          onRemoveQueuedMessage={handleRemoveQueuedMessage}
+          onSteerQueuedMessage={handleSteerQueuedMessage}
           onAttachFile={() => fileInputRef.current?.click()}
           onSelectTodoMode={
             showTodoMode ? () => setTodoModeSelected(true) : undefined
@@ -453,7 +440,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           todoModeDisabled={todoModeDisabled}
           contextMenuSide="top"
           className={cn({
-            "rounded-t-none": hasVisibleContextPanel || hasQueuedMessages,
+            "rounded-t-none": hasVisibleContextPanel,
           })}
         >
           {files.length > 0 && (
@@ -566,8 +553,6 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
   onSubmit,
   onStop,
 }) => {
-  const autoApproveGuard = useAutoApproveGuard();
-
   return (
     <Button
       type="button"
@@ -577,7 +562,6 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {
-          autoApproveGuard.current = "stop";
           onStop();
         } else {
           onSubmit();

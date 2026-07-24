@@ -9,7 +9,9 @@ const chatSubmitMocks = vi.hoisted(() => ({
   useChatSubmit: vi.fn(() => ({
     handleSubmit: vi.fn(),
     handleSteerSubmit: vi.fn(),
+    handleSteerQueuedMessage: vi.fn(),
     handleStop: vi.fn(),
+    pauseQueueRef: { current: false },
   })),
 }));
 
