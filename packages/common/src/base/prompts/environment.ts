@@ -156,7 +156,7 @@ function getVisibleTerminals(workspace: Environment["workspace"]) {
     return "";
   }
   const header =
-    '# Opened Terminals in Editor\nYou can read a terminal\'s most recent command output by calling `readBackgroundJobOutput` with its id.\n- Ids prefixed with "bgjob-" are Pochi-started background jobs (can be read and killed with `killBackgroundJob`).\n- Ids prefixed with "term-" are user-opened terminals (read-only; cannot be killed).';
+    '# Opened Terminals in Editor\nYou can read a terminal\'s output by calling `readBackgroundJobOutput` with its id.\n- Ids prefixed with "bgjob-" are Pochi-started background jobs (can be read and killed with `killBackgroundJob`).\n- Ids prefixed with "term-" are user-opened terminals (read-only; cannot be killed).';
   return `${header}\n${terminals
     .map(
       (t) =>

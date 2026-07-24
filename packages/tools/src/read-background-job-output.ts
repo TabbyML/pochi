@@ -2,16 +2,17 @@ import z from "zod";
 import { defineClientTool } from "./types";
 
 const toolDef = {
-  description: `- Retrieves output from a running or completed background job
-- Takes a backgroundJobId parameter identifying the job
-- For terminal jobs, returns only new output since the last check
-- Returns stdout and stderr output along with job status
+  description:
+    `- Retrieves output from a running or completed background job, or from a user-opened terminal
+- Takes a backgroundJobId parameter identifying the job or terminal
+- Always returns only new content since the last check for that id
+- Returns output along with job status
 - Supports optional regex filtering to show only lines matching a pattern
-- Use this tool when you need to monitor or check the output of a long-running background job`.trim(),
+- Use this tool when you need to monitor a long-running background job, or catch up on what happened in a user-opened terminal`.trim(),
   inputSchema: z.object({
     backgroundJobId: z
       .string()
-      .describe("The ID of the background job to get output from"),
+      .describe("The ID of the background job or terminal to get output from"),
     regex: z
       .string()
       .optional()
@@ -23,7 +24,7 @@ const toolDef = {
     output: z
       .string()
       .describe(
-        "The output of the background job since last check (including stdout and stderr).",
+        "New content since the last check: stdout/stderr for background jobs (bgjob-), or a terminal transcript for user-opened terminals (term-).",
       ),
     status: z
       .enum(["idle", "running", "completed"])
