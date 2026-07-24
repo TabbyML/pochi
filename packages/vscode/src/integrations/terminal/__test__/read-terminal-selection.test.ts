@@ -74,11 +74,64 @@ describe("readTerminalSelection", () => {
       backgroundJobId: "term-123",
       content: "echo hello\nhello",
     });
+    // The copy command is wrapped in a Do Not Disturb toggle-on/toggle-off
+    // pair so VS Code's "no selection" notification (when it fires) doesn't
+    // pop up as a toast; see `withDoNotDisturb` in the source module.
     assert.deepStrictEqual(executeCommandCalls, [
+      "notifications.toggleDoNotDisturbMode",
       "workbench.action.terminal.copySelection",
+      "notifications.toggleDoNotDisturbMode",
     ]);
     // The clipboard must be restored to its original value afterwards.
     assert.strictEqual(getClipboardContent(), "original clipboard content");
+  });
+
+  it("still copies the selection when toggling Do Not Disturb mode fails", async () => {
+    let clipboardContent = "original clipboard content";
+    const executeCommandCalls: string[] = [];
+    const vscode = {
+      env: {
+        clipboard: {
+          readText: async () => clipboardContent,
+          writeText: async (value: string) => {
+            clipboardContent = value;
+          },
+        },
+      },
+      commands: {
+        executeCommand: async (command: string) => {
+          executeCommandCalls.push(command);
+          if (command === "notifications.toggleDoNotDisturbMode") {
+            throw new Error("command not found");
+          }
+          if (command === "workbench.action.terminal.copySelection") {
+            clipboardContent = "echo hello\nhello";
+          }
+        },
+      },
+    };
+    const { readTerminalSelection } = proxyquire
+      .noCallThru()
+      .noPreserveCache()
+      .load("../read-terminal-selection", {
+        vscode,
+        "@/lib/logger": {
+          getLogger: () => ({ debug: () => {} }),
+        },
+      }) as typeof import("../read-terminal-selection");
+
+    const result = await readTerminalSelection(fakeTerminal, "term-123");
+
+    assert.deepStrictEqual(result, {
+      terminalName: "bash",
+      backgroundJobId: "term-123",
+      content: "echo hello\nhello",
+    });
+    assert.deepStrictEqual(executeCommandCalls, [
+      "notifications.toggleDoNotDisturbMode",
+      "workbench.action.terminal.copySelection",
+      "notifications.toggleDoNotDisturbMode",
+    ]);
   });
 
   it("returns undefined when there is no selection", async () => {
