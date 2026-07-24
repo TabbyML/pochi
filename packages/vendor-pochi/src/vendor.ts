@@ -72,8 +72,14 @@ export class Pochi extends VendorBase {
     );
   }
 
-  override async fetchModels(): Promise<Record<string, ModelOptions>> {
-    if (!this.cachedModels || Object.keys(this.cachedModels).length === 0) {
+  override async fetchModels(
+    forceRefresh?: boolean,
+  ): Promise<Record<string, ModelOptions>> {
+    if (
+      forceRefresh ||
+      !this.cachedModels ||
+      Object.keys(this.cachedModels).length === 0
+    ) {
       const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl());
       const data = await withRetry(
         async () => {

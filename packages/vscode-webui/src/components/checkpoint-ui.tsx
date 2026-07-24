@@ -200,6 +200,88 @@ export const CheckpointUI: React.FC<{
     return <GitCommitHorizontal className="size-5" />;
   };
 
+  const handleOpenSummary = () => {
+    if (!compactPart) return;
+    const parsed = prompts.parseInlineCompact(compactPart.text);
+    if (parsed && compactMessageId) {
+      vscodeHost.openFile(`/task-summary-${compactMessageId}.md`, {
+        base64Data: btoa(unescape(encodeURIComponent(parsed.summary))),
+      });
+    }
+  };
+
+  const actionButtonClassName =
+    "h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent dark:hover:bg-transparent";
+
+  const compareControl = (
+    <span className="flex items-center">
+      {getCompareIcon()}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={isPending}
+        onClick={() => handleCheckpointAction("compare")}
+        className={actionButtonClassName}
+      >
+        {getCompareText()}
+      </Button>
+    </span>
+  );
+
+  const restoreControl = (
+    <span className="flex items-center">
+      <span className={cn("flex", isRestored && "text-current/40")}>
+        {getRestoreIcon()}
+      </span>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={isPending || isRestored}
+        onClick={() => handleCheckpointAction("restore")}
+        className={actionButtonClassName}
+      >
+        {getRestoreText()} {isDevMode && `(${checkpoint.commit})`}
+      </Button>
+    </span>
+  );
+
+  const forkControl = forkTask && (
+    <span className="flex items-center">
+      {getForkIcon()}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={isPending}
+        onClick={() => handleCheckpointAction("fork")}
+        className={actionButtonClassName}
+      >
+        {getForkText()}
+      </Button>
+    </span>
+  );
+
+  const summaryControl = compactPart && (
+    <span className="flex items-center">
+      <SquareChartGantt className="size-3" />
+      <Button
+        size="sm"
+        variant="ghost"
+        className={actionButtonClassName}
+        onClick={handleOpenSummary}
+      >
+        {t("checkpointUI.summary")}
+      </Button>
+    </span>
+  );
+
+  // The action under the cursor after hover-expansion must match the
+  // collapsed icon: with a summary the collapsed icon is the summary
+  // glyph, so Summary stays centered; otherwise the commit glyph maps
+  // to Restore. Side actions live inside the flex-1 border tracks so
+  // the center anchor never shifts.
+  const centerControl = compactPart ? summaryControl : restoreControl;
+  const actionsDisabled = isPending || showActionSuccessIcon;
+
   return (
     <div
       className={cn(
@@ -215,94 +297,35 @@ export const CheckpointUI: React.FC<{
           className,
         )}
       >
-        <Border
-          hide={isPending || showActionSuccessIcon}
-          hideOnHover={hideBorderOnHover}
-          isRestored={isRestored}
-        />
+        <div className="flex flex-1 items-center justify-end">
+          <Border
+            hide={isPending || showActionSuccessIcon}
+            hideOnHover={hideBorderOnHover}
+            isRestored={isRestored}
+          />
+          <span
+            className={cn(
+              "hidden items-center gap-1 pl-2.5 text-foreground group-hover:flex",
+              actionsDisabled && "pointer-events-none",
+            )}
+          >
+            {compareControl}
+            {compactPart && restoreControl}
+          </span>
+        </div>
         <span
           className={cn(
-            "flex items-center text-muted-foreground/60 group-hover:px-2.5 group-hover:text-foreground",
+            "flex items-center text-muted-foreground/60 group-hover:px-1 group-hover:text-foreground",
             // The compact icon (size-3) is smaller than the git-commit icon
             // (size-5), so it needs a tiny symmetric gap from the border lines
             // when unhovered. The git-commit icon stays flush.
             compactPart && "px-1",
-            (isPending || showActionSuccessIcon) &&
-              "pointer-events-none px-2.5",
+            actionsDisabled && "pointer-events-none px-2.5",
           )}
         >
-          <span className="hidden group-hover:flex">{getCompareIcon()}</span>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={isPending}
-            onClick={() => handleCheckpointAction("compare")}
-            className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
-          >
-            {getCompareText()}
-          </Button>
-
-          <span
-            className={cn(
-              "hidden group-hover:flex",
-              isRestored && "text-current/40",
-            )}
-          >
-            {getRestoreIcon()}
+          <span className="hidden items-center group-hover:flex">
+            {centerControl}
           </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={isPending || isRestored}
-            onClick={() => handleCheckpointAction("restore")}
-            className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
-          >
-            {getRestoreText()} {isDevMode && `(${checkpoint.commit})`}
-          </Button>
-
-          {forkTask && (
-            <div className="ml-1 hidden items-center group-hover:flex">
-              <span className="hidden group-hover:flex">{getForkIcon()}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={isPending}
-                onClick={() => handleCheckpointAction("fork")}
-                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
-              >
-                {getForkText()}
-              </Button>
-            </div>
-          )}
-
-          {compactPart && (
-            <div className="ml-1 hidden items-center group-hover:flex">
-              <span className="hidden group-hover:flex">
-                <SquareChartGantt className="size-3" />
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
-                onClick={() => {
-                  const parsed = prompts.parseInlineCompact(compactPart.text);
-                  if (parsed && compactMessageId) {
-                    vscodeHost.openFile(
-                      `/task-summary-${compactMessageId}.md`,
-                      {
-                        base64Data: btoa(
-                          unescape(encodeURIComponent(parsed.summary)),
-                        ),
-                      },
-                    );
-                  }
-                }}
-              >
-                {t("checkpointUI.summary")}
-              </Button>
-            </div>
-          )}
-
           <span
             className={cn(
               "group-hover:hidden",
@@ -313,11 +336,21 @@ export const CheckpointUI: React.FC<{
             {getNormalStateLabel()}
           </span>
         </span>
-        <Border
-          hide={isPending || showActionSuccessIcon}
-          hideOnHover={hideBorderOnHover}
-          isRestored={isRestored}
-        />
+        <div className="flex flex-1 items-center justify-start">
+          <span
+            className={cn(
+              "hidden items-center gap-1 pr-2.5 text-foreground group-hover:flex",
+              actionsDisabled && "pointer-events-none",
+            )}
+          >
+            {forkControl}
+          </span>
+          <Border
+            hide={isPending || showActionSuccessIcon}
+            hideOnHover={hideBorderOnHover}
+            isRestored={isRestored}
+          />
+        </div>
       </div>
     </div>
   );

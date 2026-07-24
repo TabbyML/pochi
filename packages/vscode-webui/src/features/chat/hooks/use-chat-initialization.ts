@@ -50,13 +50,17 @@ export function useChatInitialization({
       }
 
       const activeSelection = info.activeSelection;
+      const activeTerminalTextSelection = info.activeTerminalTextSelection;
       const files = info.files?.map((file) => ({
         type: "file" as const,
         filename: file.name,
         mediaType: file.contentType,
         url: file.url,
       }));
-      const shouldUseParts = (files?.length ?? 0) > 0 || !!activeSelection;
+      const shouldUseParts =
+        (files?.length ?? 0) > 0 ||
+        !!activeSelection ||
+        !!activeTerminalTextSelection;
 
       if (shouldUseParts) {
         chatKit.init(cwd, {
@@ -68,6 +72,7 @@ export function useChatInitialization({
             [],
             undefined,
             activeSelection,
+            activeTerminalTextSelection,
           ),
         });
       } else {

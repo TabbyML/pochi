@@ -1,24 +1,18 @@
 import { useIsAtBottom } from "@/lib/hooks/use-is-at-bottom";
 import type React from "react";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 interface UseScrollToBottomProps {
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
-  isLoading: boolean;
-  pendingApprovalName?: string;
+  lastUserMessageId?: string;
 }
 
 export function useScrollToBottom({
   messagesContainerRef,
-  isLoading,
-  pendingApprovalName,
+  lastUserMessageId,
 }: UseScrollToBottomProps) {
-  const { isAtBottom, scrollToBottom } = useIsAtBottom(messagesContainerRef);
-  const isAtBottomRef = useRef(isAtBottom);
-
-  useEffect(() => {
-    isAtBottomRef.current = isAtBottom;
-  }, [isAtBottom]);
+  const { getIsAtBottom, scrollToBottom } = useIsAtBottom(messagesContainerRef);
+  const lastObservedUserMessageIdRef = useRef(lastUserMessageId);
 
   // Scroll to bottom when the message list height changes
   useEffect(() => {
@@ -27,7 +21,7 @@ export function useScrollToBottom({
       return;
     }
     const resizeObserver = new ResizeObserver(() => {
-      if (isAtBottomRef.current) {
+      if (getIsAtBottom()) {
         requestAnimationFrame(() => scrollToBottom());
       }
     });
@@ -36,14 +30,21 @@ export function useScrollToBottom({
     return () => {
       resizeObserver.disconnect();
     }; // clean up
-  }, [scrollToBottom, messagesContainerRef]);
+  }, [getIsAtBottom, scrollToBottom, messagesContainerRef]);
 
-  // scroll to bottom immediately when a user message is sent
+  // Scroll to bottom immediately when a user message is sent.
   useLayoutEffect(() => {
-    if (isLoading) {
-      scrollToBottom();
+    if (!lastUserMessageId) {
+      return;
     }
-  }, [isLoading, scrollToBottom]);
+
+    if (lastObservedUserMessageIdRef.current === lastUserMessageId) {
+      return;
+    }
+
+    lastObservedUserMessageIdRef.current = lastUserMessageId;
+    scrollToBottom(false);
+  }, [lastUserMessageId, scrollToBottom]);
 
   // Initial scroll to bottom once when component mounts (without smooth behavior)
   useLayoutEffect(() => {
@@ -52,11 +53,11 @@ export function useScrollToBottom({
     }
   }, [scrollToBottom, messagesContainerRef]);
 
-  // Ensure users can always see the executing approval or the pause approval that require their input
-  // IMPORTANT: we use pendingApprovalName to ensure that we scroll to the bottom when the approval name changes
-  useLayoutEffect(() => {
-    if (!isLoading && !!pendingApprovalName) {
-      scrollToBottom(false);
-    }
-  }, [pendingApprovalName, isLoading, scrollToBottom]);
+  const onToolCallApprovalVisible = useCallback(() => {
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  return {
+    onToolCallApprovalVisible,
+  };
 }

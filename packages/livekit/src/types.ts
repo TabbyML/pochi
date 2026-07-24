@@ -4,6 +4,7 @@ import type {
   BashOutputs,
   MessageMetadata,
   Review,
+  TerminalTextSelection,
   UserEdits,
 } from "@getpochi/common";
 import { Environment } from "@getpochi/common";
@@ -26,7 +27,8 @@ export type DataParts = {
     userEdits: UserEdits;
   };
   "active-selection": {
-    activeSelection: ActiveSelection;
+    activeSelection?: ActiveSelection;
+    activeTerminalTextSelection?: TerminalTextSelection;
   };
   "bash-outputs": {
     bashOutputs: BashOutputs;

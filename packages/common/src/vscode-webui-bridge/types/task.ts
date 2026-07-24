@@ -1,5 +1,5 @@
 import type { Todo } from "@getpochi/tools";
-import type { ActiveSelection } from "./message";
+import type { ActiveSelection, TerminalTextSelection } from "../../base";
 
 export type FileUIPart = {
   name: string;
@@ -25,6 +25,7 @@ export type PochiTaskParams = { cwd: string } & (
       todos?: Todo[];
       files?: FileUIPart[];
       activeSelection?: ActiveSelection;
+      activeTerminalTextSelection?: TerminalTextSelection;
       mcpConfigOverride?: McpConfigOverride;
     }
   | {

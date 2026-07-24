@@ -17,7 +17,7 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { vscodeHost } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
 import { type Todo, initTodoModeTodos } from "@getpochi/tools";
@@ -186,6 +186,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         }
       }
 
+      // Terminal selection can only be read on demand (there's no reactive
+      // VS Code API for it), so capture it once at task-creation time.
+      const activeTerminalTextSelection = isVSCodeEnvironment()
+        ? await vscodeHost.readTerminalSelection()
+        : undefined;
+
       vscodeHost.openTaskInPanel(
         {
           type: "new-task",
@@ -194,6 +200,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           todos,
           files: uploadedFiles,
           activeSelection: activeSelection ?? undefined,
+          activeTerminalTextSelection,
           mcpConfigOverride:
             Object.keys(mcpConfigOverride).length > 0
               ? mcpConfigOverride

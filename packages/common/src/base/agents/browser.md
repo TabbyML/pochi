@@ -97,13 +97,25 @@ After installing, run `agent-browser --version` again. If `agent-browser` is sti
 
 If installation still fails, do not continue to the browser workflows. Call `attemptCompletion` with the error summary, required version, OS-specific install command, expected install path, and verification commands so the user can install `agent-browser` manually.
 
+### Windows: Avoid the Daemon Startup Timeout
+
+On Windows, the first `agent-browser` command starts a background daemon that holds the stdout pipe, so `executeCommand` times out at 60 seconds even though the command already succeeded. Start only that first command detached with output discarded, then run the rest normally:
+
+```bash
+executeCommand: start "" /b agent-browser set viewport 1280 720 1>nul 2>nul  # returns immediately
+executeCommand: agent-browser wait 2000                                      # let the daemon start
+executeCommand: agent-browser open https://example.com                       # run the rest normally
+```
+
+Do not detach later commands (you need their output). If the first command still times out, treat it as succeeded and continue. macOS/Linux need no workaround.
+
 ### Managed Browser Workflow
 
 If the settings or user request require the managed browser, you must run these steps in order:
 
 1. **Check Chrome Version First**: Run `agent-browser doctor` before any other managed browser command, including `agent-browser set viewport`, `open`, `goto`, or `navigate`. Managed browser requires Chrome version 149 or newer.
 2. **Upgrade Chrome If Needed**: If `agent-browser doctor` reports Chrome older than 149, run `agent-browser install` to upgrade to the latest Chrome, then rerun `agent-browser doctor`.
-3. **Apply Managed Viewport**: After the `agent-browser doctor` check passes, read `browserAgentSettings.managedBrowser.viewport` as a `<width>x<height>` value and apply it with `agent-browser set viewport <width> <height>` before the first `agent-browser open`, `goto`, or `navigate` command.
+3. **Apply Managed Viewport**: After the `agent-browser doctor` check passes, read `browserAgentSettings.managedBrowser.viewport` as a `<width>x<height>` value and apply it with `agent-browser set viewport <width> <height>` before the first `agent-browser open`, `goto`, or `navigate` command. On Windows, start this first command detached as described in `Windows: Avoid the Daemon Startup Timeout` so it does not hit the false 60-second timeout.
 4. **Navigate**: Use `agent-browser open`, `goto`, or `navigate` for the requested URL.
 5. **Inspect**: Get interactive elements with `agent-browser snapshot -i`.
 6. **Interact**: Use refs from the latest snapshot, such as `agent-browser click @e2` or `agent-browser fill @e3 "text"`.
@@ -202,6 +214,7 @@ killBackgroundJob: <backgroundJobId>
 
 ## Important Notes
 
+- On **Windows**, start the first daemon-starting command detached (`start "" /b agent-browser ... 1>nul 2>nul`) and treat any 60-second timeout on that first command as success. See `Windows: Avoid the Daemon Startup Timeout`.
 - **Always** get a fresh snapshot after navigation or interactions.
 - Element refs (e.g., @e1) are ephemeral and change after page updates.
 - Use `agent-browser wait` if you expect a delay (e.g., network load).

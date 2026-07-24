@@ -444,7 +444,8 @@
   },
   "activeSelectionBadge": {
     "cell": "Cell",
-    "addContext": "Add Context"
+    "addContext": "Add Context",
+    "terminal": "Terminal"
   },
   "todoModeBadge": {
     "remove": "Remove todo mode"
@@ -600,9 +601,7 @@
     "completed": "All todos completed",
     "needsWork": "Todo needs more work",
     "stopped": "Todo audit stopped",
-    "stoppedDescription": "The audit was stopped before it could produce a summary.",
-    "unavailable": "Todo audit result unavailable",
-    "unavailableDescription": "The audit ended without a readable summary."
+    "unavailable": "Todo audit result unavailable"
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",

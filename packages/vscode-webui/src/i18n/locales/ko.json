@@ -436,7 +436,8 @@
   },
   "activeSelectionBadge": {
     "cell": "셀",
-    "addContext": "컨텍스트 추가"
+    "addContext": "컨텍스트 추가",
+    "terminal": "터미널"
   },
   "todoModeBadge": {
     "remove": "Todo 모드 제거"
@@ -591,9 +592,7 @@
     "completed": "모든 Todos 완료됨",
     "needsWork": "Todo에 추가 작업 필요",
     "stopped": "Todo 감사 중지됨",
-    "stoppedDescription": "감사가 요약을 생성하기 전에 중지되었습니다.",
-    "unavailable": "Todo 감사 결과를 사용할 수 없음",
-    "unavailableDescription": "감사가 종료되었지만 읽을 수 있는 요약을 반환하지 않았습니다."
+    "unavailable": "Todo 감사 결과를 사용할 수 없음"
   },
   "browserAgentSettings": {
     "runtimeSection": "브라우저 런타임",

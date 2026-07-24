@@ -15,6 +15,7 @@ const messageUtilsMocks = vi.hoisted(() => ({
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
+  readTerminalSelection: vi.fn(async () => undefined),
 }));
 const userEditsMocks = vi.hoisted(() => ({
   userEdits: [] as Array<{
@@ -42,8 +43,10 @@ vi.mock("@/lib/message-utils", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
+  isVSCodeEnvironment: () => false,
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
+    readTerminalSelection: vscodeMocks.readTerminalSelection,
   },
 }));
 
@@ -60,6 +63,8 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
+    vscodeMocks.readTerminalSelection.mockReset();
+    vscodeMocks.readTerminalSelection.mockResolvedValue(undefined);
     userEditsMocks.userEdits = [];
   });
 
@@ -353,6 +358,7 @@ describe("useChatSubmit", () => {
       [review],
       [],
       undefined,
+      undefined,
     );
     expect(context.clearFiles).not.toHaveBeenCalled();
     expect(context.sendMessage).toHaveBeenCalledWith({
@@ -384,6 +390,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       [],
+      undefined,
       undefined,
     );
   });
@@ -424,6 +431,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       [],
+      undefined,
       undefined,
     );
   });
@@ -473,6 +481,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       queuedUserEdits,
+      undefined,
       undefined,
     );
   });

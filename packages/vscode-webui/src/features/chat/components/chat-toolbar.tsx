@@ -85,6 +85,7 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
+  onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
 }
@@ -109,6 +110,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
+  onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
 }) => {
@@ -371,6 +373,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             isSubTask={isSubTask}
             task={task}
             subtask={subtask}
+            onToolCallApprovalVisible={onToolCallApprovalVisible}
             onToolsExecutionStarted={onToolsExecutionStarted}
             onToolsExecutionEnded={onToolsExecutionEnded}
           />
