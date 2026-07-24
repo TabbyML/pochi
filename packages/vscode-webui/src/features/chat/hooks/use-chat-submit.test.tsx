@@ -387,6 +387,95 @@ describe("useChatSubmit", () => {
       undefined,
     );
   });
+
+  it("preserves excluded user edits when flushing a queued message", async () => {
+    userEditsMocks.userEdits = [
+      {
+        filepath: "src/example.ts",
+        diff: "+const value = 1;",
+        added: 1,
+        removed: 0,
+      },
+    ];
+    const context = setup({
+      isLoading: true,
+      includeUserEdits: false,
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit();
+    });
+
+    expect(context.queuedMessages).toEqual([
+      queuedMessage({ text: "follow up", userEdits: [] }),
+    ]);
+
+    context.setIsLoading(false);
+    context.setIncludeUserEdits(true);
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+
+    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+      expect.any(Function),
+      "follow up",
+      [],
+      [],
+      [],
+      undefined,
+    );
+  });
+
+  it("preserves included user edits when flushing a queued message", async () => {
+    const queuedUserEdits = [
+      {
+        filepath: "src/example.ts",
+        diff: "+const value = 1;",
+        added: 1,
+        removed: 0,
+      },
+    ];
+    userEditsMocks.userEdits = queuedUserEdits;
+    const context = setup({
+      isLoading: true,
+      includeUserEdits: true,
+    });
+
+    await act(async () => {
+      await context.hook.result.current.handleSubmit();
+    });
+
+    expect(context.queuedMessages).toEqual([
+      queuedMessage({ text: "follow up", userEdits: queuedUserEdits }),
+    ]);
+
+    userEditsMocks.userEdits = [
+      {
+        filepath: "src/other.ts",
+        diff: "+const value = 2;",
+        added: 1,
+        removed: 0,
+      },
+    ];
+    context.setIsLoading(false);
+    context.setIncludeUserEdits(false);
+    await act(async () => {
+      await context.hook.result.current.handleSubmit(undefined, {
+        flushQueuedMessages: true,
+      });
+    });
+
+    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+      expect.any(Function),
+      "follow up",
+      [],
+      [],
+      queuedUserEdits,
+      undefined,
+    );
+  });
 });
 
 function setup({
@@ -416,6 +505,7 @@ function setup({
 }) {
   let queuedMessages = initialQueuedMessages;
   let isLoading = initialIsLoading;
+  let shouldIncludeUserEdits = includeUserEdits;
   const setQueuedMessages = vi.fn(
     (value: React.SetStateAction<QueuedMessage[]>) => {
       queuedMessages =
@@ -457,7 +547,7 @@ function setup({
       setQueuedMessages,
       reviews,
       taskId: "task-1",
-      includeUserEdits,
+      includeUserEdits: shouldIncludeUserEdits,
       isTodoMode,
       canCreateTodo,
       onTodoModeQueued,
@@ -479,6 +569,10 @@ function setup({
       isLoading = value;
       hook.rerender();
     },
+    setIncludeUserEdits(value: boolean) {
+      shouldIncludeUserEdits = value;
+      hook.rerender();
+    },
   };
 }
 
@@ -486,17 +580,20 @@ function queuedMessage({
   text,
   files = [],
   reviews = [],
+  userEdits = [],
   isTodoMode = false,
 }: {
   text: string;
   files?: File[];
   reviews?: Review[];
+  userEdits?: QueuedMessage["userEdits"];
   isTodoMode?: boolean;
 }): QueuedMessage {
   return {
     text,
     files,
     reviews,
+    userEdits,
     isTodoMode,
   };
 }

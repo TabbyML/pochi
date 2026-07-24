@@ -6,7 +6,7 @@ import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { funnel } from "remeda";
 import * as runExclusive from "run-exclusive";
-import { Lifecycle, injectable, scoped } from "tsyringe";
+import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskActivityTracker } from "../editor/task-activity-tracker";
@@ -16,6 +16,12 @@ import { GitState } from "../git/git-state";
 import { CheckpointService } from "./checkpoint-service";
 
 const logger = getLogger("UserEditState");
+const branchBaselinesStateKeyPrefix = "pochi.userEditState.branchBaselines";
+
+interface BranchBaseline {
+  taskCheckpoint: string | undefined;
+  baseline: string;
+}
 
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
@@ -24,10 +30,7 @@ export class UserEditState implements vscode.Disposable {
 
   // Mapping from task uid to hash.
   private trackingTasks = new Map<string, string | undefined>();
-  private branchBaselines = new Map<
-    string,
-    { taskCheckpoint: string | undefined; baseline: string }
-  >();
+  private branchBaselines = new Map<string, BranchBaseline>();
   private branchBaselinePending = false;
   private branchBaselineRevision = 0;
   private disposables: vscode.Disposable[] = [];
@@ -37,13 +40,69 @@ export class UserEditState implements vscode.Disposable {
     private readonly checkpointService: CheckpointService,
     private readonly taskActivityTracker: TaskActivityTracker,
     private readonly gitState: GitState,
+    @inject("vscode.ExtensionContext")
+    private readonly context: vscode.ExtensionContext,
   ) {
+    this.branchBaselines = this.loadBranchBaselines();
     this.setupEventListeners();
   }
 
   private get cwd() {
     return this.workspaceScope.cwd;
   }
+
+  private get branchBaselinesStateKey() {
+    return `${branchBaselinesStateKeyPrefix}:${this.cwd ?? ""}`;
+  }
+
+  private loadBranchBaselines() {
+    const stored = this.context.workspaceState.get(
+      this.branchBaselinesStateKey,
+    );
+    const branchBaselines = new Map<string, BranchBaseline>();
+    if (
+      typeof stored !== "object" ||
+      stored === null ||
+      Array.isArray(stored)
+    ) {
+      return branchBaselines;
+    }
+
+    for (const [uid, value] of Object.entries(stored)) {
+      if (
+        typeof value !== "object" ||
+        value === null ||
+        !("baseline" in value) ||
+        typeof value.baseline !== "string"
+      ) {
+        continue;
+      }
+
+      const taskCheckpoint =
+        "taskCheckpoint" in value ? value.taskCheckpoint : undefined;
+      if (taskCheckpoint !== undefined && typeof taskCheckpoint !== "string") {
+        continue;
+      }
+
+      branchBaselines.set(uid, {
+        baseline: value.baseline,
+        taskCheckpoint,
+      });
+    }
+
+    return branchBaselines;
+  }
+
+  private persistBranchBaselines = runExclusive.build(async () => {
+    try {
+      await this.context.workspaceState.update(
+        this.branchBaselinesStateKey,
+        Object.fromEntries(this.branchBaselines),
+      );
+    } catch (error) {
+      logger.error("Failed to persist user-edit branch baselines", error);
+    }
+  });
 
   private setupEventListeners() {
     if (!this.cwd) {
@@ -87,11 +146,20 @@ export class UserEditState implements vscode.Disposable {
         });
 
         const newEdits = { ...this.edits.value };
+        let didChangeBranchBaselines = false;
         for (const uid of this.trackingTasks.keys()) {
           if (!tasks[uid] || tasks[uid].cwd !== this.cwd) {
             this.trackingTasks.delete(uid);
-            this.branchBaselines.delete(uid);
             delete newEdits[uid];
+          }
+        }
+        // Drop persisted baselines for tasks that are no longer active in this
+        // workspace. Iterate branchBaselines (not only trackingTasks) so entries
+        // restored from workspaceState without a live tracking entry are pruned.
+        for (const uid of [...this.branchBaselines.keys()]) {
+          if (!tasks[uid] || tasks[uid].cwd !== this.cwd) {
+            this.branchBaselines.delete(uid);
+            didChangeBranchBaselines = true;
           }
         }
 
@@ -108,10 +176,18 @@ export class UserEditState implements vscode.Disposable {
             if (this.trackingTasks.get(uid) !== hash) {
               logger.trace(`Adding/updating tracking task ${uid}`, { hash });
               this.trackingTasks.set(uid, hash);
-              this.branchBaselines.delete(uid);
+              const branchBaseline = this.branchBaselines.get(uid);
+              if (branchBaseline && branchBaseline.taskCheckpoint !== hash) {
+                this.branchBaselines.delete(uid);
+                didChangeBranchBaselines = true;
+              }
               isDirty = true;
             }
           }
+        }
+
+        if (didChangeBranchBaselines) {
+          void this.persistBranchBaselines();
         }
 
         if (isDirty) {
@@ -152,6 +228,9 @@ export class UserEditState implements vscode.Disposable {
     this.edits.value = Object.fromEntries(
       Array.from(trackingTasks.keys(), (uid) => [uid, []]),
     );
+    // All baselines for this workspace are invalid after a branch switch,
+    // including persisted entries for tasks that are not currently tracked.
+    this.branchBaselines.clear();
 
     try {
       const baseline = await this.checkpointService.saveUserEditBaseline();
@@ -163,6 +242,7 @@ export class UserEditState implements vscode.Disposable {
     } catch (error) {
       logger.error("Failed to reset user edits after branch change", error);
     } finally {
+      await this.persistBranchBaselines();
       this.branchBaselinePending = false;
       this.triggerUpdate.call();
     }

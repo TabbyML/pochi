@@ -41,6 +41,7 @@ function queuedMessage(text: string, isTodoMode = false): QueuedMessage {
     text,
     files: [],
     reviews: [],
+    userEdits: [],
     isTodoMode,
   };
 }

@@ -8,7 +8,7 @@ import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
-import type { Review } from "@getpochi/common/vscode-webui-bridge";
+import type { FileDiff, Review } from "@getpochi/common/vscode-webui-bridge";
 import type React from "react";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,6 +30,7 @@ export interface QueuedMessage {
   text: string;
   files: File[];
   reviews: Review[];
+  userEdits: FileDiff[];
   isTodoMode: boolean;
 }
 
@@ -134,6 +135,7 @@ export function useChatSubmit({
       text: input.text.trim(),
       files: [...files],
       reviews: [...reviews],
+      userEdits: includeUserEdits ? [...userEdits] : [],
       isTodoMode,
     };
 
@@ -146,7 +148,7 @@ export function useChatSubmit({
     }
 
     return currentMessage;
-  }, [files, input.text, isTodoMode, reviews]);
+  }, [files, includeUserEdits, input.text, isTodoMode, reviews, userEdits]);
 
   const clearCurrentMessage = useCallback(
     (currentMessage: QueuedMessage) => {
@@ -241,6 +243,8 @@ export function useChatSubmit({
       const text = queuedMessage?.text ?? content;
       const messageFiles = queuedMessage?.files ?? files;
       const messageReviews = queuedMessage?.reviews ?? reviews;
+      const messageUserEdits =
+        queuedMessage?.userEdits ?? (includeUserEdits ? userEdits : []);
       const shouldCreateTodo =
         (queuedMessage?.isTodoMode ?? isTodoMode) && canCreateTodo;
 
@@ -287,7 +291,7 @@ export function useChatSubmit({
             text,
             uploadedAttachments,
             messageReviews,
-            includeUserEdits ? userEdits : [],
+            messageUserEdits,
             activeSelection,
           );
           logger.debug("Sending message with files");
@@ -310,7 +314,7 @@ export function useChatSubmit({
           text,
           [],
           messageReviews,
-          includeUserEdits ? userEdits : [],
+          messageUserEdits,
           activeSelection,
         );
 
