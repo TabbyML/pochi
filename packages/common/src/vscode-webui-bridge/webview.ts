@@ -2,12 +2,14 @@ import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type {
+  ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
   TaskMemoryState,
+  TerminalTextSelection,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
@@ -44,7 +46,6 @@ import type {
   DiffCheckpointOptions,
   GithubIssue,
 } from "./types/git";
-import type { ActiveSelection, TerminalTextSelection } from "./types/message";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { VSCodeSettings } from "./types/vscode-settings";

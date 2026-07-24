@@ -80,7 +80,7 @@ export {
   BashOutputs,
   TerminalTextSelection,
   UserEdits,
-} from "./types/message";
+} from "../base";
 export type { VSCodeSettings } from "./types/vscode-settings";
 export {
   buildTaskScopedMcpInfo,

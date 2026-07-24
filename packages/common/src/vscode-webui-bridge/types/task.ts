@@ -1,5 +1,5 @@
 import type { Todo } from "@getpochi/tools";
-import type { ActiveSelection, TerminalTextSelection } from "./message";
+import type { ActiveSelection, TerminalTextSelection } from "../../base";
 
 export type FileUIPart = {
   name: string;
