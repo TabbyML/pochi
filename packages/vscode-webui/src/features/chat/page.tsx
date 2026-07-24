@@ -394,10 +394,13 @@ function Chat({ user, uid, info }: ChatProps) {
     messages,
   });
 
-  useScrollToBottom({
+  const lastMessage = messages.at(-1);
+  const lastUserMessageId =
+    lastMessage?.role === "user" ? lastMessage.id : undefined;
+
+  const { onToolCallApprovalVisible } = useScrollToBottom({
     messagesContainerRef,
-    isLoading,
-    pendingApprovalName: pendingApproval?.name,
+    lastUserMessageId,
   });
   const showRenderWidgetFixButton =
     !isLoading && !pendingApproval && !!renderWidgetErrorKind;
@@ -483,6 +486,7 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
+          onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}
         />
