@@ -56,6 +56,26 @@ describe("QueuedMessages", () => {
     expect(getByText("chat.fileCount:2 · chat.reviewCount:1")).toBeTruthy();
   });
 
+  it("shows the user edit count alongside file/review counts", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "  ",
+            filesCount: 2,
+            reviewsCount: 1,
+            userEditsCount: 3,
+          }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(
+      getByText("chat.fileCount:2 · chat.reviewCount:1 · chat.userEditCount:3"),
+    ).toBeTruthy();
+  });
+
   it("renders a minimal icon-only preview for the active editor selection captured at queue time", () => {
     const activeSelection: ActiveSelection = {
       filepath: "/workspace/foo.ts",

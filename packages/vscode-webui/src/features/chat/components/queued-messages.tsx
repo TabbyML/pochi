@@ -56,6 +56,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         text = "",
         filesCount = 0,
         reviewsCount = 0,
+        userEditsCount = 0,
         isTodoMode,
         activeSelection,
         activeTerminalTextSelection,
@@ -64,6 +65,9 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
       const details = [
         filesCount > 0 ? t("chat.fileCount", { count: filesCount }) : "",
         reviewsCount > 0 ? t("chat.reviewCount", { count: reviewsCount }) : "",
+        userEditsCount > 0
+          ? t("chat.userEditCount", { count: userEditsCount })
+          : "",
       ].filter(Boolean);
 
       return {

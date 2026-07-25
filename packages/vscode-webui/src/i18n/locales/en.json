@@ -43,6 +43,7 @@
     "noMessage": "No message",
     "fileCount": "{{count}} files",
     "reviewCount": "{{count}} reviews",
+    "userEditCount": "{{count}} edits",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
