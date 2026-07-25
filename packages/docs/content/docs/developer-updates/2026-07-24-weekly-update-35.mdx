@@ -66,3 +66,5 @@ More below!
   <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Background-job terminal tabs with concise command names](https://assets.docs.getpochi.com/docs/7d/7df488a9e0344a045509091d2aac646ec7915661f9d85271b50abd47371f1599)</div>
 
 - **New sidebar tasks stay open:** Tasks created from the sidebar now open as pinned tabs, so opening another editor no longer replaces the task you just started. [**#1771**](https://github.com/TabbyML/pochi/pull/1771)
+
+- **Windows compatibility fixes:** Command output from PowerShell and cmd now displays correctly instead of showing garbled text (mojibake) on non-UTF-8 consoles like Chinese Windows. Tasks and worktrees no longer disappear from the task list when git and VS Code format the same path differently. File search through ripgrep also now runs correctly instead of failing with a path-not-found error. [**#1785**](https://github.com/TabbyML/pochi/pull/1785)
