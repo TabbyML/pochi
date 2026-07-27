@@ -5,6 +5,11 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("assistant"),
     totalTokens: z.number(),
+    // True when `totalTokens` falls back to our heuristic estimate because
+    // the provider did not report usage; false/undefined means it's the real
+    // token count reported by the provider. Used to gate token-estimate
+    // calibration to only trust actual provider usage.
+    totalTokensIsEstimated: z.boolean().optional(),
     finishReason: z.custom<FinishReason>(),
     startedAt: z.coerce.date().optional(),
     finishedAt: z.coerce.date().optional(),
