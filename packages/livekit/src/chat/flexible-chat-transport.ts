@@ -296,6 +296,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
               // Detailed usage shape differences are a server/protocol concern.
               totalTokens:
                 part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
+              // Lets downstream consumers (e.g. token-estimate calibration)
+              // tell apart real provider usage from our heuristic fallback.
+              totalTokensIsEstimated: !part.totalUsage.totalTokens,
               finishReason: part.finishReason,
               startedAt: requestStartedAt,
               finishedAt: now,

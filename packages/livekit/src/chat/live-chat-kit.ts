@@ -63,7 +63,11 @@ import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
 import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
-import { computeContextWindowUsage, estimateTotalTokens } from "./token-utils";
+import {
+  computeContextWindowUsage,
+  estimateTotalTokens,
+  updateTokenCalibration,
+} from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
@@ -984,6 +988,22 @@ export class LiveChatKit<
       formatters.llm(this.chat.messages),
       this.latestRequestSnapshot,
     );
+
+    // Only calibrate against real provider usage, never against our own
+    // fallback estimate (that would just chase its own tail).
+    if (contextWindowUsage && !message.metadata.totalTokensIsEstimated) {
+      const estimatedTotalTokens =
+        contextWindowUsage.system +
+        contextWindowUsage.tools +
+        contextWindowUsage.messages +
+        contextWindowUsage.files +
+        contextWindowUsage.toolResults +
+        contextWindowUsage.projectMemory;
+      updateTokenCalibration(
+        message.metadata.totalTokens,
+        estimatedTotalTokens,
+      );
+    }
 
     let duration = undefined;
     if (

@@ -5,8 +5,92 @@ import type { Message } from "../types";
 
 export const ImageEstimatedTokens = 1000;
 
+/**
+ * Approximate chars-per-token ratios used for token estimation, tuned for
+ * common BPE tokenizers (e.g. cl100k/o200k):
+ * - Non-CJK text (mostly Latin-script prose/code) tokenizes at roughly 4
+ *   chars/token.
+ * - CJK text (Chinese/Japanese/Korean) tokenizes much closer to one token per
+ *   character, since BPE vocabularies rarely merge multiple CJK ideographs
+ *   into a single token, so a much smaller ratio is used.
+ * These are starting points only; `updateTokenCalibration` nudges the
+ * effective ratio toward whatever the active model's tokenizer actually
+ * produces.
+ */
+export const DefaultOtherCharsPerToken = 4;
+export const DefaultCjkCharsPerToken = 1.5;
+
+// Covers CJK Unified Ideographs (+ Extension A), Hiragana/Katakana, Hangul
+// syllables, and fullwidth forms/punctuation commonly seen in CJK text.
+const CjkCharPattern =
+  /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7a3\uff00-\uffef]/g;
+
+function countCharBuckets(text: string): {
+  otherChars: number;
+  cjkChars: number;
+} {
+  const cjkChars = text.match(CjkCharPattern)?.length ?? 0;
+  const otherChars = text.length - cjkChars;
+  return { otherChars, cjkChars };
+}
+
+/**
+ * Session-local calibration factor, blended equally into both char buckets.
+ * Updated via an exponential moving average (see `updateTokenCalibration`)
+ * whenever we learn a request's real token usage from the provider, so the
+ * heuristic estimate gradually tracks the active model's actual tokenizer.
+ * This is intentionally in-memory only: it resets on restart rather than
+ * persisting across sessions.
+ */
+const TokenCalibrationEmaAlpha = 0.3;
+const MinTokenCalibrationFactor = 0.3;
+const MaxTokenCalibrationFactor = 3;
+
+let tokenCalibrationFactor = 1;
+
+/** @internal exported for testing */
+export function getTokenCalibrationFactor(): number {
+  return tokenCalibrationFactor;
+}
+
+/** @internal exported for testing */
+export function resetTokenCalibration(): void {
+  tokenCalibrationFactor = 1;
+}
+
+/**
+ * Nudges the calibration factor toward `actualTokens / estimatedTokens` using
+ * an EMA, so future `estimateTokens` calls gradually track the real
+ * tokenizer's behavior. Pass whatever (already-calibrated) estimate
+ * `estimateTokens`/`computeContextWindowUsage` produced for the same content
+ * the provider counted; this function divides the current factor back out
+ * internally so the comparison is against the raw, uncalibrated heuristic
+ * rather than compounding on top of the previous calibration (which would
+ * otherwise make the factor converge toward the sqrt of the true ratio
+ * instead of the true ratio itself). Ignored when either input is
+ * non-positive.
+ */
+export function updateTokenCalibration(
+  actualTokens: number,
+  estimatedTokens: number,
+): void {
+  if (actualTokens <= 0 || estimatedTokens <= 0) return;
+  const rawEstimatedTokens = estimatedTokens / tokenCalibrationFactor;
+  const ratio = actualTokens / rawEstimatedTokens;
+  const next =
+    tokenCalibrationFactor * (1 - TokenCalibrationEmaAlpha) +
+    ratio * TokenCalibrationEmaAlpha;
+  tokenCalibrationFactor = Math.min(
+    Math.max(next, MinTokenCalibrationFactor),
+    MaxTokenCalibrationFactor,
+  );
+}
+
 export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
+  const { otherChars, cjkChars } = countCharBuckets(text);
+  const raw =
+    otherChars / DefaultOtherCharsPerToken + cjkChars / DefaultCjkCharsPerToken;
+  return Math.ceil(raw * tokenCalibrationFactor);
 }
 
 /**

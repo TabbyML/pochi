@@ -5,7 +5,7 @@ import type {
 } from "@getpochi/common";
 import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type BlobStore,
   type LiveKitStore,
@@ -14,8 +14,15 @@ import {
   type Task,
 } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
+import { getTokenCalibrationFactor, resetTokenCalibration } from "../token-utils";
 
 describe("LiveChatKit memory lifecycle", () => {
+  // onFinish exercises token-estimate calibration (a process-wide, in-memory
+  // singleton), so reset it between tests to keep them order-independent.
+  beforeEach(() => {
+    resetTokenCalibration();
+  });
+
   it("starts background task scheduling after the first stream finishes", async () => {
     const store = new FakeStore([
       makeTask({
@@ -309,6 +316,67 @@ describe("LiveChatKit memory lifecycle", () => {
     expect(chatKit.chat.messages.map((message) => message.id)).toContain(
       "user-1",
     );
+  });
+
+  it("calibrates the token estimator against real provider usage on finish", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+
+    // Keep the non-message contribution to the estimate at zero so the total
+    // estimate stays small relative to the (deliberately huge) reported
+    // totalTokens below, giving a clear signal that calibration ran.
+    setLatestRequestSnapshot(chatKit, 0, 0);
+    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.finish(assistantMessage());
+
+    expect(getTokenCalibrationFactor()).toBeGreaterThan(1);
+  });
+
+  it("does not calibrate against our own fallback estimate", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+
+    setLatestRequestSnapshot(chatKit, 0, 0);
+    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.finish({
+      ...assistantMessage(),
+      metadata: {
+        kind: "assistant",
+        finishReason: "stop",
+        totalTokens: 20_000,
+        totalTokensIsEstimated: true,
+      },
+    } as unknown as Message);
+
+    expect(getTokenCalibrationFactor()).toBe(1);
   });
 
   it("updates task total tokens from the formatted compact estimate", () => {
