@@ -89,6 +89,8 @@ export const TerminalSelectionPart: React.FC<TerminalSelectionProps> = ({
     return null;
   }
 
+  const lineCount = getLineCount(content);
+
   const onClick = () => {
     if (!isVSCodeEnvironment() || !backgroundJobId) return;
     openBackgroundJobTerminal?.(backgroundJobId);
@@ -103,11 +105,17 @@ export const TerminalSelectionPart: React.FC<TerminalSelectionProps> = ({
               e.stopPropagation();
               onClick();
             }}
-            aria-label={`${t("activeSelectionBadge.terminal")}: ${terminalName}`}
+            aria-label={`${t("activeSelectionBadge.terminal")}: ${terminalName} (${t("activeSelectionBadge.lines", { count: lineCount })})`}
             className="mx-px cursor-pointer rounded-sm border border-border box-decoration-clone p-0.5 text-sm/6 hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700"
           >
             <TerminalIcon className="inline-block size-3.5 align-text-bottom" />
-            <span className="ml-0.5 break-words">{terminalName}</span>
+            <span className="ml-0.5 break-words">
+              {terminalName}
+              <span className="text-zinc-500 dark:text-zinc-400">
+                {" "}
+                ({t("activeSelectionBadge.lines", { count: lineCount })})
+              </span>
+            </span>
           </span>
         </div>
       </HoverCardTrigger>
@@ -124,3 +132,12 @@ export const TerminalSelectionPart: React.FC<TerminalSelectionProps> = ({
     </HoverCard>
   );
 };
+
+/**
+ * Counts the number of lines in the given text, ignoring a single trailing
+ * newline (so `"a\nb\n"` is treated as 2 lines, not 3).
+ */
+function getLineCount(content: string): number {
+  const trimmed = content.endsWith("\n") ? content.slice(0, -1) : content;
+  return trimmed.length === 0 ? 0 : trimmed.split("\n").length;
+}

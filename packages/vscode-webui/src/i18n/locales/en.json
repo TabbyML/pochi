@@ -445,7 +445,9 @@
   "activeSelectionBadge": {
     "cell": "Cell",
     "addContext": "Add Context",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "lines_one": "{{count}} line",
+    "lines_other": "{{count}} lines"
   },
   "todoModeBadge": {
     "remove": "Remove todo mode"
