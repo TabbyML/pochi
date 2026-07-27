@@ -106,9 +106,9 @@ export const TerminalSelectionPart: React.FC<TerminalSelectionProps> = ({
               onClick();
             }}
             aria-label={`${t("activeSelectionBadge.terminal")}: ${terminalName}:${lineCount}`}
-            className="mx-px cursor-pointer rounded-sm border border-border box-decoration-clone p-0.5 text-sm/6 hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700"
+            className="mx-px inline-flex cursor-pointer items-center rounded-sm border border-border box-decoration-clone p-0.5 text-sm/6 hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700"
           >
-            <TerminalIcon className="inline-block size-3.5 align-text-bottom" />
+            <TerminalIcon className="block size-3.5 shrink-0" />
             <span className="ml-0.5 break-words">
               {terminalName}
               <span className="text-zinc-500 dark:text-zinc-400">
