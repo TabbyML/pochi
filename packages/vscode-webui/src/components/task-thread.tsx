@@ -23,13 +23,19 @@ export const TaskThread: React.FC<{
     image?: string | null;
   };
   showMessageList?: boolean;
+  className?: string;
+  messageListClassName?: string;
   scrollAreaClassName?: string;
+  instantAutoScroll?: boolean;
 }> = ({
   source,
   user,
   assistant,
   showMessageList = true,
+  className,
+  messageListClassName,
   scrollAreaClassName,
+  instantAutoScroll = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,6 +53,7 @@ export const TaskThread: React.FC<{
   const newTaskContainer = useRef<HTMLDivElement>(null);
   const { isAtBottom, scrollToBottom } = useIsAtBottom(newTaskContainer);
   const isAtBottomRef = useRef(isAtBottom);
+  const hasInitiallyScrolledRef = useRef(false);
 
   useEffect(() => {
     isAtBottomRef.current = isAtBottom;
@@ -63,7 +70,7 @@ export const TaskThread: React.FC<{
     }
     const resizeObserver = new ResizeObserver(() => {
       if (isAtBottomRef.current) {
-        requestAnimationFrame(() => scrollToBottom());
+        requestAnimationFrame(() => scrollToBottom(!instantAutoScroll));
       }
     });
     resizeObserver.observe(container);
@@ -71,22 +78,43 @@ export const TaskThread: React.FC<{
     return () => {
       resizeObserver.disconnect();
     }; // clean up
-  }, [scrollToBottom, showMessageList]);
+  }, [instantAutoScroll, scrollToBottom, showMessageList]);
 
-  // Initial scroll to bottom once when component mounts (without smooth behavior)
   useLayoutEffect(() => {
-    if (newTaskContainer.current) {
-      scrollToBottom(false); // false = not smooth
+    if (!instantAutoScroll && newTaskContainer.current) {
+      scrollToBottom(false);
     }
-  }, [scrollToBottom]);
+  }, [instantAutoScroll, scrollToBottom]);
+
+  useLayoutEffect(() => {
+    if (
+      instantAutoScroll &&
+      showMessageList &&
+      renderMessages.length > 0 &&
+      !hasInitiallyScrolledRef.current &&
+      newTaskContainer.current
+    ) {
+      hasInitiallyScrolledRef.current = true;
+      scrollToBottom(false);
+    }
+  }, [
+    instantAutoScroll,
+    renderMessages.length,
+    scrollToBottom,
+    showMessageList,
+  ]);
 
   return (
-    <div className="flex flex-col">
+    <div className={cn("flex flex-col", className)}>
       {showMessageList && (
         <MessageList
-          className={cn("px-1 py-0.5", {
-            "mt-2": !renderMessages.length,
-          })}
+          className={cn(
+            "px-1 py-0.5",
+            {
+              "mt-2": !renderMessages.length,
+            },
+            messageListClassName,
+          )}
           viewportClassname={cn(
             "max-h-[300px] my-1 rounded-sm border",
             scrollAreaClassName,
