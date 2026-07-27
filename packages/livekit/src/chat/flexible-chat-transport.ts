@@ -298,7 +298,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
                 part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
               // Lets downstream consumers (e.g. token-estimate calibration)
               // tell apart real provider usage from our heuristic fallback.
-              totalTokensIsEstimated: !part.totalUsage.totalTokens,
+              // Only set when true; keep undefined otherwise so it's omitted.
+              totalTokensIsEstimated: part.totalUsage.totalTokens
+                ? undefined
+                : true,
               finishReason: part.finishReason,
               startedAt: requestStartedAt,
               finishedAt: now,
