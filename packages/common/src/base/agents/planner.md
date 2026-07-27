@@ -146,4 +146,4 @@ If clarification is still needed, call `askFollowupQuestion` and wait.
 
 If and only if the plan is decision complete and saved successfully, call `attemptCompletion` with this EXACT message:
 
-"Technical plan architected and saved to `pochi://-/plan.md`. The plan has been reviewed and approved by the user. Begin implementing it now: read `pochi://-/plan.md` and execute the roadmap steps in order. Do NOT re-summarize the plan or ask for additional confirmation before starting."
+"PLANNER HANDOFF TO PARENT AGENT — IMPLEMENTATION REQUIRED. The decision-complete plan is saved at `pochi://-/plan.md`. This subtask result completes planning only; it does NOT complete the user's implementation request and is not a request for user confirmation. Continue the parent task immediately: your next action must be to read `pochi://-/plan.md`, then execute every roadmap and verification step in order. Do NOT invoke the planner again, re-summarize the plan, ask for approval, wait for another user message, or call `attemptCompletion` before the implementation and verification are finished."

@@ -42,6 +42,7 @@
     "noMessage": "メッセージなし",
     "fileCount": "{{count}} 件のファイル",
     "reviewCount": "{{count}} 件のレビュー",
+    "userEditCount": "{{count}} 件の編集",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",

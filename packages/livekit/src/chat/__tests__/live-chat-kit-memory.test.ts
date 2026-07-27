@@ -5,7 +5,7 @@ import type {
 } from "@getpochi/common";
 import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type BlobStore,
   type LiveKitStore,
@@ -14,8 +14,18 @@ import {
   type Task,
 } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
+import { resetTokenCalibration } from "../token-utils";
 
 describe("LiveChatKit memory lifecycle", () => {
+  // Per-model calibration state lives in a module-level map keyed by
+  // `llm.id`; reset it between tests to keep them order-independent. Note
+  // that calibration is now driven from `flexible-chat-transport.ts` (using
+  // the provider's real `inputTokens` during streaming), not from
+  // `LiveChatKit.onFinish`, so it is no longer exercised directly here.
+  beforeEach(() => {
+    resetTokenCalibration();
+  });
+
   it("starts background task scheduling after the first stream finishes", async () => {
     const store = new FakeStore([
       makeTask({

@@ -1,9 +1,13 @@
-import type { Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  ActiveSelection,
+  Review,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import type React from "react";
+import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type QueuedMessage, useChatSubmit } from "./use-chat-submit";
+import { type DraftMessage, useChatSubmit } from "./use-chat-submit";
 
 const chatStateMocks = vi.hoisted(() => ({
   autoApproveGuard: { current: "auto" },
@@ -15,7 +19,11 @@ const messageUtilsMocks = vi.hoisted(() => ({
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
-  readTerminalSelection: vi.fn(async () => undefined),
+  readTerminalSelection: vi.fn(async () => undefined as unknown),
+  isVSCodeEnvironment: { value: false },
+}));
+const activeSelectionMock = vi.hoisted(() => ({
+  value: undefined as ActiveSelection | undefined,
 }));
 const userEditsMocks = vi.hoisted(() => ({
   userEdits: [] as Array<{
@@ -31,7 +39,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@/lib/hooks/use-active-selection", () => ({
-  useActiveSelection: () => undefined,
+  useActiveSelection: () => activeSelectionMock.value,
 }));
 
 vi.mock("@/lib/hooks/use-user-edits", () => ({
@@ -43,7 +51,7 @@ vi.mock("@/lib/message-utils", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
-  isVSCodeEnvironment: () => false,
+  isVSCodeEnvironment: () => vscodeMocks.isVSCodeEnvironment.value,
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
     readTerminalSelection: vscodeMocks.readTerminalSelection,
@@ -66,304 +74,390 @@ describe("useChatSubmit", () => {
     vscodeMocks.readTerminalSelection.mockReset();
     vscodeMocks.readTerminalSelection.mockResolvedValue(undefined);
     userEditsMocks.userEdits = [];
+    vscodeMocks.isVSCodeEnvironment.value = false;
+    activeSelectionMock.value = undefined;
   });
 
-  it("queues Enter submissions while the chat is busy without stopping", async () => {
-    const context = setup({ isLoading: true });
+  describe("handleSubmit", () => {
+    it("queues Enter submissions while the chat is busy without stopping", async () => {
+      const context = setup({ isLoading: true });
 
-    await act(async () => {
-      await context.hook.result.current.handleSubmit();
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.queuedMessages).toEqual([
+        draftMessage({ text: "follow up" }),
+      ]);
+      expect(context.clearInput).toHaveBeenCalledOnce();
+      expect(context.stopChat).not.toHaveBeenCalled();
+      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
     });
 
-    expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "follow up" }),
-    ]);
-    expect(context.clearInput).toHaveBeenCalledOnce();
-    expect(context.stopChat).not.toHaveBeenCalled();
-    expect(chatStateMocks.batchAbort).not.toHaveBeenCalled();
-    expect(context.sendMessage).not.toHaveBeenCalled();
-    expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
-  });
+    it("also queues while tool calls are executing", async () => {
+      chatStateMocks.isExecuting = true;
+      const context = setup({ isLoading: false });
 
-  it("queues Command+Enter submissions and stops the current stream", async () => {
-    const context = setup({ isLoading: true });
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
 
-    await act(async () => {
-      await context.hook.result.current.handleSteerSubmit();
+      expect(context.queuedMessages).toEqual([
+        draftMessage({ text: "follow up" }),
+      ]);
+      expect(context.sendMessage).not.toHaveBeenCalled();
     });
 
-    expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "follow up" }),
-    ]);
-    expect(context.clearInput).toHaveBeenCalledOnce();
-    expect(context.stopChat).toHaveBeenCalledOnce();
-    expect(context.sendMessage).not.toHaveBeenCalled();
-    expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
-  });
+    it("does nothing for an empty submission", async () => {
+      const context = setup({ isLoading: false, inputText: "" });
 
-  it("does not interrupt Command+Enter when there is no current or queued message", async () => {
-    const context = setup({ isLoading: true, inputText: "" });
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
 
-    await act(async () => {
-      await context.hook.result.current.handleSteerSubmit();
+      expect(context.queuedMessages).toEqual([]);
+      expect(context.clearInput).not.toHaveBeenCalled();
+      expect(context.sendMessage).not.toHaveBeenCalled();
     });
 
-    expect(context.queuedMessages).toEqual([]);
-    expect(context.clearInput).not.toHaveBeenCalled();
-    expect(context.stopChat).not.toHaveBeenCalled();
-    expect(context.sendMessage).not.toHaveBeenCalled();
-    expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
-  });
+    it("sends immediately when the chat is idle", async () => {
+      const context = setup({ isLoading: false });
 
-  it("keeps the visible queue stable when Command+Enter interrupts with queued messages", async () => {
-    const firstQueuedMessage = queuedMessage({ text: "first queued message" });
-    const context = setup({
-      isLoading: true,
-      queuedMessages: [firstQueuedMessage],
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.clearInput).toHaveBeenCalledOnce();
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
+      });
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
     });
 
-    await act(async () => {
-      await context.hook.result.current.handleSteerSubmit();
+    it("sends immediately when idle even if messages are already queued", async () => {
+      const existing = draftMessage({ text: "already queued" });
+      const context = setup({
+        isLoading: false,
+        queuedMessages: [existing],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
+      });
+      // The pre-existing queue is left untouched by an immediate send.
+      expect(context.queuedMessages).toEqual([existing]);
     });
 
-    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
-    expect(context.clearInput).toHaveBeenCalledOnce();
-    expect(context.stopChat).toHaveBeenCalledOnce();
-    expect(context.sendMessage).not.toHaveBeenCalled();
-    expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
+    it("queues files and reviews while the chat is busy", async () => {
+      const file = new File(["image"], "queued.png", { type: "image/png" });
+      const review = createReview("review-1");
+      const context = setup({
+        isLoading: true,
+        files: [file],
+        reviews: [review],
+      });
 
-    context.setIsLoading(false);
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.queuedMessages).toEqual([
+        draftMessage({ text: "follow up", filesCount: 1, reviewsCount: 1 }),
+      ]);
+      expect(context.upload).toHaveBeenCalledOnce();
+      expect(context.clearInput).toHaveBeenCalledOnce();
+      expect(context.clearFiles).toHaveBeenCalledOnce();
+      expect(vscodeMocks.deleteReviews).toHaveBeenCalledWith(["review-1"]);
+      expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("captures todo mode on queued submissions and resets it", async () => {
+      const onTodoModeQueued = vi.fn();
+      const context = setup({
+        isLoading: true,
+        isTodoMode: true,
+        onTodoModeQueued,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.queuedMessages).toEqual([
+        draftMessage({ text: "follow up", isTodoMode: true }),
+      ]);
+      expect(onTodoModeQueued).toHaveBeenCalledOnce();
+    });
+
+    it("triggers onBeforeSendText when sending an immediate todo-mode message", async () => {
+      const onBeforeSendText = vi.fn();
+      const context = setup({
+        isLoading: false,
+        isTodoMode: true,
+        onBeforeSendText,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(onBeforeSendText).toHaveBeenCalledWith("follow up");
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
       });
     });
 
-    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
-    expect(context.sendMessage).toHaveBeenNthCalledWith(1, {
-      parts: ["text:follow up"],
+    it("does not trigger onBeforeSendText when todo creation is disabled", async () => {
+      const onBeforeSendText = vi.fn();
+      const context = setup({
+        isLoading: false,
+        isTodoMode: true,
+        canCreateTodo: false,
+        onBeforeSendText,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(onBeforeSendText).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
+      });
+    });
+  });
+
+  describe("handleSteerSubmit", () => {
+    it("stops the current stream and sends the message immediately", async () => {
+      const context = setup({ isLoading: true });
+
+      let promise: Promise<void>;
+      await act(async () => {
+        promise = context.result.current.handleSteerSubmit();
+      });
+
+      await act(async () => {
+        context.rerender({ isLoading: false });
+      });
+
+      await act(async () => {
+        await promise;
+      });
+
+      expect(context.clearInput).toHaveBeenCalledOnce();
+      expect(context.stopChat).toHaveBeenCalledOnce();
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
+      });
+      expect(context.queuedMessages).toEqual([]);
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
     });
 
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
+    it("aborts executing tool calls before sending", async () => {
+      chatStateMocks.isExecuting = true;
+      const context = setup({ isLoading: false });
+
+      let promise: Promise<void>;
+      await act(async () => {
+        promise = context.result.current.handleSteerSubmit();
+      });
+
+      await act(async () => {
+        chatStateMocks.isExecuting = false;
+        context.rerender({ isLoading: false });
+      });
+
+      await act(async () => {
+        await promise;
+      });
+
+      expect(chatStateMocks.batchAbort).toHaveBeenCalledOnce();
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
       });
     });
 
-    expect(context.queuedMessages).toEqual([]);
-    expect(context.sendMessage).toHaveBeenNthCalledWith(2, {
-      parts: ["text:first queued message"],
-    });
-  });
+    it("sends immediately without stopping when the chat is already idle", async () => {
+      const context = setup({ isLoading: false });
 
-  it("stores Command+Enter submissions as hidden pending messages while idle with queued messages", async () => {
-    const firstQueuedMessage = queuedMessage({ text: "first queued message" });
-    const context = setup({
-      isLoading: false,
-      queuedMessages: [firstQueuedMessage],
-    });
+      await act(async () => {
+        await context.result.current.handleSteerSubmit();
+      });
 
-    await act(async () => {
-      await context.hook.result.current.handleSteerSubmit();
-    });
-
-    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
-    expect(context.clearInput).toHaveBeenCalledOnce();
-    expect(context.stopChat).not.toHaveBeenCalled();
-    expect(context.sendMessage).not.toHaveBeenCalled();
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
+      expect(context.stopChat).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
       });
     });
 
-    expect(context.queuedMessages).toEqual([firstQueuedMessage]);
-    expect(context.sendMessage).toHaveBeenCalledWith({
-      parts: ["text:follow up"],
-    });
-  });
+    it("does not interrupt or send when there is nothing to submit", async () => {
+      const context = setup({ isLoading: true, inputText: "" });
 
-  it("keeps adding Enter submissions when queued messages already exist", async () => {
-    const context = setup({
-      isLoading: false,
-      queuedMessages: [queuedMessage({ text: "first queued message" })],
-    });
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit();
-    });
-
-    expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "first queued message" }),
-      queuedMessage({ text: "follow up" }),
-    ]);
-    expect(context.clearInput).toHaveBeenCalledOnce();
-    expect(context.sendMessage).not.toHaveBeenCalled();
-  });
-
-  it("flushes only queued messages for the ready effect", async () => {
-    const context = setup({
-      isLoading: false,
-      queuedMessages: [
-        queuedMessage({ text: "first queued message" }),
-        queuedMessage({ text: "second queued message" }),
-      ],
-    });
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
+      await act(async () => {
+        await context.result.current.handleSteerSubmit();
       });
-    });
 
-    expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "second queued message" }),
-    ]);
-    expect(context.clearInput).not.toHaveBeenCalled();
-    expect(context.sendMessage).toHaveBeenCalledWith({
-      parts: ["text:first queued message"],
+      expect(context.clearInput).not.toHaveBeenCalled();
+      expect(context.stopChat).not.toHaveBeenCalled();
+      expect(context.sendMessage).not.toHaveBeenCalled();
     });
   });
 
-  it("queues files and reviews while the chat is busy", async () => {
-    const file = new File(["image"], "queued.png", { type: "image/png" });
-    const review = createReview("review-1");
-    const context = setup({
-      isLoading: true,
-      files: [file],
-      reviews: [review],
-    });
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit();
-    });
-
-    expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "follow up", files: [file], reviews: [review] }),
-    ]);
-    expect(context.clearInput).toHaveBeenCalledOnce();
-    expect(context.clearFiles).toHaveBeenCalledOnce();
-    expect(vscodeMocks.deleteReviews).toHaveBeenCalledWith(["review-1"]);
-    expect(context.sendMessage).not.toHaveBeenCalled();
-  });
-
-  it("captures todo mode on queued submissions", async () => {
-    const context = setup({ isLoading: true, isTodoMode: true });
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit();
-    });
-
-    expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "follow up", isTodoMode: true }),
-    ]);
-  });
-
-  it("resets todo mode after queueing a todo submission", async () => {
-    const onTodoModeQueued = vi.fn();
-    const context = setup({
-      isLoading: true,
-      isTodoMode: true,
-      onTodoModeQueued,
-    });
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit();
-    });
-
-    expect(onTodoModeQueued).toHaveBeenCalledOnce();
-  });
-
-  it("uses queued todo mode when flushing queued messages", async () => {
-    const onBeforeSendText = vi.fn();
-    const context = setup({
-      isLoading: false,
-      isTodoMode: true,
-      onBeforeSendText,
-      queuedMessages: [
-        queuedMessage({ text: "regular queued message", isTodoMode: false }),
-        queuedMessage({ text: "todo queued message", isTodoMode: true }),
-      ],
-    });
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
+  describe("handleSteerQueuedMessage", () => {
+    it("stops the current stream, sends the selected queued message, and removes it from the queue", async () => {
+      const first = draftMessage({ text: "first queued message" });
+      const second = draftMessage({ text: "second queued message" });
+      const context = setup({
+        isLoading: true,
+        queuedMessages: [first, second],
       });
-    });
-    expect(onBeforeSendText).not.toHaveBeenCalled();
 
-    context.hook.rerender();
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
+      let promise: Promise<void>;
+      await act(async () => {
+        promise = context.result.current.handleSteerQueuedMessage(0);
       });
+
+      await act(async () => {
+        context.rerender({ isLoading: false });
+      });
+
+      await act(async () => {
+        await promise;
+      });
+
+      expect(context.stopChat).toHaveBeenCalledOnce();
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:first queued message"],
+      });
+      expect(context.queuedMessages).toEqual([second]);
     });
-    expect(onBeforeSendText).toHaveBeenCalledWith("todo queued message");
+
+    it("does nothing when the index has no matching queued message", () => {
+      const context = setup({ isLoading: true, queuedMessages: [] });
+
+      act(() => {
+        context.result.current.handleSteerQueuedMessage(0);
+      });
+
+      expect(context.stopChat).not.toHaveBeenCalled();
+      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(context.queuedMessages).toEqual([]);
+    });
   });
 
-  it("does not apply queued todo mode when todo creation is disabled", async () => {
-    const onBeforeSendText = vi.fn();
-    const context = setup({
-      isLoading: false,
-      canCreateTodo: false,
-      onBeforeSendText,
-      queuedMessages: [
-        queuedMessage({ text: "todo queued message", isTodoMode: true }),
-      ],
-    });
-
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
-      });
-    });
-
-    expect(onBeforeSendText).not.toHaveBeenCalled();
-    expect(context.sendMessage).toHaveBeenCalledWith({
-      parts: ["text:todo queued message"],
-    });
-  });
-
-  it("flushes queued files and reviews from the queued item", async () => {
-    const file = new File(["image"], "queued.png", { type: "image/png" });
-    const review = createReview("review-1");
-    const uploadedFile = {
-      type: "file" as const,
-      filename: "queued.png",
-      mediaType: "image/png",
-      url: "blob:queued",
+  it("captures selection context when the message is created and reuses it when a queued message is later steered, instead of re-reading it at flush time", async () => {
+    const queueTimeActiveSelection: ActiveSelection = {
+      filepath: "/workspace/queued.ts",
+      range: {
+        start: { line: 1, character: 0 },
+        end: { line: 1, character: 5 },
+      },
+      content: "queue-time selection",
     };
-    const context = setup({
-      isLoading: false,
-      queuedMessages: [
-        queuedMessage({ text: "check this", files: [file], reviews: [review] }),
-      ],
-      uploadFiles: vi.fn(() => Promise.resolve([uploadedFile])),
+    const queueTimeTerminalSelection: TerminalTextSelection = {
+      terminalName: "queue-time terminal",
+      content: "queue-time terminal text",
+    };
+
+    vscodeMocks.isVSCodeEnvironment.value = true;
+    activeSelectionMock.value = queueTimeActiveSelection;
+    vscodeMocks.readTerminalSelection.mockResolvedValue(
+      queueTimeTerminalSelection,
+    );
+
+    const context = setup({ isLoading: true });
+
+    // Queue the message while the chat is busy: this is where selection
+    // context is captured.
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
+    expect(context.queuedMessages).toEqual([
+      draftMessage({
+        text: "follow up",
+        activeSelection: queueTimeActiveSelection,
+        activeTerminalTextSelection: queueTimeTerminalSelection,
+      }),
+    ]);
+
+    // Selection changes before the queued message is actually flushed.
+    activeSelectionMock.value = {
+      filepath: "/workspace/other.ts",
+      range: {
+        start: { line: 9, character: 0 },
+        end: { line: 9, character: 3 },
+      },
+      content: "send-time selection",
+    };
+    vscodeMocks.readTerminalSelection.mockResolvedValue({
+      terminalName: "send-time terminal",
+      content: "send-time terminal text",
+    });
+
+    let steerPromise: Promise<void>;
+    await act(async () => {
+      steerPromise = context.result.current.handleSteerQueuedMessage(0);
     });
 
     await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
-      });
+      context.rerender({ isLoading: false });
     });
 
-    expect(context.uploadFiles).toHaveBeenCalledWith([file]);
+    await act(async () => {
+      await steerPromise;
+    });
+
+    // The message was already fully prepared at queue time, so flushing it
+    // must not re-read the selection context.
+    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
+    expect(context.sendMessage).toHaveBeenCalledWith({
+      parts: ["text:follow up"],
+    });
+  });
+
+  it("still captures selection context at send time for a fresh, non-queued submission", async () => {
+    const sendTimeActiveSelection: ActiveSelection = {
+      filepath: "/workspace/fresh.ts",
+      range: {
+        start: { line: 2, character: 0 },
+        end: { line: 2, character: 4 },
+      },
+      content: "fresh selection",
+    };
+    const sendTimeTerminalSelection: TerminalTextSelection = {
+      terminalName: "fresh terminal",
+      content: "fresh terminal text",
+    };
+
+    vscodeMocks.isVSCodeEnvironment.value = true;
+    activeSelectionMock.value = sendTimeActiveSelection;
+    vscodeMocks.readTerminalSelection.mockResolvedValue(
+      sendTimeTerminalSelection,
+    );
+
+    const context = setup({ isLoading: false });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
       expect.any(Function),
-      "check this",
-      [uploadedFile],
-      [review],
+      "follow up",
       [],
-      undefined,
-      undefined,
+      [],
+      [],
+      sendTimeActiveSelection,
+      sendTimeTerminalSelection,
     );
-    expect(context.clearFiles).not.toHaveBeenCalled();
-    expect(context.sendMessage).toHaveBeenCalledWith({
-      parts: ["text:check this"],
-    });
   });
 
   it("excludes user edits after they are removed from the input", async () => {
@@ -381,7 +475,7 @@ describe("useChatSubmit", () => {
     });
 
     await act(async () => {
-      await context.hook.result.current.handleSubmit();
+      await context.result.current.handleSubmit();
     });
 
     expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
@@ -395,7 +489,7 @@ describe("useChatSubmit", () => {
     );
   });
 
-  it("preserves excluded user edits when flushing a queued message", async () => {
+  it("preserves excluded user edits when creating a queued message", async () => {
     userEditsMocks.userEdits = [
       {
         filepath: "src/example.ts",
@@ -410,19 +504,7 @@ describe("useChatSubmit", () => {
     });
 
     await act(async () => {
-      await context.hook.result.current.handleSubmit();
-    });
-
-    expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "follow up", userEdits: [] }),
-    ]);
-
-    context.setIsLoading(false);
-    context.setIncludeUserEdits(true);
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
-      });
+      await context.result.current.handleSubmit();
     });
 
     expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
@@ -434,9 +516,13 @@ describe("useChatSubmit", () => {
       undefined,
       undefined,
     );
+
+    expect(context.queuedMessages).toEqual([
+      draftMessage({ text: "follow up", userEditsCount: 0 }),
+    ]);
   });
 
-  it("preserves included user edits when flushing a queued message", async () => {
+  it("preserves included user edits when creating a queued message", async () => {
     const queuedUserEdits = [
       {
         filepath: "src/example.ts",
@@ -452,28 +538,15 @@ describe("useChatSubmit", () => {
     });
 
     await act(async () => {
-      await context.hook.result.current.handleSubmit();
+      await context.result.current.handleSubmit();
     });
 
     expect(context.queuedMessages).toEqual([
-      queuedMessage({ text: "follow up", userEdits: queuedUserEdits }),
+      draftMessage({
+        text: "follow up",
+        userEditsCount: queuedUserEdits.length,
+      }),
     ]);
-
-    userEditsMocks.userEdits = [
-      {
-        filepath: "src/other.ts",
-        diff: "+const value = 2;",
-        added: 1,
-        removed: 0,
-      },
-    ];
-    context.setIsLoading(false);
-    context.setIncludeUserEdits(false);
-    await act(async () => {
-      await context.hook.result.current.handleSubmit(undefined, {
-        flushQueuedMessages: true,
-      });
-    });
 
     expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
       expect.any(Function),
@@ -493,16 +566,15 @@ function setup({
   queuedMessages: initialQueuedMessages = [],
   files = [],
   reviews = [],
-  includeUserEdits = true,
+  includeUserEdits: initialIncludeUserEdits = true,
   isTodoMode = false,
   canCreateTodo = true,
   onTodoModeQueued,
   onBeforeSendText,
-  uploadFiles = vi.fn(() => Promise.resolve([])),
 }: {
   isLoading: boolean;
   inputText?: string;
-  queuedMessages?: QueuedMessage[];
+  queuedMessages?: DraftMessage[];
   files?: File[];
   reviews?: Review[];
   includeUserEdits?: boolean;
@@ -510,17 +582,7 @@ function setup({
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
   onBeforeSendText?: (text: string) => void;
-  uploadFiles?: ReturnType<typeof vi.fn>;
 }) {
-  let queuedMessages = initialQueuedMessages;
-  let isLoading = initialIsLoading;
-  let shouldIncludeUserEdits = includeUserEdits;
-  const setQueuedMessages = vi.fn(
-    (value: React.SetStateAction<QueuedMessage[]>) => {
-      queuedMessages =
-        typeof value === "function" ? value(queuedMessages) : value;
-    },
-  ) as React.Dispatch<React.SetStateAction<QueuedMessage[]>>;
   const sendMessage = vi.fn(() => Promise.resolve());
   const stopChat = vi.fn();
   const clearInput = vi.fn();
@@ -528,82 +590,132 @@ function setup({
 
   const upload = vi.fn(() => Promise.resolve([]));
 
-  const hook = renderHook(() =>
-    useChatSubmit({
-      chat: {
-        sendMessage,
-        stop: stopChat,
+  const hook = renderHook(
+    (props: {
+      isLoading: boolean;
+      includeUserEdits: boolean;
+      queuedMessages: DraftMessage[];
+    }) => {
+      const [queuedMessages, setQueuedMessages] = React.useState(
+        props.queuedMessages,
+      );
+
+      // Keep the state in sync with props for manual rerenders if needed,
+      // but also allow internal state updates to trigger rerenders.
+      React.useEffect(() => {
+        setQueuedMessages(props.queuedMessages);
+      }, [props.queuedMessages]);
+
+      // Mirrors the derivation performed by `useChatStatus` for a
+      // model-valid, non-blocking scenario, so these tests can focus on
+      // `useChatSubmit`'s own behavior without re-deriving all of the
+      // underlying blocking/model-loading state.
+      const isExecuting = chatStateMocks.isExecuting;
+      const isRunning = props.isLoading || isExecuting;
+      const isInputEmpty = !initialInputText.trim();
+      const isFilesEmpty = files.length === 0;
+      const isReviewsEmpty = reviews.length === 0;
+      const isSubmitEnabled = !isInputEmpty || !isFilesEmpty || !isReviewsEmpty;
+      const isStopEnabled = isRunning;
+      const allowSendMessage = !isRunning;
+      const allowSteer = true;
+
+      const result = useChatSubmit({
+        chat: {
+          sendMessage,
+          stop: stopChat,
+        },
+        input: { json: null, text: initialInputText },
+        clearInput,
+        attachmentUpload: {
+          files,
+          isUploading: false,
+          upload,
+          clearFiles,
+          clearError: vi.fn(),
+        } as never,
+        isLoading: props.isLoading,
+        isRunning,
+        isSubmitEnabled,
+        isStopEnabled,
+        allowSendMessage,
+        allowSteer,
+        includeUserEdits: props.includeUserEdits,
+        pendingApproval: undefined,
+        queuedMessages,
+        setQueuedMessages,
+        reviews,
+        taskId: "task-1",
+        isTodoMode,
+        canCreateTodo,
+        onTodoModeQueued,
+        onBeforeSendText,
+      });
+
+      return { ...result, queuedMessages };
+    },
+    {
+      initialProps: {
+        isLoading: initialIsLoading,
+        includeUserEdits: initialIncludeUserEdits,
+        queuedMessages: initialQueuedMessages,
       },
-      input: { json: null, text: initialInputText },
-      clearInput,
-      attachmentUpload: {
-        files,
-        isUploading: false,
-        upload,
-        uploadFiles,
-        clearFiles,
-        clearError: vi.fn(),
-      } as never,
-      isSubmitDisabled: false,
-      isLoading,
-      blockingState: {
-        isBusy: false,
-        busyLabel: undefined,
-        activeOperation: undefined,
-      },
-      pendingApproval: undefined,
-      queuedMessages,
-      setQueuedMessages,
-      reviews,
-      taskId: "task-1",
-      includeUserEdits: shouldIncludeUserEdits,
-      isTodoMode,
-      canCreateTodo,
-      onTodoModeQueued,
-      onBeforeSendText,
-    }),
+    },
   );
 
   return {
-    hook,
+    result: hook.result,
+    rerender: (
+      props: Partial<{
+        isLoading: boolean;
+        includeUserEdits: boolean;
+        queuedMessages: DraftMessage[];
+      }>,
+    ) =>
+      hook.rerender({
+        isLoading: props.isLoading ?? initialIsLoading,
+        includeUserEdits: props.includeUserEdits ?? initialIncludeUserEdits,
+        queuedMessages: props.queuedMessages ?? initialQueuedMessages,
+      }),
     get queuedMessages() {
-      return queuedMessages;
+      return hook.result.current.queuedMessages;
     },
     clearInput,
     clearFiles,
-    uploadFiles,
+    upload,
     sendMessage,
     stopChat,
-    setIsLoading(value: boolean) {
-      isLoading = value;
-      hook.rerender();
-    },
-    setIncludeUserEdits(value: boolean) {
-      shouldIncludeUserEdits = value;
-      hook.rerender();
-    },
   };
 }
 
-function queuedMessage({
+function draftMessage({
   text,
-  files = [],
-  reviews = [],
-  userEdits = [],
+  filesCount = 0,
+  reviewsCount = 0,
+  userEditsCount = 0,
   isTodoMode = false,
+  activeSelection,
+  activeTerminalTextSelection,
 }: {
   text: string;
-  files?: File[];
-  reviews?: Review[];
-  userEdits?: QueuedMessage["userEdits"];
+  filesCount?: number;
+  reviewsCount?: number;
+  userEditsCount?: number;
   isTodoMode?: boolean;
-}): QueuedMessage {
+  activeSelection?: ActiveSelection;
+  activeTerminalTextSelection?: TerminalTextSelection;
+}): DraftMessage {
   return {
-    text,
-    files,
-    reviews,
-    userEdits,
-    isTodoMode,
+    parts: [`text:${text}`] as unknown as DraftMessage["parts"],
+    raw: {
+      text,
+      filesCount,
+      reviewsCount,
+      userEditsCount,
+      isTodoMode,
+      activeSelection,
+      activeTerminalTextSelection,
+    },
   };
 }
 

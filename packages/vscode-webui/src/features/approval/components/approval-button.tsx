@@ -18,6 +18,14 @@ interface ApprovalButtonProps {
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
+  /**
+   * Whether there is at least one message waiting in the queue. When true,
+   * the "Continue" button (shown after e.g. a manual stop) sends the next
+   * queued message instead of retrying / regenerating the previous turn.
+   */
+  hasQueuedMessages?: boolean;
+  /** Dequeues and sends the first queued message. */
+  onContinueWithQueuedMessage?: () => void;
 }
 
 export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
@@ -30,6 +38,8 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
+  hasQueuedMessages,
+  onContinueWithQueuedMessage,
 }) => {
   const shouldShowApprovalButton = pendingApproval && allowAddToolResult;
 
@@ -49,7 +59,12 @@ export const ApprovalButton: React.FC<ApprovalButtonProps> = ({
   return (
     <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
       {pendingApproval.name === "retry" ? (
-        <RetryApprovalButton pendingApproval={pendingApproval} retry={retry} />
+        <RetryApprovalButton
+          pendingApproval={pendingApproval}
+          retry={retry}
+          hasQueuedMessages={hasQueuedMessages}
+          onContinueWithQueuedMessage={onContinueWithQueuedMessage}
+        />
       ) : (
         <ToolCallApprovalButton
           taskId={task?.id}

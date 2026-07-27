@@ -6,7 +6,10 @@ import {
   FileStateCache,
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
-import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type ValidCustomAgentFile,
+  resolveToolCallArgs,
+} from "@getpochi/common/vscode-webui-bridge";
 import {
   type BlobStore,
   type LLMRequestData,
@@ -14,7 +17,7 @@ import {
   type UITools,
   processContentOutput,
 } from "@getpochi/livekit";
-import type { CustomAgent, Skill } from "@getpochi/tools";
+import type { Skill } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
 import { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
@@ -30,7 +33,7 @@ interface CliRunningTaskAdaptorOptions {
   cwd: string;
   rg: string;
   filesystem: FileSystem;
-  customAgents?: CustomAgent[];
+  customAgents?: ValidCustomAgentFile[];
   skills?: Skill[];
   mcpHub?: McpHub;
   parentTaskId?: string;
@@ -45,7 +48,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly cwd: string;
   private readonly rg: string;
   private readonly filesystem: FileSystem;
-  private readonly customAgents: CustomAgent[] | undefined;
+  private readonly customAgents: ValidCustomAgentFile[] | undefined;
   private readonly skills: Skill[] | undefined;
   private readonly mcpHub: McpHub | undefined;
   private readonly parentTaskId: string | undefined;

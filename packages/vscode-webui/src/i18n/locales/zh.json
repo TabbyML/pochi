@@ -41,6 +41,7 @@
     "noMessage": "无消息",
     "fileCount": "{{count}} 个文件",
     "reviewCount": "{{count}} 条评审",
+    "userEditCount": "{{count}} 处编辑",
     "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",

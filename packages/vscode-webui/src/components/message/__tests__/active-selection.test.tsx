@@ -7,7 +7,10 @@ import {
 } from "../active-selection";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count !== undefined ? `${key}:${options.count}` : key,
+  }),
 }));
 
 vi.mock("@/components/ui/hover-card", () => ({
@@ -128,6 +131,37 @@ describe("TerminalSelectionPart", () => {
     const codeBlock = screen.getByTestId("code-block");
     expect(codeBlock.getAttribute("data-language")).toBe("shell");
     expect(codeBlock.textContent).toBe("echo hello");
+  });
+
+  it("shows the number of lines in the selected content", () => {
+    const { container } = render(
+      <TerminalSelectionPart
+        terminalTextSelection={{
+          terminalName: "zsh",
+          backgroundJobId: "term-1",
+          content: "line1\nline2\nline3",
+        }}
+      />,
+    );
+
+    expect(visibleText(container)).toContain("zsh:3");
+
+    const badge = container.querySelector("span.cursor-pointer");
+    expect(badge?.getAttribute("aria-label")).toContain("zsh:3");
+  });
+
+  it("does not count a trailing newline as an extra line", () => {
+    const { container } = render(
+      <TerminalSelectionPart
+        terminalTextSelection={{
+          terminalName: "zsh",
+          backgroundJobId: "term-1",
+          content: "line1\nline2\n",
+        }}
+      />,
+    );
+
+    expect(visibleText(container)).toContain("zsh:2");
   });
 
   it("opens the terminal via openBackgroundJobTerminal when clicked", () => {

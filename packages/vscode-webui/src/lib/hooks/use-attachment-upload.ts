@@ -126,8 +126,8 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
     return validateAndAddFiles(files);
   };
 
-  const uploadFiles = async (filesToUpload: File[]): Promise<FileUIPart[]> => {
-    if (!filesToUpload.length) {
+  const upload = async (): Promise<FileUIPart[]> => {
+    if (!files.length) {
       return [];
     }
 
@@ -138,7 +138,7 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
     abortController.current = new AbortController();
 
     try {
-      const uploadPromises = filesToUpload.map(async (file) => {
+      const uploadPromises = files.map(async (file) => {
         return {
           type: "file",
           filename: file.name || "unnamed-file",
@@ -167,10 +167,6 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
     }
   };
 
-  const upload = async (): Promise<FileUIPart[]> => {
-    return uploadFiles(files);
-  };
-
   const cancelUpload = () => {
     if (abortController.current) {
       abortController.current.abort();
@@ -191,7 +187,6 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
     clearFiles,
     clearError,
     upload,
-    uploadFiles,
     cancelUpload,
 
     // Event handlers

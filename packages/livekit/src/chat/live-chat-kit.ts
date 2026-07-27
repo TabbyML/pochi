@@ -63,7 +63,12 @@ import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
 import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
-import { computeContextWindowUsage, estimateTotalTokens } from "./token-utils";
+import {
+  computeContextWindowUsage,
+  estimateTotalTokens,
+  getModelCalibrationFactor,
+  getModelCalibrationKey,
+} from "./token-utils";
 
 const logger = getLogger("LiveChatKit");
 const OverrideMessagesSideEffectTimeoutMs = 12_000;
@@ -576,7 +581,10 @@ export class LiveChatKit<
           messages,
           llm: getters.getLLM(),
           task: this.task,
-          estimatedTotalTokens: estimateTotalTokens(formatters.llm(messages)),
+          estimatedTotalTokens: estimateTotalTokens(
+            formatters.llm(messages),
+            getModelCalibrationFactor(getModelCalibrationKey(getters.getLLM())),
+          ),
           effectiveContextWindow: getters.getEffectiveContextWindow?.(),
         });
 
@@ -980,6 +988,13 @@ export class LiveChatKit<
     const finishReason = streamFinishReason ?? message.metadata?.finishReason;
     const status = toTaskStatus(message, finishReason);
 
+    // Calibration is now handled directly in `flexible-chat-transport.ts`,
+    // where it can compare the provider's real `inputTokens` against the
+    // pre-request input-only estimate for that same model. Doing it there
+    // (rather than here against `totalTokens`) avoids contaminating the
+    // calibration with invisible reasoning tokens, which show up in
+    // output/completion usage but have no corresponding visible text for us
+    // to estimate from.
     const contextWindowUsage = computeContextWindowUsage(
       formatters.llm(this.chat.messages),
       this.latestRequestSnapshot,
@@ -1086,7 +1101,12 @@ export class LiveChatKit<
     this.store.commit(
       events.updateTotalTokens({
         id: this.taskId,
-        totalTokens: estimateTotalTokens(formatters.llm(messages)),
+        totalTokens: estimateTotalTokens(
+          formatters.llm(messages),
+          getModelCalibrationFactor(
+            getModelCalibrationKey(this.getters.getLLM()),
+          ),
+        ),
         updatedAt: new Date(),
       }),
     );

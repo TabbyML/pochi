@@ -9,7 +9,9 @@ const chatSubmitMocks = vi.hoisted(() => ({
   useChatSubmit: vi.fn(() => ({
     handleSubmit: vi.fn(),
     handleSteerSubmit: vi.fn(),
+    handleSteerQueuedMessage: vi.fn(),
     handleStop: vi.fn(),
+    pauseQueueRef: { current: false },
   })),
 }));
 
@@ -59,10 +61,6 @@ vi.mock("@/features/approval", () => ({
   ApprovalButton: () => null,
   FixWidgetButton: () => null,
   isRetryApprovalCountingDown: () => false,
-}));
-vi.mock("@/features/chat", () => ({
-  useAutoApproveGuard: () => ({ current: "stop" }),
-  useToolCallLifeCycle: () => ({ completeToolCalls: [] }),
 }));
 vi.mock("@/features/settings", () => ({
   AutoApproveMenu: () => null,
@@ -123,10 +121,12 @@ vi.mock("../hooks/use-chat-input-state", () => ({
 }));
 vi.mock("../hooks/use-chat-status", () => ({
   useChatStatus: () => ({
-    isExecuting: false,
-    isBusyCore: false,
-    isSubmitDisabled: false,
-    showStopButton: false,
+    isAboutToExecuteWithAutoApprove: false,
+    isRunning: false,
+    isSubmitEnabled: true,
+    isStopEnabled: false,
+    allowSendMessage: true,
+    allowSteer: true,
   }),
 }));
 vi.mock("../hooks/use-chat-submit", () => ({

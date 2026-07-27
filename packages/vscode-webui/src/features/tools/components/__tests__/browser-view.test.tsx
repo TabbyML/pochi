@@ -125,6 +125,51 @@ describe("BrowserView", () => {
     });
   });
 
+  it("does not render a placeholder while awaiting approval", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={browserTool}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(screen.queryByText("browserView.paused")).toBeNull();
+    expect(lastSubAgentProps()?.children).toBeNull();
+  });
+
+  it("does not render a placeholder after cancellation", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={
+          {
+            type: "tool-newTask",
+            toolCallId: "browser-call",
+            state: "output-error",
+            input: {
+              agentType: "browser",
+              description: "Use the browser",
+            },
+            errorText: "User aborted the tool call",
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(screen.queryByText("browserView.paused")).toBeNull();
+    expect(lastSubAgentProps()?.children).toBeNull();
+  });
+
   it("shows the trajectory in the footer when a live frame is in the card body", async () => {
     useStoreFileMock.mockReturnValue(undefined);
     subscribeFrameMock.mockImplementation((_uid, setFrame) => {
