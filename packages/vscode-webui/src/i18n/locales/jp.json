@@ -439,9 +439,7 @@
   "activeSelectionBadge": {
     "cell": "セル",
     "addContext": "コンテキストを追加",
-    "terminal": "ターミナル",
-    "lines_one": "{{count}}行",
-    "lines_other": "{{count}}行"
+    "terminal": "ターミナル"
   },
   "todoModeBadge": {
     "remove": "Todoモードを削除"
