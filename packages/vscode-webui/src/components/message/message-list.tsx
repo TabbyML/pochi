@@ -496,6 +496,7 @@ const SeparatorWithCheckpoint: React.FC<{
           checkpoint={lastPart.data}
           isLoading={isLoading}
           hideBorderOnHover={false}
+          showSeparatorLine={true}
           className="max-w-full"
           forkTask={forkTask}
           restoreMessageId={restoreMessageId}
