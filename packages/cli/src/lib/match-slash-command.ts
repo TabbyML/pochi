@@ -3,14 +3,12 @@ import type {
   CustomAgentFile,
   SkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { CustomAgent } from "@getpochi/tools";
 import type { Parent, Text } from "mdast";
 import { gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import { SKIP, visit } from "unist-util-visit";
-import { getModelFromCustomAgent } from "./load-agents";
 
 const IGNORED_NODE_TYPES = [
   "code",
@@ -66,33 +64,6 @@ export function extractSlashCommandNames(prompt: string): string[] {
   }
 
   return [...new Set(allCommands)];
-}
-
-export async function getModelFromSlashCommand(
-  prompt: string | undefined,
-  options: {
-    customAgents: CustomAgent[];
-  },
-): Promise<string | undefined> {
-  if (prompt && containsSlashCommandReference(prompt)) {
-    const commandNames = extractSlashCommandNames(prompt);
-
-    if (!commandNames.length) {
-      return undefined;
-    }
-
-    for (const commandName of commandNames) {
-      // 1. try to get model from agent
-      const targetAgent = options.customAgents.find(
-        (x) => x.name === commandName,
-      );
-      const agentModel = getModelFromCustomAgent(targetAgent);
-      if (agentModel) {
-        return agentModel;
-      }
-    }
-  }
-  return undefined;
 }
 
 export async function replaceSlashCommandReferences(
