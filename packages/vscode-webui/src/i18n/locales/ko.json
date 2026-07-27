@@ -437,9 +437,7 @@
   "activeSelectionBadge": {
     "cell": "셀",
     "addContext": "컨텍스트 추가",
-    "terminal": "터미널",
-    "lines_one": "{{count}}줄",
-    "lines_other": "{{count}}줄"
+    "terminal": "터미널"
   },
   "todoModeBadge": {
     "remove": "Todo 모드 제거"

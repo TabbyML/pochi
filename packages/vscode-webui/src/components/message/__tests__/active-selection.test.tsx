@@ -144,12 +144,10 @@ describe("TerminalSelectionPart", () => {
       />,
     );
 
-    expect(visibleText(container)).toContain("activeSelectionBadge.lines:3");
+    expect(visibleText(container)).toContain("zsh:3");
 
     const badge = container.querySelector("span.cursor-pointer");
-    expect(badge?.getAttribute("aria-label")).toContain(
-      "activeSelectionBadge.lines:3",
-    );
+    expect(badge?.getAttribute("aria-label")).toContain("zsh:3");
   });
 
   it("does not count a trailing newline as an extra line", () => {
@@ -163,7 +161,7 @@ describe("TerminalSelectionPart", () => {
       />,
     );
 
-    expect(visibleText(container)).toContain("activeSelectionBadge.lines:2");
+    expect(visibleText(container)).toContain("zsh:2");
   });
 
   it("opens the terminal via openBackgroundJobTerminal when clicked", () => {
