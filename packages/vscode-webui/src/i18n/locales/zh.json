@@ -437,7 +437,9 @@
   "activeSelectionBadge": {
     "cell": "单元格",
     "addContext": "添加上下文",
-    "terminal": "终端"
+    "terminal": "终端",
+    "lines_one": "{{count}} 行",
+    "lines_other": "{{count}} 行"
   },
   "todoModeBadge": {
     "remove": "移除 Todo 模式"
