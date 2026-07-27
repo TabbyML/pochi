@@ -50,7 +50,6 @@ interface UseChatSubmitProps {
   attachmentUpload: UseAttachmentUploadReturn;
   isSubmitDisabled: boolean;
   isLoading: boolean;
-  isPendingToolCall: boolean;
   blockingState: BlockingState;
   pendingApproval: PendingApproval | undefined;
   queuedMessages: DraftMessage[];
@@ -75,7 +74,6 @@ export function useChatSubmit({
   attachmentUpload,
   isSubmitDisabled,
   isLoading,
-  isPendingToolCall,
   blockingState,
   pendingApproval,
   queuedMessages,
@@ -140,9 +138,7 @@ export function useChatSubmit({
 
     if (isExecuting) {
       abortExecutingToolCalls();
-    }
-
-    if (isLoading) {
+    } else if (isLoading) {
       stopChat();
     }
 
@@ -290,7 +286,7 @@ export function useChatSubmit({
         return;
       }
 
-      if (isLoading || isExecuting || isPendingToolCall) {
+      if (isLoading || isExecuting) {
         setQueuedMessages((prev) => [...prev, message]);
         if (message.raw.isTodoMode) {
           onTodoModeQueued?.();
@@ -305,7 +301,6 @@ export function useChatSubmit({
       isUploading,
       isLoading,
       isExecuting,
-      isPendingToolCall,
       sendChatMessage,
       setQueuedMessages,
       createMessage,
@@ -326,7 +321,7 @@ export function useChatSubmit({
         return;
       }
 
-      let ready = !isLoading && !isExecuting && !isPendingToolCall;
+      let ready = !isLoading && !isExecuting;
       if (!ready) {
         ready = await handleStop();
       }
@@ -342,7 +337,6 @@ export function useChatSubmit({
       isUploading,
       isLoading,
       isExecuting,
-      isPendingToolCall,
       sendChatMessage,
       createMessage,
       handleStop,
@@ -360,7 +354,7 @@ export function useChatSubmit({
         const updatedMessages = messages.filter((_, i) => i !== index);
         setQueuedMessages(updatedMessages);
 
-        let ready = !isLoading && !isExecuting && !isPendingToolCall;
+        let ready = !isLoading && !isExecuting;
         if (!ready) {
           ready = await handleStop();
         }
@@ -375,7 +369,6 @@ export function useChatSubmit({
       blockingState.isBusy,
       isLoading,
       isExecuting,
-      isPendingToolCall,
       handleStop,
       queuedMessages,
       setQueuedMessages,
