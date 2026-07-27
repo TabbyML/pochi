@@ -11,31 +11,50 @@ import type { PendingRetryApproval } from "../hooks/use-pending-retry-approval";
 interface RetryApprovalButtonProps {
   pendingApproval: PendingRetryApproval;
   retry: (error: Error) => void;
+  /**
+   * Whether there is at least one message waiting in the queue. When true,
+   * continuing should send the next queued message instead of retrying /
+   * regenerating the last assistant message.
+   */
+  hasQueuedMessages?: boolean;
+  /**
+   * Dequeues and sends the first queued message. Required when
+   * `hasQueuedMessages` is true.
+   */
+  onContinueWithQueuedMessage?: () => void;
 }
 
 export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   pendingApproval,
   retry,
+  hasQueuedMessages = false,
+  onContinueWithQueuedMessage,
 }) => {
   const { t } = useTranslation();
   const reviews = useReviews();
 
+  const handleContinue = useCallback(() => {
+    pendingApproval.stopCountdown();
+    if (hasQueuedMessages && onContinueWithQueuedMessage) {
+      // A message is already queued, so continue the chat by sending it
+      // instead of retrying / regenerating the previous turn.
+      onContinueWithQueuedMessage();
+      return;
+    }
+    retry(pendingApproval.error);
+  }, [retry, pendingApproval, hasQueuedMessages, onContinueWithQueuedMessage]);
+
   useEffect(() => {
     if (pendingApproval.countdown === 0) {
-      doRetry();
+      handleContinue();
     }
-  }, [pendingApproval]);
-
-  const doRetry = useCallback(() => {
-    pendingApproval.stopCountdown();
-    retry(pendingApproval.error);
-  }, [retry, pendingApproval]);
+  }, [pendingApproval, handleContinue]);
 
   const autoApproveGuard = useAutoApproveGuard();
   const onAccept = useCallback(() => {
     autoApproveGuard.current = "auto";
-    doRetry();
-  }, [autoApproveGuard, doRetry]);
+    handleContinue();
+  }, [autoApproveGuard, handleContinue]);
 
   useHandleChatEvents({
     sendRetry: onAccept,

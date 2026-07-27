@@ -376,6 +376,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             onToolCallApprovalVisible={onToolCallApprovalVisible}
             onToolsExecutionStarted={onToolsExecutionStarted}
             onToolsExecutionEnded={onToolsExecutionEnded}
+            hasQueuedMessages={queuedMessages.length > 0}
+            onContinueWithQueuedMessage={() => handleSteerQueuedMessage(0)}
           />
           {showRenderWidgetFixButton ? (
             <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
