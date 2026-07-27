@@ -1,11 +1,13 @@
 import { useSelectedModels } from "@/features/settings";
 import {
   type CustomAgentFile,
+  type DisplayModel,
   type ValidCustomAgentFile,
   isValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { resolveModelFromId } from "../utils/resolve-model-from-id";
 import { vscodeHost } from "../vscode";
 import { useModelList } from "./use-model-list";
@@ -49,30 +51,50 @@ export function useCustomAgents(filterValidFiles = false) {
 }
 
 export const useCustomAgent = (name?: string) => {
-  const { customAgents, isLoading } = useCustomAgents(true);
-  const { modelList } = useModelList(true);
+  const { customAgents, isLoading: customAgentsLoading } =
+    useCustomAgents(true);
+  const {
+    modelList,
+    isLoading: modelListLoading,
+    isFetching: modelListFetching,
+  } = useModelList(false);
   const { selectedModel: parentTaskModel } = useSelectedModels({
     isSubTask: false,
   });
-  // Use the parent task's model as the initial fallback model for the subtask.
-  let customAgentModel = parentTaskModel;
+  const customAgent = name
+    ? customAgents.find((agent) => agent.name === name)
+    : undefined;
+  const customAgentModel = useMemo<DisplayModel | undefined>(() => {
+    if (!customAgent?.model) return parentTaskModel;
 
-  if (!name) {
-    return {
-      customAgent: undefined,
-      customAgentModel: parentTaskModel,
-      isLoading,
-    };
-  }
-
-  const customAgent = customAgents?.find((agent) => agent.name === name);
-  if (customAgent?.model) {
     const resolvedModel = resolveModelFromId(customAgent.model, modelList);
-    // if customAgent has configured model, use it
-    if (resolvedModel) {
-      customAgentModel = resolvedModel;
+    if (resolvedModel) return resolvedModel;
+
+    if (customAgent.isBuiltIn) {
+      // Built-in special models are currently served by the Pochi vendor.
+      const credentialSource = modelList?.find(
+        (model) => model.type === "vendor" && model.vendorId === "pochi",
+      );
+      if (credentialSource?.type === "vendor") {
+        return {
+          type: "vendor",
+          id: customAgent.model,
+          name: customAgent.model,
+          vendorId: "pochi",
+          modelId: customAgent.model,
+          options: {},
+          getCredentials: credentialSource.getCredentials,
+        };
+      }
     }
-  }
+
+    return parentTaskModel;
+  }, [customAgent?.model, customAgent?.isBuiltIn, modelList, parentTaskModel]);
+  const isCustomAgentModelLoading =
+    !!customAgent?.model && (modelListLoading || modelListFetching);
+  const isLoading =
+    !!name && (customAgentsLoading || isCustomAgentModelLoading);
+
   return {
     customAgent,
     customAgentModel,

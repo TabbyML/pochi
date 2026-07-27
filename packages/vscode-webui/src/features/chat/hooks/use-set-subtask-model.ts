@@ -8,7 +8,10 @@ export const useSetSubtaskModel = ({
   customAgent,
 }: { isSubTask: boolean; customAgent?: ValidCustomAgentFile }) => {
   const { customAgentModel } = useCustomAgent(customAgent?.name);
-  const { updateSelectedModelId } = useSelectedModels({ isSubTask });
+  const { updateSelectedModelId } = useSelectedModels({
+    isSubTask,
+    modelOverride: customAgentModel,
+  });
 
   useEffect(() => {
     if (!isSubTask) return;

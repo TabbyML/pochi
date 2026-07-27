@@ -30,7 +30,10 @@ import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
-import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  DisplayModel,
+  McpConfigOverride,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import {
@@ -73,6 +76,8 @@ interface ChatToolbarProps {
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
   isSubTask: boolean;
   subtask?: SubtaskInfo;
+  /** Makes an unlisted model available as the current selection. */
+  modelOverride?: DisplayModel;
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
   todos: Todo[];
@@ -97,6 +102,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   attachmentUpload,
   isSubTask,
   subtask,
+  modelOverride,
   task,
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
@@ -186,7 +192,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isFetching: isFetchingModels,
     reload: reloadModels,
     updateSelectedModelId,
-  } = useSelectedModels({ isSubTask });
+  } = useSelectedModels({ isSubTask, modelOverride });
 
   const { autoApproveActive } = useAutoApprove({ isSubTask });
 

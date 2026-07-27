@@ -16,6 +16,8 @@ export type ModelGroups = ModelGroup[];
 
 type UseSelectedModelsOptions = {
   isSubTask: boolean;
+  /** Resolves a current model without adding it to the selectable list. */
+  modelOverride?: DisplayModel;
 };
 
 const useModelSelectionState = (isSubtask: boolean) => {
@@ -36,6 +38,7 @@ const useModelSelectionState = (isSubtask: boolean) => {
 export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const { t } = useTranslation();
   const isSubTask = options?.isSubTask ?? false;
+  const modelOverride = options?.modelOverride;
 
   const {
     modelList: models,
@@ -81,17 +84,21 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const selectedModel = useMemo<DisplayModel | undefined>(() => {
     const targetModelId = storedSelectedModel?.id;
     if (!targetModelId) return undefined;
+    if (modelOverride?.id === targetModelId) return modelOverride;
     return models?.find((m) => m.id === targetModelId);
-  }, [storedSelectedModel, models]);
+  }, [storedSelectedModel, models, modelOverride]);
 
   const updateSelectedModelId = useCallback(
     (modelId: string | undefined) => {
       if (!modelId) return;
-      const model = models?.find((m) => m.id === modelId);
+      const model =
+        modelOverride?.id === modelId
+          ? modelOverride
+          : models?.find((m) => m.id === modelId);
       if (!model) return;
       updateSelectedModel(pick(model, ["id", "name"]));
     },
-    [models, updateSelectedModel],
+    [models, modelOverride, updateSelectedModel],
   );
 
   const payingInfo = usePayingPlan();
