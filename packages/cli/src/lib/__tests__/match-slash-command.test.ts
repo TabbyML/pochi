@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   containsSlashCommandReference,
   extractSlashCommandNames,
-  getModelFromSlashCommand,
   replaceSlashCommandReferences,
 } from "../match-slash-command";
-import type { CustomAgent } from "@getpochi/tools";
 import type {
   ValidCustomAgentFile,
   ValidSkillFile,
@@ -74,36 +72,6 @@ describe("match-slash-command", () => {
       expect(extractSlashCommandNames("[link](https://example.com/path)")).toEqual([]);
       expect(extractSlashCommandNames("![image](https://example.com/image.png)")).toEqual([]);
     });  });
-
-  describe("getModelFromSlashCommand", () => {
-    const customAgents: CustomAgent[] = [
-      {
-        name: "agent-with-model",
-        description: "",
-        systemPrompt: "",
-        model: "agent-model",
-      },
-      {
-        name: "agent-without-model",
-        description: "",
-        systemPrompt: "",
-      },
-    ];
-
-    it("should return model from agent if available", async () => {
-      const model = await getModelFromSlashCommand("/agent-with-model", {
-        customAgents,
-      });
-      expect(model).toBe("agent-model");
-    });
-
-    it("should return undefined if no model is found", async () => {
-      const model = await getModelFromSlashCommand("/agent-without-model", {
-        customAgents,
-      });
-      expect(model).toBeUndefined();
-    });
-  });
 
   describe("replaceSlashCommandReferences", () => {
     const customAgents: ValidCustomAgentFile[] = [

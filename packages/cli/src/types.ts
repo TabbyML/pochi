@@ -1,7 +1,8 @@
 import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import type { FileStateCache } from "@getpochi/common/tool-utils";
-import type { BlobStore } from "@getpochi/livekit";
+import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
+import type { BlobStore, LLMRequestData } from "@getpochi/livekit";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import type { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
@@ -33,7 +34,14 @@ export interface ToolCallOptions {
   /**
    * Available custom agents for tools that support them (e.g., newTask)
    */
-  customAgents?: CustomAgent[];
+  customAgents?: ValidCustomAgentFile[];
+
+  /**
+   * Resolves a model configured by a subagent.
+   */
+  resolveSubTaskLLM?: (
+    customAgent: ValidCustomAgentFile,
+  ) => Promise<LLMRequestData | undefined>;
 
   /**
    * Available skills for tools that support them (e.g., skill)
@@ -66,6 +74,7 @@ export interface ToolCallOptions {
 
 export interface CreateSubTaskRunnerOverrideOptions {
   customAgent?: CustomAgent;
+  llm?: LLMRequestData;
   maxSteps?: number;
   maxRetries?: number;
 }

@@ -57,7 +57,6 @@ import { loadAgents } from "./lib/load-agents";
 import { loadSkills } from "./lib/load-skills";
 import {
   containsSlashCommandReference,
-  getModelFromSlashCommand,
   replaceSlashCommandReferences,
 } from "./lib/match-slash-command";
 import {
@@ -353,9 +352,7 @@ const program = new Command()
     // Create AbortController for task cancellation with graceful shutdown
     const abortController = createAbortControllerWithGracefulShutdown(program);
 
-    const llm = await createLLMConfig(program, options, {
-      customAgents,
-    });
+    const llm = await createLLMConfig(program, options);
 
     const localFs = new LocalFileSystem(process.cwd());
     const taskFs = new TaskFileSystem(store);
@@ -419,6 +416,7 @@ const program = new Command()
         }
       },
       customAgents,
+      resolveSubTaskLLM,
       skills,
       mcpHub,
       abortSignal: abortController.signal,
@@ -612,29 +610,62 @@ async function parseTaskInput(
 async function createLLMConfig(
   program: Program,
   options: ProgramOpts,
-  slashCommandContext: {
-    customAgents: ValidCustomAgentFile[];
-  },
 ): Promise<LLMRequestData> {
-  const model =
-    (await getModelFromSlashCommand(options.prompt, slashCommandContext)) ||
-    options.model;
+  const model = options.model;
+  const llm = await resolveListedLLMConfig(model);
+  if (llm) return llm;
 
-  const llm =
-    (await createLLMConfigWithVendors(program, model)) ||
-    (await createLLMConfigWithPochi(model)) ||
-    (await createLLMConfigWithProviders(program, model));
-  if (!llm) {
+  const separatorIndex = model.indexOf("/");
+  const vendorId = model.slice(0, separatorIndex);
+  if (vendorId in getVendors()) {
     return program.error(
-      `Model '${model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
+      `Model '${model.slice(separatorIndex + 1)}' not found. Please run 'pochi model list' to see available models.`,
     );
   }
 
-  return llm;
+  return program.error(
+    `Model '${model}' not found. Please check your configuration or run 'pochi model list' to see available models.`,
+  );
+}
+
+async function resolveListedLLMConfig(
+  model: string,
+): Promise<LLMRequestData | undefined> {
+  const separatorIndex = model.indexOf("/");
+  const vendorId = model.slice(0, separatorIndex);
+  if (vendorId in getVendors()) {
+    return createLLMConfigWithVendors(model);
+  }
+
+  return (
+    (await createLLMConfigWithPochi(model)) ||
+    (await createLLMConfigWithProviders(model))
+  );
+}
+
+async function resolveSubTaskLLM(
+  customAgent: ValidCustomAgentFile,
+): Promise<LLMRequestData | undefined> {
+  if (!customAgent.model) return;
+
+  const modelId = customAgent.model;
+  const resolvedModel = await resolveListedLLMConfig(modelId);
+  if (resolvedModel) return resolvedModel;
+  if (!customAgent.isBuiltIn) return;
+
+  const vendor = getVendor("pochi");
+  return {
+    id: modelId,
+    type: "vendor",
+    getModel: () =>
+      createModel("pochi", {
+        modelId,
+        getCredentials: vendor.getCredentials,
+      }),
+  };
 }
 
 async function createLLMConfigWithVendors(
-  program: Program,
   model: string,
 ): Promise<LLMRequestData | undefined> {
   const sep = model.indexOf("/");
@@ -647,11 +678,7 @@ async function createLLMConfigWithVendors(
     const models =
       await vendors[vendorId as keyof typeof vendors].fetchModels();
     const options = models[modelId];
-    if (!options) {
-      return program.error(
-        `Model '${modelId}' not found. Please run 'pochi model' to see available models.`,
-      );
-    }
+    if (!options) return;
     return {
       id: `${vendorId}/${modelId}`,
       type: "vendor",
@@ -693,7 +720,6 @@ async function createLLMConfigWithPochi(
 }
 
 async function createLLMConfigWithProviders(
-  program: Program,
   model: string,
 ): Promise<LLMRequestData | undefined> {
   const sep = model.indexOf("/");
@@ -704,11 +730,7 @@ async function createLLMConfigWithProviders(
   const modelSetting = modelProvider?.models?.[modelId];
   if (!modelProvider) return;
 
-  if (!modelSetting) {
-    return program.error(
-      `Model '${model}' not found. Please check your configuration or run 'pochi model' to see available models.`,
-    );
-  }
+  if (!modelSetting) return;
 
   if (modelProvider.kind === "ai-gateway") {
     return {
