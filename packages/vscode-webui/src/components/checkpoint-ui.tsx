@@ -26,6 +26,14 @@ export const CheckpointUI: React.FC<{
   isLoading: boolean;
   className?: string;
   hideBorderOnHover?: boolean;
+  /**
+   * Whether this instance renders the full-width separator line between
+   * messages, as opposed to the compact inline badge shown next to a tool
+   * call. While streaming, the separator variant keeps its border line
+   * visible (hiding only the icon/actions), whereas the compact variant is
+   * hidden entirely (its space is preserved to avoid layout jitter).
+   */
+  showSeparatorLine?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   restoreMessageId?: string;
   isRestored?: boolean;
@@ -37,6 +45,7 @@ export const CheckpointUI: React.FC<{
   isLoading,
   className,
   hideBorderOnHover = true,
+  showSeparatorLine = false,
   forkTask,
   restoreMessageId,
   isRestored,
@@ -282,6 +291,14 @@ export const CheckpointUI: React.FC<{
   const centerControl = compactPart ? summaryControl : restoreControl;
   const actionsDisabled = isPending || showActionSuccessIcon;
 
+  // While streaming:
+  // - the separator variant keeps its full-width border line visible, only
+  //   hiding the icon/actions in the middle.
+  // - the compact inline variant is hidden entirely, but its space is
+  //   preserved (via `invisible`) so nothing jitters when it reappears.
+  const hideBadgeWhileStreaming = isLoading && !showSeparatorLine;
+  const showSeparatorLineOnly = isLoading && showSeparatorLine;
+
   return (
     <div
       className={cn(
@@ -291,66 +308,81 @@ export const CheckpointUI: React.FC<{
     >
       <div
         className={cn(
-          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full select-none items-center hover:max-w-full",
-          executionDuration && !compactPart ? "max-w-[140px]" : "max-w-[72px]",
-          isLoading && "pointer-events-none",
+          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full select-none items-center",
+          isLoading
+            ? "pointer-events-none"
+            : cn(
+                "hover:max-w-full",
+                executionDuration && !compactPart
+                  ? "max-w-[140px]"
+                  : "max-w-[72px]",
+              ),
+          hideBadgeWhileStreaming && "invisible",
           className,
         )}
       >
-        <div className="flex flex-1 items-center justify-end">
-          <Border
-            hide={isPending || showActionSuccessIcon}
-            hideOnHover={hideBorderOnHover}
-            isRestored={isRestored}
-          />
-          <span
-            className={cn(
-              "hidden items-center gap-1 pl-2.5 text-foreground group-hover:flex",
-              actionsDisabled && "pointer-events-none",
-            )}
-          >
-            {compareControl}
-            {compactPart && restoreControl}
-          </span>
-        </div>
-        <span
-          className={cn(
-            "flex items-center text-muted-foreground/60 group-hover:px-1 group-hover:text-foreground",
-            // The compact icon (size-3) is smaller than the git-commit icon
-            // (size-5), so it needs a tiny symmetric gap from the border lines
-            // when unhovered. The git-commit icon stays flush.
-            compactPart && "px-1",
-            actionsDisabled && "pointer-events-none px-2.5",
-          )}
-        >
-          <span className="hidden items-center group-hover:flex">
-            {centerControl}
-          </span>
-          <span
-            className={cn(
-              "group-hover:hidden",
-              isRestored && "text-primary/60",
-              executionDuration && !compactPart && "px-2 text-xs",
-            )}
-          >
-            {getNormalStateLabel()}
-          </span>
-        </span>
-        <div className="flex flex-1 items-center justify-start">
-          <span
-            className={cn(
-              "hidden items-center gap-1 pr-2.5 text-foreground group-hover:flex",
-              actionsDisabled && "pointer-events-none",
-            )}
-          >
-            {forkControl}
-          </span>
-          <Border
-            hide={isPending || showActionSuccessIcon}
-            hideOnHover={hideBorderOnHover}
-            isRestored={isRestored}
-          />
-        </div>
+        {showSeparatorLineOnly ? (
+          // While streaming, only keep the full line separator visible and
+          // hide the rest of the checkpoint UI (icon, actions, etc).
+          <div className="w-full border-border border-t" />
+        ) : (
+          <>
+            <div className="flex flex-1 items-center justify-end">
+              <Border
+                hide={isPending || showActionSuccessIcon}
+                hideOnHover={hideBorderOnHover}
+                isRestored={isRestored}
+              />
+              <span
+                className={cn(
+                  "hidden items-center gap-1 pl-2.5 text-foreground group-hover:flex",
+                  actionsDisabled && "pointer-events-none",
+                )}
+              >
+                {compareControl}
+                {compactPart && restoreControl}
+              </span>
+            </div>
+            <span
+              className={cn(
+                "flex items-center text-muted-foreground/60 group-hover:px-1 group-hover:text-foreground",
+                // The compact icon (size-3) is smaller than the git-commit icon
+                // (size-5), so it needs a tiny symmetric gap from the border lines
+                // when unhovered. The git-commit icon stays flush.
+                compactPart && "px-1",
+                actionsDisabled && "pointer-events-none px-2.5",
+              )}
+            >
+              <span className="hidden items-center group-hover:flex">
+                {centerControl}
+              </span>
+              <span
+                className={cn(
+                  "group-hover:hidden",
+                  isRestored && "text-primary/60",
+                  executionDuration && !compactPart && "px-2 text-xs",
+                )}
+              >
+                {getNormalStateLabel()}
+              </span>
+            </span>
+            <div className="flex flex-1 items-center justify-start">
+              <span
+                className={cn(
+                  "hidden items-center gap-1 pr-2.5 text-foreground group-hover:flex",
+                  actionsDisabled && "pointer-events-none",
+                )}
+              >
+                {forkControl}
+              </span>
+              <Border
+                hide={isPending || showActionSuccessIcon}
+                hideOnHover={hideBorderOnHover}
+                isRestored={isRestored}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
