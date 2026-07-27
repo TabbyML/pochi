@@ -286,10 +286,13 @@ function BackgroundTaskDetail({
           <DetailRow label="Error" value={task.error.message} fullWidth />
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden p-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
         <TaskThread
           source={source}
-          scrollAreaClassName="max-h-none h-[calc(100vh-180px)]"
+          className="min-h-0 flex-1"
+          messageListClassName="mb-0 min-h-0 overflow-hidden px-0 py-0"
+          scrollAreaClassName="m-0 h-full max-h-none rounded-none border-0"
+          instantAutoScroll
         />
       </div>
     </div>
