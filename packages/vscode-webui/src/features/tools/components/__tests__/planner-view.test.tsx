@@ -130,6 +130,51 @@ describe("PlannerView", () => {
     });
   });
 
+  it("does not render a placeholder while awaiting approval", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+
+    render(
+      <PlannerView
+        uid="planner-uid"
+        tool={plannerTool}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(screen.queryByText("plannerView.planCreationPaused")).toBeNull();
+    expect(lastSubAgentProps()?.children).toBeNull();
+  });
+
+  it("does not render a placeholder after cancellation", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+
+    render(
+      <PlannerView
+        uid="planner-uid"
+        tool={
+          {
+            type: "tool-newTask",
+            toolCallId: "planner-call",
+            state: "output-error",
+            input: {
+              agentType: "planner",
+              description: "Create a plan",
+            },
+            errorText: "User aborted the tool call",
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(screen.queryByText("plannerView.planCreationPaused")).toBeNull();
+    expect(lastSubAgentProps()?.children).toBeNull();
+  });
+
   it("shows the trajectory in the footer when a plan is in the card body", () => {
     useStoreFileMock.mockReturnValue({ content: "# Plan" });
 

@@ -11,6 +11,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FixedStateChatContextProvider, useSendRetry } from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
+import {
+  getToolPartError,
+  isToolCallCancellationError,
+} from "@/lib/tool-call-error";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { FilePenLine, Play } from "lucide-react";
@@ -38,6 +42,9 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const file = useStoreFile("/plan.md");
   const planContent = file?.content;
   const showPlanArtifact = !!planContent;
+  const hidePlaceholder =
+    (!isExecuting && tool.state === "input-available") ||
+    isToolCallCancellationError(getToolPartError(tool));
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const { count, incrementCount } = useReviewPlanTutorialCounter();
@@ -165,7 +172,7 @@ export function PlannerView(props: NewTaskToolViewProps) {
             assistant={{ name: "Planner" }}
           />
         </FixedStateChatContextProvider>
-      ) : (
+      ) : hidePlaceholder ? null : (
         <div className="flex h-[300px] w-full items-center justify-center p-3 text-muted-foreground">
           <span className="text-base">
             {isExecuting
