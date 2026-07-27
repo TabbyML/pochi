@@ -13,7 +13,6 @@ import {
   isRetryApprovalCountingDown,
   type useApprovalAndRetry,
 } from "@/features/approval";
-import { useToolCallLifeCycle } from "@/features/chat";
 import {
   AutoApproveMenu,
   useAutoApprove,
@@ -118,7 +117,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
-  const { completeToolCalls } = useToolCallLifeCycle();
 
   const { input, setInput, clearInput } = useChatInputState();
 
@@ -226,22 +224,25 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const blockingState = useBlockingOperations(blockingOperations);
 
-  const { isExecuting, isBusyCore, isSubmitDisabled, showStopButton } =
-    useChatStatus({
-      isModelsLoading,
-      isModelValid: !!selectedModel,
-      isLoading,
-      isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
-      isFilesEmpty: files.length === 0,
-      isReviewsEmpty: reviews.length === 0,
-      isUploadingAttachments,
-      blockingState,
-    });
+  const {
+    isRunning,
+    isSubmitEnabled,
+    isStopEnabled,
+    allowSendMessage,
+    allowSteer,
+  } = useChatStatus({
+    isModelValid: !!selectedModel,
+    isLoading,
+    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
+    isFilesEmpty: files.length === 0,
+    isReviewsEmpty: reviews.length === 0,
+    isUploadingAttachments,
+    blockingState,
+    taskStatus: task?.status,
+  });
 
   const compactEnabled = !(
-    isLoading ||
-    isExecuting ||
-    totalTokens < constants.CompactTaskMinTokens
+    isRunning || totalTokens < constants.CompactTaskMinTokens
   );
   const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
@@ -255,14 +256,17 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     input,
     clearInput,
     attachmentUpload,
-    isSubmitDisabled,
     isLoading,
+    isRunning,
+    isSubmitEnabled,
+    isStopEnabled,
+    allowSendMessage,
+    allowSteer,
     pendingApproval,
-    blockingState,
     queuedMessages,
     setQueuedMessages,
     reviews,
-    taskId: taskId,
+    taskId,
     includeUserEdits,
     isTodoMode: todoModeSelected,
     canCreateTodo: !todoModeDisabled,
@@ -271,27 +275,24 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   });
 
   // Auto dequeue when ready
+  const taskStatus = task?.status;
   useEffect(() => {
-    const isReady =
+    const shouldAutoDequeue =
       status === "ready" &&
-      !isExecuting &&
-      !isBusyCore &&
-      completeToolCalls.length === 0 &&
-      !!selectedModel &&
-      (!pendingApproval || pendingApproval.name === "retry") &&
-      (task?.status === "pending-input" || task?.status === "completed");
+      allowSendMessage &&
+      !pendingApproval &&
+      (taskStatus === undefined ||
+        taskStatus === "pending-input" ||
+        taskStatus === "completed");
 
-    if (isReady && queuedMessages.length > 0) {
+    if (shouldAutoDequeue && queuedMessages.length > 0) {
       handleSteerQueuedMessage(0);
     }
   }, [
     status,
-    isExecuting,
-    isBusyCore,
-    completeToolCalls.length,
-    selectedModel,
+    allowSendMessage,
     pendingApproval,
-    task?.status,
+    taskStatus,
     queuedMessages,
     handleSteerQueuedMessage,
   ]);
@@ -330,7 +331,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const useTaskChangedFilesHelpers = useTaskChangedFiles(
     task?.id as string,
     messages,
-    isExecuting,
   );
 
   const showRenderWidgetFixButton =
@@ -339,7 +339,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     !pendingApproval;
 
   const showSubmitReviewButton =
-    !isSubmitDisabled &&
+    isSubmitEnabled &&
     !!reviews.length &&
     !!messages.length &&
     !isLoading &&
@@ -418,7 +418,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           setInput={setInput}
           onSubmit={handleSubmit}
           onCtrlSubmit={handleSteerSubmit}
-          isLoading={isLoading || isExecuting}
+          isLoading={isRunning}
           onPaste={handlePasteAttachment}
           pendingApproval={pendingApproval}
           status={status}
@@ -435,6 +435,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           queuedMessages={queuedMessages}
           onRemoveQueuedMessage={handleRemoveQueuedMessage}
           onSteerQueuedMessage={handleSteerQueuedMessage}
+          allowSteer={allowSteer}
           onAttachFile={() => fileInputRef.current?.click()}
           onSelectTodoMode={
             showTodoMode ? () => setTodoModeSelected(true) : undefined
@@ -531,8 +532,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             />
           )}
           <SubmitStopButton
-            isSubmitDisabled={isSubmitDisabled}
-            showStopButton={showStopButton}
+            isButtonEnabled={isSubmitEnabled || isStopEnabled}
+            showStopButton={isRunning}
             onSubmit={handleSubmit}
             onStop={handleStop}
           />
@@ -543,14 +544,14 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 };
 
 interface SubmitStopButtonProps {
-  isSubmitDisabled: boolean;
+  isButtonEnabled: boolean;
   showStopButton: boolean;
   onSubmit: () => void;
   onStop: () => void;
 }
 
 const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
-  isSubmitDisabled,
+  isButtonEnabled,
   showStopButton,
   onSubmit,
   onStop,
@@ -560,7 +561,7 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       type="button"
       variant="ghost"
       size="icon"
-      disabled={isSubmitDisabled}
+      disabled={!isButtonEnabled}
       className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {

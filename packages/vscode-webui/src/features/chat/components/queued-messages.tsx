@@ -34,6 +34,7 @@ interface QueuedMessagesProps {
   messages: DraftMessage[];
   onRemove: (index: number) => void;
   onSteer?: (index: number) => void;
+  allowSteer?: boolean;
 }
 
 interface RenderMessage {
@@ -48,6 +49,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   messages,
   onRemove,
   onSteer,
+  allowSteer = true,
 }) => {
   const { t } = useTranslation();
   const renderMessages = useMemo<RenderMessage[]>(() => {
@@ -126,7 +128,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
               type="button"
               onClick={() => onSteer?.(index)}
               aria-label={t("chat.steer")}
-              disabled={!onSteer}
+              disabled={!onSteer || !allowSteer}
               className={cn(
                 "h-7 gap-1 rounded-full px-1.5 text-muted-foreground text-sm",
                 "hover:bg-transparent hover:text-foreground",

@@ -22,7 +22,6 @@ import {
   useBatchExecuteManager,
   useToolCallLifeCycle,
 } from "../lib/chat-state";
-import type { BlockingState } from "./use-blocking-operations";
 import type { ChatInput } from "./use-chat-input-state";
 
 const logger = getLogger("UseChatSubmit");
@@ -48,9 +47,12 @@ interface UseChatSubmitProps {
   input: ChatInput;
   clearInput: () => void;
   attachmentUpload: UseAttachmentUploadReturn;
-  isSubmitDisabled: boolean;
   isLoading: boolean;
-  blockingState: BlockingState;
+  isRunning: boolean;
+  isSubmitEnabled: boolean;
+  isStopEnabled: boolean;
+  allowSendMessage: boolean;
+  allowSteer: boolean;
   pendingApproval: PendingApproval | undefined;
   queuedMessages: DraftMessage[];
   setQueuedMessages: React.Dispatch<React.SetStateAction<DraftMessage[]>>;
@@ -72,9 +74,12 @@ export function useChatSubmit({
   input,
   clearInput,
   attachmentUpload,
-  isSubmitDisabled,
   isLoading,
-  blockingState,
+  isRunning,
+  isSubmitEnabled,
+  isStopEnabled,
+  allowSendMessage,
+  allowSteer,
   pendingApproval,
   queuedMessages,
   setQueuedMessages,
@@ -101,62 +106,59 @@ export function useChatSubmit({
   const { sendMessage, stop: stopChat } = chat;
   const {
     files,
-    isUploading,
     upload,
     clearFiles,
     clearError: clearUploadError,
   } = attachmentUpload;
 
-  const readyResolvers = useRef<(() => void)[]>([]);
+  const readyResolvers = useRef<((r: true) => void)[]>([]);
 
   useEffect(() => {
-    if (!isLoading && !isExecuting && readyResolvers.current.length > 0) {
+    if (allowSendMessage && readyResolvers.current.length > 0) {
       const resolvers = readyResolvers.current;
       readyResolvers.current = [];
       for (const resolve of resolvers) {
-        resolve();
+        resolve(true);
       }
     }
-  }, [isLoading, isExecuting]);
+  }, [allowSendMessage]);
 
   const waitForReady = useCallback(() => {
-    if (!isLoading && !isExecuting) {
-      return Promise.resolve();
+    if (allowSendMessage) {
+      return Promise.resolve(true);
     }
-    return new Promise<void>((resolve) => {
+    return new Promise<true>((resolve) => {
       readyResolvers.current.push(resolve);
     });
-  }, [isLoading, isExecuting]);
+  }, [allowSendMessage]);
 
   const handleStop = useCallback(async () => {
-    autoApproveGuard.current = "stop";
-
-    // Compacting is not allowed to be stopped.
-    if (blockingState.isBusy) {
+    if (!isStopEnabled) {
       return false;
     }
 
+    autoApproveGuard.current = "stop";
+
     if (isExecuting) {
       abortExecutingToolCalls();
-    } else if (isLoading) {
+    }
+
+    if (isLoading) {
       stopChat();
     }
 
     if (pendingApproval?.name === "retry") {
       pendingApproval.stopCountdown();
     }
-
-    await waitForReady();
     return true;
   }, [
-    blockingState.isBusy,
+    isStopEnabled,
     isExecuting,
     isLoading,
     pendingApproval,
     abortExecutingToolCalls,
     stopChat,
     autoApproveGuard,
-    waitForReady,
   ]);
 
   const createMessage = useCallback(async (): Promise<
@@ -240,10 +242,6 @@ export function useChatSubmit({
 
   const sendChatMessage = useCallback(
     async (message: DraftMessage) => {
-      if (isSubmitDisabled) {
-        return;
-      }
-
       const shouldCreateTodo = message.raw.isTodoMode && canCreateTodo;
       if (message.raw.text && shouldCreateTodo) {
         onBeforeSendText?.(message.raw.text);
@@ -259,7 +257,6 @@ export function useChatSubmit({
       });
     },
     [
-      isSubmitDisabled,
       canCreateTodo,
       onBeforeSendText,
       pendingApproval,
@@ -278,32 +275,30 @@ export function useChatSubmit({
 
       logger.debug("handleSubmit");
 
-      // Uploading / Compacting is not allowed to be stopped.
-      if (blockingState.isBusy || isUploading) return;
+      if (!isSubmitEnabled) {
+        return;
+      }
 
       const message = await createMessage();
       if (!message) {
         return;
       }
 
-      if (isLoading || isExecuting) {
+      if (allowSendMessage) {
+        sendChatMessage(message);
+      } else {
         setQueuedMessages((prev) => [...prev, message]);
         if (message.raw.isTodoMode) {
           onTodoModeQueued?.();
         }
-        return;
       }
-
-      sendChatMessage(message);
     },
     [
-      blockingState.isBusy,
-      isUploading,
-      isLoading,
-      isExecuting,
+      isSubmitEnabled,
+      allowSendMessage,
       sendChatMessage,
-      setQueuedMessages,
       createMessage,
+      setQueuedMessages,
       onTodoModeQueued,
     ],
   );
@@ -314,39 +309,49 @@ export function useChatSubmit({
 
       logger.debug("handleSteerSubmit");
 
-      if (blockingState.isBusy || isUploading) return;
+      if (!isSubmitEnabled) {
+        return;
+      }
 
       const message = await createMessage();
       if (!message) {
         return;
       }
 
-      let ready = !isLoading && !isExecuting;
-      if (!ready) {
-        ready = await handleStop();
+      let readyToSend = allowSendMessage;
+      if (isRunning) {
+        readyToSend = (await handleStop()) && (await waitForReady());
       }
 
-      if (ready) {
+      if (readyToSend) {
         sendChatMessage(message);
       } else {
         setQueuedMessages((messages) => [...messages, message]);
+        if (message.raw.isTodoMode) {
+          onTodoModeQueued?.();
+        }
       }
     },
     [
-      blockingState.isBusy,
-      isUploading,
-      isLoading,
-      isExecuting,
+      isSubmitEnabled,
+      isRunning,
+      allowSendMessage,
       sendChatMessage,
       createMessage,
       handleStop,
+      waitForReady,
       setQueuedMessages,
+      onTodoModeQueued,
     ],
   );
 
   const handleSteerQueuedMessage = useCallback(
     async (index: number) => {
-      if (blockingState.isBusy) return;
+      logger.debug("handleSteerQueuedMessage");
+
+      if (!allowSteer) {
+        return;
+      }
 
       const messages = [...queuedMessages];
       const message = messages[index];
@@ -354,22 +359,22 @@ export function useChatSubmit({
         const updatedMessages = messages.filter((_, i) => i !== index);
         setQueuedMessages(updatedMessages);
 
-        let ready = !isLoading && !isExecuting;
-        if (!ready) {
-          ready = await handleStop();
+        let readyToSend = allowSendMessage;
+        if (isRunning) {
+          readyToSend = (await handleStop()) && (await waitForReady());
         }
-        if (ready) {
+
+        if (readyToSend) {
           sendChatMessage(message);
-        } else {
-          setQueuedMessages(messages);
         }
       }
     },
     [
-      blockingState.isBusy,
-      isLoading,
-      isExecuting,
+      allowSteer,
+      allowSendMessage,
+      isRunning,
       handleStop,
+      waitForReady,
       queuedMessages,
       setQueuedMessages,
       sendChatMessage,

@@ -48,6 +48,7 @@ interface ChatInputFormProps {
   queuedMessages?: DraftMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
   onSteerQueuedMessage?: (index: number) => void;
+  allowSteer?: boolean;
 }
 
 export interface ChatInputFormHandle {
@@ -87,6 +88,7 @@ export const ChatInputForm = forwardRef<
     queuedMessages = [],
     onRemoveQueuedMessage,
     onSteerQueuedMessage,
+    allowSteer,
   },
   ref,
 ) {
@@ -164,6 +166,7 @@ export const ChatInputForm = forwardRef<
               ? (index) => onSteerQueuedMessage(index)
               : undefined
           }
+          allowSteer={allowSteer}
         />
       )}
       {children}

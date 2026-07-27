@@ -606,6 +606,20 @@ function setup({
         setQueuedMessages(props.queuedMessages);
       }, [props.queuedMessages]);
 
+      // Mirrors the derivation performed by `useChatStatus` for a
+      // model-valid, non-blocking scenario, so these tests can focus on
+      // `useChatSubmit`'s own behavior without re-deriving all of the
+      // underlying blocking/model-loading state.
+      const isExecuting = chatStateMocks.isExecuting;
+      const isRunning = props.isLoading || isExecuting;
+      const isInputEmpty = !initialInputText.trim();
+      const isFilesEmpty = files.length === 0;
+      const isReviewsEmpty = reviews.length === 0;
+      const isSubmitEnabled = !isInputEmpty || !isFilesEmpty || !isReviewsEmpty;
+      const isStopEnabled = isRunning;
+      const allowSendMessage = !isRunning;
+      const allowSteer = true;
+
       const result = useChatSubmit({
         chat: {
           sendMessage,
@@ -620,14 +634,13 @@ function setup({
           clearFiles,
           clearError: vi.fn(),
         } as never,
-        isSubmitDisabled: false,
         isLoading: props.isLoading,
+        isRunning,
+        isSubmitEnabled,
+        isStopEnabled,
+        allowSendMessage,
+        allowSteer,
         includeUserEdits: props.includeUserEdits,
-        blockingState: {
-          isBusy: false,
-          busyLabel: undefined,
-          activeOperation: undefined,
-        },
         pendingApproval: undefined,
         queuedMessages,
         setQueuedMessages,

@@ -120,6 +120,36 @@ describe("QueuedMessages", () => {
     expect(getByLabelText("activeSelectionBadge.terminal: bash")).toBeTruthy();
     expect(container.textContent).not.toContain("bash");
   });
+
+  it("disables the steer button when allowSteer is false", () => {
+    const { getByLabelText } = render(
+      <QueuedMessages
+        messages={[queuedMessage({ text: "check this" })]}
+        onRemove={vi.fn()}
+        onSteer={vi.fn()}
+        allowSteer={false}
+      />,
+    );
+
+    expect((getByLabelText("chat.steer") as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
+  it("enables the steer button when allowSteer is true and onSteer is provided", () => {
+    const { getByLabelText } = render(
+      <QueuedMessages
+        messages={[queuedMessage({ text: "check this" })]}
+        onRemove={vi.fn()}
+        onSteer={vi.fn()}
+        allowSteer={true}
+      />,
+    );
+
+    expect((getByLabelText("chat.steer") as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
 });
 
 function queuedMessage({

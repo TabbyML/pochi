@@ -15,11 +15,7 @@ async function fetchTaskChangedFiles(taskId: string) {
 }
 
 /** @useSignals this comment is needed to enable signals in this hook */
-export const useTaskChangedFiles = (
-  taskId: string,
-  messages: Message[],
-  _isExecuting?: boolean,
-) => {
+export const useTaskChangedFiles = (taskId: string, messages: Message[]) => {
   // Use query to fetch and subscribe to signals
   const { data } = useQuery({
     queryKey: ["taskChangedFiles", taskId],
