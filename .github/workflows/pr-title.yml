@@ -1,0 +1,47 @@
+name: PR title
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+  merge_group:
+    types: [checks_requested]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: PR title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validate conventional PR title
+        if: github.event_name == 'pull_request_target'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          node <<'NODE'
+          const title = process.env.PR_TITLE ?? "";
+          const conventionalTitle =
+            /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^()\r\n]+\))?!?: \S.*$/;
+
+          if (!conventionalTitle.test(title)) {
+            console.error(`Invalid PR title: ${JSON.stringify(title)}`);
+            console.error(
+              "Expected: <type>[optional scope][!]: <description>",
+            );
+            console.error(
+              "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert",
+            );
+            process.exit(1);
+          }
+
+          console.log(`Valid conventional PR title: ${title}`);
+          NODE
+
+      - name: Accept merge group
+        if: github.event_name == 'merge_group'
+        run: echo "PR titles are validated before entering the merge queue."
