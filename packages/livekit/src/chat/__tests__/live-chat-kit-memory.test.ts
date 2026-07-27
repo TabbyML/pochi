@@ -14,11 +14,14 @@ import {
   type Task,
 } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
-import { getTokenCalibrationFactor, resetTokenCalibration } from "../token-utils";
+import { resetTokenCalibration } from "../token-utils";
 
 describe("LiveChatKit memory lifecycle", () => {
-  // onFinish exercises token-estimate calibration (a process-wide, in-memory
-  // singleton), so reset it between tests to keep them order-independent.
+  // Per-model calibration state lives in a module-level map keyed by
+  // `llm.id`; reset it between tests to keep them order-independent. Note
+  // that calibration is now driven from `flexible-chat-transport.ts` (using
+  // the provider's real `inputTokens` during streaming), not from
+  // `LiveChatKit.onFinish`, so it is no longer exercised directly here.
   beforeEach(() => {
     resetTokenCalibration();
   });
@@ -316,67 +319,6 @@ describe("LiveChatKit memory lifecycle", () => {
     expect(chatKit.chat.messages.map((message) => message.id)).toContain(
       "user-1",
     );
-  });
-
-  it("calibrates the token estimator against real provider usage on finish", () => {
-    const store = new FakeStore([
-      makeTask({
-        id: "parent",
-        status: "pending-model",
-        background: false,
-      }),
-    ]);
-    const chatKit = new LiveChatKit<FakeChat>({
-      taskId: "parent",
-      store: store as unknown as LiveKitStore,
-      blobStore: {} as BlobStore,
-      chatClass: FakeChat,
-      getters: {
-        getLLM: () => ({ id: "test-model" }) as never,
-      },
-    });
-
-    // Keep the non-message contribution to the estimate at zero so the total
-    // estimate stays small relative to the (deliberately huge) reported
-    // totalTokens below, giving a clear signal that calibration ran.
-    setLatestRequestSnapshot(chatKit, 0, 0);
-    chatKit.chat.messages = [userMessage(), assistantMessage()];
-    chatKit.chat.finish(assistantMessage());
-
-    expect(getTokenCalibrationFactor()).toBeGreaterThan(1);
-  });
-
-  it("does not calibrate against our own fallback estimate", () => {
-    const store = new FakeStore([
-      makeTask({
-        id: "parent",
-        status: "pending-model",
-        background: false,
-      }),
-    ]);
-    const chatKit = new LiveChatKit<FakeChat>({
-      taskId: "parent",
-      store: store as unknown as LiveKitStore,
-      blobStore: {} as BlobStore,
-      chatClass: FakeChat,
-      getters: {
-        getLLM: () => ({ id: "test-model" }) as never,
-      },
-    });
-
-    setLatestRequestSnapshot(chatKit, 0, 0);
-    chatKit.chat.messages = [userMessage(), assistantMessage()];
-    chatKit.chat.finish({
-      ...assistantMessage(),
-      metadata: {
-        kind: "assistant",
-        finishReason: "stop",
-        totalTokens: 20_000,
-        totalTokensIsEstimated: true,
-      },
-    } as unknown as Message);
-
-    expect(getTokenCalibrationFactor()).toBe(1);
   });
 
   it("updates task total tokens from the formatted compact estimate", () => {

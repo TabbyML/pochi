@@ -41,7 +41,13 @@ import {
   createToolCallMiddleware,
 } from "./middlewares";
 import { createModel } from "./models";
-import { estimateTokens, estimateTotalTokens } from "./token-utils";
+import {
+  estimateTokens,
+  estimateTotalTokens,
+  getModelCalibrationFactor,
+  getModelCalibrationKey,
+  updateModelCalibration,
+} from "./token-utils";
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -54,6 +60,14 @@ export type FinishedRequestSnapshot = {
   systemPrompt: string;
   systemPromptTokens: number;
   toolsTokens: number;
+  /**
+   * The per-model calibration factor snapshotted at the start of this
+   * request, used to compute `systemPromptTokens`/`toolsTokens` above. Passed
+   * through so downstream consumers (e.g. `computeContextWindowUsage`) can
+   * estimate the rest of the conversation with the same factor, rather than
+   * re-reading a possibly-since-updated value.
+   */
+  calibrationFactor: number;
 };
 
 function createAbortAwareUIStreamTransform(
@@ -167,6 +181,13 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const todoModeEnabled =
       !this.isSubTask && hasActiveTodos(environment?.todos);
 
+    // Snapshot the per-model calibration factor once so every estimate
+    // computed for this request agrees, even if another concurrent request
+    // (for this model or another) updates calibration state while this one
+    // is in flight.
+    const modelCalibrationKey = getModelCalibrationKey(llm);
+    const calibrationFactor = getModelCalibrationFactor(modelCalibrationKey);
+
     await this.onStart?.({
       messages,
       environment,
@@ -223,8 +244,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       { todoModeEnabled, todos: environment?.todos },
     );
     const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
-    const systemPromptTokens = estimateTokens(systemPrompt);
-    const toolsTokens = estimateTokens(JSON.stringify(tools));
+    const systemPromptTokens = estimateTokens(systemPrompt, calibrationFactor);
+    const toolsTokens = estimateTokens(
+      JSON.stringify(tools),
+      calibrationFactor,
+    );
 
     const preparedMessages = await prepareMessages(messages);
     const llmMessages = formatters.llm(preparedMessages);
@@ -290,18 +314,40 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
               lastMessage.metadata?.kind === "assistant"
                 ? lastMessage.metadata
                 : undefined;
+
+            const { inputTokens, totalTokens } = part.totalUsage;
+            if (inputTokens) {
+              // Calibrate using *input* tokens only, against the raw
+              // (uncalibrated) estimate of exactly the input content sent
+              // for this request (system prompt + tools + messages).
+              // Comparing against `totalTokens` instead would fold in
+              // output/completion usage, which can include invisible
+              // reasoning tokens we have no text to estimate from -- that
+              // gap has nothing to do with our chars-per-token ratios and
+              // would bias the factor for the wrong reason.
+              const rawInputEstimate =
+                (systemPromptTokens +
+                  toolsTokens +
+                  estimateTotalTokens(llmMessages, calibrationFactor)) /
+                calibrationFactor;
+              updateModelCalibration(
+                modelCalibrationKey,
+                inputTokens,
+                rawInputEstimate,
+              );
+            }
+
             return {
               kind: "assistant",
               // The client only consumes the aggregated total token count here.
               // Detailed usage shape differences are a server/protocol concern.
               totalTokens:
-                part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
-              // Lets downstream consumers (e.g. token-estimate calibration)
-              // tell apart real provider usage from our heuristic fallback.
-              // Only set when true; keep undefined otherwise so it's omitted.
-              totalTokensIsEstimated: part.totalUsage.totalTokens
-                ? undefined
-                : true,
+                totalTokens ||
+                estimateTotalTokens(llmMessages, calibrationFactor),
+              // Lets downstream consumers tell apart real provider usage from
+              // our heuristic fallback. Only set when true; keep undefined
+              // otherwise so it's omitted.
+              totalTokensIsEstimated: totalTokens ? undefined : true,
               finishReason: part.finishReason,
               startedAt: requestStartedAt,
               finishedAt: now,
@@ -315,6 +361,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             systemPrompt,
             systemPromptTokens,
             toolsTokens,
+            calibrationFactor,
           });
         },
       })
