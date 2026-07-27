@@ -257,6 +257,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     attachmentUpload,
     isSubmitDisabled,
     isLoading,
+    isPendingToolCall: task?.status === "pending-tool",
     pendingApproval,
     blockingState,
     queuedMessages,

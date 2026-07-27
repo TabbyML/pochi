@@ -622,6 +622,7 @@ function setup({
         } as never,
         isSubmitDisabled: false,
         isLoading: props.isLoading,
+        isPendingToolCall: false,
         includeUserEdits: props.includeUserEdits,
         blockingState: {
           isBusy: false,
