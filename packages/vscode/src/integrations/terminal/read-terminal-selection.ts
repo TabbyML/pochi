@@ -1,17 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { getLogger } from "@/lib/logger";
 import type { TerminalTextSelection } from "@getpochi/common/vscode-webui-bridge";
+import * as runExclusive from "run-exclusive";
 import * as vscode from "vscode";
 
 const logger = getLogger("ReadTerminalSelection");
-
-/**
- * Serializes overlapping `withDoNotDisturb` calls so their toggle-on/toggle-off
- * pairs can't interleave (which would otherwise leave the notification filter
- * stuck in the wrong state). Resolves regardless of whether the previous run
- * succeeded or failed.
- */
-let pendingDoNotDisturb: Promise<void> = Promise.resolve();
 
 /**
  * Best-effort toggle of VS Code's "Do Not Disturb" notification filter.
@@ -39,28 +32,21 @@ async function toggleDoNotDisturb(): Promise<void> {
  * Notification Center instead of popping up as a toast.
  *
  * Toggling on then off again nets out to the original filter state
- * regardless of what it was, since the command is a pure flip. Calls are
- * serialized via `pendingDoNotDisturb` so concurrent invocations don't
- * interleave their toggles.
+ * regardless of what it was, since the command is a pure flip. This relies
+ * on `readTerminalSelection` (the only caller) being guarded by
+ * `runExclusive` so overlapping calls can't interleave their toggles.
  *
  * Caveat: if the process crashes (or `fn` never settles) between the two
  * toggles, the user's notification filter could be left on "errors only"
  * until they toggle it back manually via the bell icon.
  */
 async function withDoNotDisturb<T>(fn: () => Thenable<T>): Promise<T> {
-  const run = pendingDoNotDisturb.then(async () => {
+  await toggleDoNotDisturb();
+  try {
+    return await fn();
+  } finally {
     await toggleDoNotDisturb();
-    try {
-      return await fn();
-    } finally {
-      await toggleDoNotDisturb();
-    }
-  });
-  pendingDoNotDisturb = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  return run;
+  }
 }
 
 /**
@@ -80,31 +66,40 @@ async function withDoNotDisturb<T>(fn: () => Thenable<T>): Promise<T> {
  * selection beforehand or to suppress that specific notification
  * (microsoft/vscode#10471 rejected exposing a general context-key read
  * API), so the copy command is run under `withDoNotDisturb` to silence it.
+ *
+ * Guarded with `runExclusive` so overlapping calls (e.g. reading multiple
+ * terminals' selections in quick succession) can't interleave their
+ * clipboard writes/reads or their `withDoNotDisturb` toggles, which would
+ * otherwise corrupt the clipboard or leave the notification filter stuck.
  */
-export async function readTerminalSelection(
-  terminal: vscode.Terminal,
-  terminalId: string | undefined,
-): Promise<TerminalTextSelection | undefined> {
-  const originalClipboard = await vscode.env.clipboard.readText();
-  const sentinel = `__pochi_empty_selection_${randomUUID()}__`;
-  try {
-    await vscode.env.clipboard.writeText(sentinel);
-    await withDoNotDisturb(() =>
-      vscode.commands.executeCommand("workbench.action.terminal.copySelection"),
-    );
-    const result = await vscode.env.clipboard.readText();
-    if (result === sentinel) {
+export const readTerminalSelection = runExclusive.build(
+  async (
+    terminal: vscode.Terminal,
+    terminalId: string | undefined,
+  ): Promise<TerminalTextSelection | undefined> => {
+    const originalClipboard = await vscode.env.clipboard.readText();
+    const sentinel = `__pochi_empty_selection_${randomUUID()}__`;
+    try {
+      await vscode.env.clipboard.writeText(sentinel);
+      await withDoNotDisturb(() =>
+        vscode.commands.executeCommand(
+          "workbench.action.terminal.copySelection",
+        ),
+      );
+      const result = await vscode.env.clipboard.readText();
+      if (result === sentinel) {
+        return undefined;
+      }
+      return {
+        terminalName: terminal.name,
+        backgroundJobId: terminalId,
+        content: result,
+      };
+    } catch (error) {
+      logger.debug(`Failed to read terminal selection: ${error}`);
       return undefined;
+    } finally {
+      await vscode.env.clipboard.writeText(originalClipboard);
     }
-    return {
-      terminalName: terminal.name,
-      backgroundJobId: terminalId,
-      content: result,
-    };
-  } catch (error) {
-    logger.debug(`Failed to read terminal selection: ${error}`);
-    return undefined;
-  } finally {
-    await vscode.env.clipboard.writeText(originalClipboard);
-  }
-}
+  },
+);
