@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { renderHook, act } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { useAutoMemoryEnabled } from "./use-auto-memory-enabled";
+import { renderHook } from "@testing-library/react";
 import { useQuery } from "@tanstack/react-query";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useAutoMemoryEnabled } from "./use-auto-memory-enabled";
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(),
@@ -19,21 +19,22 @@ describe("useAutoMemoryEnabled", () => {
     vi.clearAllMocks();
   });
 
-  it("should default to globalEnabled when override is undefined", () => {
+  it("returns the global setting", () => {
     vi.mocked(useQuery).mockReturnValue({
       data: {
         value: {
-          value: true,
+          value: false,
         },
+        setAutoMemoryEnabled: vi.fn(),
       },
     } as any);
 
     const { result } = renderHook(() => useAutoMemoryEnabled());
 
-    expect(result.current.autoMemoryEnabled).toBe(true);
+    expect(result.current.autoMemoryEnabled).toBe(false);
   });
 
-  it("should default to true if globalEnabled data is not yet available", () => {
+  it("defaults to true while the global setting is loading", () => {
     vi.mocked(useQuery).mockReturnValue({
       data: undefined,
     } as any);
@@ -41,54 +42,25 @@ describe("useAutoMemoryEnabled", () => {
     const { result } = renderHook(() => useAutoMemoryEnabled());
 
     expect(result.current.autoMemoryEnabled).toBe(true);
+    expect(result.current.setAutoMemoryEnabled).toBeUndefined();
   });
 
-  it("should use local override state and override global value", () => {
+  it("updates the global setting through the VS Code host", () => {
+    const setAutoMemoryEnabled = vi.fn();
     vi.mocked(useQuery).mockReturnValue({
       data: {
         value: {
-          value: false,
+          value: true,
         },
+        setAutoMemoryEnabled,
       },
     } as any);
 
     const { result } = renderHook(() => useAutoMemoryEnabled());
 
-    // Initially inherits globalEnabled (false)
-    expect(result.current.autoMemoryEnabled).toBe(false);
+    result.current.setAutoMemoryEnabled?.(false);
 
-    // Override to true
-    act(() => {
-      result.current.setAutoMemoryEnabled?.(true);
-    });
-
-    expect(result.current.autoMemoryEnabled).toBe(true);
-
-    // Override to false
-    act(() => {
-      result.current.setAutoMemoryEnabled?.(false);
-    });
-
-    expect(result.current.autoMemoryEnabled).toBe(false);
-  });
-
-  it("should have higher priority even if global is false", () => {
-    vi.mocked(useQuery).mockReturnValue({
-      data: {
-        value: {
-          value: false,
-        },
-      },
-    } as any);
-
-    const { result } = renderHook(() => useAutoMemoryEnabled());
-
-    expect(result.current.autoMemoryEnabled).toBe(false);
-
-    act(() => {
-      result.current.setAutoMemoryEnabled?.(true);
-    });
-
-    expect(result.current.autoMemoryEnabled).toBe(true);
+    expect(setAutoMemoryEnabled).toHaveBeenCalledOnce();
+    expect(setAutoMemoryEnabled).toHaveBeenCalledWith(false);
   });
 });
