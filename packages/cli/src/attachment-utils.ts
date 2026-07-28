@@ -5,6 +5,17 @@ import { prompts } from "@getpochi/common";
 import { type BlobStore, fileToUri } from "@getpochi/livekit";
 import type { FileUIPart, TextUIPart } from "ai";
 
+/**
+ * Processes a list of file attachments (local or remote URLs) for a CLI task.
+ * Converts local files to data URIs stored in the BlobStore, resolves mime types
+ * for remote files (including special handling for YouTube video URLs), and generates
+ * system reminders and file parts for the AI model's prompt.
+ *
+ * @param attachments Array of file paths or remote URLs representing the attachments.
+ * @param blobStore Storage backend for uploading and managing media content.
+ * @param program Commander CLI Command instance used to report fatal attachment errors.
+ * @returns A promise resolving to an array of prompt parts (text reminders and file attachments).
+ */
 export async function processAttachments(
   attachments: string[],
   blobStore: BlobStore,
@@ -89,6 +100,13 @@ export async function processAttachments(
   return parts;
 }
 
+/**
+ * Derives the mime type of a file based on its file extension.
+ * Defaults to "application/octet-stream" if the extension is unknown.
+ *
+ * @param filePath Path or URL of the file.
+ * @returns The resolved mime type string.
+ */
 function getMimeType(filePath: string): string {
   const extension = path.extname(filePath).toLowerCase();
   switch (extension) {
@@ -116,6 +134,13 @@ function getMimeType(filePath: string): string {
   }
 }
 
+/**
+ * Checks if a given string is a valid URL and represents a remote protocol (e.g. http, https, gs).
+ * Excludes "file:" protocol URLs as they refer to local files.
+ *
+ * @param str The string path or URL to check.
+ * @returns True if the string is a remote URL, false otherwise.
+ */
 function isUrl(str: string): boolean {
   try {
     const url = new URL(str);
