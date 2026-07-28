@@ -4,7 +4,7 @@ import { VSCodeWebProvider } from "@/components/vscode-web-provider";
 import { ChatContextProvider } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
-import { type ResizeEvent, ShareEvent } from "@getpochi/common/share-utils";
+import type { ResizeEvent } from "@getpochi/common/share-utils";
 import type { Message } from "@getpochi/livekit";
 import { toTaskStatus } from "@getpochi/livekit";
 import { createChannel } from "bidc";
@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ErrorMessageView } from "../chat/components/error-message-view";
 import { TodoList } from "../todo";
+import { useShareData } from "./use-share-data";
 
 type BIDCChannel = ReturnType<typeof createChannel>;
 
@@ -222,63 +223,8 @@ export function SharePage() {
   );
 }
 
-function useShareData({
-  isStorePathname,
-  channel,
-}: { channel?: BIDCChannel | undefined; isStorePathname: boolean }) {
-  const [data, setData] = useState<ShareEvent>();
-
-  const fetchCfShareData = useCallback(() => {
-    const api = location.pathname.replace("/html", "/json");
-    const token = getTokenFromHash();
-    fetch(
-      api,
-      token
-        ? {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        : undefined,
-    )
-      .then(async (res) => {
-        const data = await res.json();
-        const parsed = ShareEvent.parse(data);
-        setData(parsed);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch share data", err);
-      });
-  }, []);
-
-  const subscribeChannelData = useCallback(() => {
-    if (!channel) return;
-    channel.receive((data) => {
-      setData(ShareEvent.parse(data));
-    });
-  }, [channel]);
-
-  useEffect(() => {
-    if (isStorePathname) {
-      fetchCfShareData();
-    } else {
-      subscribeChannelData();
-    }
-  }, [isStorePathname, fetchCfShareData, subscribeChannelData]);
-
-  return data;
-}
-
 function isStorePathname() {
   const regex = /\/stores\/([^\/]+)\/tasks\/([^\/]+)\/html/;
   const match = location.pathname.match(regex);
   return !!match;
-}
-
-function getTokenFromHash() {
-  const hash = window.location.hash.substring(1); // Remove the # character
-  if (hash) {
-    const hashParams = new URLSearchParams(hash);
-    return hashParams.get("token");
-  }
 }
