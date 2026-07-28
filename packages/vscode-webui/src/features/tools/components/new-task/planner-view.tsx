@@ -42,11 +42,12 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const file = useStoreFile("/plan.md");
   const planContent = file?.content;
   const showPlanArtifact = !!planContent;
-  const hasBodyContent =
-    showPlanArtifact || (!!taskSource && taskSource.messages.length > 1);
   const hidePlaceholder =
     (!isExecuting && tool.state === "input-available") ||
     isToolCallCancellationError(getToolPartError(tool));
+  const hasBodyContent =
+    showPlanArtifact ||
+    (!hidePlaceholder && !!taskSource && taskSource.messages.length > 1);
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const { count, incrementCount } = useReviewPlanTutorialCounter();
