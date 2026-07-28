@@ -42,6 +42,8 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const file = useStoreFile("/plan.md");
   const planContent = file?.content;
   const showPlanArtifact = !!planContent;
+  const hasBodyContent =
+    showPlanArtifact || (!!taskSource && taskSource.messages.length > 1);
   const hidePlaceholder =
     (!isExecuting && tool.state === "input-available") ||
     isToolCallCancellationError(getToolPartError(tool));
@@ -101,7 +103,8 @@ export function PlannerView(props: NewTaskToolViewProps) {
       }
       footerActions={
         isVSCodeEnvironment() &&
-        isLastPart && (
+        isLastPart &&
+        hasBodyContent && (
           <>
             <HoverCard
               openDelay={0}
