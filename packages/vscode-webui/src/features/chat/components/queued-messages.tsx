@@ -83,7 +83,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   }, [messages, t]);
 
   return (
-    <div className="mx-1 mt-1 mb-1.5 flex max-h-28 flex-col gap-0.5 overflow-y-auto rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
+    <div className="mx-1 mt-2 mb-1.5 flex max-h-28 flex-col gap-0.5 overflow-y-auto rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
       {renderMessages.map((message, index) => (
         <div
           key={index}
