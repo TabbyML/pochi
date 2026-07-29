@@ -214,39 +214,53 @@ export class UserEditState implements vscode.Disposable {
           return;
         }
 
-        this.resetBaselineAfterBranchChange();
+        this.handleBranchChange();
       }),
     );
   }
 
-  private resetBaselineAfterBranchChange = runExclusive.build(async () => {
+  private handleBranchChange() {
+    const revision = ++this.branchBaselineRevision;
     this.branchBaselinePending = true;
-    this.branchBaselineRevision++;
     const trackingTasks = new Map<string, string | undefined>(
       this.trackingTasks,
     );
     this.edits.value = Object.fromEntries(
       Array.from(trackingTasks.keys(), (uid) => [uid, []]),
     );
-    // All baselines for this workspace are invalid after a branch switch,
-    // including persisted entries for tasks that are not currently tracked.
     this.branchBaselines.clear();
+    void this.resetBaselineAfterBranchChange(revision, trackingTasks);
+  }
 
-    try {
-      const baseline = await this.checkpointService.saveUserEditBaseline();
-      for (const [uid, taskCheckpoint] of trackingTasks) {
-        if (this.trackingTasks.get(uid) === taskCheckpoint) {
-          this.branchBaselines.set(uid, { taskCheckpoint, baseline });
+  private resetBaselineAfterBranchChange = runExclusive.build(
+    async (
+      revision: number,
+      trackingTasks: Map<string, string | undefined>,
+    ) => {
+      try {
+        const baseline = await this.checkpointService.saveUserEditBaseline();
+        if (revision !== this.branchBaselineRevision) {
+          return;
+        }
+
+        for (const [uid, taskCheckpoint] of trackingTasks) {
+          if (this.trackingTasks.get(uid) === taskCheckpoint) {
+            this.branchBaselines.set(uid, { taskCheckpoint, baseline });
+          }
+        }
+      } catch (error) {
+        logger.error("Failed to reset user edits after branch change", error);
+      } finally {
+        if (revision === this.branchBaselineRevision) {
+          await this.persistBranchBaselines();
+          if (revision === this.branchBaselineRevision) {
+            this.branchBaselinePending = false;
+            this.triggerUpdate.call();
+          }
         }
       }
-    } catch (error) {
-      logger.error("Failed to reset user edits after branch change", error);
-    } finally {
-      await this.persistBranchBaselines();
-      this.branchBaselinePending = false;
-      this.triggerUpdate.call();
-    }
-  });
+    },
+  );
 
   private triggerUpdate = funnel(() => this.updateEdits(), {
     minGapMs: 1000,
