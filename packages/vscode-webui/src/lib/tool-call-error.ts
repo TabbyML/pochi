@@ -57,6 +57,7 @@ export function isToolCallCancellationError(
   return (
     error === getToolCallErrorMessage("user-abort") ||
     error === getToolCallErrorMessage("previous-tool-call-failed") ||
+    error === getToolCallErrorMessage("user-reject") ||
     error === "Tool call was cancelled"
   );
 }
