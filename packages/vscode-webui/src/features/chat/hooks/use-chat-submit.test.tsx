@@ -42,10 +42,6 @@ vi.mock("@/lib/hooks/use-active-selection", () => ({
   useActiveSelection: () => activeSelectionMock.value,
 }));
 
-vi.mock("@/lib/hooks/use-user-edits", () => ({
-  useUserEdits: () => userEditsMocks.userEdits,
-}));
-
 vi.mock("@/lib/message-utils", () => ({
   prepareMessageParts: messageUtilsMocks.prepareMessageParts,
 }));
@@ -640,11 +636,11 @@ function setup({
         isStopEnabled,
         allowSendMessage,
         allowSteer,
-        includeUserEdits: props.includeUserEdits,
         pendingApproval: undefined,
         queuedMessages,
         setQueuedMessages,
         reviews,
+        userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
         taskId: "task-1",
         isTodoMode,
         canCreateTodo,
