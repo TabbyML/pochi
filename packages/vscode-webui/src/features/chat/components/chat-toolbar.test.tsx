@@ -65,7 +65,6 @@ vi.mock("@/features/approval", () => ({
 vi.mock("@/features/settings", () => ({
   AutoApproveMenu: () => null,
   useAutoApprove: () => ({ autoApproveActive: false }),
-  useIsDevMode: () => [false, vi.fn()],
   useSelectedModels: () => ({
     groupedModels: [],
     selectedModel: { id: "model-1" },
@@ -148,8 +147,17 @@ vi.mock("../hooks/use-subtask-completed", () => ({
   useShowCompleteSubtaskButton: () => false,
 }));
 vi.mock("./chat-input-form", () => ({
-  ChatInputForm: ({ children }: { children: React.ReactNode }) => (
-    <form>{children}</form>
+  ChatInputForm: ({
+    children,
+    onSelectTodoMode,
+  }: {
+    children: React.ReactNode;
+    onSelectTodoMode?: () => void;
+  }) => (
+    <form>
+      {onSelectTodoMode && <div data-testid="todo-mode-entry" />}
+      {children}
+    </form>
   ),
 }));
 vi.mock("./error-message-view", () => ({
@@ -213,15 +221,17 @@ describe("ChatToolbar", () => {
     chatSubmitMocks.useChatSubmit.mockClear();
   });
 
-  it("renders todos in root task pages", () => {
+  it("renders todo mode and todos in root task pages", () => {
     renderToolbar(false);
 
+    expect(screen.getByTestId("todo-mode-entry")).toBeTruthy();
     expect(screen.getByTestId("todo-list")).toBeTruthy();
   });
 
-  it("does not render audit todos in subtask pages", () => {
+  it("does not render todo mode or audit todos in subtask pages", () => {
     renderToolbar(true);
 
+    expect(screen.queryByTestId("todo-mode-entry")).toBeNull();
     expect(screen.queryByTestId("todo-list")).toBeNull();
   });
 
