@@ -7,9 +7,9 @@ import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
-import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import type {
   ActiveSelection,
+  FileDiff,
   Review,
   TerminalTextSelection,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -57,8 +57,8 @@ interface UseChatSubmitProps {
   queuedMessages: DraftMessage[];
   setQueuedMessages: React.Dispatch<React.SetStateAction<DraftMessage[]>>;
   reviews: Review[];
+  userEdits: FileDiff[];
   taskId: string;
-  includeUserEdits?: boolean;
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
@@ -84,8 +84,8 @@ export function useChatSubmit({
   queuedMessages,
   setQueuedMessages,
   reviews,
+  userEdits,
   taskId,
-  includeUserEdits = true,
   isTodoMode = false,
   canCreateTodo = true,
   onTodoModeQueued,
@@ -100,7 +100,6 @@ export function useChatSubmit({
     batchExecuteManager.abort(taskId, "user-abort");
   }, [batchExecuteManager, taskId]);
 
-  const userEdits = useUserEdits(taskId);
   const activeSelection = useActiveSelection();
 
   const { sendMessage, stop: stopChat } = chat;
@@ -177,7 +176,7 @@ export function useChatSubmit({
     }
 
     // Capture the user's selection context (editor + terminal) right now.
-    const currentUserEdits = includeUserEdits ? [...userEdits] : [];
+    const currentUserEdits = [...userEdits];
     const currentSelection = activeSelection;
 
     // Terminal selection can only be read on demand (there's no reactive
@@ -231,7 +230,6 @@ export function useChatSubmit({
     files,
     reviews,
     userEdits,
-    includeUserEdits,
     activeSelection,
     upload,
     clearFiles,
