@@ -16,7 +16,6 @@ import {
 import {
   AutoApproveMenu,
   useAutoApprove,
-  useIsDevMode,
   useSelectedModels,
 } from "@/features/settings";
 import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
@@ -152,12 +151,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     }
   }, [excludedUserEditsContext, userEditsContext]);
 
-  const [isDevMode] = useIsDevMode();
-  const canUseTodoMode = isDevMode === true;
   const [todoModeSelected, setTodoModeSelected] = useState(false);
-  // Show the todo mode entry in dev mode, but disable it (rather than hide it)
-  // while the task already has active todos so it stays discoverable.
-  const showTodoMode = canUseTodoMode && !isSubTask;
+  // Disable todo mode (rather than hide it) while active todos exist so it stays discoverable.
+  const showTodoMode = !isSubTask;
   const todoModeDisabled = hasActiveTodos(todos);
   const canSelectTodoMode = showTodoMode && !todoModeDisabled;
 

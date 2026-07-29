@@ -6,11 +6,7 @@ import {
   type CreateWorktreeType,
   WorktreeSelect,
 } from "@/components/worktree-select";
-import {
-  useIsDevMode,
-  useSelectedModels,
-  useSettingsStore,
-} from "@/features/settings";
+import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
@@ -48,9 +44,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const [planMode, setPlanMode] = useState(false);
   const [todoModeSelected, setTodoModeSelected] = useState(false);
-  const [isDevMode] = useIsDevMode();
-  const canUseTodoMode = isDevMode === true;
-  const todoMode = canUseTodoMode && todoModeSelected;
   const togglePlanMode = useCallback(() => {
     setPlanMode((enabled) => {
       const nextEnabled = !enabled;
@@ -65,10 +58,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     setPlanMode((enabled) => !enabled);
   }, []);
   const selectTodoMode = useCallback(() => {
-    if (!canUseTodoMode) return;
     setPlanMode(false);
     setTodoModeSelected(true);
-  }, [canUseTodoMode]);
+  }, []);
   const {
     globalMcpConfig,
     mcpConfigOverride,
@@ -241,8 +233,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     }) => {
       const { shouldCreateWorktree } = options || {};
       const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
-      const shouldCreateTodo =
-        canUseTodoMode && (options?.shouldCreateTodo ?? todoMode);
+      const shouldCreateTodo = options?.shouldCreateTodo ?? todoModeSelected;
 
       if (isCreatingTask) return;
 
@@ -314,8 +305,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
       planMode,
-      todoMode,
-      canUseTodoMode,
+      todoModeSelected,
     ],
   );
 
@@ -364,7 +354,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         reviews={emptyReviews}
         onSwitchSubmitMode={switchSubmitMode}
         isPlanMode={planMode}
-        onSelectTodoMode={canUseTodoMode ? selectTodoMode : undefined}
+        onSelectTodoMode={selectTodoMode}
         onAttachFile={() => fileInputRef.current?.click()}
         contextMenuSide="bottom"
       >
@@ -401,7 +391,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             reloadModels={reloadModels}
             triggerClassName="sidebar-model-select"
           />
-          {todoMode && (
+          {todoModeSelected && (
             <TodoModeBadge onRemove={() => setTodoModeSelected(false)} />
           )}
         </div>
