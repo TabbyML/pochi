@@ -175,6 +175,34 @@ describe("PlannerView", () => {
     expect(lastSubAgentProps()?.children).toBeNull();
   });
 
+  it("does not render a placeholder after the tool call is rejected", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+
+    render(
+      <PlannerView
+        uid="planner-uid"
+        tool={
+          {
+            type: "tool-newTask",
+            toolCallId: "planner-call",
+            state: "output-available",
+            input: {
+              agentType: "planner",
+              description: "Create a plan",
+            },
+            output: { error: "User rejected the tool call" },
+          } as never
+        }
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(screen.queryByText("plannerView.planCreationPaused")).toBeNull();
+    expect(lastSubAgentProps()?.children).toBeNull();
+  });
+
   it("shows the trajectory in the footer when a plan is in the card body", () => {
     useStoreFileMock.mockReturnValue({ content: "# Plan" });
 

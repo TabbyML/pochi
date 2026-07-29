@@ -45,6 +45,9 @@ export function PlannerView(props: NewTaskToolViewProps) {
   const hidePlaceholder =
     (!isExecuting && tool.state === "input-available") ||
     isToolCallCancellationError(getToolPartError(tool));
+  const hasBodyContent =
+    showPlanArtifact ||
+    (!hidePlaceholder && !!taskSource && taskSource.messages.length > 1);
   const sendRetry = useSendRetry();
   const navigate = useNavigate();
   const { count, incrementCount } = useReviewPlanTutorialCounter();
@@ -101,7 +104,8 @@ export function PlannerView(props: NewTaskToolViewProps) {
       }
       footerActions={
         isVSCodeEnvironment() &&
-        isLastPart && (
+        isLastPart &&
+        hasBodyContent && (
           <>
             <HoverCard
               openDelay={0}
