@@ -953,7 +953,7 @@
     "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.82.0",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.3.2",
     "@wdio/globals": "^9.23.0",
     "@wdio/local-runner": "^9.23.0",
