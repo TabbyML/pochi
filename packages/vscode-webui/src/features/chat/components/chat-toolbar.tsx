@@ -139,8 +139,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       userEdits.map(({ filepath, diff }) => [filepath, diff]),
     ]);
   }, [lastCheckpointHash, taskId, userEdits]);
-  const includeUserEdits =
-    !userEditsContext || excludedUserEditsContext !== userEditsContext;
+  const includedUserEdits =
+    userEditsContext !== undefined &&
+    excludedUserEditsContext !== userEditsContext
+      ? userEdits
+      : [];
 
   useEffect(() => {
     if (
@@ -268,8 +271,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     queuedMessages,
     setQueuedMessages,
     reviews,
+    userEdits: includedUserEdits,
     taskId,
-    includeUserEdits,
     isTodoMode: todoModeSelected,
     canCreateTodo: !todoModeDisabled,
     onTodoModeQueued: resetTodoMode,
@@ -428,9 +431,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           messageContent={messageContent}
           isSubTask={isSubTask}
           reviews={reviews}
-          taskId={taskId}
+          userEdits={includedUserEdits}
           lastCheckpointHash={lastCheckpointHash}
-          includeUserEdits={includeUserEdits}
           onRemoveUserEdits={() =>
             setExcludedUserEditsContext(userEditsContext)
           }

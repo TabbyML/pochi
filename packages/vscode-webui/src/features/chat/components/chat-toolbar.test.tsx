@@ -14,6 +14,14 @@ const chatSubmitMocks = vi.hoisted(() => ({
     pauseQueueRef: { current: false },
   })),
 }));
+const userEditsMocks = vi.hoisted(() => ({
+  userEdits: [] as Array<{
+    filepath: string;
+    diff: string;
+    added: number;
+    removed: number;
+  }>,
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -99,7 +107,7 @@ vi.mock("@/lib/hooks/use-reviews", () => ({
   useReviews: () => [],
 }));
 vi.mock("@/lib/hooks/use-user-edits", () => ({
-  useUserEdits: () => [],
+  useUserEdits: () => userEditsMocks.userEdits,
 }));
 vi.mock("@/lib/hooks/use-task-changed-files", () => ({
   useTaskChangedFiles: () => ({
@@ -169,7 +177,7 @@ const auditTodo: Todo = {
   priority: "medium",
 };
 
-function renderToolbar(isSubTask: boolean) {
+function renderToolbar(isSubTask: boolean, lastCheckpointHash?: string) {
   render(
     <ChatToolbar
       chat={
@@ -195,7 +203,12 @@ function renderToolbar(isSubTask: boolean) {
       }
       isSubTask={isSubTask}
       task={
-        { id: "task-1", todos: undefined, totalTokens: 0 } as unknown as Task
+        {
+          id: "task-1",
+          todos: undefined,
+          totalTokens: 0,
+          lastCheckpointHash,
+        } as unknown as Task
       }
       displayError={undefined}
       todos={[auditTodo]}
@@ -211,6 +224,7 @@ function renderToolbar(isSubTask: boolean) {
 describe("ChatToolbar", () => {
   beforeEach(() => {
     chatSubmitMocks.useChatSubmit.mockClear();
+    userEditsMocks.userEdits = [];
   });
 
   it("renders todos in root task pages", () => {
@@ -231,6 +245,36 @@ describe("ChatToolbar", () => {
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         canCreateTodo: false,
+      }),
+    );
+  });
+
+  it("submits no user edits after they disappear from the input", () => {
+    renderToolbar(false, "checkpoint-1");
+
+    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userEdits: [],
+      }),
+    );
+  });
+
+  it("submits the user edits shown in the input", () => {
+    const userEdits = [
+      {
+        filepath: "src/example.ts",
+        diff: "+const value = 1;",
+        added: 1,
+        removed: 0,
+      },
+    ];
+    userEditsMocks.userEdits = userEdits;
+
+    renderToolbar(false, "checkpoint-1");
+
+    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userEdits,
       }),
     );
   });

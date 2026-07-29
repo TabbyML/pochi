@@ -4,20 +4,12 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { EditSummary } from "@/features/tools";
-import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { FileDiff } from "@getpochi/common/vscode-webui-bridge";
 import { FilePenLine, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
-
-interface UserEditsBadgeProps {
-  className?: string;
-  taskId: string;
-  lastCheckpoint: string;
-  onRemove?: () => void;
-}
 
 interface UserEditsProps {
   userEdits: FileDiff[];
@@ -26,24 +18,6 @@ interface UserEditsProps {
   className?: string;
   onRemove?: () => void;
 }
-
-export const UserEditsBadge: React.FC<UserEditsBadgeProps> = ({
-  taskId,
-  className,
-  lastCheckpoint,
-  onRemove,
-}) => {
-  const userEdits = useUserEdits(taskId);
-
-  return (
-    <UserEdits
-      userEdits={userEdits}
-      className={className}
-      originCheckpoint={lastCheckpoint}
-      onRemove={onRemove}
-    />
-  );
-};
 
 export const UserEdits: React.FC<UserEditsProps> = ({
   userEdits,
