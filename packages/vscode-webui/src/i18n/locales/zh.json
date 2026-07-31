@@ -84,6 +84,7 @@
     "projectMemoryEnable": "启用项目记忆",
     "projectMemoryDisable": "停用项目记忆",
     "projectMemoryDescription": "Pochi 会在工作过程中学习你的项目并自动保存到 MEMORY.md，后续任务将带着这些上下文启动。",
+    "projectMemoryToggleDescription": "此开关仅控制是否将已有记忆读入任务上下文。Pochi 始终会继续学习并保存记忆。",
     "viewProjectMemory": "查看",
     "viewProjectMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
     "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",

@@ -85,6 +85,7 @@
     "projectMemoryEnable": "Enable Project Memory",
     "projectMemoryDisable": "Disable Project Memory",
     "projectMemoryDescription": "Pochi learns about your project as you work and saves it to MEMORY.md, so future tasks start with helpful context.",
+    "projectMemoryToggleDescription": "This only controls whether saved memory is included in task context. Pochi always continues learning and saving memory.",
     "viewProjectMemory": "View",
     "viewProjectMemoryTooltip": "Open the MEMORY.md index for this workspace.",
     "viewTaskMemoryButtonTooltip": "Open the task memory summary that compacting will reuse.",
