@@ -6,8 +6,6 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { SlashCandidate } from "./mention-list";
 
-const HiddenSlashSkillNames = new Set(["widget-guidelines"]);
-
 export function createSlashCandidates(
   customAgents: CustomAgentFile[],
   skills: SkillFile[],
@@ -25,7 +23,7 @@ export function createSlashCandidates(
       })),
     ...skills
       .filter((x) => isValidSkillFile(x))
-      .filter((x) => !HiddenSlashSkillNames.has(x.name))
+      .filter((x) => x.userInvocable !== false)
       .map((x) => ({
         type: "skill" as const,
         id: x.name,

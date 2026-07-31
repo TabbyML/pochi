@@ -107,7 +107,7 @@ export async function replaceSlashCommandReferences(
               (x) => x.name === commandName,
             );
             const skill = slashCommandContext.skills.find(
-              (x) => x.name === commandName,
+              (x) => x.name === commandName && x.userInvocable !== false,
             );
 
             if (agent?.name) {

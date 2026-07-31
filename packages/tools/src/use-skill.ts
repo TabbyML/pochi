@@ -22,18 +22,29 @@ export const Skill = z.object({
     .string()
     .optional()
     .describe("Space-delimited list of pre-approved tools"),
+  disableModelInvocation: z
+    .boolean()
+    .optional()
+    .describe("Whether the skill is hidden from automatic model invocation"),
+  userInvocable: z
+    .boolean()
+    .optional()
+    .describe("Whether the skill is available as a user slash command"),
   instructions: z.string().describe("The skill's instructions."),
 });
 
 export type Skill = z.infer<typeof Skill>;
 
 function makeSkillToolDescription(skills?: Skill[]) {
-  if (!skills || skills.length === 0)
+  const modelInvocableSkills = skills?.filter(
+    (skill) => skill.disableModelInvocation !== true,
+  );
+  if (!modelInvocableSkills || modelInvocableSkills.length === 0)
     return "No skills are available in the workspace.";
 
   return `Available skills:
 
-${skills
+${modelInvocableSkills
   .map((skill) => {
     const compatibilityInfo = skill.compatibility
       ? ` [Compatibility: ${skill.compatibility}]`
@@ -71,7 +82,7 @@ Important:
 - For general questions about available skills, simply refer to the "Available skills" list below without calling this tool
 - NEVER just announce or mention a skill in your text response without actually calling this tool (except for general skill listing requests)
 - This is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about a specific skill or task
-- Only use skills listed in "Available skills" below
+- Only use skills listed in "Available skills" below, unless the user's prompt explicitly invokes a skill through a <skill> marker
 - Check compatibility requirements before using a skill - ensure the skill is compatible with the current OS/environment
 - After calling this tool, follow the returned instructions step by step
 - The skill file location is shown in the [Location: filepath] section of each skill listing below - use this information to understand where the skill is defined
