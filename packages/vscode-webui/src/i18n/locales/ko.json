@@ -84,6 +84,7 @@
     "projectMemoryEnable": "프로젝트 메모리 활성화",
     "projectMemoryDisable": "프로젝트 메모리 비활성화",
     "projectMemoryDescription": "Pochi 가 작업 중 프로젝트에 대해 학습한 내용을 MEMORY.md 에 저장하여, 향후 작업에서 유용한 맥락으로 재사용합니다.",
+    "projectMemoryToggleDescription": "이 설정은 저장된 메모리를 작업 컨텍스트에 불러올지 여부만 제어합니다. Pochi 는 항상 계속 학습하고 메모리를 저장합니다.",
     "viewProjectMemory": "보기",
     "viewProjectMemoryTooltip": "이 워크스페이스의 MEMORY.md 인덱스를 엽니다.",
     "viewTaskMemoryButtonTooltip": "작업 압축 시 재사용되는 작업 메모리 요약을 엽니다.",

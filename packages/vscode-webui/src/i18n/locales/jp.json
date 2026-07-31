@@ -85,6 +85,7 @@
     "projectMemoryEnable": "プロジェクトメモリを有効化",
     "projectMemoryDisable": "プロジェクトメモリを無効化",
     "projectMemoryDescription": "Pochi が作業中にプロジェクトについて学んだ内容を MEMORY.md に保存し、今後のタスクで役立つ文脈として再利用します。",
+    "projectMemoryToggleDescription": "この設定は、保存済みメモリをタスクのコンテキストに読み込むかどうかのみを制御します。Pochi は常に学習とメモリの保存を続けます。",
     "viewProjectMemory": "表示",
     "viewProjectMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
     "viewTaskMemoryButtonTooltip": "タスク圧縮時に再利用されるタスクメモリの要約を開きます。",

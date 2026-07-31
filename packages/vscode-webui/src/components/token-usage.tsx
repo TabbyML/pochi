@@ -385,10 +385,17 @@ export function TokenUsage({
                             />
                           </label>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          {autoMemoryEnabled
-                            ? t("tokenUsage.projectMemoryDisable")
-                            : t("tokenUsage.projectMemoryEnable")}
+                        <TooltipContent className="max-w-[260px]">
+                          <div className="flex flex-col gap-1">
+                            <div>
+                              {autoMemoryEnabled
+                                ? t("tokenUsage.projectMemoryDisable")
+                                : t("tokenUsage.projectMemoryEnable")}
+                            </div>
+                            <div className="text-muted-foreground">
+                              {t("tokenUsage.projectMemoryToggleDescription")}
+                            </div>
+                          </div>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
