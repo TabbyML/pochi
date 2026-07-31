@@ -90,6 +90,13 @@ describe("match-slash-command", () => {
         instructions: "This is a test skill",
         filePath: ".pochi/skills/test-skill/SKILL.md",
       },
+      {
+        name: "model-only-skill",
+        description: "A skill that users cannot invoke",
+        instructions: "This is a model-only skill",
+        filePath: ".pochi/skills/model-only-skill/SKILL.md",
+        userInvocable: false,
+      },
     ];
 
     it("should replace agent references with content", async () => {
@@ -124,6 +131,16 @@ describe("match-slash-command", () => {
       expect(result).toBe(
         'Use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">Please use the newTask tool to run test-agent to complete the following request:\n</custom-agent> and then <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md">Please use the useSkill tool to run test-skill to complete the following request:\n</skill>',
       );
+    });
+
+    it("should not replace skills that are not user invocable", async () => {
+      const prompt = "Please use /model-only-skill for this task";
+      const { prompt: result } = await replaceSlashCommandReferences(prompt, {
+        customAgents,
+        skills,
+      });
+
+      expect(result).toBe(prompt);
     });
   });
 });

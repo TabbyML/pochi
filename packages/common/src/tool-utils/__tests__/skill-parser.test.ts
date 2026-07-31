@@ -10,6 +10,8 @@ description: A test skill
 license: MIT
 compatibility: Node.js >= 18
 allowed-tools: readFile writeFile
+disable-model-invocation: true
+user-invocable: false
 metadata:
   author: test-author
   version: 1.0.0
@@ -29,6 +31,8 @@ Follow the instructions carefully.`;
     expect(validResult.license).toBe("MIT");
     expect(validResult.compatibility).toBe("Node.js >= 18");
     expect(validResult.allowedTools).toBe("readFile writeFile");
+    expect(validResult.disableModelInvocation).toBe(true);
+    expect(validResult.userInvocable).toBe(false);
     expect(validResult.metadata).toEqual({
       author: "test-author",
       version: "1.0.0",
@@ -62,10 +66,30 @@ This is a minimal skill with just the required fields.`;
     expect(validResult.license).toBeUndefined();
     expect(validResult.compatibility).toBeUndefined();
     expect(validResult.allowedTools).toBeUndefined();
+    expect(validResult.disableModelInvocation).toBeUndefined();
+    expect(validResult.userInvocable).toBeUndefined();
     expect(validResult.metadata).toBeUndefined();
     expect(validResult.instructions).toContain(
       "This is a minimal skill with just the required fields.",
     );
+  });
+
+  it("should reject non-boolean invocation settings", async () => {
+    const content = `---
+name: invalid-invocation-settings
+description: A skill with invalid invocation settings
+disable-model-invocation: "true"
+user-invocable: always
+---
+
+Content with invalid invocation settings.`;
+
+    const result = await parseSkillFile(
+      "invalid-invocation-settings/skill.md",
+      () => Promise.resolve(content),
+    );
+
+    expect(result).toHaveProperty("error", "validationError");
   });
 
   it("should return an error for invalid frontmatter", async () => {
