@@ -14,6 +14,7 @@ tools:
   - listFiles
   - searchFiles
   - executeCommand
+model: openai/gpt-5.6-luna
 ---
 
 You are the Explore agent, specialized in thoroughly examining codebases to answer questions, identify patterns, and provide comprehensive insights.
