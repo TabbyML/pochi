@@ -1,7 +1,7 @@
 ---
 name: worktree-isolation
 description: |
-  Create a durable isolated Git worktree when a task needs another committed source state or should not share the current checkout. Use it to protect the existing workspace while working from the exact branch, commit, or pull-request revision the task requires.
+  Create an isolated Git worktree BEFORE starting work — evaluate this proactively at task start, not only when the user asks. Triggers: the task targets another branch, commit, or PR revision; the change is experimental or risky and could disturb the current checkout; or the workspace has uncommitted changes your edits might conflict with. When the choice is ambiguous, ask the user via askFollowupQuestion (worktree vs. current checkout) instead of silently picking one.
 compatibility: Requires Git and either POSIX sh or Windows PowerShell.
 allowed-tools: executeCommand
 ---
@@ -16,6 +16,7 @@ Decide with one question: **does the current workspace already contain the sourc
 
 - It does → stay where you are. Separation for its own sake adds no value, and a commit-based worktree can never contain the user's uncommitted changes — if the task targets those, a worktree is the wrong tool by definition.
 - It doesn't — the task targets another branch, commit, or pull-request revision, or your work could disturb the current checkout → create a worktree from that exact committed base.
+- Ambiguous — the workspace has uncommitted changes and the task might touch them, or you cannot tell which base the user intends → ask with askFollowupQuestion before doing anything. Offer: "Isolated worktree from <base> (Recommended)" / "Work in current checkout". Never silently choose for the user.
 
 Whether the task is read-only does not decide this; what decides it is where the required source state lives and whether the current checkout needs protecting. If the revision you need is not available locally, obtain it through an authorized workflow or report the limitation — never quietly substitute `HEAD`.
 
