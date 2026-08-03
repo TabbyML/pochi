@@ -278,4 +278,15 @@ describe("ChatToolbar", () => {
       }),
     );
   });
+
+  it("passes the accumulated terminal context selections (empty by default) to useChatSubmit", () => {
+    renderToolbar(false);
+
+    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        terminalContextSelections: [],
+        clearTerminalContextSelections: expect.any(Function),
+      }),
+    );
+  });
 });

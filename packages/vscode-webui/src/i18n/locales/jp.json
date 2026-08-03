@@ -43,6 +43,7 @@
     "fileCount": "{{count}} 件のファイル",
     "reviewCount": "{{count}} 件のレビュー",
     "userEditCount": "{{count}} 件の編集",
+    "terminalContextCount": "{{count}} 件のターミナル選択",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -442,6 +443,9 @@
     "cell": "セル",
     "addContext": "コンテキストを追加",
     "terminal": "ターミナル"
+  },
+  "terminalContextBadge": {
+    "remove": "ターミナル選択をコンテキストから削除"
   },
   "todoModeBadge": {
     "remove": "Todoモードを削除"

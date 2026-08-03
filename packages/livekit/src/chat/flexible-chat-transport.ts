@@ -472,6 +472,10 @@ export function convertDataPartToText(
     ].filter((text): text is string => !!text);
     return texts.map((text) => ({ type: "text" as const, text }));
   }
+  if (part.type === "data-terminal-context") {
+    const text = prompts.renderTerminalContext(part.data.textSelections);
+    return text ? [{ type: "text" as const, text }] : [];
+  }
   if (part.type === "data-bash-outputs") {
     return {
       type: "text" as const,

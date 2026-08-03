@@ -42,6 +42,7 @@
     "fileCount": "{{count}} 个文件",
     "reviewCount": "{{count}} 条评审",
     "userEditCount": "{{count}} 处编辑",
+    "terminalContextCount": "{{count}} 个终端选区",
     "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -440,6 +441,9 @@
     "cell": "单元格",
     "addContext": "添加上下文",
     "terminal": "终端"
+  },
+  "terminalContextBadge": {
+    "remove": "从上下文中移除终端选区"
   },
   "todoModeBadge": {
     "remove": "移除 Todo 模式"

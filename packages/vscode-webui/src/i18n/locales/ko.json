@@ -42,6 +42,7 @@
     "fileCount": "파일 {{count}}개",
     "reviewCount": "리뷰 {{count}}개",
     "userEditCount": "편집 {{count}}개",
+    "terminalContextCount": "터미널 선택 {{count}}개",
     "steer": "개입",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
@@ -440,6 +441,9 @@
     "cell": "셀",
     "addContext": "컨텍스트 추가",
     "terminal": "터미널"
+  },
+  "terminalContextBadge": {
+    "remove": "컨텍스트에서 터미널 선택 제거"
   },
   "todoModeBadge": {
     "remove": "Todo 모드 제거"

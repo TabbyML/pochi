@@ -18,6 +18,7 @@ export function prepareMessageParts(
   userEdits?: UserEdits,
   activeSelection?: ActiveSelection,
   activeTerminalTextSelection?: TerminalTextSelection,
+  terminalContextSelections?: TerminalTextSelection[],
 ) {
   const parts: Message["parts"] = [];
   for (const x of files) {
@@ -51,6 +52,13 @@ export function prepareMessageParts(
     parts.push({
       type: "data-active-selection",
       data: { activeSelection, activeTerminalTextSelection },
+    });
+  }
+
+  if (terminalContextSelections && terminalContextSelections.length > 0) {
+    parts.push({
+      type: "data-terminal-context",
+      data: { textSelections: terminalContextSelections },
     });
   }
 

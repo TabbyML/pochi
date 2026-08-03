@@ -59,6 +59,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         filesCount = 0,
         reviewsCount = 0,
         userEditsCount = 0,
+        terminalContextCount = 0,
         isTodoMode,
         activeSelection,
         activeTerminalTextSelection,
@@ -69,6 +70,9 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         reviewsCount > 0 ? t("chat.reviewCount", { count: reviewsCount }) : "",
         userEditsCount > 0
           ? t("chat.userEditCount", { count: userEditsCount })
+          : "",
+        terminalContextCount > 0
+          ? t("chat.terminalContextCount", { count: terminalContextCount })
           : "",
       ].filter(Boolean);
 

@@ -559,4 +559,12 @@ export interface WebviewHostApi {
   readStoreFile(filePath: string): Promise<string | null>;
 
   readTaskOutput(taskId: string): Promise<ExecuteCommandResult>;
+
+  /**
+   * Pushes a terminal text selection into the webview's pending "terminal
+   * context" list, so it shows up attached to the next outgoing chat
+   * message. Invoked from the VS Code side (e.g. the terminal right-click
+   * "Add to Chat" command).
+   */
+  addTerminalContext(selection: TerminalTextSelection): void;
 }

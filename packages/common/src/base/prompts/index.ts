@@ -28,6 +28,7 @@ import {
   buildMemoryExtractionDirective,
   taskMemoryTemplate,
 } from "./task-memory";
+import { renderTerminalContext } from "./terminal-context";
 import { renderUserEdits } from "./user-edits";
 
 export { parseEnvironmentInfo } from "./environment";
@@ -51,6 +52,7 @@ export const prompts = {
   renderReviewComments,
   renderActiveSelection,
   renderTerminalTextSelection,
+  renderTerminalContext,
   renderUserEdits,
   renderBashOutputs,
   fixMermaidError,

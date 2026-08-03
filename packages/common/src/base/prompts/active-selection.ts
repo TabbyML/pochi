@@ -25,7 +25,7 @@ export function renderTerminalTextSelection(
   if (!selection) {
     return "";
   }
-  const { terminalName, content } = selection;
+  const { terminalName, backgroundJobId, content } = selection;
   if (!content || content.trim() === "") {
     return "";
   }
@@ -33,5 +33,17 @@ export function renderTerminalTextSelection(
   const header =
     "The user has selected text in their integrated terminal. This context is provided to help you understand what the user is currently focused on or referring to.";
 
-  return `${header}\n\n<terminal-selection terminal="${terminalName}">\n\`\`\`\n${content}\n\`\`\`\n</terminal-selection>`;
+  const attrs = renderTerminalSelectionAttrs(terminalName, backgroundJobId);
+
+  return `${header}\n\n<active-terminal-selection ${attrs}>\n\`\`\`\n${content}\n\`\`\`\n</active-terminal-selection>`;
+}
+
+/** @internal exported for reuse by terminal-context.ts */
+export function renderTerminalSelectionAttrs(
+  terminalName: string,
+  backgroundJobId: string | undefined,
+): string {
+  return backgroundJobId
+    ? `terminal="${terminalName}" backgroundJobId="${backgroundJobId}"`
+    : `terminal="${terminalName}"`;
 }

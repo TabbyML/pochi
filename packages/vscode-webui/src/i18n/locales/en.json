@@ -44,6 +44,7 @@
     "fileCount": "{{count}} files",
     "reviewCount": "{{count}} reviews",
     "userEditCount": "{{count}} edits",
+    "terminalContextCount": "{{count}} terminal selections",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -448,6 +449,9 @@
     "cell": "Cell",
     "addContext": "Add Context",
     "terminal": "Terminal"
+  },
+  "terminalContextBadge": {
+    "remove": "Remove terminal selection from context"
   },
   "todoModeBadge": {
     "remove": "Remove todo mode"

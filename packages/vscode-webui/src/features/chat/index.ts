@@ -44,6 +44,11 @@ export {
   type SubtaskInfo,
 } from "./hooks/use-subtask-info";
 
+export {
+  useTerminalContextState,
+  type TerminalContextState,
+} from "./hooks/use-terminal-context-state";
+
 export { useRenderWidgetStore } from "./hooks/use-render-widget-store";
 
 export {

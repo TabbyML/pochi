@@ -1,3 +1,4 @@
+import { useTerminalContextState } from "@/features/chat";
 import { type AutoMemoryManager, getLogger } from "@getpochi/common";
 import { validateTaskFilePath } from "@getpochi/common/pochi-file-system";
 import {
@@ -141,6 +142,10 @@ function createVSCodeHost(): VSCodeHostApi {
         "readTaskChangedFiles",
       ],
       exports: {
+        addTerminalContext(selection) {
+          useTerminalContextState.getState().addSelection(selection);
+        },
+
         openTaskList() {
           window.router.navigate({
             to: "/",

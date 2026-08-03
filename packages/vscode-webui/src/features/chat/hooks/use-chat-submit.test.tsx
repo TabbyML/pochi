@@ -453,6 +453,7 @@ describe("useChatSubmit", () => {
       [],
       sendTimeActiveSelection,
       sendTimeTerminalSelection,
+      [],
     );
   });
 
@@ -482,6 +483,7 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       undefined,
+      [],
     );
   });
 
@@ -511,6 +513,7 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       undefined,
+      [],
     );
 
     expect(context.queuedMessages).toEqual([
@@ -552,7 +555,73 @@ describe("useChatSubmit", () => {
       queuedUserEdits,
       undefined,
       undefined,
+      [],
     );
+  });
+
+  it("allows submitting with no text when terminal context selections are attached", async () => {
+    const terminalContextSelections: TerminalTextSelection[] = [
+      { terminalName: "bash", content: "echo hi" },
+    ];
+    const context = setup({
+      isLoading: false,
+      inputText: "",
+      terminalContextSelections,
+    });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(context.sendMessage).toHaveBeenCalledWith({
+      parts: ["text:"],
+    });
+  });
+
+  it("skips the implicit active-terminal-selection capture when terminal context selections are attached, and clears them after sending", async () => {
+    const terminalContextSelections: TerminalTextSelection[] = [
+      { terminalName: "bash", content: "echo hi" },
+    ];
+    vscodeMocks.isVSCodeEnvironment.value = true;
+
+    const context = setup({
+      isLoading: false,
+      terminalContextSelections,
+    });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(vscodeMocks.readTerminalSelection).not.toHaveBeenCalled();
+    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+      expect.any(Function),
+      "follow up",
+      [],
+      [],
+      [],
+      undefined,
+      undefined,
+      terminalContextSelections,
+    );
+    expect(context.clearTerminalContextSelections).toHaveBeenCalledOnce();
+  });
+
+  it("still reads the implicit active-terminal-selection when no terminal context selections are attached", async () => {
+    vscodeMocks.isVSCodeEnvironment.value = true;
+    vscodeMocks.readTerminalSelection.mockResolvedValue({
+      terminalName: "bash",
+      content: "implicit capture",
+    });
+
+    const context = setup({ isLoading: false });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
+    expect(context.clearTerminalContextSelections).not.toHaveBeenCalled();
   });
 });
 
@@ -563,6 +632,7 @@ function setup({
   files = [],
   reviews = [],
   includeUserEdits: initialIncludeUserEdits = true,
+  terminalContextSelections = [],
   isTodoMode = false,
   canCreateTodo = true,
   onTodoModeQueued,
@@ -574,6 +644,7 @@ function setup({
   files?: File[];
   reviews?: Review[];
   includeUserEdits?: boolean;
+  terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
@@ -583,6 +654,7 @@ function setup({
   const stopChat = vi.fn();
   const clearInput = vi.fn();
   const clearFiles = vi.fn();
+  const clearTerminalContextSelections = vi.fn();
 
   const upload = vi.fn(() => Promise.resolve([]));
 
@@ -611,7 +683,12 @@ function setup({
       const isInputEmpty = !initialInputText.trim();
       const isFilesEmpty = files.length === 0;
       const isReviewsEmpty = reviews.length === 0;
-      const isSubmitEnabled = !isInputEmpty || !isFilesEmpty || !isReviewsEmpty;
+      const isTerminalContextEmpty = terminalContextSelections.length === 0;
+      const isSubmitEnabled =
+        !isInputEmpty ||
+        !isFilesEmpty ||
+        !isReviewsEmpty ||
+        !isTerminalContextEmpty;
       const isStopEnabled = isRunning;
       const allowSendMessage = !isRunning;
       const allowSteer = true;
@@ -641,6 +718,8 @@ function setup({
         setQueuedMessages,
         reviews,
         userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
+        terminalContextSelections,
+        clearTerminalContextSelections,
         taskId: "task-1",
         isTodoMode,
         canCreateTodo,
@@ -678,6 +757,7 @@ function setup({
     },
     clearInput,
     clearFiles,
+    clearTerminalContextSelections,
     upload,
     sendMessage,
     stopChat,
@@ -689,6 +769,7 @@ function draftMessage({
   filesCount = 0,
   reviewsCount = 0,
   userEditsCount = 0,
+  terminalContextCount = 0,
   isTodoMode = false,
   activeSelection,
   activeTerminalTextSelection,
@@ -697,6 +778,7 @@ function draftMessage({
   filesCount?: number;
   reviewsCount?: number;
   userEditsCount?: number;
+  terminalContextCount?: number;
   isTodoMode?: boolean;
   activeSelection?: ActiveSelection;
   activeTerminalTextSelection?: TerminalTextSelection;
@@ -708,6 +790,7 @@ function draftMessage({
       filesCount,
       reviewsCount,
       userEditsCount,
+      terminalContextCount,
       isTodoMode,
       activeSelection,
       activeTerminalTextSelection,

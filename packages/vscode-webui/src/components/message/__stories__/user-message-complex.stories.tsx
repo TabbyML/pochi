@@ -183,3 +183,85 @@ export const TerminalSelectionOnly: Story = {
     },
   },
 };
+
+// Explicitly attached terminal context ("Add to Chat" flow) — a single
+// selection, distinct from the implicit `activeTerminalTextSelection` above.
+const terminalContextSingleMessage: Message = {
+  id: "msg-terminal-context-single",
+  role: "user",
+  parts: [
+    {
+      type: "text",
+      text: "I attached the build output for reference.",
+    },
+    {
+      type: "data-terminal-context",
+      data: {
+        textSelections: [
+          {
+            terminalName: "bash",
+            backgroundJobId: "term-story-context-1",
+            content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
+          },
+        ],
+      },
+    },
+  ],
+};
+
+export const TerminalContextSingle: Story = {
+  args: {
+    messages: [terminalContextSingleMessage],
+    isLoading: false,
+    user: {
+      name: "Developer",
+      image: "https://github.com/shadcn.png",
+    },
+  },
+};
+
+// Multiple explicitly attached terminal selections across different
+// terminals. Note: when the user has manually attached terminal context like
+// this, the implicit "currently selected" terminal text capture is skipped
+// at submit time (mutually exclusive), so `data-active-selection` with an
+// `activeTerminalTextSelection` would not also appear on a message like this
+// in practice.
+const terminalContextMultipleMessage: Message = {
+  id: "msg-terminal-context-multiple",
+  role: "user",
+  parts: [
+    {
+      type: "text",
+      text: "Here are a few terminal snippets I manually attached for reference.",
+    },
+    {
+      type: "data-terminal-context",
+      data: {
+        textSelections: [
+          {
+            terminalName: "bash",
+            backgroundJobId: "term-story-context-2",
+            content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
+          },
+          {
+            terminalName: "zsh",
+            backgroundJobId: "term-story-context-3",
+            content:
+              "$ git status\nOn branch main\nnothing to commit, working tree clean",
+          },
+        ],
+      },
+    },
+  ],
+};
+
+export const TerminalContextMultiple: Story = {
+  args: {
+    messages: [terminalContextMultipleMessage],
+    isLoading: false,
+    user: {
+      name: "Developer",
+      image: "https://github.com/shadcn.png",
+    },
+  },
+};
