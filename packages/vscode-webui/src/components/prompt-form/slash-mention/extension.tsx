@@ -1,4 +1,5 @@
 import { prompts } from "@getpochi/common";
+import type { CustomAgent, Skill } from "@getpochi/tools";
 import Mention from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
 import {
@@ -27,6 +28,27 @@ export const SlashComponent = (props: NodeViewProps) => {
 // Create a unique plugin key for slash command suggestions
 export const SlashMentionPluginKey = new PluginKey("slashMentionPluginKey");
 
+type SlashMentionAttributes =
+  | {
+      type: "custom-agent";
+      id: string;
+      path: string;
+      rawData: CustomAgent;
+    }
+  | {
+      type: "skill";
+      id: string;
+      path: string;
+      rawData: Skill;
+    };
+
+export function renderSlashMentionText(attrs: SlashMentionAttributes) {
+  if (attrs.type === "custom-agent") {
+    return prompts.customAgent(attrs.id, attrs.path);
+  }
+  return prompts.skill(attrs.rawData);
+}
+
 /**
  * A custom TipTap extension to handle slash commands (like /agent-name).
  */
@@ -37,14 +59,7 @@ export const PromptFormSlashExtension = Mention.extend({
   },
 
   renderText({ node }) {
-    const { type, id, path } = node.attrs;
-    if (type === "custom-agent") {
-      return prompts.customAgent(id, path);
-    }
-    if (type === "skill") {
-      return prompts.skill(id, path);
-    }
-    return "";
+    return renderSlashMentionText(node.attrs as SlashMentionAttributes);
   },
 
   addAttributes() {

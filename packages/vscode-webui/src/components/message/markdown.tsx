@@ -264,6 +264,13 @@ function escapeMarkdownTag(tag: string): (text: string) => string {
   };
 }
 
+export function hideUserInvokedSkillInstructions(text: string): string {
+  return text.replace(
+    /<skill(?=[^>]*\bdata-user-invoked="true")([^>]*)>.*?<\/skill>/gs,
+    (_match, attr) => `\u200b<skill${attr}></skill>`,
+  );
+}
+
 function isImageLink(url: string): boolean {
   return /\.(jpeg|jpg|gif|png|bmp|webp|svg)(?=[?#]|$)/i.test(url);
 }
@@ -372,7 +379,7 @@ export function MessageMarkdown({
 }: MessageMarkdownProps) {
   const replaceJobIdsInContent = useReplaceJobIdsInContent();
   const processedChildren = useMemo(() => {
-    let result = children;
+    let result = hideUserInvokedSkillInstructions(children);
     for (const tag of CustomHtmlTags) {
       const escapeTagContent = escapeMarkdownTag(tag);
       result = escapeTagContent(result);
