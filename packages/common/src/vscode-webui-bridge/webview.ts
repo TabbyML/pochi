@@ -565,6 +565,10 @@ export interface WebviewHostApi {
    * context" list, so it shows up attached to the next outgoing chat
    * message. Invoked from the VS Code side (e.g. the terminal right-click
    * "Add to Chat" command).
+   *
+   * Resolves once the selection has been handed off to the webview's
+   * terminal context state (awaiting readiness rather than dropping it if
+   * the webview hasn't finished initializing yet).
    */
-  addTerminalContext(selection: TerminalTextSelection): void;
+  addTerminalContext(selection: TerminalTextSelection): Promise<void>;
 }

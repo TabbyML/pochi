@@ -1,6 +1,6 @@
-import { useTerminalContextState } from "@/features/chat";
 import { type AutoMemoryManager, getLogger } from "@getpochi/common";
 import { validateTaskFilePath } from "@getpochi/common/pochi-file-system";
+import type { TerminalTextSelection } from "@getpochi/common/vscode-webui-bridge";
 import {
   type ExecuteCommandResult,
   type VSCodeHostApi,
@@ -26,6 +26,34 @@ export function setGlobalStore(
   store: ReturnType<typeof useDefaultStore> | null,
 ) {
   globalStore = store;
+}
+
+// `useTerminalContextState` lives in "@/features/chat", which (transitively)
+// imports this module. Importing it eagerly here at module scope would
+// create an import cycle that can leave other modules partially
+// initialized (e.g. the default selected model logic), so instead we keep a
+// placeholder that gets resolved once the React tree mounts.
+// See `TerminalContextStateInitializer`. Calls made before it's ready are
+// queued (via `addTerminalContextReady`) rather than dropped.
+type AddTerminalContextFn = (selection: TerminalTextSelection) => void;
+let addTerminalContextImpl: AddTerminalContextFn | null = null;
+let resolveAddTerminalContextReady:
+  | ((impl: AddTerminalContextFn) => void)
+  | null = null;
+let addTerminalContextReady = new Promise<AddTerminalContextFn>((resolve) => {
+  resolveAddTerminalContextReady = resolve;
+});
+
+export function setAddTerminalContext(impl: AddTerminalContextFn | null) {
+  addTerminalContextImpl = impl;
+  if (impl) {
+    resolveAddTerminalContextReady?.(impl);
+  } else {
+    // Reset so future calls wait again until it's resolved.
+    addTerminalContextReady = new Promise<AddTerminalContextFn>((resolve) => {
+      resolveAddTerminalContextReady = resolve;
+    });
+  }
 }
 
 let vscodeApi: WebviewApi<unknown> | undefined | null = undefined;
@@ -142,8 +170,10 @@ function createVSCodeHost(): VSCodeHostApi {
         "readTaskChangedFiles",
       ],
       exports: {
-        addTerminalContext(selection) {
-          useTerminalContextState.getState().addSelection(selection);
+        async addTerminalContext(selection) {
+          const impl =
+            addTerminalContextImpl ?? (await addTerminalContextReady);
+          impl(selection);
         },
 
         openTaskList() {

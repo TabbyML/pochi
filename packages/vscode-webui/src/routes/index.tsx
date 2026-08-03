@@ -1,3 +1,4 @@
+import { TerminalContextStateInitializer } from "@/components/terminal-context-state-initializer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { WorkspaceRequiredPlaceholder } from "@/components/workspace-required-placeholder";
@@ -76,6 +77,7 @@ function Tasks() {
 
   return (
     <div className="flex h-screen w-screen flex-col">
+      <TerminalContextStateInitializer />
       <div className="w-full px-4 pt-3">
         <CreateTaskInput
           cwd={cwd}

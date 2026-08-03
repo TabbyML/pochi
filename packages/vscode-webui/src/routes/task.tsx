@@ -1,6 +1,7 @@
 import "@/components/prompt-form/prompt-form.css";
 
 import { GlobalStoreInitializer } from "@/components/global-store-initializer";
+import { TerminalContextStateInitializer } from "@/components/terminal-context-state-initializer";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { ChatPage, ChatSkeleton } from "@/features/chat";
 import { useModelList } from "@/lib/hooks/use-model-list";
@@ -67,6 +68,7 @@ function RouteComponent() {
   const chatPage = (
     <>
       <GlobalStoreInitializer />
+      <TerminalContextStateInitializer />
       <ChatPage key={key} user={users?.pochi} uid={uid} info={info} />
     </>
   );
