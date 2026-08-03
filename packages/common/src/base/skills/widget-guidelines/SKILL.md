@@ -1,7 +1,6 @@
 ---
 name: widget-guidelines
 description: Use before renderWidget when the user needs a visual widget, SVG diagram, UI mockup, chart, local interactive explainer, or generative art.
-user-invocable: false
 ---
 
 # Widget Guidelines

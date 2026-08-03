@@ -37,16 +37,12 @@ The `SKILL.md` file has two parts:
 
 ```yaml
 ---
-name: my-skill                    # required: kebab-case identifier
-description: |                    # required: when to trigger and what it does
+name: my-skill           # required: kebab-case identifier
+description: |           # required: when to trigger and what it does
   One or two sentences. Include specific trigger phrases.
-compatibility: node               # optional: runtime requirements (node, python, bun, etc.)
-disable-model-invocation: false   # optional: true makes the skill manual-only
-user-invocable: true              # optional: false hides the skill from slash commands
+compatibility: node      # optional: runtime requirements (node, python, bun, etc.)
 ---
 ```
-
-Invocation settings default to `disable-model-invocation: false` and `user-invocable: true`. Use `disable-model-invocation: true` for workflows that should only run when selected by the user. Use `user-invocable: false` for background knowledge that only the model should select.
 
 **Description writing tips:**
 - Include both what the skill does AND when to use it
