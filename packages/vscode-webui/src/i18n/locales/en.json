@@ -48,7 +48,10 @@
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
-    "pleaseCheckFiles": "Please check these attachments.",
+    "contextLabelFiles": "files",
+    "contextLabelReviews": "reviews",
+    "contextLabelTerminalSelections": "terminal selections",
+    "pleaseCheckAttachedContext": "Please check the attached {{items}}.",
     "chatToolbar": {
       "diffWorktreeWith": "Diff worktree with {{branch}}",
       "openInTerminal": "Open in Integrated Terminal"

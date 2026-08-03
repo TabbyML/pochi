@@ -8,6 +8,7 @@ import type {
 import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
 import type { TFunction } from "i18next";
+import i18n from "../i18n/config";
 import { vscodeHost } from "./vscode";
 
 export function prepareMessageParts(
@@ -62,9 +63,26 @@ export function prepareMessageParts(
     });
   }
 
-  let fallbackPrompt = "";
+  const attachedContextLabels: string[] = [];
   if (files.length) {
-    fallbackPrompt = t("chat.pleaseCheckFiles") as string;
+    attachedContextLabels.push(t("chat.contextLabelFiles") as string);
+  }
+  if (reviews.length) {
+    attachedContextLabels.push(t("chat.contextLabelReviews") as string);
+  }
+  if (terminalContextSelections?.length) {
+    attachedContextLabels.push(
+      t("chat.contextLabelTerminalSelections") as string,
+    );
+  }
+
+  let fallbackPrompt = "";
+  if (attachedContextLabels.length) {
+    const items = new Intl.ListFormat(i18n.language, {
+      style: "long",
+      type: "conjunction",
+    }).format(attachedContextLabels);
+    fallbackPrompt = t("chat.pleaseCheckAttachedContext", { items }) as string;
   }
 
   const finalPrompt = prompt || fallbackPrompt;

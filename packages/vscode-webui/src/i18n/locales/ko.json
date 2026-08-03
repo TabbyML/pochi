@@ -46,7 +46,10 @@
     "steer": "개입",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
-    "pleaseCheckFiles": "이 첨부 파일들을 확인해 주세요.",
+    "contextLabelFiles": "첨부 파일",
+    "contextLabelReviews": "리뷰",
+    "contextLabelTerminalSelections": "터미널 선택",
+    "pleaseCheckAttachedContext": "첨부된 다음 항목을 확인해 주세요: {{items}}",
     "chatToolbar": {
       "diffWorktreeWith": "{{branch}}와(과) 워크트리 비교",
       "openInTerminal": "통합 터미널에서 열기"
