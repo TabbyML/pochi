@@ -126,8 +126,44 @@ function findTaskTabByUri(uri: vscode.Uri): PochiTaskTab | undefined {
     );
 }
 
+// Picks the preferred tab among a list of candidate pochi task tab
+// candidates: prefer the one matching the last actually active task tab (if
+// any), otherwise prefer one that's in a pochi-panel typed group, otherwise
+// just return the first candidate.
+function pickPreferredTaskTab(
+  candidates: readonly PochiTaskTab[],
+  lastActiveTab: PochiTaskTab | undefined,
+): PochiTaskTab | undefined {
+  if (candidates.length === 0) {
+    return undefined;
+  }
+
+  const matchedTab =
+    lastActiveTab &&
+    candidates.find((tab) => isSameTabInput(tab.input, lastActiveTab.input));
+  if (matchedTab) {
+    return matchedTab;
+  }
+
+  const tabInPochiPanelGroup = candidates.find(
+    (tab) => getTabGroupType(tab.group.tabs) === "pochi-panel",
+  );
+  if (tabInPochiPanelGroup) {
+    return tabInPochiPanelGroup;
+  }
+
+  return candidates[0];
+}
+
 export function findActivePochiTaskTab(): PochiTaskTab | undefined {
   const tabGroups = vscode.window.tabGroups;
+
+  // Fast path: the active tab of the active group is almost always what we
+  // want, so check it first before scanning every group below.
+  const activeTab = tabGroups.activeTabGroup.activeTab;
+  if (activeTab && isPochiTaskTab(activeTab)) {
+    return activeTab;
+  }
 
   // Find pochi task tabs that are the active tab of their own group, across
   // every group (this covers both the active group and any other groups).
@@ -138,49 +174,25 @@ export function findActivePochiTaskTab(): PochiTaskTab | undefined {
   if (activeTaskTabs.length === 1) {
     return activeTaskTabs[0];
   }
+
+  const lastActiveTab = container
+    .resolve(PochiTaskTabMonitor)
+    .getLastActiveTaskTab();
+
   if (activeTaskTabs.length > 1) {
     // Multiple groups have an active pochi task tab (e.g. side-by-side task
-    // editors). Disambiguate using the last actually active one.
-    const lastActiveTab = container
-      .resolve(PochiTaskTabMonitor)
-      .getLastActiveTaskTab();
-    const matchedTab =
-      lastActiveTab &&
-      activeTaskTabs.find((tab) =>
-        isSameTabInput(tab.input, lastActiveTab.input),
-      );
-    if (matchedTab) {
-      return matchedTab;
-    }
-
-    // Otherwise, prefer an active task tab that's in a pochi-panel typed
-    // group.
-    const panelActiveTab = activeTaskTabs.find(
-      (tab) => getTabGroupType(tab.group.tabs) === "pochi-panel",
-    );
-    if (panelActiveTab) {
-      return panelActiveTab;
-    }
-
-    // Otherwise, fallback to the first active task tab found.
-    return activeTaskTabs[0];
+    // editors). Disambiguate using the last actually active one, otherwise
+    // prefer one in a pochi-panel typed group, otherwise just pick one.
+    return pickPreferredTaskTab(activeTaskTabs, lastActiveTab);
   }
 
-  // Otherwise, falling back to checking non-active tabs
-  // Check a pochi-panel typed group first
-  for (const group of tabGroups.all) {
-    if (getTabGroupType(group.tabs) === "pochi-panel") {
-      const tab = group.tabs.find((tab) => isPochiTaskTab(tab));
-      if (tab) {
-        return tab;
-      }
-    }
-  }
-
-  // Otherwise, fallback to the first task tab found anywhere.
-  return tabGroups.all
+  // Otherwise, fallback to checking non-active tabs, using the same
+  // preference order.
+  const nonActiveTaskTabs = tabGroups.all
     .flatMap((group) => group.tabs)
-    .find((tab): tab is PochiTaskTab => isPochiTaskTab(tab));
+    .filter((tab): tab is PochiTaskTab => !tab.isActive && isPochiTaskTab(tab));
+
+  return pickPreferredTaskTab(nonActiveTaskTabs, lastActiveTab);
 }
 
 export function isSameTabInput(
