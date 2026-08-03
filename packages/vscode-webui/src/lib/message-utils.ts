@@ -8,7 +8,6 @@ import type {
 import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
 import type { TFunction } from "i18next";
-import i18n from "../i18n/config";
 import { vscodeHost } from "./vscode";
 
 export function prepareMessageParts(
@@ -78,7 +77,11 @@ export function prepareMessageParts(
 
   let fallbackPrompt = "";
   if (attachedContextLabels.length) {
-    const items = new Intl.ListFormat(i18n.language, {
+    // Use the runtime's default locale (rather than importing the i18next
+    // singleton) to avoid pulling i18n/config.ts - and its side-effecting
+    // `.use(initReactI18next)` init call - into this module, which breaks
+    // tests that partially mock "react-i18next".
+    const items = new Intl.ListFormat(undefined, {
       style: "long",
       type: "conjunction",
     }).format(attachedContextLabels);
