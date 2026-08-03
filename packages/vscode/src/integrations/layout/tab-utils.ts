@@ -1,14 +1,17 @@
+import { container, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
 
 const MainThreadWebviewPrefix = "mainThreadWebview-";
 const PochiPanelViewTypePrefix = "pochi.";
 
-export function isPochiTaskTab(tab: vscode.Tab): tab is vscode.Tab & {
+export type PochiTaskTab = vscode.Tab & {
   input: vscode.TabInputCustom & {
     viewType: typeof PochiTaskEditorProvider.viewType;
   };
-} {
+};
+
+export function isPochiTaskTab(tab: vscode.Tab): tab is PochiTaskTab {
   return (
     tab.input instanceof vscode.TabInputCustom &&
     tab.input.viewType === PochiTaskEditorProvider.viewType
@@ -114,35 +117,58 @@ export function getTabGroupType(tabs: readonly vscode.Tab[]) {
   return "editor";
 }
 
-export function findActivePochiTaskTab():
-  | (vscode.Tab & {
-      input: vscode.TabInputCustom & {
-        viewType: typeof PochiTaskEditorProvider.viewType;
-      };
-    })
-  | undefined {
+function findTaskTabByUri(uri: vscode.Uri): PochiTaskTab | undefined {
+  return vscode.window.tabGroups.all
+    .flatMap((group) => group.tabs)
+    .find(
+      (tab): tab is PochiTaskTab =>
+        isPochiTaskTab(tab) && tab.input.uri.toString() === uri.toString(),
+    );
+}
+
+export function findActivePochiTaskTab(): PochiTaskTab | undefined {
   const tabGroups = vscode.window.tabGroups;
 
-  // Try find active tab in active group
-  const activeTab = tabGroups.activeTabGroup.activeTab;
-  if (activeTab && isPochiTaskTab(activeTab)) {
-    return activeTab;
+  // Find pochi task tabs that are the active tab of their own group, across
+  // every group (this covers both the active group and any other groups).
+  const activeTaskTabs = tabGroups.all
+    .map((group) => group.activeTab)
+    .filter((tab): tab is PochiTaskTab => !!tab && isPochiTaskTab(tab));
+
+  if (activeTaskTabs.length === 1) {
+    return activeTaskTabs[0];
   }
-  // Otherwise find active tab in other groups
-  const group = tabGroups.all.find(
-    (group) => group.activeTab && isPochiTaskTab(group.activeTab),
-  );
-  if (group?.activeTab && isPochiTaskTab(group.activeTab)) {
-    return group.activeTab;
+  if (activeTaskTabs.length > 1) {
+    // Multiple groups have an active pochi task tab (e.g. side-by-side task
+    // editors). Disambiguate using the last actually active one.
+    const lastActiveTab = container
+      .resolve(PochiTaskTabMonitor)
+      .getLastActiveTaskTab();
+    const matchedTab =
+      lastActiveTab &&
+      activeTaskTabs.find((tab) =>
+        isSameTabInput(tab.input, lastActiveTab.input),
+      );
+    if (matchedTab) {
+      return matchedTab;
+    }
   }
-  // Otherwise find first task tab
-  const tab = tabGroups.all
+
+  // Otherwise, fallback to the first task tab found in a pochi-panel typed
+  // group.
+  for (const group of tabGroups.all) {
+    if (getTabGroupType(group.tabs) === "pochi-panel") {
+      const tab = group.tabs.find((tab) => isPochiTaskTab(tab));
+      if (tab) {
+        return tab;
+      }
+    }
+  }
+
+  // Otherwise, fallback to the first task tab found anywhere.
+  return tabGroups.all
     .flatMap((group) => group.tabs)
-    .find((tab) => isPochiTaskTab(tab));
-  if (tab) {
-    return tab;
-  }
-  return undefined;
+    .find((tab): tab is PochiTaskTab => isPochiTaskTab(tab));
 }
 
 export function isSameTabInput(
@@ -254,4 +280,52 @@ export function countOtherTabs(tabGroups: TabGroupShape) {
         .length,
     0,
   );
+}
+
+/**
+ * Monitors the last pochi task tab that was actually active, i.e. it was the
+ * `activeTab` of the `activeTabGroup` at some point. This is tracked by uri
+ * (rather than holding onto the `Tab` object itself) so that we always
+ * resolve back to the live `Tab` instance, and can detect when the tab has
+ * since been closed.
+ *
+ * This is registered as a singleton and eagerly resolved on extension
+ * activation (see `extension.ts`), so that the listeners start running as
+ * soon as the extension starts, rather than lazily on first import/use.
+ */
+@injectable()
+@singleton()
+export class PochiTaskTabMonitor implements vscode.Disposable {
+  private disposables: vscode.Disposable[] = [];
+  private lastActiveTaskTabUri: vscode.Uri | undefined;
+
+  constructor() {
+    this.disposables.push(
+      vscode.window.tabGroups.onDidChangeTabGroups(this.update),
+      vscode.window.tabGroups.onDidChangeTabs(this.update),
+    );
+    // Initialize eagerly in case a pochi task tab is already active.
+    this.update();
+  }
+
+  private update = () => {
+    const activeGroup = vscode.window.tabGroups.activeTabGroup;
+    const activeTab = activeGroup?.activeTab;
+    if (activeGroup && activeTab && isPochiTaskTab(activeTab)) {
+      this.lastActiveTaskTabUri = activeTab.input.uri;
+    }
+  };
+
+  getLastActiveTaskTab(): PochiTaskTab | undefined {
+    return this.lastActiveTaskTabUri
+      ? findTaskTabByUri(this.lastActiveTaskTabUri)
+      : undefined;
+  }
+
+  dispose() {
+    for (const disposable of this.disposables) {
+      disposable.dispose();
+    }
+    this.disposables = [];
+  }
 }

@@ -28,7 +28,7 @@ import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { PochiFileSystemProvider } from "./integrations/editor/pochi-file-system-provider";
 import { WorktreeManager } from "./integrations/git/worktree";
-import { LayoutManager } from "./integrations/layout";
+import { LayoutManager, PochiTaskTabMonitor } from "./integrations/layout";
 import { createMcpHub } from "./integrations/mcp";
 import { ReviewController } from "./integrations/review-controller";
 import { StatusBarItem } from "./integrations/status-bar-item";
@@ -105,6 +105,7 @@ export async function activate(context: vscode.ExtensionContext) {
     container.resolve(TabCompletionManager);
   }
   container.resolve(LayoutManager);
+  container.resolve(PochiTaskTabMonitor);
 }
 
 // This method is called when your extension is deactivated
