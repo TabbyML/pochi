@@ -516,6 +516,8 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "openJob": "Open Job {{displayId}}",
+    "openTerminal": "Open terminal {{name}}",
+    "userTerminal": "User terminal",
     "stop": "STOP"
   },
   "devModeButton": {
