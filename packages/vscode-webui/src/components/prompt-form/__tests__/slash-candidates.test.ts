@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createSlashCandidates } from "../slash-mention/slash-candidates";
 
 describe("createSlashCandidates", () => {
-  it("omits skills that are not user invocable", () => {
+  it("omits widget-guidelines from user slash command skill candidates", () => {
     const customAgents: CustomAgentFile[] = [
       {
         name: "reviewer",
@@ -28,7 +28,6 @@ describe("createSlashCandidates", () => {
         instructions: "Widget instructions",
         filePath: "/built-in/widget-guidelines/SKILL.md",
         isBuiltIn: true,
-        userInvocable: false,
       },
     ];
 

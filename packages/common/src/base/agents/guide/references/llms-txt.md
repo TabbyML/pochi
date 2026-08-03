@@ -1298,12 +1298,10 @@ IMPORTANT: Only create the issue, do not attempt to fix it.
 
 Each skill must start with YAML frontmatter containing at least a `name` and `description`.
 
-| Field                      | Description                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------ |
-| `name`                     | Unique identifier (lowercase, hyphens allowed).                                      |
-| `description`              | Brief explanation of what the skill does.                                            |
-| `disable-model-invocation` | Set to `true` to hide the skill from automatic model discovery. Defaults to `false`. |
-| `user-invocable`           | Set to `false` to hide the skill from the slash command menu. Defaults to `true`.    |
+| Field         | Description                                     |
+| ------------- | ----------------------------------------------- |
+| `name`        | Unique identifier (lowercase, hyphens allowed). |
+| `description` | Brief explanation of what the skill does.       |
 
 ## Discovery
 
