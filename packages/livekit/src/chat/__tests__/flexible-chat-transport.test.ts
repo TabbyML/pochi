@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { convertDataPartToText } from "../flexible-chat-transport";
 import type { Message } from "../../types";
+import {
+  convertDataPartToText,
+  extractContentFilterMetadata,
+} from "../flexible-chat-transport";
 
 type MessagePart = Message["parts"][number];
 
@@ -94,5 +97,127 @@ describe("convertDataPartToText", () => {
     expect(result).toHaveLength(2);
     expect(result[0].text).toContain("active-selection");
     expect(result[1].text).toContain("terminal-selection");
+  });
+});
+
+describe("extractContentFilterMetadata", () => {
+  it("keeps Anthropic stop details without the rest of provider metadata", () => {
+    expect(
+      extractContentFilterMetadata(
+        {
+          anthropic: {
+            stopDetails: {
+              type: "refusal",
+              category: "bio",
+              explanation: "Request blocked by the safety classifier.",
+            },
+            usage: { input_tokens: 100 },
+          },
+        },
+        "content-filter",
+      ),
+    ).toEqual({
+      provider: "anthropic",
+      details: {
+        type: "refusal",
+        category: "bio",
+        explanation: "Request blocked by the safety classifier.",
+      },
+    });
+  });
+
+  it("records the Anthropic provider when stop details are unavailable", () => {
+    expect(
+      extractContentFilterMetadata(
+        {
+          anthropic: {
+            usage: { input_tokens: 100 },
+          },
+        },
+        "content-filter",
+      ),
+    ).toEqual({ provider: "anthropic" });
+  });
+
+  it("keeps only Google safety details", () => {
+    expect(
+      extractContentFilterMetadata(
+        {
+          google: {
+            promptFeedback: { blockReason: "SAFETY" },
+            safetyRatings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT" }],
+            finishMessage: "Blocked for safety reasons.",
+            groundingMetadata: { searchEntryPoint: "unrelated" },
+          },
+        },
+        "content-filter",
+      ),
+    ).toEqual({
+      provider: "google",
+      details: {
+        promptFeedback: { blockReason: "SAFETY" },
+        safetyRatings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT" }],
+        finishMessage: "Blocked for safety reasons.",
+      },
+    });
+  });
+
+  it("reads Google safety details from Vertex metadata", () => {
+    expect(
+      extractContentFilterMetadata(
+        {
+          vertex: {
+            promptFeedback: { blockReason: "BLOCKLIST" },
+            safetyRatings: [],
+            finishMessage: "Blocked by Vertex safety settings.",
+          },
+        },
+        "content-filter",
+      ),
+    ).toEqual({
+      provider: "google",
+      details: {
+        promptFeedback: { blockReason: "BLOCKLIST" },
+        safetyRatings: [],
+        finishMessage: "Blocked by Vertex safety settings.",
+      },
+    });
+  });
+
+  it("recognizes a prompt-level Google block reported with finish reason other", () => {
+    expect(
+      extractContentFilterMetadata(
+        {
+          google: {
+            promptFeedback: { blockReason: "SAFETY" },
+            safetyRatings: [],
+            finishMessage: null,
+          },
+        },
+        "other",
+      ),
+    ).toEqual({
+      provider: "google",
+      details: {
+        promptFeedback: { blockReason: "SAFETY" },
+        safetyRatings: [],
+        finishMessage: null,
+      },
+    });
+  });
+
+  it("ignores normal Google metadata reported with finish reason other", () => {
+    expect(
+      extractContentFilterMetadata(
+        {
+          google: {
+            promptFeedback: { safetyRatings: [] },
+            safetyRatings: [],
+            finishMessage: null,
+          },
+        },
+        "other",
+      ),
+    ).toBeUndefined();
   });
 });

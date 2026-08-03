@@ -319,6 +319,7 @@
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",
+    "retry": "Retry",
     "cancel": "Cancel",
     "continueInSeconds": "Continue in {{seconds}}s",
     "save": "Save",
@@ -473,6 +474,7 @@
     "complete": "Complete"
   },
   "errorMessageView": {
+    "contentFilter": "The model declined to respond because the request was blocked by the provider's safety filter. Revise your request or retry.",
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",

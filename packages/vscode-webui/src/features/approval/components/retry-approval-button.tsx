@@ -3,6 +3,7 @@ import { useCallback, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAutoApproveGuard, useHandleChatEvents } from "@/features/chat";
+import { ReadyForRetryError } from "@/features/retry";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useTranslation } from "react-i18next";
@@ -32,17 +33,26 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const reviews = useReviews();
+  const isContentFilter =
+    pendingApproval.error instanceof ReadyForRetryError &&
+    pendingApproval.error.kind === "content-filter";
 
   const handleContinue = useCallback(() => {
     pendingApproval.stopCountdown();
-    if (hasQueuedMessages && onContinueWithQueuedMessage) {
+    if (!isContentFilter && hasQueuedMessages && onContinueWithQueuedMessage) {
       // A message is already queued, so continue the chat by sending it
       // instead of retrying / regenerating the previous turn.
       onContinueWithQueuedMessage();
       return;
     }
     retry(pendingApproval.error);
-  }, [retry, pendingApproval, hasQueuedMessages, onContinueWithQueuedMessage]);
+  }, [
+    retry,
+    pendingApproval,
+    isContentFilter,
+    hasQueuedMessages,
+    onContinueWithQueuedMessage,
+  ]);
 
   useEffect(() => {
     if (pendingApproval.countdown === 0) {
@@ -80,7 +90,11 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
           ? t("toolInvocation.continueInSeconds", {
               seconds: pendingApproval.countdown,
             })
-          : t("toolInvocation.continue")}
+          : t(
+              isContentFilter
+                ? "toolInvocation.retry"
+                : "toolInvocation.continue",
+            )}
       </Button>
       {pendingApproval.countdown !== undefined && (
         <Button onClick={pendingApproval.stopCountdown} variant="secondary">

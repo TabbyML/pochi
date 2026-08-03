@@ -1,4 +1,5 @@
 import { ErrorMessage } from "@/components/error-message";
+import { ReadyForRetryError } from "@/features/retry";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
 import { ExternalLinkIcon } from "lucide-react";
@@ -57,6 +58,13 @@ export function ErrorMessageView({
       error={debouncedError}
       collapsible
       formatter={(e) => {
+        if (
+          debouncedError instanceof ReadyForRetryError &&
+          debouncedError.kind === "content-filter"
+        ) {
+          return t("errorMessageView.contentFilter");
+        }
+
         if (e.message === PochiApiErrors.ReachedCreditLimit) {
           return (
             <span>

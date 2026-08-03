@@ -313,6 +313,7 @@
     "reading": "읽는 중 ",
     "writing": "쓰는 중 ",
     "continue": "계속",
+    "retry": "재시도",
     "cancel": "취소",
     "continueInSeconds": "{{seconds}}초 후 계속",
     "save": "저장",
@@ -465,6 +466,7 @@
     "complete": "완료"
   },
   "errorMessageView": {
+    "contentFilter": "제공업체의 안전 필터가 요청을 차단하여 모델이 응답하지 못했습니다. 요청을 수정하거나 다시 시도하세요.",
     "reachedCreditLimit": "지출 한도에 도달했습니다.",
     "seeMore": "더 보기",
     "teamReachedCreditLimit": "팀이 지출 한도에 도달했습니다.",

@@ -2,7 +2,11 @@ import type { Message } from "@getpochi/livekit";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getReadyForRetryError } from "./use-ready-for-retry-error";
+import { isRetryableError } from "../lib/is-retryable-error";
+import {
+  ReadyForRetryError,
+  getReadyForRetryError,
+} from "./use-ready-for-retry-error";
 import { useRetry } from "./use-retry";
 
 function createRetryableAssistantMessage(): Message {
@@ -125,9 +129,62 @@ describe("useRetry", () => {
       setMessages.mock.invocationCallOrder[0],
     );
   });
+
+  it("regenerates a content-filtered assistant response", async () => {
+    const setMessages = vi.fn();
+    const sendMessage = vi.fn();
+    const regenerate = vi.fn();
+    const message = {
+      id: "assistant-content-filtered",
+      role: "assistant",
+      parts: [{ type: "text", text: "Request refused." }],
+      metadata: {
+        kind: "assistant",
+        totalTokens: 10,
+        finishReason: "content-filter",
+      },
+    } as Message;
+
+    const { result } = renderHook(() =>
+      useRetry({
+        messages: [message],
+        setMessages,
+        sendMessage,
+        regenerate,
+      }),
+    );
+
+    await act(async () => {
+      await result.current(new ReadyForRetryError("content-filter"));
+    });
+
+    expect(regenerate).toHaveBeenCalledWith({
+      messageId: "assistant-content-filtered",
+    });
+    expect(setMessages).not.toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
 });
 
 describe("getReadyForRetryError", () => {
+  it("requires manual retry when the provider filters the response", () => {
+    const error = getReadyForRetryError([
+      {
+        id: "assistant-content-filtered",
+        role: "assistant",
+        parts: [{ type: "text", text: "Request refused." }],
+        metadata: {
+          kind: "assistant",
+          totalTokens: 10,
+          finishReason: "content-filter",
+        },
+      } as Message,
+    ]);
+
+    expect(error).toMatchObject({ kind: "content-filter" });
+    expect(isRetryableError(error as Error)).toBe(false);
+  });
+
   it("does not retry a successful attemptTodoCompletion subtask", () => {
     expect(
       getReadyForRetryError([

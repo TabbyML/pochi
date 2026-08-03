@@ -1,6 +1,7 @@
+import { ReadyForRetryError } from "@/features/retry";
 import type { Todo } from "@getpochi/tools";
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLiveSubTask } from "../use-live-sub-task";
 
@@ -13,6 +14,19 @@ const storeMock = vi.hoisted(() => ({
     status: "pending-model",
   })),
 }));
+const retryErrorMock = vi.hoisted<{ current: Error | undefined }>(() => ({
+  current: undefined,
+}));
+const retryImplMock = vi.hoisted(() => vi.fn());
+const streamingResultMock = vi.hoisted<{
+  current:
+    | {
+        toolName: string;
+        abortSignal: AbortSignal;
+        throws: ReturnType<typeof vi.fn>;
+      }
+    | undefined;
+}>(() => ({ current: undefined }));
 
 vi.mock("@/features/chat", () => ({
   useBatchExecuteManager: () => ({
@@ -23,15 +37,21 @@ vi.mock("@/features/chat", () => ({
   useLiveChatKitGetters: useLiveChatKitGettersMock,
   useToolCallLifeCycle: () => ({
     getToolCallLifeCycle: () => ({
-      streamingResult: undefined,
+      streamingResult: streamingResultMock.current,
     }),
   }),
 }));
 
 vi.mock("@/features/retry", () => ({
-  ReadyForRetryError: class ReadyForRetryError extends Error {},
-  useMixinReadyForRetryError: () => undefined,
-  useRetry: () => vi.fn(),
+  ReadyForRetryError: class ReadyForRetryError extends Error {
+    constructor(public kind = "ready") {
+      super();
+    }
+  },
+  isRetryableError: (error: Error & { kind?: string }) =>
+    error.kind !== "content-filter",
+  useMixinReadyForRetryError: () => retryErrorMock.current,
+  useRetry: () => retryImplMock,
 }));
 
 vi.mock("@/lib/hooks/use-custom-agents", () => ({
@@ -123,6 +143,9 @@ describe("useLiveSubTask", () => {
   beforeEach(() => {
     useLiveChatKitGettersMock.mockClear();
     storeMock.useQuery.mockClear();
+    retryErrorMock.current = undefined;
+    retryImplMock.mockClear();
+    streamingResultMock.current = undefined;
   });
 
   it("passes audit todos to attemptTodoCompletion subtasks", () => {
@@ -157,5 +180,30 @@ describe("useLiveSubTask", () => {
         }),
       }),
     );
+  });
+
+  it("does not automatically retry a content-filtered subtask", async () => {
+    vi.useFakeTimers();
+    retryErrorMock.current = new ReadyForRetryError("content-filter");
+    streamingResultMock.current = {
+      toolName: "newTask",
+      abortSignal: new AbortController().signal,
+      throws: vi.fn(),
+    };
+
+    renderHook(() =>
+      useLiveSubTask(
+        { tool: makeTool("planner"), isExecuting: true },
+        makeToolCallStatusRegistry(),
+      ),
+    );
+
+    retryImplMock.mockClear();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+
+    expect(retryImplMock).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });

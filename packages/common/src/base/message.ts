@@ -11,6 +11,12 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
     // calibration to only trust actual provider usage.
     totalTokensIsEstimated: z.boolean().optional(),
     finishReason: z.custom<FinishReason>(),
+    contentFilter: z
+      .object({
+        provider: z.enum(["anthropic", "google"]),
+        details: z.unknown().optional(),
+      })
+      .optional(),
     startedAt: z.coerce.date().optional(),
     finishedAt: z.coerce.date().optional(),
     totalStreamingDuration: z.number().optional(),
