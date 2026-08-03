@@ -163,3 +163,6 @@ The following names are reserved for built-in Pochi skills and cannot be used fo
 - `create-skill`
 - `validator`
 - `create-issue`
+- `run`
+- `verify`
+- `run-skill-generator`
