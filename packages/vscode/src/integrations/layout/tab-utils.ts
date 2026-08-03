@@ -152,10 +152,22 @@ export function findActivePochiTaskTab(): PochiTaskTab | undefined {
     if (matchedTab) {
       return matchedTab;
     }
+
+    // Otherwise, prefer an active task tab that's in a pochi-panel typed
+    // group.
+    const panelActiveTab = activeTaskTabs.find(
+      (tab) => getTabGroupType(tab.group.tabs) === "pochi-panel",
+    );
+    if (panelActiveTab) {
+      return panelActiveTab;
+    }
+
+    // Otherwise, fallback to the first active task tab found.
+    return activeTaskTabs[0];
   }
 
-  // Otherwise, fallback to the first task tab found in a pochi-panel typed
-  // group.
+  // Otherwise, falling back to checking non-active tabs
+  // Check a pochi-panel typed group first
   for (const group of tabGroups.all) {
     if (getTabGroupType(group.tabs) === "pochi-panel") {
       const tab = group.tabs.find((tab) => isPochiTaskTab(tab));
