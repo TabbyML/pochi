@@ -349,7 +349,7 @@
         },
         {
           "command": "pochi.terminal.addToChat",
-          "when": "terminalFocus && terminalTextSelected"
+          "when": "terminalTextSelected"
         }
       ],
       "view/title": [
