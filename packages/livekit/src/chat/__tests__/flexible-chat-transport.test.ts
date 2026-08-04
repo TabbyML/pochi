@@ -115,9 +115,11 @@ describe("extractContentFilterMetadata", () => {
           },
         },
         "content-filter",
+        "refusal",
       ),
     ).toEqual({
       provider: "anthropic",
+      reason: "refusal",
       details: {
         type: "refusal",
         category: "bio",
@@ -135,8 +137,9 @@ describe("extractContentFilterMetadata", () => {
           },
         },
         "content-filter",
+        "refusal",
       ),
-    ).toEqual({ provider: "anthropic" });
+    ).toEqual({ provider: "anthropic", reason: "refusal" });
   });
 
   it("keeps only Google safety details", () => {
@@ -151,9 +154,11 @@ describe("extractContentFilterMetadata", () => {
           },
         },
         "content-filter",
+        "SAFETY",
       ),
     ).toEqual({
       provider: "google",
+      reason: "SAFETY",
       details: {
         promptFeedback: { blockReason: "SAFETY" },
         safetyRatings: [{ category: "HARM_CATEGORY_DANGEROUS_CONTENT" }],
@@ -173,9 +178,11 @@ describe("extractContentFilterMetadata", () => {
           },
         },
         "content-filter",
+        "BLOCKLIST",
       ),
     ).toEqual({
       provider: "google",
+      reason: "BLOCKLIST",
       details: {
         promptFeedback: { blockReason: "BLOCKLIST" },
         safetyRatings: [],

@@ -79,6 +79,7 @@ type ContentFilterMetadata = NonNullable<
 export function extractContentFilterMetadata(
   providerMetadata: ProviderMetadata | undefined,
   finishReason: FinishReason,
+  rawFinishReason?: string,
 ): ContentFilterMetadata | undefined {
   const anthropic = providerMetadata?.anthropic;
   if (
@@ -87,6 +88,7 @@ export function extractContentFilterMetadata(
   ) {
     return {
       provider: "anthropic",
+      ...(rawFinishReason !== undefined && { reason: rawFinishReason }),
       ...(anthropic.stopDetails !== undefined && {
         details: anthropic.stopDetails,
       }),
@@ -103,6 +105,7 @@ export function extractContentFilterMetadata(
   if (google && (finishReason === "content-filter" || hasPromptBlockReason)) {
     return {
       provider: "google",
+      ...(rawFinishReason !== undefined && { reason: rawFinishReason }),
       details: {
         promptFeedback: google.promptFeedback,
         safetyRatings: google.safetyRatings,
@@ -352,6 +355,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             contentFilterMetadata = extractContentFilterMetadata(
               part.providerMetadata,
               part.finishReason,
+              part.rawFinishReason,
             );
           }
 

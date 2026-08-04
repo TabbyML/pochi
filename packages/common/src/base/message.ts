@@ -14,6 +14,7 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
     contentFilter: z
       .object({
         provider: z.enum(["anthropic", "google"]),
+        reason: z.string().optional(),
         details: z.unknown().optional(),
       })
       .optional(),
