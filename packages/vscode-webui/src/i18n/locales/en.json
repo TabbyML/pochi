@@ -474,7 +474,7 @@
     "complete": "Complete"
   },
   "errorMessageView": {
-    "contentFilter": "The model declined to respond because the request was blocked by the provider's safety filter. Revise your request or retry.",
+    "contentFilter": "The provider's safety filter prevented a response. Revise your request or retry.",
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",
