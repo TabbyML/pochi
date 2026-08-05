@@ -195,7 +195,9 @@ export const CommandPanelContainer: FC<{
 export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
-}> = ({ backgroundJobId, output }) => {
+  /** Leading icon rendered before the job id button (e.g. monitor Activity). */
+  icon?: React.ReactNode;
+}> = ({ backgroundJobId, output, icon }) => {
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
@@ -219,14 +221,16 @@ export const BackgroundJobPanel: FC<{
   return (
     <CommandPanelContainer
       icon={
-        hasCommand &&
-        info?.displayId && (
-          <BackgroundJobIdButton
-            displayId={info.displayId}
-            isActive={isActive}
-            onClick={openTerminal}
-          />
-        )
+        <>
+          {icon}
+          {hasCommand && info?.displayId && (
+            <BackgroundJobIdButton
+              displayId={info.displayId}
+              isActive={isActive}
+              onClick={openTerminal}
+            />
+          )}
+        </>
       }
       title={title}
       expanded={output !== undefined && expanded}

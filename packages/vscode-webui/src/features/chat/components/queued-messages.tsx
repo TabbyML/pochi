@@ -19,6 +19,7 @@ import type {
   TerminalTextSelection,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
+  Activity,
   CornerDownRight,
   FileCode,
   ListEnd,
@@ -41,6 +42,7 @@ interface RenderMessage {
   title: string;
   details: string;
   isTodoMode?: boolean;
+  isMonitor?: boolean;
   activeSelection?: ActiveSelection;
   activeTerminalTextSelection?: TerminalTextSelection;
 }
@@ -61,6 +63,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         userEditsCount = 0,
         terminalContextCount = 0,
         isTodoMode,
+        monitor,
         activeSelection,
         activeTerminalTextSelection,
       } = raw;
@@ -80,6 +83,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         title,
         details: details.join(" · "),
         isTodoMode,
+        isMonitor: !!monitor,
         activeSelection,
         activeTerminalTextSelection,
       };
@@ -95,6 +99,8 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         >
           {message.isTodoMode ? (
             <Target className="size-3.5 shrink-0" />
+          ) : message.isMonitor ? (
+            <Activity className="size-3.5 shrink-0" />
           ) : (
             <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
           )}

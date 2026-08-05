@@ -14,6 +14,7 @@ import { globFilesTool } from "./glob-files";
 import { KillBackgroundJobTool } from "./kill-background-job";
 import { listFilesTool } from "./list-files";
 import { McpToolCall } from "./mcp-tool-call";
+import { StartMonitorTool } from "./monitor";
 import { multiApplyDiffTool } from "./multi-apply-diff";
 import { newTaskTool } from "./new-task";
 import { ReadBackgroundJobOutputTool } from "./read-background-job-output";
@@ -118,6 +119,7 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   startBackgroundJob: StartBackgroundJobTool,
   readBackgroundJobOutput: ReadBackgroundJobOutputTool,
   killBackgroundJob: KillBackgroundJobTool,
+  startMonitor: StartMonitorTool,
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,
   globFiles: globFilesTool,

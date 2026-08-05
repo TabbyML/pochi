@@ -4,6 +4,7 @@ import { prepareMessageParts } from "@/lib/message-utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
+import type { MonitorEventEnvelope } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
@@ -40,6 +41,17 @@ export interface DraftMessage {
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
     activeTerminalTextSelection?: TerminalTextSelection;
+    /** Present when this draft was generated from monitor events. */
+    monitor?: {
+      backgroundJobId: string;
+      description: string;
+      /**
+       * The envelopes rendered into this draft. Kept so that events arriving
+       * while the draft is still queued can be merged into it (re-rendered as
+       * one notification) instead of enqueuing another message.
+       */
+      envelopes: MonitorEventEnvelope[];
+    };
   };
 }
 

@@ -13,7 +13,8 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
     const parts = messages.flatMap((msg) => msg.parts);
     for (const p of parts) {
       if (
-        p.type === "tool-startBackgroundJob" &&
+        (p.type === "tool-startBackgroundJob" ||
+          p.type === "tool-startMonitor") &&
         p.state !== "input-streaming" &&
         p.output?.backgroundJobId
       ) {
@@ -29,7 +30,8 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
     const parts = messages.flatMap((msg) => msg.parts);
     for (const p of parts) {
       if (
-        p.type === "tool-startBackgroundJob" &&
+        (p.type === "tool-startBackgroundJob" ||
+          p.type === "tool-startMonitor") &&
         p.state !== "input-streaming" &&
         p.input?.command &&
         p.output?.backgroundJobId

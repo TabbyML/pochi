@@ -8,6 +8,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  MonitorEventEnvelope,
   TaskMemoryState,
   TerminalTextSelection,
 } from "../base";
@@ -272,6 +273,19 @@ const VSCodeHostStub = {
         return Promise.resolve();
       },
     });
+  },
+  readMonitorEvents: async (
+    _taskId: string,
+  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>> => {
+    return Promise.resolve(
+      {} as ThreadSignalSerialization<MonitorEventEnvelope[]>,
+    );
+  },
+  ackMonitorEvents: async (
+    _taskId: string,
+    _upToSeq: number,
+  ): Promise<void> => {
+    return Promise.resolve();
   },
   readModelList: async () => {
     return Promise.resolve(

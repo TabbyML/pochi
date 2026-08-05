@@ -8,6 +8,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  MonitorEventEnvelope,
   TaskMemoryState,
   TerminalTextSelection,
 } from "../base";
@@ -196,6 +197,18 @@ export interface VSCodeHostApi {
     >;
     openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
   }>;
+
+  /**
+   * Undelivered monitor event batches of a task (startMonitor tool), as a
+   * live signal. The webview injects them into the conversation and then
+   * acknowledges via {@link ackMonitorEvents}.
+   */
+  readMonitorEvents(
+    taskId: string,
+  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>>;
+
+  /** Drops delivered monitor event batches with seq <= upToSeq. */
+  ackMonitorEvents(taskId: string, upToSeq: number): Promise<void>;
 
   /**
    * Opens a file at the specified file path.

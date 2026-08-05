@@ -369,7 +369,9 @@
     "next": "次へ",
     "askingQuestion_one": "質問中",
     "askingQuestion_other": "質問中",
-    "skipped": "スキップ済み"
+    "skipped": "スキップ済み",
+    "startMonitor": "監視します：",
+    "monitoring": "監視中"
   },
   "reasoning": {
     "thinking": "考え中 ...",
@@ -563,6 +565,10 @@
     "undo": "元に戻す",
     "viewChanges": "変更を表示",
     "openFile": "ファイルを開く"
+  },
+  "monitorEvents": {
+    "eventCount_one": "{{count}} 件のイベント",
+    "eventCount_other": "{{count}} 件のイベント"
   },
   "userEdits": {
     "title": "編集",

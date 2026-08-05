@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { MonitorRegistry } from "@/integrations/monitor/monitor-registry";
 import { getLogger } from "@/lib/logger";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
@@ -21,6 +22,8 @@ export interface TerminalInfo {
    *   these because they are not tracked by the `TerminalJob` registry.
    */
   backgroundJobId?: string;
+  /** The monitor's description when this terminal is an active monitor. */
+  monitor?: string;
 }
 
 @injectable()
@@ -179,11 +182,17 @@ export class TerminalState implements vscode.Disposable {
         }
         return true;
       })
-      .map((t) => ({
-        name: t.name || "Unnamed Terminal",
-        isActive: t === vscode.window.activeTerminal,
-        backgroundJobId: this.getTerminalId(t),
-      }));
+      .map((t) => {
+        const backgroundJobId = this.getTerminalId(t);
+        return {
+          name: t.name || "Unnamed Terminal",
+          isActive: t === vscode.window.activeTerminal,
+          backgroundJobId,
+          monitor: backgroundJobId
+            ? MonitorRegistry.descriptionFor(backgroundJobId)
+            : undefined,
+        };
+      });
   }
 
   /**
