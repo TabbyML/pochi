@@ -19,6 +19,8 @@ More below!
 
 - **Remove your edits from message context:** Manual file edits detected by Pochi now have a remove action in the chat input, letting you leave unrelated changes out before sending. Switching branches also clears stale edits so changes from the previous branch do not silently follow your next message. [**#1818**](https://github.com/TabbyML/pochi/pull/1818), [**#1846**](https://github.com/TabbyML/pochi/pull/1846), [**#1851**](https://github.com/TabbyML/pochi/pull/1851)
 
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![User edits tracked in the chat input with a remove action](/images/developer-updates/weekly-update-36-user-edits.png)</div>
+
 ### 🐛 Bug Fixes
 
 - **More accurate token estimates for Chinese, Japanese, and Korean text:** Context estimates now account for how CJK text is tokenized and calibrate against the model's reported usage during the session. Previously the same flat character ratio was used for every language, which could substantially undercount CJK-heavy conversations. [**#1828**](https://github.com/TabbyML/pochi/pull/1828)
