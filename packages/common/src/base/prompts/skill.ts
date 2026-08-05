@@ -26,5 +26,14 @@ You must ONLY use these approved tools when executing this skill. Do not use any
 ${prompt}`;
   }
 
+  // Surface the skill's file path so the model can resolve sibling resources
+  // (scripts/, references/, assets/) relative to the skill's directory.
+  if (skill.filePath?.trim()) {
+    prompt = `Skill location: ${skill.filePath.trim()}
+Use the directory containing this file as the base directory for resolving any relative resource paths referenced in the instructions below.
+
+${prompt}`;
+  }
+
   return prompt;
 }
