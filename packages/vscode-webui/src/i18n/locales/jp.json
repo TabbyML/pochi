@@ -510,6 +510,8 @@
     "collapse": "折りたたむ",
     "expand": "展開",
     "openJob": "ジョブ {{displayId}} を開く",
+    "openTerminal": "ターミナル {{name}} を開く",
+    "userTerminal": "ユーザーターミナル",
     "stop": "停止"
   },
   "liveSubTask": {

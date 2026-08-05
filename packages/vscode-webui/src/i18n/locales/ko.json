@@ -508,6 +508,8 @@
     "collapse": "접기",
     "expand": "펼치기",
     "openJob": "작업 {{displayId}} 열기",
+    "openTerminal": "터미널 {{name}} 열기",
+    "userTerminal": "사용자 터미널",
     "stop": "중지"
   },
   "devModeButton": {
