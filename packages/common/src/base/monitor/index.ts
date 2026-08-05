@@ -165,7 +165,7 @@ export class MonitorWatcher {
     const lines = this.pendingLines;
     if (this.droppedLines > 0) {
       lines.push(
-        `[${this.droppedLines} more lines omitted; use readBackgroundJobOutput to read the full output]`,
+        `[${this.droppedLines} more monitor events omitted; narrow the monitor command's output filter]`,
       );
     }
     this.pendingLines = [];

@@ -16,7 +16,7 @@ Before starting the background job, please follow these steps:
 
 Usage notes:
 - The command argument is required.
-- Use readBackgroundJobOutput to monitor the output and status of the job.
+- Use readBackgroundJobOutput to poll the output and status of the job.
 - Use killBackgroundJob to terminate the job if needed.
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 

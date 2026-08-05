@@ -96,7 +96,8 @@ describe("MonitorWatcher", () => {
 
     const delivered = onEvents.mock.calls[0][0] as string[];
     expect(delivered).toHaveLength(MonitorMaxLinesPerBatch + 1);
-    expect(delivered.at(-1)).toContain("10 more lines omitted");
+    expect(delivered.at(-1)).toContain("10 more monitor events omitted");
+    expect(delivered.at(-1)).toContain("narrow the monitor command's output filter");
   });
 
   it("flushes buffered content synchronously on end", () => {

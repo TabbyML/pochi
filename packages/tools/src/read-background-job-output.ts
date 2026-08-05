@@ -3,12 +3,12 @@ import { defineClientTool } from "./types";
 
 const toolDef = {
   description:
-    `- Retrieves output from a running or completed background job, or from a user-opened terminal
+    `- Retrieves output from a running or completed job started with startBackgroundJob, or from a user-opened terminal
 - Takes a backgroundJobId parameter identifying the job or terminal
 - Always returns only new content since the last check for that id
 - Returns output along with job status
 - Supports optional regex filtering to show only lines matching a pattern
-- Use this tool when you need to monitor a long-running background job, or catch up on what happened in a user-opened terminal`.trim(),
+- Use this tool to poll a background job for one eventual result, or catch up on a user-opened terminal`.trim(),
   inputSchema: z.object({
     backgroundJobId: z
       .string()

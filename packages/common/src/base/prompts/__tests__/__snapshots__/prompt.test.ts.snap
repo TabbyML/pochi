@@ -23,7 +23,6 @@ package.json
 You can read a terminal's output by calling \`readBackgroundJobOutput\` with its id.
 - Ids prefixed with "bgjob-" are Pochi-started background jobs (can be read and killed with \`killBackgroundJob\`).
 - Ids prefixed with "term-" are user-opened terminals (read-only; cannot be killed).
-- Terminals marked "monitoring" are active monitors (startMonitor); their events are delivered to you automatically, so do not start a duplicate monitor for the same target.
 * Terminal 1 (selected)
   Terminal 2
   Terminal 3 (id: job-id-1)
