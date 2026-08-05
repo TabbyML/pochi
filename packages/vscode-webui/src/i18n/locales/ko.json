@@ -367,7 +367,9 @@
     "next": "다음",
     "askingQuestion_one": "질문 중",
     "askingQuestion_other": "질문 중",
-    "skipped": "건너뜀"
+    "skipped": "건너뜀",
+    "startMonitor": "모니터링합니다:",
+    "monitoring": "모니터링 중"
   },
   "reasoning": {
     "thinking": "생각 중 ...",
@@ -559,6 +561,10 @@
     "undo": "실행 취소",
     "viewChanges": "변경 사항 보기",
     "openFile": "파일 열기"
+  },
+  "monitorEvents": {
+    "eventCount_one": "이벤트 {{count}}건",
+    "eventCount_other": "이벤트 {{count}}건"
   },
   "userEdits": {
     "title": "편집",

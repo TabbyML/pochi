@@ -129,6 +129,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "restoreChangedFiles",
         "showInformationMessage",
         "readVisibleTerminals",
+        "readMonitorEvents",
+        "ackMonitorEvents",
         "readModelList",
         "readUserStorage",
         "readCustomAgents",

@@ -375,7 +375,9 @@
     "next": "Next",
     "askingQuestion_one": "Asking Question",
     "askingQuestion_other": "Asking Questions",
-    "skipped": "Skipped"
+    "skipped": "Skipped",
+    "startMonitor": "I will monitor",
+    "monitoring": "Monitoring"
   },
   "reasoning": {
     "thinking": "Thinking ...",
@@ -567,6 +569,10 @@
     "undo": "Undo",
     "viewChanges": "View Changes",
     "openFile": "Open File"
+  },
+  "monitorEvents": {
+    "eventCount_one": "{{count}} event",
+    "eventCount_other": "{{count}} events"
   },
   "userEdits": {
     "title": "Edits",

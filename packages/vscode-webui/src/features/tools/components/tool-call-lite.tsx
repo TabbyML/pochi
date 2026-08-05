@@ -63,6 +63,9 @@ export function ToolCallLite({
     case "tool-killBackgroundJob":
       detail = <KillBackgroundJobTool />;
       break;
+    case "tool-startMonitor":
+      detail = <StartMonitorLiteTool tool={tool} />;
+      break;
     case "tool-searchFiles":
       detail = <SearchFilesTool tool={tool} />;
       break;
@@ -250,6 +253,19 @@ const KillBackgroundJobTool = () => {
   const { t } = useTranslation();
   return (
     <span className="ml-2">{t("toolInvocation.stoppingBackgroundJob")}</span>
+  );
+};
+
+const StartMonitorLiteTool = ({
+  tool,
+}: ToolCallLiteViewProps<"startMonitor">) => {
+  const { t } = useTranslation();
+  const { description } = tool.input || {};
+  return (
+    <span className="ml-2 truncate">
+      {t("toolInvocation.monitoring")}{" "}
+      <HighlightedText>{description}</HighlightedText>
+    </span>
   );
 };
 

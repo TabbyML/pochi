@@ -15,6 +15,7 @@ import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import {
+  Activity,
   CornerDownRight,
   FileCode,
   ListEnd,
@@ -36,6 +37,7 @@ interface RenderMessage {
   title: string;
   details: string;
   isTodoMode?: boolean;
+  isMonitor?: boolean;
   activeSelection?: ActiveSelection;
 }
 
@@ -55,6 +57,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         userEditsCount = 0,
         terminalContextCount = 0,
         isTodoMode,
+        monitor,
         activeSelection,
       } = raw;
       const title = text.trim() ? parseTitle(text) : t("chat.noMessage");
@@ -73,6 +76,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         title,
         details: details.join(" · "),
         isTodoMode,
+        isMonitor: !!monitor,
         activeSelection,
       };
     });
@@ -87,6 +91,8 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         >
           {message.isTodoMode ? (
             <Target className="size-3.5 shrink-0" />
+          ) : message.isMonitor ? (
+            <Activity className="size-3.5 shrink-0" />
           ) : (
             <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
           )}

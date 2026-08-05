@@ -1,5 +1,6 @@
 import * as os from "node:os";
 import path from "node:path";
+import { MonitorRegistry } from "@/integrations/monitor/monitor-registry";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -50,6 +51,7 @@ import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
+import { startMonitor } from "@/tools/monitor";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
@@ -63,6 +65,7 @@ import {
   type ContextWindowUsage,
   type Environment,
   type GitStatus,
+  type MonitorEventEnvelope,
   type TaskMemoryState,
   toErrorMessage,
 } from "@getpochi/common";
@@ -457,6 +460,16 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         this.terminalState.openBackgroundJobTerminal(backgroundJobId);
       },
     };
+  };
+
+  readMonitorEvents = async (
+    taskId: string,
+  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>> => {
+    return ThreadSignal.serialize(MonitorRegistry.events(taskId));
+  };
+
+  ackMonitorEvents = async (taskId: string, upToSeq: number): Promise<void> => {
+    MonitorRegistry.ack(taskId, upToSeq);
   };
 
   readCurrentWorkspace = async (): Promise<{
@@ -1606,6 +1619,7 @@ const ToolMap: Record<
   startBackgroundJob,
   readBackgroundJobOutput,
   killBackgroundJob,
+  startMonitor,
   searchFiles,
   listFiles: listFilesTool,
   globFiles,
