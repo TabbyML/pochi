@@ -319,6 +319,7 @@
 
     "writing": "書き込み中 ",
     "continue": "続行",
+    "retry": "再試行",
     "cancel": "キャンセル",
     "continueInSeconds": "{{seconds}}秒後に続行",
     "save": "保存",
@@ -356,7 +357,6 @@
     "result_other": "{{count}}件の結果",
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
     "readTerminal": "ターミナル出力を読み込み中",
-    "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
     "updatingToDos": "TODOを更新中",
@@ -476,6 +476,7 @@
     "complete": "完了"
   },
   "errorMessageView": {
+    "contentFilter": "安全フィルターにより応答が停止されました。メッセージを言い換えるか、再試行してください。",
     "reachedCreditLimit": "支出限度額に達しました。",
     "seeMore": "詳細を見る",
     "teamReachedCreditLimit": "チームが支出限度額に達しました。",

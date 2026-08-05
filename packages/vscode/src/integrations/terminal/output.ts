@@ -126,9 +126,8 @@ export class OutputManager {
 
   /**
    * Reads new output from the job since the last read.
-   * @param regex - An optional regex to filter the output.
    */
-  readOutput(regex?: RegExp): {
+  readOutput(): {
     output: string;
     isTruncated: boolean;
     status: ExecuteCommandResult["status"];
@@ -158,27 +157,6 @@ export class OutputManager {
 
     this.lastReadLength = currentOutputBytes;
     this.lastReadAt = now;
-
-    if (regex) {
-      /**
-       * The splitting with a capturing group creates an array where:
-       * Even indices (0, 2, 4, ...) contain the actual line content
-       * Odd indices (1, 3, 5, ...) contain the line separators (\r\n or \n)
-       */
-      const lines = newOutput.split(/(\r\n|\n)/);
-      const filteredParts: string[] = [];
-
-      for (let i = 0; i < lines.length; i += 2) {
-        const lineContent = lines[i] || "";
-        const lineSeparator = lines[i + 1] || "";
-
-        if (regex.test(lineContent)) {
-          filteredParts.push(lineContent + lineSeparator);
-        }
-      }
-
-      newOutput = filteredParts.join("");
-    }
 
     return {
       output: newOutput,

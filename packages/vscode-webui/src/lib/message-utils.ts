@@ -17,7 +17,6 @@ export function prepareMessageParts(
   reviews: Review[],
   userEdits?: UserEdits,
   activeSelection?: ActiveSelection,
-  activeTerminalTextSelection?: TerminalTextSelection,
   terminalContextSelections?: TerminalTextSelection[],
 ) {
   const parts: Message["parts"] = [];
@@ -48,10 +47,10 @@ export function prepareMessageParts(
     });
   }
 
-  if (activeSelection || activeTerminalTextSelection) {
+  if (activeSelection) {
     parts.push({
       type: "data-active-selection",
-      data: { activeSelection, activeTerminalTextSelection },
+      data: { activeSelection },
     });
   }
 

@@ -223,7 +223,7 @@ const ReadBackgroundJobTool = ({
   tool,
 }: ToolCallLiteViewProps<"readBackgroundJobOutput">) => {
   const { t } = useTranslation();
-  const { backgroundJobId, regex } = tool.input || {};
+  const { backgroundJobId } = tool.input || {};
   const isUserTerminal = backgroundJobId?.startsWith("term-");
   return (
     <>
@@ -232,13 +232,6 @@ const ReadBackgroundJobTool = ({
           ? t("toolInvocation.readTerminal")
           : t("toolInvocation.readBackground")}
       </span>
-      {regex && (
-        <>
-          {" "}
-          {t("toolInvocation.withRegexFilter")}:{" "}
-          <HighlightedText>{regex}</HighlightedText>
-        </>
-      )}
     </>
   );
 };
@@ -363,7 +356,7 @@ const NewTaskTool = ({ tool }: ToolCallLiteViewProps<"newTask">) => {
   const description = tool.input?.description ?? "";
 
   const agentType = tool.input?.agentType;
-  const toolTitle = agentType ?? "Subtask";
+  const toolTitle = agentType?.trim() || "Subtask";
 
   return (
     <div>

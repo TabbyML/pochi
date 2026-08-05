@@ -99,9 +99,8 @@ export class TerminalHistoryManager {
 
   /**
    * Reads new history content since the last read.
-   * @param regex - An optional regex to filter the output lines.
    */
-  readOutput(regex?: RegExp): {
+  readOutput(): {
     output: string;
     isTruncated: boolean;
     status: ExecuteCommandResult["status"];
@@ -131,22 +130,6 @@ export class TerminalHistoryManager {
 
     this.lastReadLength = currentOutputBytes;
     this.lastReadAt = now;
-
-    if (regex) {
-      const lines = newOutput.split(/(\r\n|\n)/);
-      const filteredParts: string[] = [];
-
-      for (let i = 0; i < lines.length; i += 2) {
-        const lineContent = lines[i] || "";
-        const lineSeparator = lines[i + 1] || "";
-
-        if (regex.test(lineContent)) {
-          filteredParts.push(lineContent + lineSeparator);
-        }
-      }
-
-      newOutput = filteredParts.join("");
-    }
 
     return {
       output: newOutput,

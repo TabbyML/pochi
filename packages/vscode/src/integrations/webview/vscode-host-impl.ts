@@ -116,7 +116,6 @@ import {
   type TaskChangedFile,
   type TaskPinnedParams,
   type TaskStates,
-  type TerminalTextSelection,
   type VSCodeHostApi,
   type VSCodeSettings,
   type WorkspaceState,
@@ -175,7 +174,6 @@ import {
   isLocalUrl,
   promptPublicUrlConversion,
 } from "../terminal-link-provider/url-utils";
-import { readTerminalSelection as readTerminalSelectionFromClipboard } from "../terminal/read-terminal-selection";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "../terminal/terminal-state";
 import { PochiTaskEditorProvider } from "./webview-panel";
@@ -453,23 +451,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     ThreadSignalSerialization<FileSelection | undefined>
   > => {
     return ThreadSignal.serialize(this.editorContextState.activeSelection);
-  };
-
-  /**
-   * Reads the text currently selected in the active terminal, if any.
-   * See `readTerminalSelectionFromClipboard` for how this works around the
-   * lack of a stable VS Code API for terminal selection.
-   */
-  readTerminalSelection = async (): Promise<
-    TerminalTextSelection | undefined
-  > => {
-    const terminal = vscode.window.activeTerminal;
-    if (!terminal) return undefined;
-
-    return readTerminalSelectionFromClipboard(
-      terminal,
-      this.terminalState.getTerminalId(terminal),
-    );
   };
 
   readVisibleTerminals = async () => {

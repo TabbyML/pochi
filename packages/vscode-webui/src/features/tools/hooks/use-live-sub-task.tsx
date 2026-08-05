@@ -8,6 +8,7 @@ import {
 } from "@/features/chat";
 import {
   ReadyForRetryError,
+  isRetryableError,
   useMixinReadyForRetryError,
   useRetry,
 } from "@/features/retry";
@@ -252,8 +253,12 @@ export function useLiveSubTask(
     if (!isExecuting || !streamingResult) {
       return;
     }
-    if (pendingErrorForRetry) {
-      setDebouncedPendingErrorForRetry(undefined);
+    if (!pendingErrorForRetry) {
+      return;
+    }
+
+    setDebouncedPendingErrorForRetry(undefined);
+    if (isRetryableError(pendingErrorForRetry)) {
       retryWithCount(pendingErrorForRetry);
     }
   }, [

@@ -323,6 +323,7 @@
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",
+    "retry": "Retry",
     "cancel": "Cancel",
     "continueInSeconds": "Continue in {{seconds}}s",
     "save": "Save",
@@ -360,7 +361,6 @@
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
     "readTerminal": "Reading terminal output",
-    "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
     "updatingToDos": "Updating TODOs",
@@ -482,6 +482,7 @@
     "complete": "Complete"
   },
   "errorMessageView": {
+    "contentFilter": "A safety filter stopped the response. Try rephrasing your message or retry.",
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",
