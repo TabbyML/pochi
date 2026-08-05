@@ -319,6 +319,7 @@
 
     "writing": "書き込み中 ",
     "continue": "続行",
+    "retry": "再試行",
     "cancel": "キャンセル",
     "continueInSeconds": "{{seconds}}秒後に続行",
     "save": "保存",
@@ -474,6 +475,7 @@
     "complete": "完了"
   },
   "errorMessageView": {
+    "contentFilter": "安全フィルターにより応答が停止されました。メッセージを言い換えるか、再試行してください。",
     "reachedCreditLimit": "支出限度額に達しました。",
     "seeMore": "詳細を見る",
     "teamReachedCreditLimit": "チームが支出限度額に達しました。",

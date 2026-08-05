@@ -8,7 +8,7 @@ import type { Message } from "@getpochi/livekit";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useMemo } from "react";
 
-type RetryKind = "ready" | "tool-calls" | "no-tool-calls";
+type RetryKind = "ready" | "tool-calls" | "no-tool-calls" | "content-filter";
 
 export class ReadyForRetryError extends Error {
   kind: RetryKind;
@@ -33,6 +33,13 @@ export function useMixinReadyForRetryError(
 export function getReadyForRetryError(messages: Message[]) {
   const lastMessage = messages.at(-1);
   if (!lastMessage) return;
+  if (
+    lastMessage.role === "assistant" &&
+    lastMessage.metadata?.kind === "assistant" &&
+    lastMessage.metadata.finishReason === "content-filter"
+  ) {
+    return new ReadyForRetryError("content-filter");
+  }
   const attemptTodoCompletionPart =
     getLastAttemptTodoCompletionPart(lastMessage);
   if (attemptTodoCompletionPart) {

@@ -323,6 +323,7 @@
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",
+    "retry": "Retry",
     "cancel": "Cancel",
     "continueInSeconds": "Continue in {{seconds}}s",
     "save": "Save",
@@ -480,6 +481,7 @@
     "complete": "Complete"
   },
   "errorMessageView": {
+    "contentFilter": "A safety filter stopped the response. Try rephrasing your message or retry.",
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",

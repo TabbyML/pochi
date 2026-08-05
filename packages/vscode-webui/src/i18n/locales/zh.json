@@ -317,6 +317,7 @@
 
     "writing": "正在写入 ",
     "continue": "继续",
+    "retry": "重试",
     "cancel": "取消",
     "continueInSeconds": "{{seconds}}秒后继续",
     "save": "保存",
@@ -472,6 +473,7 @@
     "complete": "完成"
   },
   "errorMessageView": {
+    "contentFilter": "安全过滤阻止了此次回答。请尝试换一种方式表达，或重试。",
     "reachedCreditLimit": "您已达到消费限额。",
     "seeMore": "查看更多",
     "teamReachedCreditLimit": "您的团队已达到消费限额。",
