@@ -39,7 +39,7 @@ export function SubAgentView({
   footerActions,
   taskSource,
   toolCallStatusRegistryRef,
-  assistantName = tool.input?.agentType ?? "Pochi",
+  assistantName = tool.input?.agentType?.trim() || "Pochi",
   showToolCall,
   showTaskThread = true,
 }: SubAgentViewProps) {
@@ -59,7 +59,7 @@ export function SubAgentView({
   const hasContent = children != null || !!showFooter;
   const navigate = useNavigate();
   const store = useDefaultStore();
-  const toolTitle = tool.input?.agentType;
+  const toolTitle = tool.input?.agentType?.trim() || "Subtask";
   const description = tool.input?.description;
 
   useEffect(() => {
