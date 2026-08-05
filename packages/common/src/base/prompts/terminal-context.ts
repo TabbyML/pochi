@@ -1,11 +1,17 @@
 import type { TerminalTextSelection } from "../message";
-import { renderTerminalSelectionAttrs } from "./active-selection";
+
+function renderTerminalSelectionAttrs(
+  terminalName: string,
+  backgroundJobId: string | undefined,
+): string {
+  return backgroundJobId
+    ? `terminal="${terminalName}" backgroundJobId="${backgroundJobId}"`
+    : `terminal="${terminalName}"`;
+}
 
 /**
  * Renders text selections that the user explicitly attached to a message via
- * the "Add to Chat" terminal context menu action. Unlike
- * {@link renderTerminalTextSelection} (which renders whatever happens to be
- * selected in the terminal at submit time), these selections were
+ * the "Add to Chat" terminal context menu action. These selections were
  * deliberately picked by the user and can accumulate multiple entries across
  * one or more terminals.
  */

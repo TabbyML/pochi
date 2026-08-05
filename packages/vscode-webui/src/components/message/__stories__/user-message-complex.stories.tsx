@@ -28,7 +28,7 @@ const complexUserMessage: Message = {
       type: "text",
       text: "Here is a complex request involving multiple context items. I've found some issues and I'm providing context via active selection, user edits, reviews, and attachments.",
     },
-    // Active Selection (both a text-file selection and a terminal selection)
+    // Active Selection (a text-file selection)
     {
       type: "data-active-selection",
       data: {
@@ -45,11 +45,6 @@ const complexUserMessage: Message = {
     </button>
   );
 };`,
-        },
-        activeTerminalTextSelection: {
-          terminalName: "bash",
-          backgroundJobId: "term-story-terminal",
-          content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
         },
       },
     },
@@ -151,41 +146,7 @@ export const AllParts: Story = {
   },
 };
 
-const terminalOnlySelectionMessage: Message = {
-  id: "msg-terminal-only-selection",
-  role: "user",
-  parts: [
-    {
-      type: "text",
-      text: "Here's the error I'm seeing in the terminal:",
-    },
-    {
-      type: "data-active-selection",
-      data: {
-        activeTerminalTextSelection: {
-          terminalName: "npm run dev",
-          backgroundJobId: "bgjob-story-terminal",
-          content:
-            "Error: Cannot find module 'foo'\n    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:1075:15)\n    at Function.Module._load (node:internal/modules/cjs/loader:920:27)",
-        },
-      },
-    },
-  ],
-};
-
-export const TerminalSelectionOnly: Story = {
-  args: {
-    messages: [terminalOnlySelectionMessage],
-    isLoading: false,
-    user: {
-      name: "Developer",
-      image: "https://github.com/shadcn.png",
-    },
-  },
-};
-
-// Explicitly attached terminal context ("Add to Chat" flow) — a single
-// selection, distinct from the implicit `activeTerminalTextSelection` above.
+// Explicitly attached terminal context ("Add to Chat" flow).
 const terminalContextSingleMessage: Message = {
   id: "msg-terminal-context-single",
   role: "user",
@@ -221,11 +182,7 @@ export const TerminalContextSingle: Story = {
 };
 
 // Multiple explicitly attached terminal selections across different
-// terminals. Note: when the user has manually attached terminal context like
-// this, the implicit "currently selected" terminal text capture is skipped
-// at submit time (mutually exclusive), so `data-active-selection` with an
-// `activeTerminalTextSelection` would not also appear on a message like this
-// in practice.
+// terminals.
 const terminalContextMultipleMessage: Message = {
   id: "msg-terminal-context-multiple",
   role: "user",

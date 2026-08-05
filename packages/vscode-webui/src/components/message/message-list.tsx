@@ -22,7 +22,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
-import { Fragment, memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
 import { ActiveSelectionPart, TerminalSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
@@ -252,7 +252,6 @@ function UserSelections({ message }: { message: Message }) {
     type: "data-active-selection";
     data: {
       activeSelection?: ActiveSelection;
-      activeTerminalTextSelection?: TerminalTextSelection;
     };
   }[];
 
@@ -278,18 +277,15 @@ function UserSelections({ message }: { message: Message }) {
 
   return (
     <div className="mt-2 flex flex-wrap gap-2">
-      {selectionParts.map((part, index) => (
-        <Fragment key={index}>
-          {part.data.activeSelection && (
-            <ActiveSelectionPart activeSelection={part.data.activeSelection} />
-          )}
-          {part.data.activeTerminalTextSelection && (
-            <TerminalSelectionPart
-              terminalTextSelection={part.data.activeTerminalTextSelection}
+      {selectionParts.map(
+        (part, index) =>
+          part.data.activeSelection && (
+            <ActiveSelectionPart
+              key={index}
+              activeSelection={part.data.activeSelection}
             />
-          )}
-        </Fragment>
-      ))}
+          ),
+      )}
       {terminalContextSelections.map((textSelection, index) => (
         <TerminalSelectionPart
           key={index}

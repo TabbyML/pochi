@@ -39,12 +39,6 @@ export interface DraftMessage {
     terminalContextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
-    /**
-     * @deprecated No longer implicitly captured/populated when creating a
-     * draft message; kept only so any code still reading it (e.g. queued
-     * message previews) keeps compiling.
-     */
-    activeTerminalTextSelection?: TerminalTextSelection;
   };
 }
 

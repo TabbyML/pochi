@@ -727,7 +727,6 @@ function draftMessage({
   terminalContextCount = 0,
   isTodoMode = false,
   activeSelection,
-  activeTerminalTextSelection,
 }: {
   text: string;
   filesCount?: number;
@@ -736,7 +735,6 @@ function draftMessage({
   terminalContextCount?: number;
   isTodoMode?: boolean;
   activeSelection?: ActiveSelection;
-  activeTerminalTextSelection?: TerminalTextSelection;
 }): DraftMessage {
   return {
     parts: [`text:${text}`] as unknown as DraftMessage["parts"],
@@ -748,7 +746,6 @@ function draftMessage({
       terminalContextCount,
       isTodoMode,
       activeSelection,
-      activeTerminalTextSelection,
     },
   };
 }
