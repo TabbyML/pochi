@@ -361,7 +361,6 @@
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
     "readTerminal": "Reading terminal output",
-    "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
     "updatingToDos": "Updating TODOs",

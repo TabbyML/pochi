@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 import { BackgroundJobPanel } from "./command-execution-panel";
-import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
@@ -9,7 +8,7 @@ export const ReadBackgroundJobOutputTool: React.FC<
   ToolProps<"readBackgroundJobOutput">
 > = ({ tool, isExecuting }) => {
   const { t } = useTranslation();
-  const { backgroundJobId, regex } = tool.input || {};
+  const { backgroundJobId } = tool.input || {};
   const isUserTerminal = backgroundJobId?.startsWith("term-");
   const title = (
     <>
@@ -19,13 +18,6 @@ export const ReadBackgroundJobOutputTool: React.FC<
           ? t("toolInvocation.readTerminal")
           : t("toolInvocation.readBackground")}
       </span>
-      {regex && (
-        <>
-          {" "}
-          {t("toolInvocation.withRegexFilter")}:{" "}
-          <HighlightedText>{regex}</HighlightedText>
-        </>
-      )}
     </>
   );
 
