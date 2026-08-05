@@ -28,6 +28,9 @@ export class PochiConfiguration implements vscode.Disposable {
   readonly githubCopilotCodeCompletionEnabled = signal(
     getGithubCopilotCodeCompletionEnabled(),
   );
+  readonly terminalRightClickBehaviorDefault = signal(
+    getTerminalRightClickBehaviorDefault(),
+  );
   readonly detectWorktreesLimit = signal(getDetectWorktreesLimit());
 
   constructor() {
@@ -49,6 +52,11 @@ export class PochiConfiguration implements vscode.Disposable {
         if (e.affectsConfiguration("github.copilot")) {
           this.githubCopilotCodeCompletionEnabled.value =
             getGithubCopilotCodeCompletionEnabled();
+        }
+
+        if (e.affectsConfiguration("terminal.integrated.rightClickBehavior")) {
+          this.terminalRightClickBehaviorDefault.value =
+            getTerminalRightClickBehaviorDefault();
         }
 
         if (e.affectsConfiguration("git.detectWorktreesLimit")) {
@@ -87,6 +95,13 @@ export class PochiConfiguration implements vscode.Disposable {
             }
           },
         ),
+      },
+      {
+        dispose: this.terminalRightClickBehaviorDefault.subscribe((value) => {
+          if (value !== getTerminalRightClickBehaviorDefault()) {
+            updateTerminalRightClickBehaviorDefault(value);
+          }
+        }),
       },
     );
   }
@@ -285,6 +300,21 @@ function updateCommentsOpenViewDisabled(value: boolean) {
   return vscode.workspace
     .getConfiguration("comments")
     .update("openView", target, true);
+}
+
+function getTerminalRightClickBehaviorDefault() {
+  const rightClickBehavior = vscode.workspace
+    .getConfiguration("terminal.integrated")
+    .get<string>("rightClickBehavior");
+
+  return rightClickBehavior === "default";
+}
+
+function updateTerminalRightClickBehaviorDefault(value: boolean) {
+  const target = value ? "default" : undefined;
+  return vscode.workspace
+    .getConfiguration("terminal.integrated")
+    .update("rightClickBehavior", target, true);
 }
 
 function getDetectWorktreesLimit() {

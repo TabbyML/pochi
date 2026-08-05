@@ -1006,6 +1006,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             this.pochiConfiguration.commentsOpenViewDisabled.value,
           githubCopilotCodeCompletionEnabled:
             this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+          terminalRightClickBehaviorDefault:
+            this.pochiConfiguration.terminalRightClickBehaviorDefault.value,
           reviewAgent:
             this.pochiConfiguration.advancedSettings.value.reviewAgent,
         };
@@ -1034,6 +1036,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (params.githubCopilotCodeCompletionEnabled !== undefined) {
       this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value =
         params.githubCopilotCodeCompletionEnabled;
+    }
+    if (params.terminalRightClickBehaviorDefault !== undefined) {
+      this.pochiConfiguration.terminalRightClickBehaviorDefault.value =
+        params.terminalRightClickBehaviorDefault;
     }
   };
 

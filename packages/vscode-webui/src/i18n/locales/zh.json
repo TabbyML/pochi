@@ -590,7 +590,8 @@
       "enablePochiLayout": "启用 Pochi 布局",
       "disableAutoSave": "禁用自动保存",
       "disableCommentsOpenView": "禁用自动打开评论面板",
-      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全"
+      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全",
+      "terminalRightClickBehaviorDefault": "终端右键显示上下文菜单"
     }
   },
   "mermaid": {
