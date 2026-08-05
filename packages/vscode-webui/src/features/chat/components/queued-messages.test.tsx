@@ -76,6 +76,22 @@ describe("QueuedMessages", () => {
     ).toBeTruthy();
   });
 
+  it("shows the terminal context count alongside other counts", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "  ",
+            terminalContextCount: 2,
+          }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(getByText("chat.terminalContextCount:2")).toBeTruthy();
+  });
+
   it("renders a minimal icon-only preview for the active editor selection captured at queue time", () => {
     const activeSelection: ActiveSelection = {
       filepath: "/workspace/foo.ts",
@@ -158,6 +174,7 @@ function queuedMessage({
   filesCount = 0,
   reviewsCount = 0,
   userEditsCount = 0,
+  terminalContextCount = 0,
   activeSelection,
   activeTerminalTextSelection,
 }: {
@@ -166,6 +183,7 @@ function queuedMessage({
   filesCount?: number;
   reviewsCount?: number;
   userEditsCount?: number;
+  terminalContextCount?: number;
   activeSelection?: ActiveSelection;
   activeTerminalTextSelection?: TerminalTextSelection;
 }): DraftMessage {
@@ -176,6 +194,7 @@ function queuedMessage({
       filesCount,
       reviewsCount,
       userEditsCount,
+      terminalContextCount,
       isTodoMode,
       activeSelection,
       activeTerminalTextSelection,

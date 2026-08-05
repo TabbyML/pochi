@@ -43,10 +43,14 @@
     "fileCount": "{{count}} 件のファイル",
     "reviewCount": "{{count}} 件のレビュー",
     "userEditCount": "{{count}} 件の編集",
+    "terminalContextCount": "{{count}} 件のターミナル選択",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
-    "pleaseCheckFiles": "これらの添付ファイルを確認してください。",
+    "contextLabelFiles": "添付ファイル",
+    "contextLabelReviews": "レビュー",
+    "contextLabelTerminalSelections": "ターミナル選択",
+    "pleaseCheckAttachedContext": "添付された{{items}}を確認してください。",
     "chatToolbar": {
       "diffWorktreeWith": "ワークツリーを {{branch}} と比較",
       "openInTerminal": "統合ターミナルで開く"
@@ -442,6 +446,9 @@
     "cell": "セル",
     "addContext": "コンテキストを追加",
     "terminal": "ターミナル"
+  },
+  "terminalContextBadge": {
+    "remove": "ターミナル選択をコンテキストから削除"
   },
   "todoModeBadge": {
     "remove": "Todoモードを削除"

@@ -66,7 +66,7 @@ describe("convertDataPartToText", () => {
     const result = convertDataPartToText(part) as { type: string; text: string }[];
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe("text");
-    expect(result[0].text).toContain("terminal-selection");
+    expect(result[0].text).toContain("active-terminal-selection");
     expect(result[0].text).toContain("echo hello");
   });
 
@@ -94,5 +94,34 @@ describe("convertDataPartToText", () => {
     expect(result).toHaveLength(2);
     expect(result[0].text).toContain("active-selection");
     expect(result[1].text).toContain("terminal-selection");
+  });
+
+  it("returns no parts when data-terminal-context has no selections", () => {
+    const part = {
+      type: "data-terminal-context",
+      data: { textSelections: [] },
+    } as unknown as MessagePart;
+
+    expect(convertDataPartToText(part)).toEqual([]);
+  });
+
+  it("converts data-terminal-context into a single text part with all selections", () => {
+    const part = {
+      type: "data-terminal-context",
+      data: {
+        textSelections: [
+          { terminalName: "bash", backgroundJobId: "term-1", content: "echo hello" },
+          { terminalName: "zsh", content: "git status" },
+        ],
+      },
+    } as unknown as MessagePart;
+
+    const result = convertDataPartToText(part) as { type: string; text: string }[];
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("text");
+    expect(result[0].text).toContain("terminal-context-selection terminal=\"bash\"");
+    expect(result[0].text).toContain("echo hello");
+    expect(result[0].text).toContain("terminal-context-selection terminal=\"zsh\"");
+    expect(result[0].text).toContain("git status");
   });
 });

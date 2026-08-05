@@ -30,6 +30,9 @@ export type DataParts = {
     activeSelection?: ActiveSelection;
     activeTerminalTextSelection?: TerminalTextSelection;
   };
+  "terminal-context": {
+    textSelections: TerminalTextSelection[];
+  };
   "bash-outputs": {
     bashOutputs: BashOutputs;
   };

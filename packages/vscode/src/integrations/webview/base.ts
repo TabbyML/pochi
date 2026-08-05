@@ -407,6 +407,7 @@ export abstract class WebviewBase implements vscode.Disposable {
           "writeStoreFile",
           "readStoreFile",
           "readTaskOutput",
+          "addTerminalContext",
         ],
       },
     );

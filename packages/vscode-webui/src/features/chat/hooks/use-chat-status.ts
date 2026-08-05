@@ -11,6 +11,7 @@ interface UseChatStatusProps {
   isInputEmpty: boolean;
   isFilesEmpty: boolean;
   isReviewsEmpty: boolean;
+  isTerminalContextEmpty: boolean;
   isUploadingAttachments: boolean;
   blockingState: BlockingState;
   taskStatus: Task["status"] | undefined;
@@ -22,6 +23,7 @@ export function useChatStatus({
   isInputEmpty,
   isFilesEmpty,
   isReviewsEmpty,
+  isTerminalContextEmpty,
   isUploadingAttachments,
   blockingState,
   taskStatus,
@@ -44,7 +46,10 @@ export function useChatStatus({
   // `submit`: send or queue message
   const isSubmitEnabled =
     !isUploadingAttachments &&
-    (!isInputEmpty || !isFilesEmpty || !isReviewsEmpty);
+    (!isInputEmpty ||
+      !isFilesEmpty ||
+      !isReviewsEmpty ||
+      !isTerminalContextEmpty);
 
   // `stop`: stop chat streaming or tool execution
   const isStopEnabled =

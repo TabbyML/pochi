@@ -54,6 +54,7 @@ import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
+import { useTerminalContextState } from "../hooks/use-terminal-context-state";
 import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -204,6 +205,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = attachmentUpload;
 
   const reviews = useReviews();
+  const {
+    selections: terminalContextSelections,
+    removeSelection: removeTerminalContextSelection,
+    clearSelections: clearTerminalContextSelections,
+  } = useTerminalContextState();
 
   const { inlineCompactTask, inlineCompactTaskPending } = useInlineCompactTask({
     sendMessage,
@@ -241,6 +247,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
+    isTerminalContextEmpty: terminalContextSelections.length === 0,
     isUploadingAttachments,
     blockingState,
     taskStatus: task?.status,
@@ -272,6 +279,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     setQueuedMessages,
     reviews,
     userEdits: includedUserEdits,
+    terminalContextSelections,
+    clearTerminalContextSelections,
     taskId,
     isTodoMode: todoModeSelected,
     canCreateTodo: !todoModeDisabled,
@@ -436,6 +445,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           onRemoveUserEdits={() =>
             setExcludedUserEditsContext(userEditsContext)
           }
+          terminalContextSelections={terminalContextSelections}
+          onRemoveTerminalContextSelection={removeTerminalContextSelection}
           queuedMessages={queuedMessages}
           onRemoveQueuedMessage={handleRemoveQueuedMessage}
           onSteerQueuedMessage={handleSteerQueuedMessage}

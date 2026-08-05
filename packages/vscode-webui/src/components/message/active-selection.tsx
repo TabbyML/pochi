@@ -136,7 +136,7 @@ export const TerminalSelectionPart: React.FC<TerminalSelectionProps> = ({
  * Counts the number of lines in the given text, ignoring a single trailing
  * newline (so `"a\nb\n"` is treated as 2 lines, not 3).
  */
-function getLineCount(content: string): number {
+export function getLineCount(content: string): number {
   const trimmed = content.endsWith("\n") ? content.slice(0, -1) : content;
   return trimmed.length === 0 ? 0 : trimmed.split("\n").length;
 }

@@ -17,4 +17,4 @@ export function createTerminal(
 }
 
 export { LayoutManager };
-export { findActivePochiTaskTab } from "./tab-utils";
+export { findActivePochiTaskTab, PochiTaskTabMonitor } from "./tab-utils";

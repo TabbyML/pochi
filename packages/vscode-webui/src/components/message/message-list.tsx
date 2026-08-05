@@ -190,7 +190,7 @@ export const MessageList: React.FC<{
                 </div>
                 {/* Display attachments at the bottom of the message */}
                 <UserAttachments message={m} />
-                <UserActiveSelections message={m} />
+                <UserSelections message={m} />
               </div>
               {messageIndex < renderMessages.length - 1 ? (
                 <SeparatorWithCheckpoint
@@ -245,7 +245,7 @@ function UserAttachments({ message }: { message: Message }) {
   }
 }
 
-function UserActiveSelections({ message }: { message: Message }) {
+function UserSelections({ message }: { message: Message }) {
   const selectionParts = message.parts.filter(
     (part) => part.type === "data-active-selection",
   ) as {
@@ -256,26 +256,48 @@ function UserActiveSelections({ message }: { message: Message }) {
     };
   }[];
 
-  if (message.role === "user" && selectionParts.length) {
-    return (
-      <div className="mt-2 flex flex-wrap gap-2">
-        {selectionParts.map((part, index) => (
-          <Fragment key={index}>
-            {part.data.activeSelection && (
-              <ActiveSelectionPart
-                activeSelection={part.data.activeSelection}
-              />
-            )}
-            {part.data.activeTerminalTextSelection && (
-              <TerminalSelectionPart
-                terminalTextSelection={part.data.activeTerminalTextSelection}
-              />
-            )}
-          </Fragment>
-        ))}
-      </div>
-    );
+  const terminalContextParts = message.parts.filter(
+    (part) => part.type === "data-terminal-context",
+  ) as {
+    type: "data-terminal-context";
+    data: {
+      textSelections: TerminalTextSelection[];
+    };
+  }[];
+
+  const terminalContextSelections = terminalContextParts.flatMap(
+    (part) => part.data.textSelections,
+  );
+
+  if (
+    message.role !== "user" ||
+    (!selectionParts.length && !terminalContextSelections.length)
+  ) {
+    return;
   }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {selectionParts.map((part, index) => (
+        <Fragment key={index}>
+          {part.data.activeSelection && (
+            <ActiveSelectionPart activeSelection={part.data.activeSelection} />
+          )}
+          {part.data.activeTerminalTextSelection && (
+            <TerminalSelectionPart
+              terminalTextSelection={part.data.activeTerminalTextSelection}
+            />
+          )}
+        </Fragment>
+      ))}
+      {terminalContextSelections.map((textSelection, index) => (
+        <TerminalSelectionPart
+          key={index}
+          terminalTextSelection={textSelection}
+        />
+      ))}
+    </div>
+  );
 }
 
 function Part({
@@ -372,6 +394,10 @@ function Part({
   }
 
   if (part.type === "data-active-selection") {
+    return null;
+  }
+
+  if (part.type === "data-terminal-context") {
     return null;
   }
 

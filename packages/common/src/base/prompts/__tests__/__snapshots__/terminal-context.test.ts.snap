@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderTerminalContext renders a single selection 1`] = `
+"The user has explicitly attached the following text selection(s) from their integrated terminal(s) as context for this message.
+
+<terminal-context-selection terminal="bash" backgroundJobId="term-1">
+\`\`\`
+npm run build
+Build succeeded.
+\`\`\`
+</terminal-context-selection>"
+`;
+
+exports[`renderTerminalContext renders multiple selections and skips empty ones 1`] = `
+"The user has explicitly attached the following text selection(s) from their integrated terminal(s) as context for this message.
+
+<terminal-context-selection terminal="bash" backgroundJobId="term-1">
+\`\`\`
+npm run build
+Build succeeded.
+\`\`\`
+</terminal-context-selection>
+
+<terminal-context-selection terminal="zsh" backgroundJobId="term-2">
+\`\`\`
+git status
+\`\`\`
+</terminal-context-selection>"
+`;

@@ -36,6 +36,7 @@ export interface DraftMessage {
     filesCount?: number;
     reviewsCount?: number;
     userEditsCount?: number;
+    terminalContextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
     activeTerminalTextSelection?: TerminalTextSelection;
@@ -58,6 +59,8 @@ interface UseChatSubmitProps {
   setQueuedMessages: React.Dispatch<React.SetStateAction<DraftMessage[]>>;
   reviews: Review[];
   userEdits: FileDiff[];
+  terminalContextSelections: TerminalTextSelection[];
+  clearTerminalContextSelections: () => void;
   taskId: string;
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
@@ -85,6 +88,8 @@ export function useChatSubmit({
   setQueuedMessages,
   reviews,
   userEdits,
+  terminalContextSelections,
+  clearTerminalContextSelections,
   taskId,
   isTodoMode = false,
   canCreateTodo = true,
@@ -166,11 +171,13 @@ export function useChatSubmit({
     const text = input.text.trim();
     const currentFiles = [...files];
     const currentReviews = [...reviews];
+    const currentTerminalContextSelections = [...terminalContextSelections];
 
     if (
       text.length === 0 &&
       currentFiles.length === 0 &&
-      currentReviews.length === 0
+      currentReviews.length === 0 &&
+      currentTerminalContextSelections.length === 0
     ) {
       return undefined;
     }
@@ -181,9 +188,13 @@ export function useChatSubmit({
 
     // Terminal selection can only be read on demand (there's no reactive
     // VS Code API for it), so this is the only chance to snapshot it.
-    const currentTerminalTextSelection = isVSCodeEnvironment()
-      ? await vscodeHost.readTerminalSelection()
-      : undefined;
+    // If the user has manually attached terminal context via the "Add to
+    // Chat" flow, skip this implicit capture so the same terminal content
+    // isn't duplicated on the message via two different mechanisms.
+    const currentTerminalTextSelection =
+      currentTerminalContextSelections.length === 0 && isVSCodeEnvironment()
+        ? await vscodeHost.readTerminalSelection()
+        : undefined;
 
     let uploadedAttachments: FileUIPart[] = [];
     if (currentFiles.length > 0) {
@@ -203,12 +214,16 @@ export function useChatSubmit({
     if (currentReviews.length > 0) {
       vscodeHost.deleteReviews(currentReviews.map((review) => review.id));
     }
+    if (currentTerminalContextSelections.length > 0) {
+      clearTerminalContextSelections();
+    }
 
     const raw = {
       text,
       filesCount: currentFiles.length,
       reviewsCount: currentReviews.length,
       userEditsCount: currentUserEdits.length,
+      terminalContextCount: currentTerminalContextSelections.length,
       isTodoMode,
       activeSelection: currentSelection,
       activeTerminalTextSelection: currentTerminalTextSelection,
@@ -221,6 +236,7 @@ export function useChatSubmit({
       currentUserEdits,
       currentSelection,
       currentTerminalTextSelection,
+      currentTerminalContextSelections,
     );
 
     return { parts, raw };
@@ -230,6 +246,8 @@ export function useChatSubmit({
     files,
     reviews,
     userEdits,
+    terminalContextSelections,
+    clearTerminalContextSelections,
     activeSelection,
     upload,
     clearFiles,

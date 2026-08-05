@@ -26,7 +26,10 @@ import {
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { getVendor } from "@getpochi/common/vendor";
-import type { PochiTaskParams } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  PochiTaskParams,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { container, inject, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -51,7 +54,13 @@ import {
   ReviewController,
   type Thread,
 } from "./review-controller";
-import { PochiTaskEditorProvider } from "./webview/webview-panel";
+import { readTerminalSelection as readTerminalSelectionFromClipboard } from "./terminal/read-terminal-selection";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { TerminalState } from "./terminal/terminal-state";
+import {
+  PochiTaskEditorProvider,
+  PochiWebviewPanel,
+} from "./webview/webview-panel";
 
 const logger = getLogger("CommandManager");
 
@@ -73,6 +82,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly reviewController: ReviewController,
     private readonly layoutManager: LayoutManager,
+    private readonly terminalState: TerminalState,
   ) {
     this.registerCommands();
     if (EditorPredictionsAvailable) {
@@ -641,7 +651,42 @@ export class CommandManager implements vscode.Disposable {
           await this.reviewController.cancelEditComment(comment);
         },
       ),
+
+      vscode.commands.registerCommand("pochi.terminal.addToChat", async () => {
+        const terminal = vscode.window.activeTerminal;
+        if (!terminal) return;
+
+        const selection = await readTerminalSelectionFromClipboard(
+          terminal,
+          this.terminalState.getTerminalId(terminal),
+        );
+        if (!selection) return;
+
+        await this.sendTerminalContextToActiveChat(selection);
+      }),
     );
+  }
+
+  /**
+   * Sends a terminal text selection to the currently active Pochi chat tab
+   * and brings it to the foreground. Falls back to the sidebar (focusing
+   * it) if no chat tab is currently open.
+   */
+  private async sendTerminalContextToActiveChat(
+    selection: TerminalTextSelection,
+  ): Promise<void> {
+    const activeTab = findActivePochiTaskTab();
+    const uid = activeTab
+      ? PochiTaskEditorProvider.parseTaskUri(activeTab.input.uri)?.uid
+      : undefined;
+
+    if (uid && PochiWebviewPanel.addTerminalContext(uid, selection)) {
+      return;
+    }
+
+    await this.focusSidebar();
+    const webviewHost = await this.pochiWebviewSidebar.retrieveWebviewHost();
+    webviewHost.addTerminalContext(selection);
   }
 
   private registerEditorPredictionCommands(): vscode.Disposable[] {

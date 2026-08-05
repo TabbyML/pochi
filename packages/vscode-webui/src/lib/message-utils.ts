@@ -18,6 +18,7 @@ export function prepareMessageParts(
   userEdits?: UserEdits,
   activeSelection?: ActiveSelection,
   activeTerminalTextSelection?: TerminalTextSelection,
+  terminalContextSelections?: TerminalTextSelection[],
 ) {
   const parts: Message["parts"] = [];
   for (const x of files) {
@@ -54,9 +55,37 @@ export function prepareMessageParts(
     });
   }
 
-  let fallbackPrompt = "";
+  if (terminalContextSelections && terminalContextSelections.length > 0) {
+    parts.push({
+      type: "data-terminal-context",
+      data: { textSelections: terminalContextSelections },
+    });
+  }
+
+  const attachedContextLabels: string[] = [];
   if (files.length) {
-    fallbackPrompt = t("chat.pleaseCheckFiles") as string;
+    attachedContextLabels.push(t("chat.contextLabelFiles") as string);
+  }
+  if (reviews.length) {
+    attachedContextLabels.push(t("chat.contextLabelReviews") as string);
+  }
+  if (terminalContextSelections?.length) {
+    attachedContextLabels.push(
+      t("chat.contextLabelTerminalSelections") as string,
+    );
+  }
+
+  let fallbackPrompt = "";
+  if (attachedContextLabels.length) {
+    // Use the runtime's default locale (rather than importing the i18next
+    // singleton) to avoid pulling i18n/config.ts - and its side-effecting
+    // `.use(initReactI18next)` init call - into this module, which breaks
+    // tests that partially mock "react-i18next".
+    const items = new Intl.ListFormat(undefined, {
+      style: "long",
+      type: "conjunction",
+    }).format(attachedContextLabels);
+    fallbackPrompt = t("chat.pleaseCheckAttachedContext", { items }) as string;
   }
 
   const finalPrompt = prompt || fallbackPrompt;

@@ -10,9 +10,14 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
+import { TerminalContextBadges } from "@/components/prompt-form/terminal-context-badges";
 import { UserEdits } from "@/components/prompt-form/user-edits";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
-import type { FileDiff, Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  FileDiff,
+  Review,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import type { ChatInput } from "../hooks/use-chat-input-state";
 import type { DraftMessage } from "../hooks/use-chat-submit";
@@ -37,6 +42,8 @@ interface ChatInputFormProps {
   userEdits?: FileDiff[];
   lastCheckpointHash?: string;
   onRemoveUserEdits?: () => void;
+  terminalContextSelections?: TerminalTextSelection[];
+  onRemoveTerminalContextSelection?: (index: number) => void;
   onSwitchSubmitMode?: () => void;
   isPlanMode?: boolean;
   onSelectTodoMode?: () => void;
@@ -76,6 +83,8 @@ export const ChatInputForm = forwardRef<
     userEdits = [],
     lastCheckpointHash,
     onRemoveUserEdits,
+    terminalContextSelections = [],
+    onRemoveTerminalContextSelection,
     children,
     onSwitchSubmitMode,
     onSelectTodoMode,
@@ -145,6 +154,10 @@ export const ChatInputForm = forwardRef<
           todoModeDisabled={todoModeDisabled}
         />
         <ActiveSelectionBadge />
+        <TerminalContextBadges
+          selections={terminalContextSelections}
+          onRemove={onRemoveTerminalContextSelection}
+        />
         {userEdits.length > 0 && lastCheckpointHash && (
           <UserEdits
             userEdits={userEdits}

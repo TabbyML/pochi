@@ -42,10 +42,14 @@
     "fileCount": "{{count}} 个文件",
     "reviewCount": "{{count}} 条评审",
     "userEditCount": "{{count}} 处编辑",
+    "terminalContextCount": "{{count}} 个终端选区",
     "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",
-    "pleaseCheckFiles": "请检查这些附件。",
+    "contextLabelFiles": "附件",
+    "contextLabelReviews": "评审",
+    "contextLabelTerminalSelections": "终端选区",
+    "pleaseCheckAttachedContext": "请检查已附加的{{items}}。",
     "chatToolbar": {
       "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
       "openInTerminal": "在集成终端中打开"
@@ -440,6 +444,9 @@
     "cell": "单元格",
     "addContext": "添加上下文",
     "terminal": "终端"
+  },
+  "terminalContextBadge": {
+    "remove": "从上下文中移除终端选区"
   },
   "todoModeBadge": {
     "remove": "移除 Todo 模式"

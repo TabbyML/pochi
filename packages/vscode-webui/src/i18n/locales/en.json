@@ -44,10 +44,14 @@
     "fileCount": "{{count}} files",
     "reviewCount": "{{count}} reviews",
     "userEditCount": "{{count}} edits",
+    "terminalContextCount": "{{count}} terminal selections",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
-    "pleaseCheckFiles": "Please check these attachments.",
+    "contextLabelFiles": "files",
+    "contextLabelReviews": "reviews",
+    "contextLabelTerminalSelections": "terminal selections",
+    "pleaseCheckAttachedContext": "Please check the attached {{items}}.",
     "chatToolbar": {
       "diffWorktreeWith": "Diff worktree with {{branch}}",
       "openInTerminal": "Open in Integrated Terminal"
@@ -448,6 +452,9 @@
     "cell": "Cell",
     "addContext": "Add Context",
     "terminal": "Terminal"
+  },
+  "terminalContextBadge": {
+    "remove": "Remove terminal selection from context"
   },
   "todoModeBadge": {
     "remove": "Remove todo mode"
