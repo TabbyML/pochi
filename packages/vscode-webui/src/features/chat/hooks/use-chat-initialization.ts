@@ -50,7 +50,6 @@ export function useChatInitialization({
       }
 
       const activeSelection = info.activeSelection;
-      const activeTerminalTextSelection = info.activeTerminalTextSelection;
       const terminalContextSelections = info.terminalContextSelections;
       const files = info.files?.map((file) => ({
         type: "file" as const,
@@ -61,7 +60,6 @@ export function useChatInitialization({
       const shouldUseParts =
         (files?.length ?? 0) > 0 ||
         !!activeSelection ||
-        !!activeTerminalTextSelection ||
         (terminalContextSelections?.length ?? 0) > 0;
 
       if (shouldUseParts) {
@@ -74,7 +72,6 @@ export function useChatInitialization({
             [],
             undefined,
             activeSelection,
-            activeTerminalTextSelection,
             terminalContextSelections,
           ),
         });

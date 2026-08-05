@@ -4,9 +4,7 @@ import { create } from "zustand";
 /**
  * Accumulates terminal text selections that the user explicitly attaches to
  * the next outgoing message via the "Add to Chat" terminal context menu
- * action (pushed from the VS Code host). This is intentionally kept separate
- * from the implicit "currently selected terminal text" capture performed at
- * submit time (see `useActiveSelection` / `readTerminalSelection`).
+ * action (pushed from the VS Code host).
  */
 export interface TerminalContextState {
   selections: TerminalTextSelection[];

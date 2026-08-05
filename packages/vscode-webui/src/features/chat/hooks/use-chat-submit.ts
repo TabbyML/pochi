@@ -1,7 +1,7 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { prepareMessageParts } from "@/lib/message-utils";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
@@ -39,6 +39,11 @@ export interface DraftMessage {
     terminalContextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
+    /**
+     * @deprecated No longer implicitly captured/populated when creating a
+     * draft message; kept only so any code still reading it (e.g. queued
+     * message previews) keeps compiling.
+     */
     activeTerminalTextSelection?: TerminalTextSelection;
   };
 }
@@ -182,19 +187,9 @@ export function useChatSubmit({
       return undefined;
     }
 
-    // Capture the user's selection context (editor + terminal) right now.
+    // Capture the user's selection context (editor) right now.
     const currentUserEdits = [...userEdits];
     const currentSelection = activeSelection;
-
-    // Terminal selection can only be read on demand (there's no reactive
-    // VS Code API for it), so this is the only chance to snapshot it.
-    // If the user has manually attached terminal context via the "Add to
-    // Chat" flow, skip this implicit capture so the same terminal content
-    // isn't duplicated on the message via two different mechanisms.
-    const currentTerminalTextSelection =
-      currentTerminalContextSelections.length === 0 && isVSCodeEnvironment()
-        ? await vscodeHost.readTerminalSelection()
-        : undefined;
 
     let uploadedAttachments: FileUIPart[] = [];
     if (currentFiles.length > 0) {
@@ -226,7 +221,6 @@ export function useChatSubmit({
       terminalContextCount: currentTerminalContextSelections.length,
       isTodoMode,
       activeSelection: currentSelection,
-      activeTerminalTextSelection: currentTerminalTextSelection,
     };
     const parts = prepareMessageParts(
       t,
@@ -235,7 +229,6 @@ export function useChatSubmit({
       currentReviews,
       currentUserEdits,
       currentSelection,
-      currentTerminalTextSelection,
       currentTerminalContextSelections,
     );
 

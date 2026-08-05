@@ -180,16 +180,6 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<ActiveSelection | undefined>
   >;
 
-  /**
-   * Reads the text currently selected in the active terminal, if any.
-   *
-   * This is a one-shot, on-demand read (not reactive): VS Code has no stable
-   * API to observe or read a terminal's current selection. It works by
-   * briefly copying the terminal selection to the clipboard and restoring
-   * the clipboard's original content afterwards.
-   */
-  readTerminalSelection(): Promise<TerminalTextSelection | undefined>;
-
   readVisibleTerminals(): Promise<{
     terminals: ThreadSignalSerialization<
       Environment["workspace"]["terminals"] | undefined

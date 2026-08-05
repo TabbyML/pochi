@@ -28,6 +28,11 @@ export type DataParts = {
   };
   "active-selection": {
     activeSelection?: ActiveSelection;
+    /**
+     * @deprecated Terminal selections are no longer implicitly captured and
+     * attached to outgoing messages. This field is kept read-only so
+     * previously persisted messages that still carry it can be rendered.
+     */
     activeTerminalTextSelection?: TerminalTextSelection;
   };
   "terminal-context": {

@@ -19,8 +19,6 @@ const messageUtilsMocks = vi.hoisted(() => ({
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
-  readTerminalSelection: vi.fn(async () => undefined as unknown),
-  isVSCodeEnvironment: { value: false },
 }));
 const activeSelectionMock = vi.hoisted(() => ({
   value: undefined as ActiveSelection | undefined,
@@ -47,10 +45,8 @@ vi.mock("@/lib/message-utils", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
-  isVSCodeEnvironment: () => vscodeMocks.isVSCodeEnvironment.value,
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
-    readTerminalSelection: vscodeMocks.readTerminalSelection,
   },
 }));
 
@@ -67,10 +63,7 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
-    vscodeMocks.readTerminalSelection.mockReset();
-    vscodeMocks.readTerminalSelection.mockResolvedValue(undefined);
     userEditsMocks.userEdits = [];
-    vscodeMocks.isVSCodeEnvironment.value = false;
     activeSelectionMock.value = undefined;
   });
 
@@ -355,16 +348,8 @@ describe("useChatSubmit", () => {
       },
       content: "queue-time selection",
     };
-    const queueTimeTerminalSelection: TerminalTextSelection = {
-      terminalName: "queue-time terminal",
-      content: "queue-time terminal text",
-    };
 
-    vscodeMocks.isVSCodeEnvironment.value = true;
     activeSelectionMock.value = queueTimeActiveSelection;
-    vscodeMocks.readTerminalSelection.mockResolvedValue(
-      queueTimeTerminalSelection,
-    );
 
     const context = setup({ isLoading: true });
 
@@ -374,12 +359,10 @@ describe("useChatSubmit", () => {
       await context.result.current.handleSubmit();
     });
 
-    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(context.queuedMessages).toEqual([
       draftMessage({
         text: "follow up",
         activeSelection: queueTimeActiveSelection,
-        activeTerminalTextSelection: queueTimeTerminalSelection,
       }),
     ]);
 
@@ -392,10 +375,6 @@ describe("useChatSubmit", () => {
       },
       content: "send-time selection",
     };
-    vscodeMocks.readTerminalSelection.mockResolvedValue({
-      terminalName: "send-time terminal",
-      content: "send-time terminal text",
-    });
 
     let steerPromise: Promise<void>;
     await act(async () => {
@@ -412,7 +391,6 @@ describe("useChatSubmit", () => {
 
     // The message was already fully prepared at queue time, so flushing it
     // must not re-read the selection context.
-    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(context.sendMessage).toHaveBeenCalledWith({
       parts: ["text:follow up"],
     });
@@ -427,16 +405,8 @@ describe("useChatSubmit", () => {
       },
       content: "fresh selection",
     };
-    const sendTimeTerminalSelection: TerminalTextSelection = {
-      terminalName: "fresh terminal",
-      content: "fresh terminal text",
-    };
 
-    vscodeMocks.isVSCodeEnvironment.value = true;
     activeSelectionMock.value = sendTimeActiveSelection;
-    vscodeMocks.readTerminalSelection.mockResolvedValue(
-      sendTimeTerminalSelection,
-    );
 
     const context = setup({ isLoading: false });
 
@@ -444,7 +414,6 @@ describe("useChatSubmit", () => {
       await context.result.current.handleSubmit();
     });
 
-    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
       expect.any(Function),
       "follow up",
@@ -452,7 +421,6 @@ describe("useChatSubmit", () => {
       [],
       [],
       sendTimeActiveSelection,
-      sendTimeTerminalSelection,
       [],
     );
   });
@@ -482,7 +450,6 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
-      undefined,
       [],
     );
   });
@@ -511,7 +478,6 @@ describe("useChatSubmit", () => {
       [],
       [],
       [],
-      undefined,
       undefined,
       [],
     );
@@ -554,7 +520,6 @@ describe("useChatSubmit", () => {
       [],
       queuedUserEdits,
       undefined,
-      undefined,
       [],
     );
   });
@@ -578,11 +543,10 @@ describe("useChatSubmit", () => {
     });
   });
 
-  it("skips the implicit active-terminal-selection capture when terminal context selections are attached, and clears them after sending", async () => {
+  it("sends attached terminal context selections and clears them after sending", async () => {
     const terminalContextSelections: TerminalTextSelection[] = [
       { terminalName: "bash", content: "echo hi" },
     ];
-    vscodeMocks.isVSCodeEnvironment.value = true;
 
     const context = setup({
       isLoading: false,
@@ -593,7 +557,6 @@ describe("useChatSubmit", () => {
       await context.result.current.handleSubmit();
     });
 
-    expect(vscodeMocks.readTerminalSelection).not.toHaveBeenCalled();
     expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
       expect.any(Function),
       "follow up",
@@ -601,26 +564,18 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
-      undefined,
       terminalContextSelections,
     );
     expect(context.clearTerminalContextSelections).toHaveBeenCalledOnce();
   });
 
-  it("still reads the implicit active-terminal-selection when no terminal context selections are attached", async () => {
-    vscodeMocks.isVSCodeEnvironment.value = true;
-    vscodeMocks.readTerminalSelection.mockResolvedValue({
-      terminalName: "bash",
-      content: "implicit capture",
-    });
-
+  it("does not clear terminal context selections when none are attached", async () => {
     const context = setup({ isLoading: false });
 
     await act(async () => {
       await context.result.current.handleSubmit();
     });
 
-    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(context.clearTerminalContextSelections).not.toHaveBeenCalled();
   });
 });

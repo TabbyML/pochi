@@ -25,7 +25,6 @@ export type PochiTaskParams = { cwd: string } & (
       todos?: Todo[];
       files?: FileUIPart[];
       activeSelection?: ActiveSelection;
-      activeTerminalTextSelection?: TerminalTextSelection;
       terminalContextSelections?: TerminalTextSelection[];
       mcpConfigOverride?: McpConfigOverride;
     }
