@@ -466,7 +466,7 @@
     "complete": "完成"
   },
   "errorMessageView": {
-    "contentFilter": "服务提供商的安全过滤阻止了此次回答。你可以修改请求或重试。",
+    "contentFilter": "安全过滤阻止了此次回答。请尝试换一种方式表达，或重试。",
     "reachedCreditLimit": "您已达到消费限额。",
     "seeMore": "查看更多",
     "teamReachedCreditLimit": "您的团队已达到消费限额。",

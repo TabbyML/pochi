@@ -30,15 +30,6 @@ export function useRetry({
 
       if (
         error instanceof ReadyForRetryError &&
-        error.kind === "content-filter"
-      ) {
-        return regenerate({
-          messageId: lastMessage.id,
-        });
-      }
-
-      if (
-        error instanceof ReadyForRetryError &&
         error.kind === "no-tool-calls"
       ) {
         return sendMessage({

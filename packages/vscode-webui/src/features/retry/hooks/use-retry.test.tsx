@@ -130,14 +130,26 @@ describe("useRetry", () => {
     );
   });
 
-  it("regenerates a content-filtered assistant response", async () => {
+  it("continues from a content-filtered assistant response", async () => {
+    const clearFileStateCache = vi.fn();
     const setMessages = vi.fn();
     const sendMessage = vi.fn();
     const regenerate = vi.fn();
     const message = {
       id: "assistant-content-filtered",
       role: "assistant",
-      parts: [{ type: "text", text: "Request refused." }],
+      parts: [
+        { type: "step-start" },
+        {
+          type: "tool-readFile",
+          toolCallId: "call-read-file",
+          state: "output-available",
+          input: { path: "src/app.ts" },
+          output: { content: "const answer = 42;", isTruncated: false },
+        },
+        { type: "step-start" },
+        { type: "text", text: "Request refused." },
+      ],
       metadata: {
         kind: "assistant",
         totalTokens: 10,
@@ -151,6 +163,7 @@ describe("useRetry", () => {
         setMessages,
         sendMessage,
         regenerate,
+        clearFileStateCache,
       }),
     );
 
@@ -158,11 +171,10 @@ describe("useRetry", () => {
       await result.current(new ReadyForRetryError("content-filter"));
     });
 
-    expect(regenerate).toHaveBeenCalledWith({
-      messageId: "assistant-content-filtered",
-    });
-    expect(setMessages).not.toHaveBeenCalled();
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(setMessages).toHaveBeenCalledWith([message]);
+    expect(sendMessage).toHaveBeenCalledWith(undefined);
+    expect(clearFileStateCache).not.toHaveBeenCalled();
+    expect(regenerate).not.toHaveBeenCalled();
   });
 });
 

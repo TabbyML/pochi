@@ -468,7 +468,7 @@
     "complete": "完了"
   },
   "errorMessageView": {
-    "contentFilter": "プロバイダーの安全フィルターにより応答が停止されました。リクエストを修正するか、再試行してください。",
+    "contentFilter": "安全フィルターにより応答が停止されました。メッセージを言い換えるか、再試行してください。",
     "reachedCreditLimit": "支出限度額に達しました。",
     "seeMore": "詳細を見る",
     "teamReachedCreditLimit": "チームが支出限度額に達しました。",

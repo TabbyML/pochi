@@ -474,7 +474,7 @@
     "complete": "Complete"
   },
   "errorMessageView": {
-    "contentFilter": "The provider's safety filter prevented a response. Revise your request or retry.",
+    "contentFilter": "A safety filter stopped the response. Try rephrasing your message or retry.",
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",

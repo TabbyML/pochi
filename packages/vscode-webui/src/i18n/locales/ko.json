@@ -466,7 +466,7 @@
     "complete": "완료"
   },
   "errorMessageView": {
-    "contentFilter": "제공업체의 안전 필터로 인해 응답이 차단되었습니다. 요청을 수정하거나 다시 시도하세요.",
+    "contentFilter": "안전 필터로 인해 응답이 중단되었습니다. 메시지를 바꿔 표현하거나 다시 시도해 보세요.",
     "reachedCreditLimit": "지출 한도에 도달했습니다.",
     "seeMore": "더 보기",
     "teamReachedCreditLimit": "팀이 지출 한도에 도달했습니다.",
