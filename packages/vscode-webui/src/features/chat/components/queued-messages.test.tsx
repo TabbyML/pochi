@@ -1,8 +1,5 @@
 // @vitest-environment jsdom
-import type {
-  ActiveSelection,
-  TerminalTextSelection,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { DraftMessage } from "../hooks/use-chat-submit";
@@ -20,10 +17,6 @@ vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     openFile: vi.fn(),
   },
-}));
-
-vi.mock("@/lib/hooks/use-visible-terminals", () => ({
-  useVisibleTerminals: () => ({ openBackgroundJobTerminal: vi.fn() }),
 }));
 
 describe("QueuedMessages", () => {
@@ -114,29 +107,6 @@ describe("QueuedMessages", () => {
     expect(container.textContent).not.toContain("foo.ts");
   });
 
-  it("renders a minimal icon-only preview for the active terminal selection captured at queue time", () => {
-    const activeTerminalTextSelection: TerminalTextSelection = {
-      terminalName: "bash",
-      content: "echo hello",
-    };
-
-    const { container, getByLabelText } = render(
-      <QueuedMessages
-        messages={[
-          queuedMessage({
-            text: "check this",
-            activeTerminalTextSelection,
-          }),
-        ]}
-        onRemove={vi.fn()}
-      />,
-    );
-
-    // Icon-only trigger, keyed to the terminal name, without a visible name label.
-    expect(getByLabelText("activeSelectionBadge.terminal: bash")).toBeTruthy();
-    expect(container.textContent).not.toContain("bash");
-  });
-
   it("disables the steer button when allowSteer is false", () => {
     const { getByLabelText } = render(
       <QueuedMessages
@@ -176,7 +146,6 @@ function queuedMessage({
   userEditsCount = 0,
   terminalContextCount = 0,
   activeSelection,
-  activeTerminalTextSelection,
 }: {
   text: string;
   isTodoMode?: boolean;
@@ -185,7 +154,6 @@ function queuedMessage({
   userEditsCount?: number;
   terminalContextCount?: number;
   activeSelection?: ActiveSelection;
-  activeTerminalTextSelection?: TerminalTextSelection;
 }): DraftMessage {
   return {
     parts: [],
@@ -197,7 +165,6 @@ function queuedMessage({
       terminalContextCount,
       isTodoMode,
       activeSelection,
-      activeTerminalTextSelection,
     },
   };
 }

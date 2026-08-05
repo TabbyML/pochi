@@ -1,7 +1,4 @@
-import {
-  renderActiveSelection,
-  renderTerminalTextSelection,
-} from "./active-selection";
+import { renderActiveSelection } from "./active-selection";
 import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
 export { assertBackgroundJobReadInterval } from "./background-job";
 import {
@@ -51,7 +48,6 @@ export const prompts = {
   skill: createSkillPrompt,
   renderReviewComments,
   renderActiveSelection,
-  renderTerminalTextSelection,
   renderTerminalContext,
   renderUserEdits,
   renderBashOutputs,

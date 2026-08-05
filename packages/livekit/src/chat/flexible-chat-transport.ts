@@ -462,15 +462,10 @@ export function convertDataPartToText(
     };
   }
   if (part.type === "data-active-selection") {
-    const texts = [
+    const text =
       part.data.activeSelection &&
-        prompts.renderActiveSelection(part.data.activeSelection),
-      part.data.activeTerminalTextSelection &&
-        prompts.renderTerminalTextSelection(
-          part.data.activeTerminalTextSelection,
-        ),
-    ].filter((text): text is string => !!text);
-    return texts.map((text) => ({ type: "text" as const, text }));
+      prompts.renderActiveSelection(part.data.activeSelection);
+    return text ? [{ type: "text" as const, text }] : [];
   }
   if (part.type === "data-terminal-context") {
     const text = prompts.renderTerminalContext(part.data.textSelections);

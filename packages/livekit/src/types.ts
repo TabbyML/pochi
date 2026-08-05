@@ -28,7 +28,6 @@ export type DataParts = {
   };
   "active-selection": {
     activeSelection?: ActiveSelection;
-    activeTerminalTextSelection?: TerminalTextSelection;
   };
   "terminal-context": {
     textSelections: TerminalTextSelection[];

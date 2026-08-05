@@ -51,51 +51,6 @@ describe("convertDataPartToText", () => {
     expect(result[0].text).toContain("const x = 1;");
   });
 
-  it("renders only the terminal selection when only that field is set", () => {
-    const part = {
-      type: "data-active-selection",
-      data: {
-        activeTerminalTextSelection: {
-          terminalName: "bash",
-          backgroundJobId: "term-1",
-          content: "echo hello",
-        },
-      },
-    } as unknown as MessagePart;
-
-    const result = convertDataPartToText(part) as { type: string; text: string }[];
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe("text");
-    expect(result[0].text).toContain("active-terminal-selection");
-    expect(result[0].text).toContain("echo hello");
-  });
-
-  it("renders both file and terminal selections when both fields are set", () => {
-    const part = {
-      type: "data-active-selection",
-      data: {
-        activeSelection: {
-          filepath: "src/main.ts",
-          range: {
-            start: { line: 0, character: 0 },
-            end: { line: 1, character: 0 },
-          },
-          content: "const x = 1;",
-        },
-        activeTerminalTextSelection: {
-          terminalName: "bash",
-          backgroundJobId: "term-1",
-          content: "echo hello",
-        },
-      },
-    } as unknown as MessagePart;
-
-    const result = convertDataPartToText(part) as { type: string; text: string }[];
-    expect(result).toHaveLength(2);
-    expect(result[0].text).toContain("active-selection");
-    expect(result[1].text).toContain("terminal-selection");
-  });
-
   it("returns no parts when data-terminal-context has no selections", () => {
     const part = {
       type: "data-terminal-context",

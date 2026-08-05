@@ -106,7 +106,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "listAutoCompleteCandidates",
         "readActiveTabs",
         "readActiveSelection",
-        "readTerminalSelection",
         "readCurrentWorkspace",
         "openFile",
         "readResourceURI",

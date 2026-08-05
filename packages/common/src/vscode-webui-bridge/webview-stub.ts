@@ -9,7 +9,6 @@ import type {
   ContextWindowUsage,
   Environment,
   TaskMemoryState,
-  TerminalTextSelection,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
@@ -146,9 +145,6 @@ const VSCodeHostStub = {
     return Promise.resolve(
       {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
-  },
-  readTerminalSelection: (): Promise<TerminalTextSelection | undefined> => {
-    return Promise.resolve(undefined);
   },
   openFile: (
     _filePath: string,
