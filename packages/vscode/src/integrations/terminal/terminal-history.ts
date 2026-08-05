@@ -51,6 +51,16 @@ export class TerminalHistoryManager {
   private lastReadLength = 0; // tracks byte length, not character length
   private lastReadAt = 0;
 
+  /**
+   * The terminal's display name, refreshed on each command start. A snapshot:
+   * VS Code terminal names follow `terminal.integrated.tabs.title` (default
+   * `${process}`) and there is no stable API event for name changes.
+   */
+  terminalName?: string;
+
+  /** The most recent command run in the terminal. */
+  lastCommand?: string;
+
   private constructor(public readonly id: string) {}
 
   static getOrCreate(id: string): TerminalHistoryManager {
@@ -76,6 +86,7 @@ export class TerminalHistoryManager {
    * (added separately via {@link addChunk}).
    */
   beginCommand(command: string, cwd?: string): void {
+    this.lastCommand = command;
     const header = cwd ? `${cwd}$ ${command}\n` : `$ ${command}\n`;
     this.addChunk(header);
   }

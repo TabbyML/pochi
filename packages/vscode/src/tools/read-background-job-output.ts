@@ -23,6 +23,8 @@ export const readBackgroundJobOutput: ToolFunctionType<
       isTruncated: output.isTruncated,
       status: output.status,
       error: output.error,
+      terminalName: history.terminalName,
+      lastCommand: history.lastCommand,
     };
   }
 

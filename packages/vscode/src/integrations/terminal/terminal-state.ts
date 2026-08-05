@@ -120,6 +120,7 @@ export class TerminalState implements vscode.Disposable {
     // time, the same way it would look in the terminal itself, instead of
     // being wiped out by the next command.
     const history = TerminalHistoryManager.getOrCreate(id);
+    history.terminalName = event.terminal.name;
     const cwd = event.terminal.shellIntegration?.cwd?.fsPath;
     history.beginCommand(command, cwd);
 

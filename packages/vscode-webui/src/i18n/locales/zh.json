@@ -510,6 +510,8 @@
     "collapse": "收起",
     "expand": "展开",
     "openJob": "打开任务 {{displayId}}",
+    "openTerminal": "打开终端 {{name}}",
+    "userTerminal": "用户终端",
     "stop": "停止"
   },
   "liveSubTask": {

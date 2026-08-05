@@ -9,6 +9,7 @@ import { useBackgroundJobInfo } from "@/features/chat";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
+import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import {
@@ -129,6 +130,34 @@ const BackgroundJobIdButton: FC<{
   );
 };
 
+const OpenTerminalButton: FC<{
+  name: string;
+  isActive?: boolean;
+  onClick: () => void;
+}> = ({ name, isActive, onClick }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="sm"
+          className={cn("size-[16px] rounded-sm ring-primary", {
+            "ring-1": isActive,
+          })}
+          variant="secondary"
+          onClick={onClick}
+        >
+          <TerminalIcon className="size-3" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span>{t("commandExecutionPanel.openTerminal", { name })}</span>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 export const CommandPanelContainer: FC<{
   icon: React.ReactNode;
   title: React.ReactNode;
@@ -195,24 +224,35 @@ export const CommandPanelContainer: FC<{
 export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
-  /** Leading icon rendered before the job id button (e.g. monitor Activity). */
   icon?: React.ReactNode;
-}> = ({ backgroundJobId, output, icon }) => {
+  /** Terminal name snapshot from the tool output (term- ids only). */
+  terminalName?: string;
+  /** Last command run in the terminal, from the tool output (term- ids only). */
+  lastCommand?: string;
+}> = ({ backgroundJobId, output, icon, terminalName, lastCommand }) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
   const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
-  const hasCommand = Boolean(info?.command);
-  const title = info?.command ?? backgroundJobId;
-  const isActive = useMemo(
-    () =>
-      backgroundJobId
-        ? terminals?.some(
-            (t) => t.backgroundJobId === backgroundJobId && t.isActive,
-          )
-        : false,
+  const isUserTerminal = backgroundJobId.startsWith("term-");
+  // Live name wins over the snapshot: the terminal may have been renamed
+  // since the read. The snapshot keeps historical reads meaningful after the
+  // terminal is closed.
+  const liveTerminal = useMemo(
+    () => terminals?.find((tm) => tm.backgroundJobId === backgroundJobId),
     [backgroundJobId, terminals],
   );
+  const hasCommand = Boolean(info?.command);
+  const copyCommand = info?.command ?? lastCommand;
+  const displayTerminalName = formatTerminalDisplayName(
+    liveTerminal?.name ?? terminalName,
+    lastCommand,
+  );
+  const title = isUserTerminal
+    ? (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
+    : (info?.command ?? backgroundJobId);
+  const isActive = liveTerminal?.isActive ?? false;
 
   const openTerminal = useCallback(() => {
     openBackgroundJobTerminal?.(backgroundJobId);
@@ -223,13 +263,22 @@ export const BackgroundJobPanel: FC<{
       icon={
         <>
           {icon}
-          {hasCommand && info?.displayId && (
-            <BackgroundJobIdButton
-              displayId={info.displayId}
-              isActive={isActive}
-              onClick={openTerminal}
-            />
-          )}
+          {isUserTerminal
+            ? liveTerminal && (
+                <OpenTerminalButton
+                  name={liveTerminal.name}
+                  isActive={isActive}
+                  onClick={openTerminal}
+                />
+              )
+            : hasCommand &&
+              info?.displayId && (
+                <BackgroundJobIdButton
+                  displayId={info.displayId}
+                  isActive={isActive}
+                  onClick={openTerminal}
+                />
+              )}
         </>
       }
       title={title}
@@ -239,7 +288,7 @@ export const BackgroundJobPanel: FC<{
           {output && (
             <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
           )}
-          {info?.command && <CopyCommandButton command={info?.command} />}
+          {copyCommand && <CopyCommandButton command={copyCommand} />}
         </>
       }
       output={output}

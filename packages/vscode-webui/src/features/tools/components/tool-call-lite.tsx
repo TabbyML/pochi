@@ -1,3 +1,4 @@
+import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { UITools } from "@getpochi/livekit";
@@ -225,6 +226,12 @@ const ReadBackgroundJobTool = ({
   const { t } = useTranslation();
   const { backgroundJobId } = tool.input || {};
   const isUserTerminal = backgroundJobId?.startsWith("term-");
+  const terminalDisplayName = isUserTerminal
+    ? formatTerminalDisplayName(
+        tool.output?.terminalName,
+        tool.output?.lastCommand,
+      )
+    : undefined;
   return (
     <>
       <span className="ml-2">
@@ -232,6 +239,12 @@ const ReadBackgroundJobTool = ({
           ? t("toolInvocation.readTerminal")
           : t("toolInvocation.readBackground")}
       </span>
+      {terminalDisplayName && (
+        <>
+          {" "}
+          <HighlightedText>{terminalDisplayName}</HighlightedText>
+        </>
+      )}
     </>
   );
 };

@@ -26,6 +26,18 @@ const toolDef = {
       .boolean()
       .optional()
       .describe("Whether the output was truncated"),
+    terminalName: z
+      .string()
+      .optional()
+      .describe(
+        "For user-opened terminals (term-), the terminal's display name at read time.",
+      ),
+    lastCommand: z
+      .string()
+      .optional()
+      .describe(
+        "For user-opened terminals (term-), the last command run in the terminal at read time.",
+      ),
   }),
 };
 
