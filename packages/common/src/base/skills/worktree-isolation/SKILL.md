@@ -1,24 +1,25 @@
 ---
 name: worktree-isolation
 description: |
-  Create an isolated Git worktree BEFORE starting work — evaluate this proactively at task start, not only when the user asks. Triggers: the task targets another branch, commit, or PR revision; the change is experimental or risky and could disturb the current checkout; or the workspace has uncommitted changes your edits might conflict with. When the choice is ambiguous, ask the user via askFollowupQuestion (worktree vs. current checkout) instead of silently picking one.
+  Create an isolated Git worktree after isolation has been selected and the committed base is known, before file-modifying work begins. Use it when a task must modify another branch, commit, or PR revision, or when risky work or unrelated local changes make the current checkout unsafe. For read-only work, use it only when a full checkout of another revision is genuinely required; ordinary git show or gh pr diff review does not trigger this skill. Resolve an unclear target base or current-checkout-versus-worktree choice before invoking this setup skill.
 compatibility: Requires Git and either POSIX sh or Windows PowerShell.
-allowed-tools: executeCommand
+allowed-tools: executeCommand readFile
 ---
 
 # Worktree Isolation
 
 A worktree gives you a clean checkout of an exact committed revision without touching anything in the user's current workspace.
 
-## When to use one
+## Before invoking
 
-Decide with one question: **does the current workspace already contain the source state the task needs?**
+This skill performs worktree setup; it does not choose unresolved user preferences. Evaluate isolation before invoking it:
 
-- It does → stay where you are. Separation for its own sake adds no value, and a commit-based worktree can never contain the user's uncommitted changes — if the task targets those, a worktree is the wrong tool by definition.
-- It doesn't — the task targets another branch, commit, or pull-request revision, or your work could disturb the current checkout → create a worktree from that exact committed base.
-- Ambiguous — the workspace has uncommitted changes and the task might touch them, or you cannot tell which base the user intends → ask with askFollowupQuestion before doing anything. Offer: "Isolated worktree from <base> (Recommended)" / "Work in current checkout". Never silently choose for the user.
+- Stay in the current checkout only when it already contains the intended source state, the planned work is safe there, and the task does not require protecting unrelated local changes.
+- Select a worktree when the task will modify a different committed branch, commit, or pull-request revision; when a large, experimental, or risky change could pollute the current checkout; or when unrelated uncommitted changes could be disturbed.
+- For read-only inspection or review, prefer the current checkout, git show, or gh pr diff. Select a worktree only when the task genuinely requires a full checkout of the other revision, such as deep tree navigation or runtime validation.
+- A commit-based worktree cannot contain the current checkout's uncommitted changes. If those changes may be required inputs, or if the intended committed base is unclear, resolve that ambiguity before invoking this skill. If the agent cannot request clarification, it must stop without editing and report the ambiguity.
 
-Whether the task is read-only does not decide this; what decides it is where the required source state lives and whether the current checkout needs protecting. If the revision you need is not available locally, obtain it through an authorized workflow or report the limitation — never quietly substitute `HEAD`.
+The committed base must be locally resolvable before setup. Obtain a missing revision through an authorized workflow or report the limitation; never substitute `HEAD` silently.
 
 ## Hard rules
 
@@ -50,6 +51,12 @@ The script prints a JSON result: `{ok, root, branch, base, initialized, error}`.
 
 ## Working in it
 
-From the returned `root` on, that path **is** your workspace: run every file read, search, edit, review, and command there, and never mix original-workspace paths into worktree operations (or vice versa).
+When the script returns `ok: true`, worktree setup is complete. Resume the original task using only the tools the agent already had; this skill does not grant additional capabilities.
+
+The conversation's configured working directory does not change automatically:
+
+- For every command, pass the returned `root` as `cwd`.
+- For every file, search, edit, or review tool, pass a path explicitly rooted under the returned `root` (use an absolute path when the tool accepts one).
+- Never use a bare project-relative path after setup, because it would resolve in the original checkout. If a required tool cannot access the returned root, stop and report the limitation rather than falling back to the original checkout.
 
 In your final result, report the worktree path and branch, and state that they were retained for the user to clean up explicitly.

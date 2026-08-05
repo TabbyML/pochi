@@ -50,7 +50,7 @@ const toolDef = {
 Use this tool in the following scenarios:
 1. The user's request is ambiguous or unclear and requires clarification.
 2. You need more details to proceed effectively.
-3. Before a consequential or hard-to-reverse choice (target branch, isolation strategy such as worktree vs. current checkout, overwriting existing work) — ask before starting the work, not after.
+3. Before an unresolved consequential or hard-to-reverse choice that the user has not already specified and tools cannot determine safely (target branch, isolation strategy such as worktree vs. current checkout, overwriting existing work) — ask before starting the work, not after.
 4. You are stuck and need user guidance to move forward.
 5. Offer choices to the user about what direction to take.
 
