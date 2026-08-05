@@ -347,7 +347,7 @@ const NewTaskTool = ({ tool }: ToolCallLiteViewProps<"newTask">) => {
   const description = tool.input?.description ?? "";
 
   const agentType = tool.input?.agentType;
-  const toolTitle = agentType ?? "Subtask";
+  const toolTitle = agentType?.trim() || "Subtask";
 
   return (
     <div>
