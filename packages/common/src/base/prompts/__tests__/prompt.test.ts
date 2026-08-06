@@ -23,35 +23,6 @@ test("snapshot", () => {
   ).toMatchSnapshot();
 });
 
-test("worktree guidance asks only when repository inspection leaves ambiguity", () => {
-  const prompt = createSystemPrompt("");
-
-  expect(prompt).toContain(
-    "remains materially ambiguous, ask with askFollowupQuestion before editing",
-  );
-  expect(prompt).toContain(
-    "The mere existence of alternatives is not a reason to ask",
-  );
-  expect(prompt).toContain(
-    "Read-only inspection or review does not require isolation",
-  );
-  expect(prompt).not.toContain(
-    "where the work should run (current checkout vs. isolated worktree)",
-  );
-});
-
-test("system prompt reports ambiguity when follow-up questions are unavailable", () => {
-  const prompt = createSystemPrompt("", undefined, undefined, undefined, {
-    canAskFollowupQuestion: false,
-  });
-
-  expect(prompt).not.toContain("askFollowupQuestion");
-  expect(prompt).toContain(
-    "stop before editing and report the ambiguity through attemptCompletion",
-  );
-  expect(prompt).toContain("do not ask in prose");
-});
-
 test("active todo prompt describes attemptCompletion checkpoint", () => {
   const prompt = createSystemPrompt("", undefined, undefined, undefined, {
     todoModeEnabled: true,

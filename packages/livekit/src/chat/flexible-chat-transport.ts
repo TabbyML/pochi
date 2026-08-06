@@ -241,11 +241,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       this.customAgent,
       mcpInfo?.instructions,
       autoMemory,
-      {
-        todoModeEnabled,
-        todos: environment?.todos,
-        canAskFollowupQuestion: "askFollowupQuestion" in tools,
-      },
+      { todoModeEnabled, todos: environment?.todos },
     );
     const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
     const systemPromptTokens = estimateTokens(systemPrompt, calibrationFactor);
