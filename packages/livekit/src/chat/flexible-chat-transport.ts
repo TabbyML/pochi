@@ -9,6 +9,7 @@ import type {
 } from "@getpochi/common";
 import {
   formatMonitorNotifications,
+  formatSubAgentNotifications,
   formatters,
   prompts,
 } from "@getpochi/common";
@@ -546,6 +547,12 @@ export function convertDataPartToText(
     return {
       type: "text" as const,
       text: formatMonitorNotifications(part.data.batches),
+    };
+  }
+  if (part.type === "data-subagent-results") {
+    return {
+      type: "text" as const,
+      text: formatSubAgentNotifications(part.data.results),
     };
   }
   return part;

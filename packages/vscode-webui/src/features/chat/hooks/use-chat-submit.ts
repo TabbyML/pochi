@@ -4,7 +4,10 @@ import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
-import type { MonitorEventEnvelope } from "@getpochi/common";
+import type {
+  MonitorEventEnvelope,
+  SubAgentResultNotification,
+} from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
@@ -51,6 +54,12 @@ export interface DraftMessage {
        */
       envelopes: MonitorEventEnvelope[];
     };
+    /**
+     * Present when this draft was generated from finished background
+     * subagents. Kept so results arriving while the draft is still queued
+     * are merged into one message.
+     */
+    subagentResults?: SubAgentResultNotification[];
   };
 }
 

@@ -27,7 +27,10 @@ import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
-import type { MonitorEventEnvelope } from "@getpochi/common";
+import type {
+  MonitorEventEnvelope,
+  SubAgentResultNotification,
+} from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type {
   DisplayModel,
@@ -44,6 +47,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useBackgroundSubtaskResults } from "../hooks/use-background-subtask-results";
 import {
   type BlockingOperation,
   useBlockingOperations,
@@ -61,6 +65,10 @@ import { ChatInputForm } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
+
+function subagentLabel(result: SubAgentResultNotification) {
+  return result.title || result.agentType || "subagent";
+}
 
 const PopupContainerClassName = tw`-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1`;
 const PopupContentClassName = tw`flex w-full flex-col bg-background`;
@@ -169,6 +177,37 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     });
   }, []);
   useMonitorEvents(taskId, onMonitorEvents);
+
+  // Finished background subagents (newTask with runInBackground) enter the
+  // conversation through the same queued-messages pipeline as monitor
+  // events; results arriving while a draft is still queued merge into it.
+  const onSubagentResults = useCallback(
+    (results: SubAgentResultNotification[]) => {
+      setQueuedMessages((prev) => {
+        const last = prev.at(-1);
+        const queuedResults = last?.raw.subagentResults;
+        const merged = queuedResults ? [...queuedResults, ...results] : results;
+
+        const draft: DraftMessage = {
+          // Rendered to a system-reminder text for the LLM by the chat
+          // transport; kept as a data part so the chat UI can display it.
+          parts: [{ type: "data-subagent-results", data: { results: merged } }],
+          raw: {
+            text:
+              merged.length === 1
+                ? `Subagent ${merged[0].status}: ${subagentLabel(merged[0])}`
+                : `${merged.length} subagents finished: ${merged
+                    .map(subagentLabel)
+                    .join(", ")}`,
+            subagentResults: merged,
+          },
+        };
+        return queuedResults ? [...prev.slice(0, -1), draft] : [...prev, draft];
+      });
+    },
+    [],
+  );
+  useBackgroundSubtaskResults(taskId, messages, onSubagentResults);
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
   const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;

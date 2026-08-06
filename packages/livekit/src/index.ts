@@ -24,11 +24,13 @@ export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
+  createSubAgentResultNotification,
   extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
   getTaskErrorMessage,
   mapTaskStatusToBackgroundStatus,
+  restartBackgroundTask,
 } from "./task-utils";
 export type {
   BackgroundJobStatus,

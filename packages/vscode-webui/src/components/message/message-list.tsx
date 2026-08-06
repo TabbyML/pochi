@@ -31,6 +31,7 @@ import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
 import { MonitorEventsPart } from "./monitor-events";
 import { Reviews } from "./reviews";
+import { SubagentResultsPart } from "./subagent-results";
 import { UserEditsPart } from "./user-edits";
 
 interface UserEditsCheckpoint {
@@ -396,6 +397,10 @@ function Part({
 
   if (part.type === "data-monitor-events") {
     return <MonitorEventsPart batches={part.data.batches} />;
+  }
+
+  if (part.type === "data-subagent-results") {
+    return <SubagentResultsPart results={part.data.results} />;
   }
 
   if (part.type === "data-terminal-context") {

@@ -72,6 +72,12 @@ export const inputSchema = z.object({
     .describe(
       "Optional. The type of the specialized agent to use for the task. Leave empty (None) to launch a generic sub agent for the task.",
     ),
+  runInBackground: z
+    .boolean()
+    .optional()
+    .describe(
+      "Optional. Run the subagent in the background. The tool returns immediately with a backgroundTaskId; the subagent's result arrives later as a system notification. Never assume or fabricate the result before that notification arrives.",
+    ),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),
@@ -114,9 +120,16 @@ Usage notes:
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
+7. Set runInBackground to true to keep working while the subagent runs. The call returns immediately with a backgroundTaskId, and the subagent's result is delivered later as a system notification. Until that notification arrives, never report, guess, or fabricate the subagent's result; if asked about it, say the subagent is still running.
       `.trim(),
     inputSchema,
     outputSchema: z.object({
       result: z.string().describe("The task completion result."),
+      backgroundTaskId: z
+        .string()
+        .optional()
+        .describe(
+          "Present when the subagent was started in the background; identifies the background task whose result will arrive later.",
+        ),
     }),
   });

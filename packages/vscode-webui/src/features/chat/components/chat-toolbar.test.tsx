@@ -115,7 +115,11 @@ vi.mock("@/lib/hooks/use-task-changed-files", () => ({
   }),
 }));
 vi.mock("@/lib/use-default-store", () => ({
-  useDefaultStore: () => ({ commit: vi.fn() }),
+  useDefaultStore: () => ({
+    commit: vi.fn(),
+    storeId: "store-1",
+    useQuery: () => [],
+  }),
 }));
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {},

@@ -1,7 +1,11 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { getLogger } from "@getpochi/common";
+import {
+  constants,
+  createBackgroundSubAgentStartedResult,
+  getLogger,
+} from "@getpochi/common";
 import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { formatFollowupQuestions } from "@getpochi/livekit";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
@@ -27,7 +31,7 @@ const SubTaskBrowserAgentMaxSteps = 65535;
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType }, { toolCallId }) => {
+  async ({ _meta, agentType, runInBackground }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -47,6 +51,25 @@ export const newTask =
           `Custom agent type "${agentType}" not found. Available agents: ${options.customAgents.map((a) => a.name).join(", ")}`,
         );
       }
+    }
+
+    // The browser agent needs a per-task browser session and recording,
+    // which are only wired up in the foreground path. The todo-completion
+    // agent resolves todos through the foreground result flow.
+    const supportsBackground =
+      customAgent?.name !== "browser" &&
+      agentType !== constants.AttemptTodoCompletionAgentName;
+    if (runInBackground && supportsBackground) {
+      if (!options.backgroundSubTask) {
+        throw new Error(
+          "Background subagent execution is not available in this context.",
+        );
+      }
+      await options.backgroundSubTask({ taskId, agentType });
+      return {
+        result: createBackgroundSubAgentStartedResult(taskId),
+        backgroundTaskId: taskId,
+      };
     }
 
     const subTaskLLM = customAgent?.model

@@ -103,6 +103,7 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
           x.type === "data-reviews" ||
           x.type === "data-bash-outputs" ||
           x.type === "data-monitor-events" ||
+          x.type === "data-subagent-results" ||
           isStaticToolUIPart(x),
       )
     ) {

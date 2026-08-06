@@ -80,6 +80,45 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     };
   }
 
+  async resolveTaskLLM(
+    context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
+  ) {
+    const { taskState } = context;
+    if (taskState.useCase !== "subagent" || !taskState.agentType) {
+      return undefined;
+    }
+    const agent = this.customAgents
+      .filter(isValidCustomAgentFile)
+      .find((a) => a.name === taskState.agentType);
+    if (!agent?.model) return undefined;
+
+    const resolvedModel = resolveModelFromId(agent.model, this.modelList);
+    if (resolvedModel) return displayModelToLLM(resolvedModel);
+
+    if (agent.isBuiltIn) {
+      // Built-in special models are currently served by the Pochi vendor.
+      const credentialSource = this.modelList.find(
+        (model) => model.type === "vendor" && model.vendorId === "pochi",
+      );
+      if (credentialSource?.type === "vendor") {
+        return displayModelToLLM({
+          type: "vendor",
+          id: agent.model,
+          name: agent.model,
+          vendorId: "pochi",
+          modelId: agent.model,
+          options: {},
+          getCredentials: credentialSource.getCredentials,
+        });
+      }
+    }
+
+    logger.warn(
+      `Model "${agent.model}" for agent ${agent.name} not found; falling back to the selected model.`,
+    );
+    return undefined;
+  }
+
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {

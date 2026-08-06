@@ -31,11 +31,13 @@ import {
 import type { BlobStore } from "../../blob-store";
 import type { PrepareRequestGetters } from "../../chat/flexible-chat-transport";
 import { defaultCatalog as catalog } from "../../livestore";
-import type { LiveKitStore, Message, Task } from "../../types";
+import type { LiveKitStore, Message, RequestData, Task } from "../../types";
 
 const logger = getLogger("TaskExecutor");
 
 const TaskExecutorMaxStep = 50;
+/** Generic subagents run arbitrary work, so they get a higher step budget than memory extraction. */
+const TaskExecutorSubagentMaxStep = 256;
 const TaskExecutorMaxRetry = 8;
 const TaskExecutorMaxToolRejections = 5;
 const TaskExecutorMaxConcurrency = 10;
@@ -57,6 +59,15 @@ export interface RunningTaskAdaptor {
     taskId: string;
     cwd: string | undefined;
   }): PrepareRequestGetters;
+  /**
+   * Resolves a per-task model override (e.g. a subagent's `model` field).
+   * Returning undefined keeps the adaptor's default model.
+   */
+  resolveTaskLLM?(context: {
+    taskId: string;
+    cwd: string | undefined;
+    taskState: BackgroundTaskState;
+  }): Promise<RequestData["llm"] | undefined>;
   executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
   onTaskError?(taskId: string, error: Error): MaybePromise<void>;
 }
@@ -97,7 +108,7 @@ type CreateRunningTaskChatKit = (options: {
   store: LiveKitStore;
   blobStore: BlobStore;
   abortSignal: AbortSignal;
-  requestUseCase: BackgroundTaskState["useCase"];
+  taskState: BackgroundTaskState;
   getters: PrepareRequestGetters;
 }) => RunningTaskChatKit;
 
@@ -175,6 +186,33 @@ export class TaskExecutor {
         ),
         sleep(100),
       ]);
+    }
+  }
+
+  /**
+   * Stops one background task: aborts its running loop and marks it failed
+   * with an AbortError so `runnableTasks$` stops matching it. Without the
+   * failed status, the next reconcile would pick the task up again.
+   */
+  async stopTask(taskId: string) {
+    const runningTask = this.runningTasks.get(taskId);
+    if (runningTask) {
+      await runningTask.dispose();
+      await runningTask.done.catch(() => undefined);
+    }
+
+    const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+    if (task && isRunnableTaskStatus(task.status)) {
+      this.store.commit(
+        catalog.events.taskFailed({
+          id: taskId,
+          error: {
+            kind: "AbortError",
+            message: "Stopped by user.",
+          },
+          updatedAt: new Date(),
+        }),
+      );
     }
   }
 
@@ -319,7 +357,7 @@ class RunningTask {
     try {
       await this.adaptor.waitUntilReady?.();
       this.taskState = (await this.readTaskState(this.taskId)) ?? {};
-      this.chatKit = this.createChatKit(this.task);
+      this.chatKit = await this.createChatKit(this.task);
 
       while (!this.abortController.signal.aborted) {
         const stepResult = await this.step();
@@ -365,16 +403,46 @@ class RunningTask {
     return this.chatKit.chat;
   }
 
-  private createChatKit(currentTask: Task | undefined) {
+  private async createChatKit(currentTask: Task | undefined) {
+    const context = this.createTaskContext(currentTask);
+    let getters = this.adaptor.getRequestGetters(context);
+
+    const llmOverride = await this.adaptor.resolveTaskLLM?.({
+      ...context,
+      taskState: this.taskState,
+    });
+    if (llmOverride) {
+      getters = { ...getters, getLLM: () => llmOverride };
+    }
+
+    // Subagent tasks store only the agent name; the tool whitelist is
+    // resolved here so both the request-side tool selection and the
+    // execution-side validation derive from the same agent definition.
+    if (
+      this.taskState.useCase === "subagent" &&
+      this.taskState.agentType &&
+      !this.taskState.tools
+    ) {
+      const agent = getters
+        .getCustomAgents?.()
+        ?.find((a) => a.name === this.taskState.agentType);
+      if (!agent) {
+        throw new Error(
+          `Custom agent "${this.taskState.agentType}" not found for background subagent task.`,
+        );
+      }
+      if (agent.tools) {
+        this.taskState = { ...this.taskState, tools: agent.tools };
+      }
+    }
+
     return this.createRunningTaskChatKit({
       taskId: this.taskId,
       store: this.store,
       blobStore: this.blobStore,
       abortSignal: this.abortController.signal,
-      requestUseCase: this.taskState.useCase,
-      getters: this.adaptor.getRequestGetters(
-        this.createTaskContext(currentTask),
-      ),
+      taskState: this.taskState,
+      getters,
     });
   }
 
@@ -605,7 +673,11 @@ class RunningTask {
       stepCount - (this.taskState.baselineStepCount ?? 0),
     );
 
-    if (effectiveStepCount > TaskExecutorMaxStep) {
+    const maxStep =
+      this.taskState.useCase === "subagent"
+        ? TaskExecutorSubagentMaxStep
+        : TaskExecutorMaxStep;
+    if (effectiveStepCount > maxStep) {
       throw new Error("The task failed to complete, max step count reached.");
     }
   }

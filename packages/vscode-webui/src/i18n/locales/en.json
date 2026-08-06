@@ -5,7 +5,8 @@
     "account": "Account",
     "help": "Help",
     "reset": "Reset",
-    "clear": "Clear"
+    "clear": "Clear",
+    "close": "Close"
   },
   "error": {
     "somethingWentWrong": "Something went wrong",
@@ -646,5 +647,15 @@
   "builtInAgentsSettings": {
     "title": "Built-in Agents",
     "browser": "browser"
+  },
+  "backgroundTasks": {
+    "title": "Background Agents",
+    "empty": "No background agents",
+    "untitled": "Untitled",
+    "stop": "Stop",
+    "moveToBackground": "Move to background",
+    "all": "All",
+    "showAll": "Show all background tasks",
+    "moveToBackgroundHint": "Continues in the background and notifies you when done."
   }
 }

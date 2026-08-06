@@ -2,16 +2,21 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { BackgroundTaskDebugPanel } from "./background-task-debug-panel";
+import { BackgroundTasksChip } from "./background-tasks";
 
 const task = {
   id: "task-1",
   title: "Background task",
-  status: "failed",
+  status: "pending-tool",
+  parentId: "parent-1",
   updatedAt: new Date(),
   todos: [],
-  error: { message: "A detailed failure message" },
+  error: null,
 };
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 
 vi.mock("@/components/task-thread", () => ({
   TaskThread: ({
@@ -43,23 +48,33 @@ vi.mock("@/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/hover-card", () => ({
-  HoverCard: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+vi.mock("@/components/ui/popover", () => ({
+  Popover: ({ children }: { children: ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  PopoverTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@/lib/hooks/use-navigate", () => ({
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@/features/settings", () => ({
-  useIsDevMode: () => [true],
+  useIsDevMode: () => [false],
 }));
 
-vi.mock("@/lib/hooks/use-background-task-state", () => ({
-  useBackgroundTaskState: () => ({
-    backgroundTaskState: {
-      useCase: "explore",
-      parentTaskId: "parent-task-id",
-      tools: ["readFile"],
-    },
+vi.mock("@/lib/vscode", () => ({
+  isVSCodeEnvironment: () => true,
+  vscodeHost: {
+    readBackgroundTaskState: async () => ({
+      value: "serialized-signal",
+      setBackgroundTaskState: async () => {},
+    }),
+  },
+}));
+
+vi.mock("@quilted/threads/signals", () => ({
+  threadSignal: () => ({
+    value: { useCase: "subagent", agentType: "researcher" },
   }),
 }));
 
@@ -75,6 +90,7 @@ vi.mock("@getpochi/livekit", () => ({
 
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({
+    storeId: "store-1",
     useQuery: (query: string) => {
       if (query === "backgroundTasks") return [task];
       if (query === "task") return task;
@@ -83,11 +99,19 @@ vi.mock("@/lib/use-default-store", () => ({
   }),
 }));
 
-describe("BackgroundTaskDebugPanel", () => {
-  it("uses a single borderless scroll area that fills the remaining height", () => {
-    render(<BackgroundTaskDebugPanel />);
+describe("BackgroundTasksChip", () => {
+  it("lists subagent tasks with a stop action and opens the detail thread", async () => {
+    const stopBackgroundTask = vi.fn().mockResolvedValue(undefined);
+    render(<BackgroundTasksChip stopBackgroundTask={stopBackgroundTask} />);
 
-    fireEvent.click(screen.getByText("Background task"));
+    // The row appears once the task's background state resolves to subagent.
+    const row = await screen.findByText("Background task");
+
+    const stopButton = screen.getAllByTitle("backgroundTasks.stop")[0];
+    fireEvent.click(stopButton);
+    expect(stopBackgroundTask).toHaveBeenCalledWith("task-1");
+
+    fireEvent.click(row);
 
     const taskThread = screen.getByTestId("task-thread");
     expect(taskThread.classList.contains("min-h-0")).toBe(true);
@@ -101,11 +125,8 @@ describe("BackgroundTaskDebugPanel", () => {
     expect(taskThread.dataset.instantAutoScroll).toBe("true");
 
     const detailBodyClasses = taskThread.parentElement?.classList;
-    expect(detailBodyClasses?.contains("flex")).toBe(true);
     expect(detailBodyClasses?.contains("min-h-0")).toBe(true);
     expect(detailBodyClasses?.contains("flex-1")).toBe(true);
-    expect(detailBodyClasses?.contains("flex-col")).toBe(true);
     expect(detailBodyClasses?.contains("overflow-hidden")).toBe(true);
-    expect(taskThread.dataset.scrollAreaClassName).not.toContain("100vh");
   });
 });

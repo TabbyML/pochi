@@ -3,7 +3,8 @@
     "disable": "禁用",
     "openFolder": "打开文件夹",
     "account": "账户",
-    "help": "帮助"
+    "help": "帮助",
+    "close": "关闭"
   },
   "error": {
     "somethingWentWrong": "出错了",
@@ -314,7 +315,6 @@
     "requiresApproval": "需要批准",
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",
-
     "writing": "正在写入 ",
     "continue": "继续",
     "retry": "重试",
@@ -641,5 +641,15 @@
   "builtInAgentsSettings": {
     "title": "内置代理",
     "browser": "浏览器"
+  },
+  "backgroundTasks": {
+    "title": "后台代理",
+    "empty": "没有后台代理",
+    "untitled": "未命名",
+    "stop": "停止",
+    "moveToBackground": "移到后台",
+    "all": "全部",
+    "showAll": "显示所有后台任务",
+    "moveToBackgroundHint": "在后台继续运行，完成后通知你。"
   }
 }

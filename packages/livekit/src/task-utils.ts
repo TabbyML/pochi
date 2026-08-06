@@ -1,7 +1,8 @@
+import type { SubAgentResultNotification } from "@getpochi/common";
 import type { AskFollowupQuestionInput, Question } from "@getpochi/tools";
 import type { z } from "zod";
 import { defaultCatalog as catalog } from "./livestore";
-import type { LiveKitStore, Message } from "./types";
+import type { LiveKitStore, Message, Task } from "./types";
 
 export type TaskStatusLike =
   | "completed"
@@ -84,6 +85,80 @@ export function extractTaskResult(store: LiveKitStore, uid: string): unknown {
       return formatFollowupQuestions(part.input);
     }
   }
+}
+
+/**
+ * Builds the notification for a finished background subagent task, injected
+ * into the parent conversation as a `data-subagent-results` part.
+ */
+export function createSubAgentResultNotification(
+  store: LiveKitStore,
+  task: Pick<Task, "id" | "status" | "error" | "title">,
+  agentType?: string,
+): SubAgentResultNotification {
+  const title = task.title ?? undefined;
+  if (task.status === "failed") {
+    return {
+      taskId: task.id,
+      agentType,
+      title,
+      status: "failed",
+      result: getTaskErrorMessage(task.error) ?? "Subagent failed.",
+    };
+  }
+
+  let result: unknown;
+  try {
+    result = extractTaskResult(store, task.id);
+  } catch {
+    result = undefined;
+  }
+  return {
+    taskId: task.id,
+    agentType,
+    title,
+    status: "completed",
+    result:
+      result === undefined
+        ? "Subagent finished without an explicit result."
+        : typeof result === "string"
+          ? result
+          : JSON.stringify(result),
+  };
+}
+
+/**
+ * Flips a failed background task back to pending-model by re-committing its
+ * last message, so the TaskExecutor picks it up again. Only failed tasks are
+ * restarted: reviving a completed task would leave it stuck in pending-model
+ * (the executor finishes without another status commit) and the reconcile
+ * loop would pick it up forever.
+ */
+export function restartBackgroundTask(
+  store: LiveKitStore,
+  taskId: string,
+): boolean {
+  const task = store.query(catalog.queries.makeTaskQuery(taskId));
+  if (!task?.background) return false;
+  if (task.status === "pending-model" || task.status === "pending-tool") {
+    return true;
+  }
+  if (task.status !== "failed") return false;
+  const lastMessage = store
+    .query(catalog.queries.makeMessagesQuery(taskId))
+    .map((x) => x.data as Message)
+    .at(-1);
+  if (!lastMessage) return false;
+  store.commit(
+    catalog.events.chatStreamStarted({
+      id: taskId,
+      data: lastMessage,
+      todos: task.todos ? [...task.todos] : [],
+      updatedAt: new Date(),
+      modelId: task.modelId ?? undefined,
+    }),
+  );
+  return true;
 }
 
 export function extractAttemptCompletionResult<T>(

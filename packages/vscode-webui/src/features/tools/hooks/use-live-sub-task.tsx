@@ -49,6 +49,14 @@ export function useLiveSubTask(
 
   const agentType =
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined;
+  // Background subtasks are driven by the TaskExecutor, not by this hook.
+  // Mirrors the lifecycle's forced-foreground exceptions so both sides make
+  // the same call from the tool input alone (no race on task state).
+  const runInBackground =
+    tool.state !== "input-streaming" &&
+    !!tool.input?.runInBackground &&
+    agentType !== "browser" &&
+    agentType !== constants.AttemptTodoCompletionAgentName;
   const {
     customAgent,
     customAgentModel,
@@ -305,6 +313,7 @@ export function useLiveSubTask(
   useInitAutoStart({
     start: retry,
     enabled:
+      !runInBackground &&
       tool.state === "input-available" &&
       isExecuting &&
       !(agentType && isCustomAgentLoading) &&

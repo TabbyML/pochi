@@ -33,7 +33,7 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
-import { BackgroundTaskDebugPanel } from "./components/background-task-debug-panel";
+import { BackgroundTasksChip } from "./components/background-tasks";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
@@ -455,6 +455,12 @@ function Chat({ user, uid, info }: ChatProps) {
           className="absolute top-1 right-2 z-10"
         />
       )}
+      {!isSubTask && (
+        <BackgroundTasksChip
+          className="absolute top-2 right-4 z-10"
+          stopBackgroundTask={(taskId) => chatKit.stopBackgroundTask(taskId)}
+        />
+      )}
       <ChatArea
         messages={renderMessages}
         isLoading={isLoading || isCompacting}
@@ -499,7 +505,6 @@ function Chat({ user, uid, info }: ChatProps) {
           onToolsExecutionEnded={chatKit.markEndToolsExecution}
         />
       </div>
-      <BackgroundTaskDebugPanel />
     </div>
   );
 }
