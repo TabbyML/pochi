@@ -3,6 +3,7 @@ import type {
   ActiveSelection,
   BashOutputs,
   MessageMetadata,
+  MonitorEventBatch,
   Review,
   TerminalTextSelection,
   UserEdits,
@@ -28,10 +29,15 @@ export type DataParts = {
   };
   "active-selection": {
     activeSelection?: ActiveSelection;
-    activeTerminalTextSelection?: TerminalTextSelection;
+  };
+  "terminal-context": {
+    textSelections: TerminalTextSelection[];
   };
   "bash-outputs": {
     bashOutputs: BashOutputs;
+  };
+  "monitor-events": {
+    batches: MonitorEventBatch[];
   };
 };
 

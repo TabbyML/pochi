@@ -80,6 +80,7 @@ export const ToolsByPermission = {
     "executeCommand",
     "startBackgroundJob",
     "killBackgroundJob",
+    "startMonitor",
     "newTask",
   ] as string[],
   default: ["renderWidget"] as string[],

@@ -1,3 +1,4 @@
+import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { UITools } from "@getpochi/livekit";
@@ -61,6 +62,9 @@ export function ToolCallLite({
       break;
     case "tool-killBackgroundJob":
       detail = <KillBackgroundJobTool />;
+      break;
+    case "tool-startMonitor":
+      detail = <StartMonitorLiteTool tool={tool} />;
       break;
     case "tool-searchFiles":
       detail = <SearchFilesTool tool={tool} />;
@@ -220,8 +224,14 @@ const ReadBackgroundJobTool = ({
   tool,
 }: ToolCallLiteViewProps<"readBackgroundJobOutput">) => {
   const { t } = useTranslation();
-  const { backgroundJobId, regex } = tool.input || {};
+  const { backgroundJobId } = tool.input || {};
   const isUserTerminal = backgroundJobId?.startsWith("term-");
+  const terminalDisplayName = isUserTerminal
+    ? formatTerminalDisplayName(
+        tool.output?.terminalName,
+        tool.output?.lastCommand,
+      )
+    : undefined;
   return (
     <>
       <span className="ml-2">
@@ -229,11 +239,10 @@ const ReadBackgroundJobTool = ({
           ? t("toolInvocation.readTerminal")
           : t("toolInvocation.readBackground")}
       </span>
-      {regex && (
+      {terminalDisplayName && (
         <>
           {" "}
-          {t("toolInvocation.withRegexFilter")}:{" "}
-          <HighlightedText>{regex}</HighlightedText>
+          <HighlightedText>{terminalDisplayName}</HighlightedText>
         </>
       )}
     </>
@@ -244,6 +253,19 @@ const KillBackgroundJobTool = () => {
   const { t } = useTranslation();
   return (
     <span className="ml-2">{t("toolInvocation.stoppingBackgroundJob")}</span>
+  );
+};
+
+const StartMonitorLiteTool = ({
+  tool,
+}: ToolCallLiteViewProps<"startMonitor">) => {
+  const { t } = useTranslation();
+  const { description } = tool.input || {};
+  return (
+    <span className="ml-2 truncate">
+      {t("toolInvocation.monitoring")}{" "}
+      <HighlightedText>{description}</HighlightedText>
+    </span>
   );
 };
 
@@ -347,7 +369,7 @@ const NewTaskTool = ({ tool }: ToolCallLiteViewProps<"newTask">) => {
   const description = tool.input?.description ?? "";
 
   const agentType = tool.input?.agentType;
-  const toolTitle = agentType ?? "Subtask";
+  const toolTitle = agentType?.trim() || "Subtask";
 
   return (
     <div>

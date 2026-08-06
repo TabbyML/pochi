@@ -43,10 +43,14 @@
     "fileCount": "{{count}} 件のファイル",
     "reviewCount": "{{count}} 件のレビュー",
     "userEditCount": "{{count}} 件の編集",
+    "terminalContextCount": "{{count}} 件のターミナル選択",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
-    "pleaseCheckFiles": "これらの添付ファイルを確認してください。",
+    "contextLabelFiles": "添付ファイル",
+    "contextLabelReviews": "レビュー",
+    "contextLabelTerminalSelections": "ターミナル選択",
+    "pleaseCheckAttachedContext": "添付された{{items}}を確認してください。",
     "chatToolbar": {
       "diffWorktreeWith": "ワークツリーを {{branch}} と比較",
       "openInTerminal": "統合ターミナルで開く"
@@ -315,6 +319,7 @@
 
     "writing": "書き込み中 ",
     "continue": "続行",
+    "retry": "再試行",
     "cancel": "キャンセル",
     "continueInSeconds": "{{seconds}}秒後に続行",
     "save": "保存",
@@ -352,7 +357,6 @@
     "result_other": "{{count}}件の結果",
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
     "readTerminal": "ターミナル出力を読み込み中",
-    "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
     "updatingToDos": "TODOを更新中",
@@ -365,7 +369,9 @@
     "next": "次へ",
     "askingQuestion_one": "質問中",
     "askingQuestion_other": "質問中",
-    "skipped": "スキップ済み"
+    "skipped": "スキップ済み",
+    "startMonitor": "監視します：",
+    "monitoring": "監視中"
   },
   "reasoning": {
     "thinking": "考え中 ...",
@@ -443,6 +449,9 @@
     "addContext": "コンテキストを追加",
     "terminal": "ターミナル"
   },
+  "terminalContextBadge": {
+    "remove": "ターミナル選択をコンテキストから削除"
+  },
   "todoModeBadge": {
     "remove": "Todoモードを削除"
   },
@@ -467,6 +476,7 @@
     "complete": "完了"
   },
   "errorMessageView": {
+    "contentFilter": "安全フィルターにより応答が停止されました。メッセージを言い換えるか、再試行してください。",
     "reachedCreditLimit": "支出限度額に達しました。",
     "seeMore": "詳細を見る",
     "teamReachedCreditLimit": "チームが支出限度額に達しました。",
@@ -502,6 +512,8 @@
     "collapse": "折りたたむ",
     "expand": "展開",
     "openJob": "ジョブ {{displayId}} を開く",
+    "openTerminal": "ターミナル {{name}} を開く",
+    "userTerminal": "ユーザーターミナル",
     "stop": "停止"
   },
   "liveSubTask": {
@@ -556,6 +568,10 @@
     "undo": "元に戻す",
     "viewChanges": "変更を表示",
     "openFile": "ファイルを開く"
+  },
+  "monitorEvents": {
+    "eventCount_one": "{{count}} 件のイベント",
+    "eventCount_other": "{{count}} 件のイベント"
   },
   "userEdits": {
     "title": "編集",

@@ -14,7 +14,7 @@ import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type {
   GitWorktree,
@@ -25,6 +25,7 @@ import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatInput } from "../hooks/use-chat-input-state";
+import { useTerminalContextState } from "../hooks/use-terminal-context-state";
 import { validateSkillInvocations } from "../hooks/validate-skill-invocations";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 
@@ -48,6 +49,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   deletingWorktreePaths,
 }) => {
   const activeSelection = useActiveSelection();
+  const {
+    selections: terminalContextSelections,
+    removeSelection: removeTerminalContextSelection,
+    clearSelections: clearTerminalContextSelections,
+  } = useTerminalContextState();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
   const [planMode, setPlanMode] = useState(false);
@@ -193,12 +199,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         }
       }
 
-      // Terminal selection can only be read on demand (there's no reactive
-      // VS Code API for it), so capture it once at task-creation time.
-      const activeTerminalTextSelection = isVSCodeEnvironment()
-        ? await vscodeHost.readTerminalSelection()
-        : undefined;
-
       vscodeHost.openTaskInPanel(
         {
           type: "new-task",
@@ -207,8 +207,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           todos,
           files: uploadedFiles,
           activeSelection: activeSelection ?? undefined,
-          activeTerminalTextSelection,
           invokedSkills,
+          terminalContextSelections:
+            terminalContextSelections.length > 0
+              ? terminalContextSelections
+              : undefined,
           mcpConfigOverride:
             Object.keys(mcpConfigOverride).length > 0
               ? mcpConfigOverride
@@ -220,6 +223,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Clear files if they were uploaded
       if (uploadedFiles && uploadedFiles.length > 0) {
         clearFiles();
+      }
+
+      if (terminalContextSelections.length > 0) {
+        clearTerminalContextSelections();
       }
 
       resetMcpTools();
@@ -238,6 +245,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       resetMcpTools,
       globalMcpConfig,
       activeSelection,
+      terminalContextSelections,
+      clearTerminalContextSelections,
     ],
   );
 
@@ -271,7 +280,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       let content = validationResult.text.trim();
 
       // Disallow empty submissions
-      if (content.length === 0 && files.length === 0) return;
+      if (
+        content.length === 0 &&
+        files.length === 0 &&
+        terminalContextSelections.length === 0
+      )
+        return;
 
       if (shouldCreatePlan) {
         // Use built-in planner agent
@@ -334,6 +348,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       createWorktreeAndOpenTask,
       planMode,
       todoModeSelected,
+      terminalContextSelections,
     ],
   );
 
@@ -384,6 +399,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         isSubTask={false}
         onFocus={onFocus}
         reviews={emptyReviews}
+        terminalContextSelections={terminalContextSelections}
+        onRemoveTerminalContextSelection={removeTerminalContextSelection}
         onSwitchSubmitMode={switchSubmitMode}
         isPlanMode={planMode}
         onSelectTodoMode={selectTodoMode}

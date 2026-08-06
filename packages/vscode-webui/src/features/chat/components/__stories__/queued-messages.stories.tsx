@@ -1,10 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 
-import type {
-  ActiveSelection,
-  TerminalTextSelection,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import type { DraftMessage } from "../../hooks/use-chat-submit";
 import { QueuedMessages } from "../queued-messages";
 
@@ -33,11 +30,6 @@ const sampleActiveSelection: ActiveSelection = {
 }) => {`,
 };
 
-const sampleTerminalTextSelection: TerminalTextSelection = {
-  terminalName: "bash",
-  content: "$ bun run test\n✓ all tests passed",
-};
-
 export const Default: Story = {
   args: {
     messages: [
@@ -58,15 +50,6 @@ export const Default: Story = {
         activeSelection: sampleActiveSelection,
       }),
       queuedMessage({
-        text: "This is a prompt with an active terminal selection",
-        activeTerminalTextSelection: sampleTerminalTextSelection,
-      }),
-      queuedMessage({
-        text: "This is a prompt with both selections",
-        activeSelection: sampleActiveSelection,
-        activeTerminalTextSelection: sampleTerminalTextSelection,
-      }),
-      queuedMessage({
         text: "This is a prompt with attached files",
         filesCount: 2,
       }),
@@ -84,7 +67,6 @@ export const Default: Story = {
         filesCount: 2,
         reviewsCount: 1,
         activeSelection: sampleActiveSelection,
-        activeTerminalTextSelection: sampleTerminalTextSelection,
       }),
       queuedMessage({ text: "This is a prompt" }),
     ],
@@ -98,7 +80,6 @@ function queuedMessage({
   reviewsCount = 0,
   userEditsCount = 0,
   activeSelection,
-  activeTerminalTextSelection,
 }: {
   text: string;
   isTodoMode?: boolean;
@@ -106,7 +87,6 @@ function queuedMessage({
   reviewsCount?: number;
   userEditsCount?: number;
   activeSelection?: ActiveSelection;
-  activeTerminalTextSelection?: TerminalTextSelection;
 }): DraftMessage {
   return {
     parts: [],
@@ -117,7 +97,6 @@ function queuedMessage({
       userEditsCount,
       isTodoMode,
       activeSelection,
-      activeTerminalTextSelection,
     },
   };
 }

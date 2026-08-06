@@ -13,6 +13,19 @@ export {
   parseEnvironmentInfo,
 } from "./prompts";
 
+export {
+  MonitorWatcher,
+  type MonitorWatcherOptions,
+  type MonitorEventBatch,
+  type MonitorEventEnvelope,
+  formatMonitorNotifications,
+  MonitorBatchIntervalMs,
+  MonitorDefaultTimeoutMs,
+  MonitorMaxLinesPerBatch,
+  MonitorMaxBatchesPerMinute,
+  MonitorRateLimitedReason,
+} from "./monitor";
+
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
 

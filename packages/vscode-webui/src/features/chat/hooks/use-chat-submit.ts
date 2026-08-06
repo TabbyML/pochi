@@ -1,9 +1,10 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { prepareMessageParts } from "@/lib/message-utils";
-import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
+import type { MonitorEventEnvelope } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
@@ -38,9 +39,20 @@ export interface DraftMessage {
     filesCount?: number;
     reviewsCount?: number;
     userEditsCount?: number;
+    terminalContextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
-    activeTerminalTextSelection?: TerminalTextSelection;
+    /** Present when this draft was generated from monitor events. */
+    monitor?: {
+      backgroundJobId: string;
+      description: string;
+      /**
+       * The envelopes rendered into this draft. Kept so that events arriving
+       * while the draft is still queued can be merged into it (re-rendered as
+       * one notification) instead of enqueuing another message.
+       */
+      envelopes: MonitorEventEnvelope[];
+    };
   };
 }
 
@@ -61,6 +73,8 @@ interface UseChatSubmitProps {
   reviews: Review[];
   userEdits: FileDiff[];
   skills: ValidSkillFile[];
+  terminalContextSelections: TerminalTextSelection[];
+  clearTerminalContextSelections: () => void;
   taskId: string;
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
@@ -89,6 +103,8 @@ export function useChatSubmit({
   reviews,
   userEdits,
   skills,
+  terminalContextSelections,
+  clearTerminalContextSelections,
   taskId,
   isTodoMode = false,
   canCreateTodo = true,
@@ -187,24 +203,20 @@ export function useChatSubmit({
       const text = resolvedInput.text.trim();
       const currentFiles = [...files];
       const currentReviews = [...reviews];
+      const currentTerminalContextSelections = [...terminalContextSelections];
 
       if (
         text.length === 0 &&
         currentFiles.length === 0 &&
-        currentReviews.length === 0
+        currentReviews.length === 0 &&
+        currentTerminalContextSelections.length === 0
       ) {
         return undefined;
       }
 
-      // Capture the user's selection context (editor + terminal) right now.
+      // Capture the user's selection context (editor) right now.
       const currentUserEdits = [...userEdits];
       const currentSelection = activeSelection;
-
-      // Terminal selection can only be read on demand (there's no reactive
-      // VS Code API for it), so this is the only chance to snapshot it.
-      const currentTerminalTextSelection = isVSCodeEnvironment()
-        ? await vscodeHost.readTerminalSelection()
-        : undefined;
 
       let uploadedAttachments: FileUIPart[] = [];
       if (currentFiles.length > 0) {
@@ -224,15 +236,18 @@ export function useChatSubmit({
       if (currentReviews.length > 0) {
         vscodeHost.deleteReviews(currentReviews.map((review) => review.id));
       }
+      if (currentTerminalContextSelections.length > 0) {
+        clearTerminalContextSelections();
+      }
 
       const raw = {
         text,
         filesCount: currentFiles.length,
         reviewsCount: currentReviews.length,
         userEditsCount: currentUserEdits.length,
+        terminalContextCount: currentTerminalContextSelections.length,
         isTodoMode,
         activeSelection: currentSelection,
-        activeTerminalTextSelection: currentTerminalTextSelection,
       };
       const parts = prepareMessageParts(
         t,
@@ -241,7 +256,7 @@ export function useChatSubmit({
         currentReviews,
         currentUserEdits,
         currentSelection,
-        currentTerminalTextSelection,
+        currentTerminalContextSelections,
         resolvedInput.invokedSkills,
       );
 
@@ -253,6 +268,8 @@ export function useChatSubmit({
       files,
       reviews,
       userEdits,
+      terminalContextSelections,
+      clearTerminalContextSelections,
       activeSelection,
       upload,
       clearFiles,

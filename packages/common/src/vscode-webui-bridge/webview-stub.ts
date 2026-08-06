@@ -8,8 +8,8 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  MonitorEventEnvelope,
   TaskMemoryState,
-  TerminalTextSelection,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
@@ -147,9 +147,6 @@ const VSCodeHostStub = {
       {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
   },
-  readTerminalSelection: (): Promise<TerminalTextSelection | undefined> => {
-    return Promise.resolve(undefined);
-  },
   openFile: (
     _filePath: string,
     _options?: {
@@ -275,6 +272,19 @@ const VSCodeHostStub = {
         return Promise.resolve();
       },
     });
+  },
+  readMonitorEvents: async (
+    _taskId: string,
+  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>> => {
+    return Promise.resolve(
+      {} as ThreadSignalSerialization<MonitorEventEnvelope[]>,
+    );
+  },
+  ackMonitorEvents: async (
+    _taskId: string,
+    _upToSeq: number,
+  ): Promise<void> => {
+    return Promise.resolve();
   },
   readModelList: async () => {
     return Promise.resolve(

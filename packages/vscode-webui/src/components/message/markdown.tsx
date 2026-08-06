@@ -417,6 +417,7 @@ export function MessageMarkdown({
                 skill: ["path", "id"],
                 issue: ["id", "url", "title"],
                 ...mathSanitizeConfig.attributes,
+                ol: [...(defaultSchema.attributes?.ol ?? []), "start"],
               },
             },
           ],

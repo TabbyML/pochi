@@ -7,7 +7,11 @@ import type {
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
-import { formatters, prompts } from "@getpochi/common";
+import {
+  formatMonitorNotifications,
+  formatters,
+  prompts,
+} from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import * as R from "remeda";
 
@@ -22,7 +26,9 @@ import {
   APICallError,
   type ChatRequestOptions,
   type ChatTransport,
+  type FinishReason,
   type ModelMessage,
+  type ProviderMetadata,
   type UIMessageChunk,
   convertToModelMessages,
   streamText,
@@ -69,6 +75,49 @@ export type FinishedRequestSnapshot = {
    */
   calibrationFactor: number;
 };
+
+type ContentFilterMetadata = NonNullable<
+  Extract<MessageMetadata, { kind: "assistant" }>["contentFilter"]
+>;
+
+export function extractContentFilterMetadata(
+  providerMetadata: ProviderMetadata | undefined,
+  finishReason: FinishReason,
+  rawFinishReason?: string,
+): ContentFilterMetadata | undefined {
+  const anthropic = providerMetadata?.anthropic;
+  if (
+    anthropic &&
+    (finishReason === "content-filter" || anthropic.stopDetails != null)
+  ) {
+    return {
+      provider: "anthropic",
+      ...(rawFinishReason !== undefined && { reason: rawFinishReason }),
+      ...(anthropic.stopDetails !== undefined && {
+        details: anthropic.stopDetails,
+      }),
+    };
+  }
+
+  const google = providerMetadata?.google ?? providerMetadata?.vertex;
+  const promptFeedback = google?.promptFeedback;
+  const hasPromptBlockReason =
+    typeof promptFeedback === "object" &&
+    promptFeedback !== null &&
+    "blockReason" in promptFeedback &&
+    promptFeedback.blockReason != null;
+  if (google && (finishReason === "content-filter" || hasPromptBlockReason)) {
+    return {
+      provider: "google",
+      ...(rawFinishReason !== undefined && { reason: rawFinishReason }),
+      details: {
+        promptFeedback: google.promptFeedback,
+        safetyRatings: google.safetyRatings,
+        finishMessage: google.finishMessage,
+      },
+    };
+  }
+}
 
 function createAbortAwareUIStreamTransform(
   abortSignal: AbortSignal | undefined,
@@ -261,6 +310,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     )) as ModelMessage[];
 
     const requestStartedAt = new Date();
+    let contentFilterMetadata: ContentFilterMetadata | undefined;
     // Anthropic cache breakpoints are applied server-side based on `useCase`.
     const stream = streamText({
       providerOptions: {
@@ -305,6 +355,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         },
         originalMessages: preparedMessages,
         messageMetadata: ({ part }) => {
+          if (part.type === "finish-step") {
+            contentFilterMetadata = extractContentFilterMetadata(
+              part.providerMetadata,
+              part.finishReason,
+              part.rawFinishReason,
+            );
+          }
+
           if (part.type === "finish") {
             const now = new Date();
             const duration = now.getTime() - requestStartedAt.getTime();
@@ -337,6 +395,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
               );
             }
 
+            const isContentFiltered =
+              part.finishReason === "content-filter" ||
+              contentFilterMetadata !== undefined;
+
             return {
               kind: "assistant",
               // The client only consumes the aggregated total token count here.
@@ -348,7 +410,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
               // our heuristic fallback. Only set when true; keep undefined
               // otherwise so it's omitted.
               totalTokensIsEstimated: totalTokens ? undefined : true,
-              finishReason: part.finishReason,
+              finishReason: isContentFiltered
+                ? "content-filter"
+                : part.finishReason,
+              contentFilter: contentFilterMetadata,
               startedAt: requestStartedAt,
               finishedAt: now,
               totalStreamingDuration:
@@ -462,20 +527,25 @@ export function convertDataPartToText(
     };
   }
   if (part.type === "data-active-selection") {
-    const texts = [
+    const text =
       part.data.activeSelection &&
-        prompts.renderActiveSelection(part.data.activeSelection),
-      part.data.activeTerminalTextSelection &&
-        prompts.renderTerminalTextSelection(
-          part.data.activeTerminalTextSelection,
-        ),
-    ].filter((text): text is string => !!text);
-    return texts.map((text) => ({ type: "text" as const, text }));
+      prompts.renderActiveSelection(part.data.activeSelection);
+    return text ? [{ type: "text" as const, text }] : [];
+  }
+  if (part.type === "data-terminal-context") {
+    const text = prompts.renderTerminalContext(part.data.textSelections);
+    return text ? [{ type: "text" as const, text }] : [];
   }
   if (part.type === "data-bash-outputs") {
     return {
       type: "text" as const,
       text: prompts.renderBashOutputs(part.data.bashOutputs),
+    };
+  }
+  if (part.type === "data-monitor-events") {
+    return {
+      type: "text" as const,
+      text: formatMonitorNotifications(part.data.batches),
     };
   }
   return part;

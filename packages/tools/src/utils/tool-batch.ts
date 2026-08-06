@@ -82,6 +82,8 @@ export function isSafeToBatchToolCall(
 
   if (toolName === "startBackgroundJob") return true;
 
+  if (toolName === "startMonitor") return true;
+
   return false;
 }
 

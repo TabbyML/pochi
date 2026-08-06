@@ -5,7 +5,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { cn } from "@/lib/utils";
 import { getActiveSelectionLabel } from "@/lib/utils/active-selection";
 import {
@@ -14,16 +13,13 @@ import {
 } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { parseTitle } from "@getpochi/common/message-utils";
-import type {
-  ActiveSelection,
-  TerminalTextSelection,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import {
+  Activity,
   CornerDownRight,
   FileCode,
   ListEnd,
   Target,
-  TerminalIcon,
   Trash2,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -41,8 +37,8 @@ interface RenderMessage {
   title: string;
   details: string;
   isTodoMode?: boolean;
+  isMonitor?: boolean;
   activeSelection?: ActiveSelection;
-  activeTerminalTextSelection?: TerminalTextSelection;
 }
 
 export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
@@ -59,9 +55,10 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         filesCount = 0,
         reviewsCount = 0,
         userEditsCount = 0,
+        terminalContextCount = 0,
         isTodoMode,
+        monitor,
         activeSelection,
-        activeTerminalTextSelection,
       } = raw;
       const title = text.trim() ? parseTitle(text) : t("chat.noMessage");
       const details = [
@@ -70,14 +67,17 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         userEditsCount > 0
           ? t("chat.userEditCount", { count: userEditsCount })
           : "",
+        terminalContextCount > 0
+          ? t("chat.terminalContextCount", { count: terminalContextCount })
+          : "",
       ].filter(Boolean);
 
       return {
         title,
         details: details.join(" · "),
         isTodoMode,
+        isMonitor: !!monitor,
         activeSelection,
-        activeTerminalTextSelection,
       };
     });
   }, [messages, t]);
@@ -91,6 +91,8 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         >
           {message.isTodoMode ? (
             <Target className="size-3.5 shrink-0" />
+          ) : message.isMonitor ? (
+            <Activity className="size-3.5 shrink-0" />
           ) : (
             <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
           )}
@@ -114,11 +116,6 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
           {message.activeSelection && (
             <ActiveSelectionPreviewIcon
               activeSelection={message.activeSelection}
-            />
-          )}
-          {message.activeTerminalTextSelection && (
-            <TerminalSelectionPreviewIcon
-              terminalTextSelection={message.activeTerminalTextSelection}
             />
           )}
           <div className="flex shrink-0 items-center gap-1">
@@ -206,56 +203,6 @@ const ActiveSelectionPreviewIcon: React.FC<ActiveSelectionPreviewIconProps> = ({
         <div className="max-h-[60vh] overflow-auto">
           <CodeBlock
             language={language}
-            value={content}
-            isMinimalView={true}
-            className="m-0 border-none"
-          />
-        </div>
-      </HoverCardContent>
-    </HoverCard>
-  );
-};
-
-interface TerminalSelectionPreviewIconProps {
-  terminalTextSelection: TerminalTextSelection;
-}
-
-const TerminalSelectionPreviewIcon: React.FC<
-  TerminalSelectionPreviewIconProps
-> = ({ terminalTextSelection }) => {
-  const { t } = useTranslation();
-  const { terminalName, backgroundJobId, content } = terminalTextSelection;
-  const { openBackgroundJobTerminal } = useVisibleTerminals();
-
-  if (content.length === 0) {
-    return null;
-  }
-
-  const onClick = () => {
-    if (!isVSCodeEnvironment() || !backgroundJobId) return;
-    openBackgroundJobTerminal?.(backgroundJobId);
-  };
-
-  return (
-    <HoverCard openDelay={300} closeDelay={200}>
-      <HoverCardTrigger asChild>
-        <button
-          type="button"
-          onClick={onClick}
-          aria-label={`${t("activeSelectionBadge.terminal")}: ${terminalName}`}
-          className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700"
-        >
-          <TerminalIcon className="size-3.5" />
-        </button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-auto max-w-[90vw] p-0" align="end">
-        <div className="flex max-w-[300px] items-center gap-1.5 truncate border-b px-2 py-1.5 font-medium text-xs">
-          <TerminalIcon className="size-3.5 shrink-0" />
-          <span className="truncate">{terminalName}</span>
-        </div>
-        <div className="max-h-[60vh] overflow-auto">
-          <CodeBlock
-            language="shell"
             value={content}
             isMinimalView={true}
             className="m-0 border-none"

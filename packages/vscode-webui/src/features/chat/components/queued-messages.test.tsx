@@ -1,8 +1,5 @@
 // @vitest-environment jsdom
-import type {
-  ActiveSelection,
-  TerminalTextSelection,
-} from "@getpochi/common/vscode-webui-bridge";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { DraftMessage } from "../hooks/use-chat-submit";
@@ -20,10 +17,6 @@ vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     openFile: vi.fn(),
   },
-}));
-
-vi.mock("@/lib/hooks/use-visible-terminals", () => ({
-  useVisibleTerminals: () => ({ openBackgroundJobTerminal: vi.fn() }),
 }));
 
 describe("QueuedMessages", () => {
@@ -76,6 +69,22 @@ describe("QueuedMessages", () => {
     ).toBeTruthy();
   });
 
+  it("shows the terminal context count alongside other counts", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "  ",
+            terminalContextCount: 2,
+          }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(getByText("chat.terminalContextCount:2")).toBeTruthy();
+  });
+
   it("renders a minimal icon-only preview for the active editor selection captured at queue time", () => {
     const activeSelection: ActiveSelection = {
       filepath: "/workspace/foo.ts",
@@ -96,29 +105,6 @@ describe("QueuedMessages", () => {
     // Icon-only trigger, keyed to the filepath, without a visible filename label.
     expect(getByLabelText("/workspace/foo.ts")).toBeTruthy();
     expect(container.textContent).not.toContain("foo.ts");
-  });
-
-  it("renders a minimal icon-only preview for the active terminal selection captured at queue time", () => {
-    const activeTerminalTextSelection: TerminalTextSelection = {
-      terminalName: "bash",
-      content: "echo hello",
-    };
-
-    const { container, getByLabelText } = render(
-      <QueuedMessages
-        messages={[
-          queuedMessage({
-            text: "check this",
-            activeTerminalTextSelection,
-          }),
-        ]}
-        onRemove={vi.fn()}
-      />,
-    );
-
-    // Icon-only trigger, keyed to the terminal name, without a visible name label.
-    expect(getByLabelText("activeSelectionBadge.terminal: bash")).toBeTruthy();
-    expect(container.textContent).not.toContain("bash");
   });
 
   it("disables the steer button when allowSteer is false", () => {
@@ -158,16 +144,16 @@ function queuedMessage({
   filesCount = 0,
   reviewsCount = 0,
   userEditsCount = 0,
+  terminalContextCount = 0,
   activeSelection,
-  activeTerminalTextSelection,
 }: {
   text: string;
   isTodoMode?: boolean;
   filesCount?: number;
   reviewsCount?: number;
   userEditsCount?: number;
+  terminalContextCount?: number;
   activeSelection?: ActiveSelection;
-  activeTerminalTextSelection?: TerminalTextSelection;
 }): DraftMessage {
   return {
     parts: [],
@@ -176,9 +162,9 @@ function queuedMessage({
       filesCount,
       reviewsCount,
       userEditsCount,
+      terminalContextCount,
       isTodoMode,
       activeSelection,
-      activeTerminalTextSelection,
     },
   };
 }

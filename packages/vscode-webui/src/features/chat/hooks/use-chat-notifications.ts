@@ -110,7 +110,9 @@ export function useChatNotifications({
         if (!readyForRetryError) return;
 
         const retryLimit =
-          autoApproveActive && autoApproveSettings.retry
+          isRetryableError(readyForRetryError) &&
+          autoApproveActive &&
+          autoApproveSettings.retry
             ? autoApproveSettings.maxRetryLimit
             : 0;
 

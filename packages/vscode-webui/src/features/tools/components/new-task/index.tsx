@@ -82,7 +82,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
   const agent = tool.input?.agentType;
   const description = tool.input?.description ?? "";
   const agentType = tool.input?.agentType;
-  const toolTitle = agentType ?? "Subtask";
+  const toolTitle = agentType?.trim() || "Subtask";
   const completed =
     tool.state === "output-available" &&
     "result" in tool.output &&
@@ -114,7 +114,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
         <TaskThread
           source={taskThreadSource}
           showMessageList={showMessageList}
-          assistant={{ name: agent ?? "Pochi" }}
+          assistant={{ name: agent?.trim() || "Pochi" }}
         />
       </FixedStateChatContextProvider>
     ) : undefined;

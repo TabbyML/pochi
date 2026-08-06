@@ -6,7 +6,7 @@ import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const readBackgroundJobOutput: ToolFunctionType<
   ClientTools["readBackgroundJobOutput"]
-> = async ({ backgroundJobId, regex }) => {
+> = async ({ backgroundJobId }) => {
   // "term-" ids are user-opened terminals: reads surface a running history transcript
   if (backgroundJobId.startsWith("term-")) {
     const history = TerminalHistoryManager.get(backgroundJobId);
@@ -16,13 +16,15 @@ export const readBackgroundJobOutput: ToolFunctionType<
       );
     }
 
-    const output = history.readOutput(regex ? new RegExp(regex) : undefined);
+    const output = history.readOutput();
 
     return {
       output: output.output,
       isTruncated: output.isTruncated,
       status: output.status,
       error: output.error,
+      terminalName: history.terminalName,
+      lastCommand: history.lastCommand,
     };
   }
 
@@ -34,9 +36,7 @@ export const readBackgroundJobOutput: ToolFunctionType<
       throw new Error(`Background job with ID "${backgroundJobId}" not found.`);
     }
 
-    const output = outputManager.readOutput(
-      regex ? new RegExp(regex) : undefined,
-    );
+    const output = outputManager.readOutput();
 
     return {
       output: output.output,

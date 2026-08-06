@@ -26,7 +26,7 @@ const messageUtilsMocks = vi.hoisted(() => ({
       _reviews,
       _userEdits,
       _activeSelection,
-      _activeTerminalTextSelection,
+      _terminalContextSelections,
       invokedSkills: ValidSkillFile[] = [],
     ) => [
       ...invokedSkills.map((skill) => `skill:${skill.instructions}`),
@@ -36,9 +36,7 @@ const messageUtilsMocks = vi.hoisted(() => ({
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
-  readTerminalSelection: vi.fn(async () => undefined as unknown),
   showWarningMessage: vi.fn(async () => undefined),
-  isVSCodeEnvironment: { value: false },
 }));
 const activeSelectionMock = vi.hoisted(() => ({
   value: undefined as ActiveSelection | undefined,
@@ -65,10 +63,8 @@ vi.mock("@/lib/message-utils", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
-  isVSCodeEnvironment: () => vscodeMocks.isVSCodeEnvironment.value,
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
-    readTerminalSelection: vscodeMocks.readTerminalSelection,
     showWarningMessage: vscodeMocks.showWarningMessage,
   },
 }));
@@ -86,11 +82,8 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
-    vscodeMocks.readTerminalSelection.mockReset();
-    vscodeMocks.readTerminalSelection.mockResolvedValue(undefined);
     vscodeMocks.showWarningMessage.mockClear();
     userEditsMocks.userEdits = [];
-    vscodeMocks.isVSCodeEnvironment.value = false;
     activeSelectionMock.value = undefined;
   });
 
@@ -251,7 +244,7 @@ describe("useChatSubmit", () => {
         [],
         [],
         undefined,
-        undefined,
+        [],
         [],
       );
     });
@@ -301,7 +294,7 @@ describe("useChatSubmit", () => {
         [],
         [],
         undefined,
-        undefined,
+        [],
         [currentSkill],
       );
       expect(context.sendMessage).toHaveBeenCalledWith({
@@ -580,16 +573,8 @@ describe("useChatSubmit", () => {
       },
       content: "queue-time selection",
     };
-    const queueTimeTerminalSelection: TerminalTextSelection = {
-      terminalName: "queue-time terminal",
-      content: "queue-time terminal text",
-    };
 
-    vscodeMocks.isVSCodeEnvironment.value = true;
     activeSelectionMock.value = queueTimeActiveSelection;
-    vscodeMocks.readTerminalSelection.mockResolvedValue(
-      queueTimeTerminalSelection,
-    );
 
     const context = setup({ isLoading: true });
 
@@ -599,12 +584,10 @@ describe("useChatSubmit", () => {
       await context.result.current.handleSubmit();
     });
 
-    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(context.queuedMessages).toEqual([
       draftMessage({
         text: "follow up",
         activeSelection: queueTimeActiveSelection,
-        activeTerminalTextSelection: queueTimeTerminalSelection,
       }),
     ]);
 
@@ -617,10 +600,6 @@ describe("useChatSubmit", () => {
       },
       content: "send-time selection",
     };
-    vscodeMocks.readTerminalSelection.mockResolvedValue({
-      terminalName: "send-time terminal",
-      content: "send-time terminal text",
-    });
 
     let steerPromise: Promise<void>;
     await act(async () => {
@@ -637,7 +616,6 @@ describe("useChatSubmit", () => {
 
     // The message was already fully prepared at queue time, so flushing it
     // must not re-read the selection context.
-    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(context.sendMessage).toHaveBeenCalledWith({
       parts: ["text:follow up"],
     });
@@ -652,16 +630,8 @@ describe("useChatSubmit", () => {
       },
       content: "fresh selection",
     };
-    const sendTimeTerminalSelection: TerminalTextSelection = {
-      terminalName: "fresh terminal",
-      content: "fresh terminal text",
-    };
 
-    vscodeMocks.isVSCodeEnvironment.value = true;
     activeSelectionMock.value = sendTimeActiveSelection;
-    vscodeMocks.readTerminalSelection.mockResolvedValue(
-      sendTimeTerminalSelection,
-    );
 
     const context = setup({ isLoading: false });
 
@@ -669,7 +639,6 @@ describe("useChatSubmit", () => {
       await context.result.current.handleSubmit();
     });
 
-    expect(vscodeMocks.readTerminalSelection).toHaveBeenCalledOnce();
     expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
       expect.any(Function),
       "follow up",
@@ -677,7 +646,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       sendTimeActiveSelection,
-      sendTimeTerminalSelection,
+      [],
       [],
     );
   });
@@ -707,7 +676,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
-      undefined,
+      [],
       [],
     );
   });
@@ -737,7 +706,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
-      undefined,
+      [],
       [],
     );
 
@@ -779,9 +748,65 @@ describe("useChatSubmit", () => {
       [],
       queuedUserEdits,
       undefined,
-      undefined,
+      [],
       [],
     );
+  });
+
+  it("allows submitting with no text when terminal context selections are attached", async () => {
+    const terminalContextSelections: TerminalTextSelection[] = [
+      { terminalName: "bash", content: "echo hi" },
+    ];
+    const context = setup({
+      isLoading: false,
+      inputText: "",
+      terminalContextSelections,
+    });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(context.sendMessage).toHaveBeenCalledWith({
+      parts: ["text:"],
+    });
+  });
+
+  it("sends attached terminal context selections and clears them after sending", async () => {
+    const terminalContextSelections: TerminalTextSelection[] = [
+      { terminalName: "bash", content: "echo hi" },
+    ];
+
+    const context = setup({
+      isLoading: false,
+      terminalContextSelections,
+    });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+      expect.any(Function),
+      "follow up",
+      [],
+      [],
+      [],
+      undefined,
+      terminalContextSelections,
+      [],
+    );
+    expect(context.clearTerminalContextSelections).toHaveBeenCalledOnce();
+  });
+
+  it("does not clear terminal context selections when none are attached", async () => {
+    const context = setup({ isLoading: false });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(context.clearTerminalContextSelections).not.toHaveBeenCalled();
   });
 });
 
@@ -794,6 +819,7 @@ function setup({
   reviews = [],
   skills = [],
   includeUserEdits: initialIncludeUserEdits = true,
+  terminalContextSelections = [],
   isTodoMode = false,
   canCreateTodo = true,
   onTodoModeQueued,
@@ -807,6 +833,7 @@ function setup({
   reviews?: Review[];
   skills?: ValidSkillFile[];
   includeUserEdits?: boolean;
+  terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
@@ -816,6 +843,7 @@ function setup({
   const stopChat = vi.fn();
   const clearInput = vi.fn();
   const clearFiles = vi.fn();
+  const clearTerminalContextSelections = vi.fn();
 
   const upload = vi.fn(() => Promise.resolve([]));
 
@@ -844,7 +872,12 @@ function setup({
       const isInputEmpty = !initialInputText.trim();
       const isFilesEmpty = files.length === 0;
       const isReviewsEmpty = reviews.length === 0;
-      const isSubmitEnabled = !isInputEmpty || !isFilesEmpty || !isReviewsEmpty;
+      const isTerminalContextEmpty = terminalContextSelections.length === 0;
+      const isSubmitEnabled =
+        !isInputEmpty ||
+        !isFilesEmpty ||
+        !isReviewsEmpty ||
+        !isTerminalContextEmpty;
       const isStopEnabled = isRunning;
       const allowSendMessage = !isRunning;
       const allowSteer = true;
@@ -875,6 +908,8 @@ function setup({
         reviews,
         userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
         skills,
+        terminalContextSelections,
+        clearTerminalContextSelections,
         taskId: "task-1",
         isTodoMode,
         canCreateTodo,
@@ -912,6 +947,7 @@ function setup({
     },
     clearInput,
     clearFiles,
+    clearTerminalContextSelections,
     upload,
     sendMessage,
     stopChat,
@@ -923,17 +959,17 @@ function draftMessage({
   filesCount = 0,
   reviewsCount = 0,
   userEditsCount = 0,
+  terminalContextCount = 0,
   isTodoMode = false,
   activeSelection,
-  activeTerminalTextSelection,
 }: {
   text: string;
   filesCount?: number;
   reviewsCount?: number;
   userEditsCount?: number;
+  terminalContextCount?: number;
   isTodoMode?: boolean;
   activeSelection?: ActiveSelection;
-  activeTerminalTextSelection?: TerminalTextSelection;
 }): DraftMessage {
   return {
     parts: [`text:${text}`] as unknown as DraftMessage["parts"],
@@ -942,9 +978,9 @@ function draftMessage({
       filesCount,
       reviewsCount,
       userEditsCount,
+      terminalContextCount,
       isTodoMode,
       activeSelection,
-      activeTerminalTextSelection,
     },
   };
 }

@@ -44,10 +44,14 @@
     "fileCount": "{{count}} files",
     "reviewCount": "{{count}} reviews",
     "userEditCount": "{{count}} edits",
+    "terminalContextCount": "{{count}} terminal selections",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
-    "pleaseCheckFiles": "Please check these attachments.",
+    "contextLabelFiles": "files",
+    "contextLabelReviews": "reviews",
+    "contextLabelTerminalSelections": "terminal selections",
+    "pleaseCheckAttachedContext": "Please check the attached {{items}}.",
     "chatToolbar": {
       "diffWorktreeWith": "Diff worktree with {{branch}}",
       "openInTerminal": "Open in Integrated Terminal"
@@ -319,6 +323,7 @@
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",
+    "retry": "Retry",
     "cancel": "Cancel",
     "continueInSeconds": "Continue in {{seconds}}s",
     "save": "Save",
@@ -356,7 +361,6 @@
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
     "readTerminal": "Reading terminal output",
-    "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
     "updatingToDos": "Updating TODOs",
@@ -371,7 +375,9 @@
     "next": "Next",
     "askingQuestion_one": "Asking Question",
     "askingQuestion_other": "Asking Questions",
-    "skipped": "Skipped"
+    "skipped": "Skipped",
+    "startMonitor": "I will monitor",
+    "monitoring": "Monitoring"
   },
   "reasoning": {
     "thinking": "Thinking ...",
@@ -449,6 +455,9 @@
     "addContext": "Add Context",
     "terminal": "Terminal"
   },
+  "terminalContextBadge": {
+    "remove": "Remove terminal selection from context"
+  },
   "todoModeBadge": {
     "remove": "Remove todo mode"
   },
@@ -473,6 +482,7 @@
     "complete": "Complete"
   },
   "errorMessageView": {
+    "contentFilter": "A safety filter stopped the response. Try rephrasing your message or retry.",
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",
@@ -508,6 +518,8 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "openJob": "Open Job {{displayId}}",
+    "openTerminal": "Open terminal {{name}}",
+    "userTerminal": "User terminal",
     "stop": "STOP"
   },
   "devModeButton": {
@@ -557,6 +569,10 @@
     "undo": "Undo",
     "viewChanges": "View Changes",
     "openFile": "Open File"
+  },
+  "monitorEvents": {
+    "eventCount_one": "{{count}} event",
+    "eventCount_other": "{{count}} events"
   },
   "userEdits": {
     "title": "Edits",

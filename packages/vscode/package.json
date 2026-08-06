@@ -1,6 +1,6 @@
 {
   "name": "pochi",
-  "version": "0.61.0-dev",
+  "version": "0.63.0-dev",
   "description": "Pochi is your AI powered team mate. Now available in research preview.",
   "displayName": "Pochi (Research Preview)",
   "publisher": "TabbyML",
@@ -233,6 +233,11 @@
         "title": "Cancel",
         "icon": "$(close)",
         "category": "Pochi"
+      },
+      {
+        "command": "pochi.terminal.addToChat",
+        "title": "Add Selection to Pochi Chat",
+        "category": "Pochi"
       }
     ],
     "menus": {
@@ -341,6 +346,10 @@
         {
           "command": "pochi.comments.cancelEditComment",
           "when": "false"
+        },
+        {
+          "command": "pochi.terminal.addToChat",
+          "when": "terminalTextSelected"
         }
       ],
       "view/title": [
@@ -353,6 +362,13 @@
           "command": "pochi.webui.navigate.settings",
           "when": "view == pochiSidebarDark || view == pochiSidebarLight",
           "group": "navigation@2"
+        }
+      ],
+      "terminal/context": [
+        {
+          "command": "pochi.terminal.addToChat",
+          "when": "terminalTextSelected",
+          "group": "navigation"
         }
       ],
       "comments/commentThread/context": [

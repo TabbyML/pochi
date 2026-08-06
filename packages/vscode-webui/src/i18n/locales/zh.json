@@ -42,10 +42,14 @@
     "fileCount": "{{count}} 个文件",
     "reviewCount": "{{count}} 条评审",
     "userEditCount": "{{count}} 处编辑",
+    "terminalContextCount": "{{count}} 个终端选区",
     "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",
-    "pleaseCheckFiles": "请检查这些附件。",
+    "contextLabelFiles": "附件",
+    "contextLabelReviews": "评审",
+    "contextLabelTerminalSelections": "终端选区",
+    "pleaseCheckAttachedContext": "请检查已附加的{{items}}。",
     "chatToolbar": {
       "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
       "openInTerminal": "在集成终端中打开"
@@ -313,6 +317,7 @@
 
     "writing": "正在写入 ",
     "continue": "继续",
+    "retry": "重试",
     "cancel": "取消",
     "continueInSeconds": "{{seconds}}秒后继续",
     "save": "保存",
@@ -350,7 +355,6 @@
     "result_other": "{{count}}个结果",
     "readBackground": "正在读取后台任务输出",
     "readTerminal": "正在读取终端输出",
-    "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
     "backgroundExecuting": "正在后台执行命令",
     "updatingToDos": "更新待办事项中",
@@ -363,7 +367,9 @@
     "next": "下一步",
     "askingQuestion_one": "提问中",
     "askingQuestion_other": "提问中",
-    "skipped": "已跳过"
+    "skipped": "已跳过",
+    "startMonitor": "我将监听：",
+    "monitoring": "正在监听"
   },
   "reasoning": {
     "thinking": "思考中 ...",
@@ -441,6 +447,9 @@
     "addContext": "添加上下文",
     "terminal": "终端"
   },
+  "terminalContextBadge": {
+    "remove": "从上下文中移除终端选区"
+  },
   "todoModeBadge": {
     "remove": "移除 Todo 模式"
   },
@@ -465,6 +474,7 @@
     "complete": "完成"
   },
   "errorMessageView": {
+    "contentFilter": "安全过滤阻止了此次回答。请尝试换一种方式表达，或重试。",
     "reachedCreditLimit": "您已达到消费限额。",
     "seeMore": "查看更多",
     "teamReachedCreditLimit": "您的团队已达到消费限额。",
@@ -500,6 +510,8 @@
     "collapse": "收起",
     "expand": "展开",
     "openJob": "打开任务 {{displayId}}",
+    "openTerminal": "打开终端 {{name}}",
+    "userTerminal": "用户终端",
     "stop": "停止"
   },
   "liveSubTask": {
@@ -554,6 +566,10 @@
     "undo": "撤销",
     "viewChanges": "查看更改",
     "openFile": "打开文件"
+  },
+  "monitorEvents": {
+    "eventCount_one": "{{count}} 个事件",
+    "eventCount_other": "{{count}} 个事件"
   },
   "userEdits": {
     "title": "编辑",

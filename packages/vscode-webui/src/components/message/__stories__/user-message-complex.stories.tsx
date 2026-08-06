@@ -28,7 +28,7 @@ const complexUserMessage: Message = {
       type: "text",
       text: "Here is a complex request involving multiple context items. I've found some issues and I'm providing context via active selection, user edits, reviews, and attachments.",
     },
-    // Active Selection (both a text-file selection and a terminal selection)
+    // Active Selection (a text-file selection)
     {
       type: "data-active-selection",
       data: {
@@ -45,11 +45,6 @@ const complexUserMessage: Message = {
     </button>
   );
 };`,
-        },
-        activeTerminalTextSelection: {
-          terminalName: "bash",
-          backgroundJobId: "term-story-terminal",
-          content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
         },
       },
     },
@@ -151,31 +146,75 @@ export const AllParts: Story = {
   },
 };
 
-const terminalOnlySelectionMessage: Message = {
-  id: "msg-terminal-only-selection",
+// Explicitly attached terminal context ("Add to Chat" flow).
+const terminalContextSingleMessage: Message = {
+  id: "msg-terminal-context-single",
   role: "user",
   parts: [
     {
       type: "text",
-      text: "Here's the error I'm seeing in the terminal:",
+      text: "I attached the build output for reference.",
     },
     {
-      type: "data-active-selection",
+      type: "data-terminal-context",
       data: {
-        activeTerminalTextSelection: {
-          terminalName: "npm run dev",
-          backgroundJobId: "bgjob-story-terminal",
-          content:
-            "Error: Cannot find module 'foo'\n    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:1075:15)\n    at Function.Module._load (node:internal/modules/cjs/loader:920:27)",
-        },
+        textSelections: [
+          {
+            terminalName: "bash",
+            backgroundJobId: "term-story-context-1",
+            content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
+          },
+        ],
       },
     },
   ],
 };
 
-export const TerminalSelectionOnly: Story = {
+export const TerminalContextSingle: Story = {
   args: {
-    messages: [terminalOnlySelectionMessage],
+    messages: [terminalContextSingleMessage],
+    isLoading: false,
+    user: {
+      name: "Developer",
+      image: "https://github.com/shadcn.png",
+    },
+  },
+};
+
+// Multiple explicitly attached terminal selections across different
+// terminals.
+const terminalContextMultipleMessage: Message = {
+  id: "msg-terminal-context-multiple",
+  role: "user",
+  parts: [
+    {
+      type: "text",
+      text: "Here are a few terminal snippets I manually attached for reference.",
+    },
+    {
+      type: "data-terminal-context",
+      data: {
+        textSelections: [
+          {
+            terminalName: "bash",
+            backgroundJobId: "term-story-context-2",
+            content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
+          },
+          {
+            terminalName: "zsh",
+            backgroundJobId: "term-story-context-3",
+            content:
+              "$ git status\nOn branch main\nnothing to commit, working tree clean",
+          },
+        ],
+      },
+    },
+  ],
+};
+
+export const TerminalContextMultiple: Story = {
+  args: {
+    messages: [terminalContextMultipleMessage],
     isLoading: false,
     user: {
       name: "Developer",

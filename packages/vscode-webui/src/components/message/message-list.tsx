@@ -22,13 +22,14 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
-import { Fragment, memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
 import { ActiveSelectionPart, TerminalSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
+import { MonitorEventsPart } from "./monitor-events";
 import { Reviews } from "./reviews";
 import { UserEditsPart } from "./user-edits";
 
@@ -190,7 +191,7 @@ export const MessageList: React.FC<{
                 </div>
                 {/* Display attachments at the bottom of the message */}
                 <UserAttachments message={m} />
-                <UserActiveSelections message={m} />
+                <UserSelections message={m} />
               </div>
               {messageIndex < renderMessages.length - 1 ? (
                 <SeparatorWithCheckpoint
@@ -245,37 +246,55 @@ function UserAttachments({ message }: { message: Message }) {
   }
 }
 
-function UserActiveSelections({ message }: { message: Message }) {
+function UserSelections({ message }: { message: Message }) {
   const selectionParts = message.parts.filter(
     (part) => part.type === "data-active-selection",
   ) as {
     type: "data-active-selection";
     data: {
       activeSelection?: ActiveSelection;
-      activeTerminalTextSelection?: TerminalTextSelection;
     };
   }[];
 
-  if (message.role === "user" && selectionParts.length) {
-    return (
-      <div className="mt-2 flex flex-wrap gap-2">
-        {selectionParts.map((part, index) => (
-          <Fragment key={index}>
-            {part.data.activeSelection && (
-              <ActiveSelectionPart
-                activeSelection={part.data.activeSelection}
-              />
-            )}
-            {part.data.activeTerminalTextSelection && (
-              <TerminalSelectionPart
-                terminalTextSelection={part.data.activeTerminalTextSelection}
-              />
-            )}
-          </Fragment>
-        ))}
-      </div>
-    );
+  const terminalContextParts = message.parts.filter(
+    (part) => part.type === "data-terminal-context",
+  ) as {
+    type: "data-terminal-context";
+    data: {
+      textSelections: TerminalTextSelection[];
+    };
+  }[];
+
+  const terminalContextSelections = terminalContextParts.flatMap(
+    (part) => part.data.textSelections,
+  );
+
+  if (
+    message.role !== "user" ||
+    (!selectionParts.length && !terminalContextSelections.length)
+  ) {
+    return;
   }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {selectionParts.map(
+        (part, index) =>
+          part.data.activeSelection && (
+            <ActiveSelectionPart
+              key={index}
+              activeSelection={part.data.activeSelection}
+            />
+          ),
+      )}
+      {terminalContextSelections.map((textSelection, index) => (
+        <TerminalSelectionPart
+          key={index}
+          terminalTextSelection={textSelection}
+        />
+      ))}
+    </div>
+  );
 }
 
 function Part({
@@ -372,6 +391,14 @@ function Part({
   }
 
   if (part.type === "data-active-selection") {
+    return null;
+  }
+
+  if (part.type === "data-monitor-events") {
+    return <MonitorEventsPart batches={part.data.batches} />;
+  }
+
+  if (part.type === "data-terminal-context") {
     return null;
   }
 

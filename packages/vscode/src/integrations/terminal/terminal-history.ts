@@ -51,6 +51,16 @@ export class TerminalHistoryManager {
   private lastReadLength = 0; // tracks byte length, not character length
   private lastReadAt = 0;
 
+  /**
+   * The terminal's display name, refreshed on each command start. A snapshot:
+   * VS Code terminal names follow `terminal.integrated.tabs.title` (default
+   * `${process}`) and there is no stable API event for name changes.
+   */
+  terminalName?: string;
+
+  /** The most recent command run in the terminal. */
+  lastCommand?: string;
+
   private constructor(public readonly id: string) {}
 
   static getOrCreate(id: string): TerminalHistoryManager {
@@ -76,6 +86,7 @@ export class TerminalHistoryManager {
    * (added separately via {@link addChunk}).
    */
   beginCommand(command: string, cwd?: string): void {
+    this.lastCommand = command;
     const header = cwd ? `${cwd}$ ${command}\n` : `$ ${command}\n`;
     this.addChunk(header);
   }
@@ -99,9 +110,8 @@ export class TerminalHistoryManager {
 
   /**
    * Reads new history content since the last read.
-   * @param regex - An optional regex to filter the output lines.
    */
-  readOutput(regex?: RegExp): {
+  readOutput(): {
     output: string;
     isTruncated: boolean;
     status: ExecuteCommandResult["status"];
@@ -131,22 +141,6 @@ export class TerminalHistoryManager {
 
     this.lastReadLength = currentOutputBytes;
     this.lastReadAt = now;
-
-    if (regex) {
-      const lines = newOutput.split(/(\r\n|\n)/);
-      const filteredParts: string[] = [];
-
-      for (let i = 0; i < lines.length; i += 2) {
-        const lineContent = lines[i] || "";
-        const lineSeparator = lines[i + 1] || "";
-
-        if (regex.test(lineContent)) {
-          filteredParts.push(lineContent + lineSeparator);
-        }
-      }
-
-      newOutput = filteredParts.join("");
-    }
 
     return {
       output: newOutput,

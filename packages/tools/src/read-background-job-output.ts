@@ -3,22 +3,15 @@ import { defineClientTool } from "./types";
 
 const toolDef = {
   description:
-    `- Retrieves output from a running or completed background job, or from a user-opened terminal
+    `- Retrieves output from a running or completed job started with startBackgroundJob, or from a user-opened terminal
 - Takes a backgroundJobId parameter identifying the job or terminal
 - Always returns only new content since the last check for that id
 - Returns output along with job status
-- Supports optional regex filtering to show only lines matching a pattern
-- Use this tool when you need to monitor a long-running background job, or catch up on what happened in a user-opened terminal`.trim(),
+- Use this tool to poll a background job for one eventual result, or catch up on a user-opened terminal`.trim(),
   inputSchema: z.object({
     backgroundJobId: z
       .string()
       .describe("The ID of the background job or terminal to get output from"),
-    regex: z
-      .string()
-      .optional()
-      .describe(
-        "Optional regular expression to filter the output lines. Only lines matching this regex will be included in the result. Any lines that do not match will no longer be available to read.",
-      ),
   }),
   outputSchema: z.object({
     output: z
@@ -33,6 +26,18 @@ const toolDef = {
       .boolean()
       .optional()
       .describe("Whether the output was truncated"),
+    terminalName: z
+      .string()
+      .optional()
+      .describe(
+        "For user-opened terminals (term-), the terminal's display name at read time.",
+      ),
+    lastCommand: z
+      .string()
+      .optional()
+      .describe(
+        "For user-opened terminals (term-), the last command run in the terminal at read time.",
+      ),
   }),
 };
 

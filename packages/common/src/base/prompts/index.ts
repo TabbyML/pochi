@@ -1,7 +1,4 @@
-import {
-  renderActiveSelection,
-  renderTerminalTextSelection,
-} from "./active-selection";
+import { renderActiveSelection } from "./active-selection";
 import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
 export { assertBackgroundJobReadInterval } from "./background-job";
 import {
@@ -32,6 +29,7 @@ import {
   buildMemoryExtractionDirective,
   taskMemoryTemplate,
 } from "./task-memory";
+import { renderTerminalContext } from "./terminal-context";
 import { renderUserEdits } from "./user-edits";
 
 export { parseEnvironmentInfo } from "./environment";
@@ -55,7 +53,7 @@ export const prompts = {
   skillSystemReminder: createSkillSystemReminder,
   renderReviewComments,
   renderActiveSelection,
-  renderTerminalTextSelection,
+  renderTerminalContext,
   renderUserEdits,
   renderBashOutputs,
   fixMermaidError,

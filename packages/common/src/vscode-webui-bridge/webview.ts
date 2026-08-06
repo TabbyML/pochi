@@ -8,6 +8,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  MonitorEventEnvelope,
   TaskMemoryState,
   TerminalTextSelection,
 } from "../base";
@@ -180,22 +181,24 @@ export interface VSCodeHostApi {
     ThreadSignalSerialization<ActiveSelection | undefined>
   >;
 
-  /**
-   * Reads the text currently selected in the active terminal, if any.
-   *
-   * This is a one-shot, on-demand read (not reactive): VS Code has no stable
-   * API to observe or read a terminal's current selection. It works by
-   * briefly copying the terminal selection to the clipboard and restoring
-   * the clipboard's original content afterwards.
-   */
-  readTerminalSelection(): Promise<TerminalTextSelection | undefined>;
-
   readVisibleTerminals(): Promise<{
     terminals: ThreadSignalSerialization<
       Environment["workspace"]["terminals"] | undefined
     >;
     openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
   }>;
+
+  /**
+   * Undelivered monitor event batches of a task (startMonitor tool), as a
+   * live signal. The webview injects them into the conversation and then
+   * acknowledges via {@link ackMonitorEvents}.
+   */
+  readMonitorEvents(
+    taskId: string,
+  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>>;
+
+  /** Drops delivered monitor event batches with seq <= upToSeq. */
+  ackMonitorEvents(taskId: string, upToSeq: number): Promise<void>;
 
   /**
    * Opens a file at the specified file path.
@@ -565,4 +568,16 @@ export interface WebviewHostApi {
   readStoreFile(filePath: string): Promise<string | null>;
 
   readTaskOutput(taskId: string): Promise<ExecuteCommandResult>;
+
+  /**
+   * Pushes a terminal text selection into the webview's pending "terminal
+   * context" list, so it shows up attached to the next outgoing chat
+   * message. Invoked from the VS Code side (e.g. the terminal right-click
+   * "Add to Chat" command).
+   *
+   * Resolves once the selection has been handed off to the webview's
+   * terminal context state (awaiting readiness rather than dropping it if
+   * the webview hasn't finished initializing yet).
+   */
+  addTerminalContext(selection: TerminalTextSelection): Promise<void>;
 }

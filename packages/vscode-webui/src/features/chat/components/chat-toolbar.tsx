@@ -28,6 +28,7 @@ import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
+import type { MonitorEventEnvelope } from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type {
   DisplayModel,
@@ -52,9 +53,11 @@ import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { type DraftMessage, useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
+import { useMonitorEvents } from "../hooks/use-monitor-events";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
+import { useTerminalContextState } from "../hooks/use-terminal-context-state";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -128,6 +131,46 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
 
   const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
+
+  // Monitor events (startMonitor tool) enter the conversation through the
+  // queued-messages pipeline: enqueue here, and the auto-dequeue effect
+  // below delivers them as soon as the chat is idle. Events arriving while
+  // a monitor draft is still queued are merged into it, so a burst becomes
+  // one message (and one inference round) instead of many.
+  const onMonitorEvents = useCallback((envelopes: MonitorEventEnvelope[]) => {
+    setQueuedMessages((prev) => {
+      const last = prev.at(-1);
+      const queuedEnvelopes = last?.raw.monitor?.envelopes;
+      const merged = queuedEnvelopes
+        ? [...queuedEnvelopes, ...envelopes]
+        : envelopes;
+
+      const first = merged[0];
+      const eventCount = merged.reduce((n, e) => n + e.lines.length, 0);
+      const summary = [
+        eventCount > 0 ? `${eventCount} event(s)` : "",
+        merged.some((e) => e.ended) ? "ended" : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      const draft: DraftMessage = {
+        // Rendered to a system-reminder text for the LLM by the chat
+        // transport; kept as a data part so the chat UI can display it.
+        parts: [{ type: "data-monitor-events", data: { batches: merged } }],
+        raw: {
+          text: `Monitor [${first.description}]: ${summary}`,
+          monitor: {
+            backgroundJobId: first.backgroundJobId,
+            description: first.description,
+            envelopes: merged,
+          },
+        },
+      };
+      return queuedEnvelopes ? [...prev.slice(0, -1), draft] : [...prev, draft];
+    });
+  }, []);
+  useMonitorEvents(taskId, onMonitorEvents);
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
   const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
@@ -206,6 +249,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = attachmentUpload;
 
   const reviews = useReviews();
+  const {
+    selections: terminalContextSelections,
+    removeSelection: removeTerminalContextSelection,
+    clearSelections: clearTerminalContextSelections,
+  } = useTerminalContextState();
 
   const { inlineCompactTask, inlineCompactTaskPending } = useInlineCompactTask({
     sendMessage,
@@ -243,6 +291,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
+    isTerminalContextEmpty: terminalContextSelections.length === 0,
     isUploadingAttachments,
     blockingState,
     taskStatus: task?.status,
@@ -277,6 +326,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     reviews,
     userEdits: includedUserEdits,
     skills,
+    terminalContextSelections,
+    clearTerminalContextSelections,
     taskId,
     isTodoMode: todoModeSelected,
     canCreateTodo: !todoModeDisabled,
@@ -448,6 +499,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           onRemoveUserEdits={() =>
             setExcludedUserEditsContext(userEditsContext)
           }
+          terminalContextSelections={terminalContextSelections}
+          onRemoveTerminalContextSelection={removeTerminalContextSelection}
           queuedMessages={queuedMessages}
           onRemoveQueuedMessage={handleRemoveQueuedMessage}
           onSteerQueuedMessage={handleSteerQueuedMessage}
