@@ -1,4 +1,3 @@
-import { prompts } from "@getpochi/common";
 import type {
   ActiveSelection,
   Review,
@@ -19,7 +18,21 @@ const chatStateMocks = vi.hoisted(() => ({
   isExecuting: false,
 }));
 const messageUtilsMocks = vi.hoisted(() => ({
-  prepareMessageParts: vi.fn((_t, text: string) => [`text:${text}`]),
+  prepareMessageParts: vi.fn(
+    (
+      _t,
+      text: string,
+      _files,
+      _reviews,
+      _userEdits,
+      _activeSelection,
+      _activeTerminalTextSelection,
+      invokedSkills: ValidSkillFile[] = [],
+    ) => [
+      ...invokedSkills.map((skill) => `skill:${skill.instructions}`),
+      `text:${text}`,
+    ],
+  ),
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
@@ -158,6 +171,34 @@ describe("useChatSubmit", () => {
       expect(vscodeMocks.deleteReviews).not.toHaveBeenCalled();
     });
 
+    it("rejects a user-invocable skill typed as plain text", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/deploy do the task",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/deploy do the task" }],
+            },
+          ],
+        },
+        skills: [createSkill("deploy")],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).toHaveBeenCalledWith(
+        'Skill "deploy" must be selected from the slash command menu. Remove the plain-text command and reselect it from the menu.',
+        { modal: false },
+      );
+      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(context.clearInput).not.toHaveBeenCalled();
+    });
+
     it("sends unknown slash text as plain text", async () => {
       const context = setup({
         isLoading: false,
@@ -211,6 +252,7 @@ describe("useChatSubmit", () => {
         [],
         undefined,
         undefined,
+        [],
       );
     });
 
@@ -221,9 +263,10 @@ describe("useChatSubmit", () => {
       const currentSkill = createSkill("changing", {
         instructions: "current instructions",
       });
+      const onBeforeSendText = vi.fn();
       const context = setup({
         isLoading: false,
-        inputText: prompts.skill(selectedSkill),
+        inputText: "/changing",
         inputJson: {
           type: "doc",
           content: [
@@ -243,6 +286,8 @@ describe("useChatSubmit", () => {
           ],
         },
         skills: [currentSkill],
+        isTodoMode: true,
+        onBeforeSendText,
       });
 
       await act(async () => {
@@ -251,13 +296,18 @@ describe("useChatSubmit", () => {
 
       expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
         expect.any(Function),
-        prompts.skill(currentSkill),
+        "/changing",
         [],
         [],
         [],
         undefined,
         undefined,
+        [currentSkill],
       );
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["skill:current instructions", "text:/changing"],
+      });
+      expect(onBeforeSendText).toHaveBeenCalledWith("/changing");
     });
 
     it("rejects a skill mention that is no longer available", async () => {
@@ -628,6 +678,7 @@ describe("useChatSubmit", () => {
       [],
       sendTimeActiveSelection,
       sendTimeTerminalSelection,
+      [],
     );
   });
 
@@ -657,6 +708,7 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       undefined,
+      [],
     );
   });
 
@@ -686,6 +738,7 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       undefined,
+      [],
     );
 
     expect(context.queuedMessages).toEqual([
@@ -727,6 +780,7 @@ describe("useChatSubmit", () => {
       queuedUserEdits,
       undefined,
       undefined,
+      [],
     );
   });
 });

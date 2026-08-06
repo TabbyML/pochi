@@ -1,4 +1,3 @@
-import { prompts } from "@getpochi/common";
 import type { ValidSkillFile } from "@getpochi/common/vscode-webui-bridge";
 import {
   Skill,
@@ -23,7 +22,7 @@ interface SkillInvocationReferences {
 }
 
 export type SkillInvocationValidationResult =
-  | { status: "valid"; text: string }
+  | { status: "valid"; text: string; invokedSkills: ValidSkillFile[] }
   | { status: "blocked"; message: string };
 
 function extractSlashCommands(text: string): string[] {
@@ -82,7 +81,7 @@ export function validateSkillInvocations(
         textCommands: extractSlashCommands(input.text),
       };
 
-  let text = input.text;
+  const invokedSkills = new Map<string, ValidSkillFile>();
 
   for (const mention of references.mentions) {
     const skill = skills.find((candidate) => candidate.name === mention.name);
@@ -106,18 +105,29 @@ export function validateSkillInvocations(
         message: `Skill "${mention.name}" is no longer available. Remove or reselect the slash command.`,
       };
     }
-    text = text.replace(prompts.skill(staleSkill.data), prompts.skill(skill));
+    invokedSkills.set(skill.name, skill);
   }
 
   for (const name of references.textCommands) {
     const skill = skills.find((candidate) => candidate.name === name);
-    if (skill && !isUserInvocableSkill(skill)) {
+    if (!skill) {
+      continue;
+    }
+    if (!isUserInvocableSkill(skill)) {
       return {
         status: "blocked",
         message: makeUserInvocationDisabledMessage(skill),
       };
     }
+    return {
+      status: "blocked",
+      message: `Skill "${name}" must be selected from the slash command menu. Remove the plain-text command and reselect it from the menu.`,
+    };
   }
 
-  return { status: "valid", text };
+  return {
+    status: "valid",
+    text: input.text,
+    invokedSkills: [...invokedSkills.values()],
+  };
 }

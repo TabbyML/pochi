@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderSlashMentionText } from "../slash-mention/extension";
 
 describe("renderSlashMentionText", () => {
-  it("expands a selected skill directly into its instructions", () => {
+  it("keeps a selected skill as concise user-visible text", () => {
     const result = renderSlashMentionText({
       type: "skill",
       id: "deploy",
@@ -16,8 +16,17 @@ describe("renderSlashMentionText", () => {
       },
     });
 
-    expect(result).toContain("Run the deployment workflow.");
-    expect(result).toContain('Do not call the useSkill tool for "deploy"');
-    expect(result).not.toContain("Please use the useSkill tool");
+    expect(result).toBe("/deploy");
+  });
+
+  it("does not render from untrusted skill metadata", () => {
+    const result = renderSlashMentionText({
+      type: "skill",
+      id: "deploy",
+      path: "/skills/deploy/SKILL.md",
+      rawData: undefined as never,
+    });
+
+    expect(result).toBe("/deploy");
   });
 });

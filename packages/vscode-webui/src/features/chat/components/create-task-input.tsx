@@ -16,7 +16,11 @@ import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
-import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  GitWorktree,
+  Review,
+  ValidSkillFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -163,8 +167,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         url: string;
       }>;
       todos?: Todo[];
+      invokedSkills?: ValidSkillFile[];
     }): Promise<boolean> => {
-      const { content, shouldCreateWorktree, uploadedFiles, todos } = params;
+      const {
+        content,
+        shouldCreateWorktree,
+        uploadedFiles,
+        todos,
+        invokedSkills,
+      } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
       if (shouldCreateWorktree) {
@@ -197,6 +208,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           files: uploadedFiles,
           activeSelection: activeSelection ?? undefined,
           activeTerminalTextSelection,
+          invokedSkills,
           mcpConfigOverride:
             Object.keys(mcpConfigOverride).length > 0
               ? mcpConfigOverride
@@ -296,6 +308,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
         todos: shouldCreateTodo ? initTodoModeTodos(content) : undefined,
+        invokedSkills: validationResult.invokedSkills,
       });
 
       // Set isCreatingTask state false

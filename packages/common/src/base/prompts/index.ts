@@ -22,7 +22,11 @@ import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
 import { renderReviewComments } from "./review-comments";
-import { createSkillPrompt, createUseSkillResult } from "./skill";
+import {
+  createSkillPrompt,
+  createSkillSystemReminder,
+  createUseSkillResult,
+} from "./skill";
 import { createSystemPrompt } from "./system";
 import {
   buildMemoryExtractionDirective,
@@ -48,6 +52,7 @@ export const prompts = {
   generateTitle,
   customAgent: createCustomAgentPrompt,
   skill: createSkillPrompt,
+  skillSystemReminder: createSkillSystemReminder,
   renderReviewComments,
   renderActiveSelection,
   renderTerminalTextSelection,

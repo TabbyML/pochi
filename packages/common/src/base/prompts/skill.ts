@@ -12,6 +12,14 @@ ${instructions}
 </skill>`;
 }
 
+export function createSkillSystemReminder(skill: Skill) {
+  const skillPrompt = createSkillPrompt(skill).replace(
+    /<\/?system-reminder\b[^>]*>/gi,
+    (match) => match.replace("<", "&lt;"),
+  );
+  return `<system-reminder>${skillPrompt}</system-reminder>`;
+}
+
 /**
  * Creates the result for useSkill tool that includes skill instructions and tool restrictions
  */

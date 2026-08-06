@@ -139,7 +139,7 @@ export function useChatSubmit({
     async (submittedInput: ChatInput = input) => {
       const result = validateSkillInvocations(submittedInput, skills);
       if (result.status === "valid") {
-        return result.text;
+        return result;
       }
 
       await vscodeHost.showWarningMessage(result.message, { modal: false });
@@ -178,8 +178,13 @@ export function useChatSubmit({
   ]);
 
   const createMessage = useCallback(
-    async (resolvedText = input.text): Promise<DraftMessage | undefined> => {
-      const text = resolvedText.trim();
+    async (
+      resolvedInput: Extract<
+        ReturnType<typeof validateSkillInvocations>,
+        { status: "valid" }
+      > = { status: "valid", text: input.text, invokedSkills: [] },
+    ): Promise<DraftMessage | undefined> => {
+      const text = resolvedInput.text.trim();
       const currentFiles = [...files];
       const currentReviews = [...reviews];
 
@@ -237,6 +242,7 @@ export function useChatSubmit({
         currentUserEdits,
         currentSelection,
         currentTerminalTextSelection,
+        resolvedInput.invokedSkills,
       );
 
       return { parts, raw };
@@ -298,12 +304,12 @@ export function useChatSubmit({
         return;
       }
 
-      const resolvedText = await validateInput(submittedInput);
-      if (resolvedText === undefined) {
+      const resolvedInput = await validateInput(submittedInput);
+      if (resolvedInput === undefined) {
         return;
       }
 
-      const message = await createMessage(resolvedText);
+      const message = await createMessage(resolvedInput);
       if (!message) {
         return;
       }
@@ -341,12 +347,12 @@ export function useChatSubmit({
         return;
       }
 
-      const resolvedText = await validateInput(submittedInput);
-      if (resolvedText === undefined) {
+      const resolvedInput = await validateInput(submittedInput);
+      if (resolvedInput === undefined) {
         return;
       }
 
-      const message = await createMessage(resolvedText);
+      const message = await createMessage(resolvedInput);
       if (!message) {
         return;
       }

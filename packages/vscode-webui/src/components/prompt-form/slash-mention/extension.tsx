@@ -46,7 +46,7 @@ export function renderSlashMentionText(attrs: SlashMentionAttributes) {
   if (attrs.type === "custom-agent") {
     return prompts.customAgent(attrs.id, attrs.path);
   }
-  return prompts.skill(attrs.rawData);
+  return `/${attrs.id}`;
 }
 
 /**
