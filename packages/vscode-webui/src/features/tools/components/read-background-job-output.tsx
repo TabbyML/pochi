@@ -1,4 +1,5 @@
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
+import { getToolPartError } from "@/lib/tool-call-error";
 import { useTranslation } from "react-i18next";
 import { BackgroundJobPanel } from "./command-execution-panel";
 import { HighlightedText } from "./highlight-text";
@@ -35,8 +36,9 @@ export const ReadBackgroundJobOutputTool: React.FC<
     </>
   );
 
+  const hasError = getToolPartError(tool) !== undefined;
   const finalJobId =
-    tool.state !== "input-streaming" ? backgroundJobId : undefined;
+    tool.state !== "input-streaming" && !hasError ? backgroundJobId : undefined;
 
   return (
     <ExpandableToolContainer
