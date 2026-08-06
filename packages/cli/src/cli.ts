@@ -41,6 +41,7 @@ import type {
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
+import { makeUserInvocationDisabledMessage } from "@getpochi/tools";
 
 import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
@@ -597,10 +598,11 @@ async function parseTaskInput(
 
   // Check if the prompt contains workflow references
   if (containsSlashCommandReference(prompt)) {
-    const { prompt: updatedPrompt } = await replaceSlashCommandReferences(
-      prompt,
-      slashCommandContext,
-    );
+    const { prompt: updatedPrompt, blockedSkill } =
+      await replaceSlashCommandReferences(prompt, slashCommandContext);
+    if (blockedSkill) {
+      return program.error(makeUserInvocationDisabledMessage(blockedSkill));
+    }
     prompt = updatedPrompt;
   }
 

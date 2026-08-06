@@ -2,11 +2,14 @@ import type {
   ActiveSelection,
   Review,
   TerminalTextSelection,
+  ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
+import type { JSONContent } from "@tiptap/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ChatInput } from "./use-chat-input-state";
 import { type DraftMessage, useChatSubmit } from "./use-chat-submit";
 
 const chatStateMocks = vi.hoisted(() => ({
@@ -15,10 +18,25 @@ const chatStateMocks = vi.hoisted(() => ({
   isExecuting: false,
 }));
 const messageUtilsMocks = vi.hoisted(() => ({
-  prepareMessageParts: vi.fn((_t, text: string) => [`text:${text}`]),
+  prepareMessageParts: vi.fn(
+    (
+      _t,
+      text: string,
+      _files,
+      _reviews,
+      _userEdits,
+      _activeSelection,
+      _terminalContextSelections,
+      invokedSkills: ValidSkillFile[] = [],
+    ) => [
+      ...invokedSkills.map((skill) => `skill:${skill.instructions}`),
+      `text:${text}`,
+    ],
+  ),
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
+  showWarningMessage: vi.fn(async () => undefined),
 }));
 const activeSelectionMock = vi.hoisted(() => ({
   value: undefined as ActiveSelection | undefined,
@@ -47,6 +65,7 @@ vi.mock("@/lib/message-utils", () => ({
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
+    showWarningMessage: vscodeMocks.showWarningMessage,
   },
 }));
 
@@ -63,6 +82,7 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
+    vscodeMocks.showWarningMessage.mockClear();
     userEditsMocks.userEdits = [];
     activeSelectionMock.value = undefined;
   });
@@ -108,6 +128,211 @@ describe("useChatSubmit", () => {
       expect(context.queuedMessages).toEqual([]);
       expect(context.clearInput).not.toHaveBeenCalled();
       expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("rejects a known non-user-invocable skill without side effects", async () => {
+      const review = createReview("review-1");
+      const context = setup({
+        isLoading: false,
+        inputText: "/hidden do the task",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/hidden do the task" }],
+            },
+          ],
+        },
+        files: [new File(["content"], "attachment.txt")],
+        reviews: [review],
+        skills: [createSkill("hidden", { userInvocable: false })],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).toHaveBeenCalledWith(
+        expect.stringContaining('Skill "hidden" cannot be invoked'),
+        { modal: false },
+      );
+      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(context.upload).not.toHaveBeenCalled();
+      expect(context.clearInput).not.toHaveBeenCalled();
+      expect(context.clearFiles).not.toHaveBeenCalled();
+      expect(vscodeMocks.deleteReviews).not.toHaveBeenCalled();
+    });
+
+    it("rejects a user-invocable skill typed as plain text", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/deploy do the task",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/deploy do the task" }],
+            },
+          ],
+        },
+        skills: [createSkill("deploy")],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).toHaveBeenCalledWith(
+        'Skill "deploy" must be selected from the slash command menu. Remove the plain-text command and reselect it from the menu.',
+        { modal: false },
+      );
+      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(context.clearInput).not.toHaveBeenCalled();
+    });
+
+    it("sends unknown slash text as plain text", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/unknown do the task",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/unknown do the task" }],
+            },
+          ],
+        },
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("uses the synchronous editor snapshot instead of stale input state", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/find-skills",
+      });
+      const submittedInput = {
+        json: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/find-skills 这个干啥的" }],
+            },
+          ],
+        },
+        text: "/find-skills 这个干啥的",
+      } satisfies ChatInput;
+
+      await act(async () => {
+        await context.result.current.handleSubmit(undefined, submittedInput);
+      });
+
+      expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+        expect.any(Function),
+        "/find-skills 这个干啥的",
+        [],
+        [],
+        [],
+        undefined,
+        [],
+        [],
+      );
+    });
+
+    it("re-resolves a skill mention against the current skill", async () => {
+      const selectedSkill = createSkill("changing", {
+        instructions: "old instructions",
+      });
+      const currentSkill = createSkill("changing", {
+        instructions: "current instructions",
+      });
+      const onBeforeSendText = vi.fn();
+      const context = setup({
+        isLoading: false,
+        inputText: "/changing",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "slashMention",
+                  attrs: {
+                    type: "skill",
+                    id: "changing",
+                    rawData: selectedSkill,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        skills: [currentSkill],
+        isTodoMode: true,
+        onBeforeSendText,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+        expect.any(Function),
+        "/changing",
+        [],
+        [],
+        [],
+        undefined,
+        [],
+        [currentSkill],
+      );
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["skill:current instructions", "text:/changing"],
+      });
+      expect(onBeforeSendText).toHaveBeenCalledWith("/changing");
+    });
+
+    it("rejects a skill mention that is no longer available", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "stale expanded skill instructions",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "slashMention",
+                  attrs: { type: "skill", id: "removed" },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).toHaveBeenCalledWith(
+        'Skill "removed" is no longer available. Remove or reselect the slash command.',
+        { modal: false },
+      );
+      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(context.clearInput).not.toHaveBeenCalled();
     });
 
     it("sends immediately when the chat is idle", async () => {
@@ -422,6 +647,7 @@ describe("useChatSubmit", () => {
       [],
       sendTimeActiveSelection,
       [],
+      [],
     );
   });
 
@@ -451,6 +677,7 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       [],
+      [],
     );
   });
 
@@ -479,6 +706,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
+      [],
       [],
     );
 
@@ -520,6 +748,7 @@ describe("useChatSubmit", () => {
       [],
       queuedUserEdits,
       undefined,
+      [],
       [],
     );
   });
@@ -565,6 +794,7 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       terminalContextSelections,
+      [],
     );
     expect(context.clearTerminalContextSelections).toHaveBeenCalledOnce();
   });
@@ -583,9 +813,11 @@ describe("useChatSubmit", () => {
 function setup({
   isLoading: initialIsLoading,
   inputText: initialInputText = " follow up ",
+  inputJson = null,
   queuedMessages: initialQueuedMessages = [],
   files = [],
   reviews = [],
+  skills = [],
   includeUserEdits: initialIncludeUserEdits = true,
   terminalContextSelections = [],
   isTodoMode = false,
@@ -595,9 +827,11 @@ function setup({
 }: {
   isLoading: boolean;
   inputText?: string;
+  inputJson?: JSONContent | null;
   queuedMessages?: DraftMessage[];
   files?: File[];
   reviews?: Review[];
+  skills?: ValidSkillFile[];
   includeUserEdits?: boolean;
   terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
@@ -653,7 +887,7 @@ function setup({
           sendMessage,
           stop: stopChat,
         },
-        input: { json: null, text: initialInputText },
+        input: { json: inputJson, text: initialInputText },
         clearInput,
         attachmentUpload: {
           files,
@@ -673,6 +907,7 @@ function setup({
         setQueuedMessages,
         reviews,
         userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
+        skills,
         terminalContextSelections,
         clearTerminalContextSelections,
         taskId: "task-1",
@@ -747,6 +982,19 @@ function draftMessage({
       isTodoMode,
       activeSelection,
     },
+  };
+}
+
+function createSkill(
+  name: string,
+  overrides: Partial<ValidSkillFile> = {},
+): ValidSkillFile {
+  return {
+    name,
+    description: `${name} description`,
+    filePath: `/skills/${name}/SKILL.md`,
+    instructions: `${name} instructions`,
+    ...overrides,
   };
 }
 

@@ -1073,6 +1073,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
+  showWarningMessage = async <T extends string>(
+    message: string,
+    options: { modal?: boolean; detail?: string },
+    ...items: T[]
+  ): Promise<T | undefined> => {
+    return await vscode.window.showWarningMessage(message, options, ...items);
+  };
+
   readModelList = async (): Promise<{
     modelList: ThreadSignalSerialization<DisplayModel[]>;
     isLoading: ThreadSignalSerialization<boolean>;

@@ -30,4 +30,3 @@ test("renderActiveSelection renders a file location and content", () => {
     }),
   ).toMatchSnapshot();
 });
-

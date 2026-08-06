@@ -273,6 +273,13 @@ describe("selectAgentTools", () => {
           filePath: "/tmp/demo-skill/SKILL.md",
           instructions: "Do the thing.",
         },
+        {
+          name: "manual-skill",
+          description: "Only users may invoke this skill",
+          filePath: "/tmp/manual-skill/SKILL.md",
+          instructions: "Do the manual thing.",
+          disableModelInvocation: true,
+        },
       ],
       attemptCompletionSchema: customResultSchema,
     });
@@ -282,6 +289,7 @@ describe("selectAgentTools", () => {
     expect(tools.readFile?.description).toContain("image/png");
     expect(tools.newTask?.description).toContain("child-agent");
     expect(tools.useSkill?.description).toContain("demo-skill");
+    expect(tools.useSkill?.description).not.toContain("manual-skill");
     expect(
       completionInputSchema.safeParse({
         result: { ok: true },

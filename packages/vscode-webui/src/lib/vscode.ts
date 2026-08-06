@@ -128,6 +128,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "diffWithCheckpoint",
         "restoreChangedFiles",
         "showInformationMessage",
+        "showWarningMessage",
         "readVisibleTerminals",
         "readMonitorEvents",
         "ackMonitorEvents",

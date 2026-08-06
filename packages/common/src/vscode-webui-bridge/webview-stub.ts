@@ -253,6 +253,9 @@ const VSCodeHostStub = {
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
   },
+  showWarningMessage: async (): Promise<undefined> => {
+    return Promise.resolve(undefined);
+  },
   readVisibleTerminals: async (): Promise<{
     terminals: ThreadSignalSerialization<
       Environment["workspace"]["terminals"] | undefined

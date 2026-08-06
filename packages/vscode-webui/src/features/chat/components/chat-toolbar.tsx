@@ -22,6 +22,7 @@ import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
+import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
@@ -42,7 +43,7 @@ import {
   StopCircleIcon,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type BlockingOperation,
@@ -57,7 +58,7 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { useTerminalContextState } from "../hooks/use-terminal-context-state";
-import { ChatInputForm } from "./chat-input-form";
+import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
@@ -127,6 +128,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const totalTokens = task?.totalTokens || 0;
 
   const { input, setInput, clearInput } = useChatInputState();
+  const { skills, isLoading: isSkillsLoading } = useSkills(true);
 
   const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
 
@@ -295,6 +297,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     taskStatus: task?.status,
   });
 
+  const canSubmit = isSubmitEnabled && !isSkillsLoading;
+  const canSteer = allowSteer && !isSkillsLoading;
   const compactEnabled = !(
     isRunning || totalTokens < constants.CompactTaskMinTokens
   );
@@ -312,15 +316,16 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     attachmentUpload,
     isLoading,
     isRunning,
-    isSubmitEnabled,
+    isSubmitEnabled: canSubmit,
     isStopEnabled,
     allowSendMessage,
-    allowSteer,
+    allowSteer: canSteer,
     pendingApproval,
     queuedMessages,
     setQueuedMessages,
     reviews,
     userEdits: includedUserEdits,
+    skills,
     terminalContextSelections,
     clearTerminalContextSelections,
     taskId,
@@ -329,6 +334,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     onTodoModeQueued: resetTodoMode,
     onBeforeSendText: createTodoBeforeSend,
   });
+
+  const chatInputFormRef = useRef<ChatInputFormHandle>(null);
+  const handleCurrentInputSubmit = useCallback(async () => {
+    chatInputFormRef.current?.addToSubmitHistory();
+    await handleSubmit(undefined, chatInputFormRef.current?.getInputSnapshot());
+  }, [handleSubmit]);
 
   // Auto dequeue when ready
   const taskStatus = task?.status;
@@ -395,7 +406,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     !pendingApproval;
 
   const showSubmitReviewButton =
-    isSubmitEnabled &&
+    canSubmit &&
     !!reviews.length &&
     !!messages.length &&
     !isLoading &&
@@ -442,7 +453,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           ) : null}
           <SubmitReviewsButton
             showSubmitReviewButton={showSubmitReviewButton}
-            onSubmit={handleSubmit}
+            onSubmit={handleCurrentInputSubmit}
           />
         </div>
       </div>
@@ -470,6 +481,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       )}
       <div className="relative z-10">
         <ChatInputForm
+          ref={chatInputFormRef}
           input={input}
           setInput={setInput}
           onSubmit={handleSubmit}
@@ -589,9 +601,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             />
           )}
           <SubmitStopButton
-            isButtonEnabled={isSubmitEnabled || isStopEnabled}
+            isButtonEnabled={canSubmit || isStopEnabled}
             showStopButton={isRunning}
-            onSubmit={handleSubmit}
+            onSubmit={handleCurrentInputSubmit}
             onStop={handleStop}
           />
         </div>

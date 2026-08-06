@@ -44,6 +44,12 @@ compatibility: node      # optional: runtime requirements (node, python, bun, et
 ---
 ```
 
+Invocation controls:
+- `disable-model-invocation: true`: exclude the skill from model discovery and reject model `useSkill` invocation
+- `user-invocable: false`: hide and reject user `/my-skill` invocation
+
+`disable-model-invocation` defaults to `false`, and `user-invocable` defaults to `true`. The controls are independent: set the first for manual-only skills, the second for model-only skills, or both to disable all invocation paths.
+
 **Description writing tips:**
 - Include both what the skill does AND when to use it
 - List concrete trigger phrases (e.g. "Use when the user says 'deploy to staging'")

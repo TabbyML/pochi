@@ -26,8 +26,14 @@ import { QueuedMessages } from "./queued-messages";
 interface ChatInputFormProps {
   input: ChatInput;
   setInput: (input: ChatInput) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmit: (
+    e: React.FormEvent<HTMLFormElement>,
+    input: ChatInput,
+  ) => Promise<void>;
+  onCtrlSubmit: (
+    e: React.FormEvent<HTMLFormElement>,
+    input: ChatInput,
+  ) => Promise<void>;
   isLoading: boolean;
   editable?: boolean;
   onPaste: (event: ClipboardEvent) => void;
@@ -59,6 +65,7 @@ interface ChatInputFormProps {
 
 export interface ChatInputFormHandle {
   addToSubmitHistory: () => void;
+  getInputSnapshot: () => ChatInput | undefined;
 }
 
 export const ChatInputForm = forwardRef<
@@ -109,6 +116,16 @@ export const ChatInputForm = forwardRef<
       if (editor && !editor.isDestroyed) {
         editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
       }
+    },
+    getInputSnapshot: () => {
+      const editor = editorRef.current;
+      if (!editor || editor.isDestroyed) {
+        return undefined;
+      }
+      return {
+        json: editor.getJSON(),
+        text: editor.getText({ blockSeparator: "\n" }),
+      };
     },
   }));
 

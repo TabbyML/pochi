@@ -60,7 +60,8 @@ export function useChatInitialization({
       const shouldUseParts =
         (files?.length ?? 0) > 0 ||
         !!activeSelection ||
-        (terminalContextSelections?.length ?? 0) > 0;
+        (terminalContextSelections?.length ?? 0) > 0 ||
+        (info.invokedSkills?.length ?? 0) > 0;
 
       if (shouldUseParts) {
         chatKit.init(cwd, {
@@ -73,6 +74,7 @@ export function useChatInitialization({
             undefined,
             activeSelection,
             terminalContextSelections,
+            info.invokedSkills,
           ),
         });
       } else {

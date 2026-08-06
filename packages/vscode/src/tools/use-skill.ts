@@ -1,5 +1,9 @@
 import { getLogger, prompts } from "@getpochi/common";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import {
+  type ClientTools,
+  type ToolFunctionType,
+  isModelInvocableSkill,
+} from "@getpochi/tools";
 import { container } from "tsyringe";
 import { SkillManager } from "../lib/skill-manager";
 
@@ -18,9 +22,15 @@ export const useSkill: ToolFunctionType<ClientTools["useSkill"]> = async (
   // Find the requested skill
   const skill = skills.find((s) => s.name === args.skill);
 
+  if (skill?.disableModelInvocation) {
+    throw new Error(
+      `Skill "${args.skill}" cannot be used with the useSkill tool because model invocation is disabled.`,
+    );
+  }
   if (!skill) {
     throw new Error(
       `Skill "${args.skill}" not found. Available skills: ${skills
+        .filter(isModelInvocableSkill)
         .map((s) => s.name)
         .join(", ")}`,
     );

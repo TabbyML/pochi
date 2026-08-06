@@ -76,7 +76,12 @@ export {
   validateExecuteCommandRules,
   validateToolPolicy,
 } from "./utils/tool-policy";
-export { Skill } from "./use-skill";
+export {
+  Skill,
+  isModelInvocableSkill,
+  isUserInvocableSkill,
+  makeUserInvocationDisabledMessage,
+} from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 export {
   BatchExecutionErrorMessages,
