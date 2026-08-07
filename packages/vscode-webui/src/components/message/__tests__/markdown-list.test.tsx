@@ -24,9 +24,34 @@ vi.mock("@/lib/vscode", () => ({
 describe("MessageMarkdown", () => {
   it("preserves the start of a nested ordered list", () => {
     const { container } = render(
-      <MessageMarkdown>{"1. 5. 这是第五条"}</MessageMarkdown>,
+      <MessageMarkdown>{"1. 5. the fifth item"}</MessageMarkdown>,
     );
 
     expect(container.querySelectorAll("ol")[1].start).toBe(5);
+  });
+
+  it("does not leak the markdown node onto list elements", () => {
+    const { container } = render(
+      <MessageMarkdown>{"- 1. the first item"}</MessageMarkdown>,
+    );
+
+    for (const selector of ["ul", "ol", "li"]) {
+      for (const element of container.querySelectorAll(selector)) {
+        expect(element.getAttributeNames()).not.toContain("node");
+      }
+    }
+  });
+
+  // Guards against memoizing the list components again: a memo comparator that
+  // ignores `children` (they are rebuilt on every render, so comparing them is
+  // pointless) freezes the whole `ul > li > ol` subtree on rerender.
+  it("updates a nested ordered list on rerender", () => {
+    const { container, rerender } = render(
+      <MessageMarkdown>{"- 1. x"}</MessageMarkdown>,
+    );
+    expect(container.querySelector("ol")?.start).toBe(1);
+
+    rerender(<MessageMarkdown>{"- 9. x"}</MessageMarkdown>);
+    expect(container.querySelector("ol")?.start).toBe(9);
   });
 });
