@@ -331,19 +331,25 @@ type WithNode<T> = T & {
 };
 type LiProps = WithNode<JSX.IntrinsicElements["li"]>;
 
+// For the list components below: `node` is not a valid DOM attribute, so it
+// must be destructured out; and the comparators must check `children`, since
+// the source position can stay stable while the list content changes.
 const MemoLi = memo<LiProps>(
-  ({ children, className, ...props }: LiProps) => (
+  ({ children, className, node: _node, ...props }: LiProps) => (
     <li className={className} data-streamdown="list-item" {...props}>
       {children}
     </li>
   ),
-  (p, n) => p.className === n.className && sameNodePosition(p.node, n.node),
+  (p, n) =>
+    p.className === n.className &&
+    sameNodePosition(p.node, n.node) &&
+    p.children === n.children,
 );
 MemoLi.displayName = "MarkdownLi";
 
 type UlProps = WithNode<JSX.IntrinsicElements["ul"]>;
 const MemoUl = memo<UlProps>(
-  ({ children, className, ...props }: UlProps) => (
+  ({ children, className, node: _node, ...props }: UlProps) => (
     <ul
       className={cn("list-outside list-disc whitespace-normal", className)}
       data-streamdown="unordered-list"
@@ -352,13 +358,13 @@ const MemoUl = memo<UlProps>(
       {children}
     </ul>
   ),
-  (p, n) => sameClassAndNode(p, n),
+  (p, n) => sameClassAndNode(p, n) && p.children === n.children,
 );
 MemoUl.displayName = "MarkdownUl";
 
 type OlProps = WithNode<JSX.IntrinsicElements["ol"]>;
 const MemoOl = memo<OlProps>(
-  ({ children, className, ...props }: OlProps) => (
+  ({ children, className, node: _node, ...props }: OlProps) => (
     <ol
       className={cn("list-outside list-decimal whitespace-normal", className)}
       data-streamdown="ordered-list"
@@ -367,7 +373,8 @@ const MemoOl = memo<OlProps>(
       {children}
     </ol>
   ),
-  (p, n) => sameClassAndNode(p, n),
+  (p, n) =>
+    sameClassAndNode(p, n) && p.children === n.children && p.start === n.start,
 );
 MemoOl.displayName = "MarkdownOl";
 
