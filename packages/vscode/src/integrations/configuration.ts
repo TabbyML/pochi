@@ -28,8 +28,8 @@ export class PochiConfiguration implements vscode.Disposable {
   readonly githubCopilotCodeCompletionEnabled = signal(
     getGithubCopilotCodeCompletionEnabled(),
   );
-  readonly terminalRightClickBehaviorDefault = signal(
-    getTerminalRightClickBehaviorDefault(),
+  readonly terminalRightClickContextMenuEnabled = signal(
+    getTerminalRightClickContextMenuEnabled(),
   );
   readonly detectWorktreesLimit = signal(getDetectWorktreesLimit());
 
@@ -55,8 +55,8 @@ export class PochiConfiguration implements vscode.Disposable {
         }
 
         if (e.affectsConfiguration("terminal.integrated.rightClickBehavior")) {
-          this.terminalRightClickBehaviorDefault.value =
-            getTerminalRightClickBehaviorDefault();
+          this.terminalRightClickContextMenuEnabled.value =
+            getTerminalRightClickContextMenuEnabled();
         }
 
         if (e.affectsConfiguration("git.detectWorktreesLimit")) {
@@ -97,11 +97,13 @@ export class PochiConfiguration implements vscode.Disposable {
         ),
       },
       {
-        dispose: this.terminalRightClickBehaviorDefault.subscribe((value) => {
-          if (value !== getTerminalRightClickBehaviorDefault()) {
-            updateTerminalRightClickBehaviorDefault(value);
-          }
-        }),
+        dispose: this.terminalRightClickContextMenuEnabled.subscribe(
+          (value) => {
+            if (value !== getTerminalRightClickContextMenuEnabled()) {
+              updateTerminalRightClickContextMenuEnabled(value);
+            }
+          },
+        ),
       },
     );
   }
@@ -302,7 +304,7 @@ function updateCommentsOpenViewDisabled(value: boolean) {
     .update("openView", target, true);
 }
 
-function getTerminalRightClickBehaviorDefault() {
+function getTerminalRightClickContextMenuEnabled() {
   const rightClickBehavior = vscode.workspace
     .getConfiguration("terminal.integrated")
     .get<string>("rightClickBehavior");
@@ -310,7 +312,13 @@ function getTerminalRightClickBehaviorDefault() {
   return rightClickBehavior === "default";
 }
 
-function updateTerminalRightClickBehaviorDefault(value: boolean) {
+function updateTerminalRightClickContextMenuEnabled(value: boolean) {
+  // Unlike other recommended settings, VS Code's built-in default for
+  // `rightClickBehavior` is platform-dependent (e.g. "copyPaste" on Windows,
+  // "selectWord" on macOS, "default" on Linux), so there's no single fixed
+  // value to fall back to. Clearing the override (setting `undefined`)
+  // restores whichever value the user had configured before opting in, or
+  // VS Code's platform default if they had none.
   const target = value ? "default" : undefined;
   return vscode.workspace
     .getConfiguration("terminal.integrated")

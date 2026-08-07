@@ -8,6 +8,6 @@ export interface VSCodeSettings {
   autoSaveDisabled: boolean;
   commentsOpenViewDisabled: boolean;
   githubCopilotCodeCompletionEnabled: boolean;
-  terminalRightClickBehaviorDefault: boolean;
+  terminalRightClickContextMenuEnabled: boolean;
   reviewAgent?: boolean;
 }

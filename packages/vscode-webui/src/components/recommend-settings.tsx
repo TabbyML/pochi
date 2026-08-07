@@ -13,14 +13,15 @@ type Options =
   | "disableAutoSave"
   | "disableCommentsOpenView"
   | "disableGithubCopilotCodeCompletion"
-  | "terminalRightClickBehaviorDefault";
+  | "terminalRightClickContextMenuEnabled";
 
 const OptionsToSettingsKey = {
   enablePochiLayout: "pochi.advanced",
   disableAutoSave: "files.autoSave",
   disableCommentsOpenView: "comments.openView",
   disableGithubCopilotCodeCompletion: "github.copilot.enable",
-  terminalRightClickBehaviorDefault: "terminal.integrated.rightClickBehavior",
+  terminalRightClickContextMenuEnabled:
+    "terminal.integrated.rightClickBehavior",
 };
 
 function openSettingsLink(option: Options) {
@@ -36,7 +37,7 @@ export function RecommendSettings() {
     autoSaveDisabled: true,
     commentsOpenViewDisabled: true,
     githubCopilotCodeCompletionEnabled: false,
-    terminalRightClickBehaviorDefault: true,
+    terminalRightClickContextMenuEnabled: true,
   };
 
   const options: { id: Options; checked: boolean }[] = useMemo(() => {
@@ -58,8 +59,8 @@ export function RecommendSettings() {
         checked: !vscodeSettings.githubCopilotCodeCompletionEnabled,
       },
       {
-        id: "terminalRightClickBehaviorDefault",
-        checked: !!vscodeSettings.terminalRightClickBehaviorDefault,
+        id: "terminalRightClickContextMenuEnabled",
+        checked: !!vscodeSettings.terminalRightClickContextMenuEnabled,
       },
     ];
   }, [vscodeSettings]);
@@ -83,8 +84,8 @@ export function RecommendSettings() {
         case "disableGithubCopilotCodeCompletion":
           params.githubCopilotCodeCompletionEnabled = !checked;
           break;
-        case "terminalRightClickBehaviorDefault":
-          params.terminalRightClickBehaviorDefault = checked;
+        case "terminalRightClickContextMenuEnabled":
+          params.terminalRightClickContextMenuEnabled = checked;
           break;
       }
       await vscodeHost.updateVSCodeSettings(params);

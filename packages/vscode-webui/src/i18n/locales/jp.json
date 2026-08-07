@@ -593,7 +593,7 @@
       "disableAutoSave": "自動保存を無効にする",
       "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",
       "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする",
-      "terminalRightClickBehaviorDefault": "ターミナルの右クリックでコンテキストメニューを表示する"
+      "terminalRightClickContextMenuEnabled": "ターミナルの右クリックでコンテキストメニューを表示する"
     }
   },
   "mermaid": {

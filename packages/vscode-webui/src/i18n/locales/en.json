@@ -594,7 +594,7 @@
       "disableAutoSave": "Disable Auto-Save",
       "disableCommentsOpenView": "Disable Auto-Opening of Comments Panel",
       "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot Code Completion",
-      "terminalRightClickBehaviorDefault": "Show Context Menu on Terminal Right Click"
+      "terminalRightClickContextMenuEnabled": "Show Context Menu on Terminal Right Click"
     }
   },
   "mermaid": {
