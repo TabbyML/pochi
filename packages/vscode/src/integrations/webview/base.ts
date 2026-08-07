@@ -459,10 +459,21 @@ export abstract class WebviewBase implements vscode.Disposable {
         this.sessionState = { ...this.sessionState, ...state };
       },
       readResourceURI: this.getReadResourceURI(),
+      notifyFocusChanged: async (focused) => {
+        this.onFocusChanged(focused);
+      },
     };
 
     return wrapper;
   }
+
+  /**
+   * Called whenever this webview's window focus state changes (see
+   * `notifyFocusChanged` on `VSCodeHostApi`). No-op by default; subclasses
+   * that need to react to focus changes (e.g. the sidebar, for
+   * `PochiFocusTracker`) should override this.
+   */
+  protected onFocusChanged(_focused: boolean): void {}
 
   // Abstract methods to be implemented by subclasses
   protected abstract getReadResourceURI(): VSCodeHostApi["readResourceURI"];

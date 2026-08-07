@@ -231,6 +231,16 @@ export interface VSCodeHostApi {
     workspacePath: string | null;
   }>;
 
+  /**
+   * Reports that this webview's window gained or lost focus. Used to track,
+   * per Pochi surface (sidebar vs. a task tab's panel), when it was last
+   * focused by the user. There is no VS Code host-native signal for "the
+   * sidebar view gained keyboard focus" (unlike editor tabs, which are
+   * tracked via `vscode.window.tabGroups`), so the webview reports it
+   * directly via this method.
+   */
+  notifyFocusChanged(focused: boolean): Promise<void>;
+
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
   readSkills(): Promise<ThreadSignalSerialization<SkillFile[]>>;

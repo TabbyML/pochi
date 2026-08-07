@@ -57,6 +57,8 @@ import {
 import { readTerminalSelection as readTerminalSelectionFromClipboard } from "./terminal/read-terminal-selection";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TerminalState } from "./terminal/terminal-state";
+// biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiFocusTracker } from "./webview/focus-tracker";
 import {
   PochiTaskEditorProvider,
   PochiWebviewPanel,
@@ -83,6 +85,7 @@ export class CommandManager implements vscode.Disposable {
     private readonly reviewController: ReviewController,
     private readonly layoutManager: LayoutManager,
     private readonly terminalState: TerminalState,
+    private readonly focusTracker: PochiFocusTracker,
   ) {
     this.registerCommands();
     if (EditorPredictionsAvailable) {
@@ -680,7 +683,16 @@ export class CommandManager implements vscode.Disposable {
       ? PochiTaskEditorProvider.parseTaskUri(activeTab.input.uri)?.uid
       : undefined;
 
-    if (uid && PochiWebviewPanel.addTerminalContext(uid, selection)) {
+    // Even if a task tab exists, prefer the sidebar when the user was more
+    // recently focused there than on any Pochi task tab (e.g. they were
+    // chatting in the sidebar, then selected text in the terminal).
+    const preferSidebar = this.focusTracker.wasSidebarMoreRecentlyFocused();
+
+    if (
+      uid &&
+      !preferSidebar &&
+      PochiWebviewPanel.addTerminalContext(uid, selection)
+    ) {
       return;
     }
 
