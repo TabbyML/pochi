@@ -10,17 +10,6 @@ import { ExecutionError } from "./utils";
 const logger = getLogger("TerminalJob");
 
 /**
- * Hooks for a monitor watching this job's output. Implemented by the
- * MonitorRegistry; TerminalJob only feeds it raw chunks and signals the end
- * of execution.
- */
-export interface TerminalJobMonitorHooks {
-  ingest(chunk: string): void;
-  /** Called once when command execution ends (exit, abort, terminal closed). */
-  end(reason: string): void;
-}
-
-/**
  * Configuration options for creating a TerminalJob
  */
 export interface TerminalJobConfig {
@@ -34,8 +23,6 @@ export interface TerminalJobConfig {
   location?: vscode.TerminalEditorLocationOptions | undefined;
   /** AbortSignal to cancel the terminal job */
   abortSignal?: AbortSignal;
-  /** Monitor tapping this job's output stream */
-  monitor?: TerminalJobMonitorHooks;
 }
 
 /**
@@ -147,9 +134,6 @@ export class TerminalJob implements vscode.Disposable {
       }
     } finally {
       this.outputManager.finalize(executionError);
-      this.config.monitor?.end(
-        executionError ? executionError.message : "command completed",
-      );
       // Only tear down the execution-scoped listeners here. The job itself
       // stays registered until the terminal is closed (see closeListener),
       // so the UI can still highlight and reopen the terminal.
@@ -211,7 +195,6 @@ export class TerminalJob implements vscode.Disposable {
   ): Promise<void> {
     for await (const chunk of outputStream) {
       this.outputManager.addChunk(chunk);
-      this.config.monitor?.ingest(chunk);
     }
   }
 

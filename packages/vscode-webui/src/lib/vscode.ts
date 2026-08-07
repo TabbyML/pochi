@@ -130,8 +130,6 @@ function createVSCodeHost(): VSCodeHostApi {
         "showInformationMessage",
         "showWarningMessage",
         "readVisibleTerminals",
-        "readMonitorEvents",
-        "ackMonitorEvents",
         "readModelList",
         "readUserStorage",
         "readCustomAgents",

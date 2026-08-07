@@ -413,15 +413,11 @@ export class TaskRunner {
   }
 
   /**
-   * Wait for all background jobs to complete, waking early when monitor
-   * events arrive. Respects the configured asyncWaitTimeoutInMs and abort
-   * signal.
-   * @returns Background job results to feed back, a monitor-events marker,
-   * or undefined if there is nothing to feed back
+   * Wait for all background jobs to complete.
+   * Respects the configured asyncWaitTimeoutInMs and abort signal.
+   * @returns A formatted string with background job results if any, or undefined if no results
    */
-  private async waitForAsyncWork(): Promise<
-    { type: "results"; text: string } | { type: "monitor-events" } | undefined
-  > {
+  private async waitForAsyncWork(): Promise<string | undefined> {
     const pendingJobIds = this.backgroundJobManager.getPendingJobIds();
 
     const spinner = createSpinner(
@@ -431,13 +427,7 @@ export class TaskRunner {
     const jobStatus = await this.backgroundJobManager.waitForAllJobs(
       this.asyncWaitTimeoutInMs,
       this.abortSignal,
-      true,
     );
-
-    if (jobStatus === "monitor-events") {
-      spinner.succeed("Monitor events arrived.");
-      return { type: "monitor-events" };
-    }
 
     // Handle timeout or abort - return undefined to finish without feeding back to LLM
     if (jobStatus === "timeout") {
@@ -469,29 +459,7 @@ export class TaskRunner {
       }
     }
 
-    return results.length > 0
-      ? { type: "results", text: results.join("\n\n") }
-      : undefined;
-  }
-
-  /**
-   * Drains pending monitor events and appends them to the conversation as
-   * a user message.
-   * @returns true if a message was injected
-   */
-  private injectPendingMonitorEvents(): boolean {
-    const batches = this.backgroundJobManager.drainMonitorEvents();
-    if (batches.length === 0) {
-      return false;
-    }
-    // The chat transport renders this data part into a system-reminder text
-    // before sending to the LLM.
-    this.chat.appendOrReplaceMessage({
-      id: crypto.randomUUID(),
-      role: "user",
-      parts: [{ type: "data-monitor-events", data: { batches } }],
-    });
-    return true;
+    return results.length > 0 ? results.join("\n\n") : undefined;
   }
 
   /**
@@ -509,24 +477,14 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
-      // Monitor events captured during the last round are fed back before
-      // the task is allowed to complete.
-      if (this.injectPendingMonitorEvents()) {
-        return "next";
-      }
-
       // Check for pending background jobs
       const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
       if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
         const asyncResults = await this.waitForAsyncWork();
-        if (asyncResults?.type === "monitor-events") {
-          if (this.injectPendingMonitorEvents()) {
-            return "next";
-          }
-        } else if (asyncResults) {
+        if (asyncResults) {
           // If there are background job results - feed them back to LLM instead of completing
-          const userMessage = createAsyncResultsMessage(asyncResults.text);
+          const userMessage = createAsyncResultsMessage(asyncResults);
           this.chat.appendOrReplaceMessage(userMessage);
           return "next";
         }
@@ -567,10 +525,6 @@ export class TaskRunner {
 
     if (result === "next") {
       this.stepCount.throwIfReachedMaxSteps();
-      // Deliver monitor events between rounds so the model sees them in
-      // the upcoming inference. Retry rounds are skipped: they resend a
-      // prepared message and an interleaved user message would break that.
-      this.injectPendingMonitorEvents();
     }
     if (result === "retry") {
       this.stepCount.throwIfReachedMaxRetries();

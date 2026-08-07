@@ -47,7 +47,6 @@ export type {
 export { QuestionSchema } from "./ask-followup-question";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
-import { startMonitor } from "./monitor";
 import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
 import { startBackgroundJob } from "./start-background-job";
@@ -172,7 +171,6 @@ export const createClientTools = (options?: CreateClientToolOptions) => {
     startBackgroundJob,
     readBackgroundJobOutput,
     killBackgroundJob,
-    startMonitor,
     renderWidget,
   };
 };
