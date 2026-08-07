@@ -139,6 +139,12 @@ const VSCodeHostStub = {
   clearFileStateCache: (_taskId: string): Promise<void> => {
     return Promise.resolve();
   },
+  hydrateFileReadHistory: (
+    _taskId: string,
+    _paths: string[],
+  ): Promise<void> => {
+    return Promise.resolve();
+  },
   readRecentFilesForCompact: (_taskId: string) => {
     return Promise.resolve([]);
   },

@@ -40,6 +40,10 @@ export interface IFileStateCache {
   has(key: string): boolean;
   delete(key: string): boolean;
   clear(): void;
+  recordRead(key: string): void;
+  hydrateReadHistory(keys: readonly string[]): void;
+  getReadHistoryState(key: string): "read" | "not-read" | "unknown";
+  getReadHistorySnapshot(): { paths: string[]; hydrated: boolean };
 }
 
 export type CompiledToolPolicy =

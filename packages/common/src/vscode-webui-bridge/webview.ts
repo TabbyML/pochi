@@ -169,6 +169,9 @@ export interface VSCodeHostApi {
    */
   clearFileStateCache(taskId: string): Promise<void>;
 
+  /** Restore successful readFile paths from the available task history. */
+  hydrateFileReadHistory(taskId: string, paths: string[]): Promise<void>;
+
   /**
    * Read recent file state cache entries for the given task ID.
    * Used by compaction to keep recently read file contents visible after

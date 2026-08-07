@@ -82,7 +82,7 @@ describe("FileStateCache", () => {
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "editing"),
-    ).rejects.toThrow("File has not been read yet");
+    ).rejects.toThrow("No current read snapshot is available");
   });
 
   it("throws when writing a file that was never read but exists on disk", async () => {
@@ -90,7 +90,59 @@ describe("FileStateCache", () => {
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "writing"),
-    ).rejects.toThrow("File has not been read yet");
+    ).rejects.toThrow("No current read snapshot is available");
+  });
+
+  it("explains when the file was read earlier but its current snapshot is unavailable", async () => {
+    const cache = new FileStateCache();
+    cache.recordRead("/tmp/file.txt");
+
+    await expect(
+      checkStaleness(cache, "/tmp/file.txt", async () => 1234, "writing"),
+    ).rejects.toThrow(
+      "File was read earlier in this task, but no current read snapshot is available",
+    );
+  });
+
+  it("explains when the available task history has no successful read", async () => {
+    const cache = new FileStateCache();
+    cache.hydrateReadHistory([]);
+
+    await expect(
+      checkStaleness(cache, "/tmp/file.txt", async () => 1234, "writing"),
+    ).rejects.toThrow("File has not been read in the available task history");
+  });
+
+  it("normalizes hydrated read history and clears it with the cache", () => {
+    const cache = new FileStateCache();
+    cache.hydrateReadHistory(["/tmp/src/../file.txt"]);
+
+    expect(cache.getReadHistoryState("/tmp/file.txt")).toBe("read");
+    expect(cache.getReadHistoryState("/tmp/other.txt")).toBe("not-read");
+
+    cache.clear();
+
+    expect(cache.getReadHistoryState("/tmp/file.txt")).toBe("unknown");
+  });
+
+  it("records successful reads even when there is no text snapshot to cache", async () => {
+    const cache = new FileStateCache();
+
+    await withReadFileCache({
+      cache,
+      path: "binary.png",
+      cwd: "/tmp",
+      startLine: undefined,
+      endLine: undefined,
+      getMtime: async () => 1,
+      doRead: async () => ({
+        result: { content: "image" },
+        fileCacheContent: null,
+      }),
+    });
+
+    expect(cache.getReadHistoryState("/tmp/binary.png")).toBe("read");
+    expect(cache.has("/tmp/binary.png")).toBe(false);
   });
 
   it("allows writing a new file that does not exist on disk and was never read", async () => {
@@ -195,7 +247,26 @@ describe("withFileStateCacheGuard", () => {
           fileCacheContent: "new content",
         }),
       }),
-    ).rejects.toThrow("File has not been read yet");
+    ).rejects.toThrow("No current read snapshot is available");
+  });
+
+  it("normalizes historical paths before checking the resolved target path", async () => {
+    const cache = new FileStateCache();
+    cache.recordRead("/tmp/src/../file.txt");
+
+    await expect(
+      withFileStateCacheGuard({
+        cache,
+        path: "src/../file.txt",
+        cwd: "/tmp",
+        getMtime: async () => 1000,
+        operation: "writing",
+        doWork: async () => ({
+          result: { success: true as const },
+          fileCacheContent: "new content",
+        }),
+      }),
+    ).rejects.toThrow("File was read earlier in this task");
   });
 
   it("allows writing a brand-new file that does not yet exist on disk", async () => {
@@ -216,5 +287,6 @@ describe("withFileStateCacheGuard", () => {
         }),
       }),
     ).resolves.toEqual({ success: true });
+    expect(cache.getReadHistoryState("/tmp/brand-new.txt")).toBe("read");
   });
 });

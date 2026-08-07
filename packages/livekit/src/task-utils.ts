@@ -12,6 +12,45 @@ export type TaskStatusLike =
 
 export type BackgroundJobStatus = "idle" | "running" | "completed";
 
+/**
+ * Collect paths from successful file reads and writes that are still present
+ * in the task history. A successful write means the resulting content was
+ * known to the model, so it counts as a read for historical messaging.
+ * Historical knowledge never bypasses the current mtime-based guard.
+ */
+export function collectPreviouslyReadFilePaths(
+  messages: readonly Message[],
+): string[] {
+  const paths = new Set<string>();
+
+  for (const message of messages) {
+    for (const part of message.parts) {
+      if (
+        (part.type !== "tool-readFile" &&
+          part.type !== "tool-writeToFile" &&
+          part.type !== "tool-applyDiff" &&
+          part.type !== "tool-multiApplyDiff" &&
+          part.type !== "tool-editNotebook") ||
+        part.state !== "output-available"
+      ) {
+        continue;
+      }
+
+      const output = part.output as unknown;
+      if (output && typeof output === "object" && "error" in output) {
+        continue;
+      }
+
+      const input = part.input as { path?: unknown };
+      if (typeof input.path === "string") {
+        paths.add(input.path);
+      }
+    }
+  }
+
+  return [...paths];
+}
+
 function formatQuestion({ question, header, options }: Question) {
   const title = header ? `[${header}] ${question}` : question;
   if (!options?.length) return title;

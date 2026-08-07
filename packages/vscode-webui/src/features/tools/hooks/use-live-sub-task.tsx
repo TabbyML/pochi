@@ -21,7 +21,11 @@ import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
-import { catalog } from "@getpochi/livekit";
+import {
+  type Message,
+  catalog,
+  collectPreviouslyReadFilePaths,
+} from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import {
   type Todo,
@@ -85,6 +89,17 @@ export function useLiveSubTask(
 
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(uid));
+  const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(uid));
+  const historicalReadFilePaths = useMemo(
+    () =>
+      collectPreviouslyReadFilePaths(
+        messageRows.map((row) => row.data as Message),
+      ),
+    [messageRows],
+  );
+  useEffect(() => {
+    void vscodeHost.hydrateFileReadHistory(uid, historicalReadFilePaths);
+  }, [uid, historicalReadFilePaths]);
   const todosRef = useRef<Todo[] | undefined>(undefined);
   todosRef.current =
     tool.state !== "input-streaming" &&

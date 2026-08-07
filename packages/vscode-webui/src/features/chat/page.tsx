@@ -19,7 +19,12 @@ import { constants, formatters } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, type Task, catalog } from "@getpochi/livekit";
+import {
+  type Message,
+  type Task,
+  catalog,
+  collectPreviouslyReadFilePaths,
+} from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import { parseOutputSchema } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
@@ -105,6 +110,17 @@ function Chat({ user, uid, info }: ChatProps) {
 
   const isSubTask = !!task?.parentId;
   const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(uid));
+  const historicalReadFilePaths = useMemo(
+    () =>
+      collectPreviouslyReadFilePaths(
+        messageRows.map((row) => row.data as Message),
+      ),
+    [messageRows],
+  );
+
+  useEffect(() => {
+    void vscodeHost.hydrateFileReadHistory(uid, historicalReadFilePaths);
+  }, [uid, historicalReadFilePaths]);
 
   // inherit autoApproveSettings from parent task
   useEffect(() => {

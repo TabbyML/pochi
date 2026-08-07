@@ -1,10 +1,87 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
+  collectPreviouslyReadFilePaths,
   extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
 } from "./task-utils";
+
+describe("collectPreviouslyReadFilePaths", () => {
+  it("collects unique paths from successful file reads and writes", () => {
+    const messages = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "read-1",
+            state: "output-available",
+            input: { path: "src/index.ts" },
+            output: { content: "first", isTruncated: false },
+          },
+          {
+            type: "tool-readFile",
+            toolCallId: "read-2",
+            state: "output-available",
+            input: { path: "src/index.ts", startLine: 1, endLine: 10 },
+            output: { content: "first", isTruncated: false },
+          },
+          {
+            type: "tool-readFile",
+            toolCallId: "read-3",
+            state: "output-available",
+            input: { path: "src/other.ts" },
+            output: { error: "File not found" },
+          },
+          {
+            type: "tool-writeToFile",
+            toolCallId: "write-1",
+            state: "output-available",
+            input: { path: "src/generated.ts", content: "generated" },
+            output: { success: true },
+          },
+          {
+            type: "tool-applyDiff",
+            toolCallId: "write-2",
+            state: "output-available",
+            input: { path: "src/index.ts", patch: "patch" },
+            output: { success: true },
+          },
+          {
+            type: "tool-editNotebook",
+            toolCallId: "write-3",
+            state: "output-available",
+            input: { path: "notebooks/demo.ipynb", edits: [] },
+            output: { success: true },
+          },
+          {
+            type: "tool-multiApplyDiff",
+            toolCallId: "write-legacy",
+            state: "output-available",
+            input: { path: "src/legacy.ts", edits: [] },
+            output: { success: true },
+          },
+          {
+            type: "tool-writeToFile",
+            toolCallId: "write-failed",
+            state: "output-available",
+            input: { path: "src/failed.ts", content: "failed" },
+            output: { error: "Write failed" },
+          },
+        ],
+      },
+    ] as any;
+
+    expect(collectPreviouslyReadFilePaths(messages)).toEqual([
+      "src/index.ts",
+      "src/generated.ts",
+      "notebooks/demo.ipynb",
+      "src/legacy.ts",
+    ]);
+  });
+});
 
 describe("formatFollowupQuestions", () => {
   it("formats all questions from the new askFollowupQuestion payload", () => {
