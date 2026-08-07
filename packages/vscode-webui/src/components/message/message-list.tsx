@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   BackgroundJobContextProvider,
+  useAutoApproveGuard,
   useToolCallLifeCycle,
 } from "@/features/chat";
 import { ToolInvocationPart } from "@/features/tools";
@@ -20,7 +21,7 @@ import type {
   ActiveSelection,
   TerminalTextSelection,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
 import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
@@ -60,6 +61,7 @@ export const MessageList: React.FC<{
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
   showLastStepDuration?: boolean;
+  taskStatus?: Task["status"];
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -77,6 +79,7 @@ export const MessageList: React.FC<{
   repairMermaid,
   repairingChart,
   showLastStepDuration,
+  taskStatus,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -87,8 +90,17 @@ export const MessageList: React.FC<{
     setDebouncedIsLoading(isLoading);
   }, [isLoading, setDebouncedIsLoading]);
 
-  const { executingToolCalls } = useToolCallLifeCycle();
+  const { executingToolCalls, completeToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
+  const autoApproveGuard = useAutoApproveGuard();
+  const isAboutToExecuteWithAutoApprove =
+    !isLoading &&
+    !isExecuting &&
+    taskStatus === "pending-tool" &&
+    autoApproveGuard.current === "auto" &&
+    completeToolCalls.length === 0;
+  const shouldCheckpointUseLoading =
+    isLoading || isExecuting || isAboutToExecuteWithAutoApprove;
   const assistantName = assistant?.name ?? "Pochi";
   const latestCheckpoint = useLatestCheckpoint();
   const toolCallCheckpoints = useMemo(
@@ -176,7 +188,7 @@ export const MessageList: React.FC<{
                       partIndex={index}
                       part={part}
                       isLoading={isLoading}
-                      isExecuting={isExecuting}
+                      shouldCheckpointUseLoading={shouldCheckpointUseLoading}
                       messages={renderMessages}
                       forkTask={forkTask}
                       isSubTask={isSubTask}
@@ -197,7 +209,7 @@ export const MessageList: React.FC<{
                   messageIndex={messageIndex}
                   message={m}
                   nextMessage={renderMessages[messageIndex + 1]}
-                  isLoading={isLoading || isExecuting}
+                  isLoading={shouldCheckpointUseLoading}
                   forkTask={forkTask}
                   isSubTask={isSubTask}
                   latestCheckpoint={latestCheckpoint}
@@ -205,7 +217,7 @@ export const MessageList: React.FC<{
                 />
               ) : (
                 showLastStepDuration &&
-                !(isLoading || isExecuting) && (
+                !shouldCheckpointUseLoading && (
                   <OptionalSeparatorWithExecutionDuration
                     duration={computeExecutionDuration(m)}
                   />
@@ -303,7 +315,7 @@ function Part({
   messageId,
   isLastPartInMessages,
   isLoading,
-  isExecuting,
+  shouldCheckpointUseLoading,
   messages,
   forkTask,
   isSubTask,
@@ -319,7 +331,7 @@ function Part({
   part: NonNullable<Message["parts"]>[number];
   isLastPartInMessages: boolean;
   isLoading: boolean;
-  isExecuting: boolean;
+  shouldCheckpointUseLoading: boolean;
   messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
   isSubTask?: boolean;
@@ -363,7 +375,7 @@ function Part({
       return (
         <CheckpointUI
           checkpoint={part.data}
-          isLoading={isLoading || isExecuting}
+          isLoading={shouldCheckpointUseLoading}
           forkTask={forkTask}
           isRestored={
             lastCheckpointInMessage !== part.data.commit &&

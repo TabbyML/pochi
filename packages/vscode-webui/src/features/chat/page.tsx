@@ -471,6 +471,7 @@ function Chat({ user, uid, info }: ChatProps) {
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
         showLastStepDuration={task?.status === "completed"}
+        taskStatus={task?.status}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar

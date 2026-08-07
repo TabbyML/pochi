@@ -2,7 +2,7 @@ import { EmptyChatPlaceholder } from "@/components/empty-chat-placeholder";
 import type { MermaidContext } from "@/components/message/mermaid-context";
 import { MessageList } from "@/components/message/message-list";
 import { useResourceURI } from "@/lib/hooks/use-resource-uri";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import type React from "react";
 
 interface ChatAreaProps {
@@ -18,6 +18,7 @@ interface ChatAreaProps {
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
   showLastStepDuration?: boolean;
+  taskStatus?: Task["status"];
 }
 
 export function ChatArea({
@@ -33,6 +34,7 @@ export function ChatArea({
   repairMermaid,
   repairingChart,
   showLastStepDuration,
+  taskStatus,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -57,6 +59,7 @@ export function ChatArea({
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
         showLastStepDuration={showLastStepDuration}
+        taskStatus={taskStatus}
       />
     </>
   );
