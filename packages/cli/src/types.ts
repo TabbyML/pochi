@@ -57,6 +57,16 @@ export interface ToolCallOptions {
   ) => TaskRunner;
 
   /**
+   * Converts an already-inited subtask into a background subagent task
+   * executed by the TaskExecutor (optional, used by newTask tool with
+   * runInBackground).
+   */
+  backgroundSubTask?: (options: {
+    taskId: string;
+    agentType?: string;
+  }) => Promise<void>;
+
+  /**
    * MCP Hub instance for accessing MCP server tools
    */
   mcpHub?: McpHub;

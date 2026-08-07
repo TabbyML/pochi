@@ -3,7 +3,8 @@
     "disable": "비활성화",
     "openFolder": "폴더 열기",
     "account": "계정",
-    "help": "도움말"
+    "help": "도움말",
+    "close": "닫기"
   },
   "error": {
     "somethingWentWrong": "문제가 발생했습니다",
@@ -636,5 +637,15 @@
   "builtInAgentsSettings": {
     "title": "내장 에이전트",
     "browser": "브라우저"
+  },
+  "backgroundTasks": {
+    "title": "백그라운드 에이전트",
+    "empty": "백그라운드 에이전트가 없습니다",
+    "untitled": "제목 없음",
+    "stop": "중지",
+    "moveToBackground": "백그라운드로 이동",
+    "all": "전체",
+    "showAll": "모든 백그라운드 작업 표시",
+    "moveToBackgroundHint": "백그라운드에서 계속 실행되며 완료되면 알려드립니다."
   }
 }

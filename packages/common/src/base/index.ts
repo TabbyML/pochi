@@ -26,6 +26,12 @@ export {
   MonitorRateLimitedReason,
 } from "./monitor";
 
+export {
+  type SubAgentResultNotification,
+  createBackgroundSubAgentStartedResult,
+  formatSubAgentNotifications,
+} from "./subagent";
+
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
 
@@ -113,10 +119,19 @@ export type ContextWindowUsage = {
   projectMemory: number;
 };
 
+export const BackgroundTaskUseCase = z.enum([
+  ...ForkAgentUseCase.options,
+  "subagent",
+]);
+
+export type BackgroundTaskUseCase = z.infer<typeof BackgroundTaskUseCase>;
+
 export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
-  useCase?: ForkAgentUseCase;
+  useCase?: BackgroundTaskUseCase;
+  /** Custom agent name for `subagent` tasks; undefined runs the generic agent. */
+  agentType?: string;
   /** Step-start count inherited from the parent, excluded from the max-step guard. */
   baselineStepCount?: number;
 }

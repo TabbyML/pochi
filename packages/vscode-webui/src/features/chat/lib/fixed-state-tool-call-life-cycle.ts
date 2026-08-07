@@ -41,6 +41,12 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
     );
   }
 
+  detach(_result: unknown): void {
+    throw new Error(
+      "Method 'detach()' should not be called on FixedStateToolCallLifeCycle.",
+    );
+  }
+
   addResult(_result: unknown): void {
     throw new Error(
       "Method 'addResult()' should not be called on FixedStateToolCallLifeCycle.",

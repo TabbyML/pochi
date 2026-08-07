@@ -390,6 +390,7 @@ const program = new Command()
       parentFileStateCache,
       autoMemoryManager,
       projectMemoryEnabled,
+      resolveSubTaskLLM,
     });
     const taskMemory = autoCompactEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled

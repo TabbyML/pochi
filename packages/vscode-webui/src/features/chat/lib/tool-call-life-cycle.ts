@@ -1,6 +1,11 @@
 import { blobStore } from "@/lib/remote-blob-store";
 import { vscodeHost } from "@/lib/vscode";
-import { constants, getLogger, toErrorMessage } from "@getpochi/common";
+import {
+  constants,
+  createBackgroundSubAgentStartedResult,
+  getLogger,
+  toErrorMessage,
+} from "@getpochi/common";
 import type {
   BuiltinSubAgentInfo,
   ExecuteCommandResult,
@@ -38,6 +43,8 @@ type NewTaskReturnType = {
   result: string;
   agentType?: string;
   todos?: readonly Todo[];
+  /** The subtask was converted to a background subagent task. */
+  runInBackground?: boolean;
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
@@ -140,6 +147,13 @@ export interface ToolCallLifeCycle {
   abort(reason?: AbortReason, result?: unknown): void;
 
   /**
+   * Settle the tool call as finished with the given result while aborting
+   * the in-flight execution — used when the work is handed off elsewhere
+   * (e.g. a foreground subtask moved to the background).
+   */
+  detach(result: unknown): void;
+
+  /**
    * Reject the tool call, preventing execution.
    */
   reject(): void;
@@ -218,6 +232,7 @@ export class ManagedToolCallLifeCycle
     if (this.toolName === "newTask") {
       executePromise = this.runNewTask(args as NewTaskParameterType, {
         toolPolicies: options?.toolPolicies,
+        taskId: options?.taskId,
       });
     } else {
       executePromise = vscodeHost.executeToolCall(this.toolName, args, {
@@ -249,10 +264,11 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private runNewTask(
+  private async runNewTask(
     args: NewTaskParameterType,
     options?: {
       toolPolicies?: CompiledToolPolicies;
+      taskId?: string;
     },
   ): Promise<NewTaskReturnType> {
     // Validate the agent type pattern policy, throw if failed
@@ -266,11 +282,36 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    return Promise.resolve({
+    // The browser agent needs a per-task browser session that only the
+    // foreground path sets up; the todo-completion agent resolves todos
+    // through the foreground result flow.
+    const runInBackground =
+      !!args.runInBackground &&
+      args.agentType !== "browser" &&
+      args.agentType !== constants.AttemptTodoCompletionAgentName;
+    if (runInBackground) {
+      const { setBackgroundTaskState } =
+        await vscodeHost.readBackgroundTaskState(uid);
+      await setBackgroundTaskState({
+        parentTaskId: options?.taskId,
+        useCase: "subagent",
+        agentType: args.agentType,
+      });
+      this.store.commit(
+        catalog.events.taskBackgrounded({ id: uid, updatedAt: new Date() }),
+      );
+      return {
+        result: uid,
+        agentType: args.agentType,
+        runInBackground: true,
+      };
+    }
+
+    return {
       result: uid,
       agentType: args.agentType,
       todos: args._meta?.todos,
-    });
+    };
   }
 
   addResult(result: unknown): void {
@@ -290,6 +331,24 @@ export class ManagedToolCallLifeCycle
     }
 
     this.settleAbort(reason, result);
+  }
+
+  detach(result: unknown) {
+    if (
+      this.state.type !== "execute" &&
+      this.state.type !== "execute:streaming"
+    ) {
+      return;
+    }
+    const { abort } = this.state;
+    // Settle as execute-finish first: the abort listeners' settleAbort then
+    // no-ops instead of overwriting the result with an abort error.
+    this.transitTo(this.state.type, {
+      type: "complete",
+      result,
+      reason: "execute-finish",
+    });
+    abort("detached");
   }
 
   reject() {
@@ -368,9 +427,25 @@ export class ManagedToolCallLifeCycle
     result: uid,
     agentType,
     todos,
+    runInBackground,
   }: NewTaskReturnType) {
     if (!uid) {
       throw new Error("Missing uid in newTask result");
+    }
+
+    if (runInBackground) {
+      // The TaskExecutor picks the backgrounded task up reactively; the tool
+      // call completes immediately and the result arrives later as a
+      // subagent-results notification.
+      this.transitTo("execute", {
+        type: "complete",
+        result: {
+          result: createBackgroundSubAgentStartedResult(uid),
+          backgroundTaskId: uid,
+        },
+        reason: "execute-finish",
+      });
+      return;
     }
 
     const cleanupFns: (() => void)[] = [];

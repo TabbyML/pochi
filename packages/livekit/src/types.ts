@@ -5,6 +5,7 @@ import type {
   MessageMetadata,
   MonitorEventBatch,
   Review,
+  SubAgentResultNotification,
   TerminalTextSelection,
   UserEdits,
 } from "@getpochi/common";
@@ -38,6 +39,9 @@ export type DataParts = {
   };
   "monitor-events": {
     batches: MonitorEventBatch[];
+  };
+  "subagent-results": {
+    results: SubAgentResultNotification[];
   };
 };
 

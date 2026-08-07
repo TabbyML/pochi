@@ -18,6 +18,7 @@ import {
   getToolCallCancelErrorMessage,
   isReadonlyToolCall,
   isUserInputToolPart,
+  parseOutputSchema,
 } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import {
@@ -407,6 +408,16 @@ export class LiveChatKit<
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private consecutiveAutoCompactFailures = 0;
 
+  /**
+   * Converts an existing subtask (created by the newTask middleware) into a
+   * background subagent task: records its state and flips `background` so the
+   * TaskExecutor picks it up. Undefined when background tasks are not enabled.
+   */
+  readonly backgroundSubTask?: (options: {
+    taskId: string;
+    agentType?: string;
+  }) => Promise<void>;
+
   constructor({
     taskId,
     abortSignal,
@@ -467,22 +478,67 @@ export class LiveChatKit<
               store,
               blobStore,
               abortSignal,
-              requestUseCase,
+              taskState,
               getters,
-            }) =>
-              new LiveChatKit<InMemoryChat>({
+            }) => {
+              if (taskState.useCase === "subagent") {
+                // A background subagent behaves like a foreground subtask:
+                // its own system prompt from the custom agent, not a fork of
+                // the parent conversation.
+                const subagentCustomAgent = taskState.agentType
+                  ? getters
+                      .getCustomAgents?.()
+                      ?.find((a) => a.name === taskState.agentType)
+                  : undefined;
+                const resultSchema =
+                  subagentCustomAgent?._internal?.resultSchema;
+                return new LiveChatKit<InMemoryChat>({
+                  taskId,
+                  store,
+                  blobStore,
+                  chatClass: InMemoryChat,
+                  abortSignal,
+                  isSubTask: true,
+                  requestUseCase: "agent",
+                  getters,
+                  customAgent: subagentCustomAgent,
+                  attemptCompletionSchema: resultSchema
+                    ? parseOutputSchema(resultSchema)
+                    : undefined,
+                });
+              }
+              return new LiveChatKit<InMemoryChat>({
                 taskId,
                 store,
                 blobStore,
                 chatClass: InMemoryChat,
                 abortSignal,
                 isSubTask: false,
-                requestUseCase,
+                requestUseCase: taskState.useCase,
                 getters,
                 systemPromptOverride: this.latestRequestSnapshot?.systemPrompt,
-              }),
+              });
+            },
           })
         : undefined;
+    this.backgroundSubTask =
+      backgroundTaskStateStore && this.backgroundTaskExecutor
+        ? async ({ taskId: subTaskId, agentType }) => {
+            await backgroundTaskStateStore.set(subTaskId, {
+              parentTaskId: this.taskId,
+              useCase: "subagent",
+              agentType,
+            });
+            store.commit(
+              events.taskBackgrounded({
+                id: subTaskId,
+                updatedAt: new Date(),
+              }),
+            );
+            this.startBackgroundTasks();
+          }
+        : undefined;
+
     const defaultMemoryParentCwd = () => this.task?.cwd ?? undefined;
     this.taskMemoryAdaptor =
       taskMemory && startForkAgent
@@ -1061,6 +1117,16 @@ export class LiveChatKit<
   async disposeBackgroundTasks(): Promise<void> {
     await this.backgroundTaskExecutor?.dispose();
     this.backgroundTaskAdaptor?.dispose?.();
+  }
+
+  waitForBackgroundTaskDone(taskId: string): Promise<void> {
+    return (
+      this.backgroundTaskExecutor?.waitForTaskDone(taskId) ?? Promise.resolve()
+    );
+  }
+
+  stopBackgroundTask(taskId: string): Promise<void> {
+    return this.backgroundTaskExecutor?.stopTask(taskId) ?? Promise.resolve();
   }
 
   private startBackgroundTasks(): void {
