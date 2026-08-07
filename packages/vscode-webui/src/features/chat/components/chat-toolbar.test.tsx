@@ -122,7 +122,6 @@ vi.mock("@/lib/use-default-store", () => ({
 }));
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {},
-  isVSCodeEnvironment: () => false,
 }));
 vi.mock("../hooks/use-chat-input-state", () => ({
   useChatInputState: () => ({
