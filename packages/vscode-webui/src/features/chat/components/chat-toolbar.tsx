@@ -58,6 +58,7 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { useTerminalContextState } from "../hooks/use-terminal-context-state";
+import { collectAutoCompleteTokens } from "../lib/auto-complete-tokens";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -390,8 +391,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     newCompactTaskPending,
   };
 
+  // Only the word-like tokens are consumed by the prompt editor's
+  // autocompletion, so collect those directly instead of retaining a serialized
+  // copy of the whole conversation.
   const messageContent = useMemo(
-    () => JSON.stringify(messages, null, 2),
+    () => collectAutoCompleteTokens(messages),
     [messages],
   );
 

@@ -4,13 +4,15 @@ import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 export type TaskThreadSource = {
   messages: Message[];
   todos: Todo[];
   isLoading?: boolean;
 };
+
+const EmptyMessages: Message[] = [];
 
 export const TaskThread: React.FC<{
   source: TaskThreadSource;
@@ -37,19 +39,16 @@ export const TaskThread: React.FC<{
   scrollAreaClassName,
   instantAutoScroll = false,
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const isLoading = source?.isLoading ?? false;
+  const messages = source?.messages ?? EmptyMessages;
 
-  useEffect(() => {
-    if (!source) {
-      return;
-    }
-
-    setIsLoading(source.isLoading ?? false);
-    setMessages(source.messages);
-  }, [source]);
-
-  const renderMessages = useMemo(() => prepareForRender(messages), [messages]);
+  // Only materialize the transformed copy while the thread is expanded. Holding
+  // a second copy of every sub task history for the whole session is a large,
+  // avoidable memory cost in conversations with many sub tasks.
+  const renderMessages = useMemo(
+    () => (showMessageList ? prepareForRender(messages) : EmptyMessages),
+    [messages, showMessageList],
+  );
   const newTaskContainer = useRef<HTMLDivElement>(null);
   const { isAtBottom, scrollToBottom } = useIsAtBottom(newTaskContainer);
   const isAtBottomRef = useRef(isAtBottom);

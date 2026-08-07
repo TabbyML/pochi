@@ -13,6 +13,7 @@ import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { useThrottle } from "react-use";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
+import { useStoredSubTask } from "../../hooks/use-stored-sub-task";
 import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
@@ -30,7 +31,7 @@ interface NewTaskToolProps extends ToolProps<"newTask"> {
 }
 
 export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
-  const { tool, taskThreadSource } = props;
+  const { tool, isExecuting, taskThreadSource } = props;
   const uid = tool.input?._meta?.uid;
 
   let taskSource: (TaskThreadSource & { parentId?: string }) | undefined =
@@ -43,7 +44,14 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   }
 
   if (!inlinedTaskSource && uid && isVSCodeEnvironment()) {
-    return <LiveSubTaskToolView {...props} uid={uid} />;
+    // Only drive a sub task through a full chat runtime while it is actually
+    // running. Finished sub tasks are read straight from the store so that a
+    // long conversation does not accumulate one live chat runtime per sub task.
+    return isExecuting ? (
+      <LiveSubTaskToolView {...props} uid={uid} />
+    ) : (
+      <StoredSubTaskToolView {...props} uid={uid} />
+    );
   }
 
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
@@ -66,6 +74,13 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
       toolCallStatusRegistryRef={subTaskToolCallStatusRegistry}
     />
   );
+}
+
+function StoredSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
+  const { uid } = props;
+  const taskSource = useStoredSubTask(uid);
+
+  return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
 }
 
 export interface NewTaskToolViewProps extends ToolProps<"newTask"> {
