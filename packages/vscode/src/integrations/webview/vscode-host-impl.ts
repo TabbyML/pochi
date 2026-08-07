@@ -257,6 +257,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
+  notifyFocusChanged = async (_focused: boolean): Promise<void> => {
+    throw new Error(
+      "notifyFocusChanged should be called on the webview-specific wrapper, not the singleton",
+    );
+  };
+
   getWorkspaceState = async <K extends keyof WorkspaceState>(
     key: K,
     defaultValue?: WorkspaceState[K],

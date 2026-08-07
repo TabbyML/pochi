@@ -48,6 +48,9 @@ const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
     return Promise.resolve({ cwd: null, workspacePath: null });
   },
+  notifyFocusChanged: async (_focused: boolean): Promise<void> => {
+    return Promise.resolve();
+  },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
   },

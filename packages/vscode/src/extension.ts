@@ -33,7 +33,7 @@ import { createMcpHub } from "./integrations/mcp";
 import { ReviewController } from "./integrations/review-controller";
 import { StatusBarItem } from "./integrations/status-bar-item";
 import { TerminalLinkProvider } from "./integrations/terminal-link-provider";
-import { PochiWebviewSidebar } from "./integrations/webview";
+import { PochiFocusTracker, PochiWebviewSidebar } from "./integrations/webview";
 import { PochiTaskEditorProvider } from "./integrations/webview/webview-panel";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import "./lib/file-logger";
@@ -106,6 +106,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   container.resolve(LayoutManager);
   container.resolve(PochiTaskTabMonitor);
+  container.resolve(PochiFocusTracker);
 }
 
 // This method is called when your extension is deactivated
