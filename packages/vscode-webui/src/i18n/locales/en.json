@@ -587,7 +587,8 @@
       "enablePochiLayout": "Enable Pochi Layout",
       "disableAutoSave": "Disable Auto-Save",
       "disableCommentsOpenView": "Disable Auto-Opening of Comments Panel",
-      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot Code Completion"
+      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot Code Completion",
+      "terminalRightClickContextMenuEnabled": "Show Context Menu on Terminal Right Click"
     }
   },
   "mermaid": {
