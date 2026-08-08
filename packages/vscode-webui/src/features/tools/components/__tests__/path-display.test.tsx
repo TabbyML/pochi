@@ -69,6 +69,55 @@ describe("tool path display", () => {
     expect(visibleText(container)).not.toContain("/.pochi/projects/");
   });
 
+  it("shows the search limit independently from the match count", () => {
+    const { container, rerender } = render(
+      <SearchFilesTool
+        tool={{
+          type: "tool-searchFiles",
+          toolCallId: "call-1",
+          state: "input-available",
+          input: {
+            path: ".",
+            regex: "store",
+            limit: 20,
+          },
+        }}
+        isExecuting={true}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(visibleText(container)).toContain("(limit: 20)");
+
+    rerender(
+      <SearchFilesTool
+        tool={{
+          type: "tool-searchFiles",
+          toolCallId: "call-1",
+          state: "output-available",
+          input: {
+            path: ".",
+            regex: "store",
+            limit: 20,
+          },
+          output: {
+            matches: [
+              { file: "store.ts", line: 1, context: "const store = {};" },
+            ],
+            isTruncated: false,
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(visibleText(container)).toContain("(limit: 20)");
+    expect(visibleText(container)).toContain("1 toolInvocation.matched");
+  });
+
   it("shortens project memory paths in globFiles titles", () => {
     const { container } = render(
       <GlobFilesTool
