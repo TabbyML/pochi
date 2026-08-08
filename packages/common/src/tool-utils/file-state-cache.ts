@@ -31,7 +31,8 @@ const DEFAULT_MAX_ENTRIES = 100;
 const DEFAULT_MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
 /**
- * LRU cache that tracks what file content the model has "seen".
+ * Cache that tracks both the model's current file snapshots and which files
+ * have become known through a successful read or write during the task.
  *
  * this serves three purposes:
  *
@@ -46,10 +47,15 @@ const DEFAULT_MAX_SIZE_BYTES = 25 * 1024 * 1024;
  * 3. **Post-write cache update**: After a successful edit or write, the cache
  *    is updated with the new content and mtime so subsequent reads can dedup.
  *
- * The cache uses an LRU eviction policy with both entry-count and byte-size limits.
+ * Current snapshots use an LRU eviction policy with both entry-count and
+ * byte-size limits. Read history is lightweight provenance and is retained
+ * independently, so evicting a snapshot does not erase the fact that a file
+ * was read earlier.
  */
 export class FileStateCache {
   private readonly entries: Map<string, IFileState> = new Map();
+  private readonly readHistory = new Set<string>();
+  private readHistoryHydrated = false;
   private currentSizeBytes = 0;
 
   /**
@@ -112,7 +118,35 @@ export class FileStateCache {
 
   clear(): void {
     this.entries.clear();
+    this.readHistory.clear();
+    this.readHistoryHydrated = false;
     this.currentSizeBytes = 0;
+  }
+
+  recordRead(key: string): void {
+    this.readHistory.add(this.normalizeKey(key));
+  }
+
+  /** Merge read paths recovered from persisted task history. */
+  hydrateReadHistory(keys: readonly string[]): void {
+    for (const key of keys) {
+      this.recordRead(key);
+    }
+    this.readHistoryHydrated = true;
+  }
+
+  getReadHistoryState(key: string): "read" | "not-read" | "unknown" {
+    if (this.readHistory.has(this.normalizeKey(key))) {
+      return "read";
+    }
+    return this.readHistoryHydrated ? "not-read" : "unknown";
+  }
+
+  getReadHistorySnapshot(): { paths: string[]; hydrated: boolean } {
+    return {
+      paths: [...this.readHistory],
+      hydrated: this.readHistoryHydrated,
+    };
   }
 
   /**
@@ -122,7 +156,7 @@ export class FileStateCache {
    * leave the conversation — a compaction summary, or a retry that strips a
    * completed read. Keeping the entries preserves the edit/write staleness
    * guard (so a later edit of an already-read file is not falsely rejected
-   * with "File has not been read yet"), while `fromWrite: true` stops them
+   * for lacking a current read snapshot), while `fromWrite: true` stops them
    * from producing a "File unchanged" dedup stub that would dangle onto a
    * tool_result no longer present in the conversation.
    */
@@ -221,12 +255,17 @@ export async function checkStaleness(
   const cachedState = cache.get(resolvedPath);
   if (!cachedState) {
     const currentMtime = await getMtime(resolvedPath);
-    // If the file exists on disk but was never read, require a read first.
+    // If the file exists on disk but has no current snapshot, require a read first.
     // A missing mtime means the file doesn't exist yet, so creating it is fine.
     if (currentMtime !== undefined) {
-      throw new Error(
-        `File has not been read yet. Please read the file before ${operation} it.`,
-      );
+      const readHistoryState = cache.getReadHistoryState(resolvedPath);
+      const message =
+        readHistoryState === "read"
+          ? `File was read earlier in this task, but no current read snapshot is available. Please read the file again before ${operation} it.`
+          : readHistoryState === "not-read"
+            ? `File has not been read in the available task history. Please read the file before ${operation} it.`
+            : `No current read snapshot is available for this file. Please read the file before ${operation} it.`;
+      throw new Error(message);
     }
     return;
   }
@@ -308,14 +347,18 @@ export async function withFileStateCacheGuard<T>(opts: {
 
   const { result, fileCacheContent } = await doWork(resolvedPath);
 
-  // --- Update cache with new content ---
-  if (!isVirtual && cache && fileCacheContent !== null) {
-    await updateCacheAfterWrite(
-      cache,
-      resolvedPath,
-      fileCacheContent,
-      getMtime,
-    );
+  // A successful write leaves the model knowing the resulting file content,
+  // so treat it the same as a successful read for historical messaging.
+  if (!isVirtual && cache) {
+    cache.recordRead(resolvedPath);
+    if (fileCacheContent !== null) {
+      await updateCacheAfterWrite(
+        cache,
+        resolvedPath,
+        fileCacheContent,
+        getMtime,
+      );
+    }
   }
 
   return result;
@@ -405,6 +448,10 @@ export async function withReadFileCache<T>(opts: {
 
   const { result, fileCacheContent, fileCacheIsTruncated } =
     await doRead(resolvedPath);
+
+  if (shouldCache) {
+    cache.recordRead(resolvedPath);
+  }
 
   // --- Populate cache ---
   // Store what the model has "seen" so that future reads can dedup,

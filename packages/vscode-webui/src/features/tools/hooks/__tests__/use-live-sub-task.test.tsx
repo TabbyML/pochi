@@ -8,11 +8,15 @@ import { useLiveSubTask } from "../use-live-sub-task";
 const useLiveChatKitGettersMock = vi.hoisted(() => vi.fn(() => ({})));
 const storeMock = vi.hoisted(() => ({
   storeId: "store-1",
-  useQuery: vi.fn(() => ({
-    id: "subtask-1",
-    parentId: "parent-1",
-    status: "pending-model",
-  })),
+  useQuery: vi.fn((query: { kind?: string }) =>
+    query.kind === "messages"
+      ? []
+      : {
+          id: "subtask-1",
+          parentId: "parent-1",
+          status: "pending-model",
+        },
+  ),
 }));
 const retryErrorMock = vi.hoisted<{ current: Error | undefined }>(() => ({
   current: undefined,
@@ -73,6 +77,7 @@ vi.mock("@/lib/use-default-store", () => ({
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     clearFileStateCache: vi.fn(),
+    hydrateFileReadHistory: vi.fn(),
   },
 }));
 
@@ -92,8 +97,13 @@ vi.mock("@getpochi/livekit", () => ({
   catalog: {
     queries: {
       makeTaskQuery: vi.fn((taskId: string) => ({ taskId })),
+      makeMessagesQuery: vi.fn((taskId: string) => ({
+        kind: "messages",
+        taskId,
+      })),
     },
   },
+  collectPreviouslyReadFilePaths: vi.fn(() => []),
 }));
 
 vi.mock("@getpochi/livekit/react", () => ({

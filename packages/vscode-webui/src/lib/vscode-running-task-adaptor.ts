@@ -107,6 +107,10 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return result;
   }
 
+  hydrateFileReadHistory(taskId: string, paths: string[]) {
+    return vscodeHost.hydrateFileReadHistory(taskId, paths);
+  }
+
   onTaskError(taskId: string, error: Error) {
     logger.warn({ taskId, error }, "Task execution failed");
   }
