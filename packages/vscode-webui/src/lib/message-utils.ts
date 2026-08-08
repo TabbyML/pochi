@@ -4,6 +4,7 @@ import type {
   Review,
   TerminalTextSelection,
   UserEdits,
+  ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
@@ -18,6 +19,7 @@ export function prepareMessageParts(
   userEdits?: UserEdits,
   activeSelection?: ActiveSelection,
   terminalContextSelections?: TerminalTextSelection[],
+  invokedSkills?: ValidSkillFile[],
 ) {
   const parts: Message["parts"] = [];
   for (const x of files) {
@@ -58,6 +60,13 @@ export function prepareMessageParts(
     parts.push({
       type: "data-terminal-context",
       data: { textSelections: terminalContextSelections },
+    });
+  }
+
+  for (const skill of invokedSkills ?? []) {
+    parts.push({
+      type: "text",
+      text: prompts.skillSystemReminder(skill),
     });
   }
 

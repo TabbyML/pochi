@@ -7,11 +7,7 @@ import type {
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
-import {
-  formatMonitorNotifications,
-  formatters,
-  prompts,
-} from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import * as R from "remeda";
 
@@ -540,12 +536,6 @@ export function convertDataPartToText(
     return {
       type: "text" as const,
       text: prompts.renderBashOutputs(part.data.bashOutputs),
-    };
-  }
-  if (part.type === "data-monitor-events") {
-    return {
-      type: "text" as const,
-      text: formatMonitorNotifications(part.data.batches),
     };
   }
   return part;

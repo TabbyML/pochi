@@ -106,6 +106,9 @@ vi.mock("@/lib/hooks/use-add-complete-tool-calls", () => ({
 vi.mock("@/lib/hooks/use-reviews", () => ({
   useReviews: () => [],
 }));
+vi.mock("@/lib/hooks/use-skills", () => ({
+  useSkills: () => ({ skills: [], isLoading: false }),
+}));
 vi.mock("@/lib/hooks/use-user-edits", () => ({
   useUserEdits: () => userEditsMocks.userEdits,
 }));
@@ -119,7 +122,6 @@ vi.mock("@/lib/use-default-store", () => ({
 }));
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {},
-  isVSCodeEnvironment: () => false,
 }));
 vi.mock("../hooks/use-chat-input-state", () => ({
   useChatInputState: () => ({

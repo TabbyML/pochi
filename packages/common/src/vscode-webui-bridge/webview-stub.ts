@@ -8,7 +8,6 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
-  MonitorEventEnvelope,
   TaskMemoryState,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
@@ -47,6 +46,9 @@ import type {
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
     return Promise.resolve({ cwd: null, workspacePath: null });
+  },
+  notifyFocusChanged: async (_focused: boolean): Promise<void> => {
+    return Promise.resolve();
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
@@ -253,6 +255,9 @@ const VSCodeHostStub = {
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
   },
+  showWarningMessage: async (): Promise<undefined> => {
+    return Promise.resolve(undefined);
+  },
   readVisibleTerminals: async (): Promise<{
     terminals: ThreadSignalSerialization<
       Environment["workspace"]["terminals"] | undefined
@@ -269,19 +274,6 @@ const VSCodeHostStub = {
         return Promise.resolve();
       },
     });
-  },
-  readMonitorEvents: async (
-    _taskId: string,
-  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>> => {
-    return Promise.resolve(
-      {} as ThreadSignalSerialization<MonitorEventEnvelope[]>,
-    );
-  },
-  ackMonitorEvents: async (
-    _taskId: string,
-    _upToSeq: number,
-  ): Promise<void> => {
-    return Promise.resolve();
   },
   readModelList: async () => {
     return Promise.resolve(

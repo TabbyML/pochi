@@ -367,9 +367,7 @@
     "next": "下一步",
     "askingQuestion_one": "提问中",
     "askingQuestion_other": "提问中",
-    "skipped": "已跳过",
-    "startMonitor": "我将监听：",
-    "monitoring": "正在监听"
+    "skipped": "已跳过"
   },
   "reasoning": {
     "thinking": "思考中 ...",
@@ -567,10 +565,6 @@
     "viewChanges": "查看更改",
     "openFile": "打开文件"
   },
-  "monitorEvents": {
-    "eventCount_one": "{{count}} 个事件",
-    "eventCount_other": "{{count}} 个事件"
-  },
   "userEdits": {
     "title": "编辑",
     "filesEdited_one": "已编辑 {{count}} 个文件",
@@ -590,7 +584,8 @@
       "enablePochiLayout": "启用 Pochi 布局",
       "disableAutoSave": "禁用自动保存",
       "disableCommentsOpenView": "禁用自动打开评论面板",
-      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全"
+      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全",
+      "terminalRightClickContextMenuEnabled": "终端右键显示上下文菜单"
     }
   },
   "mermaid": {

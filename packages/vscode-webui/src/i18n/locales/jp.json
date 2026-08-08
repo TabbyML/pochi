@@ -369,9 +369,7 @@
     "next": "次へ",
     "askingQuestion_one": "質問中",
     "askingQuestion_other": "質問中",
-    "skipped": "スキップ済み",
-    "startMonitor": "監視します：",
-    "monitoring": "監視中"
+    "skipped": "スキップ済み"
   },
   "reasoning": {
     "thinking": "考え中 ...",
@@ -569,10 +567,6 @@
     "viewChanges": "変更を表示",
     "openFile": "ファイルを開く"
   },
-  "monitorEvents": {
-    "eventCount_one": "{{count}} 件のイベント",
-    "eventCount_other": "{{count}} 件のイベント"
-  },
   "userEdits": {
     "title": "編集",
     "filesEdited_one": "{{count}} ファイルを編集",
@@ -592,7 +586,8 @@
       "enablePochiLayout": "Pochi レイアウトを有効にする",
       "disableAutoSave": "自動保存を無効にする",
       "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",
-      "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする"
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする",
+      "terminalRightClickContextMenuEnabled": "ターミナルの右クリックでコンテキストメニューを表示する"
     }
   },
   "mermaid": {

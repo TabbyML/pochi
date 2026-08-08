@@ -4,7 +4,6 @@ import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
-import type { MonitorEventEnvelope } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
@@ -13,6 +12,7 @@ import type {
   FileDiff,
   Review,
   TerminalTextSelection,
+  ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { FileUIPart } from "ai";
 import type React from "react";
@@ -24,6 +24,7 @@ import {
   useToolCallLifeCycle,
 } from "../lib/chat-state";
 import type { ChatInput } from "./use-chat-input-state";
+import { validateSkillInvocations } from "./validate-skill-invocations";
 
 const logger = getLogger("UseChatSubmit");
 
@@ -40,17 +41,6 @@ export interface DraftMessage {
     terminalContextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
-    /** Present when this draft was generated from monitor events. */
-    monitor?: {
-      backgroundJobId: string;
-      description: string;
-      /**
-       * The envelopes rendered into this draft. Kept so that events arriving
-       * while the draft is still queued can be merged into it (re-rendered as
-       * one notification) instead of enqueuing another message.
-       */
-      envelopes: MonitorEventEnvelope[];
-    };
   };
 }
 
@@ -70,6 +60,7 @@ interface UseChatSubmitProps {
   setQueuedMessages: React.Dispatch<React.SetStateAction<DraftMessage[]>>;
   reviews: Review[];
   userEdits: FileDiff[];
+  skills: ValidSkillFile[];
   terminalContextSelections: TerminalTextSelection[];
   clearTerminalContextSelections: () => void;
   taskId: string;
@@ -99,6 +90,7 @@ export function useChatSubmit({
   setQueuedMessages,
   reviews,
   userEdits,
+  skills,
   terminalContextSelections,
   clearTerminalContextSelections,
   taskId,
@@ -147,6 +139,19 @@ export function useChatSubmit({
     });
   }, [allowSendMessage]);
 
+  const validateInput = useCallback(
+    async (submittedInput: ChatInput = input) => {
+      const result = validateSkillInvocations(submittedInput, skills);
+      if (result.status === "valid") {
+        return result;
+      }
+
+      await vscodeHost.showWarningMessage(result.message, { modal: false });
+      return undefined;
+    },
+    [input, skills],
+  );
+
   const handleStop = useCallback(async () => {
     if (!isStopEnabled) {
       return false;
@@ -176,84 +181,91 @@ export function useChatSubmit({
     autoApproveGuard,
   ]);
 
-  const createMessage = useCallback(async (): Promise<
-    DraftMessage | undefined
-  > => {
-    const text = input.text.trim();
-    const currentFiles = [...files];
-    const currentReviews = [...reviews];
-    const currentTerminalContextSelections = [...terminalContextSelections];
+  const createMessage = useCallback(
+    async (
+      resolvedInput: Extract<
+        ReturnType<typeof validateSkillInvocations>,
+        { status: "valid" }
+      > = { status: "valid", text: input.text, invokedSkills: [] },
+    ): Promise<DraftMessage | undefined> => {
+      const text = resolvedInput.text.trim();
+      const currentFiles = [...files];
+      const currentReviews = [...reviews];
+      const currentTerminalContextSelections = [...terminalContextSelections];
 
-    if (
-      text.length === 0 &&
-      currentFiles.length === 0 &&
-      currentReviews.length === 0 &&
-      currentTerminalContextSelections.length === 0
-    ) {
-      return undefined;
-    }
-
-    // Capture the user's selection context (editor) right now.
-    const currentUserEdits = [...userEdits];
-    const currentSelection = activeSelection;
-
-    let uploadedAttachments: FileUIPart[] = [];
-    if (currentFiles.length > 0) {
-      try {
-        logger.debug("Uploading files...");
-        uploadedAttachments = await upload();
-        logger.debug("Files uploaded.");
-        clearFiles();
-      } catch (error) {
-        // Error is already handled by the hook
+      if (
+        text.length === 0 &&
+        currentFiles.length === 0 &&
+        currentReviews.length === 0 &&
+        currentTerminalContextSelections.length === 0
+      ) {
         return undefined;
       }
-    }
 
-    clearUploadError();
-    clearInput();
-    if (currentReviews.length > 0) {
-      vscodeHost.deleteReviews(currentReviews.map((review) => review.id));
-    }
-    if (currentTerminalContextSelections.length > 0) {
-      clearTerminalContextSelections();
-    }
+      // Capture the user's selection context (editor) right now.
+      const currentUserEdits = [...userEdits];
+      const currentSelection = activeSelection;
 
-    const raw = {
-      text,
-      filesCount: currentFiles.length,
-      reviewsCount: currentReviews.length,
-      userEditsCount: currentUserEdits.length,
-      terminalContextCount: currentTerminalContextSelections.length,
-      isTodoMode,
-      activeSelection: currentSelection,
-    };
-    const parts = prepareMessageParts(
+      let uploadedAttachments: FileUIPart[] = [];
+      if (currentFiles.length > 0) {
+        try {
+          logger.debug("Uploading files...");
+          uploadedAttachments = await upload();
+          logger.debug("Files uploaded.");
+          clearFiles();
+        } catch (error) {
+          // Error is already handled by the hook
+          return undefined;
+        }
+      }
+
+      clearUploadError();
+      clearInput();
+      if (currentReviews.length > 0) {
+        vscodeHost.deleteReviews(currentReviews.map((review) => review.id));
+      }
+      if (currentTerminalContextSelections.length > 0) {
+        clearTerminalContextSelections();
+      }
+
+      const raw = {
+        text,
+        filesCount: currentFiles.length,
+        reviewsCount: currentReviews.length,
+        userEditsCount: currentUserEdits.length,
+        terminalContextCount: currentTerminalContextSelections.length,
+        isTodoMode,
+        activeSelection: currentSelection,
+      };
+      const parts = prepareMessageParts(
+        t,
+        text,
+        uploadedAttachments,
+        currentReviews,
+        currentUserEdits,
+        currentSelection,
+        currentTerminalContextSelections,
+        resolvedInput.invokedSkills,
+      );
+
+      return { parts, raw };
+    },
+    [
       t,
-      text,
-      uploadedAttachments,
-      currentReviews,
-      currentUserEdits,
-      currentSelection,
-      currentTerminalContextSelections,
-    );
-
-    return { parts, raw };
-  }, [
-    t,
-    input.text,
-    files,
-    reviews,
-    userEdits,
-    terminalContextSelections,
-    clearTerminalContextSelections,
-    activeSelection,
-    upload,
-    clearFiles,
-    clearUploadError,
-    clearInput,
-    isTodoMode,
-  ]);
+      input.text,
+      files,
+      reviews,
+      userEdits,
+      terminalContextSelections,
+      clearTerminalContextSelections,
+      activeSelection,
+      upload,
+      clearFiles,
+      clearUploadError,
+      clearInput,
+      isTodoMode,
+    ],
+  );
 
   const sendChatMessage = useCallback(
     async (message: DraftMessage) => {
@@ -285,7 +297,10 @@ export function useChatSubmit({
    * Including text input, file attachments, reviews and active selections.
    */
   const handleSubmit = useCallback(
-    async (e?: React.FormEvent<HTMLFormElement>) => {
+    async (
+      e?: React.FormEvent<HTMLFormElement>,
+      submittedInput?: ChatInput,
+    ) => {
       e?.preventDefault();
 
       logger.debug("handleSubmit");
@@ -294,7 +309,12 @@ export function useChatSubmit({
         return;
       }
 
-      const message = await createMessage();
+      const resolvedInput = await validateInput(submittedInput);
+      if (resolvedInput === undefined) {
+        return;
+      }
+
+      const message = await createMessage(resolvedInput);
       if (!message) {
         return;
       }
@@ -310,6 +330,7 @@ export function useChatSubmit({
     },
     [
       isSubmitEnabled,
+      validateInput,
       allowSendMessage,
       sendChatMessage,
       createMessage,
@@ -319,7 +340,10 @@ export function useChatSubmit({
   );
 
   const handleSteerSubmit = useCallback(
-    async (e?: React.FormEvent<HTMLFormElement>) => {
+    async (
+      e?: React.FormEvent<HTMLFormElement>,
+      submittedInput?: ChatInput,
+    ) => {
       e?.preventDefault();
 
       logger.debug("handleSteerSubmit");
@@ -328,7 +352,12 @@ export function useChatSubmit({
         return;
       }
 
-      const message = await createMessage();
+      const resolvedInput = await validateInput(submittedInput);
+      if (resolvedInput === undefined) {
+        return;
+      }
+
+      const message = await createMessage(resolvedInput);
       if (!message) {
         return;
       }
@@ -349,6 +378,7 @@ export function useChatSubmit({
     },
     [
       isSubmitEnabled,
+      validateInput,
       isRunning,
       allowSendMessage,
       sendChatMessage,

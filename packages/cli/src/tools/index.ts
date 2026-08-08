@@ -9,7 +9,6 @@ import { ExecuteCommandError, executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { killBackgroundJob } from "./kill-background-job";
 import { listFiles } from "./list-files";
-import { startMonitor } from "./monitor";
 
 import { newTask } from "./new-task";
 import { readBackgroundJobOutput } from "./read-background-job-output";
@@ -37,7 +36,6 @@ const ToolMap: Record<
   startBackgroundJob,
   readBackgroundJobOutput,
   killBackgroundJob,
-  startMonitor,
   useSkill,
 };
 

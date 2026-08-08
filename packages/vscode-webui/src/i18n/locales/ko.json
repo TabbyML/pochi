@@ -367,9 +367,7 @@
     "next": "다음",
     "askingQuestion_one": "질문 중",
     "askingQuestion_other": "질문 중",
-    "skipped": "건너뜀",
-    "startMonitor": "모니터링합니다:",
-    "monitoring": "모니터링 중"
+    "skipped": "건너뜀"
   },
   "reasoning": {
     "thinking": "생각 중 ...",
@@ -562,10 +560,6 @@
     "viewChanges": "변경 사항 보기",
     "openFile": "파일 열기"
   },
-  "monitorEvents": {
-    "eventCount_one": "이벤트 {{count}}건",
-    "eventCount_other": "이벤트 {{count}}건"
-  },
   "userEdits": {
     "title": "편집",
     "filesEdited_one": "{{count}}개 파일 편집됨",
@@ -585,7 +579,8 @@
       "enablePochiLayout": "Pochi 레이아웃 활성화",
       "disableAutoSave": "자동 저장 비활성화",
       "disableCommentsOpenView": "주석 패널 자동 열기 비활성화",
-      "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화"
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화",
+      "terminalRightClickContextMenuEnabled": "터미널 우클릭 시 상황에 맞는 메뉴 표시"
     }
   },
   "mermaid": {

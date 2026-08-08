@@ -224,12 +224,11 @@ export const CommandPanelContainer: FC<{
 export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
-  icon?: React.ReactNode;
   /** Terminal name snapshot from the tool output (term- ids only). */
   terminalName?: string;
   /** Last command run in the terminal, from the tool output (term- ids only). */
   lastCommand?: string;
-}> = ({ backgroundJobId, output, icon, terminalName, lastCommand }) => {
+}> = ({ backgroundJobId, output, terminalName, lastCommand }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
@@ -261,25 +260,22 @@ export const BackgroundJobPanel: FC<{
   return (
     <CommandPanelContainer
       icon={
-        <>
-          {icon}
-          {isUserTerminal
-            ? liveTerminal && (
-                <OpenTerminalButton
-                  name={liveTerminal.name}
-                  isActive={isActive}
-                  onClick={openTerminal}
-                />
-              )
-            : hasCommand &&
-              info?.displayId && (
-                <BackgroundJobIdButton
-                  displayId={info.displayId}
-                  isActive={isActive}
-                  onClick={openTerminal}
-                />
-              )}
-        </>
+        isUserTerminal
+          ? liveTerminal && (
+              <OpenTerminalButton
+                name={liveTerminal.name}
+                isActive={isActive}
+                onClick={openTerminal}
+              />
+            )
+          : hasCommand &&
+            info?.displayId && (
+              <BackgroundJobIdButton
+                displayId={info.displayId}
+                isActive={isActive}
+                onClick={openTerminal}
+              />
+            )
       }
       title={title}
       expanded={output !== undefined && expanded}

@@ -1,6 +1,5 @@
 import * as os from "node:os";
 import path from "node:path";
-import { MonitorRegistry } from "@/integrations/monitor/monitor-registry";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -51,7 +50,6 @@ import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
-import { startMonitor } from "@/tools/monitor";
 import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
@@ -65,7 +63,6 @@ import {
   type ContextWindowUsage,
   type Environment,
   type GitStatus,
-  type MonitorEventEnvelope,
   type TaskMemoryState,
   toErrorMessage,
 } from "@getpochi/common";
@@ -254,6 +251,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   setSessionState = async (_state: Partial<SessionState>): Promise<void> => {
     throw new Error(
       "setSessionState should be called on the webview-specific wrapper, not the singleton",
+    );
+  };
+
+  notifyFocusChanged = async (_focused: boolean): Promise<void> => {
+    throw new Error(
+      "notifyFocusChanged should be called on the webview-specific wrapper, not the singleton",
     );
   };
 
@@ -460,16 +463,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         this.terminalState.openBackgroundJobTerminal(backgroundJobId);
       },
     };
-  };
-
-  readMonitorEvents = async (
-    taskId: string,
-  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>> => {
-    return ThreadSignal.serialize(MonitorRegistry.events(taskId));
-  };
-
-  ackMonitorEvents = async (taskId: string, upToSeq: number): Promise<void> => {
-    MonitorRegistry.ack(taskId, upToSeq);
   };
 
   readCurrentWorkspace = async (): Promise<{
@@ -1006,6 +999,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             this.pochiConfiguration.commentsOpenViewDisabled.value,
           githubCopilotCodeCompletionEnabled:
             this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+          terminalRightClickContextMenuEnabled:
+            this.pochiConfiguration.terminalRightClickContextMenuEnabled.value,
           reviewAgent:
             this.pochiConfiguration.advancedSettings.value.reviewAgent,
         };
@@ -1034,6 +1029,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (params.githubCopilotCodeCompletionEnabled !== undefined) {
       this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value =
         params.githubCopilotCodeCompletionEnabled;
+    }
+    if (params.terminalRightClickContextMenuEnabled !== undefined) {
+      this.pochiConfiguration.terminalRightClickContextMenuEnabled.value =
+        params.terminalRightClickContextMenuEnabled;
     }
   };
 
@@ -1071,6 +1070,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options,
       ...items,
     );
+  };
+
+  showWarningMessage = async <T extends string>(
+    message: string,
+    options: { modal?: boolean; detail?: string },
+    ...items: T[]
+  ): Promise<T | undefined> => {
+    return await vscode.window.showWarningMessage(message, options, ...items);
   };
 
   readModelList = async (): Promise<{
@@ -1619,7 +1626,6 @@ const ToolMap: Record<
   startBackgroundJob,
   readBackgroundJobOutput,
   killBackgroundJob,
-  startMonitor,
   searchFiles,
   listFiles: listFilesTool,
   globFiles,

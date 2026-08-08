@@ -79,6 +79,9 @@ function CustomEnterKeyHandler(
           ]);
         },
         "Mod-Enter": () => {
+          if (this.editor.view.composing) {
+            return false;
+          }
           if (formRef.current) {
             formRef.current.setAttribute("submitAction", "ctrlEnter");
             formRef.current.requestSubmit();
@@ -86,6 +89,9 @@ function CustomEnterKeyHandler(
           return true;
         },
         Enter: () => {
+          if (this.editor.view.composing) {
+            return false;
+          }
           if (formRef.current) {
             formRef.current.setAttribute("submitAction", "enter");
             formRef.current.requestSubmit();
@@ -100,8 +106,8 @@ function CustomEnterKeyHandler(
 interface FormEditorProps {
   input: ChatInput;
   setInput: (input: ChatInput) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>, input: ChatInput) => void;
+  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>, input: ChatInput) => void;
   isLoading: boolean;
   editable?: boolean;
   formRef?: React.RefObject<HTMLFormElement>;
@@ -637,20 +643,28 @@ export function FormEditor({
     };
   }, [focusEditor]);
 
-  // Handle form submission to record submit history
+  // Capture TipTap directly at submission time because the mirrored React
+  // state can lag behind the editor.
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
+      const currentInput =
+        editor && !editor.isDestroyed
+          ? {
+              json: editor.getJSON(),
+              text: editor.getText({ blockSeparator: newLineCharacter }),
+            }
+          : input;
       if (enableSubmitHistory && editor && !editor.isDestroyed) {
-        editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
+        editor.commands.addToSubmitHistory(JSON.stringify(currentInput.json));
       }
       const submitAction = e.currentTarget.getAttribute("submitAction");
       if (submitAction === "ctrlEnter") {
-        onCtrlSubmit(e);
+        onCtrlSubmit(e, currentInput);
       } else {
-        onSubmit(e);
+        onSubmit(e, currentInput);
       }
     },
-    [enableSubmitHistory, editor, onSubmit, onCtrlSubmit],
+    [enableSubmitHistory, editor, input, onSubmit, onCtrlSubmit],
   );
 
   return (

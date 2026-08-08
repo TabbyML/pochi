@@ -49,10 +49,14 @@ IMPORTANT: Only create the issue, do not attempt to fix it.
 
 Each skill must start with YAML frontmatter containing at least a `name` and `description`.
 
-| Field         | Description                                     |
-| ------------- | ----------------------------------------------- |
-| `name`        | Unique identifier (lowercase, hyphens allowed). |
-| `description` | Brief explanation of what the skill does.       |
+| Field                      | Description                                                                 |
+| -------------------------- | --------------------------------------------------------------------------- |
+| `name`                     | Unique identifier (lowercase, hyphens allowed).                             |
+| `description`              | Brief explanation of what the skill does.                                   |
+| `disable-model-invocation` | Set to `true` to exclude the Skill from model discovery and reject `useSkill` invocation. Defaults to `false`. |
+| `user-invocable`           | Set to `false` to hide and reject the `/name` command. Defaults to `true`.                              |
+
+The two invocation controls are independent. Set `disable-model-invocation: true` for a manual-only Skill, `user-invocable: false` for a model-only Skill, or both to disable all invocation paths. Manual invocation expands the Skill instructions directly without exposing it through the `useSkill` tool.
 
 ## Discovery
 
