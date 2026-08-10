@@ -124,6 +124,14 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
+  const latestAssistantMessage = messages.findLast(
+    (message) =>
+      message.role === "assistant" && message.metadata?.kind === "assistant",
+  );
+  const latestAssistantMetadata =
+    latestAssistantMessage?.metadata?.kind === "assistant"
+      ? latestAssistantMessage.metadata
+      : undefined;
 
   const { input, setInput, clearInput } = useChatInputState();
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
@@ -516,6 +524,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             <TokenUsage
               taskId={taskId}
               totalTokens={totalTokens}
+              inputTokens={latestAssistantMetadata?.inputTokens}
+              cacheReadTokens={latestAssistantMetadata?.cacheReadTokens}
               className="mr-5"
               compact={compactOptions}
               selectedModel={selectedModel}

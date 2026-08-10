@@ -3,6 +3,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useIsDevMode } from "@/features/settings";
 import { FileList } from "@/features/tools";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,8 @@ interface Props {
   taskId: string;
   selectedModel: DisplayModel;
   totalTokens: number;
+  inputTokens?: number;
+  cacheReadTokens?: number;
   className?: string;
   compact?: {
     inlineCompactTaskPending: boolean;
@@ -46,10 +49,13 @@ interface Props {
 export function TokenUsage({
   taskId,
   totalTokens,
+  inputTokens,
+  cacheReadTokens,
   className,
   compact,
   selectedModel,
 }: Props) {
+  const [isDevMode] = useIsDevMode();
   const { contextWindowUsage } = useTaskContextWindowUsage(taskId);
   const { taskMemoryState } = useTaskMemoryState(taskId);
   const hasTaskMemory = taskMemoryState.extractionCount > 0;
@@ -269,6 +275,26 @@ export function TokenUsage({
                 </TooltipProvider>
               )}
             </div>
+            {isDevMode && (
+              <div className="mb-2 flex flex-col gap-y-1 text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>{t("tokenUsage.cacheReadTokens")}</span>
+                  <span>
+                    {cacheReadTokens === undefined
+                      ? "N/A"
+                      : formatTokens(cacheReadTokens)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>{t("tokenUsage.inputTokens")}</span>
+                  <span>
+                    {inputTokens === undefined
+                      ? "N/A"
+                      : formatTokens(inputTokens)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="mt-1 flex flex-col gap-y-3">
               {showSystemSection && (

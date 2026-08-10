@@ -369,7 +369,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
                 ? lastMessage.metadata
                 : undefined;
 
-            const { inputTokens, totalTokens } = part.totalUsage;
+            const { inputTokens, inputTokenDetails, totalTokens } =
+              part.totalUsage;
             if (inputTokens) {
               // Calibrate using *input* tokens only, against the raw
               // (uncalibrated) estimate of exactly the input content sent
@@ -397,11 +398,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
             return {
               kind: "assistant",
-              // The client only consumes the aggregated total token count here.
-              // Detailed usage shape differences are a server/protocol concern.
               totalTokens:
                 totalTokens ||
                 estimateTotalTokens(llmMessages, calibrationFactor),
+              inputTokens,
+              cacheReadTokens: inputTokenDetails.cacheReadTokens,
               // Lets downstream consumers tell apart real provider usage from
               // our heuristic fallback. Only set when true; keep undefined
               // otherwise so it's omitted.
