@@ -276,7 +276,7 @@ function BackgroundTaskDetail({
           value={task ? formatRelative(task.updatedAt) : undefined}
         />
         <DetailRow
-          label="Cache Read Tokens"
+          label="Cache Input Tokens"
           value={formatDetailedTokens(latestAssistantMetadata?.cacheReadTokens)}
         />
         <DetailRow

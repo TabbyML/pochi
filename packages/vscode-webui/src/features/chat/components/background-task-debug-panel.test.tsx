@@ -163,12 +163,12 @@ describe("BackgroundTaskDebugPanel", () => {
 
     openTaskDetail();
 
-    expect(getDetailValue("Cache Read Tokens")).toBe("0");
+    expect(getDetailValue("Cache Input Tokens")).toBe("0");
     expect(getDetailValue("Input Tokens")).toBe("12.3k");
 
     const statusRow = screen.getByText("Status").parentElement;
     const updatedRow = screen.getByText("Updated").parentElement;
-    const cacheReadRow = screen.getByText("Cache Read Tokens").parentElement;
+    const cacheReadRow = screen.getByText("Cache Input Tokens").parentElement;
     const inputRow = screen.getByText("Input Tokens").parentElement;
     expect(statusRow?.nextElementSibling).toBe(updatedRow);
     expect(updatedRow?.nextElementSibling).toBe(cacheReadRow);
@@ -192,7 +192,7 @@ describe("BackgroundTaskDebugPanel", () => {
 
     openTaskDetail();
 
-    expect(getDetailValue("Cache Read Tokens")).toBe("-");
+    expect(getDetailValue("Cache Input Tokens")).toBe("-");
     expect(getDetailValue("Input Tokens")).toBe("-");
   });
 });
