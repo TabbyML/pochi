@@ -8,7 +8,6 @@ import type {
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { isValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
-import type { CustomAgent } from "@getpochi/tools";
 import { uniqueBy } from "remeda";
 import { getBuiltInAgentsDir } from "./builtin-agents-dir";
 
@@ -107,8 +106,4 @@ export async function loadAgents(
     logger.error("Failed to load custom agents", error);
     return [];
   }
-}
-
-export function getModelFromCustomAgent(agent: CustomAgent | undefined) {
-  return agent?.model;
 }

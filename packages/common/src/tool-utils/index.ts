@@ -22,7 +22,7 @@ export {
   GlobalRules,
   collectAllRuleFiles,
 } from "./custom-rules";
-export { MaxTerminalOutputSize } from "./limits";
+export { MaxTerminalOutputSize, MaxTerminalHistoryLines } from "./limits";
 export {
   getShellPath,
   fixExecuteCommandOutput,

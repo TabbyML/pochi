@@ -33,6 +33,7 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { formatTokens } from "../lib/format-tokens";
 
 export function BackgroundTaskDebugPanel() {
   const [isDevMode] = useIsDevMode();
@@ -228,6 +229,14 @@ function BackgroundTaskDetail({
     }),
     [messageRows, task?.todos, task?.status],
   );
+  const latestAssistantMessage = source.messages.findLast(
+    (message) =>
+      message.role === "assistant" && message.metadata?.kind === "assistant",
+  );
+  const latestAssistantMetadata =
+    latestAssistantMessage?.metadata?.kind === "assistant"
+      ? latestAssistantMessage.metadata
+      : undefined;
 
   return (
     <div
@@ -266,6 +275,14 @@ function BackgroundTaskDetail({
           label="Updated"
           value={task ? formatRelative(task.updatedAt) : undefined}
         />
+        <DetailRow
+          label="Cache Read Tokens"
+          value={formatDetailedTokens(latestAssistantMetadata?.cacheReadTokens)}
+        />
+        <DetailRow
+          label="Input Tokens"
+          value={formatDetailedTokens(latestAssistantMetadata?.inputTokens)}
+        />
         {backgroundTaskState?.useCase && (
           <DetailRow label="Use case" value={backgroundTaskState.useCase} />
         )}
@@ -286,10 +303,13 @@ function BackgroundTaskDetail({
           <DetailRow label="Error" value={task.error.message} fullWidth />
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden p-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
         <TaskThread
           source={source}
-          scrollAreaClassName="max-h-none h-[calc(100vh-180px)]"
+          className="min-h-0 flex-1"
+          messageListClassName="mb-0 min-h-0 overflow-hidden px-0 py-0"
+          scrollAreaClassName="m-0 h-full max-h-none rounded-none border-0"
+          instantAutoScroll
         />
       </div>
     </div>
@@ -321,6 +341,10 @@ function DetailRow({
       </span>
     </div>
   );
+}
+
+function formatDetailedTokens(tokens: number | undefined): string {
+  return tokens === undefined ? "-" : formatTokens(tokens);
 }
 
 function formatRelative(date: Date | string | number): string {

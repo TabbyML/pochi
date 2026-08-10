@@ -1,3 +1,5 @@
+import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
+import { getToolPartError } from "@/lib/tool-call-error";
 import { useTranslation } from "react-i18next";
 import { BackgroundJobPanel } from "./command-execution-panel";
 import { HighlightedText } from "./highlight-text";
@@ -9,8 +11,14 @@ export const ReadBackgroundJobOutputTool: React.FC<
   ToolProps<"readBackgroundJobOutput">
 > = ({ tool, isExecuting }) => {
   const { t } = useTranslation();
-  const { backgroundJobId, regex } = tool.input || {};
+  const { backgroundJobId } = tool.input || {};
   const isUserTerminal = backgroundJobId?.startsWith("term-");
+  const terminalName = isUserTerminal ? tool.output?.terminalName : undefined;
+  const lastCommand = isUserTerminal ? tool.output?.lastCommand : undefined;
+  const terminalDisplayName = formatTerminalDisplayName(
+    terminalName,
+    lastCommand,
+  );
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -19,18 +27,18 @@ export const ReadBackgroundJobOutputTool: React.FC<
           ? t("toolInvocation.readTerminal")
           : t("toolInvocation.readBackground")}
       </span>
-      {regex && (
+      {terminalDisplayName && (
         <>
           {" "}
-          {t("toolInvocation.withRegexFilter")}:{" "}
-          <HighlightedText>{regex}</HighlightedText>
+          <HighlightedText>{terminalDisplayName}</HighlightedText>
         </>
       )}
     </>
   );
 
+  const hasError = getToolPartError(tool) !== undefined;
   const finalJobId =
-    tool.state !== "input-streaming" ? backgroundJobId : undefined;
+    tool.state !== "input-streaming" && !hasError ? backgroundJobId : undefined;
 
   return (
     <ExpandableToolContainer
@@ -40,6 +48,8 @@ export const ReadBackgroundJobOutputTool: React.FC<
           <BackgroundJobPanel
             backgroundJobId={finalJobId}
             output={tool.output?.output}
+            terminalName={terminalName}
+            lastCommand={lastCommand}
           />
         ) : null
       }

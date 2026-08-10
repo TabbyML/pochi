@@ -8,7 +8,7 @@
       "label": "dev:vscode",
       "command": "bun run watch",
       "options": {
-        "cwd": "packages/vscode"
+        "cwd": "${workspaceFolder}/packages/vscode"
       },
       "group": {
         "kind": "none",
@@ -38,7 +38,7 @@
       "label": "dev:vscode-local",
       "command": "POCHI_LOCAL_SERVER=true bun run watch",
       "options": {
-        "cwd": "packages/vscode"
+        "cwd": "${workspaceFolder}/packages/vscode"
       },
       "group": {
         "kind": "none",
@@ -51,7 +51,7 @@
       "label": "dev:vscode-local-sync",
       "command": "POCHI_LOCAL_SYNC_SERVER=true bun run watch",
       "options": {
-        "cwd": "packages/vscode"
+        "cwd": "${workspaceFolder}/packages/vscode"
       },
       "group": {
         "kind": "none",
@@ -64,7 +64,7 @@
       "label": "dev:server-server",
       "command": "bun run dev:server",
       "options": {
-        "cwd": "private/packages/server"
+        "cwd": "${workspaceFolder}/private/packages/server"
       },
       "group": {
         "kind": "none",
@@ -94,7 +94,7 @@
       "label": "dev:server-website",
       "command": "bun run dev:server",
       "options": {
-        "cwd": "private/packages/website"
+        "cwd": "${workspaceFolder}/private/packages/website"
       },
       "group": {
         "kind": "none",
@@ -129,7 +129,7 @@
       "label": "dev:vscode-local-sync-local-server-vscode",
       "command": "POCHI_LOCAL_SYNC_SERVER=true POCHI_LOCAL_SERVER=true bun run watch 2>&1",
       "options": {
-        "cwd": "packages/vscode"
+        "cwd": "${workspaceFolder}/packages/vscode"
       },
       "group": {
         "kind": "none",
@@ -159,7 +159,7 @@
       "label": "dev:vscode-local-sync-local-server-sync",
       "command": "bun dev",
       "options": {
-        "cwd": "packages/livekit-cf"
+        "cwd": "${workspaceFolder}/packages/livekit-cf"
       },
       "group": {
         "kind": "none",
@@ -202,7 +202,7 @@
       "label": "dev:vscode-prod",
       "command": "bun run watch:vscode",
       "options": {
-        "cwd": "packages/vscode"
+        "cwd": "${workspaceFolder}/packages/vscode"
       },
       "isBackground": true,
       "dependsOn": ["build:vscode-prod-assets"],

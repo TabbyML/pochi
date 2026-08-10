@@ -1,4 +1,10 @@
-import { type RefObject, useCallback, useEffect, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 interface UseIsAtBottomOptions {
   /**
@@ -29,6 +35,7 @@ export function useIsAtBottom(
 ) {
   const { threshold = 150, defaultIsAtBottom = true } = options;
   const [isAtBottom, setIsAtBottom] = useState(defaultIsAtBottom);
+  const isAtBottomRef = useRef(defaultIsAtBottom);
 
   // Check if the scroll position is near the bottom
   const checkIfAtBottom = useCallback(() => {
@@ -38,6 +45,7 @@ export function useIsAtBottom(
     const nearBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight <=
       threshold;
+    isAtBottomRef.current = nearBottom;
     setIsAtBottom(nearBottom);
     return nearBottom;
   }, [containerRef, threshold]);
@@ -47,6 +55,8 @@ export function useIsAtBottom(
       const container = containerRef.current;
       if (!container) return;
 
+      isAtBottomRef.current = true;
+      setIsAtBottom(true);
       container.scrollTo({
         top: container.scrollHeight,
         behavior: smooth ? "smooth" : "auto",
@@ -54,6 +64,8 @@ export function useIsAtBottom(
     },
     [containerRef],
   );
+
+  const getIsAtBottom = useCallback(() => isAtBottomRef.current, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -81,6 +93,7 @@ export function useIsAtBottom(
 
   return {
     isAtBottom,
+    getIsAtBottom,
     scrollToBottom,
   };
 }

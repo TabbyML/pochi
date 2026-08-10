@@ -22,7 +22,9 @@ import {
   APICallError,
   type ChatRequestOptions,
   type ChatTransport,
+  type FinishReason,
   type ModelMessage,
+  type ProviderMetadata,
   type UIMessageChunk,
   convertToModelMessages,
   streamText,
@@ -41,7 +43,13 @@ import {
   createToolCallMiddleware,
 } from "./middlewares";
 import { createModel } from "./models";
-import { estimateTokens, estimateTotalTokens } from "./token-utils";
+import {
+  estimateTokens,
+  estimateTotalTokens,
+  getModelCalibrationFactor,
+  getModelCalibrationKey,
+  updateModelCalibration,
+} from "./token-utils";
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -54,7 +62,58 @@ export type FinishedRequestSnapshot = {
   systemPrompt: string;
   systemPromptTokens: number;
   toolsTokens: number;
+  /**
+   * The per-model calibration factor snapshotted at the start of this
+   * request, used to compute `systemPromptTokens`/`toolsTokens` above. Passed
+   * through so downstream consumers (e.g. `computeContextWindowUsage`) can
+   * estimate the rest of the conversation with the same factor, rather than
+   * re-reading a possibly-since-updated value.
+   */
+  calibrationFactor: number;
 };
+
+type ContentFilterMetadata = NonNullable<
+  Extract<MessageMetadata, { kind: "assistant" }>["contentFilter"]
+>;
+
+export function extractContentFilterMetadata(
+  providerMetadata: ProviderMetadata | undefined,
+  finishReason: FinishReason,
+  rawFinishReason?: string,
+): ContentFilterMetadata | undefined {
+  const anthropic = providerMetadata?.anthropic;
+  if (
+    anthropic &&
+    (finishReason === "content-filter" || anthropic.stopDetails != null)
+  ) {
+    return {
+      provider: "anthropic",
+      ...(rawFinishReason !== undefined && { reason: rawFinishReason }),
+      ...(anthropic.stopDetails !== undefined && {
+        details: anthropic.stopDetails,
+      }),
+    };
+  }
+
+  const google = providerMetadata?.google ?? providerMetadata?.vertex;
+  const promptFeedback = google?.promptFeedback;
+  const hasPromptBlockReason =
+    typeof promptFeedback === "object" &&
+    promptFeedback !== null &&
+    "blockReason" in promptFeedback &&
+    promptFeedback.blockReason != null;
+  if (google && (finishReason === "content-filter" || hasPromptBlockReason)) {
+    return {
+      provider: "google",
+      ...(rawFinishReason !== undefined && { reason: rawFinishReason }),
+      details: {
+        promptFeedback: google.promptFeedback,
+        safetyRatings: google.safetyRatings,
+        finishMessage: google.finishMessage,
+      },
+    };
+  }
+}
 
 function createAbortAwareUIStreamTransform(
   abortSignal: AbortSignal | undefined,
@@ -92,6 +151,7 @@ function createAbortAwareUIStreamTransform(
 
 export type PrepareRequestGetters = {
   getLLM: () => RequestData["llm"];
+  getEffectiveContextWindow?: () => number | undefined;
   getEnvironment?: () => Promise<Environment>;
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
   isTodoModeActive?: () => boolean;
@@ -166,6 +226,13 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const todoModeEnabled =
       !this.isSubTask && hasActiveTodos(environment?.todos);
 
+    // Snapshot the per-model calibration factor once so every estimate
+    // computed for this request agrees, even if another concurrent request
+    // (for this model or another) updates calibration state while this one
+    // is in flight.
+    const modelCalibrationKey = getModelCalibrationKey(llm);
+    const calibrationFactor = getModelCalibrationFactor(modelCalibrationKey);
+
     await this.onStart?.({
       messages,
       environment,
@@ -222,8 +289,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       { todoModeEnabled, todos: environment?.todos },
     );
     const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
-    const systemPromptTokens = estimateTokens(systemPrompt);
-    const toolsTokens = estimateTokens(JSON.stringify(tools));
+    const systemPromptTokens = estimateTokens(systemPrompt, calibrationFactor);
+    const toolsTokens = estimateTokens(
+      JSON.stringify(tools),
+      calibrationFactor,
+    );
 
     const preparedMessages = await prepareMessages(messages);
     const llmMessages = formatters.llm(preparedMessages);
@@ -236,6 +306,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     )) as ModelMessage[];
 
     const requestStartedAt = new Date();
+    let contentFilterMetadata: ContentFilterMetadata | undefined;
     // Anthropic cache breakpoints are applied server-side based on `useCase`.
     const stream = streamText({
       providerOptions: {
@@ -280,6 +351,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         },
         originalMessages: preparedMessages,
         messageMetadata: ({ part }) => {
+          if (part.type === "finish-step") {
+            contentFilterMetadata = extractContentFilterMetadata(
+              part.providerMetadata,
+              part.finishReason,
+              part.rawFinishReason,
+            );
+          }
+
           if (part.type === "finish") {
             const now = new Date();
             const duration = now.getTime() - requestStartedAt.getTime();
@@ -289,13 +368,49 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
               lastMessage.metadata?.kind === "assistant"
                 ? lastMessage.metadata
                 : undefined;
+
+            const { inputTokens, inputTokenDetails, totalTokens } =
+              part.totalUsage;
+            if (inputTokens) {
+              // Calibrate using *input* tokens only, against the raw
+              // (uncalibrated) estimate of exactly the input content sent
+              // for this request (system prompt + tools + messages).
+              // Comparing against `totalTokens` instead would fold in
+              // output/completion usage, which can include invisible
+              // reasoning tokens we have no text to estimate from -- that
+              // gap has nothing to do with our chars-per-token ratios and
+              // would bias the factor for the wrong reason.
+              const rawInputEstimate =
+                (systemPromptTokens +
+                  toolsTokens +
+                  estimateTotalTokens(llmMessages, calibrationFactor)) /
+                calibrationFactor;
+              updateModelCalibration(
+                modelCalibrationKey,
+                inputTokens,
+                rawInputEstimate,
+              );
+            }
+
+            const isContentFiltered =
+              part.finishReason === "content-filter" ||
+              contentFilterMetadata !== undefined;
+
             return {
               kind: "assistant",
-              // The client only consumes the aggregated total token count here.
-              // Detailed usage shape differences are a server/protocol concern.
               totalTokens:
-                part.totalUsage.totalTokens || estimateTotalTokens(llmMessages),
-              finishReason: part.finishReason,
+                totalTokens ||
+                estimateTotalTokens(llmMessages, calibrationFactor),
+              inputTokens,
+              cacheReadTokens: inputTokenDetails.cacheReadTokens,
+              // Lets downstream consumers tell apart real provider usage from
+              // our heuristic fallback. Only set when true; keep undefined
+              // otherwise so it's omitted.
+              totalTokensIsEstimated: totalTokens ? undefined : true,
+              finishReason: isContentFiltered
+                ? "content-filter"
+                : part.finishReason,
+              contentFilter: contentFilterMetadata,
               startedAt: requestStartedAt,
               finishedAt: now,
               totalStreamingDuration:
@@ -308,6 +423,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
             systemPrompt,
             systemPromptTokens,
             toolsTokens,
+            calibrationFactor,
           });
         },
       })
@@ -389,35 +505,46 @@ function handleReadFileOutput(
   });
 }
 
+type MessagePart = Message["parts"][number];
+
+/** @internal exported for testing */
+export function convertDataPartToText(
+  part: MessagePart,
+): MessagePart | MessagePart[] {
+  if (part.type === "data-reviews") {
+    return {
+      type: "text" as const,
+      text: prompts.renderReviewComments(part.data.reviews),
+    };
+  }
+  if (part.type === "data-user-edits") {
+    return {
+      type: "text" as const,
+      text: prompts.renderUserEdits(part.data.userEdits),
+    };
+  }
+  if (part.type === "data-active-selection") {
+    const text =
+      part.data.activeSelection &&
+      prompts.renderActiveSelection(part.data.activeSelection);
+    return text ? [{ type: "text" as const, text }] : [];
+  }
+  if (part.type === "data-terminal-context") {
+    const text = prompts.renderTerminalContext(part.data.textSelections);
+    return text ? [{ type: "text" as const, text }] : [];
+  }
+  if (part.type === "data-bash-outputs") {
+    return {
+      type: "text" as const,
+      text: prompts.renderBashOutputs(part.data.bashOutputs),
+    };
+  }
+  return part;
+}
+
 function convertDataReviewsToText(messages: Message[]): Message[] {
   return messages.map((message) => ({
     ...message,
-    parts: message.parts.flatMap((part) => {
-      if (part.type === "data-reviews") {
-        return {
-          type: "text" as const,
-          text: prompts.renderReviewComments(part.data.reviews),
-        };
-      }
-      if (part.type === "data-user-edits") {
-        return {
-          type: "text" as const,
-          text: prompts.renderUserEdits(part.data.userEdits),
-        };
-      }
-      if (part.type === "data-active-selection") {
-        return {
-          type: "text" as const,
-          text: prompts.renderActiveSelection(part.data.activeSelection),
-        };
-      }
-      if (part.type === "data-bash-outputs") {
-        return {
-          type: "text" as const,
-          text: prompts.renderBashOutputs(part.data.bashOutputs),
-        };
-      }
-      return part;
-    }),
+    parts: message.parts.flatMap(convertDataPartToText),
   }));
 }

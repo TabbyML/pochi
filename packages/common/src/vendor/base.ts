@@ -43,7 +43,9 @@ export abstract class VendorBase {
     return newUser;
   };
 
-  abstract fetchModels(): Promise<Record<string, ModelOptions>>;
+  abstract fetchModels(
+    forceRefresh?: boolean,
+  ): Promise<Record<string, ModelOptions>>;
 
   getTools(): Promise<Record<string, McpTool & McpToolExecutable>> {
     return Promise.resolve({});

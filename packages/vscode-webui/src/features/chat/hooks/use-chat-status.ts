@@ -1,50 +1,82 @@
-import { useToolCallLifeCycle } from "../lib/chat-state";
+import { getLogger } from "@getpochi/common";
+import type { Task } from "@getpochi/livekit";
+import { useAutoApproveGuard, useToolCallLifeCycle } from "../lib/chat-state";
 import type { BlockingState } from "./use-blocking-operations";
 
+const logger = getLogger("useChatStatus");
+
 interface UseChatStatusProps {
-  isModelsLoading: boolean;
   isModelValid: boolean;
   isLoading: boolean;
   isInputEmpty: boolean;
   isFilesEmpty: boolean;
   isReviewsEmpty: boolean;
+  isTerminalContextEmpty: boolean;
   isUploadingAttachments: boolean;
   blockingState: BlockingState;
+  taskStatus: Task["status"] | undefined;
 }
 
 export function useChatStatus({
-  isModelsLoading,
   isModelValid,
   isLoading,
   isInputEmpty,
   isFilesEmpty,
   isReviewsEmpty,
+  isTerminalContextEmpty,
   isUploadingAttachments,
   blockingState,
+  taskStatus,
 }: UseChatStatusProps) {
-  const { isExecuting } = useToolCallLifeCycle();
+  const { isExecuting, completeToolCalls } = useToolCallLifeCycle();
+  const autoApproveGuard = useAutoApproveGuard();
+  const isAboutToExecuteWithAutoApprove =
+    !isLoading &&
+    !isExecuting &&
+    taskStatus === "pending-tool" &&
+    autoApproveGuard.current === "auto" &&
+    completeToolCalls.length === 0;
 
-  const isBusyCore = isModelsLoading || blockingState.isBusy;
+  const isRunning =
+    blockingState.isBusy ||
+    isLoading ||
+    isAboutToExecuteWithAutoApprove ||
+    isExecuting;
 
-  const showEditTodos = !isBusyCore;
+  // `submit`: send or queue message
+  const isSubmitEnabled =
+    !isUploadingAttachments &&
+    (!isInputEmpty ||
+      !isFilesEmpty ||
+      !isReviewsEmpty ||
+      !isTerminalContextEmpty);
 
-  const isSubmitDisabled =
-    isBusyCore ||
-    !isModelValid ||
-    isUploadingAttachments ||
-    (!isLoading &&
-      isInputEmpty &&
-      isFilesEmpty &&
-      isReviewsEmpty &&
-      !isExecuting);
+  // `stop`: stop chat streaming or tool execution
+  const isStopEnabled =
+    !blockingState.isBusy &&
+    (isLoading || isAboutToExecuteWithAutoApprove || isExecuting);
 
-  const showStopButton = isExecuting || isLoading || isUploadingAttachments;
+  // `sendMessage`: start chat streaming
+  const allowSendMessage =
+    !blockingState.isBusy &&
+    isModelValid &&
+    !isLoading &&
+    !isAboutToExecuteWithAutoApprove &&
+    !isExecuting;
 
-  return {
-    isExecuting,
-    isBusyCore,
-    showEditTodos,
-    isSubmitDisabled,
-    showStopButton,
+  // `steer`: (if running, stop), then send a new message
+  const allowSteer = !blockingState.isBusy && isModelValid;
+
+  const allStatus = {
+    isAboutToExecuteWithAutoApprove,
+    isRunning,
+    isSubmitEnabled,
+    isStopEnabled,
+    allowSendMessage,
+    allowSteer,
   };
+
+  logger.trace("allStatus", allStatus);
+
+  return allStatus;
 }

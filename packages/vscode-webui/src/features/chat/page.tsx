@@ -114,15 +114,20 @@ function Chat({ user, uid, info }: ChatProps) {
   }, [isSubTask, initSubtaskAutoApproveSettings]);
 
   const {
+    customAgent,
+    customAgentModel,
+    isLoading: isCustomAgentLoading,
+  } = useCustomAgent(subtask?.agent);
+  const modelOverride =
+    isSubTask && customAgent?.model ? customAgentModel : undefined;
+  const {
     isLoading: isModelsLoading,
     selectedModel,
     updateSelectedModelId,
   } = useSelectedModels({
     isSubTask,
+    modelOverride,
   });
-  const { customAgent, isLoading: isCustomAgentLoading } = useCustomAgent(
-    subtask?.agent,
-  );
   const attemptCompletionSchema = useMemo(() => {
     const resultSchema = customAgent?.isBuiltIn
       ? customAgent._internal?.resultSchema
@@ -156,6 +161,8 @@ function Chat({ user, uid, info }: ChatProps) {
     todoModeActive: todoModeActiveRef,
     isSubTask,
     omitCustomRules: isSubTask && customAgent?.omitAgentsMd === true,
+    // Navigation follows the mutable selection, so toolbar changes take effect.
+    modelOverride: isSubTask ? selectedModel : undefined,
     mcpConfigOverride,
     taskId: uid,
   });
@@ -394,10 +401,13 @@ function Chat({ user, uid, info }: ChatProps) {
     messages,
   });
 
-  useScrollToBottom({
+  const lastMessage = messages.at(-1);
+  const lastUserMessageId =
+    lastMessage?.role === "user" ? lastMessage.id : undefined;
+
+  const { onToolCallApprovalVisible } = useScrollToBottom({
     messagesContainerRef,
-    isLoading,
-    pendingApprovalName: pendingApproval?.name,
+    lastUserMessageId,
   });
   const showRenderWidgetFixButton =
     !isLoading && !pendingApproval && !!renderWidgetErrorKind;
@@ -461,6 +471,7 @@ function Chat({ user, uid, info }: ChatProps) {
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
         showLastStepDuration={task?.status === "completed"}
+        taskStatus={task?.status}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar
@@ -476,6 +487,7 @@ function Chat({ user, uid, info }: ChatProps) {
           attachmentUpload={attachmentUpload}
           isSubTask={isSubTask}
           subtask={subtask}
+          modelOverride={modelOverride}
           displayError={displayError}
           showRenderWidgetFixButton={showRenderWidgetFixButton}
           onUpdateIsPublicShared={chatKit.updateIsPublicShared}
@@ -483,6 +495,7 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
+          onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}
         />

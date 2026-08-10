@@ -74,6 +74,8 @@ export type ResolvedAttemptTodoCompletionResult = z.infer<
   typeof ResolvedAttemptTodoCompletionResult
 >;
 
+const TodoAuditFailedMessage = "Todo audit failed";
+
 export function resolveAttemptTodoCompletionResult(
   result: unknown,
   todos: readonly Todo[],
@@ -82,7 +84,7 @@ export function resolveAttemptTodoCompletionResult(
     parseJsonString(result),
   );
   if (!parsedResult.success) {
-    throw new Error("Invalid attemptTodoCompletion result");
+    throw new Error(TodoAuditFailedMessage);
   }
 
   const resolvedTodos = applyTodoStatusUpdates(
@@ -94,7 +96,7 @@ export function resolveAttemptTodoCompletionResult(
     todos: resolvedTodos,
   });
   if (!resolvedResult.success) {
-    throw new Error("Invalid attemptTodoCompletion result");
+    throw new Error(TodoAuditFailedMessage);
   }
 
   return resolvedResult.data;
@@ -109,7 +111,7 @@ function applyTodoStatusUpdates(
 
   for (const update of updates) {
     if (!todoIds.has(update.id) || statusById.has(update.id)) {
-      throw new Error("Invalid attemptTodoCompletion result");
+      throw new Error(TodoAuditFailedMessage);
     }
     statusById.set(update.id, update.status);
   }

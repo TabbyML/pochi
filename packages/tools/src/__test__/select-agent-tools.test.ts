@@ -193,11 +193,16 @@ describe("selectAgentTools", () => {
     );
   });
 
-  it("exposes createReview only for reviewer agents that declare it", () => {
+  it("exposes declared review source tools to reviewer agents", () => {
     const reviewerTools = selectAgentTools({
       agent: createAgent({
         name: "reviewer",
-        tools: ["createReview", "readFile"],
+        tools: [
+          "createReview",
+          "executeCommand(gh pr diff *)",
+          "executeCommand(sh */worktree-isolation/scripts/create-worktree.sh *)",
+          "readFile",
+        ],
       }),
       isSubTask: false,
     });
@@ -217,7 +222,12 @@ describe("selectAgentTools", () => {
     });
 
     expect(toolNames(reviewerTools)).toEqual(
-      [...RequiredAgentToolNames, "createReview", "readFile"].sort(),
+      [
+        ...RequiredAgentToolNames,
+        "createReview",
+        "executeCommand",
+        "readFile",
+      ].sort(),
     );
     expect(toolNames(reviewerWithoutCreateReview)).toEqual(
       [...RequiredAgentToolNames, "readFile"].sort(),
@@ -262,6 +272,13 @@ describe("selectAgentTools", () => {
           filePath: "/tmp/demo-skill/SKILL.md",
           instructions: "Do the thing.",
         },
+        {
+          name: "manual-skill",
+          description: "Only users may invoke this skill",
+          filePath: "/tmp/manual-skill/SKILL.md",
+          instructions: "Do the manual thing.",
+          disableModelInvocation: true,
+        },
       ],
       attemptCompletionSchema: customResultSchema,
     });
@@ -271,6 +288,7 @@ describe("selectAgentTools", () => {
     expect(tools.readFile?.description).toContain("image/png");
     expect(tools.newTask?.description).toContain("child-agent");
     expect(tools.useSkill?.description).toContain("demo-skill");
+    expect(tools.useSkill?.description).not.toContain("manual-skill");
     expect(
       completionInputSchema.safeParse({
         result: { ok: true },

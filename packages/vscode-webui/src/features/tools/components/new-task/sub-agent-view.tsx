@@ -39,7 +39,7 @@ export function SubAgentView({
   footerActions,
   taskSource,
   toolCallStatusRegistryRef,
-  assistantName = tool.input?.agentType ?? "Pochi",
+  assistantName = tool.input?.agentType?.trim() || "Pochi",
   showToolCall,
   showTaskThread = true,
 }: SubAgentViewProps) {
@@ -56,9 +56,10 @@ export function SubAgentView({
 
   const showFooter =
     showToolCallLite || footerActions || canShowFooterTaskThread;
+  const hasContent = children != null || !!showFooter;
   const navigate = useNavigate();
   const store = useDefaultStore();
-  const toolTitle = tool.input?.agentType;
+  const toolTitle = tool.input?.agentType?.trim() || "Subtask";
   const description = tool.input?.description;
 
   useEffect(() => {
@@ -80,7 +81,8 @@ export function SubAgentView({
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
       <div
         className={cn(
-          "flex items-start gap-2 border-b bg-muted/30 px-3 py-2 font-medium text-muted-foreground text-xs",
+          "flex items-start gap-2 bg-muted/30 px-3 py-2 font-medium text-muted-foreground text-xs",
+          hasContent && "border-b",
           uid && taskSource?.parentId && isVSCodeEnvironment()
             ? "group cursor-pointer transition-colors hover:bg-muted hover:text-foreground"
             : "",

@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 
-import type { QueuedMessage } from "../../hooks/use-chat-submit";
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
+import type { DraftMessage } from "../../hooks/use-chat-submit";
 import { QueuedMessages } from "../queued-messages";
 
 const meta = {
@@ -15,32 +16,87 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const sampleActiveSelection: ActiveSelection = {
+  filepath:
+    "packages/vscode-webui/src/features/chat/components/queued-messages.tsx",
+  range: {
+    start: { line: 10, character: 0 },
+    end: { line: 20, character: 0 },
+  },
+  content: `export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
+  messages,
+  onRemove,
+  onSteer,
+}) => {`,
+};
+
 export const Default: Story = {
   args: {
     messages: [
-      queuedMessage("Hello, this is a test message."),
-      queuedMessage(
-        "This is another test message that is very long and should be truncated, This is another test message that is very long and should be truncated.",
-      ),
-      queuedMessage(
-        "Prompt with mention, <file>packages/vscode-webui/src/features/chat/components/queued-messages</file>",
-      ),
-      queuedMessage(`This is a prompt with multi line.
-      This is another line`),
-      queuedMessage("This is a todo mode prompt", true),
-      queuedMessage("This is a prompt"),
-      queuedMessage("This is a prompt"),
-      queuedMessage("This is a prompt"),
-      queuedMessage("This is a prompt"),
+      queuedMessage({ text: "Hello, this is a test message." }),
+      queuedMessage({
+        text: "This is another test message that is very long and should be truncated, This is another test message that is very long and should be truncated.",
+      }),
+      queuedMessage({
+        text: "Prompt with mention, <file>packages/vscode-webui/src/features/chat/components/queued-messages</file>",
+      }),
+      queuedMessage({
+        text: `This is a prompt with multi line.
+      This is another line`,
+      }),
+      queuedMessage({ text: "This is a todo mode prompt", isTodoMode: true }),
+      queuedMessage({
+        text: "This is a prompt with an active editor selection",
+        activeSelection: sampleActiveSelection,
+      }),
+      queuedMessage({
+        text: "This is a prompt with attached files",
+        filesCount: 2,
+      }),
+      queuedMessage({
+        text: "This is a prompt with pending reviews",
+        reviewsCount: 3,
+      }),
+      queuedMessage({
+        text: "This is a prompt with files and reviews",
+        filesCount: 1,
+        reviewsCount: 2,
+      }),
+      queuedMessage({
+        text: "This is a prompt with files, reviews and selections",
+        filesCount: 2,
+        reviewsCount: 1,
+        activeSelection: sampleActiveSelection,
+      }),
+      queuedMessage({ text: "This is a prompt" }),
     ],
   },
 };
 
-function queuedMessage(text: string, isTodoMode = false): QueuedMessage {
+function queuedMessage({
+  text,
+  isTodoMode = false,
+  filesCount = 0,
+  reviewsCount = 0,
+  userEditsCount = 0,
+  activeSelection,
+}: {
+  text: string;
+  isTodoMode?: boolean;
+  filesCount?: number;
+  reviewsCount?: number;
+  userEditsCount?: number;
+  activeSelection?: ActiveSelection;
+}): DraftMessage {
   return {
-    text,
-    files: [],
-    reviews: [],
-    isTodoMode,
+    parts: [],
+    raw: {
+      text,
+      filesCount,
+      reviewsCount,
+      userEditsCount,
+      isTodoMode,
+      activeSelection,
+    },
   };
 }

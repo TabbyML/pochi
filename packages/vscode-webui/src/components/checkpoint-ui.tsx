@@ -26,6 +26,14 @@ export const CheckpointUI: React.FC<{
   isLoading: boolean;
   className?: string;
   hideBorderOnHover?: boolean;
+  /**
+   * Whether this instance renders the full-width separator line between
+   * messages, as opposed to the compact inline badge shown next to a tool
+   * call. While streaming, the separator variant keeps its border line
+   * visible (hiding only the icon/actions), whereas the compact variant is
+   * hidden entirely (its space is preserved to avoid layout jitter).
+   */
+  showSeparatorLine?: boolean;
   forkTask?: (commitId: string, messageId?: string) => Promise<void>;
   restoreMessageId?: string;
   isRestored?: boolean;
@@ -37,6 +45,7 @@ export const CheckpointUI: React.FC<{
   isLoading,
   className,
   hideBorderOnHover = true,
+  showSeparatorLine = false,
   forkTask,
   restoreMessageId,
   isRestored,
@@ -200,6 +209,96 @@ export const CheckpointUI: React.FC<{
     return <GitCommitHorizontal className="size-5" />;
   };
 
+  const handleOpenSummary = () => {
+    if (!compactPart) return;
+    const parsed = prompts.parseInlineCompact(compactPart.text);
+    if (parsed && compactMessageId) {
+      vscodeHost.openFile(`/task-summary-${compactMessageId}.md`, {
+        base64Data: btoa(unescape(encodeURIComponent(parsed.summary))),
+      });
+    }
+  };
+
+  const actionButtonClassName =
+    "h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent dark:hover:bg-transparent";
+
+  const compareControl = (
+    <span className="flex items-center">
+      {getCompareIcon()}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={isPending}
+        onClick={() => handleCheckpointAction("compare")}
+        className={actionButtonClassName}
+      >
+        {getCompareText()}
+      </Button>
+    </span>
+  );
+
+  const restoreControl = (
+    <span className="flex items-center">
+      <span className={cn("flex", isRestored && "text-current/40")}>
+        {getRestoreIcon()}
+      </span>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={isPending || isRestored}
+        onClick={() => handleCheckpointAction("restore")}
+        className={actionButtonClassName}
+      >
+        {getRestoreText()} {isDevMode && `(${checkpoint.commit})`}
+      </Button>
+    </span>
+  );
+
+  const forkControl = forkTask && (
+    <span className="flex items-center">
+      {getForkIcon()}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={isPending}
+        onClick={() => handleCheckpointAction("fork")}
+        className={actionButtonClassName}
+      >
+        {getForkText()}
+      </Button>
+    </span>
+  );
+
+  const summaryControl = compactPart && (
+    <span className="flex items-center">
+      <SquareChartGantt className="size-3" />
+      <Button
+        size="sm"
+        variant="ghost"
+        className={actionButtonClassName}
+        onClick={handleOpenSummary}
+      >
+        {t("checkpointUI.summary")}
+      </Button>
+    </span>
+  );
+
+  // The action under the cursor after hover-expansion must match the
+  // collapsed icon: with a summary the collapsed icon is the summary
+  // glyph, so Summary stays centered; otherwise the commit glyph maps
+  // to Restore. Side actions live inside the flex-1 border tracks so
+  // the center anchor never shifts.
+  const centerControl = compactPart ? summaryControl : restoreControl;
+  const actionsDisabled = isPending || showActionSuccessIcon;
+
+  // While streaming:
+  // - the separator variant keeps its full-width border line visible, only
+  //   hiding the icon/actions in the middle.
+  // - the compact inline variant is hidden entirely, but its space is
+  //   preserved (via `invisible`) so nothing jitters when it reappears.
+  const hideBadgeWhileStreaming = isLoading && !showSeparatorLine;
+  const showSeparatorLineOnly = isLoading && showSeparatorLine;
+
   return (
     <div
       className={cn(
@@ -209,115 +308,81 @@ export const CheckpointUI: React.FC<{
     >
       <div
         className={cn(
-          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full select-none items-center hover:max-w-full",
-          executionDuration && !compactPart ? "max-w-[140px]" : "max-w-[72px]",
-          isLoading && "pointer-events-none",
+          "-translate-x-1/2 -top-1 group absolute left-1/2 mx-auto flex min-h-5 w-full select-none items-center",
+          isLoading
+            ? "pointer-events-none"
+            : cn(
+                "hover:max-w-full",
+                executionDuration && !compactPart
+                  ? "max-w-[140px]"
+                  : "max-w-[72px]",
+              ),
+          hideBadgeWhileStreaming && "invisible",
           className,
         )}
       >
-        <Border
-          hide={isPending || showActionSuccessIcon}
-          hideOnHover={hideBorderOnHover}
-          isRestored={isRestored}
-        />
-        <span
-          className={cn(
-            "flex items-center text-muted-foreground/60 group-hover:px-2.5 group-hover:text-foreground",
-            // The compact icon (size-3) is smaller than the git-commit icon
-            // (size-5), so it needs a tiny symmetric gap from the border lines
-            // when unhovered. The git-commit icon stays flush.
-            compactPart && "px-1",
-            (isPending || showActionSuccessIcon) &&
-              "pointer-events-none px-2.5",
-          )}
-        >
-          <span className="hidden group-hover:flex">{getCompareIcon()}</span>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={isPending}
-            onClick={() => handleCheckpointAction("compare")}
-            className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
-          >
-            {getCompareText()}
-          </Button>
-
-          <span
-            className={cn(
-              "hidden group-hover:flex",
-              isRestored && "text-current/40",
-            )}
-          >
-            {getRestoreIcon()}
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={isPending || isRestored}
-            onClick={() => handleCheckpointAction("restore")}
-            className="hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
-          >
-            {getRestoreText()} {isDevMode && `(${checkpoint.commit})`}
-          </Button>
-
-          {forkTask && (
-            <div className="ml-1 hidden items-center group-hover:flex">
-              <span className="hidden group-hover:flex">{getForkIcon()}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={isPending}
-                onClick={() => handleCheckpointAction("fork")}
-                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
+        {showSeparatorLineOnly ? (
+          // While streaming, only keep the full line separator visible and
+          // hide the rest of the checkpoint UI (icon, actions, etc).
+          <div className="w-full border-border border-t" />
+        ) : (
+          <>
+            <div className="flex flex-1 items-center justify-end">
+              <Border
+                hide={isPending || showActionSuccessIcon}
+                hideOnHover={hideBorderOnHover}
+                isRestored={isRestored}
+              />
+              <span
+                className={cn(
+                  "hidden items-center gap-1 pl-2.5 text-foreground group-hover:flex",
+                  actionsDisabled && "pointer-events-none",
+                )}
               >
-                {getForkText()}
-              </Button>
-            </div>
-          )}
-
-          {compactPart && (
-            <div className="ml-1 hidden items-center group-hover:flex">
-              <span className="hidden group-hover:flex">
-                <SquareChartGantt className="size-3" />
+                {compareControl}
+                {compactPart && restoreControl}
               </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="ml-[1px] hidden h-5 items-center gap-1 rounded-md px-1 py-0.5 text-xs hover:bg-transparent group-hover:flex dark:hover:bg-transparent"
-                onClick={() => {
-                  const parsed = prompts.parseInlineCompact(compactPart.text);
-                  if (parsed && compactMessageId) {
-                    vscodeHost.openFile(
-                      `/task-summary-${compactMessageId}.md`,
-                      {
-                        base64Data: btoa(
-                          unescape(encodeURIComponent(parsed.summary)),
-                        ),
-                      },
-                    );
-                  }
-                }}
-              >
-                {t("checkpointUI.summary")}
-              </Button>
             </div>
-          )}
-
-          <span
-            className={cn(
-              "group-hover:hidden",
-              isRestored && "text-primary/60",
-              executionDuration && !compactPart && "px-2 text-xs",
-            )}
-          >
-            {getNormalStateLabel()}
-          </span>
-        </span>
-        <Border
-          hide={isPending || showActionSuccessIcon}
-          hideOnHover={hideBorderOnHover}
-          isRestored={isRestored}
-        />
+            <span
+              className={cn(
+                "flex items-center text-muted-foreground/60 group-hover:px-1 group-hover:text-foreground",
+                // The compact icon (size-3) is smaller than the git-commit icon
+                // (size-5), so it needs a tiny symmetric gap from the border lines
+                // when unhovered. The git-commit icon stays flush.
+                compactPart && "px-1",
+                actionsDisabled && "pointer-events-none px-2.5",
+              )}
+            >
+              <span className="hidden items-center group-hover:flex">
+                {centerControl}
+              </span>
+              <span
+                className={cn(
+                  "group-hover:hidden",
+                  isRestored && "text-primary/60",
+                  executionDuration && !compactPart && "px-2 text-xs",
+                )}
+              >
+                {getNormalStateLabel()}
+              </span>
+            </span>
+            <div className="flex flex-1 items-center justify-start">
+              <span
+                className={cn(
+                  "hidden items-center gap-1 pr-2.5 text-foreground group-hover:flex",
+                  actionsDisabled && "pointer-events-none",
+                )}
+              >
+                {forkControl}
+              </span>
+              <Border
+                hide={isPending || showActionSuccessIcon}
+                hideOnHover={hideBorderOnHover}
+                isRestored={isRestored}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

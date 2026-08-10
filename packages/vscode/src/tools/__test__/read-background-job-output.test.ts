@@ -3,12 +3,13 @@ import { afterEach, describe, it } from "mocha";
 import { OutputManager } from "../../integrations/terminal/output";
 
 /**
- * `readBackgroundJobOutput` resolves output through the shared `OutputManager`
- * registry keyed by a terminal id. Background jobs and (newly) user-opened
- * terminals both register their output here, which is what allows the model to
- * read any terminal by id. These tests cover that registry contract directly
- * (importing the tool itself pulls in the webview/layout module chain, which is
- * not available in the unit test host).
+ * `readBackgroundJobOutput` resolves `bgjob-` ids through the shared
+ * `OutputManager` registry keyed by job id (Pochi-started background jobs
+ * capture only their own stdout/stderr). `term-` ids (user-opened terminals)
+ * are instead backed by `TerminalHistoryManager`, tested separately in
+ * `terminal-history.test.ts`. These tests cover the `OutputManager` registry
+ * contract directly (importing the tool itself pulls in the webview/layout
+ * module chain, which is not available in the unit test host).
  */
 describe("OutputManager registry (readBackgroundJobOutput backing store)", () => {
   const createdIds: string[] = [];
@@ -40,16 +41,6 @@ describe("OutputManager registry (readBackgroundJobOutput backing store)", () =>
       `expected captured output, got: ${JSON.stringify(result)}`,
     );
     assert.strictEqual(result.status, "completed");
-  });
-
-  it("captures and returns output for a user-opened terminal id (term- prefix)", () => {
-    const id = track("term-read-test");
-    const manager = OutputManager.create({ id, command: "ls" });
-    manager.addChunk("file-a file-b\n");
-    manager.finalize();
-
-    const result = OutputManager.get(id)?.readOutput();
-    assert.ok(result?.output.includes("file-a"), "expected captured output");
   });
 
   it("returns only new output since the last read", () => {

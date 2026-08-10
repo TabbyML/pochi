@@ -1,3 +1,4 @@
+import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { UITools } from "@getpochi/livekit";
@@ -220,8 +221,14 @@ const ReadBackgroundJobTool = ({
   tool,
 }: ToolCallLiteViewProps<"readBackgroundJobOutput">) => {
   const { t } = useTranslation();
-  const { backgroundJobId, regex } = tool.input || {};
+  const { backgroundJobId } = tool.input || {};
   const isUserTerminal = backgroundJobId?.startsWith("term-");
+  const terminalDisplayName = isUserTerminal
+    ? formatTerminalDisplayName(
+        tool.output?.terminalName,
+        tool.output?.lastCommand,
+      )
+    : undefined;
   return (
     <>
       <span className="ml-2">
@@ -229,11 +236,10 @@ const ReadBackgroundJobTool = ({
           ? t("toolInvocation.readTerminal")
           : t("toolInvocation.readBackground")}
       </span>
-      {regex && (
+      {terminalDisplayName && (
         <>
           {" "}
-          {t("toolInvocation.withRegexFilter")}:{" "}
-          <HighlightedText>{regex}</HighlightedText>
+          <HighlightedText>{terminalDisplayName}</HighlightedText>
         </>
       )}
     </>
@@ -347,7 +353,7 @@ const NewTaskTool = ({ tool }: ToolCallLiteViewProps<"newTask">) => {
   const description = tool.input?.description ?? "";
 
   const agentType = tool.input?.agentType;
-  const toolTitle = agentType ?? "Subtask";
+  const toolTitle = agentType?.trim() || "Subtask";
 
   return (
     <div>

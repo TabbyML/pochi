@@ -31,8 +31,6 @@ function getEmbeddedBlobs(): readonly EmbeddedBlob[] {
 
 function classifyBlob(blob: EmbeddedBlob): ClassifiedBlob | undefined {
   const name = blob.name ?? "";
-  if (!name.toLowerCase().endsWith(".md")) return undefined;
-
   const skillIdx = name.lastIndexOf(SkillsMarker);
   const agentIdx = name.lastIndexOf(AgentsMarker);
 
@@ -43,6 +41,9 @@ function classifyBlob(blob: EmbeddedBlob): ClassifiedBlob | undefined {
       kind: "skill",
     };
   }
+
+  if (!name.toLowerCase().endsWith(".md")) return undefined;
+
   if (agentIdx !== -1) {
     return {
       blob,

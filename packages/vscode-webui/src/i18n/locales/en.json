@@ -43,10 +43,15 @@
     "noMessage": "No message",
     "fileCount": "{{count}} files",
     "reviewCount": "{{count}} reviews",
+    "userEditCount": "{{count}} edits",
+    "terminalContextCount": "{{count}} terminal selections",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
-    "pleaseCheckFiles": "Please check these attachments.",
+    "contextLabelFiles": "files",
+    "contextLabelReviews": "reviews",
+    "contextLabelTerminalSelections": "terminal selections",
+    "pleaseCheckAttachedContext": "Please check the attached {{items}}.",
     "chatToolbar": {
       "diffWorktreeWith": "Diff worktree with {{branch}}",
       "openInTerminal": "Open in Integrated Terminal"
@@ -67,6 +72,8 @@
     "minTokensRequired": "At least {{minTokens}} tokens are required to compact the conversation",
     "defaultContextWindowWarning": "The context window value is a default and may not be accurate for your custom model. For precise token management, please adjust it in the settings according to your model provider's documentation.",
     "tokensUsed": "{{used}} / {{total}} tokens",
+    "inputTokens": "Input Tokens",
+    "cacheReadTokens": "Cache Read Tokens",
     "system": "System",
     "systemInstructions": "System Instructions",
     "toolDefinitions": "Tool Definitions",
@@ -84,6 +91,7 @@
     "projectMemoryEnable": "Enable Project Memory",
     "projectMemoryDisable": "Disable Project Memory",
     "projectMemoryDescription": "Pochi learns about your project as you work and saves it to MEMORY.md, so future tasks start with helpful context.",
+    "projectMemoryToggleDescription": "This only controls whether saved memory is included in task context. Pochi always continues learning and saving memory.",
     "viewProjectMemory": "View",
     "viewProjectMemoryTooltip": "Open the MEMORY.md index for this workspace.",
     "viewTaskMemoryButtonTooltip": "Open the task memory summary that compacting will reuse.",
@@ -317,6 +325,7 @@
     "reading": "Reading ",
     "writing": "Writing ",
     "continue": "Continue",
+    "retry": "Retry",
     "cancel": "Cancel",
     "continueInSeconds": "Continue in {{seconds}}s",
     "save": "Save",
@@ -354,7 +363,6 @@
     "result_other": "{{count}} results",
     "readBackground": "Reading background job output",
     "readTerminal": "Reading terminal output",
-    "withRegexFilter": "with regex filter",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
     "updatingToDos": "Updating TODOs",
@@ -444,7 +452,11 @@
   },
   "activeSelectionBadge": {
     "cell": "Cell",
-    "addContext": "Add Context"
+    "addContext": "Add Context",
+    "terminal": "Terminal"
+  },
+  "terminalContextBadge": {
+    "remove": "Remove terminal selection from context"
   },
   "todoModeBadge": {
     "remove": "Remove todo mode"
@@ -470,6 +482,7 @@
     "complete": "Complete"
   },
   "errorMessageView": {
+    "contentFilter": "A safety filter stopped the response. Try rephrasing your message or retry.",
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",
@@ -505,6 +518,8 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "openJob": "Open Job {{displayId}}",
+    "openTerminal": "Open terminal {{name}}",
+    "userTerminal": "User terminal",
     "stop": "STOP"
   },
   "devModeButton": {
@@ -560,6 +575,7 @@
     "filesEdited_one": "{{count}} file edited",
     "filesEdited_other": "{{count}} files edited",
     "tooltip": "Your edits are tracked and will be included in the context",
+    "remove": "Remove user edits from context",
     "showDiff": "Show Diff",
     "diffTitle": "User Edits"
   },
@@ -573,7 +589,8 @@
       "enablePochiLayout": "Enable Pochi Layout",
       "disableAutoSave": "Disable Auto-Save",
       "disableCommentsOpenView": "Disable Auto-Opening of Comments Panel",
-      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot Code Completion"
+      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot Code Completion",
+      "terminalRightClickContextMenuEnabled": "Show Context Menu on Terminal Right Click"
     }
   },
   "mermaid": {
@@ -599,9 +616,7 @@
     "completed": "All todos completed",
     "needsWork": "Todo needs more work",
     "stopped": "Todo audit stopped",
-    "stoppedDescription": "The audit was stopped before it could produce a summary.",
-    "unavailable": "Todo audit result unavailable",
-    "unavailableDescription": "The audit ended without a readable summary."
+    "unavailable": "Todo audit result unavailable"
   },
   "browserAgentSettings": {
     "runtimeSection": "Browser Runtime",

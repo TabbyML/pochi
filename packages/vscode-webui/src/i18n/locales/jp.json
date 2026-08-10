@@ -42,10 +42,15 @@
     "noMessage": "メッセージなし",
     "fileCount": "{{count}} 件のファイル",
     "reviewCount": "{{count}} 件のレビュー",
+    "userEditCount": "{{count}} 件の編集",
+    "terminalContextCount": "{{count}} 件のターミナル選択",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
-    "pleaseCheckFiles": "これらの添付ファイルを確認してください。",
+    "contextLabelFiles": "添付ファイル",
+    "contextLabelReviews": "レビュー",
+    "contextLabelTerminalSelections": "ターミナル選択",
+    "pleaseCheckAttachedContext": "添付された{{items}}を確認してください。",
     "chatToolbar": {
       "diffWorktreeWith": "ワークツリーを {{branch}} と比較",
       "openInTerminal": "統合ターミナルで開く"
@@ -67,6 +72,8 @@
     "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} tokens が必要です",
     "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
     "tokensUsed": "{{used}} / {{total}} tokens",
+    "inputTokens": "入力 Tokens",
+    "cacheReadTokens": "キャッシュ読み取り Tokens",
     "system": "システム",
     "systemInstructions": "システム指示",
     "toolDefinitions": "ツール定義",
@@ -84,6 +91,7 @@
     "projectMemoryEnable": "プロジェクトメモリを有効化",
     "projectMemoryDisable": "プロジェクトメモリを無効化",
     "projectMemoryDescription": "Pochi が作業中にプロジェクトについて学んだ内容を MEMORY.md に保存し、今後のタスクで役立つ文脈として再利用します。",
+    "projectMemoryToggleDescription": "この設定は、保存済みメモリをタスクのコンテキストに読み込むかどうかのみを制御します。Pochi は常に学習とメモリの保存を続けます。",
     "viewProjectMemory": "表示",
     "viewProjectMemoryTooltip": "このワークスペースの MEMORY.md インデックスを開きます。",
     "viewTaskMemoryButtonTooltip": "タスク圧縮時に再利用されるタスクメモリの要約を開きます。",
@@ -313,6 +321,7 @@
 
     "writing": "書き込み中 ",
     "continue": "続行",
+    "retry": "再試行",
     "cancel": "キャンセル",
     "continueInSeconds": "{{seconds}}秒後に続行",
     "save": "保存",
@@ -350,7 +359,6 @@
     "result_other": "{{count}}件の結果",
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
     "readTerminal": "ターミナル出力を読み込み中",
-    "withRegexFilter": "正規表現フィルター付き",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
     "updatingToDos": "TODOを更新中",
@@ -438,7 +446,11 @@
   },
   "activeSelectionBadge": {
     "cell": "セル",
-    "addContext": "コンテキストを追加"
+    "addContext": "コンテキストを追加",
+    "terminal": "ターミナル"
+  },
+  "terminalContextBadge": {
+    "remove": "ターミナル選択をコンテキストから削除"
   },
   "todoModeBadge": {
     "remove": "Todoモードを削除"
@@ -464,6 +476,7 @@
     "complete": "完了"
   },
   "errorMessageView": {
+    "contentFilter": "安全フィルターにより応答が停止されました。メッセージを言い換えるか、再試行してください。",
     "reachedCreditLimit": "支出限度額に達しました。",
     "seeMore": "詳細を見る",
     "teamReachedCreditLimit": "チームが支出限度額に達しました。",
@@ -499,6 +512,8 @@
     "collapse": "折りたたむ",
     "expand": "展開",
     "openJob": "ジョブ {{displayId}} を開く",
+    "openTerminal": "ターミナル {{name}} を開く",
+    "userTerminal": "ユーザーターミナル",
     "stop": "停止"
   },
   "liveSubTask": {
@@ -559,6 +574,7 @@
     "filesEdited_one": "{{count}} ファイルを編集",
     "filesEdited_other": "{{count}} ファイルを編集",
     "tooltip": "編集内容が追跡され、コンテキストに含まれます",
+    "remove": "コンテキストからユーザー編集を削除",
     "showDiff": "差分を表示",
     "diffTitle": "ユーザー編集"
   },
@@ -572,7 +588,8 @@
       "enablePochiLayout": "Pochi レイアウトを有効にする",
       "disableAutoSave": "自動保存を無効にする",
       "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",
-      "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする"
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする",
+      "terminalRightClickContextMenuEnabled": "ターミナルの右クリックでコンテキストメニューを表示する"
     }
   },
   "mermaid": {
@@ -597,9 +614,7 @@
     "completed": "すべての Todos が完了しました",
     "needsWork": "Todo はさらに作業が必要です",
     "stopped": "Todo 監査を停止しました",
-    "stoppedDescription": "監査はサマリーを生成する前に停止しました。",
-    "unavailable": "Todo 監査結果を利用できません",
-    "unavailableDescription": "監査は終了しましたが、読み取れるサマリーが返されませんでした。"
+    "unavailable": "Todo 監査結果を利用できません"
   },
   "browserAgentSettings": {
     "runtimeSection": "ブラウザー実行環境",

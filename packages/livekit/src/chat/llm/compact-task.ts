@@ -106,7 +106,7 @@ export async function compactTask({
           { verbatimTail: true },
         );
         memoryAttachMessage.parts.unshift({ type: "text", text });
-        persistInlineCompactMessage(store, memoryAttachMessage);
+        persistInlineCompactMessage(store, memoryAttachMessage.id, text);
         logger.debug(
           `Inline compact attached at index ${memoryAttachIndex}; preserving ${
             messages.length - memoryAttachIndex
@@ -126,7 +126,7 @@ export async function compactTask({
         attachIndex < messages.length - 1 ? { verbatimTail: true } : undefined,
       );
       attachMessage.parts.unshift({ type: "text", text });
-      persistInlineCompactMessage(store, attachMessage);
+      persistInlineCompactMessage(store, attachMessage.id, text);
       return;
     }
 
@@ -144,10 +144,11 @@ export async function compactTask({
 
 function persistInlineCompactMessage(
   store: LiveKitStore | undefined,
-  message: Message,
+  id: string,
+  text: string,
 ) {
   if (!store) return;
-  store.commit(events.updateMessages({ messages: [message] }));
+  store.commit(events.inlineCompactAttached({ id, text }));
 }
 
 export function findInlineCompactAttachIndex(

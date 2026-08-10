@@ -31,6 +31,7 @@ interface ToolCallApprovalButtonProps {
   taskId?: string;
   parentUid?: string;
   subtask?: SubtaskInfo;
+  onVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
 }
@@ -42,6 +43,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   isSubTask,
   parentUid,
   subtask,
+  onVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
 }) => {
@@ -246,6 +248,11 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   }, [batchExecuteManager, taskId]);
 
   const showAccept = !isAutoApproved && isReady;
+  useEffect(() => {
+    if (showAccept) {
+      onVisible?.();
+    }
+  }, [showAccept, onVisible]);
 
   if (showAccept) {
     return (

@@ -118,7 +118,7 @@ describe("Todo", () => {
         },
         [todo],
       ),
-    ).toThrow("Invalid attemptTodoCompletion result");
+    ).toThrow("Todo audit failed");
   });
 
   it("resolves empty todo updates without a success field", () => {

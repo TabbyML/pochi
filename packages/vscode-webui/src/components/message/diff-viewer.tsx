@@ -35,7 +35,7 @@ const patchDiffUnsafeCSS = `
   [data-overflow="scroll"] {
     min-width: 100%;
     width: max-content;
-    --diffs-code-grid: var(--diffs-grid-number-column-width) max-content;
+    --diffs-code-grid: var(--diffs-grid-number-column-width) minmax(max-content, 1fr);
   }
   [data-diff-type="split"][data-overflow="scroll"] {
     grid-template-columns: max-content max-content;

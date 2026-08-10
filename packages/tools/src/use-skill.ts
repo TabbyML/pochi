@@ -22,18 +22,36 @@ export const Skill = z.object({
     .string()
     .optional()
     .describe("Space-delimited list of pre-approved tools"),
+  disableModelInvocation: z.boolean().optional(),
+  userInvocable: z.boolean().optional(),
   instructions: z.string().describe("The skill's instructions."),
 });
 
 export type Skill = z.infer<typeof Skill>;
 
+export function isModelInvocableSkill(skill: Skill): boolean {
+  return skill.disableModelInvocation !== true;
+}
+
+export function isUserInvocableSkill(skill: Skill): boolean {
+  return skill.userInvocable !== false;
+}
+
+export function makeUserInvocationDisabledMessage(skill: Skill): string {
+  if (skill.disableModelInvocation) {
+    return `Skill "${skill.name}" is not available for invocation.`;
+  }
+  return `Skill "${skill.name}" cannot be invoked with /${skill.name} because user invocation is disabled. Describe the task normally and the model may use this skill when relevant.`;
+}
+
 function makeSkillToolDescription(skills?: Skill[]) {
-  if (!skills || skills.length === 0)
+  const modelInvocableSkills = skills?.filter(isModelInvocableSkill);
+  if (!modelInvocableSkills || modelInvocableSkills.length === 0)
     return "No skills are available in the workspace.";
 
   return `Available skills:
 
-${skills
+${modelInvocableSkills
   .map((skill) => {
     const compatibilityInfo = skill.compatibility
       ? ` [Compatibility: ${skill.compatibility}]`

@@ -9,8 +9,18 @@ const chatSubmitMocks = vi.hoisted(() => ({
   useChatSubmit: vi.fn(() => ({
     handleSubmit: vi.fn(),
     handleSteerSubmit: vi.fn(),
+    handleSteerQueuedMessage: vi.fn(),
     handleStop: vi.fn(),
+    pauseQueueRef: { current: false },
   })),
+}));
+const userEditsMocks = vi.hoisted(() => ({
+  userEdits: [] as Array<{
+    filepath: string;
+    diff: string;
+    added: number;
+    removed: number;
+  }>,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -60,10 +70,6 @@ vi.mock("@/features/approval", () => ({
   FixWidgetButton: () => null,
   isRetryApprovalCountingDown: () => false,
 }));
-vi.mock("@/features/chat", () => ({
-  useAutoApproveGuard: () => ({ current: "stop" }),
-  useToolCallLifeCycle: () => ({ completeToolCalls: [] }),
-}));
 vi.mock("@/features/settings", () => ({
   AutoApproveMenu: () => null,
   useAutoApprove: () => ({ autoApproveActive: false }),
@@ -100,6 +106,12 @@ vi.mock("@/lib/hooks/use-add-complete-tool-calls", () => ({
 vi.mock("@/lib/hooks/use-reviews", () => ({
   useReviews: () => [],
 }));
+vi.mock("@/lib/hooks/use-skills", () => ({
+  useSkills: () => ({ skills: [], isLoading: false }),
+}));
+vi.mock("@/lib/hooks/use-user-edits", () => ({
+  useUserEdits: () => userEditsMocks.userEdits,
+}));
 vi.mock("@/lib/hooks/use-task-changed-files", () => ({
   useTaskChangedFiles: () => ({
     visibleChangedFiles: [],
@@ -120,10 +132,12 @@ vi.mock("../hooks/use-chat-input-state", () => ({
 }));
 vi.mock("../hooks/use-chat-status", () => ({
   useChatStatus: () => ({
-    isExecuting: false,
-    isBusyCore: false,
-    isSubmitDisabled: false,
-    showStopButton: false,
+    isAboutToExecuteWithAutoApprove: false,
+    isRunning: false,
+    isSubmitEnabled: true,
+    isStopEnabled: false,
+    allowSendMessage: true,
+    allowSteer: true,
   }),
 }));
 vi.mock("../hooks/use-chat-submit", () => ({
@@ -166,7 +180,7 @@ const auditTodo: Todo = {
   priority: "medium",
 };
 
-function renderToolbar(isSubTask: boolean) {
+function renderToolbar(isSubTask: boolean, lastCheckpointHash?: string) {
   render(
     <ChatToolbar
       chat={
@@ -192,7 +206,12 @@ function renderToolbar(isSubTask: boolean) {
       }
       isSubTask={isSubTask}
       task={
-        { id: "task-1", todos: undefined, totalTokens: 0 } as unknown as Task
+        {
+          id: "task-1",
+          todos: undefined,
+          totalTokens: 0,
+          lastCheckpointHash,
+        } as unknown as Task
       }
       displayError={undefined}
       todos={[auditTodo]}
@@ -208,6 +227,7 @@ function renderToolbar(isSubTask: boolean) {
 describe("ChatToolbar", () => {
   beforeEach(() => {
     chatSubmitMocks.useChatSubmit.mockClear();
+    userEditsMocks.userEdits = [];
   });
 
   it("renders todos in root task pages", () => {
@@ -228,6 +248,47 @@ describe("ChatToolbar", () => {
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         canCreateTodo: false,
+      }),
+    );
+  });
+
+  it("submits no user edits after they disappear from the input", () => {
+    renderToolbar(false, "checkpoint-1");
+
+    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userEdits: [],
+      }),
+    );
+  });
+
+  it("submits the user edits shown in the input", () => {
+    const userEdits = [
+      {
+        filepath: "src/example.ts",
+        diff: "+const value = 1;",
+        added: 1,
+        removed: 0,
+      },
+    ];
+    userEditsMocks.userEdits = userEdits;
+
+    renderToolbar(false, "checkpoint-1");
+
+    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userEdits,
+      }),
+    );
+  });
+
+  it("passes the accumulated terminal context selections (empty by default) to useChatSubmit", () => {
+    renderToolbar(false);
+
+    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        terminalContextSelections: [],
+        clearTerminalContextSelections: expect.any(Function),
       }),
     );
   });

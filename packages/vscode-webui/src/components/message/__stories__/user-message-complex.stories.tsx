@@ -28,7 +28,7 @@ const complexUserMessage: Message = {
       type: "text",
       text: "Here is a complex request involving multiple context items. I've found some issues and I'm providing context via active selection, user edits, reviews, and attachments.",
     },
-    // Active Selection
+    // Active Selection (a text-file selection)
     {
       type: "data-active-selection",
       data: {
@@ -138,6 +138,83 @@ const complexUserMessage: Message = {
 export const AllParts: Story = {
   args: {
     messages: [complexUserMessage],
+    isLoading: false,
+    user: {
+      name: "Developer",
+      image: "https://github.com/shadcn.png",
+    },
+  },
+};
+
+// Explicitly attached terminal context ("Add to Chat" flow).
+const terminalContextSingleMessage: Message = {
+  id: "msg-terminal-context-single",
+  role: "user",
+  parts: [
+    {
+      type: "text",
+      text: "I attached the build output for reference.",
+    },
+    {
+      type: "data-terminal-context",
+      data: {
+        textSelections: [
+          {
+            terminalName: "bash",
+            backgroundJobId: "term-story-context-1",
+            content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
+          },
+        ],
+      },
+    },
+  ],
+};
+
+export const TerminalContextSingle: Story = {
+  args: {
+    messages: [terminalContextSingleMessage],
+    isLoading: false,
+    user: {
+      name: "Developer",
+      image: "https://github.com/shadcn.png",
+    },
+  },
+};
+
+// Multiple explicitly attached terminal selections across different
+// terminals.
+const terminalContextMultipleMessage: Message = {
+  id: "msg-terminal-context-multiple",
+  role: "user",
+  parts: [
+    {
+      type: "text",
+      text: "Here are a few terminal snippets I manually attached for reference.",
+    },
+    {
+      type: "data-terminal-context",
+      data: {
+        textSelections: [
+          {
+            terminalName: "bash",
+            backgroundJobId: "term-story-context-2",
+            content: "$ npm run build\n> tsc && vite build\n✓ built in 1.2s",
+          },
+          {
+            terminalName: "zsh",
+            backgroundJobId: "term-story-context-3",
+            content:
+              "$ git status\nOn branch main\nnothing to commit, working tree clean",
+          },
+        ],
+      },
+    },
+  ],
+};
+
+export const TerminalContextMultiple: Story = {
+  args: {
+    messages: [terminalContextMultipleMessage],
     isLoading: false,
     user: {
       name: "Developer",

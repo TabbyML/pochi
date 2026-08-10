@@ -15,6 +15,7 @@ export {
   useHandleChatEvents,
 } from "./lib/chat-events";
 export { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
+export { formatTokens } from "./lib/format-tokens";
 export {
   useBackgroundJobInfo,
   useReplaceJobIdsInContent,
@@ -43,6 +44,11 @@ export {
   useSubtaskInfo,
   type SubtaskInfo,
 } from "./hooks/use-subtask-info";
+
+export {
+  useTerminalContextState,
+  type TerminalContextState,
+} from "./hooks/use-terminal-context-state";
 
 export { useRenderWidgetStore } from "./hooks/use-render-widget-store";
 

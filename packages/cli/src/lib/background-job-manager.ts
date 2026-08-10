@@ -73,7 +73,6 @@ export class BackgroundJobManager {
 
   readOutput(
     id: string,
-    regex?: string,
   ): { output: string; status: "running" | "completed" | "idle" } | null {
     const job = this.jobs.get(id);
     if (!job) {
@@ -88,13 +87,7 @@ export class BackgroundJobManager {
       status: job.status,
     });
 
-    let outputToReturn = job.output;
-
-    if (regex) {
-      const re = new RegExp(regex);
-      const lines = outputToReturn.split("\n");
-      outputToReturn = lines.filter((line) => re.test(line)).join("\n");
-    }
+    const outputToReturn = job.output;
 
     job.output = ""; // Clear buffer
     job.lastReadAt = now;

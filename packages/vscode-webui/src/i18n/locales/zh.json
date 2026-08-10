@@ -41,10 +41,15 @@
     "noMessage": "无消息",
     "fileCount": "{{count}} 个文件",
     "reviewCount": "{{count}} 条评审",
+    "userEditCount": "{{count}} 处编辑",
+    "terminalContextCount": "{{count}} 个终端选区",
     "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",
-    "pleaseCheckFiles": "请检查这些附件。",
+    "contextLabelFiles": "附件",
+    "contextLabelReviews": "评审",
+    "contextLabelTerminalSelections": "终端选区",
+    "pleaseCheckAttachedContext": "请检查已附加的{{items}}。",
     "chatToolbar": {
       "diffWorktreeWith": "将工作树与 {{branch}} 进行比较",
       "openInTerminal": "在集成终端中打开"
@@ -66,6 +71,8 @@
     "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话",
     "defaultContextWindowWarning": "上下文窗口值是默认值，对于您的自定义模型可能不准确。为了精确的 token 管理，请根据您的模型提供商的文档在设置中进行调整。",
     "tokensUsed": "已使用 {{used}} / {{total}} tokens",
+    "inputTokens": "输入 Tokens",
+    "cacheReadTokens": "缓存读取 Tokens",
     "system": "系统",
     "systemInstructions": "系统指令",
     "toolDefinitions": "工具定义",
@@ -83,6 +90,7 @@
     "projectMemoryEnable": "启用项目记忆",
     "projectMemoryDisable": "停用项目记忆",
     "projectMemoryDescription": "Pochi 会在工作过程中学习你的项目并自动保存到 MEMORY.md，后续任务将带着这些上下文启动。",
+    "projectMemoryToggleDescription": "此开关仅控制是否将已有记忆读入任务上下文。Pochi 始终会继续学习并保存记忆。",
     "viewProjectMemory": "查看",
     "viewProjectMemoryTooltip": "打开此工作区的 MEMORY.md 索引文件。",
     "viewTaskMemoryButtonTooltip": "打开压缩任务时复用的任务记忆摘要。",
@@ -311,6 +319,7 @@
 
     "writing": "正在写入 ",
     "continue": "继续",
+    "retry": "重试",
     "cancel": "取消",
     "continueInSeconds": "{{seconds}}秒后继续",
     "save": "保存",
@@ -348,7 +357,6 @@
     "result_other": "{{count}}个结果",
     "readBackground": "正在读取后台任务输出",
     "readTerminal": "正在读取终端输出",
-    "withRegexFilter": "使用正则表达式过滤器",
     "backgroundExecute": "我将在后台执行以下命令",
     "backgroundExecuting": "正在后台执行命令",
     "updatingToDos": "更新待办事项中",
@@ -436,7 +444,11 @@
   },
   "activeSelectionBadge": {
     "cell": "单元格",
-    "addContext": "添加上下文"
+    "addContext": "添加上下文",
+    "terminal": "终端"
+  },
+  "terminalContextBadge": {
+    "remove": "从上下文中移除终端选区"
   },
   "todoModeBadge": {
     "remove": "移除 Todo 模式"
@@ -462,6 +474,7 @@
     "complete": "完成"
   },
   "errorMessageView": {
+    "contentFilter": "安全过滤阻止了此次回答。请尝试换一种方式表达，或重试。",
     "reachedCreditLimit": "您已达到消费限额。",
     "seeMore": "查看更多",
     "teamReachedCreditLimit": "您的团队已达到消费限额。",
@@ -497,6 +510,8 @@
     "collapse": "收起",
     "expand": "展开",
     "openJob": "打开任务 {{displayId}}",
+    "openTerminal": "打开终端 {{name}}",
+    "userTerminal": "用户终端",
     "stop": "停止"
   },
   "liveSubTask": {
@@ -557,6 +572,7 @@
     "filesEdited_one": "已编辑 {{count}} 个文件",
     "filesEdited_other": "已编辑 {{count}} 个文件",
     "tooltip": "您的编辑已被跟踪，并将包含在上下文中",
+    "remove": "从上下文中移除用户编辑",
     "showDiff": "显示差异",
     "diffTitle": "用户编辑"
   },
@@ -570,7 +586,8 @@
       "enablePochiLayout": "启用 Pochi 布局",
       "disableAutoSave": "禁用自动保存",
       "disableCommentsOpenView": "禁用自动打开评论面板",
-      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全"
+      "disableGithubCopilotCodeCompletion": "禁用 GitHub Copilot 代码补全",
+      "terminalRightClickContextMenuEnabled": "终端右键显示上下文菜单"
     }
   },
   "mermaid": {
@@ -595,9 +612,7 @@
     "completed": "所有 Todos 已完成",
     "needsWork": "Todo 需要继续推进",
     "stopped": "Todo 审计已停止",
-    "stoppedDescription": "审计在生成总结前已停止。",
-    "unavailable": "Todo 审计结果不可用",
-    "unavailableDescription": "审计结束了，但没有返回可读取的总结。"
+    "unavailable": "Todo 审计结果不可用"
   },
   "browserAgentSettings": {
     "runtimeSection": "浏览器运行环境",

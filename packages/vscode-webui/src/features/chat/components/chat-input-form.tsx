@@ -10,17 +10,30 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
-import { UserEditsBadge } from "@/components/prompt-form/user-edits";
+import { TerminalContextBadges } from "@/components/prompt-form/terminal-context-badges";
+import { UserEdits } from "@/components/prompt-form/user-edits";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
-import type { Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  FileDiff,
+  Review,
+  TerminalTextSelection,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { ReactNode } from "@tanstack/react-router";
 import type { ChatInput } from "../hooks/use-chat-input-state";
+import type { DraftMessage } from "../hooks/use-chat-submit";
+import { QueuedMessages } from "./queued-messages";
 
 interface ChatInputFormProps {
   input: ChatInput;
   setInput: (input: ChatInput) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmit: (
+    e: React.FormEvent<HTMLFormElement>,
+    input: ChatInput,
+  ) => Promise<void>;
+  onCtrlSubmit: (
+    e: React.FormEvent<HTMLFormElement>,
+    input: ChatInput,
+  ) => Promise<void>;
   isLoading: boolean;
   editable?: boolean;
   onPaste: (event: ClipboardEvent) => void;
@@ -32,8 +45,11 @@ interface ChatInputFormProps {
   isSubTask: boolean;
   children?: ReactNode;
   reviews: Review[];
-  taskId?: string;
+  userEdits?: FileDiff[];
   lastCheckpointHash?: string;
+  onRemoveUserEdits?: () => void;
+  terminalContextSelections?: TerminalTextSelection[];
+  onRemoveTerminalContextSelection?: (index: number) => void;
   onSwitchSubmitMode?: () => void;
   isPlanMode?: boolean;
   onSelectTodoMode?: () => void;
@@ -41,10 +57,15 @@ interface ChatInputFormProps {
   onAttachFile?: () => void;
   contextMenuSide?: "top" | "bottom";
   className?: string;
+  queuedMessages?: DraftMessage[];
+  onRemoveQueuedMessage?: (index: number) => void;
+  onSteerQueuedMessage?: (index: number) => void;
+  allowSteer?: boolean;
 }
 
 export interface ChatInputFormHandle {
   addToSubmitHistory: () => void;
+  getInputSnapshot: () => ChatInput | undefined;
 }
 
 export const ChatInputForm = forwardRef<
@@ -66,8 +87,11 @@ export const ChatInputForm = forwardRef<
     messageContent,
     isSubTask,
     reviews,
-    taskId,
+    userEdits = [],
     lastCheckpointHash,
+    onRemoveUserEdits,
+    terminalContextSelections = [],
+    onRemoveTerminalContextSelection,
     children,
     onSwitchSubmitMode,
     onSelectTodoMode,
@@ -75,6 +99,10 @@ export const ChatInputForm = forwardRef<
     onAttachFile,
     contextMenuSide = "top",
     className,
+    queuedMessages = [],
+    onRemoveQueuedMessage,
+    onSteerQueuedMessage,
+    allowSteer,
   },
   ref,
 ) {
@@ -88,6 +116,16 @@ export const ChatInputForm = forwardRef<
       if (editor && !editor.isDestroyed) {
         editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
       }
+    },
+    getInputSnapshot: () => {
+      const editor = editorRef.current;
+      if (!editor || editor.isDestroyed) {
+        return undefined;
+      }
+      return {
+        json: editor.getJSON(),
+        text: editor.getText({ blockSeparator: "\n" }),
+      };
     },
   }));
 
@@ -133,12 +171,32 @@ export const ChatInputForm = forwardRef<
           todoModeDisabled={todoModeDisabled}
         />
         <ActiveSelectionBadge />
-        {taskId && lastCheckpointHash && (
-          <UserEditsBadge taskId={taskId} lastCheckpoint={lastCheckpointHash} />
+        <TerminalContextBadges
+          selections={terminalContextSelections}
+          onRemove={onRemoveTerminalContextSelection}
+        />
+        {userEdits.length > 0 && lastCheckpointHash && (
+          <UserEdits
+            userEdits={userEdits}
+            originCheckpoint={lastCheckpointHash}
+            onRemove={onRemoveUserEdits}
+          />
         )}
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />
+      {queuedMessages.length > 0 && (
+        <QueuedMessages
+          messages={queuedMessages}
+          onRemove={(index) => onRemoveQueuedMessage?.(index)}
+          onSteer={
+            onSteerQueuedMessage
+              ? (index) => onSteerQueuedMessage(index)
+              : undefined
+          }
+          allowSteer={allowSteer}
+        />
+      )}
       {children}
     </FormEditor>
   );

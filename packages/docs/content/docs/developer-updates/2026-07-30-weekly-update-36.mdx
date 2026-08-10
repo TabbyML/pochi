@@ -1,0 +1,46 @@
+---
+title: 'Weekly Update #36'
+---
+# Weekly Update #36
+
+### TL;DR
+
+Pochi can now move work into a clean, isolated checkout without disturbing the changes already in your workspace. This release also gives you tighter control over the edits sent as context and makes long conversations more reliable across languages and live updates.
+
+More below!
+
+### 🚀 Features
+
+- **Isolated workspaces without disturbing current work:** Pochi can now create a separate Git worktree when a task needs another branch or committed source state. Your current files and in-progress changes stay untouched while the isolated task gets a complete checkout to inspect, build, test, or modify.
+
+  This gives review agents a safe place for deeper validation, and also helps when your current workspace has pending work but you want Pochi to handle something else in parallel. [**#1820**](https://github.com/TabbyML/pochi/pull/1820)
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    }}
+  >
+    <source src="https://assets.docs.getpochi.com/docs/33/3379128f66f39fbab3b88f39843ebd4d396ee51d520346be24716b761d4b09c5.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+### ✨ Enhancements
+
+- **Remove your edits from message context:** Manual file edits detected by Pochi now have a remove action in the chat input, letting you leave unrelated changes out before sending. Switching branches also clears stale edits so changes from the previous branch do not silently follow your next message. [**#1818**](https://github.com/TabbyML/pochi/pull/1818), [**#1846**](https://github.com/TabbyML/pochi/pull/1846), [**#1851**](https://github.com/TabbyML/pochi/pull/1851)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![User edits tracked in the chat input with a remove action](/images/developer-updates/weekly-update-36-user-edits.png)</div>
+
+### 🐛 Bug Fixes
+
+- **More accurate token estimates for Chinese, Japanese, and Korean text:** Context estimates now account for how CJK text is tokenized and calibrate against the model's reported usage during the session. Previously the same flat character ratio was used for every language, which could substantially undercount CJK-heavy conversations. [**#1828**](https://github.com/TabbyML/pochi/pull/1828)
+
+- **Streaming no longer steals your scroll position:** When you scroll up to read earlier messages, incoming output now leaves you where you are instead of repeatedly forcing the task view back to the bottom. Background-task detail panels also size and follow their live output more reliably. [**#1816**](https://github.com/TabbyML/pochi/pull/1816), [**#1830**](https://github.com/TabbyML/pochi/pull/1830)
+
+- **Diff highlights fill the full row:** Added and removed line backgrounds now extend across the complete width of the diff viewer, including while you scroll horizontally, instead of ending after the code text. [**#1819**](https://github.com/TabbyML/pochi/pull/1819)
+
+### 👀 Coming Up
+
+- **Richer terminal context:** We're continuing to refine how Pochi captures and presents selected terminal text and command history before bringing the experience forward as a headline feature. [**#1812**](https://github.com/TabbyML/pochi/pull/1812), [**#1824**](https://github.com/TabbyML/pochi/pull/1824)

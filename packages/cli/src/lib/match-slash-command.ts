@@ -1,16 +1,17 @@
 import { prompts } from "@getpochi/common";
-import type {
-  CustomAgentFile,
-  SkillFile,
+import {
+  type CustomAgentFile,
+  type SkillFile,
+  type ValidSkillFile,
+  isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { CustomAgent } from "@getpochi/tools";
+import { isUserInvocableSkill } from "@getpochi/tools";
 import type { Parent, Text } from "mdast";
 import { gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import { SKIP, visit } from "unist-util-visit";
-import { getModelFromCustomAgent } from "./load-agents";
 
 const IGNORED_NODE_TYPES = [
   "code",
@@ -68,40 +69,13 @@ export function extractSlashCommandNames(prompt: string): string[] {
   return [...new Set(allCommands)];
 }
 
-export async function getModelFromSlashCommand(
-  prompt: string | undefined,
-  options: {
-    customAgents: CustomAgent[];
-  },
-): Promise<string | undefined> {
-  if (prompt && containsSlashCommandReference(prompt)) {
-    const commandNames = extractSlashCommandNames(prompt);
-
-    if (!commandNames.length) {
-      return undefined;
-    }
-
-    for (const commandName of commandNames) {
-      // 1. try to get model from agent
-      const targetAgent = options.customAgents.find(
-        (x) => x.name === commandName,
-      );
-      const agentModel = getModelFromCustomAgent(targetAgent);
-      if (agentModel) {
-        return agentModel;
-      }
-    }
-  }
-  return undefined;
-}
-
 export async function replaceSlashCommandReferences(
   prompt: string,
   slashCommandContext: {
     customAgents: CustomAgentFile[];
     skills: SkillFile[];
   },
-): Promise<{ prompt: string }> {
+): Promise<{ prompt: string; blockedSkill?: ValidSkillFile }> {
   // Quick check - if no slash at all, return early
   if (!/\//.test(prompt)) {
     return { prompt };
@@ -109,6 +83,7 @@ export async function replaceSlashCommandReferences(
 
   // Parse markdown to AST
   const tree = remark().use(remarkGfm).parse(prompt);
+  let blockedSkill: ValidSkillFile | undefined;
 
   // Visit and process nodes: replace slash commands
   visit(tree, (node, index, parent) => {
@@ -136,7 +111,7 @@ export async function replaceSlashCommandReferences(
               (x) => x.name === commandName,
             );
             const skill = slashCommandContext.skills.find(
-              (x) => x.name === commandName,
+              (x) => x.name === commandName && isValidSkillFile(x),
             );
 
             if (agent?.name) {
@@ -146,10 +121,19 @@ export async function replaceSlashCommandReferences(
               });
               continue;
             }
-            if (skill?.name) {
+            if (
+              skill &&
+              isValidSkillFile(skill) &&
+              !isUserInvocableSkill(skill)
+            ) {
+              blockedSkill ??= skill;
+              newNodes.push({ type: "text", value: part });
+              continue;
+            }
+            if (skill && isValidSkillFile(skill)) {
               newNodes.push({
                 type: "html",
-                value: prompts.skill(commandName, skill.filePath),
+                value: prompts.skill(skill),
               });
               continue;
             }
@@ -177,5 +161,5 @@ export async function replaceSlashCommandReferences(
     },
   });
 
-  return { prompt: result.trimEnd() };
+  return { prompt: result.trimEnd(), blockedSkill };
 }

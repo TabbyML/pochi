@@ -2,12 +2,14 @@ import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type {
+  ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
   TaskMemoryState,
+  TerminalTextSelection,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
@@ -44,7 +46,6 @@ import type {
   DiffCheckpointOptions,
   GithubIssue,
 } from "./types/git";
-import type { ActiveSelection } from "./types/message";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { VSCodeSettings } from "./types/vscode-settings";
@@ -217,6 +218,16 @@ export interface VSCodeHostApi {
     workspacePath: string | null;
   }>;
 
+  /**
+   * Reports that this webview's window gained or lost focus. Used to track,
+   * per Pochi surface (sidebar vs. a task tab's panel), when it was last
+   * focused by the user. There is no VS Code host-native signal for "the
+   * sidebar view gained keyboard focus" (unlike editor tabs, which are
+   * tracked via `vscode.window.tabGroups`), so the webview reports it
+   * directly via this method.
+   */
+  notifyFocusChanged(focused: boolean): Promise<void>;
+
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
   readSkills(): Promise<ThreadSignalSerialization<SkillFile[]>>;
@@ -355,6 +366,12 @@ export interface VSCodeHostApi {
     ...items: T[]
   ): Promise<T | undefined>;
 
+  showWarningMessage<T extends string>(
+    message: string,
+    options: { modal?: boolean; detail?: string },
+    ...items: T[]
+  ): Promise<T | undefined>;
+
   readModelList(): Promise<{
     modelList: ThreadSignalSerialization<DisplayModel[]>;
     isLoading: ThreadSignalSerialization<boolean>;
@@ -466,8 +483,12 @@ export interface VSCodeHostApi {
    * Read the global effective context window (in tokens) used to cap
    * auto-compaction. Returns undefined when not configured, in which case the
    * built-in default is used.
+   *
+   * Returns a signal so the UI can react to configuration changes in real time.
    */
-  readEffectiveContextWindow(): Promise<number | undefined>;
+  readEffectiveContextWindow(): Promise<
+    ThreadSignalSerialization<number | undefined>
+  >;
 
   readAutoMemoryState(taskId: string): Promise<{
     value: ThreadSignalSerialization<AutoMemoryTaskState | undefined>;
@@ -544,4 +565,16 @@ export interface WebviewHostApi {
   readStoreFile(filePath: string): Promise<string | null>;
 
   readTaskOutput(taskId: string): Promise<ExecuteCommandResult>;
+
+  /**
+   * Pushes a terminal text selection into the webview's pending "terminal
+   * context" list, so it shows up attached to the next outgoing chat
+   * message. Invoked from the VS Code side (e.g. the terminal right-click
+   * "Add to Chat" command).
+   *
+   * Resolves once the selection has been handed off to the webview's
+   * terminal context state (awaiting readiness rather than dropping it if
+   * the webview hasn't finished initializing yet).
+   */
+  addTerminalContext(selection: TerminalTextSelection): Promise<void>;
 }

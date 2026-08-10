@@ -6,23 +6,27 @@ import {
   type CreateWorktreeType,
   WorktreeSelect,
 } from "@/components/worktree-select";
-import {
-  useIsDevMode,
-  useSelectedModels,
-  useSettingsStore,
-} from "@/features/settings";
+import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
+import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
-import type { GitWorktree, Review } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  GitWorktree,
+  Review,
+  ValidSkillFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChatInput } from "../hooks/use-chat-input-state";
+import { useTerminalContextState } from "../hooks/use-terminal-context-state";
+import { validateSkillInvocations } from "../hooks/validate-skill-invocations";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 
 interface CreateTaskInputProps {
@@ -45,12 +49,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   deletingWorktreePaths,
 }) => {
   const activeSelection = useActiveSelection();
+  const {
+    selections: terminalContextSelections,
+    removeSelection: removeTerminalContextSelection,
+    clearSelections: clearTerminalContextSelections,
+  } = useTerminalContextState();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
+  const { skills, isLoading: isSkillsLoading } = useSkills(true);
   const [planMode, setPlanMode] = useState(false);
   const [todoModeSelected, setTodoModeSelected] = useState(false);
-  const [isDevMode] = useIsDevMode();
-  const canUseTodoMode = isDevMode === true;
-  const todoMode = canUseTodoMode && todoModeSelected;
   const togglePlanMode = useCallback(() => {
     setPlanMode((enabled) => {
       const nextEnabled = !enabled;
@@ -65,10 +72,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     setPlanMode((enabled) => !enabled);
   }, []);
   const selectTodoMode = useCallback(() => {
-    if (!canUseTodoMode) return;
     setPlanMode(false);
     setTodoModeSelected(true);
-  }, [canUseTodoMode]);
+  }, []);
   const {
     globalMcpConfig,
     mcpConfigOverride,
@@ -167,8 +173,15 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         url: string;
       }>;
       todos?: Todo[];
+      invokedSkills?: ValidSkillFile[];
     }): Promise<boolean> => {
-      const { content, shouldCreateWorktree, uploadedFiles, todos } = params;
+      const {
+        content,
+        shouldCreateWorktree,
+        uploadedFiles,
+        todos,
+        invokedSkills,
+      } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
       if (shouldCreateWorktree) {
@@ -194,6 +207,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           todos,
           files: uploadedFiles,
           activeSelection: activeSelection ?? undefined,
+          invokedSkills,
+          terminalContextSelections:
+            terminalContextSelections.length > 0
+              ? terminalContextSelections
+              : undefined,
           mcpConfigOverride:
             Object.keys(mcpConfigOverride).length > 0
               ? mcpConfigOverride
@@ -205,6 +223,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Clear files if they were uploaded
       if (uploadedFiles && uploadedFiles.length > 0) {
         clearFiles();
+      }
+
+      if (terminalContextSelections.length > 0) {
+        clearTerminalContextSelections();
       }
 
       resetMcpTools();
@@ -223,6 +245,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       resetMcpTools,
       globalMcpConfig,
       activeSelection,
+      terminalContextSelections,
+      clearTerminalContextSelections,
     ],
   );
 
@@ -231,13 +255,13 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       shouldCreateWorktree?: boolean;
       shouldCreatePlan?: boolean;
       shouldCreateTodo?: boolean;
+      submittedInput?: ChatInput;
     }) => {
       const { shouldCreateWorktree } = options || {};
       const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
-      const shouldCreateTodo =
-        canUseTodoMode && (options?.shouldCreateTodo ?? todoMode);
+      const shouldCreateTodo = options?.shouldCreateTodo ?? todoModeSelected;
 
-      if (isCreatingTask) return;
+      if (isCreatingTask || isSkillsLoading) return;
 
       // Uploading / Compacting is not allowed to be stopped.
       if (isUploadingAttachments) return;
@@ -245,10 +269,23 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // If no valid model is selected, submission is not allowed.
       if (!selectedModel) return;
 
-      let content = input.text.trim();
+      const currentInput = options?.submittedInput ?? input;
+      const validationResult = validateSkillInvocations(currentInput, skills);
+      if (validationResult.status === "blocked") {
+        await vscodeHost.showWarningMessage(validationResult.message, {
+          modal: false,
+        });
+        return;
+      }
+      let content = validationResult.text.trim();
 
       // Disallow empty submissions
-      if (content.length === 0 && files.length === 0) return;
+      if (
+        content.length === 0 &&
+        files.length === 0 &&
+        terminalContextSelections.length === 0
+      )
+        return;
 
       if (shouldCreatePlan) {
         // Use built-in planner agent
@@ -285,6 +322,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
         todos: shouldCreateTodo ? initTodoModeTodos(content) : undefined,
+        invokedSkills: validationResult.invokedSkills,
       });
 
       // Set isCreatingTask state false
@@ -296,34 +334,39 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setTodoModeSelected(false);
     },
     [
-      input.text,
+      input,
+      skills,
       files,
       upload,
       selectedModel,
       selectedWorktree,
       isCreatingTask,
+      isSkillsLoading,
       isUploadingAttachments,
       clearUploadError,
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
       planMode,
-      todoMode,
-      canUseTodoMode,
+      todoModeSelected,
+      terminalContextSelections,
     ],
   );
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: React.FormEvent<HTMLFormElement>, submittedInput: ChatInput) => {
       e.preventDefault();
-      handleSubmitImpl();
+      handleSubmitImpl({ submittedInput });
     },
     [handleSubmitImpl],
   );
 
   const handleCtrlSubmit = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: React.FormEvent<HTMLFormElement>, submittedInput: ChatInput) => {
       e.preventDefault();
-      handleSubmitImpl({ shouldCreateWorktree: true });
+      handleSubmitImpl({
+        shouldCreateWorktree: true,
+        submittedInput,
+      });
     },
     [handleSubmitImpl],
   );
@@ -333,6 +376,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       chatInputFormRef.current?.addToSubmitHistory();
       handleSubmitImpl({
         shouldCreatePlan: !!shouldCreatePlan,
+        submittedInput: chatInputFormRef.current?.getInputSnapshot(),
       });
     },
     [handleSubmitImpl],
@@ -355,9 +399,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         isSubTask={false}
         onFocus={onFocus}
         reviews={emptyReviews}
+        terminalContextSelections={terminalContextSelections}
+        onRemoveTerminalContextSelection={removeTerminalContextSelection}
         onSwitchSubmitMode={switchSubmitMode}
         isPlanMode={planMode}
-        onSelectTodoMode={canUseTodoMode ? selectTodoMode : undefined}
+        onSelectTodoMode={selectTodoMode}
         onAttachFile={() => fileInputRef.current?.click()}
         contextMenuSide="bottom"
       >
@@ -394,7 +440,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
             reloadModels={reloadModels}
             triggerClassName="sidebar-model-select"
           />
-          {todoMode && (
+          {todoModeSelected && (
             <TodoModeBadge onRemove={() => setTodoModeSelected(false)} />
           )}
         </div>
@@ -416,7 +462,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           )}
           <SubmitDropdownButton
             isLoading={debouncedIsCreatingTask}
-            disabled={!selectedModel || isUploadingAttachments}
+            disabled={
+              !selectedModel || isUploadingAttachments || isSkillsLoading
+            }
             onSubmit={() => handleClickSubmit()}
             onSubmitPlan={() => handleClickSubmit(true)}
             mcpConfigOverride={mcpConfigOverride}

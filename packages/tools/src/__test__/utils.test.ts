@@ -48,6 +48,38 @@ def fibonacci(n):
       );
     }).toThrow();
   });
+
+  it("should restrict reviewer commands to read-only PR diffs and bundled scripts", () => {
+    const rules = [
+      "gh pr diff *",
+      "sh */worktree-isolation/scripts/create-worktree.sh *",
+      "powershell -ExecutionPolicy Bypass -File *worktree-isolation*scripts*create-worktree-windows.ps1 *",
+    ];
+
+    const allowedCommands = [
+      "gh pr diff 123",
+      "gh pr diff feature-branch --patch",
+      'sh "/opt/pochi/skills/worktree-isolation/scripts/create-worktree.sh" --topic "review auth" --base HEAD',
+      'sh "/opt/pochi/skills/worktree-isolation/scripts/create-worktree.sh" --topic "review auth" --base HEAD --init',
+      'powershell -ExecutionPolicy Bypass -File "C:\\pochi\\skills\\worktree-isolation\\scripts\\create-worktree-windows.ps1" -Topic "review auth" -Base HEAD',
+      'powershell -ExecutionPolicy Bypass -File "C:\\pochi\\skills\\worktree-isolation\\scripts\\create-worktree-windows.ps1" -Topic "review auth" -Base HEAD -Initialize',
+    ];
+
+    for (const command of allowedCommands) {
+      expect(() => validateExecuteCommandRules(command, rules)).not.toThrow();
+    }
+
+    for (const command of [
+      "gh pr checkout 123",
+      "gh pr merge 123",
+      "git worktree add -b review/auth /tmp/review HEAD",
+      "git worktree remove /tmp/review",
+      "sh /tmp/create-worktree.sh --base HEAD",
+      "rm -rf /tmp/review",
+    ]) {
+      expect(() => validateExecuteCommandRules(command, rules)).toThrow();
+    }
+  });
 });
 
 describe("startBackgroundJob command policies", () => {

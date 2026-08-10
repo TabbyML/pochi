@@ -196,7 +196,6 @@ export class WorktreeManager implements vscode.Disposable {
       const { worktreePath, branchName } =
         await this.prepareBranchNameAndWorktreePath({
           workspacePath: mainWorktreePath,
-          worktrees,
           prompt: options.generateBranchName.prompt,
           files: options.generateBranchName.files,
         });
@@ -455,11 +454,10 @@ export class WorktreeManager implements vscode.Disposable {
 
   private async prepareBranchNameAndWorktreePath(params: {
     workspacePath: string;
-    worktrees: GitWorktree[];
     prompt: NonNullable<CreateWorktreeOptions["generateBranchName"]>["prompt"];
     files?: NonNullable<CreateWorktreeOptions["generateBranchName"]>["files"];
   }) {
-    const { workspacePath, worktrees, prompt, files } = params;
+    const { workspacePath, prompt, files } = params;
     const existingBranches = await this.getBranches();
     let branchName: string | undefined = undefined;
     try {
@@ -492,10 +490,7 @@ export class WorktreeManager implements vscode.Disposable {
     }
 
     const worktreeName = branchName.replace(/\//g, "-");
-    const nonMainWorktree = worktrees.find((w) => !w.isMain);
-    const worktreeParentPath = nonMainWorktree
-      ? path.dirname(nonMainWorktree.path)
-      : `${workspacePath.replace(/[/\\]+$/, "")}.worktree`;
+    const worktreeParentPath = `${workspacePath.replace(/[/\\]+$/, "")}.worktree`;
 
     return {
       branchName,

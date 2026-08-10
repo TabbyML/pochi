@@ -254,6 +254,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
+  notifyFocusChanged = async (_focused: boolean): Promise<void> => {
+    throw new Error(
+      "notifyFocusChanged should be called on the webview-specific wrapper, not the singleton",
+    );
+  };
+
   getWorkspaceState = async <K extends keyof WorkspaceState>(
     key: K,
     defaultValue?: WorkspaceState[K],
@@ -993,6 +999,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             this.pochiConfiguration.commentsOpenViewDisabled.value,
           githubCopilotCodeCompletionEnabled:
             this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+          terminalRightClickContextMenuEnabled:
+            this.pochiConfiguration.terminalRightClickContextMenuEnabled.value,
           reviewAgent:
             this.pochiConfiguration.advancedSettings.value.reviewAgent,
         };
@@ -1021,6 +1029,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (params.githubCopilotCodeCompletionEnabled !== undefined) {
       this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value =
         params.githubCopilotCodeCompletionEnabled;
+    }
+    if (params.terminalRightClickContextMenuEnabled !== undefined) {
+      this.pochiConfiguration.terminalRightClickContextMenuEnabled.value =
+        params.terminalRightClickContextMenuEnabled;
     }
   };
 
@@ -1058,6 +1070,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options,
       ...items,
     );
+  };
+
+  showWarningMessage = async <T extends string>(
+    message: string,
+    options: { modal?: boolean; detail?: string },
+    ...items: T[]
+  ): Promise<T | undefined> => {
+    return await vscode.window.showWarningMessage(message, options, ...items);
   };
 
   readModelList = async (): Promise<{
@@ -1419,8 +1439,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readEffectiveContextWindow = async (): Promise<number | undefined> => {
-    return pochiConfig.value.effectiveContextWindow;
+  readEffectiveContextWindow = async (): Promise<
+    ThreadSignalSerialization<number | undefined>
+  > => {
+    return ThreadSignal.serialize(
+      computed(() => pochiConfig.value.effectiveContextWindow),
+    );
   };
 
   readAutoMemoryState = async (

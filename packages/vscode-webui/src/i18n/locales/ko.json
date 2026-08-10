@@ -41,10 +41,15 @@
     "noMessage": "메시지 없음",
     "fileCount": "파일 {{count}}개",
     "reviewCount": "리뷰 {{count}}개",
+    "userEditCount": "편집 {{count}}개",
+    "terminalContextCount": "터미널 선택 {{count}}개",
     "steer": "개입",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
-    "pleaseCheckFiles": "이 첨부 파일들을 확인해 주세요.",
+    "contextLabelFiles": "첨부 파일",
+    "contextLabelReviews": "리뷰",
+    "contextLabelTerminalSelections": "터미널 선택",
+    "pleaseCheckAttachedContext": "첨부된 다음 항목을 확인해 주세요: {{items}}",
     "chatToolbar": {
       "diffWorktreeWith": "{{branch}}와(과) 워크트리 비교",
       "openInTerminal": "통합 터미널에서 열기"
@@ -66,6 +71,8 @@
     "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} tokens 이상 필요합니다",
     "defaultContextWindowWarning": "컨텍스트 창 값은 기본값이며 사용자 지정 모델에 대해 정확하지 않을 수 있습니다. 정확한 token 관리를 위해 모델 공급자의 설명서에 따라 설정에서 조정하십시오.",
     "tokensUsed": "{{used}} / {{total}} tokens",
+    "inputTokens": "입력 Tokens",
+    "cacheReadTokens": "캐시 읽기 Tokens",
     "system": "시스템",
     "systemInstructions": "시스템 지침",
     "toolDefinitions": "도구 정의",
@@ -83,6 +90,7 @@
     "projectMemoryEnable": "프로젝트 메모리 활성화",
     "projectMemoryDisable": "프로젝트 메모리 비활성화",
     "projectMemoryDescription": "Pochi 가 작업 중 프로젝트에 대해 학습한 내용을 MEMORY.md 에 저장하여, 향후 작업에서 유용한 맥락으로 재사용합니다.",
+    "projectMemoryToggleDescription": "이 설정은 저장된 메모리를 작업 컨텍스트에 불러올지 여부만 제어합니다. Pochi 는 항상 계속 학습하고 메모리를 저장합니다.",
     "viewProjectMemory": "보기",
     "viewProjectMemoryTooltip": "이 워크스페이스의 MEMORY.md 인덱스를 엽니다.",
     "viewTaskMemoryButtonTooltip": "작업 압축 시 재사용되는 작업 메모리 요약을 엽니다.",
@@ -311,6 +319,7 @@
     "reading": "읽는 중 ",
     "writing": "쓰는 중 ",
     "continue": "계속",
+    "retry": "재시도",
     "cancel": "취소",
     "continueInSeconds": "{{seconds}}초 후 계속",
     "save": "저장",
@@ -348,7 +357,6 @@
     "result_other": "{{count}}개 결과",
     "readBackground": "백그라운드 작업 출력 읽는 중",
     "readTerminal": "터미널 출력 읽는 중",
-    "withRegexFilter": "정규식 필터 사용",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
     "backgroundExecuting": "백그라운드에서 명령 실행 중",
     "updatingToDos": "할 일 업데이트 중",
@@ -436,7 +444,11 @@
   },
   "activeSelectionBadge": {
     "cell": "셀",
-    "addContext": "컨텍스트 추가"
+    "addContext": "컨텍스트 추가",
+    "terminal": "터미널"
+  },
+  "terminalContextBadge": {
+    "remove": "컨텍스트에서 터미널 선택 제거"
   },
   "todoModeBadge": {
     "remove": "Todo 모드 제거"
@@ -462,6 +474,7 @@
     "complete": "완료"
   },
   "errorMessageView": {
+    "contentFilter": "안전 필터로 인해 응답이 중단되었습니다. 메시지를 바꿔 표현하거나 다시 시도해 보세요.",
     "reachedCreditLimit": "지출 한도에 도달했습니다.",
     "seeMore": "더 보기",
     "teamReachedCreditLimit": "팀이 지출 한도에 도달했습니다.",
@@ -497,6 +510,8 @@
     "collapse": "접기",
     "expand": "펼치기",
     "openJob": "작업 {{displayId}} 열기",
+    "openTerminal": "터미널 {{name}} 열기",
+    "userTerminal": "사용자 터미널",
     "stop": "중지"
   },
   "devModeButton": {
@@ -552,6 +567,7 @@
     "filesEdited_one": "{{count}}개 파일 편집됨",
     "filesEdited_other": "{{count}}개 파일 편집됨",
     "tooltip": "편집 내용이 추적되어 컨텍스트에 포함됩니다",
+    "remove": "컨텍스트에서 사용자 편집 제거",
     "showDiff": "차이 보기",
     "diffTitle": "사용자 편집"
   },
@@ -565,7 +581,8 @@
       "enablePochiLayout": "Pochi 레이아웃 활성화",
       "disableAutoSave": "자동 저장 비활성화",
       "disableCommentsOpenView": "주석 패널 자동 열기 비활성화",
-      "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화"
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화",
+      "terminalRightClickContextMenuEnabled": "터미널 우클릭 시 상황에 맞는 메뉴 표시"
     }
   },
   "mermaid": {
@@ -590,9 +607,7 @@
     "completed": "모든 Todos 완료됨",
     "needsWork": "Todo에 추가 작업 필요",
     "stopped": "Todo 감사 중지됨",
-    "stoppedDescription": "감사가 요약을 생성하기 전에 중지되었습니다.",
-    "unavailable": "Todo 감사 결과를 사용할 수 없음",
-    "unavailableDescription": "감사가 종료되었지만 읽을 수 있는 요약을 반환하지 않았습니다."
+    "unavailable": "Todo 감사 결과를 사용할 수 없음"
   },
   "browserAgentSettings": {
     "runtimeSection": "브라우저 런타임",

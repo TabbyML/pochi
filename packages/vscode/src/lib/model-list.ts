@@ -28,10 +28,10 @@ export class ModelList implements vscode.Disposable {
   }
 
   reload = async (): Promise<void> => {
-    this.modelList.value = await this.fetchModelList();
+    this.modelList.value = await this.fetchModelList(true);
   };
 
-  private async fetchModelList(): Promise<DisplayModel[]> {
+  private async fetchModelList(forceRefresh = false): Promise<DisplayModel[]> {
     this.isLoading.value = true;
 
     const modelList: DisplayModel[] = [];
@@ -42,7 +42,7 @@ export class ModelList implements vscode.Disposable {
       if (vendor.authenticated) {
         try {
           logger.trace("fetch models", vendorId);
-          const models = await vendor.fetchModels();
+          const models = await vendor.fetchModels(forceRefresh);
           for (const [modelId, options] of Object.entries(models)) {
             modelList.push({
               type: "vendor",

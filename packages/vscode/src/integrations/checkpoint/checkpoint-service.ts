@@ -137,6 +137,19 @@ export class CheckpointService implements vscode.Disposable {
     }
   };
 
+  saveUserEditBaseline = async (): Promise<string> => {
+    await this.ensureInitialized();
+
+    if (!this.shadowGit) {
+      throw new Error("Shadow Git repository not initialized");
+    }
+
+    await this.shadowGit.stageAll();
+    return this.shadowGit.commit(
+      `user-edit-baseline-${this.cwd}-${Date.now()}`,
+    );
+  };
+
   /**
    * Restores a checkpoint for the current workspace.
    * @param commitHash The commit hash to restore the checkpoint from.

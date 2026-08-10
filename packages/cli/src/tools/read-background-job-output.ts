@@ -5,13 +5,13 @@ export const readBackgroundJobOutput =
   (
     context: ToolCallOptions,
   ): ToolFunctionType<ClientTools["readBackgroundJobOutput"]> =>
-  async ({ backgroundJobId, regex }) => {
+  async ({ backgroundJobId }) => {
     const { backgroundJobManager } = context;
     if (!backgroundJobManager) {
       throw new Error("Background job manager not available.");
     }
 
-    const result = backgroundJobManager.readOutput(backgroundJobId, regex);
+    const result = backgroundJobManager.readOutput(backgroundJobId);
     if (!result) {
       throw new Error(`Background job with ID "${backgroundJobId}" not found.`);
     }

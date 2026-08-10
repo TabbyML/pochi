@@ -8,6 +8,7 @@ import {
   toErrorMessage,
 } from "@getpochi/common";
 import type { BrowserSessionStore } from "@getpochi/common/browser";
+import { pochiConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   isAssistantMessageWithEmptyParts,
@@ -19,7 +20,10 @@ import {
   FileStateCache,
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
-import { resolveToolCallArgs } from "@getpochi/common/vscode-webui-bridge";
+import {
+  type ValidCustomAgentFile,
+  resolveToolCallArgs,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
@@ -122,7 +126,12 @@ export interface RunnerOptions {
   /**
    * Available custom agents for the new task tool
    */
-  customAgents?: CustomAgent[];
+  customAgents?: ValidCustomAgentFile[];
+
+  /**
+   * Resolves a model configured by a subagent.
+   */
+  resolveSubTaskLLM?: ToolCallOptions["resolveSubTaskLLM"];
 
   /**
    * Available skills for skill tool
@@ -243,6 +252,7 @@ export class TaskRunner {
       blobStore: this.blobStore,
 
       customAgents: options.customAgents,
+      resolveSubTaskLLM: options.resolveSubTaskLLM,
       skills: options.skills,
       mcpHub: options.mcpHub,
       backgroundJobManager: this.backgroundJobManager,
@@ -309,6 +319,8 @@ export class TaskRunner {
 
       getters: {
         getLLM: () => options.llm,
+        getEffectiveContextWindow: () =>
+          pochiConfig.value.effectiveContextWindow,
         getEnvironment: async () => ({
           ...(await readEnvironment({
             cwd: options.cwd,

@@ -164,11 +164,16 @@ describe("compactTask", () => {
       assistantMsg("a1"),
       userMsg("u2"),
     ];
-    const commits: Array<{ name: string; args: { messages?: Message[] } }> =
-      [];
+    const commits: Array<{
+      name: string;
+      args: { id?: string; text?: string };
+    }> = [];
     const store = {
       query: () => ({ content: "memory summary" }),
-      commit: (event: { name: string; args: { messages?: Message[] } }) => {
+      commit: (event: {
+        name: string;
+        args: { id?: string; text?: string };
+      }) => {
         commits.push(event);
       },
     };
@@ -190,8 +195,11 @@ describe("compactTask", () => {
     });
     expect(commits).toHaveLength(1);
     expect(commits[0]).toMatchObject({
-      name: "v1.UpdateMessages",
-      args: { messages: [messages[2]] },
+      name: "v1.InlineCompactAttached",
+      args: {
+        id: messages[2].id,
+        text: expect.stringContaining("<compact>"),
+      },
     });
   });
 });

@@ -2,19 +2,19 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { getLogger } from "@getpochi/common";
+import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { formatFollowupQuestions } from "@getpochi/livekit";
-import type {
-  ClientTools,
-  CustomAgent,
-  ToolFunctionType,
-} from "@getpochi/tools";
+import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { WebSocket } from "ws";
 import {
   isMjpegToMp4ConverterAvailable,
   startMjpegToMp4Converter,
 } from "../lib/ffmpeg-mjpeg-to-mp4";
-import type { ToolCallOptions } from "../types";
+import type {
+  CreateSubTaskRunnerOverrideOptions,
+  ToolCallOptions,
+} from "../types";
 
 const logger = getLogger("newTask");
 
@@ -37,7 +37,7 @@ export const newTask =
     }
 
     // Find the custom agent if agentType is specified
-    let customAgent: CustomAgent | undefined;
+    let customAgent: ValidCustomAgentFile | undefined;
     if (agentType && options.customAgents) {
       customAgent = options.customAgents.find(
         (agent) => agent.name === agentType,
@@ -48,6 +48,10 @@ export const newTask =
         );
       }
     }
+
+    const subTaskLLM = customAgent?.model
+      ? await options.resolveSubTaskLLM?.(customAgent)
+      : undefined;
 
     // for browser agent
     let finalize: (() => Promise<void>) | undefined = undefined;
@@ -117,9 +121,12 @@ export const newTask =
       }
     }
 
-    const overrideOptions: { customAgent?: CustomAgent; maxSteps?: number } = {
+    const overrideOptions: CreateSubTaskRunnerOverrideOptions = {
       customAgent,
     };
+    if (subTaskLLM) {
+      overrideOptions.llm = subTaskLLM;
+    }
     if (customAgent?.name === "browser") {
       overrideOptions.maxSteps = SubTaskBrowserAgentMaxSteps;
     }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MinEffectiveContextWindow } from "../../base/constants";
 import { PochiConfig, makePochiConfig } from "../types";
 
 describe("PochiConfig types", () => {
@@ -89,6 +90,26 @@ describe("PochiConfig types", () => {
         $schema: "custom-schema-url",
       });
       expect(config.$schema).toBe("custom-schema-url");
+    });
+
+    it("should keep effectiveContextWindow at or above the minimum", () => {
+      const config = PochiConfig.parse({
+        effectiveContextWindow: 200_000,
+      });
+      expect(config.effectiveContextWindow).toBe(200_000);
+    });
+
+    it("should clamp a too-small effectiveContextWindow up to the minimum", () => {
+      const config = PochiConfig.parse({
+        effectiveContextWindow: 1000,
+      });
+      expect(config.effectiveContextWindow).toBe(MinEffectiveContextWindow);
+    });
+
+    it("should not clamp effectiveContextWindow in strict mode (schema only documents the minimum)", () => {
+      const schema = makePochiConfig(true);
+      const config = schema.parse({ effectiveContextWindow: 1000 });
+      expect(config.effectiveContextWindow).toBe(1000);
     });
   });
 });

@@ -13,23 +13,26 @@ import {
   isRetryApprovalCountingDown,
   type useApprovalAndRetry,
 } from "@/features/approval";
-import { useAutoApproveGuard, useToolCallLifeCycle } from "@/features/chat";
 import {
   AutoApproveMenu,
   useAutoApprove,
-  useIsDevMode,
   useSelectedModels,
 } from "@/features/settings";
 import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useReviews } from "@/lib/hooks/use-reviews";
+import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
+import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
-import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
+import type {
+  DisplayModel,
+  McpConfigOverride,
+} from "@getpochi/common/vscode-webui-bridge";
 import type { Message, Task } from "@getpochi/livekit";
 import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import {
@@ -39,7 +42,7 @@ import {
   StopCircleIcon,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type BlockingOperation,
@@ -47,14 +50,14 @@ import {
 } from "../hooks/use-blocking-operations";
 import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
-import { type QueuedMessage, useChatSubmit } from "../hooks/use-chat-submit";
+import { type DraftMessage, useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
-import { ChatInputForm } from "./chat-input-form";
+import { useTerminalContextState } from "../hooks/use-terminal-context-state";
+import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
-import { QueuedMessages } from "./queued-messages";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
@@ -72,6 +75,8 @@ interface ChatToolbarProps {
   attachmentUpload: ReturnType<typeof useAttachmentUpload>;
   isSubTask: boolean;
   subtask?: SubtaskInfo;
+  /** Makes an unlisted model available as the current selection. */
+  modelOverride?: DisplayModel;
   displayError: Error | undefined;
   showRenderWidgetFixButton?: boolean;
   todos: Todo[];
@@ -84,6 +89,7 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
+  onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
 }
@@ -95,6 +101,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   attachmentUpload,
   isSubTask,
   subtask,
+  modelOverride,
   task,
   displayError,
   showRenderWidgetFixButton: shouldShowRenderWidgetFixButton,
@@ -108,6 +115,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
+  onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
 }) => {
@@ -116,18 +124,50 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { messages, sendMessage, addToolOutput, status } = chat;
   const isLoading = status === "streaming" || status === "submitted";
   const totalTokens = task?.totalTokens || 0;
-  const { completeToolCalls } = useToolCallLifeCycle();
+  const latestAssistantMessage = messages.findLast(
+    (message) =>
+      message.role === "assistant" && message.metadata?.kind === "assistant",
+  );
+  const latestAssistantMetadata =
+    latestAssistantMessage?.metadata?.kind === "assistant"
+      ? latestAssistantMessage.metadata
+      : undefined;
 
   const { input, setInput, clearInput } = useChatInputState();
+  const { skills, isLoading: isSkillsLoading } = useSkills(true);
 
-  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
+  const [excludedUserEditsContext, setExcludedUserEditsContext] =
+    useState<string>();
+  const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
+  const userEdits = useUserEdits(taskId);
+  const userEditsContext = useMemo(() => {
+    if (!lastCheckpointHash || userEdits.length === 0) return undefined;
 
-  const [isDevMode] = useIsDevMode();
-  const canUseTodoMode = isDevMode === true;
+    return JSON.stringify([
+      taskId,
+      lastCheckpointHash,
+      userEdits.map(({ filepath, diff }) => [filepath, diff]),
+    ]);
+  }, [lastCheckpointHash, taskId, userEdits]);
+  const includedUserEdits =
+    userEditsContext !== undefined &&
+    excludedUserEditsContext !== userEditsContext
+      ? userEdits
+      : [];
+
+  useEffect(() => {
+    if (
+      excludedUserEditsContext &&
+      excludedUserEditsContext !== userEditsContext
+    ) {
+      setExcludedUserEditsContext(undefined);
+    }
+  }, [excludedUserEditsContext, userEditsContext]);
+
   const [todoModeSelected, setTodoModeSelected] = useState(false);
-  // Show the todo mode entry in dev mode, but disable it (rather than hide it)
-  // while the task already has active todos so it stays discoverable.
-  const showTodoMode = canUseTodoMode && !isSubTask;
+  // Disable todo mode (rather than hide it) while active todos exist so it stays discoverable.
+  const showTodoMode = !isSubTask;
   const todoModeDisabled = hasActiveTodos(todos);
   const canSelectTodoMode = showTodoMode && !todoModeDisabled;
 
@@ -159,7 +199,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isFetching: isFetchingModels,
     reload: reloadModels,
     updateSelectedModelId,
-  } = useSelectedModels({ isSubTask });
+  } = useSelectedModels({ isSubTask, modelOverride });
 
   const { autoApproveActive } = useAutoApprove({ isSubTask });
 
@@ -175,6 +215,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = attachmentUpload;
 
   const reviews = useReviews();
+  const {
+    selections: terminalContextSelections,
+    removeSelection: removeTerminalContextSelection,
+    clearSelections: clearTerminalContextSelections,
+  } = useTerminalContextState();
 
   const { inlineCompactTask, inlineCompactTaskPending } = useInlineCompactTask({
     sendMessage,
@@ -200,80 +245,98 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const blockingState = useBlockingOperations(blockingOperations);
 
-  const { isExecuting, isBusyCore, isSubmitDisabled, showStopButton } =
-    useChatStatus({
-      isModelsLoading,
-      isModelValid: !!selectedModel,
-      isLoading,
-      isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
-      isFilesEmpty: files.length === 0,
-      isReviewsEmpty: reviews.length === 0,
-      isUploadingAttachments,
-      blockingState,
-    });
+  const {
+    isRunning,
+    isSubmitEnabled,
+    isStopEnabled,
+    allowSendMessage,
+    allowSteer,
+  } = useChatStatus({
+    isModelValid: !!selectedModel,
+    isLoading,
+    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
+    isFilesEmpty: files.length === 0,
+    isReviewsEmpty: reviews.length === 0,
+    isTerminalContextEmpty: terminalContextSelections.length === 0,
+    isUploadingAttachments,
+    blockingState,
+    taskStatus: task?.status,
+  });
 
+  const canSubmit = isSubmitEnabled && !isSkillsLoading;
+  const canSteer = allowSteer && !isSkillsLoading;
   const compactEnabled = !(
-    isLoading ||
-    isExecuting ||
-    totalTokens < constants.CompactTaskMinTokens
+    isRunning || totalTokens < constants.CompactTaskMinTokens
   );
   const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
-  const { handleSubmit, handleSteerSubmit, handleStop } = useChatSubmit({
+  const {
+    handleSubmit,
+    handleSteerSubmit,
+    handleSteerQueuedMessage,
+    handleStop,
+  } = useChatSubmit({
     chat,
     input,
     clearInput,
     attachmentUpload,
-    isSubmitDisabled,
     isLoading,
+    isRunning,
+    isSubmitEnabled: canSubmit,
+    isStopEnabled,
+    allowSendMessage,
+    allowSteer: canSteer,
     pendingApproval,
-    blockingState,
     queuedMessages,
     setQueuedMessages,
     reviews,
-    taskId: taskId,
+    userEdits: includedUserEdits,
+    skills,
+    terminalContextSelections,
+    clearTerminalContextSelections,
+    taskId,
     isTodoMode: todoModeSelected,
     canCreateTodo: !todoModeDisabled,
     onTodoModeQueued: resetTodoMode,
     onBeforeSendText: createTodoBeforeSend,
   });
 
-  const autoApproveGuard = useAutoApproveGuard();
-  const handleSteerQueuedMessage = useCallback(
-    (index: number) => {
-      setQueuedMessages((prev) => {
-        const message = prev[index];
-        if (!message) return prev;
-        return [message, ...prev.filter((_, i) => i !== index)];
-      });
-      autoApproveGuard.current = "stop";
-      handleStop();
-    },
-    [autoApproveGuard, handleStop],
-  );
+  const chatInputFormRef = useRef<ChatInputFormHandle>(null);
+  const handleCurrentInputSubmit = useCallback(async () => {
+    chatInputFormRef.current?.addToSubmitHistory();
+    await handleSubmit(undefined, chatInputFormRef.current?.getInputSnapshot());
+  }, [handleSubmit]);
 
+  // Auto dequeue when ready
+  const taskStatus = task?.status;
   useEffect(() => {
-    const isReady =
+    const shouldAutoDequeue =
       status === "ready" &&
-      !isExecuting &&
-      !isBusyCore &&
-      completeToolCalls.length === 0 &&
-      !!selectedModel &&
-      (!pendingApproval || pendingApproval.name === "retry");
+      allowSendMessage &&
+      !pendingApproval &&
+      (taskStatus === undefined ||
+        taskStatus === "pending-input" ||
+        taskStatus === "completed");
 
-    if (isReady && queuedMessages.length > 0) {
-      handleSubmit(undefined, { flushQueuedMessages: true });
+    if (shouldAutoDequeue && queuedMessages.length > 0) {
+      handleSteerQueuedMessage(0);
     }
   }, [
     status,
-    isExecuting,
-    isBusyCore,
-    completeToolCalls.length,
-    selectedModel,
-    queuedMessages.length,
+    allowSendMessage,
     pendingApproval,
-    handleSubmit,
+    taskStatus,
+    queuedMessages,
+    handleSteerQueuedMessage,
   ]);
+
+  // Remove a message from queue
+  const handleRemoveQueuedMessage = useCallback(
+    (index: number) => {
+      setQueuedMessages(queuedMessages.filter((_, i) => i !== index));
+    },
+    [queuedMessages],
+  );
 
   const allowAddToolResult = !blockingState.isBusy;
   useAddCompleteToolCalls({
@@ -301,7 +364,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const useTaskChangedFilesHelpers = useTaskChangedFiles(
     task?.id as string,
     messages,
-    isExecuting,
   );
 
   const showRenderWidgetFixButton =
@@ -310,7 +372,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     !pendingApproval;
 
   const showSubmitReviewButton =
-    !isSubmitDisabled &&
+    canSubmit &&
     !!reviews.length &&
     !!messages.length &&
     !isLoading &&
@@ -327,7 +389,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const hasVisibleChangedFiles =
     useTaskChangedFilesHelpers.visibleChangedFiles.length > 0;
   const hasVisibleContextPanel = hasVisibleTodos || hasVisibleChangedFiles;
-  const hasQueuedMessages = queuedMessages.length > 0;
 
   return (
     <>
@@ -345,8 +406,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             isSubTask={isSubTask}
             task={task}
             subtask={subtask}
+            onToolCallApprovalVisible={onToolCallApprovalVisible}
             onToolsExecutionStarted={onToolsExecutionStarted}
             onToolsExecutionEnded={onToolsExecutionEnded}
+            hasQueuedMessages={queuedMessages.length > 0}
+            onContinueWithQueuedMessage={() => handleSteerQueuedMessage(0)}
           />
           {showRenderWidgetFixButton ? (
             <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
@@ -355,28 +419,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           ) : null}
           <SubmitReviewsButton
             showSubmitReviewButton={showSubmitReviewButton}
-            onSubmit={handleSubmit}
+            onSubmit={handleCurrentInputSubmit}
           />
         </div>
       </div>
-      {hasQueuedMessages && (
-        <QueuedMessages
-          messages={queuedMessages}
-          onRemove={(index) =>
-            setQueuedMessages((prev) => prev.filter((_, i) => i !== index))
-          }
-          onSteer={handleSteerQueuedMessage}
-        />
-      )}
       {hasVisibleContextPanel && (
-        <div
-          className={cn(
-            "mt-1.5 rounded-sm rounded-b-none border border-border border-b-0",
-            {
-              "mt-0": hasQueuedMessages,
-            },
-          )}
-        >
+        <div className="mt-1.5 rounded-sm rounded-b-none border border-border border-b-0">
           {hasVisibleTodos && (
             <TodoList
               todos={visibleTodos}
@@ -399,11 +447,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       )}
       <div className="relative z-10">
         <ChatInputForm
+          ref={chatInputFormRef}
           input={input}
           setInput={setInput}
           onSubmit={handleSubmit}
           onCtrlSubmit={handleSteerSubmit}
-          isLoading={isLoading || isExecuting}
+          isLoading={isRunning}
           onPaste={handlePasteAttachment}
           pendingApproval={pendingApproval}
           status={status}
@@ -411,8 +460,17 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           messageContent={messageContent}
           isSubTask={isSubTask}
           reviews={reviews}
-          taskId={taskId}
-          lastCheckpointHash={task?.lastCheckpointHash ?? undefined}
+          userEdits={includedUserEdits}
+          lastCheckpointHash={lastCheckpointHash}
+          onRemoveUserEdits={() =>
+            setExcludedUserEditsContext(userEditsContext)
+          }
+          terminalContextSelections={terminalContextSelections}
+          onRemoveTerminalContextSelection={removeTerminalContextSelection}
+          queuedMessages={queuedMessages}
+          onRemoveQueuedMessage={handleRemoveQueuedMessage}
+          onSteerQueuedMessage={handleSteerQueuedMessage}
+          allowSteer={allowSteer}
           onAttachFile={() => fileInputRef.current?.click()}
           onSelectTodoMode={
             showTodoMode ? () => setTodoModeSelected(true) : undefined
@@ -420,7 +478,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           todoModeDisabled={todoModeDisabled}
           contextMenuSide="top"
           className={cn({
-            "rounded-t-none": hasVisibleContextPanel || hasQueuedMessages,
+            "rounded-t-none": hasVisibleContextPanel,
           })}
         >
           {files.length > 0 && (
@@ -466,6 +524,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             <TokenUsage
               taskId={taskId}
               totalTokens={totalTokens}
+              inputTokens={latestAssistantMetadata?.inputTokens}
+              cacheReadTokens={latestAssistantMetadata?.cacheReadTokens}
               className="mr-5"
               compact={compactOptions}
               selectedModel={selectedModel}
@@ -509,9 +569,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             />
           )}
           <SubmitStopButton
-            isSubmitDisabled={isSubmitDisabled}
-            showStopButton={showStopButton}
-            onSubmit={handleSubmit}
+            isButtonEnabled={canSubmit || isStopEnabled}
+            showStopButton={isRunning}
+            onSubmit={handleCurrentInputSubmit}
             onStop={handleStop}
           />
         </div>
@@ -521,30 +581,27 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 };
 
 interface SubmitStopButtonProps {
-  isSubmitDisabled: boolean;
+  isButtonEnabled: boolean;
   showStopButton: boolean;
   onSubmit: () => void;
   onStop: () => void;
 }
 
 const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
-  isSubmitDisabled,
+  isButtonEnabled,
   showStopButton,
   onSubmit,
   onStop,
 }) => {
-  const autoApproveGuard = useAutoApproveGuard();
-
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon"
-      disabled={isSubmitDisabled}
+      disabled={!isButtonEnabled}
       className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {
-          autoApproveGuard.current = "stop";
           onStop();
         } else {
           onSubmit();

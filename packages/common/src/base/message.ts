@@ -5,7 +5,21 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("assistant"),
     totalTokens: z.number(),
+    inputTokens: z.number().optional(),
+    cacheReadTokens: z.number().optional(),
+    // True when `totalTokens` falls back to our heuristic estimate because
+    // the provider did not report usage; false/undefined means it's the real
+    // token count reported by the provider. Used to gate token-estimate
+    // calibration to only trust actual provider usage.
+    totalTokensIsEstimated: z.boolean().optional(),
     finishReason: z.custom<FinishReason>(),
+    contentFilter: z
+      .object({
+        provider: z.enum(["anthropic", "google"]),
+        reason: z.string().optional(),
+        details: z.unknown().optional(),
+      })
+      .optional(),
     startedAt: z.coerce.date().optional(),
     finishedAt: z.coerce.date().optional(),
     totalStreamingDuration: z.number().optional(),
@@ -67,6 +81,21 @@ export const ActiveSelection = z
   .describe("Active editor selection in the current workspace.");
 
 export type ActiveSelection = z.infer<typeof ActiveSelection>;
+
+export const TerminalTextSelection = z.object({
+  terminalName: z
+    .string()
+    .describe("Name of the terminal the text was selected in."),
+  backgroundJobId: z
+    .string()
+    .optional()
+    .describe(
+      "Stable id of the terminal (see TerminalState.getTerminalId / environment.workspace.terminals), usable with readBackgroundJobOutput.",
+    ),
+  content: z.string().describe("The selected text content in the terminal."),
+});
+
+export type TerminalTextSelection = z.infer<typeof TerminalTextSelection>;
 
 export const UserEdits = z
   .array(

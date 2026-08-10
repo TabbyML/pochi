@@ -146,7 +146,7 @@ describe("ManagedToolCallLifeCycle", () => {
 
     await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
     expect(lifecycle.complete.result).toEqual({
-      error: "Invalid attemptTodoCompletion result",
+      error: "Todo audit failed",
     });
   });
 

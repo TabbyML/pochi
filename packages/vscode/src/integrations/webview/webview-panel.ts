@@ -9,6 +9,7 @@ import {
   type PochiTaskInfo,
   type PochiTaskParams,
   type ResourceURI,
+  type TerminalTextSelection,
   type VSCodeHostApi,
   getTaskDisplayTitle,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -120,6 +121,28 @@ export class PochiWebviewPanel
     return PochiWebviewPanel.panels
       .get(taskId)
       ?.webviewHost?.readTaskOutput(taskId);
+  }
+
+  /**
+   * Pushes a terminal text selection into the panel identified by `uid`'s
+   * webview and brings the panel to the foreground. Returns `false` if no
+   * panel is currently open for that task (in which case callers should
+   * fall back to the sidebar).
+   */
+  static addTerminalContext(
+    uid: string,
+    selection: TerminalTextSelection,
+  ): boolean {
+    const panelInstance = PochiWebviewPanel.panels.get(uid);
+    if (!panelInstance) return false;
+
+    panelInstance.webviewHost?.addTerminalContext(selection);
+    panelInstance.reveal();
+    return true;
+  }
+
+  reveal(): void {
+    this.panel.reveal();
   }
 
   dispose(): void {

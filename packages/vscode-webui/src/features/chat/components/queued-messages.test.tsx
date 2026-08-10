@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { QueuedMessage } from "../hooks/use-chat-submit";
+import type { DraftMessage } from "../hooks/use-chat-submit";
 import { QueuedMessages } from "./queued-messages";
 
 vi.mock("react-i18next", () => ({
@@ -9,6 +10,13 @@ vi.mock("react-i18next", () => ({
     t: (key: string, values?: { count?: number }) =>
       values?.count === undefined ? key : `${key}:${values.count}`,
   }),
+}));
+
+vi.mock("@/lib/vscode", () => ({
+  isVSCodeEnvironment: () => false,
+  vscodeHost: {
+    openFile: vi.fn(),
+  },
 }));
 
 describe("QueuedMessages", () => {
@@ -26,19 +34,137 @@ describe("QueuedMessages", () => {
     expect(container.querySelectorAll(".lucide-list-end")).toHaveLength(1);
     expect(container.querySelectorAll(".lucide-target")).toHaveLength(1);
   });
+
+  it("shows a fallback title and file/review counts when text is empty", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({ text: "  ", filesCount: 2, reviewsCount: 1 }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(getByText("chat.noMessage")).toBeTruthy();
+    expect(getByText("chat.fileCount:2 · chat.reviewCount:1")).toBeTruthy();
+  });
+
+  it("shows the user edit count alongside file/review counts", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "  ",
+            filesCount: 2,
+            reviewsCount: 1,
+            userEditsCount: 3,
+          }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(
+      getByText("chat.fileCount:2 · chat.reviewCount:1 · chat.userEditCount:3"),
+    ).toBeTruthy();
+  });
+
+  it("shows the terminal context count alongside other counts", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "  ",
+            terminalContextCount: 2,
+          }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(getByText("chat.terminalContextCount:2")).toBeTruthy();
+  });
+
+  it("renders a minimal icon-only preview for the active editor selection captured at queue time", () => {
+    const activeSelection: ActiveSelection = {
+      filepath: "/workspace/foo.ts",
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 2, character: 0 },
+      },
+      content: "const foo = 1;",
+    };
+
+    const { container, getByLabelText } = render(
+      <QueuedMessages
+        messages={[queuedMessage({ text: "check this", activeSelection })]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    // Icon-only trigger, keyed to the filepath, without a visible filename label.
+    expect(getByLabelText("/workspace/foo.ts")).toBeTruthy();
+    expect(container.textContent).not.toContain("foo.ts");
+  });
+
+  it("disables the steer button when allowSteer is false", () => {
+    const { getByLabelText } = render(
+      <QueuedMessages
+        messages={[queuedMessage({ text: "check this" })]}
+        onRemove={vi.fn()}
+        onSteer={vi.fn()}
+        allowSteer={false}
+      />,
+    );
+
+    expect((getByLabelText("chat.steer") as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
+  it("enables the steer button when allowSteer is true and onSteer is provided", () => {
+    const { getByLabelText } = render(
+      <QueuedMessages
+        messages={[queuedMessage({ text: "check this" })]}
+        onRemove={vi.fn()}
+        onSteer={vi.fn()}
+        allowSteer={true}
+      />,
+    );
+
+    expect((getByLabelText("chat.steer") as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
 });
 
 function queuedMessage({
   text,
   isTodoMode = false,
+  filesCount = 0,
+  reviewsCount = 0,
+  userEditsCount = 0,
+  terminalContextCount = 0,
+  activeSelection,
 }: {
   text: string;
   isTodoMode?: boolean;
-}): QueuedMessage {
+  filesCount?: number;
+  reviewsCount?: number;
+  userEditsCount?: number;
+  terminalContextCount?: number;
+  activeSelection?: ActiveSelection;
+}): DraftMessage {
   return {
-    text,
-    files: [],
-    reviews: [],
-    isTodoMode,
+    parts: [],
+    raw: {
+      text,
+      filesCount,
+      reviewsCount,
+      userEditsCount,
+      terminalContextCount,
+      isTodoMode,
+      activeSelection,
+    },
   };
 }

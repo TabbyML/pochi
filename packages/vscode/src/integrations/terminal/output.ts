@@ -3,6 +3,11 @@ import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import { MaxTerminalOutputSize } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
+import {
+  calculateContentBytes,
+  joinContent,
+  truncateTextByLimit,
+} from "./output-utils";
 import type { ExecutionError } from "./utils";
 
 const logger = getLogger("TerminalOutput");
@@ -79,41 +84,6 @@ interface OutputManagerOptions {
   command: string;
 }
 
-/**
- * Truncates a single text chunk to fit within the specified byte limit
- * Uses binary search to find the maximum length that fits within the limit
- */
-function truncateTextByLimit(chunk: string, limit: number): string {
-  let left = 0;
-  let right = chunk.length;
-
-  while (left < right) {
-    const mid = Math.floor((left + right + 1) / 2);
-    const candidate = chunk.substring(chunk.length - mid);
-
-    if (Buffer.byteLength(candidate, "utf8") <= limit) {
-      left = mid;
-    } else {
-      right = mid - 1;
-    }
-  }
-
-  return chunk.substring(chunk.length - left);
-}
-
-/**
- * Calculates the total byte size of content
- */
-function calculateContentBytes(chunks: string[]): number {
-  if (chunks.length === 0) return 0;
-
-  let totalBytes = 0;
-  for (let i = 0; i < chunks.length; i++) {
-    totalBytes += Buffer.byteLength(chunks[i], "utf8");
-  }
-  return totalBytes;
-}
-
 export class OutputManager {
   private static readonly managers = new Map<string, OutputManager>();
 
@@ -156,9 +126,8 @@ export class OutputManager {
 
   /**
    * Reads new output from the job since the last read.
-   * @param regex - An optional regex to filter the output.
    */
-  readOutput(regex?: RegExp): {
+  readOutput(): {
     output: string;
     isTruncated: boolean;
     status: ExecuteCommandResult["status"];
@@ -188,27 +157,6 @@ export class OutputManager {
 
     this.lastReadLength = currentOutputBytes;
     this.lastReadAt = now;
-
-    if (regex) {
-      /**
-       * The splitting with a capturing group creates an array where:
-       * Even indices (0, 2, 4, ...) contain the actual line content
-       * Odd indices (1, 3, 5, ...) contain the line separators (\r\n or \n)
-       */
-      const lines = newOutput.split(/(\r\n|\n)/);
-      const filteredParts: string[] = [];
-
-      for (let i = 0; i < lines.length; i += 2) {
-        const lineContent = lines[i] || "";
-        const lineSeparator = lines[i + 1] || "";
-
-        if (regex.test(lineContent)) {
-          filteredParts.push(lineContent + lineSeparator);
-        }
-      }
-
-      newOutput = filteredParts.join("");
-    }
 
     return {
       output: newOutput,
@@ -294,14 +242,4 @@ export class OutputManager {
       isTruncated,
     };
   }
-}
-
-/**
- * Joins an array of text chunks into a single string
- * As \r and \n has special meaning in terminal, we just join them directly
- * @param chunks The text chunks to join
- * @returns The joined string
- */
-function joinContent(chunks: string[]): string {
-  return chunks.join("");
 }

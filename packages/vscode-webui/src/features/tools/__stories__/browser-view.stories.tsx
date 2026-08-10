@@ -241,3 +241,10 @@ export const NoFrame: Story = {
     uid: "task-no-frame",
   },
 };
+
+export const NoFrameWithThread: Story = {
+  args: {
+    ...(Default.args ?? {}),
+    uid: "task-no-frame",
+  },
+};

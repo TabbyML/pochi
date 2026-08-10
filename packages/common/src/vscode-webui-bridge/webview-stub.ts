@@ -2,6 +2,7 @@ import type { CompiledToolPolicies } from "@getpochi/tools";
 import type { ThreadAbortSignalSerialization } from "@quilted/threads";
 import type { ThreadSignalSerialization } from "@quilted/threads/signals";
 import type {
+  ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundTaskState,
@@ -41,11 +42,13 @@ import type {
   BrowserAgentSettings,
   BrowserAgentSettingsUpdate,
 } from "./types/browser-agent-settings";
-import type { ActiveSelection } from "./types/message";
 
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
     return Promise.resolve({ cwd: null, workspacePath: null });
+  },
+  notifyFocusChanged: async (_focused: boolean): Promise<void> => {
+    return Promise.resolve();
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
@@ -252,6 +255,9 @@ const VSCodeHostStub = {
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
   },
+  showWarningMessage: async (): Promise<undefined> => {
+    return Promise.resolve(undefined);
+  },
   readVisibleTerminals: async (): Promise<{
     terminals: ThreadSignalSerialization<
       Environment["workspace"]["terminals"] | undefined
@@ -432,8 +438,11 @@ const VSCodeHostStub = {
       setAutoMemoryEnabled: (_enabled: boolean) => Promise.resolve(),
     };
   },
-  readEffectiveContextWindow: async (): Promise<number | undefined> =>
-    undefined,
+  readEffectiveContextWindow: async (): Promise<
+    ThreadSignalSerialization<number | undefined>
+  > => {
+    return {} as ThreadSignalSerialization<number | undefined>;
+  },
   readAutoMemoryState: async (
     _taskId: string,
   ): Promise<{
