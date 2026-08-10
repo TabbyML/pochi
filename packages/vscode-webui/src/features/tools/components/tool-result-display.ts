@@ -10,6 +10,14 @@ export type ToolResultDisplay =
       content: string;
     };
 
+export function getAttemptCompletionResultCopyText(result: unknown): string {
+  if (typeof result === "string") {
+    return result;
+  }
+
+  return JSON.stringify(result, null, 2) ?? "";
+}
+
 export function getAttemptCompletionResultDisplay(
   result: unknown,
 ): ToolResultDisplay {
