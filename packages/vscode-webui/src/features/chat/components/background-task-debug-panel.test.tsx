@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackgroundTaskDebugPanel } from "./background-task-debug-panel";
 
 const task = {
@@ -12,6 +12,8 @@ const task = {
   todos: [],
   error: { message: "A detailed failure message" },
 };
+
+let messageRows: Array<{ data: unknown }> = [];
 
 vi.mock("@/components/task-thread", () => ({
   TaskThread: ({
@@ -78,16 +80,28 @@ vi.mock("@/lib/use-default-store", () => ({
     useQuery: (query: string) => {
       if (query === "backgroundTasks") return [task];
       if (query === "task") return task;
+      if (query === "messages") return messageRows;
       return [];
     },
   }),
 }));
 
-describe("BackgroundTaskDebugPanel", () => {
-  it("uses a single borderless scroll area that fills the remaining height", () => {
-    render(<BackgroundTaskDebugPanel />);
+function openTaskDetail() {
+  render(<BackgroundTaskDebugPanel />);
+  fireEvent.click(screen.getByText("Background task"));
+}
 
-    fireEvent.click(screen.getByText("Background task"));
+function getDetailValue(label: string): string | null | undefined {
+  return screen.getByText(label).parentElement?.lastElementChild?.textContent;
+}
+
+describe("BackgroundTaskDebugPanel", () => {
+  beforeEach(() => {
+    messageRows = [];
+  });
+
+  it("uses a single borderless scroll area that fills the remaining height", () => {
+    openTaskDetail();
 
     const taskThread = screen.getByTestId("task-thread");
     expect(taskThread.classList.contains("min-h-0")).toBe(true);
@@ -107,5 +121,78 @@ describe("BackgroundTaskDebugPanel", () => {
     expect(detailBodyClasses?.contains("flex-col")).toBe(true);
     expect(detailBodyClasses?.contains("overflow-hidden")).toBe(true);
     expect(taskThread.dataset.scrollAreaClassName).not.toContain("100vh");
+  });
+
+  it("shows formatted token usage from the latest assistant request", () => {
+    messageRows = [
+      {
+        data: {
+          id: "assistant-1",
+          role: "assistant",
+          metadata: {
+            kind: "assistant",
+            totalTokens: 1_500,
+            cacheReadTokens: 800,
+            inputTokens: 700,
+          },
+          parts: [],
+        },
+      },
+      {
+        data: {
+          id: "user-1",
+          role: "user",
+          metadata: { kind: "user" },
+          parts: [],
+        },
+      },
+      {
+        data: {
+          id: "assistant-2",
+          role: "assistant",
+          metadata: {
+            kind: "assistant",
+            totalTokens: 12_345,
+            cacheReadTokens: 0,
+            inputTokens: 12_345,
+          },
+          parts: [],
+        },
+      },
+    ];
+
+    openTaskDetail();
+
+    expect(getDetailValue("Cache Read Tokens")).toBe("0");
+    expect(getDetailValue("Input Tokens")).toBe("12.3k");
+
+    const statusRow = screen.getByText("Status").parentElement;
+    const updatedRow = screen.getByText("Updated").parentElement;
+    const cacheReadRow = screen.getByText("Cache Read Tokens").parentElement;
+    const inputRow = screen.getByText("Input Tokens").parentElement;
+    expect(statusRow?.nextElementSibling).toBe(updatedRow);
+    expect(updatedRow?.nextElementSibling).toBe(cacheReadRow);
+    expect(cacheReadRow?.nextElementSibling).toBe(inputRow);
+  });
+
+  it("shows a dash when the latest assistant request has no detailed usage", () => {
+    messageRows = [
+      {
+        data: {
+          id: "assistant-1",
+          role: "assistant",
+          metadata: {
+            kind: "assistant",
+            totalTokens: 100,
+          },
+          parts: [],
+        },
+      },
+    ];
+
+    openTaskDetail();
+
+    expect(getDetailValue("Cache Read Tokens")).toBe("-");
+    expect(getDetailValue("Input Tokens")).toBe("-");
   });
 });

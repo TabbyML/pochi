@@ -3,6 +3,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { formatTokens } from "@/features/chat";
+import { useIsDevMode } from "@/features/settings";
 import { FileList } from "@/features/tools";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +35,8 @@ interface Props {
   taskId: string;
   selectedModel: DisplayModel;
   totalTokens: number;
+  inputTokens?: number;
+  cacheReadTokens?: number;
   className?: string;
   compact?: {
     inlineCompactTaskPending: boolean;
@@ -46,10 +50,13 @@ interface Props {
 export function TokenUsage({
   taskId,
   totalTokens,
+  inputTokens,
+  cacheReadTokens,
   className,
   compact,
   selectedModel,
 }: Props) {
+  const [isDevMode] = useIsDevMode();
   const { contextWindowUsage } = useTaskContextWindowUsage(taskId);
   const { taskMemoryState } = useTaskMemoryState(taskId);
   const hasTaskMemory = taskMemoryState.extractionCount > 0;
@@ -269,6 +276,26 @@ export function TokenUsage({
                 </TooltipProvider>
               )}
             </div>
+            {isDevMode && (
+              <div className="mb-2 flex flex-col gap-y-1 text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>{t("tokenUsage.cacheReadTokens")}</span>
+                  <span>
+                    {cacheReadTokens === undefined
+                      ? "N/A"
+                      : formatTokens(cacheReadTokens)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>{t("tokenUsage.inputTokens")}</span>
+                  <span>
+                    {inputTokens === undefined
+                      ? "N/A"
+                      : formatTokens(inputTokens)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="mt-1 flex flex-col gap-y-3">
               {showSystemSection && (
@@ -547,40 +574,4 @@ function formatPercentage(value: number): string {
     return "<0.1%";
   }
   return `${rounded}%`;
-}
-
-function formatTokens(tokens: number | null | undefined): string {
-  if (tokens == null || tokens === 0) {
-    return "0";
-  }
-  const k = 1000;
-  const m = k * 1000;
-  const g = m * 1000;
-  // Add T, P, E if needed
-
-  let value: number;
-  let unit: string;
-
-  if (tokens >= g) {
-    value = tokens / g;
-    unit = "G";
-  } else if (tokens >= m) {
-    value = tokens / m;
-    unit = "M";
-  } else if (tokens >= k) {
-    value = tokens / k;
-    unit = "k";
-  } else {
-    return tokens.toString(); // Return the number as is if less than 1k
-  }
-
-  // Format to one decimal place
-  let formattedValue = value.toFixed(1);
-
-  // If it ends with .0, remove .0
-  if (formattedValue.endsWith(".0")) {
-    formattedValue = formattedValue.substring(0, formattedValue.length - 2);
-  }
-
-  return `${formattedValue}${unit}`;
 }

@@ -71,6 +71,8 @@
     "minTokensRequired": "至少需要 {{minTokens}} 个 token 才能压缩对话",
     "defaultContextWindowWarning": "上下文窗口值是默认值，对于您的自定义模型可能不准确。为了精确的 token 管理，请根据您的模型提供商的文档在设置中进行调整。",
     "tokensUsed": "已使用 {{used}} / {{total}} tokens",
+    "inputTokens": "输入 Tokens",
+    "cacheReadTokens": "缓存读取 Tokens",
     "system": "系统",
     "systemInstructions": "系统指令",
     "toolDefinitions": "工具定义",
