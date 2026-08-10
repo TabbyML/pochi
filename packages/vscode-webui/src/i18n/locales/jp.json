@@ -73,7 +73,7 @@
     "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
     "tokensUsed": "{{used}} / {{total}} tokens",
     "inputTokens": "入力 Tokens",
-    "cacheReadTokens": "キャッシュ読み取り Tokens",
+    "cacheReadTokens": "キャッシュ入力 Tokens",
     "system": "システム",
     "systemInstructions": "システム指示",
     "toolDefinitions": "ツール定義",
