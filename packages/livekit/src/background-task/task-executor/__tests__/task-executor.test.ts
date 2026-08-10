@@ -123,6 +123,54 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
+  it("hydrates successful historical reads once before executing tools", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        {
+          type: "tool-readFile",
+          toolCallId: "read",
+          state: "output-available",
+          input: { path: "src/index.ts" },
+          output: { content: "hello", isTruncated: false },
+        },
+      ]),
+      makeAssistantMessage([
+        makeToolPart("writeToFile", "write-1", {
+          path: "src/index.ts",
+          content: "one",
+        }),
+        makeToolPart("writeToFile", "write-2", {
+          path: "src/other.ts",
+          content: "two",
+        }),
+      ]),
+    ]);
+    const hydrateFileReadHistory = vi.fn();
+    const executeToolCall = vi.fn(async () => ({ ok: true }));
+    const adaptor = {
+      ...makeAdaptor({ executeToolCall }),
+      hydrateFileReadHistory,
+    } satisfies RunningTaskAdaptor;
+    const executor = makeExecutor(store, adaptor, {
+      tools: ["writeToFile"],
+    });
+
+    await executor.drain();
+
+    expect(hydrateFileReadHistory).toHaveBeenCalledTimes(1);
+    expect(hydrateFileReadHistory).toHaveBeenCalledWith("task", [
+      "src/index.ts",
+    ]);
+    expect(executeToolCall).toHaveBeenCalledTimes(2);
+    expect(hydrateFileReadHistory.mock.invocationCallOrder[0]).toBeLessThan(
+      executeToolCall.mock.invocationCallOrder[0],
+    );
+    await executor.dispose();
+  });
+
   it("does not start duplicate running tasks for the same active task", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-tool" }),

@@ -98,6 +98,44 @@ describe("FileStateCacheRegistry", () => {
     );
   });
 
+  it("merges parent snapshots into a target that only has hydrated history", () => {
+    const registry = new FileStateCacheRegistry();
+
+    const parent = registry.get("parent-task");
+    parent.set("/tmp/parent.txt", {
+      content: "parent",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+    parent.recordRead("/tmp/parent.txt");
+    registry.hydrateReadHistory("fork-task", ["child.txt"], "/tmp");
+
+    registry.copyIfAbsent("parent-task", "fork-task");
+
+    const fork = registry.get("fork-task");
+    assert.strictEqual(fork.get("/tmp/parent.txt")?.content, "parent");
+    assert.strictEqual(fork.getReadHistoryState("/tmp/parent.txt"), "read");
+    assert.strictEqual(fork.getReadHistoryState("/tmp/child.txt"), "read");
+  });
+
+  it("resolves hydrated paths and ignores virtual files", () => {
+    const registry = new FileStateCacheRegistry();
+
+    registry.hydrateReadHistory(
+      "task",
+      ["src/../file.txt", "pochi://virtual/file.txt"],
+      "/repo",
+    );
+
+    const cache = registry.get("task");
+    assert.strictEqual(cache.getReadHistoryState("/repo/file.txt"), "read");
+    assert.strictEqual(
+      cache.getReadHistoryState("pochi://virtual/file.txt"),
+      "not-read",
+    );
+  });
+
   it("disposes all retained caches", () => {
     const registry = new FileStateCacheRegistry();
 

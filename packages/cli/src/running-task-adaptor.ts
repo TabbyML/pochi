@@ -4,7 +4,9 @@ import { pochiConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import {
   FileStateCache,
+  isVirtualPath,
   maybePersistToolResult,
+  resolvePath,
 } from "@getpochi/common/tool-utils";
 import {
   type ValidCustomAgentFile,
@@ -150,6 +152,14 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     logger.warn({ taskId, error }, "Task execution failed");
   }
 
+  hydrateFileReadHistory(taskId: string, paths: string[]) {
+    this.getFileStateCache(taskId).hydrateReadHistory(
+      paths
+        .filter((filePath) => !isVirtualPath(filePath))
+        .map((filePath) => resolvePath(filePath, this.cwd)),
+    );
+  }
+
   clearFileStateCache(taskId: string) {
     this.fileStateCaches.get(taskId)?.markAllAsWritten();
   }
@@ -181,13 +191,23 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       (sourceTaskId === this.parentTaskId
         ? this.parentFileStateCache
         : undefined);
-    const target = new FileStateCache();
+    const target = existingTarget ?? new FileStateCache();
     if (source) {
       for (const [key, value] of source) {
         target.set(key, { ...value });
       }
+      const history = source.getReadHistorySnapshot();
+      if (history.hydrated) {
+        target.hydrateReadHistory(history.paths);
+      } else {
+        for (const filePath of history.paths) {
+          target.recordRead(filePath);
+        }
+      }
     }
-    this.fileStateCaches.set(targetTaskId, target);
+    if (!existingTarget) {
+      this.fileStateCaches.set(targetTaskId, target);
+    }
   }
 
   private getFileStateCache(taskId: string) {

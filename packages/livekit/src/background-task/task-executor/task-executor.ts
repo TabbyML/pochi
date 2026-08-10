@@ -31,6 +31,7 @@ import {
 import type { BlobStore } from "../../blob-store";
 import type { PrepareRequestGetters } from "../../chat/flexible-chat-transport";
 import { defaultCatalog as catalog } from "../../livestore";
+import { collectPreviouslyReadFilePaths } from "../../task-utils";
 import type { LiveKitStore, Message, Task } from "../../types";
 
 const logger = getLogger("TaskExecutor");
@@ -57,6 +58,7 @@ export interface RunningTaskAdaptor {
     taskId: string;
     cwd: string | undefined;
   }): PrepareRequestGetters;
+  hydrateFileReadHistory?(taskId: string, paths: string[]): MaybePromise<void>;
   executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
   onTaskError?(taskId: string, error: Error): MaybePromise<void>;
 }
@@ -284,6 +286,7 @@ class RunningTask {
   private chatKit: RunningTaskChatKit | undefined;
   private retryCount = 0;
   private toolRejectionCount = 0;
+  private fileReadHistoryHydration: Promise<void> | undefined;
   private disposed = false;
 
   readonly done: Promise<void>;
@@ -520,6 +523,7 @@ class RunningTask {
     }
 
     try {
+      await this.hydrateFileReadHistory();
       const result = await this.adaptor.executeToolCall({
         taskId: this.taskId,
         parentTaskId: this.taskState.parentTaskId,
@@ -555,6 +559,16 @@ class RunningTask {
       });
       throw toError(error);
     }
+  }
+
+  private hydrateFileReadHistory(): Promise<void> {
+    this.fileReadHistoryHydration ??= Promise.resolve(
+      this.adaptor.hydrateFileReadHistory?.(
+        this.taskId,
+        collectPreviouslyReadFilePaths(this.chat.messages),
+      ),
+    );
+    return this.fileReadHistoryHydration;
   }
 
   private validateToolCall(

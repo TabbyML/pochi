@@ -18,7 +18,9 @@ import {
 } from "@getpochi/common/message-utils";
 import {
   FileStateCache,
+  isVirtualPath,
   maybePersistToolResult,
+  resolvePath,
 } from "@getpochi/common/tool-utils";
 import {
   type ValidCustomAgentFile,
@@ -34,6 +36,7 @@ import {
   type LiveKitStore,
   type Message,
   type Task,
+  collectPreviouslyReadFilePaths,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
@@ -209,6 +212,7 @@ export class TaskRunner {
   private backgroundJobManager: BackgroundJobManager;
   private fileSystem: FileSystem;
   private customAgent?: CustomAgent;
+  private fileReadHistoryHydrated = false;
 
   private attemptCompletionHook?: string;
   private asyncWaitTimeoutInMs: number;
@@ -750,6 +754,8 @@ export class TaskRunner {
     toolCall: ToolUIPart<UITools>,
     envs: Record<string, string> | undefined,
   ): Promise<unknown> {
+    this.hydrateFileReadHistory();
+
     try {
       return await processContentOutput(
         this.blobStore,
@@ -767,6 +773,17 @@ export class TaskRunner {
         error: `Failed to execute tool: ${toErrorMessage(error)}`,
       };
     }
+  }
+
+  private hydrateFileReadHistory() {
+    if (this.fileReadHistoryHydrated) return;
+
+    this.toolCallOptions.fileStateCache.hydrateReadHistory(
+      collectPreviouslyReadFilePaths(this.chat.messages)
+        .filter((filePath) => !isVirtualPath(filePath))
+        .map((filePath) => resolvePath(filePath, this.cwd)),
+    );
+    this.fileReadHistoryHydrated = true;
   }
 
   // Helper method to run the command

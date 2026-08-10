@@ -1,6 +1,8 @@
 import {
   FileStateCache,
   type RecentFileState,
+  isVirtualPath,
+  resolvePath,
 } from "@getpochi/common/tool-utils";
 import { injectable, singleton } from "tsyringe";
 import type * as vscode from "vscode";
@@ -26,17 +28,35 @@ export class FileStateCacheRegistry implements vscode.Disposable {
     }
 
     const source = this.caches.get(sourceTaskId);
-    const target = new FileStateCache();
+    const target = existingTarget ?? new FileStateCache();
     if (source) {
       for (const [key, value] of source) {
         target.set(key, { ...value });
       }
+      const history = source.getReadHistorySnapshot();
+      if (history.hydrated) {
+        target.hydrateReadHistory(history.paths);
+      } else {
+        for (const filePath of history.paths) {
+          target.recordRead(filePath);
+        }
+      }
     }
-    this.caches.set(targetTaskId, target);
+    if (!existingTarget) {
+      this.caches.set(targetTaskId, target);
+    }
   }
 
   markAllAsWritten(taskId: string): void {
     this.caches.get(taskId)?.markAllAsWritten();
+  }
+
+  hydrateReadHistory(taskId: string, paths: string[], cwd: string): void {
+    this.get(taskId).hydrateReadHistory(
+      paths
+        .filter((filePath) => !isVirtualPath(filePath))
+        .map((filePath) => resolvePath(filePath, cwd)),
+    );
   }
 
   getRecentFiles(taskId: string): RecentFileState[] {
