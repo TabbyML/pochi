@@ -3,7 +3,8 @@ import { defineClientTool } from "./types";
 
 const toolDef = {
   description:
-    `- Retrieves output from a running or completed background job, or from a user-opened terminal
+    `Deprecated compatibility tool. Prefer readFile on the outputFile returned by startBackgroundJob or exposed in the terminal environment.
+- Retrieves output from a running or completed background job, or from a user-opened terminal
 - Takes a backgroundJobId parameter identifying the job or terminal
 - Always returns only new content since the last check for that id
 - Returns output along with job status
@@ -17,10 +18,10 @@ const toolDef = {
     output: z
       .string()
       .describe(
-        "New content since the last check: stdout/stderr for background jobs (bgjob-), or a terminal transcript for user-opened terminals (term-).",
+        "New content since the last check: stdout/stderr for background jobs (bgjob-cmd-), or a terminal transcript for user-opened terminals (term-).",
       ),
     status: z
-      .enum(["idle", "running", "completed"])
+      .enum(["idle", "running", "completed", "failed", "stopped"])
       .describe("The current status of the command"),
     isTruncated: z
       .boolean()

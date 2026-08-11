@@ -5,6 +5,7 @@ import {
   isPlainText,
   isVirtualPath,
   readMediaFile,
+  resolveReadFileRange,
   selectFileContent,
   withReadFileCache,
 } from "@getpochi/common/tool-utils";
@@ -18,9 +19,17 @@ const logger = getLogger("readFile");
 type ReadFileOutput = InferToolOutput<ClientTools["readFile"]>;
 
 export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
-  { path, startLine, endLine },
+  { path, startLine, endLine, offset, limit },
   options,
 ) => {
+  const range = resolveReadFileRange({
+    startLine,
+    endLine,
+    offset,
+    limit,
+  });
+  startLine = range.startLine;
+  endLine = range.endLine;
   const { cwd, contentType } = options;
 
   const isBinaryRequest = !!(contentType && contentType.length > 0);

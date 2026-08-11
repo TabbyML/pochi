@@ -20,12 +20,12 @@ tsconfig.json
 package.json
 
 # Opened Terminals in Editor
-You can read a terminal's output by calling \`readBackgroundJobOutput\` with its id.
-- Ids prefixed with "bgjob-" are Pochi-started background jobs (can be read and killed with \`killBackgroundJob\`).
-- Ids prefixed with "term-" are user-opened terminals (read-only; cannot be killed).
+Read terminal output from its output file with \`readFile\` (use \`offset\` and \`limit\` for growing files).
+- Ids prefixed with "bgjob-cmd-" are Pochi-started background jobs and can be killed with \`killBackgroundJob\`.
+- Ids prefixed with "term-" are user-opened terminals and are read-only.
 * Terminal 1 (selected)
   Terminal 2
-  Terminal 3 (id: job-id-1)
+  Terminal 3 (id: bgjob-cmd-job-id-1) (output: /tmp/bgjob-cmd-job-id-1.log)
 
 # GIT STATUS
 Origin: https://github.com/username/repo.git

@@ -1,8 +1,10 @@
 import { getLogger } from "@/lib/logger";
 import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import {
+  BackgroundJobOutputFile,
   MaxTerminalHistoryLines,
   MaxTerminalOutputSize,
+  getTerminalOutputPath,
 } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
@@ -50,6 +52,8 @@ export class TerminalHistoryManager {
   private isTruncated = false;
   private lastReadLength = 0; // tracks byte length, not character length
   private lastReadAt = 0;
+  private readonly outputWriter: BackgroundJobOutputFile;
+  readonly outputFile: string;
 
   /**
    * The terminal's display name, refreshed on each command start. A snapshot:
@@ -61,7 +65,10 @@ export class TerminalHistoryManager {
   /** The most recent command run in the terminal. */
   lastCommand?: string;
 
-  private constructor(public readonly id: string) {}
+  private constructor(public readonly id: string) {
+    this.outputFile = getTerminalOutputPath(id);
+    this.outputWriter = new BackgroundJobOutputFile(this.outputFile);
+  }
 
   static getOrCreate(id: string): TerminalHistoryManager {
     let manager = TerminalHistoryManager.managers.get(id);
@@ -77,7 +84,9 @@ export class TerminalHistoryManager {
   }
 
   static delete(id: string): void {
+    const manager = TerminalHistoryManager.managers.get(id);
     TerminalHistoryManager.managers.delete(id);
+    void manager?.outputWriter.close();
   }
 
   /**
@@ -95,6 +104,7 @@ export class TerminalHistoryManager {
    * Appends a chunk of output (or a command header) to the history.
    */
   addChunk(chunk: string): void {
+    this.outputWriter.append(chunk);
     this.chunks.push(chunk);
     this.updateOutput("running");
   }

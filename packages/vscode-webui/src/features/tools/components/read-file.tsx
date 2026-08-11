@@ -8,7 +8,12 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
   tool,
   isExecuting,
 }) => {
-  const { path, startLine, endLine } = tool.input || {};
+  const { path, startLine, endLine, offset, limit } = tool.input || {};
+  const displayStartLine = offset ?? (limit !== undefined ? 1 : startLine);
+  const displayEndLine =
+    limit !== undefined && displayStartLine !== undefined
+      ? displayStartLine + limit - 1
+      : endLine;
   const { t } = useTranslation();
 
   const title = (
@@ -20,8 +25,8 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
         <FileBadge
           className="ml-1"
           path={path}
-          startLine={startLine}
-          endLine={endLine}
+          startLine={displayStartLine}
+          endLine={displayEndLine}
         />
       )}
     </>

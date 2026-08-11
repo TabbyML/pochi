@@ -1,25 +1,62 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import * as crypto from "node:crypto";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import type { BackgroundJobTerminalEvent } from "@getpochi/common";
 import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
-import { getShellPath } from "@getpochi/common/tool-utils";
+import {
+  BackgroundJobOutputFile,
+  PlainOutputSanitizer,
+  createBackgroundJobId,
+  getBackgroundJobOutputPath,
+  getShellPath,
+} from "@getpochi/common/tool-utils";
 
 export interface BackgroundJob {
   id: string;
   command: string;
   process: ChildProcess;
   output: string;
+  outputFile: string;
+  outputWriter: BackgroundJobOutputFile;
   startTime: number;
-  status: "running" | "completed";
+  status: "running" | "completed" | "failed" | "stopped";
   lastReadAt?: number;
+  stopRequested?: boolean;
+  finalizing?: boolean;
 }
+
+export interface BackgroundJobStartResult {
+  backgroundJobId: string;
+  outputFile: string;
+}
+
+export interface BackgroundJobManagerOptions {
+  taskId?: string;
+  outputDir?: string;
+}
+
+type FinishListener = (event: BackgroundJobTerminalEvent) => void;
 
 export class BackgroundJobManager {
   private jobs: Map<string, BackgroundJob> = new Map();
-  private maxOutputSize = 1024 * 1024; // 1MB buffer limit per job
+  private maxOutputSize = 1024 * 1024; // compatibility buffer only
+  private readonly finishListeners = new Set<FinishListener>();
 
-  start(command: string, cwd: string, envs?: Record<string, string>): string {
-    const id = crypto.randomUUID();
+  constructor(private readonly options: BackgroundJobManagerOptions = {}) {}
+
+  start(
+    command: string,
+    cwd: string,
+    envs?: Record<string, string>,
+  ): BackgroundJobStartResult {
+    const id = createBackgroundJobId("command");
+    const outputFile = this.options.outputDir
+      ? path.join(this.options.outputDir, `${id}.log`)
+      : this.options.taskId
+        ? getBackgroundJobOutputPath(this.options.taskId, id)
+        : path.join(tmpdir(), "pochi-background-jobs", `${id}.log`);
+    const outputWriter = new BackgroundJobOutputFile(outputFile);
 
     const shell = getShellPath();
     const child = spawn(command, {
@@ -31,18 +68,31 @@ export class BackgroundJobManager {
 
     const job: BackgroundJob = {
       id,
-
       command,
       process: child,
       output: "",
+      outputFile,
+      outputWriter,
       startTime: Date.now(),
       status: "running",
     };
 
     this.jobs.set(id, job);
 
-    const appendOutput = (data: Buffer | string) => {
-      const chunk = typeof data === "string" ? data : data.toString();
+    const appendOutput = (chunk: string) => {
+      if (chunk.length === 0) return;
+      try {
+        outputWriter.append(chunk);
+      } catch (error) {
+        child.kill();
+        void this.finalize(
+          job,
+          "failed",
+          undefined,
+          error instanceof Error ? error.message : String(error),
+        );
+        return;
+      }
       if (job.output.length + chunk.length > this.maxOutputSize) {
         const keep = this.maxOutputSize - chunk.length;
         if (keep > 0) {
@@ -55,113 +105,138 @@ export class BackgroundJobManager {
       }
     };
 
-    child.stdout?.on("data", appendOutput);
-    child.stderr?.on("data", appendOutput);
-
-    child.on("close", (code) => {
-      job.status = "completed";
-      appendOutput(`\nProcess exited with code ${code}\n`);
-    });
-
-    child.on("error", (err) => {
-      job.status = "completed";
-      appendOutput(`\nProcess execution error: ${err.message}\n`);
-    });
-
-    return id;
-  }
-
-  readOutput(
-    id: string,
-  ): { output: string; status: "running" | "completed" | "idle" } | null {
-    const job = this.jobs.get(id);
-    if (!job) {
-      return null;
+    for (const stream of [child.stdout, child.stderr]) {
+      if (!stream) continue;
+      const sanitizer = new PlainOutputSanitizer();
+      // setEncoding uses Node's streaming decoder, so a multi-byte UTF-8
+      // character split between Buffer chunks is not replaced with U+FFFD.
+      stream.setEncoding("utf8");
+      stream.on("data", (chunk: string) => {
+        appendOutput(sanitizer.write(chunk));
+      });
+      stream.on("end", () => {
+        appendOutput(sanitizer.end());
+      });
     }
 
+    child.on("close", (code) => {
+      const status = job.stopRequested
+        ? "stopped"
+        : code === 0
+          ? "completed"
+          : "failed";
+      void this.finalize(job, status, code ?? undefined);
+    });
+
+    child.on("error", (error) => {
+      void this.finalize(job, "failed", undefined, error.message);
+    });
+
+    return { backgroundJobId: id, outputFile };
+  }
+
+  onDidFinish(listener: FinishListener): () => void {
+    this.finishListeners.add(listener);
+    return () => this.finishListeners.delete(listener);
+  }
+
+  private async finalize(
+    job: BackgroundJob,
+    status: "completed" | "failed" | "stopped",
+    exitCode?: number,
+    error?: string,
+  ): Promise<void> {
+    if (job.status !== "running" || job.finalizing) return;
+    job.finalizing = true;
+    let finalStatus = status;
+    let finalError = error;
+
+    try {
+      await job.outputWriter.close();
+    } catch (closeError) {
+      finalStatus = "failed";
+      finalError =
+        closeError instanceof Error ? closeError.message : String(closeError);
+    }
+    job.status = finalStatus;
+    job.finalizing = false;
+
+    if (!this.options.taskId) return;
+    const event: BackgroundJobTerminalEvent = {
+      taskId: this.options.taskId,
+      backgroundJobId: job.id,
+      outputFile: job.outputFile,
+      status: finalStatus,
+      command: job.command,
+      ...(exitCode !== undefined ? { exitCode } : {}),
+      ...(finalError ? { error: finalError } : {}),
+      finishedAt: Date.now(),
+    };
+    for (const listener of this.finishListeners) listener(event);
+  }
+
+  readOutput(id: string): {
+    output: string;
+    status: "running" | "completed" | "failed" | "stopped" | "idle";
+  } | null {
+    const job = this.jobs.get(id);
+    if (!job) return null;
+
     const now = Date.now();
-    const previousReadAt = job.lastReadAt;
     assertBackgroundJobReadInterval({
       now,
-      previousReadAt,
-      status: job.status,
+      previousReadAt: job.lastReadAt,
+      status: job.status === "running" ? "running" : "completed",
     });
 
     const outputToReturn = job.output;
-
-    job.output = ""; // Clear buffer
+    job.output = "";
     job.lastReadAt = now;
 
-    return {
-      output: outputToReturn,
-      status: job.status,
-    };
+    return { output: outputToReturn, status: job.status };
   }
 
   kill(id: string): boolean {
     const job = this.jobs.get(id);
-    if (!job) {
-      return false;
-    }
+    if (!job) return false;
+    if (job.status !== "running" || job.finalizing) return true;
 
-    if (job.status === "completed") {
-      return true;
-    }
-
-    const killed = job.process.kill();
-    return killed;
+    job.stopRequested = true;
+    return job.process.kill();
   }
 
   killAll() {
     for (const job of this.jobs.values()) {
-      if (job.status === "running") {
+      if (job.status === "running" && !job.finalizing) {
+        job.stopRequested = true;
         job.process.kill();
       }
     }
-    this.jobs.clear();
   }
 
   hasPendingJobs(): boolean {
-    for (const job of this.jobs.values()) {
-      if (job.status === "running") {
-        return true;
-      }
-    }
-    return false;
+    return Array.from(this.jobs.values()).some(
+      (job) => job.status === "running" || job.finalizing,
+    );
   }
 
   getPendingJobIds(): string[] {
-    const ids: string[] = [];
-    for (const job of this.jobs.values()) {
-      if (job.status === "running") {
-        ids.push(job.id);
-      }
-    }
-    return ids;
+    return Array.from(this.jobs.values())
+      .filter((job) => job.status === "running" || job.finalizing)
+      .map((job) => job.id);
   }
 
-  /**
-   * Wait for all background jobs to complete.
-   * @param timeoutMs Maximum time to wait in milliseconds (0 = no timeout)
-   * @param abortSignal Optional abort signal to cancel waiting
-   * @returns Status of the wait operation: "completed", "timeout", or "aborted"
-   */
   async waitForAllJobs(
     timeoutMs: number,
     abortSignal?: AbortSignal,
   ): Promise<"completed" | "timeout" | "aborted"> {
     const startTime = Date.now();
-    const pollInterval = 1000;
+    const pollInterval = 50;
 
     while (this.hasPendingJobs()) {
-      if (abortSignal?.aborted) {
-        return "aborted";
-      }
-
-      if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs) {
+      if (abortSignal?.aborted) return "aborted";
+      if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs)
         return "timeout";
-      }
-
       await new Promise((resolve) => setTimeout(resolve, pollInterval));
     }
 

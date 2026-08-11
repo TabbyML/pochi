@@ -13,6 +13,7 @@ import {
   serializeMemoryMessage,
   truncateAutoMemoryIndex,
 } from "./auto-memory";
+import { renderBackgroundJobNotification } from "./background-job-notification";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
@@ -56,6 +57,7 @@ export const prompts = {
   renderTerminalContext,
   renderUserEdits,
   renderBashOutputs,
+  renderBackgroundJobNotification,
   fixMermaidError,
   createUseSkillResult,
   attemptTodoCompletion: {

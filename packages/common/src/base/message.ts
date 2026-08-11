@@ -33,6 +33,62 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
 
 export type MessageMetadata = z.infer<typeof MessageMetadata>;
 
+export const BackgroundJobNotification = z.object({
+  notificationId: z.string(),
+  backgroundJobId: z.string(),
+  outputFile: z.string(),
+  command: z.string().optional(),
+  status: z.enum(["completed", "failed", "stopped"]),
+  summary: z.string(),
+  exitCode: z.number().optional(),
+  finishedAt: z.number(),
+});
+
+export type BackgroundJobNotification = z.infer<
+  typeof BackgroundJobNotification
+>;
+
+export const BackgroundJobTerminalEvent = z.object({
+  taskId: z.string(),
+  backgroundJobId: z.string(),
+  outputFile: z.string(),
+  status: z.enum(["completed", "failed", "stopped"]),
+  command: z.string(),
+  exitCode: z.number().optional(),
+  error: z.string().optional(),
+  finishedAt: z.number(),
+});
+
+export type BackgroundJobTerminalEvent = z.infer<
+  typeof BackgroundJobTerminalEvent
+>;
+
+export function createBackgroundJobNotification(
+  event: BackgroundJobTerminalEvent,
+): BackgroundJobNotification {
+  let summary: string;
+  if (event.status === "completed") {
+    summary = `Background command "${event.command}" completed with exit code ${event.exitCode ?? 0}`;
+  } else if (event.status === "stopped") {
+    summary = `Background command "${event.command}" was stopped`;
+  } else if (event.exitCode !== undefined) {
+    summary = `Background command "${event.command}" failed with exit code ${event.exitCode}`;
+  } else {
+    summary = `Background command "${event.command}" failed${event.error ? `: ${event.error}` : ""}`;
+  }
+
+  return {
+    notificationId: `${event.backgroundJobId}:terminal`,
+    backgroundJobId: event.backgroundJobId,
+    outputFile: event.outputFile,
+    command: event.command,
+    status: event.status,
+    summary,
+    ...(event.exitCode !== undefined ? { exitCode: event.exitCode } : {}),
+    finishedAt: event.finishedAt,
+  };
+}
+
 export const ActiveSelection = z
   .object({
     filepath: z.string().describe("The path of the active file selection."),

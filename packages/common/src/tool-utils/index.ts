@@ -51,4 +51,18 @@ export {
   isVirtualPath,
 } from "./file-state-cache";
 export { maybePersistToolResult } from "./tool-result-persistence";
-export { getTaskDataDir } from "./pochi-paths";
+export { getPochiDataDir, getTaskDataDir } from "./pochi-paths";
+export { PlainOutputSanitizer } from "./plain-output-sanitizer";
+export {
+  BackgroundJobOutputFile,
+  createBackgroundJobId,
+  getBackgroundJobOutputPath,
+  getTerminalOutputPath,
+  parseBackgroundJobId,
+  type BackgroundJobId,
+  type BackgroundJobIdType,
+} from "./background-job";
+export {
+  resolveReadFileRange,
+  type ReadFileRangeInput,
+} from "./read-file-range";

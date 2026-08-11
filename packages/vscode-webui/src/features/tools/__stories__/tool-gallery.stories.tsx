@@ -370,7 +370,8 @@ const startBackgroundJobProps: StartBackgroundJobProp["tool"] = {
     command: "npm run dev",
   },
   output: {
-    backgroundJobId: "job-1",
+    backgroundJobId: "bgjob-cmd-job-1",
+    outputFile: "/tmp/bgjob-cmd-job-1.log",
   },
 };
 

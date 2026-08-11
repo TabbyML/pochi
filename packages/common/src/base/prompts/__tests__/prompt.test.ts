@@ -137,7 +137,8 @@ test("environment", () => {
             {
               name: "Terminal 3",
               isActive: false,
-              backgroundJobId: "job-id-1"
+              backgroundJobId: "bgjob-cmd-job-id-1",
+              outputFile: "/tmp/bgjob-cmd-job-id-1.log",
             }
           ]
         },

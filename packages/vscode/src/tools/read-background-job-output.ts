@@ -28,7 +28,7 @@ export const readBackgroundJobOutput: ToolFunctionType<
     };
   }
 
-  // "bgjob-" ids are Pochi-started background jobs: reads surface only that
+  // "bgjob-cmd-" ids are Pochi-started background jobs: reads surface only that
   // job's own stdout/stderr.
   if (backgroundJobId.startsWith("bgjob-")) {
     const outputManager = OutputManager.get(backgroundJobId);

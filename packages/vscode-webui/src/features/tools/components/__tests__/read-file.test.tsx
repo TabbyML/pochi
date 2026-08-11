@@ -22,19 +22,41 @@ vi.mock("../tool-container", () => ({
 }));
 
 vi.mock("../file-badge", () => ({
-  FileBadge: ({ path }: { path: string }) => (
-    <span data-testid="file-badge">{path}</span>
+  FileBadge: ({
+    path,
+    startLine,
+    endLine,
+  }: {
+    path: string;
+    startLine?: number;
+    endLine?: number;
+  }) => (
+    <span
+      data-testid="file-badge"
+      data-start-line={startLine}
+      data-end-line={endLine}
+    >
+      {path}
+    </span>
   ),
 }));
 
-const renderReadFileTool = (path: string) =>
+interface ReadFileInput {
+  path: string;
+  startLine?: number;
+  endLine?: number;
+  offset?: number;
+  limit?: number;
+}
+
+const renderReadFileTool = (input: ReadFileInput) =>
   render(
     <ReadFileTool
       tool={{
         type: "tool-readFile",
         toolCallId: "call-1",
         state: "input-available",
-        input: { path },
+        input,
       }}
       isExecuting={false}
       isLoading={false}
@@ -45,8 +67,21 @@ const renderReadFileTool = (path: string) =>
 describe("readFileTool", () => {
   it("shows the standard reading label with the requested file path", () => {
     const path = "packages/vscode-webui/src/main.tsx";
-    const { container } = renderReadFileTool(path);
+    const { container } = renderReadFileTool({ path });
 
     expect(container.textContent).toBe(`Reading ${path}`);
+  });
+
+  it("shows the offset/limit range when both range styles are present", () => {
+    const { getByTestId } = renderReadFileTool({
+      path: "pochi://~/background-jobs/bgjob-cmd-test.log",
+      startLine: 20,
+      endLine: 30,
+      offset: 2,
+      limit: 3,
+    });
+
+    expect(getByTestId("file-badge").getAttribute("data-start-line")).toBe("2");
+    expect(getByTestId("file-badge").getAttribute("data-end-line")).toBe("4");
   });
 });

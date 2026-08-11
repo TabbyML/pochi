@@ -114,6 +114,37 @@ describe("readFile Tool", () => {
     assert.strictEqual(result.isTruncated, false);
   });
 
+  it("should prefer offset and limit when legacy range fields are repeated", async () => {
+    const fileContent = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5";
+    const filePath = _path.join(currentTestTempDirRelativePath, "test.txt");
+    const fileUri = vscode.Uri.joinPath(testSuiteRootTempDir, filePath);
+    await createFile(fileUri, fileContent);
+
+    const result = await readFileWithMock(
+      {
+        path: filePath,
+        startLine: 20,
+        endLine: 30,
+        offset: 2,
+        limit: 3,
+      },
+      {
+        toolCallId: "test-call-id-123",
+        messages: [],
+        cwd: testSuiteRootTempDir.fsPath,
+      },
+    );
+
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "2 | Line 2\n3 | Line 3\n4 | Line 4",
+      );
+    }
+    assert.strictEqual(result.isTruncated, false);
+  });
+
   it("should read from startLine to the end when only startLine is provided", async () => {
     const fileContent = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5";
     const filePath = _path.join(currentTestTempDirRelativePath, "test.txt");

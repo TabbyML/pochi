@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import {
   type AutoMemoryContext,
+  type BackgroundJobTerminalEvent,
   type ContextWindowUsage,
   type MaybePromise,
   getLogger,
@@ -34,6 +35,7 @@ import {
   type LiveKitStore,
   type Message,
   type Task,
+  createBackgroundJobNotificationMessage,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
@@ -207,6 +209,7 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
+  private pendingBackgroundJobNotifications: BackgroundJobTerminalEvent[] = [];
   private fileSystem: FileSystem;
   private customAgent?: CustomAgent;
 
@@ -240,7 +243,12 @@ export class TaskRunner {
     this.cwd = options.cwd;
     this.llm = options.llm;
     this.blobStore = options.blobStore;
-    this.backgroundJobManager = new BackgroundJobManager();
+    this.backgroundJobManager = new BackgroundJobManager({
+      taskId: options.uid,
+    });
+    this.backgroundJobManager.onDidFinish((event) => {
+      this.pendingBackgroundJobNotifications.push(event);
+    });
     this.customAgent = options.customAgent;
 
     this.fileSystem = options.filesystem;
@@ -403,6 +411,11 @@ export class TaskRunner {
       throw error;
     } finally {
       this.backgroundJobManager.killAll();
+      await this.backgroundJobManager.waitForAllJobs(5000);
+      const notificationMessage = this.takePendingBackgroundJobNotifications();
+      if (notificationMessage) {
+        this.chat.appendOrReplaceMessage(notificationMessage);
+      }
       if (this.customAgent?.name === "browser") {
         this.toolCallOptions.browserSessionStore?.unregisterBrowserSession(
           this.taskId,
@@ -415,11 +428,11 @@ export class TaskRunner {
   /**
    * Wait for all background jobs to complete.
    * Respects the configured asyncWaitTimeoutInMs and abort signal.
-   * @returns A formatted string with background job results if any, or undefined if no results
+   * @returns One structured notification message emitted after output files
+   * flush. All notifications available at this drain point are included as
+   * separate data parts in the same user message.
    */
-  private async waitForAsyncWork(): Promise<string | undefined> {
-    const pendingJobIds = this.backgroundJobManager.getPendingJobIds();
-
+  private async waitForAsyncWork(): Promise<Message | undefined> {
     const spinner = createSpinner(
       `Waiting for background jobs to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
@@ -435,7 +448,9 @@ export class TaskRunner {
       spinner.fail(
         `Async wait timeout reached. Remaining: ${remainingJobs.length} job(s)`,
       );
-      return undefined;
+      this.backgroundJobManager.killAll();
+      await this.backgroundJobManager.waitForAllJobs(5000, this.abortSignal);
+      return this.takePendingBackgroundJobNotifications();
     }
 
     if (jobStatus === "aborted") {
@@ -445,21 +460,14 @@ export class TaskRunner {
 
     spinner.succeed("All background jobs completed.");
 
-    // Collect results from completed background jobs
-    const results: string[] = [];
+    return this.takePendingBackgroundJobNotifications();
+  }
 
-    for (const jobId of pendingJobIds) {
-      const jobOutput = this.backgroundJobManager.readOutput(jobId);
-      if (jobOutput) {
-        const parts = [
-          `Background Job (ID: ${jobId}, status: ${jobOutput.status}):`,
-        ];
-        if (jobOutput.output) parts.push(`Output:\n${jobOutput.output}`);
-        results.push(parts.join("\n"));
-      }
-    }
-
-    return results.length > 0 ? results.join("\n\n") : undefined;
+  private takePendingBackgroundJobNotifications(): Message | undefined {
+    const events = this.pendingBackgroundJobNotifications.splice(0);
+    return events.length > 0
+      ? createBackgroundJobNotificationMessage(events)
+      : undefined;
   }
 
   /**
@@ -481,13 +489,17 @@ export class TaskRunner {
       const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
       if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
-        const asyncResults = await this.waitForAsyncWork();
-        if (asyncResults) {
-          // If there are background job results - feed them back to LLM instead of completing
-          const userMessage = createAsyncResultsMessage(asyncResults);
-          this.chat.appendOrReplaceMessage(userMessage);
+        const notificationMessage = await this.waitForAsyncWork();
+        if (notificationMessage) {
+          this.chat.appendOrReplaceMessage(notificationMessage);
           return "next";
         }
+      }
+
+      const notificationMessage = this.takePendingBackgroundJobNotifications();
+      if (notificationMessage) {
+        this.chat.appendOrReplaceMessage(notificationMessage);
+        return "next";
       }
 
       if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
@@ -829,16 +841,6 @@ function createUserMessage(prompt: string): Message {
       },
     ],
   };
-}
-
-function createAsyncResultsMessage(asyncResults: string): Message {
-  const instruction = `The following background jobs have completed while you were working. Review their outputs and take appropriate action based on the results:
-- If the background jobs succeeded and no further action is needed, call attemptCompletion to finalize.
-- If there are errors or issues that need to be addressed, take the necessary steps to resolve them.
-- If the results require updates to your previous work, make those adjustments.
-
-${asyncResults}`;
-  return createUserMessage(prompts.createSystemReminder(instruction));
 }
 
 function isResultMessage(message: Message): boolean {

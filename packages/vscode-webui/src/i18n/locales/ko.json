@@ -571,6 +571,16 @@
     "showDiff": "차이 보기",
     "diffTitle": "사용자 편집"
   },
+  "backgroundJobNotifications": {
+    "title": "백그라운드 작업",
+    "jobCount_one": "{{count}}개 작업",
+    "jobCount_other": "{{count}}개 작업",
+    "completed": "완료됨(종료 코드 {{exitCode}})",
+    "failed": "실패(종료 코드 {{exitCode}})",
+    "failedNoExit": "실패",
+    "stopped": "중지됨",
+    "openOutput": "출력 파일 열기"
+  },
   "forkTask": {
     "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
   },

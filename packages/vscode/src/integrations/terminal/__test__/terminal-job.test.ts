@@ -1,4 +1,5 @@
 import * as assert from "node:assert";
+import type { BackgroundJobTerminalEvent } from "@getpochi/common";
 import { describe, it } from "mocha";
 import proxyquire from "proxyquire";
 
@@ -64,6 +65,7 @@ function createHarness() {
     dispose: () => closeEmitter.fire(terminal),
   };
   const finalizeCalls: Array<TestExecutionError | undefined> = [];
+  const lifecycle: string[] = [];
   const outputManager = {
     output: { value: undefined },
     addChunk: () => {},
@@ -100,6 +102,22 @@ function createHarness() {
         getTerminalEnv: () => ({}),
       },
       "@getpochi/common/tool-utils": {
+        BackgroundJobOutputFile: class {
+          append() {}
+          async close() {
+            lifecycle.push("file-closed");
+          }
+        },
+        PlainOutputSanitizer: class {
+          write(chunk: string) {
+            return chunk;
+          }
+          end() {
+            return "";
+          }
+        },
+        createBackgroundJobId: () => "bgjob-cmd-test",
+        getBackgroundJobOutputPath: () => "/tmp/bgjob-cmd-test.log",
         getShellPath: () => "/bin/sh",
       },
       "./output": {
@@ -116,6 +134,12 @@ function createHarness() {
     name: "test job",
     command: "sleep 10",
     cwd: "/tmp",
+    taskId: "task-test",
+  });
+  const finishEvents: BackgroundJobTerminalEvent[] = [];
+  TerminalJob.onDidFinish((event) => {
+    lifecycle.push("event-fired");
+    finishEvents.push(event);
   });
 
   return {
@@ -124,7 +148,9 @@ function createHarness() {
     execution,
     executionEndEmitter,
     finalizeCalls,
+    finishEvents,
     job,
+    lifecycle,
     terminal,
   };
 }
@@ -150,7 +176,9 @@ describe("TerminalJob", () => {
       execution,
       executionEndEmitter,
       finalizeCalls,
+      finishEvents,
       job,
+      lifecycle,
       terminal,
     } = createHarness();
 
@@ -160,6 +188,18 @@ describe("TerminalJob", () => {
 
     assert.strictEqual(finalizeCalls.length, 1);
     assert.strictEqual(finalizeCalls[0], undefined);
+    assert.deepStrictEqual(lifecycle, ["file-closed", "event-fired"]);
+    assert.deepStrictEqual(finishEvents, [
+      {
+        taskId: "task-test",
+        backgroundJobId: "bgjob-cmd-test",
+        outputFile: "/tmp/bgjob-cmd-test.log",
+        status: "completed",
+        command: "sleep 10",
+        exitCode: 0,
+        finishedAt: finishEvents[0]?.finishedAt,
+      },
+    ]);
     assert.strictEqual(TerminalJob.get(job.id), job);
 
     terminal.dispose();

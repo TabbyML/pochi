@@ -82,6 +82,33 @@ describe("convertDataPartToText", () => {
     expect(result[0].text).toContain("terminal-context-selection terminal=\"zsh\"");
     expect(result[0].text).toContain("git status");
   });
+
+  it("converts one background job notification into one XML text part", () => {
+    const part = {
+      type: "data-background-job-notification",
+      data: {
+        notificationId: "bgjob-cmd-1:terminal",
+        backgroundJobId: "bgjob-cmd-1",
+        outputFile: "/tmp/job<&>.log",
+        status: "failed",
+        summary: 'Background command "test <all>" failed with exit code 7',
+        exitCode: 7,
+        finishedAt: 1,
+      },
+    } as unknown as MessagePart;
+
+    const result = convertDataPartToText(part) as {
+      type: string;
+      text: string;
+    };
+    expect(result.type).toBe("text");
+    expect(result.text).not.toContain("<system-reminder>");
+    expect(result.text).toContain("<background-job-notification>");
+    expect(result.text).toContain("/tmp/job&lt;&amp;&gt;.log");
+    expect(result.text).toContain(
+      "Background command &quot;test &lt;all&gt;&quot; failed with exit code 7",
+    );
+  });
 });
 
 describe("extractContentFilterMetadata", () => {

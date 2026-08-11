@@ -23,9 +23,5 @@ export const startBackgroundJob =
       resolvedCwd = path.normalize(path.join(workspaceDir, cwd));
     }
 
-    const id = backgroundJobManager.start(command, resolvedCwd, envs);
-
-    return {
-      backgroundJobId: id,
-    };
+    return backgroundJobManager.start(command, resolvedCwd, envs);
   };

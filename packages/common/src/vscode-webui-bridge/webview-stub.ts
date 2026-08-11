@@ -133,6 +133,13 @@ const VSCodeHostStub = {
   readPochiTabs: (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
+  readBackgroundJobNotifications: (_taskId: string) =>
+    Promise.resolve({
+      notifications: {} as ThreadSignalSerialization<
+        import("../base").BackgroundJobNotification[]
+      >,
+      acknowledge: async (_notificationId: string) => {},
+    }),
   closePochiTabs: (_uid?: string): Promise<void> => {
     return Promise.resolve();
   },

@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type {
   AutoMemoryTaskState,
+  BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   TaskMemoryState,
@@ -23,6 +24,7 @@ type TaskStateData = {
   taskMemoryState?: TaskMemoryState;
   autoMemoryState?: AutoMemoryTaskState;
   backgroundTaskState?: BackgroundTaskState;
+  backgroundJobNotifications?: BackgroundJobNotification[];
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -92,9 +94,17 @@ export class TaskDataStore {
     this.writeGroup,
     async (
       taskId: string,
-      patch: Partial<Omit<TaskStateData, "updatedAt">>,
+      patchOrUpdate:
+        | Partial<Omit<TaskStateData, "updatedAt">>
+        | ((
+            current: TaskStateData,
+          ) => Partial<Omit<TaskStateData, "updatedAt">>),
     ): Promise<void> => {
       const current = this.state.value[taskId] ?? ({} as TaskStateData);
+      const patch =
+        typeof patchOrUpdate === "function"
+          ? patchOrUpdate(current)
+          : patchOrUpdate;
       const merged: TaskStateData = {
         ...current,
         ...patch,
@@ -108,6 +118,42 @@ export class TaskDataStore {
 
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {
     return this.getTaskState(taskId)?.mcpConfigOverride;
+  }
+
+  async addBackgroundJobNotification(
+    taskId: string,
+    notification: BackgroundJobNotification,
+  ): Promise<void> {
+    await this.saveTaskState(taskId, (current) => {
+      const notifications = current.backgroundJobNotifications ?? [];
+      if (
+        notifications.some(
+          (item) => item.notificationId === notification.notificationId,
+        )
+      ) {
+        return {};
+      }
+      return {
+        backgroundJobNotifications: [...notifications, notification],
+      };
+    });
+  }
+
+  async acknowledgeBackgroundJobNotification(
+    taskId: string,
+    notificationId: string,
+  ): Promise<void> {
+    await this.saveTaskState(taskId, (current) => ({
+      backgroundJobNotifications: (
+        current.backgroundJobNotifications ?? []
+      ).filter((item) => item.notificationId !== notificationId),
+    }));
+  }
+
+  getBackgroundJobNotificationsSignal(taskId: string) {
+    return computed(
+      () => this.state.value[taskId]?.backgroundJobNotifications ?? [],
+    );
   }
 
   async setMcpConfigOverride(

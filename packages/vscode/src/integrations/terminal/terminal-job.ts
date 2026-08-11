@@ -1,7 +1,13 @@
-import { randomUUID } from "node:crypto";
 import { getLogger } from "@/lib/logger";
+import type { BackgroundJobTerminalEvent } from "@getpochi/common";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
-import { getShellPath } from "@getpochi/common/tool-utils";
+import {
+  BackgroundJobOutputFile,
+  PlainOutputSanitizer,
+  createBackgroundJobId,
+  getBackgroundJobOutputPath,
+  getShellPath,
+} from "@getpochi/common/tool-utils";
 import * as vscode from "vscode";
 import { createTerminal } from "../layout";
 import { OutputManager } from "./output";
@@ -23,6 +29,8 @@ export interface TerminalJobConfig {
   location?: vscode.TerminalEditorLocationOptions | undefined;
   /** AbortSignal to cancel the terminal job */
   abortSignal?: AbortSignal;
+  /** Task that owns the job and receives its terminal notification. */
+  taskId: string;
 }
 
 /**
@@ -34,6 +42,9 @@ export class TerminalJob implements vscode.Disposable {
   private static readonly onDidDisposeEmitter =
     new vscode.EventEmitter<TerminalJob>();
   static readonly onDidDispose = TerminalJob.onDidDisposeEmitter.event;
+  private static readonly onDidFinishEmitter =
+    new vscode.EventEmitter<BackgroundJobTerminalEvent>();
+  static readonly onDidFinish = TerminalJob.onDidFinishEmitter.event;
 
   private readonly terminal: vscode.Terminal;
   private readonly terminalClosed: Promise<never>;
@@ -44,8 +55,14 @@ export class TerminalJob implements vscode.Disposable {
   private shellIntegration: vscode.TerminalShellIntegration | undefined;
   private execution: vscode.TerminalShellExecution | undefined;
   private outputManager: OutputManager;
+  private readonly outputWriter: BackgroundJobOutputFile;
+  private exitCode: number | undefined;
+  private stopRequested = false;
+  private finished = false;
+  private outputStreamFinished: Promise<void> | undefined;
 
   readonly id: string;
+  readonly outputFile: string;
 
   get output() {
     return this.outputManager.output;
@@ -56,7 +73,9 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   private constructor(private readonly config: TerminalJobConfig) {
-    this.id = `bgjob-${randomUUID()}`;
+    this.id = createBackgroundJobId("command");
+    this.outputFile = getBackgroundJobOutputPath(config.taskId, this.id);
+    this.outputWriter = new BackgroundJobOutputFile(this.outputFile);
     this.outputManager = OutputManager.create({
       id: this.id,
       command: config.command,
@@ -85,6 +104,7 @@ export class TerminalJob implements vscode.Disposable {
     // has finished executing.
     this.closeListener = vscode.window.onDidCloseTerminal((terminal) => {
       if (terminal === this.terminal) {
+        this.stopRequested = true;
         this.rejectTerminalClosed?.(
           ExecutionError.create(
             "Background job finished as user closed terminal.",
@@ -117,13 +137,16 @@ export class TerminalJob implements vscode.Disposable {
       logger.debug(
         `Executed command in terminal "${this.config.name}": ${this.config.command}`,
       );
-      this.processOutputStream(this.execution.read());
+      this.outputStreamFinished = this.processOutputStream(
+        this.execution.read(),
+      );
 
       await Promise.race([
         this.waitForExecutionFinish(),
         this.createAbortPromise(),
         this.terminalClosed,
       ]);
+      await this.outputStreamFinished;
     } catch (error) {
       if (error instanceof ExecutionError) {
         executionError = error;
@@ -133,7 +156,11 @@ export class TerminalJob implements vscode.Disposable {
         );
       }
     } finally {
+      if (this.stopRequested) {
+        await this.outputStreamFinished?.catch(() => undefined);
+      }
       this.outputManager.finalize(executionError);
+      await this.finish(executionError);
       // Only tear down the execution-scoped listeners here. The job itself
       // stays registered until the terminal is closed (see closeListener),
       // so the UI can still highlight and reopen the terminal.
@@ -167,6 +194,8 @@ export class TerminalJob implements vscode.Disposable {
       // Set up abort listener
       const abortListener = () => {
         logger.info(`Command execution aborted: ${this.config.command}`);
+        this.stopRequested = true;
+        this.terminal.dispose();
         reject(abortError);
       };
 
@@ -193,8 +222,17 @@ export class TerminalJob implements vscode.Disposable {
   private async processOutputStream(
     outputStream: AsyncIterable<string>,
   ): Promise<void> {
+    const sanitizer = new PlainOutputSanitizer();
     for await (const chunk of outputStream) {
-      this.outputManager.addChunk(chunk);
+      const plainText = sanitizer.write(chunk);
+      if (plainText.length === 0) continue;
+      this.outputWriter.append(plainText);
+      this.outputManager.addChunk(plainText);
+    }
+    const remainder = sanitizer.end();
+    if (remainder.length > 0) {
+      this.outputWriter.append(remainder);
+      this.outputManager.addChunk(remainder);
     }
   }
 
@@ -202,6 +240,7 @@ export class TerminalJob implements vscode.Disposable {
    * Kills the terminal job.
    */
   kill(): void {
+    this.stopRequested = true;
     this.terminal.dispose();
   }
 
@@ -267,6 +306,7 @@ export class TerminalJob implements vscode.Disposable {
         vscode.window.onDidEndTerminalShellExecution((event) => {
           if (event.execution === this.execution) {
             logger.debug("Terminal shell execution ended", event.exitCode);
+            this.exitCode = event.exitCode;
             if (event.exitCode === undefined) {
               reject(
                 ExecutionError.create(
@@ -307,5 +347,36 @@ export class TerminalJob implements vscode.Disposable {
       : Array.from(TerminalJob.jobs.values()).find(
           (job) => job.terminal === id,
         );
+  }
+
+  private async finish(error?: ExecutionError): Promise<void> {
+    if (this.finished) return;
+    this.finished = true;
+
+    let finalError = error;
+    try {
+      await this.outputWriter.close();
+    } catch (closeError) {
+      finalError = ExecutionError.create(
+        closeError instanceof Error ? closeError.message : String(closeError),
+      );
+    }
+
+    const status =
+      this.stopRequested || finalError?.aborted
+        ? "stopped"
+        : this.exitCode === 0 && !finalError
+          ? "completed"
+          : "failed";
+    TerminalJob.onDidFinishEmitter.fire({
+      taskId: this.config.taskId,
+      backgroundJobId: this.id,
+      outputFile: this.outputFile,
+      status,
+      command: this.config.command,
+      ...(this.exitCode !== undefined ? { exitCode: this.exitCode } : {}),
+      ...(finalError ? { error: finalError.message } : {}),
+      finishedAt: Date.now(),
+    });
   }
 }
