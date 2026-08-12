@@ -148,7 +148,7 @@ describe("readFileTool", () => {
   it("recognizes user terminal transcript paths", () => {
     const { container, getByTestId } = renderReadFileTool(
       {
-        path: "/Users/alice/.pochi/runtime/terminals/term-test.log",
+        path: "/Users/alice/.pochi/terminals/term-test.log",
       },
       {
         content: "terminal output",

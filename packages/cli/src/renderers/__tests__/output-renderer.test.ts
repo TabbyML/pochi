@@ -167,7 +167,7 @@ describe("renderToolPart", () => {
       toolCallId: "call-1",
       state: "input-available",
       input: {
-        path: "/Users/alice/.pochi/runtime/terminals/term-abc-123.log",
+        path: "/Users/alice/.pochi/terminals/term-abc-123.log",
       },
     } as ToolUIPart<UITools>);
 

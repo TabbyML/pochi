@@ -49,12 +49,7 @@ export function getBackgroundJobOutputPath(
 }
 
 export function getTerminalOutputPath(terminalId: string): string {
-  return path.join(
-    getPochiDataDir(),
-    "runtime",
-    "terminals",
-    `${terminalId}.log`,
-  );
+  return path.join(getPochiDataDir(), "terminals", `${terminalId}.log`);
 }
 
 export class BackgroundJobOutputFile {

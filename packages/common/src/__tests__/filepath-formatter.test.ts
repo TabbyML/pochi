@@ -189,7 +189,7 @@ describe("parseBackgroundJobOutputFilePath", () => {
   it("recognizes user terminal output paths", () => {
     expect(
       parseBackgroundJobOutputFilePath(
-        "/Users/alice/.pochi/runtime/terminals/term-abc-123.log",
+        "/Users/alice/.pochi/terminals/term-abc-123.log",
       ),
     ).toEqual({ backgroundJobId: "term-abc-123", kind: "terminal" });
   });
