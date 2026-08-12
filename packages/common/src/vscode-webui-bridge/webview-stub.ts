@@ -5,6 +5,7 @@ import type {
   ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
+  BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
@@ -136,7 +137,7 @@ const VSCodeHostStub = {
   readBackgroundJobNotifications: (_taskId: string) =>
     Promise.resolve({
       notifications: {} as ThreadSignalSerialization<
-        import("../base").BackgroundJobNotification[]
+        BackgroundJobNotification[]
       >,
       acknowledge: async (_notificationId: string) => {},
     }),

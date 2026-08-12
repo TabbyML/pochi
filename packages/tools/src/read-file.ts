@@ -37,32 +37,24 @@ ${contentType && contentType.length > 0 ? `Also supports reading media files (e.
         ),
       startLine: z
         .number()
-        .int()
-        .positive()
         .optional()
         .describe(
           "Legacy 1-based starting line. Prefer offset/limit for new calls. Ignored when offset or limit is provided.",
         ),
       endLine: z
         .number()
-        .int()
-        .positive()
         .optional()
         .describe(
           "Legacy 1-based inclusive ending line. Prefer offset/limit for new calls. Ignored when offset or limit is provided.",
         ),
       offset: z
         .number()
-        .int()
-        .positive()
         .optional()
         .describe(
           "The 1-based line number to start reading from. Prefer this with limit for large or growing files.",
         ),
       limit: z
         .number()
-        .int()
-        .positive()
         .optional()
         .describe(
           "The maximum number of lines to return. Prefer this with offset for large or growing files.",

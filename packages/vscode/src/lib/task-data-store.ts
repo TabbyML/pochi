@@ -41,8 +41,11 @@ export class TaskDataStore {
 
   state = signal<Record<string, TaskStateData>>({});
 
-  /** Serializes saveTaskState writes to avoid last-write-wins races. */
+  /** Serializes task state writes. */
   private writeGroup = runExclusive.createGroupRef();
+
+  /** Serializes notification read-modify-write operations. */
+  private notificationGroup = runExclusive.createGroupRef();
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -86,25 +89,13 @@ export class TaskDataStore {
     return this.state.value[taskId];
   }
 
-  /**
-   * Merges `patch` into the task's state inside `writeGroup`. Pass only
-   * the fields to change; do not spread the previous state in.
-   */
   private saveTaskState = runExclusive.build(
     this.writeGroup,
     async (
       taskId: string,
-      patchOrUpdate:
-        | Partial<Omit<TaskStateData, "updatedAt">>
-        | ((
-            current: TaskStateData,
-          ) => Partial<Omit<TaskStateData, "updatedAt">>),
+      patch: Partial<Omit<TaskStateData, "updatedAt">>,
     ): Promise<void> => {
       const current = this.state.value[taskId] ?? ({} as TaskStateData);
-      const patch =
-        typeof patchOrUpdate === "function"
-          ? patchOrUpdate(current)
-          : patchOrUpdate;
       const merged: TaskStateData = {
         ...current,
         ...patch,
@@ -120,35 +111,39 @@ export class TaskDataStore {
     return this.getTaskState(taskId)?.mcpConfigOverride;
   }
 
-  async addBackgroundJobNotification(
-    taskId: string,
-    notification: BackgroundJobNotification,
-  ): Promise<void> {
-    await this.saveTaskState(taskId, (current) => {
-      const notifications = current.backgroundJobNotifications ?? [];
+  addBackgroundJobNotification = runExclusive.build(
+    this.notificationGroup,
+    async (
+      taskId: string,
+      notification: BackgroundJobNotification,
+    ): Promise<void> => {
+      const notifications =
+        this.state.value[taskId]?.backgroundJobNotifications ?? [];
       if (
         notifications.some(
           (item) => item.notificationId === notification.notificationId,
         )
       ) {
-        return {};
+        return;
       }
-      return {
+      await this.saveTaskState(taskId, {
         backgroundJobNotifications: [...notifications, notification],
-      };
-    });
-  }
+      });
+    },
+  );
 
-  async acknowledgeBackgroundJobNotification(
-    taskId: string,
-    notificationId: string,
-  ): Promise<void> {
-    await this.saveTaskState(taskId, (current) => ({
-      backgroundJobNotifications: (
-        current.backgroundJobNotifications ?? []
-      ).filter((item) => item.notificationId !== notificationId),
-    }));
-  }
+  acknowledgeBackgroundJobNotification = runExclusive.build(
+    this.notificationGroup,
+    async (taskId: string, notificationId: string): Promise<void> => {
+      const notifications =
+        this.state.value[taskId]?.backgroundJobNotifications ?? [];
+      await this.saveTaskState(taskId, {
+        backgroundJobNotifications: notifications.filter(
+          (item) => item.notificationId !== notificationId,
+        ),
+      });
+    },
+  );
 
   getBackgroundJobNotificationsSignal(taskId: string) {
     return computed(
