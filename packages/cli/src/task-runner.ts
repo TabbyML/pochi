@@ -412,10 +412,6 @@ export class TaskRunner {
     } finally {
       this.backgroundJobManager.killAll();
       await this.backgroundJobManager.waitForAllJobs(5000);
-      const notificationMessage = this.takePendingBackgroundJobNotifications();
-      if (notificationMessage) {
-        this.chat.appendOrReplaceMessage(notificationMessage);
-      }
       if (this.customAgent?.name === "browser") {
         this.toolCallOptions.browserSessionStore?.unregisterBrowserSession(
           this.taskId,

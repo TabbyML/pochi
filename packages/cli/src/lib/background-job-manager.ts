@@ -79,20 +79,9 @@ export class BackgroundJobManager {
 
     this.jobs.set(id, job);
 
-    const appendOutput = (chunk: string) => {
+    const appendOutput = async (chunk: string) => {
       if (chunk.length === 0) return;
-      try {
-        outputWriter.append(chunk);
-      } catch (error) {
-        child.kill();
-        void this.finalize(
-          job,
-          "failed",
-          undefined,
-          error instanceof Error ? error.message : String(error),
-        );
-        return;
-      }
+      await outputWriter.append(chunk);
       if (job.output.length + chunk.length > this.maxOutputSize) {
         const keep = this.maxOutputSize - chunk.length;
         if (keep > 0) {
@@ -105,31 +94,48 @@ export class BackgroundJobManager {
       }
     };
 
-    for (const stream of [child.stdout, child.stderr]) {
-      if (!stream) continue;
-      const sanitizer = new PlainOutputSanitizer();
-      // setEncoding uses Node's streaming decoder, so a multi-byte UTF-8
-      // character split between Buffer chunks is not replaced with U+FFFD.
-      stream.setEncoding("utf8");
-      stream.on("data", (chunk: string) => {
-        appendOutput(sanitizer.write(chunk));
-      });
-      stream.on("end", () => {
-        appendOutput(sanitizer.end());
-      });
-    }
+    let outputError: unknown;
+    const outputFinished = Promise.all(
+      [child.stdout, child.stderr]
+        .filter((stream) => stream !== null)
+        .map(async (stream) => {
+          const sanitizer = new PlainOutputSanitizer();
+          // setEncoding uses Node's streaming decoder, so a multi-byte UTF-8
+          // character split between Buffer chunks is not replaced with U+FFFD.
+          stream.setEncoding("utf8");
+          for await (const chunk of stream) {
+            await appendOutput(sanitizer.write(chunk));
+          }
+          await appendOutput(sanitizer.end());
+        }),
+    ).catch((error) => {
+      outputError = error;
+      child.kill();
+    });
 
-    child.on("close", (code) => {
+    child.on("close", async (code) => {
       const status = job.stopRequested
         ? "stopped"
         : code === 0
           ? "completed"
           : "failed";
-      void this.finalize(job, status, code ?? undefined);
+      try {
+        await outputFinished;
+        if (outputError) throw outputError;
+        await this.finalize(job, status, code ?? undefined);
+      } catch (error) {
+        await this.finalize(
+          job,
+          "failed",
+          code ?? undefined,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     });
 
-    child.on("error", (error) => {
-      void this.finalize(job, "failed", undefined, error.message);
+    child.on("error", async (error) => {
+      await outputFinished.catch(() => undefined);
+      await this.finalize(job, "failed", undefined, error.message);
     });
 
     return { backgroundJobId: id, outputFile };

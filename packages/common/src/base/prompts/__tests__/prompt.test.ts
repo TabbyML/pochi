@@ -148,6 +148,7 @@ test("environment", () => {
             {
               name: "Terminal 2",
               isActive: false,
+              backgroundJobId: "term-user-terminal-1",
             },
             {
               name: "Terminal 3",

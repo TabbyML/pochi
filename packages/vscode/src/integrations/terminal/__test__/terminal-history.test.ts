@@ -9,6 +9,17 @@ function createTestId(name: string): string {
 }
 
 describe("TerminalHistoryManager", () => {
+  it("becomes readable after the first command header is written", async () => {
+    const id = createTestId("term-history-availability");
+    const history = TerminalHistoryManager.getOrCreate(id);
+
+    assert.strictEqual(history.hasCapturedCommand, false);
+    await history.beginCommand("ls", "/workspace");
+    assert.strictEqual(history.hasCapturedCommand, true);
+
+    TerminalHistoryManager.delete(id);
+  });
+
   it("accumulates cwd + command + output across multiple commands", () => {
     const id = createTestId("term-history-test");
     const history = TerminalHistoryManager.getOrCreate(id);

@@ -27,6 +27,24 @@ function makeTool(overrides: Record<string, unknown>) {
 }
 
 describe("ReadBackgroundJobOutputTool", () => {
+  it("does not repeat a user terminal name in the outer title", () => {
+    const { container } = render(
+      <ReadBackgroundJobOutputTool
+        tool={makeTool({
+          input: { backgroundJobId: "term-1" },
+          state: "output-available",
+          output: { output: "", terminalName: "zsh" },
+        })}
+        isExecuting={false}
+        isLoading={false}
+        messages={[]}
+      />,
+    );
+
+    expect(container.textContent).toContain("toolInvocation.readTerminal");
+    expect(container.textContent).not.toContain("zsh");
+  });
+
   it("shows the detail panel when the read succeeds", () => {
     render(
       <ReadBackgroundJobOutputTool

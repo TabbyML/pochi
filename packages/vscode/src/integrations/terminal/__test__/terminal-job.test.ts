@@ -43,7 +43,7 @@ async function flushPromises(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
-function createHarness() {
+function createHarness(options?: { read?: () => AsyncIterable<string> }) {
   const closeEmitter = new TestEventEmitter<FakeTerminal>();
   const shellIntegrationEmitter = new TestEventEmitter<{
     terminal: FakeTerminal;
@@ -54,7 +54,7 @@ function createHarness() {
     exitCode: number | undefined;
   }>();
   const execution: FakeExecution = {
-    async *read() {},
+    read: options?.read ?? (async function* () {}),
   };
   const shellIntegration: FakeShellIntegration = {
     executeCommand: () => execution,
@@ -103,7 +103,9 @@ function createHarness() {
       },
       "@getpochi/common/tool-utils": {
         BackgroundJobOutputFile: class {
-          append() {}
+          async append(chunk: string) {
+            lifecycle.push(`output:${chunk}`);
+          }
           async close() {
             lifecycle.push("file-closed");
           }
@@ -222,5 +224,40 @@ describe("TerminalJob", () => {
       finalizeCalls[0]?.message ?? "",
       /user closed terminal/,
     );
+  });
+
+  it("waits for trailing output before notifying about a failed job", async () => {
+    let releaseOutput: (() => void) | undefined;
+    const outputReady = new Promise<void>((resolve) => {
+      releaseOutput = resolve;
+    });
+    const harness = createHarness({
+      read: async function* () {
+        await outputReady;
+        yield "failure details";
+      },
+    });
+
+    await flushPromises();
+    harness.executionEndEmitter.fire({
+      execution: harness.execution,
+      exitCode: 1,
+    });
+    await flushPromises();
+
+    assert.strictEqual(harness.finishEvents.length, 0);
+    assert.deepStrictEqual(harness.lifecycle, []);
+
+    releaseOutput?.();
+    await flushPromises();
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:failure details",
+      "file-closed",
+      "event-fired",
+    ]);
+    assert.strictEqual(harness.finishEvents[0]?.status, "failed");
+    assert.strictEqual(harness.finishEvents[0]?.exitCode, 1);
   });
 });

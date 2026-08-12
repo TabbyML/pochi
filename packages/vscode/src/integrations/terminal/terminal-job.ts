@@ -156,8 +156,14 @@ export class TerminalJob implements vscode.Disposable {
         );
       }
     } finally {
-      if (this.stopRequested) {
-        await this.outputStreamFinished?.catch(() => undefined);
+      try {
+        await this.outputStreamFinished;
+      } catch (outputError) {
+        executionError = ExecutionError.create(
+          outputError instanceof Error
+            ? outputError.message
+            : String(outputError),
+        );
       }
       this.outputManager.finalize(executionError);
       await this.finish(executionError);
@@ -226,12 +232,12 @@ export class TerminalJob implements vscode.Disposable {
     for await (const chunk of outputStream) {
       const plainText = sanitizer.write(chunk);
       if (plainText.length === 0) continue;
-      this.outputWriter.append(plainText);
+      await this.outputWriter.append(plainText);
       this.outputManager.addChunk(plainText);
     }
     const remainder = sanitizer.end();
     if (remainder.length > 0) {
-      this.outputWriter.append(remainder);
+      await this.outputWriter.append(remainder);
       this.outputManager.addChunk(remainder);
     }
   }

@@ -32,6 +32,18 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
       tool.state === "output-available" && tool.output.type !== "media"
         ? tool.output.content
         : undefined;
+    const terminalName =
+      backgroundJobOutput.kind === "terminal" &&
+      tool.state === "output-available" &&
+      tool.output.type !== "media"
+        ? tool.output.terminalName
+        : undefined;
+    const lastCommand =
+      backgroundJobOutput.kind === "terminal" &&
+      tool.state === "output-available" &&
+      tool.output.type !== "media"
+        ? tool.output.lastCommand
+        : undefined;
     const title = (
       <>
         <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -48,7 +60,12 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
         title={title}
         detail={
           finalJobId ? (
-            <BackgroundJobPanel backgroundJobId={finalJobId} output={output} />
+            <BackgroundJobPanel
+              backgroundJobId={finalJobId}
+              output={output}
+              terminalName={terminalName}
+              lastCommand={lastCommand}
+            />
           ) : null
         }
       />

@@ -76,7 +76,12 @@ interface ReadFileInput {
 
 const renderReadFileTool = (
   input: ReadFileInput,
-  result?: { content: string; isTruncated: boolean },
+  result?: {
+    content: string;
+    isTruncated: boolean;
+    terminalName?: string;
+    lastCommand?: string;
+  },
 ) =>
   render(
     <ReadFileTool
@@ -141,11 +146,22 @@ describe("readFileTool", () => {
   });
 
   it("recognizes user terminal transcript paths", () => {
-    const { container, getByTestId } = renderReadFileTool({
-      path: "/Users/alice/.pochi/runtime/terminals/term-test.log",
-    });
+    const { container, getByTestId } = renderReadFileTool(
+      {
+        path: "/Users/alice/.pochi/runtime/terminals/term-test.log",
+      },
+      {
+        content: "terminal output",
+        isTruncated: false,
+        terminalName: "zsh",
+        lastCommand: "bun test",
+      },
+    );
 
     expect(container.textContent).toContain("Reading terminal output");
+    expect(container.textContent).not.toContain(
+      "Reading terminal output zsh · bun test",
+    );
     expect(
       getByTestId("background-job-panel").getAttribute("data-job-id"),
     ).toBe("term-test");

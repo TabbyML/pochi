@@ -1,8 +1,6 @@
-import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { getToolPartError } from "@/lib/tool-call-error";
 import { useTranslation } from "react-i18next";
 import { BackgroundJobPanel } from "./command-execution-panel";
-import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
@@ -15,10 +13,6 @@ export const ReadBackgroundJobOutputTool: React.FC<
   const isUserTerminal = backgroundJobId?.startsWith("term-");
   const terminalName = isUserTerminal ? tool.output?.terminalName : undefined;
   const lastCommand = isUserTerminal ? tool.output?.lastCommand : undefined;
-  const terminalDisplayName = formatTerminalDisplayName(
-    terminalName,
-    lastCommand,
-  );
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -27,12 +21,6 @@ export const ReadBackgroundJobOutputTool: React.FC<
           ? t("toolInvocation.readTerminal")
           : t("toolInvocation.readBackground")}
       </span>
-      {terminalDisplayName && (
-        <>
-          {" "}
-          <HighlightedText>{terminalDisplayName}</HighlightedText>
-        </>
-      )}
     </>
   );
 

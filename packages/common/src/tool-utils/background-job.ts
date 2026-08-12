@@ -61,6 +61,7 @@ export class BackgroundJobOutputFile {
   private error: Error | undefined;
   private closed = false;
   private readonly stream;
+  private writeTail: Promise<void> = Promise.resolve();
 
   constructor(readonly outputFile: string) {
     mkdirSync(path.dirname(outputFile), { recursive: true });
@@ -75,14 +76,35 @@ export class BackgroundJobOutputFile {
     });
   }
 
-  append(chunk: string | Buffer): void {
+  append(chunk: string | Buffer): Promise<void> {
     if (this.closed) {
-      throw new Error(
-        `Background job output file is closed: ${this.outputFile}`,
+      return Promise.reject(
+        new Error(`Background job output file is closed: ${this.outputFile}`),
       );
     }
-    if (this.error) throw this.error;
-    this.stream.write(chunk);
+
+    const write = this.writeTail.then(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          if (this.error) {
+            reject(this.error);
+            return;
+          }
+
+          // Waiting for the write callback both preserves ordering and keeps
+          // at most one chunk queued in the writable stream. This naturally
+          // applies backpressure to callers that await append().
+          this.stream.write(chunk, (error?: Error | null) => {
+            const streamError = error ?? this.error;
+            if (streamError) reject(streamError);
+            else resolve();
+          });
+        }),
+    );
+    // Keep the serialization chain usable after a failed write while still
+    // returning the original rejection to this caller.
+    this.writeTail = write.catch(() => undefined);
+    return write;
   }
 
   async close(): Promise<void> {
@@ -91,6 +113,8 @@ export class BackgroundJobOutputFile {
       return;
     }
     this.closed = true;
+
+    await this.writeTail;
 
     await new Promise<void>((resolve, reject) => {
       this.stream.end((error?: Error | null) => {

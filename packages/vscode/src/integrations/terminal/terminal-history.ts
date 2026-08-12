@@ -65,6 +65,9 @@ export class TerminalHistoryManager {
   /** The most recent command run in the terminal. */
   lastCommand?: string;
 
+  /** Whether the transcript contains at least one captured command header. */
+  hasCapturedCommand = false;
+
   private constructor(public readonly id: string) {
     this.outputFile = getTerminalOutputPath(id);
     this.outputWriter = new BackgroundJobOutputFile(this.outputFile);
@@ -94,19 +97,21 @@ export class TerminalHistoryManager {
    * line (cwd + command) to the history, ahead of the command's own output
    * (added separately via {@link addChunk}).
    */
-  beginCommand(command: string, cwd?: string): void {
+  beginCommand(command: string, cwd?: string): Promise<void> {
     this.lastCommand = command;
     const header = cwd ? `${cwd}$ ${command}\n` : `$ ${command}\n`;
-    this.addChunk(header);
+    return this.addChunk(header).then(() => {
+      this.hasCapturedCommand = true;
+    });
   }
 
   /**
    * Appends a chunk of output (or a command header) to the history.
    */
-  addChunk(chunk: string): void {
-    this.outputWriter.append(chunk);
+  addChunk(chunk: string): Promise<void> {
     this.chunks.push(chunk);
     this.updateOutput("running");
+    return this.outputWriter.append(chunk);
   }
 
   /**

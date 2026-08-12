@@ -201,6 +201,27 @@ describe("readFile Tool", () => {
     }
   });
 
+  it("should reject a terminal transcript that is no longer tracked", async () => {
+    await assert.rejects(
+      async () =>
+        readFileWithMock(
+          {
+            path: _path.join(
+              currentTestTempDirUri.fsPath,
+              "terminals",
+              "term-stale.log",
+            ),
+          },
+          {
+            toolCallId: "test-call-id-123",
+            messages: [],
+            cwd: testSuiteRootTempDir.fsPath,
+          },
+        ),
+      /No terminal output is available to read/,
+    );
+  });
+
   it("should throw an error when trying to read a binary file", async () => {
     // Create a simple binary file (a PNG header)
     const pngHeader = Buffer.from([
