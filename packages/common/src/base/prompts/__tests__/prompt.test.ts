@@ -23,6 +23,21 @@ test("snapshot", () => {
   ).toMatchSnapshot();
 });
 
+test("path guidance preserves paths supplied by tools or context", () => {
+  const prompt = createSystemPrompt("");
+  expect(prompt).toContain(
+    "Preserve paths supplied by tools or context when passing them to subsequent tools",
+  );
+  expect(prompt).toContain(
+    "do not rewrite them between absolute, relative, or URI forms",
+  );
+  expect(prompt).not.toContain("background job");
+  expect(prompt).not.toContain("outputFile");
+  expect(prompt).not.toContain(
+    "All file paths used by tools must be relative to current working directory",
+  );
+});
+
 test("active todo prompt describes attemptCompletion checkpoint", () => {
   const prompt = createSystemPrompt("", undefined, undefined, undefined, {
     todoModeEnabled: true,

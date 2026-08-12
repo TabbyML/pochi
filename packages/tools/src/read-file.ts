@@ -25,7 +25,7 @@ ${contentType && contentType.length > 0 ? `Also supports reading media files (e.
       path: z
         .string()
         .describe(
-          "The path of the file to read (relative to the current working directory, or an absolute path)",
+          "The path of the file to read. Use workspace-relative paths for workspace files. If another tool or notification returned this path, pass it exactly as returned, including absolute paths.",
         ),
       startLine: z
         .number()

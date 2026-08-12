@@ -6,9 +6,11 @@ import { BackgroundJobNotifications } from "../background-job-notifications";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number }) => {
-      if (key === "backgroundJobNotifications.title") return "Background jobs";
-      if (key === "backgroundJobNotifications.jobCount") {
-        return `${options?.count} jobs`;
+      if (key === "backgroundJobNotifications.title") {
+        return "Background job notifications";
+      }
+      if (key === "backgroundJobNotifications.notificationCount") {
+        return `${options?.count} notifications`;
       }
       return key;
     },
@@ -41,17 +43,20 @@ vi.mock("@/features/tools", () => ({
     command,
     status,
     outputFile,
+    appearance,
   }: {
     backgroundJobId: string;
     command?: string;
     status?: string;
     outputFile?: string;
+    appearance?: string;
   }) => (
     <div
       data-testid="background-job-panel"
       data-background-job-id={backgroundJobId}
       data-status={status}
       data-output-file={outputFile}
+      data-appearance={appearance}
     >
       {command}
     </div>
@@ -70,9 +75,14 @@ describe("BackgroundJobNotifications", () => {
     );
 
     expect(container.querySelectorAll("section")).toHaveLength(1);
-    expect(getByText("Background jobs")).toBeDefined();
-    expect(getByText("2 jobs")).toBeDefined();
+    expect(getByText("Background job notifications")).toBeDefined();
+    expect(getByText("2 notifications")).toBeDefined();
     expect(getAllByTestId("background-job-panel")).toHaveLength(2);
+    expect(
+      getAllByTestId("background-job-panel")[0]?.getAttribute(
+        "data-appearance",
+      ),
+    ).toBe("notification");
     expect(getByText("run bgjob-cmd-1")).toBeDefined();
     expect(getByText("run bgjob-cmd-2")).toBeDefined();
   });

@@ -577,9 +577,9 @@
     "diffTitle": "用户编辑"
   },
   "backgroundJobNotifications": {
-    "title": "后台任务",
-    "jobCount_one": "{{count}} 个任务",
-    "jobCount_other": "{{count}} 个任务",
+    "title": "后台任务通知",
+    "notificationCount_one": "{{count}} 条通知",
+    "notificationCount_other": "{{count}} 条通知",
     "completed": "已完成（退出码 {{exitCode}}）",
     "failed": "失败（退出码 {{exitCode}}）",
     "failedNoExit": "失败",

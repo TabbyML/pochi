@@ -13,6 +13,7 @@ import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import {
+  Check,
   CheckIcon,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
@@ -20,7 +21,9 @@ import {
   CircleStop,
   CopyIcon,
   FileText,
+  Pause,
   TerminalIcon,
+  X,
   XCircle,
 } from "lucide-react";
 import {
@@ -175,7 +178,7 @@ export const CommandPanelContainer: FC<{
   return (
     <div
       className={cn(
-        "group code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans",
+        "group code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans text-sm",
         className,
       )}
     >
@@ -228,6 +231,7 @@ export const CommandPanelContainer: FC<{
 export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
+  appearance?: "default" | "notification";
   /** Command fallback for persisted notification messages. */
   command?: string;
   status?: "completed" | "failed" | "stopped";
@@ -240,6 +244,7 @@ export const BackgroundJobPanel: FC<{
 }> = ({
   backgroundJobId,
   output,
+  appearance = "default",
   command,
   status,
   exitCode,
@@ -271,35 +276,59 @@ export const BackgroundJobPanel: FC<{
     ? (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
     : (resolvedCommand ?? backgroundJobId);
   const isActive = liveTerminal?.isActive ?? false;
+  const isNotification = appearance === "notification";
 
   const openTerminal = useCallback(() => {
     openBackgroundJobTerminal?.(backgroundJobId);
   }, [backgroundJobId, openBackgroundJobTerminal]);
+  const jobControl = isUserTerminal
+    ? liveTerminal && (
+        <OpenTerminalButton
+          name={liveTerminal.name}
+          isActive={!isNotification && isActive}
+          onClick={openTerminal}
+        />
+      )
+    : hasTrackedJob &&
+      info?.displayId && (
+        <BackgroundJobIdButton
+          displayId={info.displayId}
+          isActive={!isNotification && isActive}
+          onClick={openTerminal}
+        />
+      );
 
   return (
     <CommandPanelContainer
       icon={
-        isUserTerminal
-          ? liveTerminal && (
-              <OpenTerminalButton
-                name={liveTerminal.name}
-                isActive={isActive}
-                onClick={openTerminal}
+        ((isNotification && status) || jobControl) && (
+          <div className="flex shrink-0 items-center gap-2">
+            {isNotification && status && (
+              <BackgroundJobStatus
+                status={status}
+                exitCode={exitCode}
+                iconOnly
               />
-            )
-          : hasTrackedJob &&
-            info?.displayId && (
-              <BackgroundJobIdButton
-                displayId={info.displayId}
-                isActive={isActive}
-                onClick={openTerminal}
-              />
-            )
+            )}
+            {jobControl}
+          </div>
+        )
       }
       title={
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span>{title}</span>
-          {status && (
+        <div
+          className={cn("flex items-center", {
+            "flex-nowrap gap-1.5": isNotification,
+            "flex-wrap gap-x-2 gap-y-1": !isNotification,
+          })}
+        >
+          <span
+            className={cn({
+              "min-w-0 truncate whitespace-nowrap": isNotification,
+            })}
+          >
+            {title}
+          </span>
+          {status && !isNotification && (
             <BackgroundJobStatus status={status} exitCode={exitCode} />
           )}
         </div>
@@ -322,10 +351,16 @@ export const BackgroundJobPanel: FC<{
 const BackgroundJobStatus: FC<{
   status: "completed" | "failed" | "stopped";
   exitCode?: number;
-}> = ({ status, exitCode }) => {
+  iconOnly?: boolean;
+}> = ({ status, exitCode, iconOnly = false }) => {
   const { t } = useTranslation();
-  const Icon =
-    status === "completed"
+  const Icon = iconOnly
+    ? status === "completed"
+      ? Check
+      : status === "failed"
+        ? X
+        : Pause
+    : status === "completed"
       ? CircleCheck
       : status === "stopped"
         ? CircleStop
@@ -338,6 +373,21 @@ const BackgroundJobStatus: FC<{
           ? t("backgroundJobNotifications.failedNoExit")
           : t("backgroundJobNotifications.failed", { exitCode })
         : t("backgroundJobNotifications.stopped");
+
+  if (iconOnly) {
+    return (
+      <span className="inline-flex shrink-0 items-center">
+        <Icon
+          className={cn("size-4", {
+            "text-emerald-700 dark:text-emerald-300": status === "completed",
+            "text-error": status === "failed",
+            "text-zinc-500 dark:text-zinc-400": status === "stopped",
+          })}
+        />
+        <span className="sr-only">{label}</span>
+      </span>
+    );
+  }
 
   return (
     <span

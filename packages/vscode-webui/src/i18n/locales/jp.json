@@ -579,9 +579,9 @@
     "diffTitle": "ユーザー編集"
   },
   "backgroundJobNotifications": {
-    "title": "バックグラウンドジョブ",
-    "jobCount_one": "{{count}} ジョブ",
-    "jobCount_other": "{{count}} ジョブ",
+    "title": "バックグラウンドジョブ通知",
+    "notificationCount_one": "{{count}} 件の通知",
+    "notificationCount_other": "{{count}} 件の通知",
     "completed": "完了（終了コード {{exitCode}}）",
     "failed": "失敗（終了コード {{exitCode}}）",
     "failedNoExit": "失敗",

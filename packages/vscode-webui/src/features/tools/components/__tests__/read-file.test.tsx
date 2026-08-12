@@ -7,6 +7,8 @@ vi.mock("react-i18next", () => ({
     t: (key: string) =>
       ({
         "toolInvocation.reading": "Reading ",
+        "toolInvocation.readBackground": "Reading background job output",
+        "toolInvocation.readTerminal": "Reading terminal output",
       })[key] ?? key,
   }),
 }));
@@ -16,8 +18,31 @@ vi.mock("../status-icon", () => ({
 }));
 
 vi.mock("../tool-container", () => ({
-  ExpandableToolContainer: ({ title }: { title: React.ReactNode }) => (
-    <div>{title}</div>
+  ExpandableToolContainer: ({
+    title,
+    detail,
+  }: {
+    title: React.ReactNode;
+    detail?: React.ReactNode;
+  }) => (
+    <div>
+      {title}
+      {detail}
+    </div>
+  ),
+}));
+
+vi.mock("../command-execution-panel", () => ({
+  BackgroundJobPanel: ({
+    backgroundJobId,
+    output,
+  }: {
+    backgroundJobId: string;
+    output?: string;
+  }) => (
+    <div data-testid="background-job-panel" data-job-id={backgroundJobId}>
+      {output}
+    </div>
   ),
 }));
 
@@ -49,15 +74,28 @@ interface ReadFileInput {
   limit?: number;
 }
 
-const renderReadFileTool = (input: ReadFileInput) =>
+const renderReadFileTool = (
+  input: ReadFileInput,
+  result?: { content: string; isTruncated: boolean },
+) =>
   render(
     <ReadFileTool
-      tool={{
-        type: "tool-readFile",
-        toolCallId: "call-1",
-        state: "input-available",
-        input,
-      }}
+      tool={
+        result
+          ? {
+              type: "tool-readFile",
+              toolCallId: "call-1",
+              state: "output-available",
+              input,
+              output: result,
+            }
+          : {
+              type: "tool-readFile",
+              toolCallId: "call-1",
+              state: "input-available",
+              input,
+            }
+      }
       isExecuting={false}
       isLoading={false}
       messages={[]}
@@ -74,7 +112,7 @@ describe("readFileTool", () => {
 
   it("shows the offset/limit range when both range styles are present", () => {
     const { getByTestId } = renderReadFileTool({
-      path: "pochi://~/background-jobs/bgjob-cmd-test.log",
+      path: "logs/application.log",
       startLine: 20,
       endLine: 30,
       offset: 2,
@@ -83,5 +121,41 @@ describe("readFileTool", () => {
 
     expect(getByTestId("file-badge").getAttribute("data-start-line")).toBe("2");
     expect(getByTestId("file-badge").getAttribute("data-end-line")).toBe("4");
+  });
+
+  it("renders a background job output read like the former dedicated tool", () => {
+    const { getByTestId, queryByTestId } = renderReadFileTool(
+      {
+        path: "pochi://~/background-jobs/bgjob-cmd-test.log",
+        offset: 1,
+        limit: 50,
+      },
+      { content: "job output", isTruncated: false },
+    );
+
+    expect(queryByTestId("file-badge")).toBeNull();
+    expect(
+      getByTestId("background-job-panel").getAttribute("data-job-id"),
+    ).toBe("bgjob-cmd-test");
+    expect(getByTestId("background-job-panel").textContent).toBe("job output");
+  });
+
+  it("recognizes user terminal transcript paths", () => {
+    const { container, getByTestId } = renderReadFileTool({
+      path: "/Users/alice/.pochi/runtime/terminals/term-test.log",
+    });
+
+    expect(container.textContent).toContain("Reading terminal output");
+    expect(
+      getByTestId("background-job-panel").getAttribute("data-job-id"),
+    ).toBe("term-test");
+  });
+
+  it("keeps arbitrary log files on the normal readFile display", () => {
+    const path = "logs/bgjob-cmd-test.log";
+    const { container, queryByTestId } = renderReadFileTool({ path });
+
+    expect(container.textContent).toBe(`Reading ${path}`);
+    expect(queryByTestId("background-job-panel")).toBeNull();
   });
 });

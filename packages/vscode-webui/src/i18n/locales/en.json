@@ -580,9 +580,9 @@
     "diffTitle": "User Edits"
   },
   "backgroundJobNotifications": {
-    "title": "Background jobs",
-    "jobCount_one": "{{count}} job",
-    "jobCount_other": "{{count}} jobs",
+    "title": "Background job notifications",
+    "notificationCount_one": "{{count}} notification",
+    "notificationCount_other": "{{count}} notifications",
     "completed": "Completed (exit {{exitCode}})",
     "failed": "Failed (exit {{exitCode}})",
     "failedNoExit": "Failed",

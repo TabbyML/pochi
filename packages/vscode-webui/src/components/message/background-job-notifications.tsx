@@ -1,7 +1,7 @@
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { BackgroundJobPanel } from "@/features/tools";
 import type { BackgroundJobNotification } from "@getpochi/common";
-import { ListChecks } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface BackgroundJobNotificationsProps {
@@ -18,13 +18,13 @@ export function BackgroundJobNotifications({
     <CollapsibleSection
       title={
         <>
-          <ListChecks className="size-4 shrink-0" />
+          <Bell className="size-4 shrink-0" />
           {t("backgroundJobNotifications.title")}
         </>
       }
       actions={
         <span className="text-muted-foreground text-xs">
-          {t("backgroundJobNotifications.jobCount", {
+          {t("backgroundJobNotifications.notificationCount", {
             count: notifications.length,
           })}
         </span>
@@ -35,6 +35,7 @@ export function BackgroundJobNotifications({
         <BackgroundJobPanel
           key={notification.notificationId}
           backgroundJobId={notification.backgroundJobId}
+          appearance="notification"
           command={notification.command}
           status={notification.status}
           exitCode={notification.exitCode}

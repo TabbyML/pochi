@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatPochiFileDisplayPath } from "../pochi-file-system";
+import {
+  formatPochiFileDisplayPath,
+  parseBackgroundJobOutputFilePath,
+} from "../pochi-file-system";
 
 describe("formatPochiFileDisplayPath", () => {
   const homeDir = "/Users/jueliang";
@@ -159,5 +162,46 @@ describe("formatPochiFileDisplayPath", () => {
     expect(
       formatPochiFileDisplayPath("packages/vscode-webui/src/main.tsx"),
     ).toBe("packages/vscode-webui/src/main.tsx");
+  });
+});
+
+describe("parseBackgroundJobOutputFilePath", () => {
+  it("recognizes managed background job output paths", () => {
+    expect(
+      parseBackgroundJobOutputFilePath(
+        "pochi://~/background-jobs/bgjob-cmd-abc-123.log",
+      ),
+    ).toEqual({ backgroundJobId: "bgjob-cmd-abc-123", kind: "job" });
+
+    expect(
+      parseBackgroundJobOutputFilePath(
+        "C:\\Users\\alice\\.pochi\\tasks\\task-1\\background-jobs\\bgjob-monitor-watch.log",
+      ),
+    ).toEqual({ backgroundJobId: "bgjob-monitor-watch", kind: "job" });
+
+    expect(
+      parseBackgroundJobOutputFilePath(
+        "/tmp/pochi-background-jobs/bgjob-task-child.log",
+      ),
+    ).toEqual({ backgroundJobId: "bgjob-task-child", kind: "job" });
+  });
+
+  it("recognizes user terminal output paths", () => {
+    expect(
+      parseBackgroundJobOutputFilePath(
+        "/Users/alice/.pochi/runtime/terminals/term-abc-123.log",
+      ),
+    ).toEqual({ backgroundJobId: "term-abc-123", kind: "terminal" });
+  });
+
+  it("does not infer jobs from an arbitrary log filename", () => {
+    expect(
+      parseBackgroundJobOutputFilePath(
+        "logs/background-jobs/not-a-background-job.log",
+      ),
+    ).toBeUndefined();
+    expect(
+      parseBackgroundJobOutputFilePath("logs/bgjob-cmd-abc.log"),
+    ).toBeUndefined();
   });
 });

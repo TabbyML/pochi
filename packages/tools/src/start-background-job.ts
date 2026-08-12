@@ -16,7 +16,7 @@ Before starting the background job, please follow these steps:
 
 Usage notes:
 - The command argument is required.
-- Read the returned outputFile with readFile. Use offset and limit to inspect a growing file without rereading it all.
+- Read the returned outputFile with readFile. Pass outputFile exactly as returned; do not convert its absolute path to a workspace-relative path. Use offset and limit to inspect a growing file without rereading it all.
 - Use killBackgroundJob to terminate the job if needed.
 - When the process ends, a background-job notification reports completed, failed, or stopped status.
 
@@ -50,7 +50,7 @@ Command execution rules:
     outputFile: z
       .string()
       .describe(
-        "Absolute path to the file receiving the command's stdout and stderr. Use readFile with offset and limit to inspect it.",
+        "Absolute path to the file receiving the command's stdout and stderr. Pass this exact path unchanged to readFile; do not make it relative. Use offset and limit to inspect it.",
       ),
   }),
 };
