@@ -8,7 +8,12 @@ import type {
 import { findSuggestionMatch } from "@tiptap/suggestion";
 import tippy from "tippy.js";
 import type { MentionListActions } from "../shared";
-import { fileMentionPluginKey, fileMentionPreviewPluginKey } from "./extension";
+import { createMentionSuggestionAllow } from "../suggestion-activation";
+import {
+  PromptFormMentionExtension,
+  fileMentionPluginKey,
+  fileMentionPreviewPluginKey,
+} from "./extension";
 import { MentionList, type MentionListProps } from "./mention-list";
 
 const logger = getLogger("mention-config");
@@ -208,6 +213,7 @@ export function createFileMentionConfig<T extends { filepath: string }>({
       items,
       render,
       findSuggestionMatch: findSuggestionMatchFn,
+      allow: createMentionSuggestionAllow(PromptFormMentionExtension.name),
     },
   };
 }
