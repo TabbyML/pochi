@@ -22,7 +22,11 @@ export {
   GlobalRules,
   collectAllRuleFiles,
 } from "./custom-rules";
-export { MaxTerminalOutputSize, MaxTerminalHistoryLines } from "./limits";
+export {
+  MaxTerminalOutputSize,
+  MaxTerminalHistoryLines,
+  TerminalOutputRetentionMs,
+} from "./limits";
 export {
   getShellPath,
   fixExecuteCommandOutput,
@@ -55,6 +59,7 @@ export { getPochiDataDir, getTaskDataDir } from "./pochi-paths";
 export { PlainOutputSanitizer } from "./plain-output-sanitizer";
 export {
   BackgroundJobOutputFile,
+  cleanupStaleTerminalOutputFiles,
   createBackgroundJobId,
   getBackgroundJobOutputPath,
   getTerminalOutputPath,

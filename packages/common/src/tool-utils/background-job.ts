@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { createWriteStream, mkdirSync, openSync } from "node:fs";
+import { type Dirent, createWriteStream, mkdirSync, openSync } from "node:fs";
+import { readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
+import { TerminalOutputRetentionMs } from "./limits";
 import { getPochiDataDir, getTaskDataDir } from "./pochi-paths";
 
 export type BackgroundJobId =
@@ -50,6 +52,32 @@ export function getBackgroundJobOutputPath(
 
 export function getTerminalOutputPath(terminalId: string): string {
   return path.join(getPochiDataDir(), "terminals", `${terminalId}.log`);
+}
+
+export async function cleanupStaleTerminalOutputFiles(
+  terminalOutputDir = path.join(getPochiDataDir(), "terminals"),
+  now = Date.now(),
+): Promise<void> {
+  let entries: Dirent[];
+  try {
+    entries = await readdir(terminalOutputDir, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+
+  const cutoff = now - TerminalOutputRetentionMs;
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && /^term-[^/]+\.log$/.test(entry.name))
+      .map(async (entry) => {
+        const outputFile = path.join(terminalOutputDir, entry.name);
+        const fileStat = await stat(outputFile);
+        if (fileStat.mtimeMs <= cutoff) {
+          await rm(outputFile, { force: true });
+        }
+      }),
+  );
 }
 
 export class BackgroundJobOutputFile {

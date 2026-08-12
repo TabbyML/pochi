@@ -3,7 +3,10 @@ import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "@/lib/task-data-store";
 import { createBackgroundJobNotification } from "@getpochi/common";
-import { PlainOutputSanitizer } from "@getpochi/common/tool-utils";
+import {
+  PlainOutputSanitizer,
+  cleanupStaleTerminalOutputFiles,
+} from "@getpochi/common/tool-utils";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -56,6 +59,9 @@ export class TerminalState implements vscode.Disposable {
   visibleTerminals = signal<TerminalInfo[]>([]);
 
   constructor(private readonly taskDataStore: TaskDataStore) {
+    void cleanupStaleTerminalOutputFiles().catch((error) => {
+      logger.debug(`Failed to clean up stale terminal output files: ${error}`);
+    });
     this.visibleTerminals.value = this.listVisibleTerminals();
     this.setupEventListeners();
   }
