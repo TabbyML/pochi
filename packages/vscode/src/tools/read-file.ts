@@ -121,7 +121,9 @@ function addTerminalMetadata(
 
   return {
     ...result,
-    terminalName: history.terminalName,
-    lastCommand: history.lastCommand,
+    _meta: {
+      terminalName: history.terminalName,
+      lastCommand: history.lastCommand,
+    },
   };
 }

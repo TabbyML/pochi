@@ -36,13 +36,13 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
       backgroundJobOutput.kind === "terminal" &&
       tool.state === "output-available" &&
       tool.output.type !== "media"
-        ? tool.output.terminalName
+        ? tool.output._meta?.terminalName
         : undefined;
     const lastCommand =
       backgroundJobOutput.kind === "terminal" &&
       tool.state === "output-available" &&
       tool.output.type !== "media"
-        ? tool.output.lastCommand
+        ? tool.output._meta?.lastCommand
         : undefined;
     const title = (
       <>

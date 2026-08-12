@@ -9,14 +9,15 @@ const TextOutput = z.object({
     .describe(
       "Whether the textual content is truncated due to exceeding the maximum length",
     ),
-  terminalName: z
-    .string()
+  _meta: z
+    .object({
+      terminalName: z.string().optional(),
+      lastCommand: z.string().optional(),
+    })
     .optional()
-    .describe("The terminal display name when reading a terminal transcript."),
-  lastCommand: z
-    .string()
-    .optional()
-    .describe("The last command run when reading a user terminal transcript."),
+    .describe(
+      "Metadata removed before sending the result to the LLM (for example, UI-specific terminal data).",
+    ),
 });
 
 export const MediaOutput = z.object({

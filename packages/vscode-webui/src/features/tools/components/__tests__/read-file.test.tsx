@@ -36,11 +36,20 @@ vi.mock("../command-execution-panel", () => ({
   BackgroundJobPanel: ({
     backgroundJobId,
     output,
+    terminalName,
+    lastCommand,
   }: {
     backgroundJobId: string;
     output?: string;
+    terminalName?: string;
+    lastCommand?: string;
   }) => (
-    <div data-testid="background-job-panel" data-job-id={backgroundJobId}>
+    <div
+      data-testid="background-job-panel"
+      data-job-id={backgroundJobId}
+      data-terminal-name={terminalName}
+      data-last-command={lastCommand}
+    >
       {output}
     </div>
   ),
@@ -79,8 +88,10 @@ const renderReadFileTool = (
   result?: {
     content: string;
     isTruncated: boolean;
-    terminalName?: string;
-    lastCommand?: string;
+    _meta?: {
+      terminalName?: string;
+      lastCommand?: string;
+    };
   },
 ) =>
   render(
@@ -153,8 +164,10 @@ describe("readFileTool", () => {
       {
         content: "terminal output",
         isTruncated: false,
-        terminalName: "zsh",
-        lastCommand: "bun test",
+        _meta: {
+          terminalName: "zsh",
+          lastCommand: "bun test",
+        },
       },
     );
 
@@ -165,6 +178,12 @@ describe("readFileTool", () => {
     expect(
       getByTestId("background-job-panel").getAttribute("data-job-id"),
     ).toBe("term-test");
+    expect(
+      getByTestId("background-job-panel").getAttribute("data-terminal-name"),
+    ).toBe("zsh");
+    expect(
+      getByTestId("background-job-panel").getAttribute("data-last-command"),
+    ).toBe("bun test");
   });
 
   it("keeps arbitrary log files on the normal readFile display", () => {
