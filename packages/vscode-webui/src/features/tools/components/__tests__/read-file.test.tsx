@@ -103,7 +103,7 @@ const renderReadFileTool = (
               toolCallId: "call-1",
               state: "output-available",
               input,
-              output: result,
+              output: { ...result, filePath: input.path },
             }
           : {
               type: "tool-readFile",

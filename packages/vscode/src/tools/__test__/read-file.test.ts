@@ -91,6 +91,10 @@ describe("readFile Tool", () => {
       );
     }
     assert.strictEqual(result.isTruncated, false);
+    assert.strictEqual(result.filePath, fileUri.fsPath);
+    assert.strictEqual(result.numLines, 5);
+    assert.strictEqual(result.startLine, 1);
+    assert.strictEqual(result.totalLines, 5);
   });
 
   it("should read specific lines when startLine and endLine are provided", async () => {
@@ -112,6 +116,10 @@ describe("readFile Tool", () => {
       );
     }
     assert.strictEqual(result.isTruncated, false);
+    assert.strictEqual(result.filePath, fileUri.fsPath);
+    assert.strictEqual(result.numLines, 3);
+    assert.strictEqual(result.startLine, 2);
+    assert.strictEqual(result.totalLines, 5);
   });
 
   it("should prefer offset and limit when legacy range fields are repeated", async () => {
@@ -143,6 +151,10 @@ describe("readFile Tool", () => {
       );
     }
     assert.strictEqual(result.isTruncated, false);
+    assert.strictEqual(result.filePath, fileUri.fsPath);
+    assert.strictEqual(result.numLines, 3);
+    assert.strictEqual(result.startLine, 2);
+    assert.strictEqual(result.totalLines, 5);
   });
 
   it("should read from startLine to the end when only startLine is provided", async () => {

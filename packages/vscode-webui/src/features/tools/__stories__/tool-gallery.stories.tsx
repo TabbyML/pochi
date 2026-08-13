@@ -104,6 +104,7 @@ const readProps: ReadFileProp["tool"] = {
   output: {
     content: " **04/17/2024** CodeGemma and CodeQwen mode",
     isTruncated: true,
+    filePath: "/workspace/README.md",
   },
 };
 

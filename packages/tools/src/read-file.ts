@@ -9,6 +9,25 @@ const TextOutput = z.object({
     .describe(
       "Whether the textual content is truncated due to exceeding the maximum length",
     ),
+  filePath: z.string().describe("The resolved path of the file that was read."),
+  numLines: z
+    .number()
+    .optional()
+    .describe(
+      "The number of lines actually returned. Present for fresh text reads.",
+    ),
+  startLine: z
+    .number()
+    .optional()
+    .describe(
+      "The 1-based line where the returned content starts. Present for fresh text reads.",
+    ),
+  totalLines: z
+    .number()
+    .optional()
+    .describe(
+      "The total number of lines in the file at read time. Present for fresh text reads.",
+    ),
   _meta: z
     .object({
       terminalName: z.string().optional(),

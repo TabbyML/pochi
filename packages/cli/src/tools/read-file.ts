@@ -62,7 +62,7 @@ export const readFile =
         });
 
         return {
-          result,
+          result: { ...result, filePath: resolvedPath },
           fileCacheContent: result.content,
           fileCacheIsTruncated: result.isTruncated,
         };
@@ -70,7 +70,11 @@ export const readFile =
     });
 
     if (cacheResult.deduplicated) {
-      return { content: FileUnchangedStub, isTruncated: false };
+      return {
+        content: FileUnchangedStub,
+        isTruncated: false,
+        filePath: cacheResult.resolvedPath,
+      };
     }
 
     return cacheResult.result;

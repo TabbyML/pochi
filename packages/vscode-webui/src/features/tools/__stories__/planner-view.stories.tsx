@@ -132,7 +132,11 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
           toolCallId: "call_3",
           state: "output-available",
           input: { path: "README.md" },
-          output: { content: "# Project\n...", isTruncated: false },
+          output: {
+            content: "# Project\n...",
+            isTruncated: false,
+            filePath: "/workspace/README.md",
+          },
         },
       ],
     },
@@ -155,6 +159,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
             content:
               '{\n  "name": "project",\n  "version": "1.0.0",\n  "dependencies": {\n    "react": "^18.0.0"\n  }\n}',
             isTruncated: false,
+            filePath: "/workspace/package.json",
           },
         },
       ],
@@ -200,6 +205,7 @@ const defaultTaskSource: NewTaskToolViewProps["taskSource"] = {
             content:
               "import React from 'react';\n\nexport const Button = () => <button>Click me</button>;",
             isTruncated: false,
+            filePath: "/workspace/src/components/Button.tsx",
           },
         },
       ],

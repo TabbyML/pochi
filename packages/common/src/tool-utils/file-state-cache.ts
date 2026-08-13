@@ -347,7 +347,7 @@ export function isVirtualPath(path: string): boolean {
  * @param opts.doRead         - Callback that performs the actual file read. Receives the resolved
  *                              absolute path. Returns the result plus the content to store in cache.
  *                              If `skipCache` is true the result is not cached (e.g. actual binary).
- * @returns The read result — either a deduplicated sentinel or the result of `doRead`
+ * @returns The resolved path and read result — either a deduplicated sentinel or the result of `doRead`
  */
 export async function withReadFileCache<T>(opts: {
   cache: IFileStateCache | undefined;
@@ -357,7 +357,10 @@ export async function withReadFileCache<T>(opts: {
   endLine: number | undefined;
   getMtime: (path: string) => Promise<number | undefined>;
   doRead: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
-}): Promise<{ result: T; deduplicated: false } | { deduplicated: true }> {
+}): Promise<
+  | { result: T; deduplicated: false; resolvedPath: string }
+  | { deduplicated: true; resolvedPath: string }
+> {
   const {
     cache,
     path: inputPath,
@@ -398,7 +401,7 @@ export async function withReadFileCache<T>(opts: {
       );
       if (mtimeMs !== undefined && mtimeMs === existingState.timestamp) {
         logger.debug(`withReadFileCache: DEDUPLICATED for "${resolvedPath}"`);
-        return { deduplicated: true };
+        return { deduplicated: true, resolvedPath };
       }
     }
   }
@@ -427,5 +430,5 @@ export async function withReadFileCache<T>(opts: {
     }
   }
 
-  return { result, deduplicated: false };
+  return { result, deduplicated: false, resolvedPath };
 }

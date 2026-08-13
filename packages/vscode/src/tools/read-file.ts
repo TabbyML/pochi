@@ -78,7 +78,7 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
       });
 
       return {
-        result,
+        result: { ...result, filePath: resolvedPath },
         fileCacheContent: result.content,
         fileCacheIsTruncated: result.isTruncated,
       };
@@ -90,6 +90,7 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
     return addTerminalMetadata(path, {
       content: FileUnchangedStub,
       isTruncated: false,
+      filePath: cacheResult.resolvedPath,
     });
   }
 
