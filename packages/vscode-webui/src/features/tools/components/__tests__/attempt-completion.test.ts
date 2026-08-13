@@ -1,8 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
+  getAttemptCompletionResultCopyText,
   getAttemptCompletionResultDisplay,
   isAttemptTodoCompletionUnsuccessful,
 } from "../tool-result-display";
+
+describe("getAttemptCompletionResultCopyText", () => {
+  it("keeps string results unchanged", () => {
+    expect(getAttemptCompletionResultCopyText('{"success":true}')).toBe(
+      '{"success":true}',
+    );
+  });
+
+  it("formats object results as JSON", () => {
+    expect(
+      getAttemptCompletionResultCopyText({ success: true, summary: "Done." }),
+    ).toBe('{\n  "success": true,\n  "summary": "Done."\n}');
+  });
+});
 
 describe("getAttemptCompletionResultDisplay", () => {
   it("formats JSON object string results as json", () => {
