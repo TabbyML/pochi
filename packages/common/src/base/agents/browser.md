@@ -10,7 +10,6 @@ tools:
   - 'executeCommand(powershell -c "irm https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.ps1 | iex")'
   - "executeCommand(pgrep *)"
   - "executeCommand(powershell -NoProfile -Command Get-Process *)"
-  - executeCommand
   - killBackgroundJob
 ---
 
