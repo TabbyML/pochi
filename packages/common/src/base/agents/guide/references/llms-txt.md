@@ -322,7 +322,7 @@ The frontmatter provides metadata for the custom agent:
 
 Rule entries follow the format `tool` or `tool(specifier)`. The following tools support specifier-based restrictions:
 
-* `executeCommand`, `startBackgroundJob` — Command patterns, e.g. `executeCommand(npm run *)`, `startBackgroundJob(npm run dev)`
+* `executeCommand` — Command patterns, e.g. `executeCommand(npm run *)`
 * `readFile`, `writeToFile`, `applyDiff`, `editNotebook` — Path globs, e.g. `readFile(src/**)`
 * `webFetch` — Domain patterns, e.g. `webFetch(domain:*.example.com)`
 
@@ -339,18 +339,6 @@ Restrict which shell commands the agent can run via `executeCommand`. The specif
 | `executeCommand(npm *)`          | Allows command segments matching the pattern `npm *`          |
 | `executeCommand(npm run test)`   | Allows command segments matching exactly `npm run test`       |
 | `executeCommand(npm run test *)` | Allows command segments matching the pattern `npm run test *` |
-
-#### Background Job Restrictions
-
-Restrict which long-running commands the agent can launch via `startBackgroundJob`. The same command-pattern matching used for `executeCommand` applies here, but the two policies are independent — an `executeCommand(...)` rule does **not** authorize a `startBackgroundJob` call, and vice versa. Declare separate entries for each tool as needed.
-
-| Declaration                         | Behavior                                                        |
-| ----------------------------------- | --------------------------------------------------------------- |
-| `startBackgroundJob`                | No restrictions — allows any background command                 |
-| `startBackgroundJob(npm)`           | Allows background commands whose first token is `npm`           |
-| `startBackgroundJob(npm *)`         | Allows background commands matching the pattern `npm *`         |
-| `startBackgroundJob(npm run dev)`   | Allows starting only `npm run dev` as a background job          |
-| `startBackgroundJob(npm run dev *)` | Allows background commands matching the pattern `npm run dev *` |
 
 #### Path-based File Restrictions
 
@@ -392,7 +380,7 @@ description: Code reviewer with restricted filesystem and network access
 tools:
   - executeCommand(git diff)
   - executeCommand(grep *)
-  - startBackgroundJob(npm run dev)
+  - executeCommand(npm run dev)
   - readFile(src/**)
   - readFile(packages/**/*.md)
   - writeToFile(.pochi/**)
@@ -1298,10 +1286,14 @@ IMPORTANT: Only create the issue, do not attempt to fix it.
 
 Each skill must start with YAML frontmatter containing at least a `name` and `description`.
 
-| Field         | Description                                     |
-| ------------- | ----------------------------------------------- |
-| `name`        | Unique identifier (lowercase, hyphens allowed). |
-| `description` | Brief explanation of what the skill does.       |
+| Field                      | Description                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `name`                     | Unique identifier (lowercase, hyphens allowed).                                                                |
+| `description`              | Brief explanation of what the skill does.                                                                      |
+| `disable-model-invocation` | Set to `true` to exclude the Skill from model discovery and reject `useSkill` invocation. Defaults to `false`. |
+| `user-invocable`           | Set to `false` to hide and reject the `/name` command. Defaults to `true`.                                     |
+
+The two invocation controls are independent. Set `disable-model-invocation: true` for a manual-only Skill, `user-invocable: false` for a model-only Skill, or both to disable all invocation paths. Manual invocation expands the Skill instructions directly without exposing it through the `useSkill` tool.
 
 ## Discovery
 

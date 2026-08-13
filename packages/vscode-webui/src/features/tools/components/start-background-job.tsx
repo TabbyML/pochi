@@ -30,12 +30,11 @@ export const StartBackgroundJobTool: React.FC<
       {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = t("toolInvocation.backgroundExecute");
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">
-        {text}
+        {t("toolInvocation.backgroundExecute")}
         {cwdNode}
       </span>
     </>
@@ -46,7 +45,10 @@ export const StartBackgroundJobTool: React.FC<
       title={title}
       detail={
         backgroundJobId ? (
-          <BackgroundJobPanel backgroundJobId={backgroundJobId} />
+          <BackgroundJobPanel
+            backgroundJobId={backgroundJobId}
+            command={command}
+          />
         ) : command ? (
           <CommandPanelContainer
             icon={<TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />}

@@ -13,11 +13,9 @@ const ClientToolNames = [
   "killBackgroundJob",
   "listFiles",
   "newTask",
-  "readBackgroundJobOutput",
   "readFile",
   "searchFiles",
   "renderWidget",
-  "startBackgroundJob",
   "useSkill",
   "writeToFile",
 ].sort();
@@ -44,6 +42,13 @@ function toolNames(tools: Record<string, unknown>): string[] {
 describe("selectAgentTools", () => {
   it("does not include legacy todoWrite in the client tool registry", () => {
     expect(createClientTools()).not.toHaveProperty("todoWrite");
+  });
+
+  it("does not offer legacy background job tools", () => {
+    expect(createClientTools()).not.toHaveProperty("startBackgroundJob");
+    expect(createClientTools()).not.toHaveProperty(
+      "readBackgroundJobOutput",
+    );
   });
 
   it("returns all client tools and MCP tools when no agent filter is configured", () => {

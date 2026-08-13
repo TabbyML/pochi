@@ -1,8 +1,14 @@
 import { useToolCallLifeCycle } from "@/features/chat";
 import { getStaticToolName } from "ai";
+import { TerminalIcon } from "lucide-react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { CommandExecutionPanel } from "./command-execution-panel";
+import {
+  BackgroundJobPanel,
+  CommandExecutionPanel,
+  CommandPanelContainer,
+  CopyCommandButton,
+} from "./command-execution-panel";
 import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
@@ -21,14 +27,16 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     lifecycle.abort();
   }, [lifecycle.abort]);
 
-  const { cwd, command } = tool.input || {};
+  const { cwd, command, background } = tool.input || {};
   const cwdNode = cwd ? (
     <span>
       {" "}
       {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = t("toolInvocation.executeCommand");
+  const text = background
+    ? t("toolInvocation.backgroundExecute")
+    : t("toolInvocation.executeCommand");
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
@@ -43,6 +51,34 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
 
   if (streamingResult && streamingResult.toolName !== "executeCommand") {
     throw new Error("Unexpected streaming result for executeCommand tool");
+  }
+
+  if (background) {
+    const backgroundJobId =
+      tool.state === "output-available"
+        ? tool.output._meta?.backgroundJobId
+        : undefined;
+    const availableCommand =
+      tool.state === "input-available" || tool.state === "output-available"
+        ? tool.input.command
+        : undefined;
+
+    return (
+      <ExpandableToolContainer
+        title={title}
+        detail={
+          backgroundJobId ? (
+            <BackgroundJobPanel backgroundJobId={backgroundJobId} />
+          ) : availableCommand ? (
+            <CommandPanelContainer
+              icon={<TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />}
+              title={availableCommand}
+              actions={<CopyCommandButton command={availableCommand} />}
+            />
+          ) : null
+        }
+      />
+    );
   }
 
   let output = streamingResult?.output.content || "";

@@ -50,11 +50,9 @@ import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
-import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
-import { startBackgroundJob } from "@/tools/start-background-job";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
@@ -1634,8 +1632,6 @@ const ToolMap: Record<
 > = {
   readFile,
   executeCommand,
-  startBackgroundJob,
-  readBackgroundJobOutput,
   killBackgroundJob,
   searchFiles,
   listFiles: listFilesTool,

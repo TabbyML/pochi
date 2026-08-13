@@ -1,9 +1,8 @@
 import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { useToolCallLifeCycle } from "@/features/chat";
 import { cn } from "@/lib/utils";
-import type { Message, UITools } from "@getpochi/livekit";
-import type { ToolName } from "@getpochi/tools";
-import { type ToolUIPart, getStaticToolName } from "ai";
+import type { Message } from "@getpochi/livekit";
+import { getStaticToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
 import { AskFollowupQuestionTool } from "./ask-followup-question";
 import { AttemptCompletionTool } from "./attempt-completion";
@@ -21,12 +20,12 @@ import { readFileTool } from "./read-file";
 import { RenderWidgetTool } from "./render-widget";
 import { searchFilesTool } from "./search-files";
 import { StartBackgroundJobTool } from "./start-background-job";
-import type { ToolProps } from "./types";
+import type { ToolProps, UIToolName, UIToolPart } from "./types";
 import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
 
 type ToolInvocationPartBaseProps = {
-  tool: ToolUIPart<UITools>;
+  tool: UIToolPart;
   isLoading: boolean;
   messages: Message[];
   changes?: ToolCallCheckpoint;
@@ -35,7 +34,7 @@ type ToolInvocationPartBaseProps = {
 };
 
 type ToolRendererProps = ToolInvocationPartBaseProps & {
-  component?: React.FC<ToolProps<ToolName>>;
+  component?: React.FC<ToolProps<UIToolName>>;
   isExecuting: boolean;
 };
 

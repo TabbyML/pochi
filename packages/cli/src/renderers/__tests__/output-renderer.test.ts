@@ -161,6 +161,20 @@ describe("renderToolPart", () => {
     );
   });
 
+  it("renders background executeCommand calls distinctly", () => {
+    const text = renderText({
+      type: "tool-executeCommand",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        command: "npm run dev",
+        background: true,
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toContain("Running in background npm run dev");
+  });
+
   it("renders terminal output reads with the inferred terminal id", () => {
     const text = renderText({
       type: "tool-readFile",

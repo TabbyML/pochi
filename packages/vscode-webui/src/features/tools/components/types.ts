@@ -1,10 +1,14 @@
 import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import type { Message, UITools } from "@getpochi/livekit";
-import type { ToolName } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
 
-export interface ToolProps<T extends ToolName> {
-  tool: Extract<ToolUIPart<UITools>, { type: `tool-${T}` }>;
+export type UIToolName = keyof UITools;
+export type UIToolPart<T extends UIToolName = UIToolName> = ToolUIPart<
+  Pick<UITools, T>
+>;
+
+export interface ToolProps<T extends UIToolName> {
+  tool: UIToolPart<T>;
   isExecuting: boolean;
   isLoading: boolean;
   messages: Message[];

@@ -50,7 +50,9 @@ Before executing the command, please follow these steps:
 
 Usage notes:
 - The command argument is required.
-- You can specify an optional timeout in seconds (up to 300s). If not specified, commands will timeout after ${ExecuteCommandDefaultTimeoutSec}s.
+- Set background to true for commands that should continue running without blocking the task. The returned output describes the background job ID and output file; read that file with readFile and use killBackgroundJob with the ID if the process must be stopped.
+- Background commands do not use the foreground timeout. When they finish, a notification reports completed, failed, or stopped status.
+- For foreground commands, you can specify an optional timeout in seconds (up to 300s). If not specified, commands will timeout after ${ExecuteCommandDefaultTimeoutSec}s.
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands:
   - If the commands are independent and can run in parallel, make multiple executeCommand tool calls in a single message. For example, if you need to run "git status" and "git diff", send a single message with two executeCommand tool calls in parallel.
@@ -164,6 +166,12 @@ Important:
       .string()
       .optional()
       .describe("The working directory to execute the command in."),
+    background: z
+      .boolean()
+      .optional()
+      .describe(
+        "Run the command in the background and return immediately. The output describes the background job ID and output file.",
+      ),
     timeout: z
       .number()
       .min(1)
@@ -176,13 +184,33 @@ Important:
   outputSchema: z.object({
     output: z
       .string()
-      .optional()
-      .describe("The output of the command (including stdout and stderr)."),
+      .describe(
+        "The command result. For foreground execution, this contains stdout and stderr. For background execution, this describes the background job ID and output file.",
+      ),
     isTruncated: z
       .boolean()
       .optional()
       .describe("Whether the output was truncated"),
+    _meta: z
+      .object({
+        backgroundJobId: z.string(),
+      })
+      .optional()
+      .describe(
+        "Metadata removed before sending the result to the LLM and used to render a background command in the UI.",
+      ),
   }),
 };
+
+export function createBackgroundCommandResult(
+  backgroundJobId: string,
+  outputFile: string,
+) {
+  return {
+    output: `Background command started with ID "${backgroundJobId}". Output is being written to "${outputFile}"; use readFile to read it.`,
+    isTruncated: false,
+    _meta: { backgroundJobId },
+  };
+}
 
 export const executeCommand = defineClientTool(toolDef);

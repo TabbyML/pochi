@@ -68,7 +68,6 @@ export const ToolsByPermission = {
     "listFiles",
     "globFiles",
     "searchFiles",
-    "readBackgroundJobOutput",
     "useSkill",
     "renderWidget",
     // Pochi offered-tools
@@ -76,12 +75,7 @@ export const ToolsByPermission = {
     "webSearch",
   ] as string[],
   write: ["writeToFile", "applyDiff", "editNotebook"] as string[],
-  execute: [
-    "executeCommand",
-    "startBackgroundJob",
-    "killBackgroundJob",
-    "newTask",
-  ] as string[],
+  execute: ["executeCommand", "killBackgroundJob", "newTask"] as string[],
   default: ["renderWidget"] as string[],
 };
 

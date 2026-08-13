@@ -1,7 +1,10 @@
 export { McpTool } from "./mcp-tools";
 import { ToolsByPermission } from "./constants";
 export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
-export { ExecuteCommandDefaultTimeoutSec } from "./execute-command";
+export {
+  createBackgroundCommandResult,
+  ExecuteCommandDefaultTimeoutSec,
+} from "./execute-command";
 import {
   type Tool,
   type UIDataTypes,
@@ -47,9 +50,7 @@ export type {
 export { QuestionSchema } from "./ask-followup-question";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
-import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
-import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
 import { parseToolSpec } from "./utils/tool-spec";
 import { writeToFile } from "./write-to-file";
@@ -168,8 +169,6 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
 export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
     ...createCliTools(options),
-    startBackgroundJob,
-    readBackgroundJobOutput,
     killBackgroundJob,
     renderWidget,
   };

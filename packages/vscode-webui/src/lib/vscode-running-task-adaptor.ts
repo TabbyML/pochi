@@ -96,10 +96,10 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       args.toolName === "executeCommand" &&
       typeof result === "object" &&
       result !== null &&
-      "output" in result
+      "streamingOutput" in result
     ) {
       return waitForExecuteCommandOutput(
-        result.output as ThreadSignalSerialization<ExecuteCommandResult>,
+        result.streamingOutput as ThreadSignalSerialization<ExecuteCommandResult>,
         args.abortSignal,
       );
     }

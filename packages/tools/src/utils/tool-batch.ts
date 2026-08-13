@@ -68,7 +68,8 @@ export class BatchExecutionError extends Error {
  *
  * This is intentionally broader than `isReadonlyToolCall`:
  * - read-only tool calls are safe to batch;
- * - fire-and-forget tools like `startBackgroundJob` are also safe to batch;
+ * - fire-and-forget `executeCommand({ background: true })` calls are also safe
+ *   to batch;
  * - `newTask` is safe to batch because completion acknowledges task creation,
  *   while spawned work executes out-of-band.
  */
@@ -78,9 +79,14 @@ export function isSafeToBatchToolCall(
 ): boolean {
   if (toolName === "newTask") return true;
 
-  if (isReadonlyToolCall(toolName, input)) return true;
+  if (
+    toolName === "executeCommand" &&
+    (input as Record<string, unknown> | null)?.background === true
+  ) {
+    return true;
+  }
 
-  if (toolName === "startBackgroundJob") return true;
+  if (isReadonlyToolCall(toolName, input)) return true;
 
   return false;
 }

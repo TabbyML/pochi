@@ -98,7 +98,7 @@ export class TerminalState implements vscode.Disposable {
     );
 
     // Capture output from shell executions in regular terminals so the model
-    // can read them via `readBackgroundJobOutput`. Background job terminals
+    // can read them via `readFile`. Background job terminals
     // capture their own output and are skipped here.
     this.disposables.push(
       vscode.window.onDidStartTerminalShellExecution(

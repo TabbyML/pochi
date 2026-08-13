@@ -14,7 +14,9 @@ import {
   type ClientTools,
   ExecuteCommandDefaultTimeoutSec,
   type ToolFunctionType,
+  createBackgroundCommandResult,
 } from "@getpochi/tools";
+import type { ToolCallOptions } from "../types";
 
 export class ExecuteCommandError extends Error {
   public code: number;
@@ -40,9 +42,16 @@ export class ExecuteCommandError extends Error {
 }
 
 export const executeCommand =
-  (): ToolFunctionType<ClientTools["executeCommand"]> =>
+  (
+    context?: ToolCallOptions,
+  ): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
-    { command, cwd = ".", timeout = ExecuteCommandDefaultTimeoutSec },
+    {
+      command,
+      cwd = ".",
+      background = false,
+      timeout = ExecuteCommandDefaultTimeoutSec,
+    },
     { abortSignal, cwd: workspaceDir, envs },
   ) => {
     if (!command) {
@@ -54,6 +63,15 @@ export const executeCommand =
       resolvedCwd = path.normalize(cwd);
     } else {
       resolvedCwd = path.normalize(path.join(workspaceDir, cwd));
+    }
+
+    if (background) {
+      if (!context?.backgroundJobManager) {
+        throw new Error("Background job manager not available.");
+      }
+      const { backgroundJobId, outputFile } =
+        context.backgroundJobManager.start(command, resolvedCwd, envs);
+      return createBackgroundCommandResult(backgroundJobId, outputFile);
     }
 
     try {
