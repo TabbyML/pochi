@@ -59,6 +59,10 @@ import {
 } from "./slash-mention/mention-list";
 import { createSlashCandidates } from "./slash-mention/slash-candidates";
 import { SubmitHistoryExtension } from "./submit-history-extension";
+import {
+  TextUpdateTrackerExtension,
+  createMentionSuggestionAllow,
+} from "./suggestion-activation";
 import { createPlainTextSlice, shouldPasteAsPlainText } from "./utils";
 
 const newLineCharacter = "\n";
@@ -187,6 +191,8 @@ export function FormEditor({
   const editor = useEditor(
     {
       extensions: [
+        // Backs the `allow` callbacks of the mention suggestions below.
+        TextUpdateTrackerExtension,
         Document,
         Paragraph,
         Text,
@@ -309,6 +315,9 @@ export function FormEditor({
                 allowSpaces: isIssueMentionComposingRef.current,
               });
             },
+            allow: createMentionSuggestionAllow(
+              PromptFormIssueMentionExtension.name,
+            ),
           },
         }),
         // Use the already configured PromptFormWorkflowExtension
@@ -406,6 +415,7 @@ export function FormEditor({
                 allowSpaces: isCommandMentionComposingRef.current,
               });
             },
+            allow: createMentionSuggestionAllow(PromptFormSlashExtension.name),
           },
         }),
         History.configure({
