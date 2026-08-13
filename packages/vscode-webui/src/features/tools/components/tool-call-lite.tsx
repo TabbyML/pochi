@@ -1,15 +1,14 @@
 import { cn } from "@/lib/utils";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
-import type { UITools } from "@getpochi/livekit";
-import type { ToolName } from "@getpochi/tools";
-import { type ToolUIPart, getStaticToolName } from "ai";
+import { getStaticToolName } from "ai";
 import type { TFunction } from "i18next";
 import { Loader2, Pause } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { UIToolName, UIToolPart } from "./types";
 
 interface Props {
-  tools: Array<ToolUIPart<UITools>> | undefined;
+  tools: UIToolPart[] | undefined;
   requiresApproval?: boolean;
   showCommandDetails?: boolean;
   showStatusIcon?: boolean;
@@ -52,6 +51,10 @@ export function ToolCallLite({
           showCommandDetails={showCommandDetails}
         />
       );
+      break;
+    case "tool-startBackgroundJob":
+    case "tool-readBackgroundJobOutput":
+      detail = null;
       break;
     case "tool-killBackgroundJob":
       detail = <KillBackgroundJobTool />;
@@ -114,10 +117,7 @@ export function ToolCallLite({
   ) : null;
 }
 
-function getLabelFromTool(
-  type: ToolUIPart<UITools>["type"],
-  t: TFunction,
-): string {
+function getLabelFromTool(type: UIToolPart["type"], t: TFunction): string {
   switch (type) {
     case "tool-readFile":
       return t("toolInvocation.reading") as string;
@@ -134,13 +134,13 @@ function getLabelFromTool(
   }
 }
 
-interface LabelAndFilePathViewProps<T extends ToolName> {
-  tool: Extract<ToolUIPart<UITools>, { type: `tool-${T}` }>;
+interface LabelAndFilePathViewProps<T extends UIToolName> {
+  tool: UIToolPart<T>;
   label: string;
 }
 
-interface ToolCallLiteViewProps<T extends ToolName> {
-  tool: Extract<ToolUIPart<UITools>, { type: `tool-${T}` }>;
+interface ToolCallLiteViewProps<T extends UIToolName> {
+  tool: UIToolPart<T>;
   showCommandDetails?: boolean;
 }
 

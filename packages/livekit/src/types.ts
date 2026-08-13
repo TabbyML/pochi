@@ -39,7 +39,36 @@ export type DataParts = {
   "background-job-notification": BackgroundJobNotification;
 };
 
-export type UITools = InferUITools<ClientTools>;
+/**
+ * Tool shapes kept only for rendering messages created by older clients.
+ * They must not be added back to ClientTools, which is the model-facing tool set.
+ */
+type LegacyUITools = {
+  startBackgroundJob: {
+    input: {
+      command: string;
+      cwd?: string;
+    };
+    output: {
+      backgroundJobId: string;
+      outputFile: string;
+    };
+  };
+  readBackgroundJobOutput: {
+    input: {
+      backgroundJobId: string;
+    };
+    output: {
+      output: string;
+      status: "idle" | "running" | "completed" | "failed" | "stopped";
+      isTruncated?: boolean;
+      terminalName?: string;
+      lastCommand?: string;
+    };
+  };
+};
+
+export type UITools = InferUITools<ClientTools> & LegacyUITools;
 
 export type Message = UIMessage<MessageMetadata, DataParts, UITools>;
 
