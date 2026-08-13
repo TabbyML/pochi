@@ -1576,6 +1576,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           files,
           checkpoint,
           this.checkpointService,
+          this.cwd,
         );
       },
       acceptChangedFile: async (
