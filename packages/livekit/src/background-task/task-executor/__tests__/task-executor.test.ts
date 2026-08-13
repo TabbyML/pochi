@@ -222,7 +222,11 @@ describe("TaskExecutor", () => {
           toolCallId: "read",
           state: "output-available",
           input: { path: "a.ts" },
-          output: { content: "hello", isTruncated: false },
+          output: {
+            content: "hello",
+            isTruncated: false,
+            filePath: "/repo/a.ts",
+          },
         },
         { type: "step-start" },
         makeToolPart("executeCommand", "exec", null, "input-streaming"),
@@ -252,7 +256,11 @@ describe("TaskExecutor", () => {
           toolCallId: "read-kept",
           state: "output-available",
           input: { path: "a.ts" },
-          output: { content: "hello", isTruncated: false },
+          output: {
+            content: "hello",
+            isTruncated: false,
+            filePath: "/repo/a.ts",
+          },
         },
         { type: "step-start" },
         {
@@ -260,7 +268,11 @@ describe("TaskExecutor", () => {
           toolCallId: "read-stripped",
           state: "output-available",
           input: { path: "b.ts" },
-          output: { content: "world", isTruncated: false },
+          output: {
+            content: "world",
+            isTruncated: false,
+            filePath: "/repo/b.ts",
+          },
         },
         makeToolPart("executeCommand", "exec", null, "input-streaming"),
       ]),
