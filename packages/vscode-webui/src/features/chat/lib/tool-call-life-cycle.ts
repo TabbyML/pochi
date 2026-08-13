@@ -30,8 +30,7 @@ import Emittery from "emittery";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 
 type ExecuteCommandReturnType = {
-  output: ThreadSignalSerialization<ExecuteCommandResult>;
-  detach: () => void;
+  streamingOutput: ThreadSignalSerialization<ExecuteCommandResult>;
 };
 type NewTaskParameterType = InferToolInput<ClientTools["newTask"]>;
 type NewTaskReturnType = {
@@ -306,7 +305,7 @@ export class ManagedToolCallLifeCycle
       this.toolName === "executeCommand" &&
       typeof result === "object" &&
       result !== null &&
-      "output" in result
+      "streamingOutput" in result
     ) {
       this.onExecuteCommand(result as ExecuteCommandReturnType);
     } else if (this.toolName === "newTask") {
@@ -321,7 +320,7 @@ export class ManagedToolCallLifeCycle
   }
 
   private onExecuteCommand(result: ExecuteCommandReturnType) {
-    const signal = threadSignal(result.output);
+    const signal = threadSignal(result.streamingOutput);
     const { abort, abortSignal } = this.checkState("Streaming", "execute");
 
     this.transitTo("execute", {

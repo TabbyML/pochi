@@ -175,12 +175,12 @@ export function createSubtaskBatchedToolCall({
           toolCall.toolName === "executeCommand" &&
           typeof result === "object" &&
           result !== null &&
-          "output" in result
+          "streamingOutput" in result
         ) {
           const executeCommandError = await new Promise<string | undefined>(
             (streamResolve) => {
               const signal = threadSignal(
-                result.output as ThreadSignalSerialization<ExecuteCommandResult>,
+                result.streamingOutput as ThreadSignalSerialization<ExecuteCommandResult>,
               );
 
               const handleOutput = (output: ExecuteCommandResult): boolean => {

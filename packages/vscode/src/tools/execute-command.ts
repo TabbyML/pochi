@@ -1,5 +1,8 @@
 import * as path from "node:path";
+import { getViewColumnForTerminal } from "@/integrations/layout";
+import { TerminalJob } from "@/integrations/terminal/terminal-job";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
+import { getBackgroundJobTerminalName } from "@/lib/background-job-terminal-name";
 import { getLogger } from "@getpochi/common";
 import {
   getShellPath,
@@ -10,6 +13,7 @@ import {
   type ClientTools,
   ExecuteCommandDefaultTimeoutSec,
   type ToolFunctionType,
+  createBackgroundCommandResult,
 } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
 import {
@@ -35,7 +39,12 @@ type CompletedCommandOutput = {
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
-  { command, cwd = ".", timeout = ExecuteCommandDefaultTimeoutSec },
+  {
+    command,
+    cwd = ".",
+    background = false,
+    timeout = ExecuteCommandDefaultTimeoutSec,
+  },
   { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
 ) => {
   if (!command) {
@@ -46,6 +55,25 @@ export const executeCommand: ToolFunctionType<
     cwd = path.normalize(cwd);
   } else {
     cwd = path.normalize(path.join(workspaceDir, cwd));
+  }
+
+  if (background) {
+    if (!taskId) {
+      throw new Error("A task ID is required to start a background job.");
+    }
+
+    const viewColumn = getViewColumnForTerminal();
+    const location = viewColumn ? { viewColumn } : undefined;
+    const job = TerminalJob.create({
+      name: getBackgroundJobTerminalName(command),
+      command,
+      cwd,
+      location,
+      abortSignal,
+      taskId,
+    });
+
+    return createBackgroundCommandResult(job.id, job.outputFile);
   }
 
   const output = signal<ExecuteCommandResult>({
@@ -141,10 +169,9 @@ export const executeCommand: ToolFunctionType<
     },
   };
 
-  return {
-    // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
-    output: wrappedOutput as any,
-  };
+  // This is an internal streaming transport consumed by the WebUI bridge,
+  // which converts it to the public foreground command result.
+  return { streamingOutput: wrappedOutput } as never;
 };
 
 async function executeCommandImpl({

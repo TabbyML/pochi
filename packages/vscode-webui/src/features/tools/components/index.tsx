@@ -16,11 +16,9 @@ import { listFilesTool } from "./list-files";
 import { McpToolCall } from "./mcp-tool-call";
 import { multiApplyDiffTool } from "./multi-apply-diff";
 import { newTaskTool } from "./new-task";
-import { ReadBackgroundJobOutputTool } from "./read-background-job-output";
 import { readFileTool } from "./read-file";
 import { RenderWidgetTool } from "./render-widget";
 import { searchFilesTool } from "./search-files";
-import { StartBackgroundJobTool } from "./start-background-job";
 import type { ToolProps } from "./types";
 import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
@@ -115,8 +113,6 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   multiApplyDiff: multiApplyDiffTool,
   askFollowupQuestion: AskFollowupQuestionTool,
   executeCommand: executeCommandTool,
-  startBackgroundJob: StartBackgroundJobTool,
-  readBackgroundJobOutput: ReadBackgroundJobOutputTool,
   killBackgroundJob: KillBackgroundJobTool,
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,

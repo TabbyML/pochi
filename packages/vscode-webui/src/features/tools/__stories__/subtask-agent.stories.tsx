@@ -97,19 +97,6 @@ const overviewMessage: Message = {
         result: "1\n2\n3\n4\n5\n6\n7\n",
       },
     },
-    {
-      type: "tool-readBackgroundJobOutput",
-      toolCallId: "tool_read_bg_top_level",
-      state: "output-available",
-      input: {
-        backgroundJobId: "2043523e-d13d-4c74-ad66-40e991047153",
-      },
-      output: {
-        status: "completed",
-        output: "Server started on port 3000\nConnected to database\n",
-        isTruncated: false,
-      },
-    },
   ],
 };
 

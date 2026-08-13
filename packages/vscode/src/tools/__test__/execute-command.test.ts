@@ -30,6 +30,15 @@ describe("executeCommand Tool", () => {
       const { executeCommand } = proxyquire.noCallThru().load(
         "../execute-command",
         {
+          "@/integrations/layout": {
+            getViewColumnForTerminal: sinon.stub(),
+          },
+          "@/integrations/terminal/terminal-job": {
+            TerminalJob: { create: sinon.stub() },
+          },
+          "@/lib/background-job-terminal-name": {
+            getBackgroundJobTerminalName: sinon.stub(),
+          },
           "@getpochi/common": {
             getLogger: () => ({
               warn: sinon.stub(),
@@ -81,7 +90,7 @@ describe("executeCommand Tool", () => {
       const result = await resultPromise;
       const values: unknown[] = [];
       (
-        result.output as unknown as {
+        (result as unknown as { streamingOutput: unknown }).streamingOutput as {
           start: (subscriber: (value: SignalValue) => void) => () => void;
         }
       ).start((value) => {
@@ -140,6 +149,15 @@ describe("executeCommand Tool", () => {
     const { executeCommand } = proxyquire.noCallThru().load(
       "../execute-command",
       {
+        "@/integrations/layout": {
+          getViewColumnForTerminal: sinon.stub(),
+        },
+        "@/integrations/terminal/terminal-job": {
+          TerminalJob: { create: sinon.stub() },
+        },
+        "@/lib/background-job-terminal-name": {
+          getBackgroundJobTerminalName: sinon.stub(),
+        },
         "@getpochi/common": {
           getLogger: () => ({
             warn: sinon.stub(),
@@ -192,7 +210,7 @@ describe("executeCommand Tool", () => {
     );
 
     (
-      result.output as unknown as {
+      (result as unknown as { streamingOutput: unknown }).streamingOutput as {
         start: (subscriber: (value: SignalValue) => void) => () => void;
       }
     ).start(() => {});
@@ -201,5 +219,74 @@ describe("executeCommand Tool", () => {
 
     assert.ok(throttledCancel.calledOnce);
     assert.ok(throttledCall.calledOnce);
+  });
+
+  it("starts a TerminalJob and returns its output file in background mode", async () => {
+    const create = sinon.stub().returns({
+      id: "bgjob-cmd-test",
+      outputFile: "/tmp/bgjob-cmd-test.log",
+    });
+    const getViewColumnForTerminal = sinon.stub().returns(2);
+    const getBackgroundJobTerminalName = sinon.stub().returns("Background");
+    const { executeCommand } = proxyquire.noCallThru().load(
+      "../execute-command",
+      {
+        "@/integrations/layout": { getViewColumnForTerminal },
+        "@/integrations/terminal/terminal-job": {
+          TerminalJob: { create },
+        },
+        "@/lib/background-job-terminal-name": {
+          getBackgroundJobTerminalName,
+        },
+        "@getpochi/common": {
+          getLogger: () => ({ warn: sinon.stub() }),
+        },
+        "@getpochi/common/tool-utils": {
+          getShellPath: sinon.stub(),
+          maybePersistToolResult: sinon.stub(),
+        },
+        "@quilted/threads/signals": {
+          ThreadSignal: { serialize: sinon.stub() },
+        },
+        "../integrations/terminal/execute-command-with-node": {
+          executeCommandWithNode: sinon.stub(),
+        },
+        "../integrations/terminal/execute-command-with-pty": {
+          PtySpawnError: class PtySpawnError extends Error {},
+          executeCommandWithPty: sinon.stub(),
+        },
+      },
+    ) as typeof import("../execute-command");
+    const abortSignal = new AbortController().signal;
+
+    const result = await executeCommand(
+      { command: "npm run dev", cwd: "apps/web", background: true },
+      {
+        abortSignal,
+        cwd: "/workspace",
+        messages: [],
+        toolCallId: "call-bg",
+        taskId: "task-1",
+      },
+    );
+
+    assert.deepStrictEqual(result, {
+      output:
+        'Background command started with ID "bgjob-cmd-test". Output is being written to "/tmp/bgjob-cmd-test.log"; use readFile to read it.',
+      isTruncated: false,
+      _meta: {
+        backgroundJobId: "bgjob-cmd-test",
+      },
+    });
+    assert.ok(
+      create.calledOnceWithExactly({
+        name: "Background",
+        command: "npm run dev",
+        cwd: "/workspace/apps/web",
+        location: { viewColumn: 2 },
+        abortSignal,
+        taskId: "task-1",
+      }),
+    );
   });
 });

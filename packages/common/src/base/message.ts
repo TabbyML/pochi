@@ -146,7 +146,7 @@ export const TerminalTextSelection = z.object({
     .string()
     .optional()
     .describe(
-      "Stable id of the terminal (see TerminalState.getTerminalId / environment.workspace.terminals), usable with readBackgroundJobOutput.",
+      "Stable ID of the terminal. Find the terminal with this ID in environment.workspace.terminals, then use readFile on its outputFile to read the terminal output.",
     ),
   content: z.string().describe("The selected text content in the terminal."),
 });

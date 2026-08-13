@@ -22,18 +22,20 @@ describe("executeToolCall with background jobs", () => {
 
     // Mock the tool call
     const toolCall: any = {
-      type: "tool-startBackgroundJob",
+      type: "tool-executeCommand",
       toolCallId: "test-id",
-      toolName: "startBackgroundJob",
+      toolName: "executeCommand",
       input: {
         command: "echo hello",
         cwd: ".",
+        background: true,
       },
     };
 
 
     // We verified that executeToolCall calls the tool function with `options` first.
-    // The tool function (startBackgroundJob) now extracts backgroundJobManager from `options` (context).
+    // executeCommand extracts backgroundJobManager from its tool context when
+    // background execution is requested.
 
     const result = (await executeToolCall(
       toolCall,
@@ -57,13 +59,12 @@ describe("executeToolCall with background jobs", () => {
         expect(result.error).not.toContain("Background job manager not available.");
     }
 
-    // It should succeed and return backgroundJobId
-    expect(result).toHaveProperty("backgroundJobId");
+    // It should succeed and describe the background job in the public output.
+    expect(result.output).toContain(result._meta.backgroundJobId);
+    expect(result.output).toContain(".log");
 
     // Clean up
-    if ('backgroundJobId' in result) {
-        manager.kill(result.backgroundJobId as string);
-    }
+    manager.kill(result._meta.backgroundJobId);
   });
 
   it("returns a tool error when file path policy validation fails", async () => {

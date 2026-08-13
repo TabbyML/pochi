@@ -7,7 +7,7 @@ import { McpSection, PochiTools } from "./mcp-section";
 export const ToolsSection: React.FC = () => {
   const { t } = useTranslation();
   const toolsData = Object.entries(ToolDescriptions)
-    .filter((x) => x[0] !== "multiApplyDiff")
+    .filter(([name]) => name !== "multiApplyDiff")
     .map(([id, description]) => ({ id, description }));
 
   const renderToolsContent = () => {
@@ -26,7 +26,9 @@ export const ToolsSection: React.FC = () => {
     </Section>
   );
 };
-const ToolDescriptions: Record<Exclude<ToolName, "createReview">, string> = {
+type CurrentToolName = Exclude<ToolName, "createReview">;
+
+const ToolDescriptions: Record<CurrentToolName, string> = {
   applyDiff:
     "This tool is designed for precision edits to existing files. It allows Pochi to apply a specific change by identifying a unique block of code or text (searchContent) and replacing it with your desired content (replaceContent). To ensure accuracy, Pochi provides enough surrounding context in searchContent to make it unique within the file. This prevents accidental changes to other parts of the code.\n\nFor example, Pochi can use applyDiff to fix a bug in a function, update a configuration value, or refactor a small piece of code. It's particularly useful when Pochi knows exactly what needs to change and wants to avoid rewriting the entire file. If Pochi needs to make the same change in multiple places, Pochi can specify expectedReplacements to ensure all instances are updated correctly.",
   askFollowupQuestion:
@@ -34,7 +36,7 @@ const ToolDescriptions: Record<Exclude<ToolName, "createReview">, string> = {
   attemptCompletion:
     "This tool marks the formal end of a task. When Pochi has completed all the steps and believes it has fulfilled your request, Pochi will use attemptCompletion to present the final result. This includes a summary of what Pochi has done, and often, a command you can run to see the changes live (like opening a web page or running a test).\n\nUsing this tool signifies that Pochi is handing the work over to you. It's the final step in Pochi's process. If you're satisfied with the result, we're done! If not, you can provide feedback, and Pochi can continue working on it.",
   executeCommand:
-    "This tool gives Pochi the ability to run shell commands directly in your terminal. It's a powerful and versatile tool that Pochi can use for a wide range of tasks, such as installing dependencies (npm install), running tests (npm test), checking your git status (git status), or even running scripts.\n\nPochi will always explain the command it's about to run. This tool is essential for interacting with your development environment, managing your project, and automating repetitive tasks. For safety, Pochi operates within the project's working directory unless specified otherwise.",
+    "This tool gives Pochi the ability to run shell commands directly in your terminal, either in the foreground or as a background job. Foreground commands return their output when they finish. Background commands return an output file that Pochi can read while the process continues running.\n\nPochi will always explain the command it's about to run. For safety, Pochi operates within the project's working directory unless specified otherwise.",
   globFiles:
     "When Pochi needs to find a set of files based on a specific naming convention or location, Pochi uses the globFiles tool. It allows Pochi to use pattern matching (similar to what you might use in a .gitignore file) to get a list of relevant files. For example, Pochi can find all TypeScript files with *.ts, or all files in the src directory and its subdirectories with src/**/*.\n\nThis is incredibly useful for understanding the scope of a change. If you ask Pochi to refactor a component, Pochi can use globFiles to find all the files related to that component, ensuring Pochi doesn't miss anything.",
   listFiles:
@@ -47,10 +49,6 @@ const ToolDescriptions: Record<Exclude<ToolName, "createReview">, string> = {
     "When Pochi needs to find where a specific function is used, where a variable is defined, or where a particular error message is logged, Pochi uses the searchFiles tool. It allows Pochi to perform a regular expression search across all files in your project. This is much more powerful than a simple text search, as Pochi can look for complex patterns.\n\nFor example, if you ask Pochi to rename a function, Pochi will use searchFiles to find every instance of that function's name, so Pochi can be sure to update them all. The tool returns the file paths and the lines containing the match, giving Pochi the context it needs to proceed.",
   writeToFile:
     "The writeToFile tool is what Pochi uses when it needs to create a new file from scratch or completely replace the contents of an existing one. This is perfect for generating new components, adding new configuration files, or performing large-scale refactors where the majority of a file needs to be changed.\n\nUnlike applyDiff, which makes targeted changes, writeToFile replaces everything in the file with the new content Pochi provides. It's a powerful tool for making significant additions or modifications to your project. Pochi will always be careful to confirm that overwriting a file is the correct action.",
-  startBackgroundJob:
-    "The startBackgroundJob tool allows Pochi to initiate long-running processes that don't need to block the main task flow. This is ideal for starting development servers, file watchers, continuous build processes, or other persistent tasks that should continue running in the background.\n\nFor example, Pochi can use this tool to start a development server while simultaneously working on frontend components. The background job continues to run, and Pochi can later check its status or output using other tools. This enables Pochi to manage complex development environments with multiple concurrent processes.",
-  readBackgroundJobOutput:
-    "After starting a background job, Pochi uses the readBackgroundJobOutput tool to monitor its progress and retrieve any output or logs it has generated. This tool allows Pochi to check the status of background processes, read error messages, view progress updates, or capture the results of long-running operations.\n\nPochi can use this tool periodically to ensure background processes are running correctly, or to gather information needed for subsequent steps. It provides real-time visibility into asynchronous operations, helping Pochi make informed decisions based on the background job's current state.",
   renderWidget:
     "The renderWidget tool renders a local HTML/SVG widget in the VSCode chat. It is used for streaming diagrams, mockups, simple charts, art, and local interactive UI. Widgets store JSON state on a top-level <pochi-widget> element; they cannot use external APIs or load external resources.",
   killBackgroundJob:

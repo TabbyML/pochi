@@ -13,11 +13,12 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
     const parts = messages.flatMap((msg) => msg.parts);
     for (const p of parts) {
       if (
-        p.type === "tool-startBackgroundJob" &&
+        p.type === "tool-executeCommand" &&
         p.state !== "input-streaming" &&
-        p.output?.backgroundJobId
+        p.input?.background === true &&
+        p.output?._meta?.backgroundJobId
       ) {
-        ids.add(p.output.backgroundJobId);
+        ids.add(p.output._meta.backgroundJobId);
       }
     }
     return Array.from(ids).toString();
@@ -29,12 +30,13 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
     const parts = messages.flatMap((msg) => msg.parts);
     for (const p of parts) {
       if (
-        p.type === "tool-startBackgroundJob" &&
+        p.type === "tool-executeCommand" &&
         p.state !== "input-streaming" &&
-        p.input?.command &&
-        p.output?.backgroundJobId
+        p.input?.background === true &&
+        p.input.command &&
+        p.output?._meta?.backgroundJobId
       ) {
-        map.set(p.output?.backgroundJobId, {
+        map.set(p.output._meta.backgroundJobId, {
           displayId: `%${map.size + 1}`,
           command: p.input.command,
         });

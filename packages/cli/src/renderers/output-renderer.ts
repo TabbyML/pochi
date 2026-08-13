@@ -350,9 +350,9 @@ export function renderToolPart(
 
   // Command execution
   if (part.type === "tool-executeCommand") {
-    const { command = "" } = part.input || {};
+    const { command = "", background = false } = part.input || {};
     return {
-      text: `💫 Executing ${chalk.bold(command)}`,
+      text: `${background ? "💫 Running in background" : "💫 Executing"} ${chalk.bold(command)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
