@@ -6,9 +6,15 @@ import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const startBackgroundJob: ToolFunctionType<
   ClientTools["startBackgroundJob"]
-> = async ({ command, cwd = "." }, { abortSignal, cwd: workspaceDir }) => {
+> = async (
+  { command, cwd = "." },
+  { abortSignal, cwd: workspaceDir, taskId },
+) => {
   if (!command) {
     throw new Error("Command is required to execute.");
+  }
+  if (!taskId) {
+    throw new Error("A task ID is required to start a background job.");
   }
 
   if (path.isAbsolute(cwd)) {
@@ -26,9 +32,11 @@ export const startBackgroundJob: ToolFunctionType<
     cwd,
     location,
     abortSignal: abortSignal,
+    taskId,
   });
 
   return {
     backgroundJobId: job.id,
+    outputFile: job.outputFile,
   };
 };

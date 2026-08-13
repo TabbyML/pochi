@@ -16,9 +16,9 @@ Before starting the background job, please follow these steps:
 
 Usage notes:
 - The command argument is required.
-- Use readBackgroundJobOutput to monitor the output and status of the job.
+- Read the returned outputFile with readFile. Use offset and limit to inspect a growing file without rereading it all.
 - Use killBackgroundJob to terminate the job if needed.
-- If the output exceeds 30000 characters, output will be truncated before being returned to you.
+- When the process ends, a background-job notification reports completed, failed, or stopped status.
 
 Common use cases and examples:
 - Development servers: \`npm run dev\`, \`yarn start\`, \`bun run dev\`
@@ -46,10 +46,12 @@ Command execution rules:
       .describe("The working directory to execute the command in."),
   }),
   outputSchema: z.object({
-    backgroundJobId: z
+    backgroundJobId: z.string().describe("The ID of the background job"),
+    outputFile: z
       .string()
-      .optional()
-      .describe("The ID of the background job"),
+      .describe(
+        "The file receiving the command's stdout and stderr. Read it with readFile using offset and limit.",
+      ),
   }),
 };
 

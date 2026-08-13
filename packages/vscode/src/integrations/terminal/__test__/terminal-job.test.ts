@@ -1,4 +1,5 @@
 import * as assert from "node:assert";
+import type { BackgroundJobTerminalEvent } from "@getpochi/common";
 import { describe, it } from "mocha";
 import proxyquire from "proxyquire";
 
@@ -42,7 +43,7 @@ async function flushPromises(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
-function createHarness() {
+function createHarness(options?: { read?: () => AsyncIterable<string> }) {
   const closeEmitter = new TestEventEmitter<FakeTerminal>();
   const shellIntegrationEmitter = new TestEventEmitter<{
     terminal: FakeTerminal;
@@ -53,7 +54,7 @@ function createHarness() {
     exitCode: number | undefined;
   }>();
   const execution: FakeExecution = {
-    async *read() {},
+    read: options?.read ?? (async function* () {}),
   };
   const shellIntegration: FakeShellIntegration = {
     executeCommand: () => execution,
@@ -64,6 +65,7 @@ function createHarness() {
     dispose: () => closeEmitter.fire(terminal),
   };
   const finalizeCalls: Array<TestExecutionError | undefined> = [];
+  const lifecycle: string[] = [];
   const outputManager = {
     output: { value: undefined },
     addChunk: () => {},
@@ -100,6 +102,24 @@ function createHarness() {
         getTerminalEnv: () => ({}),
       },
       "@getpochi/common/tool-utils": {
+        BackgroundJobOutputFile: class {
+          async append(chunk: string) {
+            lifecycle.push(`output:${chunk}`);
+          }
+          async close() {
+            lifecycle.push("file-closed");
+          }
+        },
+        PlainOutputSanitizer: class {
+          write(chunk: string) {
+            return chunk;
+          }
+          end() {
+            return "";
+          }
+        },
+        createBackgroundJobId: () => "bgjob-cmd-test",
+        getBackgroundJobOutputPath: () => "/tmp/bgjob-cmd-test.log",
         getShellPath: () => "/bin/sh",
       },
       "./output": {
@@ -116,6 +136,12 @@ function createHarness() {
     name: "test job",
     command: "sleep 10",
     cwd: "/tmp",
+    taskId: "task-test",
+  });
+  const finishEvents: BackgroundJobTerminalEvent[] = [];
+  TerminalJob.onDidFinish((event) => {
+    lifecycle.push("event-fired");
+    finishEvents.push(event);
   });
 
   return {
@@ -124,7 +150,9 @@ function createHarness() {
     execution,
     executionEndEmitter,
     finalizeCalls,
+    finishEvents,
     job,
+    lifecycle,
     terminal,
   };
 }
@@ -150,7 +178,9 @@ describe("TerminalJob", () => {
       execution,
       executionEndEmitter,
       finalizeCalls,
+      finishEvents,
       job,
+      lifecycle,
       terminal,
     } = createHarness();
 
@@ -160,6 +190,18 @@ describe("TerminalJob", () => {
 
     assert.strictEqual(finalizeCalls.length, 1);
     assert.strictEqual(finalizeCalls[0], undefined);
+    assert.deepStrictEqual(lifecycle, ["file-closed", "event-fired"]);
+    assert.deepStrictEqual(finishEvents, [
+      {
+        taskId: "task-test",
+        backgroundJobId: "bgjob-cmd-test",
+        outputFile: "/tmp/bgjob-cmd-test.log",
+        status: "completed",
+        command: "sleep 10",
+        exitCode: 0,
+        finishedAt: finishEvents[0]?.finishedAt,
+      },
+    ]);
     assert.strictEqual(TerminalJob.get(job.id), job);
 
     terminal.dispose();
@@ -182,5 +224,40 @@ describe("TerminalJob", () => {
       finalizeCalls[0]?.message ?? "",
       /user closed terminal/,
     );
+  });
+
+  it("waits for trailing output before notifying about a failed job", async () => {
+    let releaseOutput: (() => void) | undefined;
+    const outputReady = new Promise<void>((resolve) => {
+      releaseOutput = resolve;
+    });
+    const harness = createHarness({
+      read: async function* () {
+        await outputReady;
+        yield "failure details";
+      },
+    });
+
+    await flushPromises();
+    harness.executionEndEmitter.fire({
+      execution: harness.execution,
+      exitCode: 1,
+    });
+    await flushPromises();
+
+    assert.strictEqual(harness.finishEvents.length, 0);
+    assert.deepStrictEqual(harness.lifecycle, []);
+
+    releaseOutput?.();
+    await flushPromises();
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:failure details",
+      "file-closed",
+      "event-fired",
+    ]);
+    assert.strictEqual(harness.finishEvents[0]?.status, "failed");
+    assert.strictEqual(harness.finishEvents[0]?.exitCode, 1);
   });
 });

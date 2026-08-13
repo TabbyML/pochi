@@ -146,6 +146,34 @@ describe("renderToolPart", () => {
     );
   });
 
+  it("renders background job output reads with the inferred job id", () => {
+    const text = renderText({
+      type: "tool-readFile",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: "pochi://~/background-jobs/bgjob-cmd-abc-123.log",
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toContain(
+      "Reading background job output bgjob-cmd-abc-123",
+    );
+  });
+
+  it("renders terminal output reads with the inferred terminal id", () => {
+    const text = renderText({
+      type: "tool-readFile",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: "/Users/alice/.pochi/terminals/term-abc-123.log",
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toContain("Reading terminal output term-abc-123");
+  });
+
   it("renders unmatched Pochi home paths with the global display prefix", () => {
     const text = renderText({
       type: "tool-readFile",

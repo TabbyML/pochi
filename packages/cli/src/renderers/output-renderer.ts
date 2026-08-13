@@ -1,7 +1,10 @@
 import { homedir } from "node:os";
 import { formatters } from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
-import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
+import {
+  formatPochiFileDisplayPath,
+  parseBackgroundJobOutputFilePath,
+} from "@getpochi/common/pochi-file-system";
 import type { Message, UITools } from "@getpochi/livekit";
 import { isAutoSuccessToolPart, isUserInputToolPart } from "@getpochi/tools";
 import { type ToolUIPart, getStaticToolName, isStaticToolUIPart } from "ai";
@@ -226,8 +229,11 @@ export function renderToolPart(
   // File operation tools
   if (part.type === "tool-readFile") {
     const { path = "unknown" } = part.input || {};
+    const backgroundJobOutput = parseBackgroundJobOutputFilePath(path);
     return {
-      text: `📖 Reading ${formatCliDisplayPath(path)}`,
+      text: backgroundJobOutput
+        ? `📖 Reading ${backgroundJobOutput.kind === "terminal" ? "terminal" : "background job"} output ${chalk.bold(backgroundJobOutput.backgroundJobId)}`
+        : `📖 Reading ${formatCliDisplayPath(path)}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };

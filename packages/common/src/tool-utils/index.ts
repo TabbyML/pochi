@@ -22,7 +22,11 @@ export {
   GlobalRules,
   collectAllRuleFiles,
 } from "./custom-rules";
-export { MaxTerminalOutputSize, MaxTerminalHistoryLines } from "./limits";
+export {
+  MaxTerminalOutputSize,
+  MaxTerminalHistoryLines,
+  TerminalOutputRetentionMs,
+} from "./limits";
 export {
   getShellPath,
   fixExecuteCommandOutput,
@@ -51,4 +55,19 @@ export {
   isVirtualPath,
 } from "./file-state-cache";
 export { maybePersistToolResult } from "./tool-result-persistence";
-export { getTaskDataDir } from "./pochi-paths";
+export { getPochiDataDir, getTaskDataDir } from "./pochi-paths";
+export { PlainOutputSanitizer } from "./plain-output-sanitizer";
+export {
+  BackgroundJobOutputFile,
+  cleanupStaleTerminalOutputFiles,
+  createBackgroundJobId,
+  getBackgroundJobOutputPath,
+  getTerminalOutputPath,
+  parseBackgroundJobId,
+  type BackgroundJobId,
+  type BackgroundJobIdType,
+} from "./background-job";
+export {
+  resolveReadFileRange,
+  type ReadFileRangeInput,
+} from "./read-file-range";

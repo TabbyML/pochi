@@ -578,6 +578,16 @@
     "showDiff": "差分を表示",
     "diffTitle": "ユーザー編集"
   },
+  "backgroundJobNotifications": {
+    "title": "バックグラウンドジョブ通知",
+    "notificationCount_one": "{{count}} 件の通知",
+    "notificationCount_other": "{{count}} 件の通知",
+    "completed": "完了（終了コード {{exitCode}}）",
+    "failed": "失敗（終了コード {{exitCode}}）",
+    "failedNoExit": "失敗",
+    "stopped": "停止",
+    "openOutput": "出力ファイルを開く"
+  },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
   },

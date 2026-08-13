@@ -539,6 +539,12 @@ export function convertDataPartToText(
       text: prompts.renderBashOutputs(part.data.bashOutputs),
     };
   }
+  if (part.type === "data-background-job-notification") {
+    return {
+      type: "text" as const,
+      text: prompts.renderBackgroundJobNotification(part.data),
+    };
+  }
   return part;
 }
 

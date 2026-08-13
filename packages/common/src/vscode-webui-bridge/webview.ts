@@ -5,6 +5,7 @@ import type {
   ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
+  BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
@@ -185,6 +186,11 @@ export interface VSCodeHostApi {
       Environment["workspace"]["terminals"] | undefined
     >;
     openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
+  }>;
+
+  readBackgroundJobNotifications(taskId: string): Promise<{
+    notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
+    acknowledge: (notificationId: string) => Promise<void>;
   }>;
 
   /**

@@ -136,6 +136,24 @@ describe("QueuedMessages", () => {
       false,
     );
   });
+
+  it("does not offer removal for a system notification", () => {
+    const { queryByLabelText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "background job completed",
+            nonRemovable: true,
+          }),
+        ]}
+        onRemove={vi.fn()}
+        onSteer={vi.fn()}
+      />,
+    );
+
+    expect(queryByLabelText("Remove queued message")).toBeNull();
+    expect(queryByLabelText("chat.steer")).toBeTruthy();
+  });
 });
 
 function queuedMessage({
@@ -146,6 +164,7 @@ function queuedMessage({
   userEditsCount = 0,
   terminalContextCount = 0,
   activeSelection,
+  nonRemovable,
 }: {
   text: string;
   isTodoMode?: boolean;
@@ -154,6 +173,7 @@ function queuedMessage({
   userEditsCount?: number;
   terminalContextCount?: number;
   activeSelection?: ActiveSelection;
+  nonRemovable?: boolean;
 }): DraftMessage {
   return {
     parts: [],
@@ -165,6 +185,7 @@ function queuedMessage({
       terminalContextCount,
       isTodoMode,
       activeSelection,
+      nonRemovable,
     },
   };
 }

@@ -37,6 +37,7 @@ interface RenderMessage {
   details: string;
   isTodoMode?: boolean;
   activeSelection?: ActiveSelection;
+  nonRemovable?: boolean;
 }
 
 export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
@@ -74,6 +75,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         details: details.join(" · "),
         isTodoMode,
         activeSelection,
+        nonRemovable: raw.nonRemovable,
       };
     });
   }, [messages, t]);
@@ -128,16 +130,18 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
               <CornerDownRight className="size-3.5" />
               <span>{t("chat.steer")}</span>
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              type="button"
-              aria-label="Remove queued message"
-              onClick={() => onRemove(index)}
-              className="h-7 w-7 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
+            {!message.nonRemovable && (
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                aria-label="Remove queued message"
+                onClick={() => onRemove(index)}
+                className="h-7 w-7 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            )}
           </div>
         </div>
       ))}

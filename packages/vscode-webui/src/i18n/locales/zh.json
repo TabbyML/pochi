@@ -576,6 +576,16 @@
     "showDiff": "显示差异",
     "diffTitle": "用户编辑"
   },
+  "backgroundJobNotifications": {
+    "title": "后台任务通知",
+    "notificationCount_one": "{{count}} 条通知",
+    "notificationCount_other": "{{count}} 条通知",
+    "completed": "已完成（退出码 {{exitCode}}）",
+    "failed": "失败（退出码 {{exitCode}}）",
+    "failedNoExit": "失败",
+    "stopped": "已停止",
+    "openOutput": "打开输出文件"
+  },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
   },

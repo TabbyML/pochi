@@ -3,6 +3,7 @@ import {
   getFileModificationTime,
   isPlainText,
   readMediaFile,
+  resolveReadFileRange,
   selectFileContent,
   withReadFileCache,
 } from "@getpochi/common/tool-utils";
@@ -18,7 +19,15 @@ export const readFile =
     fileSystem,
     fileStateCache,
   }: ToolCallOptions): ToolFunctionType<ClientTools["readFile"]> =>
-  async ({ path, startLine, endLine }, { cwd, contentType }) => {
+  async ({ path, startLine, endLine, offset, limit }, { cwd, contentType }) => {
+    const range = resolveReadFileRange({
+      startLine,
+      endLine,
+      offset,
+      limit,
+    });
+    startLine = range.startLine;
+    endLine = range.endLine;
     const isBinaryRequest = !!(contentType && contentType.length > 0);
 
     const cacheResult = await withReadFileCache<ReadFileOutput>({
@@ -53,7 +62,7 @@ export const readFile =
         });
 
         return {
-          result,
+          result: { ...result, filePath: resolvedPath },
           fileCacheContent: result.content,
           fileCacheIsTruncated: result.isTruncated,
         };
@@ -61,7 +70,11 @@ export const readFile =
     });
 
     if (cacheResult.deduplicated) {
-      return { content: FileUnchangedStub, isTruncated: false };
+      return {
+        content: FileUnchangedStub,
+        isTruncated: false,
+        filePath: cacheResult.resolvedPath,
+      };
     }
 
     return cacheResult.result;

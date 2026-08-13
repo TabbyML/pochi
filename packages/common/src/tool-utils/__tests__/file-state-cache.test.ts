@@ -172,6 +172,34 @@ describe("FileStateCache", () => {
     expect(result).toEqual({
       result: { content: "hello" },
       deduplicated: false,
+      resolvedPath: "/tmp/file.txt",
+    });
+  });
+
+  it("returns the resolved path for a deduplicated read", async () => {
+    const cache = new FileStateCache();
+    cache.set("/tmp/file.txt", {
+      content: "hello",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+
+    const result = await withReadFileCache({
+      cache,
+      path: "file.txt",
+      cwd: "/tmp",
+      startLine: 1,
+      endLine: 1,
+      getMtime: async () => 1,
+      doRead: async () => {
+        throw new Error("deduplicated reads should not access the file");
+      },
+    });
+
+    expect(result).toEqual({
+      deduplicated: true,
+      resolvedPath: "/tmp/file.txt",
     });
   });
 });

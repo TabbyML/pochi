@@ -1,6 +1,7 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type {
   ActiveSelection,
+  BackgroundJobNotification,
   BashOutputs,
   MessageMetadata,
   Review,
@@ -35,6 +36,7 @@ export type DataParts = {
   "bash-outputs": {
     bashOutputs: BashOutputs;
   };
+  "background-job-notification": BackgroundJobNotification;
 };
 
 export type UITools = InferUITools<ClientTools>;

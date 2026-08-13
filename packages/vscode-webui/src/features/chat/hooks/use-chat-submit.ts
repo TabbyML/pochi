@@ -41,6 +41,8 @@ export interface DraftMessage {
     terminalContextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
+    backgroundJobNotificationIds?: string[];
+    nonRemovable?: boolean;
   };
 }
 
@@ -72,6 +74,7 @@ interface UseChatSubmitProps {
    * Used e.g. to seed a todo from the message when todo mode is selected.
    */
   onBeforeSendText?: (text: string) => void;
+  onMessageSent?: (message: DraftMessage) => void | Promise<void>;
 }
 
 export function useChatSubmit({
@@ -98,6 +101,7 @@ export function useChatSubmit({
   canCreateTodo = true,
   onTodoModeQueued,
   onBeforeSendText,
+  onMessageSent,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { isExecuting } = useToolCallLifeCycle();
@@ -282,6 +286,7 @@ export function useChatSubmit({
       await sendMessage({
         parts: message.parts,
       });
+      await onMessageSent?.(message);
     },
     [
       canCreateTodo,
@@ -289,6 +294,7 @@ export function useChatSubmit({
       pendingApproval,
       autoApproveGuard,
       sendMessage,
+      onMessageSent,
     ],
   );
 

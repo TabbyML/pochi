@@ -99,6 +99,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "getGlobalState",
         "setGlobalState",
         "readEnvironment",
+        "readBackgroundJobNotifications",
         "executeToolCall",
         "previewEdit",
         "executeBashCommand",

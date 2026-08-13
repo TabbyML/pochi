@@ -465,6 +465,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
+  readBackgroundJobNotifications = async (taskId: string) => ({
+    notifications: ThreadSignal.serialize(
+      this.taskStateStore.getBackgroundJobNotificationsSignal(taskId),
+    ),
+    acknowledge: (notificationId: string) =>
+      this.taskStateStore.acknowledgeBackgroundJobNotification(
+        taskId,
+        notificationId,
+      ),
+  });
+
   readCurrentWorkspace = async (): Promise<{
     cwd: string | null;
     workspacePath: string | null;

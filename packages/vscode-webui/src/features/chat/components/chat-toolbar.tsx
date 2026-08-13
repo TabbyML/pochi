@@ -21,13 +21,14 @@ import {
 import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useBackgroundJobNotifications } from "@/lib/hooks/use-background-job-notifications";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { constants } from "@getpochi/common";
+import { constants, type BackgroundJobNotification } from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type {
   DisplayModel,
@@ -56,6 +57,10 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { useTerminalContextState } from "../hooks/use-terminal-context-state";
+import {
+  enqueueBackgroundJobNotifications,
+  getBackgroundJobNotificationIds,
+} from "../lib/background-job-notification-queue";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -137,6 +142,31 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
 
   const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
+  const { notifications: backgroundJobNotifications, acknowledge } =
+    useBackgroundJobNotifications(taskId);
+
+  useEffect(() => {
+    const deliveredIds = new Set(
+      messages.flatMap((message) =>
+        message.parts
+          .filter((part) => part.type === "data-background-job-notification")
+          .map((part) => part.data.notificationId),
+      ),
+    );
+    const notificationsToQueue: BackgroundJobNotification[] = [];
+    for (const notification of backgroundJobNotifications) {
+      if (deliveredIds.has(notification.notificationId)) {
+        void acknowledge?.(notification.notificationId);
+      } else {
+        notificationsToQueue.push(notification);
+      }
+    }
+    if (notificationsToQueue.length > 0) {
+      setQueuedMessages((current) =>
+        enqueueBackgroundJobNotifications(current, notificationsToQueue),
+      );
+    }
+  }, [acknowledge, backgroundJobNotifications, messages]);
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
   const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
@@ -299,6 +329,14 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     canCreateTodo: !todoModeDisabled,
     onTodoModeQueued: resetTodoMode,
     onBeforeSendText: createTodoBeforeSend,
+    onMessageSent: (message) => {
+      const notificationIds = getBackgroundJobNotificationIds(message);
+      if (notificationIds.length > 0 && acknowledge) {
+        return Promise.all(
+          notificationIds.map((notificationId) => acknowledge(notificationId)),
+        ).then(() => undefined);
+      }
+    },
   });
 
   const chatInputFormRef = useRef<ChatInputFormHandle>(null);
@@ -333,6 +371,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   // Remove a message from queue
   const handleRemoveQueuedMessage = useCallback(
     (index: number) => {
+      if (queuedMessages[index]?.raw.nonRemovable) return;
       setQueuedMessages(queuedMessages.filter((_, i) => i !== index));
     },
     [queuedMessages],

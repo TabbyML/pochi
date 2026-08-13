@@ -2,9 +2,26 @@ import * as assert from "assert";
 import { describe, it } from "mocha";
 import { TerminalHistoryManager } from "../terminal-history";
 
+let testId = 0;
+function createTestId(name: string): string {
+  testId += 1;
+  return `${name}-${process.pid}-${Date.now()}-${testId}`;
+}
+
 describe("TerminalHistoryManager", () => {
+  it("becomes readable after the first command header is written", async () => {
+    const id = createTestId("term-history-availability");
+    const history = TerminalHistoryManager.getOrCreate(id);
+
+    assert.strictEqual(history.hasCapturedCommand, false);
+    await history.beginCommand("ls", "/workspace");
+    assert.strictEqual(history.hasCapturedCommand, true);
+
+    TerminalHistoryManager.delete(id);
+  });
+
   it("accumulates cwd + command + output across multiple commands", () => {
-    const id = "term-history-test";
+    const id = createTestId("term-history-test");
     const history = TerminalHistoryManager.getOrCreate(id);
 
     history.beginCommand("ls", "/workspace");
@@ -26,7 +43,7 @@ describe("TerminalHistoryManager", () => {
   });
 
   it("omits the cwd line when cwd is unavailable", () => {
-    const id = "term-history-no-cwd";
+    const id = createTestId("term-history-no-cwd");
     const history = TerminalHistoryManager.getOrCreate(id);
 
     history.beginCommand("echo hi");
@@ -40,7 +57,7 @@ describe("TerminalHistoryManager", () => {
   });
 
   it("returns only new content since the last read (incremental)", () => {
-    const id = "term-history-incremental";
+    const id = createTestId("term-history-incremental");
     const history = TerminalHistoryManager.getOrCreate(id);
 
     history.beginCommand("echo one", "/workspace");
@@ -70,7 +87,7 @@ describe("TerminalHistoryManager", () => {
   });
 
   it("getOrCreate returns the same instance for the same id", () => {
-    const id = "term-history-same-instance";
+    const id = createTestId("term-history-same-instance");
     const a = TerminalHistoryManager.getOrCreate(id);
     const b = TerminalHistoryManager.getOrCreate(id);
     assert.strictEqual(a, b);
@@ -78,7 +95,7 @@ describe("TerminalHistoryManager", () => {
   });
 
   it("is unresolvable once deleted (e.g. terminal closed)", () => {
-    const id = "term-history-closed";
+    const id = createTestId("term-history-closed");
     TerminalHistoryManager.getOrCreate(id);
     assert.ok(TerminalHistoryManager.get(id));
 
@@ -87,7 +104,7 @@ describe("TerminalHistoryManager", () => {
   });
 
   it("evicts the oldest lines once MaxTerminalHistoryLines is exceeded", () => {
-    const id = "term-history-maxlines";
+    const id = createTestId("term-history-maxlines");
     const history = TerminalHistoryManager.getOrCreate(id);
 
     // MaxTerminalHistoryLines is 500, and each command contributes 2 lines

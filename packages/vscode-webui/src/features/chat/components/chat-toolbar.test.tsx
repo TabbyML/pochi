@@ -103,6 +103,12 @@ vi.mock("@/features/todo", async (importOriginal) => {
 vi.mock("@/lib/hooks/use-add-complete-tool-calls", () => ({
   useAddCompleteToolCalls: () => undefined,
 }));
+vi.mock("@/lib/hooks/use-background-job-notifications", () => ({
+  useBackgroundJobNotifications: () => ({
+    notifications: [],
+    acknowledge: undefined,
+  }),
+}));
 vi.mock("@/lib/hooks/use-reviews", () => ({
   useReviews: () => [],
 }));

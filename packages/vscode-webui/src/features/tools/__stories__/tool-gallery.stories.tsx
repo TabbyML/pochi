@@ -104,6 +104,7 @@ const readProps: ReadFileProp["tool"] = {
   output: {
     content: " **04/17/2024** CodeGemma and CodeQwen mode",
     isTruncated: true,
+    filePath: "/workspace/README.md",
   },
 };
 
@@ -370,7 +371,8 @@ const startBackgroundJobProps: StartBackgroundJobProp["tool"] = {
     command: "npm run dev",
   },
   output: {
-    backgroundJobId: "job-1",
+    backgroundJobId: "bgjob-cmd-job-1",
+    outputFile: "/tmp/bgjob-cmd-job-1.log",
   },
 };
 

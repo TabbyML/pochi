@@ -5,6 +5,9 @@ export const getTerminalEnv = () => ({
   GIT_EDITOR: "true",
   GIT_TERMINAL_PROMPT: "0",
   GCM_INTERACTIVE: "never",
+  // Prevent zsh from drawing its inverse-video `%` marker into captured PTY
+  // output when a command does not end with a newline.
+  PROMPT_EOL_MARK: "",
 });
 
 export const isVSCodeEnvironment = () => {

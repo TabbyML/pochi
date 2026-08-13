@@ -59,7 +59,13 @@ export const Environment = z.object({
               .string()
               .optional()
               .describe(
-                'A stable id for the terminal. Pass it to `readBackgroundJobOutput` to read the terminal\'s content. Ids prefixed with "bgjob-" are Pochi-started background jobs and can also be killed with `killBackgroundJob`; ids prefixed with "term-" are user-opened terminals and are read-only.',
+                'A stable terminal id. "bgjob-cmd-" identifies a managed command job; "term-" identifies a read-only user terminal.',
+              ),
+            outputFile: z
+              .string()
+              .optional()
+              .describe(
+                "Absolute path to the terminal transcript. Read it with readFile using offset/limit.",
               ),
           }),
         )

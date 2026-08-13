@@ -139,6 +139,10 @@ describe("executeToolCall with background jobs", () => {
     expect(result).toEqual({
       content: "hello from src",
       isTruncated: false,
+      filePath: path.join(cwd, "src/index.ts"),
+      numLines: 1,
+      startLine: 1,
+      totalLines: 1,
     });
   });
 
@@ -186,6 +190,10 @@ describe("executeToolCall with background jobs", () => {
     expect(result).toEqual({
       content: "hello from pochi",
       isTruncated: false,
+      filePath: "pochi://-/plan.md",
+      numLines: 1,
+      startLine: 1,
+      totalLines: 1,
     });
   });
 });
