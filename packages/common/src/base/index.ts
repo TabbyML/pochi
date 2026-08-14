@@ -80,7 +80,7 @@ export const PochiProviderOptions = z.object({
   storeId: z.string(),
   client: z.string(),
   useCase: PochiRequestUseCase,
-  compactSequence: z.number().int().positive().optional(),
+  numCompacts: z.number().int().positive().optional(),
 });
 
 export type PochiProviderOptions = z.infer<typeof PochiProviderOptions>;
