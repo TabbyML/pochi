@@ -43,7 +43,10 @@ async function flushPromises(): Promise<void> {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
-function createHarness(options?: { read?: () => AsyncIterable<string> }) {
+function createHarness(options?: {
+  read?: () => AsyncIterable<string>;
+  jobType?: "command" | "monitor";
+}) {
   const closeEmitter = new TestEventEmitter<FakeTerminal>();
   const shellIntegrationEmitter = new TestEventEmitter<{
     terminal: FakeTerminal;
@@ -118,7 +121,8 @@ function createHarness(options?: { read?: () => AsyncIterable<string> }) {
             return "";
           }
         },
-        createBackgroundJobId: () => "bgjob-cmd-test",
+        createBackgroundJobId: (jobType: "command" | "monitor") =>
+          `bgjob-${jobType === "monitor" ? "monitor" : "cmd"}-test`,
         getBackgroundJobOutputPath: () => "/tmp/bgjob-cmd-test.log",
         getShellPath: () => "/bin/sh",
       },
@@ -137,6 +141,7 @@ function createHarness(options?: { read?: () => AsyncIterable<string> }) {
     command: "sleep 10",
     cwd: "/tmp",
     taskId: "task-test",
+    ...(options?.jobType ? { jobType: options.jobType } : {}),
   });
   const finishEvents: BackgroundJobTerminalEvent[] = [];
   TerminalJob.onDidFinish((event) => {
@@ -209,6 +214,21 @@ describe("TerminalJob", () => {
 
     assert.strictEqual(TerminalJob.get(job.id), undefined);
     assert.strictEqual(finalizeCalls.length, 1);
+  });
+
+  it("does not emit background command notifications for monitors", async () => {
+    const harness = createHarness({ jobType: "monitor" });
+
+    await flushPromises();
+    harness.executionEndEmitter.fire({
+      execution: harness.execution,
+      exitCode: 0,
+    });
+    await flushPromises();
+
+    assert.strictEqual(harness.job.id, "bgjob-monitor-test");
+    assert.deepStrictEqual(harness.lifecycle, ["file-closed"]);
+    assert.deepStrictEqual(harness.finishEvents, []);
   });
 
   it("finalizes a running job when its terminal closes", async () => {

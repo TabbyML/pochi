@@ -129,4 +129,37 @@ describe("BackgroundJobManager", () => {
       await rm(outputDir, { recursive: true, force: true });
     }
   });
+
+  it("uses monitor ids and emits only stdout as monitor events", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-monitor-test-"));
+    try {
+      const manager = new BackgroundJobManager({
+        taskId: "task-test",
+        outputDir,
+      });
+      const eventPromise = new Promise<
+        Parameters<Parameters<typeof manager.onDidFinish>[0]>[0]
+      >((resolve) => manager.onDidFinish(resolve));
+      const { backgroundJobId, outputFile } = manager.start(
+        "printf 'stdout-event\\n'; printf 'stderr-output\\n' >&2",
+        ".",
+        undefined,
+        { description: "test monitor" },
+      );
+
+      expect(backgroundJobId).toMatch(/^bgjob-monitor-/);
+      await eventPromise;
+
+      const batches = manager.drainMonitorEvents();
+      expect(batches.flatMap((batch) => batch.lines)).toEqual([
+        "stdout-event",
+      ]);
+      expect(batches.at(-1)?.ended?.reason).toBe("exited with code 0");
+      const output = await readFile(outputFile, "utf8");
+      expect(output).toContain("stdout-event");
+      expect(output).toContain("stderr-output");
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
 });

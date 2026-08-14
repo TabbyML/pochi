@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { MonitorRegistry } from "@/integrations/monitor/monitor-registry";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "@/lib/task-data-store";
@@ -23,13 +24,16 @@ export interface TerminalInfo {
    * A stable id associated with the terminal's output file.
    *
    * The prefix encodes the terminal's origin:
-   * - `bgjob-cmd-` — a Pochi-started background job. Can be read and killed.
-   * - `term-`  — a user-opened terminal. Read-only; `killBackgroundJob` refuses
+   * - `bgjob-cmd-` — a Pochi-started command job. Can be read and killed.
+   * - `bgjob-monitor-` — a monitor started by `startMonitor`. Can be read and killed.
+   * - `term-` — a user-opened terminal. Read-only; `killBackgroundJob` refuses
    *   these because they are not tracked by the `TerminalJob` registry.
    */
   backgroundJobId?: string;
   /** Absolute transcript path readable with readFile. */
   outputFile?: string;
+  /** The monitor's description when this terminal is an active monitor. */
+  monitor?: string;
 }
 
 @injectable()
@@ -88,6 +92,7 @@ export class TerminalState implements vscode.Disposable {
       vscode.window.onDidCloseTerminal(this.onTerminalClosed),
     );
     this.disposables.push(TerminalJob.onDidDispose(this.onTerminalChanged));
+    this.disposables.push(MonitorRegistry.onDidChange(this.onTerminalChanged));
     this.disposables.push(
       TerminalJob.onDidFinish((event) => {
         void this.taskDataStore.addBackgroundJobNotification(
@@ -225,10 +230,11 @@ export class TerminalState implements vscode.Disposable {
           TerminalHistoryManager.getOrCreate(id).terminalName = t.name;
         }
         return {
-          name: t.name,
+          name: t.name || "Unnamed Terminal",
           isActive: t === vscode.window.activeTerminal,
           backgroundJobId: id,
           outputFile: this.getTerminalOutputFile(t),
+          monitor: MonitorRegistry.descriptionFor(id),
         };
       });
   }

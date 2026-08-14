@@ -232,11 +232,11 @@ export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
   appearance?: "default" | "notification";
-  /** Command fallback for persisted notification messages. */
   command?: string;
   status?: "completed" | "failed" | "stopped";
   exitCode?: number;
   outputFile?: string;
+  icon?: React.ReactNode;
   /** Terminal name snapshot from the tool output (term- ids only). */
   terminalName?: string;
   /** Last command run in the terminal, from the tool output (term- ids only). */
@@ -249,6 +249,7 @@ export const BackgroundJobPanel: FC<{
   status,
   exitCode,
   outputFile,
+  icon,
   terminalName,
   lastCommand,
 }) => {
@@ -301,8 +302,9 @@ export const BackgroundJobPanel: FC<{
   return (
     <CommandPanelContainer
       icon={
-        ((isNotification && status) || jobControl) && (
+        (icon || (isNotification && status) || jobControl) && (
           <div className="flex shrink-0 items-center gap-2">
+            {icon}
             {isNotification && status && (
               <BackgroundJobStatus
                 status={status}

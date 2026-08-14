@@ -329,14 +329,33 @@ export class TaskRunner {
         getLLM: () => options.llm,
         getEffectiveContextWindow: () =>
           pochiConfig.value.effectiveContextWindow,
-        getEnvironment: async () => ({
-          ...(await readEnvironment({
+        getEnvironment: async () => {
+          const environment = await readEnvironment({
             cwd: options.cwd,
             omitCustomRules:
               options.isSubTask && options.customAgent?.omitAgentsMd === true,
-          })),
-          todos: this.todos,
-        }),
+          });
+          const monitors = this.backgroundJobManager.getActiveMonitors();
+          return {
+            ...environment,
+            workspace: {
+              ...environment.workspace,
+              ...(monitors.length > 0
+                ? {
+                    terminals: monitors.map(
+                      ({ backgroundJobId, description }) => ({
+                        name: description,
+                        isActive: false,
+                        backgroundJobId,
+                        monitor: description,
+                      }),
+                    ),
+                  }
+                : {}),
+            },
+            todos: this.todos,
+          };
+        },
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
         ...(options.getAutoMemory
@@ -422,23 +441,25 @@ export class TaskRunner {
   }
 
   /**
-   * Wait for all background jobs to complete.
-   * Respects the configured asyncWaitTimeoutInMs and abort signal.
-   * @returns One structured notification message emitted after output files
-   * flush. All notifications available at this drain point are included as
-   * separate data parts in the same user message.
+   * Wait for all background jobs to complete, waking early when monitor
+   * events arrive. Respects the configured timeout and abort signal.
    */
-  private async waitForAsyncWork(): Promise<Message | undefined> {
+  private async waitForAsyncWork(): Promise<
+    "notifications" | "monitor-events" | undefined
+  > {
     const spinner = createSpinner(
       `Waiting for background jobs to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
-
     const jobStatus = await this.backgroundJobManager.waitForAllJobs(
       this.asyncWaitTimeoutInMs,
       this.abortSignal,
+      true,
     );
 
-    // Handle timeout or abort - return undefined to finish without feeding back to LLM
+    if (jobStatus === "monitor-events") {
+      spinner.succeed("Monitor events arrived.");
+      return "monitor-events";
+    }
     if (jobStatus === "timeout") {
       const remainingJobs = this.backgroundJobManager.getPendingJobIds();
       spinner.fail(
@@ -446,17 +467,18 @@ export class TaskRunner {
       );
       this.backgroundJobManager.killAll();
       await this.backgroundJobManager.waitForAllJobs(5000, this.abortSignal);
-      return this.takePendingBackgroundJobNotifications();
+      return this.pendingBackgroundJobNotifications.length > 0
+        ? "notifications"
+        : undefined;
     }
-
     if (jobStatus === "aborted") {
       spinner.fail("Async work wait was aborted.");
       return undefined;
     }
-
     spinner.succeed("All background jobs completed.");
-
-    return this.takePendingBackgroundJobNotifications();
+    return this.pendingBackgroundJobNotifications.length > 0
+      ? "notifications"
+      : undefined;
   }
 
   private takePendingBackgroundJobNotifications(): Message | undefined {
@@ -464,6 +486,17 @@ export class TaskRunner {
     return events.length > 0
       ? createBackgroundJobNotificationMessage(events)
       : undefined;
+  }
+
+  private injectPendingMonitorEvents(): boolean {
+    const batches = this.backgroundJobManager.drainMonitorEvents();
+    if (batches.length === 0) return false;
+    this.chat.appendOrReplaceMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      parts: [{ type: "data-monitor-events", data: { batches } }],
+    });
+    return true;
   }
 
   /**
@@ -481,14 +514,26 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
+      // Monitor events captured during the last round are fed back before
+      // the task is allowed to complete.
+      if (this.injectPendingMonitorEvents()) {
+        return "next";
+      }
+
       // Check for pending background jobs
       const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
       if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
-        const notificationMessage = await this.waitForAsyncWork();
-        if (notificationMessage) {
-          this.chat.appendOrReplaceMessage(notificationMessage);
-          return "next";
+        const asyncResult = await this.waitForAsyncWork();
+        if (asyncResult === "monitor-events") {
+          if (this.injectPendingMonitorEvents()) return "next";
+        } else if (asyncResult === "notifications") {
+          const notificationMessage =
+            this.takePendingBackgroundJobNotifications();
+          if (notificationMessage) {
+            this.chat.appendOrReplaceMessage(notificationMessage);
+            return "next";
+          }
         }
       }
 
@@ -533,6 +578,10 @@ export class TaskRunner {
 
     if (result === "next") {
       this.stepCount.throwIfReachedMaxSteps();
+      // Deliver monitor events between rounds so the model sees them in
+      // the upcoming inference. Retry rounds are skipped: they resend a
+      // prepared message and an interleaved user message would break that.
+      this.injectPendingMonitorEvents();
     }
     if (result === "retry") {
       this.stepCount.throwIfReachedMaxRetries();
