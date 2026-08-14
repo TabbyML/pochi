@@ -39,9 +39,9 @@ const DEFAULT_MAX_SIZE_BYTES = 25 * 1024 * 1024;
  *    unchanged mtime, the tool returns a "file_unchanged" stub instead of the
  *    full content, saving tokens.
  *
- * 2. **Edit/Write staleness guard**: If a file has been read, the tool checks
- *    that it hasn't been modified externally since that read (by comparing the
- *    current mtime with the cached timestamp).
+ * 2. **Edit/Write staleness guard**: Before applying an edit or writing a file,
+ *    the tool checks that the file hasn't been modified externally since the
+ *    model last read it (by comparing the current mtime with the cached timestamp).
  *
  * 3. **Post-write cache update**: After a successful edit or write, the cache
  *    is updated with the new content and mtime so subsequent reads can dedup.
@@ -121,9 +121,10 @@ export class FileStateCache {
    * Used when the read tool_results that populated the cache are about to
    * leave the conversation — a compaction summary, or a retry that strips a
    * completed read. Keeping the entries preserves the edit/write staleness
-   * guard, while `fromWrite: true` stops them from producing a "File unchanged"
-   * dedup stub that would dangle onto a tool_result no longer present in the
-   * conversation.
+   * guard (so a later edit of an already-read file is not falsely rejected
+   * with "File has not been read yet"), while `fromWrite: true` stops them
+   * from producing a "File unchanged" dedup stub that would dangle onto a
+   * tool_result no longer present in the conversation.
    */
   markAllAsWritten(): void {
     for (const entry of this.entries.values()) {
@@ -219,6 +220,14 @@ export async function checkStaleness(
 ): Promise<void> {
   const cachedState = cache.get(resolvedPath);
   if (!cachedState) {
+    const currentMtime = await getMtime(resolvedPath);
+    // If the file exists on disk but was never read, require a read first.
+    // A missing mtime means the file doesn't exist yet, so creating it is fine.
+    if (currentMtime !== undefined) {
+      throw new Error(
+        `File has not been read yet. Please read the file before ${operation} it.`,
+      );
+    }
     return;
   }
 
@@ -261,10 +270,8 @@ async function updateCacheAfterWrite(
 }
 
 /**
- * Wraps a file-editing callback with staleness guard (before) and cache
- * update (after).  This eliminates the boilerplate that was previously
- * copy-pasted across applyDiff, writeToFile, and editNotebook in both
- * CLI and VSCode tool implementations.
+ * Wraps a file-editing callback with a cache update after the write. The
+ * staleness guard is temporarily disabled.
  *
  * Path resolution and virtual-path detection are handled automatically:
  * `pochi://` URIs are passed through as-is and skip all cache operations,
@@ -274,7 +281,7 @@ async function updateCacheAfterWrite(
  * @param opts.path         - Raw path from the tool input (may be relative or a `pochi://` URI)
  * @param opts.cwd          - Working directory used to resolve relative paths
  * @param opts.getMtime     - Platform-specific function to get current file mtime
- * @param opts.operation    - "editing" or "writing" — used in the staleness error message
+ * @param opts.operation    - Reserved for the temporarily disabled staleness guard
  * @param opts.doWork       - Callback that performs the actual edit/write. Receives the resolved
  *                            absolute path and returns `{ result, fileCacheContent }`.
  * @returns The `result` value produced by `doWork`
@@ -287,15 +294,10 @@ export async function withFileStateCacheGuard<T>(opts: {
   operation: "editing" | "writing";
   doWork: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
 }): Promise<T> {
-  const { cache, path: inputPath, cwd, getMtime, operation, doWork } = opts;
+  const { cache, path: inputPath, cwd, getMtime, doWork } = opts;
 
   const isVirtual = isVirtualPath(inputPath);
   const resolvedPath = isVirtual ? inputPath : resolvePath(inputPath, cwd);
-
-  // --- Staleness guard ---
-  if (!isVirtual && cache) {
-    await checkStaleness(cache, resolvedPath, getMtime, operation);
-  }
 
   const { result, fileCacheContent } = await doWork(resolvedPath);
 
