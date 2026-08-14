@@ -5,8 +5,6 @@ import { defineClientTool } from "./types";
 const toolDef = {
   description: `This is a tool for editing files. For moving or renaming files, you should generally use the executeCommand tool with the 'mv' command instead. For larger edits, use the writeFile tool to overwrite files.
 
-Before using this tool, use the readFile tool to understand the file's contents and context
-
 To make a file edit, provide the following:
 1. path: The path to the file to modify (relative to the current working directory, or an absolute path)
 2. searchContent: The text to replace (must match the file contents exactly, including all whitespace and indentation)

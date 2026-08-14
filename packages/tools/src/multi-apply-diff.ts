@@ -6,8 +6,6 @@ const toolDef = {
   description: `
 This is a tool for making multiple edits to a single file in one operation. It is built on top of the applyDiff tool and allows you to perform multiple find-and-replace operations efficiently. Prefer this tool over the applyDiff tool when you need to make multiple edits to the same file.
 
-Before using this tool, use the readFile tool to understand the file's contents and context
-
 To make multiple file edits, provide the following:
 1. path: The path to the file to modify (relative to the current working directory, or an absolute path)
 2. edits: An array of edit operations to perform, where each edit contains:

@@ -75,28 +75,25 @@ describe("FileStateCache", () => {
     ).resolves.toBeUndefined();
   });
 
-  // The "read before edit/write" guard requires the file to have been read
-  // first when it exists on disk.
-  it("throws when editing a file that was never read but exists on disk", async () => {
+  it("allows editing a file that was never read", async () => {
     const cache = new FileStateCache();
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "editing"),
-    ).rejects.toThrow("File has not been read yet");
+    ).resolves.toBeUndefined();
   });
 
-  it("throws when writing a file that was never read but exists on disk", async () => {
+  it("allows writing a file that was never read", async () => {
     const cache = new FileStateCache();
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "writing"),
-    ).rejects.toThrow("File has not been read yet");
+    ).resolves.toBeUndefined();
   });
 
   it("allows writing a new file that does not exist on disk and was never read", async () => {
     const cache = new FileStateCache();
 
-    // getMtime returns undefined => file does not exist
     await expect(
       checkStaleness(cache, "/tmp/new-file.txt", async () => undefined, "writing"),
     ).resolves.toBeUndefined();
@@ -135,7 +132,7 @@ describe("FileStateCache", () => {
 
   // markAllAsWritten is used when the read tool_results that populated the
   // cache leave the conversation (compaction / retry-strip). It must retain
-  // the entries (so edits are not falsely rejected) while disabling dedup.
+  // the entries for staleness checks while disabling dedup.
   it("keeps entries editable but stops read dedup after markAllAsWritten", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/file.txt", {
@@ -150,7 +147,6 @@ describe("FileStateCache", () => {
     // Entry is retained and downgraded to a write-sourced state.
     expect(cache.get("/tmp/file.txt")?.fromWrite).toBe(true);
 
-    // Editing an already-read file is still allowed (no false "not read").
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1, "editing"),
     ).resolves.toBeUndefined();
@@ -205,9 +201,7 @@ describe("FileStateCache", () => {
 });
 
 describe("withFileStateCacheGuard", () => {
-  // The "read before edit/write" guard rejects editing an existing file that
-  // was never read.
-  it("throws when editing an existing file that was never read", async () => {
+  it("allows editing an existing file that was never read", async () => {
     const cache = new FileStateCache();
     const getMtime = async (_path: string) => 1000;
 
@@ -223,7 +217,7 @@ describe("withFileStateCacheGuard", () => {
           fileCacheContent: "new content",
         }),
       }),
-    ).rejects.toThrow("File has not been read yet");
+    ).resolves.toEqual({ success: true });
   });
 
   it("allows writing a brand-new file that does not yet exist on disk", async () => {
