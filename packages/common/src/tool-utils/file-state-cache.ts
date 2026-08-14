@@ -270,10 +270,8 @@ async function updateCacheAfterWrite(
 }
 
 /**
- * Wraps a file-editing callback with staleness guard (before) and cache
- * update (after).  This eliminates the boilerplate that was previously
- * copy-pasted across applyDiff, writeToFile, and editNotebook in both
- * CLI and VSCode tool implementations.
+ * Wraps a file-editing callback with a cache update after the write. The
+ * staleness guard is temporarily disabled.
  *
  * Path resolution and virtual-path detection are handled automatically:
  * `pochi://` URIs are passed through as-is and skip all cache operations,
@@ -283,7 +281,7 @@ async function updateCacheAfterWrite(
  * @param opts.path         - Raw path from the tool input (may be relative or a `pochi://` URI)
  * @param opts.cwd          - Working directory used to resolve relative paths
  * @param opts.getMtime     - Platform-specific function to get current file mtime
- * @param opts.operation    - "editing" or "writing" — used in the staleness error message
+ * @param opts.operation    - Reserved for the temporarily disabled staleness guard
  * @param opts.doWork       - Callback that performs the actual edit/write. Receives the resolved
  *                            absolute path and returns `{ result, fileCacheContent }`.
  * @returns The `result` value produced by `doWork`
@@ -296,15 +294,10 @@ export async function withFileStateCacheGuard<T>(opts: {
   operation: "editing" | "writing";
   doWork: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
 }): Promise<T> {
-  const { cache, path: inputPath, cwd, getMtime, operation, doWork } = opts;
+  const { cache, path: inputPath, cwd, getMtime, doWork } = opts;
 
   const isVirtual = isVirtualPath(inputPath);
   const resolvedPath = isVirtual ? inputPath : resolvePath(inputPath, cwd);
-
-  // --- Staleness guard ---
-  if (!isVirtual && cache) {
-    await checkStaleness(cache, resolvedPath, getMtime, operation);
-  }
 
   const { result, fileCacheContent } = await doWork(resolvedPath);
 

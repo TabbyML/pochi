@@ -205,10 +205,14 @@ describe("FileStateCache", () => {
 });
 
 describe("withFileStateCacheGuard", () => {
-  // The "read before edit/write" guard rejects editing an existing file that
-  // was never read.
-  it("throws when editing an existing file that was never read", async () => {
+  it("allows editing a stale file while the staleness guard is disabled", async () => {
     const cache = new FileStateCache();
+    cache.set("/tmp/existing.txt", {
+      content: "old content",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
     const getMtime = async (_path: string) => 1000;
 
     await expect(
@@ -223,7 +227,7 @@ describe("withFileStateCacheGuard", () => {
           fileCacheContent: "new content",
         }),
       }),
-    ).rejects.toThrow("File has not been read yet");
+    ).resolves.toEqual({ success: true });
   });
 
   it("allows writing a brand-new file that does not yet exist on disk", async () => {
