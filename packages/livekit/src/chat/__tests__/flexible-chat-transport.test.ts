@@ -3,6 +3,7 @@ import type { Message } from "../../types";
 import {
   convertDataPartToText,
   extractContentFilterMetadata,
+  getNumCompacts,
 } from "../flexible-chat-transport";
 
 type MessagePart = Message["parts"][number];
@@ -237,5 +238,32 @@ describe("extractContentFilterMetadata", () => {
         "other",
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("getNumCompacts", () => {
+  it("counts persisted compact blocks before LLM message trimming", () => {
+    const messages = [
+      {
+        id: "checkpoint-1",
+        role: "user",
+        parts: [
+          { type: "text", text: "<compact>first summary</compact>" },
+          { type: "text", text: "continue" },
+        ],
+      },
+      {
+        id: "checkpoint-2",
+        role: "user",
+        parts: [{ type: "text", text: "<compact>second summary</compact>" }],
+      },
+      {
+        id: "new-message",
+        role: "user",
+        parts: [{ type: "text", text: "continue" }],
+      },
+    ] as Message[];
+
+    expect(getNumCompacts(messages)).toBe(2);
   });
 });

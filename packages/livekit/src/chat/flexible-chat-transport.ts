@@ -176,6 +176,18 @@ export type ChatTransportOptions = {
   onRequestFinished?: (snapshot: FinishedRequestSnapshot) => MaybePromise<void>;
 };
 
+export function getNumCompacts(messages: Message[]): number | undefined {
+  const numCompacts = messages.reduce(
+    (count, message) =>
+      count +
+      message.parts.filter(
+        (part) => part.type === "text" && prompts.isCompact(part.text),
+      ).length,
+    0,
+  );
+  return numCompacts > 0 ? numCompacts : undefined;
+}
+
 export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
@@ -215,6 +227,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     messages,
     abortSignal,
   }) => {
+    const numCompacts = getNumCompacts(messages);
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
@@ -315,6 +328,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           storeId: this.store.storeId,
           client: globalThis.POCHI_CLIENT,
           useCase: this.requestUseCase,
+          numCompacts,
         } satisfies PochiProviderOptions,
       },
       system: systemPrompt,
