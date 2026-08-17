@@ -1,0 +1,24 @@
+---
+title: 'Weekly Update #37'
+---
+# Weekly Update #37
+
+### TL;DR
+
+Pochi 0.66 is expected on August 19. It is shaping up to make long-running commands easier to leave in the background without losing momentum, while keeping the changed-files summary focused by showing each edited file only once.
+
+More below!
+
+### 🚀 Features
+
+- **Background jobs will report back automatically:** In Pochi 0.66, long-running commands will be able to continue in the background while Pochi moves on to other work. When a job finishes, Pochi will receive a completion notification, and the job and its output will remain attached to the task so it can inspect the result without repeatedly checking whether the command is done.
+
+  Today, a completed background job can sit unnoticed until Pochi polls it again, slowing down workflows built around development servers, test suites, and other long-running commands.
+
+  This will be most useful on tasks where several steps can continue while a command runs.
+
+ <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Background Job Notification](/images/developer-updates/background-job.png)</div>
+
+### 🐛 Bug Fixes
+
+- **Each changed file will appear only once:** The task's changed-files summary will recognize absolute and workspace-relative paths as the same file, preventing duplicate entries for a single edit. Diff and undo actions will continue to work from the one remaining entry. [**#1889**](https://github.com/TabbyML/pochi/pull/1889)
