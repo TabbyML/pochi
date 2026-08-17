@@ -192,6 +192,7 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
 export function injectEnvironment(
   messages: UIMessage[],
   environment: Environment | undefined,
+  options?: { forceFull?: boolean },
 ): UIMessage[] {
   if (environment === undefined) return messages;
   const messageToInject = messages.at(-1);
@@ -208,7 +209,7 @@ export function injectEnvironment(
       : undefined;
 
   const environmentDetails =
-    messages.length === 1
+    messages.length === 1 || options?.forceFull
       ? createEnvironmentPrompt(environment, user)
       : createLiteEnvironmentPrompt(environment);
 

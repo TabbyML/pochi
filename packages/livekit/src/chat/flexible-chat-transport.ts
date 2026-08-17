@@ -199,6 +199,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly attemptCompletionSchema?: z.ZodAny;
   private readonly systemPromptOverride?: string;
   private readonly onRequestFinished?: ChatTransportOptions["onRequestFinished"];
+  private forceFullEnvironment = false;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -212,6 +213,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.attemptCompletionSchema = options.attemptCompletionSchema;
     this.systemPromptOverride = options.systemPromptOverride;
     this.onRequestFinished = options.onRequestFinished;
+  }
+
+  requestFullEnvironment() {
+    this.forceFullEnvironment = true;
   }
 
   sendMessages: (
@@ -231,7 +236,12 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
-    messages = prompts.injectEnvironment(messages, environment) as Message[];
+    messages = prompts.injectEnvironment(messages, environment, {
+      forceFull: this.forceFullEnvironment,
+    }) as Message[];
+    if (environment) {
+      this.forceFullEnvironment = false;
+    }
     messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
