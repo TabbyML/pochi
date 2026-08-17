@@ -1,8 +1,13 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { BackgroundJobTerminalEvent } from "@getpochi/common";
-import { assertBackgroundJobReadInterval } from "@getpochi/common";
+import {
+  type BackgroundJobTerminalEvent,
+  type MonitorEventBatch,
+  MonitorRateLimitedReason,
+  MonitorWatcher,
+  assertBackgroundJobReadInterval,
+} from "@getpochi/common";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
   BackgroundJobOutputFile,
@@ -24,6 +29,17 @@ export interface BackgroundJob {
   lastReadAt?: number;
   stopRequested?: boolean;
   finalizing?: boolean;
+  monitor?: {
+    description: string;
+    watcher: MonitorWatcher;
+    timedOut?: boolean;
+    rateLimited?: boolean;
+  };
+}
+
+export interface MonitorJobOptions {
+  description: string;
+  timeoutMs?: number;
 }
 
 export interface BackgroundJobStartResult {
@@ -39,9 +55,10 @@ export interface BackgroundJobManagerOptions {
 type FinishListener = (event: BackgroundJobTerminalEvent) => void;
 
 export class BackgroundJobManager {
-  private jobs: Map<string, BackgroundJob> = new Map();
-  private maxOutputSize = 1024 * 1024; // compatibility buffer only
+  private jobs = new Map<string, BackgroundJob>();
+  private maxOutputSize = 1024 * 1024;
   private readonly finishListeners = new Set<FinishListener>();
+  private pendingMonitorEvents: MonitorEventBatch[] = [];
 
   constructor(private readonly options: BackgroundJobManagerOptions = {}) {}
 
@@ -49,18 +66,17 @@ export class BackgroundJobManager {
     command: string,
     cwd: string,
     envs?: Record<string, string>,
+    monitor?: MonitorJobOptions,
   ): BackgroundJobStartResult {
-    const id = createBackgroundJobId("command");
+    const id = createBackgroundJobId(monitor ? "monitor" : "command");
     const outputFile = this.options.outputDir
       ? path.join(this.options.outputDir, `${id}.log`)
       : this.options.taskId
         ? getBackgroundJobOutputPath(this.options.taskId, id)
         : path.join(tmpdir(), "pochi-background-jobs", `${id}.log`);
     const outputWriter = new BackgroundJobOutputFile(outputFile);
-
-    const shell = getShellPath();
     const child = spawn(command, {
-      shell,
+      shell: getShellPath(),
       cwd,
       env: { ...process.env, ...getTerminalEnv(), ...envs },
       stdio: ["ignore", "pipe", "pipe"],
@@ -76,39 +92,68 @@ export class BackgroundJobManager {
       startTime: Date.now(),
       status: "running",
     };
-
     this.jobs.set(id, job);
+
+    if (monitor) {
+      const watcher = new MonitorWatcher({
+        onEvents: (lines) => {
+          this.pendingMonitorEvents.push({
+            backgroundJobId: id,
+            description: monitor.description,
+            lines,
+          });
+        },
+        onTimeout: () => {
+          if (job.monitor) job.monitor.timedOut = true;
+          this.kill(id);
+        },
+        onRateLimitExceeded: () => {
+          if (job.monitor) job.monitor.rateLimited = true;
+          this.kill(id);
+        },
+        timeoutMs: monitor.timeoutMs,
+      });
+      job.monitor = { description: monitor.description, watcher };
+    }
 
     const appendOutput = async (chunk: string) => {
       if (chunk.length === 0) return;
       await outputWriter.append(chunk);
       if (job.output.length + chunk.length > this.maxOutputSize) {
         const keep = this.maxOutputSize - chunk.length;
-        if (keep > 0) {
-          job.output = job.output.slice(-keep) + chunk;
-        } else {
-          job.output = chunk.slice(-this.maxOutputSize);
-        }
+        job.output =
+          keep > 0
+            ? job.output.slice(-keep) + chunk
+            : chunk.slice(-this.maxOutputSize);
       } else {
         job.output += chunk;
       }
     };
 
     let outputError: unknown;
-    const outputFinished = Promise.all(
-      [child.stdout, child.stderr]
-        .filter((stream) => stream !== null)
-        .map(async (stream) => {
-          const sanitizer = new PlainOutputSanitizer();
-          // setEncoding uses Node's streaming decoder, so a multi-byte UTF-8
-          // character split between Buffer chunks is not replaced with U+FFFD.
-          stream.setEncoding("utf8");
-          for await (const chunk of stream) {
-            await appendOutput(sanitizer.write(chunk));
-          }
-          await appendOutput(sanitizer.end());
-        }),
-    ).catch((error) => {
+    const processStream = async (
+      stream: NodeJS.ReadableStream,
+      isStdout: boolean,
+    ) => {
+      const sanitizer = new PlainOutputSanitizer();
+      stream.setEncoding("utf8");
+      for await (const chunk of stream) {
+        const plainText = sanitizer.write(chunk as string);
+        await appendOutput(plainText);
+        if (isStdout && plainText.length > 0) {
+          job.monitor?.watcher.ingest(plainText);
+        }
+      }
+      const remainder = sanitizer.end();
+      await appendOutput(remainder);
+      if (isStdout && remainder.length > 0) {
+        job.monitor?.watcher.ingest(remainder);
+      }
+    };
+    const outputFinished = Promise.all([
+      ...(child.stdout ? [processStream(child.stdout, true)] : []),
+      ...(child.stderr ? [processStream(child.stderr, false)] : []),
+    ]).catch((error) => {
       outputError = error;
       child.kill();
     });
@@ -167,6 +212,16 @@ export class BackgroundJobManager {
     job.status = finalStatus;
     job.finalizing = false;
 
+    let monitorReason =
+      finalError ??
+      (exitCode === undefined ? finalStatus : `exited with code ${exitCode}`);
+    if (job.monitor?.rateLimited) {
+      monitorReason = MonitorRateLimitedReason;
+    } else if (job.monitor?.timedOut) {
+      monitorReason = "killed after timeout";
+    }
+    this.endMonitor(job, monitorReason);
+
     if (!this.options.taskId) return;
     const event: BackgroundJobTerminalEvent = {
       taskId: this.options.taskId,
@@ -179,6 +234,36 @@ export class BackgroundJobManager {
       finishedAt: Date.now(),
     };
     for (const listener of this.finishListeners) listener(event);
+  }
+
+  private endMonitor(job: BackgroundJob, reason: string): void {
+    if (!job.monitor) return;
+    job.monitor.watcher.end();
+    this.pendingMonitorEvents.push({
+      backgroundJobId: job.id,
+      description: job.monitor.description,
+      lines: [],
+      ended: { reason },
+    });
+    job.monitor = undefined;
+  }
+
+  drainMonitorEvents(): MonitorEventBatch[] {
+    const events = this.pendingMonitorEvents;
+    this.pendingMonitorEvents = [];
+    return events;
+  }
+
+  hasPendingMonitorEvents(): boolean {
+    return this.pendingMonitorEvents.length > 0;
+  }
+
+  getActiveMonitors(): Array<{ backgroundJobId: string; description: string }> {
+    return Array.from(this.jobs.values()).flatMap((job) =>
+      job.status === "running" && job.monitor
+        ? [{ backgroundJobId: job.id, description: job.monitor.description }]
+        : [],
+    );
   }
 
   readOutput(id: string): {
@@ -194,30 +279,31 @@ export class BackgroundJobManager {
       previousReadAt: job.lastReadAt,
       status: job.status === "running" ? "running" : "completed",
     });
-
-    const outputToReturn = job.output;
+    const output = job.output;
     job.output = "";
     job.lastReadAt = now;
-
-    return { output: outputToReturn, status: job.status };
+    return { output, status: job.status };
   }
 
   kill(id: string): boolean {
     const job = this.jobs.get(id);
     if (!job) return false;
     if (job.status !== "running" || job.finalizing) return true;
-
     job.stopRequested = true;
-    return job.process.kill();
+    job.process.kill();
+    return true;
   }
 
-  killAll() {
+  killAll(): void {
     for (const job of this.jobs.values()) {
       if (job.status === "running" && !job.finalizing) {
         job.stopRequested = true;
         job.process.kill();
       }
+      job.monitor?.watcher.dispose();
+      job.monitor = undefined;
     }
+    this.pendingMonitorEvents = [];
   }
 
   hasPendingJobs(): boolean {
@@ -235,17 +321,21 @@ export class BackgroundJobManager {
   async waitForAllJobs(
     timeoutMs: number,
     abortSignal?: AbortSignal,
-  ): Promise<"completed" | "timeout" | "aborted"> {
+    wakeOnMonitorEvents = false,
+  ): Promise<"completed" | "timeout" | "aborted" | "monitor-events"> {
     const startTime = Date.now();
-    const pollInterval = 50;
-
     while (this.hasPendingJobs()) {
+      if (wakeOnMonitorEvents && this.hasPendingMonitorEvents()) {
+        return "monitor-events";
+      }
       if (abortSignal?.aborted) return "aborted";
       if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs)
         return "timeout";
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
-
+    if (wakeOnMonitorEvents && this.hasPendingMonitorEvents()) {
+      return "monitor-events";
+    }
     return "completed";
   }
 }

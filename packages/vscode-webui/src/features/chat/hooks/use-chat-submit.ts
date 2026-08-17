@@ -4,6 +4,7 @@ import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { getLogger } from "@getpochi/common";
+import type { MonitorEventEnvelope } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
@@ -43,6 +44,12 @@ export interface DraftMessage {
     activeSelection?: ActiveSelection;
     backgroundJobNotificationIds?: string[];
     nonRemovable?: boolean;
+    /** Present when this draft was generated from monitor events. */
+    monitor?: {
+      backgroundJobId: string;
+      description: string;
+      envelopes: MonitorEventEnvelope[];
+    };
   };
 }
 

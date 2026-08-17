@@ -75,7 +75,12 @@ export const ToolsByPermission = {
     "webSearch",
   ] as string[],
   write: ["writeToFile", "applyDiff", "editNotebook"] as string[],
-  execute: ["executeCommand", "killBackgroundJob", "newTask"] as string[],
+  execute: [
+    "executeCommand",
+    "killBackgroundJob",
+    "startMonitor",
+    "newTask",
+  ] as string[],
   default: ["renderWidget"] as string[],
 };
 

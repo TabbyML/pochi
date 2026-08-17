@@ -28,7 +28,11 @@ import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { constants, type BackgroundJobNotification } from "@getpochi/common";
+import {
+  constants,
+  type BackgroundJobNotification,
+  type MonitorEventEnvelope,
+} from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type {
   DisplayModel,
@@ -53,6 +57,7 @@ import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
 import { type DraftMessage, useChatSubmit } from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
+import { useMonitorEvents } from "../hooks/use-monitor-events";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
@@ -167,6 +172,50 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       );
     }
   }, [acknowledge, backgroundJobNotifications, messages]);
+
+  // Monitor events (startMonitor tool) enter the conversation through the
+  // queued-messages pipeline: enqueue here, and the auto-dequeue effect
+  // below delivers them as soon as the chat is idle. Events arriving while
+  // a monitor draft is still queued are merged into it, so a burst becomes
+  // one message (and one inference round) instead of many.
+  const onMonitorEvents = useCallback((envelopes: MonitorEventEnvelope[]) => {
+    setQueuedMessages((prev) => {
+      const first = envelopes[0];
+      if (!first) return prev;
+
+      const last = prev.at(-1);
+      const queuedMonitor = last?.raw.monitor;
+      const queuedEnvelopes =
+        queuedMonitor?.backgroundJobId === first.backgroundJobId
+          ? queuedMonitor.envelopes
+          : undefined;
+      const merged = queuedEnvelopes
+        ? [...queuedEnvelopes, ...envelopes]
+        : envelopes;
+      const eventCount = merged.reduce((n, e) => n + e.lines.length, 0);
+      const summary = [
+        eventCount > 0 ? `${eventCount} event(s)` : "",
+        merged.some((e) => e.ended) ? "ended" : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      const draft: DraftMessage = {
+        parts: [{ type: "data-monitor-events", data: { batches: merged } }],
+        raw: {
+          text: `Monitor [${first.description}]: ${summary}`,
+          nonRemovable: true,
+          monitor: {
+            backgroundJobId: first.backgroundJobId,
+            description: first.description,
+            envelopes: merged,
+          },
+        },
+      };
+      return queuedEnvelopes ? [...prev.slice(0, -1), draft] : [...prev, draft];
+    });
+  }, []);
+  useMonitorEvents(taskId, onMonitorEvents);
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
   const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;

@@ -50,6 +50,7 @@ export type {
 export { QuestionSchema } from "./ask-followup-question";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
+import { startMonitor } from "./monitor";
 import { createReadFileTool } from "./read-file";
 import { type Skill, createSkillTool } from "./use-skill";
 import { parseToolSpec } from "./utils/tool-spec";
@@ -170,6 +171,7 @@ export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
     ...createCliTools(options),
     killBackgroundJob,
+    startMonitor,
     renderWidget,
   };
 };

@@ -2,6 +2,7 @@ import { getLogger } from "@/lib/logger";
 import type { BackgroundJobTerminalEvent } from "@getpochi/common";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
+  type BackgroundJobIdType,
   BackgroundJobOutputFile,
   PlainOutputSanitizer,
   createBackgroundJobId,
@@ -14,6 +15,17 @@ import { OutputManager } from "./output";
 import { ExecutionError } from "./utils";
 
 const logger = getLogger("TerminalJob");
+
+/**
+ * Hooks for a monitor watching this job's output. Implemented by the
+ * MonitorRegistry; TerminalJob only feeds it raw chunks and signals the end
+ * of execution.
+ */
+export interface TerminalJobMonitorHooks {
+  ingest(chunk: string): void;
+  /** Called once when command execution ends (exit, abort, terminal closed). */
+  end(reason: string): void;
+}
 
 /**
  * Configuration options for creating a TerminalJob
@@ -31,6 +43,10 @@ export interface TerminalJobConfig {
   abortSignal?: AbortSignal;
   /** Task that owns the job and receives its terminal notification. */
   taskId: string;
+  /** The ID namespace used for the job. */
+  jobType?: Extract<BackgroundJobIdType, "command" | "monitor">;
+  /** Monitor tapping this job's output stream. */
+  monitor?: TerminalJobMonitorHooks;
 }
 
 /**
@@ -73,7 +89,7 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   private constructor(private readonly config: TerminalJobConfig) {
-    this.id = createBackgroundJobId("command");
+    this.id = createBackgroundJobId(config.jobType ?? "command");
     this.outputFile = getBackgroundJobOutputPath(config.taskId, this.id);
     this.outputWriter = new BackgroundJobOutputFile(this.outputFile);
     this.outputManager = OutputManager.create({
@@ -167,6 +183,11 @@ export class TerminalJob implements vscode.Disposable {
       }
       this.outputManager.finalize(executionError);
       await this.finish(executionError);
+      this.config.monitor?.end(
+        executionError
+          ? executionError.message
+          : `exited with code ${this.exitCode ?? 0}`,
+      );
       // Only tear down the execution-scoped listeners here. The job itself
       // stays registered until the terminal is closed (see closeListener),
       // so the UI can still highlight and reopen the terminal.
@@ -234,11 +255,13 @@ export class TerminalJob implements vscode.Disposable {
       if (plainText.length === 0) continue;
       await this.outputWriter.append(plainText);
       this.outputManager.addChunk(plainText);
+      this.config.monitor?.ingest(plainText);
     }
     const remainder = sanitizer.end();
     if (remainder.length > 0) {
       await this.outputWriter.append(remainder);
       this.outputManager.addChunk(remainder);
+      this.config.monitor?.ingest(remainder);
     }
   }
 
@@ -366,6 +389,10 @@ export class TerminalJob implements vscode.Disposable {
       finalError = ExecutionError.create(
         closeError instanceof Error ? closeError.message : String(closeError),
       );
+    }
+
+    if (this.config.jobType === "monitor") {
+      return;
     }
 
     const status =

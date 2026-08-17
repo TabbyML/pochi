@@ -21,7 +21,9 @@ package.json
 
 # Opened Terminals in Editor
 Read terminal output from its output file with \`readFile\` (use \`offset\` and \`limit\` for growing files).
-- Ids prefixed with "bgjob-cmd-" are Pochi-started background jobs and can be killed with \`killBackgroundJob\`.
+- Ids prefixed with "bgjob-cmd-" are Pochi-started command jobs.
+- Ids prefixed with "bgjob-monitor-" are active monitors.
+- Both managed job types can be killed with \`killBackgroundJob\`.
 - Ids prefixed with "term-" are user-opened terminals and are read-only.
 - A terminal without an output file has no output available to read.
 * Terminal 1 (selected)
