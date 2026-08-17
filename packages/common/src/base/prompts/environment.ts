@@ -218,15 +218,11 @@ export function injectEnvironment(
     text: prompts.createSystemReminder(environmentDetails),
   } satisfies TextUIPart;
 
-  for (const message of messages) {
-    if (message.role !== "user") continue;
-    message.parts = message.parts.filter(
-      (part) =>
-        part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
-    );
-  }
-
-  const parts = messageToInject.parts;
+  const parts =
+    // Remove existing environment system reminders.
+    messageToInject.parts.filter(
+      (x) => x.type !== "text" || !prompts.isEnvironmentSystemReminder(x.text),
+    ) || [];
   const lastTextPartIndex = parts.findLastIndex(
     (parts) => parts.type === "text",
   );
