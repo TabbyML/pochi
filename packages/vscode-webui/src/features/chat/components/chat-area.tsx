@@ -19,6 +19,7 @@ interface ChatAreaProps {
   repairingChart?: string | null;
   showLastStepDuration?: boolean;
   taskStatus?: Task["status"];
+  renderAllMessages?: boolean;
 }
 
 export function ChatArea({
@@ -35,6 +36,7 @@ export function ChatArea({
   repairingChart,
   showLastStepDuration,
   taskStatus,
+  renderAllMessages,
 }: ChatAreaProps) {
   const resourceUri = useResourceURI();
   return (
@@ -60,6 +62,7 @@ export function ChatArea({
         repairingChart={repairingChart}
         showLastStepDuration={showLastStepDuration}
         taskStatus={taskStatus}
+        renderAllMessages={renderAllMessages}
       />
     </>
   );
