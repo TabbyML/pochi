@@ -4,6 +4,7 @@ export const ModelOptions = z.object({
   label: z.string().optional(),
   contextWindow: z.number().optional(),
   useToolCallMiddleware: z.boolean().optional(),
+  useReasoningMiddleware: z.boolean().optional(),
   contentType: z.array(z.string()).optional(),
 });
 
