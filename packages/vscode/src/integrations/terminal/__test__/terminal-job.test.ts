@@ -59,10 +59,14 @@ function createHarness(options?: { read?: () => AsyncIterable<string> }) {
   const shellIntegration: FakeShellIntegration = {
     executeCommand: () => execution,
   };
+  let terminalDisposeCalls = 0;
   const terminal: FakeTerminal = {
     shellIntegration,
     show: () => {},
-    dispose: () => closeEmitter.fire(terminal),
+    dispose: () => {
+      terminalDisposeCalls++;
+      closeEmitter.fire(terminal);
+    },
   };
   const finalizeCalls: Array<TestExecutionError | undefined> = [];
   const lifecycle: string[] = [];
@@ -154,6 +158,9 @@ function createHarness(options?: { read?: () => AsyncIterable<string> }) {
     job,
     lifecycle,
     terminal,
+    get terminalDisposeCalls() {
+      return terminalDisposeCalls;
+    },
   };
 }
 
@@ -172,26 +179,24 @@ interface FakeTerminal {
 }
 
 describe("TerminalJob", () => {
-  it("keeps a completed job registered until its terminal closes", async () => {
-    const {
-      TerminalJob,
-      execution,
-      executionEndEmitter,
-      finalizeCalls,
-      finishEvents,
-      job,
-      lifecycle,
-      terminal,
-    } = createHarness();
+  it("closes the terminal after a background command completes", async () => {
+    const harness = createHarness();
 
     await flushPromises();
-    executionEndEmitter.fire({ execution, exitCode: 0 });
+    harness.executionEndEmitter.fire({
+      execution: harness.execution,
+      exitCode: 0,
+    });
     await flushPromises();
 
-    assert.strictEqual(finalizeCalls.length, 1);
-    assert.strictEqual(finalizeCalls[0], undefined);
-    assert.deepStrictEqual(lifecycle, ["file-closed", "event-fired"]);
-    assert.deepStrictEqual(finishEvents, [
+    assert.strictEqual(harness.finalizeCalls.length, 1);
+    assert.strictEqual(harness.finalizeCalls[0], undefined);
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
+      "file-closed",
+      "event-fired",
+    ]);
+    assert.deepStrictEqual(harness.finishEvents, [
       {
         taskId: "task-test",
         backgroundJobId: "bgjob-cmd-test",
@@ -199,16 +204,11 @@ describe("TerminalJob", () => {
         status: "completed",
         command: "sleep 10",
         exitCode: 0,
-        finishedAt: finishEvents[0]?.finishedAt,
+        finishedAt: harness.finishEvents[0]?.finishedAt,
       },
     ]);
-    assert.strictEqual(TerminalJob.get(job.id), job);
-
-    terminal.dispose();
-    await flushPromises();
-
-    assert.strictEqual(TerminalJob.get(job.id), undefined);
-    assert.strictEqual(finalizeCalls.length, 1);
+    assert.strictEqual(harness.terminalDisposeCalls, 1);
+    assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
   });
 
   it("finalizes a running job when its terminal closes", async () => {
@@ -246,13 +246,14 @@ describe("TerminalJob", () => {
     await flushPromises();
 
     assert.strictEqual(harness.finishEvents.length, 0);
-    assert.deepStrictEqual(harness.lifecycle, []);
+    assert.deepStrictEqual(harness.lifecycle, ["output:$ sleep 10\n"]);
 
     releaseOutput?.();
     await flushPromises();
     await flushPromises();
 
     assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
       "output:failure details",
       "file-closed",
       "event-fired",
@@ -261,7 +262,7 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.finishEvents[0]?.exitCode, 1);
   });
 
-  it("notifies when a background command fails without output", async () => {
+  it("notifies when a background command fails without command output", async () => {
     const harness = createHarness();
 
     await flushPromises();
@@ -272,7 +273,11 @@ describe("TerminalJob", () => {
     await flushPromises();
 
     assert.strictEqual(harness.finalizeCalls.length, 1);
-    assert.deepStrictEqual(harness.lifecycle, ["file-closed", "event-fired"]);
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
+      "file-closed",
+      "event-fired",
+    ]);
     assert.strictEqual(harness.finishEvents.length, 1);
     assert.strictEqual(harness.finishEvents[0]?.status, "failed");
     assert.strictEqual(harness.finishEvents[0]?.exitCode, 2);
@@ -280,5 +285,7 @@ describe("TerminalJob", () => {
       harness.finishEvents[0]?.error ?? "",
       /exited with code 2/,
     );
+    assert.strictEqual(harness.terminalDisposeCalls, 1);
+    assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
   });
 });
