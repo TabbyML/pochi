@@ -1,5 +1,6 @@
 import type {
   LanguageModelV3Middleware,
+  LanguageModelV3Prompt,
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { getPotentialStartIndex } from "./utils";
@@ -40,6 +41,20 @@ export function createReasoningMiddleware(
 
   return {
     specificationVersion: "v3",
+    /**
+     * Models parsed by this middleware emit their reasoning as part of the text
+     * content, so the reasoning has to be sent back in the very same format:
+     * providers either drop reasoning parts or map them to a dedicated field
+     * the model never wrote itself.
+     */
+    transformParams: async ({ params }) => ({
+      ...params,
+      prompt: params.prompt.map((message) =>
+        message.role === "assistant"
+          ? { ...message, content: serializeReasoning(message.content) }
+          : message,
+      ) as LanguageModelV3Prompt,
+    }),
     wrapStream: async ({ doStream }) => {
       const { stream, ...rest } = await doStream();
       const transformedStream = stream.pipeThrough(
@@ -176,6 +191,35 @@ export function createReasoningMiddleware(
       };
     },
   };
+
+  /**
+   * Renders assistant reasoning content back into the tag the model used, e.g.
+   * `<think signature="abc">...</think>`.
+   */
+  function serializeReasoning(
+    content: Extract<
+      LanguageModelV3Prompt[number],
+      { role: "assistant" }
+    >["content"],
+  ) {
+    return content.map((part) => {
+      if (part.type !== "reasoning") return part;
+
+      const { [ReasoningTagMetadataKey]: metadata, ...providerOptions } =
+        part.providerOptions ?? {};
+      const tagName =
+        typeof metadata?.tag === "string" && metadata.tag ? metadata.tag : tag;
+      const attributes =
+        typeof metadata?.attributes === "string" ? metadata.attributes : "";
+      const separator = !attributes || attributes.startsWith(" ") ? "" : " ";
+
+      return {
+        type: "text" as const,
+        text: `<${tagName}${separator}${attributes}>${part.text}</${tagName}>`,
+        ...(Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
+      };
+    });
+  }
 
   function publish(
     controller: TransformStreamDefaultController<LanguageModelV3StreamPart>,
