@@ -240,7 +240,7 @@ function createVSCodeHost(): VSCodeHostApi {
           if (status !== "completed") {
             return {
               content:
-                "The task is currently running. You can continue with other operations while it executes in the background. If you need to wait for the task to complete, you can use the `executeCommand` tool with `sleep`.",
+                "The task is currently running. Do not wait for or poll it; continue with other work until its completion notification arrives.",
               status,
               isTruncated: false,
             };

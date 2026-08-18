@@ -260,4 +260,25 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.finishEvents[0]?.status, "failed");
     assert.strictEqual(harness.finishEvents[0]?.exitCode, 1);
   });
+
+  it("notifies when a background command fails without output", async () => {
+    const harness = createHarness();
+
+    await flushPromises();
+    harness.executionEndEmitter.fire({
+      execution: harness.execution,
+      exitCode: 2,
+    });
+    await flushPromises();
+
+    assert.strictEqual(harness.finalizeCalls.length, 1);
+    assert.deepStrictEqual(harness.lifecycle, ["file-closed", "event-fired"]);
+    assert.strictEqual(harness.finishEvents.length, 1);
+    assert.strictEqual(harness.finishEvents[0]?.status, "failed");
+    assert.strictEqual(harness.finishEvents[0]?.exitCode, 2);
+    assert.match(
+      harness.finishEvents[0]?.error ?? "",
+      /exited with code 2/,
+    );
+  });
 });

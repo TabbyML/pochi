@@ -18,7 +18,7 @@ import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
 import { createAttemptCompletionTool } from "./attempt-completion";
 import { createReview } from "./create-review";
-import { executeCommand } from "./execute-command";
+import { createExecuteCommandTool } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import type { multiApplyDiff } from "./multi-apply-diff";
@@ -139,6 +139,7 @@ export interface CreateClientToolOptions {
   contentType?: string[];
   attemptCompletionSchema?: z.ZodType;
   agent?: CustomAgent;
+  isSubTask?: boolean;
 }
 
 const HiddenNewTaskAgentNames = new Set(["attemptTodoCompletion"]);
@@ -155,7 +156,7 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
   attemptCompletion: createAttemptCompletionTool(
     options?.attemptCompletionSchema,
   ),
-  executeCommand,
+  executeCommand: createExecuteCommandTool(options?.isSubTask),
   globFiles,
   listFiles,
   readFile: createReadFileTool(options?.contentType),
@@ -252,10 +253,10 @@ export const selectAgentTools = (
   options: SelectAgentToolsOptions,
 ): AgentTools => {
   const { agent, mcpTools, isSubTask, ...toolOptions } = options;
-  const allowList = getAgentToolAllowList(agent, options.isSubTask);
+  const allowList = getAgentToolAllowList(agent, isSubTask);
 
   const avaliableTools: AgentTools = {
-    ...createClientTools(toolOptions),
+    ...createClientTools({ ...toolOptions, isSubTask }),
     ...(mcpTools ?? {}),
   };
 

@@ -198,6 +198,27 @@ describe("selectAgentTools", () => {
     );
   });
 
+  it("does not expose background commands to subtasks", () => {
+    const topLevelTools = selectAgentTools({ isSubTask: false });
+    const subTaskTools = selectAgentTools({ isSubTask: true });
+    const topLevelSchema = topLevelTools.executeCommand
+      ?.inputSchema as z.ZodObject;
+    const subTaskSchema = subTaskTools.executeCommand
+      ?.inputSchema as z.ZodObject;
+
+    expect(topLevelSchema.shape).toHaveProperty("background");
+    expect(subTaskSchema.shape).not.toHaveProperty("background");
+    expect(topLevelTools.executeCommand?.description).toContain(
+      "Do not infer status from empty or partial file contents",
+    );
+    expect(subTaskTools.executeCommand?.description).not.toContain(
+      "background command",
+    );
+    expect(topLevelTools.attemptCompletion?.description).toContain(
+      "if they are still running and no independent work remains",
+    );
+  });
+
   it("exposes declared review source tools to reviewer agents", () => {
     const reviewerTools = selectAgentTools({
       agent: createAgent({

@@ -36,17 +36,20 @@ vi.mock("../command-execution-panel", () => ({
   BackgroundJobPanel: ({
     backgroundJobId,
     output,
+    outputFile,
     terminalName,
     lastCommand,
   }: {
     backgroundJobId: string;
     output?: string;
+    outputFile?: string;
     terminalName?: string;
     lastCommand?: string;
   }) => (
     <div
       data-testid="background-job-panel"
       data-job-id={backgroundJobId}
+      data-output-file={outputFile}
       data-terminal-name={terminalName}
       data-last-command={lastCommand}
     >
@@ -153,6 +156,9 @@ describe("readFileTool", () => {
     expect(
       getByTestId("background-job-panel").getAttribute("data-job-id"),
     ).toBe("bgjob-cmd-test");
+    expect(
+      getByTestId("background-job-panel").getAttribute("data-output-file"),
+    ).toBe("pochi://~/background-jobs/bgjob-cmd-test.log");
     expect(getByTestId("background-job-panel").textContent).toBe("job output");
   });
 
