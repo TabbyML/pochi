@@ -191,3 +191,307 @@ export function makePerfMessages({
     } satisfies Message;
   });
 }
+
+interface TaskHistoryShape {
+  assistantPartsPerMessage: number;
+  partTextLength: number;
+}
+
+export function makeTaskHistoryMessages({
+  messageCount,
+  assistantPartsPerMessage,
+  partTextLength,
+}: TaskHistoryShape & { messageCount: number }): Message[] {
+  return Array.from({ length: messageCount }, (_, index) =>
+    makeTaskHistoryMessage({
+      id: `task-history-message-${index}`,
+      role: index % 2 === 0 ? "user" : "assistant",
+      sequence: index,
+      assistantPartsPerMessage,
+      partTextLength,
+    }),
+  );
+}
+
+export function appendTaskHistoryTurn(
+  messages: Message[],
+  {
+    turnIndex,
+    assistantPartsPerMessage,
+    partTextLength,
+  }: TaskHistoryShape & { turnIndex: number },
+): Message[] {
+  return [
+    ...messages,
+    makeTaskHistoryMessage({
+      id: `task-history-turn-${turnIndex}-user`,
+      role: "user",
+      sequence: turnIndex * 2,
+      assistantPartsPerMessage,
+      partTextLength,
+    }),
+    makeTaskHistoryMessage({
+      id: `task-history-turn-${turnIndex}-assistant`,
+      role: "assistant",
+      sequence: turnIndex * 2 + 1,
+      assistantPartsPerMessage,
+      partTextLength,
+    }),
+  ];
+}
+
+export function updateTaskHistoryStream(
+  messages: Message[],
+  {
+    updateIndex,
+    chunkSize,
+    snapshot = structuredClone,
+  }: {
+    updateIndex: number;
+    chunkSize: number;
+    snapshot?: (message: Message) => Message;
+  },
+): Message[] {
+  const messageIndex = messages.length - 1;
+  const message = messages[messageIndex];
+  if (message?.role !== "assistant") return messages;
+
+  const textPartIndex = message.parts.findLastIndex(
+    (part) => part.type === "text",
+  );
+  if (textPartIndex === -1) return messages;
+
+  const parts = message.parts.map((part, partIndex) => {
+    if (partIndex !== textPartIndex || part.type !== "text") return part;
+    return {
+      ...part,
+      text:
+        part.text + makeSizedText(` stream update ${updateIndex}`, chunkSize),
+      state: "streaming" as const,
+    };
+  });
+
+  const nextMessage = snapshot({ ...message, parts });
+  return [
+    ...messages.slice(0, messageIndex),
+    nextMessage,
+    ...messages.slice(messageIndex + 1),
+  ];
+}
+
+export function summarizeTaskHistory(messages: Message[]) {
+  return {
+    messageCount: messages.length,
+    partCount: messages.reduce(
+      (partCount, message) => partCount + message.parts.length,
+      0,
+    ),
+    serializedBytes: new TextEncoder().encode(JSON.stringify(messages))
+      .byteLength,
+  };
+}
+
+export function summarizeMessageRange(messages: Message[], startIndex: number) {
+  const start = Math.min(Math.max(startIndex, 0), messages.length);
+  return {
+    inputMessageCount: messages.length,
+    inputPartCount: messages.reduce(
+      (partCount, message) => partCount + message.parts.length,
+      0,
+    ),
+    mountedMessageCount: messages.length - start,
+    mountedPartCount: messages
+      .slice(start)
+      .reduce((partCount, message) => partCount + message.parts.length, 0),
+  };
+}
+
+function makeTaskHistoryMessage({
+  id,
+  role,
+  sequence,
+  assistantPartsPerMessage,
+  partTextLength,
+}: TaskHistoryShape & {
+  id: string;
+  role: "user" | "assistant";
+  sequence: number;
+}): Message {
+  const parts =
+    role === "user"
+      ? [makeTaskHistoryTextPart(role, sequence, 0, partTextLength)]
+      : Array.from({ length: assistantPartsPerMessage }, (_, partIndex) =>
+          makeTaskHistoryAssistantPart({
+            sequence,
+            partIndex,
+            partCount: assistantPartsPerMessage,
+            partTextLength,
+          }),
+        );
+
+  if (role === "user") {
+    return {
+      id,
+      role,
+      metadata: { kind: "user" },
+      parts,
+    } satisfies Message;
+  }
+
+  return {
+    id,
+    role,
+    metadata: {
+      kind: "assistant",
+      totalTokens: 0,
+      finishReason: "stop",
+    },
+    parts,
+  } satisfies Message;
+}
+
+function makeTaskHistoryAssistantPart({
+  sequence,
+  partIndex,
+  partCount,
+  partTextLength,
+}: {
+  sequence: number;
+  partIndex: number;
+  partCount: number;
+  partTextLength: number;
+}): Message["parts"][number] {
+  if (
+    partIndex === partCount - 1 ||
+    partIndex % 10 === 2 ||
+    partIndex % 10 === 9
+  ) {
+    return makeTaskHistoryTextPart(
+      "assistant",
+      sequence,
+      partIndex,
+      partTextLength,
+    );
+  }
+
+  const toolCallId = `task-history-tool-${sequence}-${partIndex}`;
+  const filePath = `packages/example/src/task-history-${sequence}-${partIndex}.ts`;
+
+  switch (partIndex % 10) {
+    case 0:
+    case 4:
+      return {
+        type: "reasoning",
+        text: makeSizedText(
+          `Reasoning for message ${sequence}, part ${partIndex}.`,
+          partTextLength,
+        ),
+      };
+    case 1:
+      return {
+        type: "tool-readFile",
+        toolCallId,
+        state: "output-available",
+        input: { path: filePath },
+        output: {
+          content: makeSizedText(`Read ${filePath}.`, partTextLength),
+          isTruncated: false,
+          filePath,
+        },
+      } as Message["parts"][number];
+    case 3:
+      return {
+        type: "tool-executeCommand",
+        toolCallId,
+        state: "output-available",
+        input: {
+          command: `printf 'task history ${sequence}-${partIndex}'`,
+        },
+        output: {
+          output: makeSizedText(
+            `Completed command ${sequence}-${partIndex}.`,
+            partTextLength,
+          ),
+          isTruncated: false,
+        },
+      } as Message["parts"][number];
+    case 5:
+      return {
+        type: "tool-searchFiles",
+        toolCallId,
+        state: "output-available",
+        input: { path: "packages", regex: `task-history-${sequence}` },
+        output: {
+          matches: [
+            {
+              file: filePath,
+              line: partIndex + 1,
+              context: makeSizedText(
+                `Search match ${sequence}-${partIndex}.`,
+                partTextLength,
+              ),
+            },
+          ],
+          isTruncated: false,
+        },
+      } as Message["parts"][number];
+    case 6:
+      return {
+        type: "tool-listFiles",
+        toolCallId,
+        state: "output-available",
+        input: { path: "packages/example/src", recursive: false },
+        output: { files: [filePath], isTruncated: false },
+      } as Message["parts"][number];
+    case 7:
+      return {
+        type: "tool-globFiles",
+        toolCallId,
+        state: "output-available",
+        input: { path: "packages/example/src", globPattern: "**/*.ts" },
+        output: { files: [filePath], isTruncated: false },
+      } as Message["parts"][number];
+    case 8:
+      return {
+        type: "tool-writeToFile",
+        toolCallId,
+        state: "output-available",
+        input: {
+          path: filePath,
+          content: makeSizedText(
+            `export const taskHistory${sequence} = ${partIndex};`,
+            partTextLength,
+          ),
+        },
+        output: { success: true },
+      } as Message["parts"][number];
+    default:
+      return makeTaskHistoryTextPart(
+        "assistant",
+        sequence,
+        partIndex,
+        partTextLength,
+      );
+  }
+}
+
+function makeTaskHistoryTextPart(
+  role: "user" | "assistant",
+  sequence: number,
+  partIndex: number,
+  partTextLength: number,
+): Message["parts"][number] {
+  return {
+    type: "text",
+    text: makeSizedText(
+      `${role} message ${sequence}, part ${partIndex}.`,
+      partTextLength,
+    ),
+    state: "done",
+  };
+}
+
+function makeSizedText(prefix: string, length: number) {
+  if (prefix.length >= length) return prefix.slice(0, length);
+  return prefix + "x".repeat(length - prefix.length);
+}

@@ -401,9 +401,9 @@ function Chat({ user, uid, info }: ChatProps) {
     messages,
   });
 
-  const lastMessage = messages.at(-1);
-  const lastUserMessageId =
-    lastMessage?.role === "user" ? lastMessage.id : undefined;
+  const lastUserMessageId = messages.findLast(
+    (message) => message.role === "user",
+  )?.id;
 
   const { onToolCallApprovalVisible } = useScrollToBottom({
     messagesContainerRef,

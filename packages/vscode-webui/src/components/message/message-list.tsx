@@ -32,6 +32,7 @@ import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
 import { Reviews } from "./reviews";
+import { useMessageListPagination } from "./use-message-list-pagination";
 import { UserEditsPart } from "./user-edits";
 
 interface UserEditsCheckpoint {
@@ -63,6 +64,8 @@ export const MessageList: React.FC<{
   repairingChart?: string | null;
   showLastStepDuration?: boolean;
   taskStatus?: Task["status"];
+  /** Mounts the full history for shared output and performance baselines. */
+  renderAllMessages?: boolean;
 }> = ({
   messages: renderMessages,
   isLoading,
@@ -81,6 +84,7 @@ export const MessageList: React.FC<{
   repairingChart,
   showLastStepDuration,
   taskStatus,
+  renderAllMessages = false,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -130,6 +134,18 @@ export const MessageList: React.FC<{
     [repairMermaid, repairingChart, isLoading, isExecuting],
   );
 
+  // Paginate mounted messages; derive values from the full history.
+  const { start, hiddenAboveCount, loadEarlierTriggerRef } =
+    useMessageListPagination({
+      messages: renderMessages,
+      containerRef,
+      enabled: !renderAllMessages && containerRef !== undefined,
+    });
+  const visibleMessages = useMemo(
+    () => renderMessages.slice(start),
+    [renderMessages, start],
+  );
+
   return (
     <BackgroundJobContextProvider messages={renderMessages}>
       <MermaidContextProvider value={mermaidContextValue}>
@@ -138,95 +154,104 @@ export const MessageList: React.FC<{
           viewportClassname={viewportClassname}
           ref={containerRef}
         >
-          {renderMessages.map((m, messageIndex) => (
-            <div
-              key={m.id}
-              className="message-list-item flex flex-col"
-              aria-label={`chat-message-${m.role}`}
-            >
-              <div className={cn(showUserAvatar && "pt-4 pb-2")}>
-                {showUserAvatar && (
-                  <div className="flex items-center gap-2">
-                    {m.role === "user" ? (
-                      <Avatar className="size-7 select-none">
-                        <AvatarImage src={user?.image ?? undefined} />
-                        <AvatarFallback
-                          className={cn(
-                            "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
-                          )}
-                        >
-                          {user?.name.slice(0, 2) || (
-                            <UserIcon className={cn("size-[50%]")} />
-                          )}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <Avatar className="size-7 select-none">
-                        <AvatarImage
-                          src={assistant?.image ?? undefined}
-                          className="scale-110"
-                        />
-                        <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
-                      </Avatar>
+          {hiddenAboveCount > 0 && (
+            <EarlierMessagesEdge ref={loadEarlierTriggerRef} />
+          )}
+          {visibleMessages.map((m, indexInRange) => {
+            const messageIndex = start + indexInRange;
+            return (
+              <div
+                key={m.id}
+                className="message-list-item flex flex-col"
+                aria-label={`chat-message-${m.role}`}
+              >
+                <div className={cn(showUserAvatar && "pt-4 pb-2")}>
+                  {showUserAvatar && (
+                    <div className="flex items-center gap-2">
+                      {m.role === "user" ? (
+                        <Avatar className="size-7 select-none">
+                          <AvatarImage src={user?.image ?? undefined} />
+                          <AvatarFallback
+                            className={cn(
+                              "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
+                            )}
+                          >
+                            {user?.name.slice(0, 2) || (
+                              <UserIcon className={cn("size-[50%]")} />
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <Avatar className="size-7 select-none">
+                          <AvatarImage
+                            src={assistant?.image ?? undefined}
+                            className="scale-110"
+                          />
+                          <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
+                        </Avatar>
+                      )}
+                      <strong>
+                        {m.role === "user" ? user?.name : assistantName}
+                      </strong>
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "ml-1 flex flex-col",
+                      showUserAvatar && "mt-3",
                     )}
-                    <strong>
-                      {m.role === "user" ? user?.name : assistantName}
-                    </strong>
+                  >
+                    {m.parts.map((part, index) => (
+                      <Part
+                        role={m.role}
+                        key={index}
+                        messageId={m.id}
+                        isLastPartInMessages={
+                          index === m.parts.length - 1 &&
+                          messageIndex === renderMessages.length - 1
+                        }
+                        partIndex={index}
+                        part={part}
+                        isLoading={isLoading}
+                        shouldCheckpointUseLoading={shouldCheckpointUseLoading}
+                        messages={renderMessages}
+                        forkTask={forkTask}
+                        isSubTask={isSubTask}
+                        hideUserEditsActions={hideUserEditsActions}
+                        latestCheckpoint={latestCheckpoint}
+                        lastCheckpointInMessage={lastCheckpointInMessage}
+                        userEditsCheckpoint={userEditsCheckpoints[messageIndex]}
+                        toolCallCheckpoints={toolCallCheckpoints}
+                      />
+                    ))}
                   </div>
-                )}
-                <div
-                  className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}
-                >
-                  {m.parts.map((part, index) => (
-                    <Part
-                      role={m.role}
-                      key={index}
-                      messageId={m.id}
-                      isLastPartInMessages={
-                        index === m.parts.length - 1 &&
-                        messageIndex === renderMessages.length - 1
-                      }
-                      partIndex={index}
-                      part={part}
-                      isLoading={isLoading}
-                      shouldCheckpointUseLoading={shouldCheckpointUseLoading}
-                      messages={renderMessages}
-                      forkTask={forkTask}
-                      isSubTask={isSubTask}
-                      hideUserEditsActions={hideUserEditsActions}
-                      latestCheckpoint={latestCheckpoint}
-                      lastCheckpointInMessage={lastCheckpointInMessage}
-                      userEditsCheckpoint={userEditsCheckpoints[messageIndex]}
-                      toolCallCheckpoints={toolCallCheckpoints}
-                    />
-                  ))}
+                  {/* Display attachments at the bottom of the message */}
+                  <UserAttachments message={m} />
+                  <UserSelections message={m} />
+                  <MessageBackgroundJobNotifications message={m} />
                 </div>
-                {/* Display attachments at the bottom of the message */}
-                <UserAttachments message={m} />
-                <UserSelections message={m} />
-                <MessageBackgroundJobNotifications message={m} />
-              </div>
-              {messageIndex < renderMessages.length - 1 ? (
-                <SeparatorWithCheckpoint
-                  messageIndex={messageIndex}
-                  message={m}
-                  nextMessage={renderMessages[messageIndex + 1]}
-                  isLoading={shouldCheckpointUseLoading}
-                  forkTask={forkTask}
-                  isSubTask={isSubTask}
-                  latestCheckpoint={latestCheckpoint}
-                  lastCheckpointInMessage={lastCheckpointInMessage}
-                />
-              ) : (
-                showLastStepDuration &&
-                !shouldCheckpointUseLoading && (
-                  <OptionalSeparatorWithExecutionDuration
-                    duration={computeExecutionDuration(m)}
+                {messageIndex < renderMessages.length - 1 ? (
+                  <SeparatorWithCheckpoint
+                    messageIndex={messageIndex}
+                    message={m}
+                    nextMessage={renderMessages[messageIndex + 1]}
+                    isLoading={shouldCheckpointUseLoading}
+                    forkTask={forkTask}
+                    isSubTask={isSubTask}
+                    latestCheckpoint={latestCheckpoint}
+                    lastCheckpointInMessage={lastCheckpointInMessage}
                   />
-                )
-              )}
-            </div>
-          ))}
+                ) : (
+                  showLastStepDuration &&
+                  !shouldCheckpointUseLoading && (
+                    <OptionalSeparatorWithExecutionDuration
+                      duration={computeExecutionDuration(m)}
+                    />
+                  )
+                )}
+              </div>
+            );
+          })}
           {showLoader && (
             <div className="py-2">
               {debouncedIsLoading ? (
@@ -316,6 +341,21 @@ function MessageBackgroundJobNotifications({ message }: { message: Message }) {
     part.type === "data-background-job-notification" ? [part.data] : [],
   );
   return <BackgroundJobNotifications notifications={notifications} />;
+}
+
+function EarlierMessagesEdge({
+  ref,
+}: {
+  ref: React.Ref<HTMLDivElement>;
+}) {
+  return (
+    <div
+      ref={ref}
+      data-testid="message-list-auto-load-earlier"
+      aria-hidden="true"
+      className="pointer-events-none h-px w-full"
+    />
+  );
 }
 
 function Part({
