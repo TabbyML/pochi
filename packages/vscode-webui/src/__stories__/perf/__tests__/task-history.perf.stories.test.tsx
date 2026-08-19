@@ -56,6 +56,12 @@ describe("TaskHistory performance story", () => {
   it("makes append and stream updates visible and wires task auto-scroll", async () => {
     renderStory();
 
+    expect(
+      mocks.useScrollToBottom.mock.calls.some(
+        ([options]) => options.lastUserMessageId === "task-history-message-2",
+      ),
+    ).toBe(true);
+
     fireEvent.click(screen.getByRole("button", { name: "Append turn" }));
 
     await waitFor(() => {

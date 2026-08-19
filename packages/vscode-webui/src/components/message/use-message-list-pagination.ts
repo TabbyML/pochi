@@ -30,10 +30,8 @@ export interface MessageListPaginationState {
   startIndex: number | null;
 }
 
-/** Matches use-is-at-bottom.ts. */
-const BottomThreshold = 150;
-/** Preloads 200px before the top trigger enters view. */
-const LoadEarlierRootMargin = "200px 0px";
+/** Loads when the top trigger enters view. */
+const LoadEarlierRootMargin = "0px";
 
 /** Walks backward within budget, except to satisfy minMessages. */
 export function computePageStart(
@@ -127,17 +125,16 @@ export function useMessageListPagination({
     [messages],
   );
   const partCountsRef = useRef(partCounts);
-  const isLoadEarlierTriggerVisibleRef = useRef(false);
   useEffect(() => {
     partCountsRef.current = partCounts;
   }, [partCounts]);
 
-  const lastMessage = messages.at(-1);
-  const lastMessageId = lastMessage?.id;
-  const lastMessageRole = lastMessage?.role;
-  const previousLastIdRef = useRef(lastMessageId);
+  const lastUserMessageId = messages.findLast(
+    (message) => message.role === "user",
+  )?.id;
+  const previousLastUserMessageIdRef = useRef(lastUserMessageId);
   const shouldResetForNewUser =
-    previousLastIdRef.current !== lastMessageId && lastMessageRole === "user";
+    previousLastUserMessageIdRef.current !== lastUserMessageId;
   const effectiveState = shouldResetForNewUser
     ? resetPaginationToTail()
     : state;
@@ -145,9 +142,9 @@ export function useMessageListPagination({
     ? resolvePageStart(effectiveState, partCounts, config)
     : 0;
 
-  // Reset before commit to avoid mounting the expanded page first.
-  useLayoutEffect(() => {
-    previousLastIdRef.current = lastMessageId;
+  // Persist the render-time reset after the tail page commits.
+  useEffect(() => {
+    previousLastUserMessageIdRef.current = lastUserMessageId;
     if (!paginationEnabled || messages.length === 0) return;
     setState((prev) =>
       shouldResetForNewUser || prev.startIndex === null
@@ -156,38 +153,11 @@ export function useMessageListPagination({
     );
   }, [
     paginationEnabled,
-    lastMessageId,
+    lastUserMessageId,
     messages.length,
     shouldResetForNewUser,
     start,
   ]);
-
-  // Trim loaded pages after the user returns to the bottom.
-  useEffect(() => {
-    const container = containerRef?.current;
-    if (!paginationEnabled || !container) return;
-
-    const onScroll = () => {
-      if (isLoadEarlierTriggerVisibleRef.current) return;
-      const distanceToBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight;
-      if (distanceToBottom > BottomThreshold) return;
-      setState((prev) => {
-        if (prev.startIndex === null) return prev;
-        const counts = partCountsRef.current;
-        const next = computePageStart(
-          counts,
-          counts.length,
-          config.partBudget,
-          config.minInitialMessages,
-        );
-        return next === prev.startIndex ? prev : { startIndex: next };
-      });
-    };
-
-    container.addEventListener("scroll", onScroll, { passive: true });
-    return () => container.removeEventListener("scroll", onScroll);
-  }, [paginationEnabled, containerRef, config]);
 
   // Preserve the bottom distance when prepending messages.
   const pendingBottomDistanceRef = useRef<number | null>(null);
@@ -211,14 +181,15 @@ export function useMessageListPagination({
     setState(next);
   }, [paginationEnabled, start, config, containerRef]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: start triggers restoration after commit but is not read
+  // biome-ignore lint/correctness/useExhaustiveDependencies: start triggers anchor restoration after loading earlier messages.
   useLayoutEffect(() => {
     loadPendingRef.current = false;
     const container = containerRef?.current;
     const distance = pendingBottomDistanceRef.current;
     if (!container || distance === null) return;
     pendingBottomDistanceRef.current = null;
-    container.scrollTop = container.scrollHeight - distance;
+    const targetScrollTop = container.scrollHeight - distance;
+    container.scrollTop = targetScrollTop;
   }, [start, containerRef]);
 
   const loadEarlierTriggerRef = useRef<HTMLDivElement | null>(null);
@@ -226,13 +197,11 @@ export function useMessageListPagination({
     const trigger = loadEarlierTriggerRef.current;
     const root = containerRef?.current;
     if (!paginationEnabled || start === 0 || !trigger || !root) {
-      isLoadEarlierTriggerVisibleRef.current = false;
       return;
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        const isVisible = entries.some((entry) => entry.isIntersecting);
-        isLoadEarlierTriggerVisibleRef.current = isVisible;
+        const isVisible = entries.some((item) => item.isIntersecting);
         if (isVisible) {
           handleLoadEarlier();
         }

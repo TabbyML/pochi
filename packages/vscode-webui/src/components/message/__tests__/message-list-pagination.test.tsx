@@ -154,6 +154,19 @@ function mountedCount(container: HTMLElement) {
   return container.querySelectorAll('[aria-label^="chat-message-"]').length;
 }
 
+function setViewportScrollTop(container: HTMLElement, scrollTop: number) {
+  const viewport = container.querySelector<HTMLElement>(
+    '[data-slot="scroll-area-viewport"]',
+  );
+  if (!viewport) throw new Error("Expected MessageList viewport");
+  Object.defineProperties(viewport, {
+    scrollHeight: { configurable: true, value: 1000 },
+    clientHeight: { configurable: true, value: 400 },
+    scrollTop: { configurable: true, value: scrollTop, writable: true },
+  });
+  return viewport;
+}
+
 function MessageListProbe({
   messages,
   renderAllMessages = false,
@@ -209,7 +222,7 @@ describe("MessageList pagination", () => {
     expect(screen.queryByTestId("message-list-auto-load-earlier")).toBeNull();
   });
 
-  it("automatically loads earlier messages from the top prefetch area", () => {
+  it("loads earlier messages when the top trigger enters view", () => {
     const messages = makeMessages(200);
     const { container } = renderList(messages);
 
@@ -219,6 +232,7 @@ describe("MessageList pagination", () => {
     expect(autoLoadTrigger.textContent).toBe("");
     expect(autoLoadTrigger.querySelector("button")).toBeNull();
     expect(IntersectionObserverProbe.instances).toHaveLength(1);
+    expect(IntersectionObserverProbe.instances[0]?.rootMargin).toBe("0px");
 
     act(() => IntersectionObserverProbe.instances.at(-1)?.intersect());
 
@@ -265,53 +279,19 @@ describe("MessageList pagination", () => {
     expect(mountedMessageIds(container)[0]).toBe(firstMountedBefore);
   });
 
-  it("shrinks loaded history back to the tail budget when the user returns to the bottom", () => {
+  it("keeps loaded history mounted when the user returns to the bottom", () => {
     const messages = makeMessages(200);
     const { container } = renderList(messages);
 
     act(() => IntersectionObserverProbe.instances.at(-1)?.intersect());
-    expect(mountedCount(container)).toBeGreaterThan(InitialMessages);
+    const loadedCount = mountedCount(container);
+    expect(loadedCount).toBeGreaterThan(InitialMessages);
     act(() => IntersectionObserverProbe.instances.at(-1)?.intersect(false));
 
-    const viewport = container.querySelector<HTMLElement>(
-      '[data-slot="scroll-area-viewport"]',
-    );
-    if (!viewport) throw new Error("Expected MessageList viewport");
-    Object.defineProperties(viewport, {
-      scrollHeight: { configurable: true, value: 1000 },
-      clientHeight: { configurable: true, value: 400 },
-      scrollTop: { configurable: true, value: 600, writable: true },
-    });
-
+    const viewport = setViewportScrollTop(container, 600);
     fireEvent.scroll(viewport);
 
-    expect(mountedCount(container)).toBe(InitialMessages);
-  });
-
-  it("does not alternate between auto-loading and trimming while the top trigger remains visible", () => {
-    const messages = makeMessages(200);
-    const { container } = renderList(messages);
-
-    const viewport = container.querySelector<HTMLElement>(
-      '[data-slot="scroll-area-viewport"]',
-    );
-    if (!viewport) throw new Error("Expected MessageList viewport");
-    Object.defineProperties(viewport, {
-      scrollHeight: { configurable: true, value: 1000 },
-      clientHeight: { configurable: true, value: 400 },
-      scrollTop: { configurable: true, value: 600, writable: true },
-    });
-
-    for (let i = 0; i < 3; i++) {
-      const beforeLoad = mountedCount(container);
-      act(() => IntersectionObserverProbe.instances.at(-1)?.intersect());
-      const afterLoad = mountedCount(container);
-      expect(afterLoad).toBeGreaterThan(beforeLoad);
-
-      fireEvent.scroll(viewport);
-
-      expect(mountedCount(container)).toBe(afterLoad);
-    }
+    expect(mountedCount(container)).toBe(loadedCount);
   });
 
   it("resets the range to the tail budget when a new user message is appended", () => {
@@ -326,6 +306,23 @@ describe("MessageList pagination", () => {
 
     expect(mountedCount(container)).toBe(InitialMessages);
     expect(mountedMessageIds(container).at(-1)).toContain("user 200");
+  });
+
+  it("resets the range when a user and assistant are appended together", () => {
+    const messages = makeMessages(200);
+    const { container, rerender } = renderList(messages);
+
+    act(() => IntersectionObserverProbe.instances.at(-1)?.intersect());
+    expect(mountedCount(container)).toBeGreaterThan(InitialMessages);
+
+    rerender(
+      <MessageListProbe
+        messages={[...messages, makeMessage(200), makeMessage(201)]}
+      />,
+    );
+
+    expect(mountedCount(container)).toBe(InitialMessages);
+    expect(mountedMessageIds(container).at(-1)).toContain("assistant 201");
   });
 
   it("uses the tail budget in the first commit after a user message is appended", () => {

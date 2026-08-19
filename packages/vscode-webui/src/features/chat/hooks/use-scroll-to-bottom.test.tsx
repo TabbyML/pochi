@@ -66,6 +66,48 @@ describe("useScrollToBottom", () => {
     });
   });
 
+  it("keeps following while a smooth scroll catches a growing bottom", () => {
+    const context = setup();
+
+    context.scrollTo.mockClear();
+    context.setScrollHeight(3000);
+    act(() => {
+      context.programmaticScrollTo(1800);
+      context.resizeObserver.trigger();
+    });
+    expect(context.scrollTo).toHaveBeenCalledWith({
+      top: 3000,
+      behavior: "smooth",
+    });
+
+    context.scrollTo.mockClear();
+    context.setScrollHeight(3500);
+    act(() => context.resizeObserver.trigger());
+
+    expect(context.scrollTo).toHaveBeenCalledWith({
+      top: 3500,
+      behavior: "smooth",
+    });
+  });
+
+  it("keeps following when an upward correction lands at the bottom", () => {
+    const context = setup();
+
+    context.setScrollHeight(1200);
+    act(() => context.programmaticScrollTo(700));
+    context.setScrollHeight(1000);
+    act(() => context.programmaticScrollTo(500));
+
+    context.scrollTo.mockClear();
+    context.setScrollHeight(1200);
+    act(() => context.resizeObserver.trigger());
+
+    expect(context.scrollTo).toHaveBeenCalledWith({
+      top: 1200,
+      behavior: "smooth",
+    });
+  });
+
   it("does not scroll on rerender after the user scrolls away from the bottom", () => {
     const context = setup();
 
@@ -106,6 +148,24 @@ describe("useScrollToBottom", () => {
     });
   });
 
+  it("resumes following content growth after a new user message", () => {
+    const context = setup();
+
+    act(() => context.userScrollTo(300));
+    context.rerender({
+      lastUserMessageId: "user-message-1",
+    });
+
+    context.scrollTo.mockClear();
+    context.setScrollHeight(1200);
+    act(() => context.resizeObserver.trigger());
+
+    expect(context.scrollTo).toHaveBeenCalledWith({
+      top: 1200,
+      behavior: "smooth",
+    });
+  });
+
   it("does not scroll for the initially observed user message id", () => {
     const context = setup({
       lastUserMessageId: "existing-user-message",
@@ -139,8 +199,14 @@ function setup(
     lastUserMessageId?: string;
   } = {},
 ) {
-  const { container, scrollTo, setScrollTop, userScrollTo } =
-    createScrollContainer();
+  const {
+    container,
+    programmaticScrollTo,
+    scrollTo,
+    setScrollHeight,
+    setScrollTop,
+    userScrollTo,
+  } = createScrollContainer();
 
   type HookProps = {
     lastUserMessageId?: string;
@@ -169,9 +235,11 @@ function setup(
     container,
     onToolCallApprovalVisible:
       hook.result.current?.onToolCallApprovalVisible ?? missingApprovalCallback,
+    programmaticScrollTo,
     rerender: hook.rerender,
     resizeObserver: ResizeObserverMock.instances[0],
     scrollTo,
+    setScrollHeight,
     setScrollTop,
     userScrollTo,
   };
@@ -183,7 +251,7 @@ function missingApprovalCallback() {
 
 function createScrollContainer() {
   let scrollTop = 500;
-  const scrollHeight = 1000;
+  let scrollHeight = 1000;
   const container = document.createElement("div");
   container.appendChild(document.createElement("div"));
 
@@ -220,7 +288,14 @@ function createScrollContainer() {
 
   return {
     container,
+    programmaticScrollTo: (value: number) => {
+      scrollTop = value;
+      container.dispatchEvent(new Event("scroll"));
+    },
     scrollTo,
+    setScrollHeight: (value: number) => {
+      scrollHeight = value;
+    },
     setScrollTop: (value: number) => {
       scrollTop = value;
     },

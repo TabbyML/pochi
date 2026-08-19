@@ -518,9 +518,9 @@ function TaskHistoryMessageView({
   onMessagesCommitted: (revision: number) => void;
   renderAllMessages: boolean;
 }) {
-  const lastMessage = messages.at(-1);
-  const lastUserMessageId =
-    lastMessage?.role === "user" ? lastMessage.id : undefined;
+  const lastUserMessageId = messages.findLast(
+    (message) => message.role === "user",
+  )?.id;
   useScrollToBottom({ messagesContainerRef, lastUserMessageId });
   useLayoutEffect(() => {
     onMessagesCommitted(revision);
