@@ -407,20 +407,20 @@ const BackgroundJobStatus: FC<{
 
 const OpenOutputFileButton: FC<{ outputFile: string }> = ({ outputFile }) => {
   const { t } = useTranslation();
+  const label = t("backgroundJobNotifications.openOutput");
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
           size="xs"
           variant="ghost"
+          aria-label={label}
           onClick={() => vscodeHost.openFile(outputFile)}
         >
           <FileText className="size-4" />
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
-        {t("backgroundJobNotifications.openOutput")}
-      </TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 };

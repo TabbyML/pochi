@@ -54,10 +54,8 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   }
 
   if (background) {
-    const backgroundJobId =
-      tool.state === "output-available"
-        ? tool.output._meta?.backgroundJobId
-        : undefined;
+    const backgroundJobMetadata =
+      tool.state === "output-available" ? tool.output._meta : undefined;
     const availableCommand =
       tool.state === "input-available" || tool.state === "output-available"
         ? tool.input.command
@@ -67,8 +65,11 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
       <ExpandableToolContainer
         title={title}
         detail={
-          backgroundJobId ? (
-            <BackgroundJobPanel backgroundJobId={backgroundJobId} />
+          backgroundJobMetadata ? (
+            <BackgroundJobPanel
+              backgroundJobId={backgroundJobMetadata.backgroundJobId}
+              outputFile={backgroundJobMetadata.outputFile}
+            />
           ) : availableCommand ? (
             <CommandPanelContainer
               icon={<TerminalIcon className="mt-[2px] size-4 flex-shrink-0" />}

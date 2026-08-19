@@ -12,7 +12,6 @@ type SignalValue = {
 
 describe("executeCommand Tool", () => {
   it("persists failed command output before completing", async () => {
-    const clock = sinon.useFakeTimers();
     const maybePersistToolResult = sinon.stub().resolves({
       output: "persisted preview",
       isTruncated: true,
@@ -26,99 +25,95 @@ describe("executeCommand Tool", () => {
       throw new Error("Command exited with code 1");
     });
 
-    try {
-      const { executeCommand } = proxyquire.noCallThru().load(
-        "../execute-command",
-        {
-          "@/integrations/layout": {
-            getViewColumnForTerminal: sinon.stub(),
-          },
-          "@/integrations/terminal/terminal-job": {
-            TerminalJob: { create: sinon.stub() },
-          },
-          "@/lib/background-job-terminal-name": {
-            getBackgroundJobTerminalName: sinon.stub(),
-          },
-          "@getpochi/common": {
-            getLogger: () => ({
-              warn: sinon.stub(),
+    const { executeCommand } = proxyquire.noCallThru().load(
+      "../execute-command",
+      {
+        "@/integrations/layout": {
+          getViewColumnForTerminal: sinon.stub(),
+        },
+        "@/integrations/terminal/terminal-job": {
+          TerminalJob: { create: sinon.stub() },
+        },
+        "@/lib/background-job-terminal-name": {
+          getBackgroundJobTerminalName: sinon.stub(),
+        },
+        "@getpochi/common": {
+          getLogger: () => ({
+            warn: sinon.stub(),
+          }),
+        },
+        "@getpochi/common/tool-utils": {
+          getShellPath: () => undefined,
+          maybePersistToolResult,
+        },
+        "@getpochi/tools": {
+          validateExecuteCommandRules: sinon.stub(),
+        },
+        "@quilted/threads/signals": {
+          ThreadSignal: {
+            serialize: (signal: {
+              value: SignalValue;
+              subscribe: (subscriber: (value: SignalValue) => void) => () => void;
+            }) => ({
+              get value() {
+                return signal.value;
+              },
+              start(subscriber: (value: SignalValue) => void) {
+                return signal.subscribe(subscriber);
+              },
             }),
           },
-          "@getpochi/common/tool-utils": {
-            getShellPath: () => undefined,
-            maybePersistToolResult,
-          },
-          "@getpochi/tools": {
-            validateExecuteCommandRules: sinon.stub(),
-          },
-          "@quilted/threads/signals": {
-            ThreadSignal: {
-              serialize: (signal: {
-                value: SignalValue;
-                subscribe: (subscriber: (value: SignalValue) => void) => () => void;
-              }) => ({
-                get value() {
-                  return signal.value;
-                },
-                start(subscriber: (value: SignalValue) => void) {
-                  return signal.subscribe(subscriber);
-                },
-              }),
-            },
-          },
-          "../integrations/terminal/execute-command-with-node": {
-            executeCommandWithNode,
-          },
-          "../integrations/terminal/execute-command-with-pty": {
-            PtySpawnError: class PtySpawnError extends Error {},
-            executeCommandWithPty: sinon.stub(),
-          },
         },
-      ) as typeof import("../execute-command");
-
-      const resultPromise = executeCommand(
-        { command: "false" },
-        {
-          abortSignal: new AbortController().signal,
-          cwd: process.cwd(),
-          messages: [],
-          toolCallId: "call-1",
-          taskId: "task-1",
+        "../integrations/terminal/execute-command-with-node": {
+          executeCommandWithNode,
         },
-      );
-
-      const result = await resultPromise;
-      const values: unknown[] = [];
-      (
-        (result as unknown as { streamingOutput: unknown }).streamingOutput as {
-          start: (subscriber: (value: SignalValue) => void) => () => void;
-        }
-      ).start((value) => {
-        values.push(value);
-      });
-      await clock.runAllAsync();
-
-      assert.ok(maybePersistToolResult.calledOnce);
-      assert.deepStrictEqual(maybePersistToolResult.firstCall.args, [
-        "executeCommand",
-        "call-1",
-        "task-1",
-        {
-          output: "raw noisy output",
-          isTruncated: true,
-          error: "Command exited with code 1",
+        "../integrations/terminal/execute-command-with-pty": {
+          PtySpawnError: class PtySpawnError extends Error {},
+          executeCommandWithPty: sinon.stub(),
         },
-      ]);
+      },
+    ) as typeof import("../execute-command");
 
-      assert.deepStrictEqual(values.at(-1), {
-        content: "persisted preview",
-        status: "completed",
+    const resultPromise = executeCommand(
+      { command: "false" },
+      {
+        abortSignal: new AbortController().signal,
+        cwd: process.cwd(),
+        messages: [],
+        toolCallId: "call-1",
+        taskId: "task-1",
+      },
+    );
+
+    const result = await resultPromise;
+    const values: unknown[] = [];
+    (
+      (result as unknown as { streamingOutput: unknown }).streamingOutput as {
+        start: (subscriber: (value: SignalValue) => void) => () => void;
+      }
+    ).start((value) => {
+      values.push(value);
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    assert.ok(maybePersistToolResult.calledOnce);
+    assert.deepStrictEqual(maybePersistToolResult.firstCall.args, [
+      "executeCommand",
+      "call-1",
+      "task-1",
+      {
+        output: "raw noisy output",
         isTruncated: true,
         error: "Command exited with code 1",
-      });
-    } finally {
-      clock.restore();
-    }
+      },
+    ]);
+
+    assert.deepStrictEqual(values.at(-1), {
+      content: "persisted preview",
+      status: "completed",
+      isTruncated: true,
+      error: "Command exited with code 1",
+    });
   });
 
   it("cancels pending throttled output after completion", async () => {
@@ -272,10 +267,11 @@ describe("executeCommand Tool", () => {
 
     assert.deepStrictEqual(result, {
       output:
-        'Background command started with ID "bgjob-cmd-test". Output is being written to "/tmp/bgjob-cmd-test.log"; use readFile to read it.',
+        'Background command "bgjob-cmd-test" started. Its output is written to "/tmp/bgjob-cmd-test.log". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.',
       isTruncated: false,
       _meta: {
         backgroundJobId: "bgjob-cmd-test",
+        outputFile: "/tmp/bgjob-cmd-test.log",
       },
     });
     assert.ok(

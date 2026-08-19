@@ -17,5 +17,6 @@ export function renderBackgroundJobNotification(
   <output-file>${escapeXml(notification.outputFile)}</output-file>
   <status>${notification.status}</status>
   <summary>${escapeXml(notification.summary)}</summary>
+  <instruction>The background job has finished. Read the output file when its output is needed. If the file is empty, the command produced no captured output; do not wait or poll because the status above is final.</instruction>
 </background-job-notification>`;
 }
