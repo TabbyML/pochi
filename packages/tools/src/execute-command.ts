@@ -26,9 +26,17 @@ function resolveExecuteCommandDefaultTimeoutSec(): number {
 export const ExecuteCommandDefaultTimeoutSec =
   resolveExecuteCommandDefaultTimeoutSec();
 
-const toolDef = {
-  description:
-    `Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.
+function createToolDef(isSubTask: boolean) {
+  const backgroundUsageNotes = isSubTask
+    ? ""
+    : `- Set background to true for commands that should continue running without blocking the task. The initial result includes the job ID and output file, but only confirms that the job started; it does not report whether the command succeeded or failed.
+- The completion notification is the authoritative job status and reports completed, failed, or stopped. Do not infer status from empty or partial file contents, and do not wait or poll with commands such as sleep.
+- Continue independent work after starting a background command. If no other work remains, use attemptCompletion to end the current turn; the completion notification will resume the task.
+- After receiving the completion notification, read the output file when you need the command output. If it is empty, the command produced no captured output; the notification status is still final.`;
+
+  return {
+    description:
+      `Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.
 
 IMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO NOT use it for file operations (reading, writing, editing, searching, finding files) - use the specialized tools for this instead.
 
@@ -50,8 +58,7 @@ Before executing the command, please follow these steps:
 
 Usage notes:
 - The command argument is required.
-- Set background to true for commands that should continue running without blocking the task. The returned output describes the background job ID and output file; read that file with readFile and use killBackgroundJob with the ID if the process must be stopped.
-- Background commands do not use the foreground timeout. When they finish, a notification reports completed, failed, or stopped status.
+${backgroundUsageNotes}
 - For foreground commands, you can specify an optional timeout in seconds (up to 300s). If not specified, commands will timeout after ${ExecuteCommandDefaultTimeoutSec}s.
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands:
@@ -156,61 +163,70 @@ Important:
   - gh api repos/foo/bar/pulls/123/comments
   - gh pr view --comments
 `.trim(),
-  inputSchema: z.object({
-    command: z
-      .string()
-      .describe(
-        "The CLI command to execute. This should be valid for the current operating system.",
-      ),
-    cwd: z
-      .string()
-      .optional()
-      .describe("The working directory to execute the command in."),
-    background: z
-      .boolean()
-      .optional()
-      .describe(
-        "Run the command in the background and return immediately. The output describes the background job ID and output file.",
-      ),
-    timeout: z
-      .number()
-      .min(1)
-      .max(60 * 5)
-      .optional()
-      .describe(
-        `Optional timeout in seconds, max 300 seconds. By default the timeout is ${ExecuteCommandDefaultTimeoutSec} seconds.`,
-      ),
-  }),
-  outputSchema: z.object({
-    output: z
-      .string()
-      .describe(
-        "The command result. For foreground execution, this contains stdout and stderr. For background execution, this describes the background job ID and output file.",
-      ),
-    isTruncated: z
-      .boolean()
-      .optional()
-      .describe("Whether the output was truncated"),
-    _meta: z
-      .object({
-        backgroundJobId: z.string(),
-      })
-      .optional()
-      .describe(
-        "Metadata removed before sending the result to the LLM and used to render a background command in the UI.",
-      ),
-  }),
-};
+    inputSchema: z.object({
+      command: z
+        .string()
+        .describe(
+          "The CLI command to execute. This should be valid for the current operating system.",
+        ),
+      cwd: z
+        .string()
+        .optional()
+        .describe("The working directory to execute the command in."),
+      ...(isSubTask
+        ? {}
+        : {
+            background: z
+              .boolean()
+              .optional()
+              .describe(
+                "Run the command in the background and return immediately. The output describes the background job ID and output file.",
+              ),
+          }),
+      timeout: z
+        .number()
+        .min(1)
+        .max(60 * 5)
+        .optional()
+        .describe(
+          `Optional timeout in seconds, max 300 seconds. By default the timeout is ${ExecuteCommandDefaultTimeoutSec} seconds.`,
+        ),
+    }),
+    outputSchema: z.object({
+      output: z
+        .string()
+        .describe(
+          "The command result. For foreground execution, this contains stdout and stderr. For background execution, this describes the background job ID and output file.",
+        ),
+      isTruncated: z
+        .boolean()
+        .optional()
+        .describe("Whether the output was truncated"),
+      _meta: z
+        .object({
+          backgroundJobId: z.string(),
+          // Optional: results persisted before this field existed have no path.
+          outputFile: z.string().optional(),
+        })
+        .optional()
+        .describe(
+          "Metadata removed before sending the result to the LLM and used to render a background command in the UI.",
+        ),
+    }),
+  };
+}
 
 export function createBackgroundCommandResult(
   backgroundJobId: string,
   outputFile: string,
 ) {
   return {
-    output: `Background command started with ID "${backgroundJobId}". Output is being written to "${outputFile}"; use readFile to read it.`,
+    output: `Background command "${backgroundJobId}" started. Its output is written to "${outputFile}". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.`,
     isTruncated: false,
-    _meta: { backgroundJobId },
+    _meta: { backgroundJobId, outputFile },
   };
 }
 
-export const executeCommand = defineClientTool(toolDef);
+export function createExecuteCommandTool(isSubTask = false) {
+  return defineClientTool(createToolDef(isSubTask));
+}

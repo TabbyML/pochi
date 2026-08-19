@@ -19,11 +19,17 @@ vi.mock("../command-execution-panel", () => ({
   BackgroundJobPanel: ({
     backgroundJobId,
     command,
+    outputFile,
   }: {
     backgroundJobId: string;
     command?: string;
+    outputFile?: string;
   }) => (
-    <div data-command={command} data-testid="background-job-panel">
+    <div
+      data-command={command}
+      data-output-file={outputFile}
+      data-testid="background-job-panel"
+    >
       {backgroundJobId}
     </div>
   ),
@@ -78,6 +84,9 @@ describe("legacy background tool renderers", () => {
     );
     expect(screen.getByTestId("background-job-panel").dataset.command).toBe(
       "npm run dev",
+    );
+    expect(screen.getByTestId("background-job-panel").dataset.outputFile).toBe(
+      "/tmp/legacy-job.log",
     );
   });
 
