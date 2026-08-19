@@ -1,10 +1,11 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, useRef, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ComparisonPanel,
   MeasuredProfiler,
   PerfPanel,
+  readUsedJsHeapBytes,
   useAutoMeasureOnMount,
   usePerfHarness,
   waitForPerfElementCount,
@@ -265,7 +266,37 @@ function AsyncMeasureActionProbe() {
   );
 }
 
+function PipelineMetricsProbe() {
+  const perf = usePerfHarness();
+
+  return (
+    <div>
+      <PerfPanel recordsRef={perf.recordsRef} onClear={perf.clear} />
+      <button
+        type="button"
+        onClick={() => {
+          void perf.measureAction("stream tick", () => {}, {
+            metrics: () => ({
+              structuredCloneMs: 12.3,
+              formatterMs: 45.6,
+            }),
+          });
+        }}
+      >
+        Run pipeline metrics
+      </button>
+    </div>
+  );
+}
+
 describe("perf harness", () => {
+  it("reads Chromium heap usage when available and otherwise returns undefined", () => {
+    expect(readUsedJsHeapBytes({ memory: { usedJSHeapSize: 12_345 } })).toBe(
+      12_345,
+    );
+    expect(readUsedJsHeapBytes({})).toBeUndefined();
+  });
+
   it("does not update the profiled story from profiler records", async () => {
     render(<HarnessProbe />);
 
@@ -274,6 +305,15 @@ describe("perf harness", () => {
     });
 
     expect(document.body.textContent).toContain("profiled content");
+  });
+
+  it("keeps metric columns readable in a compact scroll viewport", () => {
+    render(<HarnessProbe />);
+
+    const table = screen.getByRole("table");
+    expect(table.className).toContain("min-w-[1200px]");
+    expect(table.parentElement?.className).toContain("max-h-32");
+    expect(table.parentElement?.className).toContain("overflow-auto");
   });
 
   it("does not show comparison rows from profiler mount records", async () => {
@@ -367,6 +407,7 @@ describe("perf harness", () => {
 
   it("waits for element counts to stabilize before resolving", async () => {
     const root = document.createElement("div");
+    const querySelectorAll = vi.spyOn(root, "querySelectorAll");
     const waiting = waitForStablePerfElementCount(
       { current: root },
       {
@@ -384,7 +425,8 @@ describe("perf harness", () => {
     }, 40);
 
     await expect(waiting).resolves.toBe(true);
-    expect(root.querySelectorAll("*").length).toBe(3);
+    expect(root.children.length).toBe(3);
+    expect(querySelectorAll).not.toHaveBeenCalled();
   });
 
   it("waits for async action settling before recording final node counts", async () => {
@@ -397,5 +439,16 @@ describe("perf harness", () => {
     });
 
     expect(screen.getByText("0->2")).toBeTruthy();
+  });
+
+  it("shows structured clone and formatter timings", async () => {
+    render(<PipelineMetricsProbe />);
+
+    fireEvent.click(screen.getByText("Run pipeline metrics"));
+
+    expect(screen.getByText("clone")).toBeTruthy();
+    expect(screen.getByText("format")).toBeTruthy();
+    expect(await screen.findByText("12.3")).toBeTruthy();
+    expect(screen.getByText("45.6")).toBeTruthy();
   });
 });
