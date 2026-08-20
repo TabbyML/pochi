@@ -210,18 +210,25 @@ export const MessageList: React.FC<{
                           index === m.parts.length - 1 &&
                           messageIndex === renderMessages.length - 1
                         }
+                        isInLatestAssistantMessage={
+                          m.role === "assistant" &&
+                          messageIndex === renderMessages.length - 1
+                        }
                         partIndex={index}
                         part={part}
                         isLoading={isLoading}
                         shouldCheckpointUseLoading={shouldCheckpointUseLoading}
-                        messages={renderMessages}
                         forkTask={forkTask}
                         isSubTask={isSubTask}
                         hideUserEditsActions={hideUserEditsActions}
                         latestCheckpoint={latestCheckpoint}
                         lastCheckpointInMessage={lastCheckpointInMessage}
                         userEditsCheckpoint={userEditsCheckpoints[messageIndex]}
-                        toolCallCheckpoints={toolCallCheckpoints}
+                        toolCallCheckpoint={
+                          isStaticToolUIPart(part)
+                            ? toolCallCheckpoints.get(part.toolCallId)
+                            : undefined
+                        }
                       />
                     ))}
                   </div>
@@ -364,25 +371,25 @@ function Part({
   partIndex,
   messageId,
   isLastPartInMessages,
+  isInLatestAssistantMessage,
   isLoading,
   shouldCheckpointUseLoading,
-  messages,
   forkTask,
   isSubTask,
   latestCheckpoint,
   lastCheckpointInMessage,
   hideUserEditsActions,
   userEditsCheckpoint,
-  toolCallCheckpoints,
+  toolCallCheckpoint,
 }: {
   role: Message["role"];
   partIndex: number;
   messageId: string;
   part: NonNullable<Message["parts"]>[number];
   isLastPartInMessages: boolean;
+  isInLatestAssistantMessage: boolean;
   isLoading: boolean;
   shouldCheckpointUseLoading: boolean;
-  messages: Message[];
   forkTask?: (commitId: string) => Promise<void>;
   isSubTask?: boolean;
   hideUserEditsActions?: boolean;
@@ -392,7 +399,7 @@ function Part({
     origin: string | undefined;
     modified: string | undefined;
   };
-  toolCallCheckpoints: Map<string, ToolCallCheckpoint>;
+  toolCallCheckpoint?: ToolCallCheckpoint;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -469,10 +476,10 @@ function Part({
         className={paddingClass}
         tool={part}
         isLoading={isLoading}
-        changes={toolCallCheckpoints.get(part.toolCallId)}
-        messages={messages}
+        changes={toolCallCheckpoint}
         isSubTask={isSubTask}
         isLastPart={isLastPartInMessages}
+        isInLatestAssistantMessage={isInLatestAssistantMessage}
       />
     );
   }

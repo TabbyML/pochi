@@ -1,7 +1,6 @@
 import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { useToolCallLifeCycle } from "@/features/chat";
 import { cn } from "@/lib/utils";
-import type { Message } from "@getpochi/livekit";
 import { getStaticToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
 import { AskFollowupQuestionTool } from "./ask-followup-question";
@@ -27,10 +26,10 @@ import { writeToFileTool } from "./write-to-file";
 type ToolInvocationPartBaseProps = {
   tool: UIToolPart;
   isLoading: boolean;
-  messages: Message[];
   changes?: ToolCallCheckpoint;
   isSubTask?: boolean;
   isLastPart?: boolean;
+  isInLatestAssistantMessage?: boolean;
 };
 
 type ToolRendererProps = ToolInvocationPartBaseProps & {
@@ -47,10 +46,10 @@ function ToolInvocationRenderer({
   tool,
   isExecuting,
   isLoading,
-  messages,
   changes,
   isSubTask,
   isLastPart,
+  isInLatestAssistantMessage,
 }: ToolRendererProps) {
   return C ? (
     <C
@@ -58,17 +57,12 @@ function ToolInvocationRenderer({
       isExecuting={isExecuting}
       isLoading={isLoading}
       changes={changes}
-      messages={messages}
       isSubTask={isSubTask}
       isLastPart={isLastPart}
+      isInLatestAssistantMessage={isInLatestAssistantMessage}
     />
   ) : (
-    <McpToolCall
-      tool={tool}
-      isLoading={isLoading}
-      isExecuting={isExecuting}
-      messages={messages}
-    />
+    <McpToolCall tool={tool} isLoading={isLoading} isExecuting={isExecuting} />
   );
 }
 
@@ -76,10 +70,10 @@ export function ToolInvocationPart({
   tool,
   isLoading,
   className,
-  messages,
   changes,
   isSubTask,
   isLastPart,
+  isInLatestAssistantMessage,
 }: ToolInvocationPartProps) {
   const toolName = getStaticToolName(tool);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
@@ -97,9 +91,9 @@ export function ToolInvocationPart({
         isExecuting={isExecuting}
         isLoading={isLoading}
         changes={changes}
-        messages={messages}
         isSubTask={isSubTask}
         isLastPart={isLastPart}
+        isInLatestAssistantMessage={isInLatestAssistantMessage}
       />
     </div>
   );

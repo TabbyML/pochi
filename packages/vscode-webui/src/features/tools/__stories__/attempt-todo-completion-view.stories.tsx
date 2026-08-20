@@ -117,7 +117,6 @@ function makeProps(
     tool,
     isExecuting: options.isExecuting ?? false,
     isLoading: options.isLoading ?? false,
-    messages: [],
     taskSource: options.taskSource ?? taskSource,
     isLastPart: true,
   };

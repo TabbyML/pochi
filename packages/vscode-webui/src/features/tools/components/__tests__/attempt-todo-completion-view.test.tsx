@@ -149,7 +149,6 @@ describe("AttemptTodoCompletionView", () => {
         tool={makeAttemptTodoCompletionTool()}
         isExecuting={true}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -168,7 +167,6 @@ describe("AttemptTodoCompletionView", () => {
         tool={makeAttemptTodoCompletionTool()}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -196,7 +194,6 @@ describe("AttemptTodoCompletionView", () => {
         })}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -224,7 +221,6 @@ describe("AttemptTodoCompletionView", () => {
         })}
         isExecuting={false}
         isLoading={true}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -253,7 +249,6 @@ describe("AttemptTodoCompletionView", () => {
         )}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -273,7 +268,6 @@ describe("AttemptTodoCompletionView", () => {
         )}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -294,7 +288,6 @@ describe("AttemptTodoCompletionView", () => {
         )}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -317,7 +310,6 @@ describe("AttemptTodoCompletionView", () => {
         )}
         isExecuting={true}
         isLoading={true}
-        messages={[]}
         taskSource={emptyTaskSource}
       />,
     );
@@ -351,7 +343,6 @@ describe("AttemptTodoCompletionView", () => {
         )}
         isExecuting={true}
         isLoading={true}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -376,7 +367,6 @@ describe("AttemptTodoCompletionView", () => {
         )}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -391,7 +381,6 @@ describe("AttemptTodoCompletionView", () => {
         tool={makeErroredAttemptTodoCompletionTool("Todo audit failed")}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -413,7 +402,6 @@ describe("AttemptTodoCompletionView", () => {
         tool={makeErroredAttemptTodoCompletionTool("Todo audit failed")}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={emptyTaskSource}
       />,
     );
@@ -447,7 +435,6 @@ describe("AttemptTodoCompletionView", () => {
         })}
         isExecuting={true}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );

@@ -40,7 +40,6 @@ vi.mock("../command-execution-panel", () => ({
 const commonProps = {
   isExecuting: false,
   isLoading: false,
-  messages: [],
 };
 
 describe("legacy background tool renderers", () => {

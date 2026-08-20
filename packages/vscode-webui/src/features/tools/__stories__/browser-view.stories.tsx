@@ -90,7 +90,6 @@ const baseProps: NewTaskToolViewProps = {
   tool: baseTool,
   isExecuting: true,
   isLoading: false,
-  messages: [],
   uid: "task-123",
   taskSource: {
     isLoading: false,

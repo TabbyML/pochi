@@ -113,7 +113,6 @@ describe("BrowserView", () => {
         tool={browserTool}
         isExecuting={true}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -134,7 +133,6 @@ describe("BrowserView", () => {
         tool={browserTool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -162,7 +160,6 @@ describe("BrowserView", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -183,7 +180,6 @@ describe("BrowserView", () => {
         tool={browserTool}
         isExecuting={true}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -206,7 +202,6 @@ describe("BrowserView", () => {
         tool={browserTool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -240,7 +235,6 @@ describe("BrowserView", () => {
         }
         isExecuting={true}
         isLoading={true}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
