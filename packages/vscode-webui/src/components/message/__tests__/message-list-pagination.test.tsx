@@ -38,21 +38,24 @@ vi.mock("@/features/chat", () => ({
 }));
 
 vi.mock("@/features/tools", () => ({
-  ToolInvocationPart: ({
-    tool,
-    changes,
-    isLastPart,
-  }: {
+  ToolInvocationPart: (props: {
     tool: { toolCallId: string };
     changes?: { origin?: string; modified?: string };
+    messages?: Message[];
     isLastPart?: boolean;
+    isInLatestAssistantMessage?: boolean;
   }) => (
     <div
       data-testid="tool-part"
-      data-tool-call-id={tool.toolCallId}
-      data-changes-origin={changes?.origin ?? ""}
-      data-changes-modified={changes?.modified ?? ""}
-      data-is-last-part={String(!!isLastPart)}
+      data-tool-call-id={props.tool.toolCallId}
+      data-has-changes={String("changes" in props)}
+      data-has-messages={String("messages" in props)}
+      data-changes-origin={props.changes?.origin ?? ""}
+      data-changes-modified={props.changes?.modified ?? ""}
+      data-is-last-part={String(!!props.isLastPart)}
+      data-is-in-latest-assistant-message={String(
+        !!props.isInLatestAssistantMessage,
+      )}
     />
   ),
   BackgroundJobPanel: () => null,
@@ -368,10 +371,26 @@ describe("MessageList pagination", () => {
     ).map((node) => node.outerHTML);
 
     expect(pagedItems).toEqual(fullItems.slice(-pagedItems.length));
-    // Cross-message derivations still include checkpoints outside this page.
-    const firstTool = paged.container.querySelector<HTMLElement>(
-      '[data-testid="tool-part"]',
+  });
+
+  it("passes targeted context instead of the full message list to tools", () => {
+    const messages = makeMessages(4);
+    const { container } = renderList(messages, true);
+    const tools = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-testid="tool-part"]'),
     );
-    expect(firstTool?.dataset.changesOrigin).toBeTruthy();
+
+    expect(tools).toHaveLength(2);
+    expect(tools[0]?.dataset.isInLatestAssistantMessage).toBe("false");
+    expect(tools[1]?.dataset.isInLatestAssistantMessage).toBe("true");
+    expect(tools[1]?.dataset.changesOrigin).toBe("commit-1");
+    expect(tools[1]?.dataset.changesModified).toBe("commit-3");
+    expect(
+      tools.every(
+        (tool) =>
+          tool.dataset.hasMessages === "false" &&
+          tool.dataset.hasChanges === "true",
+      ),
+    ).toBe(true);
   });
 });

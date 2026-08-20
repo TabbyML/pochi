@@ -86,7 +86,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   isExecuting,
   isLoading,
   isLastPart,
-  messages,
+  isInLatestAssistantMessage = false,
 }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -152,10 +152,7 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
     tool.state === "input-available" ||
     tool.state === "output-available" ||
     tool.state === "output-error";
-  const isActive = isRenderWidgetPartInLatestAssistantMessage(
-    messages,
-    tool.toolCallId,
-  );
+  const isActive = isInLatestAssistantMessage;
   const isInteractive = isActive;
   const isFrozen = !isActive;
   const shouldBlockPointerEvents = isFrozen;
@@ -518,18 +515,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function clampHeight(height: number | undefined) {
   if (height === undefined || !Number.isFinite(height)) return 0;
   return Math.min(Math.max(Math.ceil(height), 0), 1200);
-}
-
-function isRenderWidgetPartInLatestAssistantMessage(
-  messages: ToolProps<"renderWidget">["messages"],
-  toolCallId: string,
-) {
-  const message = messages.at(-1);
-  if (message?.role !== "assistant") return false;
-  return message.parts.some(
-    (part) =>
-      part.type === "tool-renderWidget" && part.toolCallId === toolCallId,
-  );
 }
 
 function getWebviewScriptNonce() {

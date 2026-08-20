@@ -1,4 +1,3 @@
-import type { Message } from "@getpochi/livekit";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ToolProps } from "../components/types";
 import { UseSkillTool } from "../components/use-skill";
@@ -36,18 +35,11 @@ const executingToolCall: ToolProps<"useSkill">["tool"] = {
   state: "input-available",
 };
 
-const messageWithTool: Message = {
-  id: "msg-1",
-  role: "assistant",
-  parts: [toolCall],
-};
-
 export const Executing: Story = {
   args: {
     tool: executingToolCall,
     isExecuting: true,
     isLoading: false,
-    messages: [messageWithTool],
   },
 };
 
@@ -56,7 +48,6 @@ export const Completed: Story = {
     tool: toolCall,
     isExecuting: false,
     isLoading: false,
-    messages: [messageWithTool],
   },
 };
 
@@ -73,7 +64,6 @@ export const WithoutFilePath: Story = {
     },
     isExecuting: false,
     isLoading: false,
-    messages: [messageWithTool],
   },
 };
 
@@ -98,6 +88,5 @@ console.log(x);
     },
     isExecuting: false,
     isLoading: false,
-    messages: [messageWithTool],
   },
 };

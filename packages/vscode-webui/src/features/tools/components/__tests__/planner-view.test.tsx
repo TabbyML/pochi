@@ -119,7 +119,6 @@ describe("PlannerView", () => {
         tool={plannerTool}
         isExecuting={true}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );
@@ -139,7 +138,6 @@ describe("PlannerView", () => {
         tool={plannerTool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -167,7 +165,6 @@ describe("PlannerView", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -195,7 +192,6 @@ describe("PlannerView", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -212,7 +208,6 @@ describe("PlannerView", () => {
         tool={plannerTool}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
         taskSource={taskSource}
       />,
     );

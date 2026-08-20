@@ -1,4 +1,3 @@
-import type { Message } from "@getpochi/livekit";
 import type { Meta, StoryObj } from "@storybook/react";
 import { AttemptCompletionTool } from "../components/attempt-completion";
 import type { ToolProps } from "../components/types";
@@ -25,25 +24,13 @@ const toolCall: ToolProps<"attemptCompletion">["tool"] = {
   },
 };
 
-const messageWithTool: Message = {
-  id: "msg-1",
-  role: "assistant",
-  parts: [toolCall],
-};
-
 export const ShowButton: Story = {
   args: {
     tool: toolCall,
     isExecuting: false,
     isLoading: false,
-    messages: [messageWithTool],
+    isLastPart: true,
   },
-};
-
-const messageWithToolNotLast: Message = {
-  id: "msg-1",
-  role: "assistant",
-  parts: [toolCall, { type: "text", text: "Some text after tool call" }],
 };
 
 export const HideButtonNotLastPart: Story = {
@@ -51,20 +38,8 @@ export const HideButtonNotLastPart: Story = {
     tool: toolCall,
     isExecuting: false,
     isLoading: false,
-    messages: [messageWithToolNotLast],
+    isLastPart: false,
   },
-};
-
-const messageWithToolNotLastMessage: Message = {
-  id: "msg-1",
-  role: "assistant",
-  parts: [toolCall],
-};
-
-const nextMessage: Message = {
-  id: "msg-2",
-  role: "user",
-  parts: [{ type: "text", text: "Thanks" }],
 };
 
 export const HideButtonNotLastMessage: Story = {
@@ -72,7 +47,7 @@ export const HideButtonNotLastMessage: Story = {
     tool: toolCall,
     isExecuting: false,
     isLoading: false,
-    messages: [messageWithToolNotLastMessage, nextMessage],
+    isLastPart: false,
   },
 };
 
@@ -91,6 +66,6 @@ Please review the changes.`,
     },
     isExecuting: false,
     isLoading: false,
-    messages: [messageWithTool],
+    isLastPart: true,
   },
 };

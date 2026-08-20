@@ -177,7 +177,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -214,7 +214,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={true}
         isLoading={true}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -244,7 +244,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -255,7 +255,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -278,7 +278,6 @@ describe("RenderWidgetTool", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -303,7 +302,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -336,7 +335,6 @@ describe("RenderWidgetTool", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -370,7 +368,6 @@ describe("RenderWidgetTool", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -428,7 +425,6 @@ describe("RenderWidgetTool", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -453,7 +449,6 @@ describe("RenderWidgetTool", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -481,7 +476,6 @@ describe("RenderWidgetTool", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -568,7 +562,6 @@ describe("RenderWidgetTool", () => {
         isExecuting={true}
         isLoading={true}
         isLastPart={true}
-        messages={[]}
       />,
     );
 
@@ -601,7 +594,6 @@ describe("RenderWidgetTool", () => {
         isExecuting={false}
         isLoading={false}
         isLastPart={true}
-        messages={[]}
       />,
     );
 
@@ -656,7 +648,6 @@ describe("RenderWidgetTool", () => {
         isExecuting={false}
         isLoading={false}
         isLastPart={true}
-        messages={[]}
       />,
     );
 
@@ -702,7 +693,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -752,7 +743,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -801,7 +792,7 @@ describe("RenderWidgetTool", () => {
         tool={tool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(tool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -859,7 +850,7 @@ describe("RenderWidgetTool", () => {
         tool={inputTool}
         isExecuting={false}
         isLoading={false}
-        messages={createMessagesWithTool(inputTool)}
+        isInLatestAssistantMessage
       />,
     );
 
@@ -893,7 +884,7 @@ describe("RenderWidgetTool", () => {
           tool={outputTool}
           isExecuting={false}
           isLoading={false}
-          messages={createMessagesWithTool(outputTool)}
+          isInLatestAssistantMessage
         />,
       );
     });
@@ -930,12 +921,7 @@ describe("RenderWidgetTool", () => {
     } as never;
 
     render(
-      <RenderWidgetTool
-        tool={tool}
-        isExecuting={false}
-        isLoading={false}
-        messages={[]}
-      />,
+      <RenderWidgetTool tool={tool} isExecuting={false} isLoading={false} />,
     );
 
     expect(screen.queryByText("Widget failed")).toBeNull();
@@ -959,23 +945,7 @@ describe("RenderWidgetTool", () => {
       },
     } as never;
     const { container } = render(
-      <RenderWidgetTool
-        tool={tool}
-        isExecuting={false}
-        isLoading={false}
-        messages={[
-          {
-            id: "assistant-old",
-            role: "assistant",
-            parts: [tool],
-          } as never,
-          {
-            id: "user-latest",
-            role: "user",
-            parts: [{ type: "text", text: "next" }],
-          } as never,
-        ]}
-      />,
+      <RenderWidgetTool tool={tool} isExecuting={false} isLoading={false} />,
     );
 
     const frozenText =
@@ -1003,15 +973,3 @@ describe("RenderWidgetTool", () => {
     ).toBeUndefined();
   });
 });
-
-function createMessagesWithTool(
-  tool: Parameters<typeof RenderWidgetTool>[0]["tool"],
-) {
-  return [
-    {
-      id: "assistant-active",
-      role: "assistant",
-      parts: [tool],
-    },
-  ] as Parameters<typeof RenderWidgetTool>[0]["messages"];
-}

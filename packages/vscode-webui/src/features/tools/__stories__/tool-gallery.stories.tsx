@@ -15,7 +15,6 @@ const ToolsGallery: React.FC<{
           // @ts-expect-error
           tool={tool}
           isLoading={false}
-          messages={[]}
         />
       ))}
     </div>

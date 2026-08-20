@@ -1,5 +1,5 @@
 import type { ToolCallCheckpoint } from "@/components/message/message-list";
-import type { Message, UITools } from "@getpochi/livekit";
+import type { UITools } from "@getpochi/livekit";
 import type { ToolUIPart } from "ai";
 
 export type UIToolName = keyof UITools;
@@ -11,8 +11,9 @@ export interface ToolProps<T extends UIToolName> {
   tool: UIToolPart<T>;
   isExecuting: boolean;
   isLoading: boolean;
-  messages: Message[];
+  // TODO: No tool renderer consumes this; remove after confirming checkpoint diff compatibility.
   changes?: ToolCallCheckpoint;
   isSubTask?: boolean;
   isLastPart?: boolean;
+  isInLatestAssistantMessage?: boolean;
 }

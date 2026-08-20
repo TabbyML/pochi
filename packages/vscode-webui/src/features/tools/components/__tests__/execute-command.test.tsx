@@ -81,7 +81,6 @@ describe("executeCommandTool", () => {
         }}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 

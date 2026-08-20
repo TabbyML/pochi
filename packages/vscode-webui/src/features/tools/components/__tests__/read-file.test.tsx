@@ -117,7 +117,6 @@ const renderReadFileTool = (
       }
       isExecuting={false}
       isLoading={false}
-      messages={[]}
     />,
   );
 
