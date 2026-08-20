@@ -73,6 +73,232 @@ const baseMessages: UIMessage[] = [
 
 describe('formatters', () => {
   describe('formatters.ui', () => {
+    describe('copy-on-write behavior', () => {
+      it('returns a new array while reusing messages and parts when formatting makes no changes', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'user-1',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Hello' }],
+          },
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Hi' }],
+          },
+        ];
+        const original = clone(messages);
+
+        const formatted = formatters.ui(messages);
+
+        expect(formatted).not.toBe(messages);
+        expect(formatted[0]).toBe(messages[0]);
+        expect(formatted[0].parts).toBe(messages[0].parts);
+        expect(formatted[0].parts[0]).toBe(messages[0].parts[0]);
+        expect(messages).toEqual(original);
+      });
+
+      it('copies only the message that loses an empty part', () => {
+        const keptTool = createToolPart(
+          'webSearch',
+          'output-available',
+          {},
+          { result: 'ok' },
+        );
+        const messages: UIMessage[] = [
+          {
+            id: 'user-1',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Hello' }],
+          },
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [
+              { type: 'reasoning', text: '' },
+              keptTool,
+            ],
+          },
+        ];
+        const original = clone(messages);
+
+        const formatted = formatters.ui(messages);
+
+        expect(formatted).not.toBe(messages);
+        expect(formatted[0]).toBe(messages[0]);
+        expect(formatted[1]).not.toBe(messages[1]);
+        expect(formatted[1].parts).toEqual([keptTool]);
+        expect(formatted[1].parts[0]).toBe(keptTool);
+        expect(messages).toEqual(original);
+      });
+
+      it('keeps historical references when only the latest message changes', () => {
+        const history: UIMessage[] = [
+          {
+            id: 'user-1',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Hello' }],
+          },
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Earlier response' }],
+          },
+          {
+            id: 'user-2',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Continue' }],
+          },
+        ];
+        const firstLatest: UIMessage = {
+          id: 'assistant-2',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'Streaming' }],
+        };
+        const firstInput = [...history, firstLatest];
+        const firstFormatted = formatters.ui(firstInput);
+        const secondLatest: UIMessage = {
+          ...firstLatest,
+          parts: [{ type: 'text', text: 'Streaming update' }],
+        };
+
+        const secondFormatted = formatters.ui([...history, secondLatest]);
+
+        expect(secondFormatted[0]).toBe(firstFormatted[0]);
+        expect(secondFormatted[0].parts[0]).toBe(firstFormatted[0].parts[0]);
+        expect(secondFormatted[1]).toBe(firstFormatted[1]);
+        expect(secondFormatted[2]).toBe(firstFormatted[2]);
+        expect(secondFormatted[3]).toBe(secondLatest);
+      });
+
+      it('isolates the latest user message from later request mutations', () => {
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Earlier response' }],
+          },
+          {
+            id: 'user-1',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Continue' }],
+          },
+        ];
+
+        const formatted = formatters.ui(messages);
+        messages[1].parts.push({
+          type: 'text',
+          text: '<system-reminder>Environment</system-reminder>',
+        });
+
+        expect(formatted[0]).toBe(messages[0]);
+        expect(formatted[1]).not.toBe(messages[1]);
+        expect(formatted[1].parts).not.toBe(messages[1].parts);
+        expect(formatted[1].parts).toEqual([
+          { type: 'text', text: 'Continue' },
+        ]);
+      });
+
+      it('resolves a pending tool without copying historical messages', () => {
+        const pendingTool = createToolPart('readFile', 'input-available');
+        const messages: UIMessage[] = [
+          {
+            id: 'user-1',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Earlier request' }],
+          },
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [pendingTool],
+          },
+          {
+            id: 'user-2',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Continue' }],
+          },
+        ];
+        const original = clone(messages);
+
+        const formatted = formatters.ui(messages);
+
+        expect(formatted[0]).toBe(messages[0]);
+        expect(formatted[1]).not.toBe(messages[1]);
+        expect(formatted[1].parts[0]).not.toBe(pendingTool);
+        expect((formatted[1].parts[0] as any).state).toBe('output-available');
+        expect(formatted[2]).not.toBe(messages[2]);
+        expect(messages).toEqual(original);
+      });
+
+      it('merges assistants without mutating or copying their source parts', () => {
+        const firstPart = { type: 'text' as const, text: 'First' };
+        const secondPart = { type: 'text' as const, text: 'Second' };
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [firstPart],
+          },
+          {
+            id: 'assistant-2',
+            role: 'assistant',
+            parts: [secondPart],
+          },
+        ];
+        const original = clone(messages);
+
+        const formatted = formatters.ui(messages);
+
+        expect(formatted).toHaveLength(1);
+        expect(formatted[0]).not.toBe(messages[0]);
+        expect(formatted[0]).not.toBe(messages[1]);
+        expect(formatted[0].parts[0]).toBe(firstPart);
+        expect(formatted[0].parts[1]).toBe(secondPart);
+        expect(messages).toEqual(original);
+      });
+
+      it('copies only the tool output changed by problem refinement', () => {
+        const previousTool = createToolPart(
+          'applyDiff',
+          'output-available',
+          {},
+          { newProblems: 'first\nsecond' },
+        );
+        const resolvingTool = createToolPart(
+          'applyDiff',
+          'output-available',
+          {},
+          { _transient: { resolvedProblems: 'first' } },
+        );
+        const messages: UIMessage[] = [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            parts: [
+              { type: 'step-start' },
+              previousTool,
+              resolvingTool,
+            ],
+          },
+        ];
+        const original = clone(messages);
+
+        const formatted = formatters.ui(messages);
+
+        expect(formatted[0]).not.toBe(messages[0]);
+        expect(formatted[0].parts[0]).toBe(messages[0].parts[0]);
+        expect(formatted[0].parts[1]).not.toBe(previousTool);
+        expect((formatted[0].parts[1] as any).output).not.toBe(
+          (previousTool as any).output,
+        );
+        expect((formatted[0].parts[1] as any).output.newProblems).toBe(
+          'second',
+        );
+        expect(formatted[0].parts[2]).toBe(resolvingTool);
+        expect(messages).toEqual(original);
+      });
+    });
+
     it('should combine consecutive assistant messages', () => {
       const formatted = formatters.ui(clone(baseMessages));
       const assistantMessages = formatted.filter((m) => m.role === 'assistant');
@@ -108,8 +334,9 @@ describe('formatters', () => {
           ],
         },
       ];
+      const original = clone(messages);
 
-      const formatted = formatters.ui(clone(messages));
+      const formatted = formatters.ui(messages);
 
       expect(formatted[0].parts).toHaveLength(3);
       expect(formatted[0].parts[0]).toEqual({
@@ -122,6 +349,8 @@ describe('formatters', () => {
         type: 'reasoning',
         text: 'Third reasoning paragraph.\nFourth reasoning paragraph.',
       });
+      expect(formatted[0].parts[1]).toBe(messages[0].parts[2]);
+      expect(messages).toEqual(original);
     });
 
     it('should use the latest reasoning state when combining consecutive reasoning parts', () => {
@@ -195,16 +424,24 @@ describe('formatters', () => {
           ],
         },
       ];
+      const original = clone(messages);
 
-      const formatted = formatters.ui(clone(messages));
+      const formatted = formatters.ui(messages);
 
       expect(formatted[0].parts).toHaveLength(1);
       expect(formatted[0].parts[0].type).toBe('tool-webSearch');
+      expect(formatted[0].parts[0]).toBe(messages[0].parts[1]);
+      expect(messages).toEqual(original);
     });
 
     it('should remove system reminder messages', () => {
-      const formatted = formatters.ui(clone(baseMessages));
+      const messages = clone(baseMessages);
+      const original = clone(messages);
+
+      const formatted = formatters.ui(messages);
+
       expect(formatted.find((m) => m.id === 'user-2')).toBeUndefined();
+      expect(messages).toEqual(original);
     });
 
     it('should merge compact-only user messages into adjacent assistant messages with compact between the two responses', () => {
@@ -228,7 +465,10 @@ describe('formatters', () => {
           parts: [{ type: 'text', text: 'Second assistant response' }],
         },
       ];
-      const formatted = formatters.ui(clone(messages));
+      const original = clone(messages);
+
+      const formatted = formatters.ui(messages);
+
       expect(formatted.find((m) => m.id === 'user-compact')).toBeUndefined();
       expect(formatted.filter((m) => m.role === 'assistant')).toHaveLength(1);
       const textParts = formatted[0].parts.filter((p) => p.type === 'text');
@@ -236,6 +476,10 @@ describe('formatters', () => {
       expect((textParts[0] as any).text).toBe('First assistant response');
       expect((textParts[1] as any).text).toContain('<compact>');
       expect((textParts[2] as any).text).toBe('Second assistant response');
+      expect(textParts[0]).toBe(messages[0].parts[0]);
+      expect(textParts[1]).toBe(messages[1].parts[0]);
+      expect(textParts[2]).toBe(messages[2].parts[0]);
+      expect(messages).toEqual(original);
     });
 
     it('should resolve pending tool calls and combine messages', () => {
@@ -271,6 +515,7 @@ describe('formatters', () => {
           ],
         },
       ];
+      const original = clone(messages);
 
       const formatted = formatters.ui(messages, {
         hidePendingTodoAttemptCompletion: true,
@@ -279,6 +524,8 @@ describe('formatters', () => {
       expect(formatted[0].parts).toEqual([
         { type: 'text', text: 'Checking the todo...' },
       ]);
+      expect(formatted[0].parts[0]).toBe(messages[0].parts[0]);
+      expect(messages).toEqual(original);
     });
 
     describe('message metadata merging', () => {
@@ -514,6 +761,7 @@ describe('formatters', () => {
           ],
         },
       ];
+      const original = clone(messages);
 
       const formatted = formatters.ui(messages);
 
@@ -521,6 +769,8 @@ describe('formatters', () => {
       expect(formatted[0].parts).toEqual([
         { type: 'text', text: 'Working on todos.' },
       ]);
+      expect(formatted[0].parts[0]).toBe(messages[0].parts[0]);
+      expect(messages).toEqual(original);
     });
   });
 

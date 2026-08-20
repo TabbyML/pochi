@@ -1,3 +1,4 @@
+import { formatters } from "@getpochi/common";
 import { describe, expect, it } from "vitest";
 import type { Message } from "../../types";
 import {
@@ -201,5 +202,36 @@ describe("compactTask", () => {
         text: expect.stringContaining("<compact>"),
       },
     });
+  });
+
+  it("does not change a UI snapshot when attaching compact history", async () => {
+    const messages = [
+      userMsg("u0"),
+      assistantMsg("a0"),
+      userMsg("u1"),
+      assistantMsg("a1"),
+      userMsg("u2"),
+    ];
+    const snapshot = formatters.ui(messages);
+
+    await compactTask({
+      blobStore: {} as never,
+      taskId: "task-1",
+      storeId: "store-1",
+      model: {} as never,
+      messages,
+      taskMemoryBoundaryMessageId: "u1",
+      inline: true,
+      store: {
+        query: () => ({ content: "memory summary" }),
+        commit: () => {},
+      } as never,
+    });
+
+    expect(messages[2].parts[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("<compact>"),
+    });
+    expect(snapshot[2].parts).toEqual([{ type: "text", text: "hi" }]);
   });
 });

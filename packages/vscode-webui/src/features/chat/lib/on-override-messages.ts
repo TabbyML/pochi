@@ -24,7 +24,8 @@ export async function onOverrideMessages({
     .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
-    const ckpt = await appendCheckpoint(lastMessage);
+    const lastMessageIndex = messages.length - 1;
+    const ckpt = await appendCheckpoint(messages, lastMessageIndex);
 
     const firstCheckpoint = checkpoints.at(0);
     if (firstCheckpoint) {
@@ -33,9 +34,10 @@ export async function onOverrideMessages({
     }
 
     const lastCheckpoint = checkpoints.at(-1);
-    if (ckpt && lastMessage.role === "assistant" && lastCheckpoint) {
+    const updatedLastMessage = messages[lastMessageIndex];
+    if (ckpt && updatedLastMessage.role === "assistant" && lastCheckpoint) {
       // diff summary in chat view
-      await updateChangedFiles(taskId, lastCheckpoint, lastMessage);
+      await updateChangedFiles(taskId, lastCheckpoint, updatedLastMessage);
     }
   }
 }
@@ -45,12 +47,14 @@ export function writeRenderWidgetOutput(messages: Message[]) {
   const message = getRenderWidgetOutputMessage(messages);
   if (!message) return;
 
-  message.parts = message.parts.map((part) => {
+  let changed = false;
+  const parts = message.parts.map((part): Message["parts"][number] => {
     if (part.type !== "tool-renderWidget") return part;
     if (part.state !== "input-available" && part.state !== "output-available") {
       return part;
     }
 
+    changed = true;
     const state =
       store.getWidgetState(part.toolCallId) ??
       getExistingRenderWidgetState(part.output) ??
@@ -68,6 +72,9 @@ export function writeRenderWidgetOutput(messages: Message[]) {
       output,
     };
   });
+  if (changed) {
+    messages[messages.length - 2] = { ...message, parts };
+  }
 }
 
 function getRenderWidgetOutputMessage(messages: Message[]) {
@@ -86,7 +93,8 @@ function getExistingRenderWidgetState(output: unknown) {
  * Appends a checkpoint to a message if one doesn't already exist in the current step.
  * A checkpoint is created to save the current state before making changes.
  */
-async function appendCheckpoint(message: Message) {
+async function appendCheckpoint(messages: Message[], messageIndex: number) {
+  const message = messages[messageIndex];
   const lastStepStartIndex =
     message.parts.reduce((lastIndex, part, index) => {
       return part.type === "step-start" ? index : lastIndex;
@@ -106,12 +114,18 @@ async function appendCheckpoint(message: Message) {
   });
   if (!ckpt) return;
 
-  message.parts.push({
-    type: "data-checkpoint",
-    data: {
-      commit: ckpt,
-    },
-  });
+  messages[messageIndex] = {
+    ...message,
+    parts: [
+      ...message.parts,
+      {
+        type: "data-checkpoint",
+        data: {
+          commit: ckpt,
+        },
+      },
+    ],
+  };
   return ckpt;
 }
 

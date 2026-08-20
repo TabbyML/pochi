@@ -1,10 +1,11 @@
+import { formatters } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRenderWidgetStore } from "../../hooks/use-render-widget-store";
 import { onOverrideMessages } from "../on-override-messages";
 
 const vscodeHostMock = vi.hoisted(() => ({
-  saveCheckpoint: vi.fn(async () => undefined),
+  saveCheckpoint: vi.fn(async (): Promise<string | undefined> => undefined),
   diffWithCheckpoint: vi.fn(),
   readTaskChangedFiles: vi.fn(),
 }));
@@ -259,6 +260,55 @@ describe("onOverrideMessages", () => {
     expect(messages[0].parts[0]).toMatchObject({
       state: "output-error",
       output: existingOutput,
+    });
+  });
+
+  it("does not change a formatted snapshot when appending a checkpoint", async () => {
+    const messages = [
+      createAssistantMessage([{ type: "text", text: "Finished" }]),
+    ];
+    const snapshot = formatters.ui(messages);
+    vscodeHostMock.saveCheckpoint.mockResolvedValueOnce("checkpoint-1");
+
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(messages[0].parts).toHaveLength(2);
+    expect(snapshot[0].parts).toEqual([{ type: "text", text: "Finished" }]);
+  });
+
+  it("does not change a formatted snapshot when committing renderWidget output", async () => {
+    const messages = [
+      createAssistantMessage([
+        createRenderWidgetPart({
+          toolCallId: "widget-1",
+          state: "output-available",
+          output: { state: { hex: "#000000" } },
+        }),
+      ]),
+      createUserMessage("continue"),
+    ];
+    const snapshot = formatters.ui(messages);
+    useRenderWidgetStore
+      .getState()
+      .setWidgetState("widget-1", { hex: "#ffffff" });
+
+    await onOverrideMessages({
+      store: {} as never,
+      taskId: "task-1",
+      messages,
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(messages[0].parts[0]).toMatchObject({
+      output: { state: { hex: "#ffffff" } },
+    });
+    expect(snapshot[0].parts[0]).toMatchObject({
+      output: { state: { hex: "#000000" } },
     });
   });
 });

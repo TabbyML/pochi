@@ -16,16 +16,75 @@ import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
 import type { MessageMetadata } from "./message";
 import { prompts } from "./prompts";
 
+function mapOrOriginal<T>(items: T[], map: (item: T, index: number) => T): T[] {
+  let result: T[] | undefined;
+
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    const mapped = map(item, index);
+
+    if (result) {
+      result.push(mapped);
+    } else if (mapped !== item) {
+      result = items.slice(0, index);
+      result.push(mapped);
+    }
+  }
+
+  return result ?? items;
+}
+
+function filterOrOriginal<T>(
+  items: T[],
+  predicate: (item: T, index: number) => boolean,
+): T[] {
+  let result: T[] | undefined;
+
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    if (predicate(item, index)) {
+      result?.push(item);
+    } else if (!result) {
+      result = items.slice(0, index);
+    }
+  }
+
+  return result ?? items;
+}
+
+function mapMessagePartsOrOriginal(
+  messages: UIMessage[],
+  map: (parts: UIMessage["parts"], message: UIMessage) => UIMessage["parts"],
+): UIMessage[] {
+  return mapOrOriginal(messages, (message) => {
+    const parts = map(message.parts, message);
+    return parts === message.parts ? message : { ...message, parts };
+  });
+}
+
+function createUIMessageSnapshot(messages: UIMessage[]): UIMessage[] {
+  const snapshot = [...messages];
+  const lastMessage = messages.at(-1);
+  if (lastMessage?.role !== "user") return snapshot;
+
+  // Request preparation mutates the latest raw user message; keep the UI snapshot isolated.
+  snapshot[snapshot.length - 1] = {
+    ...lastMessage,
+    parts: [...lastMessage.parts],
+  };
+  return snapshot;
+}
+
 function resolvePendingToolCalls(
   messages: UIMessage[],
   resolveLastMessage = false,
 ): UIMessage[] {
-  return messages.map((message, index) => {
+  return mapOrOriginal(messages, (message, index) => {
     if (
       (resolveLastMessage ? true : index < messages.length - 1) &&
       message.role === "assistant"
     ) {
-      const parts = message.parts.map((part) => {
+      const parts = mapOrOriginal(message.parts, (part) => {
         if (
           isStaticToolUIPart(part) &&
           part.state !== "output-available" &&
@@ -44,10 +103,7 @@ function resolvePendingToolCalls(
         }
         return part;
       });
-      return {
-        ...message,
-        parts,
-      };
+      return parts === message.parts ? message : { ...message, parts };
     }
 
     return message;
@@ -89,15 +145,20 @@ function stripKnownXMLTags(messages: UIMessage[]): UIMessage[] {
 }
 
 function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
-  return messages.filter((message) => {
+  const withoutReminders = mapMessagePartsOrOriginal(
+    messages,
+    (parts, message) => {
+      if (message.role !== "user") return parts;
+      return filterOrOriginal(parts, (part) => {
+        return part.type !== "text" || !prompts.isSystemReminder(part.text);
+      });
+    },
+  );
+
+  return filterOrOriginal(withoutReminders, (message) => {
     if (message.role !== "user") return true;
-    const parts = message.parts.filter((part) => {
-      if (part.type !== "text") return true;
-      return !prompts.isSystemReminder(part.text);
-    });
-    message.parts = parts;
     if (
-      parts.some(
+      message.parts.some(
         (x) =>
           (x.type === "text" && !prompts.isCompact(x.text)) ||
           x.type === "data-reviews" ||
@@ -110,10 +171,9 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
     }
     // Keep messages that carry a compact checkpoint — the checkpoint
     // is meaningful UI content even when all other parts were system reminders.
-    if (parts.some((x) => x.type === "text" && prompts.isCompact(x.text))) {
-      return true;
-    }
-    return false;
+    return message.parts.some(
+      (x) => x.type === "text" && prompts.isCompact(x.text),
+    );
   });
 }
 
@@ -163,11 +223,12 @@ function mergeAssistantMetadata(
 function combineConsecutiveAssistantMessages(
   messages: UIMessage[],
 ): UIMessage[] {
-  const result: UIMessage[] = [];
+  let result: UIMessage[] | undefined;
+  let pendingCompactParts: UIMessage["parts"] | undefined;
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
-    const prev = result[result.length - 1];
+    const prev = result?.at(-1) ?? messages[i - 1];
 
     // Fold a compact-only user message's checkpoint parts into an adjacent
     // assistant message so the surrounding assistant messages combine and the
@@ -178,52 +239,82 @@ function combineConsecutiveAssistantMessages(
       );
       const next = messages[i + 1];
       if (prev?.role === "assistant") {
-        prev.parts.push(...compactParts);
+        if (!result) {
+          result = messages.slice(0, i);
+        }
+        if (compactParts.length > 0) {
+          result[result.length - 1] = {
+            ...prev,
+            parts: [...prev.parts, ...compactParts],
+          };
+        }
         continue;
       }
       if (next?.role === "assistant") {
-        next.parts.unshift(...compactParts);
+        if (!result) {
+          result = messages.slice(0, i);
+        }
+        pendingCompactParts =
+          compactParts.length > 0 ? compactParts : undefined;
         continue;
       }
-      result.push(message);
+      result?.push(message);
       continue;
     }
 
+    const current =
+      pendingCompactParts && message.role === "assistant"
+        ? {
+            ...message,
+            parts: [...pendingCompactParts, ...message.parts],
+          }
+        : message;
+    pendingCompactParts = undefined;
+
     // Merge into the previous assistant message, keeping the later message's id
     // and prepending the earlier message's parts.
-    if (message.role === "assistant" && prev?.role === "assistant") {
-      message.parts.unshift(...prev.parts);
-
+    if (current.role === "assistant" && prev?.role === "assistant") {
+      if (!result) {
+        result = messages.slice(0, i);
+      }
       const prevMessageMetadata = isAssistantMetadata(prev.metadata)
         ? prev.metadata
         : undefined;
-      const messageMetadata = isAssistantMetadata(message.metadata)
-        ? message.metadata
+      const messageMetadata = isAssistantMetadata(current.metadata)
+        ? current.metadata
         : undefined;
+      const merged = {
+        ...current,
+        parts: [...prev.parts, ...current.parts],
+      };
       if (prevMessageMetadata || messageMetadata) {
-        message.metadata = mergeAssistantMetadata(
+        merged.metadata = mergeAssistantMetadata(
           prevMessageMetadata,
           messageMetadata,
         );
       }
 
-      result[result.length - 1] = message;
+      result[result.length - 1] = merged;
       continue;
     }
 
-    result.push(message);
+    result?.push(current);
   }
 
-  return result;
+  return result ?? messages;
 }
 
 function combineConsecutiveReasoningParts(messages: UIMessage[]): UIMessage[] {
-  return messages.map((message) => {
-    const parts: UIMessage["parts"] = [];
+  return mapOrOriginal(messages, (message) => {
+    let parts: UIMessage["parts"] | undefined;
 
-    for (const part of message.parts) {
-      const prev = parts.at(-1);
+    for (let index = 0; index < message.parts.length; index++) {
+      const part = message.parts[index];
+      const prev = parts?.at(-1) ?? message.parts[index - 1];
       if (part.type === "reasoning" && prev?.type === "reasoning") {
+        if (!parts) {
+          parts = message.parts.slice(0, index);
+        }
         // This merge is only for UI rendering. A shallow merge may overwrite
         // nested providerMetadata from earlier reasoning parts, but losing that
         // metadata here is acceptable because LLM/storage formatting does not
@@ -250,18 +341,15 @@ function combineConsecutiveReasoningParts(messages: UIMessage[]): UIMessage[] {
         continue;
       }
 
-      parts.push(part);
+      parts?.push(part);
     }
 
-    return {
-      ...message,
-      parts,
-    };
+    return parts ? { ...message, parts } : message;
   });
 }
 
 function removeEmptyMessages(messages: UIMessage[]): UIMessage[] {
-  return messages.filter((message) => message.parts.length > 0);
+  return filterOrOriginal(messages, (message) => message.parts.length > 0);
 }
 
 function removeMessagesWithoutTextOrToolCall(
@@ -582,8 +670,8 @@ function removeUnstableOpenAIItemReferences(
 }
 
 function removeEmptyTextParts(messages: UIMessage[]) {
-  return messages.map((message) => {
-    message.parts = message.parts.filter((part) => {
+  return mapMessagePartsOrOriginal(messages, (parts) => {
+    return filterOrOriginal(parts, (part) => {
       if (part.type === "text") {
         return part.text.trim().length > 0;
       }
@@ -601,19 +689,17 @@ function removeEmptyTextParts(messages: UIMessage[]) {
       }
       return true;
     });
-    return message;
   });
 }
 
 function removeEmptyReasoningPartsForUI(messages: UIMessage[]) {
-  return messages.map((message) => {
-    message.parts = message.parts.filter((part) => {
+  return mapMessagePartsOrOriginal(messages, (parts) => {
+    return filterOrOriginal(parts, (part) => {
       if (part.type === "reasoning") {
         return part.text.trim().length > 0;
       }
       return true;
     });
-    return message;
   });
 }
 
@@ -663,9 +749,12 @@ function refineDetectedNewPromblems(messages: UIMessage[]) {
       .findLastIndex((p) => p.type === "step-start");
   };
 
-  for (const message of messages) {
+  return mapOrOriginal(messages, (message) => {
+    let parts: UIMessage["parts"] | undefined;
+
     for (let i = 0; i < message.parts.length; i++) {
-      const part = message.parts[i];
+      const currentParts = parts ?? message.parts;
+      const part = currentParts[i];
       if (!isWriteFileResultToolPart(part)) {
         continue;
       }
@@ -677,11 +766,11 @@ function refineDetectedNewPromblems(messages: UIMessage[]) {
         continue;
       }
 
-      const lastStepStartIndex = findLastStepStartIndex(message.parts, i);
+      const lastStepStartIndex = findLastStepStartIndex(currentParts, i);
 
       for (const resolvedProblem of resolvedProblems) {
         for (let j = i - 1; j > lastStepStartIndex; j--) {
-          const prevPart = message.parts[j];
+          const prevPart = (parts ?? message.parts)[j];
           if (!isWriteFileResultToolPart(prevPart)) {
             continue;
           }
@@ -692,20 +781,25 @@ function refineDetectedNewPromblems(messages: UIMessage[]) {
               .filter((p) => p !== resolvedProblem)
               .join("\n")
               .trim();
+            const output = { ...prevPart.output };
             if (!newProblems) {
               // biome-ignore lint/performance/noDelete: remove newProblems
-              delete prevPart.output.newProblems;
+              delete output.newProblems;
             } else {
-              prevPart.output.newProblems = newProblems;
+              output.newProblems = newProblems;
             }
+            if (!parts) {
+              parts = message.parts.slice();
+            }
+            parts[j] = { ...prevPart, output };
             break;
           }
         }
       }
     }
-  }
 
-  return messages;
+    return parts ? { ...message, parts } : message;
+  });
 }
 
 function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
@@ -750,15 +844,15 @@ function removeDeprecatedTodoWriteToolCalls(
   messages: UIMessage[],
 ): UIMessage[] {
   return removeEmptyMessages(
-    messages.map((message) => ({
-      ...message,
-      parts: message.parts.filter(
+    mapMessagePartsOrOriginal(messages, (parts) =>
+      filterOrOriginal(
+        parts,
         (part) =>
           !(
             isStaticToolUIPart(part) && getStaticToolName(part) === "todoWrite"
           ),
       ),
-    })),
+    ),
   );
 }
 
@@ -797,9 +891,13 @@ const StorageFormatOps = [
   removeToolCallResultTransientData,
 ];
 
+function applyFormatOps(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
+  return ops.reduce((acc, op) => op(acc), messages);
+}
+
 function formatMessages(messages: UIMessage[], ops: FormatOp[]): UIMessage[] {
   // Clone the messages to avoid mutating the original array.
-  return ops.reduce((acc, op) => op(acc), clone(messages));
+  return applyFormatOps(clone(messages), ops);
 }
 
 export interface UIFormatterOptions {
@@ -820,7 +918,10 @@ export const formatters = {
         ? [removePendingTodoAttemptCompletion, removeEmptyMessages]
         : []),
     ];
-    return formatMessages(messages, uiFormatOps) as T[];
+    return applyFormatOps(
+      createUIMessageSnapshot(messages),
+      uiFormatOps,
+    ) as T[];
   },
 
   shareUI: <T extends UIMessage>(messages: T[]) =>

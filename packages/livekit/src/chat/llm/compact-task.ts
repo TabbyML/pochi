@@ -105,7 +105,10 @@ export async function compactTask({
           recentFileContext,
           { verbatimTail: true },
         );
-        memoryAttachMessage.parts.unshift({ type: "text", text });
+        messages[memoryAttachIndex] = {
+          ...memoryAttachMessage,
+          parts: [{ type: "text", text }, ...memoryAttachMessage.parts],
+        };
         persistInlineCompactMessage(store, memoryAttachMessage.id, text);
         logger.debug(
           `Inline compact attached at index ${memoryAttachIndex}; preserving ${
@@ -125,7 +128,10 @@ export async function compactTask({
         recentFileContext,
         attachIndex < messages.length - 1 ? { verbatimTail: true } : undefined,
       );
-      attachMessage.parts.unshift({ type: "text", text });
+      messages[attachIndex] = {
+        ...attachMessage,
+        parts: [{ type: "text", text }, ...attachMessage.parts],
+      };
       persistInlineCompactMessage(store, attachMessage.id, text);
       return;
     }
