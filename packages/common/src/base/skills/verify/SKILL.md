@@ -34,7 +34,7 @@ For documentation-only, tests-only, comment-only, or erased type-only changes wi
 
 ## 3. Acquire a verified launch path
 
-Inspect `.pochi/skills/` and `.agents/skills/` for a matching project-specific `run-*` or verifier skill. Invoke it with `useSkill` when registered. Otherwise use the built-in `run` skill to establish a runtime handle.
+Inspect `.pochi/skills/` and `.agents/skills/` for a matching project-specific `run-*` or verifier skill. Invoke it with `useSkill` when registered. Reuse a run skill's verified setup and launch instructions, but keep the runtime available until this verification finishes; this workflow owns the probes, evidence, report, and cleanup. If no matching skill exists, establish the launch path from project documentation and the runtime reference selected above.
 
 If startup requires undocumented work, keep verification focused on the current change. Do not silently rewrite project run instructions. Recommend `/run-skill-generator` when the launch path should be captured for future work.
 

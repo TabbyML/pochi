@@ -1,6 +1,6 @@
 # Project run skill template
 
-Remove sections that do not apply. Replace every placeholder with verified information.
+Remove sections that do not apply. Replace every placeholder with verified information. The Skill directory should contain only durable instructions, required helpers, and required static resources. Runtime evidence must use a temporary location outside `.pochi/skills/` and be deleted after inspection unless the user explicitly requests retaining it.
 
 ```markdown
 ---
@@ -33,7 +33,7 @@ All paths are relative to the repository root.
 
 ## Launch
 
-<State whether to use executeCommand or startBackgroundJob and how readiness is observed.>
+<State how to use executeCommand, including background: true for a long-lived process, and how its output file or public interface establishes readiness. Give readiness checks a clear deadline and avoid repeatedly reading unchanged or empty output.>
 
 \`\`\`bash
 <verified launch command>
@@ -45,11 +45,11 @@ All paths are relative to the repository root.
 
 Expected observation: <specific output or visible state>.
 
-Artifacts: <screenshot/output paths, if any>.
+Temporary evidence: <screenshot/output path outside `.pochi/skills/`, if any; delete it after inspection unless the user requests retaining it>.
 
 ## Stop
 
-<Exact cleanup procedure for jobs, sessions, browser state, and temporary resources.>
+<Exact cleanup procedure for jobs, sessions, browser state, temporary evidence, and other temporary resources.>
 
 ## Human path
 

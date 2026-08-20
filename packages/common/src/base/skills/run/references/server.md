@@ -5,9 +5,9 @@ Use Pochi background jobs for lifecycle management.
 ## Launch
 
 1. Build or install dependencies with `executeCommand`.
-2. Start the server with `startBackgroundJob`, setting `cwd` to the runnable unit.
-3. Retain the returned background job ID.
-4. Poll `readBackgroundJobOutput` for a stable ready marker, or repeatedly call a health endpoint until it responds.
+2. Start the server with `executeCommand`, setting `background: true` and `cwd` to the runnable unit.
+3. Retain the returned background job ID and output file.
+4. When the application exposes a ready marker, inspect the output file with `readFile`; otherwise check a real health endpoint. Retry only when startup is still plausibly progressing, use a clear deadline, and do not repeatedly read unchanged or empty output. A completion notification is authoritative if the process exits before becoming ready.
 
 Choose an unused or configurable port when possible. Do not kill an existing process merely because it occupies the default port.
 

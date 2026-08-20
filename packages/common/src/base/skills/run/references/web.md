@@ -4,9 +4,9 @@ Use the built-in `browser` agent for browser interaction instead of writing ad h
 
 ## Launch
 
-1. Start the development or preview server with `startBackgroundJob`.
-2. Poll a real URL until it responds.
-3. Keep the background job ID for cleanup.
+1. Start the development or preview server with `executeCommand` and `background: true`.
+2. Check a real URL for readiness, using `readFile` when the output contains a ready marker or useful startup diagnostics. Retry only while startup is plausibly progressing and stop at a clear deadline; do not repeatedly read unchanged or empty output.
+3. Keep the background job ID and output file for observation and cleanup. Treat a completion notification as the authoritative final process status.
 
 ## Drive with the browser agent
 

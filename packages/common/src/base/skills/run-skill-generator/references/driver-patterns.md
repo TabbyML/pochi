@@ -12,7 +12,7 @@ Use a small consumer example that imports the package by its public name. Keep t
 
 ## Server or API
 
-Use `startBackgroundJob` for launch, a real readiness endpoint or log marker, and the native protocol client such as `curl`. Document how to retain and stop the background job. Add a script when requests, fixture setup, or cleanup form a repeatable sequence.
+Use `executeCommand` with `background: true` for launch, a real readiness endpoint or log marker, and the native protocol client such as `curl`. Document how to retain the returned job ID and output file, inspect useful output with `readFile`, bound readiness retries with a clear deadline, and stop the job with `killBackgroundJob`. Do not repeatedly read unchanged or empty output. Add a script when requests, fixture setup, or cleanup form a repeatable sequence.
 
 ## Web UI
 
@@ -22,7 +22,8 @@ Use Pochi's `browser` agent. The run skill should describe:
 - the URL and readiness check;
 - the browser flow to request through `newTask`;
 - the expected visible state;
-- screenshot location;
+- a temporary screenshot location outside `.pochi/skills/`;
+- screenshot cleanup after inspection unless the user requests retaining it;
 - server and browser cleanup.
 
 Do not add Playwright boilerplate solely to duplicate the browser agent. Reuse an existing project Playwright suite when it contains application-specific setup the browser agent needs.

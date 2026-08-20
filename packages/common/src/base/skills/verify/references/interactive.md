@@ -2,7 +2,7 @@
 
 ## Browser UI
 
-Start the app with a project run skill or `startBackgroundJob`, then use `newTask` with `agentType: "browser"`.
+Reuse the setup and launch instructions from a project run skill, or start the app with `executeCommand` and `background: true`, retaining its job ID and output file. Keep the app running while `newTask` with `agentType: "browser"` performs the verification flow, inspect useful startup output with `readFile` when needed, and stop the app with `killBackgroundJob` after all probes finish.
 
 Tell the browser agent:
 

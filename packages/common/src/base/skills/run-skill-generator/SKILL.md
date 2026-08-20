@@ -22,6 +22,8 @@ Produce:
 
 Keep the driver beside `SKILL.md` when it exists only for agent operation. Put it in the project's normal `scripts/` or end-to-end directory only when the project itself should own and reuse it.
 
+The Skill directory is for durable instructions and resources required by future runs. Never store generated screenshots, logs, command output, caches, recordings, or other validation artifacts there. During generation, write evidence to a temporary directory, inspect it, and delete it before finishing. Retain evidence only when the user explicitly requests it, and keep retained evidence outside `.pochi/skills/`. Do not add a generated artifact merely because it was useful while authoring the Skill.
+
 Do not create a Git commit unless the user explicitly asks.
 
 ## 1. Select the unit
@@ -60,12 +62,12 @@ Work from a fresh shell and the current checkout:
 
 1. Install only required project dependencies.
 2. Build the runnable unit if needed.
-3. Launch it with `executeCommand` or `startBackgroundJob`.
-4. Wait for an observable ready condition.
+3. Launch it with `executeCommand`, using `background: true` for long-lived processes and retaining the returned job ID and output file.
+4. Wait for an observable ready condition, using `readFile` when the output contains a ready marker or useful diagnostics, or a real health/interface check. Keep retries purposeful and bounded; do not repeatedly read unchanged or empty output.
 5. Perform one representative user flow.
-6. Capture output, response data, terminal state, or a screenshot.
+6. Capture output, response data, terminal state, or a screenshot in a temporary directory.
 7. Inspect the captured result.
-8. Stop everything started by the task.
+8. Stop background jobs with `killBackgroundJob`, delete temporary evidence, and clean up everything else started by the task. Retain evidence only when the user explicitly requests it.
 
 Do not modify product source, disable security controls, bypass licensing or authentication, or mutate external systems to force a successful run. Ask before installing system packages or making persistent environment changes.
 
@@ -85,8 +87,9 @@ Requirements:
 - Mark platform-specific steps and versions precisely.
 - Record concrete gotchas encountered; omit generic troubleshooting.
 - Reference every bundled helper by its actual path.
+- Keep generated evidence and runtime output outside the Skill directory. Direct future runs to clean up temporary output unless the user asks to retain it. Bundle only durable helpers or static resources required for future runs.
 
-Write helper code only when repeated interaction would otherwise be unreliable. Keep its interface small and observable: explicit commands, structured output, artifact paths, and clean shutdown.
+Write helper code only when repeated interaction would otherwise be unreliable. Keep its interface small and observable: explicit commands, structured output, temporary artifact paths outside `.pochi/skills/`, and clean shutdown.
 
 ## 6. Validate from the document
 
@@ -102,8 +105,9 @@ Finish only when:
 - at least one representative operation was observed;
 - all documented commands were executed successfully in the current environment;
 - any driver/helper was used successfully;
-- evidence was inspected;
+- evidence was inspected and deleted unless the user explicitly requested retaining it;
 - started processes and sessions were cleaned up;
-- the Skill and resources are saved, with no automatic commit.
+- the Skill directory was reviewed and contains no generated evidence or transient runtime files;
+- the Skill and required durable resources are saved, with no automatic commit.
 
 If the environment prevents reaching the runtime surface, report the blocker and do not create an unverified Skill.
