@@ -114,15 +114,14 @@ describe("match-slash-command", () => {
       },
     ];
 
-    it("replaces a leading agent reference with a structured marker", async () => {
-      const result = await replaceSlashCommandReferences(
-        "/test-agent Please handle this task",
-        { customAgents, skills },
-      );
+    it("preserves a leading agent reference as readable text", async () => {
+      const prompt = "/test-agent Please handle this task";
+      const result = await replaceSlashCommandReferences(prompt, {
+        customAgents,
+        skills,
+      });
 
-      expect(result.prompt).toBe(
-        '<custom-agent id="test-agent" path=".pochi/agents/test-agent.md">/test-agent</custom-agent> Please handle this task',
-      );
+      expect(result.prompt).toBe(prompt);
       expect(result.invokedCustomAgents).toEqual(["test-agent"]);
     });
 
@@ -145,7 +144,7 @@ describe("match-slash-command", () => {
         { customAgents, skills },
       );
 
-      expect(prompt).toContain('<custom-agent id="test-agent"');
+      expect(prompt).toContain("/test-agent");
       expect(prompt).toContain('<skill id="test-skill"');
       expect(prompt).toContain("This is a test skill");
       expect(prompt).toContain("Use both");
@@ -167,8 +166,7 @@ describe("match-slash-command", () => {
         skills,
       });
 
-      expect(result.prompt).toContain('<custom-agent id="test-agent"');
-      expect(result.prompt).toContain("src/test-skill and /test-skill");
+      expect(result.prompt).toBe(prompt);
       expect(result.prompt).not.toContain('<skill id="test-skill"');
     });
 
@@ -230,7 +228,8 @@ describe("match-slash-command", () => {
         ],
       });
 
-      expect(result.prompt).toContain('<custom-agent id="test-agent"');
+      expect(result.prompt).toBe("/test-agent");
+      expect(result.invokedCustomAgents).toEqual(["test-agent"]);
       expect(result.blockedSkill).toBeUndefined();
     });
   });

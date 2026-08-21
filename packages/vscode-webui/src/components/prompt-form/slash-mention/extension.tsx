@@ -1,4 +1,4 @@
-import { serializeCustomAgentMention } from "@getpochi/common/agent-mention";
+import { serializeCustomAgentMention } from "@/lib/serialize-custom-agent-mention";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import Mention from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";

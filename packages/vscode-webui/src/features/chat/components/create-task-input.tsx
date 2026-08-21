@@ -15,8 +15,8 @@ import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
+import { serializeCustomAgentMention } from "@/lib/serialize-custom-agent-mention";
 import { vscodeHost } from "@/lib/vscode";
-import { serializeCustomAgentMention } from "@getpochi/common/agent-mention";
 import type {
   GitWorktree,
   Review,

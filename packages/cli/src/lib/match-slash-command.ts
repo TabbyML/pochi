@@ -1,5 +1,4 @@
 import { prompts } from "@getpochi/common";
-import { serializeCustomAgentMention } from "@getpochi/common/agent-mention";
 import {
   type CustomAgentFile,
   type SkillFile,
@@ -100,7 +99,7 @@ export async function replaceSlashCommandReferences(
 
     if (agent?.name) {
       invokedCustomAgents.add(agent.name);
-      resultParts.push(serializeCustomAgentMention(agent.name, agent.filePath));
+      resultParts.push(prompt.slice(reference.start, reference.end));
     } else if (
       skill &&
       isValidSkillFile(skill) &&

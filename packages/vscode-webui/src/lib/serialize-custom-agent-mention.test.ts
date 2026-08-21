@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serializeCustomAgentMention } from "../agent-mention";
+import { serializeCustomAgentMention } from "./serialize-custom-agent-mention";
 
 describe("serializeCustomAgentMention", () => {
   it("serializes a readable structured custom-agent mention", () => {
