@@ -181,6 +181,19 @@ describe("long-term memory prompt helpers", () => {
     expect(userPart.text).toBe("hello");
   });
 
+  it("injectAutoMemory replaces the user message without mutating its snapshot", () => {
+    const message = makeUserMessage("hello");
+    const originalParts = message.parts;
+    const messages = [message];
+
+    injectAutoMemory(messages, sampleContext);
+
+    expect(messages[0]).not.toBe(message);
+    expect(message.parts).toBe(originalParts);
+    expect(message.parts).toEqual([{ type: "text", text: "hello" }]);
+    expect(messages[0].parts).toHaveLength(2);
+  });
+
   it("injectAutoMemory is a no-op without context or memory block", () => {
     const messages = [makeUserMessage("hello")];
     expect(injectAutoMemory(messages, undefined)).toBe(messages);
@@ -215,6 +228,27 @@ describe("long-term memory prompt helpers", () => {
     const userPart = messages[0].parts[0];
     if (userPart.type !== "text") throw new Error("expected text part");
     expect(userPart.text).toBe("first");
+  });
+
+  it("strips a persisted reminder without mutating its snapshot", () => {
+    const reminder = {
+      type: "text" as const,
+      text: `<system-reminder>${buildAutoMemoryDynamicPrompt(sampleContext)}</system-reminder>`,
+    };
+    const message: UIMessage = {
+      id: "user-1",
+      role: "user",
+      parts: [reminder, { type: "text", text: "hello" }],
+    };
+    const originalParts = message.parts;
+    const messages = [message];
+
+    injectAutoMemory(messages, undefined);
+
+    expect(messages[0]).not.toBe(message);
+    expect(message.parts).toBe(originalParts);
+    expect(message.parts).toHaveLength(2);
+    expect(messages[0].parts).toEqual([{ type: "text", text: "hello" }]);
   });
 
   it("injectAutoMemory only fires on the first user turn", () => {

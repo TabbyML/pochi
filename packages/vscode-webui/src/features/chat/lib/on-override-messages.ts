@@ -1,4 +1,5 @@
 import { vscodeHost } from "@/lib/vscode";
+import { updateMessage } from "@getpochi/common";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { unique } from "remeda";
 import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
@@ -44,43 +45,42 @@ export async function onOverrideMessages({
 
 export function writeRenderWidgetOutput(messages: Message[]) {
   const store = useRenderWidgetStore.getState();
-  const message = getRenderWidgetOutputMessage(messages);
-  if (!message) return;
-
-  let changed = false;
-  const parts = message.parts.map((part): Message["parts"][number] => {
-    if (part.type !== "tool-renderWidget") return part;
-    if (part.state !== "input-available" && part.state !== "output-available") {
-      return part;
-    }
-
-    changed = true;
-    const state =
-      store.getWidgetState(part.toolCallId) ??
-      getExistingRenderWidgetState(part.output) ??
-      {};
-    const output = { state };
-    const error = store.getWidgetError(part.toolCallId);
-    if (error !== undefined) {
-      // @ts-expect-error renderWidget output schema intentionally omits runtime errors.
-      output.error = error.message;
-    }
-    store.clearWidgetState(part.toolCallId);
-    return {
-      ...part,
-      state: "output-available",
-      output,
-    };
-  });
-  if (changed) {
-    messages[messages.length - 2] = { ...message, parts };
-  }
-}
-
-function getRenderWidgetOutputMessage(messages: Message[]) {
   if (messages.at(-1)?.role !== "user") return;
-  const message = messages.at(-2);
-  return message?.role === "assistant" ? message : undefined;
+  const messageIndex = messages.length - 2;
+  if (messages[messageIndex]?.role !== "assistant") return;
+
+  updateMessage(messages, messageIndex, (message) => {
+    let changed = false;
+    const parts = message.parts.map((part) => {
+      if (part.type !== "tool-renderWidget") return part;
+      if (
+        part.state !== "input-available" &&
+        part.state !== "output-available"
+      ) {
+        return part;
+      }
+
+      changed = true;
+      const state =
+        store.getWidgetState(part.toolCallId) ??
+        getExistingRenderWidgetState(part.output) ??
+        {};
+      const output = { state };
+      const error = store.getWidgetError(part.toolCallId);
+      if (error !== undefined) {
+        // @ts-expect-error renderWidget output schema intentionally omits runtime errors.
+        output.error = error.message;
+      }
+      store.clearWidgetState(part.toolCallId);
+      return {
+        ...part,
+        state: "output-available" as const,
+        output,
+      };
+    });
+
+    return changed ? { parts } : undefined;
+  });
 }
 
 function getExistingRenderWidgetState(output: unknown) {
@@ -114,10 +114,9 @@ async function appendCheckpoint(messages: Message[], messageIndex: number) {
   });
   if (!ckpt) return;
 
-  messages[messageIndex] = {
-    ...message,
+  updateMessage(messages, messageIndex, (current) => ({
     parts: [
-      ...message.parts,
+      ...current.parts,
       {
         type: "data-checkpoint",
         data: {
@@ -125,7 +124,7 @@ async function appendCheckpoint(messages: Message[], messageIndex: number) {
         },
       },
     ],
-  };
+  }));
   return ckpt;
 }
 

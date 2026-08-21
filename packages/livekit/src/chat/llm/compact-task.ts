@@ -6,6 +6,7 @@ import {
   formatters,
   getLogger,
   prompts,
+  updateMessage,
 } from "@getpochi/common";
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { convertToModelMessages, generateText } from "ai";
@@ -105,10 +106,9 @@ export async function compactTask({
           recentFileContext,
           { verbatimTail: true },
         );
-        messages[memoryAttachIndex] = {
-          ...memoryAttachMessage,
-          parts: [{ type: "text", text }, ...memoryAttachMessage.parts],
-        };
+        updateMessage(messages, memoryAttachIndex, (message) => ({
+          parts: [{ type: "text", text }, ...message.parts],
+        }));
         persistInlineCompactMessage(store, memoryAttachMessage.id, text);
         logger.debug(
           `Inline compact attached at index ${memoryAttachIndex}; preserving ${
@@ -128,10 +128,9 @@ export async function compactTask({
         recentFileContext,
         attachIndex < messages.length - 1 ? { verbatimTail: true } : undefined,
       );
-      messages[attachIndex] = {
-        ...attachMessage,
-        parts: [{ type: "text", text }, ...attachMessage.parts],
-      };
+      updateMessage(messages, attachIndex, (message) => ({
+        parts: [{ type: "text", text }, ...message.parts],
+      }));
       persistInlineCompactMessage(store, attachMessage.id, text);
       return;
     }

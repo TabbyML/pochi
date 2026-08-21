@@ -1,0 +1,64 @@
+id: no-mutate-shared-message-parts
+language: tsx
+rule:
+  all:
+    - any:
+        - all:
+            - any:
+                - kind: assignment_expression
+                - kind: augmented_assignment_expression
+            - has:
+                field: left
+                any:
+                  - regex: ^(message([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Message[A-Za-z0-9_$]*|part([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Part[A-Za-z0-9_$]*|prev|next|current)([.]|\[).*
+                  - regex: ^messages\[.*\]$
+                  - regex: ^messages\[.*\][.].*
+                  - regex: .*[.](parts|input|output|metadata|providerMetadata|callProviderMetadata)([.]|\[).*
+        - all:
+            - kind: update_expression
+            - has:
+                field: argument
+                any:
+                  - regex: ^(message([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Message[A-Za-z0-9_$]*|part([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Part[A-Za-z0-9_$]*|prev|next|current)([.]|\[).*
+                  - regex: ^messages\[.*\][.].*
+                  - regex: .*[.](parts|input|output|metadata|providerMetadata|callProviderMetadata)([.]|\[).*
+        - all:
+            - kind: unary_expression
+            - regex: ^delete\s+.*
+            - has:
+                field: argument
+                any:
+                  - regex: ^(message([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Message[A-Za-z0-9_$]*|part([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Part[A-Za-z0-9_$]*|prev|next|current)([.]|\[).*
+                  - regex: ^messages\[.*\][.].*
+                  - regex: .*[.](parts|input|output|metadata|providerMetadata|callProviderMetadata)([.]|\[).*
+        - all:
+            - kind: call_expression
+            - has:
+                field: function
+                any:
+                  - regex: ^(message([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Message[A-Za-z0-9_$]*|part([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Part[A-Za-z0-9_$]*|prev|next|current)([.]|\[).*?[.](push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin|set|add|delete|clear)$
+                  - regex: .*[.](parts|input|output|metadata|providerMetadata|callProviderMetadata)([.]|\[).*?(push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin|set|add|delete|clear)$
+        - all:
+            - pattern: Object.assign($$$ARGS)
+            - has:
+                field: arguments
+                any:
+                  - regex: ^\((message([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Message[A-Za-z0-9_$]*|part([A-Z0-9_$][A-Za-z0-9_$]*)?|[A-Za-z0-9_$]*Part[A-Za-z0-9_$]*|prev|next|current)([.]|\[).*
+                  - regex: ^\(messages\[.*\]([.]|,).*
+                  - regex: ^\([^,]*[.](parts|input|output|metadata|providerMetadata|callProviderMetadata)([.]|\[|,).*
+    - not:
+        inside:
+          all:
+            - kind: function_declaration
+            - has:
+                field: name
+                regex: ^(removeInvalidCharForStorage|removeToolCallArgumentMetadata|removeToolCallArgumentTransientData|removeToolCallResultMetadata|removeToolCallResultTransientData)$
+          stopBy: end
+files:
+  - packages/common/src/base/formatters.ts
+  - packages/common/src/base/prompts/auto-memory.ts
+  - packages/common/src/base/prompts/environment.ts
+  - packages/livekit/src/chat/llm/compact-task.ts
+  - packages/vscode-webui/src/features/chat/lib/on-override-messages.ts
+message: Do not mutate shared message parts. Return new values instead.
+severity: error

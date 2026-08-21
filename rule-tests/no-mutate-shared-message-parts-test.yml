@@ -1,0 +1,37 @@
+id: no-mutate-shared-message-parts
+valid:
+  - |
+    const result = [];
+    result.push(part);
+  - |
+    const output = { ...part.output };
+    output.result = value;
+  - |
+    const parts = message.parts.slice();
+    parts[index] = nextPart;
+  - |
+    updateMessage(messages, index, (message) => ({
+      parts: [...message.parts, nextPart],
+    }));
+  - |
+    function removeToolCallArgumentMetadata(messages) {
+      return messages.map((message) => {
+        message.parts = message.parts.map((part) => {
+          delete part.input._meta;
+          return part;
+        });
+        return message;
+      });
+    }
+invalid:
+  - messages[index] = nextMessage;
+  - part.state = "output-available";
+  - message.parts.push(part);
+  - messageToInject.parts = nextParts;
+  - messages[index].parts = nextParts;
+  - messages[index].parts.push(part);
+  - messages[index].parts[0].output.result = value;
+  - prevPart.output.newProblems = value;
+  - part.output.items.splice(index, 1);
+  - delete part.metadata.foo;
+  - Object.assign(part.output, patch);

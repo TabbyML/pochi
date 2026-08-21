@@ -1,8 +1,10 @@
 import { expect, test } from "vitest";
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import type { UIMessage } from "ai";
 import type { Environment } from "../../environment";
 import {
   createEnvironmentPrompt,
+  injectEnvironment,
   parseEnvironmentInfo,
 } from "../environment";
 import { createSystemPrompt } from "../system";
@@ -234,6 +236,23 @@ test("parseEnvironmentInfo ignores missing or incomplete environment prompt", ()
       },
     ]),
   ).toBeUndefined();
+});
+
+test("injectEnvironment replaces the user message without mutating its snapshot", () => {
+  const message: UIMessage = {
+    id: "user-1",
+    role: "user",
+    parts: [{ type: "text", text: "hello" }],
+  };
+  const originalParts = message.parts;
+  const messages = [message];
+
+  injectEnvironment(messages, createTestEnvironment());
+
+  expect(messages[0]).not.toBe(message);
+  expect(message.parts).toBe(originalParts);
+  expect(message.parts).toEqual([{ type: "text", text: "hello" }]);
+  expect(messages[0].parts).toHaveLength(2);
 });
 
 function createTestEnvironment(): Environment {

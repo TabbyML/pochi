@@ -1,4 +1,5 @@
 import type { TextUIPart, UIMessage } from "ai";
+import { updateMessage } from "../message";
 
 export const AutoMemoryIndexName = "MEMORY.md";
 
@@ -163,16 +164,17 @@ ${indexContent}`;
  * persisted into the first user message on an earlier turn) stops being sent.
  */
 function stripAutoMemoryReminders(messages: UIMessage[]): UIMessage[] {
-  for (const message of messages) {
-    if (message.role !== "user") continue;
-    const parts = message.parts ?? [];
-    const filtered = parts.filter(
-      (part) =>
-        part.type !== "text" || !isAutoMemorySystemReminder(part.text ?? ""),
-    );
-    if (filtered.length !== parts.length) {
-      message.parts = filtered;
-    }
+  for (let index = 0; index < messages.length; index++) {
+    if (messages[index]?.role !== "user") continue;
+
+    updateMessage(messages, index, (message) => {
+      const parts = message.parts ?? [];
+      const filtered = parts.filter(
+        (part) =>
+          part.type !== "text" || !isAutoMemorySystemReminder(part.text ?? ""),
+      );
+      return filtered.length === parts.length ? undefined : { parts: filtered };
+    });
   }
   return messages;
 }
@@ -192,29 +194,32 @@ export function injectAutoMemory(
   if (!memoryBlock) return stripAutoMemoryReminders(messages);
   if (messages.length !== 1) return messages;
 
-  const messageToInject = messages.at(-1);
-  if (!messageToInject || messageToInject.role !== "user") return messages;
+  const messageIndex = messages.length - 1;
+  if (messages[messageIndex]?.role !== "user") return messages;
 
   const reminderPart: TextUIPart = {
     type: "text",
     text: `<system-reminder>${memoryBlock}</system-reminder>`,
   };
 
-  const filteredParts = (messageToInject.parts ?? []).filter(
-    (part) =>
-      part.type !== "text" || !isAutoMemorySystemReminder(part.text ?? ""),
-  );
-  // Place reminder before the user's text so the prompt remains the tail.
-  const lastTextPartIndex = filteredParts.findLastIndex(
-    (part) => part.type === "text",
-  );
-  const insertIndex = lastTextPartIndex >= 0 ? lastTextPartIndex : 0;
+  updateMessage(messages, messageIndex, (message) => {
+    const filteredParts = (message.parts ?? []).filter(
+      (part) =>
+        part.type !== "text" || !isAutoMemorySystemReminder(part.text ?? ""),
+    );
+    const lastTextPartIndex = filteredParts.findLastIndex(
+      (part) => part.type === "text",
+    );
+    const insertIndex = lastTextPartIndex >= 0 ? lastTextPartIndex : 0;
 
-  messageToInject.parts = [
-    ...filteredParts.slice(0, insertIndex),
-    reminderPart,
-    ...filteredParts.slice(insertIndex),
-  ];
+    return {
+      parts: [
+        ...filteredParts.slice(0, insertIndex),
+        reminderPart,
+        ...filteredParts.slice(insertIndex),
+      ],
+    };
+  });
   return messages;
 }
 

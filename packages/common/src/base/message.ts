@@ -1,5 +1,23 @@
-import type { FinishReason } from "ai";
+import type { FinishReason, UIMessage } from "ai";
+import type { ReadonlyDeep } from "type-fest";
 import { z } from "zod";
+
+/** Replaces one message while exposing the existing value as deeply readonly. */
+export function updateMessage<T extends UIMessage>(
+  messages: T[],
+  index: number,
+  update: (message: ReadonlyDeep<T>) => Partial<ReadonlyDeep<T>> | undefined,
+): T | undefined {
+  const message = messages[index];
+  if (!message) return;
+
+  const patch = update(message as ReadonlyDeep<T>);
+  if (!patch) return message;
+
+  const updatedMessage = { ...message, ...patch } as T;
+  messages[index] = updatedMessage;
+  return updatedMessage;
+}
 
 export const MessageMetadata = z.discriminatedUnion("kind", [
   z.object({

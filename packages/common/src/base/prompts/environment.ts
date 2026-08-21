@@ -1,6 +1,7 @@
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
 import type { TextUIPart, UIMessage } from "ai";
 import type { Environment, GitStatus } from "../environment";
+import { updateMessage } from "../message";
 import { prompts } from "./index";
 
 type User = { name: string; email: string };
@@ -195,9 +196,8 @@ export function injectEnvironment(
   options?: { forceFull?: boolean },
 ): UIMessage[] {
   if (environment === undefined) return messages;
-  const messageToInject = messages.at(-1);
-  if (!messageToInject) return messages;
-  if (messageToInject.role !== "user") return messages;
+  const messageIndex = messages.length - 1;
+  if (messages[messageIndex]?.role !== "user") return messages;
 
   const { gitStatus } = environment.workspace;
   const user =
@@ -218,20 +218,23 @@ export function injectEnvironment(
     text: prompts.createSystemReminder(environmentDetails),
   } satisfies TextUIPart;
 
-  const parts =
-    // Remove existing environment system reminders.
-    messageToInject.parts.filter(
-      (x) => x.type !== "text" || !prompts.isEnvironmentSystemReminder(x.text),
-    ) || [];
-  const lastTextPartIndex = parts.findLastIndex(
-    (parts) => parts.type === "text",
-  );
-  // Insert remainderPart before lastTextPartIndex
-  messageToInject.parts = [
-    ...parts.slice(0, lastTextPartIndex),
-    reminderPart,
-    ...parts.slice(lastTextPartIndex),
-  ];
+  updateMessage(messages, messageIndex, (message) => {
+    const parts = message.parts.filter(
+      (part) =>
+        part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
+    );
+    const lastTextPartIndex = parts.findLastIndex(
+      (part) => part.type === "text",
+    );
+
+    return {
+      parts: [
+        ...parts.slice(0, lastTextPartIndex),
+        reminderPart,
+        ...parts.slice(lastTextPartIndex),
+      ],
+    };
+  });
 
   return messages;
 }
