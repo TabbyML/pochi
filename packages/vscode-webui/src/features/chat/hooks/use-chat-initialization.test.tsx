@@ -50,4 +50,40 @@ describe("useChatInitialization", () => {
       ],
     });
   });
+
+  it("assembles invoked custom agents as reminder parts for a new task", () => {
+    const prompt =
+      'use <custom-agent id="tester" path="/agents/tester.md"></custom-agent> for this task';
+    const info: PochiTaskInfo = {
+      type: "new-task",
+      uid: "task-1",
+      cwd: "/workspace",
+      prompt,
+      invokedCustomAgents: ["tester"],
+    };
+    const init = vi.fn();
+
+    renderHook(() =>
+      useChatInitialization({
+        chatKit: { inited: false, init } as never,
+        info,
+        storeRegistry: {} as never,
+        jwt: null,
+        t: ((key: string) => key) as TFunction,
+        setMcpConfigOverride: vi.fn() as never,
+        isMcpConfigLoading: false,
+      }),
+    );
+
+    expect(init).toHaveBeenCalledWith("/workspace", {
+      prompt,
+      parts: [
+        {
+          type: "text",
+          text: prompts.customAgentSystemReminder("tester"),
+        },
+        { type: "text", text: prompt },
+      ],
+    });
+  });
 });

@@ -9,6 +9,27 @@ vi.mock("./vscode", () => ({
 }));
 
 describe("prepareMessageParts", () => {
+  it("keeps invoked custom agent instructions separate from user-visible text", () => {
+    const prompt =
+      'use <custom-agent id="tester" path="/agents/tester.md"></custom-agent> to test this';
+    const parts = prepareMessageParts(
+      ((key: string) => key) as TFunction,
+      prompt,
+      [],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ["tester"],
+    );
+
+    expect(parts).toEqual([
+      { type: "text", text: prompts.customAgentSystemReminder("tester") },
+      { type: "text", text: prompt },
+    ]);
+  });
+
   it("keeps invoked skill instructions separate from user-visible text", () => {
     const skill: ValidSkillFile = {
       name: "deploy",
@@ -26,6 +47,7 @@ describe("prepareMessageParts", () => {
       undefined,
       undefined,
       [skill],
+      undefined,
     );
 
     expect(parts).toEqual([

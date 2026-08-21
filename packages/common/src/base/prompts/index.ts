@@ -50,6 +50,7 @@ export const prompts = {
   parseInlineCompact,
   generateTitle,
   customAgent: createCustomAgentPrompt,
+  customAgentSystemReminder: createCustomAgentSystemReminder,
   skill: createSkillPrompt,
   skillSystemReminder: createSkillSystemReminder,
   renderReviewComments,
@@ -134,15 +135,23 @@ function parseInlineCompact(text: string) {
 }
 
 function createCustomAgentPrompt(id: string, path?: string) {
-  // Remove extra newlines from the id
-  let processedAgentName = id.replace(/\n+/g, "\n");
-  // Escape '<' to avoid </custom-agent> being interpreted as a closing tag
-  const customAgentTagRegex = /<\/?custom-agent\b[^>]*>/g;
-  processedAgentName = processedAgentName.replace(
-    customAgentTagRegex,
-    (match) => {
-      return match.replace("<", "&lt;");
-    },
+  return `<custom-agent id="${escapeXmlAttribute(id)}" path="${escapeXmlAttribute(path ?? "")}"></custom-agent>`;
+}
+
+function createCustomAgentSystemReminder(agentName: string) {
+  const escapedAgentName = agentName.replace(
+    /<\/?system-reminder\b[^>]*>/gi,
+    (match) => match.replace("<", "&lt;"),
   );
-  return `<custom-agent id="${id}" path="${path ?? ""}">Please use the newTask tool to run ${processedAgentName} to complete the following request:\n</custom-agent>`;
+  return createSystemReminder(
+    `The user explicitly invoked the "${escapedAgentName}" agent. You must use the newTask tool with agentType="${escapedAgentName}" to run it, passing the complete relevant request and context.`,
+  );
+}
+
+function escapeXmlAttribute(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }

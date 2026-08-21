@@ -6,67 +6,59 @@ import {
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { isUserInvocableSkill } from "@getpochi/tools";
-import type { Parent, Text } from "mdast";
-import { gfmToMarkdown } from "mdast-util-gfm";
-import { toMarkdown } from "mdast-util-to-markdown";
-import { remark } from "remark";
-import remarkGfm from "remark-gfm";
-import { SKIP, visit } from "unist-util-visit";
 
-const IGNORED_NODE_TYPES = [
-  "code",
-  "inlineCode",
-  "link",
-  "image",
-  "html",
-  "linkReference",
-  "imageReference",
-];
+const MaxChainedSlashCommands = 6;
+
+interface SlashCommandReference {
+  name: string;
+  start: number;
+  end: number;
+}
 
 /**
- * Extract slash command names from text, matching pattern /command-name
+ * Extract a chain of slash commands from the start of a prompt.
+ * Text after the first non-command token is treated as command arguments.
  */
-function extractSlashCommandsFromText(text: string): string[] {
-  const slashCommandRegex = /\/\w+[\w-]*/g;
-  const matches = [...text.matchAll(slashCommandRegex)];
-  return matches.map((match) => match[0].substring(1)); // Remove the leading "/"
+function extractLeadingSlashCommandReferences(
+  prompt: string,
+): SlashCommandReference[] {
+  const references: SlashCommandReference[] = [];
+  let cursor = 0;
+
+  while (cursor < prompt.length && /\s/.test(prompt[cursor])) {
+    cursor += 1;
+  }
+
+  while (references.length < MaxChainedSlashCommands) {
+    const match = prompt.slice(cursor).match(/^\/(\w[\w-]*)(?=\s|$)/);
+    if (!match) {
+      break;
+    }
+
+    const end = cursor + match[0].length;
+    references.push({ name: match[1], start: cursor, end });
+    cursor = end;
+
+    while (cursor < prompt.length && /\s/.test(prompt[cursor])) {
+      cursor += 1;
+    }
+  }
+
+  return references;
 }
 
 export function containsSlashCommandReference(prompt: string): boolean {
-  // Quick check before parsing - if no slash at all, return false
-  if (!/\//.test(prompt)) {
-    return false;
-  }
-
-  // Use the extraction function to properly detect slash commands
-  return extractSlashCommandNames(prompt).length > 0;
+  return extractLeadingSlashCommandReferences(prompt).length > 0;
 }
 
 export function extractSlashCommandNames(prompt: string): string[] {
-  // Parse markdown to AST
-  const tree = remark().use(remarkGfm).parse(prompt);
-
-  const textNodes: string[] = [];
-
-  // Single pass: collect text nodes and skip unwanted node types
-  visit(tree, (node) => {
-    // Skip these node types and their children
-    if (IGNORED_NODE_TYPES.includes(node.type)) {
-      return SKIP; // Skip this node and all its children
-    }
-
-    if (node.type === "text") {
-      textNodes.push(String(node.value));
-    }
-  });
-
-  const allCommands: string[] = [];
-  for (const text of textNodes) {
-    const commands = extractSlashCommandsFromText(text);
-    allCommands.push(...commands);
-  }
-
-  return [...new Set(allCommands)];
+  return [
+    ...new Set(
+      extractLeadingSlashCommandReferences(prompt).map(
+        (reference) => reference.name,
+      ),
+    ),
+  ];
 }
 
 export async function replaceSlashCommandReferences(
@@ -75,91 +67,58 @@ export async function replaceSlashCommandReferences(
     customAgents: CustomAgentFile[];
     skills: SkillFile[];
   },
-): Promise<{ prompt: string; blockedSkill?: ValidSkillFile }> {
-  // Quick check - if no slash at all, return early
-  if (!/\//.test(prompt)) {
-    return { prompt };
+): Promise<{
+  prompt: string;
+  blockedSkill?: ValidSkillFile;
+  invokedCustomAgents: string[];
+}> {
+  const references = extractLeadingSlashCommandReferences(prompt);
+  if (references.length === 0) {
+    return { prompt, invokedCustomAgents: [] };
   }
 
-  // Parse markdown to AST
-  const tree = remark().use(remarkGfm).parse(prompt);
   let blockedSkill: ValidSkillFile | undefined;
+  const invokedCustomAgents = new Set<string>();
+  const resultParts: string[] = [];
+  let cursor = 0;
 
-  // Visit and process nodes: replace slash commands
-  visit(tree, (node, index, parent) => {
-    // Skip these node types and their children
-    if (IGNORED_NODE_TYPES.includes(node.type)) {
-      return SKIP;
+  for (const reference of references) {
+    const agent = slashCommandContext.customAgents.find(
+      (candidate) => candidate.name === reference.name,
+    );
+    const skill = slashCommandContext.skills.find(
+      (candidate) =>
+        candidate.name === reference.name && isValidSkillFile(candidate),
+    );
+
+    if (!agent && !skill) {
+      break;
     }
 
-    // Replace slash commands in text nodes
-    if (node.type === "text" && parent) {
-      const textNode = node as Text;
-      const value = String(textNode.value);
-      const regex = /(\/\w+[\w-]*)/g;
+    resultParts.push(prompt.slice(cursor, reference.start));
 
-      const parts = value.split(regex);
-      if (parts.length > 1) {
-        const newNodes: (Text | { type: "html"; value: string })[] = [];
-
-        for (const part of parts) {
-          if (!part) continue;
-
-          if (part.startsWith("/")) {
-            const commandName = part.substring(1);
-            const agent = slashCommandContext.customAgents.find(
-              (x) => x.name === commandName,
-            );
-            const skill = slashCommandContext.skills.find(
-              (x) => x.name === commandName && isValidSkillFile(x),
-            );
-
-            if (agent?.name) {
-              newNodes.push({
-                type: "html",
-                value: prompts.customAgent(commandName, agent.filePath),
-              });
-              continue;
-            }
-            if (
-              skill &&
-              isValidSkillFile(skill) &&
-              !isUserInvocableSkill(skill)
-            ) {
-              blockedSkill ??= skill;
-              newNodes.push({ type: "text", value: part });
-              continue;
-            }
-            if (skill && isValidSkillFile(skill)) {
-              newNodes.push({
-                type: "html",
-                value: prompts.skill(skill),
-              });
-              continue;
-            }
-          }
-
-          newNodes.push({ type: "text", value: part });
-        }
-
-        // Replace the current node with the new nodes in parent
-        if (typeof index === "number" && parent) {
-          // biome-ignore lint/suspicious/noExplicitAny: need to splice multiple nodes of different types into mdast
-          (parent as Parent).children.splice(index, 1, ...(newNodes as any));
-        }
-      }
+    if (agent?.name) {
+      invokedCustomAgents.add(agent.name);
+      resultParts.push(prompts.customAgent(agent.name, agent.filePath));
+    } else if (
+      skill &&
+      isValidSkillFile(skill) &&
+      !isUserInvocableSkill(skill)
+    ) {
+      blockedSkill ??= skill;
+      resultParts.push(prompt.slice(reference.start, reference.end));
+    } else if (skill && isValidSkillFile(skill)) {
+      resultParts.push(prompts.skill(skill));
     }
-  });
 
-  // Convert AST back to string
-  const result = toMarkdown(tree, {
-    extensions: [gfmToMarkdown()],
-    handlers: {
-      link(node) {
-        return node.url;
-      },
-    },
-  });
+    cursor = reference.end;
+  }
 
-  return { prompt: result.trimEnd(), blockedSkill };
+  resultParts.push(prompt.slice(cursor));
+
+  return {
+    prompt: resultParts.join(""),
+    blockedSkill,
+    invokedCustomAgents: [...invokedCustomAgents],
+  };
 }

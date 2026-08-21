@@ -22,6 +22,7 @@ import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useBackgroundJobNotifications } from "@/lib/hooks/use-background-job-notifications";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
@@ -140,6 +141,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const { input, setInput, clearInput } = useChatInputState();
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
+  const { customAgents, isLoading: isCustomAgentsLoading } =
+    useCustomAgents(true);
 
   const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
   const { notifications: backgroundJobNotifications, acknowledge } =
@@ -293,8 +296,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     taskStatus: task?.status,
   });
 
-  const canSubmit = isSubmitEnabled && !isSkillsLoading;
-  const canSteer = allowSteer && !isSkillsLoading;
+  const canSubmit =
+    isSubmitEnabled && !isSkillsLoading && !isCustomAgentsLoading;
+  const canSteer = allowSteer && !isSkillsLoading && !isCustomAgentsLoading;
   const compactEnabled = !(
     isRunning || totalTokens < constants.CompactTaskMinTokens
   );
@@ -322,6 +326,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     reviews,
     userEdits: includedUserEdits,
     skills,
+    customAgents,
     terminalContextSelections,
     clearTerminalContextSelections,
     taskId,

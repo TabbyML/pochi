@@ -1,77 +1,99 @@
+import type {
+  ValidCustomAgentFile,
+  ValidSkillFile,
+} from "@getpochi/common/vscode-webui-bridge";
 import { describe, expect, it } from "vitest";
 import {
   containsSlashCommandReference,
   extractSlashCommandNames,
   replaceSlashCommandReferences,
 } from "../match-slash-command";
-import type {
-  ValidCustomAgentFile,
-  ValidSkillFile,
-} from "@getpochi/common/vscode-webui-bridge";
 
 describe("match-slash-command", () => {
-
   describe("containsSlashCommandReference", () => {
-    it("should return true for prompts containing slash command references", () => {
+    it("detects slash commands at the start of a prompt", () => {
       expect(containsSlashCommandReference("/create-pr")).toBe(true);
-      expect(containsSlashCommandReference("/workflow-name")).toBe(true);
-      expect(containsSlashCommandReference("please /create-pr")).toBe(true);
-      expect(
-        containsSlashCommandReference("/create-pr use feat semantic convention"),
-      ).toBe(true);
+      expect(containsSlashCommandReference("  /workflow-name run it")).toBe(
+        true,
+      );
+      expect(containsSlashCommandReference("/skill-a /skill-b do XYZ")).toBe(
+        true,
+      );
     });
 
-    it("should return false for regular prompts", () => {
+    it("does not detect slash commands after ordinary text", () => {
+      expect(containsSlashCommandReference("please /create-pr")).toBe(false);
+      expect(
+        containsSlashCommandReference(
+          "Use /create-pr and visit https://workflow-a.com",
+        ),
+      ).toBe(false);
+    });
+
+    it("does not match paths, URLs, or regular prompts", () => {
       expect(containsSlashCommandReference("Create a PR")).toBe(false);
-      expect(containsSlashCommandReference("This is a prompt")).toBe(false);
+      expect(containsSlashCommandReference("src/create-pr/index.ts")).toBe(
+        false,
+      );
+      expect(containsSlashCommandReference("./create-pr")).toBe(false);
+      expect(containsSlashCommandReference("../create-pr")).toBe(false);
+      expect(containsSlashCommandReference("/usr/bin/env node")).toBe(false);
+      expect(containsSlashCommandReference("C:\\create-pr\\index.ts")).toBe(
+        false,
+      );
+      expect(containsSlashCommandReference("https://example.com/path")).toBe(
+        false,
+      );
       expect(containsSlashCommandReference("")).toBe(false);
     });
 
-    it("should not match markdown links and images", () => {
-      expect(containsSlashCommandReference("[link text](https://example.com/path)")).toBe(false);
-      expect(containsSlashCommandReference("![alt text](https://example.com/image.png)")).toBe(false);
-    });
-
-    it("should not match code blocks or inline code", () => {
+    it("does not match markdown links, images, or code", () => {
+      expect(
+        containsSlashCommandReference("[link text](https://example.com/path)"),
+      ).toBe(false);
+      expect(
+        containsSlashCommandReference(
+          "![alt text](https://example.com/image.png)",
+        ),
+      ).toBe(false);
       expect(containsSlashCommandReference("`/some/path`")).toBe(false);
-      expect(containsSlashCommandReference("```\n/path/to/file\n```")).toBe(false);
-    });
-
-    it("should not match HTML closing tags", () => {
-      expect(containsSlashCommandReference("</div>")).toBe(false);
+      expect(
+        containsSlashCommandReference("```\n/path/to/file\n```"),
+      ).toBe(false);
       expect(containsSlashCommandReference("</workflow>")).toBe(false);
-    });
-
-    it("should match slash commands even with URLs present", () => {
-      expect(containsSlashCommandReference("Use /create-pr and visit https://workflow-a.com")).toBe(true);
-      expect(containsSlashCommandReference("/test-agent check https://example.com/path")).toBe(true);
     });
   });
 
   describe("extractSlashCommandNames", () => {
-    it("should extract slash command names from references", () => {
+    it("extracts a leading chain of slash commands", () => {
       expect(extractSlashCommandNames("/create-pr")).toEqual(["create-pr"]);
-      expect(extractSlashCommandNames("/agent-name")).toEqual([
-        "agent-name",
+      expect(extractSlashCommandNames("  /skill-a /skill-b do XYZ")).toEqual([
+        "skill-a",
+        "skill-b",
       ]);
-      expect(extractSlashCommandNames("please /create-pr")).toEqual([
-        "create-pr",
-      ]);
+    });
+
+    it("stops extracting when command arguments begin", () => {
       expect(
         extractSlashCommandNames("/create-pr use /test-agent convention"),
-      ).toEqual(["create-pr", "test-agent"]);
+      ).toEqual(["create-pr"]);
+      expect(extractSlashCommandNames("please /create-pr")).toEqual([]);
     });
 
-
-    it("should return empty array for prompts without slash command references", () => {
-      expect(extractSlashCommandNames("Create a PR")).toEqual([]);
-      expect(extractSlashCommandNames("")).toEqual([]);
+    it("limits a leading command chain to six entries", () => {
+      expect(
+        extractSlashCommandNames("/a /b /c /d /e /f /g do the task"),
+      ).toEqual(["a", "b", "c", "d", "e", "f"]);
     });
 
-    it("should not extract markdown links and images", () => {
-      expect(extractSlashCommandNames("[link](https://example.com/path)")).toEqual([]);
-      expect(extractSlashCommandNames("![image](https://example.com/image.png)")).toEqual([]);
-    });  });
+    it("does not extract path segments", () => {
+      expect(extractSlashCommandNames("src/create-pr/index.ts")).toEqual([]);
+      expect(extractSlashCommandNames("./create-pr")).toEqual([]);
+      expect(extractSlashCommandNames("../create-pr")).toEqual([]);
+      expect(extractSlashCommandNames("/usr/bin/env")).toEqual([]);
+      expect(extractSlashCommandNames("/create-pr/index.ts")).toEqual([]);
+    });
+  });
 
   describe("replaceSlashCommandReferences", () => {
     const customAgents: ValidCustomAgentFile[] = [
@@ -92,54 +114,98 @@ describe("match-slash-command", () => {
       },
     ];
 
-    it("should replace agent references with content", async () => {
-
-      const prompt = "Please use /test-agent for this task";
-      const { prompt: result } = await replaceSlashCommandReferences(prompt, {
-        customAgents,
-        skills,
-      });
-      expect(result).toBe(
-        'Please use <custom-agent id="test-agent" path=".pochi/agents/test-agent.md">Please use the newTask tool to run test-agent to complete the following request:\n</custom-agent> for this task'
+    it("replaces a leading agent reference with a structured marker", async () => {
+      const result = await replaceSlashCommandReferences(
+        "/test-agent Please handle this task",
+        { customAgents, skills },
       );
+
+      expect(result.prompt).toBe(
+        '<custom-agent id="test-agent" path=".pochi/agents/test-agent.md"></custom-agent> Please handle this task',
+      );
+      expect(result.invokedCustomAgents).toEqual(["test-agent"]);
     });
 
-    it("should replace skill references with content", async () => {
-      const prompt = "Please use /test-skill for this task";
-      const { prompt: result } = await replaceSlashCommandReferences(prompt, {
-        customAgents,
-        skills,
-      });
-      expect(result).toContain(
-        'Please use <skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md" data-user-invoked="true">',
+    it("replaces a leading skill reference with content", async () => {
+      const { prompt } = await replaceSlashCommandReferences(
+        "/test-skill Please handle this task",
+        { customAgents, skills },
       );
-      expect(result).toContain("This is a test skill");
-      expect(result).toContain("</skill> for this task");
+
+      expect(prompt).toContain(
+        '<skill id="test-skill" path=".pochi/skills/test-skill/SKILL.md" data-user-invoked="true">',
+      );
+      expect(prompt).toContain("This is a test skill");
+      expect(prompt).toContain("</skill> Please handle this task");
     });
 
-    it("should handle multiple slash command references", async () => {
-      const prompt = "Use /test-agent and then /test-skill";
-      const { prompt: result } = await replaceSlashCommandReferences(prompt, {
+    it("handles a leading chain of slash command references", async () => {
+      const { prompt } = await replaceSlashCommandReferences(
+        "/test-agent /test-skill Use both",
+        { customAgents, skills },
+      );
+
+      expect(prompt).toContain('<custom-agent id="test-agent"');
+      expect(prompt).toContain('<skill id="test-skill"');
+      expect(prompt).toContain("This is a test skill");
+      expect(prompt).toContain("Use both");
+    });
+
+    it("deduplicates repeated leading agent references", async () => {
+      const result = await replaceSlashCommandReferences(
+        "/test-agent /test-agent do the task",
+        { customAgents, skills },
+      );
+
+      expect(result.invokedCustomAgents).toEqual(["test-agent"]);
+    });
+
+    it("does not replace slash references after arguments begin", async () => {
+      const prompt = "/test-agent inspect src/test-skill and /test-skill";
+      const result = await replaceSlashCommandReferences(prompt, {
         customAgents,
         skills,
       });
-      expect(result).toContain('<custom-agent id="test-agent"');
-      expect(result).toContain('and then <skill id="test-skill"');
-      expect(result).toContain("This is a test skill");
+
+      expect(result.prompt).toContain('<custom-agent id="test-agent"');
+      expect(result.prompt).toContain("src/test-skill and /test-skill");
+      expect(result.prompt).not.toContain('<skill id="test-skill"');
+    });
+
+    it("does not replace paths whose segments match known commands", async () => {
+      const prompts = [
+        "src/test-skill/index.ts",
+        "./test-skill",
+        "../test-skill",
+        "/test-skill/index.ts",
+        "/usr/bin/test-skill",
+        "C:\\test-skill\\index.ts",
+        "https://example.com/test-skill",
+      ];
+
+      for (const prompt of prompts) {
+        await expect(
+          replaceSlashCommandReferences(prompt, { customAgents, skills }),
+        ).resolves.toEqual({ prompt, invokedCustomAgents: [] });
+      }
+    });
+
+    it("stops a command chain at the first unknown command", async () => {
+      const prompt = "/unknown /test-skill do the task";
+      await expect(
+        replaceSlashCommandReferences(prompt, { customAgents, skills }),
+      ).resolves.toEqual({ prompt, invokedCustomAgents: [] });
     });
 
     it("expands user-invocable skills with model invocation disabled", async () => {
-      const { prompt: result } = await replaceSlashCommandReferences(
-        "/test-skill",
-        {
-          customAgents,
-          skills: [{ ...skills[0], disableModelInvocation: true }],
-        },
-      );
+      const { prompt } = await replaceSlashCommandReferences("/test-skill", {
+        customAgents,
+        skills: [{ ...skills[0], disableModelInvocation: true }],
+      });
 
-      expect(result).toContain("This is a test skill");
-      expect(result).toContain('Do not call the useSkill tool for "test-skill"');
-      expect(result).not.toContain("Please use the useSkill tool");
+      expect(prompt).toContain("This is a test skill");
+      expect(prompt).toContain('Do not call the useSkill tool for "test-skill"');
+      expect(prompt).not.toContain("Please use the useSkill tool");
     });
 
     it("reports skills that are not user-invocable", async () => {

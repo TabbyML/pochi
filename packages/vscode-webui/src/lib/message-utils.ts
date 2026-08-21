@@ -20,6 +20,7 @@ export function prepareMessageParts(
   activeSelection?: ActiveSelection,
   terminalContextSelections?: TerminalTextSelection[],
   invokedSkills?: ValidSkillFile[],
+  invokedCustomAgents?: string[],
 ) {
   const parts: Message["parts"] = [];
   for (const x of files) {
@@ -67,6 +68,13 @@ export function prepareMessageParts(
     parts.push({
       type: "text",
       text: prompts.skillSystemReminder(skill),
+    });
+  }
+
+  for (const agentName of invokedCustomAgents ?? []) {
+    parts.push({
+      type: "text",
+      text: prompts.customAgentSystemReminder(agentName),
     });
   }
 

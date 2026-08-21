@@ -1,6 +1,7 @@
-import { expect, test } from "vitest";
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import { expect, test } from "vitest";
 import type { Environment } from "../../environment";
+import { prompts } from "../index";
 import {
   createEnvironmentPrompt,
   parseEnvironmentInfo,
@@ -72,6 +73,15 @@ test("system prompt omits todo guidance when todos are not active", () => {
   const prompt = createSystemPrompt("");
   expect(prompt).not.toContain("TODO OBJECTIVES");
   expect(prompt).not.toContain("You are working with active todos.");
+});
+
+test("custom agent invocation separates its marker from its instruction", () => {
+  expect(prompts.customAgent("tester", "/agents/tester.md")).toBe(
+    '<custom-agent id="tester" path="/agents/tester.md"></custom-agent>',
+  );
+  expect(prompts.customAgentSystemReminder("tester")).toBe(
+    '<system-reminder>The user explicitly invoked the "tester" agent. You must use the newTask tool with agentType="tester" to run it, passing the complete relevant request and context.</system-reminder>',
+  );
 });
 
 test("custom agent includes custom rules by default", () => {
