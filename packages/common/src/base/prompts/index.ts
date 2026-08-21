@@ -49,7 +49,6 @@ export const prompts = {
   inlineCompact,
   parseInlineCompact,
   generateTitle,
-  customAgent: createCustomAgentPrompt,
   customAgentSystemReminder: createCustomAgentSystemReminder,
   skill: createSkillPrompt,
   skillSystemReminder: createSkillSystemReminder,
@@ -134,10 +133,6 @@ function parseInlineCompact(text: string) {
   };
 }
 
-function createCustomAgentPrompt(id: string, path?: string) {
-  return `<custom-agent id="${escapeXmlAttribute(id)}" path="${escapeXmlAttribute(path ?? "")}">/${escapeXmlText(id)}</custom-agent>`;
-}
-
 function createCustomAgentSystemReminder(agentName: string) {
   const escapedAgentName = agentName.replace(
     /<\/?system-reminder\b[^>]*>/gi,
@@ -146,15 +141,4 @@ function createCustomAgentSystemReminder(agentName: string) {
   return createSystemReminder(
     `The user explicitly invoked the "${escapedAgentName}" agent. You must use the newTask tool with agentType="${escapedAgentName}" to run it, passing the complete relevant request and context.`,
   );
-}
-
-function escapeXmlAttribute(value: string) {
-  return escapeXmlText(value).replaceAll('"', "&quot;");
-}
-
-function escapeXmlText(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
 }

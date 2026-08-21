@@ -16,7 +16,7 @@ import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { vscodeHost } from "@/lib/vscode";
-import { prompts } from "@getpochi/common";
+import { serializeCustomAgentMention } from "@getpochi/common/agent-mention";
 import type {
   GitWorktree,
   Review,
@@ -300,7 +300,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
       if (shouldCreatePlan) {
         // Use built-in planner agent
-        content = `${prompts.customAgent("planner")} ${content}`;
+        content = `${serializeCustomAgentMention("planner")} ${content}`;
         if (!invokedCustomAgents.includes("planner")) {
           invokedCustomAgents.push("planner");
         }

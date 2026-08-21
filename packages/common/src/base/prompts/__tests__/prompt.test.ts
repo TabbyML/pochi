@@ -75,10 +75,7 @@ test("system prompt omits todo guidance when todos are not active", () => {
   expect(prompt).not.toContain("You are working with active todos.");
 });
 
-test("custom agent invocation separates its marker from its instruction", () => {
-  expect(prompts.customAgent("tester", "/agents/tester.md")).toBe(
-    '<custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent>',
-  );
+test("custom agent invocation uses a separate routing instruction", () => {
   expect(prompts.customAgentSystemReminder("tester")).toBe(
     '<system-reminder>The user explicitly invoked the "tester" agent. You must use the newTask tool with agentType="tester" to run it, passing the complete relevant request and context.</system-reminder>',
   );
