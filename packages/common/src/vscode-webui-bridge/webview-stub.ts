@@ -166,6 +166,15 @@ const VSCodeHostStub = {
       taskId?: string;
     },
   ): void => {},
+  saveWidgetHtml: (
+    _html: string,
+    _suggestedFilename: string,
+  ): Promise<boolean> => {
+    return Promise.resolve(false);
+  },
+  openWidgetPreview: (_html: string, _title: string): Promise<void> => {
+    return Promise.resolve();
+  },
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
   },

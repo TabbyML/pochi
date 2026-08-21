@@ -109,6 +109,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "readActiveSelection",
         "readCurrentWorkspace",
         "openFile",
+        "saveWidgetHtml",
+        "openWidgetPreview",
         "readResourceURI",
         "listRuleFiles",
         "capture",
