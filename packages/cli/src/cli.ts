@@ -260,11 +260,12 @@ const program = new Command()
     const store = await createStore(uid);
     const blobStore = new NodeBlobStore(options.blobsDir);
 
-    const parts: Message["parts"] = await processAttachments(
+    const attachmentParts = await processAttachments(
       attachments,
       blobStore,
       program,
     );
+    const parts: Message["parts"] = [];
     for (const agentName of invokedCustomAgents) {
       parts.push({
         type: "text",
@@ -274,6 +275,7 @@ const program = new Command()
     if (prompt) {
       parts.push({ type: "text", text: prompt });
     }
+    parts.push(...attachmentParts);
 
     const rg = findRipgrep();
     if (!rg) {

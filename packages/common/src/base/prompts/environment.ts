@@ -223,15 +223,7 @@ export function injectEnvironment(
     messageToInject.parts.filter(
       (x) => x.type !== "text" || !prompts.isEnvironmentSystemReminder(x.text),
     ) || [];
-  const lastTextPartIndex = parts.findLastIndex(
-    (parts) => parts.type === "text",
-  );
-  // Insert remainderPart before lastTextPartIndex
-  messageToInject.parts = [
-    ...parts.slice(0, lastTextPartIndex),
-    reminderPart,
-    ...parts.slice(lastTextPartIndex),
-  ];
+  messageToInject.parts = [reminderPart, ...parts];
 
   return messages;
 }

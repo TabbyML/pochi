@@ -1,9 +1,11 @@
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import type { UIMessage } from "ai";
 import { expect, test } from "vitest";
 import type { Environment } from "../../environment";
 import { prompts } from "../index";
 import {
   createEnvironmentPrompt,
+  injectEnvironment,
   parseEnvironmentInfo,
 } from "../environment";
 import { createSystemPrompt } from "../system";
@@ -181,6 +183,30 @@ test("environment", () => {
         },
         }, {name: "Pochi", email: "noreply@getpochi.com"}),
   ).toMatchSnapshot();
+});
+
+test("injectEnvironment places environment before invocation reminders and the prompt", () => {
+  const userPrompt = "/demo use this agent";
+  const agentReminder = prompts.customAgentSystemReminder("demo");
+  const messages: UIMessage[] = [
+    {
+      id: "message-1",
+      role: "user",
+      parts: [
+        { type: "text", text: agentReminder },
+        { type: "text", text: userPrompt },
+      ],
+    },
+  ];
+
+  injectEnvironment(messages, createTestEnvironment());
+
+  expect(messages[0].parts[0]).toMatchObject({
+    type: "text",
+    text: expect.stringContaining("# System Information"),
+  });
+  expect(messages[0].parts[1]).toEqual({ type: "text", text: agentReminder });
+  expect(messages[0].parts[2]).toEqual({ type: "text", text: userPrompt });
 });
 
 test("parseEnvironmentInfo from system message content", () => {
