@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderSlashMentionText } from "../slash-mention/extension";
 
 describe("renderSlashMentionText", () => {
-  it("renders a selected custom agent as an empty structured tag", () => {
+  it("renders a selected custom agent as a readable structured tag", () => {
     const result = renderSlashMentionText({
       type: "custom-agent",
       id: "tester",
@@ -15,7 +15,7 @@ describe("renderSlashMentionText", () => {
     });
 
     expect(result).toBe(
-      '<custom-agent id="tester" path="/agents/tester.md"></custom-agent>',
+      '<custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent>',
     );
   });
 

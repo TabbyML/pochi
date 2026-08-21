@@ -121,7 +121,7 @@ describe("match-slash-command", () => {
       );
 
       expect(result.prompt).toBe(
-        '<custom-agent id="test-agent" path=".pochi/agents/test-agent.md"></custom-agent> Please handle this task',
+        '<custom-agent id="test-agent" path=".pochi/agents/test-agent.md">/test-agent</custom-agent> Please handle this task',
       );
       expect(result.invokedCustomAgents).toEqual(["test-agent"]);
     });

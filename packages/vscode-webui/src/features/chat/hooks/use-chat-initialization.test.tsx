@@ -53,7 +53,7 @@ describe("useChatInitialization", () => {
 
   it("assembles invoked custom agents as reminder parts for a new task", () => {
     const prompt =
-      'use <custom-agent id="tester" path="/agents/tester.md"></custom-agent> for this task';
+      'use <custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent> for this task';
     const info: PochiTaskInfo = {
       type: "new-task",
       uid: "task-1",

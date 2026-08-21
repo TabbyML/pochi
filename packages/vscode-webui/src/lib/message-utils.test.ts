@@ -11,7 +11,7 @@ vi.mock("./vscode", () => ({
 describe("prepareMessageParts", () => {
   it("keeps invoked custom agent instructions separate from user-visible text", () => {
     const prompt =
-      'use <custom-agent id="tester" path="/agents/tester.md"></custom-agent> to test this';
+      'use <custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent> to test this';
     const parts = prepareMessageParts(
       ((key: string) => key) as TFunction,
       prompt,

@@ -135,7 +135,7 @@ function parseInlineCompact(text: string) {
 }
 
 function createCustomAgentPrompt(id: string, path?: string) {
-  return `<custom-agent id="${escapeXmlAttribute(id)}" path="${escapeXmlAttribute(path ?? "")}"></custom-agent>`;
+  return `<custom-agent id="${escapeXmlAttribute(id)}" path="${escapeXmlAttribute(path ?? "")}">/${escapeXmlText(id)}</custom-agent>`;
 }
 
 function createCustomAgentSystemReminder(agentName: string) {
@@ -149,9 +149,12 @@ function createCustomAgentSystemReminder(agentName: string) {
 }
 
 function escapeXmlAttribute(value: string) {
+  return escapeXmlText(value).replaceAll('"', "&quot;");
+}
+
+function escapeXmlText(value: string) {
   return value
     .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
 }

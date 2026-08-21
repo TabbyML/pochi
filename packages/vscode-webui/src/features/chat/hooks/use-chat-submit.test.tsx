@@ -297,7 +297,7 @@ describe("useChatSubmit", () => {
     it("adds a reminder for a selected custom agent mention", async () => {
       const customAgent = createCustomAgent("tester");
       const prompt =
-        'use <custom-agent id="tester" path="/agents/tester.md"></custom-agent> for this task';
+        'use <custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent> for this task';
       const context = setup({
         isLoading: false,
         inputText: prompt,
