@@ -109,6 +109,9 @@ vi.mock("@/lib/hooks/use-background-job-notifications", () => ({
     acknowledge: undefined,
   }),
 }));
+vi.mock("@/lib/hooks/use-custom-agents", () => ({
+  useCustomAgents: () => ({ customAgents: [], isLoading: false }),
+}));
 vi.mock("@/lib/hooks/use-reviews", () => ({
   useReviews: () => [],
 }));
