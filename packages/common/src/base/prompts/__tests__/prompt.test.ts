@@ -4,6 +4,7 @@ import type { Environment } from "../../environment";
 import {
   createEnvironmentPrompt,
   parseEnvironmentInfo,
+  parseEnvironmentInfoResult,
 } from "../environment";
 import { createSystemPrompt } from "../system";
 
@@ -211,6 +212,53 @@ test("parseEnvironmentInfo from user text parts", () => {
     shell: "zsh",
     homedir: "/Users/pochi",
     cwd: "/Users/pochi/project",
+  });
+});
+
+test("parseEnvironmentInfo does not require a default shell", () => {
+  const prompt = [
+    {
+      role: "system",
+      content: `# System Information
+
+Operating System: win32
+Default Shell:
+Home Directory: C:\\Users\\exile
+Current Working Directory: d:\\Icy\\project`,
+    },
+  ] satisfies LanguageModelV3CallOptions["prompt"];
+
+  expect(parseEnvironmentInfo(prompt)).toEqual({
+    os: "win32",
+    shell: "",
+    homedir: "C:\\Users\\exile",
+    cwd: "d:\\Icy\\project",
+  });
+});
+
+test("parseEnvironmentInfoResult returns a value on success", () => {
+  const prompt = [
+    {
+      role: "system",
+      content: createEnvironmentPrompt(createTestEnvironment(), undefined),
+    },
+  ] satisfies LanguageModelV3CallOptions["prompt"];
+
+  expect(parseEnvironmentInfoResult(prompt)).toEqual({
+    success: true,
+    value: {
+      os: "darwin",
+      shell: "zsh",
+      homedir: "/Users/pochi",
+      cwd: "/Users/pochi/project",
+    },
+  });
+});
+
+test("parseEnvironmentInfoResult returns missing fields on failure", () => {
+  expect(parseEnvironmentInfoResult(undefined)).toEqual({
+    success: false,
+    missingFields: ["os", "homedir", "cwd"],
   });
 });
 
