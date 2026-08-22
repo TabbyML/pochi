@@ -11,6 +11,7 @@ export {
   assertBackgroundJobReadInterval,
   prompts,
   parseEnvironmentInfo,
+  parseEnvironmentInfoResult,
 } from "./prompts";
 
 export { SocialLinks } from "./social";

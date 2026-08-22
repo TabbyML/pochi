@@ -33,7 +33,10 @@ import {
 import { renderTerminalContext } from "./terminal-context";
 import { renderUserEdits } from "./user-edits";
 
-export { parseEnvironmentInfo } from "./environment";
+export {
+  parseEnvironmentInfo,
+  parseEnvironmentInfoResult,
+} from "./environment";
 
 export const prompts = {
   system: createSystemPrompt,

@@ -8,6 +8,16 @@ export type EnvironmentInfo = Pick<
   Environment["info"],
   "os" | "shell" | "homedir" | "cwd"
 >;
+type RequiredEnvironmentInfo = Omit<EnvironmentInfo, "shell">;
+
+type EnvironmentInfoField = keyof RequiredEnvironmentInfo;
+export type EnvironmentInfoParseResult =
+  | { success: true; value: EnvironmentInfo; missingFields?: never }
+  | {
+      success: false;
+      value?: never;
+      missingFields: EnvironmentInfoField[];
+    };
 
 export function createEnvironmentPrompt(
   environment: Environment,
@@ -41,7 +51,18 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
 export function parseEnvironmentInfo(
   prompt: LanguageModelV3CallOptions["prompt"] | undefined,
 ): EnvironmentInfo | undefined {
-  if (!prompt) return;
+  const result = parseEnvironmentInfoResult(prompt);
+  return result?.value;
+}
+
+export function parseEnvironmentInfoResult(
+  prompt: LanguageModelV3CallOptions["prompt"] | undefined,
+): EnvironmentInfoParseResult {
+  let closestMissingFields: EnvironmentInfoField[] = ["os", "homedir", "cwd"];
+
+  if (!prompt) {
+    return { success: false, missingFields: closestMissingFields };
+  }
 
   for (const message of prompt) {
     const content = message.content;
@@ -61,16 +82,30 @@ export function parseEnvironmentInfo(
       const homedir = systemInfo["Home Directory"];
       const cwd = systemInfo["Current Working Directory"];
 
-      if (os && shell && homedir && cwd) {
+      if (os && homedir && cwd) {
         return {
-          os,
-          shell,
-          homedir,
-          cwd,
+          success: true,
+          value: {
+            os,
+            shell: shell ?? "",
+            homedir,
+            cwd,
+          },
         };
+      }
+
+      const missingFields: EnvironmentInfoField[] = [];
+      if (!os) missingFields.push("os");
+      if (!homedir) missingFields.push("homedir");
+      if (!cwd) missingFields.push("cwd");
+
+      if (missingFields.length < closestMissingFields.length) {
+        closestMissingFields = missingFields;
       }
     }
   }
+
+  return { success: false, missingFields: closestMissingFields };
 }
 
 function parseSystemInfoLines(text: string) {
