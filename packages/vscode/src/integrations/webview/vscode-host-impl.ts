@@ -776,6 +776,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             Buffer.from(options?.base64Data ?? "", "base64"),
           );
           await vscode.commands.executeCommand("vscode.open", tempFile);
+          return;
         } catch (error) {
           logger.error(`Failed to open file from base64 data: ${error}`);
         }
@@ -792,8 +793,11 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
         if (result.length > 0) {
           await vscode.commands.executeCommand("vscode.open", result[0]);
+          return;
         }
       }
+
+      await vscode.window.showErrorMessage(`File not found: ${filePath}`);
     }
   };
 
