@@ -226,16 +226,36 @@ export class TerminalJob implements vscode.Disposable {
     outputStream: AsyncIterable<string>,
   ): Promise<void> {
     const sanitizer = new PlainOutputSanitizer();
+    let pendingReplacementCharacters = "";
+    const appendPlainText = async (plainText: string) => {
+      if (plainText.length === 0) return;
+
+      const text = pendingReplacementCharacters + plainText;
+      const trailingReplacements = text.match(/\uFFFD+$/u)?.[0] ?? "";
+      const completeText = text.slice(
+        0,
+        text.length - trailingReplacements.length,
+      );
+      pendingReplacementCharacters = trailingReplacements;
+      if (completeText.length === 0) return;
+
+      await this.outputWriter.append(completeText);
+      this.outputManager.addChunk(completeText);
+    };
+
     for await (const chunk of outputStream) {
-      const plainText = sanitizer.write(chunk);
-      if (plainText.length === 0) continue;
-      await this.outputWriter.append(plainText);
-      this.outputManager.addChunk(plainText);
+      await appendPlainText(sanitizer.write(chunk));
     }
-    const remainder = sanitizer.end();
-    if (remainder.length > 0) {
-      await this.outputWriter.append(remainder);
-      this.outputManager.addChunk(remainder);
+    await appendPlainText(sanitizer.end());
+
+    // VS Code exposes terminal output as decoded strings, so the original
+    // bytes are unavailable here. If terminal disposal interrupted a UTF-8
+    // sequence, its decoder can leave U+FFFD at the very end of the stream.
+    // Hold that trailing marker until completion and discard it only when the
+    // job was stopped. A naturally completed job still preserves U+FFFD.
+    if (!this.stopRequested && pendingReplacementCharacters.length > 0) {
+      await this.outputWriter.append(pendingReplacementCharacters);
+      this.outputManager.addChunk(pendingReplacementCharacters);
     }
   }
 
