@@ -73,6 +73,20 @@ const baseMessages: UIMessage[] = [
 
 describe('formatters', () => {
   describe('formatters.ui', () => {
+    it('does not increase the part count', () => {
+      const rawPartCount = baseMessages.reduce(
+        (total, message) => total + message.parts.length,
+        0,
+      );
+      const formatted = formatters.ui(clone(baseMessages));
+      const formattedPartCount = formatted.reduce(
+        (total, message) => total + message.parts.length,
+        0,
+      );
+
+      expect(formattedPartCount).toBeLessThanOrEqual(rawPartCount);
+    });
+
     it('should combine consecutive assistant messages', () => {
       const formatted = formatters.ui(clone(baseMessages));
       const assistantMessages = formatted.filter((m) => m.role === 'assistant');

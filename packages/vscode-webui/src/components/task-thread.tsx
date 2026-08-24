@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type TaskThreadSource = {
   messages: Message[];
@@ -49,7 +49,6 @@ export const TaskThread: React.FC<{
     setMessages(source.messages);
   }, [source]);
 
-  const renderMessages = useMemo(() => prepareForRender(messages), [messages]);
   const newTaskContainer = useRef<HTMLDivElement>(null);
   const { isAtBottom, scrollToBottom } = useIsAtBottom(newTaskContainer);
   const isAtBottomRef = useRef(isAtBottom);
@@ -90,19 +89,14 @@ export const TaskThread: React.FC<{
     if (
       instantAutoScroll &&
       showMessageList &&
-      renderMessages.length > 0 &&
+      messages.length > 0 &&
       !hasInitiallyScrolledRef.current &&
       newTaskContainer.current
     ) {
       hasInitiallyScrolledRef.current = true;
       scrollToBottom(false);
     }
-  }, [
-    instantAutoScroll,
-    renderMessages.length,
-    scrollToBottom,
-    showMessageList,
-  ]);
+  }, [instantAutoScroll, messages.length, scrollToBottom, showMessageList]);
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -111,7 +105,7 @@ export const TaskThread: React.FC<{
           className={cn(
             "px-1 py-0.5",
             {
-              "mt-2": !renderMessages.length,
+              "mt-2": !messages.length,
             },
             messageListClassName,
           )}
@@ -120,7 +114,8 @@ export const TaskThread: React.FC<{
             scrollAreaClassName,
           )}
           showUserAvatar={false}
-          messages={renderMessages}
+          messages={messages}
+          formatMessages={prepareForRender}
           user={user}
           assistant={assistant}
           isLoading={isLoading}

@@ -5,7 +5,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -124,19 +123,22 @@ export function TaskHistoryPerfStory({
     });
   };
 
-  const renderMessages = useMemo(() => {
-    const startedAt = performance.now();
-    const formatted = formatters.ui(rawMessages);
-    formatterMsByMessagesRef.current.set(
-      rawMessages,
-      performance.now() - startedAt,
-    );
-    heapAfterFormatByMessagesRef.current.set(
-      rawMessages,
-      readUsedJsHeapBytes(),
-    );
-    return formatted;
-  }, [rawMessages]);
+  const formatVisibleMessages = useCallback(
+    (visibleMessages: Message[]) => {
+      const startedAt = performance.now();
+      const formatted = formatters.ui(visibleMessages);
+      formatterMsByMessagesRef.current.set(
+        rawMessages,
+        performance.now() - startedAt,
+      );
+      heapAfterFormatByMessagesRef.current.set(
+        rawMessages,
+        readUsedJsHeapBytes(),
+      );
+      return formatted;
+    },
+    [rawMessages],
+  );
 
   useEffect(() => {
     const nextArgs = `${initialMessageCount}:${assistantPartsPerMessage}:${partTextLength}`;
@@ -478,7 +480,7 @@ export function TaskHistoryPerfStory({
             Remount UI
           </ActionButton>
           <span className="self-center text-muted-foreground">
-            Unmount keeps raw-message updates and formatting active.
+            Unmount keeps raw-message updates active.
           </span>
         </div>
       </details>
@@ -487,7 +489,8 @@ export function TaskHistoryPerfStory({
         {mounted && (
           <TaskHistoryMessageView
             key={renderKey}
-            messages={renderMessages}
+            messages={rawMessages}
+            formatMessages={formatVisibleMessages}
             revision={revisionByMessagesRef.current.get(rawMessages) ?? 0}
             isStreaming={isStreaming}
             messagesContainerRef={messagesContainerRef}
@@ -503,6 +506,7 @@ export function TaskHistoryPerfStory({
 
 function TaskHistoryMessageView({
   messages,
+  formatMessages,
   revision,
   isStreaming,
   messagesContainerRef,
@@ -511,6 +515,7 @@ function TaskHistoryMessageView({
   renderAllMessages,
 }: {
   messages: Message[];
+  formatMessages: (messages: Message[]) => Message[];
   revision: number;
   isStreaming: boolean;
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -531,6 +536,7 @@ function TaskHistoryMessageView({
       <div className="flex h-full min-h-0 flex-col">
         <ChatArea
           messages={messages}
+          formatMessages={formatMessages}
           isLoading={isStreaming}
           user={{ name: "User" }}
           messagesContainerRef={messagesContainerRef}

@@ -7,18 +7,21 @@ import { TaskThread, type TaskThreadSource } from "./task-thread";
 const mocks = vi.hoisted(() => ({
   scrollToBottom: vi.fn(),
   resizeCallback: undefined as ResizeObserverCallback | undefined,
+  formatMessages: vi.fn((messages: Message[]) => messages),
+  messageListProps: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("@/components/message/message-list", () => ({
-  MessageList: ({
-    containerRef,
-  }: {
+  MessageList: (props: {
     containerRef: React.RefObject<HTMLDivElement | null>;
-  }) => (
-    <div ref={containerRef}>
-      <div />
-    </div>
-  ),
+  }) => {
+    mocks.messageListProps.push(props);
+    return (
+      <div ref={props.containerRef}>
+        <div />
+      </div>
+    );
+  },
 }));
 
 vi.mock("@/lib/hooks/use-is-at-bottom", () => ({
@@ -29,7 +32,7 @@ vi.mock("@/lib/hooks/use-is-at-bottom", () => ({
 }));
 
 vi.mock("@getpochi/common", () => ({
-  formatters: { ui: (messages: Message[]) => messages },
+  formatters: { ui: mocks.formatMessages },
 }));
 
 const message = {
@@ -45,6 +48,8 @@ function makeSource(messages: Message[]): TaskThreadSource {
 describe("TaskThread scrolling", () => {
   beforeEach(() => {
     mocks.scrollToBottom.mockReset();
+    mocks.formatMessages.mockClear();
+    mocks.messageListProps = [];
     mocks.resizeCallback = undefined;
     vi.stubGlobal(
       "ResizeObserver",
@@ -60,6 +65,15 @@ describe("TaskThread scrolling", () => {
       callback(0);
       return 0;
     });
+  });
+
+  it("does not format a collapsed message list", async () => {
+    render(
+      <TaskThread source={makeSource([message])} showMessageList={false} />,
+    );
+
+    await waitFor(() => expect(mocks.messageListProps).toHaveLength(0));
+    expect(mocks.formatMessages).not.toHaveBeenCalled();
   });
 
   it("scrolls after the first messages are rendered in instant mode", async () => {

@@ -301,9 +301,10 @@ function Chat({ user, uid, info }: ChatProps) {
     !isSubTask && !todoPaused && hasActiveTodos(todosRef.current);
   const hidePendingTodoAttemptCompletion = isLoading && todoModeActive;
   todoModeActiveRef.current = todoModeActive;
-  const renderMessages = useMemo(
-    () => formatters.ui(messages, { hidePendingTodoAttemptCompletion }),
-    [messages, hidePendingTodoAttemptCompletion],
+  const formatRenderMessages = useCallback(
+    (visibleMessages: Message[]) =>
+      formatters.ui(visibleMessages, { hidePendingTodoAttemptCompletion }),
+    [hidePendingTodoAttemptCompletion],
   );
   const isTaskWithoutContent =
     (info.type === "new-task" && !info.prompt && !info.files?.length) ||
@@ -456,7 +457,8 @@ function Chat({ user, uid, info }: ChatProps) {
         />
       )}
       <ChatArea
-        messages={renderMessages}
+        messages={messages}
+        formatMessages={formatRenderMessages}
         isLoading={isLoading || isCompacting}
         loadingLabel={isCompacting ? t("tokenUsage.compacting") : undefined}
         user={user || defaultUser}

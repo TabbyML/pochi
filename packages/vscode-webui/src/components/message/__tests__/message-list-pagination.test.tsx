@@ -1,8 +1,10 @@
 import type { Message } from "@getpochi/livekit";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { Profiler, useRef } from "react";
+import { Profiler, type ReactNode, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListPaginationConfig } from "../use-message-list-pagination";
+
+const vscodeMock = vi.hoisted(() => ({ isVSCodeEnvironment: false }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -12,11 +14,16 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
-  isVSCodeEnvironment: () => false,
+  isVSCodeEnvironment: () => vscodeMock.isVSCodeEnvironment,
   vscodeHost: {
     getGlobalState: vi.fn(async () => undefined),
     setGlobalState: vi.fn(async () => undefined),
   },
+}));
+
+vi.mock("../../checkpoint-ui", () => ({
+  CheckpointUI: () => <div data-testid="checkpoint" />,
+  CompactCheckpointUI: () => <div data-testid="compact-checkpoint" />,
 }));
 
 vi.mock("@/lib/hooks/use-latest-checkpoint", () => ({
@@ -67,6 +74,20 @@ vi.mock("../markdown", () => ({
   ),
 }));
 
+vi.mock("../user-edits", () => ({
+  UserEditsPart: ({
+    checkpoints,
+  }: {
+    checkpoints?: { origin?: string; modified?: string };
+  }) => (
+    <div
+      data-testid="user-edits"
+      data-origin={checkpoints?.origin ?? ""}
+      data-modified={checkpoints?.modified ?? ""}
+    />
+  ),
+}));
+
 // Import after installing mocks.
 const { MessageList } = await import("../message-list");
 
@@ -98,6 +119,7 @@ class IntersectionObserverProbe implements IntersectionObserver {
 
 beforeEach(() => {
   IntersectionObserverProbe.instances = [];
+  vscodeMock.isVSCodeEnvironment = false;
   vi.stubGlobal("IntersectionObserver", IntersectionObserverProbe);
 });
 
@@ -173,9 +195,13 @@ function setViewportScrollTop(container: HTMLElement, scrollTop: number) {
 function MessageListProbe({
   messages,
   renderAllMessages = false,
+  formatMessages,
+  emptyPlaceholder,
 }: {
   messages: Message[];
   renderAllMessages?: boolean;
+  formatMessages?: (messages: Message[]) => Message[];
+  emptyPlaceholder?: ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   return (
@@ -185,6 +211,8 @@ function MessageListProbe({
       showLoader={false}
       renderAllMessages={renderAllMessages}
       containerRef={containerRef}
+      formatMessages={formatMessages}
+      emptyPlaceholder={emptyPlaceholder}
     />
   );
 }
@@ -199,6 +227,97 @@ function renderList(messages: Message[], renderAllMessages = false) {
 }
 
 describe("MessageList pagination", () => {
+  it("formats only the raw tail page", () => {
+    const messages = makeMessages(200);
+    const formatMessages = vi.fn((visible: Message[]) => visible);
+
+    render(
+      <MessageListProbe messages={messages} formatMessages={formatMessages} />,
+    );
+
+    expect(formatMessages).toHaveBeenCalledTimes(1);
+    expect(formatMessages).toHaveBeenCalledWith(
+      messages.slice(-InitialMessages),
+    );
+  });
+
+  it("shows the empty placeholder when the full raw history is filtered out", () => {
+    const messages = [
+      {
+        id: "system-reminder",
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: "<system-reminder>Reminder</system-reminder>",
+          },
+        ],
+      } as Message,
+    ];
+
+    render(
+      <MessageListProbe
+        messages={messages}
+        formatMessages={() => []}
+        emptyPlaceholder={<div data-testid="empty-placeholder" />}
+      />,
+    );
+
+    expect(screen.getByTestId("empty-placeholder")).toBeTruthy();
+  });
+
+  it("looks up user-edit checkpoints by message id after formatting", () => {
+    const messages: Message[] = [
+      {
+        id: "checkpoint-1",
+        role: "assistant",
+        parts: [{ type: "data-checkpoint", data: { commit: "commit-1" } }],
+      } as Message,
+      {
+        id: "checkpoint-2",
+        role: "assistant",
+        parts: [{ type: "data-checkpoint", data: { commit: "commit-2" } }],
+      } as Message,
+      {
+        id: "user-edits",
+        role: "user",
+        parts: [{ type: "data-user-edits", data: { userEdits: [] } }],
+      } as unknown as Message,
+    ];
+
+    render(
+      <MessageListProbe
+        messages={messages}
+        renderAllMessages
+        formatMessages={(visible) => visible.slice(1)}
+      />,
+    );
+
+    const userEdits = screen.getByTestId("user-edits");
+    expect(userEdits.dataset.origin).toBe("commit-1");
+    expect(userEdits.dataset.modified).toBe("commit-2");
+  });
+
+  it("does not treat the first formatted user message as the start of history", () => {
+    vscodeMock.isVSCodeEnvironment = true;
+    const messages = makeMessages(14);
+    messages[2] = {
+      ...messages[2],
+      role: "user",
+      parts: [
+        ...messages[2].parts.slice(0, -1),
+        { type: "data-checkpoint", data: { commit: "commit-1" } },
+      ],
+    } as Message;
+
+    const { container } = render(<MessageListProbe messages={messages} />);
+
+    const firstMessage = container.querySelector(".message-list-item");
+    expect(
+      firstMessage?.querySelector('[data-testid="checkpoint"]'),
+    ).toBeNull();
+  });
+
   it("mounts only the tail page and always keeps the last message", () => {
     const messages = makeMessages(200);
     const { container } = renderList(messages);
