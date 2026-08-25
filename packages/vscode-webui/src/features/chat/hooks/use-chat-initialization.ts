@@ -61,7 +61,8 @@ export function useChatInitialization({
         (files?.length ?? 0) > 0 ||
         !!activeSelection ||
         (terminalContextSelections?.length ?? 0) > 0 ||
-        (info.invokedSkills?.length ?? 0) > 0;
+        (info.invokedSkills?.length ?? 0) > 0 ||
+        (info.invokedCustomAgents?.length ?? 0) > 0;
 
       if (shouldUseParts) {
         chatKit.init(cwd, {
@@ -75,6 +76,7 @@ export function useChatInitialization({
             activeSelection,
             terminalContextSelections,
             info.invokedSkills,
+            info.invokedCustomAgents,
           ),
         });
       } else {

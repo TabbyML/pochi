@@ -2,6 +2,7 @@ import type {
   ActiveSelection,
   Review,
   TerminalTextSelection,
+  ValidCustomAgentFile,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 // @vitest-environment jsdom
@@ -28,8 +29,10 @@ const messageUtilsMocks = vi.hoisted(() => ({
       _activeSelection,
       _terminalContextSelections,
       invokedSkills: ValidSkillFile[] = [],
+      invokedCustomAgents: string[] = [],
     ) => [
       ...invokedSkills.map((skill) => `skill:${skill.instructions}`),
+      ...invokedCustomAgents.map((agentName) => `agent:${agentName}`),
       `text:${text}`,
     ],
   ),
@@ -130,8 +133,7 @@ describe("useChatSubmit", () => {
       expect(context.sendMessage).not.toHaveBeenCalled();
     });
 
-    it("rejects a known non-user-invocable skill without side effects", async () => {
-      const review = createReview("review-1");
+    it("sends a non-user-invocable skill typed as plain text", async () => {
       const context = setup({
         isLoading: false,
         inputText: "/hidden do the task",
@@ -144,8 +146,6 @@ describe("useChatSubmit", () => {
             },
           ],
         },
-        files: [new File(["content"], "attachment.txt")],
-        reviews: [review],
         skills: [createSkill("hidden", { userInvocable: false })],
       });
 
@@ -153,18 +153,11 @@ describe("useChatSubmit", () => {
         await context.result.current.handleSubmit();
       });
 
-      expect(vscodeMocks.showWarningMessage).toHaveBeenCalledWith(
-        expect.stringContaining('Skill "hidden" cannot be invoked'),
-        { modal: false },
-      );
-      expect(context.sendMessage).not.toHaveBeenCalled();
-      expect(context.upload).not.toHaveBeenCalled();
-      expect(context.clearInput).not.toHaveBeenCalled();
-      expect(context.clearFiles).not.toHaveBeenCalled();
-      expect(vscodeMocks.deleteReviews).not.toHaveBeenCalled();
+      expect(vscodeMocks.showWarningMessage).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledOnce();
     });
 
-    it("rejects a user-invocable skill typed as plain text", async () => {
+    it("sends a user-invocable skill typed as plain text", async () => {
       const context = setup({
         isLoading: false,
         inputText: "/deploy do the task",
@@ -184,12 +177,8 @@ describe("useChatSubmit", () => {
         await context.result.current.handleSubmit();
       });
 
-      expect(vscodeMocks.showWarningMessage).toHaveBeenCalledWith(
-        'Skill "deploy" must be selected from the slash command menu. Remove the plain-text command and reselect it from the menu.',
-        { modal: false },
-      );
-      expect(context.sendMessage).not.toHaveBeenCalled();
-      expect(context.clearInput).not.toHaveBeenCalled();
+      expect(vscodeMocks.showWarningMessage).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledOnce();
     });
 
     it("sends unknown slash text as plain text", async () => {
@@ -246,6 +235,7 @@ describe("useChatSubmit", () => {
         undefined,
         [],
         [],
+        [],
       );
     });
 
@@ -296,11 +286,62 @@ describe("useChatSubmit", () => {
         undefined,
         [],
         [currentSkill],
+        [],
       );
       expect(context.sendMessage).toHaveBeenCalledWith({
         parts: ["skill:current instructions", "text:/changing"],
       });
       expect(onBeforeSendText).toHaveBeenCalledWith("/changing");
+    });
+
+    it("adds a reminder for a selected custom agent mention", async () => {
+      const customAgent = createCustomAgent("tester");
+      const prompt =
+        'use <custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent> for this task';
+      const context = setup({
+        isLoading: false,
+        inputText: prompt,
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                { type: "text", text: "use " },
+                {
+                  type: "slashMention",
+                  attrs: {
+                    type: "custom-agent",
+                    id: "tester",
+                    rawData: customAgent,
+                  },
+                },
+                { type: "text", text: " for this task" },
+              ],
+            },
+          ],
+        },
+        customAgents: [customAgent],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+        expect.any(Function),
+        prompt,
+        [],
+        [],
+        [],
+        undefined,
+        [],
+        [],
+        ["tester"],
+      );
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["agent:tester", `text:${prompt}`],
+      });
     });
 
     it("rejects a skill mention that is no longer available", async () => {
@@ -648,6 +689,7 @@ describe("useChatSubmit", () => {
       sendTimeActiveSelection,
       [],
       [],
+      [],
     );
   });
 
@@ -678,6 +720,7 @@ describe("useChatSubmit", () => {
       undefined,
       [],
       [],
+      [],
     );
   });
 
@@ -706,6 +749,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
+      [],
       [],
       [],
     );
@@ -748,6 +792,7 @@ describe("useChatSubmit", () => {
       [],
       queuedUserEdits,
       undefined,
+      [],
       [],
       [],
     );
@@ -795,6 +840,7 @@ describe("useChatSubmit", () => {
       undefined,
       terminalContextSelections,
       [],
+      [],
     );
     expect(context.clearTerminalContextSelections).toHaveBeenCalledOnce();
   });
@@ -818,6 +864,7 @@ function setup({
   files = [],
   reviews = [],
   skills = [],
+  customAgents = [],
   includeUserEdits: initialIncludeUserEdits = true,
   terminalContextSelections = [],
   isTodoMode = false,
@@ -832,6 +879,7 @@ function setup({
   files?: File[];
   reviews?: Review[];
   skills?: ValidSkillFile[];
+  customAgents?: ValidCustomAgentFile[];
   includeUserEdits?: boolean;
   terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
@@ -908,6 +956,7 @@ function setup({
         reviews,
         userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
         skills,
+        customAgents,
         terminalContextSelections,
         clearTerminalContextSelections,
         taskId: "task-1",
@@ -995,6 +1044,15 @@ function createSkill(
     filePath: `/skills/${name}/SKILL.md`,
     instructions: `${name} instructions`,
     ...overrides,
+  };
+}
+
+function createCustomAgent(name: string): ValidCustomAgentFile {
+  return {
+    name,
+    description: `${name} description`,
+    filePath: `/agents/${name}.md`,
+    systemPrompt: `${name} system prompt`,
   };
 }
 
