@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import type { BackgroundJobTerminalEvent } from "@getpochi/common";
 import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
@@ -99,12 +100,19 @@ export class BackgroundJobManager {
       [child.stdout, child.stderr]
         .filter((stream) => stream !== null)
         .map(async (stream) => {
+          const decoder = new StringDecoder("utf8");
           const sanitizer = new PlainOutputSanitizer();
-          // setEncoding uses Node's streaming decoder, so a multi-byte UTF-8
-          // character split between Buffer chunks is not replaced with U+FFFD.
-          stream.setEncoding("utf8");
           for await (const chunk of stream) {
-            await appendOutput(sanitizer.write(chunk));
+            await appendOutput(sanitizer.write(decoder.write(chunk)));
+          }
+
+          // StringDecoder buffers an incomplete trailing UTF-8 sequence. A
+          // manually stopped process may end in the middle of a character, so
+          // discard that partial sequence instead of flushing it as U+FFFD.
+          // For a naturally completed process, preserve Node's usual behavior
+          // for genuinely malformed output by flushing the decoder.
+          if (!job.stopRequested) {
+            await appendOutput(sanitizer.write(decoder.end()));
           }
           await appendOutput(sanitizer.end());
         }),

@@ -129,4 +129,35 @@ describe("BackgroundJobManager", () => {
       await rm(outputDir, { recursive: true, force: true });
     }
   });
+
+  it("discards an incomplete UTF-8 character when manually stopped", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-bgjob-stop-utf8-test-"));
+    try {
+      const manager = new BackgroundJobManager({
+        taskId: "task-test",
+        outputDir,
+      });
+      const eventPromise = new Promise<
+        Parameters<Parameters<typeof manager.onDidFinish>[0]>[0]
+      >((resolve) => manager.onDidFinish(resolve));
+      const script = [
+        "const bytes = Buffer.from('中');",
+        "process.stdout.write(Buffer.concat([Buffer.from('ready'), bytes.subarray(0, 1)]));",
+        "setInterval(() => {}, 1000);",
+      ].join("");
+      const { backgroundJobId, outputFile } = manager.start(
+        `${JSON.stringify(process.execPath)} -e ${JSON.stringify(script)}`,
+        ".",
+      );
+
+      await expect.poll(() => readFile(outputFile, "utf8")).toBe("ready");
+      expect(manager.kill(backgroundJobId)).toBe(true);
+
+      const event = await eventPromise;
+      expect(event.status).toBe("stopped");
+      expect(await readFile(outputFile, "utf8")).toBe("ready");
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
 });
