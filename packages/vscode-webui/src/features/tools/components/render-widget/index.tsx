@@ -218,12 +218,12 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   );
 
   const handleSave = useCallback(
-    () => runExport((html) => vscodeHost.saveWidgetHtml(html, title)),
+    () => runExport((html) => vscodeHost.saveWidget(html, title)),
     [runExport, title],
   );
 
   const handlePreview = useCallback(
-    () => runExport((html) => vscodeHost.openWidgetPreview(html, title)),
+    () => runExport((html) => vscodeHost.openWidgetInPanel(html, title)),
     [runExport, title],
   );
 

@@ -478,14 +478,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       ),
   });
 
-  saveWidgetHtml = async (
+  saveWidget = async (
     html: string,
     suggestedFilename: string,
   ): Promise<boolean> => {
     return writeWidgetHtmlToDisk(html, suggestedFilename, this.cwd);
   };
 
-  openWidgetPreview = async (html: string, title: string): Promise<void> => {
+  openWidgetInPanel = async (html: string, title: string): Promise<void> => {
     openWidgetPreviewPanel(html, title);
   };
 

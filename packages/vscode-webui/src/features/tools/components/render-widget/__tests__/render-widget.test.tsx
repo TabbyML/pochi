@@ -51,10 +51,10 @@ let receiveHandler:
   | undefined;
 
 const vscodeHostMocks = vi.hoisted(() => ({
-  saveWidgetHtml: vi.fn(async (_html: string, _suggestedFilename: string) => {
+  saveWidget: vi.fn(async (_html: string, _suggestedFilename: string) => {
     return true;
   }),
-  openWidgetPreview: vi.fn(async (_html: string, _title: string) => {}),
+  openWidgetInPanel: vi.fn(async (_html: string, _title: string) => {}),
   showWarningMessage: vi.fn(
     async (_message: string, _options: { modal?: boolean }) => undefined,
   ),
@@ -166,8 +166,8 @@ describe("RenderWidgetTool", () => {
     });
     lifecycleMocks.getToolCallLifeCycle.mockClear();
     sentMessages.length = 0;
-    vscodeHostMocks.saveWidgetHtml.mockClear();
-    vscodeHostMocks.openWidgetPreview.mockClear();
+    vscodeHostMocks.saveWidget.mockClear();
+    vscodeHostMocks.openWidgetInPanel.mockClear();
     vscodeHostMocks.showWarningMessage.mockClear();
     isVSCodeEnvironmentMock.mockReturnValue(true);
     mockedTheme = "dark";
@@ -1054,15 +1054,15 @@ describe("RenderWidgetTool", () => {
       fireEvent.click(screen.getByLabelText("Preview"));
 
       await waitFor(() => {
-        expect(vscodeHostMocks.openWidgetPreview).toHaveBeenCalledTimes(1);
+        expect(vscodeHostMocks.openWidgetInPanel).toHaveBeenCalledTimes(1);
       });
       const [html, previewTitle] =
-        vscodeHostMocks.openWidgetPreview.mock.calls[0];
+        vscodeHostMocks.openWidgetInPanel.mock.calls[0];
       expect(previewTitle).toBe("Sales widget");
       expect(html).toContain("<!doctype html>");
       expect(html).toContain("<span>chart</span>");
       expect(html).toContain("beijing");
-      expect(vscodeHostMocks.saveWidgetHtml).not.toHaveBeenCalled();
+      expect(vscodeHostMocks.saveWidget).not.toHaveBeenCalled();
     });
 
     it("saves the widget document with the committed output state", async () => {
@@ -1089,10 +1089,10 @@ describe("RenderWidgetTool", () => {
       fireEvent.click(screen.getByLabelText("Save"));
 
       await waitFor(() => {
-        expect(vscodeHostMocks.saveWidgetHtml).toHaveBeenCalledTimes(1);
+        expect(vscodeHostMocks.saveWidget).toHaveBeenCalledTimes(1);
       });
       const [html, suggestedFilename] =
-        vscodeHostMocks.saveWidgetHtml.mock.calls[0];
+        vscodeHostMocks.saveWidget.mock.calls[0];
       expect(suggestedFilename).toBe("Committed widget");
       expect(html).toContain("shanghai");
     });
@@ -1114,7 +1114,7 @@ describe("RenderWidgetTool", () => {
     });
 
     it("warns instead of rejecting when the export fails", async () => {
-      vscodeHostMocks.saveWidgetHtml.mockRejectedValueOnce(
+      vscodeHostMocks.saveWidget.mockRejectedValueOnce(
         new Error("disk is full"),
       );
 
