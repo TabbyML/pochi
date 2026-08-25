@@ -80,6 +80,76 @@ describe("loadSkills", () => {
     }
   });
 
+  it("ships the runtime skills with their invocation controls and references", async () => {
+    const skills = await loadSkills(undefined, false);
+    const run = skills.find((skill) => skill.name === "run");
+    const verify = skills.find((skill) => skill.name === "verify");
+    const generator = skills.find(
+      (skill) => skill.name === "run-skill-generator",
+    );
+
+    expect(run).toMatchObject({
+      name: "run",
+      isBuiltIn: true,
+    });
+    expect(run?.disableModelInvocation).not.toBe(true);
+    expect(run?.userInvocable).not.toBe(false);
+
+    expect(verify).toMatchObject({
+      name: "verify",
+      isBuiltIn: true,
+      disableModelInvocation: true,
+      userInvocable: true,
+    });
+    expect(generator).toMatchObject({
+      name: "run-skill-generator",
+      isBuiltIn: true,
+      disableModelInvocation: true,
+      userInvocable: true,
+    });
+
+    const references = new Map([
+      [
+        run,
+        [
+          "references/cli-and-library.md",
+          "references/server.md",
+          "references/web.md",
+          "references/interactive.md",
+        ],
+      ],
+      [
+        verify,
+        [
+          "references/cli-and-library.md",
+          "references/server.md",
+          "references/interactive.md",
+          "references/agent-workflows.md",
+          "references/report.md",
+        ],
+      ],
+      [
+        generator,
+        ["references/driver-patterns.md", "references/template.md"],
+      ],
+    ] as const);
+
+    for (const [skill, relativePaths] of references) {
+      expect(skill).toBeDefined();
+      if (!skill) continue;
+
+      expect(skill.instructions).not.toContain("TODO");
+      expect(skill.instructions).not.toContain(".claude/skills");
+      expect(skill.instructions).not.toContain("chromium-cli");
+
+      for (const relativePath of relativePaths) {
+        await expect(
+          fs.access(path.join(path.dirname(skill.filePath), relativePath)),
+        ).resolves.toBeUndefined();
+      }
+    }
+  });
+
   it("lets project skills shadow built-ins with the same name (built-in wins)", async () => {
     const projectRoot = await fs.mkdtemp(
       path.join(os.tmpdir(), "pochi-load-skills-"),
