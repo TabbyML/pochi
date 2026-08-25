@@ -67,9 +67,7 @@ export function ChatArea({
         renderAllMessages={renderAllMessages}
         formatMessages={formatMessages}
         emptyPlaceholder={
-          !hideEmptyPlaceholder || messages.length > 0 ? (
-            <EmptyChatPlaceholder />
-          ) : undefined
+          !hideEmptyPlaceholder ? <EmptyChatPlaceholder /> : undefined
         }
       />
     </>

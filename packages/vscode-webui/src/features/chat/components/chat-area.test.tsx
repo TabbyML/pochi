@@ -51,12 +51,18 @@ describe("ChatArea", () => {
     expect(props?.formatMessages).toBeTypeOf("function");
   });
 
-  it("passes the empty placeholder for a non-empty raw history", () => {
+  it("passes the empty placeholder for formatting to decide", () => {
+    render(<ChatArea messages={[message]} isLoading={false} />);
+
+    expect(mocks.messageListProps.at(-1)?.emptyPlaceholder).toBeTruthy();
+  });
+
+  it("respects hideEmptyPlaceholder for a non-empty raw history", () => {
     render(
       <ChatArea messages={[message]} isLoading={false} hideEmptyPlaceholder />,
     );
 
-    expect(mocks.messageListProps.at(-1)?.emptyPlaceholder).toBeTruthy();
+    expect(mocks.messageListProps.at(-1)?.emptyPlaceholder).toBeUndefined();
   });
 
   it("keeps the empty placeholder hidden for an empty raw history", () => {

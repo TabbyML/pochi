@@ -306,9 +306,10 @@ function Chat({ user, uid, info }: ChatProps) {
       formatters.ui(visibleMessages, { hidePendingTodoAttemptCompletion }),
     [hidePendingTodoAttemptCompletion],
   );
-  const isTaskWithoutContent =
-    (info.type === "new-task" && !info.prompt && !info.files?.length) ||
-    (info.type === "open-task" && messages.length === 0);
+  const shouldHideEmptyPlaceholder =
+    info.type === "new-task" &&
+    (!!info.prompt || !!info.files?.length) &&
+    messages.length === 0;
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
@@ -467,7 +468,7 @@ function Chat({ user, uid, info }: ChatProps) {
           // Leave more space for errors as errors / approval button are absolutely positioned
           "pb-14": !!displayError,
         })}
-        hideEmptyPlaceholder={!isTaskWithoutContent}
+        hideEmptyPlaceholder={shouldHideEmptyPlaceholder}
         forkTask={task?.cwd ? forkTask : undefined}
         isSubTask={isSubTask}
         repairMermaid={repairMermaid}
