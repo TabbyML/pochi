@@ -10,28 +10,40 @@ import type { openFile as openFileType } from "../open-file";
 const overrideObject = <T extends object>(
   target: T,
   overrides: Record<PropertyKey, unknown>,
-): T =>
-  new Proxy(target, {
-    get: (object, property) =>
-      property in overrides ? overrides[property] : Reflect.get(object, property),
-  });
+): T => {
+  const descriptors = Object.fromEntries(
+    Reflect.ownKeys(overrides).map((property) => [
+      property,
+      {
+        configurable: true,
+        enumerable: true,
+        value: overrides[property],
+        writable: true,
+      },
+    ]),
+  );
+  return Object.create(target, descriptors);
+};
 
 const loadOpenFile = (
   vscodeOverrides: Record<PropertyKey, unknown>,
 ): typeof openFileType => {
   const vscodeMock = overrideObject(vscode, vscodeOverrides);
-  return proxyquire("../open-file", {
-    "@/lib/logger": {
-      getLogger: () => ({
-        info: sinon.stub(),
-        error: sinon.stub(),
-      }),
-    },
-    "@getpochi/common/tool-utils": {
-      isPlainTextFile: sinon.stub().resolves(true),
-    },
-    vscode: vscodeMock,
-  }).openFile;
+  return proxyquire
+    .noCallThru()
+    .noPreserveCache()
+    .load("../open-file", {
+      "@/lib/logger": {
+        getLogger: () => ({
+          info: sinon.stub(),
+          error: sinon.stub(),
+        }),
+      },
+      "@getpochi/common/tool-utils": {
+        isPlainTextFile: sinon.stub().resolves(true),
+      },
+      vscode: vscodeMock,
+    }).openFile;
 };
 
 describe("openFile", () => {
@@ -88,5 +100,58 @@ describe("openFile", () => {
       showErrorMessage.calledOnceWithExactly(`File not found: ${missingPath}`),
       true,
     );
+  });
+
+  it("does not run missing-file fallbacks for other file system errors", async () => {
+    const filePath = vscode.Uri.joinPath(testDirectory, "restricted").fsPath;
+    const stat = sinon
+      .stub()
+      .rejects(vscode.FileSystemError.NoPermissions(filePath));
+    const findFiles = sinon.stub();
+    const showErrorMessage = sinon.stub();
+    const openFile = loadOpenFile({
+      workspace: overrideObject(vscode.workspace, {
+        fs: overrideObject(vscode.workspace.fs, { stat }),
+        findFiles,
+      }),
+      window: overrideObject(vscode.window, { showErrorMessage }),
+    });
+
+    await openFile(filePath, undefined, { fallbackGlobPattern: "**/*" });
+
+    assert.strictEqual(stat.calledOnce, true);
+    assert.strictEqual(findFiles.called, false);
+    assert.deepStrictEqual(showErrorMessage.args, [
+      [`No permissions to access file: ${filePath}`],
+    ]);
+  });
+
+  it("opens empty base64 content without showing a missing-file error", async () => {
+    const filePath = vscode.Uri.joinPath(testDirectory, "empty.txt").fsPath;
+    const stat = sinon.stub().rejects(vscode.FileSystemError.FileNotFound());
+    const writeFile = sinon.stub().resolves();
+    const executeCommand = sinon.stub().resolves();
+    const showErrorMessage = sinon.stub();
+    const openFile = loadOpenFile({
+      commands: overrideObject(vscode.commands, { executeCommand }),
+      workspace: overrideObject(vscode.workspace, {
+        fs: overrideObject(vscode.workspace.fs, { stat, writeFile }),
+      }),
+      window: overrideObject(vscode.window, { showErrorMessage }),
+    });
+
+    await openFile(filePath, undefined, { base64Data: "" });
+
+    assert.strictEqual(stat.calledOnce, true);
+    assert.strictEqual(writeFile.calledOnce, true);
+    assert.strictEqual(writeFile.firstCall.args[1].byteLength, 0);
+    assert.strictEqual(
+      executeCommand.calledOnceWithExactly(
+        "vscode.open",
+        writeFile.firstCall.args[0],
+      ),
+      true,
+    );
+    assert.strictEqual(showErrorMessage.called, false);
   });
 });

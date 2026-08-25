@@ -6,6 +6,49 @@ import * as vscode from "vscode";
 
 const logger = getLogger("openFile");
 
+const fileSystemErrorCode = {
+  fileNotFound: vscode.FileSystemError.FileNotFound().code,
+  fileExists: vscode.FileSystemError.FileExists().code,
+  fileNotADirectory: vscode.FileSystemError.FileNotADirectory().code,
+  fileIsADirectory: vscode.FileSystemError.FileIsADirectory().code,
+  noPermissions: vscode.FileSystemError.NoPermissions().code,
+  unavailable: vscode.FileSystemError.Unavailable().code,
+} as const;
+
+const fileSystemErrorMessages: Record<string, string> = {
+  [fileSystemErrorCode.fileNotFound]: "File not found",
+  [fileSystemErrorCode.fileExists]: "File already exists",
+  [fileSystemErrorCode.fileNotADirectory]: "Not a directory",
+  [fileSystemErrorCode.fileIsADirectory]: "Is a directory",
+  [fileSystemErrorCode.noPermissions]: "No permissions to access file",
+  [fileSystemErrorCode.unavailable]: "File system unavailable",
+};
+
+const getFileSystemErrorCode = (error: unknown): string | undefined => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+  ) {
+    return error.code;
+  }
+  return undefined;
+};
+
+const isFileNotFoundError = (error: unknown): boolean =>
+  getFileSystemErrorCode(error) === fileSystemErrorCode.fileNotFound;
+
+const showFileSystemError = (filePath: string, error: unknown): void => {
+  const errorCode = getFileSystemErrorCode(error);
+  const message = errorCode
+    ? (fileSystemErrorMessages[errorCode] ?? "Failed to access file")
+    : "Failed to access file";
+
+  logger.error(`${message}: ${filePath}`, error);
+  void vscode.window.showErrorMessage(`${message}: ${filePath}`);
+};
+
 export type OpenFileOptions = {
   start?: number;
   end?: number;
@@ -47,42 +90,56 @@ export const openFile = async (
   try {
     stat = await vscode.workspace.fs.stat(fileUri);
   } catch (error) {
-    logger.info("File not found, trying to open from base64 data", error);
+    if (!isFileNotFoundError(error)) {
+      showFileSystemError(filePath, error);
+      return;
+    }
 
-    if (options?.base64Data) {
+    logger.info("File not found, trying to open from base64 data", error);
+    let fallbackError: unknown = error;
+
+    if (options?.base64Data !== undefined) {
+      const tempFile = vscode.Uri.file(path.join(os.tmpdir(), fileUri.path));
+      let didWriteTempFile = false;
       try {
-        const tempFile = vscode.Uri.file(path.join(os.tmpdir(), fileUri.path));
         await vscode.workspace.fs.writeFile(
           tempFile,
           Buffer.from(options.base64Data, "base64"),
         );
+        didWriteTempFile = true;
+      } catch (error) {
+        fallbackError = error;
+        logger.error(`Failed to write file from base64 data: ${error}`);
+      }
+
+      if (didWriteTempFile) {
         await vscode.commands.executeCommand("vscode.open", tempFile);
         return;
-      } catch (error) {
-        logger.error(`Failed to open file from base64 data: ${error}`);
       }
     }
 
     if (options?.fallbackGlobPattern) {
+      let result: readonly vscode.Uri[] | undefined;
       try {
-        const result = await vscode.workspace.findFiles(
+        result = await vscode.workspace.findFiles(
           options.fallbackGlobPattern,
           null,
           1,
         );
-
-        logger.info("found file by glob pattern", result[0]);
-
-        if (result.length > 0) {
-          await vscode.commands.executeCommand("vscode.open", result[0]);
-          return;
-        }
       } catch (error) {
-        logger.error(`Failed to open file by glob pattern: ${error}`);
+        fallbackError = error;
+        logger.error(`Failed to find file by glob pattern: ${error}`);
+      }
+
+      logger.info("found file by glob pattern", result?.[0]);
+
+      if (result && result.length > 0) {
+        await vscode.commands.executeCommand("vscode.open", result[0]);
+        return;
       }
     }
 
-    void vscode.window.showErrorMessage(`File not found: ${filePath}`);
+    showFileSystemError(filePath, fallbackError);
     return;
   }
 
