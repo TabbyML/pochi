@@ -14,6 +14,29 @@ vi.mock("@/lib/vscode", () => ({
 }));
 
 describe("useChatInitialization", () => {
+  it("keeps a compact task in the loading state until initialization can run", () => {
+    const init = vi.fn();
+    const { result } = renderHook(() =>
+      useChatInitialization({
+        chatKit: { inited: false, init } as never,
+        info: {
+          type: "compact-task",
+          uid: "task-1",
+          cwd: "/workspace",
+          messages: "[]",
+        },
+        storeRegistry: {} as never,
+        jwt: null,
+        t: ((key: string) => key) as TFunction,
+        setMcpConfigOverride: vi.fn() as never,
+        isMcpConfigLoading: true,
+      }),
+    );
+
+    expect(result.current.isInitializing).toBe(true);
+    expect(init).not.toHaveBeenCalled();
+  });
+
   it("assembles invoked skills as reminder parts for a new task", () => {
     const skill: ValidSkillFile = {
       name: "deploy",

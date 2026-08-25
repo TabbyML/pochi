@@ -29,7 +29,7 @@ export function useChatInitialization({
   isMcpConfigLoading,
 }: UseChatInitializationProps) {
   const [isInitializing, setIsInitializing] = useState(
-    info.type === "fork-task",
+    info.type === "fork-task" || info.type === "compact-task",
   );
 
   useEffect(() => {
