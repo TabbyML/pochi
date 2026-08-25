@@ -5,7 +5,9 @@ export { attachTransport, getLogger } from "./logger";
 
 export {
   formatters,
+  getUIUserMessageKind,
   type LLMFormatterOptions,
+  type UIUserMessageKind,
 } from "./formatters";
 export {
   assertBackgroundJobReadInterval,

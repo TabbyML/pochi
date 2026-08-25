@@ -88,6 +88,54 @@ function stripKnownXMLTags(messages: UIMessage[]): UIMessage[] {
   });
 }
 
+export type UIUserMessageKind = "content" | "compact" | "hidden";
+
+/** Classifies how a raw user message participates in the UI message list. */
+export function getUIUserMessageKind(message: UIMessage): UIUserMessageKind {
+  if (message.role !== "user") return "content";
+
+  let hasCompact = false;
+  let hasOtherPart = false;
+
+  for (const part of message.parts) {
+    if (part.type === "text") {
+      if (
+        part.text.trim().length === 0 ||
+        prompts.isSystemReminder(part.text)
+      ) {
+        continue;
+      }
+      if (prompts.isCompact(part.text)) {
+        hasCompact = true;
+        continue;
+      }
+      return "content";
+    }
+
+    if (part.type === "reasoning" && part.text.trim().length === 0) {
+      continue;
+    }
+
+    if (
+      part.type === "data-reviews" ||
+      part.type === "data-bash-outputs" ||
+      part.type === "data-background-job-notification" ||
+      isStaticToolUIPart(part)
+    ) {
+      return "content";
+    }
+
+    if (part.type !== "data-checkpoint") {
+      hasOtherPart = true;
+    }
+  }
+
+  if (hasCompact) {
+    return hasOtherPart ? "content" : "compact";
+  }
+  return "hidden";
+}
+
 function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
   return messages.filter((message) => {
     if (message.role !== "user") return true;
@@ -96,35 +144,12 @@ function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
       return !prompts.isSystemReminder(part.text);
     });
     message.parts = parts;
-    if (
-      parts.some(
-        (x) =>
-          (x.type === "text" && !prompts.isCompact(x.text)) ||
-          x.type === "data-reviews" ||
-          x.type === "data-bash-outputs" ||
-          x.type === "data-background-job-notification" ||
-          isStaticToolUIPart(x),
-      )
-    ) {
-      return true;
-    }
-    // Keep messages that carry a compact checkpoint — the checkpoint
-    // is meaningful UI content even when all other parts were system reminders.
-    if (parts.some((x) => x.type === "text" && prompts.isCompact(x.text))) {
-      return true;
-    }
-    return false;
+    return getUIUserMessageKind(message) !== "hidden";
   });
 }
 
 function isCompactOnlyUserMessage(message: UIMessage): boolean {
-  if (message.role !== "user") return false;
-  return message.parts.every(
-    (part) =>
-      (part.type === "text" && prompts.isCompact(part.text)) ||
-      (part.type === "text" && part.text.trim().length === 0) ||
-      part.type === "data-checkpoint",
-  );
+  return getUIUserMessageKind(message) === "compact";
 }
 
 type AssistantMessageMetadata = Extract<MessageMetadata, { kind: "assistant" }>;

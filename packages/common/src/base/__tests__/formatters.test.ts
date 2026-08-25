@@ -1,7 +1,7 @@
 import type { UIMessage } from 'ai';
 import { clone } from 'remeda';
 import { describe, expect, it, vi } from 'vitest';
-import { formatters } from '../formatters';
+import { formatters, getUIUserMessageKind } from '../formatters';
 
 // Mock dependencies
 vi.mock('@getpochi/tools', async (importOriginal) => {
@@ -73,6 +73,28 @@ const baseMessages: UIMessage[] = [
 
 describe('formatters', () => {
   describe('formatters.ui', () => {
+    it.each([
+      ['content', [{ type: 'text', text: 'Visible prompt' }]],
+      ['compact', [{ type: 'text', text: '<compact>Summary</compact>' }]],
+      [
+        'hidden',
+        [
+          {
+            type: 'data-active-selection',
+            data: { activeSelection: undefined },
+          },
+        ],
+      ],
+    ] as const)('classifies a user message as %s', (kind, parts) => {
+      expect(
+        getUIUserMessageKind({
+          id: 'user-message',
+          role: 'user',
+          parts: [...parts],
+        } as UIMessage),
+      ).toBe(kind);
+    });
+
     it('does not increase the part count', () => {
       const rawPartCount = baseMessages.reduce(
         (total, message) => total + message.parts.length,

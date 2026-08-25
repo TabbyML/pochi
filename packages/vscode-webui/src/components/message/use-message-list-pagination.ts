@@ -1,3 +1,4 @@
+import { getUIUserMessageKind } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type React from "react";
 import {
@@ -103,6 +104,26 @@ export function resetPaginationToTail(): MessageListPaginationState {
   return { startIndex: null };
 }
 
+function isMessageInAssistantGroup(message: Message | undefined) {
+  if (message?.role === "assistant") return true;
+  return (
+    message?.role === "user" && getUIUserMessageKind(message) !== "content"
+  );
+}
+
+function alignPageStartToAssistantGroup(messages: Message[], start: number) {
+  if (!isMessageInAssistantGroup(messages[start])) return start;
+
+  let groupStart = start;
+  while (
+    groupStart > 0 &&
+    isMessageInAssistantGroup(messages[groupStart - 1])
+  ) {
+    groupStart--;
+  }
+  return groupStart;
+}
+
 export function useMessageListPagination({
   messages,
   containerRef,
@@ -139,7 +160,10 @@ export function useMessageListPagination({
     ? resetPaginationToTail()
     : state;
   const start = paginationEnabled
-    ? resolvePageStart(effectiveState, partCounts, config)
+    ? alignPageStartToAssistantGroup(
+        messages,
+        resolvePageStart(effectiveState, partCounts, config),
+      )
     : 0;
 
   // Persist the render-time reset after the tail page commits.
