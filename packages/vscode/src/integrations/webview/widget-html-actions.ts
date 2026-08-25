@@ -41,14 +41,14 @@ export async function saveWidgetHtml(
 /**
  * Renders the standalone widget document in a new editor tab. The document is
  * self-contained, so it is handed to the webview as a plain string and never
- * touches disk. It opens beside the active group so the preview never covers
- * the chat panel it was triggered from.
+ * touches disk. It opens in the active editor group, matching file and image
+ * previews opened from the message list.
  */
 export function openWidgetPreview(html: string, title: string) {
   const panel = vscode.window.createWebviewPanel(
     WidgetPreviewViewType,
     title,
-    vscode.ViewColumn.Beside,
+    vscode.ViewColumn.Active,
     {
       enableScripts: true,
       retainContextWhenHidden: true,

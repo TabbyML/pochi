@@ -109,7 +109,7 @@ describe("widget html actions", () => {
       }
     });
 
-    it("opens beside the active group", () => {
+    it("opens in the active editor group", () => {
       const createWebviewPanel = sinon.spy(vscode.window, "createWebviewPanel");
 
       const panel = openWidgetPreview("<p>preview</p>", "Chart");
@@ -117,7 +117,7 @@ describe("widget html actions", () => {
       try {
         assert.strictEqual(
           createWebviewPanel.firstCall.args[2],
-          vscode.ViewColumn.Beside,
+          vscode.ViewColumn.Active,
         );
       } finally {
         panel.dispose();
