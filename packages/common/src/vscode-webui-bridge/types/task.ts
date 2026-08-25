@@ -27,6 +27,7 @@ export type PochiTaskParams = { cwd: string } & (
       files?: FileUIPart[];
       activeSelection?: ActiveSelection;
       invokedSkills?: ValidSkillFile[];
+      invokedCustomAgents?: string[];
       terminalContextSelections?: TerminalTextSelection[];
       mcpConfigOverride?: McpConfigOverride;
     }

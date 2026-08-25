@@ -226,6 +226,62 @@ describe("TerminalJob", () => {
     );
   });
 
+  it("discards a trailing replacement character when manually stopped", async () => {
+    let finishOutput: (() => void) | undefined;
+    const outputStopped = new Promise<void>((resolve) => {
+      finishOutput = resolve;
+    });
+    const harness = createHarness({
+      read: async function* () {
+        yield "ready\uFFFD";
+        await outputStopped;
+      },
+    });
+
+    await flushPromises();
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
+      "output:ready",
+    ]);
+
+    harness.job.kill();
+    finishOutput?.();
+    await flushPromises();
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
+      "output:ready",
+      "file-closed",
+      "event-fired",
+    ]);
+    assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+  });
+
+  it("preserves a trailing replacement character after normal completion", async () => {
+    const harness = createHarness({
+      read: async function* () {
+        yield "valid replacement: \uFFFD";
+      },
+    });
+
+    await flushPromises();
+    harness.executionEndEmitter.fire({
+      execution: harness.execution,
+      exitCode: 0,
+    });
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
+      "output:valid replacement: ",
+      "output:\uFFFD",
+      "file-closed",
+      "event-fired",
+    ]);
+    assert.strictEqual(harness.finishEvents[0]?.status, "completed");
+  });
+
   it("waits for trailing output before notifying about a failed job", async () => {
     let releaseOutput: (() => void) | undefined;
     const outputReady = new Promise<void>((resolve) => {

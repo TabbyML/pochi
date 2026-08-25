@@ -12,6 +12,7 @@ import type {
   FileDiff,
   Review,
   TerminalTextSelection,
+  ValidCustomAgentFile,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { FileUIPart } from "ai";
@@ -23,8 +24,8 @@ import {
   useBatchExecuteManager,
   useToolCallLifeCycle,
 } from "../lib/chat-state";
+import { resolveSlashMentions } from "./resolve-slash-mentions";
 import type { ChatInput } from "./use-chat-input-state";
-import { validateSkillInvocations } from "./validate-skill-invocations";
 
 const logger = getLogger("UseChatSubmit");
 
@@ -63,6 +64,7 @@ interface UseChatSubmitProps {
   reviews: Review[];
   userEdits: FileDiff[];
   skills: ValidSkillFile[];
+  customAgents: ValidCustomAgentFile[];
   terminalContextSelections: TerminalTextSelection[];
   clearTerminalContextSelections: () => void;
   taskId: string;
@@ -94,6 +96,7 @@ export function useChatSubmit({
   reviews,
   userEdits,
   skills,
+  customAgents,
   terminalContextSelections,
   clearTerminalContextSelections,
   taskId,
@@ -145,7 +148,7 @@ export function useChatSubmit({
 
   const validateInput = useCallback(
     async (submittedInput: ChatInput = input) => {
-      const result = validateSkillInvocations(submittedInput, skills);
+      const result = resolveSlashMentions(submittedInput, skills, customAgents);
       if (result.status === "valid") {
         return result;
       }
@@ -153,7 +156,7 @@ export function useChatSubmit({
       await vscodeHost.showWarningMessage(result.message, { modal: false });
       return undefined;
     },
-    [input, skills],
+    [input, skills, customAgents],
   );
 
   const handleStop = useCallback(async () => {
@@ -188,9 +191,14 @@ export function useChatSubmit({
   const createMessage = useCallback(
     async (
       resolvedInput: Extract<
-        ReturnType<typeof validateSkillInvocations>,
+        ReturnType<typeof resolveSlashMentions>,
         { status: "valid" }
-      > = { status: "valid", text: input.text, invokedSkills: [] },
+      > = {
+        status: "valid",
+        text: input.text,
+        invokedSkills: [],
+        invokedCustomAgents: [],
+      },
     ): Promise<DraftMessage | undefined> => {
       const text = resolvedInput.text.trim();
       const currentFiles = [...files];
@@ -250,6 +258,7 @@ export function useChatSubmit({
         currentSelection,
         currentTerminalContextSelections,
         resolvedInput.invokedSkills,
+        resolvedInput.invokedCustomAgents,
       );
 
       return { parts, raw };

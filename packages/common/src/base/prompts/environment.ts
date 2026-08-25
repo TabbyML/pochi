@@ -267,14 +267,7 @@ export function injectEnvironment(
     text: prompts.createSystemReminder(environmentDetails),
   } satisfies TextUIPart;
 
-  const lastTextPartIndex = parts.findLastIndex((part) => part.type === "text");
-  const insertionIndex =
-    lastTextPartIndex === -1 ? parts.length : lastTextPartIndex;
-  messageToInject.parts = [
-    ...parts.slice(0, insertionIndex),
-    reminderPart,
-    ...parts.slice(insertionIndex),
-  ];
+  messageToInject.parts = [reminderPart, ...parts];
 
   return messages;
 }

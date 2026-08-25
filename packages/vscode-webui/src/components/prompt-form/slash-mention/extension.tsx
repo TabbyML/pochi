@@ -1,4 +1,4 @@
-import { prompts } from "@getpochi/common";
+import { serializeCustomAgentMention } from "@/lib/serialize-custom-agent-mention";
 import type { CustomAgent, Skill } from "@getpochi/tools";
 import Mention from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
@@ -44,7 +44,7 @@ type SlashMentionAttributes =
 
 export function renderSlashMentionText(attrs: SlashMentionAttributes) {
   if (attrs.type === "custom-agent") {
-    return prompts.customAgent(attrs.id, attrs.path);
+    return serializeCustomAgentMention(attrs.id, attrs.path);
   }
   return `/${attrs.id}`;
 }

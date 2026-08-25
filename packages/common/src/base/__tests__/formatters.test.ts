@@ -593,6 +593,25 @@ describe('formatters', () => {
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
     });
 
+    it('should preserve readable custom-agent invocation text when stripping the marker', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: '<custom-agent id="demo" path="/agents/demo.md">/demo</custom-agent> use this agent',
+            },
+          ],
+        },
+      ];
+
+      expect(formatters.llm(messages)[0].parts).toEqual([
+        { type: 'text', text: '/demo use this agent' },
+      ]);
+    });
+
     it('should remove empty reasoning parts without providerMetadata', () => {
       const messages: UIMessage[] = [
         {
