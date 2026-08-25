@@ -227,12 +227,20 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
 export function injectEnvironment(
   messages: UIMessage[],
   environment: Environment | undefined,
-  options?: { forceFull?: boolean },
 ): UIMessage[] {
   if (environment === undefined) return messages;
-  const messageToInject = messages.at(-1);
-  if (!messageToInject) return messages;
-  if (messageToInject.role !== "user") return messages;
+
+  // The LLM formatter discards every message before the latest compact block.
+  // Only inspect that visible suffix when deciding whether the request already
+  // contains a complete environment.
+  const compactIndex = messages.findLastIndex((message) =>
+    message.parts.some(
+      (part) => part.type === "text" && prompts.isCompact(part.text),
+    ),
+  );
+  const visibleMessages = messages.slice(Math.max(compactIndex, 0));
+  const messageToInject = visibleMessages.at(-1);
+  if (messageToInject?.role !== "user") return messages;
 
   const { gitStatus } = environment.workspace;
   const user =
@@ -243,32 +251,46 @@ export function injectEnvironment(
         }
       : undefined;
 
-  const environmentDetails =
-    messages.length === 1 || options?.forceFull
-      ? createEnvironmentPrompt(environment, user)
-      : createLiteEnvironmentPrompt(environment);
+  const parts = messageToInject.parts.filter(
+    (part) =>
+      part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
+  );
+  // Ignore the reminder being replaced when checking the outgoing request.
+  messageToInject.parts = parts;
+
+  const environmentDetails = !hasCompleteEnvironmentPrompt(visibleMessages)
+    ? createEnvironmentPrompt(environment, user)
+    : createLiteEnvironmentPrompt(environment);
 
   const reminderPart = {
     type: "text",
     text: prompts.createSystemReminder(environmentDetails),
   } satisfies TextUIPart;
 
-  const parts =
-    // Remove existing environment system reminders.
-    messageToInject.parts.filter(
-      (x) => x.type !== "text" || !prompts.isEnvironmentSystemReminder(x.text),
-    ) || [];
-  const lastTextPartIndex = parts.findLastIndex(
-    (parts) => parts.type === "text",
-  );
-  // Insert remainderPart before lastTextPartIndex
+  const lastTextPartIndex = parts.findLastIndex((part) => part.type === "text");
+  const insertionIndex =
+    lastTextPartIndex === -1 ? parts.length : lastTextPartIndex;
   messageToInject.parts = [
-    ...parts.slice(0, lastTextPartIndex),
+    ...parts.slice(0, insertionIndex),
     reminderPart,
-    ...parts.slice(lastTextPartIndex),
+    ...parts.slice(insertionIndex),
   ];
 
   return messages;
+}
+
+function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
+  return messages.some((message) =>
+    message.parts.some((part) => {
+      if (part.type !== "text") return false;
+      const systemInfo = parseSystemInfoLines(part.text);
+      return Boolean(
+        systemInfo["Operating System"] &&
+          systemInfo["Home Directory"] &&
+          systemInfo["Current Working Directory"],
+      );
+    }),
+  );
 }
 
 function getTodos(todos: Environment["todos"]) {

@@ -1,8 +1,11 @@
 import { expect, test } from "vitest";
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import type { UIMessage } from "ai";
 import type { Environment } from "../../environment";
+import { formatters } from "../../formatters";
 import {
   createEnvironmentPrompt,
+  injectEnvironment,
   parseEnvironmentInfo,
   parseEnvironmentInfoResult,
 } from "../environment";
@@ -177,6 +180,101 @@ test("environment", () => {
   ).toMatchSnapshot();
 });
 
+test("injectEnvironment adds a full environment to multi-message histories without one", () => {
+  const messages = [
+    createTextMessage("user-1", "user", "legacy question"),
+    createTextMessage("assistant-1", "assistant", "legacy answer"),
+    createTextMessage("user-2", "user", "follow-up"),
+  ];
+
+  const result = injectEnvironment(messages, createTestEnvironment());
+
+  expect(countFullEnvironments(result)).toBe(1);
+});
+
+test("injectEnvironment adds a full environment when compaction hides the historical one", () => {
+  const fullEnvironment = createEnvironmentPrompt(
+    createTestEnvironment(),
+    undefined,
+  );
+  const messages = [
+    createTextMessage("user-1", "user", fullEnvironment),
+    createTextMessage("assistant-1", "assistant", "old answer"),
+    createTextMessage(
+      "user-2",
+      "user",
+      "<compact>Previous conversation summary</compact>",
+    ),
+    createTextMessage("assistant-2", "assistant", "recent answer"),
+    createTextMessage("user-3", "user", "follow-up"),
+  ];
+
+  const result = injectEnvironment(messages, createTestEnvironment());
+  const modelMessages = formatters.llm(result);
+
+  expect(modelMessages[0]?.id).toBe("user-2");
+  expect(countFullEnvironments(modelMessages)).toBe(1);
+});
+
+test("injectEnvironment preserves a full environment when regenerating a request", () => {
+  const messages = [
+    createTextMessage("user-1", "user", "legacy question"),
+    createTextMessage("assistant-1", "assistant", "legacy answer"),
+    {
+      id: "user-2",
+      role: "user" as const,
+      parts: [
+        {
+          type: "text" as const,
+          text: `<system-reminder>${createEnvironmentPrompt(
+            createTestEnvironment(),
+            undefined,
+          )}</system-reminder>`,
+        },
+        { type: "text" as const, text: "follow-up" },
+      ],
+    },
+  ];
+
+  const result = injectEnvironment(messages, createTestEnvironment());
+
+  expect(countFullEnvironments(result)).toBe(1);
+});
+
+test("injectEnvironment does not modify history when the request ends with an assistant", () => {
+  const messages = [
+    createTextMessage(
+      "user-1",
+      "user",
+      "<compact>Previous conversation summary</compact>",
+    ),
+    createTextMessage("assistant-1", "assistant", "tool result"),
+  ];
+
+  const result = injectEnvironment(messages, createTestEnvironment());
+
+  expect(countFullEnvironments(result)).toBe(0);
+  expect(getMessageText(result[0])).not.toContain("# System Information");
+});
+
+test("injectEnvironment uses a lite environment when a full one remains visible", () => {
+  const messages = [
+    createTextMessage(
+      "user-1",
+      "user",
+      createEnvironmentPrompt(createTestEnvironment(), undefined),
+    ),
+    createTextMessage("assistant-1", "assistant", "answer"),
+    createTextMessage("user-2", "user", "follow-up"),
+  ];
+
+  const result = injectEnvironment(messages, createTestEnvironment());
+
+  expect(countFullEnvironments(result)).toBe(1);
+  expect(getMessageText(result.at(-1))).not.toContain("# System Information");
+  expect(getMessageText(result.at(-1))).toContain("# GIT STATUS");
+});
+
 test("parseEnvironmentInfo from system message content", () => {
   const prompt = [
     {
@@ -283,6 +381,43 @@ test("parseEnvironmentInfo ignores missing or incomplete environment prompt", ()
     ]),
   ).toBeUndefined();
 });
+
+function createTextMessage(
+  id: string,
+  role: UIMessage["role"],
+  text: string,
+): UIMessage {
+  return {
+    id,
+    role,
+    parts: [{ type: "text", text }],
+  };
+}
+
+function getMessageText(message: UIMessage | undefined): string {
+  return (
+    message?.parts
+      .filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join("\n") ?? ""
+  );
+}
+
+function countFullEnvironments(messages: UIMessage[]): number {
+  return messages.reduce(
+    (count, message) =>
+      count +
+      message.parts.filter(
+        (part) =>
+          part.type === "text" &&
+          part.text.includes("# System Information") &&
+          part.text.includes("Operating System: darwin") &&
+          part.text.includes("Home Directory: /Users/pochi") &&
+          part.text.includes("Current Working Directory: /Users/pochi/project"),
+      ).length,
+    0,
+  );
+}
 
 function createTestEnvironment(): Environment {
   return {
