@@ -625,7 +625,6 @@ export class LiveChatKit<
             store: this.store,
             useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
-          this.transport.requestFullEnvironment();
           this.updateTotalTokensEstimate(messages);
           if (isAutoCompact) {
             this.consecutiveAutoCompactFailures = 0;
