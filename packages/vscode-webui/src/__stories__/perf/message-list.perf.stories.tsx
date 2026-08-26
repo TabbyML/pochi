@@ -3,6 +3,8 @@ import {
   MessageListPaginationConfig,
   computePageStart,
 } from "@/components/message/use-message-list-pagination";
+import { formatters } from "@getpochi/common";
+import type { Message } from "@getpochi/livekit";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { makeTaskHistoryMessages, summarizeMessageRange } from "./perf-data";
@@ -14,6 +16,8 @@ import {
 } from "./perf-harness";
 
 type Variant = "Full" | "Paged";
+
+const formatVisibleMessages = (messages: Message[]) => formatters.ui(messages);
 
 function MessageListPerfStory({
   messageCount,
@@ -167,9 +171,9 @@ function MessageListPerfStory({
         </table>
       </div>
       <div className="mb-2 text-muted-foreground text-xs">
-        Both variants use the same preformatted data. Run sequentially so the
-        Full and Paged trees never coexist. Message and part counts come from
-        the fixture; DOM nodes in Comparison are secondary diagnostics.
+        Both variants use the same raw data and UI formatter. Run sequentially
+        so the Full and Paged trees never coexist. Message and part counts come
+        from the fixture; DOM nodes in Comparison are secondary diagnostics.
       </div>
       <section ref={listRef} className="min-h-0 flex-1 overflow-hidden">
         {activeVariant && (
@@ -186,6 +190,7 @@ function MessageListPerfStory({
               assistant={{ name: "Pochi" }}
               containerRef={viewportRef}
               renderAllMessages={activeVariant === "Full"}
+              formatMessages={formatVisibleMessages}
             />
           </MeasuredProfiler>
         )}

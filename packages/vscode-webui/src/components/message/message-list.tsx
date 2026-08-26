@@ -66,8 +66,11 @@ export const MessageList: React.FC<{
   taskStatus?: Task["status"];
   /** Mounts the full history for shared output and performance baselines. */
   renderAllMessages?: boolean;
+  /** Formats only the mounted raw-message range. */
+  formatMessages?: (messages: Message[]) => Message[];
+  emptyPlaceholder?: React.ReactNode;
 }> = ({
-  messages: renderMessages,
+  messages,
   isLoading,
   loadingLabel,
   user = { name: "User" },
@@ -85,6 +88,8 @@ export const MessageList: React.FC<{
   showLastStepDuration,
   taskStatus,
   renderAllMessages = false,
+  formatMessages,
+  emptyPlaceholder,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -109,18 +114,18 @@ export const MessageList: React.FC<{
   const assistantName = assistant?.name ?? "Pochi";
   const latestCheckpoint = useLatestCheckpoint();
   const toolCallCheckpoints = useMemo(
-    () => buildToolCallCheckpoints(renderMessages),
-    [renderMessages],
+    () => buildToolCallCheckpoints(messages),
+    [messages],
   );
   const userEditsCheckpoints = useMemo(
-    () => buildUserEditsCheckpoints(renderMessages),
-    [renderMessages],
+    () => buildUserEditsCheckpoints(messages),
+    [messages],
   );
   const lastCheckpointInMessage = useMemo(() => {
-    return renderMessages
+    return messages
       .flatMap((msg) => msg.parts)
       .findLast((part) => part.type === "data-checkpoint")?.data.commit;
-  }, [renderMessages]);
+  }, [messages]);
 
   const mermaidContextValue = useMemo(
     () =>
@@ -134,31 +139,36 @@ export const MessageList: React.FC<{
     [repairMermaid, repairingChart, isLoading, isExecuting],
   );
 
-  // Paginate mounted messages; derive values from the full history.
+  // Paginate raw messages before formatting the mounted range.
   const { start, hiddenAboveCount, loadEarlierTriggerRef } =
     useMessageListPagination({
-      messages: renderMessages,
+      messages,
       containerRef,
       enabled: !renderAllMessages && containerRef !== undefined,
     });
-  const visibleMessages = useMemo(
-    () => renderMessages.slice(start),
-    [renderMessages, start],
+  const visibleRawMessages = useMemo(
+    () => messages.slice(start),
+    [messages, start],
+  );
+  const renderMessages = useMemo(
+    () =>
+      formatMessages ? formatMessages(visibleRawMessages) : visibleRawMessages,
+    [formatMessages, visibleRawMessages],
   );
 
   return (
-    <BackgroundJobContextProvider messages={renderMessages}>
+    <BackgroundJobContextProvider messages={messages}>
       <MermaidContextProvider value={mermaidContextValue}>
         <ScrollArea
           className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
           viewportClassname={viewportClassname}
           ref={containerRef}
         >
+          {start === 0 && renderMessages.length === 0 && emptyPlaceholder}
           {hiddenAboveCount > 0 && (
             <EarlierMessagesEdge ref={loadEarlierTriggerRef} />
           )}
-          {visibleMessages.map((m, indexInRange) => {
-            const messageIndex = start + indexInRange;
+          {renderMessages.map((m, messageIndex) => {
             return (
               <div
                 key={m.id}
@@ -223,7 +233,7 @@ export const MessageList: React.FC<{
                         hideUserEditsActions={hideUserEditsActions}
                         latestCheckpoint={latestCheckpoint}
                         lastCheckpointInMessage={lastCheckpointInMessage}
-                        userEditsCheckpoint={userEditsCheckpoints[messageIndex]}
+                        userEditsCheckpoint={userEditsCheckpoints.get(m.id)}
                         toolCallCheckpoint={
                           isStaticToolUIPart(part)
                             ? toolCallCheckpoints.get(part.toolCallId)
@@ -239,7 +249,7 @@ export const MessageList: React.FC<{
                 </div>
                 {messageIndex < renderMessages.length - 1 ? (
                   <SeparatorWithCheckpoint
-                    messageIndex={messageIndex}
+                    isFirstMessageInHistory={start === 0 && messageIndex === 0}
                     message={m}
                     nextMessage={renderMessages[messageIndex + 1]}
                     isLoading={shouldCheckpointUseLoading}
@@ -535,7 +545,7 @@ const MemoReasoningPartUI = memo(ReasoningPartRenderer, (prev, next) => {
 MemoReasoningPartUI.displayName = "MemoReasoningPartUI";
 
 const SeparatorWithCheckpoint: React.FC<{
-  messageIndex: number;
+  isFirstMessageInHistory: boolean;
   message: Message;
   nextMessage: Message;
   isLoading: boolean;
@@ -544,7 +554,7 @@ const SeparatorWithCheckpoint: React.FC<{
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
 }> = ({
-  messageIndex,
+  isFirstMessageInHistory,
   message,
   nextMessage,
   isLoading,
@@ -558,7 +568,7 @@ const SeparatorWithCheckpoint: React.FC<{
 
   let checkpointMessage: Message | null = null;
   let restoreMessageId: string | undefined = undefined;
-  if (messageIndex === 0 && message.role === "user") {
+  if (isFirstMessageInHistory && message.role === "user") {
     checkpointMessage = message;
   }
 
@@ -701,10 +711,10 @@ function findCompactPart(message: Message): TextUIPart | undefined {
 }
 
 function buildUserEditsCheckpoints(messages: Message[]) {
-  const userEditsCheckpoints: Array<UserEditsCheckpoint | undefined> = [];
+  const userEditsCheckpoints = new Map<string, UserEditsCheckpoint>();
   const checkpointHistory: string[] = [];
 
-  for (const [index, message] of messages.entries()) {
+  for (const message of messages) {
     let hasUserEdits = false;
 
     for (const part of message.parts) {
@@ -723,14 +733,13 @@ function buildUserEditsCheckpoints(messages: Message[]) {
       !hasUserEdits ||
       checkpointHistory.length < 2
     ) {
-      userEditsCheckpoints[index] = undefined;
       continue;
     }
 
-    userEditsCheckpoints[index] = {
+    userEditsCheckpoints.set(message.id, {
       origin: checkpointHistory.at(-2),
       modified: checkpointHistory.at(-1),
-    };
+    });
   }
 
   return userEditsCheckpoints;

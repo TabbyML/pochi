@@ -41,4 +41,33 @@ describe("ChatArea", () => {
 
     expect(mocks.messageListProps.at(-1)?.renderAllMessages).toBe(true);
   });
+
+  it("passes raw messages with a UI formatter to MessageList", () => {
+    const messages = [message];
+    render(<ChatArea messages={messages} isLoading={false} />);
+
+    const props = mocks.messageListProps.at(-1);
+    expect(props?.messages).toBe(messages);
+    expect(props?.formatMessages).toBeTypeOf("function");
+  });
+
+  it("passes the empty placeholder for formatting to decide", () => {
+    render(<ChatArea messages={[message]} isLoading={false} />);
+
+    expect(mocks.messageListProps.at(-1)?.emptyPlaceholder).toBeTruthy();
+  });
+
+  it("respects hideEmptyPlaceholder for a non-empty raw history", () => {
+    render(
+      <ChatArea messages={[message]} isLoading={false} hideEmptyPlaceholder />,
+    );
+
+    expect(mocks.messageListProps.at(-1)?.emptyPlaceholder).toBeUndefined();
+  });
+
+  it("keeps the empty placeholder hidden for an empty raw history", () => {
+    render(<ChatArea messages={[]} isLoading={false} hideEmptyPlaceholder />);
+
+    expect(mocks.messageListProps.at(-1)?.emptyPlaceholder).toBeUndefined();
+  });
 });

@@ -8,6 +8,10 @@ import taskHistoryMeta, {
 
 const mocks = vi.hoisted(() => ({
   useScrollToBottom: vi.fn(),
+  chatAreaProps: [] as Array<{
+    messages: Array<{ id: string }>;
+    formatMessages?: (messages: Array<{ id: string }>) => Array<{ id: string }>;
+  }>,
 }));
 
 vi.mock("@getpochi/common", async (importOriginal) => {
@@ -22,13 +26,17 @@ vi.mock("../../../features/chat/components/chat-area", () => ({
   ChatArea: (props: {
     messages: Array<{ id: string }>;
     messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
-  }) => (
-    <div ref={props.messagesContainerRef} data-testid="chat-area">
-      {props.messages.map((message) => (
-        <div key={message.id}>{message.id}</div>
-      ))}
-    </div>
-  ),
+    formatMessages?: (messages: Array<{ id: string }>) => Array<{ id: string }>;
+  }) => {
+    mocks.chatAreaProps.push(props);
+    return (
+      <div ref={props.messagesContainerRef} data-testid="chat-area">
+        {props.messages.map((message) => (
+          <div key={message.id}>{message.id}</div>
+        ))}
+      </div>
+    );
+  },
 }));
 
 vi.mock("../../../features/chat/hooks/use-scroll-to-bottom", () => ({
@@ -38,6 +46,15 @@ vi.mock("../../../features/chat/hooks/use-scroll-to-bottom", () => ({
 describe("TaskHistory performance story", () => {
   beforeEach(() => {
     mocks.useScrollToBottom.mockReset();
+    mocks.chatAreaProps = [];
+  });
+
+  it("passes raw history with a window formatter to ChatArea", () => {
+    renderStory();
+
+    const props = mocks.chatAreaProps.at(-1);
+    expect(props?.messages).toHaveLength(4);
+    expect(props?.formatMessages).toBeTypeOf("function");
   });
 
   afterEach(() => vi.unstubAllGlobals());

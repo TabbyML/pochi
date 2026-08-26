@@ -1,22 +1,34 @@
+import { formatters } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { Profiler, useRef } from "react";
+import { Profiler, type ReactNode, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListPaginationConfig } from "../use-message-list-pagination";
+
+const vscodeMock = vi.hoisted(() => ({ isVSCodeEnvironment: false }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
-      options?.count === undefined ? key : `${key}:${options.count}`,
+      options?.count !== undefined
+        ? `${key}:${options.count}`
+        : options?.duration !== undefined
+          ? `${key}:${options.duration}`
+          : key,
   }),
 }));
 
 vi.mock("@/lib/vscode", () => ({
-  isVSCodeEnvironment: () => false,
+  isVSCodeEnvironment: () => vscodeMock.isVSCodeEnvironment,
   vscodeHost: {
     getGlobalState: vi.fn(async () => undefined),
     setGlobalState: vi.fn(async () => undefined),
   },
+}));
+
+vi.mock("../../checkpoint-ui", () => ({
+  CheckpointUI: () => <div data-testid="checkpoint" />,
+  CompactCheckpointUI: () => <div data-testid="compact-checkpoint" />,
 }));
 
 vi.mock("@/lib/hooks/use-latest-checkpoint", () => ({
@@ -67,6 +79,20 @@ vi.mock("../markdown", () => ({
   ),
 }));
 
+vi.mock("../user-edits", () => ({
+  UserEditsPart: ({
+    checkpoints,
+  }: {
+    checkpoints?: { origin?: string; modified?: string };
+  }) => (
+    <div
+      data-testid="user-edits"
+      data-origin={checkpoints?.origin ?? ""}
+      data-modified={checkpoints?.modified ?? ""}
+    />
+  ),
+}));
+
 // Import after installing mocks.
 const { MessageList } = await import("../message-list");
 
@@ -98,6 +124,7 @@ class IntersectionObserverProbe implements IntersectionObserver {
 
 beforeEach(() => {
   IntersectionObserverProbe.instances = [];
+  vscodeMock.isVSCodeEnvironment = false;
   vi.stubGlobal("IntersectionObserver", IntersectionObserverProbe);
 });
 
@@ -147,6 +174,17 @@ function makeMessages(count: number) {
   return Array.from({ length: count }, (_, index) => makeMessage(index));
 }
 
+function makeAssistantMessage(id: string, label: string, partCount = 30) {
+  return {
+    id,
+    role: "assistant",
+    parts: Array.from({ length: partCount }, (_, partIndex) => ({
+      type: "text" as const,
+      text: `${label} part ${partIndex}`,
+    })),
+  } as Message;
+}
+
 function mountedMessageIds(container: HTMLElement) {
   return Array.from(
     container.querySelectorAll<HTMLElement>('[aria-label^="chat-message-"]'),
@@ -173,9 +211,15 @@ function setViewportScrollTop(container: HTMLElement, scrollTop: number) {
 function MessageListProbe({
   messages,
   renderAllMessages = false,
+  formatMessages,
+  emptyPlaceholder,
+  showLastStepDuration = false,
 }: {
   messages: Message[];
   renderAllMessages?: boolean;
+  formatMessages?: (messages: Message[]) => Message[];
+  emptyPlaceholder?: ReactNode;
+  showLastStepDuration?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   return (
@@ -185,6 +229,9 @@ function MessageListProbe({
       showLoader={false}
       renderAllMessages={renderAllMessages}
       containerRef={containerRef}
+      formatMessages={formatMessages}
+      emptyPlaceholder={emptyPlaceholder}
+      showLastStepDuration={showLastStepDuration}
     />
   );
 }
@@ -199,6 +246,294 @@ function renderList(messages: Message[], renderAllMessages = false) {
 }
 
 describe("MessageList pagination", () => {
+  it("formats only the raw tail page", () => {
+    const messages = makeMessages(200);
+    const formatMessages = vi.fn((visible: Message[]) => visible);
+
+    render(
+      <MessageListProbe messages={messages} formatMessages={formatMessages} />,
+    );
+
+    expect(formatMessages).toHaveBeenCalledTimes(1);
+    expect(formatMessages).toHaveBeenCalledWith(
+      messages.slice(-InitialMessages),
+    );
+  });
+
+  it("keeps consecutive assistant messages on the same page", () => {
+    const messages = [
+      ["assistant-1", 100, 10],
+      ["assistant-2", 200, 20],
+      ["assistant-3", 300, 30],
+    ].map(
+      ([id, totalStreamingDuration, totalToolsExecutionDuration], index) =>
+        ({
+          id,
+          role: "assistant",
+          metadata: {
+            kind: "assistant",
+            totalTokens: 0,
+            finishReason: "stop",
+            totalStreamingDuration,
+            totalToolsExecutionDuration,
+          },
+          parts: Array.from({ length: 30 }, (_, partIndex) => ({
+            type: "text",
+            text: `assistant ${index + 1} part ${partIndex}`,
+          })),
+        }) as Message,
+    );
+
+    render(
+      <MessageListProbe
+        messages={messages}
+        formatMessages={formatters.ui}
+        showLastStepDuration
+      />,
+    );
+
+    expect(screen.getByText("assistant 1 part 0")).toBeTruthy();
+    expect(screen.getByText("messageList.completedIn:660ms")).toBeTruthy();
+  });
+
+  it.each([
+    ["compact", ["<compact>Previous conversation summary</compact>"]],
+    [
+      "filtered system reminder",
+      ["<system-reminder>Reminder</system-reminder>"],
+    ],
+    [
+      "filtered message run",
+      ["<system-reminder>Reminder</system-reminder>", null],
+    ],
+  ])("keeps a %s with its surrounding assistant messages", (_, texts) => {
+    const messages = [
+      makeAssistantMessage("assistant-1", "first assistant"),
+      ...texts.map(
+        (text, index) =>
+          ({
+            id: `continuation-${index}`,
+            role: "user",
+            parts: text === null ? [] : [{ type: "text" as const, text }],
+          }) as Message,
+      ),
+      makeAssistantMessage("assistant-2", "second assistant"),
+    ];
+
+    render(
+      <MessageListProbe messages={messages} formatMessages={formatters.ui} />,
+    );
+
+    expect(screen.getByText("first assistant part 0")).toBeTruthy();
+    expect(screen.getByText("second assistant part 0")).toBeTruthy();
+  });
+
+  it("keeps assistants together across a filtered data message", () => {
+    const messages = [
+      makeAssistantMessage("assistant-1", "first assistant"),
+      {
+        id: "active-selection",
+        role: "user",
+        parts: [
+          {
+            type: "data-active-selection",
+            data: { activeSelection: undefined },
+          },
+        ],
+      } as Message,
+      makeAssistantMessage("assistant-2", "second assistant"),
+    ];
+
+    render(
+      <MessageListProbe messages={messages} formatMessages={formatters.ui} />,
+    );
+
+    expect(screen.getByText("first assistant part 0")).toBeTruthy();
+    expect(screen.getByText("second assistant part 0")).toBeTruthy();
+  });
+
+  it("keeps a compact message before the visible assistant page", () => {
+    const messages = [
+      {
+        id: "user",
+        role: "user",
+        parts: [{ type: "text", text: "Visible user prompt" }],
+      } as Message,
+      {
+        id: "compact",
+        role: "user",
+        parts: [{ type: "text", text: "<compact>Summary</compact>" }],
+      } as Message,
+      makeAssistantMessage("assistant", "assistant", 60),
+      {
+        id: "latest-user",
+        role: "user",
+        parts: [{ type: "text", text: "Latest user prompt" }],
+      } as Message,
+    ];
+
+    render(
+      <MessageListProbe messages={messages} formatMessages={formatters.ui} />,
+    );
+
+    expect(screen.getByTestId("compact-checkpoint")).toBeTruthy();
+  });
+
+  it("keeps a compact message with the preceding assistant page", () => {
+    const messages = [
+      makeAssistantMessage("assistant", "assistant", 60),
+      {
+        id: "compact",
+        role: "user",
+        parts: [{ type: "text", text: "<compact>Summary</compact>" }],
+      } as Message,
+      {
+        id: "user",
+        role: "user",
+        parts: Array.from({ length: 60 }, (_, index) => ({
+          type: "text" as const,
+          text: `user part ${index}`,
+        })),
+      } as Message,
+    ];
+
+    render(
+      <MessageListProbe messages={messages} formatMessages={formatters.ui} />,
+    );
+
+    expect(screen.getByText("assistant part 0")).toBeTruthy();
+    expect(screen.getByTestId("compact-checkpoint")).toBeTruthy();
+  });
+
+  it("backs up across the full assistant formatter group", () => {
+    const messages = [
+      {
+        id: "older-user",
+        role: "user",
+        parts: [{ type: "text", text: "Older user prompt" }],
+      } as Message,
+      makeAssistantMessage("assistant", "assistant", 60),
+      {
+        id: "system-reminder",
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: "<system-reminder>Reminder</system-reminder>",
+          },
+        ],
+      } as Message,
+      {
+        id: "compact",
+        role: "user",
+        parts: [{ type: "text", text: "<compact>Summary</compact>" }],
+      } as Message,
+      {
+        id: "active-selection",
+        role: "user",
+        parts: [
+          {
+            type: "data-active-selection",
+            data: { activeSelection: undefined },
+          },
+        ],
+      } as Message,
+      {
+        id: "user",
+        role: "user",
+        parts: Array.from({ length: 60 }, (_, index) => ({
+          type: "text" as const,
+          text: `user part ${index}`,
+        })),
+      } as Message,
+    ];
+
+    render(
+      <MessageListProbe messages={messages} formatMessages={formatters.ui} />,
+    );
+
+    expect(screen.getByText("assistant part 0")).toBeTruthy();
+    expect(screen.getByTestId("compact-checkpoint")).toBeTruthy();
+    expect(screen.queryByText("Older user prompt")).toBeNull();
+  });
+
+  it("shows the empty placeholder when the full raw history is filtered out", () => {
+    const messages = [
+      {
+        id: "system-reminder",
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: "<system-reminder>Reminder</system-reminder>",
+          },
+        ],
+      } as Message,
+    ];
+
+    render(
+      <MessageListProbe
+        messages={messages}
+        formatMessages={() => []}
+        emptyPlaceholder={<div data-testid="empty-placeholder" />}
+      />,
+    );
+
+    expect(screen.getByTestId("empty-placeholder")).toBeTruthy();
+  });
+
+  it("looks up user-edit checkpoints by message id after formatting", () => {
+    const messages: Message[] = [
+      {
+        id: "checkpoint-1",
+        role: "assistant",
+        parts: [{ type: "data-checkpoint", data: { commit: "commit-1" } }],
+      } as Message,
+      {
+        id: "checkpoint-2",
+        role: "assistant",
+        parts: [{ type: "data-checkpoint", data: { commit: "commit-2" } }],
+      } as Message,
+      {
+        id: "user-edits",
+        role: "user",
+        parts: [{ type: "data-user-edits", data: { userEdits: [] } }],
+      } as unknown as Message,
+    ];
+
+    render(
+      <MessageListProbe
+        messages={messages}
+        renderAllMessages
+        formatMessages={(visible) => visible.slice(1)}
+      />,
+    );
+
+    const userEdits = screen.getByTestId("user-edits");
+    expect(userEdits.dataset.origin).toBe("commit-1");
+    expect(userEdits.dataset.modified).toBe("commit-2");
+  });
+
+  it("does not treat the first formatted user message as the start of history", () => {
+    vscodeMock.isVSCodeEnvironment = true;
+    const messages = makeMessages(14);
+    messages[2] = {
+      ...messages[2],
+      role: "user",
+      parts: [
+        ...messages[2].parts.slice(0, -1),
+        { type: "data-checkpoint", data: { commit: "commit-1" } },
+      ],
+    } as Message;
+
+    const { container } = render(<MessageListProbe messages={messages} />);
+
+    const firstMessage = container.querySelector(".message-list-item");
+    expect(
+      firstMessage?.querySelector('[data-testid="checkpoint"]'),
+    ).toBeNull();
+  });
+
   it("mounts only the tail page and always keeps the last message", () => {
     const messages = makeMessages(200);
     const { container } = renderList(messages);
