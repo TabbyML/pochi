@@ -406,6 +406,7 @@ function Chat({ user, uid, info }: ChatProps) {
   )?.id;
 
   const { onToolCallApprovalVisible } = useScrollToBottom({
+    enabled: !isInitializing,
     messagesContainerRef,
     lastUserMessageId,
   });
