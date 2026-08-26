@@ -172,6 +172,10 @@ import {
 import { TerminalState } from "../terminal/terminal-state";
 import { PochiTaskEditorProvider } from "./webview-panel";
 import { PochiWebviewStandalonePanel } from "./webview-standalone-panel";
+import {
+  openWidgetPreview as openWidgetPreviewPanel,
+  saveWidgetHtml as writeWidgetHtmlToDisk,
+} from "./widget-html-actions";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -472,6 +476,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         notificationId,
       ),
   });
+
+  saveWidget = async (
+    html: string,
+    suggestedFilename: string,
+  ): Promise<boolean> => {
+    return writeWidgetHtmlToDisk(html, suggestedFilename, this.cwd);
+  };
+
+  openWidgetInPanel = async (html: string, title: string): Promise<void> => {
+    openWidgetPreviewPanel(html, title);
+  };
 
   readCurrentWorkspace = async (): Promise<{
     cwd: string | null;

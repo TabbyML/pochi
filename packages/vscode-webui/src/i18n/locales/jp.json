@@ -336,6 +336,7 @@
     "imgAlt": "MCPツールレスポンススナップショット",
     "renderWidget": "ウィジェットを表示",
     "widgetFrozen": "このウィジェットは以前のメッセージのものです。最新のウィジェットのみ操作できます。",
+    "widgetExportFailed": "ウィジェットのエクスポートに失敗しました: {{message}}",
     "widgetInternalError": "ウィジェット設定エラーです。",
     "widgetRuntimeError": "ウィジェット実行時エラーです。",
     "fixWidget": "修正してください",

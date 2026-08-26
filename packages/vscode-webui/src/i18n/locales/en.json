@@ -340,6 +340,7 @@
     "imgAlt": "MCP tool response snapshot",
     "renderWidget": "Render Widget",
     "widgetFrozen": "This widget is from an earlier message. Only the latest widget remains interactive.",
+    "widgetExportFailed": "Failed to export widget: {{message}}",
     "widgetInternalError": "Widget setup error.",
     "widgetRuntimeError": "Widget runtime error.",
     "fixWidget": "Please fix",

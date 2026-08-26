@@ -334,6 +334,7 @@
     "imgAlt": "MCP工具响应快照",
     "renderWidget": "渲染组件",
     "widgetFrozen": "这个组件来自较早的消息。只有最新的组件仍可交互。",
+    "widgetExportFailed": "导出组件失败：{{message}}",
     "widgetInternalError": "组件配置错误。",
     "widgetRuntimeError": "组件运行时错误。",
     "fixWidget": "请修复",

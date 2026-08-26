@@ -50,8 +50,21 @@ let receiveHandler:
     })
   | undefined;
 
+const vscodeHostMocks = vi.hoisted(() => ({
+  saveWidget: vi.fn(async (_html: string, _suggestedFilename: string) => {
+    return true;
+  }),
+  openWidgetInPanel: vi.fn(async (_html: string, _title: string) => {}),
+  showWarningMessage: vi.fn(
+    async (_message: string, _options: { modal?: boolean }) => undefined,
+  ),
+}));
+
+const isVSCodeEnvironmentMock = vi.hoisted(() => vi.fn(() => true));
+
 vi.mock("@/lib/vscode", () => ({
-  vscodeHost: {},
+  vscodeHost: vscodeHostMocks,
+  isVSCodeEnvironment: isVSCodeEnvironmentMock,
 }));
 
 vi.mock("bidc", () => ({
@@ -111,15 +124,22 @@ vi.mock("@/components/theme-provider", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: Record<string, unknown>) => {
       const translations: Record<string, string> = {
         "toolInvocation.renderWidget": "Render Widget",
         "toolInvocation.widgetFrozen":
           "This widget is from an earlier message. Only the latest widget remains interactive.",
         "toolInvocation.widgetInternalError": "Widget setup error.",
         "toolInvocation.widgetRuntimeError": "Widget runtime error.",
+        "toolInvocation.widgetExportFailed":
+          "Failed to export widget: {{message}}",
+        "toolInvocation.save": "Save",
+        "toolInvocation.preview": "Preview",
       };
-      return translations[key] ?? key;
+      const template = translations[key] ?? key;
+      return template.replace(/\{\{(\w+)\}\}/g, (match, name) =>
+        options && name in options ? String(options[name]) : match,
+      );
     },
   }),
 }));
@@ -146,6 +166,10 @@ describe("RenderWidgetTool", () => {
     });
     lifecycleMocks.getToolCallLifeCycle.mockClear();
     sentMessages.length = 0;
+    vscodeHostMocks.saveWidget.mockClear();
+    vscodeHostMocks.openWidgetInPanel.mockClear();
+    vscodeHostMocks.showWarningMessage.mockClear();
+    isVSCodeEnvironmentMock.mockReturnValue(true);
     mockedTheme = "dark";
     document.documentElement.className = "";
     document.documentElement.style.cssText = "";
@@ -971,5 +995,150 @@ describe("RenderWidgetTool", () => {
     expect(
       useRenderWidgetStore.getState().getWidgetState("widget-old"),
     ).toBeUndefined();
+  });
+
+  describe("export actions", () => {
+    const streamingTool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-export-streaming",
+      state: "input-streaming",
+      input: {
+        title: "Streaming widget",
+        widgetCode: "<pochi-widget></pochi-widget>",
+        guidelinesRead: true,
+      },
+    } as never;
+
+    const readyTool = {
+      type: "tool-renderWidget",
+      toolCallId: "widget-export",
+      state: "input-available",
+      input: {
+        title: "Sales widget",
+        widgetCode: "<pochi-widget><span>chart</span></pochi-widget>",
+        guidelinesRead: true,
+      },
+    } as never;
+
+    it("hides the export actions while the widget input is streaming", () => {
+      render(
+        <RenderWidgetTool
+          tool={streamingTool}
+          isExecuting={true}
+          isLoading={true}
+          isInLatestAssistantMessage
+        />,
+      );
+
+      expect(screen.queryByLabelText("Save")).toBeNull();
+      expect(screen.queryByLabelText("Preview")).toBeNull();
+    });
+
+    it("previews the widget with the live state snapshot", async () => {
+      const { container } = render(
+        <RenderWidgetTool
+          tool={readyTool}
+          isExecuting={false}
+          isLoading={false}
+          isInLatestAssistantMessage
+        />,
+      );
+
+      act(() => {
+        getWidgetIframe(container).dispatchEvent(new Event("load"));
+      });
+      act(() => {
+        receiveHandler?.({ type: "state", state: { city: "beijing" } });
+      });
+
+      fireEvent.click(screen.getByLabelText("Preview"));
+
+      await waitFor(() => {
+        expect(vscodeHostMocks.openWidgetInPanel).toHaveBeenCalledTimes(1);
+      });
+      const [html, previewTitle] =
+        vscodeHostMocks.openWidgetInPanel.mock.calls[0];
+      expect(previewTitle).toBe("Sales widget");
+      expect(html).toContain("<!doctype html>");
+      expect(html).toContain("<span>chart</span>");
+      expect(html).toContain("beijing");
+      expect(vscodeHostMocks.saveWidget).not.toHaveBeenCalled();
+    });
+
+    it("saves the widget document with the committed output state", async () => {
+      const committedTool = {
+        type: "tool-renderWidget",
+        toolCallId: "widget-export-output",
+        state: "output-available",
+        input: {
+          title: "Committed widget",
+          widgetCode: "<pochi-widget></pochi-widget>",
+          guidelinesRead: true,
+        },
+        output: { state: { city: "shanghai" } },
+      } as never;
+
+      render(
+        <RenderWidgetTool
+          tool={committedTool}
+          isExecuting={false}
+          isLoading={false}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Save"));
+
+      await waitFor(() => {
+        expect(vscodeHostMocks.saveWidget).toHaveBeenCalledTimes(1);
+      });
+      const [html, suggestedFilename] =
+        vscodeHostMocks.saveWidget.mock.calls[0];
+      expect(suggestedFilename).toBe("Committed widget");
+      expect(html).toContain("shanghai");
+    });
+
+    it("hides the actions outside of vscode", () => {
+      isVSCodeEnvironmentMock.mockReturnValue(false);
+
+      render(
+        <RenderWidgetTool
+          tool={readyTool}
+          isExecuting={false}
+          isLoading={false}
+          isInLatestAssistantMessage
+        />,
+      );
+
+      expect(screen.queryByLabelText("Save")).toBeNull();
+      expect(screen.queryByLabelText("Preview")).toBeNull();
+    });
+
+    it("warns instead of rejecting when the export fails", async () => {
+      vscodeHostMocks.saveWidget.mockRejectedValueOnce(
+        new Error("disk is full"),
+      );
+
+      render(
+        <RenderWidgetTool
+          tool={readyTool}
+          isExecuting={false}
+          isLoading={false}
+          isInLatestAssistantMessage
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Save"));
+
+      await waitFor(() => {
+        expect(vscodeHostMocks.showWarningMessage).toHaveBeenCalledTimes(1);
+      });
+      const [message] = vscodeHostMocks.showWarningMessage.mock.calls[0];
+      expect(message).toContain("disk is full");
+      await waitFor(() => {
+        expect(screen.getByLabelText("Save").hasAttribute("disabled")).toBe(
+          false,
+        );
+      });
+    });
   });
 });

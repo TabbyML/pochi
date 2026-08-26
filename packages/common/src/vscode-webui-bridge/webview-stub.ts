@@ -166,6 +166,12 @@ const VSCodeHostStub = {
       taskId?: string;
     },
   ): void => {},
+  saveWidget: (_html: string, _suggestedFilename: string): Promise<boolean> => {
+    return Promise.resolve(false);
+  },
+  openWidgetInPanel: (_html: string, _title: string): Promise<void> => {
+    return Promise.resolve();
+  },
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
   },

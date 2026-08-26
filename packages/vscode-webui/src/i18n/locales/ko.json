@@ -334,6 +334,7 @@
     "imgAlt": "MCP 도구 응답 스냅샷",
     "renderWidget": "위젯 렌더링",
     "widgetFrozen": "이 위젯은 이전 메시지의 것입니다. 최신 위젯만 계속 상호작용할 수 있습니다.",
+    "widgetExportFailed": "위젯 내보내기에 실패했습니다: {{message}}",
     "widgetInternalError": "위젯 설정 오류입니다.",
     "widgetRuntimeError": "위젯 런타임 오류입니다.",
     "fixWidget": "수정해 주세요",

@@ -219,6 +219,19 @@ export interface VSCodeHostApi {
     },
   ): void;
 
+  /**
+   * Asks the user where to store a standalone widget document and writes it there.
+   *
+   * @returns `true` when the document was written, `false` when the user cancelled.
+   */
+  saveWidget(html: string, suggestedFilename: string): Promise<boolean>;
+
+  /**
+   * Opens a standalone widget document in a new editor tab. The document is
+   * rendered from the given string and is never written to disk.
+   */
+  openWidgetInPanel(html: string, title: string): Promise<void>;
+
   readCurrentWorkspace(): Promise<{
     cwd: string | null;
     workspacePath: string | null;

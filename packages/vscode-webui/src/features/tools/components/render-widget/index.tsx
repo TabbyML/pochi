@@ -14,8 +14,9 @@ import {
 } from "@/features/chat";
 import { getToolPartError } from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { createChannel } from "bidc";
-import { Lock } from "lucide-react";
+import { Download, Eye, Lock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StatusIcon } from "../status-icon";
@@ -25,6 +26,7 @@ import type { ToolProps } from "../types";
 // normal script inside the sandboxed iframe, so it does not execute in the
 // parent WebUI window.
 import rendererScriptSrc from "./renderer-entry.ts?worker&url";
+import { buildStandaloneWidgetHtml } from "./standalone-html";
 import {
   type WidgetThemeClass,
   buildWidgetIframeDocument,
@@ -170,6 +172,60 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
   });
   const isInteractiveRef = useRef(isInteractive);
   isInteractiveRef.current = isInteractive;
+  // The widget input is all we need to export, so the actions light up as soon
+  // as it is complete. Waiting for `output-available` would hide them for the
+  // whole turn the widget was rendered in. Both actions are backed by the
+  // VS Code host, so they stay hidden elsewhere (e.g. the share page).
+  const canExport =
+    isVSCodeEnvironment() &&
+    tool.state !== "input-streaming" &&
+    tool.state !== "output-error";
+  const [isExporting, setIsExporting] = useState(false);
+
+  const buildExportHtml = useCallback(
+    () =>
+      buildStandaloneWidgetHtml({
+        title,
+        widgetCode,
+        state: readWidgetStateSnapshot(tool),
+        themeClass: getCurrentWidgetThemeClass(fallbackThemeClass),
+        themeVariablesCss: collectWidgetThemeVariables(),
+      }),
+    [fallbackThemeClass, title, tool, widgetCode],
+  );
+
+  const runExport = useCallback(
+    async (exportHtml: (html: string) => Promise<unknown>) => {
+      setIsExporting(true);
+      try {
+        await exportHtml(buildExportHtml());
+      } catch (error) {
+        // Fire-and-forget so this handler never rejects: it is wired straight
+        // to onClick, where a rejection would surface as an unhandled one.
+        vscodeHost
+          .showWarningMessage(
+            t("toolInvocation.widgetExportFailed", {
+              message: error instanceof Error ? error.message : String(error),
+            }),
+            { modal: false },
+          )
+          .catch(() => {});
+      } finally {
+        setIsExporting(false);
+      }
+    },
+    [buildExportHtml, t],
+  );
+
+  const handleSave = useCallback(
+    () => runExport((html) => vscodeHost.saveWidget(html, title)),
+    [runExport, title],
+  );
+
+  const handlePreview = useCallback(
+    () => runExport((html) => vscodeHost.openWidgetInPanel(html, title)),
+    [runExport, title],
+  );
 
   useEffect(() => {
     if (!import.meta.env.PROD) return;
@@ -438,6 +494,38 @@ export const RenderWidgetTool: React.FC<ToolProps<"renderWidget">> = ({
           {t("toolInvocation.renderWidget")}
         </span>
         <span className="truncate">{title}</span>
+        {canExport ? (
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("toolInvocation.preview")}
+                  disabled={isExporting}
+                  onClick={handlePreview}
+                  className="inline-flex items-center border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  <Eye className="size-3" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("toolInvocation.preview")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("toolInvocation.save")}
+                  disabled={isExporting}
+                  onClick={handleSave}
+                  className="inline-flex items-center border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  <Download className="size-3" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("toolInvocation.save")}</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : null}
         {isFrozen ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -506,6 +594,19 @@ function getRenderWidgetDisplayTool({
 function getRenderWidgetOutput(tool: ToolProps<"renderWidget">["tool"]) {
   if ("output" in tool && isRecord(tool.output)) return tool.output;
   return {};
+}
+
+/**
+ * Prefers the state the widget reports while it is live, and falls back to the
+ * state that was committed to the tool output once the turn ended.
+ */
+function readWidgetStateSnapshot(tool: ToolProps<"renderWidget">["tool"]) {
+  const liveState = useRenderWidgetStore
+    .getState()
+    .getWidgetState(tool.toolCallId);
+  if (liveState !== undefined) return liveState;
+  const output = getRenderWidgetOutput(tool);
+  return isRecord(output) ? output.state : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
