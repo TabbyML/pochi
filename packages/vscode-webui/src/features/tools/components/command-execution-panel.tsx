@@ -192,7 +192,7 @@ export const CommandPanelContainer: FC<{
       >
         <div className="flex min-w-0 flex-1 space-x-3">
           {icon}
-          <ScrollArea className="max-h-[80px] min-w-0 flex-1 overflow-y-auto">
+          <ScrollArea className="max-h-[80px] min-w-0 flex-1">
             <span className="whitespace-pre-wrap text-balance break-all">
               {title}
             </span>

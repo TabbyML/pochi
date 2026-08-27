@@ -12,13 +12,20 @@ const ScrollArea = React.forwardRef<
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn("relative", className)}
+      // `overflow-hidden` keeps the viewport the only scroll owner: absolutely
+      // positioned descendants (e.g. KaTeX's `.katex-mathml`) resolve against
+      // this positioned root instead of the viewport, and would otherwise turn
+      // into scrollable overflow here, producing a second scrollbar.
+      className={cn("relative overflow-hidden", className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
         className={cn(
-          "[&>div]:!block h-full w-full rounded-[inherit]",
+          // `relative` makes the scrolling viewport the containing block, so
+          // absolutely positioned content scrolls (and clips) with the content
+          // instead of leaking into the scroll area root.
+          "[&>div]:!block relative h-full w-full rounded-[inherit]",
           viewportClassname,
         )}
         ref={ref}
