@@ -423,16 +423,11 @@ const NotificationStatus: FC<{
         ? t("backgroundJobNotifications.failedNoExit")
         : t("backgroundJobNotifications.stopped");
   const statusContent = (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs",
-        {
-          "text-destructive": status === "failed",
-        },
-      )}
-    >
+    <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
       {label}
-      {status === "failed" && <X aria-hidden="true" className="size-4" />}
+      {status === "failed" && (
+        <X aria-hidden="true" className="size-4 text-destructive" />
+      )}
     </span>
   );
 

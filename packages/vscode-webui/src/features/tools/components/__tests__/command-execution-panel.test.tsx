@@ -272,6 +272,8 @@ describe("BackgroundJobPanel job control", () => {
     const status = screen.getByText("backgroundJobNotifications.failedNoExit");
     const statusIcon = container.querySelector(".lucide-x");
     expect(statusIcon?.getAttribute("aria-hidden")).toBe("true");
+    expect(status.classList.contains("text-destructive")).toBe(false);
+    expect(statusIcon?.classList.contains("text-destructive")).toBe(true);
     expect(status.lastElementChild).toBe(statusIcon);
     expect(screen.queryByText(fullSummary)).toBeNull();
 
