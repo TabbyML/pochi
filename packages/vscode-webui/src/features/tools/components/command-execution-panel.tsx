@@ -22,7 +22,6 @@ import {
   CopyIcon,
   FileText,
   TerminalIcon,
-  X,
   XCircle,
 } from "lucide-react";
 import {
@@ -332,31 +331,48 @@ export const BackgroundJobPanel: FC<{
       );
 
   if (isNotification) {
+    const notificationRowClassName =
+      "group flex w-full min-w-0 items-center gap-2 rounded-sm px-1 py-1 text-left text-sm hover:bg-muted/30";
+    const notificationRowContent = (
+      <>
+        <span className="inline-flex size-[16px] shrink-0 items-center justify-center rounded-sm bg-secondary text-secondary-foreground shadow-xs ring-primary">
+          <TerminalIcon className="size-3" />
+        </span>
+        <code
+          className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
+          title={resolvedCommand ?? backgroundJobId}
+        >
+          {resolvedCommand ?? backgroundJobId}
+        </code>
+      </>
+    );
+    const notificationRow = outputFile ? (
+      <button
+        type="button"
+        aria-label={t("backgroundJobNotifications.openOutput")}
+        className={cn(
+          notificationRowClassName,
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        )}
+        onClick={() => vscodeHost.openFile(outputFile)}
+      >
+        {notificationRowContent}
+      </button>
+    ) : (
+      <div className={notificationRowClassName}>{notificationRowContent}</div>
+    );
+
+    if (!summary) return notificationRow;
+
     return (
-      <div className="group flex min-w-0 items-center gap-3 rounded-sm px-1 py-1 text-sm hover:bg-muted/30">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <JobControlButton
-            label={
-              isTerminalClosed
-                ? closedLabel
-                : t("commandExecutionPanel.openJob", {
-                    displayId: info?.displayId ?? backgroundJobId,
-                  })
-            }
-            inert={isTerminalClosed && !canOpenOutputFile}
-            onClick={openTerminalOrOutputFile}
-          >
-            <TerminalIcon className="size-3" />
-          </JobControlButton>
-          <code
-            className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
-            title={resolvedCommand ?? backgroundJobId}
-          >
-            {resolvedCommand ?? backgroundJobId}
-          </code>
-        </div>
-        {status && <NotificationStatus status={status} summary={summary} />}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>{notificationRow}</TooltipTrigger>
+        <TooltipContent>
+          <span className="block max-w-sm whitespace-pre-wrap break-words">
+            {summary}
+          </span>
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -410,40 +426,6 @@ function recoverNotificationCommand(
 
   return summary.slice(prefix.length, markerIndex);
 }
-
-const NotificationStatus: FC<{
-  status: "completed" | "failed" | "stopped";
-  summary?: string;
-}> = ({ status, summary }) => {
-  const { t } = useTranslation();
-  const label =
-    status === "completed"
-      ? t("backgroundJobNotifications.completedNoExit")
-      : status === "failed"
-        ? t("backgroundJobNotifications.failedNoExit")
-        : t("backgroundJobNotifications.stopped");
-  const statusContent = (
-    <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
-      {label}
-      {status === "failed" && (
-        <X aria-hidden="true" className="size-4 text-destructive" />
-      )}
-    </span>
-  );
-
-  if (!summary) return statusContent;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{statusContent}</TooltipTrigger>
-      <TooltipContent>
-        <span className="block max-w-sm whitespace-pre-wrap break-words">
-          {summary}
-        </span>
-      </TooltipContent>
-    </Tooltip>
-  );
-};
 
 const BackgroundJobStatus: FC<{
   status: "completed" | "failed" | "stopped";

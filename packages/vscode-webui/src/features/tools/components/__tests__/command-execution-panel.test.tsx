@@ -147,7 +147,7 @@ describe("BackgroundJobPanel job control", () => {
     ).toBeNull();
   });
 
-  it("shows status text and exposes the full summary in a tooltip", async () => {
+  it("opens the output file from the notification row and shows its summary tooltip", async () => {
     jobInfo = undefined;
     const fullSummary =
       'Background command "echo 123" completed with exit code 0';
@@ -164,31 +164,31 @@ describe("BackgroundJobPanel job control", () => {
       />,
     );
 
-    expect(container.querySelector(".lucide-terminal")).toBeTruthy();
+    const terminalIcon = container.querySelector(".lucide-terminal");
+    const terminalControl = terminalIcon?.parentElement;
+    expect(terminalIcon?.classList.contains("size-3")).toBe(true);
+    expect(terminalControl?.classList.contains("bg-secondary")).toBe(true);
+    expect(terminalControl?.classList.contains("size-[16px]")).toBe(true);
+    expect(terminalControl?.classList.contains("h-8")).toBe(false);
+    expect(terminalControl?.classList.contains("px-3")).toBe(false);
     expect(screen.getByText("echo 123")).toBeDefined();
-    const status = screen.getByText(
-      "backgroundJobNotifications.completedNoExit",
-    );
-    expect(status.getAttribute("data-slot")).toBe("tooltip-trigger");
-    expect(container.querySelector(".lucide-check")).toBeNull();
+    expect(container.querySelector(".lucide-badge-check")).toBeNull();
+    const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
+    expect(row.getAttribute("data-slot")).toBe("tooltip-trigger");
     expect(screen.queryByText(fullSummary)).toBeNull();
-    expect(
-      screen.queryByLabelText("backgroundJobNotifications.openOutput"),
-    ).toBeNull();
 
-    fireEvent.pointerMove(status, { pointerType: "mouse" });
+    fireEvent.pointerMove(row, { pointerType: "mouse" });
     await waitFor(() =>
       expect(screen.getByRole("tooltip").textContent).toContain(fullSummary),
     );
 
-    fireEvent.click(
-      screen.getByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
-    );
+    fireEvent.click(row);
     expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    expect(openBackgroundJobTerminal).not.toHaveBeenCalled();
     expect(screen.queryByText("Job 1")).toBeNull();
   });
 
-  it("opens a live background terminal from the notification terminal button", () => {
+  it("opens the output file from the notification row while its terminal is live", () => {
     jobInfo = undefined;
     terminals = [
       { backgroundJobId: "bgjob-cmd-1", name: "zsh", isActive: false },
@@ -201,14 +201,18 @@ describe("BackgroundJobPanel job control", () => {
         command="echo 123"
         summary={'Background command "echo 123" completed with exit code 0'}
         status="completed"
+        outputFile="/tmp/bgjob-cmd-1.log"
       />,
     );
 
-    fireEvent.click(screen.getByLabelText("commandExecutionPanel.openJob"));
-    expect(openBackgroundJobTerminal).toHaveBeenCalledWith("bgjob-cmd-1");
+    fireEvent.click(
+      screen.getByLabelText("backgroundJobNotifications.openOutput"),
+    );
+    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    expect(openBackgroundJobTerminal).not.toHaveBeenCalled();
   });
 
-  it("truncates a long command without squeezing out its lifecycle summary", () => {
+  it("truncates a long notification command", () => {
     jobInfo = undefined;
     const longCommand = `bun run build ${"--filter package ".repeat(20)}`;
 
@@ -226,9 +230,6 @@ describe("BackgroundJobPanel job control", () => {
     expect(command?.classList.contains("truncate")).toBe(true);
     expect(command?.getAttribute("title")).toBe(longCommand);
     expect(command?.textContent).toBe(longCommand);
-    expect(
-      screen.getByText("backgroundJobNotifications.completedNoExit"),
-    ).toBeDefined();
   });
 
   it("recovers the actual command when structured data contains a legacy ID", () => {
@@ -246,13 +247,27 @@ describe("BackgroundJobPanel job control", () => {
     );
 
     expect(screen.getByText(command)).toBeDefined();
-    expect(
-      screen.getByText("backgroundJobNotifications.completedNoExit"),
-    ).toBeDefined();
     expect(screen.queryByText("bgjob-cmd-legacy")).toBeNull();
   });
 
-  it("shows an error icon and puts failure details in the status tooltip", async () => {
+  it("does not render a trailing status icon for a stopped notification", () => {
+    jobInfo = undefined;
+
+    const { container } = render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-cmd-1"
+        appearance="notification"
+        command="sleep 60"
+        summary={'Background command "sleep 60" was stopped'}
+        status="stopped"
+      />,
+    );
+
+    expect(container.querySelector(".lucide-octagon")).toBeNull();
+    expect(container.querySelectorAll(".lucide-terminal")).toHaveLength(1);
+  });
+
+  it("puts failure details in the notification row tooltip without a trailing icon", async () => {
     jobInfo = undefined;
     const fullSummary =
       'Background command "bun run build" failed: dependency unavailable';
@@ -269,15 +284,11 @@ describe("BackgroundJobPanel job control", () => {
     );
 
     expect(screen.getByText("bun run build")).toBeDefined();
-    const status = screen.getByText("backgroundJobNotifications.failedNoExit");
-    const statusIcon = container.querySelector(".lucide-x");
-    expect(statusIcon?.getAttribute("aria-hidden")).toBe("true");
-    expect(status.classList.contains("text-destructive")).toBe(false);
-    expect(statusIcon?.classList.contains("text-destructive")).toBe(true);
-    expect(status.lastElementChild).toBe(statusIcon);
+    expect(container.querySelector(".lucide-triangle-alert")).toBeNull();
+    const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
     expect(screen.queryByText(fullSummary)).toBeNull();
 
-    fireEvent.pointerMove(status, { pointerType: "mouse" });
+    fireEvent.pointerMove(row, { pointerType: "mouse" });
     await waitFor(() =>
       expect(screen.getByRole("tooltip").textContent).toContain(fullSummary),
     );
