@@ -585,6 +585,7 @@
   "backgroundJobNotifications": {
     "title": "Notifications",
     "completed": "Completed (exit {{exitCode}})",
+    "completedNoExit": "Completed",
     "failed": "Failed (exit {{exitCode}})",
     "failedNoExit": "Failed",
     "stopped": "Stopped",

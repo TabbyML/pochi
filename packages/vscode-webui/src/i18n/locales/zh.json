@@ -582,6 +582,7 @@
   "backgroundJobNotifications": {
     "title": "通知",
     "completed": "已完成（退出码 {{exitCode}}）",
+    "completedNoExit": "已完成",
     "failed": "失败（退出码 {{exitCode}}）",
     "failedNoExit": "失败",
     "stopped": "已停止",

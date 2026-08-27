@@ -355,13 +355,7 @@ export const BackgroundJobPanel: FC<{
             {resolvedCommand ?? backgroundJobId}
           </code>
         </div>
-        {status && (
-          <NotificationStatus
-            status={status}
-            exitCode={exitCode}
-            summary={summary}
-          />
-        )}
+        {status && <NotificationStatus status={status} summary={summary} />}
       </div>
     );
   }
@@ -419,11 +413,15 @@ function recoverNotificationCommand(
 
 const NotificationStatus: FC<{
   status: "completed" | "failed" | "stopped";
-  exitCode?: number;
   summary?: string;
-}> = ({ status, exitCode, summary }) => {
+}> = ({ status, summary }) => {
   const { t } = useTranslation();
-  const label = getBackgroundJobStatusLabel(status, exitCode, t);
+  const label =
+    status === "completed"
+      ? t("backgroundJobNotifications.completedNoExit")
+      : status === "failed"
+        ? t("backgroundJobNotifications.failedNoExit")
+        : t("backgroundJobNotifications.stopped");
   const statusContent = (
     <span
       className={cn(

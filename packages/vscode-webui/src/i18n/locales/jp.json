@@ -584,6 +584,7 @@
   "backgroundJobNotifications": {
     "title": "通知",
     "completed": "完了（終了コード {{exitCode}}）",
+    "completedNoExit": "完了",
     "failed": "失敗（終了コード {{exitCode}}）",
     "failedNoExit": "失敗",
     "stopped": "停止",

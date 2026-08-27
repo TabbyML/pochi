@@ -577,6 +577,7 @@
   "backgroundJobNotifications": {
     "title": "알림",
     "completed": "완료됨(종료 코드 {{exitCode}})",
+    "completedNoExit": "완료됨",
     "failed": "실패(종료 코드 {{exitCode}})",
     "failedNoExit": "실패",
     "stopped": "중지됨",

@@ -166,7 +166,9 @@ describe("BackgroundJobPanel job control", () => {
 
     expect(container.querySelector(".lucide-terminal")).toBeTruthy();
     expect(screen.getByText("echo 123")).toBeDefined();
-    const status = screen.getByText("backgroundJobNotifications.completed");
+    const status = screen.getByText(
+      "backgroundJobNotifications.completedNoExit",
+    );
     expect(status.getAttribute("data-slot")).toBe("tooltip-trigger");
     expect(container.querySelector(".lucide-check")).toBeNull();
     expect(screen.queryByText(fullSummary)).toBeNull();
@@ -225,7 +227,7 @@ describe("BackgroundJobPanel job control", () => {
     expect(command?.getAttribute("title")).toBe(longCommand);
     expect(command?.textContent).toBe(longCommand);
     expect(
-      screen.getByText("backgroundJobNotifications.completed"),
+      screen.getByText("backgroundJobNotifications.completedNoExit"),
     ).toBeDefined();
   });
 
@@ -245,7 +247,7 @@ describe("BackgroundJobPanel job control", () => {
 
     expect(screen.getByText(command)).toBeDefined();
     expect(
-      screen.getByText("backgroundJobNotifications.completed"),
+      screen.getByText("backgroundJobNotifications.completedNoExit"),
     ).toBeDefined();
     expect(screen.queryByText("bgjob-cmd-legacy")).toBeNull();
   });
