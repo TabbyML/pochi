@@ -12,8 +12,8 @@ import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import type { TFunction } from "i18next";
 import {
-  Check,
   CheckIcon,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
@@ -21,7 +21,6 @@ import {
   CircleStop,
   CopyIcon,
   FileText,
-  Pause,
   TerminalIcon,
   X,
   XCircle,
@@ -333,11 +332,6 @@ export const BackgroundJobPanel: FC<{
       );
 
   if (isNotification) {
-    const notificationSummary = formatNotificationSummary(
-      summary,
-      resolvedCommand,
-    );
-
     return (
       <div className="group flex min-w-0 items-center gap-3 rounded-sm px-1 py-1 text-sm hover:bg-muted/30">
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -361,24 +355,12 @@ export const BackgroundJobPanel: FC<{
             {resolvedCommand ?? backgroundJobId}
           </code>
         </div>
-        {(status || notificationSummary) && (
-          <div className="flex min-w-0 max-w-[50%] shrink-0 items-center gap-1.5">
-            {notificationSummary && (
-              <span
-                className="min-w-0 truncate text-muted-foreground text-xs"
-                title={summary}
-              >
-                {notificationSummary}
-              </span>
-            )}
-            {status && (
-              <BackgroundJobStatus
-                status={status}
-                exitCode={exitCode}
-                iconOnly
-              />
-            )}
-          </div>
+        {status && (
+          <NotificationStatus
+            status={status}
+            exitCode={exitCode}
+            summary={summary}
+          />
         )}
       </div>
     );
@@ -435,57 +417,53 @@ function recoverNotificationCommand(
   return summary.slice(prefix.length, markerIndex);
 }
 
-function formatNotificationSummary(
-  summary: string | undefined,
-  command: string | undefined,
-): string | undefined {
-  if (!summary || !command) return summary;
+const NotificationStatus: FC<{
+  status: "completed" | "failed" | "stopped";
+  exitCode?: number;
+  summary?: string;
+}> = ({ status, exitCode, summary }) => {
+  const { t } = useTranslation();
+  const label = getBackgroundJobStatusLabel(status, exitCode, t);
+  const statusContent = (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs",
+        {
+          "text-destructive": status === "failed",
+        },
+      )}
+    >
+      {label}
+      {status === "failed" && <X aria-hidden="true" className="size-4" />}
+    </span>
+  );
 
-  const commandPrefix = `Background command "${command}" `;
-  if (!summary.startsWith(commandPrefix)) return summary;
+  if (!summary) return statusContent;
 
-  const conciseSummary = summary.slice(commandPrefix.length);
-  return conciseSummary.charAt(0).toUpperCase() + conciseSummary.slice(1);
-}
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{statusContent}</TooltipTrigger>
+      <TooltipContent>
+        <span className="block max-w-sm whitespace-pre-wrap break-words">
+          {summary}
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 const BackgroundJobStatus: FC<{
   status: "completed" | "failed" | "stopped";
   exitCode?: number;
-  iconOnly?: boolean;
-}> = ({ status, exitCode, iconOnly = false }) => {
+}> = ({ status, exitCode }) => {
   const { t } = useTranslation();
-  const Icon = iconOnly
-    ? status === "completed"
-      ? Check
-      : status === "failed"
-        ? X
-        : Pause
-    : status === "completed"
+  const Icon =
+    status === "completed"
       ? CircleCheck
       : status === "stopped"
         ? CircleStop
         : XCircle;
-  const label =
-    status === "completed"
-      ? t("backgroundJobNotifications.completed", { exitCode: exitCode ?? 0 })
-      : status === "failed"
-        ? exitCode === undefined
-          ? t("backgroundJobNotifications.failedNoExit")
-          : t("backgroundJobNotifications.failed", { exitCode })
-        : t("backgroundJobNotifications.stopped");
-
-  if (iconOnly) {
-    return (
-      <Icon
-        aria-hidden="true"
-        className={cn("size-4 shrink-0", {
-          "text-emerald-700 dark:text-emerald-300": status === "completed",
-          "text-error": status === "failed",
-          "text-zinc-500 dark:text-zinc-400": status === "stopped",
-        })}
-      />
-    );
-  }
+  const label = getBackgroundJobStatusLabel(status, exitCode, t);
 
   return (
     <span
@@ -502,6 +480,20 @@ const BackgroundJobStatus: FC<{
     </span>
   );
 };
+
+function getBackgroundJobStatusLabel(
+  status: "completed" | "failed" | "stopped",
+  exitCode: number | undefined,
+  t: TFunction,
+): string {
+  return status === "completed"
+    ? t("backgroundJobNotifications.completed", { exitCode: exitCode ?? 0 })
+    : status === "failed"
+      ? exitCode === undefined
+        ? t("backgroundJobNotifications.failedNoExit")
+        : t("backgroundJobNotifications.failed", { exitCode })
+      : t("backgroundJobNotifications.stopped");
+}
 
 const OpenOutputFileButton: FC<{ outputFile: string }> = ({ outputFile }) => {
   const { t } = useTranslation();

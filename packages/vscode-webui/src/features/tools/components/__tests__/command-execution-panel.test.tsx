@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackgroundJobPanel } from "../command-execution-panel";
 
@@ -9,6 +9,15 @@ let terminals:
   | { backgroundJobId: string; name: string; isActive: boolean }[]
   | undefined = [];
 let jobInfo: { command: string | undefined; displayId: string } | undefined;
+
+vi.stubGlobal(
+  "ResizeObserver",
+  class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -138,15 +147,17 @@ describe("BackgroundJobPanel job control", () => {
     ).toBeNull();
   });
 
-  it("shows a terminal command followed by its lifecycle summary", () => {
+  it("shows status text and exposes the full summary in a tooltip", async () => {
     jobInfo = undefined;
+    const fullSummary =
+      'Background command "echo 123" completed with exit code 0';
 
     const { container } = render(
       <BackgroundJobPanel
         backgroundJobId="bgjob-cmd-1"
         appearance="notification"
         command="echo 123"
-        summary={'Background command "echo 123" completed with exit code 0'}
+        summary={fullSummary}
         status="completed"
         exitCode={0}
         outputFile="/tmp/bgjob-cmd-1.log"
@@ -155,15 +166,18 @@ describe("BackgroundJobPanel job control", () => {
 
     expect(container.querySelector(".lucide-terminal")).toBeTruthy();
     expect(screen.getByText("echo 123")).toBeDefined();
-    const summary = screen.getByText("Completed with exit code 0");
-    const statusIcon = container.querySelector(".lucide-check");
-    expect(statusIcon?.getAttribute("aria-hidden")).toBe("true");
-    expect(statusIcon?.getAttribute("data-slot")).toBeNull();
-    expect(summary.parentElement?.lastElementChild).toBe(statusIcon);
-    expect(screen.queryByLabelText("Completed with exit code 0")).toBeNull();
+    const status = screen.getByText("backgroundJobNotifications.completed");
+    expect(status.getAttribute("data-slot")).toBe("tooltip-trigger");
+    expect(container.querySelector(".lucide-check")).toBeNull();
+    expect(screen.queryByText(fullSummary)).toBeNull();
     expect(
       screen.queryByLabelText("backgroundJobNotifications.openOutput"),
     ).toBeNull();
+
+    fireEvent.pointerMove(status, { pointerType: "mouse" });
+    await waitFor(() =>
+      expect(screen.getByRole("tooltip").textContent).toContain(fullSummary),
+    );
 
     fireEvent.click(
       screen.getByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
@@ -210,7 +224,9 @@ describe("BackgroundJobPanel job control", () => {
     expect(command?.classList.contains("truncate")).toBe(true);
     expect(command?.getAttribute("title")).toBe(longCommand);
     expect(command?.textContent).toBe(longCommand);
-    expect(screen.getByText("Completed with exit code 0")).toBeDefined();
+    expect(
+      screen.getByText("backgroundJobNotifications.completed"),
+    ).toBeDefined();
   });
 
   it("recovers the actual command when structured data contains a legacy ID", () => {
@@ -228,27 +244,38 @@ describe("BackgroundJobPanel job control", () => {
     );
 
     expect(screen.getByText(command)).toBeDefined();
-    expect(screen.getByText("Completed")).toBeDefined();
+    expect(
+      screen.getByText("backgroundJobNotifications.completed"),
+    ).toBeDefined();
     expect(screen.queryByText("bgjob-cmd-legacy")).toBeNull();
   });
 
-  it("preserves failure details from the notification summary", () => {
+  it("shows an error icon and puts failure details in the status tooltip", async () => {
     jobInfo = undefined;
+    const fullSummary =
+      'Background command "bun run build" failed: dependency unavailable';
 
-    render(
+    const { container } = render(
       <BackgroundJobPanel
         backgroundJobId="bgjob-cmd-1"
         appearance="notification"
         command="bun run build"
-        summary={
-          'Background command "bun run build" failed: dependency unavailable'
-        }
+        summary={fullSummary}
         status="failed"
         outputFile="/tmp/bgjob-cmd-1.log"
       />,
     );
 
     expect(screen.getByText("bun run build")).toBeDefined();
-    expect(screen.getByText("Failed: dependency unavailable")).toBeDefined();
+    const status = screen.getByText("backgroundJobNotifications.failedNoExit");
+    const statusIcon = container.querySelector(".lucide-x");
+    expect(statusIcon?.getAttribute("aria-hidden")).toBe("true");
+    expect(status.lastElementChild).toBe(statusIcon);
+    expect(screen.queryByText(fullSummary)).toBeNull();
+
+    fireEvent.pointerMove(status, { pointerType: "mouse" });
+    await waitFor(() =>
+      expect(screen.getByRole("tooltip").textContent).toContain(fullSummary),
+    );
   });
 });

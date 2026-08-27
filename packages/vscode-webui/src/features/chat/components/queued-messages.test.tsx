@@ -23,23 +23,17 @@ vi.mock("@/features/tools", () => ({
   BackgroundJobPanel: ({
     command,
     summary,
+    status,
   }: {
     command?: string;
     summary?: string;
-  }) => {
-    const prefix = command ? `Background command "${command}" ` : "";
-    const conciseSummary =
-      summary && prefix && summary.startsWith(prefix)
-        ? summary.slice(prefix.length)
-        : summary;
-    return (
-      <div>
-        <span aria-hidden="true">status</span>
-        <span>{command}</span>
-        <span>{conciseSummary}</span>
-      </div>
-    );
-  },
+    status?: string;
+  }) => (
+    <div>
+      <span>{command}</span>
+      <span title={summary}>{status}</span>
+    </div>
+  ),
 }));
 
 describe("QueuedMessages", () => {
@@ -160,7 +154,7 @@ describe("QueuedMessages", () => {
     );
   });
 
-  it("shows queued notification commands and lifecycle summaries", () => {
+  it("shows queued notification commands and statuses", () => {
     const { container, getAllByText, getByText, queryByLabelText } = render(
       <QueuedMessages
         messages={[
