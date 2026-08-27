@@ -160,7 +160,7 @@ export const MessageList: React.FC<{
     <BackgroundJobContextProvider messages={messages}>
       <MermaidContextProvider value={mermaidContextValue}>
         <ScrollArea
-          className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
+          className={cn("mb-2 min-h-0 flex-1 px-4", className)}
           viewportClassname={viewportClassname}
           ref={containerRef}
         >
