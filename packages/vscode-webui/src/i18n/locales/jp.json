@@ -514,6 +514,8 @@
     "expand": "展開",
     "openJob": "ジョブ {{displayId}} を開く",
     "openTerminal": "ターミナル {{name}} を開く",
+    "terminalClosed": "このターミナルは閉じられています",
+    "terminalClosedOpenOutput": "このターミナルは閉じられています。出力ログを開きます",
     "userTerminal": "ユーザーターミナル",
     "stop": "停止"
   },
@@ -580,9 +582,7 @@
     "diffTitle": "ユーザー編集"
   },
   "backgroundJobNotifications": {
-    "title": "バックグラウンドジョブ通知",
-    "notificationCount_one": "{{count}} 件の通知",
-    "notificationCount_other": "{{count}} 件の通知",
+    "title": "通知",
     "completed": "完了（終了コード {{exitCode}}）",
     "failed": "失敗（終了コード {{exitCode}}）",
     "failedNoExit": "失敗",

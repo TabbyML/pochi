@@ -512,6 +512,8 @@
     "expand": "펼치기",
     "openJob": "작업 {{displayId}} 열기",
     "openTerminal": "터미널 {{name}} 열기",
+    "terminalClosed": "이 터미널은 닫혔습니다",
+    "terminalClosedOpenOutput": "이 터미널은 닫혔습니다. 출력 로그를 엽니다",
     "userTerminal": "사용자 터미널",
     "stop": "중지"
   },
@@ -573,9 +575,7 @@
     "diffTitle": "사용자 편집"
   },
   "backgroundJobNotifications": {
-    "title": "백그라운드 작업 알림",
-    "notificationCount_one": "알림 {{count}}개",
-    "notificationCount_other": "알림 {{count}}개",
+    "title": "알림",
     "completed": "완료됨(종료 코드 {{exitCode}})",
     "failed": "실패(종료 코드 {{exitCode}})",
     "failedNoExit": "실패",

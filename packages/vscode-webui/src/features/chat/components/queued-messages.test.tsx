@@ -19,6 +19,29 @@ vi.mock("@/lib/vscode", () => ({
   },
 }));
 
+vi.mock("@/features/tools", () => ({
+  BackgroundJobPanel: ({
+    command,
+    summary,
+  }: {
+    command?: string;
+    summary?: string;
+  }) => {
+    const prefix = command ? `Background command "${command}" ` : "";
+    const conciseSummary =
+      summary && prefix && summary.startsWith(prefix)
+        ? summary.slice(prefix.length)
+        : summary;
+    return (
+      <div>
+        <span aria-hidden="true">status</span>
+        <span>{command}</span>
+        <span>{conciseSummary}</span>
+      </div>
+    );
+  },
+}));
+
 describe("QueuedMessages", () => {
   it("uses the todo icon for queued todo-mode messages", () => {
     const { container } = render(
@@ -137,20 +160,65 @@ describe("QueuedMessages", () => {
     );
   });
 
-  it("does not offer removal for a system notification", () => {
-    const { queryByLabelText } = render(
+  it("shows queued notification commands and lifecycle summaries", () => {
+    const { container, getAllByText, getByText, queryByLabelText } = render(
       <QueuedMessages
         messages={[
-          queuedMessage({
-            text: "background job completed",
-            nonRemovable: true,
-          }),
+          {
+            parts: [
+              {
+                type: "data-background-job-notification",
+                data: {
+                  notificationId: "notification-1",
+                  backgroundJobId: "bgjob-cmd-1",
+                  outputFile: "/tmp/bgjob-cmd-1.log",
+                  command: "sleep 2 && echo secret",
+                  status: "completed",
+                  summary:
+                    'Background command "sleep 2 && echo secret" completed',
+                  exitCode: 0,
+                  finishedAt: 1,
+                },
+              },
+              {
+                type: "data-background-job-notification",
+                data: {
+                  notificationId: "notification-2",
+                  backgroundJobId: "bgjob-cmd-2",
+                  outputFile: "/tmp/bgjob-cmd-2.log",
+                  command: "sleep 4 && echo hidden",
+                  status: "completed",
+                  summary:
+                    'Background command "sleep 4 && echo hidden" completed',
+                  exitCode: 0,
+                  finishedAt: 2,
+                },
+              },
+            ],
+            raw: {
+              text: "raw command summaries",
+              nonRemovable: true,
+            },
+          },
         ]}
         onRemove={vi.fn()}
         onSteer={vi.fn()}
       />,
     );
 
+    expect(getByText("backgroundJobNotifications.title")).toBeTruthy();
+    expect(getByText("2").getAttribute("data-slot")).toBe("badge");
+    const firstCommand = getByText("sleep 2 && echo secret");
+    expect(firstCommand).toBeTruthy();
+    const notificationItems = firstCommand.parentElement?.parentElement;
+    expect(notificationItems?.classList.contains("ml-5")).toBe(false);
+    expect(notificationItems?.classList.contains("-ml-1")).toBe(true);
+    expect(getByText("sleep 4 && echo hidden")).toBeTruthy();
+    expect(queryByLabelText("completed")).toBeNull();
+    expect(getAllByText("completed")).toHaveLength(2);
+    expect(container.textContent).not.toContain("Job 1");
+    expect(container.textContent).not.toContain("raw command summaries");
+    expect(container.querySelector(".lucide-bell")).toBeTruthy();
     expect(queryByLabelText("Remove queued message")).toBeNull();
     expect(queryByLabelText("chat.steer")).toBeTruthy();
   });

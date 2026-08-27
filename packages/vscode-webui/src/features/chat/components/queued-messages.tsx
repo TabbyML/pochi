@@ -1,4 +1,6 @@
 import { CodeBlock } from "@/components/message";
+import { BackgroundJobNotificationItems } from "@/components/message/background-job-notifications";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -12,9 +14,11 @@ import {
   languageIdFromExtension,
 } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import type { BackgroundJobNotification } from "@getpochi/common";
 import { parseTitle } from "@getpochi/common/message-utils";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import {
+  Bell,
   CornerDownRight,
   FileCode,
   ListEnd,
@@ -36,6 +40,7 @@ interface RenderMessage {
   title: string;
   details: string;
   isTodoMode?: boolean;
+  notifications?: BackgroundJobNotification[];
   activeSelection?: ActiveSelection;
   nonRemovable?: boolean;
 }
@@ -48,7 +53,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
 }) => {
   const { t } = useTranslation();
   const renderMessages = useMemo<RenderMessage[]>(() => {
-    return messages.map(({ raw }) => {
+    return messages.map(({ parts, raw }) => {
       const {
         text = "",
         filesCount = 0,
@@ -58,22 +63,35 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         isTodoMode,
         activeSelection,
       } = raw;
-      const title = text.trim() ? parseTitle(text) : t("chat.noMessage");
-      const details = [
-        filesCount > 0 ? t("chat.fileCount", { count: filesCount }) : "",
-        reviewsCount > 0 ? t("chat.reviewCount", { count: reviewsCount }) : "",
-        userEditsCount > 0
-          ? t("chat.userEditCount", { count: userEditsCount })
-          : "",
-        terminalContextCount > 0
-          ? t("chat.terminalContextCount", { count: terminalContextCount })
-          : "",
-      ].filter(Boolean);
+      const notifications = parts.flatMap((part) =>
+        part.type === "data-background-job-notification" ? [part.data] : [],
+      );
+      const isNotification = notifications.length > 0;
+      const title = isNotification
+        ? t("backgroundJobNotifications.title")
+        : text.trim()
+          ? parseTitle(text)
+          : t("chat.noMessage");
+      const details = isNotification
+        ? [String(notifications.length)]
+        : [
+            filesCount > 0 ? t("chat.fileCount", { count: filesCount }) : "",
+            reviewsCount > 0
+              ? t("chat.reviewCount", { count: reviewsCount })
+              : "",
+            userEditsCount > 0
+              ? t("chat.userEditCount", { count: userEditsCount })
+              : "",
+            terminalContextCount > 0
+              ? t("chat.terminalContextCount", { count: terminalContextCount })
+              : "",
+          ].filter(Boolean);
 
       return {
         title,
         details: details.join(" · "),
         isTodoMode,
+        notifications: isNotification ? notifications : undefined,
         activeSelection,
         nonRemovable: raw.nonRemovable,
       };
@@ -81,68 +99,88 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   }, [messages, t]);
 
   return (
-    <div className="mx-1 mt-2 mb-1.5 flex max-h-28 flex-col gap-0.5 overflow-y-auto rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
+    <div className="mx-1 mt-2 mb-1.5 flex max-h-40 flex-col gap-0.5 overflow-y-auto rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
       {renderMessages.map((message, index) => (
         <div
           key={index}
-          className="group flex h-6 items-center gap-2 text-muted-foreground"
+          className="group flex flex-col gap-0.5 text-muted-foreground"
         >
-          {message.isTodoMode ? (
-            <Target className="size-3.5 shrink-0" />
-          ) : (
-            <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
-          )}
-          <div className="flex min-w-0 flex-1 items-center gap-1.5">
-            <p
-              className="min-w-0 truncate text-sm"
-              title={
-                message.details
-                  ? `${message.title} (${message.details})`
-                  : message.title
-              }
-            >
-              {message.title}
-            </p>
-            {message.details ? (
-              <span className="shrink-0 text-muted-foreground/70 text-xs">
-                {message.details}
-              </span>
-            ) : null}
-          </div>
-          {message.activeSelection && (
-            <ActiveSelectionPreviewIcon
-              activeSelection={message.activeSelection}
-            />
-          )}
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              variant="ghost"
-              size="xs"
-              type="button"
-              onClick={() => onSteer?.(index)}
-              aria-label={t("chat.steer")}
-              disabled={!onSteer || !allowSteer}
-              className={cn(
-                "h-7 gap-1 rounded-full px-1.5 text-muted-foreground text-sm",
-                "hover:bg-transparent hover:text-foreground",
-              )}
-            >
-              <CornerDownRight className="size-3.5" />
-              <span>{t("chat.steer")}</span>
-            </Button>
-            {!message.nonRemovable && (
+          <div className="flex h-6 w-full items-center gap-2">
+            {message.notifications ? (
+              <Bell className="size-3.5 shrink-0" />
+            ) : message.isTodoMode ? (
+              <Target className="size-3.5 shrink-0" />
+            ) : (
+              <ListEnd className="size-3.5 shrink-0 scale-x-[-1]" />
+            )}
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <p
+                className="min-w-0 truncate text-sm"
+                title={
+                  message.details
+                    ? `${message.title} (${message.details})`
+                    : message.title
+                }
+              >
+                {message.title}
+              </p>
+              {message.details ? (
+                message.notifications ? (
+                  <Badge
+                    variant="secondary"
+                    className="h-5 min-w-5 rounded-full px-1.5 text-muted-foreground"
+                  >
+                    {message.details}
+                  </Badge>
+                ) : (
+                  <span className="shrink-0 text-muted-foreground/70 text-xs">
+                    {message.details}
+                  </span>
+                )
+              ) : null}
+            </div>
+            {message.activeSelection && (
+              <ActiveSelectionPreviewIcon
+                activeSelection={message.activeSelection}
+              />
+            )}
+            <div className="flex shrink-0 items-center gap-1">
               <Button
                 variant="ghost"
-                size="icon"
+                size="xs"
                 type="button"
-                aria-label="Remove queued message"
-                onClick={() => onRemove(index)}
-                className="h-7 w-7 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
+                onClick={() => onSteer?.(index)}
+                aria-label={t("chat.steer")}
+                disabled={!onSteer || !allowSteer}
+                className={cn(
+                  "h-7 gap-1 rounded-full px-1.5 text-muted-foreground text-sm",
+                  "hover:bg-transparent hover:text-foreground",
+                )}
               >
-                <Trash2 className="size-3.5" />
+                <CornerDownRight className="size-3.5" />
+                <span>{t("chat.steer")}</span>
               </Button>
-            )}
+              {!message.nonRemovable && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  aria-label="Remove queued message"
+                  onClick={() => onRemove(index)}
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
+          {message.notifications && (
+            <div className="-ml-1 flex min-w-0 flex-col gap-0.5">
+              <BackgroundJobNotificationItems
+                notifications={message.notifications}
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>
