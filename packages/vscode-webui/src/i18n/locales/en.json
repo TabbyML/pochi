@@ -520,6 +520,8 @@
     "expand": "Expand",
     "openJob": "Open Job {{displayId}}",
     "openTerminal": "Open terminal {{name}}",
+    "terminalClosed": "The terminal has been closed",
+    "terminalClosedOpenOutput": "The terminal has been closed, open its output log",
     "userTerminal": "User terminal",
     "stop": "STOP"
   },
@@ -581,10 +583,9 @@
     "diffTitle": "User Edits"
   },
   "backgroundJobNotifications": {
-    "title": "Background job notifications",
-    "notificationCount_one": "{{count}} notification",
-    "notificationCount_other": "{{count}} notifications",
+    "title": "Notifications",
     "completed": "Completed (exit {{exitCode}})",
+    "completedNoExit": "Completed",
     "failed": "Failed (exit {{exitCode}})",
     "failedNoExit": "Failed",
     "stopped": "Stopped",

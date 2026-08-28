@@ -5,12 +5,9 @@ import { BackgroundJobNotifications } from "../background-job-notifications";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
+    t: (key: string) => {
       if (key === "backgroundJobNotifications.title") {
-        return "Background job notifications";
-      }
-      if (key === "backgroundJobNotifications.notificationCount") {
-        return `${options?.count} notifications`;
+        return "Notifications";
       }
       return key;
     },
@@ -41,12 +38,14 @@ vi.mock("@/features/tools", () => ({
   BackgroundJobPanel: ({
     backgroundJobId,
     command,
+    summary,
     status,
     outputFile,
     appearance,
   }: {
     backgroundJobId: string;
     command?: string;
+    summary?: string;
     status?: string;
     outputFile?: string;
     appearance?: string;
@@ -58,7 +57,8 @@ vi.mock("@/features/tools", () => ({
       data-output-file={outputFile}
       data-appearance={appearance}
     >
-      {command}
+      <span>{command}</span>
+      <span>{summary}</span>
     </div>
   ),
 }));
@@ -75,8 +75,8 @@ describe("BackgroundJobNotifications", () => {
     );
 
     expect(container.querySelectorAll("section")).toHaveLength(1);
-    expect(getByText("Background job notifications")).toBeDefined();
-    expect(getByText("2 notifications")).toBeDefined();
+    expect(getByText("Notifications")).toBeDefined();
+    expect(getByText("2").getAttribute("data-slot")).toBe("badge");
     expect(getAllByTestId("background-job-panel")).toHaveLength(2);
     expect(
       getAllByTestId("background-job-panel")[0]?.getAttribute(
@@ -85,6 +85,10 @@ describe("BackgroundJobNotifications", () => {
     ).toBe("notification");
     expect(getByText("run bgjob-cmd-1")).toBeDefined();
     expect(getByText("run bgjob-cmd-2")).toBeDefined();
+    expect(getByText("bgjob-cmd-1 completed")).toBeDefined();
+    expect(getByText("bgjob-cmd-2 failed")).toBeDefined();
+    expect(container.textContent).not.toContain("Job 1");
+    expect(container.textContent).not.toContain("Job 2");
   });
 });
 
