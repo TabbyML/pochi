@@ -512,6 +512,8 @@
     "expand": "展开",
     "openJob": "打开任务 {{displayId}}",
     "openTerminal": "打开终端 {{name}}",
+    "terminalClosed": "该终端已关闭",
+    "terminalClosedOpenOutput": "该终端已关闭，点击打开输出日志",
     "userTerminal": "用户终端",
     "stop": "停止"
   },
@@ -578,10 +580,9 @@
     "diffTitle": "用户编辑"
   },
   "backgroundJobNotifications": {
-    "title": "后台任务通知",
-    "notificationCount_one": "{{count}} 条通知",
-    "notificationCount_other": "{{count}} 条通知",
+    "title": "通知",
     "completed": "已完成（退出码 {{exitCode}}）",
+    "completedNoExit": "已完成",
     "failed": "失败（退出码 {{exitCode}}）",
     "failedNoExit": "失败",
     "stopped": "已停止",
