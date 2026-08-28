@@ -71,6 +71,15 @@ describe("long-term memory prompt helpers", () => {
     expect(staticPrompt).toContain(
       "delivered separately as its own system reminder",
     );
+    expect(staticPrompt).toContain(
+      "A background memory agent automatically reviews completed tasks",
+    );
+    expect(staticPrompt).toContain(
+      "do not update memory unless you first ask the user and receive explicit confirmation",
+    );
+    expect(staticPrompt).toContain(
+      "A direct user request to remember or forget something already counts as confirmation",
+    );
   });
 
   it("dynamic prompt renders the live MEMORY.md index inline", () => {
