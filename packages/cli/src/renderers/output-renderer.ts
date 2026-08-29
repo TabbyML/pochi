@@ -278,12 +278,22 @@ export function renderToolPart(
   }
 
   if (part.type === "tool-searchFiles") {
-    const { regex = "", path = ".", filePattern = "" } = part.input || {};
+    const {
+      regex = "",
+      path = ".",
+      filePattern = "",
+      limit,
+    } = part.input || {};
     const searchDesc = filePattern
       ? `${chalk.bold(regex)} in ${chalk.bold(filePattern)} files`
       : `${chalk.bold(regex)}`;
+    const limitDesc = limit !== undefined ? ` (limit: ${limit})` : "";
+    const matchDesc =
+      limit !== undefined && part.state === "output-available" && !hasError
+        ? `, ${part.output.matches.length} matched`
+        : "";
     return {
-      text: `🔍 Searching for ${searchDesc} in ${formatCliDisplayPath(path)}`,
+      text: `🔍 Searching for ${searchDesc} in ${formatCliDisplayPath(path)}${limitDesc}${matchDesc}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
