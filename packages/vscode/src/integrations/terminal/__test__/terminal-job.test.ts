@@ -267,7 +267,8 @@ describe("TerminalJob", () => {
       read: async function* () {
         yield "ready\uFFFD";
         yield "^";
-        yield "C";
+        yield "C\r\n";
+        yield "   \r\r";
         await outputStopped;
       },
     });
@@ -289,7 +290,7 @@ describe("TerminalJob", () => {
     assert.deepStrictEqual(harness.lifecycle, [
       "output:$ sleep 10\n",
       "output:ready",
-      "output:^C",
+      "output:^C\r\n   \r\r",
       "file-closed",
       "event-fired",
     ]);
