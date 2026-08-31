@@ -22,6 +22,7 @@ type ForkAgentInput<TMessage extends UIMessage> = {
   parentCwd: string | undefined;
   directive: string;
   tools?: readonly ToolSpecInput[];
+  maxSteps: number;
 };
 
 export type ForkAgent<TMessage extends UIMessage> = {
@@ -31,6 +32,7 @@ export type ForkAgent<TMessage extends UIMessage> = {
   initTitle: string | undefined;
   parentTaskId: string | undefined;
   tools: readonly ToolSpecInput[] | undefined;
+  maxSteps: number;
   baselineStepCount: number;
 };
 
@@ -94,6 +96,7 @@ export function createForkAgent<TMessage extends UIMessage>(
       parentMessages: input.parentMessages.length,
       initMessages: initMessages.length,
       tools: input.tools?.length,
+      maxSteps: input.maxSteps,
       baselineStepCount,
     },
     "Creating fork agent",
@@ -106,6 +109,7 @@ export function createForkAgent<TMessage extends UIMessage>(
     initTitle: input.initTitle,
     parentTaskId: input.parentTaskId,
     tools,
+    maxSteps: input.maxSteps,
     baselineStepCount,
   };
 }

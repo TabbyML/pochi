@@ -123,6 +123,28 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
+  it("uses the background task's configured max steps", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([{ type: "step-start" }, { type: "step-start" }]),
+    ]);
+    const adaptor = makeAdaptor({ executeToolCall: vi.fn() });
+    const executor = makeExecutor(store, adaptor, { maxSteps: 1 });
+
+    await executor.drain();
+
+    expect(store.readTask("task")).toMatchObject({
+      status: "failed",
+      error: {
+        kind: "InternalError",
+        message: "The task failed to complete, max step count reached.",
+      },
+    });
+    await executor.dispose();
+  });
+
   it("does not start duplicate running tasks for the same active task", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-tool" }),

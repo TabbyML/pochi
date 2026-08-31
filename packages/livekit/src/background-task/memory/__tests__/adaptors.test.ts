@@ -50,6 +50,7 @@ describe("task-memory adaptor", () => {
     expect(await stateStore.read(task.id)).toMatchObject({
       parentTaskId: "parent",
       useCase: "task-memory",
+      maxSteps: 3,
     });
   });
 
@@ -252,6 +253,7 @@ describe("auto-memory adaptor", () => {
     expect(await stateStore.read(task.id)).toMatchObject({
       parentTaskId: "parent",
       useCase: "auto-memory",
+      maxSteps: 5,
       tools: [
         "readFile(/repo/.pochi/memory/**)",
         "readFile(/repo/.pochi/transcripts/**)",
@@ -478,6 +480,10 @@ describe("auto-memory adaptor", () => {
       status: "pending-model",
       title: "[Auto Memory Dream]",
     });
+    expect(await stateStore.read(dreamTask?.id ?? "")).toMatchObject({
+      useCase: "auto-memory-dream",
+      maxSteps: 20,
+    });
     expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
 
     store.updateTaskStatus(dreamTask?.id ?? "", "completed");
@@ -547,6 +553,7 @@ function createTestBackgroundTask({
         parentTaskId: agent.parentTaskId,
         tools: agent.tools,
         useCase: agent.label,
+        maxSteps: agent.maxSteps,
         baselineStepCount: agent.baselineStepCount,
       });
       store.commit(

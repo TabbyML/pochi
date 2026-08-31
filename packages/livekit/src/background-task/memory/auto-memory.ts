@@ -31,6 +31,8 @@ const MemoryReadToolNames = [
   "searchFiles",
 ] as const;
 const MemoryAgentWriteToolNames = ["writeToFile", "applyDiff"] as const;
+const AutoMemoryMaxSteps = 5;
+const AutoMemoryDreamMaxSteps = 20;
 const MaxSessionTranscriptChars = 24_000;
 const MaxPartChars = 4_000;
 
@@ -76,6 +78,7 @@ async function startAutoMemoryExtraction<TMessage extends UIMessage>({
         previousMessageCount,
       }),
       tools: buildMemoryTools(context),
+      maxSteps: AutoMemoryMaxSteps,
     });
     const handle = await startForkAgent(agent);
 
@@ -148,6 +151,7 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
         sessions,
       }),
       tools: buildMemoryTools(run.context),
+      maxSteps: AutoMemoryDreamMaxSteps,
     });
     const handle = await startForkAgent(agent);
 

@@ -177,6 +177,7 @@ async function createBackgroundTaskFromForkAgent({
     parentTaskId: agent.parentTaskId,
     tools: agent.tools,
     useCase: agent.label,
+    maxSteps: agent.maxSteps,
     baselineStepCount: agent.baselineStepCount,
   });
 

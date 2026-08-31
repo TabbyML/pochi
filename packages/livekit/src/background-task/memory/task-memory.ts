@@ -43,6 +43,7 @@ const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
   "readFile",
   `writeToFile(${TaskMemoryFileUri})`,
 ];
+const TaskMemoryMaxSteps = 3;
 
 const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 
@@ -124,6 +125,7 @@ async function startTaskMemoryExtraction<TMessage extends UIMessage>({
       parentCwd,
       directive: prompts.taskMemory.buildExtractionDirective(existingMemory),
       tools: TaskMemoryAllowedTools,
+      maxSteps: TaskMemoryMaxSteps,
     });
     const handle = await startForkAgent(agent);
 

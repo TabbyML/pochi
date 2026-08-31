@@ -604,8 +604,9 @@ class RunningTask {
       0,
       stepCount - (this.taskState.baselineStepCount ?? 0),
     );
+    const maxSteps = this.taskState.maxSteps ?? TaskExecutorMaxStep;
 
-    if (effectiveStepCount > TaskExecutorMaxStep) {
+    if (effectiveStepCount > maxSteps) {
       throw new Error("The task failed to complete, max step count reached.");
     }
   }
