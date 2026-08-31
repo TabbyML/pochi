@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BackgroundTaskDebugPanel } from "./background-task-debug-panel";
+import {
+  BackgroundTaskDetail,
+  BackgroundTaskList,
+} from "./background-task-debug-panel";
 
 const task = {
   id: "task-1",
@@ -14,6 +17,11 @@ const task = {
 };
 
 let messageRows: Array<{ data: unknown }> = [];
+let backgroundTasks: unknown[] = [task];
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 
 vi.mock("@/components/task-thread", () => ({
   TaskThread: ({
@@ -45,16 +53,6 @@ vi.mock("@/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/hover-card", () => ({
-  HoverCard: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
-
-vi.mock("@/features/settings", () => ({
-  useIsDevMode: () => [true],
-}));
-
 vi.mock("@/lib/hooks/use-background-task-state", () => ({
   useBackgroundTaskState: () => ({
     backgroundTaskState: {
@@ -78,7 +76,7 @@ vi.mock("@getpochi/livekit", () => ({
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({
     useQuery: (query: string) => {
-      if (query === "backgroundTasks") return [task];
+      if (query === "backgroundTasks") return backgroundTasks;
       if (query === "task") return task;
       if (query === "messages") return messageRows;
       return [];
@@ -86,8 +84,28 @@ vi.mock("@/lib/use-default-store", () => ({
   }),
 }));
 
+/** Mirrors how the manage panel wires the list to the detail drawer. */
+function BackgroundTaskDebugSection() {
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  return (
+    <>
+      <BackgroundTaskList
+        selectedTaskId={selectedTaskId}
+        onSelect={setSelectedTaskId}
+      />
+      {selectedTaskId && (
+        <BackgroundTaskDetail
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
+    </>
+  );
+}
+
 function openTaskDetail() {
-  render(<BackgroundTaskDebugPanel />);
+  render(<BackgroundTaskDebugSection />);
   fireEvent.click(screen.getByText("Background task"));
 }
 
@@ -95,9 +113,30 @@ function getDetailValue(label: string): string | null | undefined {
   return screen.getByText(label).parentElement?.lastElementChild?.textContent;
 }
 
-describe("BackgroundTaskDebugPanel", () => {
+describe("background task debug section", () => {
   beforeEach(() => {
     messageRows = [];
+    backgroundTasks = [task];
+  });
+
+  it("holds a long task list back behind a see-more toggle", () => {
+    backgroundTasks = Array.from({ length: 7 }, (_, index) => ({
+      ...task,
+      id: `task-${index}`,
+      title: `Task ${index}`,
+    }));
+
+    render(<BackgroundTaskDebugSection />);
+
+    // Five rows, then the offer to see the other two.
+    expect(screen.getByText("Task 4")).toBeDefined();
+    expect(screen.queryByText("Task 5")).toBeNull();
+
+    fireEvent.click(screen.getByText("managePanel.seeMore"));
+    expect(screen.getByText("Task 6")).toBeDefined();
+
+    fireEvent.click(screen.getByText("managePanel.seeLess"));
+    expect(screen.queryByText("Task 5")).toBeNull();
   });
 
   it("uses a single borderless scroll area that fills the remaining height", () => {

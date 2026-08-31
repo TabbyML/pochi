@@ -1,3 +1,4 @@
+import { JobControlButton } from "@/components/job-control-button";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -6,10 +7,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useBackgroundJobInfo } from "@/features/chat";
-import { useBackgroundCommands } from "@/lib/hooks/use-background-commands";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
+import { useOpenBackgroundJob } from "@/lib/hooks/use-open-background-job";
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
@@ -25,14 +25,7 @@ import {
   TerminalIcon,
   XCircle,
 } from "lucide-react";
-import {
-  type FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { XTerm } from "./xterm";
 
@@ -107,50 +100,6 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
     </Tooltip>
   );
 };
-
-/**
- * The badge in front of a job/terminal panel: opens the live terminal, or --
- * once that terminal is gone -- its recorded output file.
- */
-const JobControlButton: FC<{
-  label: string;
-  isActive?: boolean;
-  /** Nothing left to open: keep the badge, drop the interaction. */
-  inert?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}> = ({ label, isActive, inert, onClick, children }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      {inert ? (
-        // A plain span rather than a disabled button: disabled buttons swallow
-        // pointer events, which would hide the tooltip explaining why nothing
-        // can be opened anymore.
-        <span
-          aria-label={label}
-          className="inline-flex size-[16px] shrink-0 cursor-default items-center justify-center rounded-sm bg-secondary text-muted-foreground opacity-60"
-        >
-          {children}
-        </span>
-      ) : (
-        <Button
-          size="sm"
-          aria-label={label}
-          className={cn("size-[16px] rounded-sm ring-primary", {
-            "ring-1": isActive,
-          })}
-          variant="secondary"
-          onClick={onClick}
-        >
-          {children}
-        </Button>
-      )}
-    </TooltipTrigger>
-    <TooltipContent>
-      <span>{label}</span>
-    </TooltipContent>
-  </Tooltip>
-);
 
 export const CommandPanelContainer: FC<{
   icon: React.ReactNode;
@@ -246,19 +195,13 @@ export const BackgroundJobPanel: FC<{
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
-  const { backgroundCommands, show: showBackgroundCommand } =
-    useBackgroundCommands();
-  const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
+  const {
+    liveTerminal,
+    isTerminalClosed,
+    canOpenOutputFile,
+    open: openTerminalOrOutputFile,
+  } = useOpenBackgroundJob(backgroundJobId, outputFile);
   const isUserTerminal = backgroundJobId.startsWith("term-");
-  const isDetachableBackgroundCommand =
-    backgroundCommands?.[backgroundJobId] !== undefined;
-  // Live name wins over the snapshot: the terminal may have been renamed
-  // since the read. The snapshot keeps historical reads meaningful after the
-  // terminal is closed.
-  const liveTerminal = useMemo(
-    () => terminals?.find((tm) => tm.backgroundJobId === backgroundJobId),
-    [backgroundJobId, terminals],
-  );
   const isNotification = appearance === "notification";
   const recoveredNotificationCommand = isNotification
     ? recoverNotificationCommand(summary, status)
@@ -268,6 +211,9 @@ export const BackgroundJobPanel: FC<{
     : (info?.command ?? command);
   const hasTrackedJob = Boolean(info?.command);
   const copyCommand = resolvedCommand ?? lastCommand;
+  // Live name wins over the snapshot: the terminal may have been renamed since
+  // the read. The snapshot keeps historical reads meaningful after the
+  // terminal is closed.
   const displayTerminalName = formatTerminalDisplayName(
     liveTerminal?.name ?? terminalName,
     lastCommand,
@@ -277,32 +223,6 @@ export const BackgroundJobPanel: FC<{
     : (resolvedCommand ?? backgroundJobId);
   const isActive = liveTerminal?.isActive ?? false;
 
-  // Terminals closed after the read keep their badge, so the panel still reads
-  // as a terminal/job panel; the badge then falls back to the output file.
-  const isTerminalClosed = terminals !== undefined && !liveTerminal;
-  const canOpenOutputFile = isTerminalClosed && outputFile !== undefined;
-
-  const openTerminalOrOutputFile = useCallback(() => {
-    if (isTerminalClosed) {
-      if (outputFile) vscodeHost.openFile(outputFile);
-      return;
-    }
-    if (isDetachableBackgroundCommand) {
-      showBackgroundCommand?.(backgroundJobId);
-    } else if (isUserTerminal || backgroundCommands !== undefined) {
-      // Keep the legacy terminal path for user terminals and shell fallbacks.
-      openBackgroundJobTerminal?.(backgroundJobId);
-    }
-  }, [
-    backgroundCommands,
-    backgroundJobId,
-    isDetachableBackgroundCommand,
-    isTerminalClosed,
-    isUserTerminal,
-    openBackgroundJobTerminal,
-    outputFile,
-    showBackgroundCommand,
-  ]);
 
   const closedLabel = canOpenOutputFile
     ? t("commandExecutionPanel.terminalClosedOpenOutput")

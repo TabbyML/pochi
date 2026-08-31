@@ -33,10 +33,10 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
-import { BackgroundTaskDebugPanel } from "./components/background-task-debug-panel";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
+import { ManagePanel } from "./components/manage-panel";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
 import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
@@ -456,6 +456,13 @@ function Chat({ user, uid, info }: ChatProps) {
           className="absolute top-1 right-2 z-10"
         />
       )}
+      {/*
+        The panel itself is position-agnostic; it is docked here so it can
+        later move into a column of its own without touching its internals.
+      */}
+      <div className={cn("absolute right-2 z-20", subtask ? "top-9" : "top-1")}>
+        <ManagePanel taskId={uid} messages={messages} />
+      </div>
       <ChatArea
         messages={messages}
         formatMessages={formatRenderMessages}
@@ -502,7 +509,6 @@ function Chat({ user, uid, info }: ChatProps) {
           onToolsExecutionEnded={chatKit.markEndToolsExecution}
         />
       </div>
-      <BackgroundTaskDebugPanel />
     </div>
   );
 }

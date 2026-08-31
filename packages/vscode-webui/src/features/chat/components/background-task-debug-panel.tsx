@@ -1,26 +1,17 @@
 /**
- * BackgroundTaskDebugPanel — dev-mode-only floating debug UI for background tasks.
+ * Dev-mode-only debug UI for background tasks, rendered as one category of
+ * the manage panel (see `manage-panel.tsx`).
  *
- * Renders a thin vertical handle on the right edge of the chat page. Hovering
- * the handle opens an overview list of all background tasks (any status).
- * Clicking a task opens a slide-out panel that shows the task's messages and
- * todos via the reusable <TaskThread> component.
+ * <BackgroundTaskList> is an overview of all background tasks (any status);
+ * selecting one opens <BackgroundTaskDetail>, a slide-out panel showing that
+ * task's messages and todos via the reusable <TaskThread> component.
  *
- * Mounted from `features/chat/page.tsx` (only renders when `isDevMode` is true).
- *
- * This is a developer-only surface, so the user-facing strings here are not
- * translated.
+ * This is a developer-only surface, so the strings here are not translated.
  */
 /* eslint-disable i18next/no-literal-string */
 
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { useIsDevMode } from "@/features/settings";
 import { useBackgroundTaskState } from "@/lib/hooks/use-background-task-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
@@ -32,85 +23,15 @@ import {
   PauseCircle,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { createPortal } from "react-dom";
 import { formatTokens } from "../lib/format-tokens";
+import { PanelSection, useCappedList } from "./panel-section";
+import { StatusDot, StatusSpinner } from "./status-dot";
 
-export function BackgroundTaskDebugPanel() {
-  const [isDevMode] = useIsDevMode();
+export const BackgroundTaskDetailTestId = "background-task-debug-detail";
 
-  if (isDevMode !== true) return null;
-
-  return <BackgroundTaskDebugPanelInner />;
-}
-
-function BackgroundTaskDebugPanelInner() {
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isListOpen, setIsListOpen] = useState(false);
-
-  const handleSelectTask = (taskId: string) => {
-    setSelectedTaskId(taskId);
-    // Auto-hide the overview list as soon as a task is selected — the
-    // slide-out detail panel becomes the focus.
-    setIsListOpen(false);
-  };
-
-  return (
-    <>
-      <HoverCard
-        open={isListOpen}
-        onOpenChange={setIsListOpen}
-        openDelay={0}
-        closeDelay={150}
-      >
-        <HoverCardTrigger asChild>
-          {/*
-            The visible gray bar stays small (`w-1.5 h-16`) so the UI is
-            unobtrusive, but the hit area is a much larger transparent
-            column (`w-5 h-40`) anchored to the right edge — hovering
-            anywhere within that column instantly opens the list.
-          */}
-          <button
-            type="button"
-            aria-label="Background tasks debug handle"
-            data-testid="background-task-debug-handle"
-            className={cn(
-              "-translate-y-1/2 group fixed top-1/2 right-0 z-40 flex h-40 w-5",
-              "cursor-pointer items-center justify-end bg-transparent",
-            )}
-          >
-            <span
-              className={cn(
-                "h-16 w-1.5 rounded-l-full bg-muted-foreground/30",
-                "transition-all duration-150",
-                "group-hover:h-20 group-hover:w-2 group-hover:bg-muted-foreground/60",
-                isListOpen && "h-20 w-2 bg-muted-foreground/60",
-              )}
-            />
-          </button>
-        </HoverCardTrigger>
-        <HoverCardContent
-          side="left"
-          align="center"
-          sideOffset={6}
-          className="max-h-[60vh] w-80 overflow-y-auto p-0"
-        >
-          <BackgroundTaskList
-            selectedTaskId={selectedTaskId}
-            onSelect={handleSelectTask}
-          />
-        </HoverCardContent>
-      </HoverCard>
-      {selectedTaskId && (
-        <BackgroundTaskDetail
-          taskId={selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
-        />
-      )}
-    </>
-  );
-}
-
-function BackgroundTaskList({
+export function BackgroundTaskList({
   selectedTaskId,
   onSelect,
 }: {
@@ -119,24 +40,20 @@ function BackgroundTaskList({
 }) {
   const store = useDefaultStore();
   const backgroundTasks = store.useQuery(catalog.queries.backgroundTasks$);
+  // Tasks pile up faster than anything else in the panel, so this category is
+  // capped like the others instead of running off the bottom.
+  const { visibleItems, seeMoreButton } = useCappedList(backgroundTasks);
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-          Background Tasks
-        </span>
-        <span className="text-muted-foreground text-xs">
-          {backgroundTasks.length}
-        </span>
-      </div>
+    <PanelSection label="Tasks" count={backgroundTasks.length}>
       {backgroundTasks.length === 0 ? (
-        <div className="px-3 py-6 text-center text-muted-foreground text-xs">
+        <div className="px-2 py-1 text-muted-foreground text-xs">
           No background tasks
         </div>
       ) : (
-        <ul className="flex max-h-[50vh] flex-col divide-y overflow-y-auto">
-          {backgroundTasks.map((task) => (
+        // No scroll container of its own: the panel's ScrollArea scrolls it.
+        <ul className="flex flex-col gap-0.5">
+          {visibleItems.map((task) => (
             <BackgroundTaskListItem
               key={task.id}
               task={task}
@@ -146,7 +63,8 @@ function BackgroundTaskList({
           ))}
         </ul>
       )}
-    </div>
+      {seeMoreButton}
+    </PanelSection>
   );
 }
 
@@ -165,31 +83,45 @@ function BackgroundTaskListItem({
         type="button"
         onClick={onSelect}
         className={cn(
-          "flex w-full flex-col items-start gap-1 px-3 py-2 text-left",
+          "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left",
           "transition-colors hover:bg-muted/60",
           isSelected && "bg-muted",
         )}
       >
-        <div className="flex w-full items-center gap-2">
-          <BackgroundTaskStatusIcon task={task} />
-          <span className="flex-1 truncate text-sm">
-            {task.title || "(Untitled)"}
-          </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">
-            {formatRelative(task.updatedAt)}
-          </span>
-        </div>
-        <div className="flex w-full items-center gap-2 pl-6 text-muted-foreground text-xs">
-          <span>{task.status}</span>
-          <span className="truncate font-mono text-[10px] opacity-70">
-            {task.id.slice(0, 8)}
-          </span>
-        </div>
+        {/* The status dot carries the status; the id lives in the detail view. */}
+        <BackgroundTaskStatusDot task={task} />
+        <span className="min-w-0 flex-1 truncate text-sm">
+          {task.title || "(Untitled)"}
+        </span>
+        <span className="shrink-0 text-[10px] text-muted-foreground">
+          {formatRelative(task.updatedAt)}
+        </span>
       </button>
     </li>
   );
 }
 
+/** In a dense list, dots keep every row on the same visual rhythm. */
+function BackgroundTaskStatusDot({ task }: { task: Task }) {
+  switch (task.status) {
+    case "pending-model":
+    case "pending-tool":
+      return <StatusSpinner />;
+    case "pending-input":
+      return <StatusDot className="bg-amber-500" />;
+    case "completed":
+      return <StatusDot className="bg-green-500 dark:bg-green-700" />;
+    case "failed":
+      return <StatusDot className="bg-destructive" />;
+    default:
+      return <StatusDot className="bg-muted-foreground/50" />;
+  }
+}
+
+/**
+ * The detail header shows a single task, so it can afford a shaped icon: it is
+ * far more legible than a dot when nothing else is around to compare it to.
+ */
 function BackgroundTaskStatusIcon({ task }: { task: Task }) {
   switch (task.status) {
     case "pending-model":
@@ -208,7 +140,7 @@ function BackgroundTaskStatusIcon({ task }: { task: Task }) {
   }
 }
 
-function BackgroundTaskDetail({
+export function BackgroundTaskDetail({
   taskId,
   onClose,
 }: {
@@ -238,14 +170,17 @@ function BackgroundTaskDetail({
       ? latestAssistantMessage.metadata
       : undefined;
 
-  return (
+  // Portaled to <body>: the manage panel sits in a `z-20` stacking context, so
+  // an in-place `z-[60]` would still be trapped below the popover's portal.
+  return createPortal(
     <div
       className={cn(
-        "fixed inset-y-0 right-0 z-50 flex w-[420px] max-w-[90vw] flex-col",
+        // Above the popover (z-50) it is opened from, which stays open behind it.
+        "fixed inset-y-0 right-0 z-[60] flex w-[420px] max-w-[90vw] flex-col",
         "border-l bg-background shadow-xl",
         "slide-in-from-right animate-in duration-150",
       )}
-      data-testid="background-task-debug-detail"
+      data-testid={BackgroundTaskDetailTestId}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -312,7 +247,8 @@ function BackgroundTaskDetail({
           instantAutoScroll
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

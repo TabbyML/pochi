@@ -55,6 +55,14 @@ export const Environment = z.object({
           z.object({
             name: z.string().describe("The name of the terminal."),
             isActive: z.boolean().describe("Whether the terminal is active."),
+            isRunning: z
+              .boolean()
+              .optional()
+              .describe("Whether a command is currently running in it."),
+            lastCommand: z
+              .string()
+              .optional()
+              .describe("The most recent command run in the terminal."),
             backgroundJobId: z
               .string()
               .optional()

@@ -585,6 +585,15 @@
     "stopped": "중지됨",
     "openOutput": "출력 파일 열기"
   },
+  "managePanel": {
+    "title": "백그라운드",
+    "toggle": "백그라운드 작업 및 터미널 보기",
+    "pochiGroup": "명령",
+    "terminalsGroup": "터미널",
+    "empty": "백그라운드에서 실행 중인 항목이 없습니다",
+    "seeMore": "더 보기",
+    "seeLess": "간단히 보기"
+  },
   "forkTask": {
     "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
   },

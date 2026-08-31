@@ -590,6 +590,15 @@
     "stopped": "已停止",
     "openOutput": "打开输出文件"
   },
+  "managePanel": {
+    "title": "后台",
+    "toggle": "查看后台任务与终端",
+    "pochiGroup": "命令",
+    "terminalsGroup": "终端",
+    "empty": "当前没有后台任务",
+    "seeMore": "查看更多",
+    "seeLess": "收起"
+  },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
   },

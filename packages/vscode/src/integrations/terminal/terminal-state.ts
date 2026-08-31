@@ -21,6 +21,17 @@ export interface TerminalInfo {
   name: string;
   isActive: boolean;
   /**
+   * Whether a shell command is executing in the terminal right now.
+   *
+   * Only tracked for user terminals: background job terminals report their
+   * lifecycle through job notifications instead, and always read `false` here.
+   * Requires shell integration; without it no execution events arrive and the
+   * terminal stays permanently idle.
+   */
+  isRunning?: boolean;
+  /** The most recent command captured from the terminal, if any. */
+  lastCommand?: string;
+  /**
    * A stable id associated with the terminal's output file.
    *
    * The prefix encodes the terminal's origin:
@@ -51,6 +62,7 @@ export class TerminalState implements vscode.Disposable {
   private readonly runningExecutions = new Map<
     vscode.TerminalShellExecution,
     {
+      terminalId: string;
       history: TerminalHistoryManager;
       captureFinished: Promise<void>;
     }
@@ -114,6 +126,13 @@ export class TerminalState implements vscode.Disposable {
       vscode.window.onDidCloseTerminal(this.onTerminalClosed),
     );
     this.disposables.push(TerminalJob.onDidCreate(this.onTerminalChanged));
+    // A terminal is reported with an empty `name` until its shell process
+    // reports a title. Shell integration activating is the first event after
+    // that point, so it is when a freshly opened terminal finally has a name
+    // worth publishing.
+    this.disposables.push(
+      vscode.window.onDidChangeTerminalShellIntegration(this.onTerminalChanged),
+    );
     this.disposables.push(TerminalJob.onDidDispose(this.onTerminalChanged));
     this.disposables.push(
       TerminalJob.onDidChangeVisibility(this.onTerminalChanged),
@@ -182,7 +201,11 @@ export class TerminalState implements vscode.Disposable {
       history,
       headerWritten,
     );
-    this.runningExecutions.set(event.execution, { history, captureFinished });
+    this.runningExecutions.set(event.execution, {
+      terminalId: id,
+      history,
+      captureFinished,
+    });
     // Reflect the command immediately, then expose its output file only after
     // the reconstructed command header has actually reached the transcript.
     this.onTerminalChanged();
@@ -204,7 +227,17 @@ export class TerminalState implements vscode.Disposable {
         ? undefined
         : ExecutionError.create(`Command exited with code ${event.exitCode}.`);
     runningExecution.history.finalize(error);
+    // The terminal is idle again; without this the `isRunning` flag published
+    // on start would stay on until some unrelated terminal event fires.
+    this.onTerminalChanged();
   };
+
+  private hasRunningExecution(terminalId: string): boolean {
+    for (const execution of this.runningExecutions.values()) {
+      if (execution.terminalId === terminalId) return true;
+    }
+    return false;
+  }
 
   private async captureExecutionOutput(
     execution: vscode.TerminalShellExecution,
@@ -264,14 +297,19 @@ export class TerminalState implements vscode.Disposable {
       .map((terminal) => {
         const id = this.getTerminalId(terminal);
         const job = TerminalJob.get(terminal);
+        let lastCommand: string | undefined;
         if (job) {
           listedJobIds.add(job.id);
         } else {
-          TerminalHistoryManager.getOrCreate(id).terminalName = terminal.name;
+          const history = TerminalHistoryManager.getOrCreate(id);
+          history.terminalName = terminal.name;
+          lastCommand = history.lastCommand;
         }
         return {
           name: terminal.name,
           isActive: terminal === vscode.window.activeTerminal,
+          isRunning: this.hasRunningExecution(id),
+          lastCommand,
           backgroundJobId: id,
           outputFile: this.getTerminalOutputFile(terminal),
         };
