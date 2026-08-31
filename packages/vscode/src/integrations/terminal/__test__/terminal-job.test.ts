@@ -258,6 +258,43 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
   });
 
+  it("discards an interrupted UTF-8 marker before Ctrl+C output", async () => {
+    let finishOutput: (() => void) | undefined;
+    const outputStopped = new Promise<void>((resolve) => {
+      finishOutput = resolve;
+    });
+    const harness = createHarness({
+      read: async function* () {
+        yield "ready\uFFFD";
+        yield "^";
+        yield "C";
+        await outputStopped;
+      },
+    });
+
+    await flushPromises();
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
+      "output:ready",
+    ]);
+
+    harness.executionEndEmitter.fire({
+      execution: harness.execution,
+      exitCode: 130,
+    });
+    finishOutput?.();
+    await flushPromises();
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ sleep 10\n",
+      "output:ready",
+      "output:^C",
+      "file-closed",
+      "event-fired",
+    ]);
+  });
+
   it("preserves a trailing replacement character after normal completion", async () => {
     const harness = createHarness({
       read: async function* () {

@@ -59,7 +59,7 @@ export class TerminalJob implements vscode.Disposable {
   private exitCode: number | undefined;
   private stopRequested = false;
   private finished = false;
-  private outputStreamFinished: Promise<void> | undefined;
+  private outputStreamFinished: Promise<string> | undefined;
 
   readonly id: string;
   readonly outputFile: string;
@@ -157,7 +157,15 @@ export class TerminalJob implements vscode.Disposable {
       }
     } finally {
       try {
-        await this.outputStreamFinished;
+        const pendingTerminalSuffix = (await this.outputStreamFinished) ?? "";
+        const finalSuffix =
+          this.stopRequested || this.exitCode === 130
+            ? pendingTerminalSuffix.replace(/\uFFFD+/u, "")
+            : pendingTerminalSuffix;
+        if (finalSuffix.length > 0) {
+          await this.outputWriter.append(finalSuffix);
+          this.outputManager.addChunk(finalSuffix);
+        }
       } catch (outputError) {
         executionError = ExecutionError.create(
           outputError instanceof Error
@@ -224,19 +232,20 @@ export class TerminalJob implements vscode.Disposable {
    */
   private async processOutputStream(
     outputStream: AsyncIterable<string>,
-  ): Promise<void> {
+  ): Promise<string> {
     const sanitizer = new PlainOutputSanitizer();
-    let pendingReplacementCharacters = "";
+    let pendingTerminalSuffix = "";
     const appendPlainText = async (plainText: string) => {
       if (plainText.length === 0) return;
 
-      const text = pendingReplacementCharacters + plainText;
-      const trailingReplacements = text.match(/\uFFFD+$/u)?.[0] ?? "";
+      const text = pendingTerminalSuffix + plainText;
+      const trailingTerminalSuffix =
+        text.match(/\uFFFD+(?:\^C(?:\r?\n)?|\^)?$/u)?.[0] ?? "";
       const completeText = text.slice(
         0,
-        text.length - trailingReplacements.length,
+        text.length - trailingTerminalSuffix.length,
       );
-      pendingReplacementCharacters = trailingReplacements;
+      pendingTerminalSuffix = trailingTerminalSuffix;
       if (completeText.length === 0) return;
 
       await this.outputWriter.append(completeText);
@@ -249,14 +258,10 @@ export class TerminalJob implements vscode.Disposable {
     await appendPlainText(sanitizer.end());
 
     // VS Code exposes terminal output as decoded strings, so the original
-    // bytes are unavailable here. If terminal disposal interrupted a UTF-8
-    // sequence, its decoder can leave U+FFFD at the very end of the stream.
-    // Hold that trailing marker until completion and discard it only when the
-    // job was stopped. A naturally completed job still preserves U+FFFD.
-    if (!this.stopRequested && pendingReplacementCharacters.length > 0) {
-      await this.outputWriter.append(pendingReplacementCharacters);
-      this.outputManager.addChunk(pendingReplacementCharacters);
-    }
+    // bytes are unavailable here. Keep a trailing U+FFFD and an optional ^C
+    // marker buffered until the execution result identifies an interrupted
+    // command. Normal completion still preserves legitimate replacement text.
+    return pendingTerminalSuffix;
   }
 
   /**
