@@ -240,7 +240,7 @@ export class TerminalJob implements vscode.Disposable {
 
       const text = pendingTerminalSuffix + plainText;
       const trailingTerminalSuffix =
-        text.match(/\uFFFD+(?:\^C(?:\r?\n)?|\^)?$/u)?.[0] ?? "";
+        text.match(/\uFFFD+(?:\^C[ \t\r\n]*|\^)?$/u)?.[0] ?? "";
       const completeText = text.slice(
         0,
         text.length - trailingTerminalSuffix.length,
@@ -258,9 +258,10 @@ export class TerminalJob implements vscode.Disposable {
     await appendPlainText(sanitizer.end());
 
     // VS Code exposes terminal output as decoded strings, so the original
-    // bytes are unavailable here. Keep a trailing U+FFFD and an optional ^C
-    // marker buffered until the execution result identifies an interrupted
-    // command. Normal completion still preserves legitimate replacement text.
+    // bytes are unavailable here. Keep a trailing U+FFFD, an optional ^C, and
+    // the terminal's trailing line-cleanup whitespace buffered until the
+    // execution result identifies an interrupted command. Normal completion
+    // still preserves legitimate replacement text.
     return pendingTerminalSuffix;
   }
 
