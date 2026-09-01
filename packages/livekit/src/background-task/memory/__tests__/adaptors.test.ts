@@ -377,7 +377,7 @@ describe("auto-memory adaptor", () => {
 
     await expect(
       adaptor.update({
-        messages: makeParentMessages(),
+        messages: makeAutoMemoryParentMessages(),
         status: "completed",
       }),
     ).resolves.toBe(true);
@@ -440,7 +440,7 @@ describe("auto-memory adaptor", () => {
 
     await expect(
       adaptor.update({
-        messages: makeParentMessages(),
+        messages: makeAutoMemoryParentMessages(),
         status: "completed",
       }),
     ).resolves.toBe(true);
@@ -481,30 +481,21 @@ describe("auto-memory adaptor", () => {
       manager,
     });
 
+    const messages = [
+      ...makeAutoMemoryParentMessages(),
+      makeMemoryWriteMessage("write-memory"),
+    ];
+
     await expect(
       adaptor.update({
-        messages: [
-          {
-            id: "write-memory",
-            role: "assistant",
-            parts: [
-              {
-                type: "tool-writeToFile",
-                toolCallId: "write",
-                state: "output-available",
-                input: { path: ".pochi/memory/index.md" },
-                output: { success: true },
-              },
-            ],
-          },
-        ] as Message[],
+        messages,
         status: "completed",
       }),
     ).resolves.toBe(false);
 
     expect(store.backgroundTasks()).toHaveLength(0);
     expect(autoMemoryState).toMatchObject({
-      lastExtractionMessageCount: 1,
+      lastExtractionMessageCount: messages.length,
       isExtracting: false,
     });
     expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
@@ -596,7 +587,7 @@ describe("auto-memory adaptor", () => {
     });
 
     await adaptor.update({
-      messages: makeParentMessages(),
+      messages: makeAutoMemoryParentMessages(),
       status: "completed",
     });
     const [extractionTask] = store.backgroundTasks();
@@ -634,7 +625,126 @@ describe("auto-memory adaptor", () => {
       success: true,
     });
   });
+
+  it("waits for three new user turns before extracting", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const adaptor = makeAutoMemoryAdaptor({ store });
+
+    await expect(
+      adaptor.adaptor.update({
+        messages: makeAutoMemoryParentMessages(2),
+        status: "completed",
+      }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(0);
+
+    await expect(
+      adaptor.adaptor.update({
+        messages: makeAutoMemoryParentMessages(3),
+        status: "completed",
+      }),
+    ).resolves.toBe(true);
+    expect(store.backgroundTasks()).toHaveLength(1);
+  });
+
+  it("treats a memory write by the extraction fork as success", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const { adaptor, getState } = makeAutoMemoryAdaptor({ store });
+    const parentMessages = makeAutoMemoryParentMessages();
+
+    await adaptor.update({ messages: parentMessages, status: "completed" });
+
+    const [extractionTask] = store.backgroundTasks();
+    store.setMessages(extractionTask.id, [
+      ...parentMessages,
+      makeDirectiveMessage(),
+      makeMemoryWriteMessage("fork-write"),
+    ]);
+    // No attemptCompletion: the fork ran out of steps after writing memory.
+    store.updateTaskStatus(extractionTask.id, "failed");
+
+    await adaptor.settleAndMaybeContinue();
+
+    expect(getState()).toMatchObject({
+      isExtracting: false,
+      extractionCount: 1,
+      lastExtractionMessageCount: parentMessages.length,
+      activeExtractionTaskId: undefined,
+    });
+  });
+
+  it("advances the extraction mark after a failed extraction so it does not re-run", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const { adaptor, getState } = makeAutoMemoryAdaptor({ store });
+    // The parent wrote memory itself in the first stretch, so the cloned prefix
+    // carries a successful write that must not be credited to the fork.
+    const earlierMessages = [
+      ...makeAutoMemoryParentMessages(),
+      makeMemoryWriteMessage("parent-write"),
+    ];
+    await adaptor.update({ messages: earlierMessages, status: "completed" });
+    expect(store.backgroundTasks()).toHaveLength(0);
+
+    const parentMessages = [
+      ...earlierMessages,
+      ...makeAutoMemoryParentMessages(),
+    ];
+    await adaptor.update({ messages: parentMessages, status: "completed" });
+
+    const [extractionTask] = store.backgroundTasks();
+    store.setMessages(extractionTask.id, [
+      ...parentMessages,
+      makeDirectiveMessage(),
+    ]);
+    store.updateTaskStatus(extractionTask.id, "failed");
+
+    await adaptor.settleAndMaybeContinue();
+
+    expect(getState()).toMatchObject({
+      isExtracting: false,
+      extractionCount: 0,
+      lastExtractionMessageCount: parentMessages.length,
+    });
+
+    await expect(
+      adaptor.update({ messages: parentMessages, status: "completed" }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(1);
+  });
 });
+
+function makeAutoMemoryAdaptor({
+  store,
+  manager = makeAutoMemoryManager(),
+}: {
+  store: FakeStore;
+  manager?: AutoMemoryManager;
+}) {
+  let state: AutoMemoryTaskState | undefined;
+  const adaptor = new AutoMemoryAdaptor({
+    store: store as unknown as LiveKitStore,
+    backgroundTask: createTestBackgroundTask({
+      store: store as unknown as LiveKitStore,
+      stateStore: new BackgroundTaskStateStore(),
+    }),
+    autoMemoryStateStore: {
+      get: () => state,
+      set: (next) => {
+        state = next;
+      },
+    },
+    parentTaskId: "parent",
+    parentCwd: "/repo",
+    manager,
+  });
+  return { adaptor, getState: () => state };
+}
 
 const autoMemoryContext: AutoMemoryContext = {
   enabled: true,
@@ -844,6 +954,46 @@ function makeParentMessages(): Message[] {
       parts: [{ type: "text", text: "done" }],
     },
   ] as Message[];
+}
+
+/** Auto-memory extraction only triggers once three new user turns exist. */
+function makeAutoMemoryParentMessages(userTurns = 3): Message[] {
+  return Array.from({ length: userTurns }, (_, index) => [
+    {
+      id: `user-${index + 1}`,
+      role: "user",
+      parts: [{ type: "text", text: `please implement step ${index + 1}` }],
+    },
+    {
+      id: `assistant-${index + 1}`,
+      role: "assistant",
+      parts: [{ type: "text", text: "done" }],
+    },
+  ]).flat() as Message[];
+}
+
+function makeDirectiveMessage(): Message {
+  return {
+    id: "directive",
+    role: "user",
+    parts: [{ type: "text", text: "Extract durable long-term memories." }],
+  } as Message;
+}
+
+function makeMemoryWriteMessage(id: string): Message {
+  return {
+    id,
+    role: "assistant",
+    parts: [
+      {
+        type: "tool-writeToFile",
+        toolCallId: `write-${id}`,
+        state: "output-available",
+        input: { path: ".pochi/memory/index.md" },
+        output: { success: true },
+      },
+    ],
+  } as Message;
 }
 
 
