@@ -1,0 +1,28 @@
+---
+title: 'Weekly Update #39'
+---
+# Weekly Update #39
+
+### TL;DR
+
+Pochi 0.68 is expected on August 31. Alongside the run-and-verify workflows and long-history reliability previewed in the last update, this release will make generated widgets useful beyond the chat and smooth out everyday friction around live conversations, file mentions, and background jobs.
+
+More below!
+
+### 🚀 Features
+
+- **Save and preview rendered widgets:** Generated widgets will be able to open in a dedicated preview beside the chat or be saved as self-contained HTML files. Saved widgets will preserve their interactivity, styling, charts, and state, making it easy to share or use them outside the conversation where they were created.
+
+  This will be especially useful for interactive explainers, dashboards, and visualizations that you want to inspect at a larger size or keep as standalone artifacts. [**#1907**](https://github.com/TabbyML/pochi/pull/1907)
+
+### ✨ Enhancements
+
+- **Clearer background-job notifications:** Sent and queued background-job updates will use the same compact command-and-status layout. Completed jobs will also retain a working link to their recorded output after the terminal closes, making the results of long-running commands easy to revisit. [**#1921**](https://github.com/TabbyML/pochi/pull/1921)
+
+### 🐛 Bug Fixes
+
+- **Live chats will follow new output without fighting your scroll:** Streaming conversations will stay pinned to the latest response until you deliberately scroll up, at which point Pochi will preserve your reading position. Scrolling near the bottom will resume automatic following, and the chat will show only one scrollbar even when messages contain rendered math. [**#1917**](https://github.com/TabbyML/pochi/pull/1917), [**#1920**](https://github.com/TabbyML/pochi/pull/1920)
+
+- **File mentions will find non-Latin names:** Searching with `@` will match file names containing Chinese, Japanese, Korean, accented, and other non-ASCII characters instead of treating those characters as separators and returning no results. [**#1919**](https://github.com/TabbyML/pochi/pull/1919)
+
+- **Forked and compacted tasks will keep their environment context:** Tasks created from a compacted checkpoint, a forked conversation, or a regenerated response will continue receiving the repository, editor, terminal, and system details they need to work in the correct environment. [**#1916**](https://github.com/TabbyML/pochi/pull/1916)
