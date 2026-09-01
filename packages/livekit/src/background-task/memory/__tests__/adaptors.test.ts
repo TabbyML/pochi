@@ -12,6 +12,9 @@ import { AutoMemoryAdaptor, type AutoMemoryManager } from "../auto-memory";
 import { TaskMemoryAdaptor } from "../task-memory";
 import { describe, expect, it, vi } from "vitest";
 
+/** Pinned so extraction fires at 16k tokens. */
+const TestCompactThreshold = 20_000;
+
 describe("task-memory adaptor", () => {
   it("starts extraction from stream-finish usage before the main task completes", async () => {
     const store = new FakeStore([
@@ -32,6 +35,7 @@ describe("task-memory adaptor", () => {
       backgroundTask,
       parentTaskId: "parent",
       parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
     });
 
     await expect(
@@ -79,6 +83,7 @@ describe("task-memory adaptor", () => {
       },
       parentTaskId: "parent",
       parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
     });
 
     await expect(
@@ -136,6 +141,7 @@ describe("task-memory adaptor", () => {
       },
       parentTaskId: "parent",
       parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
     });
 
     await adaptor.update({
@@ -181,6 +187,7 @@ describe("task-memory adaptor", () => {
       },
       parentTaskId: "parent",
       parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
     });
 
     await adaptor.update({
@@ -211,6 +218,137 @@ describe("task-memory adaptor", () => {
       extractionCount: 1,
       activeTaskId: undefined,
     });
+  });
+
+  it("waits until the context approaches the auto-compact threshold", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    const adaptor = new TaskMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
+    });
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        contextWindowUsage: usage(10_000),
+      }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(0);
+  });
+
+  it("extracts only once per compaction cycle", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    let taskMemoryState: TaskMemoryState | undefined = {
+      extractionAttemptsSinceCompact: 1,
+      isExtracting: false,
+      extractionCount: 1,
+      extractedSinceCompact: true,
+      lastExtractionMessageId: "assistant-1",
+    };
+    const adaptor = new TaskMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      taskMemoryStateStore: {
+        get: () => taskMemoryState,
+        set: (state) => {
+          taskMemoryState = state;
+        },
+      },
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
+    });
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        contextWindowUsage: usage(19_000),
+      }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(0);
+
+    await adaptor.resetForNewCompactionCycle();
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        contextWindowUsage: usage(19_000),
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("retries a failed extraction once, then stops for the cycle", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    let taskMemoryState: TaskMemoryState | undefined = {
+      extractionAttemptsSinceCompact: 1,
+      isExtracting: false,
+      extractionCount: 0,
+    };
+    const adaptor = new TaskMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      taskMemoryStateStore: {
+        get: () => taskMemoryState,
+        set: (state) => {
+          taskMemoryState = state;
+        },
+      },
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
+    });
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        contextWindowUsage: usage(17_000),
+      }),
+    ).resolves.toBe(true);
+
+    taskMemoryState = {
+      ...(taskMemoryState as TaskMemoryState),
+      isExtracting: false,
+      activeTaskId: undefined,
+    };
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        contextWindowUsage: usage(17_000),
+      }),
+    ).resolves.toBe(false);
   });
 });
 
@@ -707,6 +845,8 @@ function makeParentMessages(): Message[] {
     },
   ] as Message[];
 }
+
+
 
 function usage(tokens: number) {
   return {

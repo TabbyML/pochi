@@ -24,11 +24,13 @@ export const PochiClientHeader = "x-pochi-client";
 export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
 
 /**
- * Task Memory thresholds — background extraction of session notes.
+ * Task Memory extracts once per compaction cycle. Everything after the
+ * extraction boundary survives compaction verbatim, so a second extraction in
+ * the same cycle would only shrink that tail; only failures are retried.
  */
-export const TaskMemoryInitTokenThreshold = 10_000;
-export const TaskMemoryUpdateTokenIncrement = 5_000;
-export const TaskMemoryUpdateToolCallThreshold = 3;
+export const TaskMemoryExtractionThresholdRatio = 0.8;
+export const MaxTaskMemoryExtractionAttemptsPerCycle = 2;
+export const TaskMemoryFallbackCompactThreshold = 120_000;
 
 /**
  * Timeout (ms) for any single git operation.

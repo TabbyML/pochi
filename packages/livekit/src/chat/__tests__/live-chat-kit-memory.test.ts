@@ -394,7 +394,8 @@ describe("LiveChatKit memory lifecycle", () => {
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
-    setLatestRequestSnapshot(chatKit, 20_000, 0);
+    // Above 80% of the 67k auto-compact threshold.
+    setLatestRequestSnapshot(chatKit, 60_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -496,7 +497,8 @@ describe("LiveChatKit memory lifecycle", () => {
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
-    setLatestRequestSnapshot(chatKit, 20_000, 0);
+    // Above 80% of the 67k auto-compact threshold.
+    setLatestRequestSnapshot(chatKit, 60_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 

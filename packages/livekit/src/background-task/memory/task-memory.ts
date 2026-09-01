@@ -25,16 +25,13 @@ const logger = getLogger("TaskMemory");
 
 type ExtractionMetrics = {
   tokens: number;
-  toolCalls: number;
   trailingMessageId: string | undefined;
 };
 
 type TaskMemoryExtractionResult = "pending" | "succeeded" | "failed";
 
 const DefaultTaskMemoryState: TaskMemoryState = {
-  initialized: false,
-  lastExtractionTokens: 0,
-  lastExtractionToolCalls: 0,
+  extractionAttemptsSinceCompact: 0,
   isExtracting: false,
   extractionCount: 0,
 };
@@ -54,27 +51,32 @@ function getExtractionMetrics<TMessage extends UIMessage>(data: {
   const last = data.messages.at(-1);
   return {
     tokens: computeTotalTokens(data.contextWindowUsage),
-    toolCalls: countToolCalls(data.messages),
     trailingMessageId: last?.id,
   };
+}
+
+export function resolveExtractionTrigger(
+  compactThreshold: number | undefined,
+): number {
+  const base =
+    compactThreshold && compactThreshold > 0
+      ? compactThreshold
+      : constants.TaskMemoryFallbackCompactThreshold;
+  return Math.round(base * constants.TaskMemoryExtractionThresholdRatio);
 }
 
 function shouldExtractTaskMemory(
   state: TaskMemoryState,
   metrics: ExtractionMetrics,
+  trigger: number,
 ): boolean {
   if (state.isExtracting) return false;
-
-  if (!state.initialized) {
-    return metrics.tokens >= constants.TaskMemoryInitTokenThreshold;
-  }
-
-  const tokenDelta = metrics.tokens - state.lastExtractionTokens;
-  const toolCallDelta = metrics.toolCalls - state.lastExtractionToolCalls;
+  if (metrics.tokens < trigger) return false;
+  if (state.extractedSinceCompact) return false;
 
   return (
-    tokenDelta >= constants.TaskMemoryUpdateTokenIncrement &&
-    toolCallDelta >= constants.TaskMemoryUpdateToolCallThreshold
+    state.extractionAttemptsSinceCompact <
+    constants.MaxTaskMemoryExtractionAttemptsPerCycle
   );
 }
 
@@ -84,10 +86,8 @@ function toExtractingState(
 ): TaskMemoryState {
   return {
     ...state,
-    initialized: true,
     isExtracting: true,
-    lastExtractionTokens: metrics.tokens,
-    lastExtractionToolCalls: metrics.toolCalls,
+    extractionAttemptsSinceCompact: state.extractionAttemptsSinceCompact + 1,
     pendingExtractionMessageId: metrics.trailingMessageId,
   };
 }
@@ -168,6 +168,7 @@ function resolveTaskMemoryExtractionState({
   return {
     ...state,
     isExtracting: false,
+    extractedSinceCompact: succeeded ? true : state.extractedSinceCompact,
     extractionCount: succeeded
       ? state.extractionCount + 1
       : state.extractionCount,
@@ -215,19 +216,6 @@ function computeTotalTokens(usage?: ContextWindowUsage) {
   );
 }
 
-function countToolCalls(messages: UIMessage[]): number {
-  let count = 0;
-  for (const message of messages) {
-    if (message.role !== "assistant") continue;
-    for (const part of message.parts) {
-      if (isStaticToolUIPart(part)) {
-        count++;
-      }
-    }
-  }
-  return count;
-}
-
 type TaskMemoryAdaptorOptions = {
   store: LiveKitStore;
   backgroundTask: {
@@ -238,6 +226,7 @@ type TaskMemoryAdaptorOptions = {
   parentTaskId: string;
   parentCwd: string | undefined | (() => string | undefined);
   isSubTask?: boolean;
+  getCompactThreshold?: () => number | undefined;
 };
 
 export class TaskMemoryAdaptor {
@@ -253,10 +242,11 @@ export class TaskMemoryAdaptor {
     return this.stateStore.get() ?? { ...DefaultTaskMemoryState };
   }
 
-  resetTokenBaseline() {
+  resetForNewCompactionCycle() {
     return this.stateStore.set({
       ...this.getState(),
-      lastExtractionTokens: 0,
+      extractionAttemptsSinceCompact: 0,
+      extractedSinceCompact: false,
     });
   }
 
@@ -268,15 +258,26 @@ export class TaskMemoryAdaptor {
     await this.settle();
 
     const state = this.getState();
+    const metrics = getExtractionMetrics(data);
+    const trigger = resolveExtractionTrigger(
+      this.options.getCompactThreshold?.(),
+    );
+    if (!shouldExtractTaskMemory(state, metrics, trigger)) {
+      return false;
+    }
+
+    return this.startExtraction(state, metrics, data.messages);
+  }
+
+  private async startExtraction(
+    state: TaskMemoryState,
+    metrics: ExtractionMetrics,
+    messages: Message[],
+  ) {
     const task = this.options.store.query(
       makeTaskQuery(this.options.parentTaskId),
     );
     if (!task) return false;
-
-    const metrics = getExtractionMetrics(data);
-    if (!shouldExtractTaskMemory(state, metrics)) {
-      return false;
-    }
 
     try {
       const parentCwd = this.getParentCwd();
@@ -290,7 +291,7 @@ export class TaskMemoryAdaptor {
         startForkAgent: (agent) =>
           this.options.backgroundTask.startForkAgent(agent),
         parentTaskId: this.options.parentTaskId,
-        parentMessages: data.messages,
+        parentMessages: messages,
         parentCwd,
         parentTaskTitle: task.title ?? undefined,
         existingMemory: memoryFile?.content ?? undefined,
