@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { type JobList, buildJobList } from "../lib/build-job-list";
 
 /**
- * The background work of this task, plus every terminal the user has open.
+ * The background work of this task.
  */
 /** @useSignals */
 export function useJobList(taskId: string, messages: Message[]): JobList {

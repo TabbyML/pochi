@@ -5,7 +5,8 @@
     "account": "Account",
     "help": "Help",
     "reset": "Reset",
-    "clear": "Clear"
+    "clear": "Clear",
+    "close": "Close"
   },
   "error": {
     "somethingWentWrong": "Something went wrong",
@@ -594,10 +595,9 @@
     "openOutput": "Open output file"
   },
   "managePanel": {
-    "title": "Background",
-    "toggle": "Show background jobs and terminals",
+    "title": "Background Jobs",
+    "toggle": "Show background jobs",
     "pochiGroup": "Commands",
-    "terminalsGroup": "Terminals",
     "empty": "Nothing running in the background",
     "seeMore": "See more",
     "seeLess": "See less"

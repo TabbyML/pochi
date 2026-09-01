@@ -1,9 +1,5 @@
-import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import type { BackgroundJobNotification } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
-
-/** User terminals are read-only and are never scoped to a task. */
-const UserTerminalPrefix = "term-";
 
 export type JobStatus = "running" | "idle" | "completed" | "failed" | "stopped";
 
@@ -27,9 +23,6 @@ export interface JobListEntry {
 export interface TerminalSnapshot {
   name: string;
   isActive: boolean;
-  /** Whether a command is executing in the terminal right now. */
-  isRunning?: boolean;
-  lastCommand?: string;
   backgroundJobId?: string;
   outputFile?: string;
 }
@@ -37,8 +30,6 @@ export interface TerminalSnapshot {
 export interface JobList {
   /** Background commands Pochi started for this task. */
   pochi: JobListEntry[];
-  /** Every terminal the user has open, regardless of task. */
-  terminals: JobListEntry[];
 }
 
 /**
@@ -144,32 +135,9 @@ export function buildJobList({
     });
   }
 
-  const userTerminals = (terminals ?? []).flatMap<JobListEntry>((terminal) =>
-    terminal.backgroundJobId?.startsWith(UserTerminalPrefix)
-      ? [
-          {
-            backgroundJobId: terminal.backgroundJobId,
-            // A bare shell name ("zsh") says nothing; the last command does.
-            // A just-opened terminal has neither: VS Code only fills the name
-            // in once the shell process reports its title. The row falls back
-            // to a generic label rather than rendering blank.
-            title:
-              formatTerminalDisplayName(terminal.name, terminal.lastCommand) ??
-              "",
-            command: terminal.lastCommand,
-            // A user terminal is always alive, so its dot tracks whether it is
-            // busy, not whether it exists.
-            status: terminal.isRunning ? "running" : "idle",
-            outputFile: terminal.outputFile,
-            isActive: terminal.isActive,
-          },
-        ]
-      : [],
-  );
-
   // Newest command first: the one just started is the one being watched. The
   // `%N` labels keep counting from the start of the task, so the numbering
   // still matches the badges in the message list. Jobs whose message was
   // compacted away are the oldest, so they stay at the bottom.
-  return { pochi: [...pochi.reverse(), ...orphaned], terminals: userTerminals };
+  return { pochi: [...pochi.reverse(), ...orphaned] };
 }

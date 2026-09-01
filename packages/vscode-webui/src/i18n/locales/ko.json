@@ -3,7 +3,8 @@
     "disable": "비활성화",
     "openFolder": "폴더 열기",
     "account": "계정",
-    "help": "도움말"
+    "help": "도움말",
+    "close": "닫기"
   },
   "error": {
     "somethingWentWrong": "문제가 발생했습니다",
@@ -586,10 +587,9 @@
     "openOutput": "출력 파일 열기"
   },
   "managePanel": {
-    "title": "백그라운드",
-    "toggle": "백그라운드 작업 및 터미널 보기",
+    "title": "백그라운드 작업",
+    "toggle": "백그라운드 작업 보기",
     "pochiGroup": "명령",
-    "terminalsGroup": "터미널",
     "empty": "백그라운드에서 실행 중인 항목이 없습니다",
     "seeMore": "더 보기",
     "seeLess": "간단히 보기"

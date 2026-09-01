@@ -3,7 +3,8 @@
     "disable": "禁用",
     "openFolder": "打开文件夹",
     "account": "账户",
-    "help": "帮助"
+    "help": "帮助",
+    "close": "关闭"
   },
   "error": {
     "somethingWentWrong": "出错了",
@@ -591,10 +592,9 @@
     "openOutput": "打开输出文件"
   },
   "managePanel": {
-    "title": "后台",
-    "toggle": "查看后台任务与终端",
+    "title": "后台任务",
+    "toggle": "查看后台任务",
     "pochiGroup": "命令",
-    "terminalsGroup": "终端",
     "empty": "当前没有后台任务",
     "seeMore": "查看更多",
     "seeLess": "收起"

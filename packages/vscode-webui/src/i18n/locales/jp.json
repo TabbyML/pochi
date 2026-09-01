@@ -3,7 +3,8 @@
     "disable": "無効化",
     "openFolder": "フォルダーを開く",
     "account": "アカウント",
-    "help": "ヘルプ"
+    "help": "ヘルプ",
+    "close": "閉じる"
   },
   "error": {
     "somethingWentWrong": "問題が発生しました",
@@ -593,10 +594,9 @@
     "openOutput": "出力ファイルを開く"
   },
   "managePanel": {
-    "title": "バックグラウンド",
-    "toggle": "バックグラウンドジョブとターミナルを表示",
+    "title": "バックグラウンドジョブ",
+    "toggle": "バックグラウンドジョブを表示",
     "pochiGroup": "コマンド",
-    "terminalsGroup": "ターミナル",
     "empty": "バックグラウンドで実行中のものはありません",
     "seeMore": "もっと見る",
     "seeLess": "折りたたむ"

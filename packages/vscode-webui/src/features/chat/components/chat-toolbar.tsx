@@ -64,6 +64,7 @@ import {
 } from "../lib/background-job-notification-queue";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
+import { ManagePanel } from "./manage-panel";
 import { SubmitReviewsButton } from "./submit-review-button";
 import { CompleteSubtaskButton } from "./subtask";
 
@@ -580,6 +581,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             todos={todos}
             getSystemPrompt={getSystemPrompt}
           />
+          <ManagePanel taskId={taskId} messages={messages} />
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}

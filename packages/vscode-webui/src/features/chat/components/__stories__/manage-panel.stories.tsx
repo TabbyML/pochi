@@ -17,8 +17,8 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      // The panel is positioned by `page.tsx` in the app, so give it a
-      // stand-in corner here.
+      // The trigger lives in the chat toolbar in the app, so give it a
+      // stand-in row here.
       <div className="relative flex h-64 justify-end p-2">
         <Story />
       </div>
@@ -29,7 +29,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Nothing running: the chip stays put so the panel remains discoverable. */
+/** Nothing running: the trigger stays put so the panel remains discoverable. */
 export const Empty: Story = {
   play: openPanel,
 };
@@ -47,11 +47,7 @@ export const WithJobs: Story = {
     ],
   },
   decorators: [
-    withTerminals([
-      terminal("bgjob-cmd-1", { name: "Pochi: bun run dev" }),
-      terminal("term-1", { name: "zsh", isActive: true }),
-      terminal("term-2", { name: "zsh" }),
-    ]),
+    withTerminals([terminal("bgjob-cmd-1", { name: "Pochi: bun run dev" })]),
   ],
   play: openPanel,
 };
@@ -104,11 +100,11 @@ function notificationPart(data: BackgroundJobNotification) {
 
 function terminal(
   backgroundJobId: string,
-  { name, isActive = false }: { name: string; isActive?: boolean },
+  { name }: { name: string },
 ): TerminalSnapshot {
   return {
     name,
-    isActive,
+    isActive: false,
     backgroundJobId,
     outputFile: `/tmp/${backgroundJobId}.log`,
   };
