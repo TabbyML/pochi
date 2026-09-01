@@ -141,16 +141,9 @@ function notificationPart(data: BackgroundJobNotification) {
 
 function terminal(
   backgroundJobId: string,
-  {
-    name = "zsh",
-    isActive = false,
-  }: {
-    name?: string;
-    isActive?: boolean;
-  } = {},
+  { isActive = false }: { isActive?: boolean } = {},
 ): TerminalSnapshot {
   return {
-    name,
     isActive,
     backgroundJobId,
     outputFile: `/tmp/${backgroundJobId}.log`,

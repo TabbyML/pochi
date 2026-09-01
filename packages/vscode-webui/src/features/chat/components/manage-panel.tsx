@@ -1,6 +1,6 @@
 /**
- * ManagePanel — the docked overview of everything running alongside the
- * conversation: Pochi's background commands for this task.
+ * ManagePanel — a toolbar trigger opening a drawer that lists the background
+ * commands Pochi started for this task.
  */
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,13 +18,16 @@ import {
 import { useOpenBackgroundJob } from "@/lib/hooks/use-open-background-job";
 import { cn } from "@/lib/utils";
 import type { Message } from "@getpochi/livekit";
-import { ListChevronsDownUpIcon, TerminalIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  ListChevronsDownUpIcon,
+  Loader2,
+  TerminalIcon,
+} from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useJobList } from "../hooks/use-job-list";
 import type { JobListEntry, JobStatus } from "../lib/build-job-list";
-import { PanelSection, useCappedList } from "./panel-section";
-import { StatusDot, StatusSpinner } from "./status-dot";
 
 export function ManagePanel({
   taskId,
@@ -94,20 +97,73 @@ export function ManagePanel({
   );
 }
 
+/** How many rows the list shows before it has to be asked for the rest. */
+const CollapsedItemCount = 5;
+
 function JobGroup({ label, jobs }: { label: string; jobs: JobListEntry[] }) {
-  const { visibleItems, seeMoreButton } = useCappedList(jobs);
+  const { t } = useTranslation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const visibleJobs = isExpanded ? jobs : jobs.slice(0, CollapsedItemCount);
 
   return (
-    <PanelSection label={label} count={jobs.length}>
-      <ul className="flex flex-col gap-0.5">
-        {visibleItems.map((job) => (
-          <li key={job.backgroundJobId}>
-            <JobRow job={job} />
-          </li>
-        ))}
-      </ul>
-      {seeMoreButton}
-    </PanelSection>
+    <div className="flex flex-col gap-0.5">
+      {/* The title row doubles as the collapse control, so there is no extra
+          button to aim at, and the count stays visible while folded. */}
+      <button
+        type="button"
+        aria-expanded={!isCollapsed}
+        onClick={() => setIsCollapsed((prev) => !prev)}
+        className={cn(
+          "flex items-center justify-between gap-2 rounded-md px-2 py-1",
+          "text-left transition-colors hover:bg-muted/60",
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-1">
+          <ChevronRightIcon
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground transition-transform",
+              !isCollapsed && "rotate-90",
+            )}
+          />
+          {/* No colour override: inheriting the drawer's own foreground keeps
+              the title at full contrast instead of the dimmer `--foreground`. */}
+          <span className="truncate font-semibold text-sm">{label}</span>
+        </span>
+        <span className="shrink-0 text-muted-foreground text-xs">
+          {jobs.length}
+        </span>
+      </button>
+      {!isCollapsed && (
+        <>
+          <ul className="flex flex-col gap-0.5">
+            {visibleJobs.map((job) => (
+              <li key={job.backgroundJobId}>
+                <JobRow job={job} />
+              </li>
+            ))}
+          </ul>
+          {jobs.length > CollapsedItemCount && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded((prev) => !prev)}
+              className={cn(
+                // Reads as a text link, not a row: only the label brightens on
+                // hover, so it never competes with the item rows for attention.
+                // Centring the label breaks the rows' left alignment, so it
+                // cannot be mistaken for one more item in the list.
+                "px-2 py-1 text-center text-muted-foreground text-xs",
+                "transition-colors hover:text-foreground",
+              )}
+            >
+              {/* The section header already carries the true total, so the
+                  toggle does not repeat it. */}
+              {isExpanded ? t("managePanel.seeLess") : t("managePanel.seeMore")}
+            </button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -164,8 +220,8 @@ function JobRow({ job }: { job: JobListEntry }) {
   );
 
   // The hover reveals what the row is about, not what clicking it does: the
-  // command, like the panels in the message list. A terminal that has run
-  // nothing has nothing to add, so it gets no tooltip at all.
+  // command, like the panels in the message list. A job whose command is
+  // unknown has nothing to add, so it gets no tooltip at all.
   if (!job.command) return row;
 
   return (
@@ -208,16 +264,25 @@ function JobBadge({
   );
 }
 
+/**
+ * The status marker in front of a row. A dot carries every resting status;
+ * work in progress gets a spinner, which is the only state that has to be
+ * recognizable at a glance. Both sit in the same column so titles line up.
+ */
 function JobStatusIndicator({ status }: { status: JobStatus }) {
-  if (status === "running") return <StatusSpinner />;
-
   return (
-    <StatusDot
-      className={cn({
-        "bg-green-500 dark:bg-green-700": status === "completed",
-        "bg-destructive": status === "failed",
-        "bg-muted-foreground/50": status === "stopped" || status === "idle",
-      })}
-    />
+    <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
+      {status === "running" ? (
+        <Loader2 className="size-3.5 animate-spin text-primary" />
+      ) : (
+        <span
+          className={cn("size-1.5 rounded-full", {
+            "bg-green-500 dark:bg-green-700": status === "completed",
+            "bg-destructive": status === "failed",
+            "bg-muted-foreground/50": status === "stopped",
+          })}
+        />
+      )}
+    </span>
   );
 }

@@ -46,9 +46,7 @@ export const WithJobs: Story = {
       ]),
     ],
   },
-  decorators: [
-    withTerminals([terminal("bgjob-cmd-1", { name: "Pochi: bun run dev" })]),
-  ],
+  decorators: [withTerminals([terminal("bgjob-cmd-1")])],
   play: openPanel,
 };
 
@@ -98,12 +96,8 @@ function notificationPart(data: BackgroundJobNotification) {
   return { type: "data-background-job-notification", data };
 }
 
-function terminal(
-  backgroundJobId: string,
-  { name }: { name: string },
-): TerminalSnapshot {
+function terminal(backgroundJobId: string): TerminalSnapshot {
   return {
-    name,
     isActive: false,
     backgroundJobId,
     outputFile: `/tmp/${backgroundJobId}.log`,

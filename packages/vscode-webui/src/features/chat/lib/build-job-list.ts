@@ -1,17 +1,14 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
-export type JobStatus = "running" | "idle" | "completed" | "failed" | "stopped";
+export type JobStatus = "running" | "completed" | "failed" | "stopped";
 
 export interface JobListEntry {
   backgroundJobId: string;
   /** `%1`-style label, matching the badge shown inside the message list. */
   displayId?: string;
   title: string;
-  /**
-   * The command behind the row, shown on hover. Absent for a terminal that has
-   * not run anything yet, which is exactly when there is nothing to say.
-   */
+  /** The command behind the row, shown on hover. */
   command?: string;
   status: JobStatus;
   /** Transcript to fall back to once the terminal is gone. */
@@ -21,7 +18,6 @@ export interface JobListEntry {
 
 /** The subset of `TerminalInfo` the list needs. */
 export interface TerminalSnapshot {
-  name: string;
   isActive: boolean;
   backgroundJobId?: string;
   outputFile?: string;
