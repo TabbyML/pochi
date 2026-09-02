@@ -162,7 +162,12 @@ describe("task-memory adaptor", () => {
     });
   });
 
-  it("marks extraction successful when the background task writes memory", async () => {
+  it.each([
+    { output: { success: true }, extracted: true },
+    { output: { error: "disk full" }, extracted: false },
+  ])(
+    "publishes the extraction boundary only after a successful memory write ($extracted)",
+    async ({ output, extracted }) => {
     const store = new FakeStore([
       makeTask({
         id: "parent",
@@ -206,17 +211,87 @@ describe("task-memory adaptor", () => {
             toolCallId: "write-1",
             state: "output-available",
             input: { path: TaskMemoryFileUri, content: "# Session Title" },
+            output: output as never,
+          },
+        ],
+      },
+    ] as Message[]);
+    store.updateTaskStatus(activeTaskId ?? "", "failed");
+
+    await expect(adaptor.settle()).resolves.toBe(true);
+    expect(taskMemoryState).toMatchObject({
+      isExtracting: false,
+      extractionCount: extracted ? 1 : 0,
+      extractedSinceCompact: extracted ? true : undefined,
+      lastExtractionMessageId: extracted ? "assistant-1" : undefined,
+      activeTaskId: undefined,
+    });
+    },
+  );
+
+  it("discards an extraction that finishes after compaction starts", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    let taskMemoryState: TaskMemoryState | undefined;
+    const adaptor = new TaskMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      taskMemoryStateStore: {
+        get: () => taskMemoryState,
+        set: (state) => {
+          taskMemoryState = state;
+        },
+      },
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      getCompactThreshold: () => TestCompactThreshold,
+    });
+
+    await adaptor.update({
+      messages: makeParentMessages(),
+      contextWindowUsage: usage(20_000),
+    });
+    const activeTaskId = taskMemoryState?.activeTaskId;
+
+    await expect(adaptor.takeCompactionBoundaryMessageId()).resolves.toBe(
+      undefined,
+    );
+    expect(taskMemoryState).toMatchObject({
+      isExtracting: true,
+      pendingExtractionMessageId: undefined,
+      extractedSinceCompact: false,
+    });
+
+    store.setMessages(activeTaskId ?? "", [
+      {
+        id: "write-memory",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-writeToFile",
+            toolCallId: "write-1",
+            state: "output-available",
+            input: { path: TaskMemoryFileUri, content: "stale memory" },
             output: { success: true },
           },
         ],
       },
     ] as Message[]);
 
-    await expect(adaptor.settle()).resolves.toBe(true);
-    expect(taskMemoryState).toMatchObject({
+    await adaptor.settle();
+    expect(adaptor.getState()).toMatchObject({
       isExtracting: false,
-      extractionCount: 1,
-      activeTaskId: undefined,
+      extractedSinceCompact: false,
+      lastExtractionMessageId: undefined,
     });
   });
 
@@ -290,7 +365,14 @@ describe("task-memory adaptor", () => {
     ).resolves.toBe(false);
     expect(store.backgroundTasks()).toHaveLength(0);
 
-    await adaptor.resetForNewCompactionCycle();
+    await expect(adaptor.takeCompactionBoundaryMessageId()).resolves.toBe(
+      "assistant-1",
+    );
+    expect(taskMemoryState).toMatchObject({
+      extractionAttemptsSinceCompact: 0,
+      extractedSinceCompact: false,
+      lastExtractionMessageId: undefined,
+    });
     await expect(
       adaptor.update({
         messages: makeParentMessages(),

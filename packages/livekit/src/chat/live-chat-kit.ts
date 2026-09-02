@@ -519,8 +519,6 @@ export class LiveChatKit<
           })
         : undefined;
 
-    const readEffectiveTaskMemoryState = () =>
-      this.taskMemoryAdaptor?.getState();
     this.transport = new FlexibleChatTransport({
       store,
       blobStore,
@@ -607,6 +605,8 @@ export class LiveChatKit<
             TaskMemorySettleTimeoutMs,
           );
           const model = createModel({ llm: getters.getLLM() });
+          const taskMemoryBoundaryMessageId =
+            await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
           if (isAutoCompact) {
             logger.info(
               `Auto-compact triggered (totalTokens=${
@@ -623,8 +623,7 @@ export class LiveChatKit<
             recentFiles: await readRecentFilesForCompact(
               getRecentFilesForCompact,
             ),
-            taskMemoryBoundaryMessageId:
-              readEffectiveTaskMemoryState()?.lastExtractionMessageId,
+            taskMemoryBoundaryMessageId,
             abortSignal,
             inline: true,
             store: this.store,
@@ -682,6 +681,8 @@ export class LiveChatKit<
           TaskMemorySettleTimeoutMs,
         );
         const model = createModel({ llm: getters.getLLM() });
+        const taskMemoryBoundaryMessageId =
+          await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
         const summary = await compactTask({
           blobStore: this.blobStore,
           taskId: this.taskId,
@@ -691,8 +692,7 @@ export class LiveChatKit<
           recentFiles: await readRecentFilesForCompact(
             getRecentFilesForCompact,
           ),
-          taskMemoryBoundaryMessageId:
-            readEffectiveTaskMemoryState()?.lastExtractionMessageId,
+          taskMemoryBoundaryMessageId,
           store: this.store,
         });
 
@@ -1133,10 +1133,6 @@ export class LiveChatKit<
     success: boolean,
     onCompactFinish: ((success: boolean) => MaybePromise<void>) | undefined,
   ) {
-    if (success) {
-      await this.taskMemoryAdaptor?.resetForNewCompactionCycle();
-    }
-
     try {
       await onCompactFinish?.(success);
     } catch (notifyErr) {

@@ -165,15 +165,18 @@ function resolveTaskMemoryExtractionState({
   if (extractionResult === "pending") return undefined;
 
   const succeeded = extractionResult === "succeeded";
+  // Compaction clears the pending boundary. The background task may still
+  // finish, but its result belongs to the previous cycle and must be ignored.
+  const usable = succeeded && state.pendingExtractionMessageId !== undefined;
   return {
     ...state,
     isExtracting: false,
-    extractedSinceCompact: succeeded ? true : state.extractedSinceCompact,
+    extractedSinceCompact: usable ? true : state.extractedSinceCompact,
     extractionCount: succeeded
       ? state.extractionCount + 1
       : state.extractionCount,
-    lastExtractionMessageId: succeeded
-      ? (state.pendingExtractionMessageId ?? state.lastExtractionMessageId)
+    lastExtractionMessageId: usable
+      ? state.pendingExtractionMessageId
       : state.lastExtractionMessageId,
     pendingExtractionMessageId: undefined,
     activeTaskId: undefined,
@@ -190,7 +193,14 @@ function getTaskMemoryExtractionResult(
         continue;
       }
       if (!part.input || typeof part.input !== "object") continue;
-      if ("path" in part.input && part.input.path === TaskMemoryFileUri) {
+      if (
+        "path" in part.input &&
+        part.input.path === TaskMemoryFileUri &&
+        typeof part.output === "object" &&
+        part.output !== null &&
+        "success" in part.output &&
+        part.output.success === true
+      ) {
         return "succeeded";
       }
     }
@@ -231,6 +241,8 @@ type TaskMemoryAdaptorOptions = {
 
 export class TaskMemoryAdaptor {
   private readonly stateStore: MemoryStateStore<TaskMemoryState>;
+  private state: TaskMemoryState | undefined;
+  private transitionQueue = Promise.resolve();
 
   constructor(private readonly options: TaskMemoryAdaptorOptions) {
     this.stateStore =
@@ -239,23 +251,39 @@ export class TaskMemoryAdaptor {
   }
 
   getState() {
-    return this.stateStore.get() ?? { ...DefaultTaskMemoryState };
+    return this.state ?? this.stateStore.get() ?? { ...DefaultTaskMemoryState };
   }
 
-  resetForNewCompactionCycle() {
-    return this.stateStore.set({
-      ...this.getState(),
-      extractionAttemptsSinceCompact: 0,
-      extractedSinceCompact: false,
+  takeCompactionBoundaryMessageId() {
+    return this.enqueueTransition(async () => {
+      const state = this.getState();
+      const boundaryMessageId = state.extractedSinceCompact
+        ? state.lastExtractionMessageId
+        : undefined;
+      await this.setState({
+        ...state,
+        extractionAttemptsSinceCompact: 0,
+        extractedSinceCompact: false,
+        lastExtractionMessageId: undefined,
+        pendingExtractionMessageId: undefined,
+      });
+      return boundaryMessageId;
     });
   }
 
-  async update(data: {
+  update(data: {
+    messages: Message[];
+    contextWindowUsage?: ContextWindowUsage;
+  }) {
+    return this.enqueueTransition(() => this.updateInner(data));
+  }
+
+  private async updateInner(data: {
     messages: Message[];
     contextWindowUsage?: ContextWindowUsage;
   }) {
     if (this.options.isSubTask) return false;
-    await this.settle();
+    await this.settleInner();
 
     const state = this.getState();
     const metrics = getExtractionMetrics(data);
@@ -287,7 +315,7 @@ export class TaskMemoryAdaptor {
       const handle = await startTaskMemoryExtraction({
         state,
         metrics,
-        setTaskMemoryState: (nextState) => this.stateStore.set(nextState),
+        setTaskMemoryState: (nextState) => this.setState(nextState),
         startForkAgent: (agent) =>
           this.options.backgroundTask.startForkAgent(agent),
         parentTaskId: this.options.parentTaskId,
@@ -305,6 +333,10 @@ export class TaskMemoryAdaptor {
   }
 
   async settle() {
+    return this.enqueueTransition(() => this.settleInner());
+  }
+
+  private async settleInner() {
     const state = this.getState();
     if (!state.activeTaskId || !state.isExtracting) return false;
 
@@ -317,8 +349,22 @@ export class TaskMemoryAdaptor {
     });
     if (!nextState) return false;
 
-    await this.stateStore.set(nextState);
+    await this.setState(nextState);
     return true;
+  }
+
+  private async setState(state: TaskMemoryState) {
+    await this.stateStore.set(state);
+    this.state = state;
+  }
+
+  private enqueueTransition<T>(run: () => T | PromiseLike<T>): Promise<T> {
+    const result = this.transitionQueue.then(run);
+    this.transitionQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private getParentCwd() {
