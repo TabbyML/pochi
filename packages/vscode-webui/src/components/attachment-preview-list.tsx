@@ -14,12 +14,14 @@ interface AttachmentPreviewListProps {
   files: File[];
   onRemove: (index: number) => void;
   isUploading: boolean;
+  className?: string;
 }
 
 export function AttachmentPreviewList({
   files,
   onRemove,
   isUploading,
+  className,
 }: AttachmentPreviewListProps) {
   const { t } = useTranslation();
   const [previews, setPreviews] = useState<string[]>([]);
@@ -107,7 +109,7 @@ export function AttachmentPreviewList({
   if (files.length === 0) return null;
 
   return (
-    <div className="mt-2 mb-3 flex flex-wrap gap-2">
+    <div className={cn("mt-2 mb-3 flex flex-wrap gap-2", className)}>
       {files.map((file, index) => {
         const previewUrl = previews[index];
         const isImage = file.type.startsWith("image/");

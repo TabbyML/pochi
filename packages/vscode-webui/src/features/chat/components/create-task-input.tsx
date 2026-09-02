@@ -178,6 +178,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       todos?: Todo[];
       invokedSkills?: ValidSkillFile[];
       invokedCustomAgents?: string[];
+      pastedTexts?: string[];
     }): Promise<boolean> => {
       const {
         content,
@@ -186,6 +187,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         todos,
         invokedSkills,
         invokedCustomAgents,
+        pastedTexts,
       } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
@@ -193,7 +195,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         worktree = await vscodeHost.createWorktree({
           baseBranch: baseBranch || undefined,
           generateBranchName: {
-            prompt: content,
+            prompt: content || pastedTexts?.[0]?.slice(0, 2_000) || "",
             files: uploadedFiles,
           },
         });
@@ -209,6 +211,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           type: "new-task",
           cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
           prompt: content,
+          pastedTexts,
           todos,
           files: uploadedFiles,
           activeSelection: activeSelection ?? undefined,
@@ -293,6 +296,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       // Disallow empty submissions
       if (
         content.length === 0 &&
+        (currentInput.pastedTexts?.length ?? 0) === 0 &&
         files.length === 0 &&
         terminalContextSelections.length === 0
       )
@@ -335,9 +339,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         shouldCreateWorktree:
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-        todos: shouldCreateTodo ? initTodoModeTodos(content) : undefined,
+        todos:
+          shouldCreateTodo && content ? initTodoModeTodos(content) : undefined,
         invokedSkills: validationResult.invokedSkills,
         invokedCustomAgents,
+        pastedTexts: currentInput.pastedTexts,
       });
 
       // Set isCreatingTask state false
@@ -425,13 +431,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         contextMenuSide="bottom"
       >
         {files.length > 0 && (
-          <div className="px-3">
-            <AttachmentPreviewList
-              files={files}
-              onRemove={removeFile}
-              isUploading={isUploadingAttachments}
-            />
-          </div>
+          <AttachmentPreviewList
+            files={files}
+            onRemove={removeFile}
+            isUploading={isUploadingAttachments}
+            className="contents"
+          />
         )}
       </ChatInputForm>
 

@@ -423,6 +423,50 @@ describe("auto-memory adaptor", () => {
     expect(transcript.length).toBeLessThan(24_000);
   });
 
+  it("keeps pasted text content in the bounded transcript", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "completed",
+        background: false,
+        title: "Analyze pasted logs",
+      }),
+    ]);
+    const manager = makeAutoMemoryManager();
+    const adaptor = new AutoMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      manager,
+    });
+
+    await adaptor.update({
+      messages: [
+        {
+          id: "u1",
+          role: "user",
+          parts: [
+            {
+              type: "data-pasted-text",
+              data: { text: "important pasted context" },
+            },
+          ],
+        },
+      ] as Message[],
+      status: "completed",
+    });
+
+    const transcript = vi.mocked(manager.writeTaskTranscript).mock.calls[0]?.[0]
+      .transcript;
+    expect(transcript).toContain(
+      JSON.stringify({ type: "text", text: "important pasted context" }),
+    );
+  });
+
   it("starts a dream background task after extraction completes and finishes the dream lock", async () => {
     const store = new FakeStore([
       makeTask({

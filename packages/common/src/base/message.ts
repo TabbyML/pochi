@@ -33,6 +33,34 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
 
 export type MessageMetadata = z.infer<typeof MessageMetadata>;
 
+export function getPastedTextTitle(text: string): string | undefined {
+  const maxLength = 80;
+  const title: string[] = [];
+  let pendingSpace = false;
+
+  for (const character of text) {
+    if (character === "\n" || character === "\r") {
+      if (title.length > 0) break;
+      pendingSpace = false;
+      continue;
+    }
+    if (/\s/.test(character)) {
+      pendingSpace = title.length > 0;
+      continue;
+    }
+    if (pendingSpace) {
+      title.push(" ");
+      pendingSpace = false;
+    }
+    title.push(character);
+    if (title.length > maxLength) {
+      return `${title.slice(0, maxLength - 1).join("")}…`;
+    }
+  }
+
+  return title.join("") || undefined;
+}
+
 export const BackgroundJobNotification = z.object({
   notificationId: z.string(),
   backgroundJobId: z.string(),
