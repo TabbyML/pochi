@@ -241,6 +241,9 @@ function waitForExecuteCommandOutput(
       } else if (reason === "aborted") {
         result.error = "Aborted by background task runner";
       }
+      if (value._meta) {
+        result._meta = value._meta;
+      }
       resolve(result);
     };
 

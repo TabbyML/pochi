@@ -88,4 +88,37 @@ describe("executeCommandTool", () => {
     expect(panel.dataset.jobId).toBe("bgjob-cmd-test");
     expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-test.log");
   });
+
+  it("shows the job panel when a foreground command is promoted", () => {
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "promoted-call",
+          state: "output-available",
+          input: {
+            command: "bun run dev",
+            cwd: "/workspace",
+            background: false,
+            timeout: 1,
+          },
+          output: {
+            output: "Command moved to background",
+            isTruncated: false,
+            _meta: {
+              backgroundJobId: "bgjob-cmd-promoted",
+              outputFile: "/tmp/bgjob-cmd-promoted.log",
+            },
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    const panel = screen.getByTestId("background-job-panel");
+    expect(panel.dataset.jobId).toBe("bgjob-cmd-promoted");
+    expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-promoted.log");
+    expect(screen.getByText("toolInvocation.backgroundExecute")).toBeTruthy();
+  });
 });

@@ -26,6 +26,7 @@ import {
   PtySpawnError,
   executeCommandWithPty,
 } from "../integrations/terminal/execute-command-with-pty";
+import { ExecutionError } from "../integrations/terminal/utils";
 
 const logger = getLogger("ExecuteCommand");
 const ExecuteCommandStreamingThrottleMs = 300;
@@ -64,13 +65,14 @@ export const executeCommand: ToolFunctionType<
 
     const viewColumn = getViewColumnForTerminal();
     const location = viewColumn ? { viewColumn } : undefined;
-    const job = TerminalJob.create({
+    const job = await TerminalJob.create({
       name: getBackgroundJobTerminalName(command),
       command,
       cwd,
       location,
       abortSignal,
       taskId,
+      ...(envs ? { envs } : {}),
     });
 
     return createBackgroundCommandResult(job.id, job.outputFile);
@@ -133,12 +135,43 @@ export const executeCommand: ToolFunctionType<
         throttledFlush.call();
       },
     })
-      .then(async ({ output: commandOutput, isTruncated }) => {
+      .then(async (result) => {
         done = true;
         throttledFlush.cancel();
+
+        if (result.type === "timedOut") {
+          if (!taskId) {
+            result.ptyProcess.kill();
+            throw ExecutionError.createTimeoutError(timeout);
+          }
+
+          const viewColumn = getViewColumnForTerminal();
+          const location = viewColumn ? { viewColumn } : undefined;
+          const job = TerminalJob.adopt(result.ptyProcess, {
+            name: getBackgroundJobTerminalName(command),
+            command,
+            cwd,
+            location,
+            abortSignal,
+            taskId,
+            ...(envs ? { envs } : {}),
+          });
+          const backgroundResult = createBackgroundCommandResult(
+            job.id,
+            job.outputFile,
+          );
+          output.value = {
+            content: backgroundResult.output,
+            status: "completed",
+            isTruncated: backgroundResult.isTruncated,
+            _meta: backgroundResult._meta,
+          };
+          return;
+        }
+
         output.value = await persistCompletedOutput({
-          output: commandOutput,
-          isTruncated,
+          output: result.output,
+          isTruncated: result.isTruncated,
         });
       })
       .catch(async (error) => {
@@ -208,7 +241,7 @@ async function executeCommandImpl({
     }
   }
 
-  return await executeCommandWithNode({
+  const result = await executeCommandWithNode({
     command,
     cwd,
     timeout,
@@ -216,4 +249,5 @@ async function executeCommandImpl({
     envs,
     onData,
   });
+  return { type: "completed" as const, ...result };
 }

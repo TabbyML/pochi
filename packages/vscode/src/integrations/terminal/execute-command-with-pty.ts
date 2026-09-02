@@ -1,56 +1,26 @@
-import { getLogger } from "@getpochi/common";
-import { getTerminalEnv } from "@getpochi/common/env-utils";
-import { buildShellCommand } from "@getpochi/common/tool-utils";
-import type * as nodePty from "node-pty";
-import * as vscode from "vscode";
+import { PtyProcess } from "./pty-process";
 import type { ExecuteCommandOptions } from "./types";
 import { ExecutionError, truncateOutput } from "./utils";
 
-const logger = getLogger("ExecuteCommandWithPty");
+export {
+  PtySpawnError,
+  buildPtyEnv,
+  buildPtyShellCommand,
+  getNodePtyModulePaths,
+} from "./pty-process";
 
-export class PtySpawnError extends Error {
-  constructor(cause: unknown) {
-    super("Failed to spawn pty.");
-    this.name = "PtySpawnError";
-    this.cause = cause;
-  }
-}
-
-const nodePtyPath = vscode.Uri.joinPath(
-  vscode.Uri.file(vscode.env.appRoot),
-  "node_modules",
-  "node-pty",
-  "lib",
-  "index.js",
-).toString();
-
-export const toNonInteractivePtyCommand = (
-  command: string,
-  platform: NodeJS.Platform = process.platform,
-): string => {
-  if (platform === "win32") {
-    return command;
-  }
-
-  return `( ${command} ) </dev/null`;
-};
-
-export const buildPtyEnv = (
-  envs: Record<string, string> | undefined,
-): NodeJS.ProcessEnv => {
-  return {
-    ...process.env,
-    ...envs,
-    ...getTerminalEnv(),
-  };
-};
-
-export const buildPtyShellCommand = (
-  command: string,
-  platform: NodeJS.Platform = process.platform,
-) => {
-  return buildShellCommand(toNonInteractivePtyCommand(command, platform));
-};
+export type PtyCommandResult =
+  | {
+      type: "completed";
+      output: string;
+      isTruncated: boolean;
+    }
+  | {
+      type: "timedOut";
+      ptyProcess: PtyProcess;
+      output: string;
+      isTruncated: boolean;
+    };
 
 export const executeCommandWithPty = async ({
   command,
@@ -59,70 +29,68 @@ export const executeCommandWithPty = async ({
   abortSignal,
   onData,
   envs,
-}: ExecuteCommandOptions) => {
-  const shellCommand = buildPtyShellCommand(command);
-  if (!shellCommand) {
-    throw new PtySpawnError("Failed to get shell.");
-  }
+}: ExecuteCommandOptions): Promise<PtyCommandResult> => {
+  const ptyProcess = await PtyProcess.spawn({ command, cwd, envs });
 
-  let pty: typeof nodePty;
-  try {
-    pty = await import(nodePtyPath);
-  } catch (error) {
-    throw new PtySpawnError(error);
-  }
+  return new Promise<PtyCommandResult>((resolve, reject) => {
+    let output = "";
+    let settled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-  return new Promise<{ output: string; isTruncated: boolean }>(
-    (resolve, reject) => {
-      const { command: shell, args } = shellCommand;
-      logger.debug(
-        `Executing command with pty: ${command} in ${cwd}, shell: ${shell}, args: ${args}`,
-      );
-      const ptyProcess = pty.spawn(shell, args, {
-        // Using 'xterm-256color' here helps ensure that the majority of Linux distributions will use a
-        // color prompt as defined in the default ~/.bashrc file.
-        name: "xterm-256color",
-        cols: 80,
-        rows: 30,
-        cwd,
-        env: buildPtyEnv(envs),
-      });
+    const cleanup = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      abortSignal?.removeEventListener("abort", onAbort);
+      dataListener.dispose();
+      exitListener.dispose();
+    };
 
-      let output = "";
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback();
+    };
 
-      if (timeout > 0) {
-        timeoutId = setTimeout(() => {
-          ptyProcess.kill("SIGTERM");
-          reject(ExecutionError.createTimeoutError(timeout));
-        }, timeout * 1000);
-      }
-
-      const onAbort = () => {
-        ptyProcess.kill("SIGTERM");
+    const onAbort = () => {
+      settle(() => {
+        ptyProcess.kill();
         reject(ExecutionError.createAbortError());
-      };
-      abortSignal?.addEventListener("abort", onAbort);
-
-      const dataListener = ptyProcess.onData((data: string) => {
-        output = output + data;
-        onData?.(truncateOutput(output));
       });
+    };
 
-      const exitListener = ptyProcess.onExit(({ exitCode }) => {
-        if (timeoutId) clearTimeout(timeoutId);
-        abortSignal?.removeEventListener("abort", onAbort);
-        dataListener.dispose();
-        exitListener.dispose();
+    const dataListener = ptyProcess.onData((data) => {
+      output += data;
+      onData?.(truncateOutput(output));
+    });
 
+    const exitListener = ptyProcess.onExit(({ exitCode }) => {
+      settle(() => {
         if (exitCode === 0) {
-          resolve(truncateOutput(output));
+          resolve({ type: "completed", ...truncateOutput(output) });
         } else {
           reject(
             ExecutionError.create(`Command exited with code ${exitCode}.`),
           );
         }
       });
-    },
-  );
+    });
+
+    if (abortSignal?.aborted) {
+      onAbort();
+      return;
+    }
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+
+    if (timeout > 0) {
+      timeoutId = setTimeout(() => {
+        settle(() => {
+          resolve({
+            type: "timedOut",
+            ptyProcess,
+            ...truncateOutput(output),
+          });
+        });
+      }, timeout * 1000);
+    }
+  });
 };

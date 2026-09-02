@@ -28,13 +28,16 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   }, [lifecycle.abort]);
 
   const { cwd, command, background } = tool.input || {};
+  const backgroundJobMetadata =
+    tool.state === "output-available" ? tool.output._meta : undefined;
+  const runsInBackground = background || Boolean(backgroundJobMetadata);
   const cwdNode = cwd ? (
     <span>
       {" "}
       {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
     </span>
   ) : null;
-  const text = background
+  const text = runsInBackground
     ? t("toolInvocation.backgroundExecute")
     : t("toolInvocation.executeCommand");
   const title = (
@@ -53,9 +56,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     throw new Error("Unexpected streaming result for executeCommand tool");
   }
 
-  if (background) {
-    const backgroundJobMetadata =
-      tool.state === "output-available" ? tool.output._meta : undefined;
+  if (runsInBackground) {
     const availableCommand =
       tool.state === "input-available" || tool.state === "output-available"
         ? tool.input.command

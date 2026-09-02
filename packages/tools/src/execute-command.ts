@@ -59,7 +59,7 @@ Before executing the command, please follow these steps:
 Usage notes:
 - The command argument is required.
 ${backgroundUsageNotes}
-- For foreground commands, you can specify an optional timeout in seconds (up to 300s). If not specified, commands will timeout after ${ExecuteCommandDefaultTimeoutSec}s.
+- For foreground commands, you can specify an optional timeout in seconds (up to 300s). If not specified, the foreground wait is ${ExecuteCommandDefaultTimeoutSec}s. On supported interactive hosts, a command still running at that point is moved to a background terminal instead of being stopped; its result includes the background job metadata. Other hosts stop the command and report a timeout.
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands:
   - If the commands are independent and can run in parallel, make multiple executeCommand tool calls in a single message. For example, if you need to run "git status" and "git diff", send a single message with two executeCommand tool calls in parallel.
@@ -189,7 +189,7 @@ Important:
         .max(60 * 5)
         .optional()
         .describe(
-          `Optional timeout in seconds, max 300 seconds. By default the timeout is ${ExecuteCommandDefaultTimeoutSec} seconds.`,
+          `Optional foreground wait in seconds, max 300 seconds. The default is ${ExecuteCommandDefaultTimeoutSec} seconds. Supported interactive hosts move a command that is still running to the background.`,
         ),
     }),
     outputSchema: z.object({
