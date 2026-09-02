@@ -6,13 +6,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useBackgroundJobInfo } from "@/features/chat";
+import { getBackgroundJobStatusLabel } from "@/lib/background-job-status-label";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useOpenBackgroundJob } from "@/lib/hooks/use-open-background-job";
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import type { TFunction } from "i18next";
 import {
   CheckIcon,
   ChevronsDownUpIcon,
@@ -432,20 +432,6 @@ const BackgroundJobStatus: FC<{
     </span>
   );
 };
-
-function getBackgroundJobStatusLabel(
-  status: "completed" | "failed" | "stopped",
-  exitCode: number | undefined,
-  t: TFunction,
-): string {
-  return status === "completed"
-    ? t("backgroundJobNotifications.completed", { exitCode: exitCode ?? 0 })
-    : status === "failed"
-      ? exitCode === undefined
-        ? t("backgroundJobNotifications.failedNoExit")
-        : t("backgroundJobNotifications.failed", { exitCode })
-      : t("backgroundJobNotifications.stopped");
-}
 
 const OpenOutputFileButton: FC<{ outputFile: string }> = ({ outputFile }) => {
   const { t } = useTranslation();

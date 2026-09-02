@@ -1,6 +1,6 @@
 /**
  * ManagePanel — a toolbar trigger opening a drawer that lists the background
- * commands Pochi started for this task.
+ * commands Pochi started for this task, plus its background tasks in dev mode.
  */
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,19 +15,27 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsDevMode } from "@/features/settings";
+import { getBackgroundJobStatusLabel } from "@/lib/background-job-status-label";
 import { useOpenBackgroundJob } from "@/lib/hooks/use-open-background-job";
 import { cn } from "@/lib/utils";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import {
   ChevronRightIcon,
   ListChevronsDownUpIcon,
   Loader2,
   TerminalIcon,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { Children, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useJobList } from "../hooks/use-job-list";
 import type { JobListEntry, JobStatus } from "../lib/build-job-list";
+import {
+  BackgroundTaskDetail,
+  BackgroundTaskRow,
+  BackgroundTasksLabel,
+  useBackgroundTasks,
+} from "./background-task-debug-panel";
 
 export function ManagePanel({
   taskId,
@@ -37,7 +45,13 @@ export function ManagePanel({
   messages: Message[];
 }) {
   const { t } = useTranslation();
+  const [isDevMode] = useIsDevMode();
   const [isOpen, setIsOpen] = useState(false);
+  // Picking a task slides its detail over the list. The list stays mounted
+  // underneath, so folded sections and scroll position survive the trip, and
+  // the id outlives the closing slide so the layer does not empty mid-flight.
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { pochi } = useJobList(taskId, messages);
 
   // The badge is the trigger's whole status language: a blue dot appears only
@@ -45,7 +59,18 @@ export function ManagePanel({
   const runningCount = pochi.filter((job) => job.status === "running").length;
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        // Closing the drawer takes it back to the list, so it never reopens
+        // deep inside a task nobody asked about again.
+        if (!open) {
+          setIsDetailOpen(false);
+          setDetailTaskId(null);
+        }
+      }}
+    >
       {/* The name of the panel is carried by the tooltip; in the toolbar's
           icon row, the trigger wears the same clothes as its neighbours. */}
       <Tooltip>
@@ -79,32 +104,127 @@ export function ManagePanel({
             {t("managePanel.title")}
           </SheetTitle>
         </div>
-        {/* One scroll container for the whole panel, so every list here
-            shares the VS Code themed scrollbar. */}
-        <ScrollArea className="flex-1">
-          <div className="p-2">
-            {pochi.length === 0 ? (
-              <div className="px-3 py-6 text-center text-muted-foreground text-sm">
-                {t("managePanel.empty")}
-              </div>
-            ) : (
-              <JobGroup label={t("managePanel.pochiGroup")} jobs={pochi} />
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {isDevMode === true ? (
+            <DevPanelBody
+              pochi={pochi}
+              onSelectTask={(id) => {
+                setDetailTaskId(id);
+                setIsDetailOpen(true);
+              }}
+            />
+          ) : (
+            <PanelBody pochi={pochi} tasks={NoTasks} />
+          )}
+          {/* A layer rather than a second page: it slides in over the list and
+              back out again, and the list below it is never unmounted. */}
+          <div
+            data-testid="background-task-layer"
+            data-state={isDetailOpen ? "open" : "closed"}
+            inert={!isDetailOpen}
+            className={cn(
+              "absolute inset-0 flex flex-col bg-background transition-transform duration-200 ease-out",
+              !isDetailOpen && "pointer-events-none translate-x-full",
+            )}
+          >
+            {detailTaskId !== null && (
+              <BackgroundTaskDetail
+                taskId={detailTaskId}
+                onBack={() => setIsDetailOpen(false)}
+              />
             )}
           </div>
-        </ScrollArea>
+        </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+const NoTasks: readonly Task[] = [];
+
+/**
+ * Background tasks live in a different store than the commands, and only dev
+ * mode ever shows them. Reading them from a separate component keeps that
+ * query from running for everybody else, since hooks cannot be conditional.
+ */
+function DevPanelBody({
+  pochi,
+  onSelectTask,
+}: {
+  pochi: JobListEntry[];
+  onSelectTask: (taskId: string) => void;
+}) {
+  const tasks = useBackgroundTasks();
+
+  return <PanelBody pochi={pochi} tasks={tasks} onSelectTask={onSelectTask} />;
+}
+
+function PanelBody({
+  pochi,
+  tasks,
+  onSelectTask,
+}: {
+  pochi: JobListEntry[];
+  tasks: readonly Task[];
+  onSelectTask?: (taskId: string) => void;
+}) {
+  const { t } = useTranslation();
+
+  // A group with nothing in it says nothing; an empty panel says it once.
+  if (pochi.length === 0 && tasks.length === 0) {
+    return (
+      <div className="px-3 py-6 text-center text-muted-foreground text-sm">
+        {t("managePanel.empty")}
+      </div>
+    );
+  }
+
+  return (
+    /* One scroll container for the whole panel, so every list here shares the
+       VS Code themed scrollbar. */
+    <ScrollArea className="flex-1">
+      <div className="flex flex-col gap-2 p-2">
+        {pochi.length > 0 && (
+          <PanelGroup label={t("managePanel.pochiGroup")}>
+            {pochi.map((job) => (
+              <li key={job.backgroundJobId}>
+                <JobRow job={job} />
+              </li>
+            ))}
+          </PanelGroup>
+        )}
+        {tasks.length > 0 && (
+          <PanelGroup label={BackgroundTasksLabel}>
+            {tasks.map((task) => (
+              <li key={task.id}>
+                <BackgroundTaskRow
+                  task={task}
+                  onSelect={() => onSelectTask?.(task.id)}
+                />
+              </li>
+            ))}
+          </PanelGroup>
+        )}
+      </div>
+    </ScrollArea>
   );
 }
 
 /** How many rows the list shows before it has to be asked for the rest. */
 const CollapsedItemCount = 5;
 
-function JobGroup({ label, jobs }: { label: string; jobs: JobListEntry[] }) {
+function PanelGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const visibleJobs = isExpanded ? jobs : jobs.slice(0, CollapsedItemCount);
+  const items = Children.toArray(children);
+  const visibleItems = isExpanded ? items : items.slice(0, CollapsedItemCount);
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -131,19 +251,13 @@ function JobGroup({ label, jobs }: { label: string; jobs: JobListEntry[] }) {
           <span className="truncate font-semibold text-sm">{label}</span>
         </span>
         <span className="shrink-0 text-muted-foreground text-xs">
-          {jobs.length}
+          {items.length}
         </span>
       </button>
       {!isCollapsed && (
         <>
-          <ul className="flex flex-col gap-0.5">
-            {visibleJobs.map((job) => (
-              <li key={job.backgroundJobId}>
-                <JobRow job={job} />
-              </li>
-            ))}
-          </ul>
-          {jobs.length > CollapsedItemCount && (
+          <ul className="flex flex-col gap-0.5">{visibleItems}</ul>
+          {items.length > CollapsedItemCount && (
             <button
               type="button"
               onClick={() => setIsExpanded((prev) => !prev)}
@@ -220,17 +334,28 @@ function JobRow({ job }: { job: JobListEntry }) {
   );
 
   // The hover reveals what the row is about, not what clicking it does: the
-  // command, like the panels in the message list. A job whose command is
-  // unknown has nothing to add, so it gets no tooltip at all.
-  if (!job.command) return row;
+  // command, like the panels in the message list, and how it ended, in the
+  // same words the notification uses. A running job has neither an ending nor,
+  // if its message was compacted away, a command: then there is nothing to add.
+  const statusLabel =
+    job.status === "running"
+      ? undefined
+      : getBackgroundJobStatusLabel(job.status, job.exitCode, t);
+
+  if (!job.command && !statusLabel) return row;
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>{row}</TooltipTrigger>
       <TooltipContent>
-        <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-xs">
-          {job.command}
-        </span>
+        {job.command && (
+          <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-xs">
+            {job.command}
+          </span>
+        )}
+        {statusLabel && (
+          <span className="mt-1 block text-xs opacity-80">{statusLabel}</span>
+        )}
       </TooltipContent>
     </Tooltip>
   );

@@ -11,6 +11,8 @@ export interface JobListEntry {
   /** The command behind the row, shown on hover. */
   command?: string;
   status: JobStatus;
+  /** How a finished command ended, which its status colour cannot say. */
+  exitCode?: number;
   /** Transcript to fall back to once the terminal is gone. */
   outputFile?: string;
   isActive: boolean;
@@ -94,6 +96,7 @@ export function buildJobList({
         title: resolvedCommand ?? backgroundJobId,
         command: resolvedCommand,
         status: notification.status,
+        exitCode: notification.exitCode,
         outputFile: notification.outputFile,
         isActive: false,
       });
@@ -126,6 +129,7 @@ export function buildJobList({
       title: notification.command ?? notification.backgroundJobId,
       command: notification.command,
       status: notification.status,
+      exitCode: notification.exitCode,
       outputFile: notification.outputFile,
       isActive: false,
     });

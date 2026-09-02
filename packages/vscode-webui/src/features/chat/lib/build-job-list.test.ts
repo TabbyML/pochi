@@ -62,6 +62,16 @@ describe("buildJobList", () => {
     ]);
   });
 
+  it("carries the exit code a finished job reported", () => {
+    const { pochi } = buildJobList({
+      messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
+      notifications: [notification("bgjob-cmd-1", "failed", 127)],
+      terminals: [],
+    });
+
+    expect(pochi).toMatchObject([{ status: "failed", exitCode: 127 }]);
+  });
+
   it("surfaces a notification whose executeCommand part is gone", () => {
     const { pochi } = buildJobList({
       messages: [],
@@ -153,6 +163,7 @@ function terminal(
 function notification(
   backgroundJobId: string,
   status: BackgroundJobNotification["status"],
+  exitCode?: number,
 ): BackgroundJobNotification {
   return {
     notificationId: `${backgroundJobId}:terminal`,
@@ -160,6 +171,7 @@ function notification(
     outputFile: `/tmp/${backgroundJobId}.log`,
     command: `run ${backgroundJobId}`,
     status,
+    exitCode,
     summary: `Background command "${backgroundJobId}" ${status}`,
     finishedAt: 1,
   };

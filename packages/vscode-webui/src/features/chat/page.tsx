@@ -33,7 +33,6 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
-import { BackgroundTaskDebugPanel } from "./components/background-task-debug-panel";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
@@ -502,7 +501,6 @@ function Chat({ user, uid, info }: ChatProps) {
           onToolsExecutionEnded={chatKit.markEndToolsExecution}
         />
       </div>
-      <BackgroundTaskDebugPanel />
     </div>
   );
 }

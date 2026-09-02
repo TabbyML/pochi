@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobList } from "../lib/build-job-list";
@@ -8,9 +8,26 @@ import { ManagePanel } from "./manage-panel";
 const open = vi.fn();
 let jobList: JobList = { pochi: [] };
 let openState = { isTerminalClosed: false, canOpenOutputFile: false };
+let isDevMode = false;
+let backgroundTasks: Array<{ id: string; title: string }> = [];
+
+// Radix positions the tooltip with one, and jsdom has none.
+vi.stubGlobal(
+  "ResizeObserver",
+  class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    // Keys stand in for their translations; the exit code is interpolated so
+    // the hover text can be asserted.
+    t: (key: string, options?: { exitCode?: number }) =>
+      options?.exitCode === undefined ? key : `${key} ${options.exitCode}`,
+  }),
 }));
 
 // The drawer is rendered inline so the content is always assertable; opening
@@ -33,6 +50,42 @@ vi.mock("@/lib/hooks/use-open-background-job", () => ({
   }),
 }));
 
+vi.mock("@/features/settings", () => ({
+  useIsDevMode: () => [isDevMode],
+}));
+
+// The dev-only task surface has its own tests; here only its place in the
+// panel matters.
+vi.mock("./background-task-debug-panel", () => ({
+  BackgroundTasksLabel: "Tasks",
+  useBackgroundTasks: () => backgroundTasks,
+  BackgroundTaskRow: ({
+    task,
+    onSelect,
+  }: {
+    task: { title: string };
+    onSelect: () => void;
+  }) => (
+    <button type="button" onClick={onSelect}>
+      {task.title}
+    </button>
+  ),
+  BackgroundTaskDetail: ({
+    taskId,
+    onBack,
+  }: {
+    taskId: string;
+    onBack: () => void;
+  }) => (
+    <div data-testid="background-task-detail">
+      {taskId}
+      <button type="button" onClick={onBack}>
+        back
+      </button>
+    </div>
+  ),
+}));
+
 const renderPanel = () => render(<ManagePanel taskId="task-1" messages={[]} />);
 
 const runningJob = {
@@ -49,6 +102,8 @@ describe("ManagePanel", () => {
     open.mockClear();
     jobList = { pochi: [] };
     openState = { isTerminalClosed: false, canOpenOutputFile: false };
+    isDevMode = false;
+    backgroundTasks = [];
   });
 
   it("keeps the trigger bare when there is nothing running", () => {
@@ -141,6 +196,25 @@ describe("ManagePanel", () => {
     expect(withoutCommand.dataset.slot).toBeUndefined();
   });
 
+  it("says how a command ended on hover, exit code included", async () => {
+    jobList = {
+      pochi: [{ ...runningJob, status: "failed" as const, exitCode: 127 }],
+    };
+
+    renderPanel();
+
+    const row = screen.getByLabelText("commandExecutionPanel.openJob");
+    fireEvent.pointerMove(row, { pointerType: "mouse" });
+
+    await waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.textContent).toContain("bun run dev");
+      expect(tooltip.textContent).toContain(
+        "backgroundJobNotifications.failed 127",
+      );
+    });
+  });
+
   it("opens a job by clicking anywhere on its row", () => {
     jobList = { pochi: [runningJob] };
 
@@ -163,5 +237,74 @@ describe("ManagePanel", () => {
     expect(row.tagName).not.toBe("BUTTON");
     fireEvent.click(screen.getByText("bun run dev"));
     expect(open).not.toHaveBeenCalled();
+  });
+
+  it("keeps background tasks out of the panel outside dev mode", () => {
+    backgroundTasks = [{ id: "task-1", title: "A background task" }];
+
+    renderPanel();
+
+    expect(screen.queryByText("Tasks")).toBeNull();
+    expect(screen.getByText("managePanel.empty")).toBeDefined();
+  });
+
+  it("hides the task section in dev mode while there is no task", () => {
+    isDevMode = true;
+
+    renderPanel();
+
+    expect(screen.queryByText("Tasks")).toBeNull();
+    expect(screen.getByText("managePanel.empty")).toBeDefined();
+  });
+
+  it("lists background tasks in dev mode", () => {
+    isDevMode = true;
+    backgroundTasks = [{ id: "task-1", title: "A background task" }];
+
+    renderPanel();
+
+    expect(screen.getByText("Tasks")).toBeDefined();
+    expect(screen.getByText("A background task")).toBeDefined();
+    expect(screen.queryByText("managePanel.empty")).toBeNull();
+  });
+
+  it("takes the drawer to a task and back again", () => {
+    isDevMode = true;
+    backgroundTasks = [{ id: "task-1", title: "A background task" }];
+    jobList = { pochi: [runningJob] };
+
+    renderPanel();
+
+    fireEvent.click(screen.getByText("A background task"));
+    // The detail covers the list rather than replacing it.
+    expect(screen.getByTestId("background-task-detail").textContent).toContain(
+      "task-1",
+    );
+    expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+      "open",
+    );
+
+    fireEvent.click(screen.getByText("back"));
+    expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+      "closed",
+    );
+  });
+
+  it("keeps the list as it was left while a task is open", () => {
+    isDevMode = true;
+    backgroundTasks = [{ id: "task-1", title: "A background task" }];
+    jobList = { pochi: [runningJob] };
+
+    renderPanel();
+
+    // Fold the commands, then take a detour through a task detail.
+    fireEvent.click(screen.getByText("managePanel.pochiGroup"));
+    expect(screen.queryByText("bun run dev")).toBeNull();
+
+    fireEvent.click(screen.getByText("A background task"));
+    fireEvent.click(screen.getByText("back"));
+
+    // The list was never unmounted, so it is still folded.
+    expect(screen.queryByText("bun run dev")).toBeNull();
   });
 });
