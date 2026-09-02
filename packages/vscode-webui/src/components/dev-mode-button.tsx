@@ -12,6 +12,7 @@ import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
+import { formatters } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 import { convertToModelMessages } from "ai";
@@ -70,9 +71,12 @@ export function DevModeButton({
     return JSON.stringify(x, null, 2);
   };
   const getCoreMessagesContent = async () => {
-    const coreMessages = await convertToModelMessages(messages, {
-      ignoreIncompleteToolCalls: true,
-    });
+    const coreMessages = await convertToModelMessages(
+      formatters.llm(messages),
+      {
+        ignoreIncompleteToolCalls: true,
+      },
+    );
     return JSON.stringify(coreMessages, null, 2);
   };
 

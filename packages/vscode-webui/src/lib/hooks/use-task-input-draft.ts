@@ -15,6 +15,11 @@ interface VscodeState {
   taskInputDraft?: TaskInputDraft;
 }
 
+function withoutPastedTexts(input: ChatInput): ChatInput {
+  const { pastedTexts: _pastedTexts, ...draftInput } = input;
+  return draftInput;
+}
+
 /**
  * Hook to persist task input draft content across page navigation
  * Uses VSCode's built-in state management API
@@ -34,7 +39,7 @@ export function useTaskInputDraft() {
         const state = vscodeApi.getState() as VscodeState | undefined;
         const stored = state?.taskInputDraft;
         if (stored?.content?.text) {
-          return stored.content;
+          return withoutPastedTexts(stored.content);
         }
       }
     } catch (error) {
@@ -55,7 +60,7 @@ export function useTaskInputDraft() {
       const draftText = draft.text;
       if (draftText.trim()) {
         const data: TaskInputDraft = {
-          content: draft,
+          content: withoutPastedTexts(draft),
           timestamp: Date.now(),
         };
 

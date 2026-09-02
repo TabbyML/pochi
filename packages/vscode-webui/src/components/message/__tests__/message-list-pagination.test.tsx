@@ -729,3 +729,93 @@ describe("MessageList pagination", () => {
     ).toBe(true);
   });
 });
+
+describe("MessageList pasted text", () => {
+  it("renders a compact plain-text attachment beside image attachments", () => {
+    const pastedText = `first log line\n${"x".repeat(6_000)}`;
+    const message = {
+      id: "user-pasted-text",
+      role: "user",
+      parts: [
+        { type: "text", text: "explain" },
+        { type: "data-pasted-text", data: { text: pastedText } },
+        {
+          type: "file",
+          filename: "design-mockup.png",
+          mediaType: "image/png",
+          url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
+        },
+      ],
+    } as Message;
+
+    render(
+      <MessageListProbe
+        messages={[message]}
+        renderAllMessages
+        formatMessages={formatters.ui}
+      />,
+    );
+
+    const card = screen.getByTestId("pasted-text-card");
+    expect(card.className).toContain("h-8");
+    expect(card.textContent).not.toContain("pastedText.label");
+    expect(card.parentElement?.textContent).toContain("design-mockup.png");
+    expect(screen.getByText("first log l…")).toBeTruthy();
+    expect(screen.getByTestId("markdown").textContent).toBe("explain");
+    expect(screen.queryByText(pastedText)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "first log line" }));
+
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName === "PRE" && element.textContent === pastedText,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps the card visible across assistant streaming updates", () => {
+    const pastedText = `[{\\"role\\":\\"system\\",\\"content\\":\\"You are Pochi${"x".repeat(406_200)}`;
+    const userMessage = {
+      id: "user-large-paste",
+      role: "user",
+      parts: [{ type: "data-pasted-text", data: { text: pastedText } }],
+    } as Message;
+    const assistantMessage = {
+      id: "assistant-streaming",
+      role: "assistant",
+      parts: [{ type: "text", text: "First streamed part" }],
+    } as Message;
+    const { rerender } = render(
+      <MessageListProbe
+        messages={[userMessage]}
+        renderAllMessages
+        formatMessages={formatters.ui}
+      />,
+    );
+
+    expect(screen.getByTestId("pasted-text-card")).toBeTruthy();
+    expect(screen.queryByText(pastedText)).toBeNull();
+
+    rerender(
+      <MessageListProbe
+        messages={[
+          userMessage,
+          {
+            ...assistantMessage,
+            parts: [
+              ...assistantMessage.parts,
+              { type: "text", text: "Second streamed part" },
+            ],
+          },
+        ]}
+        renderAllMessages
+        formatMessages={formatters.ui}
+      />,
+    );
+
+    expect(screen.getByTestId("pasted-text-card")).toBeTruthy();
+    expect(screen.getByText("First streamed part")).toBeTruthy();
+    expect(screen.getByText("Second streamed part")).toBeTruthy();
+  });
+});

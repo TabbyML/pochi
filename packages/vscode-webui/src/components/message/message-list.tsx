@@ -2,6 +2,7 @@ import { Loader2, UserIcon } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
+import { PastedTextCard } from "@/components/pasted-text-card";
 import { ReasoningPartUI } from "@/components/reasoning-part.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -291,11 +292,20 @@ function UserAttachments({ message }: { message: Message }) {
   const fileParts = message.parts.filter(
     (part) => part.type === "file",
   ) as FileUIPart[];
+  const pastedTextParts = message.parts.filter(
+    (part) => part.type === "data-pasted-text",
+  ) as { type: "data-pasted-text"; data: { text: string } }[];
 
-  if (message.role === "user" && fileParts.length) {
+  if (
+    message.role === "user" &&
+    (fileParts.length > 0 || pastedTextParts.length > 0)
+  ) {
     return (
-      <div className="mt-3">
-        <MessageAttachments attachments={fileParts} />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {pastedTextParts.map((part, index) => (
+          <PastedTextCard key={index} text={part.data.text} variant="compact" />
+        ))}
+        <MessageAttachments attachments={fileParts} className="contents" />
       </div>
     );
   }
@@ -429,6 +439,17 @@ function Part({
         className={paddingClass}
         part={part}
         isLoading={isLastPartInMessages}
+      />
+    );
+  }
+
+  if (part.type === "data-pasted-text") {
+    if (role === "user") return null;
+    return (
+      <PastedTextCard
+        className={paddingClass}
+        text={part.data.text}
+        variant="compact"
       />
     );
   }
