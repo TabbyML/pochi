@@ -1,8 +1,4 @@
-import {
-  type ExecException,
-  type ExecOptionsWithStringEncoding,
-  exec,
-} from "node:child_process";
+import { spawn } from "node:child_process";
 import * as path from "node:path";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
@@ -16,7 +12,11 @@ import {
   type ToolFunctionType,
   createBackgroundCommandResult,
 } from "@getpochi/tools";
-import type { ToolCallOptions } from "../types";
+import type { BackgroundJobManager } from "../lib/background-job-manager";
+
+interface ExecuteCommandContext {
+  backgroundJobManager?: BackgroundJobManager;
+}
 
 export class ExecuteCommandError extends Error {
   public code: number;
@@ -43,7 +43,7 @@ export class ExecuteCommandError extends Error {
 
 export const executeCommand =
   (
-    context?: ToolCallOptions,
+    context?: ExecuteCommandContext,
   ): ToolFunctionType<ClientTools["executeCommand"]> =>
   async (
     {
@@ -75,94 +75,198 @@ export const executeCommand =
     }
 
     try {
-      const { stdout = "", stderr = "" } = await execWithExitCode(command, {
-        shell: getShellPath(),
-        timeout: timeout * 1000, // Convert to milliseconds
+      const result = await executeForegroundCommand({
+        command,
         cwd: resolvedCwd,
-        signal: abortSignal,
-        env: { ...process.env, ...envs, ...getTerminalEnv() },
+        envs,
+        timeout,
+        abortSignal,
+        backgroundJobManager: context?.backgroundJobManager,
       });
 
-      return processCommandOutput(stdout, stderr);
+      if ("backgroundJobId" in result) {
+        return createBackgroundCommandResult(
+          result.backgroundJobId,
+          result.outputFile,
+        );
+      }
+
+      return processCommandOutput(result.stdout, result.stderr);
     } catch (error) {
       if (error instanceof ExecuteCommandError) {
         throw error;
       }
 
-      // Handle abort signal
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error("Command execution was aborted");
       }
 
-      // Handle other execution errors
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       throw new Error(errorMessage);
     }
   };
 
-function isExecException(error: unknown): error is ExecException {
-  return (
-    error instanceof Error &&
-    "cmd" in error &&
-    "killed" in error &&
-    "code" in error &&
-    "signal" in error
-  );
+interface ExecuteForegroundCommandOptions {
+  command: string;
+  cwd: string;
+  envs?: Record<string, string>;
+  timeout: number;
+  abortSignal?: AbortSignal;
+  backgroundJobManager?: BackgroundJobManager;
 }
 
-async function execWithExitCode(
-  command: string,
-  options: ExecOptionsWithStringEncoding,
-): Promise<{ stdout: string; stderr: string; code: 0 }> {
-  return await new Promise<{ stdout: string; stderr: string; code: 0 }>(
-    (resolve, reject) => {
-      const child = exec(command, options, (err, stdout = "", stderr = "") => {
-        if (!err) {
-          resolve({
-            stdout,
-            stderr,
-            code: 0,
-          });
-          return;
-        }
+interface CompletedCommandResult {
+  stdout: string;
+  stderr: string;
+}
 
-        if (isExecException(err)) {
-          if (
-            err.signal === "SIGTERM" &&
-            err.killed &&
-            options.timeout &&
-            options.timeout > 0
-          ) {
-            reject(
-              new ExecuteCommandError({
-                message: `Command execution timed out after ${options.timeout / 1000} seconds.`,
-                stdout: err.stdout ?? stdout ?? "",
-                stderr: err.stderr ?? stderr ?? "",
-                code: err.code ?? 1,
-              }),
-            );
-            return;
-          }
+interface PromotedCommandResult {
+  backgroundJobId: string;
+  outputFile: string;
+}
 
-          reject(
-            new ExecuteCommandError({
-              message: `Command exited with code ${err.code ?? 1}`,
-              stdout: err.stdout ?? stdout ?? "",
-              stderr: err.stderr ?? stderr ?? "",
-              code: err.code ?? 1,
-            }),
-          );
-          return;
-        }
+function executeForegroundCommand({
+  command,
+  cwd,
+  envs,
+  timeout,
+  abortSignal,
+  backgroundJobManager,
+}: ExecuteForegroundCommandOptions): Promise<
+  CompletedCommandResult | PromotedCommandResult
+> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, {
+      shell: getShellPath(),
+      cwd,
+      env: { ...process.env, ...envs, ...getTerminalEnv() },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+    let state: "foreground" | "promoted" | "settled" = "foreground";
+    let stopReason: "abort" | "timeout" | undefined;
 
-        reject(err);
-      });
+    const onStdout = (chunk: Buffer | string) => {
+      stdoutChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    };
+    const onStderr = (chunk: Buffer | string) => {
+      stderrChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    };
+    child.stdout.on("data", onStdout);
+    child.stderr.on("data", onStderr);
 
-      // Close stdin to force non-interactive behavior and avoid hanging prompts.
-      child.stdin?.end();
-    },
-  );
+    const getOutput = () => ({
+      stdout: Buffer.concat(stdoutChunks).toString("utf8"),
+      stderr: Buffer.concat(stderrChunks).toString("utf8"),
+    });
+
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const removeForegroundListeners = () => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      abortSignal?.removeEventListener("abort", onAbort);
+      child.stdout.removeListener("data", onStdout);
+      child.stderr.removeListener("data", onStderr);
+      child.removeListener("close", onClose);
+      child.removeListener("error", onError);
+    };
+
+    const settleStoppedCommand = () => {
+      if (state !== "foreground") return;
+      state = "settled";
+      removeForegroundListeners();
+      if (stopReason === "abort") {
+        reject(new DOMException("Command execution was aborted", "AbortError"));
+        return;
+      }
+
+      const output = getOutput();
+      reject(
+        new ExecuteCommandError({
+          message: `Command execution timed out after ${timeout} seconds.`,
+          ...output,
+          code: 1,
+        }),
+      );
+    };
+
+    const onClose = (code: number | null) => {
+      if (stopReason) {
+        settleStoppedCommand();
+        return;
+      }
+      if (state !== "foreground") return;
+      state = "settled";
+      removeForegroundListeners();
+      const output = getOutput();
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+      reject(
+        new ExecuteCommandError({
+          message: `Command exited with code ${code ?? 1}`,
+          ...output,
+          code: code ?? 1,
+        }),
+      );
+    };
+
+    const onError = (error: Error) => {
+      if (state !== "foreground") return;
+      if (stopReason) {
+        settleStoppedCommand();
+        return;
+      }
+      state = "settled";
+      removeForegroundListeners();
+      reject(error);
+    };
+
+    function onAbort() {
+      if (state !== "foreground") return;
+      stopReason = "abort";
+      if (!child.kill()) settleStoppedCommand();
+    }
+
+    const onTimeout = () => {
+      if (state !== "foreground") return;
+      if (!backgroundJobManager) {
+        stopReason = "timeout";
+        if (!child.kill()) settleStoppedCommand();
+        return;
+      }
+
+      state = "promoted";
+      child.stdout.pause();
+      child.stderr.pause();
+      removeForegroundListeners();
+      try {
+        resolve(
+          backgroundJobManager.adopt(
+            child,
+            command,
+            { stdout: stdoutChunks, stderr: stderrChunks },
+            abortSignal,
+          ),
+        );
+      } catch (error) {
+        state = "settled";
+        child.kill();
+        reject(error);
+      }
+    };
+
+    child.on("close", onClose);
+    child.on("error", onError);
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+    if (abortSignal?.aborted) {
+      onAbort();
+    } else {
+      timeoutHandle = setTimeout(onTimeout, timeout * 1000);
+    }
+  });
 }
 
 function processCommandOutput(

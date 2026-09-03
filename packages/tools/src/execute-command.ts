@@ -59,7 +59,8 @@ Before executing the command, please follow these steps:
 Usage notes:
 - The command argument is required.
 ${backgroundUsageNotes}
-- For foreground commands, you can specify an optional timeout in seconds (up to 300s). If not specified, the foreground wait is ${ExecuteCommandDefaultTimeoutSec}s. On supported interactive hosts, a command still running at that point is moved to a background terminal instead of being stopped; its result includes the background job metadata. Other hosts stop the command and report a timeout.
+- For foreground commands, you can specify an optional timeout in seconds (up to 300s). If not specified, the foreground wait is ${ExecuteCommandDefaultTimeoutSec}s.
+- When the foreground timeout expires, the same process continues as a background job without being stopped or restarted, and the result includes its \`backgroundJobId\` and \`outputFile\`. CLI background jobs are non-interactive; in a VS Code task on macOS or Linux, the job also continues in an interactive terminal. If background promotion is unavailable, including in VS Code on Windows, the command is stopped and a timeout error is returned.
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands:
   - If the commands are independent and can run in parallel, make multiple executeCommand tool calls in a single message. For example, if you need to run "git status" and "git diff", send a single message with two executeCommand tool calls in parallel.

@@ -1,5 +1,9 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { getToolRules } from "@getpochi/tools";
 import { describe, expect, it } from "vitest";
+import { BackgroundJobManager } from "../../lib/background-job-manager";
 import { executeCommand } from "../execute-command";
 
 describe("executeCommand", () => {
@@ -29,6 +33,37 @@ describe("executeCommand", () => {
     ).rejects.toThrow("Command execution timed out after 1 seconds");
   });
 
+  it("should continue the same process as a background job after timeout", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-cli-promotion-"));
+    try {
+      const backgroundJobManager = new BackgroundJobManager({ outputDir });
+      const script = [
+        "process.stdout.write('start:' + process.pid + ';');",
+        "setTimeout(() => process.stdout.write('finish:' + process.pid + ';'), 1200);",
+      ].join("");
+      const result = await executeCommand({ backgroundJobManager })(
+        {
+          command: `${JSON.stringify(process.execPath)} -e ${JSON.stringify(script)}`,
+          timeout: 1,
+        },
+        mockToolExecutionOptions,
+      );
+
+      expect(result._meta?.backgroundJobId).toMatch(/^bgjob-cmd-/);
+      expect(result._meta?.outputFile).toBeDefined();
+      expect(await backgroundJobManager.waitForAllJobs(5000)).toBe(
+        "completed",
+      );
+
+      const output = await readFile(result._meta?.outputFile ?? "", "utf8");
+      const match = output.match(/^start:(\d+);finish:(\d+);$/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toBe(match?.[2]);
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
   it("should handle abort signal", async () => {
     const abortController = new AbortController();
     const options = {
@@ -46,6 +81,34 @@ describe("executeCommand", () => {
     setTimeout(() => abortController.abort(), 100);
 
     await expect(promise).rejects.toThrow("Command execution was aborted");
+  });
+
+  it("should stop a promoted background job when aborted", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-cli-abort-"));
+    try {
+      const backgroundJobManager = new BackgroundJobManager({
+        taskId: "test-task",
+        outputDir,
+      });
+      const abortController = new AbortController();
+      const eventPromise = new Promise<
+        Parameters<Parameters<typeof backgroundJobManager.onDidFinish>[0]>[0]
+      >((resolve) => backgroundJobManager.onDidFinish(resolve));
+
+      const result = await executeCommand({ backgroundJobManager })(
+        { command: "sleep 10", timeout: 1 },
+        {
+          ...mockToolExecutionOptions,
+          abortSignal: abortController.signal,
+        },
+      );
+      abortController.abort();
+
+      expect(result._meta?.backgroundJobId).toMatch(/^bgjob-cmd-/);
+      expect((await eventPromise).status).toBe("stopped");
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
   });
 
   it("should use default timeout when not specified", async () => {
