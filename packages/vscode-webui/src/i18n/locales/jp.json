@@ -596,7 +596,9 @@
   "managePanel": {
     "title": "バックグラウンドジョブ",
     "toggle": "バックグラウンドジョブを表示",
-    "pochiGroup": "コマンド",
+    "pochiGroup": "バックグラウンドコマンド",
+    "openTerminal": "ターミナルを開く",
+    "kill": "プロセスを終了",
     "empty": "バックグラウンドで実行中のものはありません",
     "seeMore": "もっと見る",
     "seeLess": "折りたたむ"

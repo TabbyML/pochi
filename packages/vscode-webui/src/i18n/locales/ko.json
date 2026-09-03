@@ -589,7 +589,9 @@
   "managePanel": {
     "title": "백그라운드 작업",
     "toggle": "백그라운드 작업 보기",
-    "pochiGroup": "명령",
+    "pochiGroup": "백그라운드 명령",
+    "openTerminal": "터미널 열기",
+    "kill": "프로세스 종료",
     "empty": "백그라운드에서 실행 중인 항목이 없습니다",
     "seeMore": "더 보기",
     "seeLess": "간단히 보기"

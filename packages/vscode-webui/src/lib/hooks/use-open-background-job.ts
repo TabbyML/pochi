@@ -22,18 +22,30 @@ export function useOpenBackgroundJob(
   const isTerminalClosed = terminals !== undefined && !liveTerminal;
   const canOpenOutputFile = isTerminalClosed && outputFile !== undefined;
 
+  const openTerminal = useCallback(() => {
+    openBackgroundJobTerminal?.(backgroundJobId);
+  }, [backgroundJobId, openBackgroundJobTerminal]);
+
+  const openOutputFile = useCallback(() => {
+    if (outputFile) vscodeHost.openFile(outputFile);
+  }, [outputFile]);
+
   const open = useCallback(() => {
     if (isTerminalClosed) {
-      if (outputFile) vscodeHost.openFile(outputFile);
+      openOutputFile();
       return;
     }
-    openBackgroundJobTerminal?.(backgroundJobId);
-  }, [
-    backgroundJobId,
-    isTerminalClosed,
-    openBackgroundJobTerminal,
-    outputFile,
-  ]);
+    openTerminal();
+  }, [isTerminalClosed, openOutputFile, openTerminal]);
 
-  return { liveTerminal, isTerminalClosed, canOpenOutputFile, open };
+  return {
+    liveTerminal,
+    isTerminalClosed,
+    canOpenOutputFile,
+    open,
+    // The two halves of `open`, for callers that offer them as separate
+    // controls rather than as one badge.
+    openTerminal,
+    openOutputFile,
+  };
 }

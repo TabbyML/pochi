@@ -22,7 +22,7 @@ import { useMemo } from "react";
 import { formatTokens } from "../lib/format-tokens";
 
 /** The panel's own section titles are translated; this one is dev-only. */
-export const BackgroundTasksLabel = "Tasks";
+export const BackgroundTasksLabel = "Background tasks";
 
 export function useBackgroundTasks(): readonly Task[] {
   const store = useDefaultStore();

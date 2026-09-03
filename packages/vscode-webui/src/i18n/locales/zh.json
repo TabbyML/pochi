@@ -594,7 +594,9 @@
   "managePanel": {
     "title": "后台任务",
     "toggle": "查看后台任务",
-    "pochiGroup": "命令",
+    "pochiGroup": "后台命令",
+    "openTerminal": "打开终端",
+    "kill": "终止进程",
     "empty": "当前没有后台任务",
     "seeMore": "查看更多",
     "seeLess": "收起"

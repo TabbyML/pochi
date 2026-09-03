@@ -22,11 +22,13 @@ import { cn } from "@/lib/utils";
 import type { Message, Task } from "@getpochi/livekit";
 import {
   ChevronRightIcon,
+  CircleStopIcon,
+  FileTextIcon,
   ListChevronsDownUpIcon,
   Loader2,
   TerminalIcon,
 } from "lucide-react";
-import { Children, type ReactNode, useState } from "react";
+import { Children, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useJobList } from "../hooks/use-job-list";
 import type { JobListEntry, JobStatus } from "../lib/build-job-list";
@@ -54,8 +56,8 @@ export function ManagePanel({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { pochi } = useJobList(taskId, messages);
 
-  // The badge is the trigger's whole status language: a blue dot appears only
-  // while something is actually running.
+  // The badge is the trigger's whole status language: a blue count appears
+  // only while something is actually running.
   const runningCount = pochi.filter((job) => job.status === "running").length;
 
   return (
@@ -87,23 +89,27 @@ export function ManagePanel({
               <ListChevronsDownUpIcon className="size-5" />
               {runningCount > 0 && (
                 // Nudged outside the button box: the glyph is `size-5` in a
-                // 24px button, so a flush dot lands on top of its chevron.
-                <span className="-top-0.5 -right-0.5 absolute size-1.5 rounded-full bg-blue-500" />
+                // 24px button, so a flush badge lands on top of its chevron.
+                // Kept at dot scale — a 12px pill that only grows sideways if
+                // the count reaches two digits.
+                <span className="-top-1 -right-1 absolute flex h-3 min-w-3 items-center justify-center rounded-full bg-blue-500 px-[3px] font-medium text-[9px] text-white tabular-nums leading-none">
+                  {runningCount}
+                </span>
               )}
             </Button>
           </SheetTrigger>
         </TooltipTrigger>
         <TooltipContent>{t("managePanel.title")}</TooltipContent>
       </Tooltip>
+      {/* The top padding is all that is left of the header: it keeps the list
+          clear of the close button, which the drawer places over the content. */}
       <SheetContent
         side="right"
-        className="flex h-full w-[340px] max-w-[85vw] flex-col p-0"
+        className="flex h-full w-[340px] max-w-[85vw] flex-col p-0 pt-8"
       >
-        <div className="flex items-center justify-between border-b px-4 py-3 pr-12">
-          <SheetTitle className="font-semibold text-foreground text-sm">
-            {t("managePanel.title")}
-          </SheetTitle>
-        </div>
+        {/* The trigger's tooltip names the panel on screen; the title stays
+            for screen readers, which the drawer requires anyway. */}
+        <SheetTitle className="sr-only">{t("managePanel.title")}</SheetTitle>
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {isDevMode === true ? (
             <DevPanelBody
@@ -169,6 +175,7 @@ function PanelBody({
   onSelectTask?: (taskId: string) => void;
 }) {
   const { t } = useTranslation();
+  const commands = useRunningFirst(pochi);
 
   // A group with nothing in it says nothing; an empty panel says it once.
   if (pochi.length === 0 && tasks.length === 0) {
@@ -184,9 +191,9 @@ function PanelBody({
        VS Code themed scrollbar. */
     <ScrollArea className="flex-1">
       <div className="flex flex-col gap-2 p-2">
-        {pochi.length > 0 && (
+        {commands.length > 0 && (
           <PanelGroup label={t("managePanel.pochiGroup")}>
-            {pochi.map((job) => (
+            {commands.map((job) => (
               <li key={job.backgroundJobId}>
                 <JobRow job={job} />
               </li>
@@ -208,6 +215,29 @@ function PanelBody({
       </div>
     </ScrollArea>
   );
+}
+
+/**
+ * Running commands first, the incoming order kept within each half.
+ *
+ * A row is ranked by the status it had when it first appeared, and never
+ * ranked again: a command that stops — because it ended, or because it was
+ * just killed from that very row — keeps its place instead of dropping away
+ * under the pointer. The ranking lives as long as the open drawer, so the
+ * next visit sorts by what is true then.
+ */
+function useRunningFirst(jobs: JobListEntry[]): JobListEntry[] {
+  const ranks = useRef(new Map<string, number>());
+
+  const rankOf = (job: JobListEntry) => {
+    const known = ranks.current.get(job.backgroundJobId);
+    if (known !== undefined) return known;
+    const rank = job.status === "running" ? 0 : 1;
+    ranks.current.set(job.backgroundJobId, rank);
+    return rank;
+  };
+
+  return [...jobs].sort((a, b) => rankOf(a) - rankOf(b));
 }
 
 /** How many rows the list shows before it has to be asked for the rest. */
@@ -235,20 +265,27 @@ function PanelGroup({
         aria-expanded={!isCollapsed}
         onClick={() => setIsCollapsed((prev) => !prev)}
         className={cn(
-          "flex items-center justify-between gap-2 rounded-md px-2 py-1",
+          "group flex items-center justify-between gap-2 rounded-md px-2 py-1",
           "text-left transition-colors hover:bg-muted/60",
         )}
       >
         <span className="flex min-w-0 items-center gap-1">
-          <ChevronRightIcon
-            className={cn(
-              "size-3.5 shrink-0 text-muted-foreground transition-transform",
-              !isCollapsed && "rotate-90",
-            )}
-          />
           {/* No colour override: inheriting the drawer's own foreground keeps
               the title at full contrast instead of the dimmer `--foreground`. */}
           <span className="truncate font-semibold text-sm">{label}</span>
+          {/* Trailing the title, and quiet until the row is pointed at — the
+              titles read as headings rather than as a tree. A folded section
+              keeps its arrow out, since that is the only thing on screen
+              saying where its rows went. */}
+          <ChevronRightIcon
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground transition-all",
+              !isCollapsed && "rotate-90",
+              isCollapsed
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100",
+            )}
+          />
         </span>
         <span className="shrink-0 text-muted-foreground text-xs">
           {items.length}
@@ -283,109 +320,134 @@ function PanelGroup({
 
 function JobRow({ job }: { job: JobListEntry }) {
   const { t } = useTranslation();
-  const { isTerminalClosed, canOpenOutputFile, open } = useOpenBackgroundJob(
-    job.backgroundJobId,
-    job.outputFile,
-  );
-  // Live terminal -> reveal and focus it; gone -> open its recorded output.
-  const canOpen = !isTerminalClosed || canOpenOutputFile;
+  const { isTerminalClosed, openTerminal, openOutputFile } =
+    useOpenBackgroundJob(job.backgroundJobId, job.outputFile);
+  const isRunning = job.status === "running";
 
-  const label = isTerminalClosed
-    ? canOpenOutputFile
-      ? t("commandExecutionPanel.terminalClosedOpenOutput")
-      : t("commandExecutionPanel.terminalClosed")
-    : t("commandExecutionPanel.openJob", {
-        displayId: job.displayId ?? job.backgroundJobId,
-      });
-
-  const rowClassName =
-    "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left transition-colors";
-  const rowContent = (
-    <>
-      <JobStatusIndicator status={job.status} />
-      <span className="min-w-0 flex-1 truncate text-sm">{job.title}</span>
-      <JobBadge isActive={job.isActive} inert={!canOpen}>
-        {/* A job whose message was compacted away has lost its `%N`. */}
-        {job.displayId ? (
-          <div className="font-bold font-mono text-[10px]">{job.displayId}</div>
-        ) : (
-          <TerminalIcon className="size-3" />
-        )}
-      </JobBadge>
-    </>
-  );
-
-  const row = canOpen ? (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={open}
-      className={cn(
-        rowClassName,
-        "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-      )}
-    >
-      {rowContent}
-    </button>
-  ) : (
-    <div aria-label={label} className={cn(rowClassName, "cursor-default")}>
-      {rowContent}
-    </div>
-  );
-
-  // The hover reveals what the row is about, not what clicking it does: the
-  // command, like the panels in the message list, and how it ended, in the
-  // same words the notification uses. A running job has neither an ending nor,
-  // if its message was compacted away, a command: then there is nothing to add.
+  // The hover reveals what the row is about: the command, like the panels in
+  // the message list, and how it ended, in the same words the notification
+  // uses. A running job has neither an ending nor, if its message was
+  // compacted away, a command: then there is nothing to add.
   const statusLabel =
     job.status === "running"
       ? undefined
       : getBackgroundJobStatusLabel(job.status, job.exitCode, t);
 
-  if (!job.command && !statusLabel) return row;
+  const title = (
+    <span className="min-w-0 flex-1 truncate text-sm">{job.title}</span>
+  );
+
+  // What the row can be asked to do. A running command can be watched and
+  // stopped; a finished one can only be read back, and only if its transcript
+  // was kept.
+  const actions = isRunning ? (
+    <>
+      {/* The process outlives its terminal tab, so the tab is only offered
+          while there is one to show. */}
+      {!isTerminalClosed && (
+        <JobAction label={t("managePanel.openTerminal")} onClick={openTerminal}>
+          <TerminalIcon className="size-3.5" />
+        </JobAction>
+      )}
+      {/* TODO: kill the process once command execution runs on a pty. */}
+      <JobAction label={t("managePanel.kill")} destructive>
+        <CircleStopIcon className="size-3.5" />
+      </JobAction>
+    </>
+  ) : (
+    job.outputFile && (
+      <JobAction
+        label={t("backgroundJobNotifications.openOutput")}
+        onClick={openOutputFile}
+      >
+        <FileTextIcon className="size-3.5" />
+      </JobAction>
+    )
+  );
+  const hasActions = isRunning || job.outputFile !== undefined;
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{row}</TooltipTrigger>
-      <TooltipContent>
-        {job.command && (
-          <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-xs">
-            {job.command}
+    <div className="group flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/60">
+      <JobStatusIndicator status={job.status} />
+      {job.command || statusLabel ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{title}</TooltipTrigger>
+          <TooltipContent>
+            {job.command && (
+              <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-xs">
+                {job.command}
+              </span>
+            )}
+            {statusLabel && (
+              <span className="mt-1 block text-xs opacity-80">
+                {statusLabel}
+              </span>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        title
+      )}
+      {/* One cell at the end of the row, holding the number at rest and the
+          controls on hover. Stacking them means the title's truncation point
+          never moves, and the row keeps a single trailing column. */}
+      <span className="grid min-h-5 shrink-0 items-center justify-items-end">
+        {job.displayId && (
+          <span
+            className={cn(
+              "col-start-1 row-start-1 font-mono text-[10px] text-muted-foreground",
+              // Only a row with something to press trades its number away.
+              hasActions &&
+                "transition-opacity group-focus-within:opacity-0 group-hover:opacity-0",
+            )}
+          >
+            {job.displayId}
           </span>
         )}
-        {statusLabel && (
-          <span className="mt-1 block text-xs opacity-80">{statusLabel}</span>
+        {hasActions && (
+          // Quiet until asked, the way VS Code's own lists hold their inline
+          // actions back — and the keyboard gets them as soon as one is
+          // focused rather than having to hover.
+          <span className="col-start-1 row-start-1 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            {actions}
+          </span>
         )}
-      </TooltipContent>
-    </Tooltip>
+      </span>
+    </div>
   );
 }
 
-/**
- * The badge on a row. Purely decorative here: the whole row carries the
- * interaction, so it must not be a nested button.
- */
-function JobBadge({
-  isActive,
-  inert,
+/** A control at the end of a row, named by its tooltip. */
+function JobAction({
+  label,
+  destructive,
+  onClick,
   children,
 }: {
-  isActive: boolean;
-  inert: boolean;
+  label: string;
+  destructive?: boolean;
+  onClick?: () => void;
   children: ReactNode;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex size-[16px] shrink-0 items-center justify-center rounded-sm bg-secondary text-secondary-foreground",
-        {
-          "ring-1 ring-primary": isActive,
-          "text-muted-foreground opacity-60": inert,
-        },
-      )}
-    >
-      {children}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={label}
+          onClick={onClick}
+          className={cn(
+            "size-5 rounded-sm text-muted-foreground hover:text-foreground",
+            destructive && "hover:text-destructive",
+          )}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 

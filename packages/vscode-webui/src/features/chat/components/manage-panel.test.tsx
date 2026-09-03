@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobList } from "../lib/build-job-list";
 import { ManagePanel } from "./manage-panel";
 
-const open = vi.fn();
+const openTerminal = vi.fn();
+const openOutputFile = vi.fn();
 let jobList: JobList = { pochi: [] };
 let openState = { isTerminalClosed: false, canOpenOutputFile: false };
 let isDevMode = false;
@@ -46,7 +47,8 @@ vi.mock("../hooks/use-job-list", () => ({
 vi.mock("@/lib/hooks/use-open-background-job", () => ({
   useOpenBackgroundJob: () => ({
     ...openState,
-    open,
+    openTerminal,
+    openOutputFile,
   }),
 }));
 
@@ -57,7 +59,7 @@ vi.mock("@/features/settings", () => ({
 // The dev-only task surface has its own tests; here only its place in the
 // panel matters.
 vi.mock("./background-task-debug-panel", () => ({
-  BackgroundTasksLabel: "Tasks",
+  BackgroundTasksLabel: "Background tasks",
   useBackgroundTasks: () => backgroundTasks,
   BackgroundTaskRow: ({
     task,
@@ -88,6 +90,10 @@ vi.mock("./background-task-debug-panel", () => ({
 
 const renderPanel = () => render(<ManagePanel taskId="task-1" messages={[]} />);
 
+/** The rows in the order the panel lists them. */
+const rowTitles = () =>
+  screen.getAllByRole("listitem").map((row) => row.textContent);
+
 const runningJob = {
   backgroundJobId: "bgjob-cmd-1",
   displayId: "%1",
@@ -97,9 +103,23 @@ const runningJob = {
   isActive: false,
 };
 
+// Numberless rows, so what a row reads is its title alone.
+const runningRow = {
+  ...runningJob,
+  displayId: undefined,
+  title: "running",
+};
+const finishedRow = {
+  ...runningRow,
+  backgroundJobId: "bgjob-cmd-2",
+  title: "done",
+  status: "completed" as const,
+};
+
 describe("ManagePanel", () => {
   beforeEach(() => {
-    open.mockClear();
+    openTerminal.mockClear();
+    openOutputFile.mockClear();
     jobList = { pochi: [] };
     openState = { isTerminalClosed: false, canOpenOutputFile: false };
     isDevMode = false;
@@ -125,9 +145,9 @@ describe("ManagePanel", () => {
     const { container } = renderPanel();
 
     const trigger = screen.getByTestId("manage-panel-toggle");
-    // A dot, not a count: the number lives next to the section title.
-    expect(trigger.textContent).toBe("");
-    expect(trigger.querySelector(".bg-blue-500")).not.toBeNull();
+    // The badge carries the running count itself.
+    expect(trigger.textContent).toBe("1");
+    expect(trigger.querySelector(".bg-blue-500")?.textContent).toBe("1");
     expect(container.querySelector(".animate-spin")).not.toBeNull();
     expect(screen.getByText("bun run dev")).toBeDefined();
     expect(screen.queryByText("managePanel.empty")).toBeNull();
@@ -183,17 +203,23 @@ describe("ManagePanel", () => {
 
   it("explains a row by its command, and stays quiet without one", () => {
     jobList = {
-      pochi: [runningJob, { ...runningJob, backgroundJobId: "bgjob-cmd-2" }],
+      pochi: [
+        runningJob,
+        {
+          ...runningJob,
+          backgroundJobId: "bgjob-cmd-2",
+          title: "bgjob-cmd-2",
+          command: undefined,
+        },
+      ],
     };
-    jobList.pochi[1].command = undefined;
 
     renderPanel();
 
-    const [withCommand, withoutCommand] = screen.getAllByLabelText(
-      "commandExecutionPanel.openJob",
+    expect(screen.getByText("bun run dev").dataset.slot).toBe(
+      "tooltip-trigger",
     );
-    expect(withCommand.dataset.slot).toBe("tooltip-trigger");
-    expect(withoutCommand.dataset.slot).toBeUndefined();
+    expect(screen.getByText("bgjob-cmd-2").dataset.slot).toBeUndefined();
   });
 
   it("says how a command ended on hover, exit code included", async () => {
@@ -203,8 +229,9 @@ describe("ManagePanel", () => {
 
     renderPanel();
 
-    const row = screen.getByLabelText("commandExecutionPanel.openJob");
-    fireEvent.pointerMove(row, { pointerType: "mouse" });
+    fireEvent.pointerMove(screen.getByText("bun run dev"), {
+      pointerType: "mouse",
+    });
 
     await waitFor(() => {
       const tooltip = screen.getByRole("tooltip");
@@ -215,28 +242,112 @@ describe("ManagePanel", () => {
     });
   });
 
-  it("opens a job by clicking anywhere on its row", () => {
+  it("numbers a row without asking to be clicked", () => {
     jobList = { pochi: [runningJob] };
 
     renderPanel();
 
-    const row = screen.getByLabelText("commandExecutionPanel.openJob");
-    expect(row.tagName).toBe("BUTTON");
-    fireEvent.click(screen.getByText("bun run dev"));
-    expect(open).toHaveBeenCalled();
-    expect(screen.getByText("%1")).toBeDefined();
+    const displayId = screen.getByText("%1");
+    expect(displayId.tagName).toBe("SPAN");
+    expect(displayId.closest("button")).toBeNull();
+    // A running row has controls, so the number steps aside for them.
+    expect(displayId.className).toContain("group-hover:opacity-0");
   });
 
-  it("drops the interaction once there is nothing left to open", () => {
-    openState = { isTerminalClosed: true, canOpenOutputFile: false };
-    jobList = { pochi: [{ ...runningJob, status: "stopped" }] };
+  it("keeps the number for a row that has nothing to press", () => {
+    jobList = { pochi: [{ ...runningJob, status: "stopped" as const }] };
 
     renderPanel();
 
-    const row = screen.getByLabelText("commandExecutionPanel.terminalClosed");
-    expect(row.tagName).not.toBe("BUTTON");
-    fireEvent.click(screen.getByText("bun run dev"));
-    expect(open).not.toHaveBeenCalled();
+    // Nothing comes to take its place, so it must not fade out either.
+    expect(screen.getByText("%1").className).not.toContain(
+      "group-hover:opacity-0",
+    );
+  });
+
+  it("offers a running command its terminal and a way to stop it", () => {
+    jobList = { pochi: [runningJob] };
+
+    renderPanel();
+
+    fireEvent.click(screen.getByLabelText("managePanel.openTerminal"));
+    expect(openTerminal).toHaveBeenCalled();
+    expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
+    expect(
+      screen.queryByLabelText("backgroundJobNotifications.openOutput"),
+    ).toBeNull();
+  });
+
+  it("hides the terminal control once the terminal is gone", () => {
+    openState = { isTerminalClosed: true, canOpenOutputFile: false };
+    jobList = { pochi: [runningJob] };
+
+    renderPanel();
+
+    expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
+    // The process outlives its tab, so it can still be stopped.
+    expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
+  });
+
+  it("offers a finished command its output file", () => {
+    jobList = {
+      pochi: [
+        {
+          ...runningJob,
+          status: "completed" as const,
+          outputFile: "/tmp/bgjob-cmd-1.log",
+        },
+      ],
+    };
+
+    renderPanel();
+
+    const openOutput = screen.getByLabelText(
+      "backgroundJobNotifications.openOutput",
+    );
+    // Only the pointer brings the controls out, and they hold their place in
+    // the row while hidden. jsdom has no `:hover`, so the reveal itself cannot
+    // be observed here — that they start hidden, and are still clickable, can.
+    const controls = openOutput.parentElement;
+    expect(controls?.className).toContain("opacity-0");
+    expect(controls?.className).toContain("group-hover:opacity-100");
+
+    fireEvent.click(openOutput);
+    expect(openOutputFile).toHaveBeenCalled();
+    expect(screen.queryByLabelText("managePanel.kill")).toBeNull();
+    expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
+  });
+
+  it("leaves a finished command without a transcript with nothing to press", () => {
+    jobList = { pochi: [{ ...runningJob, status: "stopped" as const }] };
+
+    renderPanel();
+
+    expect(
+      screen.queryByLabelText("backgroundJobNotifications.openOutput"),
+    ).toBeNull();
+  });
+
+  it("lists running commands first", () => {
+    jobList = { pochi: [finishedRow, runningRow] };
+
+    renderPanel();
+
+    expect(rowTitles()).toEqual(["running", "done"]);
+  });
+
+  it("keeps a command in place once it stops", () => {
+    jobList = { pochi: [finishedRow, runningRow] };
+
+    const { rerender } = renderPanel();
+
+    // Killing the top row must not drop it to the bottom under the pointer.
+    jobList = {
+      pochi: [finishedRow, { ...runningRow, status: "stopped" as const }],
+    };
+    rerender(<ManagePanel taskId="task-1" messages={[]} />);
+
+    expect(rowTitles()).toEqual(["running", "done"]);
   });
 
   it("keeps background tasks out of the panel outside dev mode", () => {
@@ -244,7 +355,7 @@ describe("ManagePanel", () => {
 
     renderPanel();
 
-    expect(screen.queryByText("Tasks")).toBeNull();
+    expect(screen.queryByText("Background tasks")).toBeNull();
     expect(screen.getByText("managePanel.empty")).toBeDefined();
   });
 
@@ -253,7 +364,7 @@ describe("ManagePanel", () => {
 
     renderPanel();
 
-    expect(screen.queryByText("Tasks")).toBeNull();
+    expect(screen.queryByText("Background tasks")).toBeNull();
     expect(screen.getByText("managePanel.empty")).toBeDefined();
   });
 
@@ -263,7 +374,7 @@ describe("ManagePanel", () => {
 
     renderPanel();
 
-    expect(screen.getByText("Tasks")).toBeDefined();
+    expect(screen.getByText("Background tasks")).toBeDefined();
     expect(screen.getByText("A background task")).toBeDefined();
     expect(screen.queryByText("managePanel.empty")).toBeNull();
   });
