@@ -244,13 +244,9 @@ function Chat({ user, uid, info }: ChatProps) {
         return true;
       };
 
-      // A background job that finished while the loop was running is delivered
-      // as this continuation request, so the model sees it at the current step
-      // boundary instead of only after the task ends. The notification message
-      // triggers the request itself, hence the automatic continuation is
-      // skipped. Placing this after the continuation decision keeps every
-      // intentional pause (todo pause, auto approve stop, aborted task) intact:
-      // a paused loop is not resumed by a notification.
+      // A job that finished mid loop is delivered as this continuation
+      // request, so the notification message starts it instead. Running after
+      // the continuation decision keeps every intentional pause intact.
       const continueAutomatically = (shouldContinue: boolean) => {
         if (!shouldContinue) {
           return false;

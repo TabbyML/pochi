@@ -96,13 +96,7 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
-  /**
-   * Registration slot for the mid-loop background job notification delivery.
-   *
-   * The queue lives in this component while the automatic continuation
-   * decision lives in the page, so the page hands down a ref that is filled in
-   * with a callback it can invoke at a step boundary.
-   */
+  /** Filled in with the delivery callback, for the page to call at a step boundary. */
   deliverBackgroundJobNotificationsRef?: React.RefObject<() => boolean>;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
@@ -355,15 +349,14 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     },
   });
 
-  // Identity of the last dispatched notification entry. It keeps a second
-  // evaluation of the same continuation decision from sending the entry twice
+  // Last dispatched entry, so a re-evaluated decision does not send it twice
   // while the queue state update is still pending.
   const deliveredNotificationsRef = useRef<DraftMessage>(undefined);
 
   /**
-   * Delivers pending background job notifications as the next request instead
-   * of waiting for the task to become idle. Returns true when the caller must
-   * not start its own request, because this delivery already starts one.
+   * Delivers pending notifications as the next request instead of waiting for
+   * the task to become idle. Returns true when the caller must not start its
+   * own request, because this delivery already starts one.
    */
   const deliverBackgroundJobNotifications = useCallback(() => {
     const index = getDeliverableBackgroundJobNotificationIndex(queuedMessages);
@@ -377,9 +370,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     }
     deliveredNotificationsRef.current = message;
 
-    // Deferred to a microtask, so the send starts from the same place the SDK
-    // would have started its own automatic continuation instead of re-entering
-    // it while it is still applying the tool output.
+    // Deferred, so the send starts where the SDK would have started its own
+    // continuation instead of re-entering it mid tool output.
     void Promise.resolve().then(() =>
       sendQueuedMessage(index, { keepAutoApproveGuard: true }),
     );

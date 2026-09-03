@@ -11,10 +11,7 @@ export function getBackgroundJobNotificationIds(
   );
 }
 
-/**
- * A queue entry that only carries background job notifications, i.e. it was
- * created by the notification queue rather than typed by the user.
- */
+/** A queue entry that only carries notifications, i.e. was not typed by the user. */
 export function isBackgroundJobNotificationMessage(
   message: Pick<DraftMessage, "parts">,
 ): boolean {
@@ -27,12 +24,10 @@ export function isBackgroundJobNotificationMessage(
 }
 
 /**
- * Index of the queued notification that may be delivered in the middle of a
- * running agent loop, or `undefined` when nothing may be delivered yet.
+ * Index of the notification deliverable in the middle of a running loop.
  *
- * Only the head of the queue is eligible: queued user input keeps the running
- * loop untouched (steering it is an explicit user action), and delivering a
- * notification from behind a queued user message would reorder the queue.
+ * Only the head is eligible: queued user input is only sent by an explicit
+ * steer, and delivering from behind it would reorder the queue.
  */
 export function getDeliverableBackgroundJobNotificationIndex(
   messages: readonly Pick<DraftMessage, "parts">[],
@@ -42,9 +37,8 @@ export function getDeliverableBackgroundJobNotificationIndex(
 }
 
 /**
- * Adds notifications to one non-removable queue entry. If a notification
- * entry is already waiting, new parts are merged into it so one dequeue sends
- * every notification available at that send point in a single user message.
+ * Adds notifications to one non-removable queue entry, merging into the
+ * waiting entry so a single dequeue sends all of them.
  */
 export function enqueueBackgroundJobNotifications(
   messages: DraftMessage[],

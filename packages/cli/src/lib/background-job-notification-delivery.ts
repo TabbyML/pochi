@@ -11,9 +11,8 @@ export interface BackgroundJobNotificationTarget {
 }
 
 /**
- * Drains every pending background job event into a single user message.
- *
- * The pending list is emptied, so a notification is never delivered twice.
+ * Drains every pending event into one user message, so a notification is
+ * never delivered twice.
  */
 export function takeBackgroundJobNotificationMessage(
   pending: BackgroundJobTerminalEvent[],
@@ -25,21 +24,15 @@ export function takeBackgroundJobNotificationMessage(
 }
 
 /**
- * Delivers background jobs that finished while the step loop was running as
- * part of the continuation request the loop is about to send.
- *
- * Without this the model only learns about them once the whole task ends,
- * which is both slow and often too late to be actionable. Riding along with
- * the continuation keeps the request count unchanged.
+ * Delivers jobs that finished mid loop as part of the continuation request
+ * the loop is about to send, instead of only when the task ends.
  */
 export function deliverBackgroundJobNotifications(
   stepResult: StepResult,
   pending: BackgroundJobTerminalEvent[],
   chat: BackgroundJobNotificationTarget,
 ): boolean {
-  // "retry" resends the last message as is, so injecting a notification would
-  // change what is being retried. "finished" drains separately because it also
-  // has to decide whether one more step is needed.
+  // "retry" resends the last message as is, and "finished" has its own drain.
   if (stepResult !== "next") {
     return false;
   }
