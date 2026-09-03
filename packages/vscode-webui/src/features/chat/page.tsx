@@ -90,6 +90,10 @@ function Chat({ user, uid, info }: ChatProps) {
   const todoPausedRef = useLatest(todoPaused);
   const todoModeActiveRef = useRef(false);
   const lastAutoContinueStateRef = useRef<string | undefined>(undefined);
+  // Filled in by <ChatToolbar>, which owns the queued messages.
+  const deliverBackgroundJobNotificationsRef = useRef<() => boolean>(
+    () => false,
+  );
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -240,6 +244,20 @@ function Chat({ user, uid, info }: ChatProps) {
         return true;
       };
 
+      // A background job that finished while the loop was running is delivered
+      // as this continuation request, so the model sees it at the current step
+      // boundary instead of only after the task ends. The notification message
+      // triggers the request itself, hence the automatic continuation is
+      // skipped. Placing this after the continuation decision keeps every
+      // intentional pause (todo pause, auto approve stop, aborted task) intact:
+      // a paused loop is not resumed by a notification.
+      const continueAutomatically = (shouldContinue: boolean) => {
+        if (!shouldContinue) {
+          return false;
+        }
+        return !deliverBackgroundJobNotificationsRef.current();
+      };
+
       if (chatAbortController.current.signal.aborted) {
         return false;
       }
@@ -257,7 +275,9 @@ function Chat({ user, uid, info }: ChatProps) {
 
       const shouldContinueTodo = getTodoContinuationDecision(candidateMessages);
       if (shouldContinueTodo !== undefined) {
-        return claimAutoContinue(!todoPausedRef.current && shouldContinueTodo);
+        return continueAutomatically(
+          claimAutoContinue(!todoPausedRef.current && shouldContinueTodo),
+        );
       }
 
       if (shouldStopAutoApprove({ messages: candidateMessages })) {
@@ -268,10 +288,12 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      return claimAutoContinue(
-        lastAssistantMessageIsCompleteWithToolCalls({
-          messages: candidateMessages,
-        }),
+      return continueAutomatically(
+        claimAutoContinue(
+          lastAssistantMessageIsCompleteWithToolCalls({
+            messages: candidateMessages,
+          }),
+        ),
       );
     },
     onOverrideMessages,
@@ -497,6 +519,9 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
+          deliverBackgroundJobNotificationsRef={
+            deliverBackgroundJobNotificationsRef
+          }
           onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}

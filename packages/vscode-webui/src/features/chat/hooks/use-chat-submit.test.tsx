@@ -605,6 +605,72 @@ describe("useChatSubmit", () => {
     });
   });
 
+  describe("sendQueuedMessage", () => {
+    it("sends the queued message without stopping the current run", async () => {
+      const first = draftMessage({ text: "first queued message" });
+      const second = draftMessage({ text: "second queued message" });
+      const context = setup({
+        isLoading: false,
+        queuedMessages: [first, second],
+      });
+
+      let sent: boolean | undefined;
+      await act(async () => {
+        sent = await context.result.current.sendQueuedMessage(0);
+      });
+
+      expect(sent).toBe(true);
+      expect(context.stopChat).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:first queued message"],
+      });
+      expect(context.queuedMessages).toEqual([second]);
+    });
+
+    it("resets the auto approve guard like a user submission by default", async () => {
+      chatStateMocks.autoApproveGuard.current = "manual";
+      const context = setup({
+        isLoading: false,
+        queuedMessages: [draftMessage({ text: "queued message" })],
+      });
+
+      await act(async () => {
+        await context.result.current.sendQueuedMessage(0);
+      });
+
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+    });
+
+    it("keeps the auto approve guard when the caller asks for it", async () => {
+      chatStateMocks.autoApproveGuard.current = "manual";
+      const context = setup({
+        isLoading: false,
+        queuedMessages: [draftMessage({ text: "queued message" })],
+      });
+
+      await act(async () => {
+        await context.result.current.sendQueuedMessage(0, {
+          keepAutoApproveGuard: true,
+        });
+      });
+
+      expect(context.sendMessage).toHaveBeenCalledOnce();
+      expect(chatStateMocks.autoApproveGuard.current).toBe("manual");
+    });
+
+    it("does nothing when the index has no matching queued message", async () => {
+      const context = setup({ isLoading: false, queuedMessages: [] });
+
+      let sent: boolean | undefined;
+      await act(async () => {
+        sent = await context.result.current.sendQueuedMessage(0);
+      });
+
+      expect(sent).toBe(false);
+      expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
   it("captures selection context when the message is created and reuses it when a queued message is later steered, instead of re-reading it at flush time", async () => {
     const queueTimeActiveSelection: ActiveSelection = {
       filepath: "/workspace/queued.ts",

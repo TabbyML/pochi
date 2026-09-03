@@ -61,6 +61,7 @@ import { useTerminalContextState } from "../hooks/use-terminal-context-state";
 import {
   enqueueBackgroundJobNotifications,
   getBackgroundJobNotificationIds,
+  getDeliverableBackgroundJobNotificationIndex,
 } from "../lib/background-job-notification-queue";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
@@ -95,6 +96,14 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
+  /**
+   * Registration slot for the mid-loop background job notification delivery.
+   *
+   * The queue lives in this component while the automatic continuation
+   * decision lives in the page, so the page hands down a ref that is filled in
+   * with a callback it can invoke at a step boundary.
+   */
+  deliverBackgroundJobNotificationsRef?: React.RefObject<() => boolean>;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
@@ -121,6 +130,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
+  deliverBackgroundJobNotificationsRef,
   onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
@@ -309,6 +319,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     handleSteerSubmit,
     handleSteerQueuedMessage,
     handleStop,
+    sendQueuedMessage,
   } = useChatSubmit({
     chat,
     input,
@@ -343,6 +354,42 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       }
     },
   });
+
+  // Identity of the last dispatched notification entry. It keeps a second
+  // evaluation of the same continuation decision from sending the entry twice
+  // while the queue state update is still pending.
+  const deliveredNotificationsRef = useRef<DraftMessage>(undefined);
+
+  /**
+   * Delivers pending background job notifications as the next request instead
+   * of waiting for the task to become idle. Returns true when the caller must
+   * not start its own request, because this delivery already starts one.
+   */
+  const deliverBackgroundJobNotifications = useCallback(() => {
+    const index = getDeliverableBackgroundJobNotificationIndex(queuedMessages);
+    if (index === undefined) {
+      return false;
+    }
+
+    const message = queuedMessages[index];
+    if (deliveredNotificationsRef.current === message) {
+      return true;
+    }
+    deliveredNotificationsRef.current = message;
+
+    // Deferred to a microtask, so the send starts from the same place the SDK
+    // would have started its own automatic continuation instead of re-entering
+    // it while it is still applying the tool output.
+    void Promise.resolve().then(() =>
+      sendQueuedMessage(index, { keepAutoApproveGuard: true }),
+    );
+    return true;
+  }, [queuedMessages, sendQueuedMessage]);
+
+  if (deliverBackgroundJobNotificationsRef) {
+    deliverBackgroundJobNotificationsRef.current =
+      deliverBackgroundJobNotifications;
+  }
 
   const chatInputFormRef = useRef<ChatInputFormHandle>(null);
   const handleCurrentInputSubmit = useCallback(async () => {

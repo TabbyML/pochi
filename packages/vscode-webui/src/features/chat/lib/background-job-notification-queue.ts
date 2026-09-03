@@ -12,6 +12,36 @@ export function getBackgroundJobNotificationIds(
 }
 
 /**
+ * A queue entry that only carries background job notifications, i.e. it was
+ * created by the notification queue rather than typed by the user.
+ */
+export function isBackgroundJobNotificationMessage(
+  message: Pick<DraftMessage, "parts">,
+): boolean {
+  return (
+    message.parts.length > 0 &&
+    message.parts.every(
+      (part) => part.type === "data-background-job-notification",
+    )
+  );
+}
+
+/**
+ * Index of the queued notification that may be delivered in the middle of a
+ * running agent loop, or `undefined` when nothing may be delivered yet.
+ *
+ * Only the head of the queue is eligible: queued user input keeps the running
+ * loop untouched (steering it is an explicit user action), and delivering a
+ * notification from behind a queued user message would reorder the queue.
+ */
+export function getDeliverableBackgroundJobNotificationIndex(
+  messages: readonly Pick<DraftMessage, "parts">[],
+): number | undefined {
+  const head = messages[0];
+  return head && isBackgroundJobNotificationMessage(head) ? 0 : undefined;
+}
+
+/**
  * Adds notifications to one non-removable queue entry. If a notification
  * entry is already waiting, new parts are merged into it so one dequeue sends
  * every notification available at that send point in a single user message.
@@ -38,13 +68,7 @@ export function enqueueBackgroundJobNotifications(
     type: "data-background-job-notification" as const,
     data: notification,
   }));
-  const existingIndex = messages.findIndex(
-    (message) =>
-      message.parts.length > 0 &&
-      message.parts.every(
-        (part) => part.type === "data-background-job-notification",
-      ),
-  );
+  const existingIndex = messages.findIndex(isBackgroundJobNotificationMessage);
 
   if (existingIndex === -1) {
     return [

@@ -35,7 +35,6 @@ import {
   type LiveKitStore,
   type Message,
   type Task,
-  createBackgroundJobNotificationMessage,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
@@ -61,6 +60,10 @@ import {
 } from "ai";
 import type z from "zod";
 import { BackgroundJobManager } from "./lib/background-job-manager";
+import {
+  deliverBackgroundJobNotifications,
+  takeBackgroundJobNotificationMessage,
+} from "./lib/background-job-notification-delivery";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
@@ -460,10 +463,9 @@ export class TaskRunner {
   }
 
   private takePendingBackgroundJobNotifications(): Message | undefined {
-    const events = this.pendingBackgroundJobNotifications.splice(0);
-    return events.length > 0
-      ? createBackgroundJobNotificationMessage(events)
-      : undefined;
+    return takeBackgroundJobNotificationMessage(
+      this.pendingBackgroundJobNotifications,
+    );
   }
 
   /**
@@ -537,6 +539,13 @@ export class TaskRunner {
     if (result === "retry") {
       this.stepCount.throwIfReachedMaxRetries();
     }
+
+    // Deliver at this step boundary instead of waiting for the task to end.
+    deliverBackgroundJobNotifications(
+      result,
+      this.pendingBackgroundJobNotifications,
+      this.chat,
+    );
 
     this.abortSignal?.throwIfAborted();
     await this.chatKit.chat.sendMessage();

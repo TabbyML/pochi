@@ -47,6 +47,16 @@ export interface DraftMessage {
   };
 }
 
+interface SendChatMessageOptions {
+  /**
+   * Keeps the current auto approve guard instead of resetting it to "auto".
+   * Used for messages that are not a fresh user intent, e.g. background job
+   * notifications delivered while the agent loop is running, which must not
+   * silently re-enable auto approve.
+   */
+  keepAutoApproveGuard?: boolean;
+}
+
 interface UseChatSubmitProps {
   chat: UseChatReturn;
   input: ChatInput;
@@ -281,7 +291,7 @@ export function useChatSubmit({
   );
 
   const sendChatMessage = useCallback(
-    async (message: DraftMessage) => {
+    async (message: DraftMessage, options?: SendChatMessageOptions) => {
       const shouldCreateTodo = message.raw.isTodoMode && canCreateTodo;
       if (message.raw.text && shouldCreateTodo) {
         onBeforeSendText?.(message.raw.text);
@@ -291,7 +301,9 @@ export function useChatSubmit({
         pendingApproval.stopCountdown();
       }
 
-      autoApproveGuard.current = "auto";
+      if (!options?.keepAutoApproveGuard) {
+        autoApproveGuard.current = "auto";
+      }
       await sendMessage({
         parts: message.parts,
       });
@@ -441,10 +453,34 @@ export function useChatSubmit({
     ],
   );
 
+  /**
+   * Sends a queued message right away, without the steer stop-and-wait dance.
+   *
+   * Callers are responsible for only using it where starting a request is
+   * already legal, e.g. from the automatic continuation decision, where the
+   * previous request has finished and the next one is about to start.
+   */
+  const sendQueuedMessage = useCallback(
+    async (index: number, options?: SendChatMessageOptions) => {
+      logger.debug("sendQueuedMessage");
+
+      const message = queuedMessages[index];
+      if (!message) {
+        return false;
+      }
+
+      setQueuedMessages((messages) => messages.filter((_, i) => i !== index));
+      await sendChatMessage(message, options);
+      return true;
+    },
+    [queuedMessages, setQueuedMessages, sendChatMessage],
+  );
+
   return {
     handleSubmit,
     handleSteerSubmit,
     handleSteerQueuedMessage,
     handleStop,
+    sendQueuedMessage,
   };
 }
