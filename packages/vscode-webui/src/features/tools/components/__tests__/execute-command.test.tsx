@@ -51,7 +51,9 @@ vi.mock("../command-execution-panel", () => ({
       data-output-file={outputFile}
     />
   ),
-  CommandExecutionPanel: () => null,
+  CommandExecutionPanel: ({ command }: { command: string }) => (
+    <div data-testid="foreground-command-panel">{command}</div>
+  ),
   CommandPanelContainer: () => null,
   CopyCommandButton: () => null,
 }));
@@ -87,9 +89,12 @@ describe("executeCommandTool", () => {
     const panel = screen.getByTestId("background-job-panel");
     expect(panel.dataset.jobId).toBe("bgjob-cmd-test");
     expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-test.log");
+    expect(screen.getByText("toolInvocation.backgroundExecute")).toBeTruthy();
+    expect(screen.queryByTestId("command-promotion-transition")).toBeNull();
+    expect(screen.queryByTestId("foreground-command-panel")).toBeNull();
   });
 
-  it("shows the job panel when a foreground command is promoted", () => {
+  it("shows the foreground-to-background transition when promoted", () => {
     render(
       <ExecuteCommandTool
         tool={{
@@ -116,9 +121,20 @@ describe("executeCommandTool", () => {
       />,
     );
 
+    expect(screen.getByText("toolInvocation.startedCommand")).toBeTruthy();
+    expect(screen.queryByTestId("foreground-command-panel")).toBeNull();
+    const transition = screen.getByTestId("command-promotion-transition");
+    expect(transition).toBeTruthy();
+    expect(
+      screen.getByText("toolInvocation.promotedToBackground"),
+    ).toBeTruthy();
+    expect(transition.parentElement?.textContent).toContain(
+      "toolInvocation.startedCommand",
+    );
+    expect(screen.getAllByTestId("background-job-panel")).toHaveLength(1);
+
     const panel = screen.getByTestId("background-job-panel");
     expect(panel.dataset.jobId).toBe("bgjob-cmd-promoted");
     expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-promoted.log");
-    expect(screen.getByText("toolInvocation.backgroundExecute")).toBeTruthy();
   });
 });
