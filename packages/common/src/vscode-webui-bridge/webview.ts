@@ -51,6 +51,8 @@ import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { VSCodeSettings } from "./types/vscode-settings";
 
+export type BackgroundCommands = Record<string, { isVisible: boolean }>;
+
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
 
@@ -186,6 +188,13 @@ export interface VSCodeHostApi {
       Environment["workspace"]["terminals"] | undefined
     >;
     openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
+  }>;
+
+  readBackgroundCommands(): Promise<{
+    backgroundCommands: ThreadSignalSerialization<BackgroundCommands>;
+    show: (backgroundJobId: string) => Promise<void>;
+    hide: (backgroundJobId: string) => Promise<void>;
+    close: (backgroundJobId: string) => Promise<void>;
   }>;
 
   readBackgroundJobNotifications(taskId: string): Promise<{

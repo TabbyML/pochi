@@ -192,6 +192,9 @@ export function createSubtaskBatchedToolCall({
                   if (output.error) {
                     toolOutput.error = output.error;
                   }
+                  if (output._meta) {
+                    toolOutput._meta = output._meta;
+                  }
                   addToolOutput({
                     tool: toolCall.toolName,
                     toolCallId: toolCall.toolCallId,

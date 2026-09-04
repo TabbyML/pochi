@@ -70,7 +70,9 @@ export const Environment = z.object({
           }),
         )
         .optional()
-        .describe("Visible terminals in the VS Code workspace."),
+        .describe(
+          "Terminal sessions available in the VS Code workspace, including active managed background commands.",
+        ),
     })
     .describe("Information about the workspace."),
   info: z

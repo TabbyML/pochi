@@ -343,6 +343,9 @@ export class ManagedToolCallLifeCycle
         if (output.error) {
           result.error = output.error;
         }
+        if (output._meta) {
+          result._meta = output._meta;
+        }
         this.transitTo("execute:streaming", {
           type: "complete",
           result,

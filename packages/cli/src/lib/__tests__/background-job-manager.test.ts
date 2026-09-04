@@ -1,6 +1,9 @@
+import type { ChildProcess } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { BackgroundJobManager } from "../background-job-manager";
 
@@ -42,6 +45,44 @@ describe("BackgroundJobManager", () => {
     // Read again, buffer should be empty
     const result2 = manager.readOutput(backgroundJobId);
     expect(result2?.output).toBe("");
+  });
+
+  it("captures live adopted output while replaying initial output", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-bgjob-adopt-test-"));
+    try {
+      const manager = new BackgroundJobManager({ outputDir });
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const child = Object.assign(new EventEmitter(), {
+        stdout,
+        stderr,
+        kill: () => true,
+      }) as unknown as ChildProcess;
+      let releaseReplay: () => void = () => {};
+      const replayGate = new Promise<void>((resolve) => {
+        releaseReplay = resolve;
+      });
+      const initialStdout = (async function* () {
+        yield Buffer.from("before");
+        await replayGate;
+      })();
+
+      const { outputFile } = manager.adopt(child, "test", {
+        stdout: initialStdout,
+        stderr: [],
+      });
+      stdout.end("after");
+      stderr.end();
+      stdout.destroy();
+      stderr.destroy();
+      releaseReplay();
+      child.emit("close", 0);
+
+      expect(await manager.waitForAllJobs(1000)).toBe("completed");
+      expect(await readFile(outputFile, "utf8")).toBe("beforeafter");
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
   });
 
   it("should guide agents away from rapid empty reads", () => {

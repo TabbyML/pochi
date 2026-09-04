@@ -28,6 +28,9 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   }, [lifecycle.abort]);
 
   const { cwd, command, background } = tool.input || {};
+  const backgroundJobMetadata =
+    tool.state === "output-available" ? tool.output._meta : undefined;
+  const isPromoted = !background && Boolean(backgroundJobMetadata);
   const cwdNode = cwd ? (
     <span>
       {" "}
@@ -36,13 +39,20 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   ) : null;
   const text = background
     ? t("toolInvocation.backgroundExecute")
-    : t("toolInvocation.executeCommand");
+    : isPromoted
+      ? t("toolInvocation.startedCommand")
+      : t("toolInvocation.executeCommand");
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">
         {text}
         {cwdNode}
+        {isPromoted && (
+          <span data-testid="command-promotion-transition">
+            {t("toolInvocation.promotedToBackground")}
+          </span>
+        )}
       </span>
     </>
   );
@@ -53,9 +63,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     throw new Error("Unexpected streaming result for executeCommand tool");
   }
 
-  if (background) {
-    const backgroundJobMetadata =
-      tool.state === "output-available" ? tool.output._meta : undefined;
+  if (background || isPromoted) {
     const availableCommand =
       tool.state === "input-available" || tool.state === "output-available"
         ? tool.input.command

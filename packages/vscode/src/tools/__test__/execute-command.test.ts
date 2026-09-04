@@ -8,6 +8,10 @@ type SignalValue = {
   status: "idle" | "running" | "completed";
   isTruncated: boolean;
   error?: string;
+  _meta?: {
+    backgroundJobId: string;
+    outputFile?: string;
+  };
 };
 
 describe("executeCommand Tool", () => {
@@ -284,5 +288,103 @@ describe("executeCommand Tool", () => {
         taskId: "task-1",
       }),
     );
+  });
+
+  it("adopts the running pty when the foreground wait times out", async () => {
+    const ptyProcess = { kill: sinon.stub() };
+    const executeCommandWithPty = sinon.stub().resolves({
+      type: "timedOut",
+      ptyProcess,
+      output: "still running",
+      isTruncated: false,
+    });
+    const adopt = sinon.stub().returns({
+      id: "bgjob-cmd-promoted",
+      outputFile: "/tmp/bgjob-cmd-promoted.log",
+    });
+    const maybePersistToolResult = sinon.stub();
+    const getViewColumnForTerminal = sinon.stub().returns(3);
+    const { executeCommand } = proxyquire.noCallThru().load(
+      "../execute-command",
+      {
+        "@/integrations/layout": { getViewColumnForTerminal },
+        "@/integrations/terminal/terminal-job": {
+          TerminalJob: { create: sinon.stub(), adopt },
+        },
+        "@/lib/background-job-terminal-name": {
+          getBackgroundJobTerminalName: () => "Promoted",
+        },
+        "@getpochi/common": {
+          getLogger: () => ({ warn: sinon.stub() }),
+        },
+        "@getpochi/common/tool-utils": {
+          getShellPath: () => "/bin/zsh",
+          maybePersistToolResult,
+        },
+        "@quilted/threads/signals": {
+          ThreadSignal: {
+            serialize: (signal: {
+              value: SignalValue;
+              subscribe: (subscriber: (value: SignalValue) => void) => () => void;
+            }) => ({
+              get value() {
+                return signal.value;
+              },
+              start(subscriber: (value: SignalValue) => void) {
+                return signal.subscribe(subscriber);
+              },
+            }),
+          },
+        },
+        "../integrations/terminal/execute-command-with-node": {
+          executeCommandWithNode: sinon.stub(),
+        },
+        "../integrations/terminal/execute-command-with-pty": {
+          PtySpawnError: class PtySpawnError extends Error {},
+          executeCommandWithPty,
+        },
+      },
+    ) as typeof import("../execute-command");
+    const abortSignal = new AbortController().signal;
+    const result = await executeCommand(
+      { command: "sleep 10", timeout: 1 },
+      {
+        abortSignal,
+        cwd: "/workspace",
+        messages: [],
+        toolCallId: "call-promoted",
+        taskId: "task-1",
+      },
+    );
+    const values: SignalValue[] = [];
+    (
+      (result as unknown as { streamingOutput: unknown }).streamingOutput as {
+        start: (subscriber: (value: SignalValue) => void) => () => void;
+      }
+    ).start((value) => values.push(value));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    assert.ok(
+      adopt.calledOnceWithExactly(ptyProcess, {
+        name: "Promoted",
+        command: "sleep 10",
+        cwd: "/workspace",
+        location: { viewColumn: 3 },
+        abortSignal,
+        taskId: "task-1",
+      }),
+    );
+    assert.strictEqual(ptyProcess.kill.callCount, 0);
+    assert.strictEqual(maybePersistToolResult.callCount, 0);
+    assert.deepStrictEqual(values.at(-1), {
+      content:
+        'Background command "bgjob-cmd-promoted" started. Its output is written to "/tmp/bgjob-cmd-promoted.log". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.',
+      status: "completed",
+      isTruncated: false,
+      _meta: {
+        backgroundJobId: "bgjob-cmd-promoted",
+        outputFile: "/tmp/bgjob-cmd-promoted.log",
+      },
+    });
   });
 });

@@ -51,7 +51,9 @@ vi.mock("../command-execution-panel", () => ({
       data-output-file={outputFile}
     />
   ),
-  CommandExecutionPanel: () => null,
+  CommandExecutionPanel: ({ command }: { command: string }) => (
+    <div data-testid="foreground-command-panel">{command}</div>
+  ),
   CommandPanelContainer: () => null,
   CopyCommandButton: () => null,
 }));
@@ -87,5 +89,52 @@ describe("executeCommandTool", () => {
     const panel = screen.getByTestId("background-job-panel");
     expect(panel.dataset.jobId).toBe("bgjob-cmd-test");
     expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-test.log");
+    expect(screen.getByText("toolInvocation.backgroundExecute")).toBeTruthy();
+    expect(screen.queryByTestId("command-promotion-transition")).toBeNull();
+    expect(screen.queryByTestId("foreground-command-panel")).toBeNull();
+  });
+
+  it("shows the foreground-to-background transition when promoted", () => {
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "promoted-call",
+          state: "output-available",
+          input: {
+            command: "bun run dev",
+            cwd: "/workspace",
+            background: false,
+            timeout: 1,
+          },
+          output: {
+            output: "Command moved to background",
+            isTruncated: false,
+            _meta: {
+              backgroundJobId: "bgjob-cmd-promoted",
+              outputFile: "/tmp/bgjob-cmd-promoted.log",
+            },
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("toolInvocation.startedCommand")).toBeTruthy();
+    expect(screen.queryByTestId("foreground-command-panel")).toBeNull();
+    const transition = screen.getByTestId("command-promotion-transition");
+    expect(transition).toBeTruthy();
+    expect(
+      screen.getByText("toolInvocation.promotedToBackground"),
+    ).toBeTruthy();
+    expect(transition.parentElement?.textContent).toContain(
+      "toolInvocation.startedCommand",
+    );
+    expect(screen.getAllByTestId("background-job-panel")).toHaveLength(1);
+
+    const panel = screen.getByTestId("background-job-panel");
+    expect(panel.dataset.jobId).toBe("bgjob-cmd-promoted");
+    expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-promoted.log");
   });
 });

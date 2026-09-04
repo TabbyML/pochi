@@ -7,6 +7,7 @@ import {
   PlainOutputSanitizer,
   cleanupStaleTerminalOutputFiles,
 } from "@getpochi/common/tool-utils";
+import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -55,23 +56,48 @@ export class TerminalState implements vscode.Disposable {
     }
   >();
 
-  // Signal containing the current active terminals
+  // Signals containing the current terminals and detachable background commands.
   visibleTerminals = signal<TerminalInfo[]>([]);
+  backgroundCommands = signal<BackgroundCommands>({});
 
   constructor(private readonly taskDataStore: TaskDataStore) {
     void cleanupStaleTerminalOutputFiles().catch((error) => {
       logger.debug(`Failed to clean up stale terminal output files: ${error}`);
     });
-    this.visibleTerminals.value = this.listVisibleTerminals();
+    this.refreshTerminalState();
     this.setupEventListeners();
   }
 
   public openBackgroundJobTerminal(backgroundJobId: string) {
+    const job = TerminalJob.get(backgroundJobId);
+    if (job) {
+      job.show();
+      return;
+    }
+
     const terminal = vscode.window.terminals.find(
       (t) => this.getTerminalId(t) === backgroundJobId,
     );
-    if (!terminal) return;
-    terminal.show();
+    terminal?.show();
+  }
+
+  public showBackgroundCommand(backgroundJobId: string): void {
+    this.getBackgroundCommand(backgroundJobId)?.show();
+  }
+
+  public hideBackgroundCommand(backgroundJobId: string): void {
+    this.getBackgroundCommand(backgroundJobId)?.hide();
+  }
+
+  public closeBackgroundCommand(backgroundJobId: string): void {
+    this.getBackgroundCommand(backgroundJobId)?.closePtyProcess();
+  }
+
+  private getBackgroundCommand(
+    backgroundJobId: string,
+  ): TerminalJob | undefined {
+    const job = TerminalJob.get(backgroundJobId);
+    return job?.isPtyTerminal && !job.isFinished ? job : undefined;
   }
 
   /**
@@ -87,7 +113,11 @@ export class TerminalState implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidCloseTerminal(this.onTerminalClosed),
     );
+    this.disposables.push(TerminalJob.onDidCreate(this.onTerminalChanged));
     this.disposables.push(TerminalJob.onDidDispose(this.onTerminalChanged));
+    this.disposables.push(
+      TerminalJob.onDidChangeVisibility(this.onTerminalChanged),
+    );
     this.disposables.push(
       TerminalJob.onDidFinish((event) => {
         void this.taskDataStore.addBackgroundJobNotification(
@@ -110,12 +140,15 @@ export class TerminalState implements vscode.Disposable {
     );
   }
 
-  /**
-   * Update the active terminals signal when terminals change
-   */
+  /** Update terminal and background command signals when terminal state changes. */
   private onTerminalChanged = () => {
-    this.visibleTerminals.value = this.listVisibleTerminals();
+    this.refreshTerminalState();
   };
+
+  private refreshTerminalState(): void {
+    this.visibleTerminals.value = this.listVisibleTerminals();
+    this.backgroundCommands.value = this.listBackgroundCommands();
+  }
 
   private onTerminalClosed = (terminal: vscode.Terminal) => {
     const id = this.terminalIds.get(terminal);
@@ -211,26 +244,49 @@ export class TerminalState implements vscode.Disposable {
     return id;
   }
 
+  private listBackgroundCommands(): BackgroundCommands {
+    return Object.fromEntries(
+      TerminalJob.list()
+        .filter((job) => job.isPtyTerminal && !job.isFinished)
+        .map((job) => [job.id, { isVisible: job.isVisible }]),
+    );
+  }
+
   private listVisibleTerminals(): TerminalInfo[] {
-    return vscode.window.terminals
-      .filter((t) => {
-        if ("hideFromUser" in t.creationOptions) {
-          return !t.creationOptions.hideFromUser;
+    const listedJobIds = new Set<string>();
+    const terminals: TerminalInfo[] = vscode.window.terminals
+      .filter((terminal) => {
+        if ("hideFromUser" in terminal.creationOptions) {
+          return !terminal.creationOptions.hideFromUser;
         }
         return true;
       })
-      .map((t) => {
-        const id = this.getTerminalId(t);
-        if (!TerminalJob.get(t)) {
-          TerminalHistoryManager.getOrCreate(id).terminalName = t.name;
+      .map((terminal) => {
+        const id = this.getTerminalId(terminal);
+        const job = TerminalJob.get(terminal);
+        if (job) {
+          listedJobIds.add(job.id);
+        } else {
+          TerminalHistoryManager.getOrCreate(id).terminalName = terminal.name;
         }
         return {
-          name: t.name,
-          isActive: t === vscode.window.activeTerminal,
+          name: terminal.name,
+          isActive: terminal === vscode.window.activeTerminal,
           backgroundJobId: id,
-          outputFile: this.getTerminalOutputFile(t),
+          outputFile: this.getTerminalOutputFile(terminal),
         };
       });
+
+    for (const job of TerminalJob.list()) {
+      if (!job.isPtyTerminal || listedJobIds.has(job.id)) continue;
+      terminals.push({
+        name: job.name,
+        isActive: false,
+        backgroundJobId: job.id,
+        outputFile: job.outputFile,
+      });
+    }
+    return terminals;
   }
 
   private getTerminalOutputFile(terminal: vscode.Terminal): string | undefined {

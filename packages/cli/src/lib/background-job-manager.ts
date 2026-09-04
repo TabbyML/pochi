@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
 import type { BackgroundJobTerminalEvent } from "@getpochi/common";
 import { assertBackgroundJobReadInterval } from "@getpochi/common";
@@ -25,11 +26,22 @@ export interface BackgroundJob {
   lastReadAt?: number;
   stopRequested?: boolean;
   finalizing?: boolean;
+  disposeAbort?: () => void;
 }
 
 export interface BackgroundJobStartResult {
   backgroundJobId: string;
   outputFile: string;
+}
+
+export type BackgroundJobInitialOutputStream =
+  | Iterable<Buffer | string>
+  | AsyncIterable<Buffer | string>;
+
+export interface BackgroundJobInitialOutput {
+  stdout: BackgroundJobInitialOutputStream;
+  stderr: BackgroundJobInitialOutputStream;
+  dispose?: () => Promise<void>;
 }
 
 export interface BackgroundJobManagerOptions {
@@ -51,6 +63,31 @@ export class BackgroundJobManager {
     cwd: string,
     envs?: Record<string, string>,
   ): BackgroundJobStartResult {
+    const child = spawn(command, {
+      shell: getShellPath(),
+      cwd,
+      env: { ...process.env, ...getTerminalEnv(), ...envs },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    return this.register(child, command);
+  }
+
+  adopt(
+    child: ChildProcess,
+    command: string,
+    initialOutput: BackgroundJobInitialOutput,
+    abortSignal?: AbortSignal,
+  ): BackgroundJobStartResult {
+    return this.register(child, command, initialOutput, abortSignal);
+  }
+
+  private register(
+    child: ChildProcess,
+    command: string,
+    initialOutput: BackgroundJobInitialOutput = { stdout: [], stderr: [] },
+    abortSignal?: AbortSignal,
+  ): BackgroundJobStartResult {
     const id = createBackgroundJobId("command");
     const outputFile = this.options.outputDir
       ? path.join(this.options.outputDir, `${id}.log`)
@@ -58,15 +95,6 @@ export class BackgroundJobManager {
         ? getBackgroundJobOutputPath(this.options.taskId, id)
         : path.join(tmpdir(), "pochi-background-jobs", `${id}.log`);
     const outputWriter = new BackgroundJobOutputFile(outputFile);
-
-    const shell = getShellPath();
-    const child = spawn(command, {
-      shell,
-      cwd,
-      env: { ...process.env, ...getTerminalEnv(), ...envs },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
     const job: BackgroundJob = {
       id,
       command,
@@ -80,46 +108,113 @@ export class BackgroundJobManager {
 
     this.jobs.set(id, job);
 
-    const appendOutput = async (chunk: string) => {
-      if (chunk.length === 0) return;
-      await outputWriter.append(chunk);
-      if (job.output.length + chunk.length > this.maxOutputSize) {
-        const keep = this.maxOutputSize - chunk.length;
-        if (keep > 0) {
-          job.output = job.output.slice(-keep) + chunk;
+    let appendTail = Promise.resolve();
+    const appendOutput = (chunk: string): Promise<void> => {
+      appendTail = appendTail.then(async () => {
+        if (chunk.length === 0) return;
+        await outputWriter.append(chunk);
+        if (job.output.length + chunk.length > this.maxOutputSize) {
+          const keep = this.maxOutputSize - chunk.length;
+          if (keep > 0) {
+            job.output = job.output.slice(-keep) + chunk;
+          } else {
+            job.output = chunk.slice(-this.maxOutputSize);
+          }
         } else {
-          job.output = chunk.slice(-this.maxOutputSize);
+          job.output += chunk;
         }
-      } else {
-        job.output += chunk;
+      });
+      return appendTail;
+    };
+
+    const consumeOutput = async (
+      stream: Readable | null,
+      initialOutputStream: BackgroundJobInitialOutputStream,
+    ) => {
+      const decoder = new StringDecoder("utf8");
+      const sanitizer = new PlainOutputSanitizer();
+      const initialOutputFinished = (async () => {
+        for await (const chunk of initialOutputStream) {
+          await appendOutput(sanitizer.write(decoder.write(chunk)));
+        }
+      })();
+      const liveOutputFinished = stream
+        ? new Promise<void>((resolve, reject) => {
+            let liveOutputTail = initialOutputFinished;
+            let settled = false;
+            const cleanup = () => {
+              stream.removeListener("data", onData);
+              stream.removeListener("end", onFinished);
+              stream.removeListener("close", onFinished);
+              stream.removeListener("error", onError);
+            };
+            const settle = (error?: unknown) => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              liveOutputTail.then(
+                () => (error === undefined ? resolve() : reject(error)),
+                reject,
+              );
+            };
+            const onData = (chunk: Buffer | string) => {
+              stream.pause();
+              liveOutputTail = liveOutputTail
+                .then(() => appendOutput(sanitizer.write(decoder.write(chunk))))
+                .then(() => {
+                  if (!settled) stream.resume();
+                });
+              void liveOutputTail.catch(onError);
+            };
+            const onFinished = () => settle();
+            const onError = (error: unknown) => settle(error);
+
+            // Foreground capture pauses the child streams before handing them
+            // off. Install the live listener first, then resume. Pausing again
+            // on each chunk keeps the handoff bounded while initial output is
+            // replayed and retains the chunk even if the stream closes.
+            stream.on("data", onData);
+            stream.once("end", onFinished);
+            stream.once("close", onFinished);
+            stream.once("error", onError);
+            void initialOutputFinished.catch(onError);
+            stream.resume();
+          })
+        : Promise.resolve();
+
+      await Promise.all([initialOutputFinished, liveOutputFinished]);
+
+      // StringDecoder buffers an incomplete trailing UTF-8 sequence. A
+      // manually stopped process may end in the middle of a character, so
+      // discard that partial sequence instead of flushing it as U+FFFD.
+      if (!job.stopRequested) {
+        await appendOutput(sanitizer.write(decoder.end()));
       }
+      await appendOutput(sanitizer.end());
     };
 
     let outputError: unknown;
-    const outputFinished = Promise.all(
-      [child.stdout, child.stderr]
-        .filter((stream) => stream !== null)
-        .map(async (stream) => {
-          const decoder = new StringDecoder("utf8");
-          const sanitizer = new PlainOutputSanitizer();
-          for await (const chunk of stream) {
-            await appendOutput(sanitizer.write(decoder.write(chunk)));
-          }
+    const outputFinished = Promise.all([
+      consumeOutput(child.stdout, initialOutput.stdout),
+      consumeOutput(child.stderr, initialOutput.stderr),
+    ])
+      .finally(() => initialOutput.dispose?.())
+      .catch((error) => {
+        outputError = error;
+        child.kill();
+      });
 
-          // StringDecoder buffers an incomplete trailing UTF-8 sequence. A
-          // manually stopped process may end in the middle of a character, so
-          // discard that partial sequence instead of flushing it as U+FFFD.
-          // For a naturally completed process, preserve Node's usual behavior
-          // for genuinely malformed output by flushing the decoder.
-          if (!job.stopRequested) {
-            await appendOutput(sanitizer.write(decoder.end()));
-          }
-          await appendOutput(sanitizer.end());
-        }),
-    ).catch((error) => {
-      outputError = error;
-      child.kill();
-    });
+    if (abortSignal) {
+      const onAbort = () => {
+        if (job.status !== "running" || job.finalizing) return;
+        job.stopRequested = true;
+        child.kill();
+      };
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+      job.disposeAbort = () =>
+        abortSignal.removeEventListener("abort", onAbort);
+      if (abortSignal.aborted) onAbort();
+    }
 
     child.on("close", async (code) => {
       const status = job.stopRequested
@@ -172,6 +267,7 @@ export class BackgroundJobManager {
       finalError =
         closeError instanceof Error ? closeError.message : String(closeError);
     }
+    job.disposeAbort?.();
     job.status = finalStatus;
     job.finalizing = false;
 
