@@ -86,7 +86,10 @@ describe("executeCommand", () => {
         "completed",
       );
       const output = await readFile(result._meta?.outputFile ?? "", "utf8");
-      expect(output).toBe(`${"a".repeat(outputSize)}finished`);
+      const suffix = "finished";
+      expect(output.length).toBe(outputSize + suffix.length);
+      expect(output.slice(-suffix.length)).toBe(suffix);
+      expect(output.slice(0, outputSize).search(/[^a]/)).toBe(-1);
 
       const job = (backgroundJobManager as any).jobs.get(backgroundJobId);
       expect(job.output.length).toBeLessThanOrEqual(1024 * 1024);
