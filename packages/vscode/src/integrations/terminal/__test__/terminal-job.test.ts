@@ -21,10 +21,12 @@ class TestEventEmitter<T> {
 class TestPtyProcess {
   private readonly dataListeners = new Set<(data: string) => void>();
   private readonly exitListeners = new Set<
-    (event: { exitCode: number }) => void
+    (event: { exitCode: number; signal?: number }) => void
   >();
   readonly replay: string[] = [];
   killCalls = 0;
+  pauseCalls = 0;
+  resumeCalls = 0;
 
   subscribeWithReplay(listener: (data: string) => void) {
     this.dataListeners.add(listener);
@@ -34,7 +36,7 @@ class TestPtyProcess {
     };
   }
 
-  onExit(listener: (event: { exitCode: number }) => void) {
+  onExit(listener: (event: { exitCode: number; signal?: number }) => void) {
     this.exitListeners.add(listener);
     return { dispose: () => this.exitListeners.delete(listener) };
   }
@@ -44,12 +46,22 @@ class TestPtyProcess {
     for (const listener of [...this.dataListeners]) listener(data);
   }
 
-  emitExit(exitCode: number): void {
-    for (const listener of [...this.exitListeners]) listener({ exitCode });
+  emitExit(exitCode: number, signal?: number): void {
+    for (const listener of [...this.exitListeners]) {
+      listener({ exitCode, ...(signal !== undefined ? { signal } : {}) });
+    }
   }
 
   kill(): void {
     this.killCalls++;
+  }
+
+  pauseOutput(): void {
+    this.pauseCalls++;
+  }
+
+  resumeOutput(): void {
+    this.resumeCalls++;
   }
 }
 
@@ -358,6 +370,21 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
   });
 
+  it("applies backpressure while persisted pty output is queued", async () => {
+    const harness = createHarness();
+    const chunk = "x".repeat(600 * 1024);
+
+    harness.ptyProcess.emitData(chunk);
+    harness.ptyProcess.emitData(chunk);
+    assert.strictEqual(harness.ptyProcess.pauseCalls, 1);
+
+    await flushPromises();
+    assert.strictEqual(harness.ptyProcess.resumeCalls, 1);
+
+    harness.ptyProcess.emitExit(0);
+    await flushPromises();
+  });
+
   it("opens, detaches, and recreates the terminal without stopping the pty", async () => {
     const harness = createHarness();
     assert.strictEqual(harness.job.isVisible, false);
@@ -437,6 +464,16 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.finishEvents[0]?.status, "failed");
     assert.strictEqual(harness.finishEvents[0]?.exitCode, 2);
     assert.match(harness.finishEvents[0]?.error ?? "", /exited with code 2/);
+  });
+
+  it("marks a natural signal exit as failed", async () => {
+    const harness = createHarness();
+    harness.ptyProcess.emitExit(0, 15);
+    await flushPromises();
+
+    assert.strictEqual(harness.finishEvents[0]?.status, "failed");
+    assert.strictEqual(harness.finishEvents[0]?.exitCode, 143);
+    assert.match(harness.finishEvents[0]?.error ?? "", /signal 15/);
   });
 
   it("publishes a close failure through the output manager", async () => {

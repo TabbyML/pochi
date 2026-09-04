@@ -63,13 +63,17 @@ export const executeCommandWithPty = async ({
       onData?.(truncateOutput(output));
     });
 
-    const exitListener = ptyProcess.onExit(({ exitCode }) => {
+    const exitListener = ptyProcess.onExit(({ exitCode, signal }) => {
       settle(() => {
-        if (exitCode === 0) {
+        const effectiveExitCode =
+          signal !== undefined && signal > 0 ? 128 + signal : exitCode;
+        if (effectiveExitCode === 0) {
           resolve({ type: "completed", ...truncateOutput(output) });
         } else {
           reject(
-            ExecutionError.create(`Command exited with code ${exitCode}.`),
+            ExecutionError.create(
+              `Command exited with code ${effectiveExitCode}.`,
+            ),
           );
         }
       });

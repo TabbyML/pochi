@@ -50,7 +50,10 @@ export class ForegroundOutputCapture {
       tmpdir(),
       `pochi-foreground-${randomUUID()}-${channel}.log`,
     );
-    const writer = createWriteStream(outputPath, { flags: "wx" });
+    const writer = createWriteStream(outputPath, {
+      flags: "wx",
+      mode: 0o600,
+    });
     const writerFinished = new Promise<void>((resolve, reject) => {
       writer.once("finish", resolve);
       writer.once("error", reject);
@@ -136,8 +139,12 @@ export class ForegroundOutputCapture {
     capture: StreamCapture,
   ): AsyncGenerator<Buffer, void, void> {
     await capture.writerFinished;
-    for await (const chunk of createReadStream(capture.outputPath)) {
-      yield chunk;
+    try {
+      for await (const chunk of createReadStream(capture.outputPath)) {
+        yield chunk;
+      }
+    } finally {
+      await rm(capture.outputPath, { force: true });
     }
   }
 

@@ -188,6 +188,24 @@ export class PtyProcess {
     }
   }
 
+  pauseOutput(): void {
+    if (this.rawExitEvent) return;
+    try {
+      this.process.pause();
+    } catch (error) {
+      logger.debug("Failed to pause exited pty process", error);
+    }
+  }
+
+  resumeOutput(): void {
+    if (this.rawExitEvent) return;
+    try {
+      this.process.resume();
+    } catch (error) {
+      logger.debug("Failed to resume exited pty process", error);
+    }
+  }
+
   kill(signal = "SIGTERM"): void {
     if (this.rawExitEvent) return;
 

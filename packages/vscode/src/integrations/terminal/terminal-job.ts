@@ -17,6 +17,9 @@ import { PtyTerminal } from "./pty-terminal";
 import { ExecutionError } from "./utils";
 
 const logger = getLogger("TerminalJob");
+const PtyOutputPauseThresholdCharacters = 1024 * 1024;
+const PtyOutputResumeThresholdCharacters =
+  PtyOutputPauseThresholdCharacters / 2;
 
 export interface TerminalJobConfig {
   name: string;
@@ -51,6 +54,8 @@ export class TerminalJob implements vscode.Disposable {
   private readonly sanitizer = new PlainOutputSanitizer();
   private readonly disposables: vscode.Disposable[] = [];
   private outputQueue: Promise<void> = Promise.resolve();
+  private pendingOutputCharacters = 0;
+  private ptyOutputPaused = false;
   private pendingTerminalSuffix = "";
   private persistenceError: ExecutionError | undefined;
   private stopRequested = false;
@@ -233,8 +238,16 @@ export class TerminalJob implements vscode.Disposable {
     );
 
     this.disposables.push(
-      ptyProcess.onExit(({ exitCode }) => {
-        void this.finalize(exitCode);
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        const effectiveExitCode =
+          signal !== undefined && signal > 0 ? 128 + signal : exitCode;
+        const signalError =
+          signal !== undefined && signal > 0 && !this.stopRequested
+            ? ExecutionError.create(
+                `Background job execution terminated by signal ${signal}.`,
+              )
+            : undefined;
+        void this.finalize(effectiveExitCode, signalError);
       }),
     );
   }
@@ -479,17 +492,49 @@ export class TerminalJob implements vscode.Disposable {
 
   private enqueueFileOutput(text: string, addToManager: boolean): void {
     if (text.length === 0 || this.persistenceError) return;
+    this.pendingOutputCharacters += text.length;
+    this.updatePtyOutputFlowControl();
     const write = this.outputQueue.then(async () => {
       await this.outputWriter.append(text);
       if (addToManager) this.outputManager.addChunk(text);
     });
-    this.outputQueue = write.catch((error) => {
-      if (this.persistenceError) return;
-      this.persistenceError = ExecutionError.create(
-        error instanceof Error ? error.message : String(error),
-      );
-      this.requestStop("background output persistence failed");
-    });
+    this.outputQueue = write
+      .catch((error) => {
+        if (this.persistenceError) return;
+        this.persistenceError = ExecutionError.create(
+          error instanceof Error ? error.message : String(error),
+        );
+        this.requestStop("background output persistence failed");
+      })
+      .finally(() => {
+        this.pendingOutputCharacters = Math.max(
+          0,
+          this.pendingOutputCharacters - text.length,
+        );
+        this.updatePtyOutputFlowControl();
+      });
+  }
+
+  private updatePtyOutputFlowControl(): void {
+    if (!this.ptyProcess) return;
+    if (
+      !this.ptyOutputPaused &&
+      this.pendingOutputCharacters >= PtyOutputPauseThresholdCharacters
+    ) {
+      this.ptyOutputPaused = true;
+      this.ptyProcess.pauseOutput();
+      return;
+    }
+    if (
+      this.ptyOutputPaused &&
+      this.pendingOutputCharacters <= PtyOutputResumeThresholdCharacters &&
+      !this.stopRequested &&
+      !this.finished &&
+      !this.persistenceError
+    ) {
+      this.ptyOutputPaused = false;
+      this.ptyProcess.resumeOutput();
+    }
   }
 
   private async finalize(
@@ -509,7 +554,12 @@ export class TerminalJob implements vscode.Disposable {
     this.setVisible(false);
 
     let executionError = initialError ?? this.persistenceError;
-    if (exitCode !== undefined && exitCode !== 0 && !this.stopRequested) {
+    if (
+      exitCode !== undefined &&
+      exitCode !== 0 &&
+      !this.stopRequested &&
+      !executionError
+    ) {
       executionError = ExecutionError.create(
         `Background job execution exited with code ${exitCode}.`,
       );

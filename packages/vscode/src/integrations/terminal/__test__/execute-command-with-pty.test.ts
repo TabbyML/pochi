@@ -96,4 +96,39 @@ describe("execute-command-with-pty", () => {
       clock.restore();
     }
   });
+
+  it("treats a natural signal exit as a command failure", async () => {
+    let exitListener:
+      | ((event: { exitCode: number; signal?: number }) => void)
+      | undefined;
+    const ptyProcess = {
+      kill: sinon.stub(),
+      onData: () => ({ dispose: sinon.stub() }),
+      onExit: (
+        listener: (event: { exitCode: number; signal?: number }) => void,
+      ) => {
+        exitListener = listener;
+        return { dispose: sinon.stub() };
+      },
+    };
+    const spawn = sinon.stub().resolves(ptyProcess);
+    const { executeCommandWithPty } = proxyquire
+      .noCallThru()
+      .noPreserveCache()
+      .load("../execute-command-with-pty", {
+        "./pty-process": {
+          PtyProcess: { spawn },
+        },
+      }) as typeof import("../execute-command-with-pty");
+
+    const resultPromise = executeCommandWithPty({
+      command: "kill -TERM $$",
+      cwd: "/tmp",
+      timeout: 5,
+    });
+    await Promise.resolve();
+    exitListener?.({ exitCode: 0, signal: 15 });
+
+    await assert.rejects(resultPromise, /exited with code 143/);
+  });
 });
