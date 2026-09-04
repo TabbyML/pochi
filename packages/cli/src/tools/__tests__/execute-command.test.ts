@@ -64,6 +64,37 @@ describe("executeCommand", () => {
     }
   });
 
+  it("preserves large pre-timeout output without an unbounded replay", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-cli-large-promotion-"));
+    try {
+      const backgroundJobManager = new BackgroundJobManager({ outputDir });
+      const outputSize = 2 * 1024 * 1024;
+      const script = [
+        `process.stdout.write('a'.repeat(${outputSize}));`,
+        "setTimeout(() => process.stdout.write('finished'), 1200);",
+      ].join("");
+      const result = await executeCommand({ backgroundJobManager })(
+        {
+          command: `${JSON.stringify(process.execPath)} -e ${JSON.stringify(script)}`,
+          timeout: 1,
+        },
+        mockToolExecutionOptions,
+      );
+
+      const backgroundJobId = result._meta?.backgroundJobId ?? "";
+      expect(await backgroundJobManager.waitForAllJobs(5000)).toBe(
+        "completed",
+      );
+      const output = await readFile(result._meta?.outputFile ?? "", "utf8");
+      expect(output).toBe(`${"a".repeat(outputSize)}finished`);
+
+      const job = (backgroundJobManager as any).jobs.get(backgroundJobId);
+      expect(job.output.length).toBeLessThanOrEqual(1024 * 1024);
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
   it("should handle abort signal", async () => {
     const abortController = new AbortController();
     const options = {

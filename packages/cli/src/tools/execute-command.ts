@@ -13,6 +13,7 @@ import {
   createBackgroundCommandResult,
 } from "@getpochi/tools";
 import type { BackgroundJobManager } from "../lib/background-job-manager";
+import { ForegroundOutputCapture } from "../lib/foreground-output-capture";
 
 interface ExecuteCommandContext {
   backgroundJobManager?: BackgroundJobManager;
@@ -143,45 +144,37 @@ function executeForegroundCommand({
       env: { ...process.env, ...envs, ...getTerminalEnv() },
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
+    const outputCapture = new ForegroundOutputCapture(
+      child.stdout,
+      child.stderr,
+    );
     let state: "foreground" | "promoted" | "settled" = "foreground";
     let stopReason: "abort" | "timeout" | undefined;
-
-    const onStdout = (chunk: Buffer | string) => {
-      stdoutChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    };
-    const onStderr = (chunk: Buffer | string) => {
-      stderrChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    };
-    child.stdout.on("data", onStdout);
-    child.stderr.on("data", onStderr);
-
-    const getOutput = () => ({
-      stdout: Buffer.concat(stdoutChunks).toString("utf8"),
-      stderr: Buffer.concat(stderrChunks).toString("utf8"),
-    });
 
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
     const removeForegroundListeners = () => {
       if (timeoutHandle) clearTimeout(timeoutHandle);
       abortSignal?.removeEventListener("abort", onAbort);
-      child.stdout.removeListener("data", onStdout);
-      child.stderr.removeListener("data", onStderr);
       child.removeListener("close", onClose);
       child.removeListener("error", onError);
     };
 
-    const settleStoppedCommand = () => {
+    const settleStoppedCommand = async () => {
       if (state !== "foreground") return;
       state = "settled";
       removeForegroundListeners();
+      let output: CompletedCommandResult;
+      try {
+        output = await outputCapture.finish();
+      } catch (error) {
+        reject(error);
+        return;
+      }
       if (stopReason === "abort") {
         reject(new DOMException("Command execution was aborted", "AbortError"));
         return;
       }
 
-      const output = getOutput();
       reject(
         new ExecuteCommandError({
           message: `Command execution timed out after ${timeout} seconds.`,
@@ -191,15 +184,21 @@ function executeForegroundCommand({
       );
     };
 
-    const onClose = (code: number | null) => {
+    const onClose = async (code: number | null) => {
       if (stopReason) {
-        settleStoppedCommand();
+        await settleStoppedCommand();
         return;
       }
       if (state !== "foreground") return;
       state = "settled";
       removeForegroundListeners();
-      const output = getOutput();
+      let output: CompletedCommandResult;
+      try {
+        output = await outputCapture.finish();
+      } catch (error) {
+        reject(error);
+        return;
+      }
       if (code === 0) {
         resolve(output);
         return;
@@ -213,28 +212,33 @@ function executeForegroundCommand({
       );
     };
 
-    const onError = (error: Error) => {
+    const onError = async (error: Error) => {
       if (state !== "foreground") return;
       if (stopReason) {
-        settleStoppedCommand();
+        await settleStoppedCommand();
         return;
       }
       state = "settled";
       removeForegroundListeners();
+      try {
+        await outputCapture.finish();
+      } catch {
+        // Preserve the process error when output cleanup also fails.
+      }
       reject(error);
     };
 
     function onAbort() {
       if (state !== "foreground") return;
       stopReason = "abort";
-      if (!child.kill()) settleStoppedCommand();
+      if (!child.kill()) void settleStoppedCommand();
     }
 
     const onTimeout = () => {
       if (state !== "foreground") return;
       if (!backgroundJobManager) {
         stopReason = "timeout";
-        if (!child.kill()) settleStoppedCommand();
+        if (!child.kill()) void settleStoppedCommand();
         return;
       }
 
@@ -242,18 +246,20 @@ function executeForegroundCommand({
       child.stdout.pause();
       child.stderr.pause();
       removeForegroundListeners();
+      const initialOutput = outputCapture.promote();
       try {
         resolve(
           backgroundJobManager.adopt(
             child,
             command,
-            { stdout: stdoutChunks, stderr: stderrChunks },
+            initialOutput,
             abortSignal,
           ),
         );
       } catch (error) {
         state = "settled";
         child.kill();
+        void initialOutput.dispose?.();
         reject(error);
       }
     };

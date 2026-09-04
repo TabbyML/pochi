@@ -34,9 +34,14 @@ export interface BackgroundJobStartResult {
   outputFile: string;
 }
 
+export type BackgroundJobInitialOutputStream =
+  | Iterable<Buffer | string>
+  | AsyncIterable<Buffer | string>;
+
 export interface BackgroundJobInitialOutput {
-  stdout: Buffer[];
-  stderr: Buffer[];
+  stdout: BackgroundJobInitialOutputStream;
+  stderr: BackgroundJobInitialOutputStream;
+  dispose?: () => Promise<void>;
 }
 
 export interface BackgroundJobManagerOptions {
@@ -124,11 +129,11 @@ export class BackgroundJobManager {
 
     const consumeOutput = async (
       stream: Readable | null,
-      initialChunks: Buffer[],
+      initialOutputStream: BackgroundJobInitialOutputStream,
     ) => {
       const decoder = new StringDecoder("utf8");
       const sanitizer = new PlainOutputSanitizer();
-      for (const chunk of initialChunks) {
+      for await (const chunk of initialOutputStream) {
         await appendOutput(sanitizer.write(decoder.write(chunk)));
       }
       if (stream) {
@@ -150,10 +155,12 @@ export class BackgroundJobManager {
     const outputFinished = Promise.all([
       consumeOutput(child.stdout, initialOutput.stdout),
       consumeOutput(child.stderr, initialOutput.stderr),
-    ]).catch((error) => {
-      outputError = error;
-      child.kill();
-    });
+    ])
+      .finally(() => initialOutput.dispose?.())
+      .catch((error) => {
+        outputError = error;
+        child.kill();
+      });
 
     if (abortSignal) {
       const onAbort = () => {
@@ -191,9 +198,6 @@ export class BackgroundJobManager {
       await outputFinished.catch(() => undefined);
       await this.finalize(job, "failed", undefined, error.message);
     });
-
-    child.stdout?.resume();
-    child.stderr?.resume();
 
     return { backgroundJobId: id, outputFile };
   }
