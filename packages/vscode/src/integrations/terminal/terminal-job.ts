@@ -62,7 +62,9 @@ export class TerminalJob implements vscode.Disposable {
 
   readonly id: string;
   readonly outputFile: string;
-  readonly terminalVisibility = signal(false);
+  readonly backgroundCommandState = signal<
+    { status: "running"; isVisible: boolean } | { status: "finished" }
+  >({ status: "running", isVisible: false });
 
   get output() {
     return this.outputManager.output;
@@ -81,7 +83,8 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   get isVisible() {
-    return this.terminalVisibility.value;
+    const state = this.backgroundCommandState.value;
+    return state.status === "running" && state.isVisible;
   }
 
   private constructor(
@@ -263,9 +266,10 @@ export class TerminalJob implements vscode.Disposable {
     this.setVisible(false);
   }
 
-  private setVisible(visible: boolean): void {
-    if (this.terminalVisibility.value === visible) return;
-    this.terminalVisibility.value = visible;
+  private setVisible(isVisible: boolean): void {
+    const state = this.backgroundCommandState.value;
+    if (state.status === "finished" || state.isVisible === isVisible) return;
+    this.backgroundCommandState.value = { status: "running", isVisible };
     TerminalJob.onDidChangeVisibilityEmitter.fire(this);
   }
 
@@ -490,6 +494,12 @@ export class TerminalJob implements vscode.Disposable {
       disposable.dispose();
     }
     this.terminalCloseRejectors.clear();
+    this.terminal?.dispose();
+    this.terminal = undefined;
+    this.ptyTerminal?.dispose();
+    this.ptyTerminal = undefined;
+    this.setVisible(false);
+    this.backgroundCommandState.value = { status: "finished" };
 
     let executionError = initialError ?? this.persistenceError;
     if (exitCode !== undefined && exitCode !== 0 && !this.stopRequested) {
@@ -536,11 +546,6 @@ export class TerminalJob implements vscode.Disposable {
       finishedAt: Date.now(),
     });
 
-    this.terminal?.dispose();
-    this.terminal = undefined;
-    this.ptyTerminal?.dispose();
-    this.ptyTerminal = undefined;
-    this.setVisible(false);
     this.dispose();
   }
 

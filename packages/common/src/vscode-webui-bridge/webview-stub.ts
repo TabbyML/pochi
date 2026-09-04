@@ -14,6 +14,7 @@ import type {
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type {
+  BackgroundCommandState,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -291,7 +292,7 @@ const VSCodeHostStub = {
   },
   readBackgroundCommand: async (_backgroundJobId: string) => {
     return Promise.resolve({
-      isVisible: {} as ThreadSignalSerialization<boolean>,
+      state: {} as ThreadSignalSerialization<BackgroundCommandState>,
       show: async (): Promise<void> => Promise.resolve(),
       hide: async (): Promise<void> => Promise.resolve(),
       close: async (): Promise<void> => Promise.resolve(),

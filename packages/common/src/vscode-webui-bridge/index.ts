@@ -1,4 +1,5 @@
 export type {
+  BackgroundCommandState,
   VSCodeHostApi,
   WebviewHostApi,
 } from "./webview";

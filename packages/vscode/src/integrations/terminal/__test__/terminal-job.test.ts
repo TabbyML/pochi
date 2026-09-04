@@ -332,10 +332,18 @@ describe("TerminalJob", () => {
 
   it("replays foreground output and completes", async () => {
     const harness = createHarness({ replay: ["before timeout\n"] });
+    assert.deepStrictEqual(harness.job.backgroundCommandState.value, {
+      status: "running",
+      isVisible: true,
+    });
+
     harness.ptyProcess.emitData("after timeout\n");
     harness.ptyProcess.emitExit(0);
     await flushPromises();
 
+    assert.deepStrictEqual(harness.job.backgroundCommandState.value, {
+      status: "finished",
+    });
     assert.deepStrictEqual(harness.lifecycle, [
       "output:$ sleep 10\n",
       "output:before timeout\n",

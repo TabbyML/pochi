@@ -79,30 +79,11 @@ export class TerminalState implements vscode.Disposable {
     terminal?.show();
   }
 
-  public getBackgroundCommandTerminalVisibility(backgroundJobId: string) {
-    return this.getPtyTerminalJob(backgroundJobId).terminalVisibility;
-  }
-
-  public showBackgroundCommandTerminal(backgroundJobId: string): void {
-    this.getPtyTerminalJob(backgroundJobId).show();
-  }
-
-  public hideBackgroundCommandTerminal(backgroundJobId: string): void {
-    this.getPtyTerminalJob(backgroundJobId).hide();
-  }
-
-  public closeBackgroundCommand(backgroundJobId: string): void {
-    this.getPtyTerminalJob(backgroundJobId).closePtyProcess();
-  }
-
-  private getPtyTerminalJob(backgroundJobId: string): TerminalJob {
+  public getBackgroundCommand(
+    backgroundJobId: string,
+  ): TerminalJob | undefined {
     const job = TerminalJob.get(backgroundJobId);
-    if (!job?.isPtyTerminal) {
-      throw new Error(
-        `Detachable background command with ID "${backgroundJobId}" not found.`,
-      );
-    }
-    return job;
+    return job?.isPtyTerminal ? job : undefined;
   }
 
   /**
