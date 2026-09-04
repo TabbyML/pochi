@@ -30,6 +30,9 @@ export interface TerminalJobConfig {
 
 export class TerminalJob implements vscode.Disposable {
   private static readonly jobs = new Map<string, TerminalJob>();
+  private static readonly onDidCreateEmitter =
+    new vscode.EventEmitter<TerminalJob>();
+  static readonly onDidCreate = TerminalJob.onDidCreateEmitter.event;
   private static readonly onDidDisposeEmitter =
     new vscode.EventEmitter<TerminalJob>();
   static readonly onDidDispose = TerminalJob.onDidDisposeEmitter.event;
@@ -62,9 +65,7 @@ export class TerminalJob implements vscode.Disposable {
 
   readonly id: string;
   readonly outputFile: string;
-  readonly backgroundCommandState = signal<
-    { status: "running"; isVisible: boolean } | { status: "finished" }
-  >({ status: "running", isVisible: false });
+  readonly terminalVisibility = signal(false);
 
   get output() {
     return this.outputManager.output;
@@ -82,9 +83,12 @@ export class TerminalJob implements vscode.Disposable {
     return this.ptyProcess !== undefined;
   }
 
+  get isFinished() {
+    return this.finished;
+  }
+
   get isVisible() {
-    const state = this.backgroundCommandState.value;
-    return state.status === "running" && state.isVisible;
+    return this.terminalVisibility.value;
   }
 
   private constructor(
@@ -109,7 +113,6 @@ export class TerminalJob implements vscode.Disposable {
       }
       this.initializeLifecycle();
       if (!this.stopRequested) {
-        this.show();
         if (!ptyProcess) {
           void this.executeWithShellIntegration();
         }
@@ -121,6 +124,7 @@ export class TerminalJob implements vscode.Disposable {
       throw error;
     }
 
+    TerminalJob.onDidCreateEmitter.fire(this);
     logger.info(
       `Created terminal job "${config.name}" with command: ${config.command}`,
     );
@@ -227,7 +231,6 @@ export class TerminalJob implements vscode.Disposable {
         this.ptyExited = true;
       }),
     );
-    this.createPtyTerminalView();
 
     this.disposables.push(
       ptyProcess.onExit(({ exitCode }) => {
@@ -242,13 +245,19 @@ export class TerminalJob implements vscode.Disposable {
       this.detachPtyTerminalView(ptyTerminal);
     });
     this.ptyTerminal = ptyTerminal;
-    this.terminal = createTerminal({
-      name: this.config.name,
-      pty: ptyTerminal,
-      location: this.config.location,
-      iconPath: new vscode.ThemeIcon("piano"),
-      isTransient: false,
-    });
+    try {
+      this.terminal = createTerminal({
+        name: this.config.name,
+        pty: ptyTerminal,
+        location: this.config.location,
+        iconPath: new vscode.ThemeIcon("piano"),
+        isTransient: false,
+      });
+    } catch (error) {
+      this.ptyTerminal = undefined;
+      ptyTerminal.dispose();
+      throw error;
+    }
   }
 
   private detachPtyTerminalView(ptyTerminal?: PtyTerminal): void {
@@ -267,9 +276,8 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   private setVisible(isVisible: boolean): void {
-    const state = this.backgroundCommandState.value;
-    if (state.status === "finished" || state.isVisible === isVisible) return;
-    this.backgroundCommandState.value = { status: "running", isVisible };
+    if (this.terminalVisibility.value === isVisible) return;
+    this.terminalVisibility.value = isVisible;
     TerminalJob.onDidChangeVisibilityEmitter.fire(this);
   }
 
@@ -499,7 +507,6 @@ export class TerminalJob implements vscode.Disposable {
     this.ptyTerminal?.dispose();
     this.ptyTerminal = undefined;
     this.setVisible(false);
-    this.backgroundCommandState.value = { status: "finished" };
 
     let executionError = initialError ?? this.persistenceError;
     if (exitCode !== undefined && exitCode !== 0 && !this.stopRequested) {

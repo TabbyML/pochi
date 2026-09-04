@@ -315,35 +315,34 @@ describe("TerminalJob", () => {
     assert.strictEqual(finishEvents[0]?.status, "stopped");
   });
 
-  it("rolls back an adopted pty when terminal initialization fails", async () => {
+  it("keeps an adopted pty running when terminal view creation fails", async () => {
     const initializationError = new Error("terminal creation failed");
     const harness = createHarness({ createTerminalError: initializationError });
-    await flushPromises();
 
-    assert.strictEqual(harness.adoptionError, initializationError);
-    assert.ok(harness.ptyProcess.killCalls >= 1);
+    assert.throws(() => harness.job.show(), initializationError);
+    assert.strictEqual(harness.adoptionError, undefined);
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.ptyProcess.killCalls, 0);
     assert.strictEqual(
       harness.TerminalJob.get("bgjob-cmd-test"),
-      undefined,
+      harness.job,
     );
-    assert.ok(harness.lifecycle.includes("manager-deleted"));
-    assert.ok(harness.lifecycle.includes("file-closed"));
+
+    harness.ptyProcess.emitExit(0);
+    await flushPromises();
   });
 
   it("replays foreground output and completes", async () => {
     const harness = createHarness({ replay: ["before timeout\n"] });
-    assert.deepStrictEqual(harness.job.backgroundCommandState.value, {
-      status: "running",
-      isVisible: true,
-    });
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.job.isFinished, false);
 
     harness.ptyProcess.emitData("after timeout\n");
     harness.ptyProcess.emitExit(0);
     await flushPromises();
 
-    assert.deepStrictEqual(harness.job.backgroundCommandState.value, {
-      status: "finished",
-    });
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.job.isFinished, true);
     assert.deepStrictEqual(harness.lifecycle, [
       "output:$ sleep 10\n",
       "output:before timeout\n",
@@ -355,12 +354,17 @@ describe("TerminalJob", () => {
       "manager-deleted",
     ]);
     assert.strictEqual(harness.finishEvents[0]?.status, "completed");
-    assert.strictEqual(harness.terminalDisposeCalls, 1);
+    assert.strictEqual(harness.terminalDisposeCalls, 0);
     assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
   });
 
-  it("detaches and recreates the terminal without stopping the pty", async () => {
+  it("opens, detaches, and recreates the terminal without stopping the pty", async () => {
     const harness = createHarness();
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.terminalShowCalls, 0);
+
+    harness.job.show();
+
     assert.strictEqual(harness.job.isVisible, true);
     assert.strictEqual(harness.terminalShowCalls, 1);
     assert.deepStrictEqual(harness.terminalShowPreserveFocus, [false]);
@@ -387,6 +391,7 @@ describe("TerminalJob", () => {
 
   it("keeps the pty running when the VS Code terminal is closed", async () => {
     const harness = createHarness();
+    harness.job.show();
 
     harness.terminal.dispose();
 
@@ -399,6 +404,7 @@ describe("TerminalJob", () => {
 
   it("closes the terminal when explicitly closing the pty process", async () => {
     const harness = createHarness();
+    harness.job.show();
 
     harness.job.closePtyProcess();
 
@@ -420,7 +426,7 @@ describe("TerminalJob", () => {
     await flushPromises();
 
     assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
-    assert.strictEqual(harness.terminalDisposeCalls, 1);
+    assert.strictEqual(harness.terminalDisposeCalls, 0);
   });
 
   it("marks a nonzero natural exit as failed", async () => {

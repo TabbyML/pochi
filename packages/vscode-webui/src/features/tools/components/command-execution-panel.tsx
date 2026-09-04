@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useBackgroundJobInfo } from "@/features/chat";
+import { useBackgroundCommands } from "@/lib/hooks/use-background-commands";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
@@ -245,8 +246,12 @@ export const BackgroundJobPanel: FC<{
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
+  const { backgroundCommands, show: showBackgroundCommand } =
+    useBackgroundCommands();
   const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
   const isUserTerminal = backgroundJobId.startsWith("term-");
+  const isDetachableBackgroundCommand =
+    backgroundCommands?.[backgroundJobId] !== undefined;
   // Live name wins over the snapshot: the terminal may have been renamed
   // since the read. The snapshot keeps historical reads meaningful after the
   // terminal is closed.
@@ -282,12 +287,21 @@ export const BackgroundJobPanel: FC<{
       if (outputFile) vscodeHost.openFile(outputFile);
       return;
     }
-    openBackgroundJobTerminal?.(backgroundJobId);
+    if (isDetachableBackgroundCommand) {
+      showBackgroundCommand?.(backgroundJobId);
+    } else if (isUserTerminal || backgroundCommands !== undefined) {
+      // Keep the legacy terminal path for user terminals and shell fallbacks.
+      openBackgroundJobTerminal?.(backgroundJobId);
+    }
   }, [
+    backgroundCommands,
     backgroundJobId,
+    isDetachableBackgroundCommand,
     isTerminalClosed,
+    isUserTerminal,
     openBackgroundJobTerminal,
     outputFile,
+    showBackgroundCommand,
   ]);
 
   const closedLabel = canOpenOutputFile

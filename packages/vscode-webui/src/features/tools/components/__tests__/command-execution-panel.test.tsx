@@ -4,10 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackgroundJobPanel } from "../command-execution-panel";
 
 const openBackgroundJobTerminal = vi.fn();
+const showBackgroundCommand = vi.fn();
 const openFile = vi.fn();
 let terminals:
   | { backgroundJobId: string; name: string; isActive: boolean }[]
   | undefined = [];
+let backgroundCommands: Record<string, { isVisible: boolean }> | undefined = {};
 let jobInfo: { command: string | undefined; displayId: string } | undefined;
 
 vi.stubGlobal(
@@ -27,6 +29,13 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/features/chat", () => ({
   useBackgroundJobInfo: () => jobInfo,
+}));
+
+vi.mock("@/lib/hooks/use-background-commands", () => ({
+  useBackgroundCommands: () => ({
+    backgroundCommands,
+    show: showBackgroundCommand,
+  }),
 }));
 
 vi.mock("@/lib/hooks/use-visible-terminals", () => ({
@@ -70,8 +79,10 @@ const renderBackgroundJobPanel = (outputFile?: string) =>
 describe("BackgroundJobPanel job control", () => {
   beforeEach(() => {
     openBackgroundJobTerminal.mockClear();
+    showBackgroundCommand.mockClear();
     openFile.mockClear();
     terminals = [];
+    backgroundCommands = {};
     jobInfo = { command: "bun run dev", displayId: "%1" };
   });
 
@@ -85,6 +96,21 @@ describe("BackgroundJobPanel job control", () => {
     );
     expect(openBackgroundJobTerminal).toHaveBeenCalledWith("term-1");
     expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("opens a detachable background command through its dedicated control", () => {
+    terminals = [
+      { backgroundJobId: "bgjob-cmd-1", name: "zsh", isActive: false },
+    ];
+    backgroundCommands = {
+      "bgjob-cmd-1": { isVisible: false },
+    };
+
+    renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    fireEvent.click(screen.getByLabelText("commandExecutionPanel.openJob"));
+    expect(showBackgroundCommand).toHaveBeenCalledWith("bgjob-cmd-1");
+    expect(openBackgroundJobTerminal).not.toHaveBeenCalled();
   });
 
   it("opens the output file once the user terminal is gone", () => {

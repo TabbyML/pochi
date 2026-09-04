@@ -14,7 +14,7 @@ import type {
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type {
-  BackgroundCommandState,
+  BackgroundCommands,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -290,12 +290,15 @@ const VSCodeHostStub = {
       },
     });
   },
-  readBackgroundCommand: async (_backgroundJobId: string) => {
+  readBackgroundCommands: async () => {
     return Promise.resolve({
-      state: {} as ThreadSignalSerialization<BackgroundCommandState>,
-      show: async (): Promise<void> => Promise.resolve(),
-      hide: async (): Promise<void> => Promise.resolve(),
-      close: async (): Promise<void> => Promise.resolve(),
+      backgroundCommands: {} as ThreadSignalSerialization<BackgroundCommands>,
+      show: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
+      hide: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
+      close: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
     });
   },
   readModelList: async () => {

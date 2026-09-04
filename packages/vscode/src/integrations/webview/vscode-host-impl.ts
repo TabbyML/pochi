@@ -178,9 +178,6 @@ import {
 } from "./widget-html-actions";
 
 const logger = getLogger("VSCodeHostImpl");
-const FinishedBackgroundCommandState = computed(
-  () => ({ status: "finished" }) as const,
-);
 
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
@@ -469,19 +466,20 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readBackgroundCommand = async (backgroundJobId: string) => {
-    const backgroundCommand =
-      this.terminalState.getBackgroundCommand(backgroundJobId);
-    return {
-      state: ThreadSignal.serialize(
-        backgroundCommand?.backgroundCommandState ??
-          FinishedBackgroundCommandState,
-      ),
-      show: async () => backgroundCommand?.show(),
-      hide: async () => backgroundCommand?.hide(),
-      close: async () => backgroundCommand?.closePtyProcess(),
-    };
-  };
+  readBackgroundCommands = async () => ({
+    backgroundCommands: ThreadSignal.serialize(
+      this.terminalState.backgroundCommands,
+    ),
+    show: async (backgroundJobId: string) => {
+      this.terminalState.showBackgroundCommand(backgroundJobId);
+    },
+    hide: async (backgroundJobId: string) => {
+      this.terminalState.hideBackgroundCommand(backgroundJobId);
+    },
+    close: async (backgroundJobId: string) => {
+      this.terminalState.closeBackgroundCommand(backgroundJobId);
+    },
+  });
 
   readBackgroundJobNotifications = async (taskId: string) => ({
     notifications: ThreadSignal.serialize(
