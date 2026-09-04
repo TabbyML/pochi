@@ -133,14 +133,56 @@ export class BackgroundJobManager {
     ) => {
       const decoder = new StringDecoder("utf8");
       const sanitizer = new PlainOutputSanitizer();
-      for await (const chunk of initialOutputStream) {
-        await appendOutput(sanitizer.write(decoder.write(chunk)));
-      }
-      if (stream) {
-        for await (const chunk of stream) {
+      const initialOutputFinished = (async () => {
+        for await (const chunk of initialOutputStream) {
           await appendOutput(sanitizer.write(decoder.write(chunk)));
         }
-      }
+      })();
+      const liveOutputFinished = stream
+        ? new Promise<void>((resolve, reject) => {
+            let liveOutputTail = initialOutputFinished;
+            let settled = false;
+            const cleanup = () => {
+              stream.removeListener("data", onData);
+              stream.removeListener("end", onFinished);
+              stream.removeListener("close", onFinished);
+              stream.removeListener("error", onError);
+            };
+            const settle = (error?: unknown) => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              liveOutputTail.then(
+                () => (error === undefined ? resolve() : reject(error)),
+                reject,
+              );
+            };
+            const onData = (chunk: Buffer | string) => {
+              stream.pause();
+              liveOutputTail = liveOutputTail
+                .then(() => appendOutput(sanitizer.write(decoder.write(chunk))))
+                .then(() => {
+                  if (!settled) stream.resume();
+                });
+              void liveOutputTail.catch(onError);
+            };
+            const onFinished = () => settle();
+            const onError = (error: unknown) => settle(error);
+
+            // Foreground capture pauses the child streams before handing them
+            // off. Install the live listener first, then resume. Pausing again
+            // on each chunk keeps the handoff bounded while initial output is
+            // replayed and retains the chunk even if the stream closes.
+            stream.on("data", onData);
+            stream.once("end", onFinished);
+            stream.once("close", onFinished);
+            stream.once("error", onError);
+            void initialOutputFinished.catch(onError);
+            stream.resume();
+          })
+        : Promise.resolve();
+
+      await Promise.all([initialOutputFinished, liveOutputFinished]);
 
       // StringDecoder buffers an incomplete trailing UTF-8 sequence. A
       // manually stopped process may end in the middle of a character, so
