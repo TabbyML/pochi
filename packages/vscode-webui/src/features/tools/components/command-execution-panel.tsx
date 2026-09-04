@@ -244,13 +244,17 @@ export const BackgroundJobPanel: FC<{
   const liveTerminal = terminals?.find(
     (tm) => tm.backgroundJobId === backgroundJobId,
   );
+  const isUserTerminal = backgroundJobId.startsWith("term-");
   // A background command runs on a pty, so it outlives its terminal tab: the
   // host lists it for exactly as long as the process lives.
   const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
   const canOpenTerminal = isRunning || liveTerminal !== undefined;
-  const canOpenOutputFile = !isRunning && outputFile !== undefined;
-  const isResolved =
-    terminals !== undefined && backgroundCommands !== undefined;
+  const hasResolvedControlState =
+    canOpenTerminal ||
+    (terminals !== undefined &&
+      (isUserTerminal || backgroundCommands !== undefined));
+  const canOpenOutputFile =
+    hasResolvedControlState && !canOpenTerminal && outputFile !== undefined;
   const openTerminalOrOutputFile = () => {
     if (!canOpenTerminal) {
       if (outputFile) vscodeHost.openFile(outputFile);
@@ -259,7 +263,6 @@ export const BackgroundJobPanel: FC<{
     if (isRunning) show?.(backgroundJobId);
     else openBackgroundJobTerminal?.(backgroundJobId);
   };
-  const isUserTerminal = backgroundJobId.startsWith("term-");
   const isNotification = appearance === "notification";
   const recoveredNotificationCommand = isNotification
     ? recoverNotificationCommand(summary, status)
@@ -285,7 +288,7 @@ export const BackgroundJobPanel: FC<{
     ? t("commandExecutionPanel.terminalClosedOpenOutput")
     : t("commandExecutionPanel.terminalClosed");
   const jobControl = isUserTerminal
-    ? isResolved && (
+    ? hasResolvedControlState && (
         <JobControlButton
           label={
             canOpenTerminal
@@ -301,7 +304,8 @@ export const BackgroundJobPanel: FC<{
           <TerminalIcon className="size-3" />
         </JobControlButton>
       )
-    : hasTrackedJob &&
+    : hasResolvedControlState &&
+      hasTrackedJob &&
       info?.displayId && (
         <JobControlButton
           label={

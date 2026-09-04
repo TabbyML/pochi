@@ -105,6 +105,14 @@ describe("BackgroundTaskDetail", () => {
     messageRows = [];
   });
 
+  it("focuses the back button when the detail opens", () => {
+    openTaskDetail();
+
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("Back to the background job list"),
+    );
+  });
+
   it("uses a single borderless scroll area that fills the remaining height", () => {
     openTaskDetail();
 

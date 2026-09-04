@@ -100,17 +100,23 @@ export function BackgroundJobManagePanel({
       >
         <SheetTitle className="sr-only">{t("managePanel.title")}</SheetTitle>
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {isDevMode === true ? (
-            <DevPanelBody
-              backgroundJobs={backgroundJobs}
-              onSelectTask={(id) => {
-                setDetailTaskId(id);
-                setIsDetailOpen(true);
-              }}
-            />
-          ) : (
-            <PanelBody backgroundJobs={backgroundJobs} tasks={NoTasks} />
-          )}
+          <div
+            data-testid="background-job-list-layer"
+            inert={isDetailOpen}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            {isDevMode === true ? (
+              <DevPanelBody
+                backgroundJobs={backgroundJobs}
+                onSelectTask={(id) => {
+                  setDetailTaskId(id);
+                  setIsDetailOpen(true);
+                }}
+              />
+            ) : (
+              <PanelBody backgroundJobs={backgroundJobs} tasks={NoTasks} />
+            )}
+          </div>
           <div
             data-testid="background-task-layer"
             data-state={isDetailOpen ? "open" : "closed"}
@@ -123,6 +129,7 @@ export function BackgroundJobManagePanel({
             {detailTaskId !== null && (
               <BackgroundTaskDetail
                 taskId={detailTaskId}
+                isOpen={isDetailOpen}
                 onBack={() => setIsDetailOpen(false)}
               />
             )}
@@ -363,6 +370,7 @@ function JobRow({ job }: { job: BackgroundJobEntry }) {
       onKeyDown={
         open
           ? (event) => {
+              if (event.target !== event.currentTarget) return;
               if (event.key !== "Enter" && event.key !== " ") return;
               event.preventDefault();
               open();
@@ -402,7 +410,7 @@ function JobRow({ job }: { job: BackgroundJobEntry }) {
               // An inline box paints over the controls sharing its grid cell,
               // so it has to opt out of hit-testing.
               "pointer-events-none col-start-1 row-start-1 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-secondary px-1 font-bold font-mono text-secondary-foreground text-xs",
-              isRunning && "ring-1 ring-primary",
+              isVisible && "ring-1 ring-primary",
               hasActions &&
                 "transition-opacity group-focus-within:opacity-0 group-hover:opacity-0",
             )}

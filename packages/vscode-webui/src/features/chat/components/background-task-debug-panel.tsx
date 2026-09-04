@@ -10,7 +10,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { ArrowLeftIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { formatTokens } from "../lib/format-tokens";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
 
@@ -66,11 +66,14 @@ function statusTone(status: Task["status"]): RowStatusTone {
 
 export function BackgroundTaskDetail({
   taskId,
+  isOpen = true,
   onBack,
 }: {
   taskId: string;
+  isOpen?: boolean;
   onBack: () => void;
 }) {
+  const backButtonRef = useRef<HTMLButtonElement>(null);
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
   const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(taskId));
@@ -94,10 +97,15 @@ export function BackgroundTaskDetail({
       ? latestAssistantMessage.metadata
       : undefined;
 
+  useEffect(() => {
+    if (isOpen) backButtonRef.current?.focus();
+  }, [isOpen]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b px-2 py-2">
         <Button
+          ref={backButtonRef}
           variant="ghost"
           size="icon"
           className="h-6 w-6 shrink-0"

@@ -286,13 +286,13 @@ describe("BackgroundJobManagePanel", () => {
     );
   });
 
-  it("frames the number, and lights it up while the command runs", () => {
+  it("lights the number only while the command terminal is visible", () => {
     backgroundJobs = [runningJob];
 
     const { rerender } = renderBackgroundJobManagePanel();
     expect(screen.getByText("%1").className).toContain("ring-1");
 
-    backgroundJobs = [{ ...runningJob, status: "completed" as const }];
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
     rerender(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
     expect(screen.getByText("%1").className).not.toContain("ring-1");
   });
@@ -343,6 +343,17 @@ describe("BackgroundJobManagePanel", () => {
 
     fireEvent.click(screen.getByLabelText("managePanel.kill"));
     expect(close).toHaveBeenCalledWith("bgjob-cmd-1");
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("keeps a row control's keyboard event from firing the row", () => {
+    backgroundJobs = [runningJob];
+
+    renderBackgroundJobManagePanel();
+
+    fireEvent.keyDown(screen.getByLabelText("managePanel.kill"), {
+      key: "Enter",
+    });
     expect(show).not.toHaveBeenCalled();
   });
 
@@ -507,11 +518,17 @@ describe("BackgroundJobManagePanel", () => {
     expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
       "open",
     );
+    expect(
+      screen.getByTestId("background-job-list-layer").hasAttribute("inert"),
+    ).toBe(true);
 
     fireEvent.click(screen.getByText("back"));
     expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
       "closed",
     );
+    expect(
+      screen.getByTestId("background-job-list-layer").hasAttribute("inert"),
+    ).toBe(false);
   });
 
   it("keeps the list as it was left while a task is open", () => {
