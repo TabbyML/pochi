@@ -71,7 +71,9 @@ describe("executeCommand", () => {
       const outputSize = 2 * 1024 * 1024;
       const script = [
         `process.stdout.write('a'.repeat(${outputSize}));`,
-        "setTimeout(() => process.stdout.write('finished'), 1200);",
+        "setTimeout(() => {",
+        "process.stdout.write('finished', () => process.exit(0));",
+        "}, 1200);",
       ].join("");
       const result = await executeCommand({ backgroundJobManager })(
         {
