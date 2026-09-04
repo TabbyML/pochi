@@ -5,10 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobList } from "../lib/build-job-list";
 import { ManagePanel } from "./manage-panel";
 
-const openTerminal = vi.fn();
-const openOutputFile = vi.fn();
+const show = vi.fn();
+const hide = vi.fn();
+const close = vi.fn();
+const openFile = vi.fn();
+const copyToClipboard = vi.fn();
 let jobList: JobList = { pochi: [] };
-let openState = { isTerminalClosed: false, canOpenOutputFile: false };
+let backgroundCommands: Record<string, { isVisible: boolean }> | undefined = {};
 let isDevMode = false;
 let backgroundTasks: Array<{ id: string; title: string }> = [];
 
@@ -24,15 +27,13 @@ vi.stubGlobal(
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    // Keys stand in for their translations; the exit code is interpolated so
-    // the hover text can be asserted.
+    // Keys stand in for their translations, with the exit code interpolated.
     t: (key: string, options?: { exitCode?: number }) =>
       options?.exitCode === undefined ? key : `${key} ${options.exitCode}`,
   }),
 }));
 
-// The drawer is rendered inline so the content is always assertable; opening
-// and closing it is Radix's responsibility, not this component's.
+// The drawer is rendered inline so the content is always assertable.
 vi.mock("@/components/ui/sheet", () => ({
   Sheet: ({ children }: { children: ReactNode }) => <>{children}</>,
   SheetContent: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -44,20 +45,25 @@ vi.mock("../hooks/use-job-list", () => ({
   useJobList: () => jobList,
 }));
 
-vi.mock("@/lib/hooks/use-open-background-job", () => ({
-  useOpenBackgroundJob: () => ({
-    ...openState,
-    openTerminal,
-    openOutputFile,
-  }),
+vi.mock("@/lib/hooks/use-background-commands", () => ({
+  useBackgroundCommands: () => ({ backgroundCommands, show, hide, close }),
+}));
+
+vi.mock("@/lib/vscode", () => ({
+  vscodeHost: {
+    openFile: (path: string) => openFile(path),
+  },
+}));
+
+// jsdom has no working clipboard.
+vi.mock("@/lib/hooks/use-copy-to-clipboard", () => ({
+  useCopyToClipboard: () => ({ isCopied: false, copyToClipboard }),
 }));
 
 vi.mock("@/features/settings", () => ({
   useIsDevMode: () => [isDevMode],
 }));
 
-// The dev-only task surface has its own tests; here only its place in the
-// panel matters.
 vi.mock("./background-task-debug-panel", () => ({
   BackgroundTasksLabel: "Background tasks",
   useBackgroundTasks: () => backgroundTasks,
@@ -90,7 +96,6 @@ vi.mock("./background-task-debug-panel", () => ({
 
 const renderPanel = () => render(<ManagePanel taskId="task-1" messages={[]} />);
 
-/** The rows in the order the panel lists them. */
 const rowTitles = () =>
   screen.getAllByRole("listitem").map((row) => row.textContent);
 
@@ -100,10 +105,8 @@ const runningJob = {
   title: "bun run dev",
   command: "bun run dev",
   status: "running" as const,
-  isActive: false,
 };
 
-// Numberless rows, so what a row reads is its title alone.
 const runningRow = {
   ...runningJob,
   displayId: undefined,
@@ -118,10 +121,13 @@ const finishedRow = {
 
 describe("ManagePanel", () => {
   beforeEach(() => {
-    openTerminal.mockClear();
-    openOutputFile.mockClear();
+    show.mockClear();
+    hide.mockClear();
+    close.mockClear();
+    openFile.mockClear();
+    copyToClipboard.mockClear();
     jobList = { pochi: [] };
-    openState = { isTerminalClosed: false, canOpenOutputFile: false };
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: true } };
     isDevMode = false;
     backgroundTasks = [];
   });
@@ -130,9 +136,11 @@ describe("ManagePanel", () => {
     const { container } = renderPanel();
 
     const trigger = screen.getByTestId("manage-panel-toggle");
-    // Icon only: no label, and no badge until something is actually running.
     expect(trigger.textContent).toBe("");
     expect(trigger.getAttribute("aria-label")).toBe("managePanel.toggle");
+    expect(trigger.querySelector("svg")?.classList.contains("size-4.5")).toBe(
+      true,
+    );
     expect(trigger.querySelector(".bg-blue-500")).toBeNull();
     expect(container.querySelector(".animate-spin")).toBeNull();
     expect(screen.getByText("managePanel.empty")).toBeDefined();
@@ -145,7 +153,6 @@ describe("ManagePanel", () => {
     const { container } = renderPanel();
 
     const trigger = screen.getByTestId("manage-panel-toggle");
-    // The badge carries the running count itself.
     expect(trigger.textContent).toBe("1");
     expect(trigger.querySelector(".bg-blue-500")?.textContent).toBe("1");
     expect(container.querySelector(".animate-spin")).not.toBeNull();
@@ -170,6 +177,23 @@ describe("ManagePanel", () => {
     renderPanel();
 
     const title = screen.getByText("managePanel.pochiGroup");
+    expect(title.classList.contains("text-base")).toBe(true);
+    expect(title.classList.contains("font-medium")).toBe(true);
+    expect(title.classList.contains("text-muted-foreground")).toBe(true);
+
+    const sectionHeader = title.closest("button");
+    expect(
+      sectionHeader?.querySelector("svg")?.classList.contains("size-4"),
+    ).toBe(true);
+    expect(sectionHeader?.lastElementChild?.classList.contains("text-sm")).toBe(
+      true,
+    );
+    expect(
+      sectionHeader?.lastElementChild?.classList.contains(
+        "text-muted-foreground/70",
+      ),
+    ).toBe(true);
+
     fireEvent.click(title);
     expect(screen.queryByText("bun run dev")).toBeNull();
 
@@ -184,13 +208,11 @@ describe("ManagePanel", () => {
         displayId: `%${index}`,
         title: `bun run dev ${index}`,
         status: "completed" as const,
-        isActive: false,
       })),
     };
 
     renderPanel();
 
-    // Five rows, then the offer to see the other two.
     expect(screen.getByText("bun run dev 4")).toBeDefined();
     expect(screen.queryByText("bun run dev 5")).toBeNull();
 
@@ -250,41 +272,106 @@ describe("ManagePanel", () => {
     const displayId = screen.getByText("%1");
     expect(displayId.tagName).toBe("SPAN");
     expect(displayId.closest("button")).toBeNull();
-    // A running row has controls, so the number steps aside for them.
     expect(displayId.className).toContain("group-hover:opacity-0");
   });
 
   it("keeps the number for a row that has nothing to press", () => {
-    jobList = { pochi: [{ ...runningJob, status: "stopped" as const }] };
+    jobList = {
+      pochi: [
+        { ...runningJob, status: "stopped" as const, command: undefined },
+      ],
+    };
 
     renderPanel();
 
-    // Nothing comes to take its place, so it must not fade out either.
     expect(screen.getByText("%1").className).not.toContain(
       "group-hover:opacity-0",
     );
   });
 
-  it("offers a running command its terminal and a way to stop it", () => {
+  it("frames the number, and lights it up while the command runs", () => {
+    jobList = { pochi: [runningJob] };
+
+    const { rerender } = renderPanel();
+    expect(screen.getByText("%1").className).toContain("ring-1");
+
+    jobList = { pochi: [{ ...runningJob, status: "completed" as const }] };
+    rerender(<ManagePanel taskId="task-1" messages={[]} />);
+    expect(screen.getByText("%1").className).not.toContain("ring-1");
+  });
+
+  it("puts a running command's terminal on screen by clicking its row", () => {
     jobList = { pochi: [runningJob] };
 
     renderPanel();
 
-    fireEvent.click(screen.getByLabelText("managePanel.openTerminal"));
-    expect(openTerminal).toHaveBeenCalled();
+    const row = screen.getByText("bun run dev").closest('[role="button"]');
+    expect(row).not.toBeNull();
+    if (row) fireEvent.click(row);
+    expect(show).toHaveBeenCalledWith("bgjob-cmd-1");
+  });
+
+  it("reads a finished command back by clicking its row", () => {
+    jobList = {
+      pochi: [
+        {
+          ...runningJob,
+          status: "completed" as const,
+          outputFile: "/tmp/bgjob-cmd-1.log",
+        },
+      ],
+    };
+
+    renderPanel();
+
+    const row = screen.getByText("bun run dev").closest('[role="button"]');
+    expect(row).not.toBeNull();
+    if (row) fireEvent.click(row);
+    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("leaves a row with nothing to open unclickable", () => {
+    jobList = { pochi: [{ ...runningJob, status: "stopped" as const }] };
+
+    renderPanel();
+
+    expect(
+      screen.getByText("bun run dev").closest('[role="button"]'),
+    ).toBeNull();
+  });
+
+  it("keeps a row control from also firing the row", () => {
+    jobList = { pochi: [runningJob] };
+
+    renderPanel();
+
+    fireEvent.click(screen.getByLabelText("managePanel.kill"));
+    expect(close).toHaveBeenCalledWith("bgjob-cmd-1");
+    expect(show).not.toHaveBeenCalled();
+  });
+
+  it("offers a running command a way to put its terminal away and to stop it", () => {
+    jobList = { pochi: [runningJob] };
+
+    renderPanel();
+
+    fireEvent.click(screen.getByLabelText("managePanel.hideTerminal"));
+    expect(hide).toHaveBeenCalledWith("bgjob-cmd-1");
     expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
     expect(
       screen.queryByLabelText("backgroundJobNotifications.openOutput"),
     ).toBeNull();
   });
 
-  it("hides the terminal control once the terminal is gone", () => {
-    openState = { isTerminalClosed: true, canOpenOutputFile: false };
+  it("offers back the terminal of a running command whose tab was put away", () => {
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
     jobList = { pochi: [runningJob] };
 
     renderPanel();
 
-    expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
+    fireEvent.click(screen.getByLabelText("managePanel.openTerminal"));
+    expect(show).toHaveBeenCalledWith("bgjob-cmd-1");
     // The process outlives its tab, so it can still be stopped.
     expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
   });
@@ -313,19 +400,55 @@ describe("ManagePanel", () => {
     expect(controls?.className).toContain("group-hover:opacity-100");
 
     fireEvent.click(openOutput);
-    expect(openOutputFile).toHaveBeenCalled();
+    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
     expect(screen.queryByLabelText("managePanel.kill")).toBeNull();
     expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
   });
 
+  it("hands a finished command back to the clipboard", () => {
+    jobList = {
+      pochi: [
+        {
+          ...runningJob,
+          status: "completed" as const,
+          outputFile: "/tmp/bgjob-cmd-1.log",
+        },
+      ],
+    };
+
+    renderPanel();
+
+    // Beside the transcript, not instead of it.
+    expect(
+      screen.getByLabelText("backgroundJobNotifications.openOutput"),
+    ).toBeDefined();
+    fireEvent.click(screen.getByLabelText("managePanel.copyCommand"));
+    expect(copyToClipboard).toHaveBeenCalledWith("bun run dev");
+    // The control speaks for itself; the row's own action must not fire too.
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps the clipboard control away from a running command", () => {
+    jobList = { pochi: [runningJob] };
+
+    renderPanel();
+
+    expect(screen.queryByLabelText("managePanel.copyCommand")).toBeNull();
+  });
+
   it("leaves a finished command without a transcript with nothing to press", () => {
-    jobList = { pochi: [{ ...runningJob, status: "stopped" as const }] };
+    jobList = {
+      pochi: [
+        { ...runningJob, status: "stopped" as const, command: undefined },
+      ],
+    };
 
     renderPanel();
 
     expect(
       screen.queryByLabelText("backgroundJobNotifications.openOutput"),
     ).toBeNull();
+    expect(screen.queryByLabelText("managePanel.copyCommand")).toBeNull();
   });
 
   it("lists running commands first", () => {

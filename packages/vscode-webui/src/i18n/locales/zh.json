@@ -596,6 +596,8 @@
     "toggle": "查看后台任务",
     "pochiGroup": "后台命令",
     "openTerminal": "打开终端",
+    "hideTerminal": "隐藏终端",
+    "copyCommand": "复制命令",
     "kill": "终止进程",
     "empty": "当前没有后台任务",
     "seeMore": "查看更多",

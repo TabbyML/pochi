@@ -1,7 +1,3 @@
-/**
- * ManagePanel — a toolbar trigger opening a drawer that lists the background
- * commands Pochi started for this task, plus its background tasks in dev mode.
- */
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -17,16 +13,20 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsDevMode } from "@/features/settings";
 import { getBackgroundJobStatusLabel } from "@/lib/background-job-status-label";
-import { useOpenBackgroundJob } from "@/lib/hooks/use-open-background-job";
+import { useBackgroundCommands } from "@/lib/hooks/use-background-commands";
+import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { cn } from "@/lib/utils";
+import { vscodeHost } from "@/lib/vscode";
 import type { Message, Task } from "@getpochi/livekit";
 import {
+  CheckIcon,
   ChevronRightIcon,
   CircleStopIcon,
+  CopyIcon,
+  EyeIcon,
+  EyeOffIcon,
   FileTextIcon,
-  ListChevronsDownUpIcon,
-  Loader2,
-  TerminalIcon,
+  ListIcon,
 } from "lucide-react";
 import { Children, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,6 +38,7 @@ import {
   BackgroundTasksLabel,
   useBackgroundTasks,
 } from "./background-task-debug-panel";
+import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
 
 export function ManagePanel({
   taskId,
@@ -49,15 +50,10 @@ export function ManagePanel({
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
   const [isOpen, setIsOpen] = useState(false);
-  // Picking a task slides its detail over the list. The list stays mounted
-  // underneath, so folded sections and scroll position survive the trip, and
-  // the id outlives the closing slide so the layer does not empty mid-flight.
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { pochi } = useJobList(taskId, messages);
 
-  // The badge is the trigger's whole status language: a blue count appears
-  // only while something is actually running.
   const runningCount = pochi.filter((job) => job.status === "running").length;
 
   return (
@@ -65,16 +61,12 @@ export function ManagePanel({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        // Closing the drawer takes it back to the list, so it never reopens
-        // deep inside a task nobody asked about again.
         if (!open) {
           setIsDetailOpen(false);
           setDetailTaskId(null);
         }
       }}
     >
-      {/* The name of the panel is carried by the tooltip; in the toolbar's
-          icon row, the trigger wears the same clothes as its neighbours. */}
       <Tooltip>
         <TooltipTrigger asChild>
           <SheetTrigger asChild>
@@ -86,13 +78,9 @@ export function ManagePanel({
               data-testid="manage-panel-toggle"
               className="button-focus relative h-6 w-6 p-0"
             >
-              <ListChevronsDownUpIcon className="size-5" />
+              <ListIcon className="size-4.5" />
               {runningCount > 0 && (
-                // Nudged outside the button box: the glyph is `size-5` in a
-                // 24px button, so a flush badge lands on top of its chevron.
-                // Kept at dot scale — a 12px pill that only grows sideways if
-                // the count reaches two digits.
-                <span className="-top-1 -right-1 absolute flex h-3 min-w-3 items-center justify-center rounded-full bg-blue-500 px-[3px] font-medium text-[9px] text-white tabular-nums leading-none">
+                <span className="absolute top-0 right-0 flex h-[10px] min-w-[10px] items-center justify-center rounded-full bg-blue-500 px-[2px] font-medium text-[8px] text-white tabular-nums leading-none">
                   {runningCount}
                 </span>
               )}
@@ -101,14 +89,10 @@ export function ManagePanel({
         </TooltipTrigger>
         <TooltipContent>{t("managePanel.title")}</TooltipContent>
       </Tooltip>
-      {/* The top padding is all that is left of the header: it keeps the list
-          clear of the close button, which the drawer places over the content. */}
       <SheetContent
         side="right"
         className="flex h-full w-[340px] max-w-[85vw] flex-col p-0 pt-8"
       >
-        {/* The trigger's tooltip names the panel on screen; the title stays
-            for screen readers, which the drawer requires anyway. */}
         <SheetTitle className="sr-only">{t("managePanel.title")}</SheetTitle>
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {isDevMode === true ? (
@@ -122,8 +106,6 @@ export function ManagePanel({
           ) : (
             <PanelBody pochi={pochi} tasks={NoTasks} />
           )}
-          {/* A layer rather than a second page: it slides in over the list and
-              back out again, and the list below it is never unmounted. */}
           <div
             data-testid="background-task-layer"
             data-state={isDetailOpen ? "open" : "closed"}
@@ -149,9 +131,8 @@ export function ManagePanel({
 const NoTasks: readonly Task[] = [];
 
 /**
- * Background tasks live in a different store than the commands, and only dev
- * mode ever shows them. Reading them from a separate component keeps that
- * query from running for everybody else, since hooks cannot be conditional.
+ * Background tasks are only shown in dev mode, and hooks cannot be
+ * conditional, so their query lives in its own component.
  */
 function DevPanelBody({
   pochi,
@@ -177,20 +158,17 @@ function PanelBody({
   const { t } = useTranslation();
   const commands = useRunningFirst(pochi);
 
-  // A group with nothing in it says nothing; an empty panel says it once.
   if (pochi.length === 0 && tasks.length === 0) {
     return (
-      <div className="px-3 py-6 text-center text-muted-foreground text-sm">
+      <div className="px-3 py-6 text-center text-base text-muted-foreground">
         {t("managePanel.empty")}
       </div>
     );
   }
 
   return (
-    /* One scroll container for the whole panel, so every list here shares the
-       VS Code themed scrollbar. */
-    <ScrollArea className="flex-1">
-      <div className="flex flex-col gap-2 p-2">
+    <ScrollArea className="min-h-0 flex-1">
+      <div className="flex flex-col gap-6 p-2">
         {commands.length > 0 && (
           <PanelGroup label={t("managePanel.pochiGroup")}>
             {commands.map((job) => (
@@ -218,13 +196,9 @@ function PanelBody({
 }
 
 /**
- * Running commands first, the incoming order kept within each half.
- *
- * A row is ranked by the status it had when it first appeared, and never
- * ranked again: a command that stops — because it ended, or because it was
- * just killed from that very row — keeps its place instead of dropping away
- * under the pointer. The ranking lives as long as the open drawer, so the
- * next visit sorts by what is true then.
+ * Running commands first, the incoming order kept within each half. A row is
+ * ranked by the status it had when it first appeared, so a command that stops
+ * keeps its place instead of dropping away under the pointer.
  */
 function useRunningFirst(jobs: JobListEntry[]): JobListEntry[] {
   const ranks = useRef(new Map<string, number>());
@@ -240,7 +214,6 @@ function useRunningFirst(jobs: JobListEntry[]): JobListEntry[] {
   return [...jobs].sort((a, b) => rankOf(a) - rankOf(b));
 }
 
-/** How many rows the list shows before it has to be asked for the rest. */
 const CollapsedItemCount = 5;
 
 function PanelGroup({
@@ -258,8 +231,6 @@ function PanelGroup({
 
   return (
     <div className="flex flex-col gap-0.5">
-      {/* The title row doubles as the collapse control, so there is no extra
-          button to aim at, and the count stays visible while folded. */}
       <button
         type="button"
         aria-expanded={!isCollapsed}
@@ -270,16 +241,12 @@ function PanelGroup({
         )}
       >
         <span className="flex min-w-0 items-center gap-1">
-          {/* No colour override: inheriting the drawer's own foreground keeps
-              the title at full contrast instead of the dimmer `--foreground`. */}
-          <span className="truncate font-semibold text-sm">{label}</span>
-          {/* Trailing the title, and quiet until the row is pointed at — the
-              titles read as headings rather than as a tree. A folded section
-              keeps its arrow out, since that is the only thing on screen
-              saying where its rows went. */}
+          <span className="truncate font-medium text-base text-muted-foreground">
+            {label}
+          </span>
           <ChevronRightIcon
             className={cn(
-              "size-3.5 shrink-0 text-muted-foreground transition-all",
+              "size-4 shrink-0 text-muted-foreground transition-all",
               !isCollapsed && "rotate-90",
               isCollapsed
                 ? "opacity-100"
@@ -287,7 +254,7 @@ function PanelGroup({
             )}
           />
         </span>
-        <span className="shrink-0 text-muted-foreground text-xs">
+        <span className="shrink-0 text-muted-foreground/70 text-sm tabular-nums">
           {items.length}
         </span>
       </button>
@@ -299,16 +266,10 @@ function PanelGroup({
               type="button"
               onClick={() => setIsExpanded((prev) => !prev)}
               className={cn(
-                // Reads as a text link, not a row: only the label brightens on
-                // hover, so it never competes with the item rows for attention.
-                // Centring the label breaks the rows' left alignment, so it
-                // cannot be mistaken for one more item in the list.
-                "px-2 py-1 text-center text-muted-foreground text-xs",
+                "px-2 py-1 text-center text-muted-foreground text-sm",
                 "transition-colors hover:text-foreground",
               )}
             >
-              {/* The section header already carries the true total, so the
-                  toggle does not repeat it. */}
               {isExpanded ? t("managePanel.seeLess") : t("managePanel.seeMore")}
             </button>
           )}
@@ -320,16 +281,20 @@ function PanelGroup({
 
 function JobRow({ job }: { job: JobListEntry }) {
   const { t } = useTranslation();
-  const { isTerminalClosed, openTerminal, openOutputFile } =
-    useOpenBackgroundJob(job.backgroundJobId, job.outputFile);
+  const { backgroundCommands, show, hide, close } = useBackgroundCommands();
   const isRunning = job.status === "running";
+  const isVisible = backgroundCommands?.[job.backgroundJobId]?.isVisible;
+  const openOutputFile = () => {
+    if (job.outputFile) vscodeHost.openFile(job.outputFile);
+  };
+  const open = isRunning
+    ? () => show?.(job.backgroundJobId)
+    : job.outputFile
+      ? openOutputFile
+      : undefined;
 
-  // The hover reveals what the row is about: the command, like the panels in
-  // the message list, and how it ended, in the same words the notification
-  // uses. A running job has neither an ending nor, if its message was
-  // compacted away, a command: then there is nothing to add.
   const statusLabel =
-    job.status === "running"
+    job.status === "running" || job.status === "finished"
       ? undefined
       : getBackgroundJobStatusLabel(job.status, job.exitCode, t);
 
@@ -337,49 +302,80 @@ function JobRow({ job }: { job: JobListEntry }) {
     <span className="min-w-0 flex-1 truncate text-sm">{job.title}</span>
   );
 
-  // What the row can be asked to do. A running command can be watched and
-  // stopped; a finished one can only be read back, and only if its transcript
-  // was kept.
   const actions = isRunning ? (
     <>
-      {/* The process outlives its terminal tab, so the tab is only offered
-          while there is one to show. */}
-      {!isTerminalClosed && (
-        <JobAction label={t("managePanel.openTerminal")} onClick={openTerminal}>
-          <TerminalIcon className="size-3.5" />
-        </JobAction>
-      )}
-      {/* TODO: kill the process once command execution runs on a pty. */}
-      <JobAction label={t("managePanel.kill")} destructive>
-        <CircleStopIcon className="size-3.5" />
+      <JobAction
+        label={
+          isVisible
+            ? t("managePanel.hideTerminal")
+            : t("managePanel.openTerminal")
+        }
+        onClick={() =>
+          isVisible ? hide?.(job.backgroundJobId) : show?.(job.backgroundJobId)
+        }
+      >
+        {isVisible ? (
+          <EyeOffIcon className="size-4" />
+        ) : (
+          <EyeIcon className="size-4" />
+        )}
+      </JobAction>
+      <JobAction
+        label={t("managePanel.kill")}
+        destructive
+        onClick={() => close?.(job.backgroundJobId)}
+      >
+        <CircleStopIcon className="size-4" />
       </JobAction>
     </>
   ) : (
-    job.outputFile && (
-      <JobAction
-        label={t("backgroundJobNotifications.openOutput")}
-        onClick={openOutputFile}
-      >
-        <FileTextIcon className="size-3.5" />
-      </JobAction>
-    )
+    <>
+      {job.outputFile && (
+        <JobAction
+          label={t("backgroundJobNotifications.openOutput")}
+          onClick={openOutputFile}
+        >
+          <FileTextIcon className="size-4" />
+        </JobAction>
+      )}
+      {job.command && <CopyCommandAction command={job.command} />}
+    </>
   );
-  const hasActions = isRunning || job.outputFile !== undefined;
+  const hasActions =
+    isRunning || job.outputFile !== undefined || job.command !== undefined;
 
   return (
-    <div className="group flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/60">
-      <JobStatusIndicator status={job.status} />
+    <div
+      role={open ? "button" : undefined}
+      tabIndex={open ? 0 : undefined}
+      onClick={open}
+      onKeyDown={
+        open
+          ? (event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              open();
+            }
+          : undefined
+      }
+      className={cn(
+        "group flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/60",
+        open &&
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+      )}
+    >
+      <RowStatusIndicator isRunning={isRunning} tone={statusTone(job.status)} />
       {job.command || statusLabel ? (
         <Tooltip>
           <TooltipTrigger asChild>{title}</TooltipTrigger>
           <TooltipContent>
             {job.command && (
-              <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-xs">
+              <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-sm">
                 {job.command}
               </span>
             )}
             {statusLabel && (
-              <span className="mt-1 block text-xs opacity-80">
+              <span className="mt-1 block text-sm opacity-80">
                 {statusLabel}
               </span>
             )}
@@ -388,15 +384,14 @@ function JobRow({ job }: { job: JobListEntry }) {
       ) : (
         title
       )}
-      {/* One cell at the end of the row, holding the number at rest and the
-          controls on hover. Stacking them means the title's truncation point
-          never moves, and the row keeps a single trailing column. */}
-      <span className="grid min-h-5 shrink-0 items-center justify-items-end">
+      <span className="grid min-h-6 shrink-0 items-center justify-items-end">
         {job.displayId && (
           <span
             className={cn(
-              "col-start-1 row-start-1 font-mono text-[10px] text-muted-foreground",
-              // Only a row with something to press trades its number away.
+              // An inline box paints over the controls sharing its grid cell,
+              // so it has to opt out of hit-testing.
+              "pointer-events-none col-start-1 row-start-1 inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-secondary px-1 font-bold font-mono text-secondary-foreground text-sm",
+              isRunning && "ring-1 ring-primary",
               hasActions &&
                 "transition-opacity group-focus-within:opacity-0 group-hover:opacity-0",
             )}
@@ -405,10 +400,7 @@ function JobRow({ job }: { job: JobListEntry }) {
           </span>
         )}
         {hasActions && (
-          // Quiet until asked, the way VS Code's own lists hold their inline
-          // actions back — and the keyboard gets them as soon as one is
-          // focused rather than having to hover.
-          <span className="col-start-1 row-start-1 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <span className="col-start-1 row-start-1 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             {actions}
           </span>
         )}
@@ -417,7 +409,6 @@ function JobRow({ job }: { job: JobListEntry }) {
   );
 }
 
-/** A control at the end of a row, named by its tooltip. */
 function JobAction({
   label,
   destructive,
@@ -437,10 +428,15 @@ function JobAction({
           variant="ghost"
           size="icon"
           aria-label={label}
-          onClick={onClick}
+          onClick={(event) => {
+            event.stopPropagation();
+            onClick?.();
+          }}
           className={cn(
-            "size-5 rounded-sm text-muted-foreground hover:text-foreground",
-            destructive && "hover:text-destructive",
+            // The `dark:` twins displace the ghost variant's own dark hover.
+            "size-6 rounded-sm text-muted-foreground hover:bg-foreground/10 hover:text-foreground dark:hover:bg-foreground/10",
+            destructive &&
+              "hover:bg-destructive/15 hover:text-destructive dark:hover:bg-destructive/25",
           )}
         >
           {children}
@@ -451,25 +447,32 @@ function JobAction({
   );
 }
 
-/**
- * The status marker in front of a row. A dot carries every resting status;
- * work in progress gets a spinner, which is the only state that has to be
- * recognizable at a glance. Both sit in the same column so titles line up.
- */
-function JobStatusIndicator({ status }: { status: JobStatus }) {
+function CopyCommandAction({ command }: { command: string }) {
+  const { t } = useTranslation();
+  const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
+
   return (
-    <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
-      {status === "running" ? (
-        <Loader2 className="size-3.5 animate-spin text-primary" />
+    <JobAction
+      label={
+        isCopied
+          ? t("commandExecutionPanel.copied")
+          : t("managePanel.copyCommand")
+      }
+      onClick={() => {
+        if (!isCopied) copyToClipboard(command);
+      }}
+    >
+      {isCopied ? (
+        <CheckIcon className="size-4" />
       ) : (
-        <span
-          className={cn("size-1.5 rounded-full", {
-            "bg-green-500 dark:bg-green-700": status === "completed",
-            "bg-destructive": status === "failed",
-            "bg-muted-foreground/50": status === "stopped",
-          })}
-        />
+        <CopyIcon className="size-4" />
       )}
-    </span>
+    </JobAction>
   );
+}
+
+function statusTone(status: JobStatus): RowStatusTone {
+  if (status === "completed") return "success";
+  if (status === "failed") return "danger";
+  return "muted";
 }

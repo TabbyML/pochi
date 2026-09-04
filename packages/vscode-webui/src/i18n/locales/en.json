@@ -599,6 +599,8 @@
     "toggle": "Show background jobs",
     "pochiGroup": "Background commands",
     "openTerminal": "Open terminal",
+    "hideTerminal": "Hide terminal",
+    "copyCommand": "Copy command",
     "kill": "Kill process",
     "empty": "Nothing running in the background",
     "seeMore": "See more",

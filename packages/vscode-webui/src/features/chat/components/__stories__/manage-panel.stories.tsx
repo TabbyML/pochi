@@ -1,11 +1,11 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
+import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import { signal } from "@preact/signals-core";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import type { TerminalSnapshot } from "../../lib/build-job-list";
 import { ManagePanel } from "../manage-panel";
 
 const meta = {
@@ -17,8 +17,6 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      // The trigger lives in the chat toolbar in the app, so give it a
-      // stand-in row here.
       <div className="relative flex h-64 justify-end p-2">
         <Story />
       </div>
@@ -29,7 +27,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Nothing running: the trigger stays put so the panel remains discoverable. */
 export const Empty: Story = {
   play: openPanel,
 };
@@ -46,7 +43,7 @@ export const WithJobs: Story = {
       ]),
     ],
   },
-  decorators: [withTerminals([terminal("bgjob-cmd-1")])],
+  decorators: [withRunningCommands({ "bgjob-cmd-1": { isVisible: true } })],
   play: openPanel,
 };
 
@@ -59,20 +56,20 @@ async function openPanel({
   await expect(toggle).toHaveAttribute("data-state", "open");
 }
 
-/**
- * Seeds the terminal query so the panel sees live terminals without a host.
- */
-function withTerminals(terminals: TerminalSnapshot[]) {
+/** Seeds the host query so the panel sees running commands without a host. */
+function withRunningCommands(backgroundCommands: BackgroundCommands) {
+  const noop = async () => {};
   const data = {
-    terminals: signal(terminals),
-    openBackgroundJobTerminal: () => {},
+    backgroundCommands: signal(backgroundCommands),
+    show: noop,
+    hide: noop,
+    close: noop,
   };
 
   return (Story: React.ComponentType) => {
     const queryClient = useQueryClient();
-    // Seed once, before the panel below mounts and fires the query.
     useState(() => {
-      queryClient.setQueryData(["visibleTerminals"], data);
+      queryClient.setQueryData(["backgroundCommands"], data);
       return null;
     });
     return <Story />;
@@ -94,14 +91,6 @@ function executeCommandPart(backgroundJobId: string, command: string) {
 
 function notificationPart(data: BackgroundJobNotification) {
   return { type: "data-background-job-notification", data };
-}
-
-function terminal(backgroundJobId: string): TerminalSnapshot {
-  return {
-    isActive: false,
-    backgroundJobId,
-    outputFile: `/tmp/${backgroundJobId}.log`,
-  };
 }
 
 function notification(

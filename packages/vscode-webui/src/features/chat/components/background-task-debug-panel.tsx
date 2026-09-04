@@ -1,14 +1,6 @@
 /**
- * Dev-mode background tasks, rendered as one group of the manage panel.
- *
- * `useBackgroundTasks` + `BackgroundTaskRow` make up the list; picking a row
- * takes the drawer to `BackgroundTaskDetail`, which shows that task's messages
- * and todos through the reusable <TaskThread>.
- *
- * Nothing here is mounted unless dev mode is on, so the background tasks query
- * never runs for anybody else.
- *
- * This is a developer-only surface, so the strings here are not translated.
+ * Dev-mode background tasks, rendered as one group of the manage panel. Being
+ * developer-only, the strings here are not translated.
  */
 
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
@@ -17,11 +9,11 @@ import { useBackgroundTaskState } from "@/lib/hooks/use-background-task-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
-import { ArrowLeftIcon, Loader2 } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import { useMemo } from "react";
 import { formatTokens } from "../lib/format-tokens";
+import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
 
-/** The panel's own section titles are translated; this one is dev-only. */
 export const BackgroundTasksLabel = "Background tasks";
 
 export function useBackgroundTasks(): readonly Task[] {
@@ -49,35 +41,27 @@ export function BackgroundTaskRow({
       <span className="min-w-0 flex-1 truncate text-sm">
         {task.title || "(Untitled)"}
       </span>
-      <span className="shrink-0 text-[10px] text-muted-foreground">
+      <span className="shrink-0 text-muted-foreground text-sm">
         {formatRelative(task.updatedAt)}
       </span>
     </button>
   );
 }
 
-/**
- * The same status language the command rows speak — spinner for work in
- * progress, a dot for every resting state — over the task vocabulary.
- */
 function BackgroundTaskStatusIndicator({ status }: { status: Task["status"] }) {
-  const isRunning = status === "pending-model" || status === "pending-tool";
-
   return (
-    <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
-      {isRunning ? (
-        <Loader2 className="size-3.5 animate-spin text-primary" />
-      ) : (
-        <span
-          className={cn("size-1.5 rounded-full bg-muted-foreground/50", {
-            "bg-amber-500": status === "pending-input",
-            "bg-green-500 dark:bg-green-700": status === "completed",
-            "bg-destructive": status === "failed",
-          })}
-        />
-      )}
-    </span>
+    <RowStatusIndicator
+      isRunning={status === "pending-model" || status === "pending-tool"}
+      tone={statusTone(status)}
+    />
   );
+}
+
+function statusTone(status: Task["status"]): RowStatusTone {
+  if (status === "completed") return "success";
+  if (status === "failed") return "danger";
+  if (status === "pending-input") return "warning";
+  return "muted";
 }
 
 export function BackgroundTaskDetail({
@@ -113,7 +97,6 @@ export function BackgroundTaskDetail({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b px-2 py-2">
-        {/* The way back to the list, in the drawer's own header column. */}
         <Button
           variant="ghost"
           size="icon"

@@ -7,9 +7,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useBackgroundJobInfo } from "@/features/chat";
 import { getBackgroundJobStatusLabel } from "@/lib/background-job-status-label";
+import { useBackgroundCommands } from "@/lib/hooks/use-background-commands";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { useOpenBackgroundJob } from "@/lib/hooks/use-open-background-job";
+import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
@@ -238,12 +239,26 @@ export const BackgroundJobPanel: FC<{
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
-  const {
-    liveTerminal,
-    isTerminalClosed,
-    canOpenOutputFile,
-    open: openTerminalOrOutputFile,
-  } = useOpenBackgroundJob(backgroundJobId, outputFile);
+  const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
+  const { backgroundCommands, show } = useBackgroundCommands();
+  const liveTerminal = terminals?.find(
+    (tm) => tm.backgroundJobId === backgroundJobId,
+  );
+  // A background command runs on a pty, so it outlives its terminal tab: the
+  // host lists it for exactly as long as the process lives.
+  const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
+  const canOpenTerminal = isRunning || liveTerminal !== undefined;
+  const canOpenOutputFile = !isRunning && outputFile !== undefined;
+  const isResolved =
+    terminals !== undefined && backgroundCommands !== undefined;
+  const openTerminalOrOutputFile = () => {
+    if (!canOpenTerminal) {
+      if (outputFile) vscodeHost.openFile(outputFile);
+      return;
+    }
+    if (isRunning) show?.(backgroundJobId);
+    else openBackgroundJobTerminal?.(backgroundJobId);
+  };
   const isUserTerminal = backgroundJobId.startsWith("term-");
   const isNotification = appearance === "notification";
   const recoveredNotificationCommand = isNotification
@@ -266,22 +281,21 @@ export const BackgroundJobPanel: FC<{
     : (resolvedCommand ?? backgroundJobId);
   const isActive = liveTerminal?.isActive ?? false;
 
-
   const closedLabel = canOpenOutputFile
     ? t("commandExecutionPanel.terminalClosedOpenOutput")
     : t("commandExecutionPanel.terminalClosed");
   const jobControl = isUserTerminal
-    ? (liveTerminal || isTerminalClosed) && (
+    ? isResolved && (
         <JobControlButton
           label={
-            isTerminalClosed
-              ? closedLabel
-              : t("commandExecutionPanel.openTerminal", {
+            canOpenTerminal
+              ? t("commandExecutionPanel.openTerminal", {
                   name: liveTerminal?.name ?? terminalName,
                 })
+              : closedLabel
           }
           isActive={!isNotification && isActive}
-          inert={isTerminalClosed && !canOpenOutputFile}
+          inert={!canOpenTerminal && !canOpenOutputFile}
           onClick={openTerminalOrOutputFile}
         >
           <TerminalIcon className="size-3" />
@@ -291,14 +305,14 @@ export const BackgroundJobPanel: FC<{
       info?.displayId && (
         <JobControlButton
           label={
-            isTerminalClosed
-              ? closedLabel
-              : t("commandExecutionPanel.openJob", {
+            canOpenTerminal
+              ? t("commandExecutionPanel.openJob", {
                   displayId: info.displayId,
                 })
+              : closedLabel
           }
           isActive={!isNotification && isActive}
-          inert={isTerminalClosed && !canOpenOutputFile}
+          inert={!canOpenTerminal && !canOpenOutputFile}
           onClick={openTerminalOrOutputFile}
         >
           <div className="font-bold font-mono text-[10px]">

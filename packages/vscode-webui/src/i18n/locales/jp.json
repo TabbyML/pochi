@@ -598,6 +598,8 @@
     "toggle": "バックグラウンドジョブを表示",
     "pochiGroup": "バックグラウンドコマンド",
     "openTerminal": "ターミナルを開く",
+    "hideTerminal": "ターミナルを非表示",
+    "copyCommand": "コマンドをコピー",
     "kill": "プロセスを終了",
     "empty": "バックグラウンドで実行中のものはありません",
     "seeMore": "もっと見る",

@@ -1,14 +1,14 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
 import { describe, expect, it } from "vitest";
-import { type TerminalSnapshot, buildJobList } from "./build-job-list";
+import type { Message } from "@getpochi/livekit";
+import { buildJobList } from "./build-job-list";
 
 describe("buildJobList", () => {
-  it("lists a running job from its live terminal", () => {
+  it("lists a command the host still has a process for as running", () => {
     const { pochi } = buildJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
       notifications: [],
-      terminals: [terminal("bgjob-cmd-1", { isActive: true })],
+      backgroundCommands: { "bgjob-cmd-1": { isVisible: true } },
     });
 
     expect(pochi).toEqual([
@@ -19,7 +19,6 @@ describe("buildJobList", () => {
         command: "bun run dev",
         status: "running",
         outputFile: "/tmp/bgjob-cmd-1.log",
-        isActive: true,
       },
     ]);
   });
@@ -32,9 +31,8 @@ describe("buildJobList", () => {
           notificationPart(notification("bgjob-cmd-1", "failed")),
         ]),
       ],
-      // The host copy is dropped once it has been delivered as a message part.
       notifications: [],
-      terminals: [],
+      backgroundCommands: {},
     });
 
     expect(pochi).toEqual([
@@ -45,7 +43,6 @@ describe("buildJobList", () => {
         command: "bun run dev",
         status: "failed",
         outputFile: "/tmp/bgjob-cmd-1.log",
-        isActive: false,
       },
     ]);
   });
@@ -54,7 +51,7 @@ describe("buildJobList", () => {
     const { pochi } = buildJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
       notifications: [notification("bgjob-cmd-1", "completed")],
-      terminals: [],
+      backgroundCommands: {},
     });
 
     expect(pochi).toMatchObject([
@@ -66,17 +63,51 @@ describe("buildJobList", () => {
     const { pochi } = buildJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
       notifications: [notification("bgjob-cmd-1", "failed", 127)],
-      terminals: [],
+      backgroundCommands: {},
     });
 
     expect(pochi).toMatchObject([{ status: "failed", exitCode: 127 }]);
+  });
+
+  it("still lists a gone command nothing reported an ending for", () => {
+    const { pochi } = buildJobList({
+      messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
+      notifications: [],
+      backgroundCommands: {},
+    });
+
+    expect(pochi).toMatchObject([
+      {
+        backgroundJobId: "bgjob-cmd-1",
+        status: "finished",
+        exitCode: undefined,
+        outputFile: "/tmp/bgjob-cmd-1.log",
+      },
+    ]);
+  });
+
+  it("lists a command promoted from the foreground, background flag or not", () => {
+    const { pochi } = buildJobList({
+      messages: [
+        message([
+          {
+            ...executeCommandPart("bgjob-cmd-1", "bun run dev"),
+            input: { command: "bun run dev" },
+          },
+        ]),
+      ],
+      notifications: [],
+      backgroundCommands: { "bgjob-cmd-1": { isVisible: false } },
+    });
+
+    expect(pochi).toMatchObject([{ status: "running", title: "bun run dev" }]);
   });
 
   it("surfaces a notification whose executeCommand part is gone", () => {
     const { pochi } = buildJobList({
       messages: [],
       notifications: [notification("bgjob-cmd-9", "stopped")],
-      terminals: [],
+      backgroundCommands: {},
     });
 
     expect(pochi).toEqual([
@@ -86,19 +117,8 @@ describe("buildJobList", () => {
         command: "run bgjob-cmd-9",
         status: "stopped",
         outputFile: "/tmp/bgjob-cmd-9.log",
-        isActive: false,
       },
     ]);
-  });
-
-  it("drops a job that has neither a terminal nor a notification", () => {
-    const { pochi } = buildJobList({
-      messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
-      notifications: [],
-      terminals: [],
-    });
-
-    expect(pochi).toEqual([]);
   });
 
   it("lists the newest job first, numbered like the badges in the message list", () => {
@@ -112,23 +132,28 @@ describe("buildJobList", () => {
       notifications: [
         notification("bgjob-cmd-1", "completed"),
         notification("bgjob-cmd-2", "completed"),
-        // Started before both, but its message was compacted away.
         notification("bgjob-cmd-9", "completed"),
       ],
-      terminals: [],
+      backgroundCommands: {},
     });
 
     expect(pochi.map((job) => job.displayId)).toEqual(["%2", "%1", undefined]);
   });
 
-  it("hides running jobs until the terminal list has loaded", () => {
+  it("falls back to what the notifications know while the host table loads", () => {
     const { pochi } = buildJobList({
-      messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
+      messages: [
+        message([
+          executeCommandPart("bgjob-cmd-1", "bun run dev"),
+          executeCommandPart("bgjob-cmd-2", "bun run build"),
+          notificationPart(notification("bgjob-cmd-2", "completed")),
+        ]),
+      ],
       notifications: [],
-      terminals: undefined,
+      backgroundCommands: undefined,
     });
 
-    expect(pochi).toEqual([]);
+    expect(pochi.map((job) => job.status)).toEqual(["completed", "finished"]);
   });
 });
 
@@ -141,23 +166,14 @@ function executeCommandPart(backgroundJobId: string, command: string) {
     type: "tool-executeCommand",
     state: "output-available",
     input: { command, background: true },
-    output: { _meta: { backgroundJobId } },
+    output: {
+      _meta: { backgroundJobId, outputFile: `/tmp/${backgroundJobId}.log` },
+    },
   };
 }
 
 function notificationPart(data: BackgroundJobNotification) {
   return { type: "data-background-job-notification", data };
-}
-
-function terminal(
-  backgroundJobId: string,
-  { isActive = false }: { isActive?: boolean } = {},
-): TerminalSnapshot {
-  return {
-    isActive,
-    backgroundJobId,
-    outputFile: `/tmp/${backgroundJobId}.log`,
-  };
 }
 
 function notification(
