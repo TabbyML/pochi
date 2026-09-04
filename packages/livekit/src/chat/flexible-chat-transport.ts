@@ -267,7 +267,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       );
     }
 
-    if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
+    if (useReasoningMiddleware(llm)) {
       middlewares.push(createReasoningMiddleware());
     }
 
@@ -453,6 +453,19 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
 function prepareMessages(inputMessages: Message[]): Message[] {
   return convertDataReviewsToText(inputMessages);
+}
+
+/**
+ * The reasoning middleware is opt-in via model configuration
+ * (`useReasoningMiddleware`), falling back to a well-known model list when the
+ * setting is not provided.
+ */
+function useReasoningMiddleware(llm: RequestData["llm"]): boolean {
+  if (llm.useReasoningMiddleware !== undefined) {
+    return llm.useReasoningMiddleware;
+  }
+
+  return "modelId" in llm && isWellKnownReasoningModel(llm.modelId);
 }
 
 function isWellKnownReasoningModel(model?: string): boolean {
