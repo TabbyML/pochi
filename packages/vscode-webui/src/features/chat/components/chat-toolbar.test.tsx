@@ -175,8 +175,8 @@ vi.mock("./chat-input-form", () => ({
 vi.mock("./error-message-view", () => ({
   ErrorMessageView: () => null,
 }));
-vi.mock("./manage-panel", () => ({
-  ManagePanel: () => null,
+vi.mock("./background-job-manage-panel", () => ({
+  BackgroundJobManagePanel: () => null,
 }));
 vi.mock("./submit-review-button", () => ({
   SubmitReviewsButton: () => null,

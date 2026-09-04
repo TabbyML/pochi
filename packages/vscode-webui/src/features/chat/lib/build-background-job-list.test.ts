@@ -1,17 +1,17 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
 import { describe, expect, it } from "vitest";
 import type { Message } from "@getpochi/livekit";
-import { buildJobList } from "./build-job-list";
+import { buildBackgroundJobList } from "./build-background-job-list";
 
-describe("buildJobList", () => {
+describe("buildBackgroundJobList", () => {
   it("lists a command the host still has a process for as running", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
       notifications: [],
       backgroundCommands: { "bgjob-cmd-1": { isVisible: true } },
     });
 
-    expect(pochi).toEqual([
+    expect(backgroundJobs).toEqual([
       {
         backgroundJobId: "bgjob-cmd-1",
         displayId: "%1",
@@ -24,7 +24,7 @@ describe("buildJobList", () => {
   });
 
   it("keeps a finished job whose notification was already delivered", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [
         message([
           executeCommandPart("bgjob-cmd-1", "bun run dev"),
@@ -35,7 +35,7 @@ describe("buildJobList", () => {
       backgroundCommands: {},
     });
 
-    expect(pochi).toEqual([
+    expect(backgroundJobs).toEqual([
       {
         backgroundJobId: "bgjob-cmd-1",
         displayId: "%1",
@@ -48,35 +48,37 @@ describe("buildJobList", () => {
   });
 
   it("keeps a finished job whose notification is still undelivered", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
       notifications: [notification("bgjob-cmd-1", "completed")],
       backgroundCommands: {},
     });
 
-    expect(pochi).toMatchObject([
+    expect(backgroundJobs).toMatchObject([
       { backgroundJobId: "bgjob-cmd-1", status: "completed" },
     ]);
   });
 
   it("carries the exit code a finished job reported", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
       notifications: [notification("bgjob-cmd-1", "failed", 127)],
       backgroundCommands: {},
     });
 
-    expect(pochi).toMatchObject([{ status: "failed", exitCode: 127 }]);
+    expect(backgroundJobs).toMatchObject([
+      { status: "failed", exitCode: 127 },
+    ]);
   });
 
   it("still lists a gone command nothing reported an ending for", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],
       notifications: [],
       backgroundCommands: {},
     });
 
-    expect(pochi).toMatchObject([
+    expect(backgroundJobs).toMatchObject([
       {
         backgroundJobId: "bgjob-cmd-1",
         status: "finished",
@@ -87,7 +89,7 @@ describe("buildJobList", () => {
   });
 
   it("lists a command promoted from the foreground, background flag or not", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [
         message([
           {
@@ -100,17 +102,19 @@ describe("buildJobList", () => {
       backgroundCommands: { "bgjob-cmd-1": { isVisible: false } },
     });
 
-    expect(pochi).toMatchObject([{ status: "running", title: "bun run dev" }]);
+    expect(backgroundJobs).toMatchObject([
+      { status: "running", title: "bun run dev" },
+    ]);
   });
 
   it("surfaces a notification whose executeCommand part is gone", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [],
       notifications: [notification("bgjob-cmd-9", "stopped")],
       backgroundCommands: {},
     });
 
-    expect(pochi).toEqual([
+    expect(backgroundJobs).toEqual([
       {
         backgroundJobId: "bgjob-cmd-9",
         title: "run bgjob-cmd-9",
@@ -122,7 +126,7 @@ describe("buildJobList", () => {
   });
 
   it("lists the newest job first, numbered like the badges in the message list", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [
         message([
           executeCommandPart("bgjob-cmd-1", "first"),
@@ -137,11 +141,15 @@ describe("buildJobList", () => {
       backgroundCommands: {},
     });
 
-    expect(pochi.map((job) => job.displayId)).toEqual(["%2", "%1", undefined]);
+    expect(backgroundJobs.map((job) => job.displayId)).toEqual([
+      "%2",
+      "%1",
+      undefined,
+    ]);
   });
 
   it("falls back to what the notifications know while the host table loads", () => {
-    const { pochi } = buildJobList({
+    const backgroundJobs = buildBackgroundJobList({
       messages: [
         message([
           executeCommandPart("bgjob-cmd-1", "bun run dev"),
@@ -153,7 +161,10 @@ describe("buildJobList", () => {
       backgroundCommands: undefined,
     });
 
-    expect(pochi.map((job) => job.status)).toEqual(["completed", "finished"]);
+    expect(backgroundJobs.map((job) => job.status)).toEqual([
+      "completed",
+      "finished",
+    ]);
   });
 });
 

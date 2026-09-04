@@ -21,17 +21,20 @@ import type { Message, Task } from "@getpochi/livekit";
 import {
   CheckIcon,
   ChevronRightIcon,
-  CircleStopIcon,
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
   FileTextIcon,
   ListIcon,
+  XIcon,
 } from "lucide-react";
 import { Children, type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useJobList } from "../hooks/use-job-list";
-import type { JobListEntry, JobStatus } from "../lib/build-job-list";
+import { useBackgroundJobList } from "../hooks/use-background-job-list";
+import type {
+  BackgroundJobEntry,
+  JobStatus,
+} from "../lib/build-background-job-list";
 import {
   BackgroundTaskDetail,
   BackgroundTaskRow,
@@ -40,7 +43,7 @@ import {
 } from "./background-task-debug-panel";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
 
-export function ManagePanel({
+export function BackgroundJobManagePanel({
   taskId,
   messages,
 }: {
@@ -52,9 +55,11 @@ export function ManagePanel({
   const [isOpen, setIsOpen] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const { pochi } = useJobList(taskId, messages);
+  const backgroundJobs = useBackgroundJobList(taskId, messages);
 
-  const runningCount = pochi.filter((job) => job.status === "running").length;
+  const runningCount = backgroundJobs.filter(
+    (job) => job.status === "running",
+  ).length;
 
   return (
     <Sheet
@@ -75,12 +80,12 @@ export function ManagePanel({
               variant="ghost"
               size="icon"
               aria-label={t("managePanel.toggle")}
-              data-testid="manage-panel-toggle"
+              data-testid="background-job-manage-panel-toggle"
               className="button-focus relative h-6 w-6 p-0"
             >
               <ListIcon className="size-4.5" />
               {runningCount > 0 && (
-                <span className="absolute top-0 right-0 flex h-[10px] min-w-[10px] items-center justify-center rounded-full bg-blue-500 px-[2px] font-medium text-[8px] text-white tabular-nums leading-none">
+                <span className="-top-1 -right-1 absolute flex h-[10px] min-w-[10px] items-center justify-center rounded-full bg-blue-500 px-[2px] font-medium text-[8px] text-white tabular-nums leading-none">
                   {runningCount}
                 </span>
               )}
@@ -97,14 +102,14 @@ export function ManagePanel({
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {isDevMode === true ? (
             <DevPanelBody
-              pochi={pochi}
+              backgroundJobs={backgroundJobs}
               onSelectTask={(id) => {
                 setDetailTaskId(id);
                 setIsDetailOpen(true);
               }}
             />
           ) : (
-            <PanelBody pochi={pochi} tasks={NoTasks} />
+            <PanelBody backgroundJobs={backgroundJobs} tasks={NoTasks} />
           )}
           <div
             data-testid="background-task-layer"
@@ -135,30 +140,36 @@ const NoTasks: readonly Task[] = [];
  * conditional, so their query lives in its own component.
  */
 function DevPanelBody({
-  pochi,
+  backgroundJobs,
   onSelectTask,
 }: {
-  pochi: JobListEntry[];
+  backgroundJobs: BackgroundJobEntry[];
   onSelectTask: (taskId: string) => void;
 }) {
   const tasks = useBackgroundTasks();
 
-  return <PanelBody pochi={pochi} tasks={tasks} onSelectTask={onSelectTask} />;
+  return (
+    <PanelBody
+      backgroundJobs={backgroundJobs}
+      tasks={tasks}
+      onSelectTask={onSelectTask}
+    />
+  );
 }
 
 function PanelBody({
-  pochi,
+  backgroundJobs,
   tasks,
   onSelectTask,
 }: {
-  pochi: JobListEntry[];
+  backgroundJobs: BackgroundJobEntry[];
   tasks: readonly Task[];
   onSelectTask?: (taskId: string) => void;
 }) {
   const { t } = useTranslation();
-  const commands = useRunningFirst(pochi);
+  const commands = useRunningFirst(backgroundJobs);
 
-  if (pochi.length === 0 && tasks.length === 0) {
+  if (backgroundJobs.length === 0 && tasks.length === 0) {
     return (
       <div className="px-3 py-6 text-center text-base text-muted-foreground">
         {t("managePanel.empty")}
@@ -200,10 +211,10 @@ function PanelBody({
  * ranked by the status it had when it first appeared, so a command that stops
  * keeps its place instead of dropping away under the pointer.
  */
-function useRunningFirst(jobs: JobListEntry[]): JobListEntry[] {
+function useRunningFirst(jobs: BackgroundJobEntry[]): BackgroundJobEntry[] {
   const ranks = useRef(new Map<string, number>());
 
-  const rankOf = (job: JobListEntry) => {
+  const rankOf = (job: BackgroundJobEntry) => {
     const known = ranks.current.get(job.backgroundJobId);
     if (known !== undefined) return known;
     const rank = job.status === "running" ? 0 : 1;
@@ -241,7 +252,7 @@ function PanelGroup({
         )}
       >
         <span className="flex min-w-0 items-center gap-1">
-          <span className="truncate font-medium text-base text-muted-foreground">
+          <span className="truncate font-medium text-muted-foreground text-sm">
             {label}
           </span>
           <ChevronRightIcon
@@ -279,7 +290,7 @@ function PanelGroup({
   );
 }
 
-function JobRow({ job }: { job: JobListEntry }) {
+function JobRow({ job }: { job: BackgroundJobEntry }) {
   const { t } = useTranslation();
   const { backgroundCommands, show, hide, close } = useBackgroundCommands();
   const isRunning = job.status === "running";
@@ -325,7 +336,7 @@ function JobRow({ job }: { job: JobListEntry }) {
         destructive
         onClick={() => close?.(job.backgroundJobId)}
       >
-        <CircleStopIcon className="size-4" />
+        <XIcon className="size-4" />
       </JobAction>
     </>
   ) : (
@@ -384,13 +395,13 @@ function JobRow({ job }: { job: JobListEntry }) {
       ) : (
         title
       )}
-      <span className="grid min-h-6 shrink-0 items-center justify-items-end">
+      <span className="grid min-h-5 shrink-0 items-center justify-items-end">
         {job.displayId && (
           <span
             className={cn(
               // An inline box paints over the controls sharing its grid cell,
               // so it has to opt out of hit-testing.
-              "pointer-events-none col-start-1 row-start-1 inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-secondary px-1 font-bold font-mono text-secondary-foreground text-sm",
+              "pointer-events-none col-start-1 row-start-1 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-secondary px-1 font-bold font-mono text-secondary-foreground text-xs",
               isRunning && "ring-1 ring-primary",
               hasActions &&
                 "transition-opacity group-focus-within:opacity-0 group-hover:opacity-0",
@@ -434,7 +445,7 @@ function JobAction({
           }}
           className={cn(
             // The `dark:` twins displace the ghost variant's own dark hover.
-            "size-6 rounded-sm text-muted-foreground hover:bg-foreground/10 hover:text-foreground dark:hover:bg-foreground/10",
+            "size-5 rounded-sm text-muted-foreground hover:bg-foreground/10 hover:text-foreground dark:hover:bg-foreground/10",
             destructive &&
               "hover:bg-destructive/15 hover:text-destructive dark:hover:bg-destructive/25",
           )}

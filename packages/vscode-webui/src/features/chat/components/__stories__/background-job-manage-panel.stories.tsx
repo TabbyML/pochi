@@ -6,11 +6,11 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ManagePanel } from "../manage-panel";
+import { BackgroundJobManagePanel } from "../background-job-manage-panel";
 
 const meta = {
-  title: "Features/Chat/ManagePanel",
-  component: ManagePanel,
+  title: "Features/Chat/BackgroundJobManagePanel",
+  component: BackgroundJobManagePanel,
   args: {
     taskId: "story-task",
     messages: [],
@@ -22,7 +22,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof ManagePanel>;
+} satisfies Meta<typeof BackgroundJobManagePanel>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -51,7 +51,7 @@ async function openPanel({
   canvasElement,
 }: { canvasElement: HTMLElement }): Promise<void> {
   const canvas = within(canvasElement);
-  const toggle = canvas.getByTestId("manage-panel-toggle");
+  const toggle = canvas.getByTestId("background-job-manage-panel-toggle");
   await userEvent.click(toggle);
   await expect(toggle).toHaveAttribute("data-state", "open");
 }

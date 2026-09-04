@@ -9,7 +9,7 @@ export type JobStatus =
   | "stopped"
   | "finished";
 
-export interface JobListEntry {
+export interface BackgroundJobEntry {
   backgroundJobId: string;
   displayId?: string;
   title: string;
@@ -19,12 +19,8 @@ export interface JobListEntry {
   outputFile?: string;
 }
 
-export interface JobList {
-  pochi: JobListEntry[];
-}
-
 /** Collects the background commands Pochi started for this task. */
-export function buildJobList({
+export function buildBackgroundJobList({
   messages,
   notifications,
   backgroundCommands,
@@ -32,7 +28,7 @@ export function buildJobList({
   messages: readonly Message[];
   notifications: readonly BackgroundJobNotification[];
   backgroundCommands: BackgroundCommands | undefined;
-}): JobList {
+}): BackgroundJobEntry[] {
   const commands = new Map<string, { command?: string; outputFile?: string }>();
   const finished = new Map<string, BackgroundJobNotification>();
 
@@ -60,14 +56,14 @@ export function buildJobList({
     finished.set(notification.backgroundJobId, notification);
   }
 
-  const pochi: JobListEntry[] = [];
+  const backgroundJobs: BackgroundJobEntry[] = [];
   let index = 0;
   for (const [backgroundJobId, meta] of commands) {
     index += 1;
     const notification = finished.get(backgroundJobId);
     const command = meta.command ?? notification?.command;
     const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
-    pochi.push({
+    backgroundJobs.push({
       backgroundJobId,
       displayId: `%${index}`,
       title: command ?? backgroundJobId,
@@ -80,7 +76,7 @@ export function buildJobList({
 
   // A notification can outlive the `executeCommand` part that started it,
   // because compaction rewrites older messages.
-  const orphaned: JobListEntry[] = [];
+  const orphaned: BackgroundJobEntry[] = [];
   for (const notification of finished.values()) {
     if (commands.has(notification.backgroundJobId)) continue;
     orphaned.push({
@@ -95,5 +91,5 @@ export function buildJobList({
 
   // Newest command first, with the `%N` labels still counting from the start
   // of the task.
-  return { pochi: [...pochi.reverse(), ...orphaned] };
+  return [...backgroundJobs.reverse(), ...orphaned];
 }

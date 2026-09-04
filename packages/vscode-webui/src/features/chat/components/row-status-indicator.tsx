@@ -1,4 +1,4 @@
-/** The status marker shared by every manage-panel row. */
+/** The status marker shared by every background job manage panel row. */
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
