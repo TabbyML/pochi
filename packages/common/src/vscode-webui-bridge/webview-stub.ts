@@ -289,6 +289,14 @@ const VSCodeHostStub = {
       },
     });
   },
+  readBackgroundCommand: async (_backgroundJobId: string) => {
+    return Promise.resolve({
+      isVisible: {} as ThreadSignalSerialization<boolean>,
+      show: async (): Promise<void> => Promise.resolve(),
+      hide: async (): Promise<void> => Promise.resolve(),
+      close: async (): Promise<void> => Promise.resolve(),
+    });
+  },
   readModelList: async () => {
     return Promise.resolve(
       {} as {

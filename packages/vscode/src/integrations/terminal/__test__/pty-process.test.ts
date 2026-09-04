@@ -72,6 +72,19 @@ describe("PtyProcess", () => {
     assert.deepStrictEqual(events, ["data:trailing output\n", "exit:0"]);
   });
 
+  it("bounds replay history while retaining the latest output", () => {
+    const harness = createHarness();
+    harness.data("a".repeat(600_000));
+    harness.data("b".repeat(600_000));
+
+    const subscription = harness.ptyProcess.subscribeWithReplay(() => {});
+    const replay = subscription.replay.join("");
+
+    assert.strictEqual(replay.length, 1_000_000);
+    assert.strictEqual(replay, `${"a".repeat(400_000)}${"b".repeat(600_000)}`);
+    subscription.disposable.dispose();
+  });
+
   it("allows late exit delivery to be cancelled", async () => {
     const harness = createHarness();
     const exits: number[] = [];

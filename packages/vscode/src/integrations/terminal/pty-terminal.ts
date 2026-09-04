@@ -44,6 +44,7 @@ export class PtyTerminal implements vscode.Pseudoterminal, vscode.Disposable {
   }
 
   close(): void {
+    this.opened = false;
     if (!this.exited) {
       this.onCloseRequested();
     }

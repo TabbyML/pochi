@@ -9,6 +9,7 @@ import * as vscode from "vscode";
 const logger = getLogger("PtyProcess");
 const TerminationGraceMs = 2_000;
 const HardKillExitGraceMs = 1_000;
+const ReplayHistoryMaxCharacters = 1_000_000;
 const requireFromExtensionHost = createRequire(__filename);
 
 export class PtySpawnError extends Error {
@@ -65,6 +66,7 @@ export class PtyProcess {
   private readonly dataListeners = new Set<DataListener>();
   private readonly exitListeners = new Set<ExitListener>();
   private readonly history: string[] = [];
+  private historyCharacters = 0;
   private rawExitEvent: PtyProcessExit | undefined;
   private exitEvent: PtyProcessExit | undefined;
   private forceKillTimer: ReturnType<typeof setTimeout> | undefined;
@@ -73,7 +75,7 @@ export class PtyProcess {
 
   private constructor(private readonly process: nodePty.IPty) {
     process.onData((data) => {
-      this.history.push(data);
+      this.appendHistory(data);
       for (const listener of this.dataListeners) {
         listener(data);
       }
@@ -134,8 +136,20 @@ export class PtyProcess {
     return { replay, disposable };
   }
 
-  clearReplay(): void {
-    this.history.length = 0;
+  private appendHistory(data: string): void {
+    this.history.push(data);
+    this.historyCharacters += data.length;
+    while (this.historyCharacters > ReplayHistoryMaxCharacters) {
+      const firstChunk = this.history[0] ?? "";
+      const overflow = this.historyCharacters - ReplayHistoryMaxCharacters;
+      if (firstChunk.length <= overflow) {
+        this.history.shift();
+        this.historyCharacters -= firstChunk.length;
+      } else {
+        this.history[0] = firstChunk.slice(overflow);
+        this.historyCharacters -= overflow;
+      }
+    }
   }
 
   /** Fires at node-pty's socket-close boundary, after queued output drains. */

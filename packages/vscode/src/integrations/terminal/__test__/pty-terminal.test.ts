@@ -68,16 +68,19 @@ describe("PtyTerminal", () => {
     assert.strictEqual(onCloseRequested.callCount, 0);
   });
 
-  it("requests a stop when the user closes a running terminal", () => {
+  it("detaches without stopping the underlying process", () => {
     const onCloseRequested = sinon.stub();
+    const dataSubscription = { dispose: sinon.stub() };
+    const exitSubscription = { dispose: sinon.stub() };
     const ptyProcess = {
       subscribeWithReplay: () => ({
         replay: [],
-        disposable: { dispose: sinon.stub() },
+        disposable: dataSubscription,
       }),
-      onExit: () => ({ dispose: sinon.stub() }),
+      onExit: () => exitSubscription,
       write: sinon.stub(),
       resize: sinon.stub(),
+      kill: sinon.stub(),
     };
     const { PtyTerminal } = proxyquire
       .noCallThru()
@@ -89,5 +92,8 @@ describe("PtyTerminal", () => {
     new PtyTerminal(ptyProcess as never, onCloseRequested).close();
 
     assert.strictEqual(onCloseRequested.callCount, 1);
+    assert.strictEqual(ptyProcess.kill.callCount, 0);
+    assert.strictEqual(dataSubscription.dispose.callCount, 1);
+    assert.strictEqual(exitSubscription.dispose.callCount, 1);
   });
 });

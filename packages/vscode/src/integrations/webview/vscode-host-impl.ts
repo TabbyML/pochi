@@ -466,6 +466,23 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
+  readBackgroundCommand = async (backgroundJobId: string) => ({
+    isVisible: ThreadSignal.serialize(
+      this.terminalState.getBackgroundCommandTerminalVisibility(
+        backgroundJobId,
+      ),
+    ),
+    show: async () => {
+      this.terminalState.showBackgroundCommandTerminal(backgroundJobId);
+    },
+    hide: async () => {
+      this.terminalState.hideBackgroundCommandTerminal(backgroundJobId);
+    },
+    close: async () => {
+      this.terminalState.closeBackgroundCommand(backgroundJobId);
+    },
+  });
+
   readBackgroundJobNotifications = async (taskId: string) => ({
     notifications: ThreadSignal.serialize(
       this.taskStateStore.getBackgroundJobNotificationsSignal(taskId),

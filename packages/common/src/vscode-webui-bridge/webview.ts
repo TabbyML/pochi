@@ -188,6 +188,13 @@ export interface VSCodeHostApi {
     openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
   }>;
 
+  readBackgroundCommand(backgroundJobId: string): Promise<{
+    isVisible: ThreadSignalSerialization<boolean>;
+    show: () => Promise<void>;
+    hide: () => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+
   readBackgroundJobNotifications(taskId: string): Promise<{
     notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
     acknowledge: (notificationId: string) => Promise<void>;

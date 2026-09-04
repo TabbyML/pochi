@@ -8,6 +8,7 @@ import {
   getBackgroundJobOutputPath,
   getShellPath,
 } from "@getpochi/common/tool-utils";
+import { signal } from "@preact/signals-core";
 import * as vscode from "vscode";
 import { createTerminal } from "../layout";
 import { OutputManager } from "./output";
@@ -35,8 +36,13 @@ export class TerminalJob implements vscode.Disposable {
   private static readonly onDidFinishEmitter =
     new vscode.EventEmitter<BackgroundJobTerminalEvent>();
   static readonly onDidFinish = TerminalJob.onDidFinishEmitter.event;
+  private static readonly onDidChangeVisibilityEmitter =
+    new vscode.EventEmitter<TerminalJob>();
+  static readonly onDidChangeVisibility =
+    TerminalJob.onDidChangeVisibilityEmitter.event;
 
-  private terminal!: vscode.Terminal;
+  private terminal: vscode.Terminal | undefined;
+  private ptyTerminal: PtyTerminal | undefined;
   private outputManager!: OutputManager;
   private outputWriter!: BackgroundJobOutputFile;
   private readonly sanitizer = new PlainOutputSanitizer();
@@ -56,6 +62,7 @@ export class TerminalJob implements vscode.Disposable {
 
   readonly id: string;
   readonly outputFile: string;
+  readonly terminalVisibility = signal(false);
 
   get output() {
     return this.outputManager.output;
@@ -63,6 +70,18 @@ export class TerminalJob implements vscode.Disposable {
 
   get command() {
     return this.config.command;
+  }
+
+  get name() {
+    return this.config.name;
+  }
+
+  get isPtyTerminal() {
+    return this.ptyProcess !== undefined;
+  }
+
+  get isVisible() {
+    return this.terminalVisibility.value;
   }
 
   private constructor(
@@ -87,7 +106,7 @@ export class TerminalJob implements vscode.Disposable {
       }
       this.initializeLifecycle();
       if (!this.stopRequested) {
-        this.terminal.show();
+        this.show();
         if (!ptyProcess) {
           void this.executeWithShellIntegration();
         }
@@ -143,6 +162,36 @@ export class TerminalJob implements vscode.Disposable {
         );
   }
 
+  static list(): readonly TerminalJob[] {
+    return Array.from(TerminalJob.jobs.values());
+  }
+
+  show(): void {
+    if (this.finished || this.stopRequested) return;
+    if (this.ptyProcess && !this.terminal) {
+      this.createPtyTerminalView();
+    }
+    this.terminal?.show(false);
+    this.setVisible(true);
+  }
+
+  hide(): void {
+    if (!this.ptyProcess || !this.terminal) return;
+    const terminal = this.terminal;
+    const ptyTerminal = this.ptyTerminal;
+    this.terminal = undefined;
+    this.ptyTerminal = undefined;
+    this.setVisible(false);
+    terminal.dispose();
+    ptyTerminal?.dispose();
+  }
+
+  closePtyProcess(): void {
+    if (!this.ptyProcess) return;
+    this.hide();
+    this.requestStop("close requested");
+  }
+
   kill(): void {
     this.requestStop("kill requested");
   }
@@ -169,18 +218,27 @@ export class TerminalJob implements vscode.Disposable {
     }
 
     // This listener is registered before PtyTerminal's close listener so a
-    // process-driven terminal close is not mistaken for a user cancellation.
+    // process-driven terminal close is not mistaken for a user action.
     this.disposables.push(
       ptyProcess.onExit(() => {
         this.ptyExited = true;
       }),
     );
-    const ptyTerminal = new PtyTerminal(ptyProcess, () => {
-      this.requestStop("user closed terminal");
-    });
-    this.disposables.push(ptyTerminal);
-    ptyProcess.clearReplay();
+    this.createPtyTerminalView();
 
+    this.disposables.push(
+      ptyProcess.onExit(({ exitCode }) => {
+        void this.finalize(exitCode);
+      }),
+    );
+  }
+
+  private createPtyTerminalView(): void {
+    if (!this.ptyProcess || this.terminal) return;
+    const ptyTerminal = new PtyTerminal(this.ptyProcess, () => {
+      this.detachPtyTerminalView(ptyTerminal);
+    });
+    this.ptyTerminal = ptyTerminal;
     this.terminal = createTerminal({
       name: this.config.name,
       pty: ptyTerminal,
@@ -188,11 +246,27 @@ export class TerminalJob implements vscode.Disposable {
       iconPath: new vscode.ThemeIcon("piano"),
       isTransient: false,
     });
-    this.disposables.push(
-      ptyProcess.onExit(({ exitCode }) => {
-        void this.finalize(exitCode);
-      }),
-    );
+  }
+
+  private detachPtyTerminalView(ptyTerminal?: PtyTerminal): void {
+    if (
+      this.finished ||
+      this.ptyExited ||
+      (ptyTerminal && ptyTerminal !== this.ptyTerminal)
+    ) {
+      return;
+    }
+    const attachedPtyTerminal = ptyTerminal ?? this.ptyTerminal;
+    this.terminal = undefined;
+    this.ptyTerminal = undefined;
+    attachedPtyTerminal?.dispose();
+    this.setVisible(false);
+  }
+
+  private setVisible(visible: boolean): void {
+    if (this.terminalVisibility.value === visible) return;
+    this.terminalVisibility.value = visible;
+    TerminalJob.onDidChangeVisibilityEmitter.fire(this);
   }
 
   private initializeShellTerminal(): void {
@@ -214,25 +288,20 @@ export class TerminalJob implements vscode.Disposable {
   private initializeLifecycle(): void {
     this.disposables.push(
       vscode.window.onDidCloseTerminal((terminal) => {
-        if (
-          terminal !== this.terminal ||
-          this.finished ||
-          (this.ptyProcess && this.ptyExited)
-        ) {
+        if (terminal !== this.terminal || this.finished) return;
+        if (this.ptyProcess) {
+          if (!this.ptyExited) this.detachPtyTerminalView();
           return;
         }
+
         this.stopRequested = true;
-        if (this.ptyProcess) {
-          this.ptyProcess.kill();
-        } else {
-          this.terminalCloseError = ExecutionError.create(
-            "Background job finished as user closed terminal.",
-          );
-          for (const reject of this.terminalCloseRejectors) {
-            reject(this.terminalCloseError);
-          }
-          this.terminalCloseRejectors.clear();
+        this.terminalCloseError = ExecutionError.create(
+          "Background job finished as user closed terminal.",
+        );
+        for (const reject of this.terminalCloseRejectors) {
+          reject(this.terminalCloseError);
         }
+        this.terminalCloseRejectors.clear();
       }),
     );
 
@@ -302,7 +371,7 @@ export class TerminalJob implements vscode.Disposable {
   private waitForShellIntegration(
     timeoutMs = 15_000,
   ): Promise<vscode.TerminalShellIntegration> {
-    if (this.terminal.shellIntegration) {
+    if (this.terminal?.shellIntegration) {
       return Promise.resolve(this.terminal.shellIntegration);
     }
     return new Promise((resolve, reject) => {
@@ -374,7 +443,7 @@ export class TerminalJob implements vscode.Disposable {
     if (this.ptyProcess) {
       this.ptyProcess.kill();
     } else {
-      this.terminal.dispose();
+      this.terminal?.dispose();
     }
   }
 
@@ -467,7 +536,11 @@ export class TerminalJob implements vscode.Disposable {
       finishedAt: Date.now(),
     });
 
-    this.terminal.dispose();
+    this.terminal?.dispose();
+    this.terminal = undefined;
+    this.ptyTerminal?.dispose();
+    this.ptyTerminal = undefined;
+    this.setVisible(false);
     this.dispose();
   }
 
@@ -479,6 +552,7 @@ export class TerminalJob implements vscode.Disposable {
     }
     this.terminalCloseRejectors.clear();
     this.terminal?.dispose();
+    this.ptyTerminal?.dispose();
     if (this.outputWriter) {
       void this.outputQueue
         .finally(() => this.outputWriter.close())

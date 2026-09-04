@@ -39,10 +39,6 @@ class TestPtyProcess {
     return { dispose: () => this.exitListeners.delete(listener) };
   }
 
-  clearReplay(): void {
-    this.replay.length = 0;
-  }
-
   emitData(data: string): void {
     this.replay.push(data);
     for (const listener of [...this.dataListeners]) listener(data);
@@ -83,8 +79,13 @@ function createHarness(options?: {
 }) {
   const closeEmitter = new TestEventEmitter<FakeTerminal>();
   let terminalDisposeCalls = 0;
+  let terminalShowCalls = 0;
+  const terminalShowPreserveFocus: Array<boolean | undefined> = [];
   const terminal: FakeTerminal = {
-    show: () => {},
+    show: (preserveFocus) => {
+      terminalShowCalls++;
+      terminalShowPreserveFocus.push(preserveFocus);
+    },
     dispose: () => {
       terminalDisposeCalls++;
       closeEmitter.fire(terminal);
@@ -92,6 +93,7 @@ function createHarness(options?: {
   };
   const lifecycle: string[] = [];
   const finalizeCalls: Array<TestExecutionError | undefined> = [];
+  const ptyTerminalCloseCallbacks: Array<() => void> = [];
   const ptyProcess = new TestPtyProcess();
   ptyProcess.replay.push(...(options?.replay ?? []));
 
@@ -154,7 +156,11 @@ function createHarness(options?: {
       "./pty-terminal": {
         PtyTerminal: class {
           private readonly exitSubscription: Disposable;
-          constructor(process: TestPtyProcess) {
+          constructor(
+            process: TestPtyProcess,
+            onCloseRequested: () => void,
+          ) {
+            ptyTerminalCloseCallbacks.push(onCloseRequested);
             this.exitSubscription = process.onExit(() => {
               closeEmitter.fire(terminal);
             });
@@ -193,15 +199,20 @@ function createHarness(options?: {
     job: job as ReturnType<typeof TerminalJob.adopt>,
     lifecycle,
     ptyProcess,
+    ptyTerminalCloseCallbacks,
     terminal,
     get terminalDisposeCalls() {
       return terminalDisposeCalls;
     },
+    get terminalShowCalls() {
+      return terminalShowCalls;
+    },
+    terminalShowPreserveFocus,
   };
 }
 
 interface FakeTerminal {
-  show(): void;
+  show(preserveFocus?: boolean): void;
   dispose(): void;
 }
 
@@ -340,6 +351,58 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
   });
 
+  it("detaches and recreates the terminal without stopping the pty", async () => {
+    const harness = createHarness();
+    assert.strictEqual(harness.job.isVisible, true);
+    assert.strictEqual(harness.terminalShowCalls, 1);
+    assert.deepStrictEqual(harness.terminalShowPreserveFocus, [false]);
+
+    harness.job.hide();
+
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.ptyProcess.killCalls, 0);
+    assert.strictEqual(harness.terminalDisposeCalls, 1);
+
+    harness.job.show();
+
+    assert.strictEqual(harness.job.isVisible, true);
+    assert.strictEqual(harness.ptyProcess.killCalls, 0);
+    assert.strictEqual(harness.terminalShowCalls, 2);
+    assert.deepStrictEqual(harness.terminalShowPreserveFocus, [false, false]);
+
+    harness.ptyTerminalCloseCallbacks[0]?.();
+    assert.strictEqual(harness.job.isVisible, true);
+
+    harness.ptyProcess.emitExit(0);
+    await flushPromises();
+  });
+
+  it("keeps the pty running when the VS Code terminal is closed", async () => {
+    const harness = createHarness();
+
+    harness.terminal.dispose();
+
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.ptyProcess.killCalls, 0);
+
+    harness.ptyProcess.emitExit(0);
+    await flushPromises();
+  });
+
+  it("closes the terminal when explicitly closing the pty process", async () => {
+    const harness = createHarness();
+
+    harness.job.closePtyProcess();
+
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.terminalDisposeCalls, 1);
+    assert.strictEqual(harness.ptyProcess.killCalls, 1);
+
+    harness.ptyProcess.emitExit(143);
+    await flushPromises();
+    assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+  });
+
   it("marks a killed command as stopped", async () => {
     const harness = createHarness();
     harness.job.kill();
@@ -349,6 +412,7 @@ describe("TerminalJob", () => {
     await flushPromises();
 
     assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+    assert.strictEqual(harness.terminalDisposeCalls, 1);
   });
 
   it("marks a nonzero natural exit as failed", async () => {
