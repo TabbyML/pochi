@@ -349,14 +349,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     },
   });
 
-  // Last dispatched entry, so a re-evaluated decision does not send it twice
-  // while the queue state update is still pending.
+  // Last dispatched entry, so a re-evaluated decision does not send it twice.
   const deliveredNotificationsRef = useRef<DraftMessage>(undefined);
 
   /**
-   * Delivers pending notifications as the next request instead of waiting for
-   * the task to become idle. Returns true when the caller must not start its
-   * own request, because this delivery already starts one.
+   * Delivers pending notifications instead of waiting for the task to become
+   * idle. Returns true when this delivery already starts the next request.
    */
   const deliverBackgroundJobNotifications = useCallback(() => {
     const index = getDeliverableBackgroundJobNotificationIndex(queuedMessages);
@@ -370,8 +368,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     }
     deliveredNotificationsRef.current = message;
 
-    // Deferred, so the send starts where the SDK would have started its own
-    // continuation instead of re-entering it mid tool output.
+    // Deferred, so the send does not re-enter the SDK mid tool output.
     void Promise.resolve().then(() =>
       sendQueuedMessage(index, { keepAutoApproveGuard: true }),
     );

@@ -244,9 +244,8 @@ function Chat({ user, uid, info }: ChatProps) {
         return true;
       };
 
-      // A job that finished mid loop is delivered as this continuation
-      // request, so the notification message starts it instead. Running after
-      // the continuation decision keeps every intentional pause intact.
+      // The notification starts this continuation request itself. Running
+      // after the decision keeps every intentional pause intact.
       const continueAutomatically = (shouldContinue: boolean) => {
         if (!shouldContinue) {
           return false;

@@ -48,10 +48,7 @@ export interface DraftMessage {
 }
 
 interface SendChatMessageOptions {
-  /**
-   * Keeps the current auto approve guard instead of resetting it to "auto",
-   * for messages that are not a fresh user intent.
-   */
+  /** Keeps the guard instead of resetting it to "auto", for non user intent. */
   keepAutoApproveGuard?: boolean;
 }
 
@@ -452,9 +449,8 @@ export function useChatSubmit({
   );
 
   /**
-   * Sends a queued message right away, without the steer stop-and-wait dance.
-   * Only for callers where starting a request is already legal, e.g. the
-   * automatic continuation decision.
+   * Sends a queued message without the steer stop-and-wait, only for callers
+   * where starting a request is already legal.
    */
   const sendQueuedMessage = useCallback(
     async (index: number, options?: SendChatMessageOptions) => {

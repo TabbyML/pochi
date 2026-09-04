@@ -10,10 +10,7 @@ export interface BackgroundJobNotificationTarget {
   appendOrReplaceMessage(message: Message): void;
 }
 
-/**
- * Drains every pending event into one user message, so a notification is
- * never delivered twice.
- */
+/** Drains the pending events into one message. */
 export function takeBackgroundJobNotificationMessage(
   pending: BackgroundJobTerminalEvent[],
 ): Message | undefined {
@@ -23,10 +20,7 @@ export function takeBackgroundJobNotificationMessage(
     : undefined;
 }
 
-/**
- * Delivers jobs that finished mid loop as part of the continuation request
- * the loop is about to send, instead of only when the task ends.
- */
+/** Delivers jobs that finished mid loop with the next continuation request. */
 export function deliverBackgroundJobNotifications(
   stepResult: StepResult,
   pending: BackgroundJobTerminalEvent[],
