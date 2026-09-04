@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useBackgroundJobInfo } from "@/features/chat";
+import { getBackgroundJobStatusLabel } from "@/lib/background-job-status-label";
 import { useBackgroundCommands } from "@/lib/hooks/use-background-commands";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
@@ -13,7 +14,6 @@ import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import type { TFunction } from "i18next";
 import {
   CheckIcon,
   ChevronsDownUpIcon,
@@ -25,14 +25,7 @@ import {
   TerminalIcon,
   XCircle,
 } from "lucide-react";
-import {
-  type FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { XTerm } from "./xterm";
 
@@ -246,19 +239,30 @@ export const BackgroundJobPanel: FC<{
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
-  const { backgroundCommands, show: showBackgroundCommand } =
-    useBackgroundCommands();
   const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
-  const isUserTerminal = backgroundJobId.startsWith("term-");
-  const isDetachableBackgroundCommand =
-    backgroundCommands?.[backgroundJobId] !== undefined;
-  // Live name wins over the snapshot: the terminal may have been renamed
-  // since the read. The snapshot keeps historical reads meaningful after the
-  // terminal is closed.
-  const liveTerminal = useMemo(
-    () => terminals?.find((tm) => tm.backgroundJobId === backgroundJobId),
-    [backgroundJobId, terminals],
+  const { backgroundCommands, show } = useBackgroundCommands();
+  const liveTerminal = terminals?.find(
+    (tm) => tm.backgroundJobId === backgroundJobId,
   );
+  const isUserTerminal = backgroundJobId.startsWith("term-");
+  // A background command runs on a pty, so it outlives its terminal tab: the
+  // host lists it for exactly as long as the process lives.
+  const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
+  const canOpenTerminal = isRunning || liveTerminal !== undefined;
+  const hasResolvedControlState =
+    canOpenTerminal ||
+    (terminals !== undefined &&
+      (isUserTerminal || backgroundCommands !== undefined));
+  const canOpenOutputFile =
+    hasResolvedControlState && !canOpenTerminal && outputFile !== undefined;
+  const openTerminalOrOutputFile = () => {
+    if (!canOpenTerminal) {
+      if (outputFile) vscodeHost.openFile(outputFile);
+      return;
+    }
+    if (isRunning) show?.(backgroundJobId);
+    else openBackgroundJobTerminal?.(backgroundJobId);
+  };
   const isNotification = appearance === "notification";
   const recoveredNotificationCommand = isNotification
     ? recoverNotificationCommand(summary, status)
@@ -268,6 +272,9 @@ export const BackgroundJobPanel: FC<{
     : (info?.command ?? command);
   const hasTrackedJob = Boolean(info?.command);
   const copyCommand = resolvedCommand ?? lastCommand;
+  // Live name wins over the snapshot: the terminal may have been renamed since
+  // the read. The snapshot keeps historical reads meaningful after the
+  // terminal is closed.
   const displayTerminalName = formatTerminalDisplayName(
     liveTerminal?.name ?? terminalName,
     lastCommand,
@@ -277,65 +284,39 @@ export const BackgroundJobPanel: FC<{
     : (resolvedCommand ?? backgroundJobId);
   const isActive = liveTerminal?.isActive ?? false;
 
-  // Terminals closed after the read keep their badge, so the panel still reads
-  // as a terminal/job panel; the badge then falls back to the output file.
-  const isTerminalClosed = terminals !== undefined && !liveTerminal;
-  const canOpenOutputFile = isTerminalClosed && outputFile !== undefined;
-
-  const openTerminalOrOutputFile = useCallback(() => {
-    if (isTerminalClosed) {
-      if (outputFile) vscodeHost.openFile(outputFile);
-      return;
-    }
-    if (isDetachableBackgroundCommand) {
-      showBackgroundCommand?.(backgroundJobId);
-    } else if (isUserTerminal || backgroundCommands !== undefined) {
-      // Keep the legacy terminal path for user terminals and shell fallbacks.
-      openBackgroundJobTerminal?.(backgroundJobId);
-    }
-  }, [
-    backgroundCommands,
-    backgroundJobId,
-    isDetachableBackgroundCommand,
-    isTerminalClosed,
-    isUserTerminal,
-    openBackgroundJobTerminal,
-    outputFile,
-    showBackgroundCommand,
-  ]);
-
   const closedLabel = canOpenOutputFile
     ? t("commandExecutionPanel.terminalClosedOpenOutput")
     : t("commandExecutionPanel.terminalClosed");
   const jobControl = isUserTerminal
-    ? (liveTerminal || isTerminalClosed) && (
+    ? hasResolvedControlState && (
         <JobControlButton
           label={
-            isTerminalClosed
-              ? closedLabel
-              : t("commandExecutionPanel.openTerminal", {
+            canOpenTerminal
+              ? t("commandExecutionPanel.openTerminal", {
                   name: liveTerminal?.name ?? terminalName,
                 })
+              : closedLabel
           }
           isActive={!isNotification && isActive}
-          inert={isTerminalClosed && !canOpenOutputFile}
+          inert={!canOpenTerminal && !canOpenOutputFile}
           onClick={openTerminalOrOutputFile}
         >
           <TerminalIcon className="size-3" />
         </JobControlButton>
       )
-    : hasTrackedJob &&
+    : hasResolvedControlState &&
+      hasTrackedJob &&
       info?.displayId && (
         <JobControlButton
           label={
-            isTerminalClosed
-              ? closedLabel
-              : t("commandExecutionPanel.openJob", {
+            canOpenTerminal
+              ? t("commandExecutionPanel.openJob", {
                   displayId: info.displayId,
                 })
+              : closedLabel
           }
           isActive={!isNotification && isActive}
-          inert={isTerminalClosed && !canOpenOutputFile}
+          inert={!canOpenTerminal && !canOpenOutputFile}
           onClick={openTerminalOrOutputFile}
         >
           <div className="font-bold font-mono text-[10px]">
@@ -469,20 +450,6 @@ const BackgroundJobStatus: FC<{
     </span>
   );
 };
-
-function getBackgroundJobStatusLabel(
-  status: "completed" | "failed" | "stopped",
-  exitCode: number | undefined,
-  t: TFunction,
-): string {
-  return status === "completed"
-    ? t("backgroundJobNotifications.completed", { exitCode: exitCode ?? 0 })
-    : status === "failed"
-      ? exitCode === undefined
-        ? t("backgroundJobNotifications.failedNoExit")
-        : t("backgroundJobNotifications.failed", { exitCode })
-      : t("backgroundJobNotifications.stopped");
-}
 
 const OpenOutputFileButton: FC<{ outputFile: string }> = ({ outputFile }) => {
   const { t } = useTranslation();

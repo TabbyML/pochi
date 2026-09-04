@@ -3,7 +3,8 @@
     "disable": "無効化",
     "openFolder": "フォルダーを開く",
     "account": "アカウント",
-    "help": "ヘルプ"
+    "help": "ヘルプ",
+    "close": "閉じる"
   },
   "error": {
     "somethingWentWrong": "問題が発生しました",
@@ -591,6 +592,18 @@
     "failedNoExit": "失敗",
     "stopped": "停止",
     "openOutput": "出力ファイルを開く"
+  },
+  "managePanel": {
+    "title": "バックグラウンドジョブ",
+    "toggle": "バックグラウンドジョブを表示",
+    "pochiGroup": "バックグラウンドコマンド",
+    "openTerminal": "ターミナルを開く",
+    "hideTerminal": "ターミナルを非表示",
+    "copyCommand": "コマンドをコピー",
+    "kill": "プロセスを終了",
+    "empty": "バックグラウンドで実行中のものはありません",
+    "seeMore": "もっと見る",
+    "seeLess": "折りたたむ"
   },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"

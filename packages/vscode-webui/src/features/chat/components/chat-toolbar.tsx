@@ -62,6 +62,7 @@ import {
   enqueueBackgroundJobNotifications,
   getBackgroundJobNotificationIds,
 } from "../lib/background-job-notification-queue";
+import { BackgroundJobManagePanel } from "./background-job-manage-panel";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -69,7 +70,9 @@ import { CompleteSubtaskButton } from "./subtask";
 
 const PopupContainerClassName = tw`-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1`;
 const PopupContentClassName = tw`flex w-full flex-col bg-background`;
-const FooterContainerClassName = tw`my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden`;
+// `overflow-x-hidden` clips vertically too, so the row carries padding to keep
+// room for anything hanging outside a control, such as the manage panel badge.
+const FooterContainerClassName = tw`my-1 flex shrink-0 justify-between gap-5 overflow-x-hidden py-1`;
 const FooterLeftClassName = tw`flex items-center gap-2 overflow-x-hidden truncate`;
 const FooterRightClassName = tw`flex shrink-0 items-center gap-1`;
 
@@ -580,6 +583,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             todos={todos}
             getSystemPrompt={getSystemPrompt}
           />
+          <BackgroundJobManagePanel taskId={taskId} messages={messages} />
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}

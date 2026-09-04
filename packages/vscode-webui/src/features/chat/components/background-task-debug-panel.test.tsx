@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BackgroundTaskDebugPanel } from "./background-task-debug-panel";
+import {
+  BackgroundTaskDetail,
+  BackgroundTaskRow,
+} from "./background-task-debug-panel";
 
 const task = {
   id: "task-1",
@@ -45,16 +47,6 @@ vi.mock("@/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/hover-card", () => ({
-  HoverCard: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
-
-vi.mock("@/features/settings", () => ({
-  useIsDevMode: () => [true],
-}));
-
 vi.mock("@/lib/hooks/use-background-task-state", () => ({
   useBackgroundTaskState: () => ({
     backgroundTaskState: {
@@ -87,17 +79,38 @@ vi.mock("@/lib/use-default-store", () => ({
 }));
 
 function openTaskDetail() {
-  render(<BackgroundTaskDebugPanel />);
-  fireEvent.click(screen.getByText("Background task"));
+  render(<BackgroundTaskDetail taskId={task.id} onBack={() => {}} />);
 }
 
 function getDetailValue(label: string): string | null | undefined {
   return screen.getByText(label).parentElement?.lastElementChild?.textContent;
 }
 
-describe("BackgroundTaskDebugPanel", () => {
+describe("BackgroundTaskRow", () => {
+  it("names the task and hands its id back when picked", () => {
+    const onSelect = vi.fn();
+    // biome-ignore lint/suspicious/noExplicitAny: the store rows are mocked.
+    render(<BackgroundTaskRow task={task as any} onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByText("Background task"));
+    expect(onSelect).toHaveBeenCalled();
+    // A failed task rests on a dot, it does not spin.
+    expect(document.querySelector(".animate-spin")).toBeNull();
+    expect(document.querySelector(".bg-destructive")).not.toBeNull();
+  });
+});
+
+describe("BackgroundTaskDetail", () => {
   beforeEach(() => {
     messageRows = [];
+  });
+
+  it("focuses the back button when the detail opens", () => {
+    openTaskDetail();
+
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("Back to the background job list"),
+    );
   });
 
   it("uses a single borderless scroll area that fills the remaining height", () => {

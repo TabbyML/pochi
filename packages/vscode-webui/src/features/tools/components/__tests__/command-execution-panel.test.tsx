@@ -98,6 +98,18 @@ describe("BackgroundJobPanel job control", () => {
     expect(openFile).not.toHaveBeenCalled();
   });
 
+  it("opens a visible user terminal without waiting for background commands", () => {
+    terminals = [{ backgroundJobId: "term-1", name: "zsh", isActive: true }];
+    backgroundCommands = undefined;
+
+    renderTerminalPanel("/tmp/term-1.log");
+
+    fireEvent.click(
+      screen.getByLabelText("commandExecutionPanel.openTerminal"),
+    );
+    expect(openBackgroundJobTerminal).toHaveBeenCalledWith("term-1");
+  });
+
   it("opens a detachable background command through its dedicated control", () => {
     terminals = [
       { backgroundJobId: "bgjob-cmd-1", name: "zsh", isActive: false },
@@ -170,6 +182,16 @@ describe("BackgroundJobPanel job control", () => {
     ).toBeNull();
     expect(
       screen.queryByLabelText("commandExecutionPanel.openTerminal"),
+    ).toBeNull();
+  });
+
+  it("does not offer job output before background commands are loaded", () => {
+    backgroundCommands = undefined;
+
+    renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    expect(
+      screen.queryByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
     ).toBeNull();
   });
 
