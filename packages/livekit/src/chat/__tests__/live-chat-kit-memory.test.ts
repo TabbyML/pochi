@@ -393,8 +393,9 @@ describe("LiveChatKit memory lifecycle", () => {
       },
     });
 
-    chatKit.chat.messages = [userMessage(), assistantMessage()];
-    setLatestRequestSnapshot(chatKit, 20_000, 0);
+    chatKit.chat.messages = threeUserTurns();
+    // Above 80% of the 67k auto-compact threshold.
+    setLatestRequestSnapshot(chatKit, 60_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -444,7 +445,7 @@ describe("LiveChatKit memory lifecycle", () => {
       },
     });
 
-    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.messages = threeUserTurns();
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -496,7 +497,8 @@ describe("LiveChatKit memory lifecycle", () => {
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
-    setLatestRequestSnapshot(chatKit, 20_000, 0);
+    // Above 80% of the 67k auto-compact threshold.
+    setLatestRequestSnapshot(chatKit, 60_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -865,6 +867,14 @@ function assistantMessage(): Message {
       totalTokens: 20_000,
     },
   } as unknown as Message;
+}
+
+/** Auto-memory extraction only triggers once three new user turns exist. */
+function threeUserTurns(): Message[] {
+  return [1, 2, 3].flatMap((index) => [
+    { ...userMessage(), id: `user-${index}` },
+    { ...assistantMessage(), id: `assistant-${index}` },
+  ]) as Message[];
 }
 
 function assistantUserInputToolMessage(

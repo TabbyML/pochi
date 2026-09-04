@@ -89,6 +89,8 @@ type RunningTaskChat = {
 type RunningTaskChatKit = {
   chat: RunningTaskChat;
   task?: Task;
+  markStartToolsExecution: () => void;
+  markEndToolsExecution: () => void;
   markAsFailed: (error: Error) => MaybePromise<void>;
 };
 
@@ -326,6 +328,13 @@ class RunningTask {
         if (stepResult === "finished") {
           return;
         }
+        const currentStatus = this.task?.status;
+        if (
+          currentStatus === "completed" ||
+          currentStatus === "pending-input"
+        ) {
+          return;
+        }
 
         if (stepResult === "retry") {
           this.retryCount += 1;
@@ -338,6 +347,7 @@ class RunningTask {
           this.retryCount = 0;
         }
 
+        this.throwIfMaxStepReached();
         await this.chat.sendMessage();
       }
     } catch (error) {
@@ -386,17 +396,16 @@ class RunningTask {
   }
 
   private async step(): Promise<"finished" | "next" | "retry"> {
-    this.throwIfMaxStepReached();
-
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the task chat.");
     }
 
-    return (
-      (await this.processMessage(lastMessage)) ??
-      (await this.processToolCalls(lastMessage))
-    );
+    const messageResult = await this.processMessage(lastMessage);
+    if (messageResult) return messageResult;
+
+    this.throwIfMaxStepExceeded();
+    return this.processToolCalls(lastMessage);
   }
 
   private async processMessage(
@@ -484,7 +493,17 @@ class RunningTask {
       });
     }
 
-    await this.toolCallQueue.start();
+    const chatKit = this.chatKit;
+    if (!chatKit) {
+      throw new Error("Task chat is not initialized.");
+    }
+
+    chatKit.markStartToolsExecution();
+    try {
+      await this.toolCallQueue.start();
+    } finally {
+      chatKit.markEndToolsExecution();
+    }
     return "next";
   }
 
@@ -599,15 +618,30 @@ class RunningTask {
   }
 
   private throwIfMaxStepReached() {
+    const { effectiveStepCount, maxSteps } = this.getStepLimitState();
+
+    if (effectiveStepCount >= maxSteps) {
+      throw new Error("The task failed to complete, max step count reached.");
+    }
+  }
+
+  private throwIfMaxStepExceeded() {
+    const { effectiveStepCount, maxSteps } = this.getStepLimitState();
+
+    if (effectiveStepCount > maxSteps) {
+      throw new Error("The task failed to complete, max step count reached.");
+    }
+  }
+
+  private getStepLimitState() {
     const stepCount = countStepStarts(this.chat.messages);
     const effectiveStepCount = Math.max(
       0,
       stepCount - (this.taskState.baselineStepCount ?? 0),
     );
+    const maxSteps = this.taskState.maxSteps ?? TaskExecutorMaxStep;
 
-    if (effectiveStepCount > TaskExecutorMaxStep) {
-      throw new Error("The task failed to complete, max step count reached.");
-    }
+    return { effectiveStepCount, maxSteps };
   }
 }
 

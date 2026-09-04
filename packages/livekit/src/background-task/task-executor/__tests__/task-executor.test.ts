@@ -87,6 +87,12 @@ class MockLiveChatKit {
   markAsFailed(error: Error) {
     this.store.failTask(this.taskId, error.message);
   }
+
+  markStartToolsExecution() {}
+
+  markEndToolsExecution() {
+    this.store.setMessages(this.taskId, this.chat.messages);
+  }
 }
 
 type TestTask = {
@@ -119,6 +125,136 @@ describe("TaskExecutor", () => {
 
     expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
     expect(mockState.instances[0].chat.sendMessageCalls).toBe(1);
+    expect(store.readTask("task")?.status).toBe("completed");
+    await executor.dispose();
+  });
+
+  it("uses the background task's configured max steps", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        { type: "step-start" },
+        makeToolPart("readFile", "read", { path: "a.ts" }),
+      ]),
+    ]);
+    const executeToolCall = vi.fn();
+    const adaptor = makeAdaptor({ executeToolCall });
+    const executor = makeExecutor(store, adaptor, {
+      tools: ["readFile"],
+      maxSteps: 1,
+    });
+
+    await executor.drain();
+
+    expect(executeToolCall).not.toHaveBeenCalled();
+    expect(mockState.instances[0].chat.sendMessageCalls).toBe(0);
+    expect(store.readTask("task")).toMatchObject({
+      status: "failed",
+      error: {
+        kind: "InternalError",
+        message: "The task failed to complete, max step count reached.",
+      },
+    });
+    await executor.dispose();
+  });
+
+  it("does not request another model step after processing the configured last step", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        makeToolPart("readFile", "read", { path: "a.ts" }),
+      ]),
+    ]);
+    const executeToolCall = vi.fn(async () => ({ content: "hello" }));
+    const adaptor = makeAdaptor({ executeToolCall });
+    const executor = makeExecutor(store, adaptor, {
+      tools: ["readFile"],
+      maxSteps: 1,
+    });
+
+    await executor.drain();
+
+    expect(executeToolCall).toHaveBeenCalledTimes(1);
+    expect(mockState.instances[0].chat.sendMessageCalls).toBe(0);
+    expect(getToolPart(store.readMessages("task").at(-1), "read")).toMatchObject(
+      {
+        state: "output-available",
+        output: { content: "hello" },
+      },
+    );
+    expect(store.readTask("task")).toMatchObject({
+      status: "failed",
+      error: {
+        kind: "InternalError",
+        message: "The task failed to complete, max step count reached.",
+      },
+    });
+    await executor.dispose();
+  });
+
+  it("does not overwrite a terminal state reached while the last tools run", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        makeToolPart("readFile", "read", { path: "a.ts" }),
+      ]),
+    ]);
+    const executeToolCall = vi.fn(async () => {
+      store.completeTask("task");
+      return { content: "hello" };
+    });
+    const adaptor = makeAdaptor({ executeToolCall });
+    const executor = makeExecutor(store, adaptor, {
+      tools: ["readFile"],
+      maxSteps: 1,
+    });
+
+    await executor.drain();
+
+    expect(executeToolCall).toHaveBeenCalledTimes(1);
+    expect(store.readTask("task")?.status).toBe("completed");
+    expect(getToolPart(store.readMessages("task").at(-1), "read")).toMatchObject(
+      {
+        state: "output-available",
+        output: { content: "hello" },
+      },
+    );
+    await executor.dispose();
+  });
+
+  it("does not overwrite a completed response when observing the step limit", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        { type: "step-start" },
+        makeToolPart("attemptCompletion", "complete", { result: "done" }),
+      ]),
+    ]);
+    const ready = deferred<void>();
+    const adaptor: RunningTaskAdaptor = {
+      ...makeAdaptor({ executeToolCall: vi.fn() }),
+      waitUntilReady: () => ready.promise,
+    };
+    const executor = makeExecutor(store, adaptor, { maxSteps: 1 });
+
+    executor.start();
+    store.completeTask("task");
+    ready.resolve();
+    await executor.drain();
+
+    expect(mockState.instances[0].chat.sendMessageCalls).toBe(0);
     expect(store.readTask("task")?.status).toBe("completed");
     await executor.dispose();
   });
