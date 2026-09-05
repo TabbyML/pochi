@@ -4,6 +4,8 @@ import type { DraftMessage } from "../hooks/use-chat-submit";
 import {
   enqueueBackgroundJobNotifications,
   getBackgroundJobNotificationIds,
+  getDeliverableBackgroundJobNotificationIndex,
+  isBackgroundJobNotificationMessage,
 } from "./background-job-notification-queue";
 
 describe("enqueueBackgroundJobNotifications", () => {
@@ -69,6 +71,67 @@ describe("enqueueBackgroundJobNotifications", () => {
     ]);
   });
 });
+
+describe("isBackgroundJobNotificationMessage", () => {
+  it("detects a notification-only queue entry", () => {
+    const [message] = enqueueBackgroundJobNotifications(
+      [],
+      [notification("bgjob-cmd-1")],
+    );
+
+    expect(isBackgroundJobNotificationMessage(message)).toBe(true);
+  });
+
+  it("rejects user typed and mixed messages", () => {
+    expect(isBackgroundJobNotificationMessage(regularMessage())).toBe(false);
+    expect(
+      isBackgroundJobNotificationMessage({
+        parts: [
+          { type: "text", text: "hello" },
+          {
+            type: "data-background-job-notification",
+            data: notification("bgjob-cmd-1"),
+          },
+        ],
+      }),
+    ).toBe(false);
+    expect(isBackgroundJobNotificationMessage({ parts: [] })).toBe(false);
+  });
+});
+
+describe("getDeliverableBackgroundJobNotificationIndex", () => {
+  it("delivers a notification waiting at the head of the queue", () => {
+    const messages = enqueueBackgroundJobNotifications(
+      [],
+      [notification("bgjob-cmd-1")],
+    );
+
+    expect(getDeliverableBackgroundJobNotificationIndex(messages)).toBe(0);
+  });
+
+  it("delivers nothing when the queue is empty", () => {
+    expect(getDeliverableBackgroundJobNotificationIndex([])).toBeUndefined();
+  });
+
+  it("delivers nothing while a queued user message is ahead of it", () => {
+    const messages = enqueueBackgroundJobNotifications(
+      [regularMessage()],
+      [notification("bgjob-cmd-1")],
+    );
+
+    expect(messages).toHaveLength(2);
+    expect(
+      getDeliverableBackgroundJobNotificationIndex(messages),
+    ).toBeUndefined();
+  });
+});
+
+function regularMessage(text = "hello"): DraftMessage {
+  return {
+    parts: [{ type: "text", text }],
+    raw: { text },
+  };
+}
 
 function notification(backgroundJobId: string): BackgroundJobNotification {
   return {
