@@ -12,6 +12,7 @@ interface UseChatStatusProps {
   isFilesEmpty: boolean;
   isReviewsEmpty: boolean;
   isTerminalContextEmpty: boolean;
+  isPastedTextsEmpty: boolean;
   isUploadingAttachments: boolean;
   blockingState: BlockingState;
   taskStatus: Task["status"] | undefined;
@@ -24,6 +25,7 @@ export function useChatStatus({
   isFilesEmpty,
   isReviewsEmpty,
   isTerminalContextEmpty,
+  isPastedTextsEmpty,
   isUploadingAttachments,
   blockingState,
   taskStatus,
@@ -49,7 +51,8 @@ export function useChatStatus({
     (!isInputEmpty ||
       !isFilesEmpty ||
       !isReviewsEmpty ||
-      !isTerminalContextEmpty);
+      !isTerminalContextEmpty ||
+      !isPastedTextsEmpty);
 
   // `stop`: stop chat streaming or tool execution
   const isStopEnabled =

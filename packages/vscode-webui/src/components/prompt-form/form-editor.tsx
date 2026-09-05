@@ -27,7 +27,6 @@ import {
 } from "./issue-mention/extension";
 
 import "./prompt-form.css";
-import type { ChatInput } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
@@ -41,6 +40,7 @@ import {
 } from "@tiptap/suggestion";
 import { ArrowRightToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { ChatInput } from "../../features/chat/hooks/use-chat-input-state";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import {
@@ -63,7 +63,11 @@ import {
   TextUpdateTrackerExtension,
   createMentionSuggestionAllow,
 } from "./suggestion-activation";
-import { createPlainTextSlice, shouldPasteAsPlainText } from "./utils";
+import {
+  createPlainTextSlice,
+  shouldAttachPastedText,
+  shouldPasteAsPlainText,
+} from "./utils";
 
 const newLineCharacter = "\n";
 
@@ -120,6 +124,7 @@ interface FormEditorProps {
   children?: React.ReactNode;
   onError?: (e: Error) => void;
   onPaste?: (e: ClipboardEvent) => void;
+  onPastedText?: (text: string) => void;
   enableSubmitHistory?: boolean;
   onFileDrop?: (files: File[]) => boolean;
   onFocus?: (event: FocusEvent) => void;
@@ -141,6 +146,7 @@ export function FormEditor({
   editorRef,
   autoFocus = true,
   onPaste,
+  onPastedText,
   onFocus,
   enableSubmitHistory = true,
   onFileDrop,
@@ -166,6 +172,8 @@ export function FormEditor({
 
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
+  const inputRef = useLatest(input);
+  const onPastedTextRef = useLatest(onPastedText);
 
   const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
     let model: string | undefined;
@@ -439,6 +447,18 @@ export function FormEditor({
           const text = clipboardData.getData("text/plain");
           const html = clipboardData.getData("text/html");
           if (
+            onPastedTextRef.current &&
+            shouldAttachPastedText({
+              text,
+              html,
+              hasFiles: clipboardData.files.length > 0,
+            })
+          ) {
+            event.preventDefault();
+            onPastedTextRef.current(text);
+            return true;
+          }
+          if (
             !shouldPasteAsPlainText({
               text,
               html,
@@ -506,7 +526,11 @@ export function FormEditor({
         const text = props.editor.getText({
           blockSeparator: newLineCharacter,
         });
-        setInput({ json, text });
+        setInput({
+          json,
+          text,
+          pastedTexts: inputRef.current.pastedTexts,
+        });
 
         // Update current draft if we have submit history enabled
         if (
@@ -662,6 +686,7 @@ export function FormEditor({
           ? {
               json: editor.getJSON(),
               text: editor.getText({ blockSeparator: newLineCharacter }),
+              pastedTexts: input.pastedTexts,
             }
           : input;
       if (enableSubmitHistory && editor && !editor.isDestroyed) {

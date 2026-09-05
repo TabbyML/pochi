@@ -31,6 +31,10 @@ const logger = getLogger("UseChatSubmit");
 
 type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
 type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
+type ResolvedChatInput = Extract<
+  ReturnType<typeof resolveSlashMentions>,
+  { status: "valid" }
+> & { pastedTexts: string[] };
 
 export interface DraftMessage {
   parts: Message["parts"];
@@ -40,6 +44,7 @@ export interface DraftMessage {
     reviewsCount?: number;
     userEditsCount?: number;
     terminalContextCount?: number;
+    pastedTextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
     backgroundJobNotificationIds?: string[];
@@ -150,7 +155,10 @@ export function useChatSubmit({
     async (submittedInput: ChatInput = input) => {
       const result = resolveSlashMentions(submittedInput, skills, customAgents);
       if (result.status === "valid") {
-        return result;
+        return {
+          ...result,
+          pastedTexts: submittedInput.pastedTexts ?? [],
+        };
       }
 
       await vscodeHost.showWarningMessage(result.message, { modal: false });
@@ -190,26 +198,26 @@ export function useChatSubmit({
 
   const createMessage = useCallback(
     async (
-      resolvedInput: Extract<
-        ReturnType<typeof resolveSlashMentions>,
-        { status: "valid" }
-      > = {
+      resolvedInput: ResolvedChatInput = {
         status: "valid",
         text: input.text,
         invokedSkills: [],
         invokedCustomAgents: [],
+        pastedTexts: input.pastedTexts ?? [],
       },
     ): Promise<DraftMessage | undefined> => {
       const text = resolvedInput.text.trim();
       const currentFiles = [...files];
       const currentReviews = [...reviews];
       const currentTerminalContextSelections = [...terminalContextSelections];
+      const currentPastedTexts = [...resolvedInput.pastedTexts];
 
       if (
         text.length === 0 &&
         currentFiles.length === 0 &&
         currentReviews.length === 0 &&
-        currentTerminalContextSelections.length === 0
+        currentTerminalContextSelections.length === 0 &&
+        currentPastedTexts.length === 0
       ) {
         return undefined;
       }
@@ -246,6 +254,9 @@ export function useChatSubmit({
         reviewsCount: currentReviews.length,
         userEditsCount: currentUserEdits.length,
         terminalContextCount: currentTerminalContextSelections.length,
+        ...(currentPastedTexts.length > 0
+          ? { pastedTextCount: currentPastedTexts.length }
+          : {}),
         isTodoMode,
         activeSelection: currentSelection,
       };
@@ -259,6 +270,7 @@ export function useChatSubmit({
         currentTerminalContextSelections,
         resolvedInput.invokedSkills,
         resolvedInput.invokedCustomAgents,
+        currentPastedTexts,
       );
 
       return { parts, raw };
@@ -266,6 +278,7 @@ export function useChatSubmit({
     [
       t,
       input.text,
+      input.pastedTexts,
       files,
       reviews,
       userEdits,

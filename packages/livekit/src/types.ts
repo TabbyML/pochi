@@ -18,6 +18,9 @@ import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
 export type DataParts = {
+  "pasted-text": {
+    text: string;
+  };
   checkpoint: {
     commit: string;
   };

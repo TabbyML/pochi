@@ -21,6 +21,7 @@ export function prepareMessageParts(
   terminalContextSelections?: TerminalTextSelection[],
   invokedSkills?: ValidSkillFile[],
   invokedCustomAgents?: string[],
+  pastedTexts?: string[],
 ) {
   const parts: Message["parts"] = [];
   const attachedContextLabels: string[] = [];
@@ -67,6 +68,10 @@ export function prepareMessageParts(
 
   if (finalPrompt) {
     parts.push({ type: "text", text: finalPrompt });
+  }
+
+  for (const text of pastedTexts ?? []) {
+    parts.push({ type: "data-pasted-text", data: { text } });
   }
 
   for (const x of files) {

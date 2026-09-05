@@ -109,4 +109,38 @@ describe("useChatInitialization", () => {
       ],
     });
   });
+
+  it("preserves pasted text as a data part for a new task", () => {
+    const info = {
+      type: "new-task",
+      uid: "task-1",
+      cwd: "/workspace",
+      prompt: "Analyze this",
+      pastedTexts: ["large pasted text"],
+    } as PochiTaskInfo;
+    const init = vi.fn();
+
+    renderHook(() =>
+      useChatInitialization({
+        chatKit: { inited: false, init } as never,
+        info,
+        storeRegistry: {} as never,
+        jwt: null,
+        t: ((key: string) => key) as TFunction,
+        setMcpConfigOverride: vi.fn() as never,
+        isMcpConfigLoading: false,
+      }),
+    );
+
+    expect(init).toHaveBeenCalledWith("/workspace", {
+      prompt: "Analyze this",
+      parts: [
+        { type: "text", text: "Analyze this" },
+        {
+          type: "data-pasted-text",
+          data: { text: "large pasted text" },
+        },
+      ],
+    });
+  });
 });

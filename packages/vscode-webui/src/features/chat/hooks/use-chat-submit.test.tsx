@@ -30,10 +30,12 @@ const messageUtilsMocks = vi.hoisted(() => ({
       _terminalContextSelections,
       invokedSkills: ValidSkillFile[] = [],
       invokedCustomAgents: string[] = [],
+      pastedTexts: string[] = [],
     ) => [
       ...invokedSkills.map((skill) => `skill:${skill.instructions}`),
       ...invokedCustomAgents.map((agentName) => `agent:${agentName}`),
       `text:${text}`,
+      ...pastedTexts.map((pastedText) => `pasted:${pastedText}`),
     ],
   ),
 }));
@@ -131,6 +133,23 @@ describe("useChatSubmit", () => {
       expect(context.queuedMessages).toEqual([]);
       expect(context.clearInput).not.toHaveBeenCalled();
       expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("sends pasted text when the editor is empty", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "",
+        pastedTexts: ["large pasted text"],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:", "pasted:large pasted text"],
+      });
+      expect(context.clearInput).toHaveBeenCalledOnce();
     });
 
     it("sends a non-user-invocable skill typed as plain text", async () => {
@@ -236,6 +255,7 @@ describe("useChatSubmit", () => {
         [],
         [],
         [],
+        [],
       );
     });
 
@@ -286,6 +306,7 @@ describe("useChatSubmit", () => {
         undefined,
         [],
         [currentSkill],
+        [],
         [],
       );
       expect(context.sendMessage).toHaveBeenCalledWith({
@@ -338,6 +359,7 @@ describe("useChatSubmit", () => {
         [],
         [],
         ["tester"],
+        [],
       );
       expect(context.sendMessage).toHaveBeenCalledWith({
         parts: ["agent:tester", `text:${prompt}`],
@@ -690,6 +712,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       [],
+      [],
     );
   });
 
@@ -721,6 +744,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       [],
+      [],
     );
   });
 
@@ -749,6 +773,7 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
+      [],
       [],
       [],
       [],
@@ -792,6 +817,7 @@ describe("useChatSubmit", () => {
       [],
       queuedUserEdits,
       undefined,
+      [],
       [],
       [],
       [],
@@ -841,6 +867,7 @@ describe("useChatSubmit", () => {
       terminalContextSelections,
       [],
       [],
+      [],
     );
     expect(context.clearTerminalContextSelections).toHaveBeenCalledOnce();
   });
@@ -860,6 +887,7 @@ function setup({
   isLoading: initialIsLoading,
   inputText: initialInputText = " follow up ",
   inputJson = null,
+  pastedTexts = [],
   queuedMessages: initialQueuedMessages = [],
   files = [],
   reviews = [],
@@ -875,6 +903,7 @@ function setup({
   isLoading: boolean;
   inputText?: string;
   inputJson?: JSONContent | null;
+  pastedTexts?: string[];
   queuedMessages?: DraftMessage[];
   files?: File[];
   reviews?: Review[];
@@ -921,11 +950,13 @@ function setup({
       const isFilesEmpty = files.length === 0;
       const isReviewsEmpty = reviews.length === 0;
       const isTerminalContextEmpty = terminalContextSelections.length === 0;
+      const isPastedTextsEmpty = pastedTexts.length === 0;
       const isSubmitEnabled =
         !isInputEmpty ||
         !isFilesEmpty ||
         !isReviewsEmpty ||
-        !isTerminalContextEmpty;
+        !isTerminalContextEmpty ||
+        !isPastedTextsEmpty;
       const isStopEnabled = isRunning;
       const allowSendMessage = !isRunning;
       const allowSteer = true;
@@ -935,7 +966,7 @@ function setup({
           sendMessage,
           stop: stopChat,
         },
-        input: { json: inputJson, text: initialInputText },
+        input: { json: inputJson, text: initialInputText, pastedTexts },
         clearInput,
         attachmentUpload: {
           files,

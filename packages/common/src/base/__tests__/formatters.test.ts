@@ -75,6 +75,10 @@ describe('formatters', () => {
   describe('formatters.ui', () => {
     it.each([
       ['content', [{ type: 'text', text: 'Visible prompt' }]],
+      [
+        'content',
+        [{ type: 'data-pasted-text', data: { text: 'large pasted text' } }],
+      ],
       ['compact', [{ type: 'text', text: '<compact>Summary</compact>' }]],
       [
         'hidden',
@@ -623,6 +627,70 @@ describe('formatters', () => {
   });
 
   describe('formatters.llm', () => {
+    it('converts pasted text data into model-visible text without mutating the source message', () => {
+      const messages = [
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'data-pasted-text',
+              data: { text: 'const answer = 42;' },
+            },
+          ],
+        },
+      ] as UIMessage[];
+
+      expect(formatters.llm(messages)).toEqual([
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [{ type: 'text', text: 'const answer = 42;' }],
+        },
+      ]);
+      expect(messages[0].parts).toEqual([
+        {
+          type: 'data-pasted-text',
+          data: { text: 'const answer = 42;' },
+        },
+      ]);
+    });
+
+    it('does not treat compact tags inside pasted text as a compaction boundary', () => {
+      const messages = [
+        {
+          id: 'old-assistant',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [{ type: 'text', text: 'old response' }],
+        },
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'data-pasted-text',
+              data: { text: '<compact>literal user content</compact>' },
+            },
+          ],
+        },
+        {
+          id: 'new-assistant',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [{ type: 'text', text: 'new response' }],
+        },
+      ] as UIMessage[];
+
+      const formatted = formatters.llm(messages);
+
+      expect(formatted.map((message) => message.id)).toEqual([
+        'old-assistant',
+        'user-pasted-text',
+        'new-assistant',
+      ]);
+    });
+
     it('should keep reasoning parts by default', () => {
       const formatted = formatters.llm(clone(baseMessages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');

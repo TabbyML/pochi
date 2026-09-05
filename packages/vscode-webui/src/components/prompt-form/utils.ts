@@ -1,5 +1,24 @@
 import { Fragment, type Schema, Slice } from "@tiptap/pm/model";
 
+export const PastedTextMinLength = 5_000;
+
+export function shouldAttachPastedText({
+  text,
+  html,
+  hasFiles,
+}: {
+  text: string;
+  html: string;
+  hasFiles: boolean;
+}): boolean {
+  return (
+    !hasFiles &&
+    text.length > PastedTextMinLength &&
+    text.trim().length > 0 &&
+    !html.includes("data-pm-slice")
+  );
+}
+
 /**
  * Builds a ProseMirror slice from plain text, splitting on newlines into
  * separate paragraphs.

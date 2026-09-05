@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
 
 import { DevRetryCountdown } from "@/components/dev-retry-countdown";
 import { ActiveSelectionBadge } from "@/components/prompt-form/active-selection-badge";
@@ -9,6 +9,7 @@ import type { useApprovalAndRetry } from "@/features/approval";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Message } from "@getpochi/livekit";
 
+import { PastedTextCard } from "@/components/pasted-text-card";
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
 import { TerminalContextBadges } from "@/components/prompt-form/terminal-context-badges";
 import { UserEdits } from "@/components/prompt-form/user-edits";
@@ -109,6 +110,27 @@ export const ChatInputForm = forwardRef<
   const editorRef = useRef<Editor | null>(null);
   const activeSelection = useActiveSelection();
   const showAddContextLabel = !activeSelection;
+  const pastedTexts = input.pastedTexts ?? [];
+
+  const appendPastedText = useCallback(
+    (text: string) => {
+      setInput({
+        ...input,
+        pastedTexts: [...pastedTexts, text],
+      });
+    },
+    [input, pastedTexts, setInput],
+  );
+
+  const removePastedText = useCallback(
+    (index: number) => {
+      setInput({
+        ...input,
+        pastedTexts: pastedTexts.filter((_, itemIndex) => itemIndex !== index),
+      });
+    },
+    [input, pastedTexts, setInput],
+  );
 
   useImperativeHandle(ref, () => ({
     addToSubmitHistory: () => {
@@ -125,6 +147,7 @@ export const ChatInputForm = forwardRef<
       return {
         json: editor.getJSON(),
         text: editor.getText({ blockSeparator: "\n" }),
+        pastedTexts: input.pastedTexts,
       };
     },
   }));
@@ -139,6 +162,7 @@ export const ChatInputForm = forwardRef<
       editable={editable}
       editorRef={editorRef}
       onPaste={onPaste}
+      onPastedText={appendPastedText}
       enableSubmitHistory={true}
       onFileDrop={onFileDrop}
       messageContent={messageContent}
@@ -197,7 +221,18 @@ export const ChatInputForm = forwardRef<
           allowSteer={allowSteer}
         />
       )}
-      {children}
+      {pastedTexts.length > 0 || children ? (
+        <div className="mt-2 mb-3 flex flex-wrap items-start gap-2 px-3">
+          {pastedTexts.map((text, index) => (
+            <PastedTextCard
+              key={`${index}-${text.length}`}
+              text={text}
+              onRemove={() => removePastedText(index)}
+            />
+          ))}
+          {children}
+        </div>
+      ) : null}
     </FormEditor>
   );
 });

@@ -306,7 +306,10 @@ function Chat({ user, uid, info }: ChatProps) {
     [hidePendingTodoAttemptCompletion],
   );
   const shouldHideEmptyPlaceholder =
-    info.type === "new-task" && (!!info.prompt || !!info.files?.length);
+    info.type === "new-task" &&
+    (!!info.prompt ||
+      !!info.files?.length ||
+      (info.pastedTexts?.length ?? 0) > 0);
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,

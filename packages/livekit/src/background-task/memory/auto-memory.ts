@@ -377,6 +377,12 @@ function isWindowsAbsolutePath(inputPath: string): boolean {
 
 function sanitizePart(part: UIMessage["parts"][number]) {
   if (part.type === "text") return part;
+  if (part.type === "data-pasted-text") {
+    return {
+      type: "text",
+      text: (part as { data: { text: string } }).data.text,
+    };
+  }
   if (part.type.startsWith("data-")) return { type: part.type };
   if (isStaticToolUIPart(part)) {
     return {

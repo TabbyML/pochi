@@ -67,4 +67,25 @@ describe("prepareMessageParts", () => {
       { type: "text", text: "/deploy" },
     ]);
   });
+
+  it("appends pasted text after the visible prompt in paste order", () => {
+    const parts = prepareMessageParts(
+      ((key: string) => key) as TFunction,
+      "Analyze these logs",
+      [],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ["first paste", "second paste"],
+    );
+
+    expect(parts).toEqual([
+      { type: "text", text: "Analyze these logs" },
+      { type: "data-pasted-text", data: { text: "first paste" } },
+      { type: "data-pasted-text", data: { text: "second paste" } },
+    ]);
+  });
 });

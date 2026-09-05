@@ -44,6 +44,7 @@
     "reviewCount": "리뷰 {{count}}개",
     "userEditCount": "편집 {{count}}개",
     "terminalContextCount": "터미널 선택 {{count}}개",
+    "pastedTextCount": "붙여넣은 텍스트 {{count}}개",
     "steer": "개입",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
@@ -382,6 +383,10 @@
   "attachmentPreview": {
     "removeAttachment": "첨부 파일 제거",
     "uploading": "업로드 중..."
+  },
+  "pastedText": {
+    "label": "붙여넣은 텍스트",
+    "remove": "붙여넣은 텍스트 제거"
   },
   "checkpointUI": {
     "restoring": "복원 중...",

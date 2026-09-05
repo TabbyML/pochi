@@ -294,6 +294,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isTerminalContextEmpty: terminalContextSelections.length === 0,
+    isPastedTextsEmpty: (input.pastedTexts?.length ?? 0) === 0,
     isUploadingAttachments,
     blockingState,
     taskStatus: task?.status,
@@ -529,13 +530,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           })}
         >
           {files.length > 0 && (
-            <div className="px-3">
-              <AttachmentPreviewList
-                files={files}
-                onRemove={removeFile}
-                isUploading={isUploadingAttachments}
-              />
-            </div>
+            <AttachmentPreviewList
+              files={files}
+              onRemove={removeFile}
+              isUploading={isUploadingAttachments}
+              className="contents"
+            />
           )}
         </ChatInputForm>
       </div>

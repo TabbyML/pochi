@@ -45,6 +45,7 @@
     "reviewCount": "{{count}} 件のレビュー",
     "userEditCount": "{{count}} 件の編集",
     "terminalContextCount": "{{count}} 件のターミナル選択",
+    "pastedTextCount": "{{count}} 件の貼り付けテキスト",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -384,6 +385,10 @@
   "attachmentPreview": {
     "removeAttachment": "添付ファイルを削除",
     "uploading": "アップロード中..."
+  },
+  "pastedText": {
+    "label": "貼り付けたテキスト",
+    "remove": "貼り付けたテキストを削除"
   },
   "checkpointUI": {
     "restoring": "復元中...",
