@@ -56,11 +56,21 @@ export async function compactTask({
     const inlineAttachIndex = inline
       ? findInlineCompactAttachIndex(messages)
       : undefined;
+    const taskMemoryAttachIndex = inline
+      ? findVerbatimAttachIndex(messages, taskMemoryBoundaryMessageId)
+      : undefined;
+    const taskMemoryCoversAllMessages =
+      taskMemoryBoundaryMessageId === lastMessage.id;
+    const canUseTaskMemory = Boolean(
+      taskMemoryBoundaryMessageId &&
+        (taskMemoryCoversAllMessages || taskMemoryAttachIndex !== undefined),
+    );
 
-    // Prefer task memory if available
+    // Use memory only when it covers the whole transcript or an inline
+    // compaction can preserve the uncovered tail verbatim.
     let summaryText: string | undefined;
     let usedTaskMemory = false;
-    if (store) {
+    if (store && canUseTaskMemory) {
       const memoryFile = store.query(
         makeStoreFileQuery(TaskMemoryStoreFilePath),
       );
@@ -72,10 +82,13 @@ export async function compactTask({
 
     // Fall back to LLM-generated summary
     if (!summaryText) {
-      const inputMessages =
-        inline && inlineAttachIndex !== undefined
-          ? messages.slice(0, inlineAttachIndex)
-          : messages.slice(0, -1);
+      let inputMessages = messages;
+      if (inline) {
+        inputMessages =
+          inlineAttachIndex !== undefined
+            ? messages.slice(0, inlineAttachIndex)
+            : messages.slice(0, -1);
+      }
       summaryText = await createSummary(
         blobStore,
         taskId,
@@ -92,7 +105,7 @@ export async function compactTask({
     if (inline) {
       // Preferred: attach at the boundary so trailing messages survive verbatim.
       const memoryAttachIndex = usedTaskMemory
-        ? findVerbatimAttachIndex(messages, taskMemoryBoundaryMessageId)
+        ? taskMemoryAttachIndex
         : undefined;
       const memoryAttachMessage =
         memoryAttachIndex !== undefined
@@ -133,7 +146,7 @@ export async function compactTask({
     // Non-inline: return the summary for callers seeding a fresh task.
     return prompts.inlineCompact(
       summaryText,
-      messages.length - 1,
+      messages.length,
       recentFileContext,
     );
   } catch (err) {

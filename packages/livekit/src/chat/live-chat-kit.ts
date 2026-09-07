@@ -49,6 +49,7 @@ import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
 import type { LiveKitStore, Message, Task } from "../types";
 import {
   MaxConsecutiveAutoCompactFailures,
+  resolveAutoCompactThreshold,
   shouldAutoCompact,
 } from "./auto-compact-policy";
 import { scheduleGenerateTitleJob } from "./background-job";
@@ -177,6 +178,7 @@ async function createBackgroundTaskFromForkAgent({
     parentTaskId: agent.parentTaskId,
     tools: agent.tools,
     useCase: agent.label,
+    maxSteps: agent.maxSteps,
     baselineStepCount: agent.baselineStepCount,
   });
 
@@ -213,18 +215,20 @@ async function readRecentFilesForCompact(
 
 /** Polls until no extraction is in progress or `timeoutMs` elapses. */
 async function settleTaskMemoryExtraction(
-  readTaskMemoryState: (() => TaskMemoryState | undefined) | undefined,
+  adaptor: TaskMemoryAdaptor | undefined,
   timeoutMs: number,
 ): Promise<void> {
-  if (!readTaskMemoryState) return;
-  if (!readTaskMemoryState()?.isExtracting) return;
+  if (!adaptor?.getState().isExtracting) return;
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    if (!readTaskMemoryState()?.isExtracting) return;
+    // Hosts without `waitForTaskDone` have no other chance to call `settle()`.
+    await adaptor.settle();
+    if (!adaptor.getState().isExtracting) return;
     await new Promise<void>((resolve) =>
       setTimeout(resolve, TaskMemorySettlePollIntervalMs),
     );
   }
+  logger.debug("Timed out waiting for the task-memory extraction to settle.");
 }
 
 async function runSideEffectSafely({
@@ -496,6 +500,7 @@ export class LiveChatKit<
             parentTaskId: taskId,
             parentCwd: defaultMemoryParentCwd,
             isSubTask,
+            getCompactThreshold: () => this.getAutoCompactThreshold(),
           })
         : undefined;
     this.autoMemoryAdaptor =
@@ -514,8 +519,6 @@ export class LiveChatKit<
           })
         : undefined;
 
-    const readEffectiveTaskMemoryState = () =>
-      this.taskMemoryAdaptor?.getState();
     this.transport = new FlexibleChatTransport({
       store,
       blobStore,
@@ -598,10 +601,12 @@ export class LiveChatKit<
         try {
           // Wait briefly so memory.md and boundary id are fresh.
           await settleTaskMemoryExtraction(
-            readEffectiveTaskMemoryState,
+            this.taskMemoryAdaptor,
             TaskMemorySettleTimeoutMs,
           );
           const model = createModel({ llm: getters.getLLM() });
+          const taskMemoryBoundaryMessageId =
+            await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
           if (isAutoCompact) {
             logger.info(
               `Auto-compact triggered (totalTokens=${
@@ -618,8 +623,7 @@ export class LiveChatKit<
             recentFiles: await readRecentFilesForCompact(
               getRecentFilesForCompact,
             ),
-            taskMemoryBoundaryMessageId:
-              readEffectiveTaskMemoryState()?.lastExtractionMessageId,
+            taskMemoryBoundaryMessageId,
             abortSignal,
             inline: true,
             store: this.store,
@@ -673,10 +677,12 @@ export class LiveChatKit<
         const { messages } = this.chat;
         // Wait briefly so memory.md and boundary id are fresh.
         await settleTaskMemoryExtraction(
-          readEffectiveTaskMemoryState,
+          this.taskMemoryAdaptor,
           TaskMemorySettleTimeoutMs,
         );
         const model = createModel({ llm: getters.getLLM() });
+        const taskMemoryBoundaryMessageId =
+          await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
         const summary = await compactTask({
           blobStore: this.blobStore,
           taskId: this.taskId,
@@ -686,8 +692,7 @@ export class LiveChatKit<
           recentFiles: await readRecentFilesForCompact(
             getRecentFilesForCompact,
           ),
-          taskMemoryBoundaryMessageId:
-            readEffectiveTaskMemoryState()?.lastExtractionMessageId,
+          taskMemoryBoundaryMessageId,
           store: this.store,
         });
 
@@ -1069,6 +1074,18 @@ export class LiveChatKit<
     this.backgroundTaskExecutor?.start();
   }
 
+  private getAutoCompactThreshold(): number | undefined {
+    try {
+      return resolveAutoCompactThreshold({
+        llm: this.getters.getLLM(),
+        effectiveContextWindow: this.getters.getEffectiveContextWindow?.(),
+      });
+    } catch (error) {
+      logger.debug("Failed to resolve the auto-compact threshold", error);
+      return undefined;
+    }
+  }
+
   private scheduleMemoryUpdate(data: {
     messages: Message[];
     status?: string;
@@ -1116,10 +1133,6 @@ export class LiveChatKit<
     success: boolean,
     onCompactFinish: ((success: boolean) => MaybePromise<void>) | undefined,
   ) {
-    if (success) {
-      await this.taskMemoryAdaptor?.resetTokenBaseline();
-    }
-
     try {
       await onCompactFinish?.(success);
     } catch (notifyErr) {
