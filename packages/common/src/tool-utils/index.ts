@@ -55,6 +55,7 @@ export {
   isVirtualPath,
 } from "./file-state-cache";
 export { maybePersistToolResult } from "./tool-result-persistence";
+export { persistPastedTextFiles } from "./pasted-text-files";
 export { getPochiDataDir, getTaskDataDir } from "./pochi-paths";
 export { PlainOutputSanitizer } from "./plain-output-sanitizer";
 export {

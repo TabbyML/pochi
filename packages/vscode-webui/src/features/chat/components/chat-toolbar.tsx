@@ -294,7 +294,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = useChatStatus({
     isModelValid: !!selectedModel,
     isLoading,
-    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
+    isInputEmpty:
+      !input.text.trim() &&
+      (input.pastedTexts?.length ?? 0) === 0 &&
+      queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isTerminalContextEmpty: terminalContextSelections.length === 0,
@@ -565,13 +568,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           })}
         >
           {files.length > 0 && (
-            <div className="px-3">
-              <AttachmentPreviewList
-                files={files}
-                onRemove={removeFile}
-                isUploading={isUploadingAttachments}
-              />
-            </div>
+            <AttachmentPreviewList
+              files={files}
+              onRemove={removeFile}
+              isUploading={isUploadingAttachments}
+              className="contents"
+            />
           )}
         </ChatInputForm>
       </div>

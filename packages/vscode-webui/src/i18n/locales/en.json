@@ -46,6 +46,7 @@
     "reviewCount": "{{count}} reviews",
     "userEditCount": "{{count}} edits",
     "terminalContextCount": "{{count}} terminal selections",
+    "pastedTextCount": "{{count}} pasted texts",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -390,6 +391,10 @@
   "attachmentPreview": {
     "removeAttachment": "Remove Attachment",
     "uploading": "Uploading..."
+  },
+  "pastedText": {
+    "label": "Pasted text",
+    "remove": "Remove pasted text"
   },
   "checkpointUI": {
     "restoring": "Restoring...",

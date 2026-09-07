@@ -75,6 +75,15 @@ describe('formatters', () => {
   describe('formatters.ui', () => {
     it.each([
       ['content', [{ type: 'text', text: 'Visible prompt' }]],
+      [
+        'content',
+        [
+          {
+            type: 'data-pasted-text',
+            data: { filePath: '/tmp/pasted.txt', title: 'large pasted text' },
+          },
+        ],
+      ],
       ['compact', [{ type: 'text', text: '<compact>Summary</compact>' }]],
       [
         'hidden',
@@ -623,6 +632,91 @@ describe('formatters', () => {
   });
 
   describe('formatters.llm', () => {
+    it('keeps the pasted text reminder and removes the UI-only data part', () => {
+      const messages = [
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+            },
+            {
+              type: 'data-pasted-text',
+              data: {
+                filePath: '/tmp/pasted.txt',
+                title: 'const answer = 42;',
+              },
+            },
+          ],
+        },
+      ] as UIMessage[];
+
+      expect(formatters.llm(messages)).toEqual([
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+            },
+          ],
+        },
+      ]);
+      expect(messages[0].parts).toEqual([
+        {
+          type: 'text',
+          text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+        },
+        {
+          type: 'data-pasted-text',
+          data: {
+            filePath: '/tmp/pasted.txt',
+            title: 'const answer = 42;',
+          },
+        },
+      ]);
+    });
+
+    it('does not treat compact tags inside pasted text as a compaction boundary', () => {
+      const messages = [
+        {
+          id: 'old-assistant',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [{ type: 'text', text: 'old response' }],
+        },
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'data-pasted-text',
+              data: {
+                filePath: '/tmp/pasted.txt',
+                title: '<compact>literal user content</compact>',
+              },
+            },
+          ],
+        },
+        {
+          id: 'new-assistant',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [{ type: 'text', text: 'new response' }],
+        },
+      ] as UIMessage[];
+
+      const formatted = formatters.llm(messages);
+
+      expect(formatted.map((message) => message.id)).toEqual([
+        'old-assistant',
+        'new-assistant',
+      ]);
+    });
+
     it('should keep reasoning parts by default', () => {
       const formatted = formatters.llm(clone(baseMessages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');

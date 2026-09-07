@@ -44,6 +44,7 @@
     "reviewCount": "{{count}} 条评审",
     "userEditCount": "{{count}} 处编辑",
     "terminalContextCount": "{{count}} 个终端选区",
+    "pastedTextCount": "{{count}} 段粘贴文本",
     "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -382,6 +383,10 @@
   "attachmentPreview": {
     "removeAttachment": "移除附件",
     "uploading": "上传中..."
+  },
+  "pastedText": {
+    "label": "粘贴的文本",
+    "remove": "移除粘贴的文本"
   },
   "checkpointUI": {
     "restoring": "恢复中...",

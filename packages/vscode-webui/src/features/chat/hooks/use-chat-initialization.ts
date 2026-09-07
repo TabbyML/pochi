@@ -59,6 +59,7 @@ export function useChatInitialization({
       }));
       const shouldUseParts =
         (files?.length ?? 0) > 0 ||
+        (info.pastedTextFiles?.length ?? 0) > 0 ||
         !!activeSelection ||
         (terminalContextSelections?.length ?? 0) > 0 ||
         (info.invokedSkills?.length ?? 0) > 0 ||
@@ -77,6 +78,7 @@ export function useChatInitialization({
             terminalContextSelections,
             info.invokedSkills,
             info.invokedCustomAgents,
+            info.pastedTextFiles,
           ),
         });
       } else {

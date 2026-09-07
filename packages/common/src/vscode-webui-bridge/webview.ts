@@ -9,6 +9,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  PastedTextFile,
   TaskMemoryState,
   TerminalTextSelection,
 } from "../base";
@@ -201,6 +202,11 @@ export interface VSCodeHostApi {
     notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
     acknowledge: (notificationId: string) => Promise<void>;
   }>;
+
+  persistPastedTextFiles(
+    taskId: string,
+    texts: string[],
+  ): Promise<PastedTextFile[]>;
 
   /**
    * Opens a file at the specified file path.

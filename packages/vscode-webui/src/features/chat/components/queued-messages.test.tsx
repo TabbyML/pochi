@@ -102,6 +102,22 @@ describe("QueuedMessages", () => {
     expect(getByText("chat.terminalContextCount:2")).toBeTruthy();
   });
 
+  it("shows the pasted text count alongside other counts", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "  ",
+            pastedTextCount: 2,
+          }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(getByText("chat.pastedTextCount:2")).toBeTruthy();
+  });
+
   it("renders a minimal icon-only preview for the active editor selection captured at queue time", () => {
     const activeSelection: ActiveSelection = {
       filepath: "/workspace/foo.ts",
@@ -225,6 +241,7 @@ function queuedMessage({
   reviewsCount = 0,
   userEditsCount = 0,
   terminalContextCount = 0,
+  pastedTextCount = 0,
   activeSelection,
   nonRemovable,
 }: {
@@ -234,6 +251,7 @@ function queuedMessage({
   reviewsCount?: number;
   userEditsCount?: number;
   terminalContextCount?: number;
+  pastedTextCount?: number;
   activeSelection?: ActiveSelection;
   nonRemovable?: boolean;
 }): DraftMessage {
@@ -245,6 +263,7 @@ function queuedMessage({
       reviewsCount,
       userEditsCount,
       terminalContextCount,
+      pastedTextCount,
       isTodoMode,
       activeSelection,
       nonRemovable,

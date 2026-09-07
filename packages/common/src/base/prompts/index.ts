@@ -1,6 +1,7 @@
 import { renderActiveSelection } from "./active-selection";
 import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
 export { assertBackgroundJobReadInterval } from "./background-job";
+import type { PastedTextFile } from "../message";
 import {
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
@@ -61,6 +62,7 @@ export const prompts = {
   renderUserEdits,
   renderBashOutputs,
   renderBackgroundJobNotification,
+  pastedTextFileReferences,
   fixMermaidError,
   createUseSkillResult,
   attemptTodoCompletion: {
@@ -84,6 +86,17 @@ export const prompts = {
 
 If you have already provided a response or explanation in your text above, do NOT repeat or copy that content into the \`result\` parameter of \`attemptCompletion\`. Instead, simply refer to your response above with a brief sentence (e.g., "See response above." or "The task is completed as described above.") to save output tokens.`,
 };
+
+function pastedTextFileReferences(files: readonly PastedTextFile[]) {
+  if (files.length === 0) return "";
+
+  return `Referenced pasted text files:\n${files
+    .map(
+      ({ filePath }) =>
+        `- pasted text file: ${filePath}. Read this file before continuing.`,
+    )
+    .join("\n")}`;
+}
 
 function createSystemReminder(content: string) {
   return `<system-reminder>${content}</system-reminder>`;

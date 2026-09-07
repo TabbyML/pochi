@@ -5,7 +5,10 @@ import { Profiler, type ReactNode, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListPaginationConfig } from "../use-message-list-pagination";
 
-const vscodeMock = vi.hoisted(() => ({ isVSCodeEnvironment: false }));
+const vscodeMock = vi.hoisted(() => ({
+  isVSCodeEnvironment: false,
+  openFile: vi.fn(),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -22,6 +25,7 @@ vi.mock("@/lib/vscode", () => ({
   isVSCodeEnvironment: () => vscodeMock.isVSCodeEnvironment,
   vscodeHost: {
     getGlobalState: vi.fn(async () => undefined),
+    openFile: vscodeMock.openFile,
     setGlobalState: vi.fn(async () => undefined),
   },
 }));
@@ -125,6 +129,7 @@ class IntersectionObserverProbe implements IntersectionObserver {
 beforeEach(() => {
   IntersectionObserverProbe.instances = [];
   vscodeMock.isVSCodeEnvironment = false;
+  vscodeMock.openFile.mockReset();
   vi.stubGlobal("IntersectionObserver", IntersectionObserverProbe);
 });
 
@@ -727,5 +732,97 @@ describe("MessageList pagination", () => {
           tool.dataset.hasChanges === "true",
       ),
     ).toBe(true);
+  });
+});
+
+describe("MessageList pasted text", () => {
+  it("renders a compact plain-text attachment beside image attachments", () => {
+    const pastedTextFile = {
+      filePath: "/tmp/pasted-text.txt",
+      title: "first log line",
+    };
+    const message = {
+      id: "user-pasted-text",
+      role: "user",
+      parts: [
+        { type: "text", text: "explain" },
+        { type: "data-pasted-text", data: pastedTextFile },
+        {
+          type: "file",
+          filename: "design-mockup.png",
+          mediaType: "image/png",
+          url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
+        },
+      ],
+    } as Message;
+
+    render(
+      <MessageListProbe
+        messages={[message]}
+        renderAllMessages
+        formatMessages={formatters.ui}
+      />,
+    );
+
+    const card = screen.getByTestId("pasted-text-card");
+    expect(card.className).toContain("h-8");
+    expect(card.textContent).not.toContain("pastedText.label");
+    expect(card.parentElement?.textContent).toContain("design-mockup.png");
+    expect(screen.getByText("first log l…")).toBeTruthy();
+    expect(screen.getByTestId("markdown").textContent).toBe("explain");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "first log line" }));
+
+    expect(vscodeMock.openFile).toHaveBeenCalledWith(pastedTextFile.filePath);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("keeps the card visible across assistant streaming updates", () => {
+    const pastedTextFile = {
+      filePath: "/tmp/pasted-text.txt",
+      title: '[{\\"role\\":\\"system\\"',
+    };
+    const userMessage = {
+      id: "user-large-paste",
+      role: "user",
+      parts: [{ type: "data-pasted-text", data: pastedTextFile }],
+    } as Message;
+    const assistantMessage = {
+      id: "assistant-streaming",
+      role: "assistant",
+      parts: [{ type: "text", text: "First streamed part" }],
+    } as Message;
+    const { rerender } = render(
+      <MessageListProbe
+        messages={[userMessage]}
+        renderAllMessages
+        formatMessages={formatters.ui}
+      />,
+    );
+
+    expect(screen.getByTestId("pasted-text-card")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    rerender(
+      <MessageListProbe
+        messages={[
+          userMessage,
+          {
+            ...assistantMessage,
+            parts: [
+              ...assistantMessage.parts,
+              { type: "text", text: "Second streamed part" },
+            ],
+          },
+        ]}
+        renderAllMessages
+        formatMessages={formatters.ui}
+      />,
+    );
+
+    expect(screen.getByTestId("pasted-text-card")).toBeTruthy();
+    expect(screen.getByText("First streamed part")).toBeTruthy();
+    expect(screen.getByText("Second streamed part")).toBeTruthy();
   });
 });
