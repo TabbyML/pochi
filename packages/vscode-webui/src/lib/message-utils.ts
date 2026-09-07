@@ -1,4 +1,4 @@
-import { prompts } from "@getpochi/common";
+import { type PastedTextFile, prompts } from "@getpochi/common";
 import type {
   ActiveSelection,
   Review,
@@ -11,6 +11,15 @@ import type { FileUIPart } from "ai";
 import type { TFunction } from "i18next";
 import { vscodeHost } from "./vscode";
 
+export function buildTodoModeObjective(
+  prompt: string,
+  pastedTextFiles: readonly PastedTextFile[] = [],
+): string {
+  return [prompt, prompts.pastedTextFileReferences(pastedTextFiles)]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function prepareMessageParts(
   t: TFunction,
   prompt: string,
@@ -21,6 +30,7 @@ export function prepareMessageParts(
   terminalContextSelections?: TerminalTextSelection[],
   invokedSkills?: ValidSkillFile[],
   invokedCustomAgents?: string[],
+  pastedTextFiles?: PastedTextFile[],
 ) {
   const parts: Message["parts"] = [];
   const attachedContextLabels: string[] = [];
@@ -67,6 +77,18 @@ export function prepareMessageParts(
 
   if (finalPrompt) {
     parts.push({ type: "text", text: finalPrompt });
+  }
+
+  if (pastedTextFiles?.length) {
+    parts.push({
+      type: "text",
+      text: prompts.createSystemReminder(
+        prompts.pastedTextFileReferences(pastedTextFiles),
+      ),
+    });
+    for (const file of pastedTextFiles) {
+      parts.push({ type: "data-pasted-text", data: file });
+    }
   }
 
   for (const x of files) {

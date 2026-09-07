@@ -1,6 +1,11 @@
 import { Schema } from "@tiptap/pm/model";
 import { describe, expect, it } from "vitest";
-import { createPlainTextSlice, shouldPasteAsPlainText } from "../utils";
+import {
+  PastedTextMinLength,
+  createPlainTextSlice,
+  shouldAttachPastedText,
+  shouldPasteAsPlainText,
+} from "../utils";
 
 const schema = new Schema({
   nodes: {
@@ -97,6 +102,59 @@ describe("shouldPasteAsPlainText", () => {
         text: "alt text",
         html: "<img src='blob:...' />",
         hasFiles: true,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("shouldAttachPastedText", () => {
+  it("attaches external text only when it exceeds the threshold", () => {
+    expect(
+      shouldAttachPastedText({
+        text: "x".repeat(PastedTextMinLength),
+        html: "",
+        hasFiles: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldAttachPastedText({
+        text: "x".repeat(PastedTextMinLength + 1),
+        html: "",
+        hasFiles: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not attach file or structured ProseMirror pastes", () => {
+    const text = "x".repeat(PastedTextMinLength + 1);
+    expect(
+      shouldAttachPastedText({ text, html: "", hasFiles: true }),
+    ).toBe(false);
+    expect(
+      shouldAttachPastedText({
+        text,
+        html: '<p data-pm-slice="1 1 []">large</p>',
+        hasFiles: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("uses plain text from eligible external rich-text pastes", () => {
+    expect(
+      shouldAttachPastedText({
+        text: "x".repeat(PastedTextMinLength + 1),
+        html: "<p>large external paste</p>",
+        hasFiles: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not attach whitespace-only text", () => {
+    expect(
+      shouldAttachPastedText({
+        text: " ".repeat(PastedTextMinLength + 1),
+        html: "",
+        hasFiles: false,
       }),
     ).toBe(false);
   });

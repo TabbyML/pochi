@@ -2,6 +2,7 @@ import { Loader2, UserIcon } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
+import { PastedTextFileCard } from "@/components/pasted-text-card";
 import { ReasoningPartUI } from "@/components/reasoning-part.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +16,7 @@ import { ToolInvocationPart } from "@/features/tools";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn, formatExecutionDuration } from "@/lib/utils";
-import { isVSCodeEnvironment } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type {
   ActiveSelection,
@@ -291,11 +292,24 @@ function UserAttachments({ message }: { message: Message }) {
   const fileParts = message.parts.filter(
     (part) => part.type === "file",
   ) as FileUIPart[];
+  const pastedTextParts = message.parts.filter(
+    (part) => part.type === "data-pasted-text",
+  );
 
-  if (message.role === "user" && fileParts.length) {
+  if (
+    message.role === "user" &&
+    (fileParts.length > 0 || pastedTextParts.length > 0)
+  ) {
     return (
-      <div className="mt-3">
-        <MessageAttachments attachments={fileParts} />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {pastedTextParts.map((part, index) => (
+          <PastedTextFileCard
+            key={index}
+            onOpen={() => vscodeHost.openFile(part.data.filePath)}
+            title={part.data.title}
+          />
+        ))}
+        <MessageAttachments attachments={fileParts} className="contents" />
       </div>
     );
   }
@@ -431,6 +445,10 @@ function Part({
         isLoading={isLastPartInMessages}
       />
     );
+  }
+
+  if (part.type === "data-pasted-text") {
+    return null;
   }
 
   if (part.type === "step-start" || part.type === "file") {

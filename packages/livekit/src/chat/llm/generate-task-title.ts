@@ -93,6 +93,13 @@ function getTitleFromMessages(messages: Message[]) {
   if (lastTextPart && lastTextPart.type === "text") {
     return lastTextPart.text.split("\n")[0].trim();
   }
+
+  const pastedTextPart = firstMessage.parts.find(
+    (part) => part.type === "data-pasted-text",
+  );
+  if (pastedTextPart?.type === "data-pasted-text") {
+    return pastedTextPart.data.title || undefined;
+  }
 }
 
 function isTitleGeneratedByLlm(

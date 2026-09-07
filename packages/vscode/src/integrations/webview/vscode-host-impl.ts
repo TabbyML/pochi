@@ -83,6 +83,7 @@ import {
   GitStatusReader,
   ignoreWalk,
   maybePersistToolResult,
+  persistPastedTextFiles as writePastedTextFiles,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type { BrowserAgentSettingsUpdate } from "@getpochi/common/vscode-webui-bridge";
@@ -719,6 +720,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   ) => {
     await openFileInEditor(filePath, this.cwd, options);
+  };
+
+  persistPastedTextFiles = async (taskId: string, texts: string[]) => {
+    try {
+      return await writePastedTextFiles(taskId, texts);
+    } catch (error) {
+      void vscode.window.showErrorMessage(
+        `Failed to save pasted text: ${toErrorMessage(error)}`,
+      );
+      throw error;
+    }
   };
 
   capture = async ({ event, properties }: CaptureEvent) => {

@@ -61,6 +61,7 @@ import { useTerminalContextState } from "../hooks/use-terminal-context-state";
 import {
   enqueueBackgroundJobNotifications,
   getBackgroundJobNotificationIds,
+  getDeliverableBackgroundJobNotificationIndex,
 } from "../lib/background-job-notification-queue";
 import { BackgroundJobManagePanel } from "./background-job-manage-panel";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
@@ -98,6 +99,8 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
+  /** Filled in with the delivery callback, for the page to call at a step boundary. */
+  deliverBackgroundJobNotificationsRef?: React.RefObject<() => boolean>;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
@@ -124,6 +127,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
+  deliverBackgroundJobNotificationsRef,
   onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
@@ -290,7 +294,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = useChatStatus({
     isModelValid: !!selectedModel,
     isLoading,
-    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
+    isInputEmpty:
+      !input.text.trim() &&
+      (input.pastedTexts?.length ?? 0) === 0 &&
+      queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isTerminalContextEmpty: terminalContextSelections.length === 0,
@@ -312,6 +319,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     handleSteerSubmit,
     handleSteerQueuedMessage,
     handleStop,
+    sendQueuedMessage,
   } = useChatSubmit({
     chat,
     input,
@@ -346,6 +354,37 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       }
     },
   });
+
+  // Last dispatched entry, so a re-evaluated decision does not send it twice.
+  const deliveredNotificationsRef = useRef<DraftMessage>(undefined);
+
+  /**
+   * Delivers pending notifications instead of waiting for the task to become
+   * idle. Returns true when this delivery already starts the next request.
+   */
+  const deliverBackgroundJobNotifications = useCallback(() => {
+    const index = getDeliverableBackgroundJobNotificationIndex(queuedMessages);
+    if (index === undefined) {
+      return false;
+    }
+
+    const message = queuedMessages[index];
+    if (deliveredNotificationsRef.current === message) {
+      return true;
+    }
+    deliveredNotificationsRef.current = message;
+
+    // Deferred, so the send does not re-enter the SDK mid tool output.
+    void Promise.resolve().then(() =>
+      sendQueuedMessage(index, { keepAutoApproveGuard: true }),
+    );
+    return true;
+  }, [queuedMessages, sendQueuedMessage]);
+
+  if (deliverBackgroundJobNotificationsRef) {
+    deliverBackgroundJobNotificationsRef.current =
+      deliverBackgroundJobNotifications;
+  }
 
   const chatInputFormRef = useRef<ChatInputFormHandle>(null);
   const handleCurrentInputSubmit = useCallback(async () => {
@@ -529,13 +568,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           })}
         >
           {files.length > 0 && (
-            <div className="px-3">
-              <AttachmentPreviewList
-                files={files}
-                onRemove={removeFile}
-                isUploading={isUploadingAttachments}
-              />
-            </div>
+            <AttachmentPreviewList
+              files={files}
+              onRemove={removeFile}
+              isUploading={isUploadingAttachments}
+              className="contents"
+            />
           )}
         </ChatInputForm>
       </div>

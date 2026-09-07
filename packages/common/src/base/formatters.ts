@@ -117,6 +117,7 @@ export function getUIUserMessageKind(message: UIMessage): UIUserMessageKind {
     }
 
     if (
+      part.type === "data-pasted-text" ||
       part.type === "data-reviews" ||
       part.type === "data-bash-outputs" ||
       part.type === "data-background-job-notification" ||
@@ -745,6 +746,15 @@ function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
 
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
 
+function removePastedTextPartsForLLM(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    message.parts = message.parts.filter(
+      (part) => part.type !== "data-pasted-text",
+    );
+    return message;
+  });
+}
+
 function removePendingTodoAttemptCompletion(
   messages: UIMessage[],
 ): UIMessage[] {
@@ -793,6 +803,7 @@ const LLMFormatOps: FormatOp[] = [
   removeEmptyMessages,
   refineDetectedNewPromblems,
   extractCompactMessages,
+  removePastedTextPartsForLLM,
   removeMessagesWithoutTextOrToolCall,
   replaceAttemptTodoCompletionForLLM,
   resolvePendingToolCalls,

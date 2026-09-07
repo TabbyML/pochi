@@ -109,4 +109,47 @@ describe("useChatInitialization", () => {
       ],
     });
   });
+
+  it("adds pasted text file references for a new task", () => {
+    const pastedTextFiles = [
+      { filePath: "/tmp/pasted.txt", title: "large pasted text" },
+    ];
+    const info = {
+      type: "new-task",
+      uid: "task-1",
+      cwd: "/workspace",
+      prompt: "Analyze this",
+      pastedTextFiles,
+    } as PochiTaskInfo;
+    const init = vi.fn();
+
+    renderHook(() =>
+      useChatInitialization({
+        chatKit: { inited: false, init } as never,
+        info,
+        storeRegistry: {} as never,
+        jwt: null,
+        t: ((key: string) => key) as TFunction,
+        setMcpConfigOverride: vi.fn() as never,
+        isMcpConfigLoading: false,
+      }),
+    );
+
+    expect(init).toHaveBeenCalledWith("/workspace", {
+      prompt: "Analyze this",
+      parts: [
+        { type: "text", text: "Analyze this" },
+        {
+          type: "text",
+          text: prompts.createSystemReminder(
+            prompts.pastedTextFileReferences(pastedTextFiles),
+          ),
+        },
+        {
+          type: "data-pasted-text",
+          data: pastedTextFiles[0],
+        },
+      ],
+    });
+  });
 });

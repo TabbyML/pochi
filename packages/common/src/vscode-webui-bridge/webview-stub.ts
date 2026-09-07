@@ -158,6 +158,7 @@ const VSCodeHostStub = {
       {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
   },
+  persistPastedTextFiles: () => Promise.resolve([]),
   openFile: (
     _filePath: string,
     _options?: {

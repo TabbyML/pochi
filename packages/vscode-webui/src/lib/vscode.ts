@@ -134,6 +134,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "showWarningMessage",
         "readVisibleTerminals",
         "readBackgroundCommands",
+        "persistPastedTextFiles",
         "readModelList",
         "readUserStorage",
         "readCustomAgents",
