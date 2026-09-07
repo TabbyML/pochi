@@ -89,6 +89,10 @@ function Chat({ user, uid, info }: ChatProps) {
   const todoPausedRef = useLatest(todoPaused);
   const todoModeActiveRef = useRef(false);
   const lastAutoContinueStateRef = useRef<string | undefined>(undefined);
+  // Filled in by <ChatToolbar>, which owns the queued messages.
+  const deliverBackgroundJobNotificationsRef = useRef<() => boolean>(
+    () => false,
+  );
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -239,6 +243,15 @@ function Chat({ user, uid, info }: ChatProps) {
         return true;
       };
 
+      // The notification starts this continuation request itself. Running
+      // after the decision keeps every intentional pause intact.
+      const continueAutomatically = (shouldContinue: boolean) => {
+        if (!shouldContinue) {
+          return false;
+        }
+        return !deliverBackgroundJobNotificationsRef.current();
+      };
+
       if (chatAbortController.current.signal.aborted) {
         return false;
       }
@@ -256,7 +269,9 @@ function Chat({ user, uid, info }: ChatProps) {
 
       const shouldContinueTodo = getTodoContinuationDecision(candidateMessages);
       if (shouldContinueTodo !== undefined) {
-        return claimAutoContinue(!todoPausedRef.current && shouldContinueTodo);
+        return continueAutomatically(
+          claimAutoContinue(!todoPausedRef.current && shouldContinueTodo),
+        );
       }
 
       if (shouldStopAutoApprove({ messages: candidateMessages })) {
@@ -267,10 +282,12 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      return claimAutoContinue(
-        lastAssistantMessageIsCompleteWithToolCalls({
-          messages: candidateMessages,
-        }),
+      return continueAutomatically(
+        claimAutoContinue(
+          lastAssistantMessageIsCompleteWithToolCalls({
+            messages: candidateMessages,
+          }),
+        ),
       );
     },
     onOverrideMessages,
@@ -496,6 +513,9 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
+          deliverBackgroundJobNotificationsRef={
+            deliverBackgroundJobNotificationsRef
+          }
           onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}

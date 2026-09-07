@@ -47,6 +47,11 @@ export interface DraftMessage {
   };
 }
 
+interface SendChatMessageOptions {
+  /** Keeps the guard instead of resetting it to "auto", for non user intent. */
+  keepAutoApproveGuard?: boolean;
+}
+
 interface UseChatSubmitProps {
   chat: UseChatReturn;
   input: ChatInput;
@@ -281,7 +286,7 @@ export function useChatSubmit({
   );
 
   const sendChatMessage = useCallback(
-    async (message: DraftMessage) => {
+    async (message: DraftMessage, options?: SendChatMessageOptions) => {
       const shouldCreateTodo = message.raw.isTodoMode && canCreateTodo;
       if (message.raw.text && shouldCreateTodo) {
         onBeforeSendText?.(message.raw.text);
@@ -291,7 +296,9 @@ export function useChatSubmit({
         pendingApproval.stopCountdown();
       }
 
-      autoApproveGuard.current = "auto";
+      if (!options?.keepAutoApproveGuard) {
+        autoApproveGuard.current = "auto";
+      }
       await sendMessage({
         parts: message.parts,
       });
@@ -441,10 +448,31 @@ export function useChatSubmit({
     ],
   );
 
+  /**
+   * Sends a queued message without the steer stop-and-wait, only for callers
+   * where starting a request is already legal.
+   */
+  const sendQueuedMessage = useCallback(
+    async (index: number, options?: SendChatMessageOptions) => {
+      logger.debug("sendQueuedMessage");
+
+      const message = queuedMessages[index];
+      if (!message) {
+        return false;
+      }
+
+      setQueuedMessages((messages) => messages.filter((_, i) => i !== index));
+      await sendChatMessage(message, options);
+      return true;
+    },
+    [queuedMessages, setQueuedMessages, sendChatMessage],
+  );
+
   return {
     handleSubmit,
     handleSteerSubmit,
     handleSteerQueuedMessage,
     handleStop,
+    sendQueuedMessage,
   };
 }

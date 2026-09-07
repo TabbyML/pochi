@@ -11,11 +11,29 @@ export function getBackgroundJobNotificationIds(
   );
 }
 
+export function isBackgroundJobNotificationMessage(
+  message: Pick<DraftMessage, "parts">,
+): boolean {
+  return (
+    message.parts.length > 0 &&
+    message.parts.every(
+      (part) => part.type === "data-background-job-notification",
+    )
+  );
+}
+
 /**
- * Adds notifications to one non-removable queue entry. If a notification
- * entry is already waiting, new parts are merged into it so one dequeue sends
- * every notification available at that send point in a single user message.
+ * Only the head is deliverable mid loop: queued user input is sent by an
+ * explicit steer, and delivering from behind it would reorder the queue.
  */
+export function getDeliverableBackgroundJobNotificationIndex(
+  messages: readonly Pick<DraftMessage, "parts">[],
+): number | undefined {
+  const head = messages[0];
+  return head && isBackgroundJobNotificationMessage(head) ? 0 : undefined;
+}
+
+/** Merges notifications into one non-removable queue entry. */
 export function enqueueBackgroundJobNotifications(
   messages: DraftMessage[],
   notifications: readonly BackgroundJobNotification[],
@@ -38,13 +56,7 @@ export function enqueueBackgroundJobNotifications(
     type: "data-background-job-notification" as const,
     data: notification,
   }));
-  const existingIndex = messages.findIndex(
-    (message) =>
-      message.parts.length > 0 &&
-      message.parts.every(
-        (part) => part.type === "data-background-job-notification",
-      ),
-  );
+  const existingIndex = messages.findIndex(isBackgroundJobNotificationMessage);
 
   if (existingIndex === -1) {
     return [
