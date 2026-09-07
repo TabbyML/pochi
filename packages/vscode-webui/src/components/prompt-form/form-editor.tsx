@@ -27,6 +27,7 @@ import {
 } from "./issue-mention/extension";
 
 import "./prompt-form.css";
+import type { ChatInput } from "@/features/chat";
 import { useSelectedModels } from "@/features/settings";
 import { useLatest } from "@/lib/hooks/use-latest";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,6 @@ import {
 } from "@tiptap/suggestion";
 import { ArrowRightToLine } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ChatInput } from "../../features/chat/hooks/use-chat-input-state";
 import { ScrollArea } from "../ui/scroll-area";
 import { AutoCompleteExtension } from "./auto-completion/extension";
 import {

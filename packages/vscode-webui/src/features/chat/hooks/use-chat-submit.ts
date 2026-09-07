@@ -1,9 +1,12 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import { prepareMessageParts } from "@/lib/message-utils";
+import {
+  buildTodoModeObjective,
+  prepareMessageParts,
+} from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { getLogger } from "@getpochi/common";
+import { type PastedTextFile, getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
@@ -82,8 +85,7 @@ interface UseChatSubmitProps {
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
   /**
-   * Invoked with the final submitted text right before the message is sent.
-   * Used e.g. to seed a todo from the message when todo mode is selected.
+   * Invoked with the final todo objective right before the message is sent.
    */
   onBeforeSendText?: (text: string) => void;
   onMessageSent?: (message: DraftMessage) => void | Promise<void>;
@@ -237,15 +239,30 @@ export function useChatSubmit({
           logger.debug("Uploading files...");
           uploadedAttachments = await upload();
           logger.debug("Files uploaded.");
-          clearFiles();
         } catch (error) {
           // Error is already handled by the hook
           return undefined;
         }
       }
 
+      let pastedTextFiles: PastedTextFile[] = [];
+      if (currentPastedTexts.length > 0) {
+        try {
+          pastedTextFiles = await vscodeHost.persistPastedTextFiles(
+            taskId,
+            currentPastedTexts,
+          );
+        } catch {
+          // The extension host reports the persistence error to the user.
+          return undefined;
+        }
+      }
+
       clearUploadError();
       clearInput();
+      if (currentFiles.length > 0) {
+        clearFiles();
+      }
       if (currentReviews.length > 0) {
         vscodeHost.deleteReviews(currentReviews.map((review) => review.id));
       }
@@ -275,7 +292,7 @@ export function useChatSubmit({
         currentTerminalContextSelections,
         resolvedInput.invokedSkills,
         resolvedInput.invokedCustomAgents,
-        currentPastedTexts,
+        pastedTextFiles,
       );
 
       return { parts, raw };
@@ -295,14 +312,26 @@ export function useChatSubmit({
       clearUploadError,
       clearInput,
       isTodoMode,
+      taskId,
     ],
   );
 
   const sendChatMessage = useCallback(
     async (message: DraftMessage, options?: SendChatMessageOptions) => {
       const shouldCreateTodo = message.raw.isTodoMode && canCreateTodo;
-      if (message.raw.text && shouldCreateTodo) {
-        onBeforeSendText?.(message.raw.text);
+      if (shouldCreateTodo) {
+        // Build from the raw prompt and UI markers to avoid duplicating
+        // generated system reminders in the todo objective.
+        const pastedTextFiles = message.parts.flatMap((part) =>
+          part.type === "data-pasted-text" ? [part.data] : [],
+        );
+        const todoObjective = buildTodoModeObjective(
+          message.raw.text ?? "",
+          pastedTextFiles,
+        );
+        if (todoObjective) {
+          onBeforeSendText?.(todoObjective);
+        }
       }
 
       if (pendingApproval?.name === "retry") {

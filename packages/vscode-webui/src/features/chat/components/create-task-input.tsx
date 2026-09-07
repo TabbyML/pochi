@@ -15,14 +15,16 @@ import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
+import { buildTodoModeObjective } from "@/lib/message-utils";
 import { serializeCustomAgentMention } from "@/lib/serialize-custom-agent-mention";
 import { vscodeHost } from "@/lib/vscode";
+import { type PastedTextFile, getPastedTextTitle } from "@getpochi/common";
 import type {
   GitWorktree,
   Review,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { type Todo, initTodoModeTodos } from "@getpochi/tools";
+import { initTodoModeTodos } from "@getpochi/tools";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveSlashMentions } from "../hooks/resolve-slash-mentions";
@@ -175,7 +177,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         name: string;
         url: string;
       }>;
-      todos?: Todo[];
+      shouldCreateTodo: boolean;
       invokedSkills?: ValidSkillFile[];
       invokedCustomAgents?: string[];
       pastedTexts?: string[];
@@ -184,7 +186,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         content,
         shouldCreateWorktree,
         uploadedFiles,
-        todos,
+        shouldCreateTodo,
         invokedSkills,
         invokedCustomAgents,
         pastedTexts,
@@ -195,7 +197,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         worktree = await vscodeHost.createWorktree({
           baseBranch: baseBranch || undefined,
           generateBranchName: {
-            prompt: content || pastedTexts?.[0]?.slice(0, 2_000) || "",
+            prompt: content || getPastedTextTitle(pastedTexts?.[0] ?? ""),
             files: uploadedFiles,
           },
         });
@@ -206,13 +208,30 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         }
       }
 
+      const uid = pastedTexts?.length ? crypto.randomUUID() : undefined;
+      let pastedTextFiles: PastedTextFile[] | undefined;
+      if (uid && pastedTexts) {
+        try {
+          pastedTextFiles = await vscodeHost.persistPastedTextFiles(
+            uid,
+            pastedTexts,
+          );
+        } catch {
+          return false;
+        }
+      }
+      const todoObjective = shouldCreateTodo
+        ? buildTodoModeObjective(content, pastedTextFiles)
+        : "";
+
       vscodeHost.openTaskInPanel(
         {
           type: "new-task",
+          uid,
           cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
           prompt: content,
-          pastedTexts,
-          todos,
+          pastedTextFiles,
+          todos: todoObjective ? initTodoModeTodos(todoObjective) : undefined,
           files: uploadedFiles,
           activeSelection: activeSelection ?? undefined,
           invokedSkills,
@@ -339,8 +358,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         shouldCreateWorktree:
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-        todos:
-          shouldCreateTodo && content ? initTodoModeTodos(content) : undefined,
+        shouldCreateTodo,
         invokedSkills: validationResult.invokedSkills,
         invokedCustomAgents,
         pastedTexts: currentInput.pastedTexts,

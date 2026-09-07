@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   MessageMetadata,
   createBackgroundJobNotification,
+  getPastedTextTitle,
 } from "../message";
+
+describe("getPastedTextTitle", () => {
+  it("truncates by Unicode characters without splitting surrogate pairs", () => {
+    expect(getPastedTextTitle("😀".repeat(81))).toBe(`${"😀".repeat(79)}…`);
+  });
+});
 
 describe("MessageMetadata", () => {
   it("preserves assistant input and cache-read token usage", () => {

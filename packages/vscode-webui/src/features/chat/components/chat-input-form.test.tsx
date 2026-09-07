@@ -128,7 +128,6 @@ describe("ChatInputForm pasted text", () => {
 
   it("localizes and removes pasted-text cards", () => {
     const pastedText = `Analyze this\n${"x".repeat(6_000)}`;
-    const whitespaceText = " ".repeat(5_001);
     const setInput = vi.fn();
 
     render(
@@ -136,7 +135,7 @@ describe("ChatInputForm pasted text", () => {
         input={{
           json: null,
           text: "",
-          pastedTexts: [pastedText, whitespaceText],
+          pastedTexts: [pastedText],
         }}
         setInput={setInput}
         onSubmit={vi.fn()}
@@ -151,9 +150,6 @@ describe("ChatInputForm pasted text", () => {
     );
 
     expect(screen.getByRole("button", { name: "Analyze this" })).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Localized pasted text" }),
-    ).toBeTruthy();
     const removeButton = screen.getAllByRole("button", {
       name: "pastedText.remove",
     })[0];
@@ -163,7 +159,7 @@ describe("ChatInputForm pasted text", () => {
     expect(setInput).toHaveBeenCalledWith({
       json: null,
       text: "",
-      pastedTexts: [whitespaceText],
+      pastedTexts: [],
     });
   });
 });

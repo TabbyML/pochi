@@ -21,12 +21,10 @@ export const PastedTextCard = memo(function PastedTextCard({
   text,
   onRemove,
   className,
-  variant = "default",
 }: {
   text: string;
   onRemove?: () => void;
   className?: string;
-  variant?: "default" | "compact";
 }) {
   const { t } = useTranslation();
   const title = useMemo(() => getPastedTextTitle(text), [text]);
@@ -37,7 +35,6 @@ export const PastedTextCard = memo(function PastedTextCard({
   );
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
-  const isCompact = variant === "compact";
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -68,8 +65,7 @@ export const PastedTextCard = memo(function PastedTextCard({
     >
       <div
         className={cn(
-          "relative flex min-w-0 max-w-full rounded-md border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)] hover:border-[var(--vscode-focusBorder)]",
-          isCompact ? "h-8 w-auto" : "h-14 w-36",
+          "relative flex h-14 w-36 min-w-0 max-w-full rounded-md border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)] hover:border-[var(--vscode-focusBorder)]",
           className,
         )}
         data-testid="pasted-text-card"
@@ -85,28 +81,16 @@ export const PastedTextCard = memo(function PastedTextCard({
               onRemove && "pr-5",
             )}
           >
-            <span
-              className={cn(
-                "flex shrink-0 items-center justify-center",
-                isCompact ? "size-4" : "size-7 rounded bg-muted",
-              )}
-            >
-              <FileText
-                className={cn(
-                  "text-muted-foreground",
-                  isCompact ? "size-3.5" : "size-4",
-                )}
-              />
+            <span className="flex size-7 shrink-0 items-center justify-center rounded bg-muted">
+              <FileText className="size-4 text-muted-foreground" />
             </span>
-            <span className={cn("min-w-0", !isCompact && "flex flex-col")}>
+            <span className="flex min-w-0 flex-col">
               <span className="truncate font-medium text-xs">
                 {displayTitle}
               </span>
-              {isCompact ? null : (
-                <span className="truncate text-[10px] text-muted-foreground">
-                  {t("pastedText.label")}
-                </span>
-              )}
+              <span className="truncate text-[10px] text-muted-foreground">
+                {t("pastedText.label")}
+              </span>
             </span>
           </button>
         </HoverCardTrigger>
@@ -132,5 +116,41 @@ export const PastedTextCard = memo(function PastedTextCard({
         </pre>
       </HoverCardContent>
     </HoverCard>
+  );
+});
+
+export const PastedTextFileCard = memo(function PastedTextFileCard({
+  title,
+  onOpen,
+  className,
+}: {
+  title: string;
+  onOpen: () => void;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const accessibleTitle = title || t("pastedText.label");
+  const displayTitle = getDisplayTitle(accessibleTitle);
+
+  return (
+    <div
+      className={cn(
+        "relative flex h-8 min-w-0 max-w-full rounded-md border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)] hover:border-[var(--vscode-focusBorder)]",
+        className,
+      )}
+      data-testid="pasted-text-card"
+    >
+      <button
+        type="button"
+        aria-label={accessibleTitle}
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-left hover:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-1 focus-visible:outline-[var(--vscode-focusBorder)]"
+      >
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          <FileText className="size-3.5 text-muted-foreground" />
+        </span>
+        <span className="truncate font-medium text-xs">{displayTitle}</span>
+      </button>
+    </div>
   );
 });

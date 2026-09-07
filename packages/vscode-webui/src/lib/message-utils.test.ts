@@ -5,7 +5,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { TFunction } from "i18next";
 import { describe, expect, it, vi } from "vitest";
-import { prepareMessageParts } from "./message-utils";
+import { buildTodoModeObjective, prepareMessageParts } from "./message-utils";
 
 vi.mock("./vscode", () => ({
   vscodeHost: { deleteReviews: vi.fn() },
@@ -68,7 +68,11 @@ describe("prepareMessageParts", () => {
     ]);
   });
 
-  it("appends pasted text after the visible prompt in paste order", () => {
+  it("adds one hidden file reminder and UI-only pasted text parts", () => {
+    const pastedTextFiles = [
+      { filePath: "/tmp/first.txt", title: "first paste" },
+      { filePath: "/tmp/second.txt", title: "second paste" },
+    ];
     const parts = prepareMessageParts(
       ((key: string) => key) as TFunction,
       "Analyze these logs",
@@ -79,13 +83,42 @@ describe("prepareMessageParts", () => {
       undefined,
       undefined,
       undefined,
-      ["first paste", "second paste"],
+      pastedTextFiles,
     );
 
     expect(parts).toEqual([
       { type: "text", text: "Analyze these logs" },
-      { type: "data-pasted-text", data: { text: "first paste" } },
-      { type: "data-pasted-text", data: { text: "second paste" } },
+      {
+        type: "text",
+        text: prompts.createSystemReminder(
+          prompts.pastedTextFileReferences(pastedTextFiles),
+        ),
+      },
+      { type: "data-pasted-text", data: pastedTextFiles[0] },
+      { type: "data-pasted-text", data: pastedTextFiles[1] },
     ]);
+  });
+});
+
+describe("buildTodoModeObjective", () => {
+  it("uses pasted text file references when the visible prompt is empty", () => {
+    const files = [{ filePath: "/tmp/pasted.txt", title: "large paste" }];
+
+    expect(buildTodoModeObjective("", files)).toBe(
+      prompts.pastedTextFileReferences(files),
+    );
+  });
+
+  it("keeps the visible prompt before pasted text file references", () => {
+    const files = [
+      { filePath: "/tmp/first.txt", title: "first paste" },
+      { filePath: "/tmp/second.txt", title: "second paste" },
+    ];
+
+    expect(
+      buildTodoModeObjective("Analyze these logs", files),
+    ).toBe(
+      `Analyze these logs\n\n${prompts.pastedTextFileReferences(files)}`,
+    );
   });
 });

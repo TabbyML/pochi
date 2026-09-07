@@ -33,7 +33,12 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
 
 export type MessageMetadata = z.infer<typeof MessageMetadata>;
 
-export function getPastedTextTitle(text: string): string | undefined {
+export interface PastedTextFile {
+  filePath: string;
+  title: string;
+}
+
+export function getPastedTextTitle(text: string): string {
   const maxLength = 80;
   const title: string[] = [];
   let pendingSpace = false;
@@ -58,7 +63,7 @@ export function getPastedTextTitle(text: string): string | undefined {
     }
   }
 
-  return title.join("") || undefined;
+  return title.join("");
 }
 
 export const BackgroundJobNotification = z.object({

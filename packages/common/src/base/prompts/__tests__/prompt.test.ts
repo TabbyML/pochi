@@ -85,6 +85,17 @@ test("custom agent invocation uses a separate routing instruction", () => {
   );
 });
 
+test("pasted text file references instruct the model to read each file", () => {
+  expect(
+    prompts.pastedTextFileReferences([
+      { filePath: "/tmp/pasted-text-1.txt", title: "first" },
+      { filePath: "/tmp/pasted-text-2.txt", title: "second" },
+    ]),
+  ).toBe(`Referenced pasted text files:
+- pasted text file: /tmp/pasted-text-1.txt. Read this file before continuing.
+- pasted text file: /tmp/pasted-text-2.txt. Read this file before continuing.`);
+});
+
 test("custom agent includes custom rules by default", () => {
   expect(
     createSystemPrompt(`# Rules from (abc)`, {

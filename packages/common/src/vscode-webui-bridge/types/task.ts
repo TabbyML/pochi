@@ -1,5 +1,9 @@
 import type { Todo } from "@getpochi/tools";
-import type { ActiveSelection, TerminalTextSelection } from "../../base";
+import type {
+  ActiveSelection,
+  PastedTextFile,
+  TerminalTextSelection,
+} from "../../base";
 import type { ValidSkillFile } from "./skill";
 
 export type FileUIPart = {
@@ -23,7 +27,7 @@ export type PochiTaskParams = { cwd: string } & (
       type: "new-task";
       uid?: string;
       prompt?: string;
-      pastedTexts?: string[];
+      pastedTextFiles?: PastedTextFile[];
       todos?: Todo[];
       files?: FileUIPart[];
       activeSelection?: ActiveSelection;

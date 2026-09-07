@@ -17,40 +17,22 @@ const unusedStore = {} as LiveKitStore;
 const unusedBlobStore = {} as BlobStore;
 
 describe("generateTaskTitle pasted text fallback", () => {
-  it("uses a bounded pasted-text preview when there is no typed prompt", async () => {
-    const text = `  ${"x".repeat(100)}  `;
-    const messages: Message[] = [
-      {
-        id: "user-1",
-        role: "user",
-        parts: [{ type: "data-pasted-text", data: { text } }],
-      },
-    ];
-
-    const title = await generateTaskTitle({
-      store: unusedStore,
-      blobStore: unusedBlobStore,
-      taskId: "task-1",
-      title: null,
-      messages,
-      getModel: vi.fn(),
-    });
-
-    expect(title).toBe(`${"x".repeat(79)}…`);
-  });
-
-  it("does not split a Unicode character in the pasted-text preview", async () => {
+  it("uses a bounded pasted-text title when there is no typed prompt", async () => {
+    const title = `${"x".repeat(79)}…`;
     const messages: Message[] = [
       {
         id: "user-1",
         role: "user",
         parts: [
-          { type: "data-pasted-text", data: { text: "😀".repeat(100) } },
+          {
+            type: "data-pasted-text",
+            data: { filePath: "/tmp/pasted.txt", title },
+          },
         ],
       },
     ];
 
-    const title = await generateTaskTitle({
+    const generatedTitle = await generateTaskTitle({
       store: unusedStore,
       blobStore: unusedBlobStore,
       taskId: "task-1",
@@ -59,7 +41,7 @@ describe("generateTaskTitle pasted text fallback", () => {
       getModel: vi.fn(),
     });
 
-    expect(title).toBe(`${"😀".repeat(79)}…`);
+    expect(generatedTitle).toBe(title);
   });
 
   it("prefers the typed prompt over pasted text", async () => {
@@ -71,7 +53,10 @@ describe("generateTaskTitle pasted text fallback", () => {
           { type: "text", text: "Analyze these logs" },
           {
             type: "data-pasted-text",
-            data: { text: "serialized message list" },
+            data: {
+              filePath: "/tmp/pasted.txt",
+              title: "serialized message list",
+            },
           },
         ],
       },
@@ -89,14 +74,18 @@ describe("generateTaskTitle pasted text fallback", () => {
     expect(title).toBe("Analyze these logs");
   });
 
-  it("sends only a bounded pasted-text preview to the title model", async () => {
-    const text = "x".repeat(6_000);
+  it("does not send the UI-only pasted-text title to the title model", async () => {
     const fallbackTitle = `${"x".repeat(79)}…`;
     const messages: Message[] = [
       {
         id: "user-1",
         role: "user",
-        parts: [{ type: "data-pasted-text", data: { text } }],
+        parts: [
+          {
+            type: "data-pasted-text",
+            data: { filePath: "/tmp/pasted.txt", title: fallbackTitle },
+          },
+        ],
       },
       ...Array.from({ length: 4 }, (_, index) => ({
         id: `assistant-${index}`,
@@ -121,7 +110,6 @@ describe("generateTaskTitle pasted text fallback", () => {
     });
 
     const prompt = generateTextMock.mock.calls[0]?.[0]?.prompt;
-    expect(JSON.stringify(prompt)).not.toContain(text);
-    expect(JSON.stringify(prompt)).toContain(fallbackTitle);
+    expect(JSON.stringify(prompt)).not.toContain(fallbackTitle);
   });
 });

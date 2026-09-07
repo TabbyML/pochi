@@ -110,13 +110,16 @@ describe("useChatInitialization", () => {
     });
   });
 
-  it("preserves pasted text as a data part for a new task", () => {
+  it("adds pasted text file references for a new task", () => {
+    const pastedTextFiles = [
+      { filePath: "/tmp/pasted.txt", title: "large pasted text" },
+    ];
     const info = {
       type: "new-task",
       uid: "task-1",
       cwd: "/workspace",
       prompt: "Analyze this",
-      pastedTexts: ["large pasted text"],
+      pastedTextFiles,
     } as PochiTaskInfo;
     const init = vi.fn();
 
@@ -137,8 +140,14 @@ describe("useChatInitialization", () => {
       parts: [
         { type: "text", text: "Analyze this" },
         {
+          type: "text",
+          text: prompts.createSystemReminder(
+            prompts.pastedTextFileReferences(pastedTextFiles),
+          ),
+        },
+        {
           type: "data-pasted-text",
-          data: { text: "large pasted text" },
+          data: pastedTextFiles[0],
         },
       ],
     });

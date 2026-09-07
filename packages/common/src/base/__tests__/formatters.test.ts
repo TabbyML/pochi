@@ -77,7 +77,12 @@ describe('formatters', () => {
       ['content', [{ type: 'text', text: 'Visible prompt' }]],
       [
         'content',
-        [{ type: 'data-pasted-text', data: { text: 'large pasted text' } }],
+        [
+          {
+            type: 'data-pasted-text',
+            data: { filePath: '/tmp/pasted.txt', title: 'large pasted text' },
+          },
+        ],
       ],
       ['compact', [{ type: 'text', text: '<compact>Summary</compact>' }]],
       [
@@ -627,15 +632,22 @@ describe('formatters', () => {
   });
 
   describe('formatters.llm', () => {
-    it('converts pasted text data into model-visible text without mutating the source message', () => {
+    it('keeps the pasted text reminder and removes the UI-only data part', () => {
       const messages = [
         {
           id: 'user-pasted-text',
           role: 'user',
           parts: [
             {
+              type: 'text',
+              text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+            },
+            {
               type: 'data-pasted-text',
-              data: { text: 'const answer = 42;' },
+              data: {
+                filePath: '/tmp/pasted.txt',
+                title: 'const answer = 42;',
+              },
             },
           ],
         },
@@ -645,13 +657,25 @@ describe('formatters', () => {
         {
           id: 'user-pasted-text',
           role: 'user',
-          parts: [{ type: 'text', text: 'const answer = 42;' }],
+          parts: [
+            {
+              type: 'text',
+              text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+            },
+          ],
         },
       ]);
       expect(messages[0].parts).toEqual([
         {
+          type: 'text',
+          text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+        },
+        {
           type: 'data-pasted-text',
-          data: { text: 'const answer = 42;' },
+          data: {
+            filePath: '/tmp/pasted.txt',
+            title: 'const answer = 42;',
+          },
         },
       ]);
     });
@@ -670,7 +694,10 @@ describe('formatters', () => {
           parts: [
             {
               type: 'data-pasted-text',
-              data: { text: '<compact>literal user content</compact>' },
+              data: {
+                filePath: '/tmp/pasted.txt',
+                title: '<compact>literal user content</compact>',
+              },
             },
           ],
         },
@@ -686,7 +713,6 @@ describe('formatters', () => {
 
       expect(formatted.map((message) => message.id)).toEqual([
         'old-assistant',
-        'user-pasted-text',
         'new-assistant',
       ]);
     });

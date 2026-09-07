@@ -19,26 +19,6 @@ describe("useTaskInputDraft", () => {
     vscodeMocks.getState.mockReturnValue({});
   });
 
-  it("does not restore pasted text data from a persisted draft", () => {
-    vscodeMocks.getState.mockReturnValue({
-      taskInputDraft: {
-        content: {
-          json: null,
-          text: "instruction",
-          pastedTexts: ["large pasted text"],
-        },
-        timestamp: 1,
-      },
-    });
-
-    const { result } = renderHook(() => useTaskInputDraft());
-
-    expect(result.current.draft).toEqual({
-      json: null,
-      text: "instruction",
-    });
-  });
-
   it("omits pasted text data when persisting the editor draft", async () => {
     const { result } = renderHook(() => useTaskInputDraft());
 

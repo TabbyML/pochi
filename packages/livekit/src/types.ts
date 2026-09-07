@@ -4,6 +4,7 @@ import type {
   BackgroundJobNotification,
   BashOutputs,
   MessageMetadata,
+  PastedTextFile,
   Review,
   TerminalTextSelection,
   UserEdits,
@@ -18,9 +19,7 @@ import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
 export type DataParts = {
-  "pasted-text": {
-    text: string;
-  };
+  "pasted-text": PastedTextFile;
   checkpoint: {
     commit: string;
   };

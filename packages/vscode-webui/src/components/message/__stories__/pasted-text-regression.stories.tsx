@@ -22,7 +22,10 @@ const messages: Message[] = [
     parts: [
       {
         type: "data-pasted-text",
-        data: { text: largeSerializedMessageList },
+        data: {
+          filePath: "/tmp/pasted-text.txt",
+          title: capturedPromptPrefix,
+        },
       },
       {
         type: "file",

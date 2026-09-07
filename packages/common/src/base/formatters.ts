@@ -746,16 +746,11 @@ function resolvePendingToolCallsForShareUI(messages: UIMessage[]) {
 
 type FormatOp = (messages: UIMessage[]) => UIMessage[];
 
-function convertPastedTextPartsForLLM(messages: UIMessage[]): UIMessage[] {
+function removePastedTextPartsForLLM(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
-    message.parts = message.parts.map((part) => {
-      if (part.type !== "data-pasted-text") return part;
-
-      return {
-        type: "text",
-        text: (part as { data: { text: string } }).data.text,
-      };
-    });
+    message.parts = message.parts.filter(
+      (part) => part.type !== "data-pasted-text",
+    );
     return message;
   });
 }
@@ -808,7 +803,7 @@ const LLMFormatOps: FormatOp[] = [
   removeEmptyMessages,
   refineDetectedNewPromblems,
   extractCompactMessages,
-  convertPastedTextPartsForLLM,
+  removePastedTextPartsForLLM,
   removeMessagesWithoutTextOrToolCall,
   replaceAttemptTodoCompletionForLLM,
   resolvePendingToolCalls,

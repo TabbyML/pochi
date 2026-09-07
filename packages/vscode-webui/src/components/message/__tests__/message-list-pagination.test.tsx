@@ -5,7 +5,10 @@ import { Profiler, type ReactNode, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListPaginationConfig } from "../use-message-list-pagination";
 
-const vscodeMock = vi.hoisted(() => ({ isVSCodeEnvironment: false }));
+const vscodeMock = vi.hoisted(() => ({
+  isVSCodeEnvironment: false,
+  openFile: vi.fn(),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -22,6 +25,7 @@ vi.mock("@/lib/vscode", () => ({
   isVSCodeEnvironment: () => vscodeMock.isVSCodeEnvironment,
   vscodeHost: {
     getGlobalState: vi.fn(async () => undefined),
+    openFile: vscodeMock.openFile,
     setGlobalState: vi.fn(async () => undefined),
   },
 }));
@@ -125,6 +129,7 @@ class IntersectionObserverProbe implements IntersectionObserver {
 beforeEach(() => {
   IntersectionObserverProbe.instances = [];
   vscodeMock.isVSCodeEnvironment = false;
+  vscodeMock.openFile.mockReset();
   vi.stubGlobal("IntersectionObserver", IntersectionObserverProbe);
 });
 
@@ -732,13 +737,16 @@ describe("MessageList pagination", () => {
 
 describe("MessageList pasted text", () => {
   it("renders a compact plain-text attachment beside image attachments", () => {
-    const pastedText = `first log line\n${"x".repeat(6_000)}`;
+    const pastedTextFile = {
+      filePath: "/tmp/pasted-text.txt",
+      title: "first log line",
+    };
     const message = {
       id: "user-pasted-text",
       role: "user",
       parts: [
         { type: "text", text: "explain" },
-        { type: "data-pasted-text", data: { text: pastedText } },
+        { type: "data-pasted-text", data: pastedTextFile },
         {
           type: "file",
           filename: "design-mockup.png",
@@ -762,24 +770,23 @@ describe("MessageList pasted text", () => {
     expect(card.parentElement?.textContent).toContain("design-mockup.png");
     expect(screen.getByText("first log l…")).toBeTruthy();
     expect(screen.getByTestId("markdown").textContent).toBe("explain");
-    expect(screen.queryByText(pastedText)).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "first log line" }));
 
-    expect(
-      screen.getByText(
-        (_content, element) =>
-          element?.tagName === "PRE" && element.textContent === pastedText,
-      ),
-    ).toBeTruthy();
+    expect(vscodeMock.openFile).toHaveBeenCalledWith(pastedTextFile.filePath);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("keeps the card visible across assistant streaming updates", () => {
-    const pastedText = `[{\\"role\\":\\"system\\",\\"content\\":\\"You are Pochi${"x".repeat(406_200)}`;
+    const pastedTextFile = {
+      filePath: "/tmp/pasted-text.txt",
+      title: '[{\\"role\\":\\"system\\"',
+    };
     const userMessage = {
       id: "user-large-paste",
       role: "user",
-      parts: [{ type: "data-pasted-text", data: { text: pastedText } }],
+      parts: [{ type: "data-pasted-text", data: pastedTextFile }],
     } as Message;
     const assistantMessage = {
       id: "assistant-streaming",
@@ -795,7 +802,7 @@ describe("MessageList pasted text", () => {
     );
 
     expect(screen.getByTestId("pasted-text-card")).toBeTruthy();
-    expect(screen.queryByText(pastedText)).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
 
     rerender(
       <MessageListProbe

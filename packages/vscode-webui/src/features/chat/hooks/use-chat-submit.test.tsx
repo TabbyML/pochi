@@ -1,3 +1,4 @@
+import type { PastedTextFile } from "@getpochi/common";
 import type {
   ActiveSelection,
   Review,
@@ -30,17 +31,23 @@ const messageUtilsMocks = vi.hoisted(() => ({
       _terminalContextSelections,
       invokedSkills: ValidSkillFile[] = [],
       invokedCustomAgents: string[] = [],
-      pastedTexts: string[] = [],
+      pastedTextFiles: PastedTextFile[] = [],
     ) => [
       ...invokedSkills.map((skill) => `skill:${skill.instructions}`),
       ...invokedCustomAgents.map((agentName) => `agent:${agentName}`),
       `text:${text}`,
-      ...pastedTexts.map((pastedText) => `pasted:${pastedText}`),
+      ...pastedTextFiles.map((file) => `pasted:${file.filePath}`),
     ],
   ),
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
+  persistPastedTextFiles: vi.fn(async (_taskId: string, texts: string[]) =>
+    texts.map((text, index) => ({
+      filePath: `/tmp/pasted-${index}.txt`,
+      title: text,
+    })),
+  ),
   showWarningMessage: vi.fn(async () => undefined),
 }));
 const activeSelectionMock = vi.hoisted(() => ({
@@ -63,13 +70,15 @@ vi.mock("@/lib/hooks/use-active-selection", () => ({
   useActiveSelection: () => activeSelectionMock.value,
 }));
 
-vi.mock("@/lib/message-utils", () => ({
+vi.mock("@/lib/message-utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/message-utils")>()),
   prepareMessageParts: messageUtilsMocks.prepareMessageParts,
 }));
 
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
+    persistPastedTextFiles: vscodeMocks.persistPastedTextFiles,
     showWarningMessage: vscodeMocks.showWarningMessage,
   },
 }));
@@ -87,6 +96,14 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
+    vscodeMocks.persistPastedTextFiles.mockClear();
+    vscodeMocks.persistPastedTextFiles.mockImplementation(
+      async (_taskId: string, texts: string[]) =>
+        texts.map((text, index) => ({
+          filePath: `/tmp/pasted-${index}.txt`,
+          title: text,
+        })),
+    );
     vscodeMocks.showWarningMessage.mockClear();
     userEditsMocks.userEdits = [];
     activeSelectionMock.value = undefined;
@@ -147,9 +164,31 @@ describe("useChatSubmit", () => {
       });
 
       expect(context.sendMessage).toHaveBeenCalledWith({
-        parts: ["text:", "pasted:large pasted text"],
+        parts: ["text:", "pasted:/tmp/pasted-0.txt"],
       });
+      expect(vscodeMocks.persistPastedTextFiles).toHaveBeenCalledWith(
+        "task-1",
+        ["large pasted text"],
+      );
       expect(context.clearInput).toHaveBeenCalledOnce();
+    });
+
+    it("keeps the draft when pasted text persistence fails", async () => {
+      vscodeMocks.persistPastedTextFiles.mockRejectedValueOnce(
+        new Error("disk full"),
+      );
+      const context = setup({
+        isLoading: false,
+        inputText: "",
+        pastedTexts: ["large pasted text"],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.clearInput).not.toHaveBeenCalled();
+      expect(context.sendMessage).not.toHaveBeenCalled();
     });
 
     it("sends a non-user-invocable skill typed as plain text", async () => {
@@ -486,6 +525,40 @@ describe("useChatSubmit", () => {
       expect(onBeforeSendText).toHaveBeenCalledWith("follow up");
       expect(context.sendMessage).toHaveBeenCalledWith({
         parts: ["text:follow up"],
+      });
+    });
+
+    it("includes pasted text in the todo objective when the editor is empty", async () => {
+      const onBeforeSendText = vi.fn();
+      const pastedText = "large pasted text";
+      messageUtilsMocks.prepareMessageParts.mockReturnValueOnce([
+        {
+          type: "data-pasted-text",
+          data: { filePath: "/tmp/pasted-0.txt", title: pastedText },
+        },
+      ] as never);
+      const context = setup({
+        isLoading: false,
+        inputText: "",
+        pastedTexts: [pastedText],
+        isTodoMode: true,
+        onBeforeSendText,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(onBeforeSendText).toHaveBeenCalledWith(
+        "Referenced pasted text files:\n- pasted text file: /tmp/pasted-0.txt. Read this file before continuing.",
+      );
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: [
+          {
+            type: "data-pasted-text",
+            data: { filePath: "/tmp/pasted-0.txt", title: pastedText },
+          },
+        ],
       });
     });
 
@@ -1012,17 +1085,15 @@ function setup({
       // underlying blocking/model-loading state.
       const isExecuting = chatStateMocks.isExecuting;
       const isRunning = props.isLoading || isExecuting;
-      const isInputEmpty = !initialInputText.trim();
+      const isInputEmpty = !initialInputText.trim() && pastedTexts.length === 0;
       const isFilesEmpty = files.length === 0;
       const isReviewsEmpty = reviews.length === 0;
       const isTerminalContextEmpty = terminalContextSelections.length === 0;
-      const isPastedTextsEmpty = pastedTexts.length === 0;
       const isSubmitEnabled =
         !isInputEmpty ||
         !isFilesEmpty ||
         !isReviewsEmpty ||
-        !isTerminalContextEmpty ||
-        !isPastedTextsEmpty;
+        !isTerminalContextEmpty;
       const isStopEnabled = isRunning;
       const allowSendMessage = !isRunning;
       const allowSteer = true;

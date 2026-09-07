@@ -3,7 +3,6 @@ import {
   type PochiProviderOptions,
   formatters,
   getLogger,
-  getPastedTextTitle,
   prompts,
 } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
@@ -99,7 +98,7 @@ function getTitleFromMessages(messages: Message[]) {
     (part) => part.type === "data-pasted-text",
   );
   if (pastedTextPart?.type === "data-pasted-text") {
-    return getPastedTextTitle(pastedTextPart.data.text);
+    return pastedTextPart.data.title || undefined;
   }
 }
 
@@ -119,17 +118,7 @@ async function generateTitle(
   abortSignal: AbortSignal | undefined,
 ) {
   const messages: Message[] = [
-    ...inputMessages.map((message) => ({
-      ...message,
-      parts: message.parts.map((part) =>
-        part.type === "data-pasted-text"
-          ? {
-              ...part,
-              data: { text: getPastedTextTitle(part.data.text) ?? "" },
-            }
-          : part,
-      ),
-    })),
+    ...inputMessages,
     {
       id: crypto.randomUUID(),
       role: "user",
@@ -153,9 +142,7 @@ async function generateTitle(
     },
     model,
     prompt: await convertToModelMessages(
-      formatters.llm(messages, {
-        removeSystemReminder: true,
-      }),
+      formatters.llm(messages, { removeSystemReminder: true }),
     ),
     experimental_download: makeDownloadFunction(blobStore),
     abortSignal,
