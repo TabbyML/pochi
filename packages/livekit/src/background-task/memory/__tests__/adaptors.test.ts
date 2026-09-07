@@ -16,6 +16,54 @@ import { describe, expect, it, vi } from "vitest";
 const TestCompactThreshold = 20_000;
 
 describe("task-memory adaptor", () => {
+  it.each([false, true])(
+    "normalizes legacy state and enforces the retry limit (initialized: %s)",
+    async (initialized) => {
+      const store = new FakeStore([
+        makeTask({ id: "parent", status: "pending-tool", background: false }),
+      ]);
+      let persistedState = {
+        initialized,
+        lastExtractionTokens: 10_000,
+        lastExtractionToolCalls: 3,
+        isExtracting: false,
+        extractionCount: initialized ? 1 : 0,
+      } as unknown as TaskMemoryState;
+      const adaptor = new TaskMemoryAdaptor({
+        store: store as unknown as LiveKitStore,
+        backgroundTask: createTestBackgroundTask({
+          store: store as unknown as LiveKitStore,
+          stateStore: new BackgroundTaskStateStore(),
+        }),
+        taskMemoryStateStore: {
+          get: () => persistedState,
+          set: (state) => {
+            persistedState = state;
+          },
+        },
+        parentTaskId: "parent",
+        parentCwd: "/repo",
+        getCompactThreshold: () => TestCompactThreshold,
+      });
+      const update = {
+        messages: makeParentMessages(),
+        contextWindowUsage: usage(19_000),
+      };
+
+      for (const attempt of [1, 2]) {
+        await expect(adaptor.update(update)).resolves.toBe(true);
+        expect(persistedState).toMatchObject({
+          extractionAttemptsSinceCompact: attempt,
+          extractionCount: initialized ? 1 : 0,
+        });
+        store.updateTaskStatus(persistedState.activeTaskId ?? "", "failed");
+      }
+
+      await expect(adaptor.update(update)).resolves.toBe(false);
+      expect(store.backgroundTasks()).toHaveLength(2);
+    },
+  );
+
   it("starts extraction from stream-finish usage before the main task completes", async () => {
     const store = new FakeStore([
       makeTask({

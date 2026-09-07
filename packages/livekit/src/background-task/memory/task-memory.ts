@@ -251,7 +251,12 @@ export class TaskMemoryAdaptor {
   }
 
   getState() {
-    return this.state ?? this.stateStore.get() ?? { ...DefaultTaskMemoryState };
+    const state = this.state ?? this.stateStore.get() ?? DefaultTaskMemoryState;
+    return {
+      ...state,
+      // Persisted state from older versions does not have this counter.
+      extractionAttemptsSinceCompact: state.extractionAttemptsSinceCompact ?? 0,
+    };
   }
 
   takeCompactionBoundaryMessageId() {
