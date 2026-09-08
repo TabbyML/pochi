@@ -15,7 +15,6 @@ const TerminationGraceMs = 2_000;
 const HardKillExitGraceMs = 1_000;
 const ReplayHistoryMaxCharacters = 1_000_000;
 const LaunchConfirmationTimeoutMs = 1_000;
-const LaunchMarkerScanMaxCharacters = 64 * 1024;
 const LaunchDiagnosticsMaxCharacters = 2_000;
 const requireFromExtensionHost = createRequire(__filename);
 
@@ -76,7 +75,6 @@ export const buildPtyShellCommand = (command: string) =>
  */
 class LaunchMarkerFilter {
   private buffer = "";
-  private scannedCharacters = 0;
   private scanning = true;
   private seen = false;
 
@@ -90,7 +88,6 @@ class LaunchMarkerFilter {
     if (!this.scanning) return data;
 
     this.buffer += data;
-    this.scannedCharacters += data.length;
 
     const index = this.buffer.indexOf(this.marker);
     if (index >= 0) {
@@ -103,11 +100,17 @@ class LaunchMarkerFilter {
       return output;
     }
 
-    if (this.scannedCharacters >= LaunchMarkerScanMaxCharacters) {
-      return this.stopScanning();
+    // Keep only a suffix that could be the start of the marker. This bounds
+    // retained data without giving up on noisy or slow shell startup, and
+    // lets ordinary output (including prompts) through immediately.
+    let withheld = Math.min(this.buffer.length, this.marker.length - 1);
+    while (
+      withheld > 0 &&
+      !this.buffer.endsWith(this.marker.slice(0, withheld))
+    ) {
+      withheld--;
     }
 
-    const withheld = Math.min(this.buffer.length, this.marker.length - 1);
     const output = this.buffer.slice(0, this.buffer.length - withheld);
     this.buffer = this.buffer.slice(this.buffer.length - withheld);
     return output;
@@ -241,11 +244,8 @@ export class PtyProcess {
     this.launchSettled = true;
     this.launchError = error;
     this.launchOutput = "";
-    if (!error) {
-      // Stop withholding bytes that can no longer be part of the marker.
-      const pending = this.launchFilter?.stopScanning();
-      if (pending) this.emitData(pending);
-    }
+    // A timeout only ends the launch wait. Keep filtering until the marker
+    // arrives or the process exits, including partial markers across timeout.
     for (const listener of [...this.launchListeners]) listener(error);
     this.launchListeners.clear();
   }

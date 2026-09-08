@@ -167,7 +167,7 @@ describe("PtyProcess", () => {
       const launched = harness.ptyProcess.waitForLaunch();
 
       harness.data("password:");
-      assert.deepStrictEqual(chunks, []);
+      assert.deepStrictEqual(chunks, ["password:"]);
 
       await clock.tickAsync(1_000);
       await launched;
@@ -175,6 +175,73 @@ describe("PtyProcess", () => {
 
       harness.data(" ok");
       assert.deepStrictEqual(chunks, ["password:", " ok"]);
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it("confirms a quick exit after more than 64 KiB of startup output", async () => {
+    const harness = createHarness(sinon.stub(), LaunchNonce);
+    const launched = harness.ptyProcess.waitForLaunch();
+    const startupChunk = "x".repeat(4096);
+    for (let index = 0; index < 17; index++) harness.data(startupChunk);
+    harness.data(LaunchMarker.slice(0, 5));
+    harness.data(`${LaunchMarker.slice(5)}command completed`);
+    harness.exit(0);
+
+    await launched;
+    const subscription = harness.ptyProcess.subscribeWithReplay(() => {});
+    assert.strictEqual(
+      subscription.replay.join(""),
+      `${startupChunk.repeat(17)}command completed`,
+    );
+    subscription.disposable.dispose();
+  });
+
+  for (const startsBeforeTimeout of [false, true]) {
+    it(`strips a split marker starting ${startsBeforeTimeout ? "before" : "after"} the launch timeout`, async () => {
+      const clock = sinon.useFakeTimers();
+      try {
+        const harness = createHarness(sinon.stub(), LaunchNonce);
+        const chunks: string[] = [];
+        harness.ptyProcess.onData((data: string) => chunks.push(data));
+        const launched = harness.ptyProcess.waitForLaunch();
+        harness.data("startup output");
+        if (startsBeforeTimeout) harness.data(LaunchMarker.slice(0, 5));
+
+        await clock.tickAsync(1_000);
+        await launched;
+        assert.deepStrictEqual(chunks, ["startup output"]);
+
+        if (!startsBeforeTimeout) harness.data(LaunchMarker.slice(0, 5));
+        harness.data(`${LaunchMarker.slice(5)}command output`);
+        harness.exit(0);
+        assert.deepStrictEqual(chunks, ["startup output", "command output"]);
+        const subscription = harness.ptyProcess.subscribeWithReplay(() => {});
+        assert.deepStrictEqual(subscription.replay, chunks);
+        subscription.disposable.dispose();
+      } finally {
+        clock.restore();
+      }
+    });
+  }
+
+  it("flushes an incomplete marker before reporting exit after timeout", async () => {
+    const clock = sinon.useFakeTimers();
+    try {
+      const harness = createHarness(sinon.stub(), LaunchNonce);
+      const events: string[] = [];
+      harness.ptyProcess.onData((data: string) => events.push(data));
+      harness.ptyProcess.onExit(() => events.push("exit"));
+      const launched = harness.ptyProcess.waitForLaunch();
+      const partialMarker = LaunchMarker.slice(0, 5);
+      harness.data(partialMarker);
+      await clock.tickAsync(1_000);
+      await launched;
+      assert.deepStrictEqual(events, []);
+
+      harness.exit(0);
+      assert.deepStrictEqual(events, [partialMarker, "exit"]);
     } finally {
       clock.restore();
     }
