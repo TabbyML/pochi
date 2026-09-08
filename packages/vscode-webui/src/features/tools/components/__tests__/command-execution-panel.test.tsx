@@ -278,6 +278,12 @@ describe("BackgroundJobPanel job control", () => {
     expect(command?.classList.contains("truncate")).toBe(true);
     expect(command?.getAttribute("title")).toBe(longCommand);
     expect(command?.textContent).toBe(longCommand);
+    expect(command?.nextElementSibling?.classList.contains("size-3.5")).toBe(
+      true,
+    );
+    expect(command?.nextElementSibling?.childElementCount).toBe(0);
+    expect(container.querySelectorAll("svg")).toHaveLength(1);
+    expect(container.querySelector(".lucide-terminal")).not.toBeNull();
   });
 
   it("recovers the actual command when structured data contains a legacy ID", () => {
@@ -298,7 +304,7 @@ describe("BackgroundJobPanel job control", () => {
     expect(screen.queryByText("bgjob-cmd-legacy")).toBeNull();
   });
 
-  it("does not render a trailing status icon for a stopped notification", () => {
+  it("renders a trailing stopped icon while retaining the terminal icon", () => {
     jobInfo = undefined;
 
     const { container } = render(
@@ -311,11 +317,14 @@ describe("BackgroundJobPanel job control", () => {
       />,
     );
 
-    expect(container.querySelector(".lucide-octagon")).toBeNull();
+    expect(container.querySelector("code")?.nextElementSibling).toBe(
+      container.querySelector(".lucide-circle-slash")?.parentElement,
+    );
+    expect(container.querySelectorAll(".lucide-circle-slash")).toHaveLength(1);
     expect(container.querySelectorAll(".lucide-terminal")).toHaveLength(1);
   });
 
-  it("puts failure details in the notification row tooltip without a trailing icon", async () => {
+  it("shows a trailing failure icon with details in the notification row tooltip", async () => {
     jobInfo = undefined;
     const fullSummary =
       'Background command "bun run build" failed: dependency unavailable';
@@ -332,7 +341,12 @@ describe("BackgroundJobPanel job control", () => {
     );
 
     expect(screen.getByText("bun run build")).toBeDefined();
-    expect(container.querySelector(".lucide-triangle-alert")).toBeNull();
+    expect(container.querySelectorAll(".lucide-triangle-alert")).toHaveLength(
+      1,
+    );
+    expect(container.querySelector("code")?.nextElementSibling).toBe(
+      container.querySelector(".lucide-triangle-alert")?.parentElement,
+    );
     const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
     expect(screen.queryByText(fullSummary)).toBeNull();
 
