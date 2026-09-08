@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BackgroundTaskDetail,
   BackgroundTaskRow,
@@ -105,12 +105,19 @@ describe("BackgroundTaskDetail", () => {
     messageRows = [];
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("focuses the back button when the detail opens", () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+
     openTaskDetail();
 
     expect(document.activeElement).toBe(
       screen.getByLabelText("Back to the background job list"),
     );
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
   it("uses a single borderless scroll area that fills the remaining height", () => {

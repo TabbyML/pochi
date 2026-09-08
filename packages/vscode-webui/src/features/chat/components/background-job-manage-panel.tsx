@@ -28,7 +28,7 @@ import {
   ListIcon,
   XIcon,
 } from "lucide-react";
-import { Children, type ReactNode, useRef, useState } from "react";
+import { Children, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBackgroundJobList } from "../hooks/use-background-job-list";
 import type {
@@ -39,6 +39,7 @@ import {
   BackgroundTaskDetail,
   BackgroundTaskRow,
   BackgroundTasksLabel,
+  isBackgroundTaskRunning,
   useBackgroundTasks,
 } from "./background-task-debug-panel";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
@@ -50,16 +51,54 @@ export function BackgroundJobManagePanel({
   taskId: string;
   messages: Message[];
 }) {
-  const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
+
+  return isDevMode === true ? (
+    <DevManagePanel taskId={taskId} messages={messages} />
+  ) : (
+    <ManagePanel taskId={taskId} messages={messages} tasks={NoTasks} />
+  );
+}
+
+const NoTasks: readonly Task[] = [];
+
+/**
+ * Background tasks are only shown in dev mode, and hooks cannot be
+ * conditional, so their query lives in its own component.
+ */
+function DevManagePanel({
+  taskId,
+  messages,
+}: {
+  taskId: string;
+  messages: Message[];
+}) {
+  const tasks = useBackgroundTasks();
+
+  return <ManagePanel taskId={taskId} messages={messages} tasks={tasks} />;
+}
+
+function ManagePanel({
+  taskId,
+  messages,
+  tasks,
+}: {
+  taskId: string;
+  messages: Message[];
+  tasks: readonly Task[];
+}) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const cancelDetailOpenRef = useRef<() => void>(undefined);
   const backgroundJobs = useBackgroundJobList(taskId, messages);
 
-  const runningCount = backgroundJobs.filter(
-    (job) => job.status === "running",
-  ).length;
+  useEffect(() => () => cancelDetailOpenRef.current?.(), []);
+
+  const runningCount =
+    backgroundJobs.filter((job) => job.status === "running").length +
+    tasks.filter((task) => isBackgroundTaskRunning(task.status)).length;
 
   return (
     <Sheet
@@ -67,6 +106,7 @@ export function BackgroundJobManagePanel({
       onOpenChange={(open) => {
         setIsOpen(open);
         if (!open) {
+          cancelDetailOpenRef.current?.();
           setIsDetailOpen(false);
           setDetailTaskId(null);
         }
@@ -105,17 +145,19 @@ export function BackgroundJobManagePanel({
             inert={isDetailOpen}
             className="flex min-h-0 flex-1 flex-col"
           >
-            {isDevMode === true ? (
-              <DevPanelBody
-                backgroundJobs={backgroundJobs}
-                onSelectTask={(id) => {
-                  setDetailTaskId(id);
-                  setIsDetailOpen(true);
-                }}
-              />
-            ) : (
-              <PanelBody backgroundJobs={backgroundJobs} tasks={NoTasks} />
-            )}
+            <PanelBody
+              backgroundJobs={backgroundJobs}
+              tasks={tasks}
+              onSelectTask={(id) => {
+                cancelDetailOpenRef.current?.();
+                setDetailTaskId(id);
+                // A detail paints its thread a frame late, so sliding right
+                // away animates a blank panel and stalls on that render.
+                cancelDetailOpenRef.current = afterNextPaint(() =>
+                  setIsDetailOpen(true),
+                );
+              }}
+            />
           </div>
           <div
             data-testid="background-task-layer"
@@ -130,7 +172,10 @@ export function BackgroundJobManagePanel({
               <BackgroundTaskDetail
                 taskId={detailTaskId}
                 isOpen={isDetailOpen}
-                onBack={() => setIsDetailOpen(false)}
+                onBack={() => {
+                  cancelDetailOpenRef.current?.();
+                  setIsDetailOpen(false);
+                }}
               />
             )}
           </div>
@@ -140,28 +185,11 @@ export function BackgroundJobManagePanel({
   );
 }
 
-const NoTasks: readonly Task[] = [];
-
-/**
- * Background tasks are only shown in dev mode, and hooks cannot be
- * conditional, so their query lives in its own component.
- */
-function DevPanelBody({
-  backgroundJobs,
-  onSelectTask,
-}: {
-  backgroundJobs: BackgroundJobEntry[];
-  onSelectTask: (taskId: string) => void;
-}) {
-  const tasks = useBackgroundTasks();
-
-  return (
-    <PanelBody
-      backgroundJobs={backgroundJobs}
-      tasks={tasks}
-      onSelectTask={onSelectTask}
-    />
-  );
+function afterNextPaint(callback: () => void) {
+  let frame = requestAnimationFrame(() => {
+    frame = requestAnimationFrame(callback);
+  });
+  return () => cancelAnimationFrame(frame);
 }
 
 function PanelBody({
@@ -171,7 +199,7 @@ function PanelBody({
 }: {
   backgroundJobs: BackgroundJobEntry[];
   tasks: readonly Task[];
-  onSelectTask?: (taskId: string) => void;
+  onSelectTask: (taskId: string) => void;
 }) {
   const { t } = useTranslation();
   const commands = useRunningFirst(backgroundJobs);
@@ -202,7 +230,7 @@ function PanelBody({
               <li key={task.id}>
                 <BackgroundTaskRow
                   task={task}
-                  onSelect={() => onSelectTask?.(task.id)}
+                  onSelect={() => onSelectTask(task.id)}
                 />
               </li>
             ))}
