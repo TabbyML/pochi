@@ -1,6 +1,14 @@
 import * as vscode from "vscode";
 import type { PtyProcess } from "./pty-process";
 
+/**
+ * Display-only echo of the command, mirroring the `$ <command>` line that
+ * starts the persisted log. The pty runs the command non-interactively, so
+ * without this the terminal shows nothing until the command writes output.
+ */
+export const buildCommandBanner = (command: string) =>
+  `\u001b[1m$ ${command.replace(/\r?\n/g, "\r\n")}\u001b[0m\r\n`;
+
 export class PtyTerminal implements vscode.Pseudoterminal, vscode.Disposable {
   private readonly writeEmitter = new vscode.EventEmitter<string>();
   private readonly closeEmitter = new vscode.EventEmitter<number | undefined>();
@@ -16,6 +24,7 @@ export class PtyTerminal implements vscode.Pseudoterminal, vscode.Disposable {
   constructor(
     private readonly ptyProcess: PtyProcess,
     private readonly onCloseRequested: () => void,
+    command?: string,
   ) {
     const subscription = ptyProcess.subscribeWithReplay((data) => {
       if (this.opened) {
@@ -25,6 +34,7 @@ export class PtyTerminal implements vscode.Pseudoterminal, vscode.Disposable {
       }
     });
     this.pendingOutput.unshift(...subscription.replay);
+    if (command) this.pendingOutput.unshift(buildCommandBanner(command));
     this.disposables.push(subscription.disposable);
     this.disposables.push(
       ptyProcess.onExit(({ exitCode }) => {

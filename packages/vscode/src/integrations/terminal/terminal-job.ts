@@ -110,7 +110,9 @@ export class TerminalJob implements vscode.Disposable {
         command: config.command,
       });
       TerminalJob.jobs.set(this.id, this);
-      this.enqueueFileOutput(`$ ${config.command}\n`, false);
+      // The echoed command is part of the readable output so the in-memory
+      // manager stays consistent with the persisted log file.
+      this.enqueueOutput(`$ ${config.command}\n`);
       if (ptyProcess) {
         this.initializePtyTerminal(ptyProcess);
       } else {
@@ -254,9 +256,13 @@ export class TerminalJob implements vscode.Disposable {
 
   private createPtyTerminalView(): void {
     if (!this.ptyProcess || this.terminal) return;
-    const ptyTerminal = new PtyTerminal(this.ptyProcess, () => {
-      this.detachPtyTerminalView(ptyTerminal);
-    });
+    const ptyTerminal = new PtyTerminal(
+      this.ptyProcess,
+      () => {
+        this.detachPtyTerminalView(ptyTerminal);
+      },
+      this.config.command,
+    );
     this.ptyTerminal = ptyTerminal;
     try {
       this.terminal = createTerminal({
@@ -487,16 +493,16 @@ export class TerminalJob implements vscode.Disposable {
       text.length - trailingTerminalSuffix.length,
     );
     this.pendingTerminalSuffix = trailingTerminalSuffix;
-    this.enqueueFileOutput(completeText, true);
+    this.enqueueOutput(completeText);
   }
 
-  private enqueueFileOutput(text: string, addToManager: boolean): void {
+  private enqueueOutput(text: string): void {
     if (text.length === 0 || this.persistenceError) return;
     this.pendingOutputCharacters += text.length;
     this.updatePtyOutputFlowControl();
     const write = this.outputQueue.then(async () => {
       await this.outputWriter.append(text);
-      if (addToManager) this.outputManager.addChunk(text);
+      this.outputManager.addChunk(text);
     });
     this.outputQueue = write
       .catch((error) => {
@@ -572,7 +578,7 @@ export class TerminalJob implements vscode.Disposable {
           ? this.pendingTerminalSuffix.replace(/\uFFFD+/gu, "")
           : this.pendingTerminalSuffix;
       this.pendingTerminalSuffix = "";
-      this.enqueueFileOutput(finalSuffix, true);
+      this.enqueueOutput(finalSuffix);
     }
     await this.outputQueue;
     executionError ??= this.persistenceError;
