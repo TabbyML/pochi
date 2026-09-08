@@ -1,5 +1,6 @@
 import type {
   AutoMemoryTaskState,
+  BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   MaybePromise,
@@ -24,6 +25,7 @@ import {
   type ChatInit,
   type ChatOnErrorCallback,
   type ChatOnFinishCallback,
+  type ChatRequestOptions,
   getToolName,
   isToolUIPart,
 } from "ai";
@@ -46,6 +48,7 @@ import {
 } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
+import { isAwaitingFollowupAnswer } from "../task-utils";
 import type { LiveKitStore, Message, Task } from "../types";
 import {
   MaxConsecutiveAutoCompactFailures,
@@ -53,6 +56,13 @@ import {
   shouldAutoCompact,
 } from "./auto-compact-policy";
 import { scheduleGenerateTitleJob } from "./background-job";
+import {
+  type BackgroundJobNotificationPart,
+  attachBackgroundJobNotificationParts,
+  createBackgroundJobNotificationMessage,
+  getBackgroundJobNotificationIds,
+  toBackgroundJobNotificationParts,
+} from "./background-job-notification";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
   type FinishedRequestSnapshot,
@@ -294,6 +304,20 @@ async function runSideEffectSafely({
   }
 }
 
+export type LiveChatKitBackgroundJobNotificationOptions = {
+  /**
+   * Starts a turn carrying nothing but the given notifications. Defaults to
+   * sending the message on the kit's own chat; hosts that drive their own step
+   * loop (the CLI) append it instead and let the loop send it.
+   */
+  startTurn?: (message: Message) => MaybePromise<void>;
+  /**
+   * Called whenever the set of notifications waiting to be delivered changes,
+   * so a host can render them.
+   */
+  onPendingChange?: (parts: BackgroundJobNotificationPart[]) => void;
+};
+
 export type LiveChatKitOptions<T> = {
   taskId: string;
 
@@ -343,6 +367,13 @@ export type LiveChatKitOptions<T> = {
 
   backgroundTask?: LiveChatKitBackgroundTaskOptions;
 
+  /**
+   * Delivery of finished background job notifications. The host pushes them in
+   * with `enqueueBackgroundJobNotifications`; the kit owns the pending set and
+   * when it reaches the model.
+   */
+  backgroundJobNotifications?: LiveChatKitBackgroundJobNotificationOptions;
+
   taskMemory?: LiveChatKitTaskMemoryOptions;
 
   projectMemory?: LiveChatKitProjectMemoryOptions;
@@ -374,6 +405,10 @@ export class LiveChatKit<
   T extends {
     messages: Message[];
     stop: () => Promise<void>;
+    sendMessage: (
+      message: { parts: Message["parts"] },
+      options?: ChatRequestOptions,
+    ) => Promise<void>;
   },
 > {
   protected readonly taskId: string;
@@ -388,6 +423,11 @@ export class LiveChatKit<
     | undefined;
   private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
   private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
+  private readonly backgroundJobNotifications:
+    | LiveChatKitBackgroundJobNotificationOptions
+    | undefined;
+  private pendingBackgroundJobNotificationParts: BackgroundJobNotificationPart[] =
+    [];
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private backgroundTasksStarted = false;
@@ -430,6 +470,7 @@ export class LiveChatKit<
     onCompactFinish,
     getRecentFilesForCompact,
     backgroundTask,
+    backgroundJobNotifications,
     taskMemory,
     projectMemory,
     systemPromptOverride,
@@ -439,6 +480,7 @@ export class LiveChatKit<
     this.store = store;
     this.blobStore = blobStore;
     this.getters = getters;
+    this.backgroundJobNotifications = backgroundJobNotifications;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
     this.backgroundTaskAdaptor = backgroundTask?.adaptor;
@@ -664,6 +706,10 @@ export class LiveChatKit<
           },
         });
       }
+
+      // Last, so the notifications are not swallowed by a compaction and are
+      // part of the snapshot this request sends and persists.
+      this.attachPendingBackgroundJobNotifications();
     };
 
     this.compact = async () => {
@@ -779,6 +825,107 @@ export class LiveChatKit<
   get latestSystemPrompt(): string | undefined {
     return this.latestRequestSnapshot?.systemPrompt;
   }
+
+  /** The notifications waiting to be delivered to the model. */
+  get pendingBackgroundJobNotifications(): readonly BackgroundJobNotificationPart[] {
+    return this.pendingBackgroundJobNotificationParts;
+  }
+
+  /**
+   * Hands finished background jobs to the kit. They are delivered with the
+   * next request that goes out anyway, or by `flushBackgroundJobNotifications`
+   * when the agent has nothing left to do.
+   *
+   * Notifications already pending or already part of the conversation are
+   * ignored, so a host may keep pushing the same ones until it observes them
+   * delivered.
+   */
+  enqueueBackgroundJobNotifications = (
+    notifications: readonly BackgroundJobNotification[],
+  ): void => {
+    const known = new Set([
+      ...this.chat.messages.flatMap((message) =>
+        getBackgroundJobNotificationIds(message.parts),
+      ),
+      ...this.pendingBackgroundJobNotificationParts.map(
+        (part) => part.data.notificationId,
+      ),
+    ]);
+    const added = toBackgroundJobNotificationParts(notifications).filter(
+      (part) => {
+        if (known.has(part.data.notificationId)) return false;
+        known.add(part.data.notificationId);
+        return true;
+      },
+    );
+    if (added.length === 0) return;
+
+    this.setPendingBackgroundJobNotifications([
+      ...this.pendingBackgroundJobNotificationParts,
+      ...added,
+    ]);
+  };
+
+  private setPendingBackgroundJobNotifications(
+    parts: BackgroundJobNotificationPart[],
+  ) {
+    this.pendingBackgroundJobNotificationParts = parts;
+    try {
+      this.backgroundJobNotifications?.onPendingChange?.(parts);
+    } catch (err) {
+      logger.warn("onPendingChange callback threw", err);
+    }
+  }
+
+  private takePendingBackgroundJobNotifications() {
+    const parts = this.pendingBackgroundJobNotificationParts;
+    if (parts.length > 0) {
+      this.setPendingBackgroundJobNotifications([]);
+    }
+    return parts;
+  }
+
+  /**
+   * Rides the pending notifications along with the request that is about to
+   * go out, so a finished background job reaches the model without costing a
+   * turn of its own.
+   */
+  private attachPendingBackgroundJobNotifications() {
+    if (this.pendingBackgroundJobNotificationParts.length === 0) return;
+
+    const messages = attachBackgroundJobNotificationParts(
+      this.chat.messages,
+      this.takePendingBackgroundJobNotifications(),
+    );
+    if (messages) {
+      this.chat.messages = messages;
+    }
+  }
+
+  /**
+   * Delivers pending notifications when no request is going to carry them,
+   * for instance once the agent has stopped.
+   *
+   * @returns true when a turn was started for them.
+   */
+  flushBackgroundJobNotifications = (): boolean => {
+    if (this.pendingBackgroundJobNotificationParts.length === 0) return false;
+
+    // An unanswered follow-up question owns this turn: a notification sent now
+    // would answer in the user's place and hide the question.
+    if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return false;
+
+    const message = createBackgroundJobNotificationMessage(
+      this.takePendingBackgroundJobNotifications(),
+    );
+    const startTurn = this.backgroundJobNotifications?.startTurn;
+    if (startTurn) {
+      void startTurn(message);
+    } else {
+      void this.chat.sendMessage({ parts: message.parts });
+    }
+    return true;
+  };
 
   updateIsPublicShared = (isPublicShared: boolean) => {
     this.store.commit(

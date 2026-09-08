@@ -1,5 +1,9 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
-import type { Message, Task } from "@getpochi/livekit";
+import type {
+  BackgroundJobNotificationPart,
+  Message,
+  Task,
+} from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 // @vitest-environment jsdom
 import { act, render, screen } from "@testing-library/react";
@@ -7,14 +11,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatToolbar } from "./chat-toolbar";
 
 const chatSubmitMocks = vi.hoisted(() => {
-  const sendQueuedMessage = vi.fn(() => Promise.resolve(true));
+  const handleSteerQueuedMessage = vi.fn();
+  const handleSteerBackgroundJobNotifications = vi.fn();
   const setQueuedMessages = {
     current: undefined as
       | React.Dispatch<React.SetStateAction<unknown[]>>
       | undefined,
   };
   return {
-    sendQueuedMessage,
+    handleSteerQueuedMessage,
+    handleSteerBackgroundJobNotifications,
     setQueuedMessages,
     useChatSubmit: vi.fn((props: { setQueuedMessages: unknown }) => {
       setQueuedMessages.current = props.setQueuedMessages as React.Dispatch<
@@ -23,16 +29,23 @@ const chatSubmitMocks = vi.hoisted(() => {
       return {
         handleSubmit: vi.fn(),
         handleSteerSubmit: vi.fn(),
-        handleSteerQueuedMessage: vi.fn(),
+        handleSteerQueuedMessage,
+        handleSteerBackgroundJobNotifications,
         handleStop: vi.fn(),
-        sendQueuedMessage,
       };
     }),
   };
 });
-const backgroundJobMocks = vi.hoisted(() => ({
-  notifications: [] as unknown[],
-  acknowledge: vi.fn(() => Promise.resolve()),
+const chatInputFormMocks = vi.hoisted(() => ({
+  props: undefined as
+    | {
+        queuedMessages?: {
+          parts: unknown[];
+          raw: { nonRemovable?: boolean };
+        }[];
+        onSteerQueuedMessage?: (index: number) => void;
+      }
+    | undefined,
 }));
 const userEditsMocks = vi.hoisted(() => ({
   userEdits: [] as Array<{
@@ -123,12 +136,6 @@ vi.mock("@/features/todo", async (importOriginal) => {
 vi.mock("@/lib/hooks/use-add-complete-tool-calls", () => ({
   useAddCompleteToolCalls: () => undefined,
 }));
-vi.mock("@/lib/hooks/use-background-job-notifications", () => ({
-  useBackgroundJobNotifications: () => ({
-    notifications: backgroundJobMocks.notifications,
-    acknowledge: backgroundJobMocks.acknowledge,
-  }),
-}));
 vi.mock("@/lib/hooks/use-custom-agents", () => ({
   useCustomAgents: () => ({ customAgents: [], isLoading: false }),
 }));
@@ -188,9 +195,13 @@ vi.mock("../hooks/use-subtask-completed", () => ({
   useShowCompleteSubtaskButton: () => false,
 }));
 vi.mock("./chat-input-form", () => ({
-  ChatInputForm: ({ children }: { children: React.ReactNode }) => (
-    <form>{children}</form>
-  ),
+  ChatInputForm: ({
+    children,
+    ...props
+  }: { children: React.ReactNode } & Record<string, unknown>) => {
+    chatInputFormMocks.props = props;
+    return <form>{children}</form>;
+  },
 }));
 vi.mock("./error-message-view", () => ({
   ErrorMessageView: () => null,
@@ -212,16 +223,26 @@ const auditTodo: Todo = {
   priority: "medium",
 };
 
+interface RenderToolbarOptions {
+  messages?: Message[];
+  flushBackgroundJobNotifications?: () => boolean;
+  pendingBackgroundJobNotifications?: BackgroundJobNotificationPart[];
+}
+
 function renderToolbar(
   isSubTask: boolean,
   lastCheckpointHash?: string,
-  deliverBackgroundJobNotificationsRef?: React.RefObject<() => boolean>,
+  {
+    messages = [],
+    flushBackgroundJobNotifications,
+    pendingBackgroundJobNotifications,
+  }: RenderToolbarOptions = {},
 ) {
   render(
     <ChatToolbar
       chat={
         {
-          messages: [] as Message[],
+          messages,
           sendMessage: vi.fn(),
           addToolOutput: vi.fn(),
           status: "ready",
@@ -256,11 +277,19 @@ function renderToolbar(
       todoPaused={false}
       onTodoPausedChange={vi.fn()}
       taskId="task-1"
-      deliverBackgroundJobNotificationsRef={
-        deliverBackgroundJobNotificationsRef
-      }
+      flushBackgroundJobNotifications={flushBackgroundJobNotifications}
+      pendingBackgroundJobNotifications={pendingBackgroundJobNotifications}
     />,
   );
+}
+
+function notificationPart(
+  backgroundJobId: string,
+): BackgroundJobNotificationPart {
+  return {
+    type: "data-background-job-notification",
+    data: notification(backgroundJobId),
+  };
 }
 
 function notification(backgroundJobId: string): BackgroundJobNotification {
@@ -276,13 +305,36 @@ function notification(backgroundJobId: string): BackgroundJobNotification {
   };
 }
 
+function pendingFollowupQuestionMessages(
+  state: "input-available" | "output-available",
+): Message[] {
+  return [
+    {
+      id: "message-1",
+      role: "assistant",
+      parts: [
+        { type: "step-start" },
+        {
+          type: "tool-askFollowupQuestion",
+          toolCallId: "call-1",
+          state,
+          input: { questions: [] },
+          ...(state === "output-available"
+            ? { output: { success: true } }
+            : {}),
+        },
+      ],
+    } as unknown as Message,
+  ];
+}
+
 describe("ChatToolbar", () => {
   beforeEach(() => {
     chatSubmitMocks.useChatSubmit.mockClear();
-    chatSubmitMocks.sendQueuedMessage.mockClear();
+    chatSubmitMocks.handleSteerQueuedMessage.mockClear();
+    chatSubmitMocks.handleSteerBackgroundJobNotifications.mockClear();
     chatSubmitMocks.setQueuedMessages.current = undefined;
-    backgroundJobMocks.notifications = [];
-    backgroundJobMocks.acknowledge.mockClear();
+    chatInputFormMocks.props = undefined;
     userEditsMocks.userEdits = [];
   });
 
@@ -350,50 +402,46 @@ describe("ChatToolbar", () => {
   });
 
   describe("background job notification delivery", () => {
-    it("sends a queued notification instead of a plain continuation", async () => {
-      backgroundJobMocks.notifications = [notification("bgjob-cmd-1")];
-      const deliverRef: React.RefObject<() => boolean> = {
-        current: () => false,
-      };
+    it("asks the chat kit to deliver a pending notification once idle", async () => {
+      const flushBackgroundJobNotifications = vi.fn(() => true);
 
-      renderToolbar(false, undefined, deliverRef);
-
-      let delivered: boolean | undefined;
       await act(async () => {
-        delivered = deliverRef.current();
+        renderToolbar(false, undefined, {
+          flushBackgroundJobNotifications,
+          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
+        });
       });
 
-      expect(delivered).toBe(true);
-      // The guard is kept so an intentional manual approval mode is not
-      // silently turned into auto approve by a notification.
-      expect(chatSubmitMocks.sendQueuedMessage).toHaveBeenCalledWith(0, {
-        keepAutoApproveGuard: true,
-      });
+      expect(flushBackgroundJobNotifications).toHaveBeenCalled();
+      // Notifications are never sent as a steered user message: the kit
+      // decides when they may take a turn of their own.
+      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
     });
 
-    it("delivers nothing when no notification is queued", async () => {
-      const deliverRef: React.RefObject<() => boolean> = {
-        current: () => false,
-      };
+    it("leaves a follow-up question to the chat kit", async () => {
+      const flushBackgroundJobNotifications = vi.fn(() => false);
 
-      renderToolbar(false, undefined, deliverRef);
-
-      let delivered: boolean | undefined;
       await act(async () => {
-        delivered = deliverRef.current();
+        renderToolbar(false, undefined, {
+          messages: pendingFollowupQuestionMessages("input-available"),
+          flushBackgroundJobNotifications,
+          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
+        });
       });
 
-      expect(delivered).toBe(false);
-      expect(chatSubmitMocks.sendQueuedMessage).not.toHaveBeenCalled();
+      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
     });
 
-    it("delivers nothing while a queued user message is ahead of the notification", async () => {
-      backgroundJobMocks.notifications = [notification("bgjob-cmd-1")];
-      const deliverRef: React.RefObject<() => boolean> = {
-        current: () => false,
-      };
+    it("auto dequeues a queued user message ahead of the notification", async () => {
+      const flushBackgroundJobNotifications = vi.fn(() => true);
 
-      renderToolbar(false, undefined, deliverRef);
+      await act(async () => {
+        renderToolbar(false, undefined, {
+          flushBackgroundJobNotifications,
+          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
+        });
+      });
+      flushBackgroundJobNotifications.mockClear();
 
       await act(async () => {
         chatSubmitMocks.setQueuedMessages.current?.((current) => [
@@ -402,33 +450,49 @@ describe("ChatToolbar", () => {
         ]);
       });
 
-      let delivered: boolean | undefined;
-      await act(async () => {
-        delivered = deliverRef.current();
-      });
-
-      expect(delivered).toBe(false);
-      expect(chatSubmitMocks.sendQueuedMessage).not.toHaveBeenCalled();
+      expect(chatSubmitMocks.handleSteerQueuedMessage).toHaveBeenCalledWith(0);
+      expect(flushBackgroundJobNotifications).not.toHaveBeenCalled();
     });
 
-    it("does not send the same notification twice when the decision is evaluated again", async () => {
-      backgroundJobMocks.notifications = [notification("bgjob-cmd-1")];
-      const deliverRef: React.RefObject<() => boolean> = {
-        current: () => false,
-      };
-
-      renderToolbar(false, undefined, deliverRef);
-
-      let second: boolean | undefined;
+    it("shows the pending notifications after the queued user messages", async () => {
       await act(async () => {
-        deliverRef.current();
-        second = deliverRef.current();
+        renderToolbar(false, undefined, {
+          flushBackgroundJobNotifications: () => false,
+          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
+        });
       });
 
-      // Still true: the pending delivery starts the next request, so the caller
-      // must not start a plain continuation on top of it.
-      expect(second).toBe(true);
-      expect(chatSubmitMocks.sendQueuedMessage).toHaveBeenCalledOnce();
+      await act(async () => {
+        chatSubmitMocks.setQueuedMessages.current?.((current) => [
+          { parts: [{ type: "text", text: "hello" }], raw: { text: "hello" } },
+          ...current,
+        ]);
+      });
+
+      const queuedMessages = chatInputFormMocks.props?.queuedMessages ?? [];
+      expect(queuedMessages).toHaveLength(2);
+      expect(queuedMessages[1].parts).toEqual([
+        notificationPart("bgjob-cmd-1"),
+      ]);
+      expect(queuedMessages[1].raw.nonRemovable).toBe(true);
+    });
+
+    it("steers the notification entry through the chat kit", async () => {
+      await act(async () => {
+        renderToolbar(false, undefined, {
+          flushBackgroundJobNotifications: () => false,
+          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
+        });
+      });
+
+      await act(async () => {
+        chatInputFormMocks.props?.onSteerQueuedMessage?.(0);
+      });
+
+      expect(
+        chatSubmitMocks.handleSteerBackgroundJobNotifications,
+      ).toHaveBeenCalled();
+      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
     });
   });
 });
