@@ -13,7 +13,7 @@ const copyToClipboard = vi.fn();
 let backgroundJobs: BackgroundJobEntry[] = [];
 let backgroundCommands: Record<string, { isVisible: boolean }> | undefined = {};
 let isDevMode = false;
-let backgroundTasks: Array<{ id: string; title: string }> = [];
+let backgroundTasks: Array<{ id: string; title: string; status?: string }> = [];
 
 // Radix positions the tooltip with one, and jsdom has none.
 vi.stubGlobal(
@@ -67,6 +67,8 @@ vi.mock("@/features/settings", () => ({
 vi.mock("./background-task-debug-panel", () => ({
   BackgroundTasksLabel: "Background tasks",
   useBackgroundTasks: () => backgroundTasks,
+  isBackgroundTaskRunning: (status: string) =>
+    status === "pending-model" || status === "pending-tool",
   BackgroundTaskRow: ({
     task,
     onSelect,
@@ -501,6 +503,37 @@ describe("BackgroundJobManagePanel", () => {
     expect(screen.getByText("Background tasks")).toBeDefined();
     expect(screen.getByText("A background task")).toBeDefined();
     expect(screen.queryByText("managePanel.empty")).toBeNull();
+  });
+
+  it("counts running background tasks into the badge in dev mode", () => {
+    isDevMode = true;
+    backgroundJobs = [runningJob];
+    backgroundTasks = [
+      { id: "task-1", title: "A running task", status: "pending-tool" },
+      { id: "task-2", title: "A finished task", status: "completed" },
+    ];
+
+    renderBackgroundJobManagePanel();
+
+    expect(
+      screen
+        .getByTestId("background-job-manage-panel-toggle")
+        .querySelector(".bg-blue-500")?.textContent,
+    ).toBe("2");
+  });
+
+  it("leaves running background tasks out of the badge outside dev mode", () => {
+    backgroundTasks = [
+      { id: "task-1", title: "A running task", status: "pending-tool" },
+    ];
+
+    renderBackgroundJobManagePanel();
+
+    expect(
+      screen
+        .getByTestId("background-job-manage-panel-toggle")
+        .querySelector(".bg-blue-500"),
+    ).toBeNull();
   });
 
   it("takes the drawer to a task and back again", () => {
