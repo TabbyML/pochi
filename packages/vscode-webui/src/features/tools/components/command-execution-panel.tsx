@@ -19,10 +19,12 @@ import {
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
   CircleCheck,
+  CircleSlash,
   CircleStop,
   CopyIcon,
   FileText,
   TerminalIcon,
+  TriangleAlert,
   XCircle,
 } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
@@ -339,6 +341,24 @@ export const BackgroundJobPanel: FC<{
         >
           {resolvedCommand ?? backgroundJobId}
         </code>
+        <span
+          className="inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/75"
+          aria-hidden="true"
+        >
+          {status === "failed" && (
+            <TriangleAlert
+              className="size-3.5"
+              style={{
+                color:
+                  "color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground) 55%, var(--muted-foreground))",
+              }}
+              strokeWidth={1.5}
+            />
+          )}
+          {status === "stopped" && (
+            <CircleSlash className="size-3.5" strokeWidth={1.5} />
+          )}
+        </span>
       </>
     );
     const notificationRow = outputFile ? (
