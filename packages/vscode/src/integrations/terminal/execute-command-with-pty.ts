@@ -30,7 +30,12 @@ export const executeCommandWithPty = async ({
   onData,
   envs,
 }: ExecuteCommandOptions): Promise<PtyCommandResult> => {
-  const ptyProcess = await PtyProcess.spawn({ command, cwd, envs });
+  const ptyProcess = await PtyProcess.spawn({
+    command,
+    cwd,
+    envs,
+    abortSignal,
+  });
 
   return new Promise<PtyCommandResult>((resolve, reject) => {
     let output = "";

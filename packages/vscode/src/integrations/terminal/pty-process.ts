@@ -9,6 +9,7 @@ import {
 } from "@getpochi/common/tool-utils";
 import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
+import { ExecutionError } from "./utils";
 
 const logger = getLogger("PtyProcess");
 const TerminationGraceMs = 2_000;
@@ -30,6 +31,7 @@ export interface PtyProcessOptions {
   command: string;
   cwd: string;
   envs?: Record<string, string>;
+  abortSignal?: AbortSignal;
 }
 
 export interface PtyProcessExit {
@@ -135,9 +137,9 @@ export class PtyProcess {
   private hardKillExitTimer: ReturnType<typeof setTimeout> | undefined;
   private terminationRequested = false;
   private readonly launchFilter: LaunchMarkerFilter | undefined;
-  private readonly launchListeners = new Set<(error?: PtySpawnError) => void>();
+  private readonly launchListeners = new Set<(error?: Error) => void>();
   private launchSettled = false;
-  private launchError: PtySpawnError | undefined;
+  private launchError: Error | undefined;
   private launchOutput = "";
 
   private constructor(
@@ -178,7 +180,8 @@ export class PtyProcess {
     });
   }
 
-  static async spawn({ command, cwd, envs }: PtyProcessOptions) {
+  static async spawn({ command, cwd, envs, abortSignal }: PtyProcessOptions) {
+    if (abortSignal?.aborted) throw ExecutionError.createAbortError();
     const shellCommand = buildPtyShellCommand(command);
     if (!shellCommand) {
       throw new PtySpawnError("Failed to get shell.");
@@ -211,8 +214,24 @@ export class PtyProcess {
       throw new PtySpawnError(error);
     }
 
-    await ptyProcess.waitForLaunch();
-    return ptyProcess;
+    const onAbort = () => {
+      // Settle before killing: a resulting exit must not become a spawn error
+      // that retries the cancelled command through a fallback.
+      ptyProcess.settleLaunch(ExecutionError.createAbortError());
+      ptyProcess.kill();
+    };
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      if (abortSignal?.aborted) onAbort();
+      await ptyProcess.waitForLaunch();
+      if (abortSignal?.aborted) throw ExecutionError.createAbortError();
+      return ptyProcess;
+    } catch (error) {
+      if (abortSignal?.aborted) throw ExecutionError.createAbortError();
+      throw error;
+    } finally {
+      abortSignal?.removeEventListener("abort", onAbort);
+    }
   }
 
   /**
@@ -230,7 +249,7 @@ export class PtyProcess {
 
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => this.settleLaunch(), timeoutMs);
-      const listener = (error?: PtySpawnError) => {
+      const listener = (error?: Error) => {
         clearTimeout(timer);
         if (error) reject(error);
         else resolve();
@@ -239,7 +258,7 @@ export class PtyProcess {
     });
   }
 
-  private settleLaunch(error?: PtySpawnError): void {
+  private settleLaunch(error?: Error): void {
     if (this.launchSettled) return;
     this.launchSettled = true;
     this.launchError = error;

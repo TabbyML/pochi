@@ -25,10 +25,12 @@ function createHarness(kill = sinon.stub(), launchNonce?: string) {
     resize: sinon.stub(),
     kill,
   };
+  const spawn = sinon.stub().returns(fakePty);
   const { PtyProcess } = proxyquire
     .noCallThru()
     .noPreserveCache()
     .load("../pty-process", {
+      "node:module": { createRequire: () => () => ({ spawn }) },
       vscode: {
         env: { appRoot: "/app" },
         Uri: {
@@ -55,6 +57,8 @@ function createHarness(kill = sinon.stub(), launchNonce?: string) {
     exit: (exitCode: number) => exitListener?.({ exitCode }),
     kill,
     ptyProcess,
+    spawn,
+    spawnProcess: PtyProcess.spawn,
   };
 }
 
@@ -62,6 +66,57 @@ const LaunchNonce = "0123456789abcdef";
 const LaunchMarker = `\u001b]6339;${LaunchNonce}\u0007`;
 
 describe("PtyProcess", () => {
+  it("does not spawn an already cancelled command", async () => {
+    const harness = createHarness();
+    const controller = new AbortController();
+    controller.abort();
+
+    await assert.rejects(
+      harness.spawnProcess({
+        command: "echo hello",
+        cwd: "/tmp",
+        abortSignal: controller.signal,
+      }),
+      { name: "ExecutionError", aborted: true },
+    );
+    assert.strictEqual(harness.spawn.callCount, 0);
+  });
+
+  it("kills immediately during launch and rejects cancellation without a spawn error", async () => {
+    const clock = sinon.useFakeTimers();
+    const originalShell = process.env.SHELL;
+    process.env.SHELL = "/bin/bash";
+    try {
+      const harness = createHarness();
+      const controller = new AbortController();
+      const removeListener = sinon.spy(
+        controller.signal,
+        "removeEventListener",
+      );
+      const launched = harness.spawnProcess({
+        command: "echo hello",
+        cwd: "/tmp",
+        abortSignal: controller.signal,
+      });
+      const rejected = assert.rejects(launched, {
+        name: "ExecutionError",
+        aborted: true,
+      });
+      // Exercise synchronous exit delivery during kill as well as cancellation.
+      harness.kill.callsFake(() => harness.exit(143));
+      controller.abort();
+      assert.deepStrictEqual(harness.kill.args, [["SIGTERM"]]);
+      await rejected;
+      assert.ok(removeListener.calledOnce);
+      await clock.tickAsync(3_000);
+      assert.strictEqual(harness.kill.callCount, 1);
+    } finally {
+      if (originalShell === undefined) delete process.env.SHELL;
+      else process.env.SHELL = originalShell;
+      clock.restore();
+    }
+  });
+
   it("reports exit after node-pty delivers output preceding socket close", () => {
     const harness = createHarness();
     const events: string[] = [];
