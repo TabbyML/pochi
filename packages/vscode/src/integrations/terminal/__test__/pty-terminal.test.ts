@@ -68,6 +68,52 @@ describe("PtyTerminal", () => {
     assert.strictEqual(onCloseRequested.callCount, 0);
   });
 
+  it("echoes the command before replayed output", () => {
+    const ptyProcess = {
+      subscribeWithReplay: () => ({
+        replay: ["before timeout\n"],
+        disposable: { dispose: sinon.stub() },
+      }),
+      onExit: () => ({ dispose: sinon.stub() }),
+      write: sinon.stub(),
+      resize: sinon.stub(),
+    };
+    const { PtyTerminal } = proxyquire
+      .noCallThru()
+      .noPreserveCache()
+      .load("../pty-terminal", {
+        vscode: { EventEmitter: TestEventEmitter },
+      }) as typeof import("../pty-terminal");
+    const terminal = new PtyTerminal(
+      ptyProcess as never,
+      sinon.stub(),
+      "sleep 100",
+    );
+    const output: string[] = [];
+    terminal.onDidWrite((data) => output.push(data));
+
+    terminal.open();
+
+    assert.deepStrictEqual(output, [
+      "\u001b[1m$ sleep 100\u001b[0m\r\n",
+      "before timeout\n",
+    ]);
+  });
+
+  it("renders multi-line commands with terminal line endings", () => {
+    const { buildCommandBanner } = proxyquire
+      .noCallThru()
+      .noPreserveCache()
+      .load("../pty-terminal", {
+        vscode: { EventEmitter: TestEventEmitter },
+      }) as typeof import("../pty-terminal");
+
+    assert.strictEqual(
+      buildCommandBanner("echo one\necho two"),
+      "\u001b[1m$ echo one\r\necho two\u001b[0m\r\n",
+    );
+  });
+
   it("detaches without stopping the underlying process", () => {
     const onCloseRequested = sinon.stub();
     const dataSubscription = { dispose: sinon.stub() };
