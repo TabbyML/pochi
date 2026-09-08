@@ -28,7 +28,7 @@ import {
   ListIcon,
   XIcon,
 } from "lucide-react";
-import { Children, type ReactNode, useRef, useState } from "react";
+import { Children, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBackgroundJobList } from "../hooks/use-background-job-list";
 import type {
@@ -91,7 +91,10 @@ function ManagePanel({
   const [isOpen, setIsOpen] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const cancelDetailOpenRef = useRef<() => void>(undefined);
   const backgroundJobs = useBackgroundJobList(taskId, messages);
+
+  useEffect(() => () => cancelDetailOpenRef.current?.(), []);
 
   const runningCount =
     backgroundJobs.filter((job) => job.status === "running").length +
@@ -103,6 +106,7 @@ function ManagePanel({
       onOpenChange={(open) => {
         setIsOpen(open);
         if (!open) {
+          cancelDetailOpenRef.current?.();
           setIsDetailOpen(false);
           setDetailTaskId(null);
         }
@@ -145,10 +149,13 @@ function ManagePanel({
               backgroundJobs={backgroundJobs}
               tasks={tasks}
               onSelectTask={(id) => {
+                cancelDetailOpenRef.current?.();
                 setDetailTaskId(id);
                 // A detail paints its thread a frame late, so sliding right
                 // away animates a blank panel and stalls on that render.
-                afterNextPaint(() => setIsDetailOpen(true));
+                cancelDetailOpenRef.current = afterNextPaint(() =>
+                  setIsDetailOpen(true),
+                );
               }}
             />
           </div>
@@ -165,7 +172,10 @@ function ManagePanel({
               <BackgroundTaskDetail
                 taskId={detailTaskId}
                 isOpen={isDetailOpen}
-                onBack={() => setIsDetailOpen(false)}
+                onBack={() => {
+                  cancelDetailOpenRef.current?.();
+                  setIsDetailOpen(false);
+                }}
               />
             )}
           </div>
@@ -176,7 +186,10 @@ function ManagePanel({
 }
 
 function afterNextPaint(callback: () => void) {
-  requestAnimationFrame(() => requestAnimationFrame(callback));
+  let frame = requestAnimationFrame(() => {
+    frame = requestAnimationFrame(callback);
+  });
+  return () => cancelAnimationFrame(frame);
 }
 
 function PanelBody({

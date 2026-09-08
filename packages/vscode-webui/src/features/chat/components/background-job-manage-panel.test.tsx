@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ComponentProps } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BackgroundJobEntry } from "../lib/build-background-job-list";
 import { BackgroundJobManagePanel } from "./background-job-manage-panel";
 
@@ -13,6 +19,7 @@ const copyToClipboard = vi.fn();
 let backgroundJobs: BackgroundJobEntry[] = [];
 let backgroundCommands: Record<string, { isVisible: boolean }> | undefined = {};
 let isDevMode = false;
+let useRealSheet = false;
 let backgroundTasks: Array<{ id: string; title: string; status?: string }> = [];
 
 // Radix positions the tooltip with one, and jsdom has none.
@@ -33,13 +40,20 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-// The drawer is rendered inline so the content is always assertable.
-vi.mock("@/components/ui/sheet", () => ({
-  Sheet: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SheetContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SheetTitle: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SheetTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
+// Row tests render inline; lifecycle tests exercise the real drawer.
+vi.mock("@/components/ui/sheet", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/sheet")>();
+  return {
+    Sheet: (props: ComponentProps<typeof actual.Sheet>) =>
+      useRealSheet ? <actual.Sheet {...props} /> : <>{props.children}</>,
+    SheetContent: (props: ComponentProps<typeof actual.SheetContent>) =>
+      useRealSheet ? <actual.SheetContent {...props} /> : <>{props.children}</>,
+    SheetTitle: (props: ComponentProps<typeof actual.SheetTitle>) =>
+      useRealSheet ? <actual.SheetTitle {...props} /> : <>{props.children}</>,
+    SheetTrigger: (props: ComponentProps<typeof actual.SheetTrigger>) =>
+      useRealSheet ? <actual.SheetTrigger {...props} /> : <>{props.children}</>,
+  };
+});
 
 vi.mock("../hooks/use-background-job-list", () => ({
   useBackgroundJobList: () => backgroundJobs,
@@ -132,6 +146,7 @@ describe("BackgroundJobManagePanel", () => {
     backgroundJobs = [];
     backgroundCommands = { "bgjob-cmd-1": { isVisible: true } };
     isDevMode = false;
+    useRealSheet = false;
     backgroundTasks = [];
   });
 
@@ -553,6 +568,76 @@ describe("BackgroundJobManagePanel", () => {
       expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
         "open",
       ),
+    );
+  });
+
+  describe("delayed task detail entry", () => {
+    beforeEach(() => {
+      useRealSheet = true;
+      isDevMode = true;
+      backgroundTasks = [{ id: "task-1", title: "A background task" }];
+      vi.useFakeTimers({
+        toFake: ["requestAnimationFrame", "cancelAnimationFrame"],
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it.each([0, 1])(
+      "keeps the list usable after closing during entry (%i frames)",
+      (elapsedFrames) => {
+        renderBackgroundJobManagePanel();
+        fireEvent.click(
+          screen.getByTestId("background-job-manage-panel-toggle"),
+        );
+        fireEvent.click(screen.getByText("A background task"));
+        if (elapsedFrames > 0) act(() => vi.advanceTimersToNextFrame());
+
+        fireEvent.keyDown(document, { key: "Escape", code: "Escape" });
+        expect(screen.queryByRole("dialog")).toBeNull();
+        act(() => {
+          vi.advanceTimersToNextFrame();
+          vi.advanceTimersToNextFrame();
+        });
+
+        fireEvent.click(
+          screen.getByTestId("background-job-manage-panel-toggle"),
+        );
+        expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+          "closed",
+        );
+        expect(
+          screen.getByTestId("background-job-list-layer").hasAttribute("inert"),
+        ).toBe(false);
+
+        fireEvent.click(screen.getByText("A background task"));
+        act(() => vi.advanceTimersToNextFrame());
+        expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+          "closed",
+        );
+        act(() => vi.advanceTimersToNextFrame());
+        expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+          "open",
+        );
+      },
+    );
+
+    it.each([0, 1])(
+      "releases pending animation frames on unmount (%i frames)",
+      (elapsedFrames) => {
+        const { unmount } = renderBackgroundJobManagePanel();
+        fireEvent.click(
+          screen.getByTestId("background-job-manage-panel-toggle"),
+        );
+        fireEvent.click(screen.getByText("A background task"));
+        if (elapsedFrames > 0) act(() => vi.advanceTimersToNextFrame());
+
+        unmount();
+
+        expect(vi.getTimerCount()).toBe(0);
+      },
     );
   });
 
