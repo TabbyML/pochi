@@ -146,7 +146,9 @@ function ManagePanel({
               tasks={tasks}
               onSelectTask={(id) => {
                 setDetailTaskId(id);
-                setIsDetailOpen(true);
+                // A detail paints its thread a frame late, so sliding right
+                // away animates a blank panel and stalls on that render.
+                afterNextPaint(() => setIsDetailOpen(true));
               }}
             />
           </div>
@@ -171,6 +173,10 @@ function ManagePanel({
       </SheetContent>
     </Sheet>
   );
+}
+
+function afterNextPaint(callback: () => void) {
+  requestAnimationFrame(() => requestAnimationFrame(callback));
 }
 
 function PanelBody({

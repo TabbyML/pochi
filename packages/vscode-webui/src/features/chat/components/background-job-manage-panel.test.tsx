@@ -536,7 +536,27 @@ describe("BackgroundJobManagePanel", () => {
     ).toBeNull();
   });
 
-  it("takes the drawer to a task and back again", () => {
+  it("lets a task detail render before sliding it in", async () => {
+    isDevMode = true;
+    backgroundTasks = [{ id: "task-1", title: "A background task" }];
+
+    renderBackgroundJobManagePanel();
+
+    fireEvent.click(screen.getByText("A background task"));
+
+    expect(screen.getByTestId("background-task-detail")).toBeDefined();
+    expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+      "closed",
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+        "open",
+      ),
+    );
+  });
+
+  it("takes the drawer to a task and back again", async () => {
     isDevMode = true;
     backgroundTasks = [{ id: "task-1", title: "A background task" }];
     backgroundJobs = [runningJob];
@@ -548,8 +568,10 @@ describe("BackgroundJobManagePanel", () => {
     expect(screen.getByTestId("background-task-detail").textContent).toContain(
       "task-1",
     );
-    expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
-      "open",
+    await waitFor(() =>
+      expect(screen.getByTestId("background-task-layer").dataset.state).toBe(
+        "open",
+      ),
     );
     expect(
       screen.getByTestId("background-job-list-layer").hasAttribute("inert"),
