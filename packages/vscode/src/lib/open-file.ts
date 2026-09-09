@@ -49,6 +49,31 @@ const showFileSystemError = (filePath: string, error: unknown): void => {
   void vscode.window.showErrorMessage(`${message}: ${filePath}`);
 };
 
+const lineRangeSuffixPattern = /:(\d+)(?:-(\d+))?$/;
+
+/**
+ * Parses a trailing `:<line>` or `:<start>-<end>` suffix, which is commonly
+ * appended to file paths when referencing source locations.
+ */
+const parseLineRangeSuffix = (
+  filePath: string,
+): { startLine: number; endLine: number; suffixLength: number } | undefined => {
+  const match = lineRangeSuffixPattern.exec(filePath);
+  if (!match) return undefined;
+
+  const startLine = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(startLine) || startLine <= 0) return undefined;
+
+  const parsedEndLine =
+    match[2] === undefined ? startLine : Number.parseInt(match[2], 10);
+  const endLine =
+    Number.isFinite(parsedEndLine) && parsedEndLine >= startLine
+      ? parsedEndLine
+      : startLine;
+
+  return { startLine, endLine, suffixLength: match[0].length };
+};
+
 export type OpenFileOptions = {
   start?: number;
   end?: number;
@@ -116,6 +141,23 @@ export const openFile = async (
         await vscode.commands.executeCommand("vscode.open", tempFile);
         return;
       }
+    }
+
+    const lineRange = parseLineRangeSuffix(resolvedPath);
+    if (lineRange) {
+      logger.info("File not found, retrying without line range suffix", {
+        filePath,
+      });
+      await openFile(
+        filePath.slice(0, filePath.length - lineRange.suffixLength),
+        cwd,
+        {
+          ...options,
+          start: options?.start ?? lineRange.startLine,
+          end: options?.end ?? lineRange.endLine,
+        },
+      );
+      return;
     }
 
     if (options?.fallbackGlobPattern) {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isFolder, getBaseName, addLineBreak } from "../file";
+import {
+  isFolder,
+  getBaseName,
+  addLineBreak,
+  parseFilePathLineRange,
+} from "../file";
 
 describe("isFolder", () => {
   describe("should return true for folders", () => {
@@ -149,6 +154,57 @@ describe("getBaseName", () => {
 
   it("should handle Windows paths", () => {
     expect(getBaseName("C:\\path\\to\\file.txt")).toBe("file.txt");
+  });
+});
+
+describe("parseFilePathLineRange", () => {
+  it("should parse a single line suffix", () => {
+    expect(parseFilePathLineRange("src/tau2/utils/llm_utils.py:434")).toEqual({
+      path: "src/tau2/utils/llm_utils.py",
+      startLine: 434,
+      endLine: 434,
+    });
+  });
+
+  it("should parse a line range suffix", () => {
+    expect(
+      parseFilePathLineRange("src/tau2/orchestrator/orchestrator.py:717-725"),
+    ).toEqual({
+      path: "src/tau2/orchestrator/orchestrator.py",
+      startLine: 717,
+      endLine: 725,
+    });
+  });
+
+  it("should ignore a trailing column", () => {
+    expect(parseFilePathLineRange("src/main.ts:42:8")).toEqual({
+      path: "src/main.ts",
+      startLine: 42,
+      endLine: 42,
+    });
+  });
+
+  it("should keep Windows drive letters intact", () => {
+    expect(parseFilePathLineRange("C:\\src\\main.ts:42")).toEqual({
+      path: "C:\\src\\main.ts",
+      startLine: 42,
+      endLine: 42,
+    });
+    expect(parseFilePathLineRange("C:\\src\\main.ts")).toEqual({
+      path: "C:\\src\\main.ts",
+    });
+  });
+
+  it("should return the path unchanged when there is no suffix", () => {
+    expect(parseFilePathLineRange("src/main.ts")).toEqual({
+      path: "src/main.ts",
+    });
+    expect(parseFilePathLineRange("pochi://-/plan.md")).toEqual({
+      path: "pochi://-/plan.md",
+    });
+    expect(parseFilePathLineRange("src/main.ts:0")).toEqual({
+      path: "src/main.ts:0",
+    });
   });
 });
 

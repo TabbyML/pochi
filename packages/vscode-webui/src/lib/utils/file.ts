@@ -153,6 +153,55 @@ export const isFolder = (filePath: string) => {
   return true;
 };
 
+export interface FilePathWithLineRange {
+  path: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+const lineRangeSegmentPattern = /^\d+(?:-\d+)?$/;
+
+/**
+ * Parses the trailing line range suffix of a file path, e.g.
+ * - `src/main.ts:42` -> `{ path: "src/main.ts", startLine: 42, endLine: 42 }`
+ * - `src/main.ts:42-56` -> `{ path: "src/main.ts", startLine: 42, endLine: 56 }`
+ * - `src/main.ts:42:8` -> `{ path: "src/main.ts", startLine: 42, endLine: 42 }` (column is ignored)
+ *
+ * Returns the untouched path when there is no valid suffix.
+ */
+export const parseFilePathLineRange = (text: string): FilePathWithLineRange => {
+  const segments = text.split(":");
+  const trailing: string[] = [];
+  // At most two trailing segments are consumed: `<line>[-<endLine>][:<column>]`
+  while (
+    segments.length > 1 &&
+    trailing.length < 2 &&
+    lineRangeSegmentPattern.test(segments[segments.length - 1])
+  ) {
+    trailing.unshift(segments.pop() as string);
+  }
+
+  const path = segments.join(":");
+  if (trailing.length === 0 || path.length === 0) {
+    return { path: text };
+  }
+
+  const [start, end] = trailing[0].split("-");
+  const startLine = Number.parseInt(start, 10);
+  if (!Number.isFinite(startLine) || startLine <= 0) {
+    return { path: text };
+  }
+
+  const parsedEndLine =
+    end === undefined ? startLine : Number.parseInt(end, 10);
+  const endLine =
+    Number.isFinite(parsedEndLine) && parsedEndLine >= startLine
+      ? parsedEndLine
+      : startLine;
+
+  return { path, startLine, endLine };
+};
+
 /**
  * Adds a zero-width space (U+200B) after each URL special character
  * to improve line breaking in URIs.
