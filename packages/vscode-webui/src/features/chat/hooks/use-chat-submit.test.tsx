@@ -11,6 +11,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { JSONContent } from "@tiptap/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import type { ChatInput } from "./use-chat-input-state";
 import { type DraftMessage, useChatSubmit } from "./use-chat-submit";
 
@@ -700,69 +701,71 @@ describe("useChatSubmit", () => {
     });
   });
 
-  describe("sendQueuedMessage", () => {
-    it("sends the queued message without stopping the current run", async () => {
-      const first = draftMessage({ text: "first queued message" });
-      const second = draftMessage({ text: "second queued message" });
+  describe("handleSteerBackgroundJobNotifications", () => {
+    it("stops the current stream before the chat kit delivers them", async () => {
+      const flushBackgroundJobNotifications = vi.fn(() => {
+        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+        return true;
+      });
       const context = setup({
-        isLoading: false,
-        queuedMessages: [first, second],
+        isLoading: true,
+        flushBackgroundJobNotifications,
       });
 
-      let sent: boolean | undefined;
+      let promise: Promise<void>;
       await act(async () => {
-        sent = await context.result.current.sendQueuedMessage(0);
+        promise =
+          context.result.current.handleSteerBackgroundJobNotifications();
       });
 
-      expect(sent).toBe(true);
-      expect(context.stopChat).not.toHaveBeenCalled();
-      expect(context.sendMessage).toHaveBeenCalledWith({
-        parts: ["text:first queued message"],
-      });
-      expect(context.queuedMessages).toEqual([second]);
-    });
+      expect(flushBackgroundJobNotifications).not.toHaveBeenCalled();
+      expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
 
-    it("resets the auto approve guard like a user submission by default", async () => {
-      chatStateMocks.autoApproveGuard.current = "manual";
-      const context = setup({
-        isLoading: false,
-        queuedMessages: [draftMessage({ text: "queued message" })],
+      await act(async () => {
+        context.rerender({ isLoading: false });
       });
 
       await act(async () => {
-        await context.result.current.sendQueuedMessage(0);
+        await promise;
       });
 
-      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
-    });
-
-    it("keeps the auto approve guard when the caller asks for it", async () => {
-      chatStateMocks.autoApproveGuard.current = "manual";
-      const context = setup({
-        isLoading: false,
-        queuedMessages: [draftMessage({ text: "queued message" })],
-      });
-
-      await act(async () => {
-        await context.result.current.sendQueuedMessage(0, {
-          keepAutoApproveGuard: true,
-        });
-      });
-
-      expect(context.sendMessage).toHaveBeenCalledOnce();
-      expect(chatStateMocks.autoApproveGuard.current).toBe("manual");
-    });
-
-    it("does nothing when the index has no matching queued message", async () => {
-      const context = setup({ isLoading: false, queuedMessages: [] });
-
-      let sent: boolean | undefined;
-      await act(async () => {
-        sent = await context.result.current.sendQueuedMessage(0);
-      });
-
-      expect(sent).toBe(false);
+      expect(context.stopChat).toHaveBeenCalledOnce();
+      expect(flushBackgroundJobNotifications).toHaveBeenCalledOnce();
+      // The kit owns the notifications, so nothing is sent from here.
       expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("delivers right away when the chat is already idle", async () => {
+      chatStateMocks.autoApproveGuard.current = "stop";
+      const flushBackgroundJobNotifications = vi.fn(() => {
+        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+        return true;
+      });
+      const context = setup({
+        isLoading: false,
+        flushBackgroundJobNotifications,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSteerBackgroundJobNotifications();
+      });
+
+      expect(context.stopChat).not.toHaveBeenCalled();
+      expect(flushBackgroundJobNotifications).toHaveBeenCalledOnce();
+    });
+
+    it("sends the submitted message as typed, notifications ride along", async () => {
+      const context = setup({ isLoading: false });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      // The kit attaches its pending notifications while preparing the
+      // request, so the message the user submitted is sent as typed.
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
+      });
     });
   });
 
@@ -1038,6 +1041,7 @@ function setup({
   canCreateTodo = true,
   onTodoModeQueued,
   onBeforeSendText,
+  flushBackgroundJobNotifications,
 }: {
   isLoading: boolean;
   inputText?: string;
@@ -1054,6 +1058,7 @@ function setup({
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
   onBeforeSendText?: (text: string) => void;
+  flushBackgroundJobNotifications?: () => boolean;
 }) {
   const sendMessage = vi.fn(() => Promise.resolve());
   const stopChat = vi.fn();
@@ -1132,6 +1137,7 @@ function setup({
         canCreateTodo,
         onTodoModeQueued,
         onBeforeSendText,
+        flushBackgroundJobNotifications,
       });
 
       return { ...result, queuedMessages };

@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import {
   type AutoMemoryContext,
-  type BackgroundJobTerminalEvent,
   type ContextWindowUsage,
   type MaybePromise,
+  createBackgroundJobNotification,
   getLogger,
   prompts,
   toErrorMessage,
@@ -35,6 +35,7 @@ import {
   type LiveKitStore,
   type Message,
   type Task,
+  isAwaitingFollowupAnswer,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
@@ -60,10 +61,6 @@ import {
 } from "ai";
 import type z from "zod";
 import { BackgroundJobManager } from "./lib/background-job-manager";
-import {
-  deliverBackgroundJobNotifications,
-  takeBackgroundJobNotificationMessage,
-} from "./lib/background-job-notification-delivery";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
@@ -212,7 +209,6 @@ export class TaskRunner {
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
   private backgroundJobManager: BackgroundJobManager;
-  private pendingBackgroundJobNotifications: BackgroundJobTerminalEvent[] = [];
   private fileSystem: FileSystem;
   private customAgent?: CustomAgent;
 
@@ -250,7 +246,11 @@ export class TaskRunner {
       taskId: options.uid,
     });
     this.backgroundJobManager.onDidFinish((event) => {
-      this.pendingBackgroundJobNotifications.push(event);
+      // `chatKit` is assigned later in this constructor, but a job can only
+      // finish once the runner is running.
+      this.chatKit.enqueueBackgroundJobNotifications([
+        createBackgroundJobNotification(event),
+      ]);
     });
     this.customAgent = options.customAgent;
 
@@ -324,6 +324,13 @@ export class TaskRunner {
       getRecentFilesForCompact: () =>
         this.toolCallOptions.fileStateCache.getRecentFiles(),
       backgroundTask: options.backgroundTask,
+      backgroundJobNotifications: {
+        // The step loop owns the sending: appending is enough, the next round
+        // picks the message up.
+        startTurn: (message) => {
+          this.chat.appendOrReplaceMessage(message);
+        },
+      },
       taskMemory: options.taskMemory,
       projectMemory: options.projectMemory,
       enableAutoCompact: options.enableAutoCompact,
@@ -427,11 +434,10 @@ export class TaskRunner {
   /**
    * Wait for all background jobs to complete.
    * Respects the configured asyncWaitTimeoutInMs and abort signal.
-   * @returns One structured notification message emitted after output files
-   * flush. All notifications available at this drain point are included as
-   * separate data parts in the same user message.
+   * @returns whether the notifications collected while waiting may be
+   * delivered; false when the wait was aborted.
    */
-  private async waitForAsyncWork(): Promise<Message | undefined> {
+  private async waitForAsyncWork(): Promise<boolean> {
     const spinner = createSpinner(
       `Waiting for background jobs to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
@@ -449,23 +455,17 @@ export class TaskRunner {
       );
       this.backgroundJobManager.killAll();
       await this.backgroundJobManager.waitForAllJobs(5000, this.abortSignal);
-      return this.takePendingBackgroundJobNotifications();
+      return true;
     }
 
     if (jobStatus === "aborted") {
       spinner.fail("Async work wait was aborted.");
-      return undefined;
+      return false;
     }
 
     spinner.succeed("All background jobs completed.");
 
-    return this.takePendingBackgroundJobNotifications();
-  }
-
-  private takePendingBackgroundJobNotifications(): Message | undefined {
-    return takeBackgroundJobNotificationMessage(
-      this.pendingBackgroundJobNotifications,
-    );
+    return true;
   }
 
   /**
@@ -483,21 +483,21 @@ export class TaskRunner {
 
     const result = await this.process(lastMessage);
     if (result === "finished") {
-      // Check for pending background jobs
-      const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
+      // An unanswered follow-up question is the task result, so waiting for
+      // background jobs would only delay handing the turn back to the user.
+      // `flushBackgroundJobNotifications` enforces the same rule itself.
+      if (!isAwaitingFollowupAnswer(lastMessage)) {
+        // Check for pending background jobs
+        const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
-      if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
-        const notificationMessage = await this.waitForAsyncWork();
-        if (notificationMessage) {
-          this.chat.appendOrReplaceMessage(notificationMessage);
+        if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
+          const canDeliver = await this.waitForAsyncWork();
+          if (canDeliver && this.chatKit.flushBackgroundJobNotifications()) {
+            return "next";
+          }
+        } else if (this.chatKit.flushBackgroundJobNotifications()) {
           return "next";
         }
-      }
-
-      const notificationMessage = this.takePendingBackgroundJobNotifications();
-      if (notificationMessage) {
-        this.chat.appendOrReplaceMessage(notificationMessage);
-        return "next";
       }
 
       if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
@@ -540,13 +540,8 @@ export class TaskRunner {
       this.stepCount.throwIfReachedMaxRetries();
     }
 
-    // Deliver at this step boundary instead of waiting for the task to end.
-    deliverBackgroundJobNotifications(
-      result,
-      this.pendingBackgroundJobNotifications,
-      this.chat,
-    );
-
+    // Notifications pending at this point ride along with the request below,
+    // attached by the chat kit.
     this.abortSignal?.throwIfAborted();
     await this.chatKit.chat.sendMessage();
     return result;

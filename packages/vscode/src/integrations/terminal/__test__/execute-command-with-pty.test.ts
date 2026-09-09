@@ -28,6 +28,29 @@ describe("execute-command-with-pty", () => {
 
     assert.strictEqual(result.type, "completed");
     assert.ok(result.output.includes("pty-runtime-ok"));
+    assert.ok(!result.output.includes("\u001b]6339;"));
+  });
+
+  it("reports a spawn error when the shell binary cannot be executed", async function () {
+    if (process.platform === "win32") this.skip();
+
+    const originalShell = process.env.SHELL;
+    process.env.SHELL = "/nonexistent/pochi/bash";
+    try {
+      await assert.rejects(
+        executeCommandWithPty({
+          command: "echo hello",
+          cwd: process.cwd(),
+          timeout: 5,
+        }),
+        (error: Error) => {
+          assert.strictEqual(error.name, "PtySpawnError");
+          return true;
+        },
+      );
+    } finally {
+      process.env.SHELL = originalShell;
+    }
   });
 
   it("builds an interactive shell command without detaching stdin", () => {
@@ -35,6 +58,18 @@ describe("execute-command-with-pty", () => {
     assert.ok(shellCommand, "Expected a shell command to be built");
     assert.ok(shellCommand.args.at(-1)?.includes("echo hello"));
     assert.ok(!shellCommand.args.at(-1)?.includes("</dev/null"));
+  });
+
+  it("emits a launch marker before the command on posix shells", function () {
+    if (process.platform === "win32") this.skip();
+
+    const shellCommand = buildPtyShellCommand("echo hello");
+    assert.ok(shellCommand?.launchNonce, "Expected a launch nonce");
+    assert.ok(
+      shellCommand.args
+        .at(-1)
+        ?.startsWith(`printf '\\033]6339;%s\\007' ${shellCommand.launchNonce}\n`),
+    );
   });
 
   it("enforces terminal environment precedence", () => {
@@ -54,9 +89,9 @@ describe("execute-command-with-pty", () => {
     let exitListener: ((event: { exitCode: number }) => void) | undefined;
     const ptyProcess = {
       kill: sinon.stub(),
-      onData: (listener: (data: string) => void) => {
+      subscribeWithReplay: (listener: (data: string) => void) => {
         dataListener = listener;
-        return { dispose: sinon.stub() };
+        return { replay: [], disposable: { dispose: sinon.stub() } };
       },
       onExit: (listener: (event: { exitCode: number }) => void) => {
         exitListener = listener;
@@ -103,7 +138,10 @@ describe("execute-command-with-pty", () => {
       | undefined;
     const ptyProcess = {
       kill: sinon.stub(),
-      onData: () => ({ dispose: sinon.stub() }),
+      subscribeWithReplay: () => ({
+        replay: [],
+        disposable: { dispose: sinon.stub() },
+      }),
       onExit: (
         listener: (event: { exitCode: number; signal?: number }) => void,
       ) => {

@@ -357,6 +357,7 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.job.isFinished, true);
     assert.deepStrictEqual(harness.lifecycle, [
       "output:$ sleep 10\n",
+      "manager:$ sleep 10\n",
       "output:before timeout\n",
       "manager:before timeout\n",
       "output:after timeout\n",

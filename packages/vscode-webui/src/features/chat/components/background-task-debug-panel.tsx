@@ -48,10 +48,14 @@ export function BackgroundTaskRow({
   );
 }
 
+export function isBackgroundTaskRunning(status: Task["status"]): boolean {
+  return status === "pending-model" || status === "pending-tool";
+}
+
 function BackgroundTaskStatusIndicator({ status }: { status: Task["status"] }) {
   return (
     <RowStatusIndicator
-      isRunning={status === "pending-model" || status === "pending-tool"}
+      isRunning={isBackgroundTaskRunning(status)}
       tone={statusTone(status)}
     />
   );
@@ -98,7 +102,9 @@ export function BackgroundTaskDetail({
       : undefined;
 
   useEffect(() => {
-    if (isOpen) backButtonRef.current?.focus();
+    // Focusing while the detail is still transformed off screen would have the
+    // browser scroll its container sideways, dragging the panel with it.
+    if (isOpen) backButtonRef.current?.focus({ preventScroll: true });
   }, [isOpen]);
 
   return (

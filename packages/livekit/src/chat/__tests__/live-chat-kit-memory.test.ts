@@ -560,6 +560,8 @@ class FakeChat {
 
   async stop() {}
 
+  async sendMessage(_message: { parts: Message["parts"] }) {}
+
   finish(message: Message) {
     this.onFinish({
       message,

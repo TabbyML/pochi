@@ -30,7 +30,12 @@ export const executeCommandWithPty = async ({
   onData,
   envs,
 }: ExecuteCommandOptions): Promise<PtyCommandResult> => {
-  const ptyProcess = await PtyProcess.spawn({ command, cwd, envs });
+  const ptyProcess = await PtyProcess.spawn({
+    command,
+    cwd,
+    envs,
+    abortSignal,
+  });
 
   return new Promise<PtyCommandResult>((resolve, reject) => {
     let output = "";
@@ -40,7 +45,7 @@ export const executeCommandWithPty = async ({
     const cleanup = () => {
       if (timeoutId) clearTimeout(timeoutId);
       abortSignal?.removeEventListener("abort", onAbort);
-      dataListener.dispose();
+      outputSubscription.disposable.dispose();
       exitListener.dispose();
     };
 
@@ -58,10 +63,15 @@ export const executeCommandWithPty = async ({
       });
     };
 
-    const dataListener = ptyProcess.onData((data) => {
+    // Replay covers output produced while spawn was confirming the launch.
+    const outputSubscription = ptyProcess.subscribeWithReplay((data) => {
       output += data;
       onData?.(truncateOutput(output));
     });
+    if (outputSubscription.replay.length > 0) {
+      output += outputSubscription.replay.join("");
+      onData?.(truncateOutput(output));
+    }
 
     const exitListener = ptyProcess.onExit(({ exitCode, signal }) => {
       settle(() => {

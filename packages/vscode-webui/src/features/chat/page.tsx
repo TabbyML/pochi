@@ -39,6 +39,10 @@ import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
 import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
+import {
+  useBackgroundJobNotificationDelivery,
+  useBackgroundJobNotificationSink,
+} from "./hooks/use-background-job-notification-delivery";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatMemory } from "./hooks/use-chat-memory";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
@@ -89,10 +93,12 @@ function Chat({ user, uid, info }: ChatProps) {
   const todoPausedRef = useLatest(todoPaused);
   const todoModeActiveRef = useRef(false);
   const lastAutoContinueStateRef = useRef<string | undefined>(undefined);
-  // Filled in by <ChatToolbar>, which owns the queued messages.
-  const deliverBackgroundJobNotificationsRef = useRef<() => boolean>(
-    () => false,
-  );
+  // The chat kit owns the notifications waiting for delivery; this only
+  // mirrors them for the toolbar.
+  const {
+    pending: pendingBackgroundJobNotifications,
+    options: backgroundJobNotifications,
+  } = useBackgroundJobNotificationSink();
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -225,6 +231,7 @@ function Chat({ user, uid, info }: ChatProps) {
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
     backgroundTask,
+    backgroundJobNotifications,
     taskMemory,
     projectMemory,
     sendAutomaticallyWhen: (x) => {
@@ -241,15 +248,6 @@ function Chat({ user, uid, info }: ChatProps) {
 
         lastAutoContinueStateRef.current = candidateLastMessageState;
         return true;
-      };
-
-      // The notification starts this continuation request itself. Running
-      // after the decision keeps every intentional pause intact.
-      const continueAutomatically = (shouldContinue: boolean) => {
-        if (!shouldContinue) {
-          return false;
-        }
-        return !deliverBackgroundJobNotificationsRef.current();
       };
 
       if (chatAbortController.current.signal.aborted) {
@@ -269,9 +267,7 @@ function Chat({ user, uid, info }: ChatProps) {
 
       const shouldContinueTodo = getTodoContinuationDecision(candidateMessages);
       if (shouldContinueTodo !== undefined) {
-        return continueAutomatically(
-          claimAutoContinue(!todoPausedRef.current && shouldContinueTodo),
-        );
+        return claimAutoContinue(!todoPausedRef.current && shouldContinueTodo);
       }
 
       if (shouldStopAutoApprove({ messages: candidateMessages })) {
@@ -282,12 +278,10 @@ function Chat({ user, uid, info }: ChatProps) {
         return false;
       }
 
-      return continueAutomatically(
-        claimAutoContinue(
-          lastAssistantMessageIsCompleteWithToolCalls({
-            messages: candidateMessages,
-          }),
-        ),
+      return claimAutoContinue(
+        lastAssistantMessageIsCompleteWithToolCalls({
+          messages: candidateMessages,
+        }),
       );
     },
     onOverrideMessages,
@@ -312,6 +306,13 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { messages, sendMessage, status } = chat;
+
+  useBackgroundJobNotificationDelivery({
+    taskId: uid,
+    messages,
+    enqueue: chatKit.enqueueBackgroundJobNotifications,
+  });
+
   const isLoading = status === "streaming" || status === "submitted";
   const todoModeActive =
     !isSubTask && !todoPaused && hasActiveTodos(todosRef.current);
@@ -516,8 +517,9 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
-          deliverBackgroundJobNotificationsRef={
-            deliverBackgroundJobNotificationsRef
+          pendingBackgroundJobNotifications={pendingBackgroundJobNotifications}
+          flushBackgroundJobNotifications={
+            chatKit.flushBackgroundJobNotifications
           }
           onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}

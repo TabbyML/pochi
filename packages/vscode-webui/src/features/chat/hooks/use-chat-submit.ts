@@ -50,14 +50,8 @@ export interface DraftMessage {
     pastedTextCount?: number;
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
-    backgroundJobNotificationIds?: string[];
     nonRemovable?: boolean;
   };
-}
-
-interface SendChatMessageOptions {
-  /** Keeps the guard instead of resetting it to "auto", for non user intent. */
-  keepAutoApproveGuard?: boolean;
 }
 
 interface UseChatSubmitProps {
@@ -88,7 +82,8 @@ interface UseChatSubmitProps {
    * Invoked with the final todo objective right before the message is sent.
    */
   onBeforeSendText?: (text: string) => void;
-  onMessageSent?: (message: DraftMessage) => void | Promise<void>;
+  /** Asks the chat kit to deliver its pending notifications right away. */
+  flushBackgroundJobNotifications?: () => boolean;
 }
 
 export function useChatSubmit({
@@ -116,7 +111,7 @@ export function useChatSubmit({
   canCreateTodo = true,
   onTodoModeQueued,
   onBeforeSendText,
-  onMessageSent,
+  flushBackgroundJobNotifications,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { isExecuting } = useToolCallLifeCycle();
@@ -317,7 +312,7 @@ export function useChatSubmit({
   );
 
   const sendChatMessage = useCallback(
-    async (message: DraftMessage, options?: SendChatMessageOptions) => {
+    async (message: DraftMessage) => {
       const shouldCreateTodo = message.raw.isTodoMode && canCreateTodo;
       if (shouldCreateTodo) {
         // Build from the raw prompt and UI markers to avoid duplicating
@@ -338,13 +333,13 @@ export function useChatSubmit({
         pendingApproval.stopCountdown();
       }
 
-      if (!options?.keepAutoApproveGuard) {
-        autoApproveGuard.current = "auto";
-      }
+      autoApproveGuard.current = "auto";
+
+      // Notifications pending at this point are attached to this request by
+      // the chat kit, so they never cost a turn of their own.
       await sendMessage({
         parts: message.parts,
       });
-      await onMessageSent?.(message);
     },
     [
       canCreateTodo,
@@ -352,7 +347,6 @@ export function useChatSubmit({
       pendingApproval,
       autoApproveGuard,
       sendMessage,
-      onMessageSent,
     ],
   );
 
@@ -491,30 +485,41 @@ export function useChatSubmit({
   );
 
   /**
-   * Sends a queued message without the steer stop-and-wait, only for callers
-   * where starting a request is already legal.
+   * Interrupts the agent so the chat kit can deliver its pending notifications
+   * now. The kit owns them, so this only has to make room for the request.
    */
-  const sendQueuedMessage = useCallback(
-    async (index: number, options?: SendChatMessageOptions) => {
-      logger.debug("sendQueuedMessage");
+  const handleSteerBackgroundJobNotifications = useCallback(async () => {
+    logger.debug("handleSteerBackgroundJobNotifications");
 
-      const message = queuedMessages[index];
-      if (!message) {
-        return false;
-      }
+    if (!allowSteer) {
+      return;
+    }
 
-      setQueuedMessages((messages) => messages.filter((_, i) => i !== index));
-      await sendChatMessage(message, options);
-      return true;
-    },
-    [queuedMessages, setQueuedMessages, sendChatMessage],
-  );
+    let readyToSend = allowSendMessage;
+    if (isRunning) {
+      readyToSend = (await handleStop()) && (await waitForReady());
+    }
+
+    if (readyToSend) {
+      // Explicit steering resumes the agent after handleStop paused it.
+      autoApproveGuard.current = "auto";
+      flushBackgroundJobNotifications?.();
+    }
+  }, [
+    allowSteer,
+    allowSendMessage,
+    isRunning,
+    handleStop,
+    waitForReady,
+    autoApproveGuard,
+    flushBackgroundJobNotifications,
+  ]);
 
   return {
     handleSubmit,
     handleSteerSubmit,
     handleSteerQueuedMessage,
+    handleSteerBackgroundJobNotifications,
     handleStop,
-    sendQueuedMessage,
   };
 }
