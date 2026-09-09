@@ -4,6 +4,7 @@ import {
   extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
+  isAwaitingFollowupAnswer,
 } from "./task-utils";
 
 describe("formatFollowupQuestions", () => {
@@ -28,6 +29,50 @@ describe("formatFollowupQuestions", () => {
     ).toBe(
       "[Theme] Which color theme would you like?\n- Primary\n- Secondary\n\n[Motion] Should we add animations?\n- Yes\n- No",
     );
+  });
+});
+
+describe("isAwaitingFollowupAnswer", () => {
+  const message = (parts: unknown[]) =>
+    ({ role: "assistant", parts }) as any;
+
+  it("detects an unanswered question in the last step", () => {
+    expect(
+      isAwaitingFollowupAnswer(
+        message([
+          { type: "step-start" },
+          { type: "tool-askFollowupQuestion", state: "input-available" },
+        ]),
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores an answered question", () => {
+    expect(
+      isAwaitingFollowupAnswer(
+        message([
+          { type: "step-start" },
+          { type: "tool-askFollowupQuestion", state: "output-available" },
+        ]),
+      ),
+    ).toBe(false);
+  });
+
+  it("ignores a question from an earlier step", () => {
+    expect(
+      isAwaitingFollowupAnswer(
+        message([
+          { type: "step-start" },
+          { type: "tool-askFollowupQuestion", state: "input-available" },
+          { type: "step-start" },
+          { type: "tool-readFile", state: "input-available" },
+        ]),
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false without a message", () => {
+    expect(isAwaitingFollowupAnswer(undefined)).toBe(false);
   });
 });
 
