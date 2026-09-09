@@ -11,7 +11,7 @@ interface FakePty {
   kill(signal?: string): void;
 }
 
-function createHarness(kill = sinon.stub()) {
+function createHarness(kill = sinon.stub(), launchNonce?: string) {
   let dataListener: ((data: string) => void) | undefined;
   let exitListener: ((event: { exitCode: number }) => void) | undefined;
   const fakePty: FakePty = {
@@ -25,10 +25,12 @@ function createHarness(kill = sinon.stub()) {
     resize: sinon.stub(),
     kill,
   };
+  const spawn = sinon.stub().returns(fakePty);
   const { PtyProcess } = proxyquire
     .noCallThru()
     .noPreserveCache()
     .load("../pty-process", {
+      "node:module": { createRequire: () => () => ({ spawn }) },
       vscode: {
         env: { appRoot: "/app" },
         Uri: {
@@ -47,17 +49,74 @@ function createHarness(kill = sinon.stub()) {
     }) as typeof import("../pty-process");
   const ProcessConstructor = PtyProcess as unknown as new (
     process: FakePty,
+    launchNonce?: string,
   ) => import("../pty-process").PtyProcess;
-  const ptyProcess = new ProcessConstructor(fakePty);
+  const ptyProcess = new ProcessConstructor(fakePty, launchNonce);
   return {
     data: (chunk: string) => dataListener?.(chunk),
     exit: (exitCode: number) => exitListener?.({ exitCode }),
     kill,
     ptyProcess,
+    spawn,
+    spawnProcess: PtyProcess.spawn,
   };
 }
 
+const LaunchNonce = "0123456789abcdef";
+const LaunchMarker = `\u001b]6339;${LaunchNonce}\u0007`;
+
 describe("PtyProcess", () => {
+  it("does not spawn an already cancelled command", async () => {
+    const harness = createHarness();
+    const controller = new AbortController();
+    controller.abort();
+
+    await assert.rejects(
+      harness.spawnProcess({
+        command: "echo hello",
+        cwd: "/tmp",
+        abortSignal: controller.signal,
+      }),
+      { name: "ExecutionError", aborted: true },
+    );
+    assert.strictEqual(harness.spawn.callCount, 0);
+  });
+
+  it("kills immediately during launch and rejects cancellation without a spawn error", async () => {
+    const clock = sinon.useFakeTimers();
+    const originalShell = process.env.SHELL;
+    process.env.SHELL = "/bin/bash";
+    try {
+      const harness = createHarness();
+      const controller = new AbortController();
+      const removeListener = sinon.spy(
+        controller.signal,
+        "removeEventListener",
+      );
+      const launched = harness.spawnProcess({
+        command: "echo hello",
+        cwd: "/tmp",
+        abortSignal: controller.signal,
+      });
+      const rejected = assert.rejects(launched, {
+        name: "ExecutionError",
+        aborted: true,
+      });
+      // Exercise synchronous exit delivery during kill as well as cancellation.
+      harness.kill.callsFake(() => harness.exit(143));
+      controller.abort();
+      assert.deepStrictEqual(harness.kill.args, [["SIGTERM"]]);
+      await rejected;
+      assert.ok(removeListener.calledOnce);
+      await clock.tickAsync(3_000);
+      assert.strictEqual(harness.kill.callCount, 1);
+    } finally {
+      if (originalShell === undefined) delete process.env.SHELL;
+      else process.env.SHELL = originalShell;
+      clock.restore();
+    }
+  });
+
   it("reports exit after node-pty delivers output preceding socket close", () => {
     const harness = createHarness();
     const events: string[] = [];
@@ -108,6 +167,136 @@ describe("PtyProcess", () => {
       await clock.tickAsync(2_000);
       assert.deepStrictEqual(harness.kill.args, [["SIGTERM"], ["SIGKILL"]]);
       harness.exit(137);
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it("confirms the launch and hides the marker from the output stream", async () => {
+    const harness = createHarness(sinon.stub(), LaunchNonce);
+    const chunks: string[] = [];
+    harness.ptyProcess.onData((data: string) => chunks.push(data));
+
+    harness.data(`${LaunchMarker}hello world`);
+    await harness.ptyProcess.waitForLaunch();
+
+    assert.deepStrictEqual(chunks, ["hello world"]);
+    const subscription = harness.ptyProcess.subscribeWithReplay(() => {});
+    assert.deepStrictEqual(subscription.replay, ["hello world"]);
+    subscription.disposable.dispose();
+  });
+
+  it("confirms the launch when the marker is split across chunks", async () => {
+    const harness = createHarness(sinon.stub(), LaunchNonce);
+    const chunks: string[] = [];
+    harness.ptyProcess.onData((data: string) => chunks.push(data));
+
+    harness.data(LaunchMarker.slice(0, 5));
+    harness.data(`${LaunchMarker.slice(5)}hi`);
+    await harness.ptyProcess.waitForLaunch();
+
+    assert.deepStrictEqual(chunks, ["hi"]);
+  });
+
+  it("fails the launch when the shell exits before emitting the marker", async () => {
+    const harness = createHarness(sinon.stub(), LaunchNonce);
+    const launched = harness.ptyProcess.waitForLaunch();
+
+    harness.data("zsh: command not found: zsh\n");
+    harness.exit(127);
+
+    await assert.rejects(launched, (error: Error) => {
+      assert.strictEqual(error.name, "PtySpawnError");
+      assert.match(error.message, /exited before confirming launch/);
+      assert.match(String(error.cause), /command not found/);
+      return true;
+    });
+  });
+
+  it("assumes the launch succeeded once the confirmation timeout elapses", async () => {
+    const clock = sinon.useFakeTimers();
+    try {
+      const harness = createHarness(sinon.stub(), LaunchNonce);
+      const chunks: string[] = [];
+      harness.ptyProcess.onData((data: string) => chunks.push(data));
+      const launched = harness.ptyProcess.waitForLaunch();
+
+      harness.data("password:");
+      assert.deepStrictEqual(chunks, ["password:"]);
+
+      await clock.tickAsync(1_000);
+      await launched;
+      assert.deepStrictEqual(chunks, ["password:"]);
+
+      harness.data(" ok");
+      assert.deepStrictEqual(chunks, ["password:", " ok"]);
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it("confirms a quick exit after more than 64 KiB of startup output", async () => {
+    const harness = createHarness(sinon.stub(), LaunchNonce);
+    const launched = harness.ptyProcess.waitForLaunch();
+    const startupChunk = "x".repeat(4096);
+    for (let index = 0; index < 17; index++) harness.data(startupChunk);
+    harness.data(LaunchMarker.slice(0, 5));
+    harness.data(`${LaunchMarker.slice(5)}command completed`);
+    harness.exit(0);
+
+    await launched;
+    const subscription = harness.ptyProcess.subscribeWithReplay(() => {});
+    assert.strictEqual(
+      subscription.replay.join(""),
+      `${startupChunk.repeat(17)}command completed`,
+    );
+    subscription.disposable.dispose();
+  });
+
+  for (const startsBeforeTimeout of [false, true]) {
+    it(`strips a split marker starting ${startsBeforeTimeout ? "before" : "after"} the launch timeout`, async () => {
+      const clock = sinon.useFakeTimers();
+      try {
+        const harness = createHarness(sinon.stub(), LaunchNonce);
+        const chunks: string[] = [];
+        harness.ptyProcess.onData((data: string) => chunks.push(data));
+        const launched = harness.ptyProcess.waitForLaunch();
+        harness.data("startup output");
+        if (startsBeforeTimeout) harness.data(LaunchMarker.slice(0, 5));
+
+        await clock.tickAsync(1_000);
+        await launched;
+        assert.deepStrictEqual(chunks, ["startup output"]);
+
+        if (!startsBeforeTimeout) harness.data(LaunchMarker.slice(0, 5));
+        harness.data(`${LaunchMarker.slice(5)}command output`);
+        harness.exit(0);
+        assert.deepStrictEqual(chunks, ["startup output", "command output"]);
+        const subscription = harness.ptyProcess.subscribeWithReplay(() => {});
+        assert.deepStrictEqual(subscription.replay, chunks);
+        subscription.disposable.dispose();
+      } finally {
+        clock.restore();
+      }
+    });
+  }
+
+  it("flushes an incomplete marker before reporting exit after timeout", async () => {
+    const clock = sinon.useFakeTimers();
+    try {
+      const harness = createHarness(sinon.stub(), LaunchNonce);
+      const events: string[] = [];
+      harness.ptyProcess.onData((data: string) => events.push(data));
+      harness.ptyProcess.onExit(() => events.push("exit"));
+      const launched = harness.ptyProcess.waitForLaunch();
+      const partialMarker = LaunchMarker.slice(0, 5);
+      harness.data(partialMarker);
+      await clock.tickAsync(1_000);
+      await launched;
+      assert.deepStrictEqual(events, []);
+
+      harness.exit(0);
+      assert.deepStrictEqual(events, [partialMarker, "exit"]);
     } finally {
       clock.restore();
     }

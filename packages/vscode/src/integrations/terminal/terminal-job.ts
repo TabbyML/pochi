@@ -146,6 +146,7 @@ export class TerminalJob implements vscode.Disposable {
           command: config.command,
           cwd: config.cwd,
           envs: config.envs,
+          abortSignal: config.abortSignal,
         });
         return TerminalJob.adopt(ptyProcess, config);
       } catch (error) {

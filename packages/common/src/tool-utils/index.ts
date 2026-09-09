@@ -31,6 +31,8 @@ export {
   getShellPath,
   fixExecuteCommandOutput,
   buildShellCommand,
+  buildLaunchNonceMarker,
+  type ShellCommand,
 } from "./shell";
 export { parseAgentFile } from "./agent-parser";
 export { parseSkillFile } from "./skill-parser";
