@@ -126,6 +126,57 @@ describe("openFile", () => {
     ]);
   });
 
+  it("opens a file referenced with a line range suffix", async () => {
+    const fileUri = vscode.Uri.joinPath(testDirectory, "line-range.txt");
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      Buffer.from("one\ntwo\nthree\nfour\nfive\n"),
+    );
+    const showTextDocument = sinon.stub().resolves();
+    const showErrorMessage = sinon.stub();
+    const openFile = loadOpenFile({
+      window: overrideObject(vscode.window, {
+        showTextDocument,
+        showErrorMessage,
+      }),
+    });
+
+    await openFile(`${fileUri.fsPath}:2-4`, undefined);
+
+    assert.strictEqual(showErrorMessage.called, false);
+    assert.strictEqual(showTextDocument.calledOnce, true);
+    assert.strictEqual(
+      showTextDocument.firstCall.args[0].fsPath,
+      fileUri.fsPath,
+    );
+    const selection = showTextDocument.firstCall.args[1].selection;
+    assert.strictEqual(selection.start.line, 1);
+    assert.strictEqual(selection.end.line, 3);
+  });
+
+  it("opens a file referenced with a single line suffix", async () => {
+    const fileUri = vscode.Uri.joinPath(testDirectory, "single-line.txt");
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      Buffer.from("one\ntwo\nthree\n"),
+    );
+    const showTextDocument = sinon.stub().resolves();
+    const showErrorMessage = sinon.stub();
+    const openFile = loadOpenFile({
+      window: overrideObject(vscode.window, {
+        showTextDocument,
+        showErrorMessage,
+      }),
+    });
+
+    await openFile(`${fileUri.fsPath}:3`, undefined);
+
+    assert.strictEqual(showErrorMessage.called, false);
+    const selection = showTextDocument.firstCall.args[1].selection;
+    assert.strictEqual(selection.start.line, 2);
+    assert.strictEqual(selection.end.line, 2);
+  });
+
   it("opens empty base64 content without showing a missing-file error", async () => {
     const filePath = vscode.Uri.joinPath(testDirectory, "empty.txt").fsPath;
     const stat = sinon.stub().rejects(vscode.FileSystemError.FileNotFound());
