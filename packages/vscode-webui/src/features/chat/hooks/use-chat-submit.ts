@@ -501,6 +501,8 @@ export function useChatSubmit({
     }
 
     if (readyToSend) {
+      // Explicit steering resumes the agent after handleStop paused it.
+      autoApproveGuard.current = "auto";
       flushBackgroundJobNotifications?.();
     }
   }, [
@@ -509,6 +511,7 @@ export function useChatSubmit({
     isRunning,
     handleStop,
     waitForReady,
+    autoApproveGuard,
     flushBackgroundJobNotifications,
   ]);
 

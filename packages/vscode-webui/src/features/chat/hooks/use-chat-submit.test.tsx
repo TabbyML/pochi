@@ -703,7 +703,10 @@ describe("useChatSubmit", () => {
 
   describe("handleSteerBackgroundJobNotifications", () => {
     it("stops the current stream before the chat kit delivers them", async () => {
-      const flushBackgroundJobNotifications = vi.fn(() => true);
+      const flushBackgroundJobNotifications = vi.fn(() => {
+        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+        return true;
+      });
       const context = setup({
         isLoading: true,
         flushBackgroundJobNotifications,
@@ -716,6 +719,7 @@ describe("useChatSubmit", () => {
       });
 
       expect(flushBackgroundJobNotifications).not.toHaveBeenCalled();
+      expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
 
       await act(async () => {
         context.rerender({ isLoading: false });
@@ -732,7 +736,11 @@ describe("useChatSubmit", () => {
     });
 
     it("delivers right away when the chat is already idle", async () => {
-      const flushBackgroundJobNotifications = vi.fn(() => true);
+      chatStateMocks.autoApproveGuard.current = "stop";
+      const flushBackgroundJobNotifications = vi.fn(() => {
+        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+        return true;
+      });
       const context = setup({
         isLoading: false,
         flushBackgroundJobNotifications,
