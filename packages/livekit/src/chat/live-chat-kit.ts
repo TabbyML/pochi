@@ -691,6 +691,10 @@ export class LiveChatKit<
           await this.handleCompactFinish(compactSucceeded, onCompactFinish);
         }
       }
+      // Attach after compaction, but before checkpoint hooks so they update
+      // the final message that this request will send and persist.
+      this.attachPendingBackgroundJobNotifications();
+
       if (onOverrideMessages) {
         await runSideEffectSafely({
           sideEffectName: "onOverrideMessages",
@@ -700,16 +704,12 @@ export class LiveChatKit<
             await onOverrideMessages({
               store: this.store,
               taskId: this.taskId,
-              messages,
+              messages: this.chat.messages,
               abortSignal,
             });
           },
         });
       }
-
-      // Last, so the notifications are not swallowed by a compaction and are
-      // part of the snapshot this request sends and persists.
-      this.attachPendingBackgroundJobNotifications();
     };
 
     this.compact = async () => {

@@ -11,10 +11,60 @@ import {
   getBackgroundJobNotificationIds,
   toBackgroundJobNotificationParts,
 } from "../background-job-notification";
+import type { OnStartCallback } from "../flexible-chat-transport";
 import type { LiveChatKitBackgroundJobNotificationOptions } from "../live-chat-kit";
 import { LiveChatKit } from "../live-chat-kit";
 
 describe("LiveChatKit background job notification delivery", () => {
+  it("persists the checkpoint added to a notification continuation", async () => {
+    const store = new FakeStore();
+    const commit = vi.spyOn(store, "commit");
+    const getters = { getLLM: () => ({ id: "test-model" }) as never };
+    const checkpoint = {
+      type: "data-checkpoint" as const,
+      data: { commit: "checkpoint-after-tools" },
+    };
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "task-1",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters,
+      onOverrideMessages: async ({ messages }) => {
+        messages.at(-1)?.parts.push(checkpoint);
+      },
+    });
+    vi.spyOn(chatKit, "inited", "get").mockReturnValue(true);
+    vi.spyOn(chatKit, "task", "get").mockReturnValue({
+      background: true,
+    } as NonNullable<typeof chatKit.task>);
+    chatKit.chat.messages = [userMessage("run it"), assistantMessage()];
+    chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-1"));
+
+    await makeRequest(chatKit);
+    await (chatKit as unknown as { onStart: OnStartCallback }).onStart({
+      messages: chatKit.chat.messages,
+      getters,
+    });
+
+    expect(commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "v1.ChatStreamStarted",
+        args: expect.objectContaining({
+          data: expect.objectContaining({
+            role: "user",
+            parts: [
+              expect.objectContaining({
+                type: "data-background-job-notification",
+              }),
+              checkpoint,
+            ],
+          }),
+        }),
+      }),
+    );
+  });
+
   it("rides along with the user message that is being sent", async () => {
     const chatKit = makeChatKit();
     chatKit.chat.messages = [assistantMessage(), userMessage("fix it")];
