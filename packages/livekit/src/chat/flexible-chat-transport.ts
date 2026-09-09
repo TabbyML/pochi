@@ -271,6 +271,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       middlewares.push(createReasoningMiddleware());
     }
 
+    if (llm.useReasoningMiddleware) {
+      middlewares.push(createReasoningMiddleware());
+    }
+
     if (llm.useToolCallMiddleware) {
       middlewares.push(
         createToolCallMiddleware(llm.type !== "google-vertex-tuning"),
