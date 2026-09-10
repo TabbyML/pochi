@@ -277,6 +277,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       );
     }
 
+    if (llm.useReasoningMiddleware) {
+      middlewares.push(createReasoningMiddleware());
+    }
+
     const mcpTools =
       mcpInfo?.toolset && parseMcpToolSet(this.blobStore, mcpInfo.toolset);
 

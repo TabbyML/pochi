@@ -35,15 +35,11 @@
                     "type": "string"
                   }
                 },
-                "required": [
-                  "name"
-                ],
+                "required": ["name"],
                 "additionalProperties": false
               }
             },
-            "required": [
-              "credentials"
-            ],
+            "required": ["credentials"],
             "additionalProperties": false
           },
           {
@@ -90,6 +86,10 @@
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
+                    },
                     "contentType": {
                       "description": "The supported mime types model can handle",
                       "type": "array",
@@ -114,9 +114,7 @@
                 "const": "openai"
               }
             },
-            "required": [
-              "models"
-            ],
+            "required": ["models"],
             "additionalProperties": false
           },
           {
@@ -148,6 +146,10 @@
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -174,10 +176,7 @@
                 "const": "openai-responses"
               }
             },
-            "required": [
-              "models",
-              "kind"
-            ],
+            "required": ["models", "kind"],
             "additionalProperties": false
           },
           {
@@ -211,6 +210,10 @@
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
+                    },
                     "contentType": {
                       "description": "The supported mime types model can handle",
                       "type": "array",
@@ -235,10 +238,7 @@
                 "const": "anthropic"
               }
             },
-            "required": [
-              "models",
-              "kind"
-            ],
+            "required": ["models", "kind"],
             "additionalProperties": false
           },
           {
@@ -270,6 +270,10 @@
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -303,11 +307,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "type",
-                      "serviceAccountKey",
-                      "location"
-                    ],
+                    "required": ["type", "serviceAccountKey", "location"],
                     "additionalProperties": false
                   },
                   {
@@ -327,12 +327,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "type",
-                      "accessToken",
-                      "projectId",
-                      "location"
-                    ],
+                    "required": ["type", "accessToken", "projectId", "location"],
                     "additionalProperties": false
                   },
                   {
@@ -353,22 +348,13 @@
                         "description": "Timeout in milliseconds when requesting model api"
                       }
                     },
-                    "required": [
-                      "type",
-                      "issueUrl",
-                      "modelUrl",
-                      "timeout"
-                    ],
+                    "required": ["type", "issueUrl", "modelUrl", "timeout"],
                     "additionalProperties": false
                   }
                 ]
               }
             },
-            "required": [
-              "models",
-              "kind",
-              "vertex"
-            ],
+            "required": ["models", "kind", "vertex"],
             "additionalProperties": false
           },
           {
@@ -402,6 +388,10 @@
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
+                    },
                     "contentType": {
                       "description": "The supported mime types model can handle",
                       "type": "array",
@@ -422,10 +412,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "models",
-              "kind"
-            ],
+            "required": ["models", "kind"],
             "additionalProperties": false
           }
         ]
@@ -463,9 +450,7 @@
                 }
               }
             },
-            "required": [
-              "url"
-            ],
+            "required": ["url"],
             "additionalProperties": false
           },
           {
@@ -502,10 +487,7 @@
                 }
               }
             },
-            "required": [
-              "command",
-              "args"
-            ],
+            "required": ["command", "args"],
             "additionalProperties": false
           }
         ]
@@ -519,10 +501,7 @@
           "properties": {
             "mode": {
               "type": "string",
-              "enum": [
-                "managed",
-                "localChrome"
-              ]
+              "enum": ["managed", "localChrome"]
             }
           },
           "additionalProperties": false
@@ -547,11 +526,7 @@
             },
             "recordingSize": {
               "type": "string",
-              "enum": [
-                "1280x720",
-                "1138x640",
-                "854x480"
-              ]
+              "enum": ["1280x720", "1138x640", "854x480"]
             }
           },
           "additionalProperties": false

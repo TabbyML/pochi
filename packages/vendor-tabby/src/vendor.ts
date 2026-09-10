@@ -155,6 +155,7 @@ export class Tabby extends VendorBase {
           x.id,
           {
             useToolCallMiddleware: false,
+            useReasoningMiddleware: false,
             contextWindow: config?.context_window,
           } satisfies ModelOptions,
         ];
