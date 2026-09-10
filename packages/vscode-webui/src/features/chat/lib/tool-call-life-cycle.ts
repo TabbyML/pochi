@@ -32,6 +32,7 @@ import {
 } from "@quilted/threads/signals";
 import type { InferToolInput } from "ai";
 import Emittery from "emittery";
+import { shouldRunSubtaskInBackground } from "./background-subtask";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 
 type ExecuteCommandReturnType = {
@@ -284,10 +285,7 @@ export class ManagedToolCallLifeCycle
     // The browser agent needs a per-task browser session that only the
     // foreground path sets up; the todo-completion agent resolves todos
     // through the foreground result flow.
-    const runInBackground =
-      !!args.runInBackground &&
-      args.agentType !== "browser" &&
-      args.agentType !== constants.AttemptTodoCompletionAgentName;
+    const runInBackground = shouldRunSubtaskInBackground(args);
     if (runInBackground) {
       const { setBackgroundTaskState } =
         await vscodeHost.readBackgroundTaskState(uid);
