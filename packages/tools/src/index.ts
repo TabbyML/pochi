@@ -1,7 +1,10 @@
 export { McpTool } from "./mcp-tools";
 import { ToolsByPermission } from "./constants";
 export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
-export { ExecuteCommandDefaultTimeoutSec } from "./execute-command";
+export {
+  createBackgroundCommandResult,
+  ExecuteCommandDefaultTimeoutSec,
+} from "./execute-command";
 import {
   type Tool,
   type UIDataTypes,
@@ -15,7 +18,7 @@ import { applyDiff } from "./apply-diff";
 import { askFollowupQuestion } from "./ask-followup-question";
 import { createAttemptCompletionTool } from "./attempt-completion";
 import { createReview } from "./create-review";
-import { executeCommand } from "./execute-command";
+import { createExecuteCommandTool } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { listFiles } from "./list-files";
 import type { multiApplyDiff } from "./multi-apply-diff";
@@ -47,10 +50,7 @@ export type {
 export { QuestionSchema } from "./ask-followup-question";
 import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
-import { startMonitor } from "./monitor";
-import { readBackgroundJobOutput } from "./read-background-job-output";
 import { createReadFileTool } from "./read-file";
-import { startBackgroundJob } from "./start-background-job";
 import { type Skill, createSkillTool } from "./use-skill";
 import { parseToolSpec } from "./utils/tool-spec";
 import { writeToFile } from "./write-to-file";
@@ -76,7 +76,12 @@ export {
   validateExecuteCommandRules,
   validateToolPolicy,
 } from "./utils/tool-policy";
-export { Skill } from "./use-skill";
+export {
+  Skill,
+  isModelInvocableSkill,
+  isUserInvocableSkill,
+  makeUserInvocationDisabledMessage,
+} from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 export {
   BatchExecutionErrorMessages,
@@ -134,6 +139,7 @@ export interface CreateClientToolOptions {
   contentType?: string[];
   attemptCompletionSchema?: z.ZodType;
   agent?: CustomAgent;
+  isSubTask?: boolean;
 }
 
 const HiddenNewTaskAgentNames = new Set(["attemptTodoCompletion"]);
@@ -150,7 +156,7 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
   attemptCompletion: createAttemptCompletionTool(
     options?.attemptCompletionSchema,
   ),
-  executeCommand,
+  executeCommand: createExecuteCommandTool(options?.isSubTask),
   globFiles,
   listFiles,
   readFile: createReadFileTool(options?.contentType),
@@ -164,10 +170,7 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
 export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
     ...createCliTools(options),
-    startBackgroundJob,
-    readBackgroundJobOutput,
     killBackgroundJob,
-    startMonitor,
     renderWidget,
   };
 };
@@ -250,10 +253,10 @@ export const selectAgentTools = (
   options: SelectAgentToolsOptions,
 ): AgentTools => {
   const { agent, mcpTools, isSubTask, ...toolOptions } = options;
-  const allowList = getAgentToolAllowList(agent, options.isSubTask);
+  const allowList = getAgentToolAllowList(agent, isSubTask);
 
   const avaliableTools: AgentTools = {
-    ...createClientTools(toolOptions),
+    ...createClientTools({ ...toolOptions, isSubTask }),
     ...(mcpTools ?? {}),
   };
 

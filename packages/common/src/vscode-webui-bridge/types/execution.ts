@@ -13,6 +13,10 @@ export type ExecuteCommandResult = {
   status: "idle" | "running" | "completed";
   isTruncated: boolean;
   error?: string; // Optional error message if the execution aborted / failed
+  _meta?: {
+    backgroundJobId: string;
+    outputFile?: string;
+  };
 };
 
 export type SaveCheckpointOptions = {

@@ -9,13 +9,10 @@ import { ExecuteCommandError, executeCommand } from "./execute-command";
 import { globFiles } from "./glob-files";
 import { killBackgroundJob } from "./kill-background-job";
 import { listFiles } from "./list-files";
-import { startMonitor } from "./monitor";
 
 import { newTask } from "./new-task";
-import { readBackgroundJobOutput } from "./read-background-job-output";
 import { readFile } from "./read-file";
 import { searchFiles } from "./search-files";
-import { startBackgroundJob } from "./start-background-job";
 import { useSkill } from "./use-skill";
 
 import { writeToFile } from "./write-to-file";
@@ -34,10 +31,7 @@ const ToolMap: Record<
   writeToFile,
   searchFiles,
   executeCommand,
-  startBackgroundJob,
-  readBackgroundJobOutput,
   killBackgroundJob,
-  startMonitor,
   useSkill,
 };
 

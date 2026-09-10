@@ -363,18 +363,18 @@ ${rendererScriptElement}
 </html>`;
 }
 
-function escapeHtmlAttribute(value: string) {
+export function escapeHtmlAttribute(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;");
 }
 
-function escapeInlineScriptContent(code: string) {
+export function escapeInlineScriptContent(code: string) {
   return code.replace(/<\/script/gi, "<\\/script").replace(/<!--/g, "<\\!--");
 }
 
-function createWidgetScriptNonce() {
+export function createWidgetScriptNonce() {
   if (globalThis.crypto?.getRandomValues) {
     const bytes = new Uint8Array(WidgetScriptNonceByteLength);
     globalThis.crypto.getRandomValues(bytes);
@@ -442,7 +442,7 @@ function getWidgetConnectCspSource(scriptSrc: string) {
   return sources.join(" ");
 }
 
-const WidgetBaseStyles = `
+export const WidgetBaseStyles = `
 * { box-sizing: border-box; }
 html { background: transparent !important; }
 .light body { color-scheme: light; }

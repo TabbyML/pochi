@@ -1,9 +1,7 @@
 import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { useToolCallLifeCycle } from "@/features/chat";
 import { cn } from "@/lib/utils";
-import type { Message, UITools } from "@getpochi/livekit";
-import type { ToolName } from "@getpochi/tools";
-import { type ToolUIPart, getStaticToolName } from "ai";
+import { getStaticToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
 import { AskFollowupQuestionTool } from "./ask-followup-question";
 import { AttemptCompletionTool } from "./attempt-completion";
@@ -14,7 +12,6 @@ import { globFilesTool } from "./glob-files";
 import { KillBackgroundJobTool } from "./kill-background-job";
 import { listFilesTool } from "./list-files";
 import { McpToolCall } from "./mcp-tool-call";
-import { StartMonitorTool } from "./monitor";
 import { multiApplyDiffTool } from "./multi-apply-diff";
 import { newTaskTool } from "./new-task";
 import { ReadBackgroundJobOutputTool } from "./read-background-job-output";
@@ -22,21 +19,21 @@ import { readFileTool } from "./read-file";
 import { RenderWidgetTool } from "./render-widget";
 import { searchFilesTool } from "./search-files";
 import { StartBackgroundJobTool } from "./start-background-job";
-import type { ToolProps } from "./types";
+import type { ToolProps, UIToolName, UIToolPart } from "./types";
 import { UseSkillTool } from "./use-skill";
 import { writeToFileTool } from "./write-to-file";
 
 type ToolInvocationPartBaseProps = {
-  tool: ToolUIPart<UITools>;
+  tool: UIToolPart;
   isLoading: boolean;
-  messages: Message[];
   changes?: ToolCallCheckpoint;
   isSubTask?: boolean;
   isLastPart?: boolean;
+  isInLatestAssistantMessage?: boolean;
 };
 
 type ToolRendererProps = ToolInvocationPartBaseProps & {
-  component?: React.FC<ToolProps<ToolName>>;
+  component?: React.FC<ToolProps<UIToolName>>;
   isExecuting: boolean;
 };
 
@@ -49,10 +46,10 @@ function ToolInvocationRenderer({
   tool,
   isExecuting,
   isLoading,
-  messages,
   changes,
   isSubTask,
   isLastPart,
+  isInLatestAssistantMessage,
 }: ToolRendererProps) {
   return C ? (
     <C
@@ -60,17 +57,12 @@ function ToolInvocationRenderer({
       isExecuting={isExecuting}
       isLoading={isLoading}
       changes={changes}
-      messages={messages}
       isSubTask={isSubTask}
       isLastPart={isLastPart}
+      isInLatestAssistantMessage={isInLatestAssistantMessage}
     />
   ) : (
-    <McpToolCall
-      tool={tool}
-      isLoading={isLoading}
-      isExecuting={isExecuting}
-      messages={messages}
-    />
+    <McpToolCall tool={tool} isLoading={isLoading} isExecuting={isExecuting} />
   );
 }
 
@@ -78,10 +70,10 @@ export function ToolInvocationPart({
   tool,
   isLoading,
   className,
-  messages,
   changes,
   isSubTask,
   isLastPart,
+  isInLatestAssistantMessage,
 }: ToolInvocationPartProps) {
   const toolName = getStaticToolName(tool);
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
@@ -99,9 +91,9 @@ export function ToolInvocationPart({
         isExecuting={isExecuting}
         isLoading={isLoading}
         changes={changes}
-        messages={messages}
         isSubTask={isSubTask}
         isLastPart={isLastPart}
+        isInLatestAssistantMessage={isInLatestAssistantMessage}
       />
     </div>
   );
@@ -119,7 +111,6 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   startBackgroundJob: StartBackgroundJobTool,
   readBackgroundJobOutput: ReadBackgroundJobOutputTool,
   killBackgroundJob: KillBackgroundJobTool,
-  startMonitor: StartMonitorTool,
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,
   globFiles: globFilesTool,

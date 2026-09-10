@@ -1,3 +1,4 @@
+import * as path from "node:path";
 import { getLogger } from "@getpochi/common";
 import type {
   ChangedFileContent,
@@ -82,21 +83,26 @@ export class TaskChangedFilesManager {
    * @param files The file paths to add
    * @param checkpoint The checkpoint commit hash
    * @param checkpointService The checkpoint service instance (container-scoped)
+   * @param cwd The task working directory
    */
   async updateChangedFiles(
     taskId: string,
     files: string[],
     checkpoint: string,
     checkpointService: CheckpointService,
+    cwd: string | null,
   ): Promise<void> {
     const currentFiles = this.getChangedFiles(taskId);
     const updatedChangedFiles = [...currentFiles];
+    const knownPaths = new Set(
+      currentFiles.map((file) => getComparisonKey(file.filepath, cwd)),
+    );
 
     for (const filePath of files) {
-      const currentFile = currentFiles.find((f) => f.filepath === filePath);
+      const comparisonKey = getComparisonKey(filePath, cwd);
 
       // first time seeing this file change
-      if (!currentFile) {
+      if (!knownPaths.has(comparisonKey)) {
         updatedChangedFiles.push({
           filepath: filePath,
           added: 0,
@@ -105,6 +111,7 @@ export class TaskChangedFilesManager {
           deleted: false,
           state: "pending",
         });
+        knownPaths.add(comparisonKey);
       }
     }
 
@@ -253,4 +260,22 @@ export class TaskChangedFilesManager {
     const title = filepath ? `Changes in ${filepath}` : "Changed Files";
     return await showDiffChanges(changes, title, cwd, true);
   }
+}
+
+// Returns a cwd-relative key for comparison without changing the stored path.
+function getComparisonKey(filepath: string, cwd: string | null): string {
+  if (!cwd) {
+    return filepath;
+  }
+
+  const relativePath = path.relative(cwd, path.resolve(cwd, filepath));
+  if (
+    path.isAbsolute(relativePath) ||
+    relativePath === ".." ||
+    relativePath.startsWith(`..${path.sep}`)
+  ) {
+    return filepath;
+  }
+
+  return relativePath;
 }

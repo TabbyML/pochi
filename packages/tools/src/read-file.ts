@@ -9,6 +9,34 @@ const TextOutput = z.object({
     .describe(
       "Whether the textual content is truncated due to exceeding the maximum length",
     ),
+  filePath: z.string().describe("The resolved path of the file that was read."),
+  numLines: z
+    .number()
+    .optional()
+    .describe(
+      "The number of lines actually returned. Present for fresh text reads.",
+    ),
+  startLine: z
+    .number()
+    .optional()
+    .describe(
+      "The 1-based line where the returned content starts. Present for fresh text reads.",
+    ),
+  totalLines: z
+    .number()
+    .optional()
+    .describe(
+      "The total number of lines in the file at read time. Present for fresh text reads.",
+    ),
+  _meta: z
+    .object({
+      terminalName: z.string().optional(),
+      lastCommand: z.string().optional(),
+    })
+    .optional()
+    .describe(
+      "Metadata removed before sending the result to the LLM (for example, UI-specific terminal data).",
+    ),
 });
 
 export const MediaOutput = z.object({
@@ -25,19 +53,31 @@ ${contentType && contentType.length > 0 ? `Also supports reading media files (e.
       path: z
         .string()
         .describe(
-          "The path of the file to read (relative to the current working directory, or an absolute path)",
+          "The path of the file to read. Use workspace-relative paths for workspace files. If another tool or notification returned this path, pass it exactly as returned, including absolute paths.",
         ),
       startLine: z
         .number()
         .optional()
         .describe(
-          "The starting line number to read from (1-based). If not provided, it starts from the beginning of the file.",
+          "Legacy 1-based starting line. Prefer offset/limit for new calls. Ignored when offset or limit is provided.",
         ),
       endLine: z
         .number()
         .optional()
         .describe(
-          "The ending line number to read to (1-based, inclusive). If not provided, it reads to the end of the file.",
+          "Legacy 1-based inclusive ending line. Prefer offset/limit for new calls. Ignored when offset or limit is provided.",
+        ),
+      offset: z
+        .number()
+        .optional()
+        .describe(
+          "The 1-based line number to start reading from. Prefer this with limit for large or growing files.",
+        ),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "The maximum number of lines to return. Prefer this with offset for large or growing files.",
         ),
     }),
     outputSchema: z

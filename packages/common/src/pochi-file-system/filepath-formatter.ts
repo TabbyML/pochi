@@ -12,6 +12,36 @@ export interface PochiFileDisplayPathOptions {
   homeDir?: string;
 }
 
+export interface BackgroundJobOutputFileInfo {
+  backgroundJobId: string;
+  kind: "job" | "terminal";
+}
+
+/**
+ * Extracts the background job represented by a managed output file path.
+ * Supports both real filesystem paths and their pochi:// display forms.
+ */
+export function parseBackgroundJobOutputFilePath(
+  path: string,
+): BackgroundJobOutputFileInfo | undefined {
+  const normalizedPath = normalizePath(path);
+  const jobMatch = normalizedPath.match(
+    /(?:^|\/)(?:background-jobs|pochi-background-jobs)\/(bgjob-(?:cmd|monitor|task)-[^/]+)\.log$/,
+  );
+  if (jobMatch?.[1]) {
+    return { backgroundJobId: jobMatch[1], kind: "job" };
+  }
+
+  const terminalMatch = normalizedPath.match(
+    /(?:^|\/)terminals\/(term-[^/]+)\.log$/,
+  );
+  if (terminalMatch?.[1]) {
+    return { backgroundJobId: terminalMatch[1], kind: "terminal" };
+  }
+
+  return undefined;
+}
+
 export function formatPochiFileDisplayPath(
   path: string,
   options?: PochiFileDisplayPathOptions,

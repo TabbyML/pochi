@@ -1,10 +1,13 @@
+import { TerminalHistoryManager } from "@/integrations/terminal/terminal-history";
 import { getVscodeFileMtime } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
+import { parseBackgroundJobOutputFilePath } from "@getpochi/common/pochi-file-system";
 import {
   FileUnchangedStub,
   isPlainText,
   isVirtualPath,
   readMediaFile,
+  resolveReadFileRange,
   selectFileContent,
   withReadFileCache,
 } from "@getpochi/common/tool-utils";
@@ -18,9 +21,17 @@ const logger = getLogger("readFile");
 type ReadFileOutput = InferToolOutput<ClientTools["readFile"]>;
 
 export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
-  { path, startLine, endLine },
+  { path, startLine, endLine, offset, limit },
   options,
 ) => {
+  const range = resolveReadFileRange({
+    startLine,
+    endLine,
+    offset,
+    limit,
+  });
+  startLine = range.startLine;
+  endLine = range.endLine;
   const { cwd, contentType } = options;
 
   const isBinaryRequest = !!(contentType && contentType.length > 0);
@@ -28,6 +39,8 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
   logger.debug(
     `readFile: path="${path}" startLine=${startLine} endLine=${endLine} fileStateCache=${options.fileStateCache ? "present" : "MISSING"}`,
   );
+
+  assertTerminalTranscriptAvailable(path);
 
   const cacheResult = await withReadFileCache<ReadFileOutput>({
     cache: options.fileStateCache,
@@ -65,7 +78,7 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
       });
 
       return {
-        result,
+        result: { ...result, filePath: resolvedPath },
         fileCacheContent: result.content,
         fileCacheIsTruncated: result.isTruncated,
       };
@@ -74,9 +87,44 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
 
   if (cacheResult.deduplicated) {
     logger.debug(`readFile: returning FileUnchangedStub for "${path}"`);
-    return { content: FileUnchangedStub, isTruncated: false };
+    return addTerminalMetadata(path, {
+      content: FileUnchangedStub,
+      isTruncated: false,
+      filePath: cacheResult.resolvedPath,
+    });
   }
 
   logger.debug(`readFile: returning fresh content for "${path}"`);
-  return cacheResult.result;
+  return addTerminalMetadata(path, cacheResult.result);
 };
+
+function assertTerminalTranscriptAvailable(path: string): void {
+  const outputFile = parseBackgroundJobOutputFilePath(path);
+  if (outputFile?.kind !== "terminal") return;
+
+  const history = TerminalHistoryManager.get(outputFile.backgroundJobId);
+  if (!history?.hasCapturedCommand) {
+    throw new Error("No terminal output is available to read.");
+  }
+}
+
+function addTerminalMetadata(
+  path: string,
+  result: ReadFileOutput,
+): ReadFileOutput {
+  if (result.type === "media") return result;
+
+  const outputFile = parseBackgroundJobOutputFilePath(path);
+  if (outputFile?.kind !== "terminal") return result;
+
+  const history = TerminalHistoryManager.get(outputFile.backgroundJobId);
+  if (!history) return result;
+
+  return {
+    ...result,
+    _meta: {
+      terminalName: history.terminalName,
+      lastCommand: history.lastCommand,
+    },
+  };
+}

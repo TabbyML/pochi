@@ -8,3 +8,4 @@ export { EditSummary } from "./components/edit-summary";
 export { McpToolCall } from "./components/mcp-tool-call";
 export { ToolCallLite } from "./components/tool-call-lite";
 export { ExpandableToolContainer } from "./components/tool-container";
+export { BackgroundJobPanel } from "./components/command-execution-panel";

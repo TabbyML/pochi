@@ -44,6 +44,7 @@
     "reviewCount": "리뷰 {{count}}개",
     "userEditCount": "편집 {{count}}개",
     "terminalContextCount": "터미널 선택 {{count}}개",
+    "pastedTextCount": "붙여넣은 텍스트 {{count}}개",
     "steer": "개입",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
@@ -72,6 +73,8 @@
     "minTokensRequired": "대화를 압축하려면 최소 {{minTokens}} tokens 이상 필요합니다",
     "defaultContextWindowWarning": "컨텍스트 창 값은 기본값이며 사용자 지정 모델에 대해 정확하지 않을 수 있습니다. 정확한 token 관리를 위해 모델 공급자의 설명서에 따라 설정에서 조정하십시오.",
     "tokensUsed": "{{used}} / {{total}} tokens",
+    "inputTokens": "입력 Tokens",
+    "cacheReadTokens": "캐시 입력 Tokens",
     "system": "시스템",
     "systemInstructions": "시스템 지침",
     "toolDefinitions": "도구 정의",
@@ -333,6 +336,7 @@
     "imgAlt": "MCP 도구 응답 스냅샷",
     "renderWidget": "위젯 렌더링",
     "widgetFrozen": "이 위젯은 이전 메시지의 것입니다. 최신 위젯만 계속 상호작용할 수 있습니다.",
+    "widgetExportFailed": "위젯 내보내기에 실패했습니다: {{message}}",
     "widgetInternalError": "위젯 설정 오류입니다.",
     "widgetRuntimeError": "위젯 런타임 오류입니다.",
     "fixWidget": "수정해 주세요",
@@ -342,6 +346,7 @@
     "in": "에서",
     "executeCommand": "다음 명령을 실행합니다",
     "executingCommand": "명령 실행 중",
+    "startedCommand": "명령 시작",
     "for": "대상",
     "matching": "매칭",
     "searching": "검색 중",
@@ -358,6 +363,7 @@
     "readTerminal": "터미널 출력 읽는 중",
     "backgroundExecute": "다음 명령을 백그라운드에서 실행합니다",
     "backgroundExecuting": "백그라운드에서 명령 실행 중",
+    "promotedToBackground": ", 이후 백그라운드에서 계속 실행",
     "updatingToDos": "할 일 업데이트 중",
     "editing": "편집하는 중 ",
     "moreTools": ", 그리고 {{count}}개의 다른 도구들",
@@ -368,9 +374,7 @@
     "next": "다음",
     "askingQuestion_one": "질문 중",
     "askingQuestion_other": "질문 중",
-    "skipped": "건너뜀",
-    "startMonitor": "모니터링합니다:",
-    "monitoring": "모니터링 중"
+    "skipped": "건너뜀"
   },
   "reasoning": {
     "thinking": "생각 중 ...",
@@ -379,6 +383,10 @@
   "attachmentPreview": {
     "removeAttachment": "첨부 파일 제거",
     "uploading": "업로드 중..."
+  },
+  "pastedText": {
+    "label": "붙여넣은 텍스트",
+    "remove": "붙여넣은 텍스트 제거"
   },
   "checkpointUI": {
     "restoring": "복원 중...",
@@ -512,6 +520,8 @@
     "expand": "펼치기",
     "openJob": "작업 {{displayId}} 열기",
     "openTerminal": "터미널 {{name}} 열기",
+    "terminalClosed": "이 터미널은 닫혔습니다",
+    "terminalClosedOpenOutput": "이 터미널은 닫혔습니다. 출력 로그를 엽니다",
     "userTerminal": "사용자 터미널",
     "stop": "중지"
   },
@@ -563,10 +573,6 @@
     "viewChanges": "변경 사항 보기",
     "openFile": "파일 열기"
   },
-  "monitorEvents": {
-    "eventCount_one": "이벤트 {{count}}건",
-    "eventCount_other": "이벤트 {{count}}건"
-  },
   "userEdits": {
     "title": "편집",
     "filesEdited_one": "{{count}}개 파일 편집됨",
@@ -575,6 +581,27 @@
     "remove": "컨텍스트에서 사용자 편집 제거",
     "showDiff": "차이 보기",
     "diffTitle": "사용자 편집"
+  },
+  "backgroundJobNotifications": {
+    "title": "알림",
+    "completed": "완료됨(종료 코드 {{exitCode}})",
+    "completedNoExit": "완료됨",
+    "failed": "실패(종료 코드 {{exitCode}})",
+    "failedNoExit": "실패",
+    "stopped": "중지됨",
+    "openOutput": "출력 파일 열기"
+  },
+  "managePanel": {
+    "title": "백그라운드 작업",
+    "toggle": "백그라운드 작업 보기",
+    "pochiGroup": "백그라운드 명령",
+    "openTerminal": "터미널 열기",
+    "hideTerminal": "터미널 숨기기",
+    "copyCommand": "명령 복사",
+    "kill": "프로세스 종료",
+    "empty": "백그라운드에서 실행 중인 항목이 없습니다",
+    "seeMore": "더 보기",
+    "seeLess": "간단히 보기"
   },
   "forkTask": {
     "forkedTaskTitle": "포크됨 원본: {{taskTitle}}"
@@ -586,7 +613,8 @@
       "enablePochiLayout": "Pochi 레이아웃 활성화",
       "disableAutoSave": "자동 저장 비활성화",
       "disableCommentsOpenView": "주석 패널 자동 열기 비활성화",
-      "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화"
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot 코드 완성 비활성화",
+      "terminalRightClickContextMenuEnabled": "터미널 우클릭 시 상황에 맞는 메뉴 표시"
     }
   },
   "mermaid": {

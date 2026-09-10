@@ -5,6 +5,8 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("assistant"),
     totalTokens: z.number(),
+    inputTokens: z.number().optional(),
+    cacheReadTokens: z.number().optional(),
     // True when `totalTokens` falls back to our heuristic estimate because
     // the provider did not report usage; false/undefined means it's the real
     // token count reported by the provider. Used to gate token-estimate
@@ -30,6 +32,95 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
 ]);
 
 export type MessageMetadata = z.infer<typeof MessageMetadata>;
+
+export interface PastedTextFile {
+  filePath: string;
+  title: string;
+}
+
+export function getPastedTextTitle(text: string): string {
+  const maxLength = 80;
+  const title: string[] = [];
+  let pendingSpace = false;
+
+  for (const character of text) {
+    if (character === "\n" || character === "\r") {
+      if (title.length > 0) break;
+      pendingSpace = false;
+      continue;
+    }
+    if (/\s/.test(character)) {
+      pendingSpace = title.length > 0;
+      continue;
+    }
+    if (pendingSpace) {
+      title.push(" ");
+      pendingSpace = false;
+    }
+    title.push(character);
+    if (title.length > maxLength) {
+      return `${title.slice(0, maxLength - 1).join("")}…`;
+    }
+  }
+
+  return title.join("");
+}
+
+export const BackgroundJobNotification = z.object({
+  notificationId: z.string(),
+  backgroundJobId: z.string(),
+  outputFile: z.string(),
+  command: z.string().optional(),
+  status: z.enum(["completed", "failed", "stopped"]),
+  summary: z.string(),
+  exitCode: z.number().optional(),
+  finishedAt: z.number(),
+});
+
+export type BackgroundJobNotification = z.infer<
+  typeof BackgroundJobNotification
+>;
+
+export const BackgroundJobTerminalEvent = z.object({
+  taskId: z.string(),
+  backgroundJobId: z.string(),
+  outputFile: z.string(),
+  status: z.enum(["completed", "failed", "stopped"]),
+  command: z.string(),
+  exitCode: z.number().optional(),
+  error: z.string().optional(),
+  finishedAt: z.number(),
+});
+
+export type BackgroundJobTerminalEvent = z.infer<
+  typeof BackgroundJobTerminalEvent
+>;
+
+export function createBackgroundJobNotification(
+  event: BackgroundJobTerminalEvent,
+): BackgroundJobNotification {
+  let summary: string;
+  if (event.status === "completed") {
+    summary = `Background command "${event.command}" completed with exit code ${event.exitCode ?? 0}`;
+  } else if (event.status === "stopped") {
+    summary = `Background command "${event.command}" was stopped`;
+  } else if (event.exitCode !== undefined) {
+    summary = `Background command "${event.command}" failed with exit code ${event.exitCode}`;
+  } else {
+    summary = `Background command "${event.command}" failed${event.error ? `: ${event.error}` : ""}`;
+  }
+
+  return {
+    notificationId: `${event.backgroundJobId}:terminal`,
+    backgroundJobId: event.backgroundJobId,
+    outputFile: event.outputFile,
+    command: event.command,
+    status: event.status,
+    summary,
+    ...(event.exitCode !== undefined ? { exitCode: event.exitCode } : {}),
+    finishedAt: event.finishedAt,
+  };
+}
 
 export const ActiveSelection = z
   .object({
@@ -88,7 +179,7 @@ export const TerminalTextSelection = z.object({
     .string()
     .optional()
     .describe(
-      "Stable id of the terminal (see TerminalState.getTerminalId / environment.workspace.terminals), usable with readBackgroundJobOutput.",
+      "Stable ID of the terminal. Find the terminal with this ID in environment.workspace.terminals, then use readFile on its outputFile to read the terminal output.",
     ),
   content: z.string().describe("The selected text content in the terminal."),
 });

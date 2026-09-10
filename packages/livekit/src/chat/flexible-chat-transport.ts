@@ -8,7 +8,6 @@ import type {
   PochiRequestUseCase,
 } from "@getpochi/common";
 import {
-  formatMonitorNotifications,
   formatSubAgentNotifications,
   formatters,
   prompts,
@@ -181,6 +180,18 @@ export type ChatTransportOptions = {
   onRequestFinished?: (snapshot: FinishedRequestSnapshot) => MaybePromise<void>;
 };
 
+export function getNumCompacts(messages: Message[]): number | undefined {
+  const numCompacts = messages.reduce(
+    (count, message) =>
+      count +
+      message.parts.filter(
+        (part) => part.type === "text" && prompts.isCompact(part.text),
+      ).length,
+    0,
+  );
+  return numCompacts > 0 ? numCompacts : undefined;
+}
+
 export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly onStart?: OnStartCallback;
   private readonly getters: PrepareRequestGetters;
@@ -220,6 +231,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     messages,
     abortSignal,
   }) => {
+    const numCompacts = getNumCompacts(messages);
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
@@ -259,7 +271,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       );
     }
 
-    if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
+    if (useReasoningMiddleware(llm)) {
       middlewares.push(createReasoningMiddleware());
     }
 
@@ -320,6 +332,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           storeId: this.store.storeId,
           client: globalThis.POCHI_CLIENT,
           useCase: this.requestUseCase,
+          numCompacts,
         } satisfies PochiProviderOptions,
       },
       system: systemPrompt,
@@ -374,7 +387,8 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
                 ? lastMessage.metadata
                 : undefined;
 
-            const { inputTokens, totalTokens } = part.totalUsage;
+            const { inputTokens, inputTokenDetails, totalTokens } =
+              part.totalUsage;
             if (inputTokens) {
               // Calibrate using *input* tokens only, against the raw
               // (uncalibrated) estimate of exactly the input content sent
@@ -402,11 +416,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
             return {
               kind: "assistant",
-              // The client only consumes the aggregated total token count here.
-              // Detailed usage shape differences are a server/protocol concern.
               totalTokens:
                 totalTokens ||
                 estimateTotalTokens(llmMessages, calibrationFactor),
+              inputTokens,
+              cacheReadTokens: inputTokenDetails.cacheReadTokens,
               // Lets downstream consumers tell apart real provider usage from
               // our heuristic fallback. Only set when true; keep undefined
               // otherwise so it's omitted.
@@ -443,6 +457,19 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
 function prepareMessages(inputMessages: Message[]): Message[] {
   return convertDataReviewsToText(inputMessages);
+}
+
+/**
+ * The reasoning middleware is opt-in via model configuration
+ * (`useReasoningMiddleware`), falling back to a well-known model list when the
+ * setting is not provided.
+ */
+function useReasoningMiddleware(llm: RequestData["llm"]): boolean {
+  if (llm.useReasoningMiddleware !== undefined) {
+    return llm.useReasoningMiddleware;
+  }
+
+  return "modelId" in llm && isWellKnownReasoningModel(llm.modelId);
 }
 
 function isWellKnownReasoningModel(model?: string): boolean {
@@ -543,10 +570,10 @@ export function convertDataPartToText(
       text: prompts.renderBashOutputs(part.data.bashOutputs),
     };
   }
-  if (part.type === "data-monitor-events") {
+  if (part.type === "data-background-job-notification") {
     return {
       type: "text" as const,
-      text: formatMonitorNotifications(part.data.batches),
+      text: prompts.renderBackgroundJobNotification(part.data),
     };
   }
   if (part.type === "data-subagent-results") {

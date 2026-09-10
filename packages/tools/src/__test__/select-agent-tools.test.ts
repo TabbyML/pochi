@@ -13,12 +13,9 @@ const ClientToolNames = [
   "killBackgroundJob",
   "listFiles",
   "newTask",
-  "readBackgroundJobOutput",
   "readFile",
   "searchFiles",
   "renderWidget",
-  "startBackgroundJob",
-  "startMonitor",
   "useSkill",
   "writeToFile",
 ].sort();
@@ -45,6 +42,13 @@ function toolNames(tools: Record<string, unknown>): string[] {
 describe("selectAgentTools", () => {
   it("does not include legacy todoWrite in the client tool registry", () => {
     expect(createClientTools()).not.toHaveProperty("todoWrite");
+  });
+
+  it("does not offer legacy background job tools", () => {
+    expect(createClientTools()).not.toHaveProperty("startBackgroundJob");
+    expect(createClientTools()).not.toHaveProperty(
+      "readBackgroundJobOutput",
+    );
   });
 
   it("returns all client tools and MCP tools when no agent filter is configured", () => {
@@ -194,6 +198,27 @@ describe("selectAgentTools", () => {
     );
   });
 
+  it("does not expose background commands to subtasks", () => {
+    const topLevelTools = selectAgentTools({ isSubTask: false });
+    const subTaskTools = selectAgentTools({ isSubTask: true });
+    const topLevelSchema = topLevelTools.executeCommand
+      ?.inputSchema as z.ZodObject;
+    const subTaskSchema = subTaskTools.executeCommand
+      ?.inputSchema as z.ZodObject;
+
+    expect(topLevelSchema.shape).toHaveProperty("background");
+    expect(subTaskSchema.shape).not.toHaveProperty("background");
+    expect(topLevelTools.executeCommand?.description).toContain(
+      "Do not infer status from empty or partial file contents",
+    );
+    expect(subTaskTools.executeCommand?.description).not.toContain(
+      "background command",
+    );
+    expect(topLevelTools.attemptCompletion?.description).toContain(
+      "if they are still running and no independent work remains",
+    );
+  });
+
   it("exposes declared review source tools to reviewer agents", () => {
     const reviewerTools = selectAgentTools({
       agent: createAgent({
@@ -273,6 +298,13 @@ describe("selectAgentTools", () => {
           filePath: "/tmp/demo-skill/SKILL.md",
           instructions: "Do the thing.",
         },
+        {
+          name: "manual-skill",
+          description: "Only users may invoke this skill",
+          filePath: "/tmp/manual-skill/SKILL.md",
+          instructions: "Do the manual thing.",
+          disableModelInvocation: true,
+        },
       ],
       attemptCompletionSchema: customResultSchema,
     });
@@ -282,6 +314,7 @@ describe("selectAgentTools", () => {
     expect(tools.readFile?.description).toContain("image/png");
     expect(tools.newTask?.description).toContain("child-agent");
     expect(tools.useSkill?.description).toContain("demo-skill");
+    expect(tools.useSkill?.description).not.toContain("manual-skill");
     expect(
       completionInputSchema.safeParse({
         result: { ok: true },

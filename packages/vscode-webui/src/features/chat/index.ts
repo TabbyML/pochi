@@ -15,6 +15,7 @@ export {
   useHandleChatEvents,
 } from "./lib/chat-events";
 export { useLiveChatKitGetters } from "./lib/use-live-chat-kit-getters";
+export { formatTokens } from "./lib/format-tokens";
 export {
   useBackgroundJobInfo,
   useReplaceJobIdsInContent,

@@ -59,18 +59,20 @@ export const Environment = z.object({
               .string()
               .optional()
               .describe(
-                'A stable id for the terminal. Pass it to `readBackgroundJobOutput` to read background jobs or user-opened terminals. Ids prefixed with "bgjob-" are Pochi-started background jobs and can also be killed with `killBackgroundJob`; ids prefixed with "term-" are user-opened terminals and are read-only.',
+                'A stable terminal id. "bgjob-cmd-" identifies a managed command job; "term-" identifies a read-only user terminal.',
               ),
-            monitor: z
+            outputFile: z
               .string()
               .optional()
               .describe(
-                "Present when this terminal is an active monitor (startMonitor tool); the value is the monitor's description.",
+                "Absolute path to the terminal transcript. Read it with readFile using offset/limit.",
               ),
           }),
         )
         .optional()
-        .describe("Visible terminals in the VS Code workspace."),
+        .describe(
+          "Terminal sessions available in the VS Code workspace, including active managed background commands.",
+        ),
     })
     .describe("Information about the workspace."),
   info: z

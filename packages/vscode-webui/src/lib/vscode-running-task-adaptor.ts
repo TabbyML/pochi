@@ -135,10 +135,10 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       args.toolName === "executeCommand" &&
       typeof result === "object" &&
       result !== null &&
-      "output" in result
+      "streamingOutput" in result
     ) {
       return waitForExecuteCommandOutput(
-        result.output as ThreadSignalSerialization<ExecuteCommandResult>,
+        result.streamingOutput as ThreadSignalSerialization<ExecuteCommandResult>,
         args.abortSignal,
       );
     }
@@ -279,6 +279,9 @@ function waitForExecuteCommandOutput(
         result.error = value.error;
       } else if (reason === "aborted") {
         result.error = "Aborted by background task runner";
+      }
+      if (value._meta) {
+        result._meta = value._meta;
       }
       resolve(result);
     };

@@ -1,12 +1,18 @@
+import type { PastedTextFile } from "@getpochi/common";
 import type {
   ActiveSelection,
   Review,
   TerminalTextSelection,
+  ValidCustomAgentFile,
+  ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
+import type { JSONContent } from "@tiptap/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { ChatInput } from "./use-chat-input-state";
 import { type DraftMessage, useChatSubmit } from "./use-chat-submit";
 
 const chatStateMocks = vi.hoisted(() => ({
@@ -15,10 +21,35 @@ const chatStateMocks = vi.hoisted(() => ({
   isExecuting: false,
 }));
 const messageUtilsMocks = vi.hoisted(() => ({
-  prepareMessageParts: vi.fn((_t, text: string) => [`text:${text}`]),
+  prepareMessageParts: vi.fn(
+    (
+      _t,
+      text: string,
+      _files,
+      _reviews,
+      _userEdits,
+      _activeSelection,
+      _terminalContextSelections,
+      invokedSkills: ValidSkillFile[] = [],
+      invokedCustomAgents: string[] = [],
+      pastedTextFiles: PastedTextFile[] = [],
+    ) => [
+      ...invokedSkills.map((skill) => `skill:${skill.instructions}`),
+      ...invokedCustomAgents.map((agentName) => `agent:${agentName}`),
+      `text:${text}`,
+      ...pastedTextFiles.map((file) => `pasted:${file.filePath}`),
+    ],
+  ),
 }));
 const vscodeMocks = vi.hoisted(() => ({
   deleteReviews: vi.fn(),
+  persistPastedTextFiles: vi.fn(async (_taskId: string, texts: string[]) =>
+    texts.map((text, index) => ({
+      filePath: `/tmp/pasted-${index}.txt`,
+      title: text,
+    })),
+  ),
+  showWarningMessage: vi.fn(async () => undefined),
 }));
 const activeSelectionMock = vi.hoisted(() => ({
   value: undefined as ActiveSelection | undefined,
@@ -40,13 +71,16 @@ vi.mock("@/lib/hooks/use-active-selection", () => ({
   useActiveSelection: () => activeSelectionMock.value,
 }));
 
-vi.mock("@/lib/message-utils", () => ({
+vi.mock("@/lib/message-utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/message-utils")>()),
   prepareMessageParts: messageUtilsMocks.prepareMessageParts,
 }));
 
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     deleteReviews: vscodeMocks.deleteReviews,
+    persistPastedTextFiles: vscodeMocks.persistPastedTextFiles,
+    showWarningMessage: vscodeMocks.showWarningMessage,
   },
 }));
 
@@ -63,6 +97,15 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
+    vscodeMocks.persistPastedTextFiles.mockClear();
+    vscodeMocks.persistPastedTextFiles.mockImplementation(
+      async (_taskId: string, texts: string[]) =>
+        texts.map((text, index) => ({
+          filePath: `/tmp/pasted-${index}.txt`,
+          title: text,
+        })),
+    );
+    vscodeMocks.showWarningMessage.mockClear();
     userEditsMocks.userEdits = [];
     activeSelectionMock.value = undefined;
   });
@@ -108,6 +151,291 @@ describe("useChatSubmit", () => {
       expect(context.queuedMessages).toEqual([]);
       expect(context.clearInput).not.toHaveBeenCalled();
       expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("sends pasted text when the editor is empty", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "",
+        pastedTexts: ["large pasted text"],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:", "pasted:/tmp/pasted-0.txt"],
+      });
+      expect(vscodeMocks.persistPastedTextFiles).toHaveBeenCalledWith(
+        "task-1",
+        ["large pasted text"],
+      );
+      expect(context.clearInput).toHaveBeenCalledOnce();
+    });
+
+    it("keeps the draft when pasted text persistence fails", async () => {
+      vscodeMocks.persistPastedTextFiles.mockRejectedValueOnce(
+        new Error("disk full"),
+      );
+      const context = setup({
+        isLoading: false,
+        inputText: "",
+        pastedTexts: ["large pasted text"],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.clearInput).not.toHaveBeenCalled();
+      expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("sends a non-user-invocable skill typed as plain text", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/hidden do the task",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/hidden do the task" }],
+            },
+          ],
+        },
+        skills: [createSkill("hidden", { userInvocable: false })],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("sends a user-invocable skill typed as plain text", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/deploy do the task",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/deploy do the task" }],
+            },
+          ],
+        },
+        skills: [createSkill("deploy")],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("sends unknown slash text as plain text", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/unknown do the task",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/unknown do the task" }],
+            },
+          ],
+        },
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledOnce();
+    });
+
+    it("uses the synchronous editor snapshot instead of stale input state", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "/find-skills",
+      });
+      const submittedInput = {
+        json: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "/find-skills 这个干啥的" }],
+            },
+          ],
+        },
+        text: "/find-skills 这个干啥的",
+      } satisfies ChatInput;
+
+      await act(async () => {
+        await context.result.current.handleSubmit(undefined, submittedInput);
+      });
+
+      expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+        expect.any(Function),
+        "/find-skills 这个干啥的",
+        [],
+        [],
+        [],
+        undefined,
+        [],
+        [],
+        [],
+        [],
+      );
+    });
+
+    it("re-resolves a skill mention against the current skill", async () => {
+      const selectedSkill = createSkill("changing", {
+        instructions: "old instructions",
+      });
+      const currentSkill = createSkill("changing", {
+        instructions: "current instructions",
+      });
+      const onBeforeSendText = vi.fn();
+      const context = setup({
+        isLoading: false,
+        inputText: "/changing",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "slashMention",
+                  attrs: {
+                    type: "skill",
+                    id: "changing",
+                    rawData: selectedSkill,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        skills: [currentSkill],
+        isTodoMode: true,
+        onBeforeSendText,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+        expect.any(Function),
+        "/changing",
+        [],
+        [],
+        [],
+        undefined,
+        [],
+        [currentSkill],
+        [],
+        [],
+      );
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["skill:current instructions", "text:/changing"],
+      });
+      expect(onBeforeSendText).toHaveBeenCalledWith("/changing");
+    });
+
+    it("adds a reminder for a selected custom agent mention", async () => {
+      const customAgent = createCustomAgent("tester");
+      const prompt =
+        'use <custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent> for this task';
+      const context = setup({
+        isLoading: false,
+        inputText: prompt,
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                { type: "text", text: "use " },
+                {
+                  type: "slashMention",
+                  attrs: {
+                    type: "custom-agent",
+                    id: "tester",
+                    rawData: customAgent,
+                  },
+                },
+                { type: "text", text: " for this task" },
+              ],
+            },
+          ],
+        },
+        customAgents: [customAgent],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
+        expect.any(Function),
+        prompt,
+        [],
+        [],
+        [],
+        undefined,
+        [],
+        [],
+        ["tester"],
+        [],
+      );
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["agent:tester", `text:${prompt}`],
+      });
+    });
+
+    it("rejects a skill mention that is no longer available", async () => {
+      const context = setup({
+        isLoading: false,
+        inputText: "stale expanded skill instructions",
+        inputJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "slashMention",
+                  attrs: { type: "skill", id: "removed" },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(vscodeMocks.showWarningMessage).toHaveBeenCalledWith(
+        'Skill "removed" is no longer available. Remove or reselect the slash command.',
+        { modal: false },
+      );
+      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(context.clearInput).not.toHaveBeenCalled();
     });
 
     it("sends immediately when the chat is idle", async () => {
@@ -198,6 +526,40 @@ describe("useChatSubmit", () => {
       expect(onBeforeSendText).toHaveBeenCalledWith("follow up");
       expect(context.sendMessage).toHaveBeenCalledWith({
         parts: ["text:follow up"],
+      });
+    });
+
+    it("includes pasted text in the todo objective when the editor is empty", async () => {
+      const onBeforeSendText = vi.fn();
+      const pastedText = "large pasted text";
+      messageUtilsMocks.prepareMessageParts.mockReturnValueOnce([
+        {
+          type: "data-pasted-text",
+          data: { filePath: "/tmp/pasted-0.txt", title: pastedText },
+        },
+      ] as never);
+      const context = setup({
+        isLoading: false,
+        inputText: "",
+        pastedTexts: [pastedText],
+        isTodoMode: true,
+        onBeforeSendText,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(onBeforeSendText).toHaveBeenCalledWith(
+        "Referenced pasted text files:\n- pasted text file: /tmp/pasted-0.txt. Read this file before continuing.",
+      );
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: [
+          {
+            type: "data-pasted-text",
+            data: { filePath: "/tmp/pasted-0.txt", title: pastedText },
+          },
+        ],
       });
     });
 
@@ -339,6 +701,74 @@ describe("useChatSubmit", () => {
     });
   });
 
+  describe("handleSteerBackgroundJobNotifications", () => {
+    it("stops the current stream before the chat kit delivers them", async () => {
+      const flushBackgroundJobNotifications = vi.fn(() => {
+        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+        return true;
+      });
+      const context = setup({
+        isLoading: true,
+        flushBackgroundJobNotifications,
+      });
+
+      let promise: Promise<void>;
+      await act(async () => {
+        promise =
+          context.result.current.handleSteerBackgroundJobNotifications();
+      });
+
+      expect(flushBackgroundJobNotifications).not.toHaveBeenCalled();
+      expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
+
+      await act(async () => {
+        context.rerender({ isLoading: false });
+      });
+
+      await act(async () => {
+        await promise;
+      });
+
+      expect(context.stopChat).toHaveBeenCalledOnce();
+      expect(flushBackgroundJobNotifications).toHaveBeenCalledOnce();
+      // The kit owns the notifications, so nothing is sent from here.
+      expect(context.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("delivers right away when the chat is already idle", async () => {
+      chatStateMocks.autoApproveGuard.current = "stop";
+      const flushBackgroundJobNotifications = vi.fn(() => {
+        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+        return true;
+      });
+      const context = setup({
+        isLoading: false,
+        flushBackgroundJobNotifications,
+      });
+
+      await act(async () => {
+        await context.result.current.handleSteerBackgroundJobNotifications();
+      });
+
+      expect(context.stopChat).not.toHaveBeenCalled();
+      expect(flushBackgroundJobNotifications).toHaveBeenCalledOnce();
+    });
+
+    it("sends the submitted message as typed, notifications ride along", async () => {
+      const context = setup({ isLoading: false });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      // The kit attaches its pending notifications while preparing the
+      // request, so the message the user submitted is sent as typed.
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:follow up"],
+      });
+    });
+  });
+
   it("captures selection context when the message is created and reuses it when a queued message is later steered, instead of re-reading it at flush time", async () => {
     const queueTimeActiveSelection: ActiveSelection = {
       filepath: "/workspace/queued.ts",
@@ -422,6 +852,9 @@ describe("useChatSubmit", () => {
       [],
       sendTimeActiveSelection,
       [],
+      [],
+      [],
+      [],
     );
   });
 
@@ -451,6 +884,9 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       [],
+      [],
+      [],
+      [],
     );
   });
 
@@ -479,6 +915,9 @@ describe("useChatSubmit", () => {
       [],
       [],
       undefined,
+      [],
+      [],
+      [],
       [],
     );
 
@@ -520,6 +959,9 @@ describe("useChatSubmit", () => {
       [],
       queuedUserEdits,
       undefined,
+      [],
+      [],
+      [],
       [],
     );
   });
@@ -565,6 +1007,9 @@ describe("useChatSubmit", () => {
       [],
       undefined,
       terminalContextSelections,
+      [],
+      [],
+      [],
     );
     expect(context.clearTerminalContextSelections).toHaveBeenCalledOnce();
   });
@@ -583,27 +1028,37 @@ describe("useChatSubmit", () => {
 function setup({
   isLoading: initialIsLoading,
   inputText: initialInputText = " follow up ",
+  inputJson = null,
+  pastedTexts = [],
   queuedMessages: initialQueuedMessages = [],
   files = [],
   reviews = [],
+  skills = [],
+  customAgents = [],
   includeUserEdits: initialIncludeUserEdits = true,
   terminalContextSelections = [],
   isTodoMode = false,
   canCreateTodo = true,
   onTodoModeQueued,
   onBeforeSendText,
+  flushBackgroundJobNotifications,
 }: {
   isLoading: boolean;
   inputText?: string;
+  inputJson?: JSONContent | null;
+  pastedTexts?: string[];
   queuedMessages?: DraftMessage[];
   files?: File[];
   reviews?: Review[];
+  skills?: ValidSkillFile[];
+  customAgents?: ValidCustomAgentFile[];
   includeUserEdits?: boolean;
   terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
   onTodoModeQueued?: () => void;
   onBeforeSendText?: (text: string) => void;
+  flushBackgroundJobNotifications?: () => boolean;
 }) {
   const sendMessage = vi.fn(() => Promise.resolve());
   const stopChat = vi.fn();
@@ -635,7 +1090,7 @@ function setup({
       // underlying blocking/model-loading state.
       const isExecuting = chatStateMocks.isExecuting;
       const isRunning = props.isLoading || isExecuting;
-      const isInputEmpty = !initialInputText.trim();
+      const isInputEmpty = !initialInputText.trim() && pastedTexts.length === 0;
       const isFilesEmpty = files.length === 0;
       const isReviewsEmpty = reviews.length === 0;
       const isTerminalContextEmpty = terminalContextSelections.length === 0;
@@ -653,7 +1108,7 @@ function setup({
           sendMessage,
           stop: stopChat,
         },
-        input: { json: null, text: initialInputText },
+        input: { json: inputJson, text: initialInputText, pastedTexts },
         clearInput,
         attachmentUpload: {
           files,
@@ -673,6 +1128,8 @@ function setup({
         setQueuedMessages,
         reviews,
         userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
+        skills,
+        customAgents,
         terminalContextSelections,
         clearTerminalContextSelections,
         taskId: "task-1",
@@ -680,6 +1137,7 @@ function setup({
         canCreateTodo,
         onTodoModeQueued,
         onBeforeSendText,
+        flushBackgroundJobNotifications,
       });
 
       return { ...result, queuedMessages };
@@ -747,6 +1205,28 @@ function draftMessage({
       isTodoMode,
       activeSelection,
     },
+  };
+}
+
+function createSkill(
+  name: string,
+  overrides: Partial<ValidSkillFile> = {},
+): ValidSkillFile {
+  return {
+    name,
+    description: `${name} description`,
+    filePath: `/skills/${name}/SKILL.md`,
+    instructions: `${name} instructions`,
+    ...overrides,
+  };
+}
+
+function createCustomAgent(name: string): ValidCustomAgentFile {
+  return {
+    name,
+    description: `${name} description`,
+    filePath: `/agents/${name}.md`,
+    systemPrompt: `${name} system prompt`,
   };
 }
 

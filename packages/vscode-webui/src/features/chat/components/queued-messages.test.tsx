@@ -19,6 +19,23 @@ vi.mock("@/lib/vscode", () => ({
   },
 }));
 
+vi.mock("@/features/tools", () => ({
+  BackgroundJobPanel: ({
+    command,
+    summary,
+    status,
+  }: {
+    command?: string;
+    summary?: string;
+    status?: string;
+  }) => (
+    <div>
+      <span>{command}</span>
+      <span title={summary}>{status}</span>
+    </div>
+  ),
+}));
+
 describe("QueuedMessages", () => {
   it("uses the todo icon for queued todo-mode messages", () => {
     const { container } = render(
@@ -85,6 +102,22 @@ describe("QueuedMessages", () => {
     expect(getByText("chat.terminalContextCount:2")).toBeTruthy();
   });
 
+  it("shows the pasted text count alongside other counts", () => {
+    const { getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({
+            text: "  ",
+            pastedTextCount: 2,
+          }),
+        ]}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(getByText("chat.pastedTextCount:2")).toBeTruthy();
+  });
+
   it("renders a minimal icon-only preview for the active editor selection captured at queue time", () => {
     const activeSelection: ActiveSelection = {
       filepath: "/workspace/foo.ts",
@@ -136,6 +169,69 @@ describe("QueuedMessages", () => {
       false,
     );
   });
+
+  it("shows queued notification commands and statuses", () => {
+    const { container, getAllByText, getByText, queryByLabelText } = render(
+      <QueuedMessages
+        messages={[
+          {
+            parts: [
+              {
+                type: "data-background-job-notification",
+                data: {
+                  notificationId: "notification-1",
+                  backgroundJobId: "bgjob-cmd-1",
+                  outputFile: "/tmp/bgjob-cmd-1.log",
+                  command: "sleep 2 && echo secret",
+                  status: "completed",
+                  summary:
+                    'Background command "sleep 2 && echo secret" completed',
+                  exitCode: 0,
+                  finishedAt: 1,
+                },
+              },
+              {
+                type: "data-background-job-notification",
+                data: {
+                  notificationId: "notification-2",
+                  backgroundJobId: "bgjob-cmd-2",
+                  outputFile: "/tmp/bgjob-cmd-2.log",
+                  command: "sleep 4 && echo hidden",
+                  status: "completed",
+                  summary:
+                    'Background command "sleep 4 && echo hidden" completed',
+                  exitCode: 0,
+                  finishedAt: 2,
+                },
+              },
+            ],
+            raw: {
+              text: "raw command summaries",
+              nonRemovable: true,
+            },
+          },
+        ]}
+        onRemove={vi.fn()}
+        onSteer={vi.fn()}
+      />,
+    );
+
+    expect(getByText("backgroundJobNotifications.title")).toBeTruthy();
+    expect(getByText("2").getAttribute("data-slot")).toBe("badge");
+    const firstCommand = getByText("sleep 2 && echo secret");
+    expect(firstCommand).toBeTruthy();
+    const notificationItems = firstCommand.parentElement?.parentElement;
+    expect(notificationItems?.classList.contains("ml-5")).toBe(false);
+    expect(notificationItems?.classList.contains("-ml-1")).toBe(true);
+    expect(getByText("sleep 4 && echo hidden")).toBeTruthy();
+    expect(queryByLabelText("completed")).toBeNull();
+    expect(getAllByText("completed")).toHaveLength(2);
+    expect(container.textContent).not.toContain("Job 1");
+    expect(container.textContent).not.toContain("raw command summaries");
+    expect(container.querySelector(".lucide-bell")).toBeTruthy();
+    expect(queryByLabelText("Remove queued message")).toBeNull();
+    expect(queryByLabelText("chat.steer")).toBeTruthy();
+  });
 });
 
 function queuedMessage({
@@ -145,7 +241,9 @@ function queuedMessage({
   reviewsCount = 0,
   userEditsCount = 0,
   terminalContextCount = 0,
+  pastedTextCount = 0,
   activeSelection,
+  nonRemovable,
 }: {
   text: string;
   isTodoMode?: boolean;
@@ -153,7 +251,9 @@ function queuedMessage({
   reviewsCount?: number;
   userEditsCount?: number;
   terminalContextCount?: number;
+  pastedTextCount?: number;
   activeSelection?: ActiveSelection;
+  nonRemovable?: boolean;
 }): DraftMessage {
   return {
     parts: [],
@@ -163,8 +263,10 @@ function queuedMessage({
       reviewsCount,
       userEditsCount,
       terminalContextCount,
+      pastedTextCount,
       isTodoMode,
       activeSelection,
+      nonRemovable,
     },
   };
 }

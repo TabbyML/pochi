@@ -2,12 +2,18 @@ import uFuzzy from "@leeoniya/ufuzzy";
 
 const MaxResult = 500;
 
-// Create a single uFuzzy instance to reuse
+// Create a single uFuzzy instance to reuse.
+// uFuzzy defaults to Latin-only regexps, which treat CJK/accented characters as
+// term separators, so those file names can never be matched. Treat every
+// non-ascii code unit as a regular term character instead, except surrogates:
+// uFuzzy matches per code unit, so the halves of a character outside the BMP
+// could drift apart and match unrelated characters. Such characters stay
+// separators and are ignored by the search.
 const uf = new uFuzzy({
-  // Allow @ symbols and basic path characters
-  intraChars: "[a-z\\d'@\\-_./]",
+  // Allow @ symbols, basic path characters and any non-ascii BMP character
+  intraChars: "[a-z\\d'@\\-_./\\u0080-\\ud7ff\\ue000-\\uffff]",
   // Don't split on forward slashes - treat them as regular characters
-  interSplit: "[^a-zA-Z\\d'@\\-_./]+",
+  interSplit: "[^a-zA-Z\\d'@\\-_./\\u0080-\\ud7ff\\ue000-\\uffff]+",
   // Allow more insertions for path matching (like amp -> amp-07-08-2025)
   intraIns: 5,
 });

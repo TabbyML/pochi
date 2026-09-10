@@ -235,7 +235,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private getBackgroundJobManager(taskId: string) {
     let manager = this.backgroundJobManagers.get(taskId);
     if (!manager) {
-      manager = new BackgroundJobManager();
+      manager = new BackgroundJobManager({ taskId });
       this.backgroundJobManagers.set(taskId, manager);
     }
     return manager;

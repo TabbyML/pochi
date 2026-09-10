@@ -25,7 +25,12 @@ import "@getpochi/vendor-codex/edge";
 import "@getpochi/vendor-github-copilot/edge";
 import "@getpochi/vendor-qwen-code/edge";
 
-import { constants, type AutoMemoryContext, getLogger } from "@getpochi/common";
+import {
+  constants,
+  type AutoMemoryContext,
+  getLogger,
+  prompts,
+} from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
@@ -41,6 +46,7 @@ import type {
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { LLMRequestData, Message } from "@getpochi/livekit";
+import { makeUserInvocationDisabledMessage } from "@getpochi/tools";
 
 import packageJson from "../package.json";
 import { processAttachments } from "./attachment-utils";
@@ -245,26 +251,31 @@ const program = new Command()
       }
     }
 
-    const { uid, prompt, attachments } = await parseTaskInput(
-      options,
-      program,
-      {
+    const { uid, prompt, attachments, invokedCustomAgents } =
+      await parseTaskInput(options, program, {
         customAgents: customAgents,
         skills,
-      },
-    );
+      });
 
     const store = await createStore(uid);
     const blobStore = new NodeBlobStore(options.blobsDir);
 
-    const parts: Message["parts"] = await processAttachments(
+    const attachmentParts = await processAttachments(
       attachments,
       blobStore,
       program,
     );
+    const parts: Message["parts"] = [];
+    for (const agentName of invokedCustomAgents) {
+      parts.push({
+        type: "text",
+        text: prompts.customAgentSystemReminder(agentName),
+      });
+    }
     if (prompt) {
       parts.push({ type: "text", text: prompt });
     }
+    parts.push(...attachmentParts);
 
     const rg = findRipgrep();
     if (!rg) {
@@ -596,16 +607,24 @@ async function parseTaskInput(
     );
   }
 
+  const invokedCustomAgents: string[] = [];
+
   // Check if the prompt contains workflow references
   if (containsSlashCommandReference(prompt)) {
-    const { prompt: updatedPrompt } = await replaceSlashCommandReferences(
+    const result = await replaceSlashCommandReferences(
       prompt,
       slashCommandContext,
     );
-    prompt = updatedPrompt;
+    if (result.blockedSkill) {
+      return program.error(
+        makeUserInvocationDisabledMessage(result.blockedSkill),
+      );
+    }
+    prompt = result.prompt;
+    invokedCustomAgents.push(...result.invokedCustomAgents);
   }
 
-  return { uid, prompt, attachments };
+  return { uid, prompt, attachments, invokedCustomAgents };
 }
 
 async function createLLMConfig(
@@ -686,6 +705,7 @@ async function createLLMConfigWithVendors(
       contextWindow: options.contextWindow,
 
       useToolCallMiddleware: options.useToolCallMiddleware,
+      useReasoningMiddleware: options.useReasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId,
@@ -710,6 +730,7 @@ async function createLLMConfigWithPochi(
       contextWindow: pochiModelOptions.contextWindow,
 
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
+      useReasoningMiddleware: pochiModelOptions.useReasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId: model,
@@ -760,6 +781,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -783,6 +805,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }

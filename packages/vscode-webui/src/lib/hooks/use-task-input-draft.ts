@@ -54,8 +54,9 @@ export function useTaskInputDraft() {
     try {
       const draftText = draft.text;
       if (draftText.trim()) {
+        const { pastedTexts: _pastedTexts, ...content } = draft;
         const data: TaskInputDraft = {
-          content: draft,
+          content,
           timestamp: Date.now(),
         };
 

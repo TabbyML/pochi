@@ -15,7 +15,9 @@ export const useVisibleTerminals = () => {
   });
 
   if (!data) {
-    return { terminals: [], openBackgroundJobTerminal: undefined };
+    // `undefined` (not `[]`) while loading, so callers can tell "not loaded
+    // yet" apart from "this terminal is gone".
+    return { terminals: undefined, openBackgroundJobTerminal: undefined };
   }
 
   return {

@@ -61,7 +61,6 @@ describe("tool path display", () => {
         }}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 
@@ -83,7 +82,6 @@ describe("tool path display", () => {
         }}
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 

@@ -53,8 +53,21 @@ describe("isSafeToBatchToolCall", () => {
     );
   });
 
-  it("returns true for startBackgroundJob", () => {
-    expect(isSafeToBatchToolCall("startBackgroundJob", {})).toBe(true);
+  it("returns true for background executeCommand", () => {
+    expect(
+      isSafeToBatchToolCall("executeCommand", {
+        command: "npm run dev",
+        background: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for foreground stateful executeCommand", () => {
+    expect(
+      isSafeToBatchToolCall("executeCommand", {
+        command: "npm run build",
+      }),
+    ).toBe(false);
   });
 
   it("returns false for writeToFile", () => {

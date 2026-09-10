@@ -86,7 +86,7 @@ export class ExecutionError extends Error {
   static createTimeoutError(timeout: number) {
     return new ExecutionError(
       false,
-      `Command execution timed out after ${timeout} seconds, if it's used as background task, please consider use startBackgroundJob.`,
+      `Command execution timed out after ${timeout} seconds. For a long-running task, retry executeCommand with background set to true.`,
     );
   }
 }

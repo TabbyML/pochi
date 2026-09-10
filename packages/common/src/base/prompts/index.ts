@@ -1,6 +1,7 @@
 import { renderActiveSelection } from "./active-selection";
 import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
 export { assertBackgroundJobReadInterval } from "./background-job";
+import type { PastedTextFile } from "../message";
 import {
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
@@ -13,13 +14,18 @@ import {
   serializeMemoryMessage,
   truncateAutoMemoryIndex,
 } from "./auto-memory";
+import { renderBackgroundJobNotification } from "./background-job-notification";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
 import { createEnvironmentPrompt, injectEnvironment } from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
 import { renderReviewComments } from "./review-comments";
-import { createSkillPrompt, createUseSkillResult } from "./skill";
+import {
+  createSkillPrompt,
+  createSkillSystemReminder,
+  createUseSkillResult,
+} from "./skill";
 import { createSystemPrompt } from "./system";
 import {
   buildMemoryExtractionDirective,
@@ -28,7 +34,10 @@ import {
 import { renderTerminalContext } from "./terminal-context";
 import { renderUserEdits } from "./user-edits";
 
-export { parseEnvironmentInfo } from "./environment";
+export {
+  parseEnvironmentInfo,
+  parseEnvironmentInfoResult,
+} from "./environment";
 
 export const prompts = {
   system: createSystemPrompt,
@@ -44,13 +53,16 @@ export const prompts = {
   inlineCompact,
   parseInlineCompact,
   generateTitle,
-  customAgent: createCustomAgentPrompt,
+  customAgentSystemReminder: createCustomAgentSystemReminder,
   skill: createSkillPrompt,
+  skillSystemReminder: createSkillSystemReminder,
   renderReviewComments,
   renderActiveSelection,
   renderTerminalContext,
   renderUserEdits,
   renderBashOutputs,
+  renderBackgroundJobNotification,
+  pastedTextFileReferences,
   fixMermaidError,
   createUseSkillResult,
   attemptTodoCompletion: {
@@ -74,6 +86,17 @@ export const prompts = {
 
 If you have already provided a response or explanation in your text above, do NOT repeat or copy that content into the \`result\` parameter of \`attemptCompletion\`. Instead, simply refer to your response above with a brief sentence (e.g., "See response above." or "The task is completed as described above.") to save output tokens.`,
 };
+
+function pastedTextFileReferences(files: readonly PastedTextFile[]) {
+  if (files.length === 0) return "";
+
+  return `Referenced pasted text files:\n${files
+    .map(
+      ({ filePath }) =>
+        `- pasted text file: ${filePath}. Read this file before continuing.`,
+    )
+    .join("\n")}`;
+}
 
 function createSystemReminder(content: string) {
   return `<system-reminder>${content}</system-reminder>`;
@@ -126,16 +149,12 @@ function parseInlineCompact(text: string) {
   };
 }
 
-function createCustomAgentPrompt(id: string, path?: string) {
-  // Remove extra newlines from the id
-  let processedAgentName = id.replace(/\n+/g, "\n");
-  // Escape '<' to avoid </custom-agent> being interpreted as a closing tag
-  const customAgentTagRegex = /<\/?custom-agent\b[^>]*>/g;
-  processedAgentName = processedAgentName.replace(
-    customAgentTagRegex,
-    (match) => {
-      return match.replace("<", "&lt;");
-    },
+function createCustomAgentSystemReminder(agentName: string) {
+  const escapedAgentName = agentName.replace(
+    /<\/?system-reminder\b[^>]*>/gi,
+    (match) => match.replace("<", "&lt;"),
   );
-  return `<custom-agent id="${id}" path="${path ?? ""}">Please use the newTask tool to run ${processedAgentName} to complete the following request:\n</custom-agent>`;
+  return createSystemReminder(
+    `The user explicitly invoked the "${escapedAgentName}" agent. You must use the newTask tool with agentType="${escapedAgentName}" to run it, passing the complete relevant request and context.`,
+  );
 }

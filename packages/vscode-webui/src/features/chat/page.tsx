@@ -40,6 +40,10 @@ import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
 import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
+import {
+  useBackgroundJobNotificationDelivery,
+  useBackgroundJobNotificationSink,
+} from "./hooks/use-background-job-notification-delivery";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatMemory } from "./hooks/use-chat-memory";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
@@ -90,6 +94,12 @@ function Chat({ user, uid, info }: ChatProps) {
   const todoPausedRef = useLatest(todoPaused);
   const todoModeActiveRef = useRef(false);
   const lastAutoContinueStateRef = useRef<string | undefined>(undefined);
+  // The chat kit owns the notifications waiting for delivery; this only
+  // mirrors them for the toolbar.
+  const {
+    pending: pendingBackgroundJobNotifications,
+    options: backgroundJobNotifications,
+  } = useBackgroundJobNotificationSink();
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -222,6 +232,7 @@ function Chat({ user, uid, info }: ChatProps) {
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
     backgroundTask,
+    backgroundJobNotifications,
     taskMemory,
     projectMemory,
     sendAutomaticallyWhen: (x) => {
@@ -296,18 +307,28 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { messages, sendMessage, status } = chat;
+
+  useBackgroundJobNotificationDelivery({
+    taskId: uid,
+    messages,
+    enqueue: chatKit.enqueueBackgroundJobNotifications,
+  });
+
   const isLoading = status === "streaming" || status === "submitted";
   const todoModeActive =
     !isSubTask && !todoPaused && hasActiveTodos(todosRef.current);
   const hidePendingTodoAttemptCompletion = isLoading && todoModeActive;
   todoModeActiveRef.current = todoModeActive;
-  const renderMessages = useMemo(
-    () => formatters.ui(messages, { hidePendingTodoAttemptCompletion }),
-    [messages, hidePendingTodoAttemptCompletion],
+  const formatRenderMessages = useCallback(
+    (visibleMessages: Message[]) =>
+      formatters.ui(visibleMessages, { hidePendingTodoAttemptCompletion }),
+    [hidePendingTodoAttemptCompletion],
   );
-  const isTaskWithoutContent =
-    (info.type === "new-task" && !info.prompt && !info.files?.length) ||
-    (info.type === "open-task" && messages.length === 0);
+  const shouldHideEmptyPlaceholder =
+    info.type === "new-task" &&
+    (!!info.prompt ||
+      !!info.files?.length ||
+      (info.pastedTextFiles?.length ?? 0) > 0);
 
   const approvalAndRetry = useApprovalAndRetry({
     ...chat,
@@ -401,11 +422,12 @@ function Chat({ user, uid, info }: ChatProps) {
     messages,
   });
 
-  const lastMessage = messages.at(-1);
-  const lastUserMessageId =
-    lastMessage?.role === "user" ? lastMessage.id : undefined;
+  const lastUserMessageId = messages.findLast(
+    (message) => message.role === "user",
+  )?.id;
 
   const { onToolCallApprovalVisible } = useScrollToBottom({
+    enabled: !isInitializing,
     messagesContainerRef,
     lastUserMessageId,
   });
@@ -462,7 +484,8 @@ function Chat({ user, uid, info }: ChatProps) {
         />
       )}
       <ChatArea
-        messages={renderMessages}
+        messages={messages}
+        formatMessages={formatRenderMessages}
         isLoading={isLoading || isCompacting}
         loadingLabel={isCompacting ? t("tokenUsage.compacting") : undefined}
         user={user || defaultUser}
@@ -471,12 +494,13 @@ function Chat({ user, uid, info }: ChatProps) {
           // Leave more space for errors as errors / approval button are absolutely positioned
           "pb-14": !!displayError,
         })}
-        hideEmptyPlaceholder={!isTaskWithoutContent}
+        hideEmptyPlaceholder={shouldHideEmptyPlaceholder}
         forkTask={task?.cwd ? forkTask : undefined}
         isSubTask={isSubTask}
         repairMermaid={repairMermaid}
         repairingChart={repairingChart}
         showLastStepDuration={task?.status === "completed"}
+        taskStatus={task?.status}
       />
       <div className={ChatToolbarContainerClassName}>
         <ChatToolbar
@@ -500,6 +524,10 @@ function Chat({ user, uid, info }: ChatProps) {
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
+          pendingBackgroundJobNotifications={pendingBackgroundJobNotifications}
+          flushBackgroundJobNotifications={
+            chatKit.flushBackgroundJobNotifications
+          }
           onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}

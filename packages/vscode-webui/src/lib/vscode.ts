@@ -99,6 +99,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "getGlobalState",
         "setGlobalState",
         "readEnvironment",
+        "readBackgroundJobNotifications",
         "executeToolCall",
         "previewEdit",
         "executeBashCommand",
@@ -108,6 +109,8 @@ function createVSCodeHost(): VSCodeHostApi {
         "readActiveSelection",
         "readCurrentWorkspace",
         "openFile",
+        "saveWidget",
+        "openWidgetInPanel",
         "readResourceURI",
         "listRuleFiles",
         "capture",
@@ -128,9 +131,10 @@ function createVSCodeHost(): VSCodeHostApi {
         "diffWithCheckpoint",
         "restoreChangedFiles",
         "showInformationMessage",
+        "showWarningMessage",
         "readVisibleTerminals",
-        "readMonitorEvents",
-        "ackMonitorEvents",
+        "readBackgroundCommands",
+        "persistPastedTextFiles",
         "readModelList",
         "readUserStorage",
         "readCustomAgents",
@@ -169,6 +173,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readTaskPinned",
         "readLang",
         "readTaskChangedFiles",
+        "notifyFocusChanged",
       ],
       exports: {
         async addTerminalContext(selection) {
@@ -239,7 +244,7 @@ function createVSCodeHost(): VSCodeHostApi {
           if (status !== "completed") {
             return {
               content:
-                "The task is currently running. You can continue with other operations while it executes in the background. If you need to wait for the task to complete, you can use the `executeCommand` tool with `sleep`.",
+                "The task is currently running. Do not wait for or poll it; continue with other work until its completion notification arrives.",
               status,
               isTruncated: false,
             };
@@ -292,6 +297,20 @@ function createVSCodeHost(): VSCodeHostApi {
   );
 
   const vscodeHostApi: VSCodeHostApi = thread.imports;
+
+  // Report focus changes so the extension host can tell, in retrospect,
+  // which Pochi surface (this webview vs. e.g. a different task tab) the
+  // user last focused. Seed the initial state in case this webview is
+  // already focused when it finishes loading (window "focus"/"blur" only
+  // fire on subsequent transitions).
+  void vscodeHostApi.notifyFocusChanged(window.document.hasFocus());
+  window.addEventListener("focus", () => {
+    void vscodeHostApi.notifyFocusChanged(true);
+  });
+  window.addEventListener("blur", () => {
+    void vscodeHostApi.notifyFocusChanged(false);
+  });
+
   const openFile: VSCodeHostApi["openFile"] = async (filePath, options) => {
     return vscodeHostApi.openFile(
       resolvePochiUri(filePath, globalStore?.storeId ?? ""),

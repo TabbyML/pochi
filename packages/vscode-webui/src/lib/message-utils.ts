@@ -1,14 +1,24 @@
-import { prompts } from "@getpochi/common";
+import { type PastedTextFile, prompts } from "@getpochi/common";
 import type {
   ActiveSelection,
   Review,
   TerminalTextSelection,
   UserEdits,
+  ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
 import type { FileUIPart } from "ai";
 import type { TFunction } from "i18next";
 import { vscodeHost } from "./vscode";
+
+export function buildTodoModeObjective(
+  prompt: string,
+  pastedTextFiles: readonly PastedTextFile[] = [],
+): string {
+  return [prompt, prompts.pastedTextFileReferences(pastedTextFiles)]
+    .filter(Boolean)
+    .join("\n\n");
+}
 
 export function prepareMessageParts(
   t: TFunction,
@@ -18,8 +28,69 @@ export function prepareMessageParts(
   userEdits?: UserEdits,
   activeSelection?: ActiveSelection,
   terminalContextSelections?: TerminalTextSelection[],
+  invokedSkills?: ValidSkillFile[],
+  invokedCustomAgents?: string[],
+  pastedTextFiles?: PastedTextFile[],
 ) {
   const parts: Message["parts"] = [];
+  const attachedContextLabels: string[] = [];
+  if (files.length) {
+    attachedContextLabels.push(t("chat.contextLabelFiles") as string);
+  }
+  if (reviews.length) {
+    attachedContextLabels.push(t("chat.contextLabelReviews") as string);
+  }
+  if (terminalContextSelections?.length) {
+    attachedContextLabels.push(
+      t("chat.contextLabelTerminalSelections") as string,
+    );
+  }
+
+  let fallbackPrompt = "";
+  if (attachedContextLabels.length) {
+    // Use the runtime's default locale (rather than importing the i18next
+    // singleton) to avoid pulling i18n/config.ts - and its side-effecting
+    // `.use(initReactI18next)` init call - into this module, which breaks
+    // tests that partially mock "react-i18next".
+    const items = new Intl.ListFormat(undefined, {
+      style: "long",
+      type: "conjunction",
+    }).format(attachedContextLabels);
+    fallbackPrompt = t("chat.pleaseCheckAttachedContext", { items }) as string;
+  }
+
+  const finalPrompt = prompt || fallbackPrompt;
+
+  for (const skill of invokedSkills ?? []) {
+    parts.push({
+      type: "text",
+      text: prompts.skillSystemReminder(skill),
+    });
+  }
+
+  for (const agentName of invokedCustomAgents ?? []) {
+    parts.push({
+      type: "text",
+      text: prompts.customAgentSystemReminder(agentName),
+    });
+  }
+
+  if (finalPrompt) {
+    parts.push({ type: "text", text: finalPrompt });
+  }
+
+  if (pastedTextFiles?.length) {
+    parts.push({
+      type: "text",
+      text: prompts.createSystemReminder(
+        prompts.pastedTextFileReferences(pastedTextFiles),
+      ),
+    });
+    for (const file of pastedTextFiles) {
+      parts.push({ type: "data-pasted-text", data: file });
+    }
+  }
+
   for (const x of files) {
     parts.push({
       type: "text",
@@ -59,37 +130,6 @@ export function prepareMessageParts(
       type: "data-terminal-context",
       data: { textSelections: terminalContextSelections },
     });
-  }
-
-  const attachedContextLabels: string[] = [];
-  if (files.length) {
-    attachedContextLabels.push(t("chat.contextLabelFiles") as string);
-  }
-  if (reviews.length) {
-    attachedContextLabels.push(t("chat.contextLabelReviews") as string);
-  }
-  if (terminalContextSelections?.length) {
-    attachedContextLabels.push(
-      t("chat.contextLabelTerminalSelections") as string,
-    );
-  }
-
-  let fallbackPrompt = "";
-  if (attachedContextLabels.length) {
-    // Use the runtime's default locale (rather than importing the i18next
-    // singleton) to avoid pulling i18n/config.ts - and its side-effecting
-    // `.use(initReactI18next)` init call - into this module, which breaks
-    // tests that partially mock "react-i18next".
-    const items = new Intl.ListFormat(undefined, {
-      style: "long",
-      type: "conjunction",
-    }).format(attachedContextLabels);
-    fallbackPrompt = t("chat.pleaseCheckAttachedContext", { items }) as string;
-  }
-
-  const finalPrompt = prompt || fallbackPrompt;
-  if (finalPrompt) {
-    parts.push({ type: "text", text: finalPrompt });
   }
 
   return parts;

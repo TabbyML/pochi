@@ -159,13 +159,6 @@ export function DiffSummary({
                     </div>
 
                     <div className="flex shrink-0 items-center gap-3">
-                      <EditSummary
-                        editSummary={{
-                          added: file.added,
-                          removed: file.removed,
-                        }}
-                        className="text-sm"
-                      />
                       <div className="hidden items-center gap-1 group-hover:flex">
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -222,6 +215,13 @@ export function DiffSummary({
                           </TooltipContent>
                         </Tooltip>
                       </div>
+                      <EditSummary
+                        editSummary={{
+                          added: file.added,
+                          removed: file.removed,
+                        }}
+                        className="text-sm"
+                      />
                     </div>
                   </div>
                 </div>

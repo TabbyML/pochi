@@ -5,26 +5,16 @@ export { attachTransport, getLogger } from "./logger";
 
 export {
   formatters,
+  getUIUserMessageKind,
   type LLMFormatterOptions,
+  type UIUserMessageKind,
 } from "./formatters";
 export {
   assertBackgroundJobReadInterval,
   prompts,
   parseEnvironmentInfo,
+  parseEnvironmentInfoResult,
 } from "./prompts";
-
-export {
-  MonitorWatcher,
-  type MonitorWatcherOptions,
-  type MonitorEventBatch,
-  type MonitorEventEnvelope,
-  formatMonitorNotifications,
-  MonitorBatchIntervalMs,
-  MonitorDefaultTimeoutMs,
-  MonitorMaxLinesPerBatch,
-  MonitorMaxBatchesPerMinute,
-  MonitorRateLimitedReason,
-} from "./monitor";
 
 export {
   type SubAgentResultNotification,
@@ -99,6 +89,7 @@ export const PochiProviderOptions = z.object({
   storeId: z.string(),
   client: z.string(),
   useCase: PochiRequestUseCase,
+  numCompacts: z.number().int().positive().optional(),
 });
 
 export type PochiProviderOptions = z.infer<typeof PochiProviderOptions>;
@@ -130,8 +121,9 @@ export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
   useCase?: BackgroundTaskUseCase;
-  /** Custom agent name for `subagent` tasks; undefined runs the generic agent. */
   agentType?: string;
+  /** Maximum number of steps this background task may run. */
+  maxSteps?: number;
   /** Step-start count inherited from the parent, excluded from the max-step guard. */
   baselineStepCount?: number;
 }

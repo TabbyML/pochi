@@ -30,17 +30,11 @@ export async function repairMermaid({
 }): Promise<void> {
   // Find all messages containing the mermaid diagram by searching through all parts
   // This is more reliable than using messageId since messages may be transformed in UI/DB
+  // Any string in a part might be rendered as markdown (message text, reasoning,
+  // tool inputs such as `attemptCompletion.result` or `askFollowupQuestion.questions[].question`),
+  // so the whole part is walked recursively.
   const messagesWithMermaid = messages.filter((msg) =>
-    msg.parts.some(
-      (part) =>
-        ((part.type === "text" || part.type === "reasoning") &&
-          part.text.includes("```mermaid") &&
-          part.text.includes(chart)) ||
-        (part.type === "tool-attemptCompletion" &&
-          typeof part.input?.result === "string" &&
-          part.input.result.includes("```mermaid") &&
-          part.input.result.includes(chart)),
-    ),
+    msg.parts.some((part) => containsMermaidChart(part, chart)),
   );
 
   if (messagesWithMermaid.length === 0) {
@@ -67,64 +61,25 @@ export async function repairMermaid({
     // Collect all updated messages
     const updatedMessages: Message[] = [];
 
+    const mermaidPattern = buildMermaidPattern(chart);
+    const fixedMermaidBlock = `\`\`\`mermaid\n${fixedMermaid}\n\`\`\``;
+
     // Update all messages containing the chart
     for (const messageWithMermaid of messagesWithMermaid) {
       // Find and update the part with mermaid code, creating new objects to trigger updates
       let replaced = false;
 
       const updatedParts = messageWithMermaid.parts.map((part) => {
-        if (
-          (part.type === "text" || part.type === "reasoning") &&
-          part.text.includes(chart)
-        ) {
-          // Escape special regex characters in the chart content
-          const escapedChart = chart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          // Create a regex pattern that matches the exact mermaid block with this chart
-          const mermaidPattern = new RegExp(
-            `\`\`\`mermaid\\s*\\n${escapedChart}\\s*\\n\`\`\``,
-            "s",
-          );
-          // Replace the old mermaid code with the new one
-          const newText = part.text.replace(
-            mermaidPattern,
-            `\`\`\`mermaid\n${fixedMermaid}\n\`\`\``,
-          );
-          if (newText !== part.text) {
-            replaced = true;
-            logger.debug("Replaced mermaid in message part", newText);
-            return { ...part, text: newText };
-          }
+        const updatedPart = replaceMermaidChart(
+          part,
+          mermaidPattern,
+          fixedMermaidBlock,
+        );
+        if (updatedPart !== part) {
+          replaced = true;
+          logger.debug(`Replaced mermaid in ${part.type} part`);
         }
-        if (
-          part.type === "tool-attemptCompletion" &&
-          typeof part.input?.result === "string" &&
-          part.input?.result?.includes(chart)
-        ) {
-          // Escape special regex characters in the chart content
-          const escapedChart = chart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          // Create a regex pattern that matches the exact mermaid block with this chart
-          const mermaidPattern = new RegExp(
-            `\`\`\`mermaid\\s*\\n${escapedChart}\\s*\\n\`\`\``,
-            "s",
-          );
-          // Replace the old mermaid code with the new one
-          const newText = part.input.result.replace(
-            mermaidPattern,
-            `\`\`\`mermaid\n${fixedMermaid}\n\`\`\``,
-          );
-          if (newText !== part.input.result) {
-            replaced = true;
-            logger.debug("Replaced mermaid in tool completion input", newText);
-            return {
-              ...part,
-              input: {
-                ...part.input,
-                result: newText,
-              },
-            };
-          }
-        }
-        return part;
+        return updatedPart;
       });
 
       if (!replaced) {
@@ -158,6 +113,89 @@ export async function repairMermaid({
     logger.warn("Failed to repair mermaid", err);
     throw err;
   }
+}
+
+/**
+ * Builds a regex matching the exact mermaid code block holding `chart`.
+ */
+function buildMermaidPattern(chart: string) {
+  // Escape special regex characters in the chart content
+  const escapedChart = chart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\`\`\`mermaid\\s*\\n${escapedChart}\\s*\\n\`\`\``, "gs");
+}
+
+/**
+ * Only plain objects are walked, so exotic values (Date, Map, ...) are kept as-is.
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
+ * Checks whether `value` holds - at any depth - a string containing the mermaid chart.
+ *
+ * Charts may live in plain text / reasoning parts, but also in tool call inputs
+ * (e.g. `attemptCompletion.result` or `askFollowupQuestion.questions[].question`),
+ * which are rendered as markdown as well.
+ */
+function containsMermaidChart(value: unknown, chart: string): boolean {
+  if (typeof value === "string") {
+    return value.includes("```mermaid") && value.includes(chart);
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => containsMermaidChart(item, chart));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.values(value).some((item) =>
+      containsMermaidChart(item, chart),
+    );
+  }
+
+  return false;
+}
+
+/**
+ * Recursively replaces every mermaid block matching `pattern` with `replacement`.
+ *
+ * Returns the original reference when nothing changed, so callers can detect
+ * updates with a simple identity check and avoid pointless re-renders.
+ */
+function replaceMermaidChart<T>(
+  value: T,
+  pattern: RegExp,
+  replacement: string,
+): T {
+  if (typeof value === "string") {
+    // Use a replacer function so that `$` sequences in the fixed chart are kept as-is
+    const replaced = value.replace(pattern, () => replacement);
+    return (replaced === value ? value : replaced) as T;
+  }
+
+  if (Array.isArray(value)) {
+    let changed = false;
+    const items = value.map((item) => {
+      const updated = replaceMermaidChart(item, pattern, replacement);
+      if (updated !== item) changed = true;
+      return updated;
+    });
+    return (changed ? items : value) as T;
+  }
+
+  if (isPlainObject(value)) {
+    let changed = false;
+    const entries = Object.entries(value).map(([key, item]) => {
+      const updated = replaceMermaidChart(item, pattern, replacement);
+      if (updated !== item) changed = true;
+      return [key, updated] as const;
+    });
+    return (changed ? Object.fromEntries(entries) : value) as T;
+  }
+
+  return value;
 }
 
 async function generateFixedMermaid(

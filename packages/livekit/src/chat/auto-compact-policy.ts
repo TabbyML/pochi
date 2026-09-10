@@ -28,6 +28,19 @@ function resolveContextWindow(llm: RequestData["llm"] | undefined): number {
   return declared || constants.DefaultContextWindow;
 }
 
+export function resolveAutoCompactThreshold({
+  llm,
+  effectiveContextWindow,
+}: {
+  llm: RequestData["llm"] | undefined;
+  effectiveContextWindow?: number;
+}): number {
+  return getAutoCompactThreshold(
+    resolveContextWindow(llm),
+    effectiveContextWindow,
+  );
+}
+
 export function shouldAutoCompact({
   messages,
   llm,

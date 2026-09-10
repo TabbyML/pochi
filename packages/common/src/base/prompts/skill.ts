@@ -1,14 +1,23 @@
 import type { Skill } from "@getpochi/tools";
 
-export function createSkillPrompt(id: string, path: string) {
-  // Remove extra newlines from the id
-  let processedSkillName = id.replace(/\n+/g, "\n");
-  // Escape '<' to avoid </skill> being interpreted as a closing tag
-  const skillTagRegex = /<\/?skill\b[^>]*>/g;
-  processedSkillName = processedSkillName.replace(skillTagRegex, (match) => {
-    return match.replace("<", "&lt;");
-  });
-  return `<skill id="${id}" path="${path}">Please use the useSkill tool to run ${processedSkillName} to complete the following request:\n</skill>`;
+export function createSkillPrompt(skill: Skill) {
+  const instructions = createUseSkillResult(skill).replace(
+    /<\/?skill\b[^>]*>/g,
+    (match) => match.replace("<", "&lt;"),
+  );
+  return `<skill id="${skill.name}" path="${skill.filePath}" data-user-invoked="true">
+The user invoked this skill directly, so its instructions are already active. Do not call the useSkill tool for "${skill.name}"; follow the instructions below directly.
+
+${instructions}
+</skill>`;
+}
+
+export function createSkillSystemReminder(skill: Skill) {
+  const skillPrompt = createSkillPrompt(skill).replace(
+    /<\/?system-reminder\b[^>]*>/gi,
+    (match) => match.replace("<", "&lt;"),
+  );
+  return `<system-reminder>${skillPrompt}</system-reminder>`;
 }
 
 /**

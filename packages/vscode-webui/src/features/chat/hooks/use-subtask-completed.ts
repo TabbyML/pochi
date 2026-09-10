@@ -60,21 +60,26 @@ export const useAddSubtaskResult = ({
   const { getToolCallLifeCycle } = useToolCallLifeCycle();
 
   useEffect(() => {
-    const toolPart = messages.at(-1)?.parts.at(-1);
-    if (
-      !toolPart ||
-      toolPart.type !== "tool-newTask" ||
-      toolPart.state !== "input-available"
-    ) {
-      return;
-    }
-    const subtaskUid = toolPart.input?._meta?.uid;
-    if (!subtaskUid) return;
-    const lifecycle = getToolCallLifeCycle({
-      toolName: getStaticToolName(toolPart),
-      toolCallId: toolPart.toolCallId,
-    });
-    if (lifecycle.status === "init") {
+    const lastMessage = messages.at(-1);
+    if (!lastMessage) return;
+
+    for (const toolPart of lastMessage.parts) {
+      if (
+        toolPart.type !== "tool-newTask" ||
+        toolPart.state !== "input-available"
+      ) {
+        continue;
+      }
+
+      const subtaskUid = toolPart.input?._meta?.uid;
+      if (!subtaskUid) continue;
+
+      const lifecycle = getToolCallLifeCycle({
+        toolName: getStaticToolName(toolPart),
+        toolCallId: toolPart.toolCallId,
+      });
+      if (lifecycle.status !== "init") continue;
+
       const result = extractTaskResult(store, subtaskUid);
       if (result) {
         autoApproveGuard.current = "auto";

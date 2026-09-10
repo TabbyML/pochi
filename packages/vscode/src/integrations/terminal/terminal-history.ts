@@ -1,8 +1,10 @@
 import { getLogger } from "@/lib/logger";
 import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import {
+  BackgroundJobOutputFile,
   MaxTerminalHistoryLines,
   MaxTerminalOutputSize,
+  getTerminalOutputPath,
 } from "@getpochi/common/tool-utils";
 import type { ExecuteCommandResult } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
@@ -50,6 +52,8 @@ export class TerminalHistoryManager {
   private isTruncated = false;
   private lastReadLength = 0; // tracks byte length, not character length
   private lastReadAt = 0;
+  private readonly outputWriter: BackgroundJobOutputFile;
+  readonly outputFile: string;
 
   /**
    * The terminal's display name, refreshed on each command start. A snapshot:
@@ -61,7 +65,13 @@ export class TerminalHistoryManager {
   /** The most recent command run in the terminal. */
   lastCommand?: string;
 
-  private constructor(public readonly id: string) {}
+  /** Whether the transcript contains at least one captured command header. */
+  hasCapturedCommand = false;
+
+  private constructor(public readonly id: string) {
+    this.outputFile = getTerminalOutputPath(id);
+    this.outputWriter = new BackgroundJobOutputFile(this.outputFile);
+  }
 
   static getOrCreate(id: string): TerminalHistoryManager {
     let manager = TerminalHistoryManager.managers.get(id);
@@ -77,7 +87,9 @@ export class TerminalHistoryManager {
   }
 
   static delete(id: string): void {
+    const manager = TerminalHistoryManager.managers.get(id);
     TerminalHistoryManager.managers.delete(id);
+    void manager?.outputWriter.close();
   }
 
   /**
@@ -85,18 +97,21 @@ export class TerminalHistoryManager {
    * line (cwd + command) to the history, ahead of the command's own output
    * (added separately via {@link addChunk}).
    */
-  beginCommand(command: string, cwd?: string): void {
+  beginCommand(command: string, cwd?: string): Promise<void> {
     this.lastCommand = command;
     const header = cwd ? `${cwd}$ ${command}\n` : `$ ${command}\n`;
-    this.addChunk(header);
+    return this.addChunk(header).then(() => {
+      this.hasCapturedCommand = true;
+    });
   }
 
   /**
    * Appends a chunk of output (or a command header) to the history.
    */
-  addChunk(chunk: string): void {
+  addChunk(chunk: string): Promise<void> {
     this.chunks.push(chunk);
     this.updateOutput("running");
+    return this.outputWriter.append(chunk);
   }
 
   /**

@@ -1,33 +1,26 @@
 import { CodeBlock, MessageMarkdown } from "@/components/message";
-import { isStaticToolUIPart } from "ai";
-import { Check } from "lucide-react";
-import { useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
+import { Check, CheckIcon, CopyIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CreatePrAction } from "./create-pr-action";
-import { getAttemptCompletionResultDisplay } from "./tool-result-display";
+import {
+  getAttemptCompletionResultCopyText,
+  getAttemptCompletionResultDisplay,
+} from "./tool-result-display";
 import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
   ToolProps<"attemptCompletion">
-> = ({ tool: toolCall, messages, isSubTask }) => {
+> = ({ tool: toolCall, isLastPart, isSubTask }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
   const resultContent = getAttemptCompletionResultDisplay(result);
-
-  const isLastPart = useMemo(() => {
-    if (!messages || messages.length === 0) return false;
-    const lastMessage = messages[messages.length - 1];
-
-    // Check if tool is in last message
-    const partIndex = lastMessage.parts.findIndex(
-      (p) => isStaticToolUIPart(p) && p.toolCallId === toolCall.toolCallId,
-    );
-
-    if (partIndex === -1) return false;
-
-    // Check if it is the last part
-    return partIndex === lastMessage.parts.length - 1;
-  }, [messages, toolCall.toolCallId]);
 
   // Return null if there's nothing to display
   if (!resultContent.content) {
@@ -41,11 +34,10 @@ export const AttemptCompletionTool: React.FC<
           <Check className="size-4" />
           {t("toolInvocation.taskCompleted")}
         </span>
-        {isLastPart && !isSubTask && (
-          <div className="flex items-center gap-1">
-            <CreatePrAction />
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          <AttemptCompletionCopyAction result={result} />
+          {isLastPart && !isSubTask ? <CreatePrAction /> : null}
+        </div>
       </div>
       {resultContent.type === "json" ? (
         <CodeBlock language="json" value={resultContent.content} />
@@ -55,3 +47,37 @@ export const AttemptCompletionTool: React.FC<
     </div>
   );
 };
+
+function AttemptCompletionCopyAction({ result }: { result: unknown }) {
+  const { t } = useTranslation();
+  const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
+  const label = isCopied
+    ? t("commandExecutionPanel.copied")
+    : t("codeBlock.copy");
+
+  const onCopy = () => {
+    if (isCopied) return;
+    copyToClipboard(getAttemptCompletionResultCopyText(result));
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6 text-muted-foreground"
+          aria-label={label}
+          onClick={onCopy}
+        >
+          {isCopied ? (
+            <CheckIcon className="size-3.5" />
+          ) : (
+            <CopyIcon className="size-3.5" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}

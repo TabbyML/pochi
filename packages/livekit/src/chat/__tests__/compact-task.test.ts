@@ -1,4 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const generateTextMock = vi.hoisted(() => vi.fn());
+
+vi.mock("ai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("ai")>();
+  return {
+    ...actual,
+    generateText: generateTextMock,
+  };
+});
 import type { Message } from "../../types";
 import {
   compactTask,
@@ -156,6 +166,11 @@ describe("findInlineCompactAttachIndex", () => {
 });
 
 describe("compactTask", () => {
+  beforeEach(() => {
+    generateTextMock.mockReset();
+    generateTextMock.mockResolvedValue({ text: "fresh LLM summary" });
+  });
+
   it("persists an inline compact block attached to a historical user message", async () => {
     const messages = [
       userMsg("u0"),
@@ -201,5 +216,87 @@ describe("compactTask", () => {
         text: expect.stringContaining("<compact>"),
       },
     });
+    expect(generateTextMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores old memory while the current extraction has no boundary", async () => {
+    const messages = [
+      userMsg("u0"),
+      assistantMsg("a0"),
+      compactUserMsg("u1-compact"),
+      assistantMsg("a1"),
+      userMsg("u2", "latest request"),
+    ];
+    const store = {
+      query: vi.fn(() => ({ content: "stale memory through u0" })),
+      commit: vi.fn(),
+    };
+
+    await compactTask({
+      blobStore: {} as never,
+      taskId: "task-1",
+      storeId: "store-1",
+      model: {} as never,
+      messages,
+      inline: true,
+      store: store as never,
+    });
+
+    expect(store.query).not.toHaveBeenCalled();
+    expect(generateTextMock).toHaveBeenCalledTimes(1);
+    expect(messages.at(-1)?.parts[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("fresh LLM summary"),
+    });
+  });
+
+  it("falls back non-inline when memory leaves a tail uncovered", async () => {
+    const messages = [
+      userMsg("u0", "initial request"),
+      assistantMsg("a0"),
+      userMsg("u1"),
+      assistantMsg("a1", "latest assistant response"),
+    ];
+    const store = {
+      query: vi.fn(() => ({ content: "stale memory" })),
+      commit: vi.fn(),
+    };
+
+    const summary = await compactTask({
+      blobStore: {} as never,
+      taskId: "task-1",
+      storeId: "store-1",
+      model: {} as never,
+      messages,
+      taskMemoryBoundaryMessageId: "a0",
+      store: store as never,
+    });
+
+    expect(store.query).not.toHaveBeenCalled();
+    expect(JSON.stringify(generateTextMock.mock.calls[0]?.[0]?.prompt)).toContain(
+      "latest assistant response",
+    );
+    expect(summary).toContain("Previous conversation summary (4 messages)");
+  });
+
+  it("uses non-inline memory when its boundary is the final message", async () => {
+    const messages = [userMsg("u0"), assistantMsg("a0")];
+    const store = {
+      query: vi.fn(() => ({ content: "current memory" })),
+      commit: vi.fn(),
+    };
+
+    const summary = await compactTask({
+      blobStore: {} as never,
+      taskId: "task-1",
+      storeId: "store-1",
+      model: {} as never,
+      messages,
+      taskMemoryBoundaryMessageId: "a0",
+      store: store as never,
+    });
+
+    expect(generateTextMock).not.toHaveBeenCalled();
+    expect(summary).toContain("current memory");
   });
 });

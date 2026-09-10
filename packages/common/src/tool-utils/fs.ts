@@ -159,6 +159,9 @@ interface ProcessedContent {
   type?: "text";
   content: string;
   isTruncated: boolean;
+  numLines: number;
+  startLine: number;
+  totalLines: number;
 }
 
 export function selectFileContent(
@@ -171,6 +174,7 @@ export function selectFileContent(
   const lines = fileContent.split("\n");
   const start = startLine ? startLine - 1 : 0;
   const end = endLine ? endLine : lines.length;
+  const totalLines = lines.length;
 
   let selectedLines = lines.slice(start, end);
 
@@ -188,7 +192,20 @@ export function selectFileContent(
     isTruncated = true;
   }
 
-  return { content, isTruncated };
+  const numLines =
+    selectedLines.length === 0
+      ? 0
+      : isTruncated
+        ? content.split("\n").length
+        : selectedLines.length;
+
+  return {
+    content,
+    isTruncated,
+    numLines,
+    startLine: start + 1,
+    totalLines,
+  };
 }
 
 /**

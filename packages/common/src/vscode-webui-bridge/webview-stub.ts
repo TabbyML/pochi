@@ -5,15 +5,16 @@ import type {
   ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
+  BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
-  MonitorEventEnvelope,
   TaskMemoryState,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type {
+  BackgroundCommands,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -47,6 +48,9 @@ import type {
 const VSCodeHostStub = {
   readCurrentWorkspace: async () => {
     return Promise.resolve({ cwd: null, workspacePath: null });
+  },
+  notifyFocusChanged: async (_focused: boolean): Promise<void> => {
+    return Promise.resolve();
   },
   readResourceURI: (): Promise<ResourceURI> => {
     return Promise.resolve({} as ResourceURI);
@@ -131,6 +135,13 @@ const VSCodeHostStub = {
   readPochiTabs: (): Promise<ThreadSignalSerialization<TaskStates>> => {
     return Promise.resolve({} as ThreadSignalSerialization<TaskStates>);
   },
+  readBackgroundJobNotifications: (_taskId: string) =>
+    Promise.resolve({
+      notifications: {} as ThreadSignalSerialization<
+        BackgroundJobNotification[]
+      >,
+      acknowledge: async (_notificationId: string) => {},
+    }),
   closePochiTabs: (_uid?: string): Promise<void> => {
     return Promise.resolve();
   },
@@ -147,6 +158,7 @@ const VSCodeHostStub = {
       {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
   },
+  persistPastedTextFiles: () => Promise.resolve([]),
   openFile: (
     _filePath: string,
     _options?: {
@@ -156,6 +168,12 @@ const VSCodeHostStub = {
       taskId?: string;
     },
   ): void => {},
+  saveWidget: (_html: string, _suggestedFilename: string): Promise<boolean> => {
+    return Promise.resolve(false);
+  },
+  openWidgetInPanel: (_html: string, _title: string): Promise<void> => {
+    return Promise.resolve();
+  },
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
   },
@@ -253,6 +271,9 @@ const VSCodeHostStub = {
   showInformationMessage: async (): Promise<undefined> => {
     return Promise.resolve(undefined);
   },
+  showWarningMessage: async (): Promise<undefined> => {
+    return Promise.resolve(undefined);
+  },
   readVisibleTerminals: async (): Promise<{
     terminals: ThreadSignalSerialization<
       Environment["workspace"]["terminals"] | undefined
@@ -270,18 +291,16 @@ const VSCodeHostStub = {
       },
     });
   },
-  readMonitorEvents: async (
-    _taskId: string,
-  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>> => {
-    return Promise.resolve(
-      {} as ThreadSignalSerialization<MonitorEventEnvelope[]>,
-    );
-  },
-  ackMonitorEvents: async (
-    _taskId: string,
-    _upToSeq: number,
-  ): Promise<void> => {
-    return Promise.resolve();
+  readBackgroundCommands: async () => {
+    return Promise.resolve({
+      backgroundCommands: {} as ThreadSignalSerialization<BackgroundCommands>,
+      show: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
+      hide: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
+      close: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
+    });
   },
   readModelList: async () => {
     return Promise.resolve(

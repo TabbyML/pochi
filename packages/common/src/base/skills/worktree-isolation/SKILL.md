@@ -1,7 +1,7 @@
 ---
 name: worktree-isolation
 description: |
-  Create a durable isolated Git worktree when a task needs another committed source state or should not share the current checkout. Use it to protect the existing workspace while working from the exact branch, commit, or pull-request revision the task requires.
+  Create an isolated Git worktree before modifying files when a task needs another committed source state or the current checkout needs protection from risky or conflicting edits. Evaluate this proactively at task start, even when the user did not explicitly ask. For read-only review, prefer git or gh diff unless a full checkout is genuinely required.
 compatibility: Requires Git and either POSIX sh or Windows PowerShell.
 allowed-tools: executeCommand
 ---
@@ -12,12 +12,13 @@ A worktree gives you a clean checkout of an exact committed revision without tou
 
 ## When to use one
 
-Decide with one question: **does the current workspace already contain the source state the task needs?**
+Decide using both the required source state and whether the current checkout is safe:
 
-- It does → stay where you are. Separation for its own sake adds no value, and a commit-based worktree can never contain the user's uncommitted changes — if the task targets those, a worktree is the wrong tool by definition.
-- It doesn't — the task targets another branch, commit, or pull-request revision, or your work could disturb the current checkout → create a worktree from that exact committed base.
+- The current checkout contains the intended source and is safe to edit → stay where you are. A commit-based worktree cannot contain the user's uncommitted changes, so stay if the task targets them.
+- The task must modify another committed branch, commit, or pull-request revision, or the work could disturb the current checkout → create a worktree from that exact committed base.
+- The intended base or whether local changes are required inputs remains ambiguous → ask with askFollowupQuestion before editing; never guess.
 
-Whether the task is read-only does not decide this; what decides it is where the required source state lives and whether the current checkout needs protecting. If the revision you need is not available locally, obtain it through an authorized workflow or report the limitation — never quietly substitute `HEAD`.
+For read-only inspection or review, prefer the current checkout, `git show`, or `gh pr diff`; create a worktree only when a full checkout is genuinely required. If the revision you need is not available locally, obtain it through an authorized workflow or report the limitation—never quietly substitute `HEAD`.
 
 ## Hard rules
 

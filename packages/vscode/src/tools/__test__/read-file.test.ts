@@ -91,6 +91,10 @@ describe("readFile Tool", () => {
       );
     }
     assert.strictEqual(result.isTruncated, false);
+    assert.strictEqual(result.filePath, fileUri.fsPath);
+    assert.strictEqual(result.numLines, 5);
+    assert.strictEqual(result.startLine, 1);
+    assert.strictEqual(result.totalLines, 5);
   });
 
   it("should read specific lines when startLine and endLine are provided", async () => {
@@ -112,6 +116,45 @@ describe("readFile Tool", () => {
       );
     }
     assert.strictEqual(result.isTruncated, false);
+    assert.strictEqual(result.filePath, fileUri.fsPath);
+    assert.strictEqual(result.numLines, 3);
+    assert.strictEqual(result.startLine, 2);
+    assert.strictEqual(result.totalLines, 5);
+  });
+
+  it("should prefer offset and limit when legacy range fields are repeated", async () => {
+    const fileContent = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5";
+    const filePath = _path.join(currentTestTempDirRelativePath, "test.txt");
+    const fileUri = vscode.Uri.joinPath(testSuiteRootTempDir, filePath);
+    await createFile(fileUri, fileContent);
+
+    const result = await readFileWithMock(
+      {
+        path: filePath,
+        startLine: 20,
+        endLine: 30,
+        offset: 2,
+        limit: 3,
+      },
+      {
+        toolCallId: "test-call-id-123",
+        messages: [],
+        cwd: testSuiteRootTempDir.fsPath,
+      },
+    );
+
+    assert.ok(result.type === "text" || !result.type);
+    if (result.type === "text" || !result.type) {
+      assert.strictEqual(
+        result.content,
+        "2 | Line 2\n3 | Line 3\n4 | Line 4",
+      );
+    }
+    assert.strictEqual(result.isTruncated, false);
+    assert.strictEqual(result.filePath, fileUri.fsPath);
+    assert.strictEqual(result.numLines, 3);
+    assert.strictEqual(result.startLine, 2);
+    assert.strictEqual(result.totalLines, 5);
   });
 
   it("should read from startLine to the end when only startLine is provided", async () => {
@@ -168,6 +211,27 @@ describe("readFile Tool", () => {
     } catch (error: any) {
       assert.ok(error instanceof Error);
     }
+  });
+
+  it("should reject a terminal transcript that is no longer tracked", async () => {
+    await assert.rejects(
+      async () =>
+        readFileWithMock(
+          {
+            path: _path.join(
+              currentTestTempDirUri.fsPath,
+              "terminals",
+              "term-stale.log",
+            ),
+          },
+          {
+            toolCallId: "test-call-id-123",
+            messages: [],
+            cwd: testSuiteRootTempDir.fsPath,
+          },
+        ),
+      /No terminal output is available to read/,
+    );
   });
 
   it("should throw an error when trying to read a binary file", async () => {

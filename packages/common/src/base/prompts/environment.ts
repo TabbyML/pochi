@@ -8,6 +8,16 @@ export type EnvironmentInfo = Pick<
   Environment["info"],
   "os" | "shell" | "homedir" | "cwd"
 >;
+type RequiredEnvironmentInfo = Omit<EnvironmentInfo, "shell">;
+
+type EnvironmentInfoField = keyof RequiredEnvironmentInfo;
+export type EnvironmentInfoParseResult =
+  | { success: true; value: EnvironmentInfo; missingFields?: never }
+  | {
+      success: false;
+      value?: never;
+      missingFields: EnvironmentInfoField[];
+    };
 
 export function createEnvironmentPrompt(
   environment: Environment,
@@ -41,7 +51,18 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
 export function parseEnvironmentInfo(
   prompt: LanguageModelV3CallOptions["prompt"] | undefined,
 ): EnvironmentInfo | undefined {
-  if (!prompt) return;
+  const result = parseEnvironmentInfoResult(prompt);
+  return result?.value;
+}
+
+export function parseEnvironmentInfoResult(
+  prompt: LanguageModelV3CallOptions["prompt"] | undefined,
+): EnvironmentInfoParseResult {
+  let closestMissingFields: EnvironmentInfoField[] = ["os", "homedir", "cwd"];
+
+  if (!prompt) {
+    return { success: false, missingFields: closestMissingFields };
+  }
 
   for (const message of prompt) {
     const content = message.content;
@@ -61,16 +82,30 @@ export function parseEnvironmentInfo(
       const homedir = systemInfo["Home Directory"];
       const cwd = systemInfo["Current Working Directory"];
 
-      if (os && shell && homedir && cwd) {
+      if (os && homedir && cwd) {
         return {
-          os,
-          shell,
-          homedir,
-          cwd,
+          success: true,
+          value: {
+            os,
+            shell: shell ?? "",
+            homedir,
+            cwd,
+          },
         };
+      }
+
+      const missingFields: EnvironmentInfoField[] = [];
+      if (!os) missingFields.push("os");
+      if (!homedir) missingFields.push("homedir");
+      if (!cwd) missingFields.push("cwd");
+
+      if (missingFields.length < closestMissingFields.length) {
+        closestMissingFields = missingFields;
       }
     }
   }
+
+  return { success: false, missingFields: closestMissingFields };
 }
 
 function parseSystemInfoLines(text: string) {
@@ -156,11 +191,11 @@ function getVisibleTerminals(workspace: Environment["workspace"]) {
     return "";
   }
   const header =
-    '# Opened Terminals in Editor\nYou can read a terminal\'s output by calling `readBackgroundJobOutput` with its id.\n- Ids prefixed with "bgjob-" are Pochi-started background jobs (can be read and killed with `killBackgroundJob`).\n- Ids prefixed with "term-" are user-opened terminals (read-only; cannot be killed).';
+    '# Opened Terminals in Editor\nRead terminal output from its output file with `readFile` (use `offset` and `limit` for growing files).\n- Ids prefixed with "bgjob-cmd-" are Pochi-started background jobs and can be killed with `killBackgroundJob`.\n- Ids prefixed with "term-" are user-opened terminals and are read-only.\n- A terminal without an output file has no output available to read.';
   return `${header}\n${terminals
     .map(
       (t) =>
-        `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (selected)" : ""}${t.backgroundJobId ? ` (id: ${t.backgroundJobId})` : ""}${t.monitor ? ` (monitoring: ${t.monitor})` : ""}`,
+        `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (selected)" : ""}${t.backgroundJobId ? ` (id: ${t.backgroundJobId})` : ""}${t.outputFile ? ` (output: ${t.outputFile})` : ""}`,
     )
     .join("\n")}`;
 }
@@ -194,9 +229,18 @@ export function injectEnvironment(
   environment: Environment | undefined,
 ): UIMessage[] {
   if (environment === undefined) return messages;
-  const messageToInject = messages.at(-1);
-  if (!messageToInject) return messages;
-  if (messageToInject.role !== "user") return messages;
+
+  // The LLM formatter discards every message before the latest compact block.
+  // Only inspect that visible suffix when deciding whether the request already
+  // contains a complete environment.
+  const compactIndex = messages.findLastIndex((message) =>
+    message.parts.some(
+      (part) => part.type === "text" && prompts.isCompact(part.text),
+    ),
+  );
+  const visibleMessages = messages.slice(Math.max(compactIndex, 0));
+  const messageToInject = visibleMessages.at(-1);
+  if (messageToInject?.role !== "user") return messages;
 
   const { gitStatus } = environment.workspace;
   const user =
@@ -207,32 +251,39 @@ export function injectEnvironment(
         }
       : undefined;
 
-  const environmentDetails =
-    messages.length === 1
-      ? createEnvironmentPrompt(environment, user)
-      : createLiteEnvironmentPrompt(environment);
+  const parts = messageToInject.parts.filter(
+    (part) =>
+      part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
+  );
+  // Ignore the reminder being replaced when checking the outgoing request.
+  messageToInject.parts = parts;
+
+  const environmentDetails = !hasCompleteEnvironmentPrompt(visibleMessages)
+    ? createEnvironmentPrompt(environment, user)
+    : createLiteEnvironmentPrompt(environment);
 
   const reminderPart = {
     type: "text",
     text: prompts.createSystemReminder(environmentDetails),
   } satisfies TextUIPart;
 
-  const parts =
-    // Remove existing environment system reminders.
-    messageToInject.parts.filter(
-      (x) => x.type !== "text" || !prompts.isEnvironmentSystemReminder(x.text),
-    ) || [];
-  const lastTextPartIndex = parts.findLastIndex(
-    (parts) => parts.type === "text",
-  );
-  // Insert remainderPart before lastTextPartIndex
-  messageToInject.parts = [
-    ...parts.slice(0, lastTextPartIndex),
-    reminderPart,
-    ...parts.slice(lastTextPartIndex),
-  ];
+  messageToInject.parts = [reminderPart, ...parts];
 
   return messages;
+}
+
+function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
+  return messages.some((message) =>
+    message.parts.some((part) => {
+      if (part.type !== "text") return false;
+      const systemInfo = parseSystemInfoLines(part.text);
+      return Boolean(
+        systemInfo["Operating System"] &&
+          systemInfo["Home Directory"] &&
+          systemInfo["Current Working Directory"],
+      );
+    }),
+  );
 }
 
 function getTodos(todos: Environment["todos"]) {

@@ -1,9 +1,10 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type {
   ActiveSelection,
+  BackgroundJobNotification,
   BashOutputs,
   MessageMetadata,
-  MonitorEventBatch,
+  PastedTextFile,
   Review,
   SubAgentResultNotification,
   TerminalTextSelection,
@@ -19,6 +20,7 @@ import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
 export type DataParts = {
+  "pasted-text": PastedTextFile;
   checkpoint: {
     commit: string;
   };
@@ -37,15 +39,42 @@ export type DataParts = {
   "bash-outputs": {
     bashOutputs: BashOutputs;
   };
-  "monitor-events": {
-    batches: MonitorEventBatch[];
-  };
+  "background-job-notification": BackgroundJobNotification;
   "subagent-results": {
     results: SubAgentResultNotification[];
   };
 };
 
-export type UITools = InferUITools<ClientTools>;
+/**
+ * Tool shapes kept only for rendering messages created by older clients.
+ * They must not be added back to ClientTools, which is the model-facing tool set.
+ */
+type LegacyUITools = {
+  startBackgroundJob: {
+    input: {
+      command: string;
+      cwd?: string;
+    };
+    output: {
+      backgroundJobId: string;
+      outputFile: string;
+    };
+  };
+  readBackgroundJobOutput: {
+    input: {
+      backgroundJobId: string;
+    };
+    output: {
+      output: string;
+      status: "idle" | "running" | "completed" | "failed" | "stopped";
+      isTruncated?: boolean;
+      terminalName?: string;
+      lastCommand?: string;
+    };
+  };
+};
+
+export type UITools = InferUITools<ClientTools> & LegacyUITools;
 
 export type Message = UIMessage<MessageMetadata, DataParts, UITools>;
 
@@ -65,6 +94,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -83,6 +116,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -101,6 +138,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -118,6 +159,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -135,6 +180,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -152,6 +201,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -169,6 +222,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       getModel: z.custom<() => LanguageModelV3>(),
       contentType: z
         .array(z.string())

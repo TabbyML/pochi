@@ -1,5 +1,8 @@
 import * as path from "node:path";
+import { getViewColumnForTerminal } from "@/integrations/layout";
+import { TerminalJob } from "@/integrations/terminal/terminal-job";
 import type { ExecuteCommandOptions } from "@/integrations/terminal/types";
+import { getBackgroundJobTerminalName } from "@/lib/background-job-terminal-name";
 import { getLogger } from "@getpochi/common";
 import {
   getShellPath,
@@ -10,6 +13,7 @@ import {
   type ClientTools,
   ExecuteCommandDefaultTimeoutSec,
   type ToolFunctionType,
+  createBackgroundCommandResult,
 } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
 import {
@@ -22,6 +26,7 @@ import {
   PtySpawnError,
   executeCommandWithPty,
 } from "../integrations/terminal/execute-command-with-pty";
+import { ExecutionError } from "../integrations/terminal/utils";
 
 const logger = getLogger("ExecuteCommand");
 const ExecuteCommandStreamingThrottleMs = 300;
@@ -35,7 +40,12 @@ type CompletedCommandOutput = {
 export const executeCommand: ToolFunctionType<
   ClientTools["executeCommand"]
 > = async (
-  { command, cwd = ".", timeout = ExecuteCommandDefaultTimeoutSec },
+  {
+    command,
+    cwd = ".",
+    background = false,
+    timeout = ExecuteCommandDefaultTimeoutSec,
+  },
   { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
 ) => {
   if (!command) {
@@ -46,6 +56,26 @@ export const executeCommand: ToolFunctionType<
     cwd = path.normalize(cwd);
   } else {
     cwd = path.normalize(path.join(workspaceDir, cwd));
+  }
+
+  if (background) {
+    if (!taskId) {
+      throw new Error("A task ID is required to start a background job.");
+    }
+
+    const viewColumn = getViewColumnForTerminal();
+    const location = viewColumn ? { viewColumn } : undefined;
+    const job = await TerminalJob.create({
+      name: getBackgroundJobTerminalName(command),
+      command,
+      cwd,
+      location,
+      abortSignal,
+      taskId,
+      ...(envs ? { envs } : {}),
+    });
+
+    return createBackgroundCommandResult(job.id, job.outputFile);
   }
 
   const output = signal<ExecuteCommandResult>({
@@ -105,12 +135,43 @@ export const executeCommand: ToolFunctionType<
         throttledFlush.call();
       },
     })
-      .then(async ({ output: commandOutput, isTruncated }) => {
+      .then(async (result) => {
         done = true;
         throttledFlush.cancel();
+
+        if (result.type === "timedOut") {
+          if (!taskId) {
+            result.ptyProcess.kill();
+            throw ExecutionError.createTimeoutError(timeout);
+          }
+
+          const viewColumn = getViewColumnForTerminal();
+          const location = viewColumn ? { viewColumn } : undefined;
+          const job = TerminalJob.adopt(result.ptyProcess, {
+            name: getBackgroundJobTerminalName(command),
+            command,
+            cwd,
+            location,
+            abortSignal,
+            taskId,
+            ...(envs ? { envs } : {}),
+          });
+          const backgroundResult = createBackgroundCommandResult(
+            job.id,
+            job.outputFile,
+          );
+          output.value = {
+            content: backgroundResult.output,
+            status: "completed",
+            isTruncated: backgroundResult.isTruncated,
+            _meta: backgroundResult._meta,
+          };
+          return;
+        }
+
         output.value = await persistCompletedOutput({
-          output: commandOutput,
-          isTruncated,
+          output: result.output,
+          isTruncated: result.isTruncated,
         });
       })
       .catch(async (error) => {
@@ -141,10 +202,9 @@ export const executeCommand: ToolFunctionType<
     },
   };
 
-  return {
-    // biome-ignore lint/suspicious/noExplicitAny: pass thread signal
-    output: wrappedOutput as any,
-  };
+  // This is an internal streaming transport consumed by the WebUI bridge,
+  // which converts it to the public foreground command result.
+  return { streamingOutput: wrappedOutput } as never;
 };
 
 async function executeCommandImpl({
@@ -181,7 +241,7 @@ async function executeCommandImpl({
     }
   }
 
-  return await executeCommandWithNode({
+  const result = await executeCommandWithNode({
     command,
     cwd,
     timeout,
@@ -189,4 +249,5 @@ async function executeCommandImpl({
     envs,
     onData,
   });
+  return { type: "completed" as const, ...result };
 }

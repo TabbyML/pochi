@@ -120,11 +120,10 @@ export class FileStateCache {
    *
    * Used when the read tool_results that populated the cache are about to
    * leave the conversation — a compaction summary, or a retry that strips a
-   * completed read. Keeping the entries preserves the edit/write staleness
-   * guard (so a later edit of an already-read file is not falsely rejected
-   * with "File has not been read yet"), while `fromWrite: true` stops them
-   * from producing a "File unchanged" dedup stub that would dangle onto a
-   * tool_result no longer present in the conversation.
+   * completed read. Keeping the entries preserves their staleness baselines,
+   * while `fromWrite: true` stops them from producing a "File unchanged"
+   * dedup stub that would dangle onto a tool_result no longer present in the
+   * conversation.
    */
   markAllAsWritten(): void {
     for (const entry of this.entries.values()) {
@@ -219,17 +218,10 @@ export async function checkStaleness(
   operation: "editing" | "writing" = "editing",
 ): Promise<void> {
   const cachedState = cache.get(resolvedPath);
-  if (!cachedState) {
-    const currentMtime = await getMtime(resolvedPath);
-    // If the file exists on disk but was never read, require a read first.
-    // A missing mtime means the file doesn't exist yet, so creating it is fine.
-    if (currentMtime !== undefined) {
-      throw new Error(
-        `File has not been read yet. Please read the file before ${operation} it.`,
-      );
-    }
-    return;
-  }
+  // A cache miss is not proof that the file was never read. Entries can be
+  // evicted or skipped because of cache limits, so only validate files for
+  // which a trustworthy baseline is still available.
+  if (!cachedState) return;
 
   const currentMtime = await getMtime(resolvedPath);
   if (currentMtime === cachedState.timestamp) return;
@@ -270,10 +262,9 @@ async function updateCacheAfterWrite(
 }
 
 /**
- * Wraps a file-editing callback with staleness guard (before) and cache
- * update (after).  This eliminates the boilerplate that was previously
- * copy-pasted across applyDiff, writeToFile, and editNotebook in both
- * CLI and VSCode tool implementations.
+ * Wraps a file-editing callback with a best-effort staleness guard before the
+ * write and a cache update afterward. Cache misses are allowed because entries
+ * may have been evicted or skipped due to cache limits.
  *
  * Path resolution and virtual-path detection are handled automatically:
  * `pochi://` URIs are passed through as-is and skip all cache operations,
@@ -301,7 +292,6 @@ export async function withFileStateCacheGuard<T>(opts: {
   const isVirtual = isVirtualPath(inputPath);
   const resolvedPath = isVirtual ? inputPath : resolvePath(inputPath, cwd);
 
-  // --- Staleness guard ---
   if (!isVirtual && cache) {
     await checkStaleness(cache, resolvedPath, getMtime, operation);
   }
@@ -347,7 +337,7 @@ export function isVirtualPath(path: string): boolean {
  * @param opts.doRead         - Callback that performs the actual file read. Receives the resolved
  *                              absolute path. Returns the result plus the content to store in cache.
  *                              If `skipCache` is true the result is not cached (e.g. actual binary).
- * @returns The read result — either a deduplicated sentinel or the result of `doRead`
+ * @returns The resolved path and read result — either a deduplicated sentinel or the result of `doRead`
  */
 export async function withReadFileCache<T>(opts: {
   cache: IFileStateCache | undefined;
@@ -357,7 +347,10 @@ export async function withReadFileCache<T>(opts: {
   endLine: number | undefined;
   getMtime: (path: string) => Promise<number | undefined>;
   doRead: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
-}): Promise<{ result: T; deduplicated: false } | { deduplicated: true }> {
+}): Promise<
+  | { result: T; deduplicated: false; resolvedPath: string }
+  | { deduplicated: true; resolvedPath: string }
+> {
   const {
     cache,
     path: inputPath,
@@ -398,7 +391,7 @@ export async function withReadFileCache<T>(opts: {
       );
       if (mtimeMs !== undefined && mtimeMs === existingState.timestamp) {
         logger.debug(`withReadFileCache: DEDUPLICATED for "${resolvedPath}"`);
-        return { deduplicated: true };
+        return { deduplicated: true, resolvedPath };
       }
     }
   }
@@ -427,5 +420,5 @@ export async function withReadFileCache<T>(opts: {
     }
   }
 
-  return { result, deduplicated: false };
+  return { result, deduplicated: false, resolvedPath };
 }

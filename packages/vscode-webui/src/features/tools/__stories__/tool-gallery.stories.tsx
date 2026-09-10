@@ -15,7 +15,6 @@ const ToolsGallery: React.FC<{
           // @ts-expect-error
           tool={tool}
           isLoading={false}
-          messages={[]}
         />
       ))}
     </div>
@@ -39,8 +38,6 @@ type WriteToFileProp = ToolProps<"writeToFile">;
 type AskFollowupQuestionProp = ToolProps<"askFollowupQuestion">;
 type AttemptCompletionProp = ToolProps<"attemptCompletion">;
 type NewTaskProp = ToolProps<"newTask">;
-type StartBackgroundJobProp = ToolProps<"startBackgroundJob">;
-type ReadBackgroundJobOutputProp = ToolProps<"readBackgroundJobOutput">;
 type KillBackgroundJobProp = ToolProps<"killBackgroundJob">;
 
 const searchProps: SearchFilesProp["tool"] = {
@@ -104,6 +101,7 @@ const readProps: ReadFileProp["tool"] = {
   output: {
     content: " **04/17/2024** CodeGemma and CodeQwen mode",
     isTruncated: true,
+    filePath: "/workspace/README.md",
   },
 };
 
@@ -118,6 +116,26 @@ const executeCommandProps: ExecuteCommandProp["tool"] = {
   },
   output: {
     output: "Development server started on port 3001",
+  },
+};
+
+const executeCommandBackgroundProps: ExecuteCommandProp["tool"] = {
+  state: "output-available",
+  toolCallId: "tool_exec_cmd_background_1",
+  type: "tool-executeCommand",
+  input: {
+    command: "npm run dev --port 3001",
+    cwd: "/Users/annoy/github.com/TabbyML/ragdoll/packages/website",
+    background: true,
+  },
+  output: {
+    output:
+      'Background command "bgjob-cmd-123" started. Its output is written to "/tmp/bgjob-cmd-123.log". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.',
+    isTruncated: false,
+    _meta: {
+      backgroundJobId: "bgjob-cmd-123",
+      outputFile: "/tmp/bgjob-cmd-123.log",
+    },
   },
 };
 
@@ -362,31 +380,6 @@ const newTaskProps: NewTaskProp["tool"] = {
   },
 };
 
-const startBackgroundJobProps: StartBackgroundJobProp["tool"] = {
-  state: "output-available",
-  toolCallId: "tool_start_bg_job_1",
-  type: "tool-startBackgroundJob",
-  input: {
-    command: "npm run dev",
-  },
-  output: {
-    backgroundJobId: "job-1",
-  },
-};
-
-const readBackgroundJobOutputProps: ReadBackgroundJobOutputProp["tool"] = {
-  state: "output-available",
-  toolCallId: "tool_read_bg_job_output_1",
-  type: "tool-readBackgroundJobOutput",
-  input: {
-    backgroundJobId: "job-1",
-  },
-  output: {
-    status: "running",
-    output: "Starting development server...",
-  },
-};
-
 const killBackgroundJobProps: KillBackgroundJobProp["tool"] = {
   state: "output-available",
   toolCallId: "tool_kill_bg_job_1",
@@ -396,32 +389,6 @@ const killBackgroundJobProps: KillBackgroundJobProp["tool"] = {
   },
   output: {
     success: true,
-  },
-};
-
-const startBackgroundJobPropsError: StartBackgroundJobProp["tool"] = {
-  state: "output-available",
-  toolCallId: "tool_start_bg_job_2",
-  type: "tool-startBackgroundJob",
-  input: {
-    command: "npm run start",
-  },
-  output: {
-    // @ts-expect-error
-    error: "Command not found: npm",
-  },
-};
-
-const readBackgroundJobOutputPropsError: ReadBackgroundJobOutputProp["tool"] = {
-  state: "output-available",
-  toolCallId: "tool_read_bg_job_output_2",
-  type: "tool-readBackgroundJobOutput",
-  input: {
-    backgroundJobId: "job-2",
-  },
-  output: {
-    // @ts-expect-error
-    error: "Background job with ID 'job-2' not found.",
   },
 };
 
@@ -447,6 +414,7 @@ export const Tools: Story = {
       newTaskProps,
       readProps,
       executeCommandProps,
+      executeCommandBackgroundProps,
       listFilesProps,
       globFilesProps,
       writeToFileProps,
@@ -457,11 +425,7 @@ export const Tools: Story = {
       askFollowupQuestionProps2,
       askFollowupQuestionProps3,
       attemptCompletionProps,
-      startBackgroundJobProps,
-      readBackgroundJobOutputProps,
       killBackgroundJobProps,
-      startBackgroundJobPropsError,
-      readBackgroundJobOutputPropsError,
       killBackgroundJobPropsError,
     ],
   },

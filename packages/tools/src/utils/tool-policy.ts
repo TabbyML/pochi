@@ -8,10 +8,7 @@ import { type ToolSpecInput, getToolRules, parseToolSpec } from "./tool-spec";
 // Policy compilation
 // ---------------------------------------------------------------------------
 
-const CommandPolicyToolNames = [
-  "executeCommand",
-  "startBackgroundJob",
-] as const;
+const CommandPolicyToolNames = ["executeCommand"] as const;
 
 type CommandPolicyToolName = (typeof CommandPolicyToolNames)[number];
 

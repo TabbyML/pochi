@@ -13,6 +13,8 @@ const SkillFrontmatter = z.object({
   compatibility: z.string().optional(),
   metadata: z.record(z.string(), z.string()).optional(),
   "allowed-tools": z.string().optional(),
+  "disable-model-invocation": z.boolean().optional(),
+  "user-invocable": z.boolean().optional(),
 });
 
 const EmptyFrontmatterMessage =
@@ -71,6 +73,8 @@ export async function parseSkillFile(
     compatibility: frontmatterData.compatibility,
     metadata: frontmatterData.metadata,
     allowedTools: frontmatterData["allowed-tools"],
+    disableModelInvocation: frontmatterData["disable-model-invocation"],
+    userInvocable: frontmatterData["user-invocable"],
     instructions,
   } satisfies ValidSkillFile;
 }

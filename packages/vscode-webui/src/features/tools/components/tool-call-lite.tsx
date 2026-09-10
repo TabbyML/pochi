@@ -1,16 +1,14 @@
-import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
-import type { UITools } from "@getpochi/livekit";
-import type { ToolName } from "@getpochi/tools";
-import { type ToolUIPart, getStaticToolName } from "ai";
+import { getStaticToolName } from "ai";
 import type { TFunction } from "i18next";
 import { Loader2, Pause } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { UIToolName, UIToolPart } from "./types";
 
 interface Props {
-  tools: Array<ToolUIPart<UITools>> | undefined;
+  tools: UIToolPart[] | undefined;
   requiresApproval?: boolean;
   showCommandDetails?: boolean;
   showStatusIcon?: boolean;
@@ -55,16 +53,11 @@ export function ToolCallLite({
       );
       break;
     case "tool-startBackgroundJob":
-      detail = <StartBackgroundJobTool tool={tool} />;
-      break;
     case "tool-readBackgroundJobOutput":
-      detail = <ReadBackgroundJobTool tool={tool} />;
+      detail = null;
       break;
     case "tool-killBackgroundJob":
       detail = <KillBackgroundJobTool />;
-      break;
-    case "tool-startMonitor":
-      detail = <StartMonitorLiteTool tool={tool} />;
       break;
     case "tool-searchFiles":
       detail = <SearchFilesTool tool={tool} />;
@@ -124,10 +117,7 @@ export function ToolCallLite({
   ) : null;
 }
 
-function getLabelFromTool(
-  type: ToolUIPart<UITools>["type"],
-  t: TFunction,
-): string {
+function getLabelFromTool(type: UIToolPart["type"], t: TFunction): string {
   switch (type) {
     case "tool-readFile":
       return t("toolInvocation.reading") as string;
@@ -144,13 +134,13 @@ function getLabelFromTool(
   }
 }
 
-interface LabelAndFilePathViewProps<T extends ToolName> {
-  tool: Extract<ToolUIPart<UITools>, { type: `tool-${T}` }>;
+interface LabelAndFilePathViewProps<T extends UIToolName> {
+  tool: UIToolPart<T>;
   label: string;
 }
 
-interface ToolCallLiteViewProps<T extends ToolName> {
-  tool: Extract<ToolUIPart<UITools>, { type: `tool-${T}` }>;
+interface ToolCallLiteViewProps<T extends UIToolName> {
+  tool: UIToolPart<T>;
   showCommandDetails?: boolean;
 }
 
@@ -177,7 +167,7 @@ const ExecuteCommandTool = ({
 }: ToolCallLiteViewProps<"executeCommand">) => {
   const { t } = useTranslation();
 
-  const { cwd, command } = tool.input || {};
+  const { cwd, command, background } = tool.input || {};
   const cwdNode = cwd ? (
     <span>
       {" "}
@@ -185,7 +175,9 @@ const ExecuteCommandTool = ({
     </span>
   ) : null;
 
-  const text = t("toolInvocation.executingCommand");
+  const text = background
+    ? t("toolInvocation.backgroundExecuting")
+    : t("toolInvocation.executingCommand");
   return (
     <>
       <span className="ml-2">
@@ -197,75 +189,10 @@ const ExecuteCommandTool = ({
   );
 };
 
-const StartBackgroundJobTool = ({
-  tool,
-}: ToolCallLiteViewProps<"startBackgroundJob">) => {
-  const { t } = useTranslation();
-  const { cwd } = tool.input || {};
-
-  const cwdNode = cwd ? (
-    <span>
-      {" "}
-      {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
-    </span>
-  ) : null;
-  const text = t("toolInvocation.backgroundExecuting");
-  return (
-    <>
-      <span className="ml-2 truncate">
-        {text}
-        {cwdNode}
-      </span>
-    </>
-  );
-};
-
-const ReadBackgroundJobTool = ({
-  tool,
-}: ToolCallLiteViewProps<"readBackgroundJobOutput">) => {
-  const { t } = useTranslation();
-  const { backgroundJobId } = tool.input || {};
-  const isUserTerminal = backgroundJobId?.startsWith("term-");
-  const terminalDisplayName = isUserTerminal
-    ? formatTerminalDisplayName(
-        tool.output?.terminalName,
-        tool.output?.lastCommand,
-      )
-    : undefined;
-  return (
-    <>
-      <span className="ml-2">
-        {isUserTerminal
-          ? t("toolInvocation.readTerminal")
-          : t("toolInvocation.readBackground")}
-      </span>
-      {terminalDisplayName && (
-        <>
-          {" "}
-          <HighlightedText>{terminalDisplayName}</HighlightedText>
-        </>
-      )}
-    </>
-  );
-};
-
 const KillBackgroundJobTool = () => {
   const { t } = useTranslation();
   return (
     <span className="ml-2">{t("toolInvocation.stoppingBackgroundJob")}</span>
-  );
-};
-
-const StartMonitorLiteTool = ({
-  tool,
-}: ToolCallLiteViewProps<"startMonitor">) => {
-  const { t } = useTranslation();
-  const { description } = tool.input || {};
-  return (
-    <span className="ml-2 truncate">
-      {t("toolInvocation.monitoring")}{" "}
-      <HighlightedText>{description}</HighlightedText>
-    </span>
   );
 };
 

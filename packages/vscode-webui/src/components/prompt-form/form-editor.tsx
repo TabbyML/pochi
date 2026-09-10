@@ -59,7 +59,15 @@ import {
 } from "./slash-mention/mention-list";
 import { createSlashCandidates } from "./slash-mention/slash-candidates";
 import { SubmitHistoryExtension } from "./submit-history-extension";
-import { createPlainTextSlice, shouldPasteAsPlainText } from "./utils";
+import {
+  TextUpdateTrackerExtension,
+  createMentionSuggestionAllow,
+} from "./suggestion-activation";
+import {
+  createPlainTextSlice,
+  shouldAttachPastedText,
+  shouldPasteAsPlainText,
+} from "./utils";
 
 const newLineCharacter = "\n";
 
@@ -79,6 +87,9 @@ function CustomEnterKeyHandler(
           ]);
         },
         "Mod-Enter": () => {
+          if (this.editor.view.composing) {
+            return false;
+          }
           if (formRef.current) {
             formRef.current.setAttribute("submitAction", "ctrlEnter");
             formRef.current.requestSubmit();
@@ -86,6 +97,9 @@ function CustomEnterKeyHandler(
           return true;
         },
         Enter: () => {
+          if (this.editor.view.composing) {
+            return false;
+          }
           if (formRef.current) {
             formRef.current.setAttribute("submitAction", "enter");
             formRef.current.requestSubmit();
@@ -100,8 +114,8 @@ function CustomEnterKeyHandler(
 interface FormEditorProps {
   input: ChatInput;
   setInput: (input: ChatInput) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>, input: ChatInput) => void;
+  onCtrlSubmit: (e: React.FormEvent<HTMLFormElement>, input: ChatInput) => void;
   isLoading: boolean;
   editable?: boolean;
   formRef?: React.RefObject<HTMLFormElement>;
@@ -110,6 +124,7 @@ interface FormEditorProps {
   children?: React.ReactNode;
   onError?: (e: Error) => void;
   onPaste?: (e: ClipboardEvent) => void;
+  onPastedText?: (text: string) => void;
   enableSubmitHistory?: boolean;
   onFileDrop?: (files: File[]) => boolean;
   onFocus?: (event: FocusEvent) => void;
@@ -131,6 +146,7 @@ export function FormEditor({
   editorRef,
   autoFocus = true,
   onPaste,
+  onPastedText,
   onFocus,
   enableSubmitHistory = true,
   onFileDrop,
@@ -156,6 +172,8 @@ export function FormEditor({
 
   // State for drag overlay UI
   const [isDragOver, setIsDragOver] = useState(false);
+  const inputRef = useLatest(input);
+  const onPastedTextRef = useLatest(onPastedText);
 
   const onSelectSlashCandidate = useLatest((data: SlashCandidate) => {
     let model: string | undefined;
@@ -181,6 +199,8 @@ export function FormEditor({
   const editor = useEditor(
     {
       extensions: [
+        // Backs the `allow` callbacks of the mention suggestions below.
+        TextUpdateTrackerExtension,
         Document,
         Paragraph,
         Text,
@@ -303,6 +323,9 @@ export function FormEditor({
                 allowSpaces: isIssueMentionComposingRef.current,
               });
             },
+            allow: createMentionSuggestionAllow(
+              PromptFormIssueMentionExtension.name,
+            ),
           },
         }),
         // Use the already configured PromptFormWorkflowExtension
@@ -400,6 +423,7 @@ export function FormEditor({
                 allowSpaces: isCommandMentionComposingRef.current,
               });
             },
+            allow: createMentionSuggestionAllow(PromptFormSlashExtension.name),
           },
         }),
         History.configure({
@@ -422,6 +446,18 @@ export function FormEditor({
 
           const text = clipboardData.getData("text/plain");
           const html = clipboardData.getData("text/html");
+          if (
+            onPastedTextRef.current &&
+            shouldAttachPastedText({
+              text,
+              html,
+              hasFiles: clipboardData.files.length > 0,
+            })
+          ) {
+            event.preventDefault();
+            onPastedTextRef.current(text);
+            return true;
+          }
           if (
             !shouldPasteAsPlainText({
               text,
@@ -490,7 +526,11 @@ export function FormEditor({
         const text = props.editor.getText({
           blockSeparator: newLineCharacter,
         });
-        setInput({ json, text });
+        setInput({
+          json,
+          text,
+          pastedTexts: inputRef.current.pastedTexts,
+        });
 
         // Update current draft if we have submit history enabled
         if (
@@ -637,20 +677,29 @@ export function FormEditor({
     };
   }, [focusEditor]);
 
-  // Handle form submission to record submit history
+  // Capture TipTap directly at submission time because the mirrored React
+  // state can lag behind the editor.
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
+      const currentInput =
+        editor && !editor.isDestroyed
+          ? {
+              json: editor.getJSON(),
+              text: editor.getText({ blockSeparator: newLineCharacter }),
+              pastedTexts: input.pastedTexts,
+            }
+          : input;
       if (enableSubmitHistory && editor && !editor.isDestroyed) {
-        editor.commands.addToSubmitHistory(JSON.stringify(editor.getJSON()));
+        editor.commands.addToSubmitHistory(JSON.stringify(currentInput.json));
       }
       const submitAction = e.currentTarget.getAttribute("submitAction");
       if (submitAction === "ctrlEnter") {
-        onCtrlSubmit(e);
+        onCtrlSubmit(e, currentInput);
       } else {
-        onSubmit(e);
+        onSubmit(e, currentInput);
       }
     },
-    [enableSubmitHistory, editor, onSubmit, onCtrlSubmit],
+    [enableSubmitHistory, editor, input, onSubmit, onCtrlSubmit],
   );
 
   return (

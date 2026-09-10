@@ -9,6 +9,7 @@ describe("env-utils", () => {
     expect(env.GIT_EDITOR).toBe("true");
     expect(env.GIT_TERMINAL_PROMPT).toBe("0");
     expect(env.GCM_INTERACTIVE).toBe("never");
+    expect(env.PROMPT_EOL_MARK).toBe("");
   });
 
   test("should keep committer identity env vars", () => {

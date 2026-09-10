@@ -1,6 +1,4 @@
-import * as os from "node:os";
 import path from "node:path";
-import { MonitorRegistry } from "@/integrations/monitor/monitor-registry";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { AuthEvents } from "@/lib/auth-events";
@@ -22,6 +20,7 @@ import { asRelativePath, isFileExists } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ModelList } from "@/lib/model-list";
+import { openFile as openFileInEditor } from "@/lib/open-file";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiLanguage } from "@/lib/pochi-language";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -51,12 +50,9 @@ import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
-import { startMonitor } from "@/tools/monitor";
-import { readBackgroundJobOutput } from "@/tools/read-background-job-output";
 import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
-import { startBackgroundJob } from "@/tools/start-background-job";
 import { useSkill } from "@/tools/use-skill";
 import { writeToFile } from "@/tools/write-to-file";
 import {
@@ -65,7 +61,6 @@ import {
   type ContextWindowUsage,
   type Environment,
   type GitStatus,
-  type MonitorEventEnvelope,
   type TaskMemoryState,
   toErrorMessage,
 } from "@getpochi/common";
@@ -87,8 +82,8 @@ import { McpHub } from "@getpochi/common/mcp-utils";
 import {
   GitStatusReader,
   ignoreWalk,
-  isPlainTextFile,
   maybePersistToolResult,
+  persistPastedTextFiles as writePastedTextFiles,
 } from "@getpochi/common/tool-utils";
 import { getVendor } from "@getpochi/common/vendor";
 import type { BrowserAgentSettingsUpdate } from "@getpochi/common/vscode-webui-bridge";
@@ -178,6 +173,10 @@ import {
 import { TerminalState } from "../terminal/terminal-state";
 import { PochiTaskEditorProvider } from "./webview-panel";
 import { PochiWebviewStandalonePanel } from "./webview-standalone-panel";
+import {
+  openWidgetPreview as openWidgetPreviewPanel,
+  saveWidgetHtml as writeWidgetHtmlToDisk,
+} from "./widget-html-actions";
 
 const logger = getLogger("VSCodeHostImpl");
 
@@ -254,6 +253,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   setSessionState = async (_state: Partial<SessionState>): Promise<void> => {
     throw new Error(
       "setSessionState should be called on the webview-specific wrapper, not the singleton",
+    );
+  };
+
+  notifyFocusChanged = async (_focused: boolean): Promise<void> => {
+    throw new Error(
+      "notifyFocusChanged should be called on the webview-specific wrapper, not the singleton",
     );
   };
 
@@ -462,14 +467,41 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     };
   };
 
-  readMonitorEvents = async (
-    taskId: string,
-  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>> => {
-    return ThreadSignal.serialize(MonitorRegistry.events(taskId));
+  readBackgroundCommands = async () => ({
+    backgroundCommands: ThreadSignal.serialize(
+      this.terminalState.backgroundCommands,
+    ),
+    show: async (backgroundJobId: string) => {
+      this.terminalState.showBackgroundCommand(backgroundJobId);
+    },
+    hide: async (backgroundJobId: string) => {
+      this.terminalState.hideBackgroundCommand(backgroundJobId);
+    },
+    close: async (backgroundJobId: string) => {
+      this.terminalState.closeBackgroundCommand(backgroundJobId);
+    },
+  });
+
+  readBackgroundJobNotifications = async (taskId: string) => ({
+    notifications: ThreadSignal.serialize(
+      this.taskStateStore.getBackgroundJobNotificationsSignal(taskId),
+    ),
+    acknowledge: (notificationId: string) =>
+      this.taskStateStore.acknowledgeBackgroundJobNotification(
+        taskId,
+        notificationId,
+      ),
+  });
+
+  saveWidget = async (
+    html: string,
+    suggestedFilename: string,
+  ): Promise<boolean> => {
+    return writeWidgetHtmlToDisk(html, suggestedFilename, this.cwd);
   };
 
-  ackMonitorEvents = async (taskId: string, upToSeq: number): Promise<void> => {
-    MonitorRegistry.ack(taskId, upToSeq);
+  openWidgetInPanel = async (html: string, title: string): Promise<void> => {
+    openWidgetPreviewPanel(html, title);
   };
 
   readCurrentWorkspace = async (): Promise<{
@@ -687,111 +719,17 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       cellId?: string;
     },
   ) => {
-    let fileUri = vscode.Uri.parse(filePath);
-    let resolvedPath = filePath;
+    await openFileInEditor(filePath, this.cwd, options);
+  };
 
-    // Open file directly if it's a pochi scheme
-    if (fileUri.scheme === "pochi") {
-      vscode.commands.executeCommand(
-        "vscode.open",
-        vscode.Uri.parse(resolvedPath),
-      );
-      return;
-    }
-
-    // Expand ~ to home directory if present
-    if (resolvedPath.startsWith("~/")) {
-      const homedir = os.homedir();
-      resolvedPath = resolvedPath.replace(/^~/, homedir);
-    }
-
-    fileUri = path.isAbsolute(resolvedPath)
-      ? vscode.Uri.file(resolvedPath)
-      : this.cwd
-        ? vscode.Uri.joinPath(vscode.Uri.file(this.cwd), resolvedPath)
-        : vscode.Uri.file(resolvedPath);
-
+  persistPastedTextFiles = async (taskId: string, texts: string[]) => {
     try {
-      const stat = await vscode.workspace.fs.stat(fileUri);
-      if (stat.type === vscode.FileType.Directory) {
-        // reveal and expand it
-        await vscode.commands.executeCommand("revealInExplorer", fileUri);
-        await vscode.commands.executeCommand("list.expand");
-      } else if (stat.type === vscode.FileType.File) {
-        if (fileUri.fsPath.endsWith(".ipynb")) {
-          // Open notebook with the notebook editor
-          await vscode.commands.executeCommand(
-            "vscode.openWith",
-            fileUri,
-            "jupyter-notebook",
-          );
-
-          if (options?.cellId) {
-            const notebook = vscode.workspace.notebookDocuments.find(
-              (nb) => nb.uri.toString() === fileUri.toString(),
-            );
-            if (!notebook) return;
-            const cellIndex = notebook
-              .getCells()
-              .findIndex((cell) => cell.metadata?.id === options.cellId);
-            if (cellIndex < 0) return;
-            const editor = vscode.window.visibleNotebookEditors.find(
-              (e) => e.notebook.uri.toString() === fileUri.toString(),
-            );
-            if (!editor) return;
-            editor.selection = new vscode.NotebookRange(
-              cellIndex,
-              cellIndex + 1,
-            );
-            await vscode.commands.executeCommand("notebook.cell.edit");
-          }
-          return;
-        }
-
-        const isPlainText = await isPlainTextFile(fileUri.fsPath);
-        if (!isPlainText) {
-          await vscode.commands.executeCommand("vscode.open", fileUri);
-        } else {
-          const start = options?.start ?? 1;
-          const end = options?.end ?? start;
-          vscode.window.showTextDocument(fileUri, {
-            selection: new vscode.Range(start - 1, 0, end - 1, 0),
-            preserveFocus: options?.preserveFocus,
-          });
-        }
-      }
+      return await writePastedTextFiles(taskId, texts);
     } catch (error) {
-      logger.info("File not found, trying to open from base64 data", error);
-      // file may not exist, check if has base64Data
-      if (options?.base64Data) {
-        try {
-          // If base64 data is present, open it as a temp file
-          const tempFile = vscode.Uri.file(
-            path.join(os.tmpdir(), fileUri.path),
-          );
-          await vscode.workspace.fs.writeFile(
-            tempFile,
-            Buffer.from(options?.base64Data ?? "", "base64"),
-          );
-          await vscode.commands.executeCommand("vscode.open", tempFile);
-        } catch (error) {
-          logger.error(`Failed to open file from base64 data: ${error}`);
-        }
-      }
-
-      if (options?.fallbackGlobPattern) {
-        const result = await vscode.workspace.findFiles(
-          options.fallbackGlobPattern,
-          null,
-          1,
-        );
-
-        logger.info("found file by glob pattern", result[0]);
-
-        if (result.length > 0) {
-          await vscode.commands.executeCommand("vscode.open", result[0]);
-        }
-      }
+      void vscode.window.showErrorMessage(
+        `Failed to save pasted text: ${toErrorMessage(error)}`,
+      );
+      throw error;
     }
   };
 
@@ -1006,6 +944,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
             this.pochiConfiguration.commentsOpenViewDisabled.value,
           githubCopilotCodeCompletionEnabled:
             this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value,
+          terminalRightClickContextMenuEnabled:
+            this.pochiConfiguration.terminalRightClickContextMenuEnabled.value,
           reviewAgent:
             this.pochiConfiguration.advancedSettings.value.reviewAgent,
         };
@@ -1034,6 +974,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     if (params.githubCopilotCodeCompletionEnabled !== undefined) {
       this.pochiConfiguration.githubCopilotCodeCompletionEnabled.value =
         params.githubCopilotCodeCompletionEnabled;
+    }
+    if (params.terminalRightClickContextMenuEnabled !== undefined) {
+      this.pochiConfiguration.terminalRightClickContextMenuEnabled.value =
+        params.terminalRightClickContextMenuEnabled;
     }
   };
 
@@ -1071,6 +1015,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options,
       ...items,
     );
+  };
+
+  showWarningMessage = async <T extends string>(
+    message: string,
+    options: { modal?: boolean; detail?: string },
+    ...items: T[]
+  ): Promise<T | undefined> => {
+    return await vscode.window.showWarningMessage(message, options, ...items);
   };
 
   readModelList = async (): Promise<{
@@ -1560,6 +1512,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           files,
           checkpoint,
           this.checkpointService,
+          this.cwd,
         );
       },
       acceptChangedFile: async (
@@ -1616,10 +1569,7 @@ const ToolMap: Record<
 > = {
   readFile,
   executeCommand,
-  startBackgroundJob,
-  readBackgroundJobOutput,
   killBackgroundJob,
-  startMonitor,
   searchFiles,
   listFiles: listFilesTool,
   globFiles,

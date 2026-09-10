@@ -2,36 +2,39 @@ import { Loader2, UserIcon } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
+import { PastedTextFileCard } from "@/components/pasted-text-card";
 import { ReasoningPartUI } from "@/components/reasoning-part.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   BackgroundJobContextProvider,
+  useAutoApproveGuard,
   useToolCallLifeCycle,
 } from "@/features/chat";
 import { ToolInvocationPart } from "@/features/tools";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn, formatExecutionDuration } from "@/lib/utils";
-import { isVSCodeEnvironment } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
 import type {
   ActiveSelection,
   TerminalTextSelection,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
 import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
 import { ActiveSelectionPart, TerminalSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
+import { BackgroundJobNotifications } from "./background-job-notifications";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
-import { MonitorEventsPart } from "./monitor-events";
 import { Reviews } from "./reviews";
 import { SubagentResultsPart } from "./subagent-results";
+import { useMessageListPagination } from "./use-message-list-pagination";
 import { UserEditsPart } from "./user-edits";
 
 interface UserEditsCheckpoint {
@@ -62,8 +65,14 @@ export const MessageList: React.FC<{
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;
   showLastStepDuration?: boolean;
+  taskStatus?: Task["status"];
+  /** Mounts the full history for shared output and performance baselines. */
+  renderAllMessages?: boolean;
+  /** Formats only the mounted raw-message range. */
+  formatMessages?: (messages: Message[]) => Message[];
+  emptyPlaceholder?: React.ReactNode;
 }> = ({
-  messages: renderMessages,
+  messages,
   isLoading,
   loadingLabel,
   user = { name: "User" },
@@ -79,6 +88,10 @@ export const MessageList: React.FC<{
   repairMermaid,
   repairingChart,
   showLastStepDuration,
+  taskStatus,
+  renderAllMessages = false,
+  formatMessages,
+  emptyPlaceholder,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -89,23 +102,32 @@ export const MessageList: React.FC<{
     setDebouncedIsLoading(isLoading);
   }, [isLoading, setDebouncedIsLoading]);
 
-  const { executingToolCalls } = useToolCallLifeCycle();
+  const { executingToolCalls, completeToolCalls } = useToolCallLifeCycle();
   const isExecuting = executingToolCalls.length > 0;
+  const autoApproveGuard = useAutoApproveGuard();
+  const isAboutToExecuteWithAutoApprove =
+    !isLoading &&
+    !isExecuting &&
+    taskStatus === "pending-tool" &&
+    autoApproveGuard.current === "auto" &&
+    completeToolCalls.length === 0;
+  const shouldCheckpointUseLoading =
+    isLoading || isExecuting || isAboutToExecuteWithAutoApprove;
   const assistantName = assistant?.name ?? "Pochi";
   const latestCheckpoint = useLatestCheckpoint();
   const toolCallCheckpoints = useMemo(
-    () => buildToolCallCheckpoints(renderMessages),
-    [renderMessages],
+    () => buildToolCallCheckpoints(messages),
+    [messages],
   );
   const userEditsCheckpoints = useMemo(
-    () => buildUserEditsCheckpoints(renderMessages),
-    [renderMessages],
+    () => buildUserEditsCheckpoints(messages),
+    [messages],
   );
   const lastCheckpointInMessage = useMemo(() => {
-    return renderMessages
+    return messages
       .flatMap((msg) => msg.parts)
       .findLast((part) => part.type === "data-checkpoint")?.data.commit;
-  }, [renderMessages]);
+  }, [messages]);
 
   const mermaidContextValue = useMemo(
     () =>
@@ -119,102 +141,136 @@ export const MessageList: React.FC<{
     [repairMermaid, repairingChart, isLoading, isExecuting],
   );
 
+  // Paginate raw messages before formatting the mounted range.
+  const { start, hiddenAboveCount, loadEarlierTriggerRef } =
+    useMessageListPagination({
+      messages,
+      containerRef,
+      enabled: !renderAllMessages && containerRef !== undefined,
+    });
+  const visibleRawMessages = useMemo(
+    () => messages.slice(start),
+    [messages, start],
+  );
+  const renderMessages = useMemo(
+    () =>
+      formatMessages ? formatMessages(visibleRawMessages) : visibleRawMessages,
+    [formatMessages, visibleRawMessages],
+  );
+
   return (
-    <BackgroundJobContextProvider messages={renderMessages}>
+    <BackgroundJobContextProvider messages={messages}>
       <MermaidContextProvider value={mermaidContextValue}>
         <ScrollArea
-          className={cn("mb-2 flex-1 overflow-y-auto px-4", className)}
+          className={cn("mb-2 min-h-0 flex-1 px-4", className)}
           viewportClassname={viewportClassname}
           ref={containerRef}
         >
-          {renderMessages.map((m, messageIndex) => (
-            <div
-              key={m.id}
-              className="message-list-item flex flex-col"
-              aria-label={`chat-message-${m.role}`}
-            >
-              <div className={cn(showUserAvatar && "pt-4 pb-2")}>
-                {showUserAvatar && (
-                  <div className="flex items-center gap-2">
-                    {m.role === "user" ? (
-                      <Avatar className="size-7 select-none">
-                        <AvatarImage src={user?.image ?? undefined} />
-                        <AvatarFallback
-                          className={cn(
-                            "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
-                          )}
-                        >
-                          {user?.name.slice(0, 2) || (
-                            <UserIcon className={cn("size-[50%]")} />
-                          )}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <Avatar className="size-7 select-none">
-                        <AvatarImage
-                          src={assistant?.image ?? undefined}
-                          className="scale-110"
-                        />
-                        <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
-                      </Avatar>
+          {start === 0 && renderMessages.length === 0 && emptyPlaceholder}
+          {hiddenAboveCount > 0 && (
+            <EarlierMessagesEdge ref={loadEarlierTriggerRef} />
+          )}
+          {renderMessages.map((m, messageIndex) => {
+            return (
+              <div
+                key={m.id}
+                className="message-list-item flex flex-col"
+                aria-label={`chat-message-${m.role}`}
+              >
+                <div className={cn(showUserAvatar && "pt-4 pb-2")}>
+                  {showUserAvatar && (
+                    <div className="flex items-center gap-2">
+                      {m.role === "user" ? (
+                        <Avatar className="size-7 select-none">
+                          <AvatarImage src={user?.image ?? undefined} />
+                          <AvatarFallback
+                            className={cn(
+                              "bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)] text-xs uppercase",
+                            )}
+                          >
+                            {user?.name.slice(0, 2) || (
+                              <UserIcon className={cn("size-[50%]")} />
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <Avatar className="size-7 select-none">
+                          <AvatarImage
+                            src={assistant?.image ?? undefined}
+                            className="scale-110"
+                          />
+                          <AvatarFallback className="bg-[var(--vscode-chat-avatarBackground)] text-[var(--vscode-chat-avatarForeground)]" />
+                        </Avatar>
+                      )}
+                      <strong>
+                        {m.role === "user" ? user?.name : assistantName}
+                      </strong>
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "ml-1 flex flex-col",
+                      showUserAvatar && "mt-3",
                     )}
-                    <strong>
-                      {m.role === "user" ? user?.name : assistantName}
-                    </strong>
+                  >
+                    {m.parts.map((part, index) => (
+                      <Part
+                        role={m.role}
+                        key={index}
+                        messageId={m.id}
+                        isLastPartInMessages={
+                          index === m.parts.length - 1 &&
+                          messageIndex === renderMessages.length - 1
+                        }
+                        isInLatestAssistantMessage={
+                          m.role === "assistant" &&
+                          messageIndex === renderMessages.length - 1
+                        }
+                        partIndex={index}
+                        part={part}
+                        isLoading={isLoading}
+                        shouldCheckpointUseLoading={shouldCheckpointUseLoading}
+                        forkTask={forkTask}
+                        isSubTask={isSubTask}
+                        hideUserEditsActions={hideUserEditsActions}
+                        latestCheckpoint={latestCheckpoint}
+                        lastCheckpointInMessage={lastCheckpointInMessage}
+                        userEditsCheckpoint={userEditsCheckpoints.get(m.id)}
+                        toolCallCheckpoint={
+                          isStaticToolUIPart(part)
+                            ? toolCallCheckpoints.get(part.toolCallId)
+                            : undefined
+                        }
+                      />
+                    ))}
                   </div>
-                )}
-                <div
-                  className={cn("ml-1 flex flex-col", showUserAvatar && "mt-3")}
-                >
-                  {m.parts.map((part, index) => (
-                    <Part
-                      role={m.role}
-                      key={index}
-                      messageId={m.id}
-                      isLastPartInMessages={
-                        index === m.parts.length - 1 &&
-                        messageIndex === renderMessages.length - 1
-                      }
-                      partIndex={index}
-                      part={part}
-                      isLoading={isLoading}
-                      isExecuting={isExecuting}
-                      messages={renderMessages}
-                      forkTask={forkTask}
-                      isSubTask={isSubTask}
-                      hideUserEditsActions={hideUserEditsActions}
-                      latestCheckpoint={latestCheckpoint}
-                      lastCheckpointInMessage={lastCheckpointInMessage}
-                      userEditsCheckpoint={userEditsCheckpoints[messageIndex]}
-                      toolCallCheckpoints={toolCallCheckpoints}
-                    />
-                  ))}
+                  {/* Display attachments at the bottom of the message */}
+                  <UserAttachments message={m} />
+                  <UserSelections message={m} />
+                  <MessageBackgroundJobNotifications message={m} />
                 </div>
-                {/* Display attachments at the bottom of the message */}
-                <UserAttachments message={m} />
-                <UserSelections message={m} />
-              </div>
-              {messageIndex < renderMessages.length - 1 ? (
-                <SeparatorWithCheckpoint
-                  messageIndex={messageIndex}
-                  message={m}
-                  nextMessage={renderMessages[messageIndex + 1]}
-                  isLoading={isLoading || isExecuting}
-                  forkTask={forkTask}
-                  isSubTask={isSubTask}
-                  latestCheckpoint={latestCheckpoint}
-                  lastCheckpointInMessage={lastCheckpointInMessage}
-                />
-              ) : (
-                showLastStepDuration &&
-                !(isLoading || isExecuting) && (
-                  <OptionalSeparatorWithExecutionDuration
-                    duration={computeExecutionDuration(m)}
+                {messageIndex < renderMessages.length - 1 ? (
+                  <SeparatorWithCheckpoint
+                    isFirstMessageInHistory={start === 0 && messageIndex === 0}
+                    message={m}
+                    nextMessage={renderMessages[messageIndex + 1]}
+                    isLoading={shouldCheckpointUseLoading}
+                    forkTask={forkTask}
+                    isSubTask={isSubTask}
+                    latestCheckpoint={latestCheckpoint}
+                    lastCheckpointInMessage={lastCheckpointInMessage}
                   />
-                )
-              )}
-            </div>
-          ))}
+                ) : (
+                  showLastStepDuration &&
+                  !shouldCheckpointUseLoading && (
+                    <OptionalSeparatorWithExecutionDuration
+                      duration={computeExecutionDuration(m)}
+                    />
+                  )
+                )}
+              </div>
+            );
+          })}
           {showLoader && (
             <div className="py-2">
               {debouncedIsLoading ? (
@@ -237,11 +293,24 @@ function UserAttachments({ message }: { message: Message }) {
   const fileParts = message.parts.filter(
     (part) => part.type === "file",
   ) as FileUIPart[];
+  const pastedTextParts = message.parts.filter(
+    (part) => part.type === "data-pasted-text",
+  );
 
-  if (message.role === "user" && fileParts.length) {
+  if (
+    message.role === "user" &&
+    (fileParts.length > 0 || pastedTextParts.length > 0)
+  ) {
     return (
-      <div className="mt-3">
-        <MessageAttachments attachments={fileParts} />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {pastedTextParts.map((part, index) => (
+          <PastedTextFileCard
+            key={index}
+            onOpen={() => vscodeHost.openFile(part.data.filePath)}
+            title={part.data.title}
+          />
+        ))}
+        <MessageAttachments attachments={fileParts} className="contents" />
       </div>
     );
   }
@@ -298,31 +367,54 @@ function UserSelections({ message }: { message: Message }) {
   );
 }
 
+function MessageBackgroundJobNotifications({ message }: { message: Message }) {
+  if (message.role !== "user") return null;
+  const notifications = message.parts.flatMap((part) =>
+    part.type === "data-background-job-notification" ? [part.data] : [],
+  );
+  return <BackgroundJobNotifications notifications={notifications} />;
+}
+
+function EarlierMessagesEdge({
+  ref,
+}: {
+  ref: React.Ref<HTMLDivElement>;
+}) {
+  return (
+    <div
+      ref={ref}
+      data-testid="message-list-auto-load-earlier"
+      aria-hidden="true"
+      className="pointer-events-none h-px w-full"
+    />
+  );
+}
+
 function Part({
   role,
   part,
   partIndex,
   messageId,
   isLastPartInMessages,
+  isInLatestAssistantMessage,
   isLoading,
-  isExecuting,
-  messages,
+  shouldCheckpointUseLoading,
   forkTask,
   isSubTask,
   latestCheckpoint,
   lastCheckpointInMessage,
   hideUserEditsActions,
   userEditsCheckpoint,
-  toolCallCheckpoints,
+  toolCallCheckpoint,
 }: {
   role: Message["role"];
   partIndex: number;
   messageId: string;
   part: NonNullable<Message["parts"]>[number];
   isLastPartInMessages: boolean;
+  isInLatestAssistantMessage: boolean;
   isLoading: boolean;
-  isExecuting: boolean;
-  messages: Message[];
+  shouldCheckpointUseLoading: boolean;
   forkTask?: (commitId: string) => Promise<void>;
   isSubTask?: boolean;
   hideUserEditsActions?: boolean;
@@ -332,7 +424,7 @@ function Part({
     origin: string | undefined;
     modified: string | undefined;
   };
-  toolCallCheckpoints: Map<string, ToolCallCheckpoint>;
+  toolCallCheckpoint?: ToolCallCheckpoint;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -356,6 +448,10 @@ function Part({
     );
   }
 
+  if (part.type === "data-pasted-text") {
+    return null;
+  }
+
   if (part.type === "step-start" || part.type === "file") {
     return;
   }
@@ -365,7 +461,7 @@ function Part({
       return (
         <CheckpointUI
           checkpoint={part.data}
-          isLoading={isLoading || isExecuting}
+          isLoading={shouldCheckpointUseLoading}
           forkTask={forkTask}
           isRestored={
             lastCheckpointInMessage !== part.data.commit &&
@@ -395,15 +491,15 @@ function Part({
     return null;
   }
 
-  if (part.type === "data-monitor-events") {
-    return <MonitorEventsPart batches={part.data.batches} />;
+  if (part.type === "data-terminal-context") {
+    return null;
   }
 
   if (part.type === "data-subagent-results") {
     return <SubagentResultsPart results={part.data.results} />;
   }
 
-  if (part.type === "data-terminal-context") {
+  if (part.type === "data-background-job-notification") {
     return null;
   }
 
@@ -413,10 +509,10 @@ function Part({
         className={paddingClass}
         tool={part}
         isLoading={isLoading}
-        changes={toolCallCheckpoints.get(part.toolCallId)}
-        messages={messages}
+        changes={toolCallCheckpoint}
         isSubTask={isSubTask}
         isLastPart={isLastPartInMessages}
+        isInLatestAssistantMessage={isInLatestAssistantMessage}
       />
     );
   }
@@ -472,7 +568,7 @@ const MemoReasoningPartUI = memo(ReasoningPartRenderer, (prev, next) => {
 MemoReasoningPartUI.displayName = "MemoReasoningPartUI";
 
 const SeparatorWithCheckpoint: React.FC<{
-  messageIndex: number;
+  isFirstMessageInHistory: boolean;
   message: Message;
   nextMessage: Message;
   isLoading: boolean;
@@ -481,7 +577,7 @@ const SeparatorWithCheckpoint: React.FC<{
   latestCheckpoint: string | null;
   lastCheckpointInMessage: string | undefined;
 }> = ({
-  messageIndex,
+  isFirstMessageInHistory,
   message,
   nextMessage,
   isLoading,
@@ -495,7 +591,7 @@ const SeparatorWithCheckpoint: React.FC<{
 
   let checkpointMessage: Message | null = null;
   let restoreMessageId: string | undefined = undefined;
-  if (messageIndex === 0 && message.role === "user") {
+  if (isFirstMessageInHistory && message.role === "user") {
     checkpointMessage = message;
   }
 
@@ -638,10 +734,10 @@ function findCompactPart(message: Message): TextUIPart | undefined {
 }
 
 function buildUserEditsCheckpoints(messages: Message[]) {
-  const userEditsCheckpoints: Array<UserEditsCheckpoint | undefined> = [];
+  const userEditsCheckpoints = new Map<string, UserEditsCheckpoint>();
   const checkpointHistory: string[] = [];
 
-  for (const [index, message] of messages.entries()) {
+  for (const message of messages) {
     let hasUserEdits = false;
 
     for (const part of message.parts) {
@@ -660,14 +756,13 @@ function buildUserEditsCheckpoints(messages: Message[]) {
       !hasUserEdits ||
       checkpointHistory.length < 2
     ) {
-      userEditsCheckpoints[index] = undefined;
       continue;
     }
 
-    userEditsCheckpoints[index] = {
+    userEditsCheckpoints.set(message.id, {
       origin: checkpointHistory.at(-2),
       modified: checkpointHistory.at(-1),
-    };
+    });
   }
 
   return userEditsCheckpoints;

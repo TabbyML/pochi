@@ -28,6 +28,7 @@ describe("createForkAgent", () => {
       parentMessages,
       parentCwd: "/repo",
       directive: "extract memory",
+      maxSteps: 3,
     }).initMessages;
 
     expect(result).toHaveLength(3);
@@ -50,6 +51,7 @@ describe("createForkAgent", () => {
       parentCwd: "/repo",
       directive: "extract memory",
       tools: ["readFile(/memory/**)", "writeToFile(/memory/**)"],
+      maxSteps: 3,
     });
 
     expect(agent).toMatchObject({
@@ -62,6 +64,7 @@ describe("createForkAgent", () => {
         "writeToFile(/memory/**)",
         "attemptCompletion",
       ],
+      maxSteps: 3,
       baselineStepCount: 0,
     });
     expect(agent).not.toHaveProperty("taskId");
@@ -97,6 +100,7 @@ describe("createForkAgent", () => {
       parentMessages,
       parentCwd: "/repo",
       directive: "extract memory",
+      maxSteps: 3,
     });
 
     expect(agent.baselineStepCount).toBe(3);

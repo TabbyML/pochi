@@ -100,6 +100,8 @@ type RunningTaskChat = {
 type RunningTaskChatKit = {
   chat: RunningTaskChat;
   task?: Task;
+  markStartToolsExecution: () => void;
+  markEndToolsExecution: () => void;
   markAsFailed: (error: Error) => MaybePromise<void>;
 };
 
@@ -195,12 +197,6 @@ export class TaskExecutor {
    * failed status, the next reconcile would pick the task up again.
    */
   async stopTask(taskId: string) {
-    const runningTask = this.runningTasks.get(taskId);
-    if (runningTask) {
-      await runningTask.dispose();
-      await runningTask.done.catch(() => undefined);
-    }
-
     const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
     if (task && isRunnableTaskStatus(task.status)) {
       this.store.commit(
@@ -213,6 +209,11 @@ export class TaskExecutor {
           updatedAt: new Date(),
         }),
       );
+    }
+    const runningTask = this.runningTasks.get(taskId);
+    if (runningTask) {
+      await runningTask.dispose();
+      await runningTask.done.catch(() => undefined);
     }
   }
 
@@ -361,7 +362,15 @@ class RunningTask {
 
       while (!this.abortController.signal.aborted) {
         const stepResult = await this.step();
+        this.abortController.signal.throwIfAborted();
         if (stepResult === "finished") {
+          return;
+        }
+        const currentStatus = this.task?.status;
+        if (
+          currentStatus === "completed" ||
+          currentStatus === "pending-input"
+        ) {
           return;
         }
 
@@ -376,6 +385,7 @@ class RunningTask {
           this.retryCount = 0;
         }
 
+        this.throwIfMaxStepReached();
         await this.chat.sendMessage();
       }
     } catch (error) {
@@ -383,7 +393,17 @@ class RunningTask {
         return;
       }
       const normalizedError = toError(error);
-      await this.chatKit?.markAsFailed(normalizedError);
+      if (this.chatKit) {
+        await this.chatKit.markAsFailed(normalizedError);
+      } else {
+        this.store.commit(
+          catalog.events.taskFailed({
+            id: this.taskId,
+            error: { kind: "InternalError", message: normalizedError.message },
+            updatedAt: new Date(),
+          }),
+        );
+      }
       throw normalizedError;
     } finally {
       await this.toolCallQueue.abort("user-abort");
@@ -454,17 +474,16 @@ class RunningTask {
   }
 
   private async step(): Promise<"finished" | "next" | "retry"> {
-    this.throwIfMaxStepReached();
-
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the task chat.");
     }
 
-    return (
-      (await this.processMessage(lastMessage)) ??
-      (await this.processToolCalls(lastMessage))
-    );
+    const messageResult = await this.processMessage(lastMessage);
+    if (messageResult) return messageResult;
+
+    this.throwIfMaxStepExceeded();
+    return this.processToolCalls(lastMessage);
   }
 
   private async processMessage(
@@ -552,7 +571,17 @@ class RunningTask {
       });
     }
 
-    await this.toolCallQueue.start();
+    const chatKit = this.chatKit;
+    if (!chatKit) {
+      throw new Error("Task chat is not initialized.");
+    }
+
+    chatKit.markStartToolsExecution();
+    try {
+      await this.toolCallQueue.start();
+    } finally {
+      chatKit.markEndToolsExecution();
+    }
     return "next";
   }
 
@@ -667,19 +696,34 @@ class RunningTask {
   }
 
   private throwIfMaxStepReached() {
+    const { effectiveStepCount, maxSteps } = this.getStepLimitState();
+
+    if (effectiveStepCount >= maxSteps) {
+      throw new Error("The task failed to complete, max step count reached.");
+    }
+  }
+
+  private throwIfMaxStepExceeded() {
+    const { effectiveStepCount, maxSteps } = this.getStepLimitState();
+
+    if (effectiveStepCount > maxSteps) {
+      throw new Error("The task failed to complete, max step count reached.");
+    }
+  }
+
+  private getStepLimitState() {
     const stepCount = countStepStarts(this.chat.messages);
     const effectiveStepCount = Math.max(
       0,
       stepCount - (this.taskState.baselineStepCount ?? 0),
     );
-
-    const maxStep =
-      this.taskState.useCase === "subagent"
+    const maxSteps =
+      this.taskState.maxSteps ??
+      (this.taskState.useCase === "subagent"
         ? TaskExecutorSubagentMaxStep
-        : TaskExecutorMaxStep;
-    if (effectiveStepCount > maxStep) {
-      throw new Error("The task failed to complete, max step count reached.");
-    }
+        : TaskExecutorMaxStep);
+
+    return { effectiveStepCount, maxSteps };
   }
 }
 

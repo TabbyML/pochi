@@ -5,6 +5,8 @@ export const MaxListFileCharLength = 30_000;
 export const MaxGlobFileItems = 500;
 export const MaxReadFileSize = 30_000;
 export const MaxTerminalOutputSize = 500_000;
+/** Retention period for user terminal output files. */
+export const TerminalOutputRetentionMs = 36 * 24 * 60 * 60 * 1000;
 /**
  * Max number of lines kept in a user-opened terminal's reconstructed history
  * (cwd/command headers + output across multiple commands). Oldest lines are

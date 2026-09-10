@@ -51,8 +51,13 @@ describe("selectFileContent", () => {
 
   it("should select a range of lines", () => {
     const result = selectFileContent(content, { startLine: 2, endLine: 4 });
-    expect(result.content).toBe("line 2\nline 3\nline 4");
-    expect(result.isTruncated).toBe(false);
+    expect(result).toEqual({
+      content: "line 2\nline 3\nline 4",
+      isTruncated: false,
+      numLines: 3,
+      startLine: 2,
+      totalLines: 5,
+    });
   });
 
   it("should add line numbers if requested", () => {
@@ -69,6 +74,19 @@ describe("selectFileContent", () => {
     const result = selectFileContent(largeContent, {});
     expect(Buffer.byteLength(result.content, "utf-8")).toBe(30000);
     expect(result.isTruncated).toBe(true);
+    expect(result.numLines).toBe(1);
+    expect(result.startLine).toBe(1);
+    expect(result.totalLines).toBe(1);
+  });
+
+  it("should report zero returned lines when starting past EOF", () => {
+    expect(selectFileContent(content, { startLine: 10 })).toEqual({
+      content: "",
+      isTruncated: false,
+      numLines: 0,
+      startLine: 10,
+      totalLines: 5,
+    });
   });
 });
 

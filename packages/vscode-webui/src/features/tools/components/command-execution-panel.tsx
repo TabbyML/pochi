@@ -6,27 +6,28 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useBackgroundJobInfo } from "@/features/chat";
+import { getBackgroundJobStatusLabel } from "@/lib/background-job-status-label";
+import { useBackgroundCommands } from "@/lib/hooks/use-background-commands";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
-import { isVSCodeEnvironment } from "@/lib/vscode";
+import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import {
   CheckIcon,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
+  CircleCheck,
+  CircleSlash,
+  CircleStop,
   CopyIcon,
+  FileText,
   TerminalIcon,
+  TriangleAlert,
+  XCircle,
 } from "lucide-react";
-import {
-  type FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { XTerm } from "./xterm";
 
@@ -102,61 +103,49 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
   );
 };
 
-const BackgroundJobIdButton: FC<{
-  displayId: string;
+/**
+ * The badge in front of a job/terminal panel: opens the live terminal, or --
+ * once that terminal is gone -- its recorded output file.
+ */
+const JobControlButton: FC<{
+  label: string;
   isActive?: boolean;
+  /** Nothing left to open: keep the badge, drop the interaction. */
+  inert?: boolean;
   onClick: () => void;
-}> = ({ displayId, isActive, onClick }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
+  children: React.ReactNode;
+}> = ({ label, isActive, inert, onClick, children }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      {inert ? (
+        // A plain span rather than a disabled button: disabled buttons swallow
+        // pointer events, which would hide the tooltip explaining why nothing
+        // can be opened anymore.
+        <span
+          aria-label={label}
+          className="inline-flex size-[16px] shrink-0 cursor-default items-center justify-center rounded-sm bg-secondary text-muted-foreground opacity-60"
+        >
+          {children}
+        </span>
+      ) : (
         <Button
           size="sm"
+          aria-label={label}
           className={cn("size-[16px] rounded-sm ring-primary", {
             "ring-1": isActive,
           })}
           variant="secondary"
           onClick={onClick}
         >
-          <div className="font-bold font-mono text-[10px]">{displayId}</div>
+          {children}
         </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <span>{t("commandExecutionPanel.openJob", { displayId })}</span>
-      </TooltipContent>
-    </Tooltip>
-  );
-};
-
-const OpenTerminalButton: FC<{
-  name: string;
-  isActive?: boolean;
-  onClick: () => void;
-}> = ({ name, isActive, onClick }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          size="sm"
-          className={cn("size-[16px] rounded-sm ring-primary", {
-            "ring-1": isActive,
-          })}
-          variant="secondary"
-          onClick={onClick}
-        >
-          <TerminalIcon className="size-3" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <span>{t("commandExecutionPanel.openTerminal", { name })}</span>
-      </TooltipContent>
-    </Tooltip>
-  );
-};
+      )}
+    </TooltipTrigger>
+    <TooltipContent>
+      <span>{label}</span>
+    </TooltipContent>
+  </Tooltip>
+);
 
 export const CommandPanelContainer: FC<{
   icon: React.ReactNode;
@@ -171,7 +160,7 @@ export const CommandPanelContainer: FC<{
   return (
     <div
       className={cn(
-        "group code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans",
+        "group code-block relative w-full overflow-hidden rounded-sm border bg-[var(--vscode-editor-background)] font-sans text-sm",
         className,
       )}
     >
@@ -186,9 +175,9 @@ export const CommandPanelContainer: FC<{
         <div className="flex min-w-0 flex-1 space-x-3">
           {icon}
           <ScrollArea className="max-h-[80px] min-w-0 flex-1 overflow-y-auto">
-            <span className="whitespace-pre-wrap text-balance break-all">
+            <div className="whitespace-pre-wrap text-balance break-all">
               {title}
-            </span>
+            </div>
           </ScrollArea>
         </div>
         <div
@@ -224,75 +213,281 @@ export const CommandPanelContainer: FC<{
 export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
-  icon?: React.ReactNode;
+  appearance?: "default" | "notification";
+  /** Command fallback for persisted notification messages. */
+  command?: string;
+  /** Summary fallback for persisted notification messages. */
+  summary?: string;
+  status?: "completed" | "failed" | "stopped";
+  exitCode?: number;
+  outputFile?: string;
   /** Terminal name snapshot from the tool output (term- ids only). */
   terminalName?: string;
   /** Last command run in the terminal, from the tool output (term- ids only). */
   lastCommand?: string;
-}> = ({ backgroundJobId, output, icon, terminalName, lastCommand }) => {
+}> = ({
+  backgroundJobId,
+  output,
+  appearance = "default",
+  command,
+  summary,
+  status,
+  exitCode,
+  outputFile,
+  terminalName,
+  lastCommand,
+}) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const toggleExpanded = () => setExpanded((prev) => !prev);
   const info = useBackgroundJobInfo(backgroundJobId);
   const { terminals, openBackgroundJobTerminal } = useVisibleTerminals();
-  const isUserTerminal = backgroundJobId.startsWith("term-");
-  // Live name wins over the snapshot: the terminal may have been renamed
-  // since the read. The snapshot keeps historical reads meaningful after the
-  // terminal is closed.
-  const liveTerminal = useMemo(
-    () => terminals?.find((tm) => tm.backgroundJobId === backgroundJobId),
-    [backgroundJobId, terminals],
+  const { backgroundCommands, show } = useBackgroundCommands();
+  const liveTerminal = terminals?.find(
+    (tm) => tm.backgroundJobId === backgroundJobId,
   );
-  const hasCommand = Boolean(info?.command);
-  const copyCommand = info?.command ?? lastCommand;
+  const isUserTerminal = backgroundJobId.startsWith("term-");
+  // A background command runs on a pty, so it outlives its terminal tab: the
+  // host lists it for exactly as long as the process lives.
+  const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
+  const canOpenTerminal = isRunning || liveTerminal !== undefined;
+  const hasResolvedControlState =
+    canOpenTerminal ||
+    (terminals !== undefined &&
+      (isUserTerminal || backgroundCommands !== undefined));
+  const canOpenOutputFile =
+    hasResolvedControlState && !canOpenTerminal && outputFile !== undefined;
+  const openTerminalOrOutputFile = () => {
+    if (!canOpenTerminal) {
+      if (outputFile) vscodeHost.openFile(outputFile);
+      return;
+    }
+    if (isRunning) show?.(backgroundJobId);
+    else openBackgroundJobTerminal?.(backgroundJobId);
+  };
+  const isNotification = appearance === "notification";
+  const recoveredNotificationCommand = isNotification
+    ? recoverNotificationCommand(summary, status)
+    : undefined;
+  const resolvedCommand = isNotification
+    ? (recoveredNotificationCommand ?? info?.command ?? command)
+    : (info?.command ?? command);
+  const hasTrackedJob = Boolean(info?.command);
+  const copyCommand = resolvedCommand ?? lastCommand;
+  // Live name wins over the snapshot: the terminal may have been renamed since
+  // the read. The snapshot keeps historical reads meaningful after the
+  // terminal is closed.
   const displayTerminalName = formatTerminalDisplayName(
     liveTerminal?.name ?? terminalName,
     lastCommand,
   );
   const title = isUserTerminal
     ? (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
-    : (info?.command ?? backgroundJobId);
+    : (resolvedCommand ?? backgroundJobId);
   const isActive = liveTerminal?.isActive ?? false;
 
-  const openTerminal = useCallback(() => {
-    openBackgroundJobTerminal?.(backgroundJobId);
-  }, [backgroundJobId, openBackgroundJobTerminal]);
+  const closedLabel = canOpenOutputFile
+    ? t("commandExecutionPanel.terminalClosedOpenOutput")
+    : t("commandExecutionPanel.terminalClosed");
+  const jobControl = isUserTerminal
+    ? hasResolvedControlState && (
+        <JobControlButton
+          label={
+            canOpenTerminal
+              ? t("commandExecutionPanel.openTerminal", {
+                  name: liveTerminal?.name ?? terminalName,
+                })
+              : closedLabel
+          }
+          isActive={!isNotification && isActive}
+          inert={!canOpenTerminal && !canOpenOutputFile}
+          onClick={openTerminalOrOutputFile}
+        >
+          <TerminalIcon className="size-3" />
+        </JobControlButton>
+      )
+    : hasResolvedControlState &&
+      hasTrackedJob &&
+      info?.displayId && (
+        <JobControlButton
+          label={
+            canOpenTerminal
+              ? t("commandExecutionPanel.openJob", {
+                  displayId: info.displayId,
+                })
+              : closedLabel
+          }
+          isActive={!isNotification && isActive}
+          inert={!canOpenTerminal && !canOpenOutputFile}
+          onClick={openTerminalOrOutputFile}
+        >
+          <div className="font-bold font-mono text-[10px]">
+            {info.displayId}
+          </div>
+        </JobControlButton>
+      );
+
+  if (isNotification) {
+    const notificationRowClassName =
+      "group flex w-full min-w-0 items-center gap-2 rounded-sm px-1 py-1 text-left text-sm hover:bg-muted/30";
+    const notificationRowContent = (
+      <>
+        <span className="inline-flex size-[16px] shrink-0 items-center justify-center rounded-sm bg-secondary text-secondary-foreground shadow-xs ring-primary">
+          <TerminalIcon className="size-3" />
+        </span>
+        <code
+          className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
+          title={resolvedCommand ?? backgroundJobId}
+        >
+          {resolvedCommand ?? backgroundJobId}
+        </code>
+        <span
+          className="inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/75"
+          aria-hidden="true"
+        >
+          {status === "failed" && (
+            <TriangleAlert
+              className="size-3.5"
+              style={{
+                color:
+                  "color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground) 55%, var(--muted-foreground))",
+              }}
+              strokeWidth={1.5}
+            />
+          )}
+          {status === "stopped" && (
+            <CircleSlash className="size-3.5" strokeWidth={1.5} />
+          )}
+        </span>
+      </>
+    );
+    const notificationRow = outputFile ? (
+      <button
+        type="button"
+        aria-label={t("backgroundJobNotifications.openOutput")}
+        className={cn(
+          notificationRowClassName,
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        )}
+        onClick={() => vscodeHost.openFile(outputFile)}
+      >
+        {notificationRowContent}
+      </button>
+    ) : (
+      <div className={notificationRowClassName}>{notificationRowContent}</div>
+    );
+
+    if (!summary) return notificationRow;
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{notificationRow}</TooltipTrigger>
+        <TooltipContent>
+          <span className="block max-w-sm whitespace-pre-wrap break-words">
+            {summary}
+          </span>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
 
   return (
     <CommandPanelContainer
       icon={
-        <>
-          {icon}
-          {isUserTerminal
-            ? liveTerminal && (
-                <OpenTerminalButton
-                  name={liveTerminal.name}
-                  isActive={isActive}
-                  onClick={openTerminal}
-                />
-              )
-            : hasCommand &&
-              info?.displayId && (
-                <BackgroundJobIdButton
-                  displayId={info.displayId}
-                  isActive={isActive}
-                  onClick={openTerminal}
-                />
-              )}
-        </>
+        jobControl && (
+          <div className="flex shrink-0 items-center gap-2 self-start">
+            {jobControl}
+          </div>
+        )
       }
-      title={title}
+      title={
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>{title}</span>
+          {status && (
+            <BackgroundJobStatus status={status} exitCode={exitCode} />
+          )}
+        </div>
+      }
       expanded={output !== undefined && expanded}
       actions={
         <>
           {output && (
             <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
           )}
+          {outputFile && <OpenOutputFileButton outputFile={outputFile} />}
           {copyCommand && <CopyCommandButton command={copyCommand} />}
         </>
       }
       output={output}
     />
+  );
+};
+
+function recoverNotificationCommand(
+  summary: string | undefined,
+  status: "completed" | "failed" | "stopped" | undefined,
+): string | undefined {
+  const prefix = 'Background command "';
+  if (!summary?.startsWith(prefix) || !status) return undefined;
+
+  const lifecycleMarker =
+    status === "completed"
+      ? '" completed'
+      : status === "stopped"
+        ? '" was stopped'
+        : '" failed';
+  const markerIndex = summary.lastIndexOf(lifecycleMarker);
+  if (markerIndex < prefix.length) return undefined;
+
+  return summary.slice(prefix.length, markerIndex);
+}
+
+const BackgroundJobStatus: FC<{
+  status: "completed" | "failed" | "stopped";
+  exitCode?: number;
+}> = ({ status, exitCode }) => {
+  const { t } = useTranslation();
+  const Icon =
+    status === "completed"
+      ? CircleCheck
+      : status === "stopped"
+        ? CircleStop
+        : XCircle;
+  const label = getBackgroundJobStatusLabel(status, exitCode, t);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs",
+        {
+          "text-success": status === "completed",
+          "text-destructive": status === "failed",
+        },
+      )}
+    >
+      <Icon className="size-3.5" />
+      {label}
+    </span>
+  );
+};
+
+const OpenOutputFileButton: FC<{ outputFile: string }> = ({ outputFile }) => {
+  const { t } = useTranslation();
+  const label = t("backgroundJobNotifications.openOutput");
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="xs"
+          variant="ghost"
+          aria-label={label}
+          onClick={() => vscodeHost.openFile(outputFile)}
+        >
+          <FileText className="size-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 };
 

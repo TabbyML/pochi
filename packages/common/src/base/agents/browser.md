@@ -10,8 +10,6 @@ tools:
   - 'executeCommand(powershell -c "irm https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.ps1 | iex")'
   - "executeCommand(pgrep *)"
   - "executeCommand(powershell -NoProfile -Command Get-Process *)"
-  - startBackgroundJob
-  - readBackgroundJobOutput
   - killBackgroundJob
 ---
 
@@ -130,7 +128,7 @@ If the settings or user request require local Chrome, a local Chrome window, or 
 2. **Check Whether Chrome Is Running**: Use an operating-system-specific command to see whether Chrome is already open.
    - macOS/Linux: `executeCommand: pgrep -x "Google Chrome|chrome|google-chrome|chromium"`
    - Windows: `executeCommand: powershell -NoProfile -Command "Get-Process chrome -ErrorAction SilentlyContinue"`
-3. **If Chrome Is Not Running**: Start Chrome normally with the default profile using `startBackgroundJob`. Keep the returned background job ID for cleanup. Do not pass `--remote-debugging-port`; remote debugging ports cannot reuse the user's normal login state.
+3. **If Chrome Is Not Running**: Start Chrome normally with the default profile using `executeCommand` with `background: true`. Keep the returned background job ID for cleanup. Do not pass `--remote-debugging-port`; remote debugging ports cannot reuse the user's normal login state.
    - Example on macOS:
      `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --profile-directory=Default`
    - Example on Linux:
@@ -146,7 +144,7 @@ If the settings or user request require local Chrome, a local Chrome window, or 
    - If auto-connect succeeds, continue with `agent-browser --auto-connect ...` for every browser command in this local Chrome workflow.
    - If auto-connect fails, stop the browser agent and tell the user to use Chrome 144+, open `chrome://inspect/#remote-debugging`, enable remote debugging, approve the Chrome permission dialog, and then try again.
 5. **Work Normally**: After auto-connect succeeds, include `--auto-connect` on every subsequent `agent-browser` command so it keeps targeting the intended local Chrome instance.
-6. **Clean Up**: When done, close the agent-browser session. If you started Chrome with `startBackgroundJob`, also call `killBackgroundJob` with that Chrome background job ID. Do not close an already-running user Chrome that you did not start.
+6. **Clean Up**: When done, close the agent-browser session. If you started Chrome with background `executeCommand`, also call `killBackgroundJob` with that Chrome background job ID. Do not close an already-running user Chrome that you did not start.
 
 ## Example
 
@@ -198,7 +196,7 @@ Task: Open example.com using local Chrome
 executeCommand: pgrep -x "Google Chrome|chrome|google-chrome|chromium"
 
 # If Chrome is not running, start it normally with the Default profile and keep the backgroundJobId.
-startBackgroundJob: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --profile-directory=Default
+executeCommand (background: true): "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --profile-directory=Default
 
 # Use auto-connect to connect to the default profile and reuse login state.
 executeCommand: agent-browser --auto-connect open https://example.com
@@ -226,5 +224,5 @@ killBackgroundJob: <backgroundJobId>
 - In the Local Chrome auto-connect workflow, include `--auto-connect` on every `agent-browser` command, not only the initial `open`.
 - If `--auto-connect` fails, exit and remind the user to use Chrome 144+ and enable remote debugging at `chrome://inspect/#remote-debugging`.
 - Do not use `--remote-debugging-port` for Local Chrome login-state reuse. To reuse the user's login state, use `--auto-connect` after the user enables remote debugging in Chrome.
-- If you started local Chrome with `startBackgroundJob`, stop that Chrome background job with `killBackgroundJob` after `agent-browser close`.
+- If you started local Chrome with background `executeCommand`, stop that Chrome background job with `killBackgroundJob` after `agent-browser close`.
 - If `agent-browser open` fails, you must use `agent-browser close` to clean up the session.

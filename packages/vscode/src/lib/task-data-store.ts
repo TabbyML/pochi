@@ -1,6 +1,7 @@
 import { getLogger } from "@getpochi/common";
 import type {
   AutoMemoryTaskState,
+  BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   TaskMemoryState,
@@ -23,6 +24,7 @@ type TaskStateData = {
   taskMemoryState?: TaskMemoryState;
   autoMemoryState?: AutoMemoryTaskState;
   backgroundTaskState?: BackgroundTaskState;
+  backgroundJobNotifications?: BackgroundJobNotification[];
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -39,8 +41,11 @@ export class TaskDataStore {
 
   state = signal<Record<string, TaskStateData>>({});
 
-  /** Serializes saveTaskState writes to avoid last-write-wins races. */
+  /** Serializes task state writes. */
   private writeGroup = runExclusive.createGroupRef();
+
+  /** Serializes notification read-modify-write operations. */
+  private notificationGroup = runExclusive.createGroupRef();
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -84,10 +89,6 @@ export class TaskDataStore {
     return this.state.value[taskId];
   }
 
-  /**
-   * Merges `patch` into the task's state inside `writeGroup`. Pass only
-   * the fields to change; do not spread the previous state in.
-   */
   private saveTaskState = runExclusive.build(
     this.writeGroup,
     async (
@@ -108,6 +109,46 @@ export class TaskDataStore {
 
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {
     return this.getTaskState(taskId)?.mcpConfigOverride;
+  }
+
+  addBackgroundJobNotification = runExclusive.build(
+    this.notificationGroup,
+    async (
+      taskId: string,
+      notification: BackgroundJobNotification,
+    ): Promise<void> => {
+      const notifications =
+        this.state.value[taskId]?.backgroundJobNotifications ?? [];
+      if (
+        notifications.some(
+          (item) => item.notificationId === notification.notificationId,
+        )
+      ) {
+        return;
+      }
+      await this.saveTaskState(taskId, {
+        backgroundJobNotifications: [...notifications, notification],
+      });
+    },
+  );
+
+  acknowledgeBackgroundJobNotification = runExclusive.build(
+    this.notificationGroup,
+    async (taskId: string, notificationId: string): Promise<void> => {
+      const notifications =
+        this.state.value[taskId]?.backgroundJobNotifications ?? [];
+      await this.saveTaskState(taskId, {
+        backgroundJobNotifications: notifications.filter(
+          (item) => item.notificationId !== notificationId,
+        ),
+      });
+    },
+  );
+
+  getBackgroundJobNotificationsSignal(taskId: string) {
+    return computed(
+      () => this.state.value[taskId]?.backgroundJobNotifications ?? [],
+    );
   }
 
   async setMcpConfigOverride(

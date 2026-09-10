@@ -97,6 +97,21 @@ describe("isReadonlyToolCall", () => {
     expect(isReadonlyToolCall("executeCommand", {})).toBe(false);
   });
 
+  it("classifies a background executeCommand by the command's side effects", () => {
+    expect(
+      isReadonlyToolCall("executeCommand", {
+        command: "cat README.md",
+        background: true,
+      }),
+    ).toBe(true);
+    expect(
+      isReadonlyToolCall("executeCommand", {
+        command: "rm -rf /tmp/example",
+        background: true,
+      }),
+    ).toBe(false);
+  });
+
   it("returns false for writeToFile", () => {
     expect(isReadonlyToolCall("writeToFile", {})).toBe(false);
   });

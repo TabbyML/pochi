@@ -195,6 +195,7 @@ export function SharePage() {
                     assistant={assistant}
                     messages={renderMessages}
                     isLoading={isLoading}
+                    renderAllMessages
                     hideUserEditsActions
                     showLastStepDuration={showLastStepDuration}
                   />

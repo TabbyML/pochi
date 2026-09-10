@@ -8,6 +8,7 @@ const defaultSettings: VSCodeSettings = {
   autoSaveDisabled: false,
   commentsOpenViewDisabled: false,
   githubCopilotCodeCompletionEnabled: true,
+  terminalRightClickContextMenuEnabled: false,
   pochiLayout: {
     enabled: false,
   },
@@ -69,6 +70,7 @@ export const AllConfigured: Story = {
       autoSaveDisabled: true,
       commentsOpenViewDisabled: true,
       githubCopilotCodeCompletionEnabled: false,
+      terminalRightClickContextMenuEnabled: true,
       pochiLayout: {
         enabled: true,
       },

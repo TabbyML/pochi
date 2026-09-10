@@ -25,7 +25,7 @@ export function useSkills(filterValidFiles?: false): {
 
 /** @useSignals */
 export function useSkills(filterValidFiles = false) {
-  const { data: skillsSignal } = useQuery({
+  const { data: skillsSignal, isLoading } = useQuery({
     queryKey: ["skills"],
     queryFn: async () => {
       return threadSignal(await vscodeHost.readSkills());
@@ -34,7 +34,7 @@ export function useSkills(filterValidFiles = false) {
   });
 
   if (skillsSignal === undefined) {
-    return { skills: [], isLoading: true };
+    return { skills: [], isLoading };
   }
 
   return {

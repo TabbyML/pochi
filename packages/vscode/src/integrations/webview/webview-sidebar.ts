@@ -11,6 +11,8 @@ import * as vscode from "vscode";
 import { PochiConfiguration } from "../configuration";
 import { WebviewBase } from "./base";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { PochiFocusTracker } from "./focus-tracker";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
 type SidebarViewType = "pochiSidebarDark" | "pochiSidebarLight";
@@ -46,6 +48,7 @@ export class PochiWebviewSidebar
     events: AuthEvents,
     pochiConfiguration: PochiConfiguration,
     vscodeHost: VSCodeHostImpl,
+    private readonly focusTracker: PochiFocusTracker,
   ) {
     super("sidebar-default", context, events, pochiConfiguration, vscodeHost);
 
@@ -104,6 +107,10 @@ export class PochiWebviewSidebar
 
       return this.buildResourceURI(this.view.webview);
     };
+  }
+
+  protected onFocusChanged(focused: boolean): void {
+    this.focusTracker.markSidebarFocused(focused);
   }
 
   public getSiderbarViewType(

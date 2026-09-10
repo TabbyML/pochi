@@ -11,7 +11,10 @@ import {
 import { type ToolSpecInput, ToolsByPermission } from "@getpochi/tools";
 import { type UIMessage, getStaticToolName, isStaticToolUIPart } from "ai";
 import { isPlainObject } from "remeda";
-import { makeTaskQuery } from "../../livestore/default-queries";
+import {
+  makeMessagesQuery,
+  makeTaskQuery,
+} from "../../livestore/default-queries";
 import type { LiveKitStore, Message } from "../../types";
 import {
   type StartForkAgent,
@@ -31,6 +34,9 @@ const MemoryReadToolNames = [
   "searchFiles",
 ] as const;
 const MemoryAgentWriteToolNames = ["writeToFile", "applyDiff"] as const;
+const AutoMemoryMaxSteps = 5;
+const AutoMemoryDreamMaxSteps = 20;
+const MinNewUserTurnsPerExtraction = 3;
 const MaxSessionTranscriptChars = 24_000;
 const MaxPartChars = 4_000;
 
@@ -76,6 +82,7 @@ async function startAutoMemoryExtraction<TMessage extends UIMessage>({
         previousMessageCount,
       }),
       tools: buildMemoryTools(context),
+      maxSteps: AutoMemoryMaxSteps,
     });
     const handle = await startForkAgent(agent);
 
@@ -148,6 +155,7 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
         sessions,
       }),
       tools: buildMemoryTools(run.context),
+      maxSteps: AutoMemoryDreamMaxSteps,
     });
     const handle = await startForkAgent(agent);
 
@@ -174,16 +182,25 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
 function resolveAutoMemoryExtractionState({
   state,
   activeExtractionTask,
+  activeMessages,
 }: {
   state: AutoMemoryTaskState;
   activeExtractionTask: { status: string } | null | undefined;
+  activeMessages: readonly UIMessage[];
 }): { nextState: AutoMemoryTaskState; success: boolean } | undefined {
   if (!state.isExtracting || !state.activeExtractionTaskId) return undefined;
-  if (activeExtractionTask && ActiveStatuses.has(activeExtractionTask.status)) {
-    return undefined;
+
+  // The fork clones the parent conversation, so only messages past the cloned
+  // prefix belong to the extraction agent itself.
+  const wroteMemory = didExtractionWriteMemory(
+    activeMessages.slice(state.pendingExtractionMessageCount ?? 0),
+  );
+  if (!wroteMemory) {
+    if (!activeExtractionTask) return undefined;
+    if (ActiveStatuses.has(activeExtractionTask.status)) return undefined;
   }
 
-  const success = activeExtractionTask?.status === "completed";
+  const success = wroteMemory || activeExtractionTask?.status === "completed";
   return {
     success,
     nextState: {
@@ -192,10 +209,10 @@ function resolveAutoMemoryExtractionState({
       extractionCount: success
         ? state.extractionCount + 1
         : state.extractionCount,
-      lastExtractionMessageCount: success
-        ? (state.pendingExtractionMessageCount ??
-          state.lastExtractionMessageCount)
-        : state.lastExtractionMessageCount,
+      // Advance even on failure: leaving the mark behind re-runs the same
+      // extraction on every following turn.
+      lastExtractionMessageCount:
+        state.pendingExtractionMessageCount ?? state.lastExtractionMessageCount,
       pendingExtractionMessageCount: undefined,
       activeExtractionTaskId: undefined,
     },
@@ -279,6 +296,39 @@ function didConversationWriteMemory(
       }
       return isMemoryPath(part.input.path, memoryDir, cwd);
     }),
+  );
+}
+
+/**
+ * The extraction fork can only write inside the memory directory
+ * ({@link buildMemoryTools}), so any successful write means memory changed —
+ * regardless of whether the fork also reached attemptCompletion.
+ */
+function didExtractionWriteMemory(messages: readonly UIMessage[]): boolean {
+  return messages.some((message) =>
+    message.parts.some((part) => {
+      if (!isStaticToolUIPart(part)) return false;
+      const toolName = getStaticToolName(part);
+      if (!MemoryAgentWriteToolNames.some((name) => name === toolName)) {
+        return false;
+      }
+      return isSuccessfulToolOutput(part);
+    }),
+  );
+}
+
+function countUserTurns(messages: readonly UIMessage[]): number {
+  return messages.filter(isUserTurn).length;
+}
+
+function isUserTurn(message: UIMessage): boolean {
+  if (message.role !== "user") return false;
+  return message.parts.some(
+    (part) =>
+      part.type === "text" &&
+      part.text.trim().length > 0 &&
+      !prompts.isSystemReminder(part.text) &&
+      !prompts.isCompact(part.text),
   );
 }
 
@@ -473,10 +523,10 @@ export class AutoMemoryAdaptor {
           }
         : undefined;
 
-      if (
-        !state.isExtracting &&
-        messageCount > state.lastExtractionMessageCount
-      ) {
+      const newUserTurns = countUserTurns(
+        data.messages.slice(state.lastExtractionMessageCount),
+      );
+      if (!state.isExtracting && newUserTurns >= MinNewUserTurnsPerExtraction) {
         if (
           didConversationWriteMemory(
             data.messages.slice(state.lastExtractionMessageCount),
@@ -528,6 +578,11 @@ export class AutoMemoryAdaptor {
               makeTaskQuery(state.activeExtractionTaskId),
             )
           : undefined,
+        activeMessages: state.activeExtractionTaskId
+          ? this.options.store
+              .query(makeMessagesQuery(state.activeExtractionTaskId))
+              .map((row) => row.data as Message)
+          : [],
       });
       if (extractionResolution) {
         await this.stateStore.set(extractionResolution.nextState);

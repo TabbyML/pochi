@@ -4,9 +4,7 @@ import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
 
 const defaultTaskMemoryState: TaskMemoryState = {
-  initialized: false,
-  lastExtractionTokens: 0,
-  lastExtractionToolCalls: 0,
+  extractionAttemptsSinceCompact: 0,
   isExtracting: false,
   extractionCount: 0,
 };

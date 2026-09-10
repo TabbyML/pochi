@@ -198,23 +198,6 @@ const replaceTaskIdInMessages = (
           },
         };
       }
-      if (
-        part.type === "tool-readBackgroundJobOutput" &&
-        part.input?.backgroundJobId
-      ) {
-        try {
-          const newTaskId = getNewTaskId(part.input.backgroundJobId);
-          return {
-            ...part,
-            input: {
-              ...part.input,
-              backgroundJobId: newTaskId,
-            },
-          };
-        } catch {
-          // ignore, getNewTaskId failed when backgroundJobId is not a taskId
-        }
-      }
       return part;
     }),
   };

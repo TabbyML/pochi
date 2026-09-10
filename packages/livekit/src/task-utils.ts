@@ -56,6 +56,28 @@ export function getTaskErrorMessage(error: unknown): string | undefined {
 }
 
 /**
+ * True while the last step ends with an unanswered follow-up question, so the
+ * next turn belongs to the user.
+ */
+export function isAwaitingFollowupAnswer(
+  message: Message | undefined,
+): boolean {
+  if (!message) return false;
+
+  const lastStepStart = message.parts.findLastIndex(
+    (x) => x.type === "step-start",
+  );
+
+  return message.parts
+    .slice(lastStepStart + 1)
+    .some(
+      (part) =>
+        part.type === "tool-askFollowupQuestion" &&
+        part.state === "input-available",
+    );
+}
+
+/**
  * Extract the last step's attemptCompletion / askFollowupQuestion result.
  * Throws when no messages exist for the task.
  */

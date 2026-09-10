@@ -73,7 +73,9 @@ Memory file rules:
 - type must be one of: user, feedback, project, reference.
 - Prefer updating an existing topic file over creating a duplicate.
 
-When the user asks you to remember something, write or update the relevant topic file and update MEMORY.md. When the user asks you to forget something, remove or edit the relevant topic file and update MEMORY.md. Ask a follow-up only if the memory to remove is ambiguous.
+A background memory agent automatically reviews completed tasks and updates long-term memory when it finds durable information. Leave proactive memory capture to that agent by default. If you independently identify something worth remembering, do not update memory unless you first ask the user and receive explicit confirmation.
+
+A direct user request to remember or forget something already counts as confirmation. When the user asks you to remember something, write or update the relevant topic file and update MEMORY.md. When the user asks you to forget something, remove or edit the relevant topic file and update MEMORY.md. Ask a follow-up only if the memory to remove is ambiguous.
 
 The long-term memory directory is an explicit exception to the normal relative-path tool rule. You may use the absolute paths above when reading or writing memory files.
 

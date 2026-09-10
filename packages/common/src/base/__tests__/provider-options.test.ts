@@ -13,6 +13,19 @@ describe("PochiProviderOptions", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a number of compacts", () => {
+    const result = PochiProviderOptions.safeParse({
+      taskId: "task-1",
+      storeId: "store-1",
+      client: "vscode",
+      useCase: "agent",
+      numCompacts: 2,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.numCompacts).toBe(2);
+  });
+
   it("rejects unknown request use cases", () => {
     const result = PochiProviderOptions.safeParse({
       taskId: "task-1",

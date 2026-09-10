@@ -2,6 +2,7 @@ import { useReplaceJobIdsInContent } from "@/features/chat";
 import { FileBadge, IssueBadge } from "@/features/tools";
 import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { parseFilePathLineRange } from "@/lib/utils/file";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import {
@@ -108,21 +109,35 @@ function InlineCodeComponent({
       );
     };
 
+    // a file path may carry a line range suffix, e.g. `src/main.ts:42-56`
+    const { path, startLine, endLine } = parseFilePathLineRange(children);
+
     // children may be file path, folder path, symbol or normal text, we need to handle each case
-    if (isFilePath(children)) {
-      const pathSeparatorCount = (children.match(/[\/\\]/g) || []).length;
+    if (isFilePath(path)) {
+      const pathSeparatorCount = (path.match(/[\/\\]/g) || []).length;
       return (
         <FileBadge
-          path={children}
+          path={path}
+          startLine={startLine}
+          endLine={endLine}
           fallbackGlobPattern={
             // glob pattern use `/` as path separator even on windows; when applied, glob pattern will match paths with both `/` and `\`
-            pathSeparatorCount >= 2 ? `**/${children}` : undefined
+            pathSeparatorCount >= 2 ? `**/${path}` : undefined
           }
         />
       );
     }
-    if (isFolderPath(children)) {
-      return <FileBadge path={children} isDirectory={true} />;
+    if (isFolderPath(path)) {
+      // a line range only makes sense for files
+      const isDirectory = startLine === undefined;
+      return (
+        <FileBadge
+          path={path}
+          startLine={startLine}
+          endLine={endLine}
+          isDirectory={isDirectory}
+        />
+      );
     }
   }
 
@@ -264,6 +279,13 @@ function escapeMarkdownTag(tag: string): (text: string) => string {
   };
 }
 
+export function hideUserInvokedSkillInstructions(text: string): string {
+  return text.replace(
+    /<skill(?=[^>]*\bdata-user-invoked="true")([^>]*)>.*?<\/skill>/gs,
+    (_match, attr) => `\u200b<skill${attr}></skill>`,
+  );
+}
+
 function isImageLink(url: string): boolean {
   return /\.(jpeg|jpg|gif|png|bmp|webp|svg)(?=[?#]|$)/i.test(url);
 }
@@ -324,19 +346,25 @@ type WithNode<T> = T & {
 };
 type LiProps = WithNode<JSX.IntrinsicElements["li"]>;
 
+// For the list components below: `node` is not a valid DOM attribute, so it
+// must be destructured out; and the comparators must check `children`, since
+// the source position can stay stable while the list content changes.
 const MemoLi = memo<LiProps>(
-  ({ children, className, ...props }: LiProps) => (
+  ({ children, className, node: _node, ...props }: LiProps) => (
     <li className={className} data-streamdown="list-item" {...props}>
       {children}
     </li>
   ),
-  (p, n) => p.className === n.className && sameNodePosition(p.node, n.node),
+  (p, n) =>
+    p.className === n.className &&
+    sameNodePosition(p.node, n.node) &&
+    p.children === n.children,
 );
 MemoLi.displayName = "MarkdownLi";
 
 type UlProps = WithNode<JSX.IntrinsicElements["ul"]>;
 const MemoUl = memo<UlProps>(
-  ({ children, className, ...props }: UlProps) => (
+  ({ children, className, node: _node, ...props }: UlProps) => (
     <ul
       className={cn("list-outside list-disc whitespace-normal", className)}
       data-streamdown="unordered-list"
@@ -345,13 +373,13 @@ const MemoUl = memo<UlProps>(
       {children}
     </ul>
   ),
-  (p, n) => sameClassAndNode(p, n),
+  (p, n) => sameClassAndNode(p, n) && p.children === n.children,
 );
 MemoUl.displayName = "MarkdownUl";
 
 type OlProps = WithNode<JSX.IntrinsicElements["ol"]>;
 const MemoOl = memo<OlProps>(
-  ({ children, className, ...props }: OlProps) => (
+  ({ children, className, node: _node, ...props }: OlProps) => (
     <ol
       className={cn("list-outside list-decimal whitespace-normal", className)}
       data-streamdown="ordered-list"
@@ -360,7 +388,8 @@ const MemoOl = memo<OlProps>(
       {children}
     </ol>
   ),
-  (p, n) => sameClassAndNode(p, n),
+  (p, n) =>
+    sameClassAndNode(p, n) && p.children === n.children && p.start === n.start,
 );
 MemoOl.displayName = "MarkdownOl";
 
@@ -372,7 +401,7 @@ export function MessageMarkdown({
 }: MessageMarkdownProps) {
   const replaceJobIdsInContent = useReplaceJobIdsInContent();
   const processedChildren = useMemo(() => {
-    let result = children;
+    let result = hideUserInvokedSkillInstructions(children);
     for (const tag of CustomHtmlTags) {
       const escapeTagContent = escapeMarkdownTag(tag);
       result = escapeTagContent(result);
@@ -421,8 +450,12 @@ export function MessageMarkdown({
     return {
       file: (props: FileComponentProps) => {
         const { children } = props;
-        const filepath = String(children);
-        return <FileBadge path={filepath} />;
+        const { path, startLine, endLine } = parseFilePathLineRange(
+          String(children),
+        );
+        return (
+          <FileBadge path={path} startLine={startLine} endLine={endLine} />
+        );
       },
       "custom-agent": (props: CustomAgentComponentProps) => {
         const { id, path } = props;

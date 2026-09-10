@@ -44,6 +44,7 @@
     "reviewCount": "{{count}} 件のレビュー",
     "userEditCount": "{{count}} 件の編集",
     "terminalContextCount": "{{count}} 件のターミナル選択",
+    "pastedTextCount": "{{count}} 件の貼り付けテキスト",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -72,6 +73,8 @@
     "minTokensRequired": "会話を圧縮するには少なくとも {{minTokens}} tokens が必要です",
     "defaultContextWindowWarning": "コンテキストウィンドウの値はデフォルトであり、カスタムモデルには正確でない場合があります。正確な token 管理のために、モデルプロバイダーのドキュメントに従って設定で調整してください。",
     "tokensUsed": "{{used}} / {{total}} tokens",
+    "inputTokens": "入力 Tokens",
+    "cacheReadTokens": "キャッシュ入力 Tokens",
     "system": "システム",
     "systemInstructions": "システム指示",
     "toolDefinitions": "ツール定義",
@@ -333,6 +336,7 @@
     "imgAlt": "MCPツールレスポンススナップショット",
     "renderWidget": "ウィジェットを表示",
     "widgetFrozen": "このウィジェットは以前のメッセージのものです。最新のウィジェットのみ操作できます。",
+    "widgetExportFailed": "ウィジェットのエクスポートに失敗しました: {{message}}",
     "widgetInternalError": "ウィジェット設定エラーです。",
     "widgetRuntimeError": "ウィジェット実行時エラーです。",
     "fixWidget": "修正してください",
@@ -342,6 +346,7 @@
     "in": "の",
     "executeCommand": "以下のコマンドを実行します",
     "executingCommand": "コマンドを実行中",
+    "startedCommand": "コマンドを開始",
     "for": "で",
     "matching": "一致する",
     "searching": "検索中",
@@ -358,6 +363,7 @@
     "readTerminal": "ターミナル出力を読み込み中",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
+    "promotedToBackground": "、その後バックグラウンドで継続",
     "updatingToDos": "TODOを更新中",
     "editing": "編集しています ",
     "moreTools": "、他{{count}}個のツール",
@@ -368,9 +374,7 @@
     "next": "次へ",
     "askingQuestion_one": "質問中",
     "askingQuestion_other": "質問中",
-    "skipped": "スキップ済み",
-    "startMonitor": "監視します：",
-    "monitoring": "監視中"
+    "skipped": "スキップ済み"
   },
   "reasoning": {
     "thinking": "考え中 ...",
@@ -379,6 +383,10 @@
   "attachmentPreview": {
     "removeAttachment": "添付ファイルを削除",
     "uploading": "アップロード中..."
+  },
+  "pastedText": {
+    "label": "貼り付けたテキスト",
+    "remove": "貼り付けたテキストを削除"
   },
   "checkpointUI": {
     "restoring": "復元中...",
@@ -512,6 +520,8 @@
     "expand": "展開",
     "openJob": "ジョブ {{displayId}} を開く",
     "openTerminal": "ターミナル {{name}} を開く",
+    "terminalClosed": "このターミナルは閉じられています",
+    "terminalClosedOpenOutput": "このターミナルは閉じられています。出力ログを開きます",
     "userTerminal": "ユーザーターミナル",
     "stop": "停止"
   },
@@ -568,10 +578,6 @@
     "viewChanges": "変更を表示",
     "openFile": "ファイルを開く"
   },
-  "monitorEvents": {
-    "eventCount_one": "{{count}} 件のイベント",
-    "eventCount_other": "{{count}} 件のイベント"
-  },
   "userEdits": {
     "title": "編集",
     "filesEdited_one": "{{count}} ファイルを編集",
@@ -580,6 +586,27 @@
     "remove": "コンテキストからユーザー編集を削除",
     "showDiff": "差分を表示",
     "diffTitle": "ユーザー編集"
+  },
+  "backgroundJobNotifications": {
+    "title": "通知",
+    "completed": "完了（終了コード {{exitCode}}）",
+    "completedNoExit": "完了",
+    "failed": "失敗（終了コード {{exitCode}}）",
+    "failedNoExit": "失敗",
+    "stopped": "停止",
+    "openOutput": "出力ファイルを開く"
+  },
+  "managePanel": {
+    "title": "バックグラウンドジョブ",
+    "toggle": "バックグラウンドジョブを表示",
+    "pochiGroup": "バックグラウンドコマンド",
+    "openTerminal": "ターミナルを開く",
+    "hideTerminal": "ターミナルを非表示",
+    "copyCommand": "コマンドをコピー",
+    "kill": "プロセスを終了",
+    "empty": "バックグラウンドで実行中のものはありません",
+    "seeMore": "もっと見る",
+    "seeLess": "折りたたむ"
   },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
@@ -591,7 +618,8 @@
       "enablePochiLayout": "Pochi レイアウトを有効にする",
       "disableAutoSave": "自動保存を無効にする",
       "disableCommentsOpenView": "コメントパネルの自動表示を無効にする",
-      "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする"
+      "disableGithubCopilotCodeCompletion": "GitHub Copilot のコード補完を無効にする",
+      "terminalRightClickContextMenuEnabled": "ターミナルの右クリックでコンテキストメニューを表示する"
     }
   },
   "mermaid": {

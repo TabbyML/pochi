@@ -46,6 +46,7 @@
     "reviewCount": "{{count}} reviews",
     "userEditCount": "{{count}} edits",
     "terminalContextCount": "{{count}} terminal selections",
+    "pastedTextCount": "{{count}} pasted texts",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -73,6 +74,8 @@
     "minTokensRequired": "At least {{minTokens}} tokens are required to compact the conversation",
     "defaultContextWindowWarning": "The context window value is a default and may not be accurate for your custom model. For precise token management, please adjust it in the settings according to your model provider's documentation.",
     "tokensUsed": "{{used}} / {{total}} tokens",
+    "inputTokens": "Input Tokens",
+    "cacheReadTokens": "Cache Input Tokens",
     "system": "System",
     "systemInstructions": "System Instructions",
     "toolDefinitions": "Tool Definitions",
@@ -339,6 +342,7 @@
     "imgAlt": "MCP tool response snapshot",
     "renderWidget": "Render Widget",
     "widgetFrozen": "This widget is from an earlier message. Only the latest widget remains interactive.",
+    "widgetExportFailed": "Failed to export widget: {{message}}",
     "widgetInternalError": "Widget setup error.",
     "widgetRuntimeError": "Widget runtime error.",
     "fixWidget": "Please fix",
@@ -348,6 +352,7 @@
     "in": "in",
     "executeCommand": "I will execute the following command",
     "executingCommand": "Executing command",
+    "startedCommand": "Started command",
     "for": "for",
     "matching": "matching",
     "searching": "Searching",
@@ -364,6 +369,7 @@
     "readTerminal": "Reading terminal output",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
+    "promotedToBackground": "; continued in background",
     "updatingToDos": "Updating TODOs",
     "editing": "Editing ",
     "usingSkill": "Using Skill",
@@ -376,9 +382,7 @@
     "next": "Next",
     "askingQuestion_one": "Asking Question",
     "askingQuestion_other": "Asking Questions",
-    "skipped": "Skipped",
-    "startMonitor": "I will monitor",
-    "monitoring": "Monitoring"
+    "skipped": "Skipped"
   },
   "reasoning": {
     "thinking": "Thinking ...",
@@ -387,6 +391,10 @@
   "attachmentPreview": {
     "removeAttachment": "Remove Attachment",
     "uploading": "Uploading..."
+  },
+  "pastedText": {
+    "label": "Pasted text",
+    "remove": "Remove pasted text"
   },
   "checkpointUI": {
     "restoring": "Restoring...",
@@ -520,6 +528,8 @@
     "expand": "Expand",
     "openJob": "Open Job {{displayId}}",
     "openTerminal": "Open terminal {{name}}",
+    "terminalClosed": "The terminal has been closed",
+    "terminalClosedOpenOutput": "The terminal has been closed, open its output log",
     "userTerminal": "User terminal",
     "stop": "STOP"
   },
@@ -571,10 +581,6 @@
     "viewChanges": "View Changes",
     "openFile": "Open File"
   },
-  "monitorEvents": {
-    "eventCount_one": "{{count}} event",
-    "eventCount_other": "{{count}} events"
-  },
   "userEdits": {
     "title": "Edits",
     "filesEdited_one": "{{count}} file edited",
@@ -583,6 +589,27 @@
     "remove": "Remove user edits from context",
     "showDiff": "Show Diff",
     "diffTitle": "User Edits"
+  },
+  "backgroundJobNotifications": {
+    "title": "Notifications",
+    "completed": "Completed (exit {{exitCode}})",
+    "completedNoExit": "Completed",
+    "failed": "Failed (exit {{exitCode}})",
+    "failedNoExit": "Failed",
+    "stopped": "Stopped",
+    "openOutput": "Open output file"
+  },
+  "managePanel": {
+    "title": "Background Jobs",
+    "toggle": "Show background jobs",
+    "pochiGroup": "Background commands",
+    "openTerminal": "Open terminal",
+    "hideTerminal": "Hide terminal",
+    "copyCommand": "Copy command",
+    "kill": "Kill process",
+    "empty": "Nothing running in the background",
+    "seeMore": "See more",
+    "seeLess": "See less"
   },
   "forkTask": {
     "forkedTaskTitle": "Forked from {{taskTitle}}"
@@ -594,7 +621,8 @@
       "enablePochiLayout": "Enable Pochi Layout",
       "disableAutoSave": "Disable Auto-Save",
       "disableCommentsOpenView": "Disable Auto-Opening of Comments Panel",
-      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot Code Completion"
+      "disableGithubCopilotCodeCompletion": "Disable GitHub Copilot Code Completion",
+      "terminalRightClickContextMenuEnabled": "Show Context Menu on Terminal Right Click"
     }
   },
   "mermaid": {

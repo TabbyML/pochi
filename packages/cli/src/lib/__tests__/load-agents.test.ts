@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { compileToolPolicies, validateToolPolicy } from "@getpochi/tools";
 import { describe, expect, it } from "vitest";
 import { loadAgents, loadBuiltInAgents } from "../load-agents";
 
@@ -99,5 +100,33 @@ Project agent instructions.`,
     const builtInAgents = await loadBuiltInAgents();
     const agents = await loadAgents("/non/existent/path", false);
     expect(agents).toEqual(builtInAgents);
+  });
+
+  it("should keep browser agent command restrictions active", async () => {
+    const browserAgent = (await loadBuiltInAgents()).find(
+      (agent) => agent.name === "browser",
+    );
+    expect(browserAgent).toBeDefined();
+
+    const policies = compileToolPolicies(browserAgent?.tools);
+    expect(policies?.executeCommand).toBeDefined();
+
+    expect(() =>
+      validateToolPolicy(
+        "executeCommand",
+        { command: "rm -rf /tmp/example" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).toThrow("Command is not allowed by the configured command rules.");
+
+    expect(() =>
+      validateToolPolicy(
+        "executeCommand",
+        { command: "agent-browser open https://example.com" },
+        policies,
+        { cwd: process.cwd() },
+      ),
+    ).not.toThrow();
   });
 });

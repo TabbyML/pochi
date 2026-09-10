@@ -5,10 +5,11 @@ import type {
   ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
+  BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
-  MonitorEventEnvelope,
+  PastedTextFile,
   TaskMemoryState,
   TerminalTextSelection,
 } from "../base";
@@ -50,6 +51,8 @@ import type {
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { VSCodeSettings } from "./types/vscode-settings";
+
+export type BackgroundCommands = Record<string, { isVisible: boolean }>;
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -188,17 +191,22 @@ export interface VSCodeHostApi {
     openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
   }>;
 
-  /**
-   * Undelivered monitor event batches of a task (startMonitor tool), as a
-   * live signal. The webview injects them into the conversation and then
-   * acknowledges via {@link ackMonitorEvents}.
-   */
-  readMonitorEvents(
-    taskId: string,
-  ): Promise<ThreadSignalSerialization<MonitorEventEnvelope[]>>;
+  readBackgroundCommands(): Promise<{
+    backgroundCommands: ThreadSignalSerialization<BackgroundCommands>;
+    show: (backgroundJobId: string) => Promise<void>;
+    hide: (backgroundJobId: string) => Promise<void>;
+    close: (backgroundJobId: string) => Promise<void>;
+  }>;
 
-  /** Drops delivered monitor event batches with seq <= upToSeq. */
-  ackMonitorEvents(taskId: string, upToSeq: number): Promise<void>;
+  readBackgroundJobNotifications(taskId: string): Promise<{
+    notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
+    acknowledge: (notificationId: string) => Promise<void>;
+  }>;
+
+  persistPastedTextFiles(
+    taskId: string,
+    texts: string[],
+  ): Promise<PastedTextFile[]>;
 
   /**
    * Opens a file at the specified file path.
@@ -226,10 +234,33 @@ export interface VSCodeHostApi {
     },
   ): void;
 
+  /**
+   * Asks the user where to store a standalone widget document and writes it there.
+   *
+   * @returns `true` when the document was written, `false` when the user cancelled.
+   */
+  saveWidget(html: string, suggestedFilename: string): Promise<boolean>;
+
+  /**
+   * Opens a standalone widget document in a new editor tab. The document is
+   * rendered from the given string and is never written to disk.
+   */
+  openWidgetInPanel(html: string, title: string): Promise<void>;
+
   readCurrentWorkspace(): Promise<{
     cwd: string | null;
     workspacePath: string | null;
   }>;
+
+  /**
+   * Reports that this webview's window gained or lost focus. Used to track,
+   * per Pochi surface (sidebar vs. a task tab's panel), when it was last
+   * focused by the user. There is no VS Code host-native signal for "the
+   * sidebar view gained keyboard focus" (unlike editor tabs, which are
+   * tracked via `vscode.window.tabGroups`), so the webview reports it
+   * directly via this method.
+   */
+  notifyFocusChanged(focused: boolean): Promise<void>;
 
   readCustomAgents(): Promise<ThreadSignalSerialization<CustomAgentFile[]>>;
 
@@ -364,6 +395,12 @@ export interface VSCodeHostApi {
    * @returns A thenable that resolves to the selected item or `undefined` when being dismissed.
    */
   showInformationMessage<T extends string>(
+    message: string,
+    options: { modal?: boolean; detail?: string },
+    ...items: T[]
+  ): Promise<T | undefined>;
+
+  showWarningMessage<T extends string>(
     message: string,
     options: { modal?: boolean; detail?: string },
     ...items: T[]

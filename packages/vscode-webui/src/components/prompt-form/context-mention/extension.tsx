@@ -89,7 +89,10 @@ export const PromptFormMentionExtension = Mention.extend({
                   metaData.pos,
                   () => {
                     const span = document.createElement("span");
-                    span.className = "text-muted-foreground text-sm ml-2";
+                    span.className =
+                      "text-muted-foreground text-sm ml-2 select-none";
+                    span.setAttribute("contenteditable", "false");
+                    span.dataset.fileMentionPreview = "";
                     span.textContent = metaData.filepath;
                     return span;
                   },
@@ -106,6 +109,32 @@ export const PromptFormMentionExtension = Mention.extend({
         props: {
           decorations(state) {
             return this.getState(state);
+          },
+          handleKeyDown(view, event) {
+            if (
+              event.key !== "ArrowRight" ||
+              event.isComposing ||
+              view.composing ||
+              !view.state.selection.empty
+            ) {
+              return false;
+            }
+
+            const pos = view.state.selection.from;
+            const previewAtCaret = this.getState(view.state)
+              ?.find(pos, pos)
+              .some((decoration) => decoration.from === pos);
+            if (!previewAtCaret) {
+              return false;
+            }
+
+            // Close the suggestion and preview without consuming ArrowRight.
+            view.dispatch(
+              view.state.tr
+                .setSelection(view.state.selection)
+                .setMeta(fileMentionPreviewPluginKey, "clear"),
+            );
+            return false;
           },
         },
       }),

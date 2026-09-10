@@ -2,7 +2,11 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { prompts } from "@getpochi/common";
-import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
+import {
+  type ClientTools,
+  type ToolFunctionType,
+  isModelInvocableSkill,
+} from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
 export const useSkill =
@@ -18,8 +22,16 @@ export const useSkill =
     }
 
     const skill = skills.find((s) => s.name === skillName);
+    if (skill?.disableModelInvocation) {
+      throw new Error(
+        `Skill '${skillName}' cannot be used with the useSkill tool because model invocation is disabled.`,
+      );
+    }
     if (!skill) {
-      const availableSkills = skills.map((s) => s.name).join(", ");
+      const availableSkills = skills
+        .filter(isModelInvocableSkill)
+        .map((s) => s.name)
+        .join(", ");
       throw new Error(
         `Skill '${skillName}' not found. Available skills: ${availableSkills}`,
       );

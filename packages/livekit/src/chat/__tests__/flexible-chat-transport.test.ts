@@ -3,11 +3,21 @@ import type { Message } from "../../types";
 import {
   convertDataPartToText,
   extractContentFilterMetadata,
+  getNumCompacts,
 } from "../flexible-chat-transport";
 
 type MessagePart = Message["parts"][number];
 
 describe("convertDataPartToText", () => {
+  it("renders completed background subagent results for the model", () => {
+    const result = convertDataPartToText({
+      type: "data-subagent-results",
+      data: { results: [{ taskId: "worker", title: "Research", status: "completed", result: "Found the cause." }] },
+    });
+    expect(result).toMatchObject({ type: "text", text: expect.stringContaining("Found the cause.") });
+    expect(result).toMatchObject({ text: expect.stringContaining("worker") });
+  });
+
   it("passes through parts that are not data parts", () => {
     const part = { type: "text", text: "hello" } as MessagePart;
     expect(convertDataPartToText(part)).toBe(part);
@@ -81,6 +91,33 @@ describe("convertDataPartToText", () => {
     expect(result[0].text).toContain("echo hello");
     expect(result[0].text).toContain("terminal-context-selection terminal=\"zsh\"");
     expect(result[0].text).toContain("git status");
+  });
+
+  it("converts one background job notification into one XML text part", () => {
+    const part = {
+      type: "data-background-job-notification",
+      data: {
+        notificationId: "bgjob-cmd-1:terminal",
+        backgroundJobId: "bgjob-cmd-1",
+        outputFile: "/tmp/job<&>.log",
+        status: "failed",
+        summary: 'Background command "test <all>" failed with exit code 7',
+        exitCode: 7,
+        finishedAt: 1,
+      },
+    } as unknown as MessagePart;
+
+    const result = convertDataPartToText(part) as {
+      type: string;
+      text: string;
+    };
+    expect(result.type).toBe("text");
+    expect(result.text).not.toContain("<system-reminder>");
+    expect(result.text).toContain("<background-job-notification>");
+    expect(result.text).toContain("/tmp/job&lt;&amp;&gt;.log");
+    expect(result.text).toContain(
+      "Background command &quot;test &lt;all&gt;&quot; failed with exit code 7",
+    );
   });
 });
 
@@ -210,5 +247,32 @@ describe("extractContentFilterMetadata", () => {
         "other",
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("getNumCompacts", () => {
+  it("counts persisted compact blocks before LLM message trimming", () => {
+    const messages = [
+      {
+        id: "checkpoint-1",
+        role: "user",
+        parts: [
+          { type: "text", text: "<compact>first summary</compact>" },
+          { type: "text", text: "continue" },
+        ],
+      },
+      {
+        id: "checkpoint-2",
+        role: "user",
+        parts: [{ type: "text", text: "<compact>second summary</compact>" }],
+      },
+      {
+        id: "new-message",
+        role: "user",
+        parts: [{ type: "text", text: "continue" }],
+      },
+    ] as Message[];
+
+    expect(getNumCompacts(messages)).toBe(2);
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   checkStaleness,
   FileStateCache,
@@ -75,28 +75,25 @@ describe("FileStateCache", () => {
     ).resolves.toBeUndefined();
   });
 
-  // The "read before edit/write" guard requires the file to have been read
-  // first when it exists on disk.
-  it("throws when editing a file that was never read but exists on disk", async () => {
+  it("allows editing an existing file when no cached baseline is available", async () => {
     const cache = new FileStateCache();
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "editing"),
-    ).rejects.toThrow("File has not been read yet");
+    ).resolves.toBeUndefined();
   });
 
-  it("throws when writing a file that was never read but exists on disk", async () => {
+  it("allows writing an existing file when no cached baseline is available", async () => {
     const cache = new FileStateCache();
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => 1234, "writing"),
-    ).rejects.toThrow("File has not been read yet");
+    ).resolves.toBeUndefined();
   });
 
-  it("allows writing a new file that does not exist on disk and was never read", async () => {
+  it("allows writing a new file when no cached baseline is available", async () => {
     const cache = new FileStateCache();
 
-    // getMtime returns undefined => file does not exist
     await expect(
       checkStaleness(cache, "/tmp/new-file.txt", async () => undefined, "writing"),
     ).resolves.toBeUndefined();
@@ -135,7 +132,7 @@ describe("FileStateCache", () => {
 
   // markAllAsWritten is used when the read tool_results that populated the
   // cache leave the conversation (compaction / retry-strip). It must retain
-  // the entries (so edits are not falsely rejected) while disabling dedup.
+  // their staleness baselines while disabling dedup.
   it("keeps entries editable but stops read dedup after markAllAsWritten", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/file.txt", {
@@ -172,30 +169,119 @@ describe("FileStateCache", () => {
     expect(result).toEqual({
       result: { content: "hello" },
       deduplicated: false,
+      resolvedPath: "/tmp/file.txt",
+    });
+  });
+
+  it("returns the resolved path for a deduplicated read", async () => {
+    const cache = new FileStateCache();
+    cache.set("/tmp/file.txt", {
+      content: "hello",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+
+    const result = await withReadFileCache({
+      cache,
+      path: "file.txt",
+      cwd: "/tmp",
+      startLine: 1,
+      endLine: 1,
+      getMtime: async () => 1,
+      doRead: async () => {
+        throw new Error("deduplicated reads should not access the file");
+      },
+    });
+
+    expect(result).toEqual({
+      deduplicated: true,
+      resolvedPath: "/tmp/file.txt",
     });
   });
 });
 
 describe("withFileStateCacheGuard", () => {
-  // The "read before edit/write" guard rejects editing an existing file that
-  // was never read.
-  it("throws when editing an existing file that was never read", async () => {
+  it("rejects editing a file that changed from its cached baseline", async () => {
     const cache = new FileStateCache();
-    const getMtime = async (_path: string) => 1000;
+    cache.set("/tmp/existing.txt", {
+      content: "old content",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+    const doWork = vi.fn(async () => ({
+      result: { success: true as const },
+      fileCacheContent: "new content",
+    }));
 
     await expect(
       withFileStateCacheGuard({
         cache,
         path: "/tmp/existing.txt",
         cwd: "/tmp",
-        getMtime,
+        getMtime: async () => 1000,
+        operation: "editing",
+        doWork,
+      }),
+    ).rejects.toThrow("File has been modified since it was last read");
+    expect(doWork).not.toHaveBeenCalled();
+  });
+
+  it("allows editing an existing file without a cached baseline", async () => {
+    const cache = new FileStateCache();
+
+    await expect(
+      withFileStateCacheGuard({
+        cache,
+        path: "/tmp/existing.txt",
+        cwd: "/tmp",
+        getMtime: async () => 1000,
         operation: "editing",
         doWork: async () => ({
           result: { success: true as const },
           fileCacheContent: "new content",
         }),
       }),
-    ).rejects.toThrow("File has not been read yet");
+    ).resolves.toEqual({ success: true });
+    expect(cache.get("/tmp/existing.txt")).toMatchObject({
+      content: "new content",
+      timestamp: 1000,
+      fromWrite: true,
+    });
+  });
+
+  it("allows editing after the cached baseline is evicted", async () => {
+    const cache = new FileStateCache();
+    cache.set("/tmp/evicted.txt", {
+      content: "old content",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+    for (let index = 0; index < 100; index++) {
+      cache.set(`/tmp/file-${index}.txt`, {
+        content: String(index),
+        timestamp: index,
+        startLine: 1,
+        endLine: 1,
+      });
+    }
+    expect(cache.has("/tmp/evicted.txt")).toBe(false);
+
+    await expect(
+      withFileStateCacheGuard({
+        cache,
+        path: "/tmp/evicted.txt",
+        cwd: "/tmp",
+        getMtime: async () => 1000,
+        operation: "editing",
+        doWork: async () => ({
+          result: { success: true as const },
+          fileCacheContent: "new content",
+        }),
+      }),
+    ).resolves.toEqual({ success: true });
   });
 
   it("allows writing a brand-new file that does not yet exist on disk", async () => {
