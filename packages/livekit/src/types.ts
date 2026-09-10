@@ -88,6 +88,12 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+        ),
       contentType: z
         .array(z.string())
         .optional()
@@ -106,6 +112,12 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+        ),
       contentType: z
         .array(z.string())
         .optional()
@@ -124,6 +136,12 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+        ),
       contentType: z
         .array(z.string())
         .optional()
@@ -141,6 +159,12 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+        ),
       contentType: z
         .array(z.string())
         .optional()
@@ -158,6 +182,12 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+        ),
       contentType: z
         .array(z.string())
         .optional()
@@ -175,6 +205,12 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+        ),
       contentType: z
         .array(z.string())
         .optional()
@@ -192,6 +228,12 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+        ),
       getModel: z.custom<() => LanguageModelV3>(),
       contentType: z
         .array(z.string())

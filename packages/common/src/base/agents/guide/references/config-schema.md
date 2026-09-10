@@ -90,6 +90,10 @@
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+                      "type": "boolean"
+                    },
                     "contentType": {
                       "description": "The supported mime types model can handle",
                       "type": "array",
@@ -148,6 +152,10 @@
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -211,6 +219,10 @@
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
+                      "type": "boolean"
+                    },
                     "contentType": {
                       "description": "The supported mime types model can handle",
                       "type": "array",
@@ -270,6 +282,10 @@
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -400,6 +416,10 @@
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware, which extracts reasoning wrapped in <think> tags from the model output",
                       "type": "boolean"
                     },
                     "contentType": {
