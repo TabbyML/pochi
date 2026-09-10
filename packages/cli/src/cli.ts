@@ -194,6 +194,11 @@ const program = new Command()
     "--agent <name>",
     "Run the task as a sub-agent using the specified custom agent. This applies the agent's system prompt and tool restrictions, matching the behavior of sub-tasks created via the newTask tool.",
   )
+  .option(
+    "--use-reasoning-middleware",
+    "Use the reasoning middleware for the task.",
+    false,
+  )
   .addOption(
     new Option(
       "--attempt-completion-schema <schema>",
@@ -632,7 +637,10 @@ async function createLLMConfig(
 ): Promise<LLMRequestData> {
   const model = options.model;
   const llm = await resolveListedLLMConfig(model);
-  if (llm) return llm;
+  if (llm) {
+    llm.useReasoningMiddleware = options.useReasoningMiddleware;
+    return llm;
+  }
 
   const separatorIndex = model.indexOf("/");
   const vendorId = model.slice(0, separatorIndex);
@@ -704,6 +712,7 @@ async function createLLMConfigWithVendors(
       contextWindow: options.contextWindow,
 
       useToolCallMiddleware: options.useToolCallMiddleware,
+      useReasoningMiddleware: options.useReasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId,
@@ -728,6 +737,7 @@ async function createLLMConfigWithPochi(
       contextWindow: pochiModelOptions.contextWindow,
 
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
+      useReasoningMiddleware: pochiModelOptions.useReasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId: model,
@@ -778,6 +788,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -801,6 +812,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }

@@ -96,6 +96,23 @@ describe("Model configuration types", () => {
         expect(config.apiKey).toBe("gateway-key");
       }
       expect(config.models["gateway-model"].useToolCallMiddleware).toBe(true);
+      expect(config.models["gateway-model"].useReasoningMiddleware).toBeUndefined();
+
+      const configReasoning = CustomModelSetting.parse({
+        kind: "ai-gateway",
+        name: "AI Gateway",
+        apiKey: "gateway-key",
+        models: {
+          "gateway-model": {
+            name: "Gateway Model",
+            useToolCallMiddleware: true,
+            useReasoningMiddleware: true,
+          },
+        },
+      });
+      expect(configReasoning.models["gateway-model"].useReasoningMiddleware).toBe(
+        true,
+      );
     });
   });
 
@@ -124,6 +141,21 @@ describe("Model configuration types", () => {
       expect(config.models.test.maxTokens).toBe(1000);
       expect(config.models.test.contextWindow).toBe(2000);
       expect(config.models.test.useToolCallMiddleware).toBe(false);
+      expect(config.models.test.useReasoningMiddleware).toBeUndefined();
+
+      const configReasoning = CustomModelSetting.parse({
+        kind: "openai",
+        models: {
+          test: {
+            name: "Test",
+            maxTokens: 1000,
+            contextWindow: 2000,
+            useToolCallMiddleware: false,
+            useReasoningMiddleware: true,
+          },
+        },
+      });
+      expect(configReasoning.models.test.useReasoningMiddleware).toBe(true);
     });
   });
 });
