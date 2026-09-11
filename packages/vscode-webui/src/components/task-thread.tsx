@@ -27,6 +27,11 @@ export const TaskThread: React.FC<{
   messageListClassName?: string;
   scrollAreaClassName?: string;
   instantAutoScroll?: boolean;
+  /**
+   * Keep user messages in the thread. The default hides them because the
+   * inline newTask card already shows the prompt as its description.
+   */
+  showUserMessages?: boolean;
 }> = ({
   source,
   user,
@@ -36,6 +41,7 @@ export const TaskThread: React.FC<{
   messageListClassName,
   scrollAreaClassName,
   instantAutoScroll = false,
+  showUserMessages = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -115,7 +121,9 @@ export const TaskThread: React.FC<{
           )}
           showUserAvatar={false}
           messages={messages}
-          formatMessages={prepareForRender}
+          formatMessages={(messages) =>
+            prepareForRender(messages, showUserMessages)
+          }
           user={user}
           assistant={assistant}
           isLoading={isLoading}
@@ -156,9 +164,13 @@ function filterTrailingAskFollowupQuestion(messages: Message[]): Message[] {
   return messages;
 }
 
-function prepareForRender(messages: Message[]): Message[] {
-  // Remove user messages.
-  const filteredMessages = messages.filter((x) => x.role !== "user");
+function prepareForRender(
+  messages: Message[],
+  showUserMessages: boolean,
+): Message[] {
+  const filteredMessages = showUserMessages
+    ? messages
+    : messages.filter((x) => x.role !== "user");
   // Filter out trailing askFollowupQuestion tool calls
   const withoutTrailingAskFollowup =
     filterTrailingAskFollowupQuestion(filteredMessages);

@@ -40,6 +40,9 @@ interface CliRunningTaskAdaptorOptions {
   parentFileStateCache?: FileStateCache;
   autoMemoryManager?: AutoMemoryManager;
   projectMemoryEnabled?: boolean;
+  resolveSubTaskLLM?: (
+    customAgent: ValidCustomAgentFile,
+  ) => Promise<LLMRequestData | undefined>;
 }
 
 export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
@@ -56,6 +59,8 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly fileStateCaches = new Map<string, FileStateCache>();
   private readonly autoMemoryManager: AutoMemoryManager;
   private readonly projectMemoryEnabled: boolean;
+  private readonly resolveSubTaskLLM: CliRunningTaskAdaptorOptions["resolveSubTaskLLM"];
+  private readonly taskLLMs = new Map<string, LLMRequestData>();
   private readonly backgroundJobManagers = new Map<
     string,
     BackgroundJobManager
@@ -75,6 +80,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     this.autoMemoryManager =
       options.autoMemoryManager ?? new AutoMemoryManager();
     this.projectMemoryEnabled = options.projectMemoryEnabled ?? true;
+    this.resolveSubTaskLLM = options.resolveSubTaskLLM;
   }
 
   dispose() {
@@ -113,6 +119,33 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     };
   }
 
+  async resolveTaskLLM(
+    context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
+  ): Promise<LLMRequestData | undefined> {
+    const { taskState } = context;
+    if (taskState.useCase !== "subagent" || !taskState.agentType) {
+      return undefined;
+    }
+    const agent = this.customAgents?.find(
+      (a) => a.name === taskState.agentType,
+    );
+    if (!agent?.model) return undefined;
+
+    try {
+      const llm = await this.resolveSubTaskLLM?.(agent);
+      if (llm) {
+        this.taskLLMs.set(context.taskId, llm);
+      }
+      return llm;
+    } catch (error) {
+      logger.warn(
+        `Failed to resolve model "${agent.model}" for agent ${agent.name}; falling back to the default model`,
+        error,
+      );
+      return undefined;
+    }
+  }
+
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
@@ -134,7 +167,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
         this.createToolCallOptions(args.taskId),
         this.cwd,
         args.abortSignal,
-        this.llm.contentType,
+        (this.taskLLMs.get(args.taskId) ?? this.llm).contentType,
       ),
     );
 

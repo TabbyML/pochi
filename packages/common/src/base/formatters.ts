@@ -121,6 +121,7 @@ export function getUIUserMessageKind(message: UIMessage): UIUserMessageKind {
       part.type === "data-reviews" ||
       part.type === "data-bash-outputs" ||
       part.type === "data-background-job-notification" ||
+      part.type === "data-subagent-results" ||
       isStaticToolUIPart(part)
     ) {
       return "content";

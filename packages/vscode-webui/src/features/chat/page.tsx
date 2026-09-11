@@ -33,6 +33,7 @@ import {
   useSelectedModels,
   useSettingsStore,
 } from "../settings";
+import { BackgroundTasksChip } from "./components/background-tasks";
 import { ChatArea } from "./components/chat-area";
 import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
@@ -474,6 +475,12 @@ function Chat({ user, uid, info }: ChatProps) {
         <SubtaskHeader
           subtask={subtask}
           className="absolute top-1 right-2 z-10"
+        />
+      )}
+      {!isSubTask && (
+        <BackgroundTasksChip
+          className="absolute top-2 right-4 z-10"
+          stopBackgroundTask={(taskId) => chatKit.stopBackgroundTask(taskId)}
         />
       )}
       <ChatArea

@@ -9,6 +9,15 @@ import {
 type MessagePart = Message["parts"][number];
 
 describe("convertDataPartToText", () => {
+  it("renders completed background subagent results for the model", () => {
+    const result = convertDataPartToText({
+      type: "data-subagent-results",
+      data: { results: [{ taskId: "worker", title: "Research", status: "completed", result: "Found the cause." }] },
+    });
+    expect(result).toMatchObject({ type: "text", text: expect.stringContaining("Found the cause.") });
+    expect(result).toMatchObject({ text: expect.stringContaining("worker") });
+  });
+
   it("passes through parts that are not data parts", () => {
     const part = { type: "text", text: "hello" } as MessagePart;
     expect(convertDataPartToText(part)).toBe(part);

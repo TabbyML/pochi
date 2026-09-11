@@ -141,6 +141,13 @@ export const events = {
       updatedAt: Schema.Date,
     }),
   }),
+  taskBackgrounded: Events.synced({
+    name: "v1.TaskBackgrounded",
+    schema: Schema.Struct({
+      id: Schema.String,
+      updatedAt: Schema.Date,
+    }),
+  }),
   chatStreamStarted: Events.synced({
     name: "v1.ChatStreamStarted",
     schema: Schema.Struct({
@@ -398,6 +405,14 @@ const materializers = State.SQLite.materializers(events, {
       .update({
         status: "failed",
         error,
+        updatedAt,
+      })
+      .where({ id }),
+  ],
+  "v1.TaskBackgrounded": ({ id, updatedAt }) => [
+    tables.tasks
+      .update({
+        background: true,
         updatedAt,
       })
       .where({ id }),

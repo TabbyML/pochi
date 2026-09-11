@@ -286,6 +286,96 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
+  it("runs two background subagents concurrently", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "first", status: "pending-tool" }),
+      makeTask({ id: "second", status: "pending-tool" }),
+    ]);
+    for (const id of ["first", "second"]) {
+      store.setMessages(id, [makeAssistantMessage([
+        makeToolPart("readFile", id, { path: "a.ts" }),
+      ])]);
+    }
+    const pending = deferred<unknown>();
+    const executeToolCall = vi.fn(() => pending.promise);
+    const executor = makeExecutor(store, makeAdaptor({ executeToolCall }), {
+      useCase: "subagent",
+    });
+    executor.start();
+    await waitFor(() => executeToolCall.mock.calls.length === 2);
+    expect(store.readTask("first")?.status).toBe("pending-tool");
+    expect(store.readTask("second")?.status).toBe("pending-tool");
+    pending.resolve({ content: "done" });
+    await executor.drain();
+    expect(store.readTask("first")?.status).toBe("completed");
+    expect(store.readTask("second")?.status).toBe("completed");
+    await executor.dispose();
+  });
+
+  it("stops a subagent without restarting it or stopping its sibling", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "first", status: "pending-tool" }),
+      makeTask({ id: "second", status: "pending-tool" }),
+    ]);
+    for (const id of ["first", "second"]) {
+      store.setMessages(id, [makeAssistantMessage([
+        makeToolPart("readFile", id, { path: "a.ts" }),
+      ])]);
+    }
+    const pending = deferred<unknown>();
+    const executeToolCall = vi.fn(({ abortSignal }: Parameters<RunningTaskAdaptor["executeToolCall"]>[0]) =>
+      Promise.race([pending.promise, new Promise((_, reject) => {
+        abortSignal.addEventListener("abort", () => reject(abortSignal.reason), { once: true });
+      })]),
+    );
+    const executor = makeExecutor(store, makeAdaptor({ executeToolCall }), { useCase: "subagent" });
+    executor.start();
+    await waitFor(() => executeToolCall.mock.calls.length === 2);
+    await executor.stopTask("first");
+    expect(store.readTask("first")?.status).toBe("failed");
+    expect(store.readTask("second")?.status).toBe("pending-tool");
+    expect(mockState.instances.filter((x) => x.taskId === "first")).toHaveLength(1);
+    pending.resolve({ content: "done" });
+    await executor.drain();
+    expect(store.readTask("second")?.status).toBe("completed");
+    await executor.dispose();
+  });
+
+  it("fails a missing custom agent once instead of rescheduling initialization", async () => {
+    const store = new FakeLiveKitStore([makeTask({ id: "task", status: "pending-model" })]);
+    const executeToolCall = vi.fn();
+    const executor = makeExecutor(store, makeAdaptor({ executeToolCall }), {
+      useCase: "subagent", agentType: "missing",
+    });
+    await executor.drain();
+    expect(store.readTask("task")).toMatchObject({ status: "failed", error: {
+      message: 'Custom agent "missing" not found for background subagent task.',
+    }});
+    expect(executeToolCall).not.toHaveBeenCalled();
+    await executor.dispose();
+  });
+
+  it("uses a custom subagent's tool restrictions", async () => {
+    const store = new FakeLiveKitStore([makeTask({ id: "task", status: "pending-tool" })]);
+    store.setMessages("task", [makeAssistantMessage([
+      makeToolPart("executeCommand", "exec", { command: "echo hi" }),
+    ])]);
+    const adaptor = makeAdaptor({ executeToolCall: vi.fn() });
+    const executor = makeExecutor(store, {
+      ...adaptor,
+      getRequestGetters: () => ({
+        ...adaptor.getRequestGetters(),
+        getCustomAgents: () => [{ name: "reader", tools: ["readFile"] }] as never,
+      }),
+    }, { useCase: "subagent", agentType: "reader" });
+    await executor.drain();
+    expect(adaptor.executeToolCall).not.toHaveBeenCalled();
+    expect(getToolPart(store.readMessages("task").at(-1), "exec")?.output).toEqual({
+      error: "Tool executeCommand is not allowed for this task.",
+    });
+    await executor.dispose();
+  });
+
   it("rejects disallowed tool names before invoking the adaptor", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-tool" }),
@@ -459,6 +549,10 @@ class FakeLiveKitStore {
       }));
     }
     return undefined;
+  }
+
+  commit(event: { args: { id: string; error: { message: string } } }) {
+    this.failTask(event.args.id, event.args.error.message);
   }
 
   readRunnableTasks() {

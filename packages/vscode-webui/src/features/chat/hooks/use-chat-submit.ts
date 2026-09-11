@@ -6,7 +6,11 @@ import {
 } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { type PastedTextFile, getLogger } from "@getpochi/common";
+import {
+  type PastedTextFile,
+  type SubAgentResultNotification,
+  getLogger,
+} from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
@@ -51,6 +55,7 @@ export interface DraftMessage {
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
     nonRemovable?: boolean;
+    subagentResults?: SubAgentResultNotification[];
   };
 }
 

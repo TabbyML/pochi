@@ -33,6 +33,7 @@ import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
 import { Reviews } from "./reviews";
+import { SubagentResultsPart } from "./subagent-results";
 import { useMessageListPagination } from "./use-message-list-pagination";
 import { UserEditsPart } from "./user-edits";
 
@@ -492,6 +493,10 @@ function Part({
 
   if (part.type === "data-terminal-context") {
     return null;
+  }
+
+  if (part.type === "data-subagent-results") {
+    return <SubagentResultsPart results={part.data.results} />;
   }
 
   if (part.type === "data-background-job-notification") {

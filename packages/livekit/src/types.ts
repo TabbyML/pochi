@@ -6,6 +6,7 @@ import type {
   MessageMetadata,
   PastedTextFile,
   Review,
+  SubAgentResultNotification,
   TerminalTextSelection,
   UserEdits,
 } from "@getpochi/common";
@@ -39,6 +40,9 @@ export type DataParts = {
     bashOutputs: BashOutputs;
   };
   "background-job-notification": BackgroundJobNotification;
+  "subagent-results": {
+    results: SubAgentResultNotification[];
+  };
 };
 
 /**

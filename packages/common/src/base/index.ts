@@ -16,6 +16,12 @@ export {
   parseEnvironmentInfoResult,
 } from "./prompts";
 
+export {
+  type SubAgentResultNotification,
+  createBackgroundSubAgentStartedResult,
+  formatSubAgentNotifications,
+} from "./subagent";
+
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
 
@@ -104,10 +110,18 @@ export type ContextWindowUsage = {
   projectMemory: number;
 };
 
+export const BackgroundTaskUseCase = z.enum([
+  ...ForkAgentUseCase.options,
+  "subagent",
+]);
+
+export type BackgroundTaskUseCase = z.infer<typeof BackgroundTaskUseCase>;
+
 export interface BackgroundTaskState {
   tools?: readonly ToolSpecInput[];
   parentTaskId?: string;
-  useCase?: ForkAgentUseCase;
+  useCase?: BackgroundTaskUseCase;
+  agentType?: string;
   /** Maximum number of steps this background task may run. */
   maxSteps?: number;
   /** Step-start count inherited from the parent, excluded from the max-step guard. */

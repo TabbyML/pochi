@@ -7,7 +7,11 @@ import type {
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
-import { formatters, prompts } from "@getpochi/common";
+import {
+  formatSubAgentNotifications,
+  formatters,
+  prompts,
+} from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import * as R from "remeda";
 
@@ -570,6 +574,12 @@ export function convertDataPartToText(
     return {
       type: "text" as const,
       text: prompts.renderBackgroundJobNotification(part.data),
+    };
+  }
+  if (part.type === "data-subagent-results") {
+    return {
+      type: "text" as const,
+      text: formatSubAgentNotifications(part.data.results),
     };
   }
   return part;

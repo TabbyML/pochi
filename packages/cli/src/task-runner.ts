@@ -35,6 +35,8 @@ import {
   type LiveKitStore,
   type Message,
   type Task,
+  catalog,
+  createSubAgentResultNotification,
   isAwaitingFollowupAnswer,
   processContentOutput,
 } from "@getpochi/livekit";
@@ -216,6 +218,7 @@ export class TaskRunner {
   private asyncWaitTimeoutInMs: number;
 
   private abortSignal?: AbortSignal;
+  private notifiedBackgroundSubTaskIds?: Set<string>;
 
   readonly taskId: string;
 
@@ -299,6 +302,15 @@ export class TaskRunner {
 
         options.onSubTaskCreated?.(runner);
         return runner;
+      },
+      backgroundSubTask: async (args) => {
+        const backgroundSubTask = this.chatKit.backgroundSubTask;
+        if (!backgroundSubTask) {
+          throw new Error(
+            "Background subagent execution is not available in this context.",
+          );
+        }
+        await backgroundSubTask(args);
       },
     };
     this.stepCount = new StepCount(options.maxSteps, options.maxRetries);
@@ -468,6 +480,123 @@ export class TaskRunner {
     return true;
   }
 
+  private readBackgroundSubTasks(): Task[] {
+    return this.store
+      .query(catalog.queries.makeSubTaskQuery(this.taskId))
+      .filter((task) => task.background);
+  }
+
+  private hasRunningBackgroundSubTasks(): boolean {
+    return this.readBackgroundSubTasks().some(
+      (task) =>
+        task.status === "pending-model" || task.status === "pending-tool",
+    );
+  }
+
+  /**
+   * Lazily seeded from the conversation so subagents already notified in a
+   * previous run of a resumed task are not delivered twice. Keyed by
+   * taskId:status so a retried task's new outcome notifies again.
+   */
+  private getNotifiedBackgroundSubTaskIds(): Set<string> {
+    if (!this.notifiedBackgroundSubTaskIds) {
+      const ids = new Set<string>();
+      for (const message of this.chat.messages) {
+        for (const part of message.parts) {
+          if (part.type === "data-subagent-results") {
+            for (const result of part.data.results) {
+              ids.add(`${result.taskId}:${result.status}`);
+            }
+          }
+        }
+      }
+      this.notifiedBackgroundSubTaskIds = ids;
+    }
+    return this.notifiedBackgroundSubTaskIds;
+  }
+
+  /**
+   * Appends the results of finished background subagents to the conversation
+   * as a user message.
+   * @returns true if a message was injected
+   */
+  private injectCompletedSubAgentResults(): boolean {
+    const notified = this.getNotifiedBackgroundSubTaskIds();
+    const done = this.readBackgroundSubTasks().filter(
+      (task) =>
+        (task.status === "completed" || task.status === "failed") &&
+        !notified.has(`${task.id}:${task.status}`),
+    );
+    if (done.length === 0) {
+      return false;
+    }
+    const results = done.map((task) => {
+      notified.add(`${task.id}:${task.status}`);
+      return createSubAgentResultNotification(this.store, task);
+    });
+    this.chat.appendOrReplaceMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      parts: [{ type: "data-subagent-results", data: { results } }],
+    });
+    return true;
+  }
+
+  private async waitForBackgroundSubAgents(): Promise<void> {
+    const ids = this.readBackgroundSubTasks()
+      .filter(
+        (task) =>
+          task.status === "pending-model" || task.status === "pending-tool",
+      )
+      .map((task) => task.id);
+    if (ids.length === 0) return;
+
+    const spinner = createSpinner(
+      `Waiting for ${ids.length} background subagent(s) to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
+    ).start();
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => {
+      timeoutId = setTimeout(
+        () => resolve("timeout"),
+        this.asyncWaitTimeoutInMs,
+      );
+    });
+    let onAbort: (() => void) | undefined;
+    const aborted = new Promise<"aborted">((resolve) => {
+      if (this.abortSignal?.aborted) {
+        resolve("aborted");
+        return;
+      }
+      onAbort = () => resolve("aborted");
+      this.abortSignal?.addEventListener("abort", onAbort, {
+        once: true,
+      });
+    });
+    const done = Promise.all(
+      ids.map((id) => this.chatKit.waitForBackgroundTaskDone(id)),
+    ).then(() => "done" as const);
+
+    try {
+      const result = await Promise.race([done, timeout, aborted]);
+      if (result === "done") {
+        spinner.succeed("All background subagents completed.");
+      } else if (result === "timeout") {
+        spinner.fail(
+          "Async wait timeout reached; stopping background subagents.",
+        );
+      } else {
+        spinner.fail("Background subagent wait was aborted.");
+      }
+      if (result !== "done") {
+        await Promise.all(ids.map((id) => this.chatKit.stopBackgroundTask(id)));
+      }
+    } finally {
+      if (onAbort) this.abortSignal?.removeEventListener("abort", onAbort);
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
   /**
    * @returns
    *  - "finished" if the task is finished and no more steps are needed.
@@ -487,6 +616,7 @@ export class TaskRunner {
       // background jobs would only delay handing the turn back to the user.
       // `flushBackgroundJobNotifications` enforces the same rule itself.
       if (!isAwaitingFollowupAnswer(lastMessage)) {
+        if (this.injectCompletedSubAgentResults()) return "next";
         // Check for pending background jobs
         const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
@@ -496,6 +626,20 @@ export class TaskRunner {
             return "next";
           }
         } else if (this.chatKit.flushBackgroundJobNotifications()) {
+          return "next";
+        }
+      }
+
+      // Running background subagents get the same grace period before the
+      // task is allowed to complete; their results are fed back like
+      // background job results.
+      if (
+        !isAwaitingFollowupAnswer(lastMessage) &&
+        this.asyncWaitTimeoutInMs > 0 &&
+        this.hasRunningBackgroundSubTasks()
+      ) {
+        await this.waitForBackgroundSubAgents();
+        if (this.injectCompletedSubAgentResults()) {
           return "next";
         }
       }
@@ -535,6 +679,7 @@ export class TaskRunner {
 
     if (result === "next") {
       this.stepCount.throwIfReachedMaxSteps();
+      this.injectCompletedSubAgentResults();
     }
     if (result === "retry") {
       this.stepCount.throwIfReachedMaxRetries();
