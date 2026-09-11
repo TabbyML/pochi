@@ -37,7 +37,7 @@ vi.mock("react-i18next", () => ({
 afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
 
-function approve(agentType: string, runInBackground?: boolean) {
+function approve(agentType: string, background?: boolean) {
   render(
     <ToolCallApprovalButton
       taskId="parent-1"
@@ -52,7 +52,7 @@ function approve(agentType: string, runInBackground?: boolean) {
             description: "Test subtask",
             prompt: "Test",
             agentType,
-            runInBackground,
+            background,
             _meta: { uid: "child-1" },
           },
         },
@@ -72,7 +72,7 @@ describe("background subtask approval with offhand disabled", () => {
         "parent-1",
         expect.objectContaining({
           toolCallId: "call-1",
-          input: expect.objectContaining({ runInBackground: true }),
+          input: expect.objectContaining({ background: true }),
         }),
       );
       expect(mocks.processQueue).toHaveBeenCalledWith("parent-1");

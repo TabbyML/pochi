@@ -161,7 +161,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
 
-  // Finished background subagents (newTask with runInBackground) enter the
+  // Finished background subagents (newTask with background) enter the
   // conversation through the same queued-messages pipeline as monitor
   // events; results arriving while a draft is still queued merge into it.
   const onSubagentResults = useCallback(

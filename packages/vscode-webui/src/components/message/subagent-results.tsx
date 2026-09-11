@@ -5,7 +5,7 @@ import { Bot } from "lucide-react";
 
 /**
  * Visible record of background subagent results (newTask with
- * runInBackground) delivered to the model. The LLM receives the same content
+ * background) delivered to the model. The LLM receives the same content
  * as a system-reminder text; this component keeps the notification visible
  * in the chat history. Each subagent renders as its own collapsible section
  * so results never blend together.

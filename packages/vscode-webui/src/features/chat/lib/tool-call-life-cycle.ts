@@ -44,7 +44,7 @@ type NewTaskReturnType = {
   agentType?: string;
   todos?: readonly Todo[];
   /** The subtask was converted to a background subagent task. */
-  runInBackground?: boolean;
+  background?: boolean;
 };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
@@ -285,8 +285,8 @@ export class ManagedToolCallLifeCycle
     // The browser agent needs a per-task browser session that only the
     // foreground path sets up; the todo-completion agent resolves todos
     // through the foreground result flow.
-    const runInBackground = shouldRunSubtaskInBackground(args);
-    if (runInBackground) {
+    const background = shouldRunSubtaskInBackground(args);
+    if (background) {
       const { setBackgroundTaskState } =
         await vscodeHost.readBackgroundTaskState(uid);
       await setBackgroundTaskState({
@@ -300,7 +300,7 @@ export class ManagedToolCallLifeCycle
       return {
         result: uid,
         agentType: args.agentType,
-        runInBackground: true,
+        background: true,
       };
     }
 
@@ -427,13 +427,13 @@ export class ManagedToolCallLifeCycle
     result: uid,
     agentType,
     todos,
-    runInBackground,
+    background,
   }: NewTaskReturnType) {
     if (!uid) {
       throw new Error("Missing uid in newTask result");
     }
 
-    if (runInBackground) {
+    if (background) {
       // The TaskExecutor picks the backgrounded task up reactively; the tool
       // call completes immediately and the result arrives later as a
       // subagent-results notification.

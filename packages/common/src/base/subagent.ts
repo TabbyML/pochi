@@ -1,6 +1,6 @@
 /**
  * Host-agnostic protocol for background subagent (newTask with
- * runInBackground) result delivery. When a background subagent task
+ * background) result delivery. When a background subagent task
  * completes, its result is injected into the parent conversation as a
  * `data-subagent-results` part, rendered for the LLM with
  * formatSubAgentNotifications. Shared by the CLI task runner and the

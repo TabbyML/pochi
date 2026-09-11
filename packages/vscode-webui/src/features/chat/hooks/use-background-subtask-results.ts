@@ -8,7 +8,7 @@ import {
 import { useEffect, useRef } from "react";
 
 /**
- * Watches background subagent tasks (newTask with runInBackground) of the
+ * Watches background subagent tasks (newTask with background) of the
  * given parent task and hands each finished one to `onResults` exactly once.
  * Delivery is deduplicated against `data-subagent-results` parts already in
  * the conversation, so notifications survive webview reloads without being

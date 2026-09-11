@@ -1,6 +1,6 @@
 /**
  * Background agents UI — view and manage background subagent tasks
- * (newTask with runInBackground) and, optionally, system background tasks
+ * (newTask with background) and, optionally, system background tasks
  * such as memory extraction.
  *
  * Composition:

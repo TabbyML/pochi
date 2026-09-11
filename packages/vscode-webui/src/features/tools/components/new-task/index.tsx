@@ -85,7 +85,7 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
     isExecuting &&
     lifecycle.status === "execute:streaming" &&
     !!parentId &&
-    !tool.input?.runInBackground &&
+    !tool.input?.background &&
     agentType !== "browser" &&
     agentType !== constants.AttemptTodoCompletionAgentName;
 

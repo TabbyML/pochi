@@ -31,7 +31,7 @@ const SubTaskBrowserAgentMaxSteps = 65535;
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType, runInBackground }, { toolCallId }) => {
+  async ({ _meta, agentType, background }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -59,7 +59,7 @@ export const newTask =
     const supportsBackground =
       customAgent?.name !== "browser" &&
       agentType !== constants.AttemptTodoCompletionAgentName;
-    if (runInBackground && supportsBackground) {
+    if (background && supportsBackground) {
       if (!options.backgroundSubTask) {
         throw new Error(
           "Background subagent execution is not available in this context.",

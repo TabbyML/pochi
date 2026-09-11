@@ -59,7 +59,7 @@ export interface ToolCallOptions {
   /**
    * Converts an already-inited subtask into a background subagent task
    * executed by the TaskExecutor (optional, used by newTask tool with
-   * runInBackground).
+   * background).
    */
   backgroundSubTask?: (options: {
     taskId: string;
