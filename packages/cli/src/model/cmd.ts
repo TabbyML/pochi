@@ -92,7 +92,15 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const featuresFeatures: string[] = [];
+    if (modelInfo.useToolCallMiddleware) {
+      featuresFeatures.push("ReAct ✓");
+    }
+    if (modelInfo.useReasoningMiddleware) {
+      featuresFeatures.push("Reasoning ✓");
+    }
+    const features =
+      featuresFeatures.length > 0 ? featuresFeatures.join(" ") : "-";
 
     table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
@@ -145,7 +153,15 @@ function displayProviderModels(
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const featuresFeatures: string[] = [];
+    if (modelInfo.useToolCallMiddleware) {
+      featuresFeatures.push("ReAct ✓");
+    }
+    if (modelInfo.useReasoningMiddleware) {
+      featuresFeatures.push("Reasoning ✓");
+    }
+    const features =
+      featuresFeatures.length > 0 ? featuresFeatures.join(" ") : "-";
 
     table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }

@@ -704,6 +704,7 @@ async function createLLMConfigWithVendors(
       contextWindow: options.contextWindow,
 
       useToolCallMiddleware: options.useToolCallMiddleware,
+      useReasoningMiddleware: options.useReasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId,
@@ -778,6 +779,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -801,6 +803,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }

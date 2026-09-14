@@ -87,6 +87,11 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                    "useReasoningMiddleware": {
+                      "type": "boolean",
+                      "description": "Whether to use reasoning middleware",
+                      "examples": [true, false]
+                    },
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
@@ -147,6 +152,11 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                    "useReasoningMiddleware": {
+                      "type": "boolean",
+                      "description": "Whether to use reasoning middleware",
+                      "examples": [true, false]
+                    },
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
@@ -208,6 +218,11 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                    "useReasoningMiddleware": {
+                      "type": "boolean",
+                      "description": "Whether to use reasoning middleware",
+                      "examples": [true, false]
+                    },
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
@@ -269,6 +284,11 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                    "useReasoningMiddleware": {
+                      "type": "boolean",
+                      "description": "Whether to use reasoning middleware",
+                      "examples": [true, false]
+                    },
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
@@ -399,6 +419,11 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                    "useReasoningMiddleware": {
+                      "type": "boolean",
+                      "description": "Whether to use reasoning middleware",
+                      "examples": [true, false]
+                    },
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
                     },
