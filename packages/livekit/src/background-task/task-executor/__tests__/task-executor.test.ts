@@ -104,6 +104,106 @@ type TestTask = {
 };
 
 describe("TaskExecutor", () => {
+  it.each(["streaming", "done"] as const)(
+    "checks retained text state %s when retrying a failed response",
+    async (state) => {
+      const task = makeTask({ id: "task", status: "pending-model" });
+      task.error = {
+        kind: "InternalError",
+        message: "The response stream was interrupted",
+      };
+      const store = new FakeLiveKitStore([task]);
+      const tool = {
+        ...makeToolPart("readFile", "read", { path: "a.ts" }),
+        state: "output-available",
+        output: { content: "hello" },
+      } as Message["parts"][number];
+      const message = makeAssistantMessage([
+        { type: "step-start" },
+        tool,
+        { type: "step-start" },
+        { type: "text", text: "Partial response", state },
+      ]);
+      store.setMessages("task", [message]);
+      const adaptor = {
+        ...makeAdaptor({ executeToolCall: vi.fn() }),
+        // Fail after the executor starts, as an active request would.
+        waitUntilReady: async () => {
+          task.status = "failed";
+        },
+      };
+      const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
+      await executor.drain();
+      const messages = store.readMessages("task");
+      expect(messages[0]).toEqual(message);
+      if (state === "streaming") {
+        expect(messages.at(-1)).toMatchObject({
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: expect.stringContaining(
+                "The previous response was not received completely.",
+              ),
+            },
+          ],
+        });
+      } else {
+        expect(messages).toEqual([message]);
+      }
+      expect(adaptor.executeToolCall).not.toHaveBeenCalled();
+      await executor.dispose();
+    },
+  );
+
+  it.each([false, true])(
+    "checks unfinished reasoning in a prepared tool retry (strips partial step: %s)",
+    async (stripPartialStep) => {
+      const store = new FakeLiveKitStore([
+        makeTask({ id: "task", status: "pending-model" }),
+      ]);
+      const retainedParts = [
+        { type: "step-start" },
+        { type: "reasoning", text: "Partial reasoning", state: "streaming" },
+        {
+          ...makeToolPart("readFile", "read", { path: "a.ts" }),
+          state: "output-available",
+          output: { content: "hello" },
+        },
+      ] as Message["parts"];
+      const message = makeAssistantMessage([
+        ...retainedParts,
+        ...(stripPartialStep
+          ? [
+              { type: "step-start" } as const,
+              makeToolPart("executeCommand", "exec", null, "input-streaming"),
+            ]
+          : []),
+      ]);
+      store.setMessages("task", [message]);
+      const adaptor = makeAdaptor({ executeToolCall: vi.fn() });
+      const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
+
+      await executor.drain();
+
+      const messages = store.readMessages("task");
+      expect(messages[0]).toEqual({ ...message, parts: retainedParts });
+      expect(messages.at(-1)).toMatchObject({
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: expect.stringContaining(
+              "The previous response was not received completely.",
+            ),
+          },
+        ],
+      });
+      expect(adaptor.executeToolCall).not.toHaveBeenCalled();
+      await executor.dispose();
+    },
+  );
+
   beforeEach(() => {
     mockState.instances.length = 0;
   });

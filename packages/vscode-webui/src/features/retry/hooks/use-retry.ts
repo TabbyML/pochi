@@ -1,6 +1,9 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { prompts } from "@getpochi/common";
-import { prepareLastMessageForRetry } from "@getpochi/common/message-utils";
+import {
+  isAssistantMessageWithStreamingParts,
+  prepareLastMessageForRetry,
+} from "@getpochi/common/message-utils";
 import type { Message } from "@getpochi/livekit";
 import { useCallback } from "react";
 import { ReadyForRetryError } from "./use-ready-for-retry-error";
@@ -28,21 +31,32 @@ export function useRetry({
         return sendMessage(undefined);
       }
 
-      if (
-        error instanceof ReadyForRetryError &&
-        error.kind === "no-tool-calls"
-      ) {
-        return sendMessage({
-          text: prompts.createSystemReminder(prompts.toolCallsReminder),
-        });
-      }
-
       const lastMessageForRetry = await prepareLastMessageForRetry(
         lastMessage,
         clearFileStateCache,
       );
       if (lastMessageForRetry != null) {
         setMessages([...messages.slice(0, -1), lastMessageForRetry]);
+        if (
+          error instanceof ReadyForRetryError &&
+          error.kind === "content-filter"
+        ) {
+          return sendMessage(undefined);
+        }
+        // A real error can override no-tool-calls; inspect the retained response.
+        if (isAssistantMessageWithStreamingParts(lastMessageForRetry)) {
+          return sendMessage({
+            text: prompts.incompleteResponseReminder,
+          });
+        }
+        if (
+          error instanceof ReadyForRetryError &&
+          error.kind === "no-tool-calls"
+        ) {
+          return sendMessage({
+            text: prompts.createSystemReminder(prompts.toolCallsReminder),
+          });
+        }
         return sendMessage(undefined);
       }
 
