@@ -453,9 +453,11 @@ class RunningTask {
     if (isAssistantMessageWithNoToolCalls(message)) {
       this.chat.appendOrReplaceMessage(
         createUserMessage(
-          isAssistantMessageWithStreamingParts(message)
-            ? prompts.incompleteResponseReminder
-            : prompts.createSystemReminder(prompts.toolCallsReminder),
+          prompts.createSystemReminder(
+            isAssistantMessageWithStreamingParts(message)
+              ? prompts.incompleteResponseReminder
+              : prompts.toolCallsReminder,
+          ),
         ),
       );
       return "retry";
@@ -611,7 +613,9 @@ class RunningTask {
     this.chat.appendOrReplaceMessage(message);
     if (isAssistantMessageWithStreamingParts(message)) {
       this.chat.appendOrReplaceMessage(
-        createUserMessage(prompts.incompleteResponseReminder),
+        createUserMessage(
+          prompts.createSystemReminder(prompts.incompleteResponseReminder),
+        ),
       );
     }
   }

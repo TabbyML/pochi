@@ -1,4 +1,8 @@
-import type { BackgroundTaskState, MaybePromise } from "@getpochi/common";
+import {
+  type BackgroundTaskState,
+  type MaybePromise,
+  prompts,
+} from "@getpochi/common";
 import { TaskExecutor, type RunningTaskAdaptor } from "../task-executor";
 import type { AbstractChat } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -142,8 +146,8 @@ describe("TaskExecutor", () => {
           parts: [
             {
               type: "text",
-              text: expect.stringContaining(
-                "The previous response was not received completely.",
+              text: prompts.createSystemReminder(
+                prompts.incompleteResponseReminder,
               ),
             },
           ],
@@ -193,8 +197,8 @@ describe("TaskExecutor", () => {
         parts: [
           {
             type: "text",
-            text: expect.stringContaining(
-              "The previous response was not received completely.",
+            text: prompts.createSystemReminder(
+              prompts.incompleteResponseReminder,
             ),
           },
         ],

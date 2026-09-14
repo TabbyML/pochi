@@ -46,7 +46,9 @@ export function useRetry({
         // A real error can override no-tool-calls; inspect the retained response.
         if (isAssistantMessageWithStreamingParts(lastMessageForRetry)) {
           return sendMessage({
-            text: prompts.incompleteResponseReminder,
+            text: prompts.createSystemReminder(
+              prompts.incompleteResponseReminder,
+            ),
           });
         }
         if (

@@ -595,7 +595,9 @@ export class TaskRunner {
         this.chat.appendOrReplaceMessage(processed);
         if (isAssistantMessageWithStreamingParts(processed)) {
           this.chat.appendOrReplaceMessage(
-            createUserMessage(prompts.incompleteResponseReminder),
+            createUserMessage(
+              prompts.createSystemReminder(prompts.incompleteResponseReminder),
+            ),
           );
         }
       } else {
@@ -626,7 +628,9 @@ export class TaskRunner {
         this.chat.appendOrReplaceMessage(processed);
         if (isAssistantMessageWithStreamingParts(processed)) {
           this.chat.appendOrReplaceMessage(
-            createUserMessage(prompts.incompleteResponseReminder),
+            createUserMessage(
+              prompts.createSystemReminder(prompts.incompleteResponseReminder),
+            ),
           );
         }
       } else {
@@ -640,9 +644,11 @@ export class TaskRunner {
         "Last message is assistant with no tool calls, sending a new user reminder.",
       );
       const reminder = createUserMessage(
-        isAssistantMessageWithStreamingParts(message)
-          ? prompts.incompleteResponseReminder
-          : prompts.createSystemReminder(prompts.toolCallsReminder),
+        prompts.createSystemReminder(
+          isAssistantMessageWithStreamingParts(message)
+            ? prompts.incompleteResponseReminder
+            : prompts.toolCallsReminder,
+        ),
       );
       this.chat.appendOrReplaceMessage(reminder);
       return "retry";

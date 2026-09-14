@@ -1,4 +1,4 @@
-import { prompts } from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
@@ -78,7 +78,7 @@ describe("useRetry", () => {
     { type: "text", error: new DOMException("Stopped", "AbortError") },
     { type: "text", error: undefined },
   ] as const)(
-    "adds a visible reminder when explicitly retrying unfinished $type with $error",
+    "adds a hidden system reminder when explicitly retrying unfinished $type with $error",
     async ({ type, error }) => {
       const message = {
         id: "partial",
@@ -123,6 +123,15 @@ describe("useRetry", () => {
           "The previous response was not received completely.",
         ),
       });
+      const reminder: Message = {
+        id: "retry-reminder",
+        role: "user",
+        parts: [{ type: "text", text: sendMessage.mock.calls[0][0].text }],
+      };
+      expect(formatters.ui([reminder])).toEqual([]);
+      expect(formatters.llm([reminder])).toMatchObject([
+        { role: "user", parts: [{ type: "text", text: expect.any(String) }] },
+      ]);
       expect(regenerate).not.toHaveBeenCalled();
     },
   );
