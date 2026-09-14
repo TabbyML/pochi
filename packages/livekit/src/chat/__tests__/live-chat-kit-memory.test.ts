@@ -923,3 +923,23 @@ function assistantReadFileMessage(
     ],
   } as unknown as Message;
 }
+
+
+describe("background command completion state", () => {
+  it("holds completion until command output has been delivered", () => {
+    const store = new FakeStore([makeTask({ id: "parent", status: "pending-model", background: true })]);
+    let pending = true;
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent", store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore, chatClass: FakeChat,
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+      hasPendingBackgroundCommands: () => pending,
+    });
+    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.finish(assistantMessage());
+    expect(chatKit.task?.status).toBe("pending-tool");
+    pending = false;
+    chatKit.chat.finish(assistantMessage());
+    expect(chatKit.task?.status).toBe("completed");
+  });
+});

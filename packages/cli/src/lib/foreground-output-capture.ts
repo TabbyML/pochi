@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import type { BackgroundJobInitialOutput } from "./background-job-manager";
+import type { BackgroundJobInitialOutput } from "./background-command-manager";
 
 const ForegroundReplayMaxCharacters = 1024 * 1024;
 

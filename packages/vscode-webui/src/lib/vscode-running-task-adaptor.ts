@@ -55,7 +55,9 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return this.ready;
   }
 
-  getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
+  getRequestGetters(
+    context: Parameters<RunningTaskAdaptor["getRequestGetters"]>[0],
+  ) {
     return {
       getLLM: () => {
         const llm = this.getLLM();
@@ -69,6 +71,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
         vscodeHost.readEnvironment({
           webviewKind: globalThis.POCHI_WEBVIEW_KIND,
           taskId: context.taskId,
+          omitCustomRules: context.omitCustomRules,
         }),
       getAutoMemory: () => this.getAutoMemory(),
       getMcpInfo: () => ({
@@ -78,6 +81,45 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       getCustomAgents: () => this.customAgents.filter(isValidCustomAgentFile),
       getSkills: () => this.skills.filter(isValidSkillFile),
     };
+  }
+
+  async resolveTaskLLM(
+    context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
+  ) {
+    const { taskState } = context;
+    if (!taskState.agentType) {
+      return undefined;
+    }
+    const agent = this.customAgents
+      .filter(isValidCustomAgentFile)
+      .find((a) => a.name === taskState.agentType);
+    if (!agent?.model) return undefined;
+
+    const resolvedModel = resolveModelFromId(agent.model, this.modelList);
+    if (resolvedModel) return displayModelToLLM(resolvedModel);
+
+    if (agent.isBuiltIn) {
+      // Built-in special models are currently served by the Pochi vendor.
+      const credentialSource = this.modelList.find(
+        (model) => model.type === "vendor" && model.vendorId === "pochi",
+      );
+      if (credentialSource?.type === "vendor") {
+        return displayModelToLLM({
+          type: "vendor",
+          id: agent.model,
+          name: agent.model,
+          vendorId: "pochi",
+          modelId: agent.model,
+          options: {},
+          getCredentials: credentialSource.getCredentials,
+        });
+      }
+    }
+
+    logger.warn(
+      `Model "${agent.model}" for agent ${agent.name} not found; falling back to the selected model.`,
+    );
+    return undefined;
   }
 
   async executeToolCall(

@@ -1,3 +1,5 @@
+import { parseBackgroundJobId } from "@getpochi/common";
+import type { BackgroundJobEntry } from "@getpochi/livekit";
 // @vitest-environment jsdom
 import {
   act,
@@ -5,10 +7,10 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BackgroundJobEntry } from "../lib/build-background-job-list";
 import { BackgroundJobManagePanel } from "./background-job-manage-panel";
 
 const show = vi.fn();
@@ -31,6 +33,32 @@ vi.stubGlobal(
     disconnect() {}
   },
 );
+
+const stopSubagent = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/use-default-store", () => ({ useDefaultStore: () => ({}) }));
+vi.mock("@getpochi/livekit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@getpochi/livekit")>()),
+  BackgroundJobManager: class {
+    constructor(
+      private options: {
+        store: unknown;
+        taskId: string;
+        commands: { kill: (id: string) => unknown };
+      },
+    ) {}
+    async kill(id: string) {
+      if (parseBackgroundJobId(id) === "task")
+        return stopSubagent(this.options.store, this.options.taskId, id);
+      return this.options.commands.kill(id);
+    }
+  },
+}));
+
+vi.mock("@/lib/hooks/use-background-task-state", () => ({
+  useBackgroundTaskState: () => ({
+    backgroundTaskState: { useCase: "auto-memory" },
+  }),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -137,6 +165,71 @@ const finishedRow = {
 };
 
 describe("BackgroundJobManagePanel", () => {
+  it("groups agents separately from background commands", () => {
+    backgroundJobs = [
+      runningJob,
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        title: "Review tests",
+        status: "running",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    const commands = screen.getByRole("button", {
+      name: /managePanel.pochiGroup/,
+    }).parentElement;
+    const agents = screen.getByRole("button", {
+      name: /backgroundTasks.title/,
+    }).parentElement;
+    expect(commands).not.toBe(agents);
+    expect(within(commands!).queryByText("Review tests")).toBeNull();
+    expect(within(agents!).getByText("Review tests")).toBeTruthy();
+    expect(within(agents!).queryByText(runningJob.title)).toBeNull();
+  });
+
+  it("shows subagents outside dev mode and routes stop to the subagent", () => {
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        title: "Review tests",
+        agentType: "reviewer",
+        status: "running",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getByText("Review tests")).toBeTruthy();
+    expect(screen.queryByText("managePanel.pochiGroup")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "managePanel.kill" }));
+    expect(stopSubagent).toHaveBeenCalledWith(
+      expect.anything(),
+      "task-1",
+      "bgjob-task-child",
+    );
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it("labels stopped subagents awaiting delivery without a kill action", () => {
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        title: "Review tests",
+        status: "stopped",
+        notificationPending: true,
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getByTitle(/backgroundTasks.stopped/)).toBeTruthy();
+    expect(
+      screen.getByTitle(/backgroundTasks.pendingNotification/),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "managePanel.kill" }),
+    ).toBeNull();
+  });
+
   beforeEach(() => {
     show.mockClear();
     hide.mockClear();
@@ -509,13 +602,41 @@ describe("BackgroundJobManagePanel", () => {
     expect(screen.getByText("managePanel.empty")).toBeDefined();
   });
 
+  it("merges system agents with subagents without duplicating rows or counts", () => {
+    isDevMode = true;
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        title: "Review",
+        status: "running",
+      },
+    ];
+    backgroundTasks = [
+      { id: "child", title: "Review", status: "pending-tool" },
+      { id: "memory", title: "Extract memory", status: "pending-model" },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getAllByText("backgroundTasks.title")).toHaveLength(1);
+    expect(screen.getAllByText("Review")).toHaveLength(1);
+    expect(screen.getByText("Extract memory")).toBeDefined();
+    expect(screen.getByTitle(/auto-memory/)).toBeDefined();
+    expect(screen.queryByText("Background tasks")).toBeNull();
+    expect(
+      screen
+        .getByTestId("background-job-manage-panel-toggle")
+        .querySelector(".bg-blue-500")?.textContent,
+    ).toBe("2");
+  });
+
   it("lists background tasks in dev mode", () => {
     isDevMode = true;
     backgroundTasks = [{ id: "task-1", title: "A background task" }];
 
     renderBackgroundJobManagePanel();
 
-    expect(screen.getByText("Background tasks")).toBeDefined();
+    expect(screen.getByText("backgroundTasks.title")).toBeDefined();
+    expect(screen.queryByText("Background tasks")).toBeNull();
     expect(screen.getByText("A background task")).toBeDefined();
     expect(screen.queryByText("managePanel.empty")).toBeNull();
   });

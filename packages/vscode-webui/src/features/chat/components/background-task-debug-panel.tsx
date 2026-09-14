@@ -1,3 +1,5 @@
+import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
+import { useTranslation } from "react-i18next";
 /**
  * Dev-mode background tasks, rendered as one group of the manage panel. Being
  * developer-only, the strings here are not translated.
@@ -9,7 +11,7 @@ import { useBackgroundTaskState } from "@/lib/hooks/use-background-task-state";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, CopyIcon } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { formatTokens } from "../lib/format-tokens";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
@@ -69,14 +71,20 @@ function statusTone(status: Task["status"]): RowStatusTone {
 }
 
 export function BackgroundTaskDetail({
+  backgroundJobId,
+  showDiagnostics = !backgroundJobId,
   taskId,
   isOpen = true,
   onBack,
 }: {
   taskId: string;
+  backgroundJobId?: string;
+  showDiagnostics?: boolean;
   isOpen?: boolean;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
+  const { isCopied, copyToClipboard } = useCopyToClipboard({});
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
@@ -121,51 +129,75 @@ export function BackgroundTaskDetail({
           <ArrowLeftIcon className="size-4" />
         </Button>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {task && <BackgroundTaskStatusIndicator status={task.status} />}
+          {task &&
+            (backgroundJobId && task.error?.kind === "AbortError" ? (
+              <RowStatusIndicator isRunning={false} tone="muted" />
+            ) : (
+              <BackgroundTaskStatusIndicator status={task.status} />
+            ))}
           <div className="flex min-w-0 flex-col">
             <span className="truncate font-medium text-sm">
               {task?.title || "(Untitled)"}
             </span>
             <span className="truncate font-mono text-[10px] text-muted-foreground">
-              {taskId}
+              {backgroundJobId ?? taskId}
             </span>
           </div>
         </div>
       </div>
-      <div className="grid shrink-0 grid-cols-2 gap-x-3 gap-y-1 border-b px-3 py-2 text-xs">
-        <DetailRow label="Status" value={task?.status} />
-        <DetailRow
-          label="Updated"
-          value={task ? formatRelative(task.updatedAt) : undefined}
-        />
-        <DetailRow
-          label="Cache Input Tokens"
-          value={formatDetailedTokens(latestAssistantMetadata?.cacheReadTokens)}
-        />
-        <DetailRow
-          label="Input Tokens"
-          value={formatDetailedTokens(latestAssistantMetadata?.inputTokens)}
-        />
-        {backgroundTaskState?.useCase && (
-          <DetailRow label="Use case" value={backgroundTaskState.useCase} />
-        )}
-        {backgroundTaskState?.parentTaskId && (
+      {backgroundJobId && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => copyToClipboard(backgroundJobId)}
+        >
+          {isCopied ? (
+            <CheckIcon className="size-3" />
+          ) : (
+            <CopyIcon className="size-3" />
+          )}
+          {t("backgroundTasks.copyJobId")}
+        </Button>
+      )}
+      {showDiagnostics && (
+        <div className="grid shrink-0 grid-cols-2 gap-x-3 gap-y-1 border-b px-3 py-2 text-xs">
+          <DetailRow label="Status" value={task?.status} />
           <DetailRow
-            label="Parent"
-            value={backgroundTaskState.parentTaskId.slice(0, 8)}
-            mono
+            label="Updated"
+            value={task ? formatRelative(task.updatedAt) : undefined}
           />
-        )}
-        {backgroundTaskState?.tools?.length !== undefined && (
           <DetailRow
-            label="Tools"
-            value={`${backgroundTaskState.tools.length}`}
+            label="Cache Input Tokens"
+            value={formatDetailedTokens(
+              latestAssistantMetadata?.cacheReadTokens,
+            )}
           />
-        )}
-        {task?.error?.message && (
-          <DetailRow label="Error" value={task.error.message} fullWidth />
-        )}
-      </div>
+          <DetailRow
+            label="Input Tokens"
+            value={formatDetailedTokens(latestAssistantMetadata?.inputTokens)}
+          />
+          {backgroundTaskState?.useCase && (
+            <DetailRow label="Use case" value={backgroundTaskState.useCase} />
+          )}
+          {backgroundTaskState?.parentTaskId && (
+            <DetailRow
+              label="Parent"
+              value={backgroundTaskState.parentTaskId.slice(0, 8)}
+              mono
+            />
+          )}
+          {backgroundTaskState?.tools?.length !== undefined && (
+            <DetailRow
+              label="Tools"
+              value={`${backgroundTaskState.tools.length}`}
+            />
+          )}
+          {task?.error?.message && (
+            <DetailRow label="Error" value={task.error.message} fullWidth />
+          )}
+        </div>
+      )}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
         <TaskThread
           source={source}

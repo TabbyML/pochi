@@ -12,6 +12,7 @@ export {
 export { getAutoCompactThreshold } from "./chat/auto-compact-policy";
 export {
   type BackgroundJobNotificationPart,
+  type BackgroundNotificationPart,
   getBackgroundJobNotificationIds,
 } from "./chat/background-job-notification";
 export type { AutoMemoryManager } from "@getpochi/common";
@@ -29,15 +30,29 @@ export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
+  createSubAgentResultNotification,
   extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
   getTaskErrorMessage,
   isAwaitingFollowupAnswer,
   mapTaskStatusToBackgroundStatus,
+  restartBackgroundTask,
 } from "./task-utils";
 export type {
   BackgroundJobStatus,
   TaskStatusLike,
 } from "./task-utils";
 export { toTaskStatus } from "./task";
+
+export { commandControllerFromTool } from "./background-job/command-controller";
+export {
+  BackgroundJobManager,
+  type BackgroundJobManagerOptions,
+  type BackgroundCommandController,
+} from "./background-job/manager";
+export {
+  buildBackgroundJobList,
+  type BackgroundJobEntry,
+  type JobStatus,
+} from "./background-job/state";

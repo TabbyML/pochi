@@ -1,7 +1,7 @@
 import { useBackgroundJobNotifications } from "@/lib/hooks/use-background-job-notifications";
 import type { BackgroundJobNotification } from "@getpochi/common";
 import {
-  type BackgroundJobNotificationPart,
+  type BackgroundNotificationPart,
   type LiveChatKitBackgroundJobNotificationOptions,
   type Message,
   getBackgroundJobNotificationIds,
@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from "react";
  * captures them when the kit is constructed.
  */
 export function useBackgroundJobNotificationSink() {
-  const [pending, setPending] = useState<BackgroundJobNotificationPart[]>([]);
+  const [pending, setPending] = useState<BackgroundNotificationPart[]>([]);
   const options = useMemo<LiveChatKitBackgroundJobNotificationOptions>(
     () => ({ onPendingChange: setPending }),
     [],

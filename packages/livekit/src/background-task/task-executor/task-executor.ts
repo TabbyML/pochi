@@ -1,4 +1,5 @@
 import {
+  type BackgroundJobNotification,
   type BackgroundTaskState,
   type MaybePromise,
   getLogger,
@@ -28,14 +29,23 @@ import {
   isStaticToolUIPart,
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
+import { commandControllerFromTool } from "../../background-job/command-controller";
+import { BackgroundJobManager } from "../../background-job/manager";
 import type { BlobStore } from "../../blob-store";
+import {
+  attachBackgroundJobNotificationParts,
+  toBackgroundJobNotificationParts,
+} from "../../chat/background-job-notification";
 import type { PrepareRequestGetters } from "../../chat/flexible-chat-transport";
 import { defaultCatalog as catalog } from "../../livestore";
-import type { LiveKitStore, Message, Task } from "../../types";
+import { toTaskStatus } from "../../task";
+import type { LiveKitStore, Message, RequestData, Task } from "../../types";
 
 const logger = getLogger("TaskExecutor");
 
 const TaskExecutorMaxStep = 50;
+/** Generic subagents run arbitrary work, so they get a higher step budget than memory extraction. */
+const TaskExecutorSubagentMaxStep = 256;
 const TaskExecutorMaxRetry = 8;
 const TaskExecutorMaxToolRejections = 5;
 const TaskExecutorMaxConcurrency = 10;
@@ -51,12 +61,30 @@ interface TaskExecutorToolCallExecution {
   toolPolicies: CompiledToolPolicies | undefined;
 }
 
+export interface RunningTaskBackgroundCommands {
+  hasPendingJobs(): boolean;
+  takeNotifications(): BackgroundJobNotification[];
+  waitForPending(abortSignal: AbortSignal): Promise<void>;
+  dispose(): void;
+}
+
 export interface RunningTaskAdaptor {
+  backgroundCommands?(taskId: string): RunningTaskBackgroundCommands;
   waitUntilReady?(): Promise<void>;
   getRequestGetters(context: {
     taskId: string;
     cwd: string | undefined;
+    omitCustomRules?: boolean;
   }): PrepareRequestGetters;
+  /**
+   * Resolves a per-task model override (e.g. a subagent's `model` field).
+   * Returning undefined keeps the adaptor's default model.
+   */
+  resolveTaskLLM?(context: {
+    taskId: string;
+    cwd: string | undefined;
+    taskState: BackgroundTaskState;
+  }): Promise<RequestData["llm"] | undefined>;
   executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
   onTaskError?(taskId: string, error: Error): MaybePromise<void>;
 }
@@ -99,8 +127,9 @@ type CreateRunningTaskChatKit = (options: {
   store: LiveKitStore;
   blobStore: BlobStore;
   abortSignal: AbortSignal;
-  requestUseCase: BackgroundTaskState["useCase"];
+  taskState: BackgroundTaskState;
   getters: PrepareRequestGetters;
+  hasPendingBackgroundCommands: () => boolean;
 }) => RunningTaskChatKit;
 
 export class TaskExecutor {
@@ -180,6 +209,32 @@ export class TaskExecutor {
     }
   }
 
+  /**
+   * Stops one background task: aborts its running loop and marks it failed
+   * with an AbortError so `runnableTasks$` stops matching it. Without the
+   * failed status, the next reconcile would pick the task up again.
+   */
+  async stopTask(taskId: string) {
+    const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+    if (task && isRunnableTaskStatus(task.status)) {
+      this.store.commit(
+        catalog.events.taskFailed({
+          id: taskId,
+          error: {
+            kind: "AbortError",
+            message: "Stopped by user.",
+          },
+          updatedAt: new Date(),
+        }),
+      );
+    }
+    const runningTask = this.runningTasks.get(taskId);
+    if (runningTask) {
+      await runningTask.dispose();
+      await runningTask.done.catch(() => undefined);
+    }
+  }
+
   waitForTaskDone(taskId: string): Promise<void> {
     if (this.disposed) return Promise.resolve();
     this.start();
@@ -213,6 +268,18 @@ export class TaskExecutor {
   }
 
   private reconcile(tasks: readonly Task[]) {
+    // Tool-triggered cancellation is persisted by the host that owns the store.
+    // Abort the active loop as well, so an in-flight request cannot keep running.
+    for (const [taskId, runningTask] of this.runningTasks) {
+      const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+      if (task?.status === "failed" && task.error?.kind === "AbortError") {
+        void runningTask
+          .dispose()
+          .catch((error) =>
+            logger.warn({ taskId, error }, "Failed to stop cancelled task"),
+          );
+      }
+    }
     for (const task of tasks) {
       if (this.runningTasks.size >= TaskExecutorMaxConcurrency) {
         return;
@@ -284,6 +351,7 @@ class RunningTask {
   private readonly toolCallQueue = new ToolCallQueue();
   private taskState: BackgroundTaskState = {};
   private chatKit: RunningTaskChatKit | undefined;
+  private commands: RunningTaskBackgroundCommands | undefined;
   private retryCount = 0;
   private toolRejectionCount = 0;
   private disposed = false;
@@ -321,19 +389,26 @@ class RunningTask {
     try {
       await this.adaptor.waitUntilReady?.();
       this.taskState = (await this.readTaskState(this.taskId)) ?? {};
-      this.chatKit = this.createChatKit(this.task);
+      this.commands = this.adaptor.backgroundCommands?.(this.taskId);
+      this.chatKit = await this.createChatKit(this.task);
 
       while (!this.abortController.signal.aborted) {
         const stepResult = await this.step();
-        if (stepResult === "finished") {
-          return;
-        }
+        this.abortController.signal.throwIfAborted();
         const currentStatus = this.task?.status;
         if (
+          stepResult === "finished" ||
           currentStatus === "completed" ||
           currentStatus === "pending-input"
         ) {
-          return;
+          // Commands belong to this task. Deliver their final output before
+          // releasing its execution context, including promoted commands.
+          await this.commands?.waitForPending(this.abortController.signal);
+          this.abortController.signal.throwIfAborted();
+          if (!this.attachCommandNotifications()) return;
+          this.throwIfMaxStepReached();
+          await this.chat.sendMessage();
+          continue;
         }
 
         if (stepResult === "retry") {
@@ -348,6 +423,7 @@ class RunningTask {
         }
 
         this.throwIfMaxStepReached();
+        this.attachCommandNotifications();
         await this.chat.sendMessage();
       }
     } catch (error) {
@@ -355,11 +431,33 @@ class RunningTask {
         return;
       }
       const normalizedError = toError(error);
-      await this.chatKit?.markAsFailed(normalizedError);
+      if (this.chatKit) {
+        await this.chatKit.markAsFailed(normalizedError);
+      } else {
+        this.store.commit(
+          catalog.events.taskFailed({
+            id: this.taskId,
+            error: { kind: "InternalError", message: normalizedError.message },
+            updatedAt: new Date(),
+          }),
+        );
+      }
       throw normalizedError;
     } finally {
       await this.toolCallQueue.abort("user-abort");
+      this.commands?.dispose();
     }
+  }
+
+  private attachCommandNotifications(): boolean {
+    const notifications = this.commands?.takeNotifications() ?? [];
+    const messages = attachBackgroundJobNotificationParts(
+      this.chat.messages,
+      toBackgroundJobNotificationParts(notifications),
+    );
+    if (!messages) return false;
+    this.chat.appendOrReplaceMessage(messages[messages.length - 1]);
+    return true;
   }
 
   private get task() {
@@ -375,16 +473,53 @@ class RunningTask {
     return this.chatKit.chat;
   }
 
-  private createChatKit(currentTask: Task | undefined) {
+  private async createChatKit(currentTask: Task | undefined) {
+    const context = this.createTaskContext(currentTask);
+    let getters = this.adaptor.getRequestGetters(context);
+
+    const llmOverride = await this.adaptor.resolveTaskLLM?.({
+      ...context,
+      taskState: this.taskState,
+    });
+    if (llmOverride) {
+      getters = { ...getters, getLLM: () => llmOverride };
+    }
+
+    const customAgent = getters
+      .getCustomAgents?.()
+      ?.find((agent) => agent.name === this.taskState.agentType);
+    const environmentGetters = this.adaptor.getRequestGetters({
+      ...context,
+      omitCustomRules: customAgent?.omitAgentsMd === true,
+    });
+    getters = { ...getters, getEnvironment: environmentGetters.getEnvironment };
+
+    // Subagent tasks store only the agent name; the tool whitelist is
+    // resolved here so both the request-side tool selection and the
+    // execution-side validation derive from the same agent definition.
+    if (this.taskState.agentType && !this.taskState.tools) {
+      const agent = getters
+        .getCustomAgents?.()
+        ?.find((a) => a.name === this.taskState.agentType);
+      if (!agent) {
+        throw new Error(
+          `Custom agent "${this.taskState.agentType}" not found for background subagent task.`,
+        );
+      }
+      if (agent.tools) {
+        this.taskState = { ...this.taskState, tools: agent.tools };
+      }
+    }
+
     return this.createRunningTaskChatKit({
       taskId: this.taskId,
       store: this.store,
       blobStore: this.blobStore,
       abortSignal: this.abortController.signal,
-      requestUseCase: this.taskState.useCase,
-      getters: this.adaptor.getRequestGetters(
-        this.createTaskContext(currentTask),
-      ),
+      taskState: this.taskState,
+      getters,
+      hasPendingBackgroundCommands: () =>
+        this.commands?.hasPendingJobs() ?? false,
     });
   }
 
@@ -399,6 +534,19 @@ class RunningTask {
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the task chat.");
+    }
+
+    const responseStatus = toTaskStatus(
+      lastMessage,
+      lastMessage.metadata?.kind === "assistant"
+        ? lastMessage.metadata.finishReason
+        : undefined,
+    );
+    if (
+      this.commands?.hasPendingJobs() &&
+      (responseStatus === "completed" || responseStatus === "pending-input")
+    ) {
+      return "finished";
     }
 
     const messageResult = await this.processMessage(lastMessage);
@@ -539,16 +687,27 @@ class RunningTask {
     }
 
     try {
-      const result = await this.adaptor.executeToolCall({
-        taskId: this.taskId,
-        parentTaskId: this.taskState.parentTaskId,
-        storeId: this.store.storeId,
-        toolName,
-        toolCallId: toolCall.toolCallId,
-        input: toolCall.input,
-        abortSignal: this.abortController.signal,
-        toolPolicies,
-      });
+      const execute = () =>
+        this.adaptor.executeToolCall({
+          taskId: this.taskId,
+          parentTaskId: this.taskState.parentTaskId,
+          storeId: this.store.storeId,
+          toolName,
+          toolCallId: toolCall.toolCallId,
+          input: toolCall.input,
+          abortSignal: this.abortController.signal,
+          toolPolicies,
+        });
+      const result =
+        toolName === "killBackgroundJob"
+          ? await new BackgroundJobManager({
+              store: this.store,
+              taskId: this.taskId,
+              commands: commandControllerFromTool(execute),
+            }).kill(
+              (toolCall.input as { backgroundJobId: string }).backgroundJobId,
+            )
+          : await execute();
 
       await this.addToolOutput({
         tool: toolName,
@@ -639,7 +798,11 @@ class RunningTask {
       0,
       stepCount - (this.taskState.baselineStepCount ?? 0),
     );
-    const maxSteps = this.taskState.maxSteps ?? TaskExecutorMaxStep;
+    const maxSteps =
+      this.taskState.maxSteps ??
+      (this.taskState.useCase === undefined
+        ? TaskExecutorSubagentMaxStep
+        : TaskExecutorMaxStep);
 
     return { effectiveStepCount, maxSteps };
   }

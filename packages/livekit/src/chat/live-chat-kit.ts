@@ -19,6 +19,7 @@ import {
   getToolCallCancelErrorMessage,
   isReadonlyToolCall,
   isUserInputToolPart,
+  parseOutputSchema,
 } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
 import {
@@ -57,10 +58,10 @@ import {
 } from "./auto-compact-policy";
 import { scheduleGenerateTitleJob } from "./background-job";
 import {
-  type BackgroundJobNotificationPart,
+  type BackgroundNotificationPart,
   attachBackgroundJobNotificationParts,
   createBackgroundJobNotificationMessage,
-  getBackgroundJobNotificationIds,
+  dedupeBackgroundNotificationParts,
   toBackgroundJobNotificationParts,
 } from "./background-job-notification";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -315,13 +316,16 @@ export type LiveChatKitBackgroundJobNotificationOptions = {
    * Called whenever the set of notifications waiting to be delivered changes,
    * so a host can render them.
    */
-  onPendingChange?: (parts: BackgroundJobNotificationPart[]) => void;
+  onPendingChange?: (parts: BackgroundNotificationPart[]) => void;
 };
 
 export type LiveChatKitOptions<T> = {
   taskId: string;
 
   abortSignal?: AbortSignal;
+
+  /** Keep terminal responses runnable until their owned commands are delivered. */
+  hasPendingBackgroundCommands?: () => boolean;
 
   // Request related getters
   getters: PrepareRequestGetters;
@@ -426,8 +430,7 @@ export class LiveChatKit<
   private readonly backgroundJobNotifications:
     | LiveChatKitBackgroundJobNotificationOptions
     | undefined;
-  private pendingBackgroundJobNotificationParts: BackgroundJobNotificationPart[] =
-    [];
+  private pendingBackgroundNotificationParts: BackgroundNotificationPart[] = [];
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private backgroundTasksStarted = false;
@@ -447,9 +450,20 @@ export class LiveChatKit<
       contextWindowUsage?: ContextWindowUsage;
     },
   ) => void;
+  private readonly hasPendingBackgroundCommands: (() => boolean) | undefined;
   readonly compact: () => Promise<string>;
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private consecutiveAutoCompactFailures = 0;
+
+  /**
+   * Converts an existing subtask (created by the newTask middleware) into a
+   * background subagent task: records its state and flips `background` so the
+   * TaskExecutor picks it up. Undefined when background tasks are not enabled.
+   */
+  readonly backgroundSubTask?: (options: {
+    taskId: string;
+    agentType?: string;
+  }) => Promise<void>;
 
   constructor({
     taskId,
@@ -471,6 +485,7 @@ export class LiveChatKit<
     getRecentFilesForCompact,
     backgroundTask,
     backgroundJobNotifications,
+    hasPendingBackgroundCommands,
     taskMemory,
     projectMemory,
     systemPromptOverride,
@@ -483,6 +498,7 @@ export class LiveChatKit<
     this.backgroundJobNotifications = backgroundJobNotifications;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
+    this.hasPendingBackgroundCommands = hasPendingBackgroundCommands;
     this.backgroundTaskAdaptor = backgroundTask?.adaptor;
     const backgroundTaskStateStore = backgroundTask
       ? (backgroundTask.stateStore ?? createBackgroundTaskStateStore())
@@ -513,22 +529,69 @@ export class LiveChatKit<
               store,
               blobStore,
               abortSignal,
-              requestUseCase,
+              taskState,
               getters,
-            }) =>
-              new LiveChatKit<InMemoryChat>({
+              hasPendingBackgroundCommands,
+            }) => {
+              if (taskState.useCase === undefined) {
+                // A background subagent behaves like a foreground subtask:
+                // its own system prompt from the custom agent, not a fork of
+                // the parent conversation.
+                const subagentCustomAgent = taskState.agentType
+                  ? getters
+                      .getCustomAgents?.()
+                      ?.find((a) => a.name === taskState.agentType)
+                  : undefined;
+                const resultSchema =
+                  subagentCustomAgent?._internal?.resultSchema;
+                return new LiveChatKit<InMemoryChat>({
+                  taskId,
+                  store,
+                  blobStore,
+                  chatClass: InMemoryChat,
+                  abortSignal,
+                  isSubTask: true,
+                  hasPendingBackgroundCommands,
+                  requestUseCase: "agent",
+                  getters,
+                  customAgent: subagentCustomAgent,
+                  attemptCompletionSchema: resultSchema
+                    ? parseOutputSchema(resultSchema)
+                    : undefined,
+                });
+              }
+              return new LiveChatKit<InMemoryChat>({
                 taskId,
                 store,
                 blobStore,
                 chatClass: InMemoryChat,
                 abortSignal,
                 isSubTask: false,
-                requestUseCase,
+                hasPendingBackgroundCommands,
+                requestUseCase: taskState.useCase,
                 getters,
                 systemPromptOverride: this.latestRequestSnapshot?.systemPrompt,
-              }),
+              });
+            },
           })
         : undefined;
+    this.backgroundSubTask =
+      backgroundTaskStateStore && this.backgroundTaskExecutor
+        ? async ({ taskId: subTaskId, agentType }) => {
+            await backgroundTaskStateStore.set(subTaskId, {
+              parentTaskId: this.taskId,
+              agentType,
+            });
+            store.commit(
+              events.taskBackgrounded({
+                id: subTaskId,
+                updatedAt: new Date(),
+              }),
+            );
+            this.startBackgroundTasks();
+          }
+        : undefined;
+
     const defaultMemoryParentCwd = () => this.task?.cwd ?? undefined;
     this.taskMemoryAdaptor =
       taskMemory && startForkAgent
@@ -827,8 +890,8 @@ export class LiveChatKit<
   }
 
   /** The notifications waiting to be delivered to the model. */
-  get pendingBackgroundJobNotifications(): readonly BackgroundJobNotificationPart[] {
-    return this.pendingBackgroundJobNotificationParts;
+  get pendingBackgroundJobNotifications(): readonly BackgroundNotificationPart[] {
+    return this.pendingBackgroundNotificationParts;
   }
 
   /**
@@ -843,33 +906,30 @@ export class LiveChatKit<
   enqueueBackgroundJobNotifications = (
     notifications: readonly BackgroundJobNotification[],
   ): void => {
-    const known = new Set([
-      ...this.chat.messages.flatMap((message) =>
-        getBackgroundJobNotificationIds(message.parts),
-      ),
-      ...this.pendingBackgroundJobNotificationParts.map(
-        (part) => part.data.notificationId,
-      ),
-    ]);
-    const added = toBackgroundJobNotificationParts(notifications).filter(
-      (part) => {
-        if (known.has(part.data.notificationId)) return false;
-        known.add(part.data.notificationId);
-        return true;
-      },
+    this.enqueueBackgroundNotificationParts(
+      toBackgroundJobNotificationParts(notifications),
     );
+  };
+
+  private enqueueBackgroundNotificationParts(
+    parts: readonly BackgroundNotificationPart[],
+  ): void {
+    const added = dedupeBackgroundNotificationParts(parts, [
+      ...this.chat.messages.flatMap((message) => message.parts),
+      ...this.pendingBackgroundNotificationParts,
+    ]);
     if (added.length === 0) return;
 
     this.setPendingBackgroundJobNotifications([
-      ...this.pendingBackgroundJobNotificationParts,
+      ...this.pendingBackgroundNotificationParts,
       ...added,
     ]);
-  };
+  }
 
   private setPendingBackgroundJobNotifications(
-    parts: BackgroundJobNotificationPart[],
+    parts: BackgroundNotificationPart[],
   ) {
-    this.pendingBackgroundJobNotificationParts = parts;
+    this.pendingBackgroundNotificationParts = parts;
     try {
       this.backgroundJobNotifications?.onPendingChange?.(parts);
     } catch (err) {
@@ -878,7 +938,7 @@ export class LiveChatKit<
   }
 
   private takePendingBackgroundJobNotifications() {
-    const parts = this.pendingBackgroundJobNotificationParts;
+    const parts = this.pendingBackgroundNotificationParts;
     if (parts.length > 0) {
       this.setPendingBackgroundJobNotifications([]);
     }
@@ -891,7 +951,7 @@ export class LiveChatKit<
    * turn of its own.
    */
   private attachPendingBackgroundJobNotifications() {
-    if (this.pendingBackgroundJobNotificationParts.length === 0) return;
+    if (this.pendingBackgroundNotificationParts.length === 0) return;
 
     const messages = attachBackgroundJobNotificationParts(
       this.chat.messages,
@@ -909,7 +969,7 @@ export class LiveChatKit<
    * @returns true when a turn was started for them.
    */
   flushBackgroundJobNotifications = (): boolean => {
-    if (this.pendingBackgroundJobNotificationParts.length === 0) return false;
+    if (this.pendingBackgroundNotificationParts.length === 0) return false;
 
     // An unanswered follow-up question owns this turn: a notification sent now
     // would answer in the user's place and hide the question.
@@ -1138,7 +1198,12 @@ export class LiveChatKit<
     }
 
     const finishReason = streamFinishReason ?? message.metadata?.finishReason;
-    const status = toTaskStatus(message, finishReason);
+    const responseStatus = toTaskStatus(message, finishReason);
+    const status =
+      (responseStatus === "completed" || responseStatus === "pending-input") &&
+      this.hasPendingBackgroundCommands?.()
+        ? "pending-tool"
+        : responseStatus;
 
     // Calibration is now handled directly in `flexible-chat-transport.ts`,
     // where it can compare the provider's real `inputTokens` against the
@@ -1213,6 +1278,16 @@ export class LiveChatKit<
   async disposeBackgroundTasks(): Promise<void> {
     await this.backgroundTaskExecutor?.dispose();
     this.backgroundTaskAdaptor?.dispose?.();
+  }
+
+  waitForBackgroundTaskDone(taskId: string): Promise<void> {
+    return (
+      this.backgroundTaskExecutor?.waitForTaskDone(taskId) ?? Promise.resolve()
+    );
+  }
+
+  stopBackgroundTask(taskId: string): Promise<void> {
+    return this.backgroundTaskExecutor?.stopTask(taskId) ?? Promise.resolve();
   }
 
   private startBackgroundTasks(): void {

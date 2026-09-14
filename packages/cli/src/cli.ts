@@ -388,6 +388,7 @@ const program = new Command()
       return cached;
     };
     const backgroundTaskAdaptor = new CliRunningTaskAdaptor({
+      store,
       blobStore,
       llm,
       cwd: process.cwd(),
@@ -400,6 +401,7 @@ const program = new Command()
       parentFileStateCache,
       autoMemoryManager,
       projectMemoryEnabled,
+      resolveSubTaskLLM,
     });
     const taskMemory = autoCompactEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled

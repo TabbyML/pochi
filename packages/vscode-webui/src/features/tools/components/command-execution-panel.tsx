@@ -1,4 +1,9 @@
 import { Button } from "@/components/ui/button";
+import {
+  NotificationRowClassName,
+  NotificationStatusIcon,
+  NotificationTypeIconClassName,
+} from "@/components/ui/notification-row";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
@@ -14,17 +19,16 @@ import { useVisibleTerminals } from "@/lib/hooks/use-visible-terminals";
 import { formatTerminalDisplayName } from "@/lib/terminal-display-name";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { parseBackgroundJobId } from "@getpochi/common";
 import {
   CheckIcon,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
   CircleCheck,
-  CircleSlash,
   CircleStop,
   CopyIcon,
   FileText,
   TerminalIcon,
-  TriangleAlert,
   XCircle,
 } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
@@ -246,7 +250,7 @@ export const BackgroundJobPanel: FC<{
   const liveTerminal = terminals?.find(
     (tm) => tm.backgroundJobId === backgroundJobId,
   );
-  const isUserTerminal = backgroundJobId.startsWith("term-");
+  const isUserTerminal = parseBackgroundJobId(backgroundJobId) === "terminal";
   // A background command runs on a pty, so it outlives its terminal tab: the
   // host lists it for exactly as long as the process lives.
   const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
@@ -328,11 +332,10 @@ export const BackgroundJobPanel: FC<{
       );
 
   if (isNotification) {
-    const notificationRowClassName =
-      "group flex w-full min-w-0 items-center gap-2 rounded-sm px-1 py-1 text-left text-sm hover:bg-muted/30";
+    const notificationRowClassName = NotificationRowClassName;
     const notificationRowContent = (
       <>
-        <span className="inline-flex size-[16px] shrink-0 items-center justify-center rounded-sm bg-secondary text-secondary-foreground shadow-xs ring-primary">
+        <span className={NotificationTypeIconClassName}>
           <TerminalIcon className="size-3" />
         </span>
         <code
@@ -341,24 +344,7 @@ export const BackgroundJobPanel: FC<{
         >
           {resolvedCommand ?? backgroundJobId}
         </code>
-        <span
-          className="inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/75"
-          aria-hidden="true"
-        >
-          {status === "failed" && (
-            <TriangleAlert
-              className="size-3.5"
-              style={{
-                color:
-                  "color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground) 55%, var(--muted-foreground))",
-              }}
-              strokeWidth={1.5}
-            />
-          )}
-          {status === "stopped" && (
-            <CircleSlash className="size-3.5" strokeWidth={1.5} />
-          )}
-        </span>
+        <NotificationStatusIcon status={status} />
       </>
     );
     const notificationRow = outputFile ? (

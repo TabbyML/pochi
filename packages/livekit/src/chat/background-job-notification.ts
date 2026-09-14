@@ -1,4 +1,4 @@
-import type { BackgroundJobNotification } from "@getpochi/common";
+import { BackgroundJobNotification } from "@getpochi/common";
 import type { Message } from "../types";
 
 type MessagePart = Message["parts"][number];
@@ -8,13 +8,28 @@ export type BackgroundJobNotificationPart = Extract<
   { type: "data-background-job-notification" }
 >;
 
+export type BackgroundNotificationPart = BackgroundJobNotificationPart;
+
+export function dedupeBackgroundNotificationParts(
+  parts: readonly BackgroundNotificationPart[],
+  existing: readonly MessagePart[],
+): BackgroundNotificationPart[] {
+  const seen = new Set(getBackgroundJobNotificationIds(existing));
+  return parts.filter((part) => {
+    const id = part.data.notificationId;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 /** Wraps notifications into the message parts hosts queue and send. */
 export function toBackgroundJobNotificationParts(
   notifications: readonly BackgroundJobNotification[],
 ): BackgroundJobNotificationPart[] {
   return notifications.map((data) => ({
     type: "data-background-job-notification",
-    data,
+    data: BackgroundJobNotification.parse(data),
   }));
 }
 
@@ -37,7 +52,7 @@ export function getBackgroundJobNotificationIds(
 
 /** Builds the user message used when notifications cannot ride along. */
 export function createBackgroundJobNotificationMessage(
-  parts: readonly BackgroundJobNotificationPart[],
+  parts: readonly BackgroundNotificationPart[],
 ): Message {
   if (parts.length === 0) {
     throw new Error("Cannot create a notification message without parts");
@@ -59,9 +74,12 @@ export function createBackgroundJobNotificationMessage(
  */
 export function attachBackgroundJobNotificationParts(
   messages: readonly Message[],
-  parts: readonly BackgroundJobNotificationPart[],
+  parts: readonly BackgroundNotificationPart[],
 ): Message[] | undefined {
-  const pending = dedupe(messages, parts);
+  const pending = dedupeBackgroundNotificationParts(
+    parts,
+    messages.flatMap((message) => message.parts),
+  );
   if (pending.length === 0) return undefined;
 
   const lastMessage = messages.at(-1);
@@ -73,23 +91,4 @@ export function attachBackgroundJobNotificationParts(
   }
 
   return [...messages, createBackgroundJobNotificationMessage(pending)];
-}
-
-/** Drops notifications already present in the conversation. */
-function dedupe(
-  messages: readonly Message[],
-  parts: readonly BackgroundJobNotificationPart[],
-): BackgroundJobNotificationPart[] {
-  if (parts.length === 0) return [];
-
-  const seen = new Set(
-    messages.flatMap((message) =>
-      getBackgroundJobNotificationIds(message.parts),
-    ),
-  );
-  return parts.filter((part) => {
-    if (seen.has(part.data.notificationId)) return false;
-    seen.add(part.data.notificationId);
-    return true;
-  });
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
+  createSubAgentResultNotification,
   extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
@@ -224,5 +225,15 @@ describe("extractAttemptCompletionResult", () => {
         }),
       ),
     ).toThrow("Invalid attemptCompletion result");
+  });
+});
+
+describe("subagent stop notification", () => {
+  it("distinguishes user cancellation from execution failure", () => {
+    const store = {} as Parameters<typeof createSubAgentResultNotification>[0];
+    const task = { id: "child", title: "Review", status: "failed", error: { kind: "AbortError", message: "Stopped by user." } } as Parameters<typeof createSubAgentResultNotification>[1];
+    expect(createSubAgentResultNotification(store, task)).toMatchObject({ kind: "subagent", status: "stopped" });
+    expect(createSubAgentResultNotification(store, task)).not.toHaveProperty("finishedAt");
+    expect(createSubAgentResultNotification(store, { ...task, error: { kind: "InternalError", message: "Failed" } })).not.toHaveProperty("stopped");
   });
 });

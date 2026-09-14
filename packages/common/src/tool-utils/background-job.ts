@@ -1,43 +1,15 @@
-import { randomUUID } from "node:crypto";
 import { type Dirent, createWriteStream, mkdirSync, openSync } from "node:fs";
 import { readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { TerminalOutputRetentionMs } from "./limits";
 import { getPochiDataDir, getTaskDataDir } from "./pochi-paths";
 
-export type BackgroundJobId =
-  | `bgjob-cmd-${string}`
-  | `bgjob-monitor-${string}`
-  | `bgjob-task-${string}`
-  | `term-${string}`;
-
-export type BackgroundJobIdType = "command" | "monitor" | "task" | "terminal";
-
-export function createBackgroundJobId(
-  type: BackgroundJobIdType,
-): BackgroundJobId {
-  const suffix = randomUUID();
-  switch (type) {
-    case "command":
-      return `bgjob-cmd-${suffix}`;
-    case "monitor":
-      return `bgjob-monitor-${suffix}`;
-    case "task":
-      return `bgjob-task-${suffix}`;
-    case "terminal":
-      return `term-${suffix}`;
-  }
-}
-
-export function parseBackgroundJobId(
-  id: string,
-): BackgroundJobIdType | undefined {
-  if (id.startsWith("bgjob-cmd-")) return "command";
-  if (id.startsWith("bgjob-monitor-")) return "monitor";
-  if (id.startsWith("bgjob-task-")) return "task";
-  if (id.startsWith("term-")) return "terminal";
-  return undefined;
-}
+export {
+  createBackgroundJobId,
+  parseBackgroundJobId,
+  type BackgroundJobId,
+  type BackgroundJobIdType,
+} from "../base/background-job-id";
 
 export function getBackgroundJobOutputPath(
   taskId: string,

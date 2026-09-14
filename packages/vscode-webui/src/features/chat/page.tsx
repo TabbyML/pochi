@@ -43,6 +43,7 @@ import {
   useBackgroundJobNotificationDelivery,
   useBackgroundJobNotificationSink,
 } from "./hooks/use-background-job-notification-delivery";
+import { useBackgroundSubtaskResults } from "./hooks/use-background-subtask-results";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatMemory } from "./hooks/use-chat-memory";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
@@ -306,6 +307,12 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { messages, sendMessage, status } = chat;
+
+  useBackgroundSubtaskResults(
+    uid,
+    messages,
+    chatKit.enqueueBackgroundJobNotifications,
+  );
 
   useBackgroundJobNotificationDelivery({
     taskId: uid,

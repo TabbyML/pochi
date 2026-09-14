@@ -45,6 +45,7 @@ describe("createBackgroundJobNotification", () => {
         finishedAt: 123,
       }),
     ).toEqual({
+      kind: "command",
       notificationId: "bgjob-cmd-1:terminal",
       backgroundJobId: "bgjob-cmd-1",
       outputFile: "/tmp/bgjob-cmd-1.log",

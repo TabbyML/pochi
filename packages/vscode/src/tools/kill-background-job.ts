@@ -1,4 +1,5 @@
 import { TerminalJob } from "@/integrations/terminal/terminal-job";
+import { parseBackgroundJobId } from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const killBackgroundJob: ToolFunctionType<
@@ -6,7 +7,7 @@ export const killBackgroundJob: ToolFunctionType<
 > = async ({ backgroundJobId }) => {
   const job = TerminalJob.get(backgroundJobId);
   if (!job) {
-    if (backgroundJobId.startsWith("term-")) {
+    if (parseBackgroundJobId(backgroundJobId) === "terminal") {
       throw new Error(
         `"${backgroundJobId}" is a user-opened terminal and cannot be killed. Only background commands started by executeCommand (ids prefixed with "bgjob-cmd-") can be killed.`,
       );

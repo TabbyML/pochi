@@ -675,5 +675,30 @@
   "builtInAgentsSettings": {
     "title": "Built-in Agents",
     "browser": "browser"
+  },
+  "backgroundTasks": {
+    "toggleResult": "Expand or collapse result",
+    "waitingInput": "Waiting for input",
+    "statusUnavailable": "Status unavailable",
+    "systemAgent": "System agent",
+    "idle": "Idle",
+    "background": "Background",
+    "started": "Started in background",
+    "view": "View subtask",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "stopped": "Stopped",
+    "finished": "Finished",
+    "pendingNotification": "Waiting to notify",
+    "copyJobId": "Copy job ID",
+    "title": "Background Agents",
+    "empty": "No background agents",
+    "untitled": "Untitled",
+    "stop": "Stop",
+    "moveToBackground": "Move to background",
+    "all": "All",
+    "showAll": "Show all background tasks",
+    "moveToBackgroundHint": "Continues in the background and notifies you when done."
   }
 }

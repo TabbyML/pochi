@@ -2,9 +2,13 @@ import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import type { FileStateCache } from "@getpochi/common/tool-utils";
 import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
-import type { BlobStore, LLMRequestData } from "@getpochi/livekit";
+import type {
+  BackgroundJobManager,
+  BlobStore,
+  LLMRequestData,
+} from "@getpochi/livekit";
 import type { CustomAgent, Skill } from "@getpochi/tools";
-import type { BackgroundJobManager } from "./lib/background-job-manager";
+import type { BackgroundCommandManager } from "./lib/background-command-manager";
 import type { FileSystem } from "./lib/file-system";
 import type { TaskRunner } from "./task-runner";
 
@@ -56,15 +60,28 @@ export interface ToolCallOptions {
     overrideOptions?: CreateSubTaskRunnerOverrideOptions,
   ) => TaskRunner;
 
+  /** Unified command and subagent job control. */
+  backgroundJobManager: Pick<BackgroundJobManager, "kill">;
+
+  /**
+   * Converts an already-inited subtask into a background subagent task
+   * executed by the TaskExecutor (optional, used by newTask tool with
+   * background).
+   */
+  backgroundSubTask?: (options: {
+    taskId: string;
+    agentType?: string;
+  }) => Promise<void>;
+
   /**
    * MCP Hub instance for accessing MCP server tools
    */
   mcpHub?: McpHub;
 
   /**
-   * Manager for handling background jobs in the CLI
+   * Node process backend for starting and adopting background commands
    */
-  backgroundJobManager: BackgroundJobManager;
+  backgroundCommandManager: BackgroundCommandManager;
 
   /**
    * Store for managing browser sessions

@@ -35,7 +35,7 @@ import type {
   McpConfigOverride,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
-  BackgroundJobNotificationPart,
+  BackgroundNotificationPart,
   Message,
   Task,
 } from "@getpochi/livekit";
@@ -98,7 +98,7 @@ interface ChatToolbarProps {
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
   /** Background job notifications the chat kit has not delivered yet. */
-  pendingBackgroundJobNotifications?: readonly BackgroundJobNotificationPart[];
+  pendingBackgroundJobNotifications?: readonly BackgroundNotificationPart[];
   /** Asks the chat kit to deliver those notifications right away. */
   flushBackgroundJobNotifications?: () => boolean;
   onToolCallApprovalVisible?: () => void;
@@ -153,6 +153,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     useCustomAgents(true);
 
   const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
+
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
   const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
@@ -357,6 +358,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     flushBackgroundJobNotifications?.();
   }, [
     isIdle,
+    messages,
     queuedMessages,
     pendingBackgroundJobNotifications,
     flushBackgroundJobNotifications,
@@ -372,7 +374,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       parts: [...pendingBackgroundJobNotifications],
       raw: {
         text: pendingBackgroundJobNotifications
-          .map((part) => part.data.summary)
+          .map((part) =>
+            part.data.kind === "subagent"
+              ? `Subagent ${part.data.status}: ${part.data.title || part.data.agentType || part.data.taskId}`
+              : part.data.summary,
+          )
           .join("\n"),
         nonRemovable: true,
       },

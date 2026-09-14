@@ -28,7 +28,7 @@ import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
 import { ActiveSelectionPart, TerminalSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
-import { BackgroundJobNotifications } from "./background-job-notifications";
+import { MessageNotifications } from "./background-job-notifications";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
@@ -246,7 +246,7 @@ export const MessageList: React.FC<{
                   {/* Display attachments at the bottom of the message */}
                   <UserAttachments message={m} />
                   <UserSelections message={m} />
-                  <MessageBackgroundJobNotifications message={m} />
+                  <MessageNotifications parts={m.parts} />
                 </div>
                 {messageIndex < renderMessages.length - 1 ? (
                   <SeparatorWithCheckpoint
@@ -364,14 +364,6 @@ function UserSelections({ message }: { message: Message }) {
       ))}
     </div>
   );
-}
-
-function MessageBackgroundJobNotifications({ message }: { message: Message }) {
-  if (message.role !== "user") return null;
-  const notifications = message.parts.flatMap((part) =>
-    part.type === "data-background-job-notification" ? [part.data] : [],
-  );
-  return <BackgroundJobNotifications notifications={notifications} />;
 }
 
 function EarlierMessagesEdge({

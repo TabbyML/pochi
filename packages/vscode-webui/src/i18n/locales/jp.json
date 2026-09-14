@@ -17,7 +17,6 @@
       "attachments": "ファイルを送信",
       "context": "コンテキストを添付"
     },
-
     "autoSave": {
       "title": "自動保存が有効な場合、Pochi は正しく動作しません。",
       "description": "Pochi は保留中のファイル変更に依存して編集の差分を表示するため、自動保存を無効にする必要があります。"
@@ -320,7 +319,6 @@
     "requiresApproval": "承認待ち",
     "taskCompleted": "タスク完了",
     "reading": "読み込み中 ",
-
     "writing": "書き込み中 ",
     "continue": "続行",
     "retry": "再試行",
@@ -672,5 +670,30 @@
   "builtInAgentsSettings": {
     "title": "組み込みエージェント",
     "browser": "ブラウザー"
+  },
+  "backgroundTasks": {
+    "toggleResult": "結果を展開・折りたたむ",
+    "waitingInput": "入力待ち",
+    "statusUnavailable": "状態を取得できません",
+    "systemAgent": "システムエージェント",
+    "idle": "待機中",
+    "background": "バックグラウンド",
+    "started": "バックグラウンドで開始しました",
+    "view": "サブタスクを表示",
+    "running": "実行中",
+    "completed": "完了",
+    "failed": "失敗",
+    "stopped": "停止済み",
+    "finished": "終了",
+    "pendingNotification": "通知待ち",
+    "copyJobId": "ジョブ ID をコピー",
+    "title": "バックグラウンドエージェント",
+    "empty": "バックグラウンドエージェントはありません",
+    "untitled": "無題",
+    "stop": "停止",
+    "moveToBackground": "バックグラウンドへ移動",
+    "all": "すべて",
+    "showAll": "すべてのバックグラウンドタスクを表示",
+    "moveToBackgroundHint": "バックグラウンドで実行を続け、完了したら通知します。"
   }
 }

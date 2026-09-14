@@ -1,7 +1,8 @@
 import { describe, expect, it, afterEach } from "vitest";
 import { validateToolPolicy } from "@getpochi/tools";
 import { executeToolCall } from "../index";
-import { BackgroundJobManager } from "../../lib/background-job-manager";
+import { BackgroundJobManager } from "@getpochi/livekit";
+import { BackgroundCommandManager } from "../../lib/background-command-manager";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { NodeBlobStore } from "../../node-blob-store";
@@ -15,8 +16,8 @@ describe("executeToolCall with background jobs", () => {
     await fs.rm(testBlobStorage, { recursive: true, force: true });
   });
 
-  it("should pass backgroundJobManager to tool execution", async () => {
-    const manager = new BackgroundJobManager();
+  it("should pass backgroundCommandManager to tool execution", async () => {
+    const manager = new BackgroundCommandManager();
     const cwd = path.resolve(".");
     const blobStore = new NodeBlobStore(testBlobStorage);
 
@@ -34,14 +35,15 @@ describe("executeToolCall with background jobs", () => {
 
 
     // We verified that executeToolCall calls the tool function with `options` first.
-    // executeCommand extracts backgroundJobManager from its tool context when
+    // executeCommand extracts backgroundCommandManager from its tool context when
     // background execution is requested.
 
     const result = (await executeToolCall(
       toolCall,
       {
         rg: "rg",
-        backgroundJobManager: manager,
+        backgroundCommandManager: manager,
+        backgroundJobManager: new BackgroundJobManager({ taskId: "test", store: undefined, commands: manager.controller }),
         fileSystem: {
           readFile: async () => new Uint8Array(),
           writeFile: async () => {},
@@ -126,7 +128,8 @@ describe("executeToolCall with background jobs", () => {
       toolCall,
       {
         rg: "rg",
-        backgroundJobManager: new BackgroundJobManager(),
+        backgroundCommandManager: new BackgroundCommandManager(),
+        backgroundJobManager: new BackgroundJobManager({ taskId: "test", store: undefined, commands: new BackgroundCommandManager().controller }),
         fileSystem: {
           readFile,
           writeFile: async () => {},
@@ -177,7 +180,8 @@ describe("executeToolCall with background jobs", () => {
       toolCall,
       {
         rg: "rg",
-        backgroundJobManager: new BackgroundJobManager(),
+        backgroundCommandManager: new BackgroundCommandManager(),
+        backgroundJobManager: new BackgroundJobManager({ taskId: "test", store: undefined, commands: new BackgroundCommandManager().controller }),
         fileSystem: {
           readFile,
           writeFile: async () => {},

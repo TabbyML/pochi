@@ -9,7 +9,12 @@ import type {
   BuiltinSubAgentInfo,
   ExecuteCommandResult,
 } from "@getpochi/common/vscode-webui-bridge";
-import { processContentOutput } from "@getpochi/livekit";
+import {
+  BackgroundJobManager,
+  type LiveKitStore,
+  commandControllerFromTool,
+  processContentOutput,
+} from "@getpochi/livekit";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
 import type {
   BatchedToolCall,
@@ -44,6 +49,7 @@ type CreateLifecycleToolCallAdapterOptions = {
 type CreateExecutorToolCallAdapterOptions = {
   toolCall: ToolCall;
   uid: string;
+  store?: LiveKitStore;
   storeId: string;
   abortSignal: AbortSignal;
   contentType?: string[];
@@ -133,6 +139,7 @@ export function createBatchedToolCallFromLifecycle({
 export function createSubtaskBatchedToolCall({
   toolCall,
   uid,
+  store,
   storeId,
   abortSignal,
   contentType,
@@ -157,10 +164,8 @@ export function createSubtaskBatchedToolCall({
           isExecuting: true,
         });
 
-        const result = await vscodeHost.executeToolCall(
-          toolCall.toolName,
-          toolCall.input,
-          {
+        const execute = () =>
+          vscodeHost.executeToolCall(toolCall.toolName, toolCall.input, {
             toolCallId: toolCall.toolCallId,
             abortSignal: ThreadAbortSignal.serialize(abortSignal),
             contentType,
@@ -168,8 +173,17 @@ export function createSubtaskBatchedToolCall({
             toolPolicies,
             storeId,
             taskId: uid,
-          },
-        );
+          });
+        const result =
+          toolCall.toolName === "killBackgroundJob"
+            ? await new BackgroundJobManager({
+                store,
+                taskId: uid,
+                commands: commandControllerFromTool(execute),
+              }).kill(
+                (toolCall.input as { backgroundJobId: string }).backgroundJobId,
+              )
+            : await execute();
 
         if (
           toolCall.toolName === "executeCommand" &&

@@ -41,6 +41,20 @@ export class FixedStateToolCallLifeCycle implements ToolCallLifeCycle {
     );
   }
 
+  async moveToBackground(
+    _taskId: string,
+    _agentType: string | undefined,
+    _stopForeground: () => Promise<void>,
+  ): Promise<void> {
+    throw new Error("Cannot move an inactive task to the background.");
+  }
+
+  detach(_result: unknown): void {
+    throw new Error(
+      "Method 'detach()' should not be called on FixedStateToolCallLifeCycle.",
+    );
+  }
+
   addResult(_result: unknown): void {
     throw new Error(
       "Method 'addResult()' should not be called on FixedStateToolCallLifeCycle.",

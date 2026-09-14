@@ -665,5 +665,30 @@
   "builtInAgentsSettings": {
     "title": "내장 에이전트",
     "browser": "브라우저"
+  },
+  "backgroundTasks": {
+    "toggleResult": "결과 펼치기 또는 접기",
+    "waitingInput": "입력 대기 중",
+    "statusUnavailable": "상태를 확인할 수 없음",
+    "systemAgent": "시스템 에이전트",
+    "idle": "대기 중",
+    "background": "백그라운드",
+    "started": "백그라운드에서 시작됨",
+    "view": "하위 작업 보기",
+    "running": "실행 중",
+    "completed": "완료",
+    "failed": "실패",
+    "stopped": "중지됨",
+    "finished": "종료됨",
+    "pendingNotification": "알림 대기 중",
+    "copyJobId": "작업 ID 복사",
+    "title": "백그라운드 에이전트",
+    "empty": "백그라운드 에이전트가 없습니다",
+    "untitled": "제목 없음",
+    "stop": "중지",
+    "moveToBackground": "백그라운드로 이동",
+    "all": "전체",
+    "showAll": "모든 백그라운드 작업 표시",
+    "moveToBackgroundHint": "백그라운드에서 계속 실행되며 완료되면 알려드립니다."
   }
 }

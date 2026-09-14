@@ -1,6 +1,11 @@
-import type { BackgroundJobNotification } from "@getpochi/common";
+import {
+  type BackgroundCommandNotification,
+  type BackgroundJobNotification,
+  getSubAgentBackgroundJobId,
+  getSubAgentNotificationId,
+} from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
-import type { Message } from "@getpochi/livekit";
+import type { Message, Task } from "../types";
 
 export type JobStatus =
   | "running"
@@ -12,6 +17,9 @@ export type JobStatus =
 export interface BackgroundJobEntry {
   backgroundJobId: string;
   displayId?: string;
+  taskId?: string;
+  agentType?: string;
+  notificationPending?: boolean;
   title: string;
   command?: string;
   status: JobStatus;
@@ -24,13 +32,15 @@ export function buildBackgroundJobList({
   messages,
   notifications,
   backgroundCommands,
+  subTasks = [],
 }: {
   messages: readonly Message[];
   notifications: readonly BackgroundJobNotification[];
   backgroundCommands: BackgroundCommands | undefined;
+  subTasks?: readonly Task[];
 }): BackgroundJobEntry[] {
   const commands = new Map<string, { command?: string; outputFile?: string }>();
-  const finished = new Map<string, BackgroundJobNotification>();
+  const finished = new Map<string, BackgroundCommandNotification>();
 
   for (const message of messages) {
     for (const part of message.parts) {
@@ -47,13 +57,17 @@ export function buildBackgroundJobList({
             outputFile,
           });
         }
-      } else if (part.type === "data-background-job-notification") {
+      } else if (
+        part.type === "data-background-job-notification" &&
+        part.data.kind !== "subagent"
+      ) {
         finished.set(part.data.backgroundJobId, part.data);
       }
     }
   }
   for (const notification of notifications) {
-    finished.set(notification.backgroundJobId, notification);
+    if (notification.kind !== "subagent")
+      finished.set(notification.backgroundJobId, notification);
   }
 
   const backgroundJobs: BackgroundJobEntry[] = [];
@@ -91,5 +105,42 @@ export function buildBackgroundJobList({
 
   // Newest command first, with the `%N` labels still counting from the start
   // of the task.
-  return [...backgroundJobs.reverse(), ...orphaned];
+  const delivered = new Set<string>();
+  const agents = new Map<string, string>();
+  for (const message of messages) {
+    for (const part of message.parts) {
+      if (part.type === "data-background-job-notification") {
+        delivered.add(part.data.notificationId);
+      }
+      if (
+        part.type === "tool-newTask" &&
+        part.input?._meta?.uid &&
+        part.input.agentType
+      ) {
+        agents.set(part.input._meta.uid, part.input.agentType);
+      }
+    }
+  }
+  const subagents: BackgroundJobEntry[] = subTasks
+    .filter((task) => task.background)
+    .map((task) => {
+      const done = task.status === "completed" || task.status === "failed";
+      return {
+        backgroundJobId: getSubAgentBackgroundJobId(task.id),
+        taskId: task.id,
+        title: task.title || getSubAgentBackgroundJobId(task.id),
+        agentType: agents.get(task.id),
+        status:
+          task.status === "failed"
+            ? task.error?.kind === "AbortError"
+              ? "stopped"
+              : "failed"
+            : task.status === "completed"
+              ? "completed"
+              : "running",
+        notificationPending:
+          done && !delivered.has(getSubAgentNotificationId(task)),
+      };
+    });
+  return [...backgroundJobs.reverse(), ...orphaned, ...subagents];
 }

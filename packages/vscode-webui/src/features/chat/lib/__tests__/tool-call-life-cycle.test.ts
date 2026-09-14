@@ -4,7 +4,7 @@ import type { Todo } from "@getpochi/tools";
 import { ManagedToolCallLifeCycle } from "../tool-call-life-cycle";
 
 vi.mock("@/lib/vscode", () => ({
-  vscodeHost: {},
+  vscodeHost: { readBackgroundTaskState: vi.fn(async () => ({ setBackgroundTaskState: vi.fn() })) },
 }));
 
 function makeStore() {
@@ -168,5 +168,75 @@ describe("ManagedToolCallLifeCycle", () => {
 
     await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
     expect(lifecycle.complete.reason).toBe("user-abort");
+  });
+});
+
+describe("background subagent job cancellation", () => {
+  it.each([true, false])("validates job ownership before stopping (owned: %s)", async (owned) => {
+    const commit = vi.fn();
+    const store = { storeId: "store", commit, query: vi.fn(() => ({ id: "0x123456", parentId: owned ? "parent" : "other", background: true, status: "pending-model" })) };
+    const lifecycle = new ManagedToolCallLifeCycle(store as never, { toolName: "killBackgroundJob", toolCallId: "kill" }, new AbortController().signal);
+    lifecycle.execute({ backgroundJobId: "bgjob-task-0x123456" }, { taskId: "parent" });
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    if (owned) {
+      expect(lifecycle.complete.result).toEqual({ success: true });
+      expect(commit).toHaveBeenCalledWith(expect.objectContaining({ args: expect.objectContaining({ id: "0x123456", error: expect.objectContaining({ kind: "AbortError" }) }) }));
+    } else {
+      expect(lifecycle.complete.result).toEqual({ error: expect.stringContaining("not found") });
+      expect(commit).not.toHaveBeenCalled();
+    }
+  });
+});
+
+
+describe("foreground background handoff", () => {
+  async function setup() {
+    const task = { id: "subtask-1", parentId: "parent", status: "pending-tool", background: false };
+    const store = { ...makeStore(), query: vi.fn(() => task), commit: vi.fn(() => { task.background = true; }) };
+    const lifecycle = new ManagedToolCallLifeCycle(store as never, { toolName: "newTask", toolCallId: "call" }, new AbortController().signal);
+    lifecycle.execute({ _meta: { uid: task.id } });
+    await vi.waitFor(() => expect(lifecycle.status).toBe("execute:streaming"));
+    return { lifecycle, store, task };
+  }
+
+  it("waits for foreground completion and coalesces repeated clicks", async () => {
+    const { lifecycle, store, task } = await setup();
+    let finish!: () => void;
+    const stop = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const result = lifecycle.moveToBackground(task.id, "explore", stop);
+    expect(lifecycle.moveToBackground(task.id, "explore", stop)).toBe(result);
+    await vi.waitFor(() => expect(stop).toHaveBeenCalledOnce());
+    expect(store.commit).not.toHaveBeenCalled();
+    expect(lifecycle.status).toBe("execute:streaming");
+    finish();
+    await result;
+    expect(store.commit).toHaveBeenCalledOnce();
+    expect(lifecycle.complete.result).toEqual(expect.objectContaining({ backgroundJobId: "bgjob-task-subtask-1" }));
+  });
+
+  it("reports a stop failure without starting background execution", async () => {
+    const { lifecycle, store, task } = await setup();
+    await expect(lifecycle.moveToBackground(task.id, "explore", async () => { throw new Error("stop failed"); })).rejects.toThrow("stop failed");
+    expect(store.commit).not.toHaveBeenCalled();
+    expect(lifecycle.complete.result).toEqual({ error: "stop failed" });
+  });
+
+  it("does not hand off after cancellation while stopping", async () => {
+    const { lifecycle, store, task } = await setup();
+    await expect(lifecycle.moveToBackground(task.id, "explore", async () => { lifecycle.abort(); })).rejects.toThrow("cancelled");
+    expect(store.commit).not.toHaveBeenCalled();
+    expect(lifecycle.complete.reason).toBe("user-abort");
+  });
+
+  it("fails on timeout instead of starting a second executor", async () => {
+    const { lifecycle, store, task } = await setup();
+    vi.useFakeTimers();
+    try {
+      const result = lifecycle.moveToBackground(task.id, "explore", () => new Promise<void>(() => {}));
+      const rejected = expect(result).rejects.toThrow("Timed out");
+      await vi.advanceTimersByTimeAsync(10000);
+      await rejected;
+      expect(store.commit).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
   });
 });

@@ -1,4 +1,8 @@
-import { getLogger } from "@getpochi/common";
+import {
+  type BackgroundJobNotification,
+  createBackgroundJobNotification,
+  getLogger,
+} from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { pochiConfig } from "@getpochi/common/configuration";
 import type { McpHub } from "@getpochi/common/mcp-utils";
@@ -11,15 +15,17 @@ import {
   resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
+  BackgroundJobManager,
   type BlobStore,
   type LLMRequestData,
+  type LiveKitStore,
   type RunningTaskAdaptor,
   type UITools,
   processContentOutput,
 } from "@getpochi/livekit";
 import type { Skill } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
-import { BackgroundJobManager } from "./lib/background-job-manager";
+import { BackgroundCommandManager } from "./lib/background-command-manager";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { executeToolCall } from "./tools";
@@ -28,6 +34,7 @@ import type { ToolCallOptions } from "./types";
 const logger = getLogger("CliRunningTaskAdaptor");
 
 interface CliRunningTaskAdaptorOptions {
+  store: LiveKitStore;
   blobStore: BlobStore;
   llm: LLMRequestData;
   cwd: string;
@@ -40,6 +47,9 @@ interface CliRunningTaskAdaptorOptions {
   parentFileStateCache?: FileStateCache;
   autoMemoryManager?: AutoMemoryManager;
   projectMemoryEnabled?: boolean;
+  resolveSubTaskLLM?: (
+    customAgent: ValidCustomAgentFile,
+  ) => Promise<LLMRequestData | undefined>;
 }
 
 export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
@@ -56,12 +66,14 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly fileStateCaches = new Map<string, FileStateCache>();
   private readonly autoMemoryManager: AutoMemoryManager;
   private readonly projectMemoryEnabled: boolean;
-  private readonly backgroundJobManagers = new Map<
+  private readonly resolveSubTaskLLM: CliRunningTaskAdaptorOptions["resolveSubTaskLLM"];
+  private readonly taskLLMs = new Map<string, LLMRequestData>();
+  private readonly backgroundCommandManagers = new Map<
     string,
-    BackgroundJobManager
+    BackgroundCommandManager
   >();
 
-  constructor(options: CliRunningTaskAdaptorOptions) {
+  constructor(private readonly options: CliRunningTaskAdaptorOptions) {
     this.blobStore = options.blobStore;
     this.llm = options.llm;
     this.cwd = options.cwd;
@@ -75,21 +87,48 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     this.autoMemoryManager =
       options.autoMemoryManager ?? new AutoMemoryManager();
     this.projectMemoryEnabled = options.projectMemoryEnabled ?? true;
+    this.resolveSubTaskLLM = options.resolveSubTaskLLM;
   }
 
   dispose() {
-    for (const manager of this.backgroundJobManagers.values()) {
+    for (const manager of this.backgroundCommandManagers.values()) {
       manager.killAll();
     }
-    this.backgroundJobManagers.clear();
+    this.backgroundCommandManagers.clear();
   }
 
-  getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
+  backgroundCommands(taskId: string) {
+    const manager = this.getBackgroundCommandManager(taskId);
+    const notifications: BackgroundJobNotification[] = [];
+    const unsubscribe = manager.onDidFinish((event) => {
+      notifications.push(createBackgroundJobNotification(event));
+    });
+    return {
+      hasPendingJobs: () =>
+        manager.hasPendingJobs() || notifications.length > 0,
+      takeNotifications: () => notifications.splice(0),
+      waitForPending: async (signal: AbortSignal) => {
+        await manager.waitForAllJobs(0, signal);
+      },
+      dispose: () => {
+        unsubscribe();
+        manager.killAll();
+        this.backgroundCommandManagers.delete(taskId);
+      },
+    };
+  }
+
+  getRequestGetters(
+    context: Parameters<RunningTaskAdaptor["getRequestGetters"]>[0],
+  ) {
     return {
       getLLM: () => this.llm,
       getEffectiveContextWindow: () => pochiConfig.value.effectiveContextWindow,
       getEnvironment: async () =>
-        readEnvironment({ cwd: context.cwd ?? this.cwd }),
+        readEnvironment({
+          cwd: context.cwd ?? this.cwd,
+          omitCustomRules: context.omitCustomRules,
+        }),
       ...(this.projectMemoryEnabled
         ? {
             getAutoMemory: async () =>
@@ -113,6 +152,33 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     };
   }
 
+  async resolveTaskLLM(
+    context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
+  ): Promise<LLMRequestData | undefined> {
+    const { taskState } = context;
+    if (!taskState.agentType) {
+      return undefined;
+    }
+    const agent = this.customAgents?.find(
+      (a) => a.name === taskState.agentType,
+    );
+    if (!agent?.model) return undefined;
+
+    try {
+      const llm = await this.resolveSubTaskLLM?.(agent);
+      if (llm) {
+        this.taskLLMs.set(context.taskId, llm);
+      }
+      return llm;
+    } catch (error) {
+      logger.warn(
+        `Failed to resolve model "${agent.model}" for agent ${agent.name}; falling back to the default model`,
+        error,
+      );
+      return undefined;
+    }
+  }
+
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
@@ -134,7 +200,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
         this.createToolCallOptions(args.taskId),
         this.cwd,
         args.abortSignal,
-        this.llm.contentType,
+        (this.taskLLMs.get(args.taskId) ?? this.llm).contentType,
       ),
     );
 
@@ -163,7 +229,12 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       customAgents: this.customAgents,
       skills: this.skills,
       mcpHub: this.mcpHub,
-      backgroundJobManager: this.getBackgroundJobManager(taskId),
+      backgroundCommandManager: this.getBackgroundCommandManager(taskId),
+      backgroundJobManager: new BackgroundJobManager({
+        store: this.options.store,
+        taskId,
+        commands: this.getBackgroundCommandManager(taskId).controller,
+      }),
     };
   }
 
@@ -199,11 +270,11 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     return cache;
   }
 
-  private getBackgroundJobManager(taskId: string) {
-    let manager = this.backgroundJobManagers.get(taskId);
+  private getBackgroundCommandManager(taskId: string) {
+    let manager = this.backgroundCommandManagers.get(taskId);
     if (!manager) {
-      manager = new BackgroundJobManager({ taskId });
-      this.backgroundJobManagers.set(taskId, manager);
+      manager = new BackgroundCommandManager({ taskId });
+      this.backgroundCommandManagers.set(taskId, manager);
     }
     return manager;
   }

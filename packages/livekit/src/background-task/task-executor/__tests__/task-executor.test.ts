@@ -129,6 +129,61 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
+  it.each([true, false])("passes omitAgentsMd=%s to environment resolution", async (omitAgentsMd) => {
+    const store = new FakeLiveKitStore([makeTask({ id: "task", status: "pending-tool" })]);
+    store.setMessages("task", [makeAssistantMessage([makeToolPart("readFile", "read", { path: "a.ts" })])]);
+    const base = makeAdaptor({ executeToolCall: vi.fn(async () => ({})) });
+    const getRequestGetters = vi.fn(() => ({ ...base.getRequestGetters(), getCustomAgents: () => [{ name: "reader", omitAgentsMd }] as never }));
+    const executor = makeExecutor(store, { ...base, getRequestGetters }, { agentType: "reader" });
+    await executor.drain();
+    expect(getRequestGetters).toHaveBeenLastCalledWith({ taskId: "task", cwd: "/repo", omitCustomRules: omitAgentsMd });
+    await executor.dispose();
+  });
+
+  it("waits for owned commands and delivers their notifications before releasing the task", async () => {
+    const store = new FakeLiveKitStore([makeTask({ id: "task", status: "pending-tool" })]);
+    store.setMessages("task", [makeAssistantMessage([makeToolPart("executeCommand", "exec", { command: "echo hi", background: true })])]);
+    const pending = deferred<void>();
+    const notification = { kind: "command" as const, notificationId: "bgjob-cmd-1:terminal", backgroundJobId: "bgjob-cmd-1", status: "completed" as const, finishedAt: 1, outputFile: "/tmp/output", summary: "done" };
+    let ready = false;
+    const dispose = vi.fn();
+    const waitForPending = vi.fn(async () => { await pending.promise; ready = true; });
+    const backgroundCommands = vi.fn(() => ({
+      hasPendingJobs: () => true,
+      takeNotifications: () => { if (!ready) return []; ready = false; return [notification]; },
+      waitForPending,
+      dispose,
+    }));
+    // Only the first drain should produce a notification.
+    waitForPending.mockImplementationOnce(async () => { await pending.promise; ready = true; });
+    waitForPending.mockImplementation(async () => {});
+    const executor = makeExecutor(store, { ...makeAdaptor({ executeToolCall: vi.fn(async () => ({ _meta: { backgroundJobId: "bgjob-cmd-1" } })) }), backgroundCommands }, {});
+    const drain = executor.drain();
+    await waitFor(() => waitForPending.mock.calls.length === 1);
+    expect(dispose).not.toHaveBeenCalled();
+    pending.resolve();
+    await drain;
+    expect(backgroundCommands).toHaveBeenCalledWith("task");
+    expect(store.readMessages("task").flatMap((m) => m.parts)).toContainEqual({ type: "data-background-job-notification", data: notification });
+    expect(mockState.instances[0].chat.sendMessageCalls).toBe(2);
+    expect(dispose).toHaveBeenCalledOnce();
+    await executor.dispose();
+  });
+
+  it("aborts command draining when its task is stopped", async () => {
+    const store = new FakeLiveKitStore([makeTask({ id: "task", status: "pending-tool" })]);
+    store.setMessages("task", [makeAssistantMessage([makeToolPart("askFollowupQuestion", "ask", { question: "done?" })])]);
+    const dispose = vi.fn();
+    const waiting = vi.fn((signal: AbortSignal) => new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true })));
+    const executor = makeExecutor(store, { ...makeAdaptor({ executeToolCall: vi.fn() }), backgroundCommands: () => ({ hasPendingJobs: () => true, takeNotifications: () => [], waitForPending: waiting, dispose }) }, {});
+    executor.start();
+    await waitFor(() => waiting.mock.calls.length === 1);
+    await executor.stopTask("task");
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(mockState.instances[0].chat.sendMessageCalls).toBe(0);
+    await executor.dispose();
+  });
+
   it("uses the background task's configured max steps", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-tool" }),
@@ -283,6 +338,100 @@ describe("TaskExecutor", () => {
 
     pending.resolve({ content: "hello" });
     await executor.drain();
+    await executor.dispose();
+  });
+
+  it("runs two background subagents concurrently", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "first", status: "pending-tool" }),
+      makeTask({ id: "second", status: "pending-tool" }),
+    ]);
+    for (const id of ["first", "second"]) {
+      store.setMessages(id, [makeAssistantMessage([
+        makeToolPart("readFile", id, { path: "a.ts" }),
+      ])]);
+    }
+    const pending = deferred<unknown>();
+    const executeToolCall = vi.fn(() => pending.promise);
+    const executor = makeExecutor(store, makeAdaptor({ executeToolCall }), {
+    });
+    executor.start();
+    await waitFor(() => executeToolCall.mock.calls.length === 2);
+    expect(store.readTask("first")?.status).toBe("pending-tool");
+    expect(store.readTask("second")?.status).toBe("pending-tool");
+    pending.resolve({ content: "done" });
+    await executor.drain();
+    expect(store.readTask("first")?.status).toBe("completed");
+    expect(store.readTask("second")?.status).toBe("completed");
+    await executor.dispose();
+  });
+
+  it.each(["executor", "persisted cancellation"])("stops a subagent via %s without restarting it or stopping its sibling", async (source) => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "first", status: "pending-tool" }),
+      makeTask({ id: "second", status: "pending-tool" }),
+    ]);
+    for (const id of ["first", "second"]) {
+      store.setMessages(id, [makeAssistantMessage([
+        makeToolPart("readFile", id, { path: "a.ts" }),
+      ])]);
+    }
+    const pending = deferred<unknown>();
+    const executeToolCall = vi.fn(({ abortSignal }: Parameters<RunningTaskAdaptor["executeToolCall"]>[0]) =>
+      Promise.race([pending.promise, new Promise((_, reject) => {
+        abortSignal.addEventListener("abort", () => reject(abortSignal.reason), { once: true });
+      })]),
+    );
+    const executor = makeExecutor(store, makeAdaptor({ executeToolCall }), {});
+    executor.start();
+    await waitFor(() => executeToolCall.mock.calls.length === 2);
+    if (source === "executor") {
+      await executor.stopTask("first");
+    } else {
+      store.commit({ args: { id: "first", error: { kind: "AbortError", message: "Stopped by user." } } });
+      await waitFor(() => executeToolCall.mock.calls[0][0].abortSignal.aborted);
+    }
+    expect(store.readTask("first")?.status).toBe("failed");
+    expect(store.readTask("second")?.status).toBe("pending-tool");
+    expect(mockState.instances.filter((x) => x.taskId === "first")).toHaveLength(1);
+    pending.resolve({ content: "done" });
+    await executor.drain();
+    expect(store.readTask("second")?.status).toBe("completed");
+    await executor.dispose();
+  });
+
+  it("fails a missing custom agent once instead of rescheduling initialization", async () => {
+    const store = new FakeLiveKitStore([makeTask({ id: "task", status: "pending-model" })]);
+    const executeToolCall = vi.fn();
+    const executor = makeExecutor(store, makeAdaptor({ executeToolCall }), {
+      agentType: "missing",
+    });
+    await executor.drain();
+    expect(store.readTask("task")).toMatchObject({ status: "failed", error: {
+      message: 'Custom agent "missing" not found for background subagent task.',
+    }});
+    expect(executeToolCall).not.toHaveBeenCalled();
+    await executor.dispose();
+  });
+
+  it("uses a custom subagent's tool restrictions", async () => {
+    const store = new FakeLiveKitStore([makeTask({ id: "task", status: "pending-tool" })]);
+    store.setMessages("task", [makeAssistantMessage([
+      makeToolPart("executeCommand", "exec", { command: "echo hi" }),
+    ])]);
+    const adaptor = makeAdaptor({ executeToolCall: vi.fn() });
+    const executor = makeExecutor(store, {
+      ...adaptor,
+      getRequestGetters: () => ({
+        ...adaptor.getRequestGetters(),
+        getCustomAgents: () => [{ name: "reader", tools: ["readFile"] }] as never,
+      }),
+    }, { agentType: "reader" });
+    await executor.drain();
+    expect(adaptor.executeToolCall).not.toHaveBeenCalled();
+    expect(getToolPart(store.readMessages("task").at(-1), "exec")?.output).toEqual({
+      error: "Tool executeCommand is not allowed for this task.",
+    });
     await executor.dispose();
   });
 
@@ -461,6 +610,10 @@ class FakeLiveKitStore {
     return undefined;
   }
 
+  commit(event: { args: { id: string; error: { kind?: string; message: string } } }) {
+    this.failTask(event.args.id, event.args.error.message, event.args.error.kind);
+  }
+
   readRunnableTasks() {
     return [...this.tasks.values()].filter(
       (task) =>
@@ -488,13 +641,13 @@ class FakeLiveKitStore {
     this.emit();
   }
 
-  failTask(taskId: string, message: string) {
+  failTask(taskId: string, message: string, kind = "InternalError") {
     const task = this.readTask(taskId);
     if (!task) return;
     this.tasks.set(taskId, {
       ...task,
       status: "failed",
-      error: { kind: "InternalError", message },
+      error: { kind, message },
     });
     this.emit();
   }

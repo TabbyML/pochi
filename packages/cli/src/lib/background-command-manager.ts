@@ -44,19 +44,19 @@ export interface BackgroundJobInitialOutput {
   dispose?: () => Promise<void>;
 }
 
-export interface BackgroundJobManagerOptions {
+export interface BackgroundCommandManagerOptions {
   taskId?: string;
   outputDir?: string;
 }
 
 type FinishListener = (event: BackgroundJobTerminalEvent) => void;
 
-export class BackgroundJobManager {
+export class BackgroundCommandManager {
   private jobs: Map<string, BackgroundJob> = new Map();
   private maxOutputSize = 1024 * 1024; // compatibility buffer only
   private readonly finishListeners = new Set<FinishListener>();
 
-  constructor(private readonly options: BackgroundJobManagerOptions = {}) {}
+  constructor(private readonly options: BackgroundCommandManagerOptions = {}) {}
 
   start(
     command: string,
@@ -305,6 +305,14 @@ export class BackgroundJobManager {
 
     return { output: outputToReturn, status: job.status };
   }
+
+  readonly controller = {
+    kill: async (id: string): Promise<void> => {
+      if (!this.kill(id)) {
+        throw new Error(`Failed to stop background command "${id}".`);
+      }
+    },
+  };
 
   kill(id: string): boolean {
     const job = this.jobs.get(id);

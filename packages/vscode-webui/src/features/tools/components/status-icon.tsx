@@ -12,10 +12,12 @@ import type { ToolUIPart } from "ai";
 import {
   Check,
   CheckIcon,
+  CircleHelp,
   CircleSmall,
   FilesIcon,
   Loader2,
   Pause,
+  Square,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -26,6 +28,17 @@ interface StatusIconProps {
   isExecuting: boolean;
   className?: string;
   iconClassName?: string;
+  /** Actual asynchronous task state, when the tool has already returned. */
+  statusOverride?: {
+    status:
+      | "running"
+      | "waiting"
+      | "completed"
+      | "failed"
+      | "stopped"
+      | "unknown";
+    label: string;
+  };
 }
 
 export function StatusIcon({
@@ -33,6 +46,7 @@ export function StatusIcon({
   isExecuting,
   className,
   iconClassName,
+  statusOverride,
 }: StatusIconProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -106,6 +120,45 @@ export function StatusIcon({
         )}
       />
     );
+  }
+
+  if (statusOverride) {
+    const icons = {
+      running: Loader2,
+      waiting: Pause,
+      completed: Check,
+      failed: X,
+      stopped: Square,
+      unknown: CircleHelp,
+    };
+    const Icon = icons[statusOverride.status];
+    statusIcon = (
+      <span
+        role="img"
+        aria-label={statusOverride.label}
+        className="inline-flex"
+      >
+        <Icon
+          className={cn(
+            "size-4",
+            {
+              "animate-spin text-zinc-500 dark:text-zinc-400":
+                statusOverride.status === "running",
+              "text-emerald-700 dark:text-emerald-300":
+                statusOverride.status === "completed",
+              "text-error": statusOverride.status === "failed",
+              "text-zinc-500 dark:text-zinc-400":
+                statusOverride.status === "waiting" ||
+                statusOverride.status === "stopped" ||
+                statusOverride.status === "unknown",
+            },
+            iconClassName,
+          )}
+          aria-hidden="true"
+        />
+      </span>
+    );
+    tooltipContent.push(<p>{statusOverride.label}</p>);
   }
 
   if (tooltipContent.length > 0) {

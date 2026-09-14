@@ -312,3 +312,25 @@ describe("ToolCallQueue", () => {
   });
 
 });
+
+it("stop waits for both active execution and asynchronous cancellation", async () => {
+  const manager = new BatchExecuteManager();
+  let finishRun!: () => void;
+  let finishCancel!: () => void;
+  const run = vi.fn(() => new Promise<BatchedToolCallResult>((resolve) => {
+    finishRun = () => resolve({ kind: "success" });
+  }));
+  const cancel = vi.fn(() => new Promise<void>((resolve) => { finishCancel = resolve; }));
+  manager.enqueue("task", { toolCallId: "call", toolName: "writeToFile", input: {}, run, cancel });
+  manager.processQueue("task");
+  await vi.waitFor(() => expect(run).toHaveBeenCalled());
+  let stopped = false;
+  const stop = manager.stop("task").then(() => { stopped = true; });
+  await vi.waitFor(() => expect(cancel).toHaveBeenCalled());
+  finishCancel();
+  await Promise.resolve();
+  expect(stopped).toBe(false);
+  finishRun();
+  await stop;
+  expect(stopped).toBe(true);
+});

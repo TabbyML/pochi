@@ -5,11 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { BackgroundJobManager } from "../background-job-manager";
+import { BackgroundCommandManager } from "../background-command-manager";
 
-describe("BackgroundJobManager", () => {
+describe("BackgroundCommandManager", () => {
   it("should start and kill a job", async () => {
-    const manager = new BackgroundJobManager();
+    const manager = new BackgroundCommandManager();
     const { backgroundJobId, outputFile } = manager.start("sleep 10", ".");
     expect(backgroundJobId).toMatch(/^bgjob-cmd-/);
     expect(outputFile).toContain(backgroundJobId);
@@ -24,7 +24,7 @@ describe("BackgroundJobManager", () => {
   });
 
   it("should capture output", async () => {
-    const manager = new BackgroundJobManager();
+    const manager = new BackgroundCommandManager();
     const { backgroundJobId, outputFile } = manager.start(
       "echo 'hello world'",
       ".",
@@ -50,7 +50,7 @@ describe("BackgroundJobManager", () => {
   it("captures live adopted output while replaying initial output", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pochi-bgjob-adopt-test-"));
     try {
-      const manager = new BackgroundJobManager({ outputDir });
+      const manager = new BackgroundCommandManager({ outputDir });
       const stdout = new PassThrough();
       const stderr = new PassThrough();
       const child = Object.assign(new EventEmitter(), {
@@ -86,7 +86,7 @@ describe("BackgroundJobManager", () => {
   });
 
   it("should guide agents away from rapid empty reads", () => {
-    const manager = new BackgroundJobManager();
+    const manager = new BackgroundCommandManager();
     const { backgroundJobId } = manager.start("sleep 10", ".");
 
     const firstResult = manager.readOutput(backgroundJobId);
@@ -100,7 +100,7 @@ describe("BackgroundJobManager", () => {
   });
 
   it("should wait for all jobs to complete", async () => {
-    const manager = new BackgroundJobManager();
+    const manager = new BackgroundCommandManager();
     manager.start("sleep 0.1", ".");
     manager.start("sleep 0.2", ".");
 
@@ -110,7 +110,7 @@ describe("BackgroundJobManager", () => {
   });
 
   it("should timeout if jobs take too long", async () => {
-    const manager = new BackgroundJobManager();
+    const manager = new BackgroundCommandManager();
     manager.start("sleep 2", ".");
 
     const result = await manager.waitForAllJobs(100);
@@ -122,7 +122,7 @@ describe("BackgroundJobManager", () => {
   it("emits its terminal event after the output file is readable", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pochi-bgjob-test-"));
     try {
-      const manager = new BackgroundJobManager({
+      const manager = new BackgroundCommandManager({
         taskId: "task-test",
         outputDir,
       });
@@ -144,7 +144,7 @@ describe("BackgroundJobManager", () => {
   it("preserves split UTF-8 and removes terminal control sequences", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pochi-bgjob-utf8-test-"));
     try {
-      const manager = new BackgroundJobManager({
+      const manager = new BackgroundCommandManager({
         taskId: "task-test",
         outputDir,
       });
@@ -174,7 +174,7 @@ describe("BackgroundJobManager", () => {
   it("discards an incomplete UTF-8 character when manually stopped", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pochi-bgjob-stop-utf8-test-"));
     try {
-      const manager = new BackgroundJobManager({
+      const manager = new BackgroundCommandManager({
         taskId: "task-test",
         outputDir,
       });
