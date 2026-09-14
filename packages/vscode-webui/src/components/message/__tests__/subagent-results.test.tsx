@@ -30,7 +30,9 @@ afterEach(() => {
 });
 
 const result: SubAgentResultNotification = {
- kind: "subagent", notificationId: "bgjob-task-child:terminal:1", backgroundJobId: "bgjob-task-child",
+  kind: "subagent",
+  notificationId: "bgjob-task-child:terminal:1",
+  backgroundJobId: "bgjob-task-child",
   taskId: "child",
   title: "Inspect test setup",
   status: "completed",

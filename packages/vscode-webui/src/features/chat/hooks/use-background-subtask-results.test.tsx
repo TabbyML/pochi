@@ -12,7 +12,10 @@ vi.mock("@/lib/use-default-store", () => ({
 }));
 vi.mock("@getpochi/livekit", () => ({
   catalog: { queries: { makeSubTaskQuery: (id: string) => id } },
-  createSubAgentResultNotification: (_store: unknown, task: { id: string; status: string }) => ({
+  createSubAgentResultNotification: (
+    _store: unknown,
+    task: { id: string; status: string },
+  ) => ({
     kind: "subagent",
     notificationId: `bgjob-task-${task.id}:terminal:${task.status}`,
     backgroundJobId: `bgjob-task-${task.id}`,
@@ -22,13 +25,30 @@ vi.mock("@getpochi/livekit", () => ({
   }),
 }));
 
-const saved: Message[] = [{ id: "notification", role: "user", parts: [{
-  type: "data-background-job-notification",
-  data: { kind: "subagent", notificationId: "bgjob-task-done:terminal:completed", backgroundJobId: "bgjob-task-done", taskId: "done", status: "completed", result: "saved" },
-}] }];
+const saved: Message[] = [
+  {
+    id: "notification",
+    role: "user",
+    parts: [
+      {
+        type: "data-background-job-notification",
+        data: {
+          kind: "subagent",
+          notificationId: "bgjob-task-done:terminal:completed",
+          backgroundJobId: "bgjob-task-done",
+          taskId: "done",
+          status: "completed",
+          result: "saved",
+        },
+      },
+    ],
+  },
+];
 
 describe("background subagent results", () => {
-  beforeEach(() => { state.tasks = []; });
+  beforeEach(() => {
+    state.tasks = [];
+  });
 
   it("batches finished background tasks and excludes foreground and running tasks", () => {
     state.tasks = [
@@ -38,7 +58,9 @@ describe("background subagent results", () => {
       { id: "foreground", background: false, status: "completed" },
     ];
     const onResults = vi.fn();
-    const { rerender } = renderHook(() => useBackgroundSubtaskResults("parent", [], onResults));
+    const { rerender } = renderHook(() =>
+      useBackgroundSubtaskResults("parent", [], onResults),
+    );
     expect(onResults).toHaveBeenCalledWith([
       expect.objectContaining({ taskId: "done", status: "completed" }),
       expect.objectContaining({ taskId: "failed", status: "failed" }),
@@ -50,7 +72,9 @@ describe("background subagent results", () => {
   it("does not redeliver persisted results after remount", () => {
     state.tasks = [{ id: "done", background: true, status: "completed" }];
     const onResults = vi.fn();
-    const { unmount } = renderHook(() => useBackgroundSubtaskResults("parent", saved, onResults));
+    const { unmount } = renderHook(() =>
+      useBackgroundSubtaskResults("parent", saved, onResults),
+    );
     unmount();
     renderHook(() => useBackgroundSubtaskResults("parent", saved, onResults));
     expect(onResults).not.toHaveBeenCalled();
@@ -60,6 +84,11 @@ describe("background subagent results", () => {
     state.tasks = [{ id: "done", background: true, status: "failed" }];
     const onResults = vi.fn();
     renderHook(() => useBackgroundSubtaskResults("parent", saved, onResults));
-    expect(onResults).toHaveBeenCalledWith([expect.objectContaining({ notificationId: "bgjob-task-done:terminal:failed", status: "failed" })]);
+    expect(onResults).toHaveBeenCalledWith([
+      expect.objectContaining({
+        notificationId: "bgjob-task-done:terminal:failed",
+        status: "failed",
+      }),
+    ]);
   });
 });

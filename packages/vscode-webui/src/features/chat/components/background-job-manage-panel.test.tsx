@@ -182,10 +182,12 @@ describe("BackgroundJobManagePanel", () => {
     const agents = screen.getByRole("button", {
       name: /backgroundTasks.title/,
     }).parentElement;
+    if (!commands || !agents)
+      throw new Error("Background job sections are missing");
     expect(commands).not.toBe(agents);
-    expect(within(commands!).queryByText("Review tests")).toBeNull();
-    expect(within(agents!).getByText("Review tests")).toBeTruthy();
-    expect(within(agents!).queryByText(runningJob.title)).toBeNull();
+    expect(within(commands).queryByText("Review tests")).toBeNull();
+    expect(within(agents).getByText("Review tests")).toBeTruthy();
+    expect(within(agents).queryByText(runningJob.title)).toBeNull();
   });
 
   it("shows subagents outside dev mode and routes stop to the subagent", () => {
