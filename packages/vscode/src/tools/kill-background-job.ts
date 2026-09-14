@@ -8,7 +8,7 @@ export const killBackgroundJob: ToolFunctionType<
   if (!job) {
     if (backgroundJobId.startsWith("term-")) {
       throw new Error(
-        `"${backgroundJobId}" is a user-opened terminal and cannot be killed. Only background commands started by executeCommand (ids prefixed with "bgjob-cmd-") can be killed.`,
+        `"${backgroundJobId}" is a user-opened terminal and cannot be killed. Managed commands ("bgjob-cmd-") and monitors ("bgjob-monitor-") can be killed.`,
       );
     }
     throw new Error(`Background job with ID "${backgroundJobId}" not found.`);

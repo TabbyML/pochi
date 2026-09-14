@@ -1,5 +1,8 @@
 import { useBackgroundJobNotifications } from "@/lib/hooks/use-background-job-notifications";
-import type { BackgroundJobNotification } from "@getpochi/common";
+import type {
+  BackgroundJobNotification,
+  MonitorEventEnvelope,
+} from "@getpochi/common";
 import {
   type BackgroundJobNotificationPart,
   type LiveChatKitBackgroundJobNotificationOptions,
@@ -7,6 +10,7 @@ import {
   getBackgroundJobNotificationIds,
 } from "@getpochi/livekit";
 import { useEffect, useMemo, useState } from "react";
+import { useMonitorEvents } from "./use-monitor-events";
 
 /**
  * Mirrors the notifications the chat kit has not delivered yet, so the toolbar
@@ -38,12 +42,19 @@ export function useBackgroundJobNotificationDelivery({
 }: {
   taskId: string;
   messages: Message[];
-  enqueue: (notifications: readonly BackgroundJobNotification[]) => void;
+  enqueue: (
+    notifications: readonly (
+      | BackgroundJobNotification
+      | MonitorEventEnvelope
+    )[],
+  ) => void;
 }) {
   const { notifications, acknowledge } = useBackgroundJobNotifications(taskId);
+  const { events: monitorEvents, acknowledge: acknowledgeMonitor } =
+    useMonitorEvents(taskId);
 
   useEffect(() => {
-    if (notifications.length === 0) return;
+    if (notifications.length === 0 && monitorEvents.length === 0) return;
 
     const deliveredIds = new Set(
       messages.flatMap((message) =>
@@ -58,6 +69,17 @@ export function useBackgroundJobNotificationDelivery({
 
     // The kit drops the ones it already has pending or delivered, so pushing
     // the same list again is free.
-    enqueue(notifications);
-  }, [acknowledge, enqueue, messages, notifications]);
+    for (const event of monitorEvents) {
+      if (deliveredIds.has(event.notificationId))
+        void acknowledgeMonitor?.(event.notificationId);
+    }
+    enqueue([...notifications, ...monitorEvents]);
+  }, [
+    acknowledge,
+    acknowledgeMonitor,
+    enqueue,
+    messages,
+    notifications,
+    monitorEvents,
+  ]);
 }

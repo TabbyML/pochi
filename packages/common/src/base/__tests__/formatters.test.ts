@@ -75,6 +75,7 @@ describe('formatters', () => {
   describe('formatters.ui', () => {
     it.each([
       ['content', [{ type: 'text', text: 'Visible prompt' }]],
+      ['content', [{ type: 'data-monitor-events', data: { batches: [] } }]],
       [
         'content',
         [

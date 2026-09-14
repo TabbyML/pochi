@@ -6,6 +6,7 @@ import {
   type BackgroundJobEntry,
   buildBackgroundJobList,
 } from "../lib/build-background-job-list";
+import { useMonitorEvents } from "./use-monitor-events";
 
 /** @useSignals */
 export function useBackgroundJobList(
@@ -13,11 +14,17 @@ export function useBackgroundJobList(
   messages: Message[],
 ): BackgroundJobEntry[] {
   const { backgroundCommands } = useBackgroundCommands();
+  const { events: monitorEvents } = useMonitorEvents(taskId);
   const { notifications } = useBackgroundJobNotifications(taskId);
 
   return useMemo(
     () =>
-      buildBackgroundJobList({ messages, notifications, backgroundCommands }),
-    [messages, notifications, backgroundCommands],
+      buildBackgroundJobList({
+        messages,
+        notifications,
+        backgroundCommands,
+        monitorEvents,
+      }),
+    [messages, notifications, backgroundCommands, monitorEvents],
   );
 }

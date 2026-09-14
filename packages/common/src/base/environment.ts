@@ -59,13 +59,19 @@ export const Environment = z.object({
               .string()
               .optional()
               .describe(
-                'A stable terminal id. "bgjob-cmd-" identifies a managed command job; "term-" identifies a read-only user terminal.',
+                'A stable terminal id. "bgjob-cmd-" identifies a managed command job, "bgjob-monitor-" identifies a monitor, and "term-" identifies a read-only user terminal.',
               ),
             outputFile: z
               .string()
               .optional()
               .describe(
                 "Absolute path to the terminal transcript. Read it with readFile using offset/limit.",
+              ),
+            monitor: z
+              .string()
+              .optional()
+              .describe(
+                "Present when this terminal is an active monitor; the value is the monitor description.",
               ),
           }),
         )

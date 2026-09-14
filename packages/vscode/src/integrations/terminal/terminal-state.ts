@@ -29,6 +29,7 @@ export interface TerminalInfo {
    *   these because they are not tracked by the `TerminalJob` registry.
    */
   backgroundJobId?: string;
+  monitor?: string;
   /** Absolute transcript path readable with readFile. */
   outputFile?: string;
 }
@@ -112,6 +113,15 @@ export class TerminalState implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.window.onDidCloseTerminal(this.onTerminalClosed),
+    );
+    this.disposables.push(
+      TerminalJob.onDidMonitorEvent(({ taskId, event }) => {
+        void this.taskDataStore
+          .addMonitorEvent(taskId, event)
+          .catch((error) =>
+            logger.error("Failed to persist monitor event", error),
+          );
+      }),
     );
     this.disposables.push(TerminalJob.onDidCreate(this.onTerminalChanged));
     this.disposables.push(TerminalJob.onDidDispose(this.onTerminalChanged));
@@ -274,6 +284,9 @@ export class TerminalState implements vscode.Disposable {
           isActive: terminal === vscode.window.activeTerminal,
           backgroundJobId: id,
           outputFile: this.getTerminalOutputFile(terminal),
+          ...(job?.monitorDescription !== undefined
+            ? { monitor: job.monitorDescription }
+            : {}),
         };
       });
 
@@ -284,6 +297,9 @@ export class TerminalState implements vscode.Disposable {
         isActive: false,
         backgroundJobId: job.id,
         outputFile: job.outputFile,
+        ...(job.monitorDescription !== undefined
+          ? { monitor: job.monitorDescription }
+          : {}),
       });
     }
     return terminals;

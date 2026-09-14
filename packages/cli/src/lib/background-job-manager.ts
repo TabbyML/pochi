@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import type { BackgroundJobTerminalEvent } from "@getpochi/common";
+import {
+  type BackgroundJobTerminalEvent,
+  type MonitorEventEnvelope,
+  type MonitorJobOptions,
+  MonitorWatcher,
+} from "@getpochi/common";
 import { assertBackgroundJobReadInterval } from "@getpochi/common";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
@@ -27,6 +32,12 @@ export interface BackgroundJob {
   stopRequested?: boolean;
   finalizing?: boolean;
   disposeAbort?: () => void;
+  monitor?: {
+    description: string;
+    watcher: MonitorWatcher;
+    endReason?: string;
+    killTimer?: ReturnType<typeof setTimeout>;
+  };
 }
 
 export interface BackgroundJobStartResult {
@@ -56,21 +67,28 @@ export class BackgroundJobManager {
   private maxOutputSize = 1024 * 1024; // compatibility buffer only
   private readonly finishListeners = new Set<FinishListener>();
 
+  private readonly monitorListeners = new Set<
+    (event: MonitorEventEnvelope) => void
+  >();
+  private notificationVersion = 0;
+
   constructor(private readonly options: BackgroundJobManagerOptions = {}) {}
 
   start(
     command: string,
     cwd: string,
     envs?: Record<string, string>,
+    monitor?: MonitorJobOptions,
   ): BackgroundJobStartResult {
     const child = spawn(command, {
       shell: getShellPath(),
       cwd,
       env: { ...process.env, ...getTerminalEnv(), ...envs },
       stdio: ["ignore", "pipe", "pipe"],
+      detached: monitor !== undefined && process.platform !== "win32",
     });
 
-    return this.register(child, command);
+    return this.register(child, command, undefined, undefined, monitor);
   }
 
   adopt(
@@ -87,8 +105,9 @@ export class BackgroundJobManager {
     command: string,
     initialOutput: BackgroundJobInitialOutput = { stdout: [], stderr: [] },
     abortSignal?: AbortSignal,
+    monitor?: MonitorJobOptions,
   ): BackgroundJobStartResult {
-    const id = createBackgroundJobId("command");
+    const id = createBackgroundJobId(monitor ? "monitor" : "command");
     const outputFile = this.options.outputDir
       ? path.join(this.options.outputDir, `${id}.log`)
       : this.options.taskId
@@ -107,6 +126,23 @@ export class BackgroundJobManager {
     };
 
     this.jobs.set(id, job);
+    if (monitor) {
+      job.monitor = {
+        description: monitor.description,
+        watcher: new MonitorWatcher({
+          onEvents: (lines) => this.emitMonitorEvent(job, lines),
+          onTimeout: () => {
+            if (job.monitor) job.monitor.endReason = "killed after timeout";
+            this.kill(id);
+          },
+          onRateLimitExceeded: (reason) => {
+            if (job.monitor) job.monitor.endReason = reason;
+            this.kill(id);
+          },
+          timeoutMs: monitor.timeoutMs,
+        }),
+      };
+    }
 
     let appendTail = Promise.resolve();
     const appendOutput = (chunk: string): Promise<void> => {
@@ -130,12 +166,17 @@ export class BackgroundJobManager {
     const consumeOutput = async (
       stream: Readable | null,
       initialOutputStream: BackgroundJobInitialOutputStream,
+      isStdout: boolean,
     ) => {
+      const append = async (text: string) => {
+        await appendOutput(text);
+        if (isStdout) job.monitor?.watcher.ingest(text);
+      };
       const decoder = new StringDecoder("utf8");
       const sanitizer = new PlainOutputSanitizer();
       const initialOutputFinished = (async () => {
         for await (const chunk of initialOutputStream) {
-          await appendOutput(sanitizer.write(decoder.write(chunk)));
+          await append(sanitizer.write(decoder.write(chunk)));
         }
       })();
       const liveOutputFinished = stream
@@ -160,7 +201,7 @@ export class BackgroundJobManager {
             const onData = (chunk: Buffer | string) => {
               stream.pause();
               liveOutputTail = liveOutputTail
-                .then(() => appendOutput(sanitizer.write(decoder.write(chunk))))
+                .then(() => append(sanitizer.write(decoder.write(chunk))))
                 .then(() => {
                   if (!settled) stream.resume();
                 });
@@ -188,20 +229,21 @@ export class BackgroundJobManager {
       // manually stopped process may end in the middle of a character, so
       // discard that partial sequence instead of flushing it as U+FFFD.
       if (!job.stopRequested) {
-        await appendOutput(sanitizer.write(decoder.end()));
+        await append(sanitizer.write(decoder.end()));
       }
-      await appendOutput(sanitizer.end());
+      await append(sanitizer.end());
     };
 
     let outputError: unknown;
     const outputFinished = Promise.all([
-      consumeOutput(child.stdout, initialOutput.stdout),
-      consumeOutput(child.stderr, initialOutput.stderr),
+      consumeOutput(child.stdout, initialOutput.stdout, true),
+      consumeOutput(child.stderr, initialOutput.stderr, false),
     ])
       .finally(() => initialOutput.dispose?.())
       .catch((error) => {
         outputError = error;
-        child.kill();
+        if (job.monitor) this.kill(job.id);
+        else child.kill();
       });
 
     if (abortSignal) {
@@ -257,6 +299,7 @@ export class BackgroundJobManager {
   ): Promise<void> {
     if (job.status !== "running" || job.finalizing) return;
     job.finalizing = true;
+    clearTimeout(job.monitor?.killTimer);
     let finalStatus = status;
     let finalError = error;
 
@@ -271,6 +314,19 @@ export class BackgroundJobManager {
     job.status = finalStatus;
     job.finalizing = false;
 
+    if (job.monitor) {
+      job.monitor.watcher.end();
+      this.emitMonitorEvent(job, [], {
+        reason:
+          job.monitor.endReason ??
+          finalError ??
+          `exited with code ${exitCode ?? "unknown"}`,
+        status: finalStatus,
+        ...(exitCode !== undefined ? { exitCode } : {}),
+      });
+      job.monitor = undefined;
+      return;
+    }
     if (!this.options.taskId) return;
     const event: BackgroundJobTerminalEvent = {
       taskId: this.options.taskId,
@@ -282,7 +338,48 @@ export class BackgroundJobManager {
       ...(finalError ? { error: finalError } : {}),
       finishedAt: Date.now(),
     };
+    this.notificationVersion++;
     for (const listener of this.finishListeners) listener(event);
+  }
+
+  onDidMonitorEvent(
+    listener: (event: MonitorEventEnvelope) => void,
+  ): () => void {
+    this.monitorListeners.add(listener);
+    return () => this.monitorListeners.delete(listener);
+  }
+
+  private emitMonitorEvent(
+    job: BackgroundJob,
+    lines: string[],
+    ended?: MonitorEventEnvelope["ended"],
+  ): void {
+    if (!job.monitor) return;
+    this.notificationVersion++;
+    const event: MonitorEventEnvelope = {
+      notificationId: crypto.randomUUID(),
+      backgroundJobId: job.id,
+      description: job.monitor.description,
+      command: job.command,
+      outputFile: job.outputFile,
+      lines,
+      ...(ended ? { ended } : {}),
+    };
+    for (const listener of this.monitorListeners) listener(event);
+  }
+
+  getActiveMonitors() {
+    return Array.from(this.jobs.values()).flatMap((job) =>
+      job.monitor && job.status === "running"
+        ? [
+            {
+              backgroundJobId: job.id,
+              description: job.monitor.description,
+              outputFile: job.outputFile,
+            },
+          ]
+        : [],
+    );
   }
 
   readOutput(id: string): {
@@ -312,14 +409,27 @@ export class BackgroundJobManager {
     if (job.status !== "running" || job.finalizing) return true;
 
     job.stopRequested = true;
-    return job.process.kill();
+    const signal = (name: NodeJS.Signals) => {
+      if (job.monitor && job.process.pid && process.platform !== "win32") {
+        try {
+          process.kill(-job.process.pid, name);
+          return true;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+        }
+      }
+      return job.process.kill(name);
+    };
+    if (job.monitor && !job.monitor.killTimer) {
+      job.monitor.killTimer = setTimeout(() => signal("SIGKILL"), 1000);
+    }
+    return signal("SIGTERM");
   }
 
   killAll() {
     for (const job of this.jobs.values()) {
       if (job.status === "running" && !job.finalizing) {
-        job.stopRequested = true;
-        job.process.kill();
+        this.kill(job.id);
       }
     }
   }
@@ -339,11 +449,23 @@ export class BackgroundJobManager {
   async waitForAllJobs(
     timeoutMs: number,
     abortSignal?: AbortSignal,
-  ): Promise<"completed" | "timeout" | "aborted"> {
+    wakeOnNotifications = false,
+  ): Promise<"completed" | "timeout" | "aborted" | "notifications"> {
     const startTime = Date.now();
+    const initialNotificationVersion = this.notificationVersion;
     const pollInterval = 50;
 
-    while (this.hasPendingJobs()) {
+    while (
+      this.hasPendingJobs() ||
+      (wakeOnNotifications &&
+        this.notificationVersion !== initialNotificationVersion)
+    ) {
+      if (
+        wakeOnNotifications &&
+        this.notificationVersion !== initialNotificationVersion
+      ) {
+        return "notifications";
+      }
       if (abortSignal?.aborted) return "aborted";
       if (timeoutMs > 0 && Date.now() - startTime >= timeoutMs)
         return "timeout";

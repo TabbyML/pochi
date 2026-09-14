@@ -374,7 +374,9 @@
     "next": "下一步",
     "askingQuestion_one": "提问中",
     "askingQuestion_other": "提问中",
-    "skipped": "已跳过"
+    "skipped": "已跳过",
+    "startMonitor": "我将监听：",
+    "monitoring": "正在监听"
   },
   "reasoning": {
     "thinking": "思考中 ...",
@@ -578,6 +580,10 @@
     "viewChanges": "查看更改",
     "openFile": "打开文件"
   },
+  "monitorEvents": {
+    "eventCount_one": "{{count}} 个事件",
+    "eventCount_other": "{{count}} 个事件"
+  },
   "userEdits": {
     "title": "编辑",
     "filesEdited_one": "已编辑 {{count}} 个文件",
@@ -597,6 +603,7 @@
     "openOutput": "打开输出文件"
   },
   "managePanel": {
+    "monitorsGroup": "监控任务",
     "title": "后台任务",
     "toggle": "查看后台任务",
     "pochiGroup": "后台命令",

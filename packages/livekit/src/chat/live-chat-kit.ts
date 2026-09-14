@@ -4,6 +4,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   MaybePromise,
+  MonitorEventEnvelope,
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -841,20 +842,24 @@ export class LiveChatKit<
    * delivered.
    */
   enqueueBackgroundJobNotifications = (
-    notifications: readonly BackgroundJobNotification[],
+    notifications: readonly (
+      | BackgroundJobNotification
+      | MonitorEventEnvelope
+    )[],
   ): void => {
     const known = new Set([
       ...this.chat.messages.flatMap((message) =>
         getBackgroundJobNotificationIds(message.parts),
       ),
-      ...this.pendingBackgroundJobNotificationParts.map(
-        (part) => part.data.notificationId,
+      ...getBackgroundJobNotificationIds(
+        this.pendingBackgroundJobNotificationParts,
       ),
     ]);
     const added = toBackgroundJobNotificationParts(notifications).filter(
       (part) => {
-        if (known.has(part.data.notificationId)) return false;
-        known.add(part.data.notificationId);
+        const id = getBackgroundJobNotificationIds([part])[0];
+        if (known.has(id)) return false;
+        known.add(id);
         return true;
       },
     );

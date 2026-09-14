@@ -372,7 +372,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       parts: [...pendingBackgroundJobNotifications],
       raw: {
         text: pendingBackgroundJobNotifications
-          .map((part) => part.data.summary)
+          .map((part) =>
+            part.type === "data-monitor-events"
+              ? part.data.batches.map((batch) => batch.description).join(" · ")
+              : part.data.summary,
+          )
           .join("\n"),
         nonRemovable: true,
       },

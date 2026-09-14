@@ -16,6 +16,7 @@ const ClientToolNames = [
   "readFile",
   "searchFiles",
   "renderWidget",
+  "startMonitor",
   "useSkill",
   "writeToFile",
 ].sort();

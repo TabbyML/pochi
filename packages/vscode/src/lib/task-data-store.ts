@@ -4,6 +4,7 @@ import type {
   BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
+  MonitorEventEnvelope,
   TaskMemoryState,
 } from "@getpochi/common";
 import type {
@@ -25,6 +26,7 @@ type TaskStateData = {
   autoMemoryState?: AutoMemoryTaskState;
   backgroundTaskState?: BackgroundTaskState;
   backgroundJobNotifications?: BackgroundJobNotification[];
+  monitorEvents?: MonitorEventEnvelope[];
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -106,6 +108,31 @@ export class TaskDataStore {
       this.state.value = newState;
     },
   );
+
+  addMonitorEvent = runExclusive.build(
+    this.notificationGroup,
+    async (taskId: string, event: MonitorEventEnvelope): Promise<void> => {
+      const events = this.state.value[taskId]?.monitorEvents ?? [];
+      if (events.some((item) => item.notificationId === event.notificationId))
+        return;
+      await this.saveTaskState(taskId, { monitorEvents: [...events, event] });
+    },
+  );
+
+  acknowledgeMonitorEvent = runExclusive.build(
+    this.notificationGroup,
+    async (taskId: string, notificationId: string): Promise<void> => {
+      await this.saveTaskState(taskId, {
+        monitorEvents: (this.state.value[taskId]?.monitorEvents ?? []).filter(
+          (event) => event.notificationId !== notificationId,
+        ),
+      });
+    },
+  );
+
+  getMonitorEventsSignal(taskId: string) {
+    return computed(() => this.state.value[taskId]?.monitorEvents ?? []);
+  }
 
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {
     return this.getTaskState(taskId)?.mcpConfigOverride;

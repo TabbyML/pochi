@@ -4,6 +4,53 @@ import type { Message } from "@getpochi/livekit";
 import { buildBackgroundJobList } from "./build-background-job-list";
 
 describe("buildBackgroundJobList", () => {
+  it("lists monitors with shared numbering and preserves their final output", () => {
+    const backgroundJobId = "bgjob-monitor-1";
+    const jobs = buildBackgroundJobList({
+      messages: [
+        message([
+          {
+            type: "tool-startMonitor",
+            toolCallId: "monitor",
+            state: "output-available",
+            input: { command: "watch", description: "CI checks" },
+            output: { backgroundJobId, outputFile: "/tmp/watch.log" },
+          },
+          executeCommandPart("bgjob-cmd-1", "build"),
+          {
+            type: "data-monitor-events",
+            data: {
+              batches: [
+                {
+                  notificationId: "end",
+                  backgroundJobId,
+                  description: "CI checks",
+                  command: "watch",
+                  outputFile: "/tmp/watch.log",
+                  lines: [],
+                  ended: { reason: "done", status: "completed", exitCode: 0 },
+                },
+              ],
+            },
+          },
+        ]),
+      ],
+      notifications: [],
+      backgroundCommands: { "bgjob-cmd-1": { isVisible: false } },
+    });
+    expect(jobs).toMatchObject([
+      { backgroundJobId: "bgjob-cmd-1", displayId: "%2" },
+      {
+        backgroundJobId,
+        displayId: "%1",
+        monitor: "CI checks",
+        status: "completed",
+        outputFile: "/tmp/watch.log",
+        exitCode: 0,
+      },
+    ]);
+  });
+
   it("lists a command the host still has a process for as running", () => {
     const backgroundJobs = buildBackgroundJobList({
       messages: [message([executeCommandPart("bgjob-cmd-1", "bun run dev")])],

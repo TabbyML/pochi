@@ -32,6 +32,7 @@ import { BackgroundJobNotifications } from "./background-job-notifications";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
+import { MonitorEventsPart } from "./monitor-events";
 import { Reviews } from "./reviews";
 import { useMessageListPagination } from "./use-message-list-pagination";
 import { UserEditsPart } from "./user-edits";
@@ -488,6 +489,10 @@ function Part({
 
   if (part.type === "data-active-selection") {
     return null;
+  }
+
+  if (part.type === "data-monitor-events") {
+    return <MonitorEventsPart batches={part.data.batches} />;
   }
 
   if (part.type === "data-terminal-context") {

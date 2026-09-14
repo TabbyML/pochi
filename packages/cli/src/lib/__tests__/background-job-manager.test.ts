@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
+import type { BackgroundJobTerminalEvent, MonitorEventEnvelope } from "@getpochi/common";
 import { BackgroundJobManager } from "../background-job-manager";
 
 describe("BackgroundJobManager", () => {
@@ -198,6 +199,115 @@ describe("BackgroundJobManager", () => {
       expect(event.status).toBe("stopped");
       expect(await readFile(outputFile, "utf8")).toBe("ready");
     } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("monitor jobs", () => {
+  it("delivers stdout before exit, retains stderr in the transcript, and ends once", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-monitor-test-"));
+    const manager = new BackgroundJobManager({ taskId: "test", outputDir });
+    const batches: MonitorEventEnvelope[] = [];
+    const finishes: BackgroundJobTerminalEvent[] = [];
+    try {
+      manager.onDidMonitorEvent((event) => batches.push(event));
+      manager.onDidFinish((event) => finishes.push(event));
+      const result = manager.start(
+        "printf 'event\\n'; printf 'diagnostic\\n' >&2; sleep 0.5",
+        ".",
+        undefined,
+        { description: "test monitor" },
+      );
+      expect(result.backgroundJobId).toMatch(/^bgjob-monitor-/);
+      expect(await manager.waitForAllJobs(2000, undefined, true)).toBe(
+        "notifications",
+      );
+      expect(manager.hasPendingJobs()).toBe(true);
+      expect(batches.flatMap((event) => event.lines)).toEqual(["event"]);
+      await manager.waitForAllJobs(2000);
+      expect(batches.filter((event) => event.ended)).toHaveLength(1);
+      expect(batches.at(-1)?.ended?.status).toBe("completed");
+      expect(new Set(batches.map((event) => event.notificationId)).size).toBe(
+        batches.length,
+      );
+      expect(finishes).toEqual([]);
+      expect(await readFile(result.outputFile, "utf8")).toContain("diagnostic");
+    } finally {
+      manager.killAll();
+      await manager.waitForAllJobs(2000);
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("wakes for command completion while a persistent monitor is silent", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-monitor-mixed-"));
+    const manager = new BackgroundJobManager({ taskId: "test", outputDir });
+    try {
+      manager.start("exec sleep 30", ".", undefined, {
+        description: "persistent",
+      });
+      manager.start("sleep 0.05", ".");
+      expect(await manager.waitForAllJobs(300, undefined, true)).toBe(
+        "notifications",
+      );
+    } finally {
+      manager.killAll();
+      await manager.waitForAllJobs(3000);
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("stops all stages of a monitor pipeline", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-monitor-pipeline-"));
+    const manager = new BackgroundJobManager({ taskId: "test", outputDir });
+    try {
+      manager.start("sleep 2 | cat", ".", undefined, {
+        description: "pipeline",
+        timeoutMs: 30,
+      });
+      expect(await manager.waitForAllJobs(300)).toBe("completed");
+    } finally {
+      manager.killAll();
+      await manager.waitForAllJobs(3000);
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("enforces the deadline when a monitor ignores SIGTERM", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-monitor-stubborn-"));
+    const manager = new BackgroundJobManager({ taskId: "test", outputDir });
+    try {
+      manager.start("trap '' TERM; exec sleep 3", ".", undefined, {
+        description: "stubborn",
+        timeoutMs: 100,
+      });
+      expect(await manager.waitForAllJobs(1800)).toBe("completed");
+    } finally {
+      manager.killAll();
+      await manager.waitForAllJobs(3500);
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("times out a silent monitor and reports why it stopped", async () => {
+    const outputDir = await mkdtemp(join(tmpdir(), "pochi-monitor-timeout-"));
+    const manager = new BackgroundJobManager({ taskId: "test", outputDir });
+    const batches: MonitorEventEnvelope[] = [];
+    try {
+      manager.onDidMonitorEvent((event) => batches.push(event));
+      manager.start("exec sleep 30", ".", undefined, {
+        description: "silent",
+        timeoutMs: 50,
+      });
+      expect(await manager.waitForAllJobs(2000)).toBe("completed");
+      expect(batches.at(-1)?.ended).toMatchObject({
+        status: "stopped",
+        reason: "killed after timeout",
+      });
+    } finally {
+      manager.killAll();
+      await manager.waitForAllJobs(2000);
       await rm(outputDir, { recursive: true, force: true });
     }
   });

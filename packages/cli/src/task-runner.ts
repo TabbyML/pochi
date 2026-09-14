@@ -253,6 +253,9 @@ export class TaskRunner {
         createBackgroundJobNotification(event),
       ]);
     });
+    this.backgroundJobManager.onDidMonitorEvent((event) => {
+      this.chatKit.enqueueBackgroundJobNotifications([event]);
+    });
     this.customAgent = options.customAgent;
 
     this.fileSystem = options.filesystem;
@@ -340,14 +343,34 @@ export class TaskRunner {
         getLLM: () => options.llm,
         getEffectiveContextWindow: () =>
           pochiConfig.value.effectiveContextWindow,
-        getEnvironment: async () => ({
-          ...(await readEnvironment({
+        getEnvironment: async () => {
+          const environment = await readEnvironment({
             cwd: options.cwd,
             omitCustomRules:
               options.isSubTask && options.customAgent?.omitAgentsMd === true,
-          })),
-          todos: this.todos,
-        }),
+          });
+          const monitors = this.backgroundJobManager.getActiveMonitors();
+          return {
+            ...environment,
+            workspace: {
+              ...environment.workspace,
+              ...(monitors.length > 0
+                ? {
+                    terminals: monitors.map(
+                      ({ backgroundJobId, description, outputFile }) => ({
+                        name: description,
+                        isActive: false,
+                        backgroundJobId,
+                        monitor: description,
+                        outputFile,
+                      }),
+                    ),
+                  }
+                : {}),
+            },
+            todos: this.todos,
+          };
+        },
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
         ...(options.getAutoMemory
@@ -444,9 +467,17 @@ export class TaskRunner {
     ).start();
 
     const jobStatus = await this.backgroundJobManager.waitForAllJobs(
-      this.asyncWaitTimeoutInMs,
+      this.backgroundJobManager.getActiveMonitors().length > 0
+        ? 0
+        : this.asyncWaitTimeoutInMs,
       this.abortSignal,
+      true,
     );
+
+    if (jobStatus === "notifications") {
+      spinner.succeed("Background notifications arrived.");
+      return true;
+    }
 
     // Handle timeout or abort - return undefined to finish without feeding back to LLM
     if (jobStatus === "timeout") {
@@ -488,10 +519,15 @@ export class TaskRunner {
       // background jobs would only delay handing the turn back to the user.
       // `flushBackgroundJobNotifications` enforces the same rule itself.
       if (!isAwaitingFollowupAnswer(lastMessage)) {
+        if (this.chatKit.flushBackgroundJobNotifications()) return "next";
         // Check for pending background jobs
         const hasPendingJobs = this.backgroundJobManager.hasPendingJobs();
 
-        if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
+        if (
+          hasPendingJobs &&
+          (this.asyncWaitTimeoutInMs > 0 ||
+            this.backgroundJobManager.getActiveMonitors().length > 0)
+        ) {
           const canDeliver = await this.waitForAsyncWork();
           if (canDeliver && this.chatKit.flushBackgroundJobNotifications()) {
             return "next";

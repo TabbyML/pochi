@@ -50,6 +50,7 @@ import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
 import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
+import { startMonitor } from "@/tools/monitor";
 import { readFile } from "@/tools/read-file";
 import { renderWidget } from "@/tools/render-widget";
 import { searchFiles } from "@/tools/search-files";
@@ -491,6 +492,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         taskId,
         notificationId,
       ),
+  });
+
+  readMonitorEvents = async (taskId: string) => ({
+    events: ThreadSignal.serialize(
+      this.taskStateStore.getMonitorEventsSignal(taskId),
+    ),
+    acknowledge: (notificationId: string) =>
+      this.taskStateStore.acknowledgeMonitorEvent(taskId, notificationId),
   });
 
   saveWidget = async (
@@ -1570,6 +1579,7 @@ const ToolMap: Record<
   readFile,
   executeCommand,
   killBackgroundJob,
+  startMonitor,
   searchFiles,
   listFiles: listFilesTool,
   globFiles,

@@ -150,6 +150,26 @@ describe("BackgroundJobManagePanel", () => {
     backgroundTasks = [];
   });
 
+  it("separates monitors from commands and includes both in the badge", () => {
+    backgroundJobs = [
+      { ...runningJob },
+      {
+        ...runningJob,
+        backgroundJobId: "bgjob-monitor-1",
+        displayId: "%2",
+        title: "CI checks",
+        monitor: "CI checks",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getByText("managePanel.monitorsGroup")).toBeTruthy();
+    expect(screen.getByText("managePanel.pochiGroup")).toBeTruthy();
+    expect(screen.getByText("CI checks")).toBeTruthy();
+    expect(
+      screen.getByTestId("background-job-manage-panel-toggle").textContent,
+    ).toBe("2");
+  });
+
   it("keeps the trigger bare when there is nothing running", () => {
     const { container } = renderBackgroundJobManagePanel();
 

@@ -382,7 +382,9 @@
     "next": "Next",
     "askingQuestion_one": "Asking Question",
     "askingQuestion_other": "Asking Questions",
-    "skipped": "Skipped"
+    "skipped": "Skipped",
+    "startMonitor": "I will monitor",
+    "monitoring": "Monitoring"
   },
   "reasoning": {
     "thinking": "Thinking ...",
@@ -581,6 +583,10 @@
     "viewChanges": "View Changes",
     "openFile": "Open File"
   },
+  "monitorEvents": {
+    "eventCount_one": "{{count}} event",
+    "eventCount_other": "{{count}} events"
+  },
   "userEdits": {
     "title": "Edits",
     "filesEdited_one": "{{count}} file edited",
@@ -600,6 +606,7 @@
     "openOutput": "Open output file"
   },
   "managePanel": {
+    "monitorsGroup": "Monitors",
     "title": "Background Jobs",
     "toggle": "Show background jobs",
     "pochiGroup": "Background commands",

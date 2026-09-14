@@ -16,6 +16,32 @@ import type { LiveChatKitBackgroundJobNotificationOptions } from "../live-chat-k
 import { LiveChatKit } from "../live-chat-kit";
 
 describe("LiveChatKit background job notification delivery", () => {
+  it("keeps monitor events pending for a follow-up, then attaches and deduplicates them", async () => {
+    const chatKit = makeChatKit();
+    const event = {
+      notificationId: "monitor-1:event-1",
+      backgroundJobId: "bgjob-monitor-1",
+      description: "CI",
+      command: "watch",
+      outputFile: "/tmp/watch.log",
+      lines: ["check passed"],
+    };
+    chatKit.chat.messages = [
+      userMessage("watch CI"),
+      followupQuestionMessage(),
+    ];
+    chatKit.enqueueBackgroundJobNotifications([event]);
+    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    chatKit.chat.messages.push(userMessage("continue"));
+    await makeRequest(chatKit);
+    expect(chatKit.chat.messages.at(-1)?.parts).toEqual([
+      { type: "text", text: "continue" },
+      { type: "data-monitor-events", data: { batches: [event] } },
+    ]);
+    chatKit.enqueueBackgroundJobNotifications([event]);
+    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+  });
+
   it("persists the checkpoint added to a notification continuation", async () => {
     const store = new FakeStore();
     const commit = vi.spyOn(store, "commit");

@@ -202,7 +202,9 @@ function PanelBody({
   onSelectTask: (taskId: string) => void;
 }) {
   const { t } = useTranslation();
-  const commands = useRunningFirst(backgroundJobs);
+  const sortedJobs = useRunningFirst(backgroundJobs);
+  const commands = sortedJobs.filter((job) => job.monitor === undefined);
+  const monitors = sortedJobs.filter((job) => job.monitor !== undefined);
 
   if (backgroundJobs.length === 0 && tasks.length === 0) {
     return (
@@ -218,6 +220,15 @@ function PanelBody({
         {commands.length > 0 && (
           <PanelGroup label={t("managePanel.pochiGroup")}>
             {commands.map((job) => (
+              <li key={job.backgroundJobId}>
+                <JobRow job={job} />
+              </li>
+            ))}
+          </PanelGroup>
+        )}
+        {monitors.length > 0 && (
+          <PanelGroup label={t("managePanel.monitorsGroup")}>
+            {monitors.map((job) => (
               <li key={job.backgroundJobId}>
                 <JobRow job={job} />
               </li>
