@@ -226,6 +226,10 @@ const program = new Command()
     "Specify the model to be used for the task.",
     "google/gemini-3-flash",
   )
+  .option(
+    "--no-reasoning-middleware",
+    "Disable reasoning middleware, which automatically adds reasoning blocks for well-known reasoning models.",
+  )
   .optionsGroup("MCP:")
   .option(
     "--no-mcp",
@@ -631,7 +635,7 @@ async function createLLMConfig(
   options: ProgramOpts,
 ): Promise<LLMRequestData> {
   const model = options.model;
-  const llm = await resolveListedLLMConfig(model);
+  const llm = await resolveListedLLMConfig(model, options);
   if (llm) return llm;
 
   const separatorIndex = model.indexOf("/");
@@ -649,16 +653,17 @@ async function createLLMConfig(
 
 async function resolveListedLLMConfig(
   model: string,
+  programOpts?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const separatorIndex = model.indexOf("/");
   const vendorId = model.slice(0, separatorIndex);
   if (vendorId in getVendors()) {
-    return createLLMConfigWithVendors(model);
+    return createLLMConfigWithVendors(model, programOpts);
   }
 
   return (
-    (await createLLMConfigWithPochi(model)) ||
-    (await createLLMConfigWithProviders(model))
+    (await createLLMConfigWithPochi(model, programOpts)) ||
+    (await createLLMConfigWithProviders(model, programOpts))
   );
 }
 
@@ -686,6 +691,7 @@ async function resolveSubTaskLLM(
 
 async function createLLMConfigWithVendors(
   model: string,
+  programOpts?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const sep = model.indexOf("/");
   const vendorId = model.slice(0, sep);
@@ -704,6 +710,7 @@ async function createLLMConfigWithVendors(
       contextWindow: options.contextWindow,
 
       useToolCallMiddleware: options.useToolCallMiddleware,
+      useReasoningMiddleware: programOpts?.reasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId,
@@ -716,6 +723,7 @@ async function createLLMConfigWithVendors(
 
 async function createLLMConfigWithPochi(
   model: string,
+  programOpts?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const vendor = getVendor("pochi");
   const pochiModels = await vendor.fetchModels();
@@ -728,6 +736,7 @@ async function createLLMConfigWithPochi(
       contextWindow: pochiModelOptions.contextWindow,
 
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
+      useReasoningMiddleware: programOpts?.reasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId: model,
@@ -740,6 +749,7 @@ async function createLLMConfigWithPochi(
 
 async function createLLMConfigWithProviders(
   model: string,
+  programOpts?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const sep = model.indexOf("/");
   const providerId = model.slice(0, sep);
@@ -778,6 +788,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: programOpts?.reasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -801,6 +812,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: programOpts?.reasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }

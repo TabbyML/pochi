@@ -101,6 +101,7 @@ export class Pochi extends VendorBase {
             contextWindow: x.contextWindow,
             label: x.costType === "basic" ? "swift" : "super",
             contentType: getContentTypesForModel(x.id),
+            useReasoningMiddleware: false,
           } satisfies ModelOptions,
         ]),
       );

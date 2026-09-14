@@ -99,6 +99,27 @@ describe("Model configuration types", () => {
     });
   });
 
+  describe("CustomModelSetting - Reasoning middleware", () => {
+    it("should validate reasoning middleware property", () => {
+      const config = CustomModelSetting.parse({
+        kind: "openai",
+        models: {
+          "reasoning-model": {
+            useReasoningMiddleware: true,
+          },
+          "normal-model": {
+            useReasoningMiddleware: false,
+          },
+        },
+      });
+      expect(config.models["reasoning-model"].useReasoningMiddleware).toBe(true);
+      expect(config.models["normal-model"].useReasoningMiddleware).toBe(false);
+      expect(
+        config.models["normal-model"].useToolCallMiddleware,
+      ).toBeUndefined();
+    });
+  });
+
   describe("Model settings validation", () => {
     it("should fail with invalid kind", () => {
       expect(() =>

@@ -30,10 +30,12 @@ export class QwenCode extends VendorBase {
       "qwen3-coder-plus": {
         contextWindow: 1_000_000,
         useToolCallMiddleware: false,
+        useReasoningMiddleware: false,
       },
       "qwen-vl-max": {
         contextWindow: 128_000,
         useToolCallMiddleware: false,
+        useReasoningMiddleware: false,
       },
     };
   }
