@@ -43,6 +43,7 @@ describe("buildBackgroundJobList", () => {
       {
         backgroundJobId,
         displayId: "%1",
+        title: "CI checks",
         monitor: "CI checks",
         status: "completed",
         outputFile: "/tmp/watch.log",
@@ -50,6 +51,104 @@ describe("buildBackgroundJobList", () => {
       },
     ]);
   });
+
+  it("uses descriptions as monitor names while retaining separate job numbers", () => {
+    const jobs = buildBackgroundJobList({
+      messages: [
+        message(
+          ["app.log", "worker.log"].map((file, index) => ({
+            type: "tool-startMonitor",
+            toolCallId: `monitor-${index}`,
+            state: "output-available",
+            input: { command: `tail -f ${file}`, description: "Watch errors" },
+            output: {
+              backgroundJobId: `bgjob-monitor-${index}`,
+              outputFile: `/tmp/${file}`,
+            },
+          })),
+        ),
+      ],
+      notifications: [],
+      backgroundCommands: {},
+    });
+
+    expect(
+      jobs.map(({ title, monitor, displayId }) => ({
+        title,
+        monitor,
+        displayId,
+      })),
+    ).toEqual([
+      { title: "Watch errors", monitor: "Watch errors", displayId: "%2" },
+      { title: "Watch errors", monitor: "Watch errors", displayId: "%1" },
+    ]);
+  });
+
+  it("uses the description from a monitor event when the tool call is gone", () => {
+    const jobs = buildBackgroundJobList({
+      messages: [],
+      monitorEvents: [
+        {
+          notificationId: "monitor-event",
+          backgroundJobId: "bgjob-monitor-1",
+          description: "Watch errors",
+          command: "tail -f app.log",
+          lines: ["ERROR: connection refused"],
+          outputFile: "/tmp/monitor.log",
+        },
+      ],
+      notifications: [],
+      backgroundCommands: {},
+    });
+
+    expect(jobs).toMatchObject([
+      { title: "Watch errors", monitor: "Watch errors" },
+    ]);
+  });
+
+  it.each([
+    ["", "watch logs", "watch logs"],
+    ["  ", "watch logs", "watch logs"],
+    ["", "", "bgjob-monitor-1"],
+    ["  ", "  ", "bgjob-monitor-1"],
+  ])(
+    "falls back from description %j and command %j to %j",
+    (description, command, title) => {
+      const event = {
+        notificationId: "event-1",
+        backgroundJobId: "bgjob-monitor-1",
+        outputFile: "/tmp/monitor.log",
+        description,
+        command,
+        lines: ["log"],
+      };
+      for (const messages of [
+        [],
+        [
+          message([
+            {
+              type: "tool-startMonitor",
+              toolCallId: "monitor",
+              state: "output-available",
+              input: { command, description },
+              output: {
+                backgroundJobId: event.backgroundJobId,
+                outputFile: "/tmp/monitor.log",
+              },
+            },
+          ]),
+        ],
+      ]) {
+        const jobs = buildBackgroundJobList({
+          messages,
+          notifications: [],
+          monitorEvents: [event],
+          backgroundCommands: {},
+        });
+        expect(jobs).toMatchObject([{ title, monitor: description }]);
+      }
+    },
+  );
 
   it("lists a command the host still has a process for as running", () => {
     const backgroundJobs = buildBackgroundJobList({

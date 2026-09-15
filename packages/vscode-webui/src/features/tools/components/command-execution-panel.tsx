@@ -216,6 +216,7 @@ export const BackgroundJobPanel: FC<{
   appearance?: "default" | "notification";
   notificationTitle?: string;
   notificationIcon?: React.ReactNode;
+  notificationEvents?: { id: string; text: string }[];
   /** Command fallback for persisted notification messages. */
   command?: string;
   /** Summary fallback for persisted notification messages. */
@@ -233,6 +234,7 @@ export const BackgroundJobPanel: FC<{
   appearance = "default",
   notificationTitle,
   notificationIcon,
+  notificationEvents,
   command,
   summary,
   status,
@@ -381,6 +383,30 @@ export const BackgroundJobPanel: FC<{
     ) : (
       <div className={notificationRowClassName}>{notificationRowContent}</div>
     );
+
+    if (notificationEvents) {
+      return (
+        <div className="min-w-0">
+          {notificationRow}
+          <div className="mt-1 mr-1 mb-2 ml-[16px] flex min-w-0 flex-col gap-1 pl-3">
+            {notificationEvents.map((event) => (
+              <Tooltip key={event.id}>
+                <TooltipTrigger asChild>
+                  <code className="block truncate bg-transparent p-0 font-mono text-muted-foreground text-xs">
+                    {event.text}
+                  </code>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span className="block max-h-[50vh] max-w-sm overflow-y-auto overscroll-y-contain whitespace-pre-wrap break-words">
+                    {event.text}
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+      );
+    }
 
     if (!summary) return notificationRow;
 

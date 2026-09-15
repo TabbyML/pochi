@@ -46,6 +46,7 @@ vi.mock("@/features/tools", () => ({
     outputFile,
     appearance,
     notificationTitle,
+    notificationEvents,
   }: {
     backgroundJobId: string;
     command?: string;
@@ -54,6 +55,7 @@ vi.mock("@/features/tools", () => ({
     outputFile?: string;
     appearance?: string;
     notificationTitle?: string;
+    notificationEvents?: { id: string; text: string }[];
   }) => (
     <div
       data-testid="background-job-panel"
@@ -63,13 +65,15 @@ vi.mock("@/features/tools", () => ({
       data-appearance={appearance}
     >
       <span>{notificationTitle ?? command}</span>
-      <span>{summary}</span>
+      <span>
+        {notificationEvents?.map((event) => event.text).join("\n") ?? summary}
+      </span>
     </div>
   ),
 }));
 
 describe("BackgroundJobNotifications", () => {
-  it("keeps command and monitor batches as ordered flat items in one notification section", () => {
+  it("groups batches by monitor ID at their first occurrence in one notification section", () => {
     const monitor: MonitorEventEnvelope = {
       notificationId: "monitor-first",
       backgroundJobId: "bgjob-monitor-1",
@@ -101,15 +105,65 @@ describe("BackgroundJobNotifications", () => {
     expect(getByText("4").getAttribute("data-slot")).toBe("badge");
     const rows = getAllByTestId("background-job-panel");
     expect(rows.map((row) => row.firstElementChild?.textContent)).toEqual([
-      "first log",
+      "Simulated log entries",
       "run bgjob-cmd-1",
-      "second log\nthird log",
-      "kill requested",
     ]);
     expect(rows[0].getAttribute("data-output-file")).toBe("/tmp/monitor.log");
-    expect(rows[3].getAttribute("data-status")).toBe("stopped");
-    expect(container.textContent).not.toContain("eventCount");
+    expect(rows[0].getAttribute("data-status")).toBe("stopped");
+    expect(rows[0].lastElementChild?.textContent).toBe(
+      "first log\nsecond log\nthird log\nkill requested",
+    );
     expect(notifications).toEqual(snapshot);
+  });
+
+  it.each([
+    ["Watch logs", "tail -f app.log", "Watch logs"],
+    ["", "tail -f app.log", "tail -f app.log"],
+    ["  ", "tail -f app.log", "tail -f app.log"],
+    ["", "", "bgjob-monitor-1"],
+    ["  ", "  ", "bgjob-monitor-1"],
+  ])(
+    "falls back from description %j and command %j to %j",
+    (description, command, title) => {
+      const { getByTestId } = render(
+        <BackgroundJobNotifications
+          notifications={[
+            {
+              notificationId: "event-1",
+              backgroundJobId: "bgjob-monitor-1",
+              outputFile: "/tmp/monitor.log",
+              description,
+              command,
+              lines: ["first log"],
+            },
+          ]}
+        />,
+      );
+      expect(
+        getByTestId("background-job-panel").firstElementChild?.textContent,
+      ).toBe(title);
+    },
+  );
+
+  it("keeps monitors with the same description in separate groups", () => {
+    const { getAllByTestId } = render(
+      <BackgroundJobNotifications
+        notifications={[1, 2].map((id) => ({
+          notificationId: `event-${id}`,
+          backgroundJobId: `bgjob-monitor-${id}`,
+          outputFile: `/tmp/monitor-${id}.log`,
+          description: "Watch logs",
+          command: `watch ${id}`,
+          lines: [`log ${id}`],
+        }))}
+      />,
+    );
+    const rows = getAllByTestId("background-job-panel");
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.lastElementChild?.textContent)).toEqual([
+      "log 1",
+      "log 2",
+    ]);
   });
 
   it("groups notifications under one data-style section", () => {

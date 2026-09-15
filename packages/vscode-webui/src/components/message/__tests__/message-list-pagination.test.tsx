@@ -77,8 +77,18 @@ vi.mock("@/features/tools", () => ({
   BackgroundJobPanel: ({
     notificationTitle,
     command,
-  }: { notificationTitle?: string; command?: string }) => (
-    <span data-testid="notification-row">{notificationTitle ?? command}</span>
+    notificationEvents,
+  }: {
+    notificationTitle?: string;
+    command?: string;
+    notificationEvents?: { id: string; text: string }[];
+  }) => (
+    <span
+      data-testid="notification-row"
+      data-output={notificationEvents?.map((event) => event.text).join("\n")}
+    >
+      {notificationTitle ?? command}
+    </span>
   ),
 }));
 
@@ -910,7 +920,11 @@ it("renders monitor batches only inside their message notification container", (
   }
   expect(
     screen.getAllByTestId("notification-row").map((row) => row.textContent),
-  ).toEqual(["first log", "echo done", "second log", "kill requested"]);
-  expect(screen.queryByText("Simulated log entries")).toBeNull();
+  ).toEqual(["Simulated log entries", "echo done", "Simulated log entries"]);
+  expect(
+    screen
+      .getAllByTestId("notification-row")
+      .map((row) => row.getAttribute("data-output")),
+  ).toEqual(["first log\nsecond log", null, "kill requested"]);
   expect(messages).toEqual(original);
 });

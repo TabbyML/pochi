@@ -196,34 +196,44 @@ describe("BackgroundJobPanel job control", () => {
     ).toBeNull();
   });
 
-  it("uses the same notification row for monitor output, tooltip and log access", async () => {
-    const summary = "Simulated log entries\nfirst log\nsecond log";
+  it("shows single-line monitor events with scrollable details on hover", async () => {
+    jobInfo = undefined;
+    const output = "first log\nsecond log\nkill requested";
     const { container } = render(
       <BackgroundJobPanel
         backgroundJobId="bgjob-monitor-1"
         appearance="notification"
         command="watch logs"
-        notificationTitle="first log"
+        notificationTitle="Simulated log entries"
         notificationIcon={<Activity className="size-3" />}
-        summary={summary}
+        notificationEvents={[{ id: "event-1", text: output }]}
+        status="stopped"
         outputFile="/tmp/monitor.log"
       />,
     );
     const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
-    expect(row.textContent).toBe("first log");
+    expect(row.textContent).toBe("Simulated log entries");
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(container.querySelector("[aria-expanded]")).toBeNull();
     expect(row.querySelector(".lucide-activity")).not.toBeNull();
-    expect(row.querySelector(".lucide-terminal")).toBeNull();
+    expect(row.querySelector(".lucide-circle-slash")).not.toBeNull();
     expect(row.querySelector("code")?.classList.contains("truncate")).toBe(
       true,
     );
-    expect(row.lastElementChild?.classList.contains("size-3.5")).toBe(true);
-    expect(container.querySelector('[data-slot="collapsible"]')).toBeNull();
-    fireEvent.pointerMove(row, { pointerType: "mouse" });
-    await waitFor(() =>
-      expect(screen.getByRole("tooltip").textContent).toContain(summary),
+    const event = screen.getByText(/first log/);
+    expect(event.textContent).toBe(output);
+    expect(event.classList.contains("truncate")).toBe(true);
+    fireEvent.pointerMove(event, { pointerType: "mouse" });
+    await waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.textContent).toContain(output);
+      expect(tooltip.querySelector(".overflow-y-auto")).not.toBeNull();
+    });
+    fireEvent.click(
+      screen.getByLabelText("backgroundJobNotifications.openOutput"),
     );
-    fireEvent.click(row);
     expect(openFile).toHaveBeenCalledWith("/tmp/monitor.log");
+    expect(event.textContent).toBe(output);
   });
 
   it("opens the output file from the notification row and shows its summary tooltip", async () => {

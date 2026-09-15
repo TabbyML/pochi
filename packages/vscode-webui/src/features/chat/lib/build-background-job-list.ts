@@ -95,7 +95,7 @@ export function buildBackgroundJobList({
     backgroundJobs.push({
       backgroundJobId,
       displayId: `%${index}`,
-      title: description ?? command ?? backgroundJobId,
+      title: description?.trim() || command?.trim() || backgroundJobId,
       command,
       ...(description !== undefined ? { monitor: description } : {}),
       status: isRunning
@@ -128,7 +128,10 @@ export function buildBackgroundJobList({
     if (commands.has(event.backgroundJobId)) continue;
     orphaned.push({
       backgroundJobId: event.backgroundJobId,
-      title: event.description,
+      title:
+        event.description?.trim() ||
+        event.command?.trim() ||
+        event.backgroundJobId,
       monitor: event.description,
       command: event.command,
       outputFile: event.outputFile,

@@ -423,10 +423,15 @@ function JobRow({ job }: { job: BackgroundJobEntry }) {
       )}
     >
       <RowStatusIndicator isRunning={isRunning} tone={statusTone(job.status)} />
-      {job.command || statusLabel ? (
+      {job.command || job.monitor || statusLabel ? (
         <Tooltip>
           <TooltipTrigger asChild>{title}</TooltipTrigger>
           <TooltipContent>
+            {job.monitor && job.monitor !== job.command && (
+              <span className="mb-1 block max-w-sm whitespace-pre-wrap break-words text-sm">
+                {job.monitor}
+              </span>
+            )}
             {job.command && (
               <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-sm">
                 {job.command}

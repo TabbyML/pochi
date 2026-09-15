@@ -15,27 +15,52 @@ interface BackgroundJobNotificationsProps {
 export function BackgroundJobNotificationItems({
   notifications,
 }: BackgroundJobNotificationsProps) {
-  return notifications.map((notification) => {
-    if ("lines" in notification) {
-      const text = [
-        ...notification.lines,
-        ...(notification.ended ? [notification.ended.reason] : []),
-      ].join("\n");
+  const items: (BackgroundJobNotification | MonitorEventEnvelope[])[] = [];
+  const monitors = new Map<string, MonitorEventEnvelope[]>();
+  for (const notification of notifications) {
+    if (!("lines" in notification)) {
+      items.push(notification);
+      continue;
+    }
+    let group = monitors.get(notification.backgroundJobId);
+    if (!group) {
+      group = [];
+      monitors.set(notification.backgroundJobId, group);
+      items.push(group);
+    }
+    group.push(notification);
+  }
+
+  return items.map((item) => {
+    if (Array.isArray(item)) {
+      const notification = item[0];
+      const ended = item.findLast((batch) => batch.ended)?.ended;
       return (
         <BackgroundJobPanel
-          key={notification.notificationId}
+          key={notification.backgroundJobId}
           backgroundJobId={notification.backgroundJobId}
           appearance="notification"
           command={notification.command}
           notificationIcon={<Activity className="size-3" />}
-          notificationTitle={text || notification.description}
-          summary={[notification.description, text].filter(Boolean).join("\n")}
-          status={notification.ended?.status}
-          exitCode={notification.ended?.exitCode}
+          notificationTitle={
+            notification.description?.trim() ||
+            notification.command?.trim() ||
+            notification.backgroundJobId
+          }
+          notificationEvents={item.map((batch) => ({
+            id: batch.notificationId,
+            text: [
+              ...batch.lines,
+              ...(batch.ended ? [batch.ended.reason] : []),
+            ].join("\n"),
+          }))}
+          status={ended?.status}
+          exitCode={ended?.exitCode}
           outputFile={notification.outputFile}
         />
       );
     }
+    const notification = item;
     return (
       <BackgroundJobPanel
         key={notification.notificationId}
