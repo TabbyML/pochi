@@ -113,6 +113,27 @@ export function extractTaskResult(store: LiveKitStore, uid: string): unknown {
   }
 }
 
+/** Resolves notification metadata from the original newTask call. */
+export function getSubAgentInvocation(
+  taskId: string,
+  parentMessages: readonly Message[],
+) {
+  const invocation = parentMessages
+    .flatMap((message) => message.parts)
+    .find(
+      (part) =>
+        part.type === "tool-newTask" &&
+        part.state !== "input-streaming" &&
+        part.input?._meta?.uid === taskId,
+    );
+  const input =
+    invocation?.type === "tool-newTask" &&
+    invocation.state !== "input-streaming"
+      ? invocation.input
+      : undefined;
+  return input;
+}
+
 /**
  * Builds the notification for a finished background subagent task, injected
  * into the parent conversation as a `data-background-job-notification` part.
@@ -120,14 +141,16 @@ export function extractTaskResult(store: LiveKitStore, uid: string): unknown {
 export function createSubAgentResultNotification(
   store: LiveKitStore,
   task: Pick<Task, "id" | "status" | "error" | "title">,
-  agentType?: string,
+  parentMessages: readonly Message[],
 ): SubAgentResultNotification {
   const base = {
     kind: "subagent" as const,
     notificationId: getSubAgentNotificationId(task),
     backgroundJobId: getSubAgentBackgroundJobId(task.id),
   };
-  const title = task.title ?? undefined;
+  const input = getSubAgentInvocation(task.id, parentMessages);
+  const agentType = input?.agentType;
+  const title = task.title || input?.description || undefined;
   if (task.status === "failed") {
     return {
       ...base,

@@ -232,8 +232,23 @@ describe("subagent stop notification", () => {
   it("distinguishes user cancellation from execution failure", () => {
     const store = {} as Parameters<typeof createSubAgentResultNotification>[0];
     const task = { id: "child", title: "Review", status: "failed", error: { kind: "AbortError", message: "Stopped by user." } } as Parameters<typeof createSubAgentResultNotification>[1];
-    expect(createSubAgentResultNotification(store, task)).toMatchObject({ kind: "subagent", status: "stopped" });
-    expect(createSubAgentResultNotification(store, task)).not.toHaveProperty("finishedAt");
-    expect(createSubAgentResultNotification(store, { ...task, error: { kind: "InternalError", message: "Failed" } })).not.toHaveProperty("stopped");
+    expect(createSubAgentResultNotification(store, task, [])).toMatchObject({ kind: "subagent", status: "stopped" });
+    expect(createSubAgentResultNotification(store, task, [])).not.toHaveProperty("finishedAt");
+    expect(createSubAgentResultNotification(store, { ...task, error: { kind: "InternalError", message: "Failed" } }, [])).not.toHaveProperty("stopped");
+  });
+});
+
+describe("subagent notification identity", () => {
+  it("matches explore calls by task ID and preserves their descriptions", () => {
+    const messages = [{ id: "parent", role: "assistant", parts: [
+      { type: "tool-newTask", toolCallId: "first", state: "output-available", input: { agentType: "explore", description: "Inspect structure", prompt: "Inspect", _meta: { uid: "first" } }, output: { result: "Started" } },
+      { type: "tool-newTask", toolCallId: "second", state: "output-available", input: { agentType: "explore", description: "Inspect tests", prompt: "Inspect", _meta: { uid: "second" } }, output: { result: "Started" } },
+    ] }] as Parameters<typeof createSubAgentResultNotification>[2];
+    const store = { query: () => [] } as unknown as Parameters<typeof createSubAgentResultNotification>[0];
+    for (const status of ["completed", "failed"] as const) {
+      const task = { id: "second", title: null, status, error: null };
+      expect(createSubAgentResultNotification(store, task, messages)).toMatchObject({ agentType: "explore", title: "Inspect tests" });
+      expect(createSubAgentResultNotification(store, { ...task, title: "Existing title" }, messages)).toMatchObject({ agentType: "explore", title: "Existing title" });
+    }
   });
 });

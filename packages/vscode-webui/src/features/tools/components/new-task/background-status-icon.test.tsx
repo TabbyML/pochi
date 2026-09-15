@@ -54,9 +54,9 @@ describe("background subagent tool status", () => {
   });
   it.each([
     ["pending-tool", null, "running"],
-    ["pending-input", null, "waitingInput"],
+    ["pending-input", null, "completed"],
     ["failed", { kind: "InternalError", message: "Failed" }, "failed"],
-    ["failed", { kind: "AbortError", message: "Stopped" }, "stopped"],
+    ["failed", { kind: "AbortError", message: "Stopped" }, "failed"],
   ] as const)("renders %s / %j as %s", (status, error, label) => {
     state.task = { status, error };
     render(<BackgroundSubagentStatusIcon taskId="child" tool={tool} />);
@@ -67,8 +67,6 @@ describe("background subagent tool status", () => {
   it("does not claim completion when the subtask cannot be found", () => {
     state.task = undefined;
     render(<BackgroundSubagentStatusIcon taskId="child" tool={tool} />);
-    expect(
-      screen.getByRole("img", { name: "backgroundTasks.statusUnavailable" }),
-    ).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
   });
 });

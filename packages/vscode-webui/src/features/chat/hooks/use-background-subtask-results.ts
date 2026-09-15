@@ -41,7 +41,7 @@ export function useBackgroundSubtaskResults(
           task.background &&
           (task.status === "completed" || task.status === "failed"),
       )
-      .map((task) => createSubAgentResultNotification(store, task))
+      .map((task) => createSubAgentResultNotification(store, task, messages))
       .filter((notification) => !notified.has(notification.notificationId));
     if (results.length === 0) return;
     onResultsRef.current(results);

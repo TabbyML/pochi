@@ -71,6 +71,7 @@ function NotificationGroup({
 
   return (
     <CollapsibleSection
+      defaultOpen
       className="overflow-hidden"
       title={
         <>

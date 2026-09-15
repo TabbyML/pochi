@@ -12,12 +12,10 @@ import type { ToolUIPart } from "ai";
 import {
   Check,
   CheckIcon,
-  CircleHelp,
   CircleSmall,
   FilesIcon,
   Loader2,
   Pause,
-  Square,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -30,13 +28,7 @@ interface StatusIconProps {
   iconClassName?: string;
   /** Actual asynchronous task state, when the tool has already returned. */
   statusOverride?: {
-    status:
-      | "running"
-      | "waiting"
-      | "completed"
-      | "failed"
-      | "stopped"
-      | "unknown";
+    status: "running" | "completed" | "failed";
     label: string;
   };
 }
@@ -125,11 +117,8 @@ export function StatusIcon({
   if (statusOverride) {
     const icons = {
       running: Loader2,
-      waiting: Pause,
       completed: Check,
       failed: X,
-      stopped: Square,
-      unknown: CircleHelp,
     };
     const Icon = icons[statusOverride.status];
     statusIcon = (
@@ -147,10 +136,6 @@ export function StatusIcon({
               "text-emerald-700 dark:text-emerald-300":
                 statusOverride.status === "completed",
               "text-error": statusOverride.status === "failed",
-              "text-zinc-500 dark:text-zinc-400":
-                statusOverride.status === "waiting" ||
-                statusOverride.status === "stopped" ||
-                statusOverride.status === "unknown",
             },
             iconClassName,
           )}

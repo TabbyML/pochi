@@ -49,7 +49,7 @@ import {
 } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
-import { isAwaitingFollowupAnswer } from "../task-utils";
+import { getSubAgentInvocation, isAwaitingFollowupAnswer } from "../task-utils";
 import type { LiveKitStore, Message, Task } from "../types";
 import {
   MaxConsecutiveAutoCompactFailures,
@@ -1124,6 +1124,24 @@ export class LiveChatKit<
       }
 
       const llm = getters.getLLM();
+      if (task.background && task.parentId && !task.title) {
+        const parentMessages = store
+          .query(makeMessagesQuery(task.parentId))
+          .map((row) => row.data as Message);
+        const description = getSubAgentInvocation(
+          this.taskId,
+          parentMessages,
+        )?.description;
+        if (description) {
+          store.commit(
+            events.updateTitle({
+              id: this.taskId,
+              title: description,
+              updatedAt: new Date(),
+            }),
+          );
+        }
+      }
       if (!task.background) {
         const getModel = () => createModel({ llm });
         scheduleGenerateTitleJob({

@@ -196,3 +196,18 @@ describe("background subagents", () => {
         expect(jobs[2]).toMatchObject({ status: "completed", notificationPending: false });
     });
 });
+
+it("uses each newTask description for untitled agents instead of exposing job IDs", () => {
+  const jobs = buildBackgroundJobList({
+    subTasks: [{ id: "first", title: null, background: true, status: "pending-model" }, { id: "second", title: null, background: true, status: "pending-model" }] as Task[],
+    notifications: [], backgroundCommands: {},
+    messages: [message([
+      { type: "tool-newTask", state: "output-available", input: { agentType: "explore", description: "Inspect structure", _meta: { uid: "first" } } },
+      { type: "tool-newTask", state: "output-available", input: { agentType: "explore", description: "Inspect tests", _meta: { uid: "second" } } },
+    ])],
+  });
+  expect(jobs.map(({ agentType, title }) => ({ agentType, title }))).toEqual([
+    { agentType: "explore", title: "Inspect structure" },
+    { agentType: "explore", title: "Inspect tests" },
+  ]);
+});

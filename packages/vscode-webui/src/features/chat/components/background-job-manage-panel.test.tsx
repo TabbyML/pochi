@@ -142,7 +142,9 @@ const renderBackgroundJobManagePanel = () =>
   render(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
 
 const rowTitles = () =>
-  screen.getAllByRole("listitem").map((row) => row.textContent);
+  screen
+    .getAllByRole("listitem")
+    .map((row) => row.querySelector("span.truncate")?.textContent);
 
 const runningJob = {
   backgroundJobId: "bgjob-cmd-1",
@@ -203,7 +205,9 @@ describe("BackgroundJobManagePanel", () => {
     renderBackgroundJobManagePanel();
     expect(screen.getByText("Review tests")).toBeTruthy();
     expect(screen.queryByText("managePanel.pochiGroup")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "managePanel.kill" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "backgroundTasks.stop" }),
+    );
     expect(stopSubagent).toHaveBeenCalledWith(
       expect.anything(),
       "task-1",
@@ -228,7 +232,7 @@ describe("BackgroundJobManagePanel", () => {
       screen.getByTitle(/backgroundTasks.pendingNotification/),
     ).toBeTruthy();
     expect(
-      screen.queryByRole("button", { name: "managePanel.kill" }),
+      screen.queryByRole("button", { name: "backgroundTasks.stop" }),
     ).toBeNull();
   });
 
@@ -453,7 +457,7 @@ describe("BackgroundJobManagePanel", () => {
 
     renderBackgroundJobManagePanel();
 
-    fireEvent.click(screen.getByLabelText("managePanel.kill"));
+    fireEvent.click(screen.getByLabelText("backgroundTasks.stop"));
     expect(close).toHaveBeenCalledWith("bgjob-cmd-1");
     expect(show).not.toHaveBeenCalled();
   });
@@ -463,7 +467,7 @@ describe("BackgroundJobManagePanel", () => {
 
     renderBackgroundJobManagePanel();
 
-    fireEvent.keyDown(screen.getByLabelText("managePanel.kill"), {
+    fireEvent.keyDown(screen.getByLabelText("backgroundTasks.stop"), {
       key: "Enter",
     });
     expect(show).not.toHaveBeenCalled();
@@ -476,7 +480,7 @@ describe("BackgroundJobManagePanel", () => {
 
     fireEvent.click(screen.getByLabelText("managePanel.hideTerminal"));
     expect(hide).toHaveBeenCalledWith("bgjob-cmd-1");
-    expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
+    expect(screen.getByLabelText("backgroundTasks.stop")).toBeDefined();
     expect(
       screen.queryByLabelText("backgroundJobNotifications.openOutput"),
     ).toBeNull();
@@ -491,7 +495,7 @@ describe("BackgroundJobManagePanel", () => {
     fireEvent.click(screen.getByLabelText("managePanel.openTerminal"));
     expect(show).toHaveBeenCalledWith("bgjob-cmd-1");
     // The process outlives its tab, so it can still be stopped.
-    expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
+    expect(screen.getByLabelText("backgroundTasks.stop")).toBeDefined();
   });
 
   it("offers a finished command its output file", () => {
@@ -517,7 +521,7 @@ describe("BackgroundJobManagePanel", () => {
 
     fireEvent.click(openOutput);
     expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
-    expect(screen.queryByLabelText("managePanel.kill")).toBeNull();
+    expect(screen.queryByLabelText("backgroundTasks.stop")).toBeNull();
     expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
   });
 

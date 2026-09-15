@@ -106,18 +106,20 @@ export function buildBackgroundJobList({
   // Newest command first, with the `%N` labels still counting from the start
   // of the task.
   const delivered = new Set<string>();
-  const agents = new Map<string, string>();
+  const agents = new Map<
+    string,
+    { agentType?: string; description?: string }
+  >();
   for (const message of messages) {
     for (const part of message.parts) {
       if (part.type === "data-background-job-notification") {
         delivered.add(part.data.notificationId);
       }
-      if (
-        part.type === "tool-newTask" &&
-        part.input?._meta?.uid &&
-        part.input.agentType
-      ) {
-        agents.set(part.input._meta.uid, part.input.agentType);
+      if (part.type === "tool-newTask" && part.input?._meta?.uid) {
+        agents.set(part.input._meta.uid, {
+          agentType: part.input.agentType,
+          description: part.input.description,
+        });
       }
     }
   }
@@ -128,8 +130,8 @@ export function buildBackgroundJobList({
       return {
         backgroundJobId: getSubAgentBackgroundJobId(task.id),
         taskId: task.id,
-        title: task.title || getSubAgentBackgroundJobId(task.id),
-        agentType: agents.get(task.id),
+        title: task.title || agents.get(task.id)?.description || "Subagent",
+        agentType: agents.get(task.id)?.agentType,
         status:
           task.status === "failed"
             ? task.error?.kind === "AbortError"

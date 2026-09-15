@@ -505,7 +505,9 @@ export class TaskRunner {
   private enqueueCompletedSubAgentResults(): void {
     const results = this.readBackgroundSubTasks()
       .filter((task) => task.status === "completed" || task.status === "failed")
-      .map((task) => createSubAgentResultNotification(this.store, task));
+      .map((task) =>
+        createSubAgentResultNotification(this.store, task, this.chat.messages),
+      );
     this.chatKit.enqueueBackgroundJobNotifications(results);
   }
 

@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -6,13 +7,12 @@ import {
 import {
   NotificationRowClassName,
   NotificationStatusIcon,
-  NotificationTypeIconClassName,
 } from "@/components/ui/notification-row";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import type { SubAgentResultNotification } from "@getpochi/common";
-import { Bot, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MessageMarkdown } from "./markdown";
 
@@ -24,9 +24,10 @@ export function SubagentResultNotificationItem({
   const store = useDefaultStore();
   const status = result.status;
   const label = t(`backgroundTasks.${status}`);
-  const title = result.title || result.agentType || "Subagent";
+  const agentType = result.agentType || "Subagent";
+  const title = result.title;
   return (
-    <Collapsible defaultOpen>
+    <Collapsible>
       <div className={cn(NotificationRowClassName, "relative")}>
         <CollapsibleTrigger asChild>
           <button
@@ -42,18 +43,14 @@ export function SubagentResultNotificationItem({
             </span>
           </button>
         </CollapsibleTrigger>
-        <span
-          className={cn(
-            NotificationTypeIconClassName,
-            "pointer-events-none relative",
-          )}
+        <Badge
+          variant="secondary"
+          asChild
+          className="relative inline-flex h-5 shrink-0 py-0 align-top"
         >
-          <Bot className="size-3" aria-hidden="true" />
-        </span>
-        <div className="pointer-events-none relative min-w-0 flex-1">
           <button
             type="button"
-            className="pointer-events-auto block max-w-full cursor-pointer truncate rounded-sm text-left text-foreground text-xs hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="cursor-pointer hover:underline"
             onClick={() =>
               navigate({
                 to: "/task",
@@ -61,9 +58,15 @@ export function SubagentResultNotificationItem({
               })
             }
           >
-            {title}
+            {agentType}
           </button>
-        </div>
+        </Badge>
+        <span
+          className="pointer-events-none relative min-w-0 flex-1 truncate text-muted-foreground leading-5"
+          title={title}
+        >
+          {title}
+        </span>
         <span className="pointer-events-none relative flex shrink-0">
           <NotificationStatusIcon status={status} label={label} />
         </span>

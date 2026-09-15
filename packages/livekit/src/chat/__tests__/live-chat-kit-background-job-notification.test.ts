@@ -297,3 +297,32 @@ const subagentResult = {
     status: "completed" as const,
     result: "finished",
 };
+
+
+it("writes the original description before a background subagent sends its first message", async () => {
+  const task = { id: "child", background: true, parentId: "parent", title: null };
+  const commit = vi.fn();
+  const store = {
+    storeId: "test",
+    query: (query: { label?: string }) => query.label === "task" ? task : [{ data: {
+      id: "parent", role: "assistant", parts: [{ type: "tool-newTask", state: "output-available", input: {
+        agentType: "explore", description: "Inspect test setup", prompt: "Inspect repository tests", _meta: { uid: "child" },
+      } }],
+    } }],
+    subscribe: () => () => {},
+    commit,
+  } as unknown as LiveKitStore;
+  const getters = { getLLM: () => ({ id: "test-model" }) as never };
+  const chatKit = new LiveChatKit<FakeChat>({
+    taskId: "child", store, blobStore: {} as BlobStore, chatClass: FakeChat, getters, isSubTask: true,
+  });
+  vi.spyOn(chatKit, "inited", "get").mockReturnValue(true);
+  await (chatKit as unknown as { onStart: OnStartCallback }).onStart({
+    messages: [userMessage("Inspect repository tests")], getters,
+  });
+  expect(commit).toHaveBeenCalledWith(expect.objectContaining({
+    name: "v1.UpdateTitle", args: expect.objectContaining({ id: "child", title: "Inspect test setup" }),
+  }));
+  expect(commit.mock.calls[0][0].name).toBe("v1.UpdateTitle");
+  expect(commit.mock.calls[1][0].name).toBe("v1.ChatStreamStarted");
+});

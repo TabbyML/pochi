@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -29,7 +30,8 @@ import {
   EyeOffIcon,
   FileTextIcon,
   ListIcon,
-  XIcon,
+  Loader2Icon,
+  SquareIcon,
 } from "lucide-react";
 import { Children, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -430,6 +432,11 @@ function AgentJobRow({
           isRunning={job.status === "running"}
           tone={statusTone(job.status)}
         />
+        {job.agentType && (
+          <Badge variant="secondary" className="h-5 shrink-0 py-0">
+            {job.agentType}
+          </Badge>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="min-w-0 flex-1 truncate text-sm" title={summary}>
@@ -443,11 +450,9 @@ function AgentJobRow({
             <span className="mt-1 block text-sm opacity-80">{summary}</span>
           </TooltipContent>
         </Tooltip>
-        <span className="flex min-h-5 shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <span className="flex min-h-5 shrink-0 items-center gap-1">
           {job.status === "running" && parentTaskId && (
-            <JobAction
-              label={t("managePanel.kill")}
-              destructive
+            <StopJobAction
               onClick={async () => {
                 try {
                   await manager.kill(job.backgroundJobId);
@@ -458,9 +463,7 @@ function AgentJobRow({
                   );
                 }
               }}
-            >
-              <XIcon className="size-4" />
-            </JobAction>
+            />
           )}
           <ChevronRightIcon
             className="size-4 text-muted-foreground"
@@ -523,9 +526,7 @@ function JobRow({
           <EyeIcon className="size-4" />
         )}
       </JobAction>
-      <JobAction
-        label={t("managePanel.kill")}
-        destructive
+      <StopJobAction
         onClick={async () => {
           try {
             await manager.kill(job.backgroundJobId);
@@ -534,9 +535,7 @@ function JobRow({
             setError(error instanceof Error ? error.message : String(error));
           }
         }}
-      >
-        <XIcon className="size-4" />
-      </JobAction>
+      />
     </>
   ) : (
     <>
@@ -625,14 +624,56 @@ function JobRow({
   );
 }
 
+function StopJobAction({ onClick }: { onClick: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const [pending, setPending] = useState(false);
+  const inFlight = useRef(false);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t("backgroundTasks.stop")}
+          aria-busy={pending}
+          disabled={pending}
+          className="size-5 shrink-0 rounded-sm text-muted-foreground hover:text-foreground"
+          onClick={async (event) => {
+            event.stopPropagation();
+            if (inFlight.current) return;
+            inFlight.current = true;
+            setPending(true);
+            try {
+              await onClick();
+            } finally {
+              inFlight.current = false;
+              setPending(false);
+            }
+          }}
+        >
+          {pending ? (
+            <Loader2Icon className="size-3 animate-spin" />
+          ) : (
+            <SquareIcon
+              className="size-2.5 fill-current"
+              strokeWidth={0}
+              aria-hidden="true"
+            />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{t("backgroundTasks.stop")}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function JobAction({
   label,
-  destructive,
   onClick,
   children,
 }: {
   label: string;
-  destructive?: boolean;
   onClick?: () => void;
   children: ReactNode;
 }) {
@@ -651,8 +692,6 @@ function JobAction({
           className={cn(
             // The `dark:` twins displace the ghost variant's own dark hover.
             "size-5 rounded-sm text-muted-foreground hover:bg-foreground/10 hover:text-foreground dark:hover:bg-foreground/10",
-            destructive &&
-              "hover:bg-destructive/15 hover:text-destructive dark:hover:bg-destructive/25",
           )}
         >
           {children}
