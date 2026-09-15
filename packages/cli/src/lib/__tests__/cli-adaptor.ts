@@ -1,5 +1,5 @@
 import type { BackgroundCommandNotification } from "@getpochi/common";
-import { makeJobStore } from "../../../../livekit/src/background-job/__tests__/test-store";
+import { makeJobStore } from "@getpochi/livekit/testing";
 import { CliRunningTaskAdaptor } from "../../running-task-adaptor";
 
 export function createTestCliAdaptor(

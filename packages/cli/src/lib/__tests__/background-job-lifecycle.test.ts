@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { executeToolCall as executeCliToolCall } from "../../tools";
 import type { ToolCallOptions } from "../../types";
 import { describe, expect, it, vi } from "vitest";
-import { makeJobStore } from "../../../../livekit/src/background-job/__tests__/test-store";
+import { makeJobStore } from "@getpochi/livekit/testing";
 import { TaskRunner } from "../../task-runner";
 
 describe("CLI background job shutdown", () => {

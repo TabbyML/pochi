@@ -5,7 +5,7 @@ import {
   type ExecuteCommandResult,
 } from "@getpochi/common/vscode-webui-bridge";
 import { BackgroundJobManager, type Message } from "@getpochi/livekit";
-import { makeJobStore } from "../../../livekit/src/background-job/__tests__/test-store";
+import { makeJobStore } from "@getpochi/livekit/testing";
 import { signal } from "@preact/signals-core";
 import { ThreadSignal } from "@quilted/threads/signals";
 import { beforeEach, describe, expect, it, vi } from "vitest";

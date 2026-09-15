@@ -7,6 +7,7 @@ import {
   type RunningTaskAdaptor,
 } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
+import { makeJobStore } from "@getpochi/livekit/testing";
 import {
   act,
   cleanup,
@@ -16,7 +17,6 @@ import {
 } from "@testing-library/react";
 import { StrictMode, Suspense } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { makeJobStore } from "../../../../../../livekit/src/background-job/__tests__/test-store";
 
 afterEach(cleanup);
 

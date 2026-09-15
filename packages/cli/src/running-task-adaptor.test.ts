@@ -1,5 +1,5 @@
 import { BackgroundJobManager } from "@getpochi/livekit";
-import { makeJobStore } from "../../livekit/src/background-job/__tests__/test-store";
+import { makeJobStore } from "@getpochi/livekit/testing";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
