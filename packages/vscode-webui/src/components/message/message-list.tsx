@@ -17,7 +17,11 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn, formatExecutionDuration } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import { prompts } from "@getpochi/common";
+import {
+  type BackgroundJobNotification,
+  type MonitorEventEnvelope,
+  prompts,
+} from "@getpochi/common";
 import type {
   ActiveSelection,
   TerminalTextSelection,
@@ -32,7 +36,6 @@ import { BackgroundJobNotifications } from "./background-job-notifications";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
-import { MonitorEventsPart } from "./monitor-events";
 import { Reviews } from "./reviews";
 import { useMessageListPagination } from "./use-message-list-pagination";
 import { UserEditsPart } from "./user-edits";
@@ -369,9 +372,13 @@ function UserSelections({ message }: { message: Message }) {
 
 function MessageBackgroundJobNotifications({ message }: { message: Message }) {
   if (message.role !== "user") return null;
-  const notifications = message.parts.flatMap((part) =>
-    part.type === "data-background-job-notification" ? [part.data] : [],
-  );
+  const notifications = message.parts.flatMap<
+    BackgroundJobNotification | MonitorEventEnvelope
+  >((part) => {
+    if (part.type === "data-background-job-notification") return [part.data];
+    if (part.type === "data-monitor-events") return part.data.batches;
+    return [];
+  });
   return <BackgroundJobNotifications notifications={notifications} />;
 }
 
@@ -491,15 +498,14 @@ function Part({
     return null;
   }
 
-  if (part.type === "data-monitor-events") {
-    return <MonitorEventsPart batches={part.data.batches} />;
-  }
-
   if (part.type === "data-terminal-context") {
     return null;
   }
 
-  if (part.type === "data-background-job-notification") {
+  if (
+    part.type === "data-background-job-notification" ||
+    part.type === "data-monitor-events"
+  ) {
     return null;
   }
 

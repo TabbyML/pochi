@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Activity } from "lucide-react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackgroundJobPanel } from "../command-execution-panel";
 
@@ -193,6 +194,36 @@ describe("BackgroundJobPanel job control", () => {
     expect(
       screen.queryByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
     ).toBeNull();
+  });
+
+  it("uses the same notification row for monitor output, tooltip and log access", async () => {
+    const summary = "Simulated log entries\nfirst log\nsecond log";
+    const { container } = render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-monitor-1"
+        appearance="notification"
+        command="watch logs"
+        notificationTitle="first log"
+        notificationIcon={<Activity className="size-3" />}
+        summary={summary}
+        outputFile="/tmp/monitor.log"
+      />,
+    );
+    const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
+    expect(row.textContent).toBe("first log");
+    expect(row.querySelector(".lucide-activity")).not.toBeNull();
+    expect(row.querySelector(".lucide-terminal")).toBeNull();
+    expect(row.querySelector("code")?.classList.contains("truncate")).toBe(
+      true,
+    );
+    expect(row.lastElementChild?.classList.contains("size-3.5")).toBe(true);
+    expect(container.querySelector('[data-slot="collapsible"]')).toBeNull();
+    fireEvent.pointerMove(row, { pointerType: "mouse" });
+    await waitFor(() =>
+      expect(screen.getByRole("tooltip").textContent).toContain(summary),
+    );
+    fireEvent.click(row);
+    expect(openFile).toHaveBeenCalledWith("/tmp/monitor.log");
   });
 
   it("opens the output file from the notification row and shows its summary tooltip", async () => {

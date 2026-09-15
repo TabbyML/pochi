@@ -580,10 +580,6 @@
     "viewChanges": "查看更改",
     "openFile": "打开文件"
   },
-  "monitorEvents": {
-    "eventCount_one": "{{count}} 个事件",
-    "eventCount_other": "{{count}} 个事件"
-  },
   "userEdits": {
     "title": "编辑",
     "filesEdited_one": "已编辑 {{count}} 个文件",

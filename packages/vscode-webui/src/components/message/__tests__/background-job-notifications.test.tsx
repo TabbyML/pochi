@@ -1,4 +1,7 @@
-import type { BackgroundJobNotification } from "@getpochi/common";
+import type {
+  BackgroundJobNotification,
+  MonitorEventEnvelope,
+} from "@getpochi/common";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BackgroundJobNotifications } from "../background-job-notifications";
@@ -42,6 +45,7 @@ vi.mock("@/features/tools", () => ({
     status,
     outputFile,
     appearance,
+    notificationTitle,
   }: {
     backgroundJobId: string;
     command?: string;
@@ -49,6 +53,7 @@ vi.mock("@/features/tools", () => ({
     status?: string;
     outputFile?: string;
     appearance?: string;
+    notificationTitle?: string;
   }) => (
     <div
       data-testid="background-job-panel"
@@ -57,13 +62,56 @@ vi.mock("@/features/tools", () => ({
       data-output-file={outputFile}
       data-appearance={appearance}
     >
-      <span>{command}</span>
+      <span>{notificationTitle ?? command}</span>
       <span>{summary}</span>
     </div>
   ),
 }));
 
 describe("BackgroundJobNotifications", () => {
+  it("keeps command and monitor batches as ordered flat items in one notification section", () => {
+    const monitor: MonitorEventEnvelope = {
+      notificationId: "monitor-first",
+      backgroundJobId: "bgjob-monitor-1",
+      description: "Simulated log entries",
+      command: "watch logs",
+      outputFile: "/tmp/monitor.log",
+      lines: ["first log"],
+    };
+    const notifications = [
+      monitor,
+      notification("bgjob-cmd-1", "completed"),
+      {
+        ...monitor,
+        notificationId: "monitor-next",
+        lines: ["second log", "third log"],
+      },
+      {
+        ...monitor,
+        notificationId: "monitor-ended",
+        lines: [],
+        ended: { reason: "kill requested", status: "stopped" as const },
+      },
+    ];
+    const snapshot = structuredClone(notifications);
+    const { container, getAllByTestId, getByText } = render(
+      <BackgroundJobNotifications notifications={notifications} />,
+    );
+    expect(container.querySelectorAll("section")).toHaveLength(1);
+    expect(getByText("4").getAttribute("data-slot")).toBe("badge");
+    const rows = getAllByTestId("background-job-panel");
+    expect(rows.map((row) => row.firstElementChild?.textContent)).toEqual([
+      "first log",
+      "run bgjob-cmd-1",
+      "second log\nthird log",
+      "kill requested",
+    ]);
+    expect(rows[0].getAttribute("data-output-file")).toBe("/tmp/monitor.log");
+    expect(rows[3].getAttribute("data-status")).toBe("stopped");
+    expect(container.textContent).not.toContain("eventCount");
+    expect(notifications).toEqual(snapshot);
+  });
+
   it("groups notifications under one data-style section", () => {
     const { container, getAllByTestId, getByText } = render(
       <BackgroundJobNotifications

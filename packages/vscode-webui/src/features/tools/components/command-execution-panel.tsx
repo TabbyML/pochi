@@ -214,6 +214,8 @@ export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
   appearance?: "default" | "notification";
+  notificationTitle?: string;
+  notificationIcon?: React.ReactNode;
   /** Command fallback for persisted notification messages. */
   command?: string;
   /** Summary fallback for persisted notification messages. */
@@ -229,6 +231,8 @@ export const BackgroundJobPanel: FC<{
   backgroundJobId,
   output,
   appearance = "default",
+  notificationTitle,
+  notificationIcon,
   command,
   summary,
   status,
@@ -328,18 +332,19 @@ export const BackgroundJobPanel: FC<{
       );
 
   if (isNotification) {
+    const text = notificationTitle ?? resolvedCommand ?? backgroundJobId;
     const notificationRowClassName =
       "group flex w-full min-w-0 items-center gap-2 rounded-sm px-1 py-1 text-left text-sm hover:bg-muted/30";
     const notificationRowContent = (
       <>
         <span className="inline-flex size-[16px] shrink-0 items-center justify-center rounded-sm bg-secondary text-secondary-foreground shadow-xs ring-primary">
-          <TerminalIcon className="size-3" />
+          {notificationIcon ?? <TerminalIcon className="size-3" />}
         </span>
         <code
           className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
-          title={resolvedCommand ?? backgroundJobId}
+          title={text}
         >
-          {resolvedCommand ?? backgroundJobId}
+          {text}
         </code>
         <span
           className="inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/75"
@@ -383,7 +388,13 @@ export const BackgroundJobPanel: FC<{
       <Tooltip>
         <TooltipTrigger asChild>{notificationRow}</TooltipTrigger>
         <TooltipContent>
-          <span className="block max-w-sm whitespace-pre-wrap break-words">
+          <span
+            className={cn(
+              "block max-w-sm whitespace-pre-wrap break-words",
+              backgroundJobId.startsWith("bgjob-monitor-") &&
+                "max-h-[50vh] overflow-y-auto overscroll-y-contain",
+            )}
+          >
             {summary}
           </span>
         </TooltipContent>

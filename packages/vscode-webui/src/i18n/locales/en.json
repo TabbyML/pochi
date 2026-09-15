@@ -583,10 +583,6 @@
     "viewChanges": "View Changes",
     "openFile": "Open File"
   },
-  "monitorEvents": {
-    "eventCount_one": "{{count}} event",
-    "eventCount_other": "{{count}} events"
-  },
   "userEdits": {
     "title": "Edits",
     "filesEdited_one": "{{count}} file edited",

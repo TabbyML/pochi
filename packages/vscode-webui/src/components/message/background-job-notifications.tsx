@@ -1,29 +1,54 @@
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { BackgroundJobPanel } from "@/features/tools";
-import type { BackgroundJobNotification } from "@getpochi/common";
-import { Bell } from "lucide-react";
+import type {
+  BackgroundJobNotification,
+  MonitorEventEnvelope,
+} from "@getpochi/common";
+import { Activity, Bell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface BackgroundJobNotificationsProps {
-  notifications: BackgroundJobNotification[];
+  notifications: (BackgroundJobNotification | MonitorEventEnvelope)[];
 }
 
 export function BackgroundJobNotificationItems({
   notifications,
 }: BackgroundJobNotificationsProps) {
-  return notifications.map((notification) => (
-    <BackgroundJobPanel
-      key={notification.notificationId}
-      backgroundJobId={notification.backgroundJobId}
-      appearance="notification"
-      command={notification.command}
-      summary={notification.summary}
-      status={notification.status}
-      exitCode={notification.exitCode}
-      outputFile={notification.outputFile}
-    />
-  ));
+  return notifications.map((notification) => {
+    if ("lines" in notification) {
+      const text = [
+        ...notification.lines,
+        ...(notification.ended ? [notification.ended.reason] : []),
+      ].join("\n");
+      return (
+        <BackgroundJobPanel
+          key={notification.notificationId}
+          backgroundJobId={notification.backgroundJobId}
+          appearance="notification"
+          command={notification.command}
+          notificationIcon={<Activity className="size-3" />}
+          notificationTitle={text || notification.description}
+          summary={[notification.description, text].filter(Boolean).join("\n")}
+          status={notification.ended?.status}
+          exitCode={notification.ended?.exitCode}
+          outputFile={notification.outputFile}
+        />
+      );
+    }
+    return (
+      <BackgroundJobPanel
+        key={notification.notificationId}
+        backgroundJobId={notification.backgroundJobId}
+        appearance="notification"
+        command={notification.command}
+        summary={notification.summary}
+        status={notification.status}
+        exitCode={notification.exitCode}
+        outputFile={notification.outputFile}
+      />
+    );
+  });
 }
 
 export function BackgroundJobNotifications({
