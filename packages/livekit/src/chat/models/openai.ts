@@ -1,10 +1,16 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { constants, getLogger } from "@getpochi/common";
+import { getLogger } from "@getpochi/common";
 import { wrapLanguageModel } from "ai";
 import { z } from "zod";
 import type { RequestData } from "../../types";
 
 const logger = getLogger("openai");
+
+/**
+ * Sent on outgoing BYOK OpenAI-compatible requests so the task id can be
+ * correlated on the provider side.
+ */
+const PochiSessionIdHeader = "x-pochi-session-id";
 
 // Zod schema for validating OpenAI API request parameters
 const OpenAIRequestParamsSchema = z
@@ -23,7 +29,7 @@ export function createOpenAIModel(
     name: "OpenAI",
     baseURL,
     apiKey: llm.apiKey,
-    headers: { [constants.PochiSessionIdHeader]: taskId },
+    headers: { [PochiSessionIdHeader]: taskId },
     fetch: patchedFetch(baseURL),
   });
   return wrapLanguageModel({
