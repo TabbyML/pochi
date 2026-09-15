@@ -6,13 +6,24 @@ import { createMiniMaxModel } from "./minimax";
 import { createOpenAIModel } from "./openai";
 import { createOpenAIResponsesModel } from "./openai-responses";
 
-export function createModel({ llm }: { llm: RequestData["llm"] }) {
+export function createModel({
+  llm,
+  taskId,
+}: {
+  llm: RequestData["llm"];
+  /**
+   * The task id for this request. Passed to the BYOK (bring-your-own-key)
+   * OpenAI-compatible provider so it can send it as the `x-pochi-session-id`
+   * header on outgoing LLM requests.
+   */
+  taskId: string;
+}) {
   if (llm.type === "vendor") {
     return llm.getModel();
   }
 
   if (llm.type === "openai") {
-    return createOpenAIModel(llm);
+    return createOpenAIModel(llm, taskId);
   }
 
   if (llm.type === "anthropic") {

@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { getLogger } from "@getpochi/common";
+import { constants, getLogger } from "@getpochi/common";
 import { wrapLanguageModel } from "ai";
 import { z } from "zod";
 import type { RequestData } from "../../types";
@@ -16,12 +16,14 @@ const OpenAIRequestParamsSchema = z
 
 export function createOpenAIModel(
   llm: Extract<RequestData["llm"], { type: "openai" }>,
+  taskId: string,
 ) {
   const baseURL = llm.baseURL ?? "https://api.openai.com/v1";
   const openai = createOpenAICompatible({
     name: "OpenAI",
     baseURL,
     apiKey: llm.apiKey,
+    headers: { [constants.PochiSessionIdHeader]: taskId },
     fetch: patchedFetch(baseURL),
   });
   return wrapLanguageModel({
