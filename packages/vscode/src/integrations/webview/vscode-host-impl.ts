@@ -116,8 +116,8 @@ import {
   type WorkspaceState,
   getTaskDisplayTitle,
   resolveToolCallArgs,
-  serializeThreadSignalWithSnapshot,
 } from "@getpochi/common/vscode-webui-bridge";
+import { serializeThreadSignalWithSnapshot } from "@getpochi/common/vscode-webui-bridge/thread-signal";
 import type { CompiledToolPolicies, ToolFunctionType } from "@getpochi/tools";
 import { createClientTools, validateToolPolicy } from "@getpochi/tools";
 import { computed } from "@preact/signals-core";

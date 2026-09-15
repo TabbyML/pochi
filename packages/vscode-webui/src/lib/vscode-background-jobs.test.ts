@@ -1,9 +1,9 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
-import {
-  serializeThreadSignalWithSnapshot,
-  type BackgroundCommands,
-  type ExecuteCommandResult,
+import type {
+  BackgroundCommands,
+  ExecuteCommandResult,
 } from "@getpochi/common/vscode-webui-bridge";
+import { serializeThreadSignalWithSnapshot } from "@getpochi/common/vscode-webui-bridge/thread-signal";
 import { BackgroundJobManager, type Message } from "@getpochi/livekit";
 import { makeJobStore } from "@getpochi/livekit/testing";
 import { signal } from "@preact/signals-core";

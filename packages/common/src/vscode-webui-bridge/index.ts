@@ -5,7 +5,6 @@ export type {
 } from "./webview";
 
 export { createVscodeHostStub } from "./webview-stub";
-export { serializeThreadSignalWithSnapshot } from "./thread-signal";
 export type { PochiCredentials } from "./types/pochi";
 
 export type { McpStatus } from "../mcp-utils";
