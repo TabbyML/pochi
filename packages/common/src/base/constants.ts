@@ -19,6 +19,7 @@ export const StreamingUpdateThrottleMs = 100;
 export const AttemptTodoCompletionAgentName = "attemptTodoCompletion";
 
 export const PochiTaskIdHeader = "x-pochi-task-id";
+export const PochiSessionIdHeader = "x-pochi-session-id";
 export const PochiStoreIdHeader = "x-pochi-store-id";
 export const PochiClientHeader = "x-pochi-client";
 export const PochiRequestUseCaseHeader = "x-pochi-request-use-case";
