@@ -20,7 +20,6 @@ import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { getSubAgentBackgroundJobId } from "@getpochi/common";
-import type { Message, Task } from "@getpochi/livekit";
 import type { BackgroundJobEntry, JobStatus } from "@getpochi/livekit";
 import {
   CheckIcon,
@@ -37,72 +36,25 @@ import { Children, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBackgroundJobList } from "../hooks/use-background-job-list";
 import { useBackgroundJobManager } from "../hooks/use-background-job-manager";
-import {
-  BackgroundTaskDetail,
-  isBackgroundTaskRunning,
-  useBackgroundTasks,
-} from "./background-task-debug-panel";
+import { BackgroundTaskDetail } from "./background-task-debug-panel";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
 
-export function BackgroundJobManagePanel({
-  taskId,
-  messages,
-}: {
-  taskId: string;
-  messages: Message[];
-}) {
+export function BackgroundJobManagePanel({ taskId }: { taskId: string }) {
   const [isDevMode] = useIsDevMode();
-
-  return isDevMode === true ? (
-    <DevManagePanel taskId={taskId} messages={messages} />
-  ) : (
-    <ManagePanel taskId={taskId} messages={messages} tasks={NoTasks} />
-  );
-}
-
-const NoTasks: readonly Task[] = [];
-
-/**
- * Background tasks are only shown in dev mode, and hooks cannot be
- * conditional, so their query lives in its own component.
- */
-function DevManagePanel({
-  taskId,
-  messages,
-}: {
-  taskId: string;
-  messages: Message[];
-}) {
-  const tasks = useBackgroundTasks();
-
-  return <ManagePanel taskId={taskId} messages={messages} tasks={tasks} />;
-}
-
-function ManagePanel({
-  taskId,
-  messages,
-  tasks,
-}: {
-  taskId: string;
-  messages: Message[];
-  tasks: readonly Task[];
-}) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const cancelDetailOpenRef = useRef<() => void>(undefined);
-  const backgroundJobs = useBackgroundJobList(taskId, messages);
-  // A subagent can also appear in the dev query; show and count it only once.
-  const visibleTasks = tasks.filter(
-    (task) => !backgroundJobs.some((job) => job.taskId === task.id),
+  const backgroundJobs = useBackgroundJobList(taskId).filter(
+    (job) => isDevMode || job.kind !== "fork",
   );
 
   useEffect(() => () => cancelDetailOpenRef.current?.(), []);
 
-  const runningCount =
-    backgroundJobs.filter((job) => job.status === "running").length +
-    visibleTasks.filter((task) => isBackgroundTaskRunning(task.status)).length;
+  const runningCount = backgroundJobs.filter(
+    (job) => job.status === "running",
+  ).length;
 
   return (
     <Sheet
@@ -152,7 +104,6 @@ function ManagePanel({
             <PanelBody
               parentTaskId={taskId}
               backgroundJobs={backgroundJobs}
-              tasks={visibleTasks}
               onSelectTask={(id) => {
                 cancelDetailOpenRef.current?.();
                 setDetailTaskId(id);
@@ -176,8 +127,8 @@ function ManagePanel({
             {detailTaskId !== null && (
               <BackgroundTaskDetail
                 backgroundJobId={getSubAgentBackgroundJobId(detailTaskId)}
-                showDiagnostics={visibleTasks.some(
-                  (task) => task.id === detailTaskId,
+                showDiagnostics={backgroundJobs.some(
+                  (job) => job.kind === "fork" && job.taskId === detailTaskId,
                 )}
                 taskId={detailTaskId}
                 isOpen={isDetailOpen}
@@ -204,39 +155,18 @@ function afterNextPaint(callback: () => void) {
 function PanelBody({
   parentTaskId,
   backgroundJobs,
-  tasks,
   onSelectTask,
 }: {
   parentTaskId: string;
   backgroundJobs: BackgroundJobEntry[];
-  tasks: readonly Task[];
   onSelectTask: (taskId: string) => void;
 }) {
   const { t } = useTranslation();
-  const systemTasks = new Map(tasks.map((task) => [task.id, task]));
-  const jobs = useRunningFirst([
-    ...backgroundJobs,
-    ...tasks.map(
-      (task): BackgroundJobEntry => ({
-        backgroundJobId: getSubAgentBackgroundJobId(task.id),
-        taskId: task.id,
-        title: task.title || t("backgroundTasks.untitled"),
-        status: isBackgroundTaskRunning(task.status)
-          ? "running"
-          : task.status === "completed"
-            ? "completed"
-            : task.status === "failed"
-              ? task.error?.kind === "AbortError"
-                ? "stopped"
-                : "failed"
-              : "finished",
-      }),
-    ),
-  ]);
-  const commands = jobs.filter((job) => !job.taskId);
-  const agents = jobs.filter((job) => job.taskId);
+  const jobs = useRunningFirst(backgroundJobs);
+  const commands = jobs.filter((job) => job.kind === "command");
+  const agents = jobs.filter((job) => job.kind !== "command");
 
-  if (backgroundJobs.length === 0 && tasks.length === 0) {
+  if (backgroundJobs.length === 0) {
     return (
       <div className="px-3 py-6 text-center text-base text-muted-foreground">
         {t("managePanel.empty")}
@@ -260,21 +190,17 @@ function PanelBody({
           <PanelGroup label={t("backgroundTasks.title")}>
             {agents.map((job) => (
               <li key={job.backgroundJobId}>
-                {job.taskId && systemTasks.has(job.taskId) ? (
+                {job.kind === "fork" ? (
                   <SystemAgentJobRow
                     job={job}
-                    task={systemTasks.get(job.taskId)}
-                    onSelect={() => {
-                      if (job.taskId) onSelectTask(job.taskId);
-                    }}
+                    onSelect={() => onSelectTask(job.taskId)}
                   />
                 ) : (
                   <AgentJobRow
                     job={job}
+                    badgeLabel={job.agentType}
                     parentTaskId={parentTaskId}
-                    onSelect={() => {
-                      if (job.taskId) onSelectTask(job.taskId);
-                    }}
+                    onSelect={() => onSelectTask(job.taskId)}
                   />
                 )}
               </li>
@@ -373,31 +299,33 @@ function PanelGroup({
 /** System agents use the same row; diagnostics remain available in dev mode. */
 function SystemAgentJobRow({
   job,
-  task,
   onSelect,
-}: { job: BackgroundJobEntry; task?: Task; onSelect: () => void }) {
+}: {
+  job: Extract<BackgroundJobEntry, { kind: "fork" }>;
+  onSelect: () => void;
+}) {
   const { t } = useTranslation();
-  const { backgroundTaskState } = useBackgroundTaskState(task?.id ?? "");
-  const type = backgroundTaskState?.agentType ?? backgroundTaskState?.useCase;
+  const { backgroundTaskState } = useBackgroundTaskState(job.taskId);
+
   return (
     <AgentJobRow
-      job={{ ...job, agentType: type ?? t("backgroundTasks.systemAgent") }}
-      onSelect={onSelect}
-      statusLabel={
-        task?.status === "pending-input" ? t("backgroundTasks.idle") : undefined
+      job={job}
+      badgeLabel={
+        backgroundTaskState?.useCase ?? t("backgroundTasks.systemAgent")
       }
+      onSelect={onSelect}
     />
   );
 }
 
 function AgentJobRow({
   job,
+  badgeLabel,
   parentTaskId,
   onSelect,
-  statusLabel,
 }: {
-  job: BackgroundJobEntry;
-  statusLabel?: string;
+  job: Extract<BackgroundJobEntry, { kind: "subagent" | "fork" }>;
+  badgeLabel?: string;
   parentTaskId?: string;
   onSelect: () => void;
 }) {
@@ -405,8 +333,8 @@ function AgentJobRow({
   const manager = useBackgroundJobManager(parentTaskId ?? "");
   const [error, setError] = useState<string>();
   const summary = [
-    job.agentType,
-    statusLabel ?? t(`backgroundTasks.${job.status}`),
+    badgeLabel,
+    t(`backgroundTasks.${job.status}`),
     job.notificationPending
       ? t("backgroundTasks.pendingNotification")
       : undefined,
@@ -432,9 +360,9 @@ function AgentJobRow({
           isRunning={job.status === "running"}
           tone={statusTone(job.status)}
         />
-        {job.agentType && (
+        {badgeLabel && (
           <Badge variant="secondary" className="h-5 shrink-0 py-0">
-            {job.agentType}
+            {badgeLabel}
           </Badge>
         )}
         <Tooltip>
@@ -483,7 +411,10 @@ function AgentJobRow({
 function JobRow({
   job,
   parentTaskId,
-}: { job: BackgroundJobEntry; parentTaskId: string }) {
+}: {
+  job: Extract<BackgroundJobEntry, { kind: "command" }>;
+  parentTaskId: string;
+}) {
   const manager = useBackgroundJobManager(parentTaskId ?? "");
   const [error, setError] = useState<string>();
   const { t } = useTranslation();
@@ -500,7 +431,7 @@ function JobRow({
       : undefined;
 
   const statusLabel =
-    job.status === "running" || job.status === "finished"
+    job.status === "running"
       ? undefined
       : getBackgroundJobStatusLabel(job.status, job.exitCode, t);
 
@@ -600,20 +531,6 @@ function JobRow({
         title
       )}
       <span className="grid min-h-5 shrink-0 items-center justify-items-end">
-        {job.displayId && (
-          <span
-            className={cn(
-              // An inline box paints over the controls sharing its grid cell,
-              // so it has to opt out of hit-testing.
-              "pointer-events-none col-start-1 row-start-1 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-secondary px-1 font-bold font-mono text-secondary-foreground text-xs",
-              isVisible && "ring-1 ring-primary",
-              hasActions &&
-                "transition-opacity group-focus-within:opacity-0 group-hover:opacity-0",
-            )}
-          >
-            {job.displayId}
-          </span>
-        )}
         {hasActions && (
           <span className="col-start-1 row-start-1 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             {actions}

@@ -1,16 +1,35 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
-import type { SubAgentResultNotification } from "@getpochi/common";
+import type { BackgroundSubagentNotification } from "@getpochi/common";
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SubagentResultsPart } from "../subagent-results";
+import { SubagentResultNotificationItem } from "../subagent-results";
 
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/hooks/use-navigate", () => ({ useNavigate: () => navigate }));
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({ storeId: "store-1" }),
 }));
-vi.mock("@/features/chat", () => ({
+vi.mock(
+  "../../../features/chat/components/background-task-debug-panel",
+  () => ({
+    BackgroundTaskDetail: ({
+      taskId,
+      onBack,
+    }: { taskId: string; onBack: () => void }) => (
+      <div data-testid="task-detail">
+        <span>{taskId}</span>
+        <button type="button" onClick={onBack}>
+          Back
+        </button>
+      </div>
+    ),
+  }),
+);
+vi.mock("@/features/chat", async () => ({
+  ...(await vi.importActual(
+    "../../../features/chat/components/background-task-button",
+  )),
   useReplaceJobIdsInContent: () => (content: string) => content,
 }));
 vi.mock("@/features/tools", () => ({
@@ -29,7 +48,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const result: SubAgentResultNotification = {
+const result: BackgroundSubagentNotification = {
   kind: "subagent",
   notificationId: "bgjob-task-child:terminal:1",
   backgroundJobId: "bgjob-task-child",
@@ -42,7 +61,7 @@ const result: SubAgentResultNotification = {
 const renderResult = (value = result) =>
   render(
     <TooltipProvider>
-      <SubagentResultsPart results={[value]} />
+      <SubagentResultNotificationItem result={value} />
     </TooltipProvider>,
   );
 
@@ -99,23 +118,27 @@ describe("subagent result notification", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("opens the task from its agent type without toggling the preview in either state", () => {
+  it("opens task details without navigating or toggling the result preview", () => {
     const { container } = renderResult();
     fireEvent.click(screen.getByRole("button", { name: "explore" }));
-    expect(navigate).toHaveBeenCalledWith({
-      to: "/task",
-      search: { uid: "child", storeId: "store-1" },
-    });
+    expect(screen.getByTestId("task-detail").textContent).toContain("child");
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(
-      container.querySelector("[aria-expanded]")?.getAttribute("aria-expanded"),
+      screen
+        .getByRole("button", { name: "backgroundTasks.toggleResult" })
+        .getAttribute("aria-expanded"),
     ).toBe("false");
     fireEvent.click(
       screen.getByRole("button", { name: "backgroundTasks.toggleResult" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "explore" }));
-    expect(navigate).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("task-detail").textContent).toContain("child");
+    expect(navigate).not.toHaveBeenCalled();
     expect(
-      container.querySelector("[aria-expanded]")?.getAttribute("aria-expanded"),
+      container
+        .querySelector('[aria-label="backgroundTasks.toggleResult"]')
+        ?.getAttribute("aria-expanded"),
     ).toBe("true");
   });
 

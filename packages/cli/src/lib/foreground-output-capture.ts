@@ -5,7 +5,16 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import type { BackgroundJobInitialOutput } from "./background-command-manager";
+
+export type BackgroundJobInitialOutputStream =
+  | Iterable<Buffer | string>
+  | AsyncIterable<Buffer | string>;
+
+export interface BackgroundJobInitialOutput {
+  stdout: BackgroundJobInitialOutputStream;
+  stderr: BackgroundJobInitialOutputStream;
+  dispose?: () => Promise<void>;
+}
 
 const ForegroundReplayMaxCharacters = 1024 * 1024;
 

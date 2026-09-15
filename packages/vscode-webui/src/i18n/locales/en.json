@@ -691,7 +691,6 @@
     "stopped": "Stopped",
     "finished": "Finished",
     "pendingNotification": "Waiting to notify",
-    "copyJobId": "Copy job ID",
     "title": "Background Agents",
     "empty": "No background agents",
     "untitled": "Untitled",

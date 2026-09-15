@@ -1,76 +1,408 @@
+import type { BackgroundJobNotification } from "@getpochi/common";
+import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
+import { createBackgroundJobNotification } from "@getpochi/common";
 import { describe, expect, it, vi } from "vitest";
-import type { LiveKitStore, Message, Task } from "../types";
-import { BackgroundJobManager } from "./manager";
+import type { Message, Task } from "../types";
+import { makeJobStore } from "./__tests__/test-store";
+import { BackgroundJobManager, type BackgroundCommandSource } from "./manager";
 
-function setup(task?: Partial<Task>) {
-  const query = vi.fn(() => task);
-  const commit = vi.fn();
-  const kill = vi.fn().mockResolvedValue(undefined);
-  const manager = new BackgroundJobManager({
-    store: { query, commit } as unknown as LiveKitStore,
-    taskId: "parent",
-    commands: { kill },
+function setup() {
+  const data = makeJobStore();
+  const pending = new Map<string, readonly BackgroundJobNotification[]>();
+  const notificationObservers = new Map<
+    string,
+    (notifications: readonly BackgroundJobNotification[]) => void
+  >();
+  const observers = new Map<
+    string,
+    (snapshot: {
+      running: BackgroundCommands;
+      notifications: BackgroundJobNotification[];
+    }) => void
+  >();
+  let commandsChanged: Parameters<
+    BackgroundCommandSource["observeCommands"]
+  >[0];
+  const source = {
+    kill: vi.fn(async () => {}),
+    observeCommands: vi.fn(
+      async (
+        update: Parameters<BackgroundCommandSource["observeCommands"]>[0],
+      ) => {
+        commandsChanged = update;
+        update({});
+        return { dispose: vi.fn() };
+      },
+    ),
+    observeNotifications: vi.fn(
+      async (
+        taskId: string,
+        update: Parameters<BackgroundCommandSource["observeNotifications"]>[1],
+      ) => {
+        observers.set(taskId, (snapshot) => {
+          commandsChanged(snapshot.running);
+          pending.set(taskId, snapshot.notifications);
+          update(snapshot.notifications);
+        });
+        notificationObservers.set(taskId, update);
+        update(pending.get(taskId) ?? []);
+        return { dispose: vi.fn(), acknowledge };
+      },
+    ),
+  };
+  const acknowledge = vi.fn(async (id: string) => {
+    for (const [taskId, notifications] of pending) {
+      const remaining = notifications.filter(
+        (notice) => notice.notificationId !== id,
+      );
+      pending.set(taskId, remaining);
+      notificationObservers.get(taskId)?.(remaining);
+    }
   });
-  return { manager, query, commit, kill };
+  const manager = BackgroundJobManager.forStore(data.store);
+  manager.connect(source);
+  return { ...data, manager, source, acknowledge, observers };
 }
+const running = (taskId: string) => ({
+  taskId,
+  command: "test",
+  outputFile: "/tmp/output",
+  isVisible: false,
+});
+const finished = (id = "bgjob-cmd-one") =>
+  createBackgroundJobNotification({
+    taskId: "parent",
+    backgroundJobId: id,
+    command: "test",
+    outputFile: "/tmp/output",
+    status: "completed",
+    finishedAt: 1,
+  });
 
 describe("BackgroundJobManager", () => {
-  it("combines command state with persisted task state", () => {
-    const tasks = [{ id: "child", parentId: "parent", background: true, title: "Research", status: "failed", error: { kind: "AbortError" } }];
-    const store = { query: () => tasks } as unknown as LiveKitStore;
-    const manager = new BackgroundJobManager({ store, taskId: "parent", commands: { kill: vi.fn() } });
-    const jobs = manager.getJobs({
-      messages: [{ id: "message", role: "assistant", parts: [{ type: "tool-executeCommand", state: "output-available", input: { command: "echo hello" }, output: { _meta: { backgroundJobId: "bgjob-cmd-1" } } }] }] as Message[],
-      notifications: [], backgroundCommands: { "bgjob-cmd-1": { isVisible: false } },
+  it("shares one manager across main, subagent and fork handles", () => {
+    const { store, manager } = setup();
+    expect(BackgroundJobManager.forStore(store)).toBe(manager);
+  });
+
+  it("keeps task handles usable after the chat reconnects", async () => {
+    const { store, manager, source, observers } = setup();
+    const handle = manager.forTask("parent");
+    await manager.dispose();
+    const reopened = BackgroundJobManager.forStore(store);
+    reopened.connect(source);
+    await reopened.watchTask("parent");
+    observers.get("parent")!({
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
     });
-    expect(jobs).toEqual([
-      expect.objectContaining({ backgroundJobId: "bgjob-cmd-1", status: "running" }),
-      expect.objectContaining({ backgroundJobId: "bgjob-task-child", status: "stopped", notificationPending: true }),
+    await handle.kill("bgjob-cmd-one");
+    expect(source.kill).toHaveBeenCalledExactlyOnceWith("bgjob-cmd-one");
+    await expect(manager.forTask("fork").kill("bgjob-cmd-one")).rejects.toThrow(
+      "not found",
+    );
+    await reopened.dispose();
+  });
+
+  it("uses process ownership even when a fork copied its parent's tool messages", async () => {
+    const { manager, observers, messages, source } = setup();
+    messages.set("fork", [
+      {
+        id: "copied",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-executeCommand",
+            toolCallId: "old",
+            state: "output-available",
+            input: { command: "test" },
+            output: { _meta: { backgroundJobId: "bgjob-cmd-one" } },
+          },
+        ],
+      },
+    ] as Message[]);
+    await manager.watchTask("parent");
+    await manager.watchTask("fork");
+    const snapshot = {
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
+    };
+    observers.get("parent")!(snapshot);
+    observers.get("fork")!(snapshot);
+    expect(manager.hasPending("parent")).toBe(true);
+    expect(manager.hasPending("fork")).toBe(false);
+    expect(manager.getJobsForTask("fork")).toEqual([]);
+    await expect(manager.kill("bgjob-cmd-one", "fork")).rejects.toThrow(
+      "not found",
+    );
+    await manager.dispose();
+    expect(source.kill).not.toHaveBeenCalled();
+  });
+
+  it("waits through the exit-to-notification gap and acknowledges after persisted delivery", async () => {
+    const { manager, observers, acknowledge, setMessages } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
+    });
+    let done = false;
+    const wait = manager.wait("parent").then(() => {
+      done = true;
+    });
+    observers.get("parent")!({ running: {}, notifications: [] });
+    await Promise.resolve();
+    expect(done).toBe(false);
+    observers.get("parent")!({ running: {}, notifications: [finished()] });
+    await wait;
+    expect(manager.getPendingNotifications("parent")).toEqual([finished()]);
+    expect(manager.getPendingNotifications("parent")).toEqual([finished()]);
+    expect(acknowledge).not.toHaveBeenCalled();
+    setMessages("parent", [
+      {
+        id: "notice",
+        role: "user",
+        parts: [{ type: "data-background-job-notification", data: finished() }],
+      },
     ]);
+    expect(acknowledge).toHaveBeenCalledWith(finished().notificationId);
+    await manager.dispose();
   });
 
-  it("stops an owned background task through its persisted state", async () => {
-    const { manager, commit, kill } = setup({ id: "child", parentId: "parent", background: true, status: "pending-model" });
-    await expect(manager.kill("bgjob-task-child")).resolves.toEqual({ success: true });
-    expect(commit).toHaveBeenCalledWith(expect.objectContaining({ args: expect.objectContaining({
-      id: "child", error: { kind: "AbortError", message: "Stopped by user." },
-    }) }));
-    expect(kill).not.toHaveBeenCalled();
+  it("removes delivered results from the native queue before reopening", async () => {
+    const { manager, store, source, observers, setMessages, acknowledge } =
+      setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({ running: {}, notifications: [finished()] });
+    expect(manager.getPendingNotifications("parent")).toHaveLength(1);
+    setMessages("parent", [
+      {
+        id: "notice",
+        role: "user",
+        parts: [{ type: "data-background-job-notification", data: finished() }],
+      },
+    ]);
+    setMessages("parent", []);
+    expect(acknowledge).toHaveBeenCalledWith(finished().notificationId);
+    await manager.dispose();
+    const reopened = BackgroundJobManager.forStore(store);
+    reopened.connect(source);
+    await reopened.watchTask("parent");
+    expect(reopened.getPendingNotifications("parent")).toEqual([]);
+    await reopened.dispose();
   });
 
-  it.each([
-    undefined,
-    { id: "child", parentId: "other", background: true, status: "pending-model" },
-    { id: "child", parentId: "parent", background: false, status: "pending-model" },
-  ])("rejects missing, foreign and foreground tasks", async (task) => {
-    const { manager, commit, kill } = setup(task as Partial<Task> | undefined);
-    await expect(manager.kill("bgjob-task-child")).rejects.toThrow("not found");
+  it("does not reconstruct a command from old tool messages when its process is gone", async () => {
+    const { manager, messages, source } = setup();
+    messages.set("parent", [
+      {
+        id: "old-command",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-executeCommand",
+            toolCallId: "old",
+            state: "output-available",
+            input: { command: "test" },
+            output: { _meta: { backgroundJobId: "bgjob-cmd-one" } },
+          },
+        ],
+      },
+    ] as Message[]);
+    await manager.watchTask("parent");
+    expect(manager.hasPending("parent")).toBe(false);
+    expect(manager.getPendingNotifications("parent")).toEqual([]);
+    expect(manager.getJobsForTask("parent")).toEqual([]);
+    expect(source.kill).not.toHaveBeenCalled();
+    await manager.dispose();
+  });
+
+  it("restores live commands without depending on preserved chat history", async () => {
+    const { manager, source } = setup();
+    source.observeCommands.mockImplementationOnce(async (update) => {
+      update({ "bgjob-cmd-one": running("parent") });
+      return { dispose: vi.fn(), acknowledge: vi.fn(async () => {}) };
+    });
+    await manager.watchTask("parent");
+    expect(manager.hasPending("parent")).toBe(true);
+    await manager.dispose();
+  });
+
+  it("honors a zero timeout and abort without consuming a notification", async () => {
+    const { manager, observers } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
+    });
+    expect(await manager.wait("parent", { timeoutMs: 0 })).toBe("timeout");
+    const controller = new AbortController();
+    const wait = manager.wait("parent", { abortSignal: controller.signal });
+    controller.abort();
+    expect(await wait).toBe("aborted");
+    observers.get("parent")!({ running: {}, notifications: [finished()] });
+    expect(manager.getPendingNotifications("parent")).toEqual([finished()]);
+    await manager.dispose();
+  });
+
+  it("stops a child and its command without stopping its siblings", async () => {
+    const { manager, observers, tasks, source } = setup();
+    tasks.set("child", {
+      id: "child",
+      parentId: "parent",
+      background: true,
+      status: "pending-model",
+    } as Task);
+    manager.registerTask("child", { parentTaskId: "parent" });
+    await manager.watchTask("parent");
+    await manager.watchTask("child");
+    const snapshot = {
+      running: {
+        "bgjob-cmd-one": running("parent"),
+        "bgjob-cmd-two": running("child"),
+      },
+      notifications: [],
+    };
+    observers.get("parent")!(snapshot);
+    observers.get("child")!(snapshot);
+    await manager.kill("bgjob-task-child", "parent");
+    expect(source.kill).toHaveBeenCalledExactlyOnceWith("bgjob-cmd-two");
+    expect(tasks.get("child")).toMatchObject({
+      status: "failed",
+      error: { kind: "AbortError" },
+    });
+    expect(
+      manager
+        .getJobsForTask("parent")
+        .find((job) => job.kind === "subagent" && job.taskId === "child"),
+    ).toMatchObject({ status: "stopped" });
+    await manager.dispose();
+  });
+
+  it("uses the persisted agent status for its result", async () => {
+    const { manager, tasks } = setup();
+    tasks.set("child", {
+      id: "child",
+      parentId: "parent",
+      background: true,
+      status: "pending-model",
+    } as Task);
+    manager.registerTask("child", { parentTaskId: "parent" });
+    await manager.watchTask("parent");
+    expect(manager.getPendingNotifications("parent")).toEqual([]);
+    expect(manager.hasPending("parent")).toBe(true);
+    tasks.set("child", { ...tasks.get("child"), status: "completed" } as Task);
+    expect(manager.getPendingNotifications("parent")).toEqual([
+      expect.objectContaining({ kind: "subagent", status: "completed" }),
+    ]);
+    await manager.dispose();
+  });
+
+  it("keeps fork results out of the parent's notification queue", async () => {
+    const { manager, tasks } = setup();
+    tasks.set("fork", {
+      id: "fork",
+      status: "completed",
+      background: true,
+    } as Task);
+    manager.registerTask("fork", {
+      parentTaskId: "parent",
+      useCase: "task-memory",
+    });
+    await manager.watchTask("parent");
+    expect(manager.getPendingNotifications("parent")).toEqual([]);
+    expect(manager.getJobsForTask("parent")[0]).toMatchObject({
+      kind: "fork",
+      status: "completed",
+    });
+    await manager.dispose();
+  });
+
+  it("uses persisted task results and messages after reopening without extra state", async () => {
+    const { manager, tasks, store, setMessages, commit } = setup();
+    tasks.set("child", {
+      id: "child",
+      parentId: "parent",
+      background: true,
+      status: "completed",
+    } as Task);
+    manager.registerTask("child", { parentTaskId: "parent" });
+    const [notice] = manager.getPendingNotifications("parent");
+    expect(notice).toMatchObject({ kind: "subagent", status: "completed" });
+    setMessages("parent", [
+      {
+        id: "delivered",
+        role: "user",
+        parts: [{ type: "data-background-job-notification", data: notice }],
+      },
+    ]);
+    await manager.dispose();
+    const reopened = BackgroundJobManager.forStore(store);
+    reopened.registerTask("child", { parentTaskId: "parent" });
+    expect(reopened.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({
+        kind: "subagent",
+        status: "completed",
+        notificationPending: false,
+      }),
+    ]);
+    expect(reopened.getPendingNotifications("parent")).toEqual([]);
     expect(commit).not.toHaveBeenCalled();
-    expect(kill).not.toHaveBeenCalled();
+    await reopened.dispose();
   });
+});
 
-  it.each(["completed", "failed"] as const)("does not change a %s task", async (status) => {
-    const { manager, commit } = setup({ id: "child", parentId: "parent", background: true, status });
-    await expect(manager.kill("bgjob-task-child")).resolves.toEqual({ success: true });
-    expect(commit).not.toHaveBeenCalled();
-  });
+it("shares one command subscription across tasks and releases it with the manager", async () => {
+  const { manager, source } = setup();
+  await Promise.all([
+    manager.watchTask("parent"),
+    manager.watchTask("child"),
+    manager.watchTask("sibling"),
+  ]);
+  expect(source.observeCommands).toHaveBeenCalledOnce();
+  expect(source.observeNotifications).toHaveBeenCalledTimes(3);
+  const connection = await source.observeCommands.mock.results[0].value;
+  await manager.dispose();
+  expect(connection.dispose).toHaveBeenCalledOnce();
+});
 
-  it("awaits command termination and propagates backend errors", async () => {
-    const { manager, kill } = setup();
-    await expect(manager.kill("bgjob-cmd-1")).resolves.toEqual({ success: true });
-    expect(kill).toHaveBeenCalledWith("bgjob-cmd-1");
-    kill.mockRejectedValueOnce(new Error("not found"));
-    await expect(manager.kill("missing")).rejects.toThrow("not found");
-    kill.mockRejectedValueOnce(new Error("Terminal refused termination"));
-    await expect(manager.kill("bgjob-cmd-1")).rejects.toThrow("Terminal refused termination");
-    kill.mockRejectedValueOnce(new Error("Disconnected"));
-    await expect(manager.kill("bgjob-cmd-1")).rejects.toThrow("Disconnected");
-  });
+it("batches a snapshot and only delivers to the affected task", async () => {
+  const { manager, observers } = setup();
+  await manager.watchTask("parent");
+  await manager.watchTask("sibling");
+  const parent = vi.fn();
+  const sibling = vi.fn();
+  manager.subscribeNotifications("parent", parent);
+  manager.subscribeNotifications("sibling", sibling);
+  await vi.waitFor(() => expect(sibling).toHaveBeenCalled());
+  parent.mockClear();
+  sibling.mockClear();
+  const changed = vi.fn();
+  manager.subscribe(changed);
+  const snapshot = {
+    running: {},
+    notifications: [finished(), finished("bgjob-cmd-two")],
+  };
+  observers.get("parent")!(snapshot);
+  expect(parent).toHaveBeenCalledOnce();
+  expect(parent).toHaveBeenCalledWith(snapshot.notifications);
+  expect(sibling).not.toHaveBeenCalled();
+  expect(changed).toHaveBeenCalledOnce();
+  // Replaying an identical native snapshot makes no extra work.
+  observers.get("parent")!(snapshot);
+  expect(changed).toHaveBeenCalledOnce();
+  await manager.dispose();
+});
 
-  it("does not route a task to the command backend when the store is unavailable", async () => {
-    const kill = vi.fn();
-    const manager = new BackgroundJobManager({ taskId: "parent", store: undefined, commands: { kill } });
-    await expect(manager.kill("bgjob-task-child")).rejects.toThrow("store is not available");
-    expect(kill).not.toHaveBeenCalled();
+it("does not revive a completed command when an older live snapshot arrives", async () => {
+  const { manager, observers } = setup();
+  await manager.watchTask("parent");
+  observers.get("parent")!({ running: {}, notifications: [finished()] });
+  observers.get("parent")!({
+    running: { "bgjob-cmd-one": running("parent") },
+    notifications: [finished()],
   });
+  expect(manager.hasPending("parent")).toBe(false);
+  expect(manager.getPendingNotifications("parent")).toEqual([finished()]);
+  await manager.dispose();
 });

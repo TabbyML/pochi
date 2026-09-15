@@ -8,11 +8,12 @@ import type {
   LLMRequestData,
 } from "@getpochi/livekit";
 import type { CustomAgent, Skill } from "@getpochi/tools";
-import type { BackgroundCommandManager } from "./lib/background-command-manager";
 import type { FileSystem } from "./lib/file-system";
+import type { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import type { TaskRunner } from "./task-runner";
 
 export interface ToolCallOptions {
+  taskId: string;
   /**
    * The path to the ripgrep executable.
    * This is used for searching files in the task runner.
@@ -61,7 +62,10 @@ export interface ToolCallOptions {
   ) => TaskRunner;
 
   /** Unified command and subagent job control. */
-  backgroundJobManager: Pick<BackgroundJobManager, "kill">;
+  backgroundJobManager: Pick<
+    ReturnType<BackgroundJobManager["forTask"]>,
+    "kill"
+  >;
 
   /**
    * Converts an already-inited subtask into a background subagent task
@@ -79,9 +83,12 @@ export interface ToolCallOptions {
   mcpHub?: McpHub;
 
   /**
-   * Node process backend for starting and adopting background commands
+   * CLI command execution shared by the main task and its agents
    */
-  backgroundCommandManager: BackgroundCommandManager;
+  adaptor: Pick<
+    CliRunningTaskAdaptor,
+    "startBackgroundCommand" | "adoptBackgroundCommand"
+  >;
 
   /**
    * Store for managing browser sessions

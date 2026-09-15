@@ -12,7 +12,6 @@ import type {
 import {
   BackgroundJobManager,
   type LiveKitStore,
-  commandControllerFromTool,
   processContentOutput,
 } from "@getpochi/livekit";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
@@ -175,13 +174,10 @@ export function createSubtaskBatchedToolCall({
             taskId: uid,
           });
         const result =
-          toolCall.toolName === "killBackgroundJob"
-            ? await new BackgroundJobManager({
-                store,
-                taskId: uid,
-                commands: commandControllerFromTool(execute),
-              }).kill(
+          toolCall.toolName === "killBackgroundJob" && store
+            ? await BackgroundJobManager.forStore(store).kill(
                 (toolCall.input as { backgroundJobId: string }).backgroundJobId,
+                uid,
               )
             : await execute();
 

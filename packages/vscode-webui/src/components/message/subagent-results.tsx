@@ -8,20 +8,17 @@ import {
   NotificationRowClassName,
   NotificationStatusIcon,
 } from "@/components/ui/notification-row";
-import { useNavigate } from "@/lib/hooks/use-navigate";
-import { useDefaultStore } from "@/lib/use-default-store";
+import { BackgroundTaskButton } from "@/features/chat";
 import { cn } from "@/lib/utils";
-import type { SubAgentResultNotification } from "@getpochi/common";
+import type { BackgroundSubagentNotification } from "@getpochi/common";
 import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MessageMarkdown } from "./markdown";
 
 export function SubagentResultNotificationItem({
   result,
-}: { result: SubAgentResultNotification }) {
+}: { result: BackgroundSubagentNotification }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const store = useDefaultStore();
   const status = result.status;
   const label = t(`backgroundTasks.${status}`);
   const agentType = result.agentType || "Subagent";
@@ -45,21 +42,11 @@ export function SubagentResultNotificationItem({
         </CollapsibleTrigger>
         <Badge
           variant="secondary"
-          asChild
           className="relative inline-flex h-5 shrink-0 py-0 align-top"
         >
-          <button
-            type="button"
-            className="cursor-pointer hover:underline"
-            onClick={() =>
-              navigate({
-                to: "/task",
-                search: { uid: result.taskId, storeId: store.storeId },
-              })
-            }
-          >
+          <BackgroundTaskButton taskId={result.taskId}>
             {agentType}
-          </button>
+          </BackgroundTaskButton>
         </Badge>
         <span
           className="pointer-events-none relative min-w-0 flex-1 truncate text-muted-foreground leading-5"
@@ -82,15 +69,4 @@ export function SubagentResultNotificationItem({
       </CollapsibleContent>
     </Collapsible>
   );
-}
-
-export function SubagentResultsPart({
-  results,
-}: { results: SubAgentResultNotification[] }) {
-  return results.map((result) => (
-    <SubagentResultNotificationItem
-      key={result.notificationId}
-      result={result}
-    />
-  ));
 }

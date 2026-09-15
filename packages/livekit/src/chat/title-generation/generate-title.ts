@@ -6,9 +6,9 @@ import { events } from "../../livestore/default-schema";
 
 import type { LiveKitStore, Message } from "../../types";
 import { generateTaskTitle } from "../llm/generate-task-title";
-import { backgroundJobManager } from "./manager";
+import { titleGenerationQueue } from "./title-generation-queue";
 
-const logger = getLogger("GenerateTitleManager");
+const logger = getLogger("GenerateTitle");
 
 interface GenerateTitleJob {
   taskId: string;
@@ -20,7 +20,7 @@ interface GenerateTitleJob {
 }
 
 export function scheduleGenerateTitleJob(job: GenerateTitleJob) {
-  backgroundJobManager.push({
+  titleGenerationQueue.push({
     id: `generate-title-${job.taskId}`,
     waitUntil: job.waitUntil,
     process: () => process(job),

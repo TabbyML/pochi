@@ -248,7 +248,15 @@ export class TerminalState implements vscode.Disposable {
     return Object.fromEntries(
       TerminalJob.list()
         .filter((job) => job.isPtyTerminal && !job.isFinished)
-        .map((job) => [job.id, { isVisible: job.isVisible }]),
+        .map((job) => [
+          job.id,
+          {
+            isVisible: job.isVisible,
+            taskId: job.taskId,
+            command: job.command,
+            outputFile: job.outputFile,
+          },
+        ]),
     );
   }
 

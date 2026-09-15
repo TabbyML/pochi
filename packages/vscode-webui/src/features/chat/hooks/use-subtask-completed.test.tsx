@@ -1,6 +1,6 @@
+// @vitest-environment jsdom
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-// @vitest-environment jsdom
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAddSubtaskResult } from "./use-subtask-completed";
@@ -9,17 +9,15 @@ const addResultMock = vi.hoisted(() => vi.fn());
 const autoApproveGuardMock = vi.hoisted(() => ({ current: "stop" }));
 const extractTaskResultMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/use-default-store", () => ({
-  useDefaultStore: () => ({ storeId: "store-1" }),
-}));
+const store = { storeId: "store-1" };
+const lifecycle = { status: "init", addResult: addResultMock };
+const getToolCallLifeCycle = () => lifecycle;
+vi.mock("@/lib/use-default-store", () => ({ useDefaultStore: () => store }));
 
 vi.mock("../lib/chat-state", () => ({
   useAutoApproveGuard: () => autoApproveGuardMock,
   useToolCallLifeCycle: () => ({
-    getToolCallLifeCycle: () => ({
-      status: "init",
-      addResult: addResultMock,
-    }),
+    getToolCallLifeCycle,
   }),
 }));
 
@@ -69,6 +67,22 @@ function makeParentMessage(): Message {
 }
 
 describe("useAddSubtaskResult", () => {
+  it("collects the manual result when the parent remounts", () => {
+    const messages = [makeParentMessage()];
+    extractTaskResultMock.mockReturnValue(undefined);
+    const { unmount } = renderHook(() => useAddSubtaskResult({ messages }));
+    expect(addResultMock).not.toHaveBeenCalled();
+    unmount();
+    extractTaskResultMock.mockReturnValue({
+      summary: "Done.",
+      todoUpdates: [{ id: "todo-1", status: "completed" }],
+    });
+    expect(addResultMock).not.toHaveBeenCalled();
+    renderHook(() => useAddSubtaskResult({ messages }));
+    expect(addResultMock).toHaveBeenCalledOnce();
+    expect(autoApproveGuardMock.current).toBe("auto");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     autoApproveGuardMock.current = "stop";

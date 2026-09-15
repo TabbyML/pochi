@@ -3,9 +3,6 @@ export {
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
 } from "./background-job-id";
-import type { BackgroundSubagentNotification } from "./message";
-
-export type SubAgentResultNotification = BackgroundSubagentNotification;
 
 /** Stable notification identity for a task and its terminal status. */
 export function getSubAgentNotificationId(task: {

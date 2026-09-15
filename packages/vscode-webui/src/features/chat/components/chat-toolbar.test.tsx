@@ -1,6 +1,6 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
 import type {
-  BackgroundNotificationPart,
+  BackgroundJobNotificationPart,
   Message,
   Task,
 } from "@getpochi/livekit";
@@ -242,7 +242,7 @@ const auditTodo: Todo = {
 interface RenderToolbarOptions {
   messages?: Message[];
   flushBackgroundJobNotifications?: () => boolean;
-  pendingBackgroundJobNotifications?: BackgroundNotificationPart[];
+  pendingBackgroundJobNotifications?: BackgroundJobNotificationPart[];
 }
 function renderToolbar(
   isSubTask: boolean,
@@ -297,7 +297,9 @@ function renderToolbar(
     />,
   );
 }
-function notificationPart(backgroundJobId: string): BackgroundNotificationPart {
+function notificationPart(
+  backgroundJobId: string,
+): BackgroundJobNotificationPart {
   return {
     type: "data-background-job-notification",
     data: notification(backgroundJobId),

@@ -18,7 +18,7 @@ export const useAutoMemoryState = (
   taskId: string,
   options: { enabled?: boolean } = {},
 ) => {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["autoMemoryState", taskId],
     queryFn: () => fetchAutoMemoryState(taskId),
     enabled: options.enabled ?? true,
@@ -29,13 +29,21 @@ export const useAutoMemoryState = (
     autoMemoryState: data?.value.value ?? defaultAutoMemoryState,
     setAutoMemoryState: data?.setAutoMemoryState,
     isLoading,
+    error,
+    stateStore: data?.stateStore,
   };
 };
 
 async function fetchAutoMemoryState(taskId: string) {
   const result = await vscodeHost.readAutoMemoryState(taskId);
+  const value = threadSignal(result.value);
   return {
-    value: threadSignal(result.value),
+    value,
     setAutoMemoryState: result.setAutoMemoryState,
+    // These callbacks keep reading the host signal after the page unmounts.
+    stateStore: {
+      get: () => value.value,
+      set: (state: AutoMemoryTaskState) => result.setAutoMemoryState(state),
+    },
   };
 }

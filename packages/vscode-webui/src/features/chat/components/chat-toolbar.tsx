@@ -35,7 +35,7 @@ import type {
   McpConfigOverride,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
-  BackgroundNotificationPart,
+  BackgroundJobNotificationPart,
   Message,
   Task,
 } from "@getpochi/livekit";
@@ -98,7 +98,7 @@ interface ChatToolbarProps {
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
   /** Background job notifications the chat kit has not delivered yet. */
-  pendingBackgroundJobNotifications?: readonly BackgroundNotificationPart[];
+  pendingBackgroundJobNotifications?: readonly BackgroundJobNotificationPart[];
   /** Asks the chat kit to deliver those notifications right away. */
   flushBackgroundJobNotifications?: () => boolean;
   onToolCallApprovalVisible?: () => void;
@@ -614,7 +614,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             todos={todos}
             getSystemPrompt={getSystemPrompt}
           />
-          <BackgroundJobManagePanel taskId={taskId} messages={messages} />
+          <BackgroundJobManagePanel taskId={taskId} />
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}

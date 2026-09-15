@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  BackgroundTaskButton,
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
   useToolCallLifeCycle,
@@ -203,9 +204,11 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
             !isBackground && "mr-2",
           )}
         >
-          {uid &&
-          (isBackground || taskSource?.parentId) &&
-          isVSCodeEnvironment() ? (
+          {uid && isBackground && isVSCodeEnvironment() ? (
+            <BackgroundTaskButton taskId={uid}>
+              {toolTitle}
+            </BackgroundTaskButton>
+          ) : uid && taskSource?.parentId && isVSCodeEnvironment() ? (
             <span
               onClick={() => {
                 navigate({

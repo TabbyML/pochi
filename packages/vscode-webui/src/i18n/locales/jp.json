@@ -686,7 +686,6 @@
     "stopped": "停止済み",
     "finished": "終了",
     "pendingNotification": "通知待ち",
-    "copyJobId": "ジョブ ID をコピー",
     "title": "バックグラウンドエージェント",
     "empty": "バックグラウンドエージェントはありません",
     "untitled": "無題",

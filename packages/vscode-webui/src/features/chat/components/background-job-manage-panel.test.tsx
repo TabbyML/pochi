@@ -38,19 +38,17 @@ const stopSubagent = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/use-default-store", () => ({ useDefaultStore: () => ({}) }));
 vi.mock("@getpochi/livekit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@getpochi/livekit")>()),
-  BackgroundJobManager: class {
-    constructor(
-      private options: {
-        store: unknown;
-        taskId: string;
-        commands: { kill: (id: string) => unknown };
-      },
-    ) {}
-    async kill(id: string) {
-      if (parseBackgroundJobId(id) === "task")
-        return stopSubagent(this.options.store, this.options.taskId, id);
-      return this.options.commands.kill(id);
-    }
+  BackgroundJobManager: {
+    forStore(store: unknown) {
+      return {
+        forTask: (taskId: string) => ({
+          kill: (id: string) =>
+            parseBackgroundJobId(id) === "task"
+              ? stopSubagent(store, taskId, id)
+              : close(id),
+        }),
+      };
+    },
   },
 }));
 
@@ -84,7 +82,28 @@ vi.mock("@/components/ui/sheet", async (importOriginal) => {
 });
 
 vi.mock("../hooks/use-background-job-list", () => ({
-  useBackgroundJobList: () => backgroundJobs,
+  useBackgroundJobList: () => [
+    ...backgroundJobs,
+    ...backgroundTasks
+      .filter(
+        (task) =>
+          !backgroundJobs.some(
+            (job) => job.kind !== "command" && job.taskId === task.id,
+          ),
+      )
+      .map((task) => ({
+        backgroundJobId: `bgjob-task-${task.id}`,
+        taskId: task.id,
+        kind: "fork",
+        title: task.title,
+        status:
+          task.status === "completed"
+            ? "completed"
+            : task.status === "failed"
+              ? "failed"
+              : "running",
+      })),
+  ],
 }));
 
 vi.mock("@/lib/hooks/use-background-commands", () => ({
@@ -107,21 +126,6 @@ vi.mock("@/features/settings", () => ({
 }));
 
 vi.mock("./background-task-debug-panel", () => ({
-  BackgroundTasksLabel: "Background tasks",
-  useBackgroundTasks: () => backgroundTasks,
-  isBackgroundTaskRunning: (status: string) =>
-    status === "pending-model" || status === "pending-tool",
-  BackgroundTaskRow: ({
-    task,
-    onSelect,
-  }: {
-    task: { title: string };
-    onSelect: () => void;
-  }) => (
-    <button type="button" onClick={onSelect}>
-      {task.title}
-    </button>
-  ),
   BackgroundTaskDetail: ({
     taskId,
     onBack,
@@ -139,7 +143,7 @@ vi.mock("./background-task-debug-panel", () => ({
 }));
 
 const renderBackgroundJobManagePanel = () =>
-  render(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
+  render(<BackgroundJobManagePanel taskId="task-1" />);
 
 const rowTitles = () =>
   screen
@@ -147,8 +151,9 @@ const rowTitles = () =>
     .map((row) => row.querySelector("span.truncate")?.textContent);
 
 const runningJob = {
+  kind: "command" as const,
   backgroundJobId: "bgjob-cmd-1",
-  displayId: "%1",
+
   title: "bun run dev",
   command: "bun run dev",
   status: "running" as const,
@@ -156,7 +161,7 @@ const runningJob = {
 
 const runningRow = {
   ...runningJob,
-  displayId: undefined,
+
   title: "running",
 };
 const finishedRow = {
@@ -173,6 +178,7 @@ describe("BackgroundJobManagePanel", () => {
       {
         backgroundJobId: "bgjob-task-child",
         taskId: "child",
+        kind: "subagent",
         title: "Review tests",
         status: "running",
       },
@@ -197,6 +203,7 @@ describe("BackgroundJobManagePanel", () => {
       {
         backgroundJobId: "bgjob-task-child",
         taskId: "child",
+        kind: "subagent",
         title: "Review tests",
         agentType: "reviewer",
         status: "running",
@@ -221,6 +228,7 @@ describe("BackgroundJobManagePanel", () => {
       {
         backgroundJobId: "bgjob-task-child",
         taskId: "child",
+        kind: "subagent",
         title: "Review tests",
         status: "stopped",
         notificationPending: true,
@@ -323,7 +331,8 @@ describe("BackgroundJobManagePanel", () => {
   it("holds a long category back behind a see-more toggle", () => {
     backgroundJobs = Array.from({ length: 7 }, (_, index) => ({
       backgroundJobId: `bgjob-cmd-${index}`,
-      displayId: `%${index}`,
+      kind: "command" as const,
+
       title: `bun run dev ${index}`,
       status: "completed" as const,
     }));
@@ -377,40 +386,6 @@ describe("BackgroundJobManagePanel", () => {
         "backgroundJobNotifications.failed 127",
       );
     });
-  });
-
-  it("numbers a row without asking to be clicked", () => {
-    backgroundJobs = [runningJob];
-
-    renderBackgroundJobManagePanel();
-
-    const displayId = screen.getByText("%1");
-    expect(displayId.tagName).toBe("SPAN");
-    expect(displayId.closest("button")).toBeNull();
-    expect(displayId.className).toContain("group-hover:opacity-0");
-  });
-
-  it("keeps the number for a row that has nothing to press", () => {
-    backgroundJobs = [
-      { ...runningJob, status: "stopped" as const, command: undefined },
-    ];
-
-    renderBackgroundJobManagePanel();
-
-    expect(screen.getByText("%1").className).not.toContain(
-      "group-hover:opacity-0",
-    );
-  });
-
-  it("lights the number only while the command terminal is visible", () => {
-    backgroundJobs = [runningJob];
-
-    const { rerender } = renderBackgroundJobManagePanel();
-    expect(screen.getByText("%1").className).toContain("ring-1");
-
-    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
-    rerender(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
-    expect(screen.getByText("%1").className).not.toContain("ring-1");
   });
 
   it("puts a running command's terminal on screen by clicking its row", () => {
@@ -585,7 +560,7 @@ describe("BackgroundJobManagePanel", () => {
       finishedRow,
       { ...runningRow, status: "stopped" as const },
     ];
-    rerender(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
+    rerender(<BackgroundJobManagePanel taskId="task-1" />);
 
     expect(rowTitles()).toEqual(["running", "done"]);
   });
@@ -614,6 +589,7 @@ describe("BackgroundJobManagePanel", () => {
       {
         backgroundJobId: "bgjob-task-child",
         taskId: "child",
+        kind: "subagent",
         title: "Review",
         status: "running",
       },

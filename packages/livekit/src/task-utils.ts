@@ -1,9 +1,13 @@
 import {
-  type SubAgentResultNotification,
+  type BackgroundSubagentNotification,
   getSubAgentBackgroundJobId,
   getSubAgentNotificationId,
 } from "@getpochi/common";
-import type { AskFollowupQuestionInput, Question } from "@getpochi/tools";
+import {
+  type AskFollowupQuestionInput,
+  type Question,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import type { z } from "zod";
 import { defaultCatalog as catalog } from "./livestore";
 import type { LiveKitStore, Message, Task } from "./types";
@@ -16,6 +20,14 @@ export type TaskStatusLike =
   | "pending-model";
 
 export type BackgroundJobStatus = "idle" | "running" | "completed";
+
+/** A result or a request for user input ends the current agent turn. */
+export function isResultMessage(message: Message): boolean {
+  return (
+    message.role === "assistant" &&
+    (message.parts?.some(isUserInputToolPart) ?? false)
+  );
+}
 
 function formatQuestion({ question, header, options }: Question) {
   const title = header ? `[${header}] ${question}` : question;
@@ -138,11 +150,11 @@ export function getSubAgentInvocation(
  * Builds the notification for a finished background subagent task, injected
  * into the parent conversation as a `data-background-job-notification` part.
  */
-export function createSubAgentResultNotification(
+export function createBackgroundSubagentNotification(
   store: LiveKitStore,
   task: Pick<Task, "id" | "status" | "error" | "title">,
   parentMessages: readonly Message[],
-): SubAgentResultNotification {
+): BackgroundSubagentNotification {
   const base = {
     kind: "subagent" as const,
     notificationId: getSubAgentNotificationId(task),

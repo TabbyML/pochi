@@ -387,7 +387,7 @@ const program = new Command()
       autoMemoryCache = cached;
       return cached;
     };
-    const backgroundTaskAdaptor = new CliRunningTaskAdaptor({
+    const taskAdaptor = new CliRunningTaskAdaptor({
       store,
       blobStore,
       llm,
@@ -443,11 +443,7 @@ const program = new Command()
       filesystem,
       browserSessionStore,
       getAutoMemory: projectMemoryEnabled ? getAutoMemory : undefined,
-      backgroundTask: {
-        adaptor: backgroundTaskAdaptor,
-        clearFileStateCache: (taskId) =>
-          backgroundTaskAdaptor.clearFileStateCache(taskId),
-      },
+      adaptor: taskAdaptor,
       taskMemory,
       projectMemory,
       enableAutoCompact: autoCompactEnabled,

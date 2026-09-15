@@ -10,7 +10,10 @@ import {
   isValidCustomAgentFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { RunningTaskAdaptor } from "@getpochi/livekit";
+import type {
+  BackgroundCommandSource,
+  RunningTaskAdaptor,
+} from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -54,6 +57,54 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   waitUntilReady() {
     return this.ready;
   }
+
+  readonly commandSource: BackgroundCommandSource = {
+    kill: async (id) => (await vscodeHost.readBackgroundCommands()).close(id),
+    observeCommands: async (onChange) => {
+      const commands = await vscodeHost.readBackgroundCommands();
+      const controller = new AbortController();
+      try {
+        const running = await connectSignal(
+          commands.backgroundCommands,
+          controller.signal,
+        );
+        const unsubscribe = running.subscribe(onChange);
+        onChange(running.value);
+        return {
+          dispose: () => {
+            controller.abort();
+            unsubscribe();
+          },
+        };
+      } catch (error) {
+        controller.abort();
+        throw error;
+      }
+    },
+    observeNotifications: async (taskId, onChange) => {
+      const notifications =
+        await vscodeHost.readBackgroundJobNotifications(taskId);
+      const controller = new AbortController();
+      try {
+        const completed = await connectSignal(
+          notifications.notifications,
+          controller.signal,
+        );
+        const unsubscribe = completed.subscribe(onChange);
+        onChange(completed.value);
+        return {
+          dispose: () => {
+            controller.abort();
+            unsubscribe();
+          },
+          acknowledge: notifications.acknowledge,
+        };
+      } catch (error) {
+        controller.abort();
+        throw error;
+      }
+    },
+  };
 
   getRequestGetters(
     context: Parameters<RunningTaskAdaptor["getRequestGetters"]>[0],
@@ -125,7 +176,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
-    const result = await vscodeHost.executeToolCall(args.toolName, args.input, {
+    let result = await vscodeHost.executeToolCall(args.toolName, args.input, {
       toolCallId: args.toolCallId,
       abortSignal: ThreadAbortSignal.serialize(args.abortSignal),
       toolPolicies: args.toolPolicies,
@@ -140,7 +191,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       result !== null &&
       "streamingOutput" in result
     ) {
-      return waitForExecuteCommandOutput(
+      result = await waitForExecuteCommandOutput(
         result.streamingOutput as ThreadSignalSerialization<ExecuteCommandResult>,
         args.abortSignal,
       );
@@ -331,4 +382,22 @@ function waitForSignal<T>(
       }
     });
   });
+}
+
+async function connectSignal<T>(
+  serialized: ThreadSignalSerialization<T>,
+  abortSignal: AbortSignal,
+) {
+  let started: unknown;
+  const connected = threadSignal(
+    {
+      ...serialized,
+      start(...args) {
+        started = serialized.start(...args);
+      },
+    },
+    { signal: abortSignal },
+  );
+  await started;
+  return connected;
 }

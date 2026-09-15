@@ -1,10 +1,7 @@
 import type { BackgroundJobNotification } from "@getpochi/common";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import {
-  BackgroundJobNotifications,
-  MessageNotifications,
-} from "../background-job-notifications";
+import { MessageNotifications } from "../background-job-notifications";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -76,7 +73,7 @@ vi.mock("../subagent-results", () => ({
     </div>
   ),
 }));
-describe("BackgroundJobNotifications", () => {
+describe("MessageNotifications", () => {
   it("groups mixed parts in order, counting individual subagent results", () => {
     const { container, getByText } = render(
       <MessageNotifications
@@ -150,11 +147,14 @@ describe("BackgroundJobNotifications", () => {
   });
   it("groups notifications under one data-style section", () => {
     const { container, getAllByTestId, getByText } = render(
-      <BackgroundJobNotifications
-        notifications={[
+      <MessageNotifications
+        parts={[
           notification("bgjob-cmd-1", "completed"),
           notification("bgjob-cmd-2", "failed"),
-        ]}
+        ].map((data) => ({
+          type: "data-background-job-notification" as const,
+          data,
+        }))}
       />,
     );
     expect(container.querySelectorAll("section")).toHaveLength(1);

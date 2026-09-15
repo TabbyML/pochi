@@ -8,12 +8,10 @@ export type BackgroundJobNotificationPart = Extract<
   { type: "data-background-job-notification" }
 >;
 
-export type BackgroundNotificationPart = BackgroundJobNotificationPart;
-
-export function dedupeBackgroundNotificationParts(
-  parts: readonly BackgroundNotificationPart[],
+export function dedupeBackgroundJobNotificationParts(
+  parts: readonly BackgroundJobNotificationPart[],
   existing: readonly MessagePart[],
-): BackgroundNotificationPart[] {
+): BackgroundJobNotificationPart[] {
   const seen = new Set(getBackgroundJobNotificationIds(existing));
   return parts.filter((part) => {
     const id = part.data.notificationId;
@@ -52,7 +50,7 @@ export function getBackgroundJobNotificationIds(
 
 /** Builds the user message used when notifications cannot ride along. */
 export function createBackgroundJobNotificationMessage(
-  parts: readonly BackgroundNotificationPart[],
+  parts: readonly BackgroundJobNotificationPart[],
 ): Message {
   if (parts.length === 0) {
     throw new Error("Cannot create a notification message without parts");
@@ -74,9 +72,9 @@ export function createBackgroundJobNotificationMessage(
  */
 export function attachBackgroundJobNotificationParts(
   messages: readonly Message[],
-  parts: readonly BackgroundNotificationPart[],
+  parts: readonly BackgroundJobNotificationPart[],
 ): Message[] | undefined {
-  const pending = dedupeBackgroundNotificationParts(
+  const pending = dedupeBackgroundJobNotificationParts(
     parts,
     messages.flatMap((message) => message.parts),
   );

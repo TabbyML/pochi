@@ -36,16 +36,6 @@ export function BackgroundJobNotificationItems({
   );
 }
 
-export function BackgroundJobNotifications({
-  notifications,
-}: BackgroundJobNotificationsProps) {
-  return (
-    <NotificationGroup count={notifications.length}>
-      <BackgroundJobNotificationItems notifications={notifications} />
-    </NotificationGroup>
-  );
-}
-
 /** Collect all known notification types in their original message-part order. */
 export function MessageNotifications({ parts }: { parts: Message["parts"] }) {
   const items = parts.flatMap((part, partIndex): ReactNode[] => {

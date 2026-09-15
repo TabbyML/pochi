@@ -11,10 +11,7 @@ import type {
   BuiltinSubAgentInfo,
   ExecuteCommandResult,
 } from "@getpochi/common/vscode-webui-bridge";
-import {
-  BackgroundJobManager,
-  commandControllerFromTool,
-} from "@getpochi/livekit";
+import { BackgroundJobManager } from "@getpochi/livekit";
 import {
   type LiveKitStore,
   type Task,
@@ -254,13 +251,13 @@ export class ManagedToolCallLifeCycle
       executePromise = this.runNewTask(args as NewTaskParameterType, {
         toolPolicies: options?.toolPolicies,
         taskId: options?.taskId,
+        abortSignal,
       });
     } else if (this.toolName === "killBackgroundJob") {
-      executePromise = new BackgroundJobManager({
-        store: this.store,
-        taskId: options?.taskId ?? "",
-        commands: commandControllerFromTool(execute),
-      }).kill((args as { backgroundJobId: string }).backgroundJobId);
+      executePromise = BackgroundJobManager.forStore(this.store).kill(
+        (args as { backgroundJobId: string }).backgroundJobId,
+        options?.taskId ?? "",
+      );
     } else {
       executePromise = execute();
     }
@@ -285,11 +282,13 @@ export class ManagedToolCallLifeCycle
 
   private async runNewTask(
     args: NewTaskParameterType,
-    options?: {
+    options: {
       toolPolicies?: CompiledToolPolicies;
       taskId?: string;
+      abortSignal: AbortSignal;
     },
   ): Promise<NewTaskReturnType> {
+    options.abortSignal.throwIfAborted();
     // Validate the agent type pattern policy, throw if failed
     validateAgentTypePatternPolicy(
       args.agentType,
@@ -308,10 +307,12 @@ export class ManagedToolCallLifeCycle
     if (background) {
       const { setBackgroundTaskState } =
         await vscodeHost.readBackgroundTaskState(uid);
+      options.abortSignal.throwIfAborted();
       await setBackgroundTaskState({
         parentTaskId: options?.taskId,
         agentType: args.agentType,
       });
+      options.abortSignal.throwIfAborted();
       this.store.commit(
         catalog.events.taskBackgrounded({ id: uid, updatedAt: new Date() }),
       );

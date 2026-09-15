@@ -685,7 +685,6 @@
     "stopped": "已停止",
     "finished": "已结束",
     "pendingNotification": "待发送通知",
-    "copyJobId": "复制任务 ID",
     "title": "后台代理",
     "empty": "没有后台代理",
     "untitled": "未命名",

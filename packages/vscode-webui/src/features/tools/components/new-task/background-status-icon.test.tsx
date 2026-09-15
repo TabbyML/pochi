@@ -6,10 +6,19 @@ import type { ToolProps } from "../types";
 import { BackgroundSubagentStatusIcon } from "./background-status-icon";
 
 const state = vi.hoisted(() => ({
+  jobStatus: undefined as
+    | "running"
+    | "completed"
+    | "failed"
+    | "stopped"
+    | undefined,
   task: undefined as Pick<Task, "status" | "error"> | undefined,
 }));
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({ useQuery: () => state.task }),
+}));
+vi.mock("@/features/chat", () => ({
+  useBackgroundTaskStatus: () => state.jobStatus,
 }));
 vi.mock("@/features/settings", () => ({ useIsDevMode: () => [false] }));
 vi.mock("@/lib/hooks/use-copy-to-clipboard", () => ({
@@ -30,7 +39,10 @@ const tool: ToolProps<"newTask">["tool"] = {
   },
   output: { result: "Started", backgroundJobId: "bgjob-task-child" },
 };
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  state.jobStatus = undefined;
+});
 
 describe("background subagent tool status", () => {
   it("updates from running to completion while the tool remains output-available", () => {
@@ -62,6 +74,21 @@ describe("background subagent tool status", () => {
     render(<BackgroundSubagentStatusIcon taskId="child" tool={tool} />);
     expect(
       screen.getByRole("img", { name: `backgroundTasks.${label}` }),
+    ).toBeTruthy();
+  });
+  it("keeps spinning while the manager is still waiting after a completed model response", () => {
+    state.task = { status: "completed", error: null };
+    state.jobStatus = "running";
+    const { rerender } = render(
+      <BackgroundSubagentStatusIcon taskId="child" tool={tool} />,
+    );
+    expect(
+      screen.getByRole("img", { name: "backgroundTasks.running" }),
+    ).toBeTruthy();
+    state.jobStatus = "completed";
+    rerender(<BackgroundSubagentStatusIcon taskId="child" tool={tool} />);
+    expect(
+      screen.getByRole("img", { name: "backgroundTasks.completed" }),
     ).toBeTruthy();
   });
   it("does not claim completion when the subtask cannot be found", () => {

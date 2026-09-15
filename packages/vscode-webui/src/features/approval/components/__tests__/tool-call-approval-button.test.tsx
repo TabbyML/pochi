@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   processQueue: vi.fn(),
   lifecycle: { status: "init" },
   guard: { current: "manual" },
+  autoApprove: false,
 }));
 vi.mock("@/features/chat", () => ({
   useAutoApproveGuard: () => mocks.guard,
@@ -18,7 +19,8 @@ vi.mock("@/features/chat", () => ({
 vi.mock("@/features/settings", () => ({
   useSelectedModels: () => ({}),
   useSubtaskOffhand: () => ({ subtaskOffhand: false }),
-  useToolAutoApproval: () => false,
+  useToolAutoApproval: () =>
+    mocks.autoApprove && mocks.guard.current === "auto",
 }));
 vi.mock("@/lib/hooks/use-custom-agents", () => ({
   useCustomAgent: () => ({}),
@@ -35,7 +37,11 @@ vi.mock("react-i18next", () => ({
 }));
 
 afterEach(cleanup);
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.autoApprove = false;
+  mocks.guard.current = "manual";
+});
 
 function approve(agentType: string, background?: boolean) {
   render(

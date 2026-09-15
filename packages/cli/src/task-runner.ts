@@ -3,7 +3,6 @@ import {
   type AutoMemoryContext,
   type ContextWindowUsage,
   type MaybePromise,
-  createBackgroundJobNotification,
   getLogger,
   prompts,
   toErrorMessage,
@@ -30,15 +29,13 @@ import type { UITools } from "@getpochi/livekit";
 import {
   type BlobStore,
   type LLMRequestData,
-  type LiveChatKitBackgroundTaskOptions,
   type LiveChatKitProjectMemoryOptions,
   type LiveChatKitTaskMemoryOptions,
   type LiveKitStore,
   type Message,
   type Task,
-  catalog,
-  createSubAgentResultNotification,
   isAwaitingFollowupAnswer,
+  isResultMessage,
   processContentOutput,
 } from "@getpochi/livekit";
 import { LiveChatKit } from "@getpochi/livekit/node";
@@ -53,7 +50,6 @@ import {
   type Skill,
   type Todo,
   compileToolPolicies,
-  isUserInputToolPart,
   validateToolPolicy,
 } from "@getpochi/tools";
 import {
@@ -63,12 +59,12 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import type z from "zod";
-import { BackgroundCommandManager } from "./lib/background-command-manager";
 import type { FileSystem } from "./lib/file-system";
 import { readEnvironment } from "./lib/read-environment";
 import { createSpinner } from "./lib/spinner";
 import { StepCount } from "./lib/step-count";
 import { Chat } from "./livekit";
+import type { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import { executeToolCall } from "./tools";
 import type {
   CreateSubTaskRunnerOverrideOptions,
@@ -174,8 +170,6 @@ export interface RunnerOptions {
 
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
 
-  backgroundTask?: LiveChatKitBackgroundTaskOptions;
-
   taskMemory?: LiveChatKitTaskMemoryOptions;
 
   projectMemory?: LiveChatKitProjectMemoryOptions;
@@ -197,6 +191,7 @@ export interface RunnerOptions {
    * Set to 0 to disable waiting.
    */
   asyncWaitTimeoutInMs?: number;
+  adaptor: CliRunningTaskAdaptor;
 }
 
 const logger = getLogger("TaskRunner");
@@ -211,7 +206,9 @@ export class TaskRunner {
 
   private todos: Todo[] = [];
   private chatKit: LiveChatKit<Chat>;
-  private backgroundCommandManager: BackgroundCommandManager;
+  private readonly backgroundJobs: BackgroundJobManager;
+  private readonly ownsBackgroundJobs: boolean;
+  private readonly adaptor: CliRunningTaskAdaptor;
   private fileSystem: FileSystem;
   private customAgent?: CustomAgent;
 
@@ -245,21 +242,15 @@ export class TaskRunner {
     this.cwd = options.cwd;
     this.llm = options.llm;
     this.blobStore = options.blobStore;
-    this.backgroundCommandManager = new BackgroundCommandManager({
-      taskId: options.uid,
-    });
-    this.backgroundCommandManager.onDidFinish((event) => {
-      // `chatKit` is assigned later in this constructor, but a job can only
-      // finish once the runner is running.
-      this.chatKit.enqueueBackgroundJobNotifications([
-        createBackgroundJobNotification(event),
-      ]);
-    });
+    this.adaptor = options.adaptor;
+    this.backgroundJobs = BackgroundJobManager.forStore(options.store);
+    this.ownsBackgroundJobs = !options.isSubTask;
     this.customAgent = options.customAgent;
 
     this.fileSystem = options.filesystem;
 
     this.toolCallOptions = {
+      taskId: options.uid,
       rg: options.rg,
       fileSystem: this.fileSystem,
       fileStateCache: options.fileStateCache ?? new FileStateCache(),
@@ -269,7 +260,7 @@ export class TaskRunner {
       resolveSubTaskLLM: options.resolveSubTaskLLM,
       skills: options.skills,
       mcpHub: options.mcpHub,
-      backgroundCommandManager: this.backgroundCommandManager,
+      adaptor: this.adaptor,
       browserSessionStore: options.browserSessionStore,
       createSubTaskRunner: (
         taskId: string,
@@ -285,6 +276,7 @@ export class TaskRunner {
               );
         const runner = new TaskRunner({
           ...options,
+          adaptor: this.adaptor,
           ...(definedOverrideOptions ?? {}),
           parts: undefined, // should not use parts from parent
           uid: taskId,
@@ -292,7 +284,6 @@ export class TaskRunner {
           onStreamFinish: undefined,
           onCompactStart: undefined,
           onCompactFinish: undefined,
-          backgroundTask: undefined,
           taskMemory: undefined,
           projectMemory: undefined,
           enableAutoCompact: false,
@@ -303,11 +294,7 @@ export class TaskRunner {
         options.onSubTaskCreated?.(runner);
         return runner;
       },
-      backgroundJobManager: new BackgroundJobManager({
-        store: options.store,
-        taskId: options.uid,
-        commands: this.backgroundCommandManager.controller,
-      }),
+      backgroundJobManager: this.backgroundJobs.forTask(options.uid),
       backgroundSubTask: async (args) => {
         const backgroundSubTask = this.chatKit.backgroundSubTask;
         if (!backgroundSubTask) {
@@ -340,7 +327,7 @@ export class TaskRunner {
       },
       getRecentFilesForCompact: () =>
         this.toolCallOptions.fileStateCache.getRecentFiles(),
-      backgroundTask: options.backgroundTask,
+      backgroundJobManager: this.backgroundJobs,
       backgroundJobNotifications: {
         // The step loop owns the sending: appending is enough, the next round
         // picks the message up.
@@ -415,7 +402,18 @@ export class TaskRunner {
   }
 
   async run(): Promise<void> {
+    let unsubscribeBackgroundJobs: (() => void) | undefined;
     try {
+      if (this.ownsBackgroundJobs) {
+        this.backgroundJobs.initialize({
+          blobStore: this.blobStore,
+          adaptor: this.adaptor,
+          clearFileStateCache: (taskId) =>
+            this.adaptor.clearFileStateCache(taskId),
+        });
+      }
+      await this.backgroundJobs.watchTask(this.taskId);
+      unsubscribeBackgroundJobs = this.chatKit.subscribeBackgroundJobs();
       logger.trace("Start step loop.");
       this.stepCount.reset();
       while (true) {
@@ -430,21 +428,34 @@ export class TaskRunner {
           this.stepCount.nextStep();
         }
       }
-      await this.chatKit.drainBackgroundTasksAndSettleMemory();
+      const lastMessage = this.chat.messages.at(-1);
+      if (
+        this.asyncWaitTimeoutInMs > 0 &&
+        lastMessage &&
+        !isAwaitingFollowupAnswer(lastMessage)
+      ) {
+        await this.chatKit.drainBackgroundTasksAndSettleMemory({
+          timeoutMs: this.asyncWaitTimeoutInMs,
+          abortSignal: this.abortSignal,
+        });
+      }
     } catch (e) {
       const error = toError(e);
       logger.debug("Failed:", error);
       this.chatKit.markAsFailed(error);
       throw error;
     } finally {
-      this.backgroundCommandManager.killAll();
-      await this.backgroundCommandManager.waitForAllJobs(5000);
+      if (this.ownsBackgroundJobs) {
+        await this.backgroundJobs.stopOwnedJobs(this.taskId);
+        await this.adaptor.stopBackgroundCommands();
+      }
       if (this.customAgent?.name === "browser") {
         this.toolCallOptions.browserSessionStore?.unregisterBrowserSession(
           this.taskId,
         );
       }
-      await this.chatKit.disposeBackgroundTasks();
+      unsubscribeBackgroundJobs?.();
+      if (this.ownsBackgroundJobs) await this.backgroundJobs.dispose();
     }
   }
 
@@ -456,114 +467,23 @@ export class TaskRunner {
    */
   private async waitForAsyncWork(): Promise<boolean> {
     const spinner = createSpinner(
-      `Waiting for background jobs to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
+      `Waiting for background jobs (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
-
-    const jobStatus = await this.backgroundCommandManager.waitForAllJobs(
-      this.asyncWaitTimeoutInMs,
-      this.abortSignal,
-    );
-
-    // Handle timeout or abort - return undefined to finish without feeding back to LLM
-    if (jobStatus === "timeout") {
-      const remainingJobs = this.backgroundCommandManager.getPendingJobIds();
+    const result = await this.backgroundJobs.wait(this.taskId, {
+      timeoutMs: this.asyncWaitTimeoutInMs,
+      abortSignal: this.abortSignal,
+    });
+    if (result === "completed")
+      spinner.succeed("All background jobs completed.");
+    else {
       spinner.fail(
-        `Async wait timeout reached. Remaining: ${remainingJobs.length} job(s)`,
+        result === "timeout"
+          ? "Background job wait timed out."
+          : "Background job wait was aborted.",
       );
-      this.backgroundCommandManager.killAll();
-      await this.backgroundCommandManager.waitForAllJobs(
-        5000,
-        this.abortSignal,
-      );
-      return true;
+      await this.backgroundJobs.stopOwnedJobs(this.taskId);
     }
-
-    if (jobStatus === "aborted") {
-      spinner.fail("Async work wait was aborted.");
-      return false;
-    }
-
-    spinner.succeed("All background jobs completed.");
-
-    return true;
-  }
-
-  private readBackgroundSubTasks(): Task[] {
-    return this.store
-      .query(catalog.queries.makeSubTaskQuery(this.taskId))
-      .filter((task) => task.background);
-  }
-
-  private hasRunningBackgroundSubTasks(): boolean {
-    return this.readBackgroundSubTasks().some(
-      (task) =>
-        task.status === "pending-model" || task.status === "pending-tool",
-    );
-  }
-
-  /** Hands finished subagents to the shared background notification queue. */
-  private enqueueCompletedSubAgentResults(): void {
-    const results = this.readBackgroundSubTasks()
-      .filter((task) => task.status === "completed" || task.status === "failed")
-      .map((task) =>
-        createSubAgentResultNotification(this.store, task, this.chat.messages),
-      );
-    this.chatKit.enqueueBackgroundJobNotifications(results);
-  }
-
-  private async waitForBackgroundSubAgents(): Promise<void> {
-    const ids = this.readBackgroundSubTasks()
-      .filter(
-        (task) =>
-          task.status === "pending-model" || task.status === "pending-tool",
-      )
-      .map((task) => task.id);
-    if (ids.length === 0) return;
-
-    const spinner = createSpinner(
-      `Waiting for ${ids.length} background subagent(s) to complete (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
-    ).start();
-
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<"timeout">((resolve) => {
-      timeoutId = setTimeout(
-        () => resolve("timeout"),
-        this.asyncWaitTimeoutInMs,
-      );
-    });
-    let onAbort: (() => void) | undefined;
-    const aborted = new Promise<"aborted">((resolve) => {
-      if (this.abortSignal?.aborted) {
-        resolve("aborted");
-        return;
-      }
-      onAbort = () => resolve("aborted");
-      this.abortSignal?.addEventListener("abort", onAbort, {
-        once: true,
-      });
-    });
-    const done = Promise.all(
-      ids.map((id) => this.chatKit.waitForBackgroundTaskDone(id)),
-    ).then(() => "done" as const);
-
-    try {
-      const result = await Promise.race([done, timeout, aborted]);
-      if (result === "done") {
-        spinner.succeed("All background subagents completed.");
-      } else if (result === "timeout") {
-        spinner.fail(
-          "Async wait timeout reached; stopping background subagents.",
-        );
-      } else {
-        spinner.fail("Background subagent wait was aborted.");
-      }
-      if (result !== "done") {
-        await Promise.all(ids.map((id) => this.chatKit.stopBackgroundTask(id)));
-      }
-    } finally {
-      if (onAbort) this.abortSignal?.removeEventListener("abort", onAbort);
-      if (timeoutId) clearTimeout(timeoutId);
-    }
+    return result !== "aborted";
   }
 
   /**
@@ -585,34 +505,13 @@ export class TaskRunner {
       // background jobs would only delay handing the turn back to the user.
       // `flushBackgroundJobNotifications` enforces the same rule itself.
       if (!isAwaitingFollowupAnswer(lastMessage)) {
-        this.enqueueCompletedSubAgentResults();
-        // Check for pending background jobs
-        const hasPendingJobs = this.backgroundCommandManager.hasPendingJobs();
-
-        if (this.asyncWaitTimeoutInMs > 0 && hasPendingJobs) {
-          const canDeliver = await this.waitForAsyncWork();
-          this.enqueueCompletedSubAgentResults();
-          if (canDeliver && this.chatKit.flushBackgroundJobNotifications()) {
-            return "next";
-          }
-        } else if (this.chatKit.flushBackgroundJobNotifications()) {
-          return "next";
+        if (
+          this.asyncWaitTimeoutInMs > 0 &&
+          this.backgroundJobs.hasPending(this.taskId)
+        ) {
+          if (!(await this.waitForAsyncWork())) return "finished";
         }
-      }
-
-      // Running background subagents get the same grace period before the
-      // task is allowed to complete; their results are fed back like
-      // background job results.
-      if (
-        !isAwaitingFollowupAnswer(lastMessage) &&
-        this.asyncWaitTimeoutInMs > 0 &&
-        this.hasRunningBackgroundSubTasks()
-      ) {
-        await this.waitForBackgroundSubAgents();
-        this.enqueueCompletedSubAgentResults();
-        if (this.chatKit.flushBackgroundJobNotifications()) {
-          return "next";
-        }
+        if (this.chatKit.flushBackgroundJobNotifications()) return "next";
       }
 
       if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
@@ -650,7 +549,6 @@ export class TaskRunner {
 
     if (result === "next") {
       this.stepCount.throwIfReachedMaxSteps();
-      this.enqueueCompletedSubAgentResults();
     }
     if (result === "retry") {
       this.stepCount.throwIfReachedMaxRetries();
@@ -957,13 +855,6 @@ function createUserMessage(prompt: string): Message {
       },
     ],
   };
-}
-
-function isResultMessage(message: Message): boolean {
-  return (
-    message.role === "assistant" &&
-    (message.parts?.some(isUserInputToolPart) ?? false)
-  );
 }
 
 // Utility functions moved from ./lib/error-utils.ts

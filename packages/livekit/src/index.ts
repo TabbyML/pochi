@@ -4,7 +4,6 @@ export { defaultCatalog as catalog } from "./livestore";
 export {
   LiveChatKit,
   type LiveChatKitBackgroundJobNotificationOptions,
-  type LiveChatKitBackgroundTaskOptions,
   type LiveChatKitOptions,
   type LiveChatKitProjectMemoryOptions,
   type LiveChatKitTaskMemoryOptions,
@@ -12,7 +11,6 @@ export {
 export { getAutoCompactThreshold } from "./chat/auto-compact-policy";
 export {
   type BackgroundJobNotificationPart,
-  type BackgroundNotificationPart,
   getBackgroundJobNotificationIds,
 } from "./chat/background-job-notification";
 export type { AutoMemoryManager } from "@getpochi/common";
@@ -30,12 +28,13 @@ export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
-  createSubAgentResultNotification,
+  createBackgroundSubagentNotification,
   extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
   getTaskErrorMessage,
   isAwaitingFollowupAnswer,
+  isResultMessage,
   mapTaskStatusToBackgroundStatus,
   restartBackgroundTask,
 } from "./task-utils";
@@ -45,14 +44,13 @@ export type {
 } from "./task-utils";
 export { toTaskStatus } from "./task";
 
-export { commandControllerFromTool } from "./background-job/command-controller";
 export {
   BackgroundJobManager,
+  type BackgroundCommandSource,
   type BackgroundJobManagerOptions,
-  type BackgroundCommandController,
+  type BackgroundTaskStateStore,
 } from "./background-job/manager";
-export {
-  buildBackgroundJobList,
-  type BackgroundJobEntry,
-  type JobStatus,
+export type {
+  BackgroundJobEntry,
+  JobStatus,
 } from "./background-job/state";

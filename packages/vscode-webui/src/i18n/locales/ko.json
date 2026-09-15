@@ -681,7 +681,6 @@
     "stopped": "중지됨",
     "finished": "종료됨",
     "pendingNotification": "알림 대기 중",
-    "copyJobId": "작업 ID 복사",
     "title": "백그라운드 에이전트",
     "empty": "백그라운드 에이전트가 없습니다",
     "untitled": "제목 없음",

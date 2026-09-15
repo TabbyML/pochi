@@ -1,18 +1,18 @@
 import { getLogger } from "@getpochi/common";
 
-const logger = getLogger("BackgroundJobManager");
+const logger = getLogger("TitleGenerationQueue");
 
-export interface BackgroundJob {
+interface TitleGenerationJob {
   id: string;
   waitUntil?: (promise: Promise<unknown>) => void;
   process: () => Promise<void>;
 }
 
-class BackgroundJobManager {
+class TitleGenerationQueue {
   private jobs = Promise.resolve();
-  private pendingJobs = new Map<string, BackgroundJob>();
+  private pendingJobs = new Map<string, TitleGenerationJob>();
 
-  push(job: BackgroundJob) {
+  push(job: TitleGenerationJob) {
     this.pendingJobs.set(job.id, job);
 
     this.jobs = this.jobs.then(() => {
@@ -32,4 +32,4 @@ class BackgroundJobManager {
   }
 }
 
-export const backgroundJobManager = new BackgroundJobManager();
+export const titleGenerationQueue = new TitleGenerationQueue();

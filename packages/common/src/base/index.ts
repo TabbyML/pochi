@@ -17,7 +17,6 @@ export {
 } from "./prompts";
 
 export {
-  type SubAgentResultNotification,
   createBackgroundSubAgentStartedResult,
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
