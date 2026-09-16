@@ -11,6 +11,7 @@ import {
   formatAutoMemoryManifest,
   injectAutoMemory,
   isAutoMemorySystemReminder,
+  renderAutoMemoryIndex,
   serializeMemoryMessage,
   truncateAutoMemoryIndex,
 } from "./auto-memory";
@@ -79,9 +80,11 @@ export const prompts = {
     buildExtractionDirective: buildAutoMemoryExtractionDirective,
     buildDreamDirective: buildAutoMemoryDreamDirective,
     formatManifest: formatAutoMemoryManifest,
+    renderIndex: renderAutoMemoryIndex,
     truncateIndex: truncateAutoMemoryIndex,
     serializeMessage: serializeMemoryMessage,
   },
+  stepBudgetReminder: createStepBudgetReminder,
   incompleteResponseReminder:
     "The previous response was not received completely. Please continue using the conversation history and tool results available here. Complete any missing content or unfinished tool calls without repeating completed work.",
   toolCallsReminder: `You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.
@@ -102,6 +105,27 @@ function pastedTextFileReferences(files: readonly PastedTextFile[]) {
 
 function createSystemReminder(content: string) {
   return `<system-reminder>${content}</system-reminder>`;
+}
+
+/**
+ * Warns a step-bounded task that it is about to run out of assistant turns.
+ *
+ * The budget is otherwise unobservable to the model: fork agents replay the
+ * parent conversation, so the model cannot infer its remaining turns from the
+ * message history.
+ */
+function createStepBudgetReminder({
+  remainingSteps,
+  maxSteps,
+}: {
+  remainingSteps: number;
+  maxSteps: number;
+}) {
+  if (remainingSteps <= 1) {
+    return `This is the LAST assistant turn available for this task (limit ${maxSteps} turns). Do not start new work and do not make further edits. Call attemptCompletion now, summarizing what was finished and what was left undone — otherwise the task is recorded as failed and the work already done is not reported.`;
+  }
+
+  return `Only ${remainingSteps} assistant turns remain for this task (limit ${maxSteps} turns). Finish up: emit any remaining tool calls together in a single turn, and keep the final turn for attemptCompletion.`;
 }
 
 function isSystemReminder(content: string) {

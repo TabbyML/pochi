@@ -45,6 +45,12 @@ const TaskExecutorSubagentMaxStep = 256;
 const TaskExecutorMaxRetry = 8;
 const TaskExecutorMaxToolRejections = 5;
 const TaskExecutorMaxConcurrency = 10;
+/**
+ * Remaining assistant turns at which a step-bounded task starts being warned.
+ * The budget is invisible to the model otherwise, so bounded fork agents used
+ * to spend their last turn starting an edit they could not finish.
+ */
+const TaskExecutorStepBudgetReminderThreshold = 2;
 
 interface TaskExecutorToolCallExecution {
   taskId: string;
@@ -337,6 +343,7 @@ class RunningTask {
   private chatKit: RunningTaskChatKit | undefined;
   private retryCount = 0;
   private toolRejectionCount = 0;
+  private lastStepBudgetReminderStep: number | undefined;
   private disposed = false;
 
   readonly done: Promise<void>;
@@ -398,8 +405,7 @@ class RunningTask {
           );
           this.abortController.signal.throwIfAborted();
           if (!this.chatKit.flushBackgroundJobNotifications()) return;
-          this.throwIfMaxStepReached();
-          await this.chat.sendMessage();
+          await this.sendNextMessage();
           continue;
         }
 
@@ -414,8 +420,7 @@ class RunningTask {
           this.retryCount = 0;
         }
 
-        this.throwIfMaxStepReached();
-        await this.chat.sendMessage();
+        await this.sendNextMessage();
       }
     } catch (error) {
       if (this.abortController.signal.aborted) {
@@ -744,11 +749,18 @@ class RunningTask {
     return retryMessage ? (retryMessage as Message) : undefined;
   }
 
+  /** Guards the step budget, warns the model when it is nearly out, then sends. */
+  private async sendNextMessage() {
+    this.throwIfMaxStepReached();
+    this.maybeAppendStepBudgetReminder();
+    await this.chat.sendMessage();
+  }
+
   private throwIfMaxStepReached() {
     const { effectiveStepCount, maxSteps } = this.getStepLimitState();
 
     if (effectiveStepCount >= maxSteps) {
-      throw new Error("The task failed to complete, max step count reached.");
+      this.throwMaxStepError(effectiveStepCount, maxSteps);
     }
   }
 
@@ -756,8 +768,53 @@ class RunningTask {
     const { effectiveStepCount, maxSteps } = this.getStepLimitState();
 
     if (effectiveStepCount > maxSteps) {
-      throw new Error("The task failed to complete, max step count reached.");
+      this.throwMaxStepError(effectiveStepCount, maxSteps);
     }
+  }
+
+  /**
+   * Reports the used/allowed steps so a step-limit death is distinguishable
+   * from other failures in the reported error.
+   */
+  private throwMaxStepError(
+    effectiveStepCount: number,
+    maxSteps: number,
+  ): never {
+    throw new Error(
+      `The task failed to complete, max step count reached (used ${effectiveStepCount} of ${maxSteps} steps).`,
+    );
+  }
+
+  /**
+   * Tells a step-bounded task how little budget is left, so it can batch its
+   * remaining writes and still reach attemptCompletion. Only tasks with an
+   * explicit budget (fork agents) are warned; the generic limits are high
+   * enough that the warning would only be noise.
+   */
+  private maybeAppendStepBudgetReminder() {
+    if (this.taskState.maxSteps === undefined) return;
+
+    const { effectiveStepCount, maxSteps } = this.getStepLimitState();
+    const remainingSteps = maxSteps - effectiveStepCount;
+    if (remainingSteps > TaskExecutorStepBudgetReminderThreshold) return;
+    // One reminder per step, otherwise retries would stack duplicates.
+    if (this.lastStepBudgetReminderStep === effectiveStepCount) return;
+    this.lastStepBudgetReminderStep = effectiveStepCount;
+
+    const reminder = prompts.createSystemReminder(
+      prompts.stepBudgetReminder({ remainingSteps, maxSteps }),
+    );
+    const lastMessage = this.chat.messages.at(-1);
+    if (lastMessage?.role === "user") {
+      // Fold into the pending reminder turn (e.g. the tool-calls reminder)
+      // rather than emitting two consecutive user messages.
+      this.chat.appendOrReplaceMessage({
+        ...lastMessage,
+        parts: [...lastMessage.parts, { type: "text", text: reminder }],
+      } as Message);
+      return;
+    }
+    this.chat.appendOrReplaceMessage(createUserMessage(reminder));
   }
 
   private getStepLimitState() {

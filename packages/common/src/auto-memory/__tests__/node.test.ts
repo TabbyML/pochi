@@ -81,6 +81,48 @@ describe("AutoMemoryManager project info file", () => {
     expect(secondStat.mtimeMs).toBe(firstStat.mtimeMs);
   });
 
+  it("generates MEMORY.md from topic frontmatter", async () => {
+    const manager = new AutoMemoryManager({ projectsRoot });
+    const first = await manager.readContext(cwd);
+    if (!first) throw new Error("expected a memory context");
+
+    expect(await fs.readFile(first.indexPath, "utf8")).toContain(
+      "No topic files yet.",
+    );
+
+    await fs.writeFile(
+      path.join(first.memoryDir, "conventions.md"),
+      `---\nname: Project conventions\ndescription: Coding conventions.\ntype: project\n---\n\nbody\n`,
+    );
+
+    const second = await manager.readContext(cwd);
+    const index = await fs.readFile(first.indexPath, "utf8");
+    expect(index).toContain("## project");
+    expect(index).toContain(
+      "- conventions.md (Project conventions): Coding conventions.",
+    );
+    // The in-prompt snapshot is the generated content, not a stale file read.
+    expect(second?.indexContent).toContain("conventions.md");
+    expect(second?.manifest[0]).toMatchObject({
+      filename: "conventions.md",
+      type: "project",
+    });
+    expect(second?.manifest[0].bytes).toBeGreaterThan(0);
+  });
+
+  it("leaves MEMORY.md untouched when the generated index is unchanged", async () => {
+    const manager = new AutoMemoryManager({ projectsRoot });
+    const context = await manager.readContext(cwd);
+    if (!context) throw new Error("expected a memory context");
+    const firstStat = await fs.stat(context.indexPath);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await manager.readContext(cwd);
+
+    const secondStat = await fs.stat(context.indexPath);
+    expect(secondStat.mtimeMs).toBe(firstStat.mtimeMs);
+  });
+
   it("uses the main worktree path for git worktree memory keys", async () => {
     const worktreeGitDir = path.join(cwd, ".git", "worktrees", "feature");
     await fs.mkdir(worktreeGitDir, { recursive: true });

@@ -573,15 +573,11 @@ describe("auto-memory adaptor", () => {
       parentTaskId: "parent",
       useCase: "auto-memory",
       maxSteps: 5,
+      // Extraction runs on a 5-step budget: it may read and write topic
+      // files, but exploration tools (and transcripts) are withheld so a
+      // turn cannot be burned on orientation.
       tools: [
         "readFile(/repo/.pochi/memory/**)",
-        "readFile(/repo/.pochi/transcripts/**)",
-        "listFiles(/repo/.pochi/memory/**)",
-        "listFiles(/repo/.pochi/transcripts/**)",
-        "globFiles(/repo/.pochi/memory/**)",
-        "globFiles(/repo/.pochi/transcripts/**)",
-        "searchFiles(/repo/.pochi/memory/**)",
-        "searchFiles(/repo/.pochi/transcripts/**)",
         "writeToFile(/repo/.pochi/memory/**)",
         "applyDiff(/repo/.pochi/memory/**)",
         "attemptCompletion",
@@ -844,6 +840,21 @@ describe("auto-memory adaptor", () => {
     expect(await stateStore.read(dreamTask?.id ?? "")).toMatchObject({
       useCase: "auto-memory-dream",
       maxSteps: 20,
+      // Unlike extraction, the dream agent keeps the exploration tools and
+      // read access to transcripts.
+      tools: [
+        "readFile(/repo/.pochi/memory/**)",
+        "readFile(/repo/.pochi/transcripts/**)",
+        "listFiles(/repo/.pochi/memory/**)",
+        "listFiles(/repo/.pochi/transcripts/**)",
+        "globFiles(/repo/.pochi/memory/**)",
+        "globFiles(/repo/.pochi/transcripts/**)",
+        "searchFiles(/repo/.pochi/memory/**)",
+        "searchFiles(/repo/.pochi/transcripts/**)",
+        "writeToFile(/repo/.pochi/memory/**)",
+        "applyDiff(/repo/.pochi/memory/**)",
+        "attemptCompletion",
+      ],
     });
     expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
 

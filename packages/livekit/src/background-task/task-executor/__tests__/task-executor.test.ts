@@ -764,7 +764,8 @@ describe("TaskExecutor", () => {
       status: "failed",
       error: {
         kind: "InternalError",
-        message: "The task failed to complete, max step count reached.",
+        message:
+          "The task failed to complete, max step count reached (used 2 of 1 steps).",
       },
     });
     await executor.dispose();
@@ -801,10 +802,92 @@ describe("TaskExecutor", () => {
       status: "failed",
       error: {
         kind: "InternalError",
-        message: "The task failed to complete, max step count reached.",
+        message:
+          "The task failed to complete, max step count reached (used 1 of 1 steps).",
       },
     });
     await executor.dispose();
+  });
+
+  it("warns a step-bounded task as its step budget runs out", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        makeToolPart("readFile", "read-1", { path: "a.ts" }),
+      ]),
+    ]);
+    const reminders: string[] = [];
+    const send = vi
+      .spyOn(MockChat.prototype, "sendMessage")
+      .mockImplementation(async function (this: MockChat) {
+        const last = this.messages.at(-1);
+        const part = last?.role === "user" ? last.parts[0] : undefined;
+        if (part?.type === "text") reminders.push(part.text);
+        respondToRequest(store, this, [
+          { type: "step-start" },
+          send.mock.calls.length === 1
+            ? makeToolPart("readFile", "read-2", { path: "b.ts" })
+            : makeToolPart("attemptCompletion", "done", { result: "ok" }),
+        ]);
+      });
+    const adaptor = makeAdaptor({
+      executeToolCall: vi.fn(async () => ({ content: "hello" })),
+    });
+    const executor = makeExecutor(store, adaptor, {
+      tools: ["readFile", "attemptCompletion"],
+      maxSteps: 3,
+    });
+
+    try {
+      await executor.drain();
+
+      expect(reminders).toEqual([
+        prompts.createSystemReminder(
+          prompts.stepBudgetReminder({ remainingSteps: 2, maxSteps: 3 }),
+        ),
+        prompts.createSystemReminder(
+          prompts.stepBudgetReminder({ remainingSteps: 1, maxSteps: 3 }),
+        ),
+      ]);
+      expect(store.readTask("task")?.status).toBe("completed");
+    } finally {
+      await executor.dispose();
+    }
+  });
+
+  it("does not warn tasks that run on the default step budget", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        { type: "step-start" },
+        makeToolPart("readFile", "read-1", { path: "a.ts" }),
+      ]),
+    ]);
+    const send = vi
+      .spyOn(MockChat.prototype, "sendMessage")
+      .mockImplementation(async function (this: MockChat) {
+        expect(this.messages.at(-1)?.role).toBe("assistant");
+        respondToRequest(store, this, [
+          { type: "step-start" },
+          makeToolPart("attemptCompletion", "done", { result: "ok" }),
+        ]);
+      });
+    const adaptor = makeAdaptor({
+      executeToolCall: vi.fn(async () => ({ content: "hello" })),
+    });
+    const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
+
+    try {
+      await executor.drain();
+      expect(send).toHaveBeenCalledTimes(1);
+    } finally {
+      await executor.dispose();
+    }
   });
 
   it("still enforces the step limit when tools change the status without a result message", async () => {
@@ -833,7 +916,8 @@ describe("TaskExecutor", () => {
     expect(store.readTask("task")).toMatchObject({
       status: "failed",
       error: {
-        message: "The task failed to complete, max step count reached.",
+        message:
+          "The task failed to complete, max step count reached (used 1 of 1 steps).",
       },
     });
     expect(mockState.instances[0].chat.sendMessageCalls).toBe(0);

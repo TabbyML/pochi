@@ -16,15 +16,12 @@ import {
   type AutoMemoryReadContextOptions,
   AutoMemoryTypeValues,
   getLogger,
+  renderAutoMemoryIndex,
   toErrorMessage,
   truncateAutoMemoryIndex,
 } from "../base";
 
 const logger = getLogger("AutoMemory");
-const DefaultIndexContent = `# Memory Index
-
-This file is an index for durable Pochi long-term memory topic files in this directory.
-`;
 const DreamIntervalMs = 24 * 60 * 60 * 1000;
 const DreamSessionThreshold = 5;
 const StaleDreamLockMs = 60 * 60 * 1000;
@@ -72,7 +69,6 @@ export class AutoMemoryManager {
     if (options?.ensure !== false) {
       await fs.mkdir(memoryDir, { recursive: true });
       await fs.mkdir(transcriptDir, { recursive: true });
-      await ensureIndexFile(indexPath);
       await writeProjectInfoFile({ projectRoot, repoKey, repoRoot }).catch(
         (error) => {
           logger.warn(
@@ -82,17 +78,23 @@ export class AutoMemoryManager {
       );
     }
 
-    const rawIndexContent = await fs
-      .readFile(indexPath, "utf8")
-      .catch(() => "");
-    const { content: indexContent, truncated: indexTruncated } =
-      truncateAutoMemoryIndex(rawIndexContent);
     const manifest = await scanAutoMemoryManifest(memoryDir).catch((error) => {
       logger.warn(
         `Failed to scan long-term memory manifest: ${toErrorMessage(error)}`,
       );
       return [];
     });
+
+    // MEMORY.md is a derived artifact: it is rendered from topic-file
+    // frontmatter instead of being written by the memory agents, so a topic
+    // file can never end up missing from the index, and per-turn extraction
+    // saves the index write entirely.
+    const generatedIndex = renderAutoMemoryIndex(manifest);
+    if (options?.ensure !== false) {
+      await syncIndexFile(indexPath, generatedIndex);
+    }
+    const { content: indexContent, truncated: indexTruncated } =
+      truncateAutoMemoryIndex(generatedIndex);
 
     return {
       enabled: true,
@@ -287,8 +289,8 @@ export class AutoMemoryManager {
           fs.rm(path.join(context.memoryDir, entry), { force: true }),
         ),
     );
-    // Re-create the default index file so the memory dir is still usable.
-    await ensureIndexFile(context.indexPath);
+    // Re-create the (now empty) generated index so the memory dir stays usable.
+    await syncIndexFile(context.indexPath, renderAutoMemoryIndex([]));
   }
 }
 
@@ -379,15 +381,23 @@ export async function removeTaskTranscripts(
   );
 }
 
-async function ensureIndexFile(indexPath: string): Promise<void> {
-  await fs
-    .writeFile(indexPath, DefaultIndexContent, { flag: "wx" })
-    .catch((error) => {
-      if (error && typeof error === "object" && "code" in error) {
-        if (error.code === "EEXIST") return;
-      }
-      throw error;
-    });
+/** Persist the generated index, skipping the write when nothing changed. */
+async function syncIndexFile(
+  indexPath: string,
+  content: string,
+): Promise<void> {
+  try {
+    const existing = await fs
+      .readFile(indexPath, "utf8")
+      .catch(() => undefined);
+    if (existing === content) return;
+    await fs.mkdir(path.dirname(indexPath), { recursive: true });
+    await fs.writeFile(indexPath, content);
+  } catch (error) {
+    logger.warn(
+      `Failed to write long-term memory index: ${toErrorMessage(error)}`,
+    );
+  }
 }
 
 type ProjectInfoFile = {
@@ -439,6 +449,7 @@ async function scanAutoMemoryManifest(
         return {
           filename: entry.name,
           updatedAt: stat.mtimeMs,
+          bytes: stat.size,
           ...parseTopicFrontmatter(content),
         };
       }),
@@ -451,7 +462,7 @@ async function scanAutoMemoryManifest(
 
 function parseTopicFrontmatter(
   content: string,
-): Omit<AutoMemoryManifestEntry, "filename" | "updatedAt"> {
+): Omit<AutoMemoryManifestEntry, "filename" | "updatedAt" | "bytes"> {
   const header = content.split(/\r?\n/).slice(0, 30).join("\n");
   const match = header.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return {};

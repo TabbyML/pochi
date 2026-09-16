@@ -40,8 +40,12 @@ export {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   AutoMemoryMaxManifestEntries,
+  AutoMemoryMaxTopicBytes,
+  AutoMemoryMaxTopicLines,
   AutoMemoryProjectInfoName,
   AutoMemoryTypeValues,
+  isOversizedTopic,
+  renderAutoMemoryIndex,
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
 
