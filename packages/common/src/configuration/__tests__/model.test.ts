@@ -124,6 +124,19 @@ describe("Model configuration types", () => {
       expect(config.models.test.maxTokens).toBe(1000);
       expect(config.models.test.contextWindow).toBe(2000);
       expect(config.models.test.useToolCallMiddleware).toBe(false);
+      expect(config.models.test.useReasoningMiddleware).toBeUndefined();
+    });
+
+    it("should validate useReasoningMiddleware", () => {
+      const config = CustomModelSetting.parse({
+        kind: "openai",
+        models: {
+          test: {
+            useReasoningMiddleware: true,
+          },
+        },
+      });
+      expect(config.models.test.useReasoningMiddleware).toBe(true);
     });
   });
 });
