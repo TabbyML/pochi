@@ -523,7 +523,10 @@ export class LiveChatKit<
             this.taskMemoryAdaptor,
             TaskMemorySettleTimeoutMs,
           );
-          const model = createModel({ llm: getters.getLLM() });
+          const model = createModel({
+            llm: getters.getLLM(),
+            taskId: this.taskId,
+          });
           const taskMemoryBoundaryMessageId =
             await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
           if (isAutoCompact) {
@@ -603,7 +606,10 @@ export class LiveChatKit<
           this.taskMemoryAdaptor,
           TaskMemorySettleTimeoutMs,
         );
-        const model = createModel({ llm: getters.getLLM() });
+        const model = createModel({
+          llm: getters.getLLM(),
+          taskId: this.taskId,
+        });
         const taskMemoryBoundaryMessageId =
           await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
         const summary = await compactTask({
@@ -630,7 +636,10 @@ export class LiveChatKit<
     };
 
     this.repairMermaid = async (chart: string, error: string) => {
-      const model = createModel({ llm: getters.getLLM() });
+      const model = createModel({
+        llm: getters.getLLM(),
+        taskId: this.taskId,
+      });
       await repairMermaid({
         store,
         taskId: this.taskId,
@@ -976,7 +985,7 @@ export class LiveChatKit<
         }
       }
       if (!task.background) {
-        const getModel = () => createModel({ llm });
+        const getModel = () => createModel({ llm, taskId: this.taskId });
         scheduleGenerateTitleJob({
           taskId: this.taskId,
           store,

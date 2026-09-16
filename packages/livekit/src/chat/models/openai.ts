@@ -6,6 +6,12 @@ import type { RequestData } from "../../types";
 
 const logger = getLogger("openai");
 
+/**
+ * Sent on outgoing BYOK OpenAI-compatible requests so the task id can be
+ * correlated on the provider side.
+ */
+const PochiSessionIdHeader = "x-pochi-session-id";
+
 // Zod schema for validating OpenAI API request parameters
 const OpenAIRequestParamsSchema = z
   .object({
@@ -16,12 +22,14 @@ const OpenAIRequestParamsSchema = z
 
 export function createOpenAIModel(
   llm: Extract<RequestData["llm"], { type: "openai" }>,
+  taskId: string,
 ) {
   const baseURL = llm.baseURL ?? "https://api.openai.com/v1";
   const openai = createOpenAICompatible({
     name: "OpenAI",
     baseURL,
     apiKey: llm.apiKey,
+    headers: { [PochiSessionIdHeader]: taskId },
     fetch: patchedFetch(baseURL),
   });
   return wrapLanguageModel({

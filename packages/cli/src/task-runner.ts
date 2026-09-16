@@ -14,6 +14,7 @@ import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
+  isAssistantMessageWithStreamingParts,
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import {
@@ -601,6 +602,13 @@ export class TaskRunner {
       const processed = await this.prepareRetryMessage(message);
       if (processed) {
         this.chat.appendOrReplaceMessage(processed);
+        if (isAssistantMessageWithStreamingParts(processed)) {
+          this.chat.appendOrReplaceMessage(
+            createUserMessage(
+              prompts.createSystemReminder(prompts.incompleteResponseReminder),
+            ),
+          );
+        }
       } else {
         // skip, the last message is ready to be resent
       }
@@ -627,6 +635,13 @@ export class TaskRunner {
       const processed = await this.prepareRetryMessage(message);
       if (processed) {
         this.chat.appendOrReplaceMessage(processed);
+        if (isAssistantMessageWithStreamingParts(processed)) {
+          this.chat.appendOrReplaceMessage(
+            createUserMessage(
+              prompts.createSystemReminder(prompts.incompleteResponseReminder),
+            ),
+          );
+        }
       } else {
         // skip, the last message is ready to be resent
       }
@@ -637,10 +652,14 @@ export class TaskRunner {
       logger.trace(
         "Last message is assistant with no tool calls, sending a new user reminder.",
       );
-      const message = createUserMessage(
-        prompts.createSystemReminder(prompts.toolCallsReminder),
+      const reminder = createUserMessage(
+        prompts.createSystemReminder(
+          isAssistantMessageWithStreamingParts(message)
+            ? prompts.incompleteResponseReminder
+            : prompts.toolCallsReminder,
+        ),
       );
-      this.chat.appendOrReplaceMessage(message);
+      this.chat.appendOrReplaceMessage(reminder);
       return "retry";
     }
   }

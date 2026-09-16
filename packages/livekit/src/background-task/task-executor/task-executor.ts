@@ -10,6 +10,7 @@ import {
   isAssistantMessageWithEmptyParts,
   isAssistantMessageWithNoToolCalls,
   isAssistantMessageWithPartialToolCalls,
+  isAssistantMessageWithStreamingParts,
   prepareLastMessageForRetry,
 } from "@getpochi/common/message-utils";
 import {
@@ -565,7 +566,11 @@ class RunningTask {
     if (isAssistantMessageWithNoToolCalls(message)) {
       this.chat.appendOrReplaceMessage(
         createUserMessage(
-          prompts.createSystemReminder(prompts.toolCallsReminder),
+          prompts.createSystemReminder(
+            isAssistantMessageWithStreamingParts(message)
+              ? prompts.incompleteResponseReminder
+              : prompts.toolCallsReminder,
+          ),
         ),
       );
       return "retry";
@@ -721,6 +726,13 @@ class RunningTask {
 
   private replaceLastMessageForRetry(message: Message): void {
     this.chat.appendOrReplaceMessage(message);
+    if (isAssistantMessageWithStreamingParts(message)) {
+      this.chat.appendOrReplaceMessage(
+        createUserMessage(
+          prompts.createSystemReminder(prompts.incompleteResponseReminder),
+        ),
+      );
+    }
   }
 
   private async prepareRetryMessage(

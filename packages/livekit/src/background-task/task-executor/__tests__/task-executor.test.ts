@@ -130,6 +130,7 @@ type TestTask = {
 };
 
 describe("TaskExecutor", () => {
+
   it.each(["executor", "persisted cancellation"])(
     "settles a queued task's waiter after %s without waiting for an execution slot",
     async (source) => {
@@ -270,6 +271,129 @@ describe("TaskExecutor", () => {
   );
 
   afterEach(() => vi.restoreAllMocks());
+
+  it.each(["streaming", "done"] as const)(
+    "checks retained text state %s when retrying a failed response",
+    async (state) => {
+      const task = makeTask({ id: "task", status: "pending-model" });
+      task.error = {
+        kind: "InternalError",
+        message: "The response stream was interrupted",
+      };
+      const store = new FakeLiveKitStore([task]);
+      const tool = {
+        ...makeToolPart("readFile", "read", { path: "a.ts" }),
+        state: "output-available",
+        output: { content: "hello" },
+      } as Message["parts"][number];
+      const message = makeAssistantMessage([
+        { type: "step-start" },
+        tool,
+        { type: "step-start" },
+        { type: "text", text: "Partial response", state },
+      ]);
+      store.setMessages("task", [message]);
+      const adaptor = {
+        ...makeAdaptor({ executeToolCall: vi.fn() }),
+        // Fail after the executor starts, as an active request would.
+        waitUntilReady: async () => {
+          task.status = "failed";
+        },
+      };
+      vi.spyOn(MockChat.prototype, "sendMessage").mockImplementation(
+        async function (this: MockChat) {
+          this.sendMessageCalls += 1;
+          store.setMessages("task", this.messages);
+          store.completeTask("task");
+        },
+      );
+      const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
+      await executor.drain();
+      const messages = store.readMessages("task");
+      expect(messages[0]).toEqual(message);
+      if (state === "streaming") {
+        expect(messages.at(-1)).toMatchObject({
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: prompts.createSystemReminder(
+                prompts.incompleteResponseReminder,
+              ),
+            },
+          ],
+        });
+      } else {
+        expect(messages.at(-1)).toMatchObject({
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: prompts.createSystemReminder(prompts.toolCallsReminder),
+            },
+          ],
+        });
+      }
+      expect(adaptor.executeToolCall).not.toHaveBeenCalled();
+      await executor.dispose();
+    },
+  );
+
+  it.each([false, true])(
+    "checks unfinished reasoning in a prepared tool retry (strips partial step: %s)",
+    async (stripPartialStep) => {
+      const store = new FakeLiveKitStore([
+        makeTask({ id: "task", status: "pending-model" }),
+      ]);
+      const retainedParts = [
+        { type: "step-start" },
+        { type: "reasoning", text: "Partial reasoning", state: "streaming" },
+        {
+          ...makeToolPart("readFile", "read", { path: "a.ts" }),
+          state: "output-available",
+          output: { content: "hello" },
+        },
+      ] as Message["parts"];
+      const message = makeAssistantMessage([
+        ...retainedParts,
+        ...(stripPartialStep
+          ? [
+              { type: "step-start" } as const,
+              makeToolPart("executeCommand", "exec", null, "input-streaming"),
+            ]
+          : []),
+      ]);
+      store.setMessages("task", [message]);
+      const adaptor = makeAdaptor({ executeToolCall: vi.fn() });
+      vi.spyOn(MockChat.prototype, "sendMessage").mockImplementation(
+        async function (this: MockChat) {
+          this.sendMessageCalls += 1;
+          store.setMessages("task", this.messages);
+          store.completeTask("task");
+        },
+      );
+      const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
+
+      await executor.drain();
+
+      const messages = store.readMessages("task");
+      expect(messages[0]).toEqual({ ...message, parts: retainedParts });
+      expect(messages.at(-1)).toMatchObject({
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: prompts.createSystemReminder(
+              prompts.incompleteResponseReminder,
+            ),
+          },
+        ],
+      });
+      expect(adaptor.executeToolCall).not.toHaveBeenCalled();
+      await executor.dispose();
+    },
+  );
+
   beforeEach(() => {
     mockState.instances.length = 0;
   });

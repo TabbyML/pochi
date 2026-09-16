@@ -24,6 +24,24 @@ export function isAssistantMessageWithEmptyParts(message: UIMessage): boolean {
   return message.role === "assistant" && message.parts.length === 0;
 }
 
+export function isAssistantMessageWithStreamingParts(
+  message: UIMessage,
+): boolean {
+  if (message.role !== "assistant") return false;
+
+  // Earlier steps may retain streaming parts after a previous Stop.
+  const lastStepStartIndex = message.parts.findLastIndex(
+    (part) => part.type === "step-start",
+  );
+  return message.parts
+    .slice(lastStepStartIndex + 1)
+    .some(
+      (part) =>
+        (part.type === "text" || part.type === "reasoning") &&
+        part.state === "streaming",
+    );
+}
+
 export function isAssistantMessageWithPartialToolCalls(lastMessage: UIMessage) {
   return (
     lastMessage.role === "assistant" &&
