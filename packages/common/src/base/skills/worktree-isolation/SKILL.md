@@ -4,6 +4,8 @@ description: |
   Create an isolated Git worktree before modifying files when a task needs another committed source state or the current checkout needs protection from risky or conflicting edits. Evaluate this proactively at task start, even when the user did not explicitly ask. For read-only review, prefer git or gh diff unless a full checkout is genuinely required.
 compatibility: Requires Git and either POSIX sh or Windows PowerShell.
 allowed-tools: executeCommand
+disable-model-invocation: true
+user-invocable: false
 ---
 
 # Worktree Isolation
