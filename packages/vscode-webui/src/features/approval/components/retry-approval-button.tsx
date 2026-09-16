@@ -33,13 +33,24 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
 }) => {
   const { t } = useTranslation();
   const reviews = useReviews();
+  // `ReadyForRetryError` represents a "soft" pause (e.g. waiting for tool
+  // calls, an empty response, etc.) rather than an actual failed request.
+  // Real errors (e.g. network errors) must always be retried, even when a
+  // message is queued, otherwise the failed turn is silently dropped in
+  // favor of sending the queued message.
+  const isReadyForRetry = pendingApproval.error instanceof ReadyForRetryError;
   const isContentFilter =
-    pendingApproval.error instanceof ReadyForRetryError &&
-    pendingApproval.error.kind === "content-filter";
+    isReadyForRetry &&
+    (pendingApproval.error as ReadyForRetryError).kind === "content-filter";
 
   const handleContinue = useCallback(() => {
     pendingApproval.stopCountdown();
-    if (!isContentFilter && hasQueuedMessages && onContinueWithQueuedMessage) {
+    if (
+      isReadyForRetry &&
+      !isContentFilter &&
+      hasQueuedMessages &&
+      onContinueWithQueuedMessage
+    ) {
       // A message is already queued, so continue the chat by sending it
       // instead of retrying / regenerating the previous turn.
       onContinueWithQueuedMessage();
@@ -49,6 +60,7 @@ export const RetryApprovalButton: React.FC<RetryApprovalButtonProps> = ({
   }, [
     retry,
     pendingApproval,
+    isReadyForRetry,
     isContentFilter,
     hasQueuedMessages,
     onContinueWithQueuedMessage,
