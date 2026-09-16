@@ -24,6 +24,13 @@ export const tasks$ = queryDb(
   },
 );
 
+export const allTasks$ = queryDb(
+  () => tables.tasks.orderBy("createdAt", "desc"),
+  {
+    label: "allTasks",
+  },
+);
+
 export const makeSubTaskQuery = (taskId: string) =>
   queryDb(() => tables.tasks.where("parentId", "=", taskId), {
     label: "subTasks",
