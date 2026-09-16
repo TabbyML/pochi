@@ -98,6 +98,8 @@ export type ToolFunctionType<T extends Tool> = (
     contentType?: string[];
     envs?: Record<string, string>;
     taskId?: string;
+    /** Host policy; this is not a model-supplied tool parameter. */
+    allowBackground?: boolean;
     fileStateCache?: IFileStateCache;
   },
 ) => PromiseLike<InferToolOutput<T>> | InferToolOutput<T>;

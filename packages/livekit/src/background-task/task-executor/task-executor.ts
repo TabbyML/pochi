@@ -2,6 +2,7 @@ import {
   type BackgroundTaskState,
   type MaybePromise,
   getLogger,
+  isForkAgentUseCase,
   prompts,
   toErrorMessage,
 } from "@getpochi/common";
@@ -29,13 +30,8 @@ import {
   lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 
-import type {
-  BackgroundCommandSource,
-  BackgroundJobManager,
-} from "../../background-job/manager";
 import type { BlobStore } from "../../blob-store";
 import type { PrepareRequestGetters } from "../../chat/flexible-chat-transport";
-import type { LiveChatKitBackgroundJobNotificationOptions } from "../../chat/live-chat-kit";
 import { defaultCatalog as catalog } from "../../livestore";
 import { isAwaitingFollowupAnswer, isResultMessage } from "../../task-utils";
 import type { LiveKitStore, Message, RequestData, Task } from "../../types";
@@ -57,11 +53,11 @@ interface TaskExecutorToolCallExecution {
   toolCallId: string;
   input: unknown;
   abortSignal: AbortSignal;
+  allowBackground?: boolean;
   toolPolicies: CompiledToolPolicies | undefined;
 }
 
 export interface RunningTaskAdaptor {
-  commandSource?: BackgroundCommandSource;
   waitUntilReady?(): Promise<void>;
   getRequestGetters(context: {
     taskId: string;
@@ -88,7 +84,6 @@ type TaskToolOutput = {
 };
 
 type CreateTaskExecutorOptions = {
-  manager: BackgroundJobManager;
   store: LiveKitStore;
   blobStore: BlobStore;
   readTaskState: (
@@ -99,6 +94,11 @@ type CreateTaskExecutorOptions = {
   adaptor: RunningTaskAdaptor;
   clearFileStateCache?: (taskId: string) => MaybePromise<void>;
   createChatKit: CreateRunningTaskChatKit;
+  waitForBackgroundJobs?: (
+    taskId: string,
+    abortSignal: AbortSignal,
+  ) => Promise<void>;
+  onTaskSettled?: (taskId: string) => void;
 };
 
 type RunningTaskChat = {
@@ -114,9 +114,9 @@ type RunningTaskChatKit = {
   markStartToolsExecution: () => void;
   markEndToolsExecution: () => void;
   persistToolOutput: () => void;
-  flushBackgroundJobNotifications: () => boolean;
-  subscribeBackgroundJobs: () => () => void;
   markAsFailed: (error: Error) => MaybePromise<void>;
+  subscribeBackgroundJobs: () => () => void;
+  flushBackgroundJobNotifications: () => boolean;
 };
 
 type CreateRunningTaskChatKit = (options: {
@@ -126,68 +126,26 @@ type CreateRunningTaskChatKit = (options: {
   abortSignal: AbortSignal;
   taskState: BackgroundTaskState;
   getters: PrepareRequestGetters;
-  backgroundJobNotifications: LiveChatKitBackgroundJobNotificationOptions;
-}) => RunningTaskChatKit;
+  appendMessage: (message: Message) => void;
+}) => MaybePromise<RunningTaskChatKit>;
 
 export class TaskExecutor {
-  private readonly manager: BackgroundJobManager;
-  private readonly store: LiveKitStore;
-  private readonly blobStore: BlobStore;
-  private readonly readTaskState: CreateTaskExecutorOptions["readTaskState"];
-  private readonly shouldRunForkTask: CreateTaskExecutorOptions["shouldRunForkTask"];
-  private readonly adaptor: RunningTaskAdaptor;
-  private readonly clearFileStateCache: CreateTaskExecutorOptions["clearFileStateCache"];
-  private readonly createRunningTaskChatKit: CreateRunningTaskChatKit;
   private readonly runningTasks = new Map<string, RunningTask>();
   private readonly taskDoneWaiters = new Map<string, Set<() => void>>();
   private unsubscribe: (() => void) | undefined;
   private started = false;
-  private initialization = Promise.resolve();
   private disposed = false;
 
-  constructor({
-    store,
-    blobStore,
-    readTaskState,
-    shouldRunForkTask,
-    adaptor,
-    clearFileStateCache,
-    createChatKit,
-    manager,
-  }: CreateTaskExecutorOptions) {
-    this.manager = manager;
-    this.store = store;
-    this.blobStore = blobStore;
-    this.readTaskState = readTaskState;
-    this.shouldRunForkTask = shouldRunForkTask;
-    this.adaptor = adaptor;
-    this.clearFileStateCache = clearFileStateCache;
-    this.createRunningTaskChatKit = createChatKit;
-  }
+  constructor(private readonly options: CreateTaskExecutorOptions) {}
 
   start() {
     if (this.disposed) return;
     if (this.started) return;
     this.started = true;
-    this.unsubscribe = this.store.subscribe(
+    this.unsubscribe = this.options.store.subscribe(
       catalog.queries.runnableTasks$,
       () => this.reconcileRunnableTasks(),
     );
-    this.initialization = Promise.all(
-      this.store.query(catalog.queries.backgroundTasks$).map(async (task) => {
-        try {
-          const state = await this.readTaskState(task.id);
-          if (this.disposed) return;
-          this.manager.registerTask(task.id, state ?? {});
-          this.reconcileRunnableTasks();
-        } catch (error) {
-          logger.warn(
-            { taskId: task.id, error },
-            "Failed to restore background job metadata",
-          );
-        }
-      }),
-    ).then(() => undefined);
     this.reconcileRunnableTasks();
   }
 
@@ -209,7 +167,6 @@ export class TaskExecutor {
 
   async drain(abortSignal?: AbortSignal) {
     this.start();
-    await this.initialization;
 
     while (!this.disposed && !abortSignal?.aborted) {
       const runnableTasks = this.readRunnableTasks();
@@ -235,12 +192,14 @@ export class TaskExecutor {
    * failed status, the next reconcile would pick the task up again.
    */
   async stopTask(taskId: string) {
-    const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+    const task = this.options.store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    );
     if (
       task &&
       (isRunnableTaskStatus(task.status) || this.runningTasks.has(taskId))
     ) {
-      this.store.commit(
+      this.options.store.commit(
         catalog.events.taskFailed({
           id: taskId,
           error: {
@@ -281,12 +240,14 @@ export class TaskExecutor {
   }
 
   private readRunnableTasks() {
-    return this.store.query(catalog.queries.runnableTasks$);
+    return this.options.store.query(catalog.queries.runnableTasks$);
   }
 
   private isTaskDone(taskId: string) {
     if (this.runningTasks.has(taskId)) return false;
-    const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+    const task = this.options.store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    );
     return !!task && !isRunnableTaskStatus(task.status);
   }
 
@@ -295,10 +256,16 @@ export class TaskExecutor {
   }
 
   private reconcile(tasks: readonly Task[]) {
+    // Queued tasks may finish or be cancelled before a RunningTask is created.
+    for (const taskId of this.taskDoneWaiters.keys()) {
+      if (this.isTaskDone(taskId)) this.resolveTaskDoneWaiters(taskId);
+    }
     // Tool-triggered cancellation is persisted by the host that owns the store.
     // Abort the active loop as well, so an in-flight request cannot keep running.
     for (const [taskId, runningTask] of this.runningTasks) {
-      const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+      const task = this.options.store.query(
+        catalog.queries.makeTaskQuery(taskId),
+      );
       if (task?.status === "failed" && task.error?.kind === "AbortError") {
         void runningTask
           .dispose()
@@ -319,17 +286,9 @@ export class TaskExecutor {
 
   private startRunningTask(taskId: string) {
     if (this.disposed) return;
-    this.manager.registerTask(taskId, {});
     const runningTask = new RunningTask({
+      ...this.options,
       taskId,
-      manager: this.manager,
-      store: this.store,
-      blobStore: this.blobStore,
-      readTaskState: this.readTaskState,
-      shouldRunForkTask: this.shouldRunForkTask,
-      adaptor: this.adaptor,
-      clearFileStateCache: this.clearFileStateCache,
-      createChatKit: this.createRunningTaskChatKit,
     });
     this.runningTasks.set(taskId, runningTask);
 
@@ -340,13 +299,13 @@ export class TaskExecutor {
           { taskId, error: normalizedError },
           "Task execution failed",
         );
-        await this.adaptor.onTaskError?.(taskId, normalizedError);
+        await this.options.adaptor.onTaskError?.(taskId, normalizedError);
       })
       .finally(() => {
         if (this.runningTasks.get(taskId) === runningTask) {
           this.runningTasks.delete(taskId);
         }
-        if (!this.disposed) this.manager.taskChanged(taskId);
+        if (!this.disposed) this.options.onTaskSettled?.(taskId);
         this.resolveTaskDoneWaiters(taskId);
         if (!this.disposed && this.started) {
           this.reconcileRunnableTasks();
@@ -371,16 +330,7 @@ export class TaskExecutor {
 }
 
 class RunningTask {
-  private readonly manager: BackgroundJobManager;
-  private readonly taskId: string;
-  private readonly store: LiveKitStore;
-  private readonly blobStore: BlobStore;
-  private readonly readTaskState: CreateTaskExecutorOptions["readTaskState"];
-  private readonly adaptor: RunningTaskAdaptor;
-  private readonly clearFileStateCache: CreateTaskExecutorOptions["clearFileStateCache"];
-  private readonly createRunningTaskChatKit: CreateRunningTaskChatKit;
   private readonly abortController = new AbortController();
-  private readonly shouldRunForkTask: CreateTaskExecutorOptions["shouldRunForkTask"];
   private readonly toolCallQueue = new ToolCallQueue();
   private taskState: BackgroundTaskState = {};
   private chatKit: RunningTaskChatKit | undefined;
@@ -390,26 +340,12 @@ class RunningTask {
 
   readonly done: Promise<void>;
 
-  constructor(options: {
-    manager: BackgroundJobManager;
-    taskId: string;
-    store: LiveKitStore;
-    blobStore: BlobStore;
-    readTaskState: CreateTaskExecutorOptions["readTaskState"];
-    shouldRunForkTask?: CreateTaskExecutorOptions["shouldRunForkTask"];
-    adaptor: RunningTaskAdaptor;
-    clearFileStateCache?: CreateTaskExecutorOptions["clearFileStateCache"];
-    createChatKit: CreateRunningTaskChatKit;
-  }) {
-    this.manager = options.manager;
-    this.taskId = options.taskId;
-    this.store = options.store;
-    this.blobStore = options.blobStore;
-    this.readTaskState = options.readTaskState;
-    this.shouldRunForkTask = options.shouldRunForkTask;
-    this.adaptor = options.adaptor;
-    this.clearFileStateCache = options.clearFileStateCache;
-    this.createRunningTaskChatKit = options.createChatKit;
+  constructor(
+    private readonly options: Omit<
+      CreateTaskExecutorOptions,
+      "onTaskSettled"
+    > & { taskId: string },
+  ) {
     this.done = this.run();
   }
 
@@ -424,18 +360,18 @@ class RunningTask {
   private async run() {
     let unsubscribeBackgroundJobs: (() => void) | undefined;
     try {
-      await this.adaptor.waitUntilReady?.();
+      await this.options.adaptor.waitUntilReady?.();
       this.abortController.signal.throwIfAborted();
-      this.taskState = (await this.readTaskState(this.taskId)) ?? {};
+      this.taskState =
+        (await this.options.readTaskState(this.options.taskId)) ?? {};
       this.abortController.signal.throwIfAborted();
-      this.manager.registerTask(this.taskId, this.taskState);
       if (
         this.taskState.useCase !== undefined &&
-        this.shouldRunForkTask?.(this.taskId) === false
+        this.options.shouldRunForkTask?.(this.options.taskId) === false
       ) {
-        this.store.commit(
+        this.options.store.commit(
           catalog.events.taskFailed({
-            id: this.taskId,
+            id: this.options.taskId,
             error: {
               kind: "AbortError",
               message: "Interrupted fork agent is not resumed.",
@@ -445,9 +381,7 @@ class RunningTask {
         );
         return;
       }
-      await this.manager.watchTask(this.taskId);
-      this.abortController.signal.throwIfAborted();
-      this.chatKit = await this.createChatKit(this.task);
+      this.chatKit = await this.createChatKit();
       this.abortController.signal.throwIfAborted();
       unsubscribeBackgroundJobs = this.chatKit.subscribeBackgroundJobs();
 
@@ -457,9 +391,10 @@ class RunningTask {
         if (stepResult === "finished") {
           // Like the CLI, return an unanswered question without waiting or sending notices.
           if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return;
-          await this.manager.wait(this.taskId, {
-            abortSignal: this.abortController.signal,
-          });
+          await this.options.waitForBackgroundJobs?.(
+            this.options.taskId,
+            this.abortController.signal,
+          );
           this.abortController.signal.throwIfAborted();
           if (!this.chatKit.flushBackgroundJobNotifications()) return;
           this.throwIfMaxStepReached();
@@ -489,9 +424,9 @@ class RunningTask {
       if (this.chatKit) {
         await this.chatKit.markAsFailed(normalizedError);
       } else {
-        this.store.commit(
+        this.options.store.commit(
           catalog.events.taskFailed({
-            id: this.taskId,
+            id: this.options.taskId,
             error: { kind: "InternalError", message: normalizedError.message },
             updatedAt: new Date(),
           }),
@@ -506,7 +441,9 @@ class RunningTask {
 
   private get task() {
     return (
-      this.store.query(catalog.queries.makeTaskQuery(this.taskId)) ?? undefined
+      this.options.store.query(
+        catalog.queries.makeTaskQuery(this.options.taskId),
+      ) ?? undefined
     );
   }
 
@@ -517,11 +454,14 @@ class RunningTask {
     return this.chatKit.chat;
   }
 
-  private async createChatKit(currentTask: Task | undefined) {
-    const context = this.createTaskContext(currentTask);
-    let getters = this.adaptor.getRequestGetters(context);
+  private async createChatKit() {
+    const context = {
+      taskId: this.options.taskId,
+      cwd: normalizeCwd(this.task?.cwd),
+    };
+    let getters = this.options.adaptor.getRequestGetters(context);
 
-    const llmOverride = await this.adaptor.resolveTaskLLM?.({
+    const llmOverride = await this.options.adaptor.resolveTaskLLM?.({
       ...context,
       taskState: this.taskState,
     });
@@ -532,7 +472,7 @@ class RunningTask {
     const customAgent = getters
       .getCustomAgents?.()
       ?.find((agent) => agent.name === this.taskState.agentType);
-    const environmentGetters = this.adaptor.getRequestGetters({
+    const environmentGetters = this.options.adaptor.getRequestGetters({
       ...context,
       omitCustomRules: customAgent?.omitAgentsMd === true,
     });
@@ -542,37 +482,26 @@ class RunningTask {
     // resolved here so both the request-side tool selection and the
     // execution-side validation derive from the same agent definition.
     if (this.taskState.agentType && !this.taskState.tools) {
-      const agent = getters
-        .getCustomAgents?.()
-        ?.find((a) => a.name === this.taskState.agentType);
-      if (!agent) {
+      if (!customAgent) {
         throw new Error(
           `Custom agent "${this.taskState.agentType}" not found for background subagent task.`,
         );
       }
-      if (agent.tools) {
-        this.taskState = { ...this.taskState, tools: agent.tools };
+      if (customAgent.tools) {
+        this.taskState = { ...this.taskState, tools: customAgent.tools };
       }
     }
 
-    return this.createRunningTaskChatKit({
-      taskId: this.taskId,
-      store: this.store,
-      blobStore: this.blobStore,
+    this.abortController.signal.throwIfAborted();
+    return this.options.createChatKit({
+      taskId: this.options.taskId,
+      store: this.options.store,
+      blobStore: this.options.blobStore,
       abortSignal: this.abortController.signal,
       taskState: this.taskState,
       getters,
-      backgroundJobNotifications: {
-        startTurn: (message) => this.chat.appendOrReplaceMessage(message),
-      },
+      appendMessage: (message) => this.chat.appendOrReplaceMessage(message),
     });
-  }
-
-  private createTaskContext(currentTask: Task | undefined) {
-    return {
-      taskId: this.taskId,
-      cwd: normalizeCwd(this.task?.cwd) ?? normalizeCwd(currentTask?.cwd),
-    };
   }
 
   private async step(): Promise<"finished" | "next" | "retry"> {
@@ -723,24 +652,17 @@ class RunningTask {
     }
 
     try {
-      const execute = () =>
-        this.adaptor.executeToolCall({
-          taskId: this.taskId,
-          parentTaskId: this.taskState.parentTaskId,
-          storeId: this.store.storeId,
-          toolName,
-          toolCallId: toolCall.toolCallId,
-          input: toolCall.input,
-          abortSignal: this.abortController.signal,
-          toolPolicies,
-        });
-      const result =
-        toolName === "killBackgroundJob"
-          ? await this.manager.kill(
-              (toolCall.input as { backgroundJobId: string }).backgroundJobId,
-              this.taskId,
-            )
-          : await execute();
+      const result = await this.options.adaptor.executeToolCall({
+        taskId: this.options.taskId,
+        parentTaskId: this.taskState.parentTaskId,
+        storeId: this.options.store.storeId,
+        toolName,
+        toolCallId: toolCall.toolCallId,
+        input: toolCall.input,
+        abortSignal: this.abortController.signal,
+        allowBackground: !isForkAgentUseCase(this.taskState.useCase),
+        toolPolicies,
+      });
 
       await this.addToolOutput({
         tool: toolName,
@@ -805,7 +727,7 @@ class RunningTask {
     message: Message,
   ): Promise<Message | undefined> {
     const retryMessage = await prepareLastMessageForRetry(message, () =>
-      this.clearFileStateCache?.(this.taskId),
+      this.options.clearFileStateCache?.(this.options.taskId),
     );
     return retryMessage ? (retryMessage as Message) : undefined;
   }

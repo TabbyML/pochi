@@ -5,7 +5,10 @@ import type { LiveKitStore, Message, Task } from "../../types";
 export function makeJobStore() {
   const tasks = new Map<string, Task>();
   const messages = new Map<string, Message[]>();
-  const listeners = new Map<() => void, { label?: string }>();
+  const listeners = new Map<
+    (value: unknown) => void,
+    { label?: string; hash?: string }
+  >();
   const store = {
     storeId: "test",
     query(query: { label?: string; hash?: string }) {
@@ -35,29 +38,61 @@ export function makeJobStore() {
           return undefined;
       }
     },
-    commit: vi.fn((event: { name: string; args: Record<string, unknown> }) => {
-      const args = event.args;
-      const id = args.id as string;
-      if (event.name === "v1.TaskFailed")
-        tasks.set(id, {
-          ...tasks.get(id),
-          status: "failed",
-          error: args.error,
-        } as Task);
-      else if (event.name === "v1.ToolsExecutionFinished") {
-        for (const [taskId, taskMessages] of messages)
-          messages.set(
-            taskId,
-            taskMessages.map((message) =>
-              message.id === id
-                ? ({ ...message, parts: args.parts } as Message)
-                : message,
-            ),
-          );
-      }
-      for (const [listener] of listeners) listener();
-    }),
-    subscribe(query: { label?: string }, callback: () => void) {
+    commit: vi.fn(
+      (...events: { name: string; args: Record<string, unknown> }[]) => {
+        for (const event of events) {
+          const args = event.args;
+          const id = args.id as string;
+          if (event.name === "v1.TaskFailed")
+            tasks.set(id, {
+              ...tasks.get(id),
+              status: "failed",
+              error: args.error,
+            } as Task);
+          else if (event.name === "v1.TaskBackgrounded")
+            tasks.set(id, { ...tasks.get(id), background: true } as Task);
+          else if (event.name === "v1.ChatStreamStarted") {
+            tasks.set(id, {
+              ...tasks.get(id),
+              status: "pending-model",
+            } as Task);
+            const message = args.data as Message;
+            const previous = messages.get(id) ?? [];
+            messages.set(
+              id,
+              previous.some((m) => m.id === message.id)
+                ? previous.map((m) => (m.id === message.id ? message : m))
+                : [...previous, message],
+            );
+          } else if (event.name === "v1.TaskInited") {
+            tasks.set(id, {
+              ...args,
+              status: "pending-model",
+            } as unknown as Task);
+            messages.set(
+              id,
+              (args.initMessages as Message[] | undefined) ?? [],
+            );
+          } else if (event.name === "v1.ToolsExecutionFinished") {
+            for (const [taskId, taskMessages] of messages)
+              messages.set(
+                taskId,
+                taskMessages.map((message) =>
+                  message.id === id
+                    ? ({ ...message, parts: args.parts } as Message)
+                    : message,
+                ),
+              );
+          }
+        }
+        // Like a LiveStore transaction, observers see all events applied together.
+        for (const [listener, query] of listeners) listener(store.query(query));
+      },
+    ),
+    subscribe(
+      query: { label?: string; hash?: string },
+      callback: (value: unknown) => void,
+    ) {
       listeners.set(callback, query);
       return () => {
         listeners.delete(callback);
@@ -71,7 +106,7 @@ export function makeJobStore() {
     commit: store.commit,
     setMessages(taskId: string, value: Message[]) {
       messages.set(taskId, value);
-      for (const [listener] of listeners) listener();
+      for (const [listener, query] of listeners) listener(store.query(query));
     },
   };
 }

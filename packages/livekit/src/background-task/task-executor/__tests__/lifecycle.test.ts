@@ -1,7 +1,7 @@
 import { makeJobStore } from "../../../background-job/__tests__/test-store";
 import {
   BackgroundJobManager,
-  type BackgroundCommandSource,
+  type BackgroundCommandAdaptor,
 } from "../../../background-job/manager";
 import type { Task } from "../../../types";
 import { expect, it, vi } from "vitest";
@@ -88,7 +88,6 @@ it("save each finished command before a later command finishes", async () => {
   });
   let child!: LiveChatKit<InMemoryChat>;
   const executor = new TaskExecutor({
-    manager: BackgroundJobManager.forStore(store as never),
     store: store as never,
     blobStore: {} as never,
     readTaskState: () => ({}),
@@ -158,7 +157,7 @@ it.each(["pending-model", "pending-tool"] as const)(
       } as Task);
     });
     const executor = new TaskExecutor({
-      manager,
+      onTaskSettled: (taskId) => manager.taskChanged(taskId),
       store: data.store,
       blobStore: {} as never,
       readTaskState: () => ({ parentTaskId: "parent" }),
@@ -176,15 +175,11 @@ it.each(["pending-model", "pending-tool"] as const)(
           },
         },
         persistToolOutput() {},
-        flushBackgroundJobNotifications() {
-          return false;
-        },
-        subscribeBackgroundJobs() {
-          return () => {};
-        },
         markStartToolsExecution() {},
         markEndToolsExecution() {},
         markAsFailed: vi.fn(),
+        subscribeBackgroundJobs: () => () => {},
+        flushBackgroundJobNotifications: () => false,
       }),
     });
     manager.setExecutor(executor);
@@ -216,7 +211,7 @@ it.each(["completed", "failed", "pending-input"] as const)(
       throw new Error("Task should not restart");
     });
     const executor = new TaskExecutor({
-      manager,
+      onTaskSettled: (taskId) => manager.taskChanged(taskId),
       store: data.store,
       blobStore: {} as never,
       readTaskState: () => ({ parentTaskId: "parent" }),
@@ -261,7 +256,7 @@ it("preserves the saved task status when its Webview is disposed during a respon
   });
   let messages = data.messages.get("child") ?? [];
   const executor = new TaskExecutor({
-    manager,
+    onTaskSettled: (taskId) => manager.taskChanged(taskId),
     store: data.store,
     blobStore: {} as never,
     readTaskState: () => ({ parentTaskId: "parent" }),
@@ -289,15 +284,11 @@ it("preserves the saved task status when its Webview is disposed during a respon
         },
       },
       persistToolOutput() {},
-      flushBackgroundJobNotifications() {
-        return false;
-      },
-      subscribeBackgroundJobs() {
-        return () => {};
-      },
       markStartToolsExecution() {},
       markEndToolsExecution() {},
       markAsFailed: vi.fn(),
+      subscribeBackgroundJobs: () => () => {},
+      flushBackgroundJobNotifications: () => false,
     }),
   });
   manager.setExecutor(executor);
@@ -323,11 +314,11 @@ function backgroundAgent(initialMessage: Message) {
   const manager = BackgroundJobManager.forStore(data.store);
   manager.registerTask("child", { parentTaskId: "parent" });
   let publishCommands!: Parameters<
-    BackgroundCommandSource["observeCommands"]
+    BackgroundCommandAdaptor["observeCommands"]
   >[0];
   const publishNotifications = new Map<
     string,
-    Parameters<BackgroundCommandSource["observeNotifications"]>[1]
+    Parameters<BackgroundCommandAdaptor["observeNotifications"]>[1]
   >();
   const running = {
     "bgjob-cmd-child": { taskId: "child", command: "test", isVisible: false },
@@ -355,12 +346,17 @@ function backgroundAgent(initialMessage: Message) {
   const requests: Message[][] = [];
   const send = vi.fn();
   const executor = new TaskExecutor({
-    manager,
+    onTaskSettled: (taskId) => manager.taskChanged(taskId),
     store: data.store,
     blobStore: {} as never,
     readTaskState: () => ({ parentTaskId: "parent" }),
     adaptor: { getRequestGetters: () => getters, executeToolCall: vi.fn() },
-    createChatKit: (options) => {
+    waitForBackgroundJobs: async (taskId, abortSignal) => {
+      await manager.wait(taskId, { abortSignal });
+    },
+    createChatKit: async (options) => {
+      await manager.watchTask(options.taskId);
+      options.abortSignal.throwIfAborted();
       data.tasks.set("child", {
         ...data.tasks.get("child"),
         status: initialMessage.parts.some(
@@ -371,6 +367,7 @@ function backgroundAgent(initialMessage: Message) {
       } as Task);
       const kit = new LiveChatKit({
         ...options,
+        backgroundJobNotifications: { startTurn: options.appendMessage },
         backgroundJobManager: manager,
         chatClass: InMemoryChat,
         isSubTask: true,

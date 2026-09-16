@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Message } from "@getpochi/livekit";
+import {
+  BackgroundJobManager,
+  type Message,
+  type Task,
+} from "@getpochi/livekit";
+import { makeJobStore } from "@getpochi/livekit/testing";
 import type { Todo } from "@getpochi/tools";
 import { ManagedToolCallLifeCycle } from "../tool-call-life-cycle";
-import { vscodeHost } from "@/lib/vscode";
 
 vi.mock("@/lib/vscode", () => ({
-  vscodeHost: {
-    readBackgroundTaskState: vi.fn(async () => ({
-      setBackgroundTaskState: vi.fn(),
-    })),
-  },
+  vscodeHost: {},
 }));
 
 function makeStore() {
@@ -176,49 +176,85 @@ describe("ManagedToolCallLifeCycle", () => {
   });
 });
 
-describe("background subagent job cancellation", () => {
-  it.each(["read", "write"])(
-    "does not launch after cancellation during the state %s",
-    async (stage) => {
-      let release!: () => void;
-      const pending = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      const setBackgroundTaskState = vi.fn(async () => {
-        if (stage === "write") await pending;
-      });
-      vi.mocked(vscodeHost.readBackgroundTaskState).mockImplementationOnce(
-        async () => {
-          if (stage === "read") await pending;
-          return { setBackgroundTaskState } as never;
-        },
-      );
-      const store = { ...makeStore(), commit: vi.fn() };
-      const lifecycle = new ManagedToolCallLifeCycle(
-        store as never,
-        { toolName: "newTask", toolCallId: "start" },
-        new AbortController().signal,
-      );
+describe("background subagent job lifecycle", () => {
+  it("launches and registers a background subagent through the shared manager", async () => {
+    const { store, tasks } = makeJobStore();
+    tasks.set("child", {
+      id: "child",
+      parentId: "parent",
+      background: false,
+      status: "pending-model",
+    } as Task);
+    const manager = BackgroundJobManager.forStore(store);
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store,
+      { toolName: "newTask", toolCallId: "start" },
+      new AbortController().signal,
+    );
+    try {
       lifecycle.execute(
-        { background: true, _meta: { uid: "child" } },
+        { background: true, agentType: "explore", _meta: { uid: "child" } },
         { taskId: "parent" },
       );
-      const settled = (
-        lifecycle as unknown as { state: { executeJob: Promise<void> } }
-      ).state.executeJob.catch(() => undefined);
-      if (stage === "write")
-        await vi.waitFor(() =>
-          expect(setBackgroundTaskState).toHaveBeenCalledOnce(),
-        );
-      lifecycle.abort("user-abort");
-      release();
-      await settled;
-      expect(lifecycle.complete.reason).toBe("user-abort");
-      expect(store.commit).not.toHaveBeenCalled();
-      if (stage === "read")
-        expect(setBackgroundTaskState).not.toHaveBeenCalled();
-    },
-  );
+      await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+      expect(lifecycle.complete.result).toEqual(
+        expect.objectContaining({ backgroundJobId: "bgjob-task-child" }),
+      );
+      expect(manager.getJobsForTask("parent")).toEqual([
+        expect.objectContaining({
+          taskId: "child",
+          agentType: "explore",
+          status: "running",
+        }),
+      ]);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("does not launch after cancellation during shared state persistence", async () => {
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const set = vi.fn(() => pending);
+    const { store, tasks } = makeJobStore();
+    tasks.set("child", {
+      id: "child",
+      parentId: "parent",
+      background: false,
+      status: "pending-model",
+    } as Task);
+    const manager = BackgroundJobManager.forStore(store);
+    vi.spyOn(manager, "start").mockImplementation(() => {});
+    manager.initialize({
+      blobStore: {} as never,
+      adaptor: {
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall: vi.fn(),
+      },
+      stateStore: { read: () => undefined, set },
+    });
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store as never,
+      { toolName: "newTask", toolCallId: "start" },
+      new AbortController().signal,
+    );
+    lifecycle.execute(
+      { background: true, _meta: { uid: "child" } },
+      { taskId: "parent" },
+    );
+    const settled = (
+      lifecycle as unknown as { state: { executeJob: Promise<void> } }
+    ).state.executeJob.catch(() => undefined);
+    await vi.waitFor(() => expect(set).toHaveBeenCalledOnce());
+    lifecycle.abort("user-abort");
+    release();
+    await settled;
+    expect(lifecycle.complete.reason).toBe("user-abort");
+    expect(store.commit).not.toHaveBeenCalled();
+    await manager.dispose();
+  });
 
   it.each([true, false])(
     "validates job ownership before stopping (owned: %s)",
@@ -275,14 +311,9 @@ describe("foreground background handoff", () => {
       parentId: "parent",
       status: "pending-tool",
       background: false,
-    };
-    const store = {
-      ...makeStore(),
-      query: vi.fn(() => task),
-      commit: vi.fn(() => {
-        task.background = true;
-      }),
-    };
+    } as Task;
+    const { store, tasks } = makeJobStore();
+    tasks.set(task.id, task);
     const lifecycle = new ManagedToolCallLifeCycle(
       store as never,
       { toolName: "newTask", toolCallId: "call" },
@@ -335,6 +366,19 @@ describe("foreground background handoff", () => {
     ).rejects.toThrow("cancelled");
     expect(store.commit).not.toHaveBeenCalled();
     expect(lifecycle.complete.reason).toBe("user-abort");
+  });
+
+  it("does not hand off after the foreground tool reports an error while stopping", async () => {
+    const { lifecycle, store, task } = await setup();
+    await expect(
+      lifecycle.moveToBackground(task.id, "explore", async () => {
+        const streaming = lifecycle.streamingResult;
+        if (streaming?.toolName === "newTask")
+          streaming.throws("step limit reached");
+      }),
+    ).rejects.toThrow("cancelled");
+    expect(store.commit).not.toHaveBeenCalled();
+    expect(lifecycle.complete.result).toEqual({ error: "step limit reached" });
   });
 
   it("fails on timeout instead of starting a second executor", async () => {

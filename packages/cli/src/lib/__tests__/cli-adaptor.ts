@@ -25,7 +25,7 @@ export function nextCommandResult(
   const result = new Promise<BackgroundCommandNotification>((resolve) => {
     complete = resolve;
   });
-  const subscription = adaptor.commandSource.observeNotifications(
+  const subscription = adaptor.commandAdaptor.observeNotifications(
     taskId,
     (notices) => {
       const notice = notices.find((notice) => notice.kind === "command");

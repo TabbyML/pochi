@@ -46,7 +46,7 @@ export const executeCommand: ToolFunctionType<
     background = false,
     timeout = ExecuteCommandDefaultTimeoutSec,
   },
-  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
+  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId, allowBackground },
 ) => {
   if (!command) {
     throw new Error("Command is required to execute.");
@@ -59,6 +59,9 @@ export const executeCommand: ToolFunctionType<
   }
 
   if (background) {
+    if (allowBackground === false) {
+      throw new Error("Background commands are not available for this task.");
+    }
     if (!taskId) {
       throw new Error("A task ID is required to start a background job.");
     }
@@ -130,6 +133,7 @@ export const executeCommand: ToolFunctionType<
       timeout,
       abortSignal,
       envs,
+      allowBackground,
       onData: (data) => {
         pendingData = data;
         throttledFlush.call();
@@ -140,9 +144,10 @@ export const executeCommand: ToolFunctionType<
         throttledFlush.cancel();
 
         if (result.type === "timedOut") {
-          if (!taskId) {
+          if (!taskId || allowBackground === false) {
             result.ptyProcess.kill();
-            throw ExecutionError.createTimeoutError(timeout);
+            pendingData = result;
+            throw ExecutionError.createTimeoutError(timeout, allowBackground);
           }
 
           const viewColumn = getViewColumnForTerminal();
@@ -214,6 +219,7 @@ async function executeCommandImpl({
   abortSignal,
   envs,
   onData,
+  allowBackground,
 }: ExecuteCommandOptions) {
   const shell = getShellPath();
   // FIXME(zhiming): node-pty impl is not working on windows for now
@@ -248,6 +254,7 @@ async function executeCommandImpl({
     abortSignal,
     envs,
     onData,
+    allowBackground,
   });
   return { type: "completed" as const, ...result };
 }

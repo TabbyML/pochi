@@ -26,7 +26,7 @@ describe("CliRunningTaskAdaptor background commands", () => {
     expect(outputFile).toContain(backgroundJobId);
 
     const result = nextCommandResult(adaptor, "task-test");
-    await adaptor.commandSource.kill(backgroundJobId);
+    await adaptor.commandAdaptor.kill(backgroundJobId);
     expect((await result).status).toBe("stopped");
   });
 
@@ -175,7 +175,7 @@ describe("CliRunningTaskAdaptor background commands", () => {
       );
 
       await expect.poll(() => readFile(outputFile, "utf8")).toBe("ready");
-      await adaptor.commandSource.kill(backgroundJobId);
+      await adaptor.commandAdaptor.kill(backgroundJobId);
 
       const event = await eventPromise;
       expect(event.status).toBe("stopped");

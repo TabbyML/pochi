@@ -31,7 +31,7 @@ function makeStore(initialMessages: Message[] = []) {
   data.setMessages("child", initialMessages);
   const manager = BackgroundJobManager.forStore(data.store);
   const adaptor = new VscodeRunningTaskAdaptor();
-  manager.connect(adaptor.commandSource);
+  manager.connect(adaptor.commandAdaptor);
   return {
     manager,
     store: data.store,
@@ -86,6 +86,32 @@ function deliveredMessage(data: BackgroundJobNotification): Message {
 
 describe("VS Code background command ownership", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("passes fork background restrictions to the host", async () => {
+    vi.mocked(vscodeHost.executeToolCall).mockResolvedValue({ output: "done" });
+    const adaptor = new VscodeRunningTaskAdaptor();
+    try {
+      await adaptor.executeToolCall({
+        toolName: "executeCommand",
+        toolCallId: "fork-command",
+        input: { command: "echo test" },
+        taskId: "fork",
+        parentTaskId: "parent",
+        storeId: "store",
+        allowBackground: false,
+        abortSignal: new AbortController().signal,
+        toolPolicies: undefined,
+      });
+      expect(vscodeHost.executeToolCall).toHaveBeenCalledWith(
+        "executeCommand",
+        { command: "echo test" },
+        expect.objectContaining({ taskId: "fork", allowBackground: false }),
+      );
+    } finally {
+      await adaptor.waitUntilReady();
+      adaptor.dispose();
+    }
+  });
 
   function setup() {
     const running = signal<BackgroundCommands>({});
@@ -292,7 +318,7 @@ describe("VS Code background command ownership", () => {
       await adaptor.waitUntilReady();
       const store = makeJobStore();
       const manager = BackgroundJobManager.forStore(store.store);
-      manager.connect(adaptor.commandSource);
+      manager.connect(adaptor.commandAdaptor);
       const commands = await taskCommands(manager, "child");
       const sibling = await taskCommands(manager, "sibling");
       expect(vscodeHost.readBackgroundCommands).toHaveBeenCalledOnce();

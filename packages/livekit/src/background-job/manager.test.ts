@@ -2,9 +2,10 @@ import type { BackgroundJobNotification } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import { createBackgroundJobNotification } from "@getpochi/common";
 import { describe, expect, it, vi } from "vitest";
+import type { RunningTaskAdaptor } from "../background-task/task-executor/task-executor";
 import type { Message, Task } from "../types";
 import { makeJobStore } from "./__tests__/test-store";
-import { BackgroundJobManager, type BackgroundCommandSource } from "./manager";
+import { BackgroundJobManager, type BackgroundCommandAdaptor } from "./manager";
 
 function setup() {
   const data = makeJobStore();
@@ -21,13 +22,13 @@ function setup() {
     }) => void
   >();
   let commandsChanged: Parameters<
-    BackgroundCommandSource["observeCommands"]
+    BackgroundCommandAdaptor["observeCommands"]
   >[0];
   const source = {
     kill: vi.fn(async () => {}),
     observeCommands: vi.fn(
       async (
-        update: Parameters<BackgroundCommandSource["observeCommands"]>[0],
+        update: Parameters<BackgroundCommandAdaptor["observeCommands"]>[0],
       ) => {
         commandsChanged = update;
         update({});
@@ -37,7 +38,7 @@ function setup() {
     observeNotifications: vi.fn(
       async (
         taskId: string,
-        update: Parameters<BackgroundCommandSource["observeNotifications"]>[1],
+        update: Parameters<BackgroundCommandAdaptor["observeNotifications"]>[1],
       ) => {
         observers.set(taskId, (snapshot) => {
           commandsChanged(snapshot.running);
@@ -80,6 +81,62 @@ const finished = (id = "bgjob-cmd-one") =>
   });
 
 describe("BackgroundJobManager", () => {
+  it("routes job cancellation through ownership checks and delegates other tools", async () => {
+    const { manager, observers, source } = setup();
+    const executeToolCall = vi.fn(async () => ({ output: "platform result" }));
+    manager.initialize({
+      blobStore: {} as never,
+      adaptor: {
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall,
+      },
+    });
+    const { executor } = manager as unknown as {
+      executor: { options: { adaptor: RunningTaskAdaptor } };
+    };
+    const call = {
+      taskId: "parent",
+      parentTaskId: undefined,
+      storeId: "test",
+      toolName: "killBackgroundJob",
+      toolCallId: "stop-command",
+      input: { backgroundJobId: "bgjob-cmd-one" },
+      abortSignal: new AbortController().signal,
+      allowBackground: false,
+      toolPolicies: undefined,
+    };
+    try {
+      await manager.watchTask("parent");
+      observers.get("parent")!({
+        running: { "bgjob-cmd-one": running("parent") },
+        notifications: [],
+      });
+      await expect(executor.options.adaptor.executeToolCall(call)).resolves.toEqual({
+        success: true,
+      });
+      await expect(
+        executor.options.adaptor.executeToolCall({
+          ...call,
+          taskId: "fork",
+        }),
+      ).rejects.toThrow("not found");
+      expect(source.kill).toHaveBeenCalledExactlyOnceWith("bgjob-cmd-one");
+      expect(executeToolCall).not.toHaveBeenCalled();
+
+      const command = {
+        ...call,
+        toolName: "executeCommand",
+        input: { command: "echo test" },
+      };
+      await expect(
+        executor.options.adaptor.executeToolCall(command),
+      ).resolves.toEqual({ output: "platform result" });
+      expect(executeToolCall).toHaveBeenCalledExactlyOnceWith(command);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
   it("shares one manager across main, subagent and fork handles", () => {
     const { store, manager } = setup();
     expect(BackgroundJobManager.forStore(store)).toBe(manager);

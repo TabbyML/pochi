@@ -15,7 +15,10 @@ import {
 import { ForegroundOutputCapture } from "../lib/foreground-output-capture";
 import type { ToolCallOptions } from "../types";
 
-type ExecuteCommandContext = Pick<ToolCallOptions, "taskId" | "adaptor">;
+type ExecuteCommandContext = Pick<
+  ToolCallOptions,
+  "taskId" | "adaptor" | "allowBackground"
+>;
 
 export class ExecuteCommandError extends Error {
   public code: number;
@@ -65,6 +68,9 @@ export const executeCommand =
     }
 
     if (background) {
+      if (context?.allowBackground === false) {
+        throw new Error("Background commands are not available for this task.");
+      }
       if (!context) {
         throw new Error("Background command execution is not available.");
       }
@@ -85,7 +91,7 @@ export const executeCommand =
         envs,
         timeout,
         abortSignal,
-        background: context,
+        background: context?.allowBackground === false ? undefined : context,
       });
 
       if ("backgroundJobId" in result) {

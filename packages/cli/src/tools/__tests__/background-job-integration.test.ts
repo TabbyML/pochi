@@ -46,7 +46,7 @@ describe("executeToolCall with background jobs", () => {
         adaptor: adaptor,
         backgroundJobManager: {
           kill: async (id: string) => {
-            await adaptor.commandSource.kill(id);
+            await adaptor.commandAdaptor.kill(id);
             return { success: true as const };
           },
         },
@@ -138,7 +138,7 @@ describe("executeToolCall with background jobs", () => {
         adaptor,
         backgroundJobManager: {
           kill: async (id: string) => {
-            await adaptor.commandSource.kill(id);
+            await adaptor.commandAdaptor.kill(id);
             return { success: true as const };
           },
         },
@@ -197,7 +197,7 @@ describe("executeToolCall with background jobs", () => {
         adaptor,
         backgroundJobManager: {
           kill: async (id: string) => {
-            await adaptor.commandSource.kill(id);
+            await adaptor.commandAdaptor.kill(id);
             return { success: true as const };
           },
         },

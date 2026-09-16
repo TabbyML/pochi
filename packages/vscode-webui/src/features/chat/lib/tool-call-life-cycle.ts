@@ -18,7 +18,6 @@ import {
   catalog,
   extractTaskResult,
   processContentOutput,
-  restartBackgroundTask,
 } from "@getpochi/livekit";
 
 import {
@@ -305,16 +304,13 @@ export class ManagedToolCallLifeCycle
     // through the foreground result flow.
     const background = shouldRunSubtaskInBackground(args);
     if (background) {
-      const { setBackgroundTaskState } =
-        await vscodeHost.readBackgroundTaskState(uid);
-      options.abortSignal.throwIfAborted();
-      await setBackgroundTaskState({
-        parentTaskId: options?.taskId,
-        agentType: args.agentType,
-      });
-      options.abortSignal.throwIfAborted();
-      this.store.commit(
-        catalog.events.taskBackgrounded({ id: uid, updatedAt: new Date() }),
+      await BackgroundJobManager.forStore(this.store).backgroundSubTask(
+        {
+          taskId: uid,
+          parentTaskId: options.taskId ?? "",
+          agentType: args.agentType,
+        },
+        options.abortSignal,
       );
       return {
         result: uid,
@@ -365,42 +361,21 @@ export class ManagedToolCallLifeCycle
       const uid = taskId;
       const task = this.store.query(catalog.queries.makeTaskQuery(uid));
       if (!task?.parentId) throw new Error("Subtask parent is missing.");
-      const { setBackgroundTaskState } =
-        await vscodeHost.readBackgroundTaskState(uid);
-      await setBackgroundTaskState({ parentTaskId: task.parentId, agentType });
-      let timeout: ReturnType<typeof setTimeout> | undefined;
-      try {
-        await Promise.race([
-          stopForeground(),
-          new Promise<never>((_, reject) => {
-            timeout = setTimeout(
-              () =>
-                reject(
-                  new Error(
-                    "Timed out waiting for foreground execution to stop.",
-                  ),
-                ),
-              10000,
-            );
-          }),
-        ]);
-      } finally {
-        clearTimeout(timeout);
-      }
-      if (this.status !== "execute:streaming") {
-        throw new Error("Subtask execution was cancelled during handoff.");
-      }
-      this.store.commit(
-        catalog.events.taskBackgrounded({ id: uid, updatedAt: new Date() }),
+      await BackgroundJobManager.forStore(this.store).backgroundSubTask(
+        {
+          taskId: uid,
+          parentTaskId: task.parentId,
+          agentType,
+          stopForeground: async () => {
+            await stopForeground();
+            if (this.status !== "execute:streaming")
+              throw new Error(
+                "Subtask execution was cancelled during handoff.",
+              );
+          },
+        },
+        streaming.abortSignal,
       );
-      const settled = this.store.query(catalog.queries.makeTaskQuery(uid));
-      if (
-        settled?.status !== "completed" &&
-        settled?.status !== "pending-input" &&
-        !restartBackgroundTask(this.store, uid)
-      ) {
-        throw new Error("Failed to resume the background subtask.");
-      }
       this.detach({
         result: createBackgroundSubAgentStartedResult(uid),
         backgroundJobId: getSubAgentBackgroundJobId(uid),

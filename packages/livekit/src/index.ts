@@ -36,7 +36,6 @@ export {
   isAwaitingFollowupAnswer,
   isResultMessage,
   mapTaskStatusToBackgroundStatus,
-  restartBackgroundTask,
 } from "./task-utils";
 export type {
   BackgroundJobStatus,
@@ -46,7 +45,7 @@ export { toTaskStatus } from "./task";
 
 export {
   BackgroundJobManager,
-  type BackgroundCommandSource,
+  type BackgroundCommandAdaptor,
   type BackgroundJobManagerOptions,
   type BackgroundTaskStateStore,
 } from "./background-job/manager";

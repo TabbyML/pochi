@@ -26,7 +26,7 @@ import {
   resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
 import {
-  type BackgroundCommandSource,
+  type BackgroundCommandAdaptor,
   BackgroundJobManager,
   type BlobStore,
   type LLMRequestData,
@@ -101,14 +101,14 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly commands: Map<string, BackgroundCommand> = new Map();
 
   private readonly commandListeners = new Set<
-    Parameters<BackgroundCommandSource["observeCommands"]>[0]
+    Parameters<BackgroundCommandAdaptor["observeCommands"]>[0]
   >();
   private readonly notificationListeners = new Map<string, Set<() => void>>();
   private readonly notifications = new Map<
     string,
     { taskId: string; notification: BackgroundJobNotification }
   >();
-  readonly commandSource: BackgroundCommandSource = {
+  readonly commandAdaptor: BackgroundCommandAdaptor = {
     kill: async (id) => {
       if (!this.killBackgroundCommand(id)) {
         throw new Error(`Failed to stop background command "${id}".`);
@@ -143,7 +143,9 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
           if (!listeners.size) this.notificationListeners.delete(taskId);
         },
         acknowledge: async (id) => {
+          if (this.notifications.get(id)?.taskId !== taskId) return;
           this.notifications.delete(id);
+          for (const notify of listeners) notify();
         },
       };
     },
@@ -245,7 +247,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       this.blobStore,
       await executeToolCall(
         tool,
-        this.createToolCallOptions(args.taskId),
+        this.createToolCallOptions(args.taskId, args.allowBackground),
         this.cwd,
         args.abortSignal,
         (this.taskLLMs.get(args.taskId) ?? this.llm).contentType,
@@ -268,9 +270,13 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     this.fileStateCaches.get(taskId)?.markAllAsWritten();
   }
 
-  private createToolCallOptions(taskId: string): ToolCallOptions {
+  private createToolCallOptions(
+    taskId: string,
+    allowBackground?: boolean,
+  ): ToolCallOptions {
     return {
       taskId,
+      allowBackground,
       rg: this.rg,
       fileSystem: this.filesystem,
       fileStateCache: this.getFileStateCache(taskId),

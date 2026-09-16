@@ -14,6 +14,8 @@ import type { TaskRunner } from "./task-runner";
 
 export interface ToolCallOptions {
   taskId: string;
+  /** Host policy for command execution, including promotion on timeout. */
+  allowBackground?: boolean;
   /**
    * The path to the ripgrep executable.
    * This is used for searching files in the task runner.

@@ -67,16 +67,16 @@ describe("LiveChatKit memory lifecycle", () => {
     });
     const { executor } = chatKit.backgroundJobManager as unknown as {
       executor: {
-        createRunningTaskChatKit: ConstructorParameters<
-          typeof TaskExecutor
-        >[0]["createChatKit"];
+        options: {
+          createChatKit: ConstructorParameters<typeof TaskExecutor>[0]["createChatKit"];
+        };
       };
     };
-    const createChatKit = executor.createRunningTaskChatKit;
+    const createChatKit = executor.options.createChatKit;
     const factory = vi
-      .spyOn(executor, "createRunningTaskChatKit")
-      .mockImplementation((options) => {
-        const running = createChatKit(options);
+      .spyOn(executor.options, "createChatKit")
+      .mockImplementation(async (options) => {
+        const running = await createChatKit(options);
         // Exercise the real fork construction and scheduling; replace only its
         // network request, while inspecting the system prompt passed to transport.
         running.chat.sendMessage = async () => {
@@ -169,6 +169,10 @@ describe("LiveChatKit memory lifecycle", () => {
   it("does not background a subtask if its parent is aborted during state persistence", async () => {
     const store = new FakeStore([
       makeTask({ id: "parent", status: "pending-tool", background: false }),
+      {
+        ...makeTask({ id: "child", status: "pending-model", background: false }),
+        parentId: "parent",
+      },
     ]);
     const commit = vi.spyOn(store, "commit");
     const controller = new AbortController();

@@ -11,7 +11,7 @@ import {
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type {
-  BackgroundCommandSource,
+  BackgroundCommandAdaptor,
   RunningTaskAdaptor,
 } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -58,7 +58,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return this.ready;
   }
 
-  readonly commandSource: BackgroundCommandSource = {
+  readonly commandAdaptor: BackgroundCommandAdaptor = {
     kill: async (id) => (await vscodeHost.readBackgroundCommands()).close(id),
     observeCommands: async (onChange) => {
       const commands = await vscodeHost.readBackgroundCommands();
@@ -183,6 +183,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       storeId: args.storeId,
       taskId: args.taskId,
       fileStateCacheSourceTaskId: args.parentTaskId,
+      allowBackground: args.allowBackground,
     });
 
     if (

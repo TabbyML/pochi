@@ -195,40 +195,6 @@ export function createBackgroundSubagentNotification(
   };
 }
 
-/**
- * Flips a failed background task back to pending-model by re-committing its
- * last message, so the TaskExecutor picks it up again. Only failed tasks are
- * restarted: reviving a completed task would leave it stuck in pending-model
- * (the executor finishes without another status commit) and the reconcile
- * loop would pick it up forever.
- */
-export function restartBackgroundTask(
-  store: LiveKitStore,
-  taskId: string,
-): boolean {
-  const task = store.query(catalog.queries.makeTaskQuery(taskId));
-  if (!task?.background) return false;
-  if (task.status === "pending-model" || task.status === "pending-tool") {
-    return true;
-  }
-  if (task.status !== "failed") return false;
-  const lastMessage = store
-    .query(catalog.queries.makeMessagesQuery(taskId))
-    .map((x) => x.data as Message)
-    .at(-1);
-  if (!lastMessage) return false;
-  store.commit(
-    catalog.events.chatStreamStarted({
-      id: taskId,
-      data: lastMessage,
-      todos: task.todos ? [...task.todos] : [],
-      updatedAt: new Date(),
-      modelId: task.modelId ?? undefined,
-    }),
-  );
-  return true;
-}
-
 export function extractAttemptCompletionResult<T>(
   store: LiveKitStore,
   uid: string,

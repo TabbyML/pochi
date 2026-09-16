@@ -1,14 +1,15 @@
 import {
   type BackgroundJobNotification,
+  type BackgroundTaskState,
   type MaybePromise,
   getLogger,
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
-  parseBackgroundJobId,
+  withTimeout,
 } from "@getpochi/common";
-import type { BackgroundTaskState } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import { parseOutputSchema } from "@getpochi/tools";
+import { isShallowEqual } from "remeda";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
 import { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
@@ -38,13 +39,19 @@ export type BackgroundTaskStateStore = {
 
 export type BackgroundJobManagerOptions = {
   blobStore: BlobStore;
-  adaptor: RunningTaskAdaptor & { dispose?: () => void };
+  adaptor: RunningTaskAdaptor & {
+    commandAdaptor?: BackgroundCommandAdaptor;
+    dispose?: () => void;
+  };
   stateStore?: BackgroundTaskStateStore;
   clearFileStateCache?: (taskId: string) => MaybePromise<void>;
 };
 
-/** Platform adaptors report actual processes; they do not decide ownership or wait policy. */
-export interface BackgroundCommandSource {
+/**
+ * Platform interface for observing and stopping background command processes.
+ * BackgroundJobManager decides ownership, waiting, and result delivery.
+ */
+export interface BackgroundCommandAdaptor {
   kill(backgroundJobId: string): Promise<void>;
   observeCommands(onChange: (running: BackgroundCommands) => void): Promise<{
     dispose(): void;
@@ -58,24 +65,29 @@ export interface BackgroundCommandSource {
   }>;
 }
 
+type CommandNotification = Extract<
+  BackgroundJobNotification,
+  { kind: "command" }
+>;
+
 type Job = {
   id: string;
-  taskId: string;
+  ownerTaskId: string;
 } & (
   | {
       kind: "command";
       title: string;
       outputFile?: string;
       status: JobStatus;
-      notification?: Extract<BackgroundJobNotification, { kind: "command" }>;
+      notification?: CommandNotification;
     }
-  | { kind: "subagent"; childTaskId: string; agentType?: string }
-  | { kind: "fork"; childTaskId: string }
+  | { kind: "subagent"; taskId: string; agentType?: string }
+  | { kind: "fork"; taskId: string }
 );
 
 type TaskSubscription = {
   ready: Promise<void>;
-  notifications: readonly BackgroundJobNotification[];
+  notifications: readonly CommandNotification[];
   dispose?: () => void;
   acknowledge?: (id: string) => Promise<void>;
   acknowledging: Set<string>;
@@ -99,7 +111,7 @@ export class BackgroundJobManager {
   }
 
   private readonly jobs = new Map<string, Job>();
-  private source?: BackgroundCommandSource;
+  private commandAdaptor?: BackgroundCommandAdaptor;
   private executor?: TaskExecutor;
   private adaptor?: BackgroundJobManagerOptions["adaptor"];
   private readonly taskStates = new Map<string, BackgroundTaskState>();
@@ -116,6 +128,8 @@ export class BackgroundJobManager {
   private readonly subscriptions = new Map<string, TaskSubscription>();
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribers: Array<() => void> = [];
+  private backgroundTasksReady?: Promise<void>;
+  private readonly taskRegistrations = new Map<string, Promise<void>>();
   private commandsReady?: Promise<void>;
   private disposeCommands?: () => void;
   private runningCommands: BackgroundCommands = {};
@@ -134,25 +148,47 @@ export class BackgroundJobManager {
       throw new Error("Background task executor is already connected.");
     this.adaptor = options.adaptor;
     if (options.stateStore) this.taskStateStore = options.stateStore;
-    if (options.adaptor.commandSource)
-      this.connect(options.adaptor.commandSource);
+    if (options.adaptor.commandAdaptor)
+      this.connect(options.adaptor.commandAdaptor);
     this.executor = new TaskExecutor({
       store: this.store,
       blobStore: options.blobStore,
-      manager: this,
-      adaptor: options.adaptor,
+      onTaskSettled: (taskId) => this.taskChanged(taskId),
+      adaptor: {
+        waitUntilReady: () =>
+          options.adaptor.waitUntilReady?.() ?? Promise.resolve(),
+        getRequestGetters: (context) =>
+          options.adaptor.getRequestGetters(context),
+        resolveTaskLLM: (context) =>
+          options.adaptor.resolveTaskLLM?.(context) ??
+          Promise.resolve(undefined),
+        onTaskError: (taskId, error) =>
+          options.adaptor.onTaskError?.(taskId, error),
+        executeToolCall: (args) =>
+          args.toolName === "killBackgroundJob"
+            ? this.kill(
+                (args.input as { backgroundJobId: string }).backgroundJobId,
+                args.taskId,
+              )
+            : options.adaptor.executeToolCall(args),
+      },
       readTaskState: (taskId) => this.taskStateStore.read(taskId),
       shouldRunForkTask: (taskId) => this.forkSystemPrompts.has(taskId),
       clearFileStateCache: options.clearFileStateCache,
-      createChatKit: ({
+      waitForBackgroundJobs: async (taskId, abortSignal) => {
+        await this.wait(taskId, { abortSignal });
+      },
+      createChatKit: async ({
         taskId,
         store,
         blobStore,
         abortSignal,
         taskState,
         getters,
-        backgroundJobNotifications,
+        appendMessage,
       }) => {
+        await this.watchTask(taskId);
+        abortSignal.throwIfAborted();
         const isSubagent = taskState.useCase === undefined;
         const customAgent =
           isSubagent && taskState.agentType
@@ -167,7 +203,7 @@ export class BackgroundJobManager {
           blobStore,
           abortSignal,
           getters,
-          backgroundJobNotifications,
+          backgroundJobNotifications: { startTurn: appendMessage },
           backgroundJobManager: this,
           chatClass: InMemoryChat,
           isSubTask: isSubagent,
@@ -190,17 +226,66 @@ export class BackgroundJobManager {
       taskId,
       parentTaskId,
       agentType,
-    }: { taskId: string; parentTaskId: string; agentType?: string },
+      stopForeground,
+    }: {
+      taskId: string;
+      parentTaskId: string;
+      agentType?: string;
+      stopForeground?: () => Promise<void>;
+    },
     abortSignal?: AbortSignal,
   ) {
     abortSignal?.throwIfAborted();
     if (this.disposed) throw new Error("Background job manager is disposed.");
-    await this.taskStateStore.set(taskId, { parentTaskId, agentType });
+    const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
+    if (!task || task.parentId !== parentTaskId)
+      throw new Error("Subtask does not belong to this parent.");
+    const state = { parentTaskId, agentType };
+    await this.taskStateStore.set(taskId, state);
     abortSignal?.throwIfAborted();
     if (this.disposed) throw new Error("Background job manager is disposed.");
-    this.store.commit(
-      catalog.events.taskBackgrounded({ id: taskId, updatedAt: new Date() }),
-    );
+
+    if (stopForeground) {
+      const result = await withTimeout(
+        stopForeground(),
+        10_000,
+        "Stop foreground subtask",
+      );
+      if (result === null)
+        throw new Error("Timed out waiting for foreground execution to stop.");
+      if (abortSignal?.aborted)
+        throw new Error("Subtask execution was cancelled during handoff.");
+      if (this.disposed) throw new Error("Background job manager is disposed.");
+    }
+
+    const settled = this.store.query(catalog.queries.makeTaskQuery(taskId));
+    if (!settled || settled.parentId !== parentTaskId)
+      throw new Error("Subtask does not belong to this parent.");
+    // Stopping the foreground request may leave an AbortError. Resume that
+    // turn atomically with the handoff so no stopped notification escapes.
+    // Completed results and unanswered questions need registration, not a retry.
+    const resume = stopForeground && settled.status === "failed";
+    const lastMessage = resume ? this.messages(taskId).at(-1) : undefined;
+    if (resume && !lastMessage)
+      throw new Error("Failed to resume the background subtask.");
+    this.batch(() => {
+      const updatedAt = new Date();
+      this.store.commit(
+        catalog.events.taskBackgrounded({ id: taskId, updatedAt }),
+        ...(lastMessage
+          ? [
+              catalog.events.chatStreamStarted({
+                id: taskId,
+                data: lastMessage,
+                todos: settled.todos ? [...settled.todos] : [],
+                modelId: settled.modelId ?? undefined,
+                updatedAt,
+              }),
+            ]
+          : []),
+      );
+      this.registerTask(taskId, state);
+    });
   }
 
   startForkAgent = async (
@@ -210,24 +295,28 @@ export class BackgroundJobManager {
     const taskId = crypto.randomUUID();
     this.forkSystemPrompts.set(taskId, agent.systemPrompt);
     try {
-      await this.taskStateStore.set(taskId, {
+      const state: BackgroundTaskState = {
         parentTaskId: agent.parentTaskId,
         tools: agent.tools,
         useCase: agent.label,
         maxSteps: agent.maxSteps,
         baselineStepCount: agent.baselineStepCount,
-      });
+      };
+      await this.taskStateStore.set(taskId, state);
       if (this.disposed) throw new Error("Background job manager is disposed.");
-      this.store.commit(
-        catalog.events.taskInited({
-          id: taskId,
-          cwd: agent.cwd,
-          background: true,
-          createdAt: new Date(),
-          initMessages: agent.initMessages,
-          initTitle: agent.initTitle,
-        }),
-      );
+      this.batch(() => {
+        this.store.commit(
+          catalog.events.taskInited({
+            id: taskId,
+            cwd: agent.cwd,
+            background: true,
+            createdAt: new Date(),
+            initMessages: agent.initMessages,
+            initTitle: agent.initTitle,
+          }),
+        );
+        this.registerTask(taskId, state);
+      });
       return { taskId, cwd: agent.cwd, label: agent.label };
     } catch (error) {
       this.forkSystemPrompts.delete(taskId);
@@ -276,11 +365,11 @@ export class BackgroundJobManager {
     return memory;
   }
 
-  connect(source: BackgroundCommandSource) {
-    if (this.source === source) return;
-    if (this.source)
-      throw new Error("Background command source is already connected.");
-    this.source = source;
+  connect(adaptor: BackgroundCommandAdaptor) {
+    if (this.commandAdaptor === adaptor) return;
+    if (this.commandAdaptor)
+      throw new Error("Background command adaptor is already connected.");
+    this.commandAdaptor = adaptor;
   }
 
   setExecutor(executor: TaskExecutor) {
@@ -290,30 +379,22 @@ export class BackgroundJobManager {
   }
 
   private setJob(job: Job) {
-    const existing = this.jobs.get(job.id);
-    if (
-      existing &&
-      Object.keys(existing).length === Object.keys(job).length &&
-      Object.entries(job).every(
-        ([key, value]) => Reflect.get(existing, key) === value,
-      )
-    )
-      return;
+    if (isShallowEqual(this.jobs.get(job.id), job)) return;
     this.jobs.set(job.id, job);
-    this.changedTasks.add(job.taskId);
+    this.changedTasks.add(job.ownerTaskId);
     this.changed();
   }
 
   registerTask(taskId: string, state: BackgroundTaskState) {
     const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
-    const parentId = state.parentTaskId ?? task?.parentId;
-    if (!parentId) return;
+    const ownerTaskId = state.parentTaskId ?? task?.parentId;
+    if (!ownerTaskId) return;
     const id = getSubAgentBackgroundJobId(taskId);
     const registered = this.jobs.has(id);
     this.setJob({
       id,
-      taskId: parentId,
-      childTaskId: taskId,
+      ownerTaskId,
+      taskId,
       ...(state.useCase
         ? { kind: "fork" }
         : { kind: "subagent", agentType: state.agentType }),
@@ -325,6 +406,30 @@ export class BackgroundJobManager {
       );
       if (unsubscribe) this.unsubscribers.push(unsubscribe);
     }
+  }
+
+  /** Restore every job, including queued tasks and results with no active runner. */
+  private restoreBackgroundTasks() {
+    for (const task of this.store.query(catalog.queries.backgroundTasks$)) {
+      const id = getSubAgentBackgroundJobId(task.id);
+      if (this.jobs.has(id) || this.taskRegistrations.has(task.id)) continue;
+      const registration = (async () => {
+        const state = await this.taskStateStore.read(task.id);
+        // A local launch may have registered newer metadata while this read
+        // was in flight. It owns that registration.
+        if (!this.disposed && !this.jobs.has(id))
+          this.registerTask(task.id, state ?? {});
+      })()
+        .catch((error) => {
+          logger.warn(
+            { taskId: task.id, error },
+            "Failed to restore background job metadata",
+          );
+        })
+        .finally(() => this.taskRegistrations.delete(task.id));
+      this.taskRegistrations.set(task.id, registration);
+    }
+    return Promise.all(this.taskRegistrations.values()).then(() => undefined);
   }
 
   getTaskStatus(taskId: string): JobStatus | undefined {
@@ -348,23 +453,21 @@ export class BackgroundJobManager {
   taskChanged(taskId: string) {
     const job = this.jobs.get(getSubAgentBackgroundJobId(taskId));
     if (!job) return;
-    this.changedTasks.add(job.taskId);
+    this.changedTasks.add(job.ownerTaskId);
     this.changed();
   }
 
   private messages(taskId: string): Message[] {
-    return (
-      this.store
-        .query(catalog.queries.makeMessagesQuery(taskId))
-        .map((row) => row.data as Message) ?? []
-    );
+    return this.store
+      .query(catalog.queries.makeMessagesQuery(taskId))
+      .map((row) => row.data as Message);
   }
 
   private observeCommands() {
     if (!this.commandsReady) {
       this.commandsReady = (async () => {
-        if (!this.source) return;
-        const remote = await this.source.observeCommands((running) => {
+        if (!this.commandAdaptor) return;
+        const remote = await this.commandAdaptor.observeCommands((running) => {
           if (this.disposed) return;
           this.runningCommands = running;
           this.batch(() => this.updateCommands());
@@ -393,13 +496,13 @@ export class BackgroundJobManager {
       if (
         old &&
         (old.kind !== "command" ||
-          old.taskId !== taskId ||
+          old.ownerTaskId !== taskId ||
           old.status !== "running")
       )
         continue;
       this.setJob({
         id,
-        taskId,
+        ownerTaskId: taskId,
         kind: "command",
         title: command.command ?? "Command",
         outputFile: command.outputFile,
@@ -428,17 +531,22 @@ export class BackgroundJobManager {
     if (unsubscribe) this.unsubscribers.push(unsubscribe);
 
     subscription.ready = (async () => {
-      if (!this.source) return;
-      const notificationsReady = this.source
+      await this.backgroundTasksReady;
+      if (this.disposed) return;
+      if (!this.commandAdaptor) return;
+      const notificationsReady = this.commandAdaptor
         .observeNotifications(taskId, (notifications) => {
           if (this.disposed) return;
           this.batch(() => {
-            const owned = notifications.filter((notice) => {
-              const job = this.jobs.get(notice.backgroundJobId);
-              return (
-                notice.kind === "command" && (!job || job.taskId === taskId)
-              );
-            });
+            const owned = notifications.filter(
+              (notice): notice is CommandNotification => {
+                const job = this.jobs.get(notice.backgroundJobId);
+                return (
+                  notice.kind === "command" &&
+                  (!job || job.ownerTaskId === taskId)
+                );
+              },
+            );
             if (
               owned.length !== subscription.notifications.length ||
               owned.some(
@@ -451,7 +559,6 @@ export class BackgroundJobManager {
               this.changedTasks.add(taskId);
             }
             for (const notice of owned) {
-              if (notice.kind !== "command") continue;
               const old = this.jobs.get(notice.backgroundJobId);
               if (
                 old?.kind === "command" &&
@@ -460,7 +567,7 @@ export class BackgroundJobManager {
                 continue;
               this.setJob({
                 id: notice.backgroundJobId,
-                taskId,
+                ownerTaskId: taskId,
                 kind: "command",
                 title:
                   notice.command ??
@@ -497,33 +604,38 @@ export class BackgroundJobManager {
   }
 
   getPendingNotifications(taskId: string): BackgroundJobNotification[] {
+    return this.readNotifications(taskId).pending;
+  }
+
+  private readNotifications(taskId: string) {
     const messages = this.messages(taskId);
     const delivered = new Set(
       messages.flatMap((message) =>
         getBackgroundJobNotificationIds(message.parts),
       ),
     );
-    const notifications = [
+    const notifications: BackgroundJobNotification[] = [
       ...(this.subscriptions.get(taskId)?.notifications ?? []),
     ];
     for (const job of this.jobs.values()) {
       if (
-        job.taskId !== taskId ||
+        job.ownerTaskId !== taskId ||
         job.kind !== "subagent" ||
-        this.isTaskPending(job.childTaskId)
+        this.isTaskPending(job.taskId)
       )
         continue;
-      const task = this.store.query(
-        catalog.queries.makeTaskQuery(job.childTaskId),
-      );
+      const task = this.store.query(catalog.queries.makeTaskQuery(job.taskId));
       if (task)
         notifications.push(
           createBackgroundSubagentNotification(this.store, task, messages),
         );
     }
-    return notifications.filter(
-      (notice) => !delivered.has(notice.notificationId),
-    );
+    return {
+      delivered,
+      pending: notifications.filter(
+        (notice) => !delivered.has(notice.notificationId),
+      ),
+    };
   }
 
   subscribeNotifications(
@@ -549,11 +661,7 @@ export class BackgroundJobManager {
   private deliver(taskId: string) {
     const subscription = this.subscriptions.get(taskId);
     if (!subscription) return;
-    const delivered = new Set(
-      this.messages(taskId).flatMap((message) =>
-        getBackgroundJobNotificationIds(message.parts),
-      ),
-    );
+    const { delivered, pending } = this.readNotifications(taskId);
     for (const notice of subscription.notifications) {
       const id = notice.notificationId;
       if (
@@ -568,17 +676,18 @@ export class BackgroundJobManager {
         logger.warn("Failed to acknowledge background job notification", error);
       });
     }
-    const pending = this.getPendingNotifications(taskId);
     for (const listener of subscription.listeners) listener(pending);
+  }
+
+  private isJobPending(job: Job) {
+    return job.kind === "command"
+      ? job.status === "running"
+      : this.isTaskPending(job.taskId);
   }
 
   hasPending(taskId: string): boolean {
     return [...this.jobs.values()].some(
-      (job) =>
-        job.taskId === taskId &&
-        (job.kind === "command"
-          ? job.status === "running"
-          : this.isTaskPending(job.childTaskId)),
+      (job) => job.ownerTaskId === taskId && this.isJobPending(job),
     );
   }
 
@@ -624,7 +733,7 @@ export class BackgroundJobManager {
       this.getPendingNotifications(taskId).map((n) => n.backgroundJobId),
     );
     return [...this.jobs.values()]
-      .filter((job) => job.taskId === taskId)
+      .filter((job) => job.ownerTaskId === taskId)
       .flatMap((job): BackgroundJobEntry[] => {
         const entry = {
           backgroundJobId: job.id,
@@ -643,9 +752,9 @@ export class BackgroundJobManager {
             },
           ];
         const task = this.store.query(
-          catalog.queries.makeTaskQuery(job.childTaskId),
+          catalog.queries.makeTaskQuery(job.taskId),
         );
-        const status = this.getTaskStatus(job.childTaskId);
+        const status = this.getTaskStatus(job.taskId);
         if (!task || !status) return [];
         return [
           {
@@ -659,7 +768,7 @@ export class BackgroundJobManager {
                 ? (job.agentType ?? "Subagent")
                 : "Fork"),
             status,
-            taskId: job.childTaskId,
+            taskId: job.taskId,
           },
         ];
       });
@@ -676,12 +785,12 @@ export class BackgroundJobManager {
       : undefined;
     if (
       job
-        ? job.taskId !== taskId
+        ? job.ownerTaskId !== taskId
         : !(child?.background && child.parentId === taskId)
     ) {
       throw new Error(`Background job with ID "${backgroundJobId}" not found.`);
     }
-    if (parseBackgroundJobId(backgroundJobId) === "task" && childId) {
+    if (childId) {
       await this.stopOwnedJobs(childId);
       if (this.executor) await this.executor.stopTask(childId);
       else if (
@@ -698,9 +807,9 @@ export class BackgroundJobManager {
         );
       this.taskChanged(childId);
     } else {
-      if (!this.source)
-        throw new Error("Background command source is not connected.");
-      await this.source.kill(backgroundJobId);
+      if (!this.commandAdaptor)
+        throw new Error("Background command adaptor is not connected.");
+      await this.commandAdaptor.kill(backgroundJobId);
     }
     return { success: true };
   }
@@ -708,24 +817,30 @@ export class BackgroundJobManager {
   async stopOwnedJobs(taskId: string) {
     await Promise.all(
       [...this.jobs.values()]
-        .filter(
-          (job) =>
-            job.taskId === taskId &&
-            (job.kind === "command"
-              ? job.status === "running"
-              : this.isTaskPending(job.childTaskId)),
-        )
+        .filter((job) => job.ownerTaskId === taskId && this.isJobPending(job))
         .map((job) => this.kill(job.id, taskId)),
     );
   }
   start() {
+    if (this.disposed) return;
+    if (!this.backgroundTasksReady) {
+      const unsubscribe = this.store.subscribe(
+        catalog.queries.backgroundTasks$,
+        () => {
+          if (!this.disposed) void this.restoreBackgroundTasks();
+        },
+      );
+      if (unsubscribe) this.unsubscribers.push(unsubscribe);
+      this.backgroundTasksReady = this.restoreBackgroundTasks();
+    }
     this.executor?.start();
   }
   waitForTaskDone(taskId: string) {
     return this.executor?.waitForTaskDone(taskId) ?? Promise.resolve();
   }
-  drain(abortSignal?: AbortSignal) {
-    return this.executor?.drain(abortSignal) ?? Promise.resolve();
+  async drain(abortSignal?: AbortSignal) {
+    await this.backgroundTasksReady;
+    await this.executor?.drain(abortSignal);
   }
   async dispose() {
     if (this.disposed) return;

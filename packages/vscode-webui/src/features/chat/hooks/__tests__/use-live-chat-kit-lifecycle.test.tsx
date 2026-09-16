@@ -4,7 +4,7 @@ import {
 } from "@getpochi/common";
 import {
   BackgroundJobManager,
-  type RunningTaskAdaptor,
+  type BackgroundJobManagerOptions,
 } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
 import { makeJobStore } from "@getpochi/livekit/testing";
@@ -32,7 +32,7 @@ async function setup() {
     dispose,
     getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
     executeToolCall: vi.fn(),
-    commandSource: {
+    commandAdaptor: {
       kill: vi.fn(async () => {}),
       observeCommands: vi.fn(async (update) => {
         update({});
@@ -44,7 +44,7 @@ async function setup() {
         return { dispose: disconnect, acknowledge: vi.fn(async () => {}) };
       }),
     },
-  } satisfies RunningTaskAdaptor & { dispose(): void };
+  } satisfies BackgroundJobManagerOptions["adaptor"];
   const manager = BackgroundJobManager.forStore(store);
   manager.initialize({ blobStore: {} as never, adaptor });
   await manager.watchTask("parent");
@@ -82,8 +82,8 @@ it("does not reconnect the panel's jobs from a suspended or replayed chat render
     resume();
   });
   expect(await screen.findByText("Task ready")).toBeTruthy();
-  expect(adaptor.commandSource.observeCommands).toHaveBeenCalledOnce();
-  expect(adaptor.commandSource.observeNotifications).toHaveBeenCalledOnce();
+  expect(adaptor.commandAdaptor.observeCommands).toHaveBeenCalledOnce();
+  expect(adaptor.commandAdaptor.observeNotifications).toHaveBeenCalledOnce();
   unmount();
   expect(dispose).not.toHaveBeenCalled();
   await manager.dispose();
@@ -100,7 +100,7 @@ it("keeps the same executor and command connection when the chat is replaced", a
   rerender({ ...options, enableAutoCompact: true });
   expect(result.current).not.toBe(first);
   expect(result.current.backgroundJobManager).toBe(manager);
-  expect(adaptor.commandSource.observeCommands).toHaveBeenCalledOnce();
+  expect(adaptor.commandAdaptor.observeCommands).toHaveBeenCalledOnce();
   expect(dispose).not.toHaveBeenCalled();
   expect(disconnect).not.toHaveBeenCalled();
   unmount();

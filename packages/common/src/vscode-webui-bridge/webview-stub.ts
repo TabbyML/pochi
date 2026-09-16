@@ -95,6 +95,7 @@ const VSCodeHostStub = {
       storeId: string;
       taskId: string;
       fileStateCacheSourceTaskId?: string;
+      allowBackground?: boolean;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);

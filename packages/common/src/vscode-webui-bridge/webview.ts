@@ -116,6 +116,7 @@ export interface VSCodeHostApi {
       storeId: string;
       taskId: string;
       fileStateCacheSourceTaskId?: string;
+      allowBackground?: boolean;
     },
   ): Promise<unknown>;
 

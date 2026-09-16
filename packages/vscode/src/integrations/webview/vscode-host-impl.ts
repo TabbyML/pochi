@@ -597,6 +597,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       storeId: string;
       taskId: string;
       fileStateCacheSourceTaskId?: string;
+      allowBackground?: boolean;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -662,6 +663,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         envs,
         taskId,
         fileStateCache,
+        allowBackground: options.allowBackground,
       }),
     );
 

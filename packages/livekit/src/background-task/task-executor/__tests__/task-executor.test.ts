@@ -1,4 +1,3 @@
-import { BackgroundJobManager } from "../../../background-job/manager";
 import {
   type BackgroundTaskState,
   type MaybePromise,
@@ -109,11 +108,11 @@ class MockLiveChatKit {
   persistToolOutput() {
     this.store.setMessages(this.taskId, this.chat.messages);
   }
-  flushBackgroundJobNotifications() {
-    return false;
-  }
   subscribeBackgroundJobs() {
     return () => {};
+  }
+  flushBackgroundJobNotifications() {
+    return false;
   }
   markStartToolsExecution() {}
 
@@ -131,6 +130,145 @@ type TestTask = {
 };
 
 describe("TaskExecutor", () => {
+  it.each(["executor", "persisted cancellation"])(
+    "settles a queued task's waiter after %s without waiting for an execution slot",
+    async (source) => {
+      const store = new FakeLiveKitStore(
+        Array.from({ length: 11 }, (_, i) =>
+          makeTask({ id: `task${i}`, status: "pending-model" }),
+        ),
+      );
+      const ready = deferred<void>();
+      const adaptor = {
+        ...makeAdaptor({ executeToolCall: vi.fn() }),
+        waitUntilReady: () => ready.promise,
+      };
+      const executor = makeExecutor(store, adaptor, {});
+      const finished = vi.fn();
+      try {
+        void executor.waitForTaskDone("task10").then(finished);
+        expect(executor.isTaskRunning("task10")).toBe(false);
+        if (source === "executor") await executor.stopTask("task10");
+        else store.failTask("task10", "Stopped by user.", "AbortError");
+        await Promise.resolve();
+        expect(finished).toHaveBeenCalledOnce();
+      } finally {
+        const disposing = executor.dispose();
+        ready.resolve();
+        await disposing;
+      }
+    },
+  );
+
+  it("unsubscribes from background jobs before reporting that a task has settled", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        makeToolPart("attemptCompletion", "done", { result: "Done" }),
+      ]),
+    ]);
+    const calls: string[] = [];
+    const waitForBackgroundJobs = vi.fn(async () => {});
+    const executor = new TaskExecutor({
+      store: store as never,
+      blobStore: {} as never,
+      readTaskState: () => ({}),
+      adaptor: makeAdaptor({ executeToolCall: vi.fn() }),
+      waitForBackgroundJobs,
+      createChatKit: () => {
+        store.completeTask("task");
+        const chatKit = new MockLiveChatKit({ taskId: "task", store });
+        chatKit.subscribeBackgroundJobs = () => () => {
+          calls.push("unsubscribe");
+        };
+        return chatKit;
+      },
+      onTaskSettled: (taskId) => {
+        expect(executor.isTaskRunning(taskId)).toBe(false);
+        calls.push("settled");
+      },
+    });
+    try {
+      await executor.waitForTaskDone("task");
+      expect(waitForBackgroundJobs).toHaveBeenCalledOnce();
+      expect(calls).toEqual(["unsubscribe", "settled"]);
+    } finally {
+      await executor.dispose();
+    }
+  });
+
+  it("does not subscribe or start a chat that finishes initializing after cancellation", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      { id: "prompt", role: "user", parts: [{ type: "text", text: "Work" }] },
+    ]);
+    const ready = deferred<void>();
+    const subscribe = vi.fn(() => () => {});
+    const waitForBackgroundJobs = vi.fn(async () => {});
+    const createChatKit = vi.fn(async () => {
+      await ready.promise;
+      const chatKit = new MockLiveChatKit({ taskId: "task", store });
+      chatKit.subscribeBackgroundJobs = subscribe;
+      return chatKit;
+    });
+    const executor = new TaskExecutor({
+      store: store as never,
+      blobStore: {} as never,
+      readTaskState: () => ({}),
+      adaptor: makeAdaptor({ executeToolCall: vi.fn() }),
+      createChatKit,
+      waitForBackgroundJobs,
+    });
+    try {
+      executor.start();
+      await waitFor(() => createChatKit.mock.calls.length === 1);
+      const stopping = executor.stopTask("task");
+      ready.resolve();
+      await stopping;
+      await executor.drain();
+      expect(subscribe).not.toHaveBeenCalled();
+      expect(waitForBackgroundJobs).not.toHaveBeenCalled();
+      expect(mockState.instances[0]?.chat.sendMessageCalls).toBe(0);
+      expect(store.readTask("task")?.error).toMatchObject({
+        kind: "AbortError",
+      });
+    } finally {
+      ready.resolve();
+      await executor.dispose();
+    }
+  });
+
+  it.each(["task-memory", "auto-memory", "auto-memory-dream"] as const)(
+    "disables background command execution for a %s fork",
+    async (useCase) => {
+      const store = new FakeLiveKitStore([
+        makeTask({ id: "fork", status: "pending-tool" }),
+      ]);
+      store.setMessages("fork", [
+        makeAssistantMessage([
+          makeToolPart("executeCommand", "command", { command: "echo test" }),
+        ]),
+      ]);
+      const executeToolCall = vi.fn(async () => ({ output: "test" }));
+      const executor = makeExecutor(store, makeAdaptor({ executeToolCall }), {
+        useCase,
+        tools: ["executeCommand"],
+      });
+      try {
+        await executor.drain();
+        expect(executeToolCall).toHaveBeenCalledWith(
+          expect.objectContaining({ taskId: "fork", allowBackground: false }),
+        );
+      } finally {
+        await executor.dispose();
+      }
+    },
+  );
+
   afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     mockState.instances.length = 0;
@@ -1048,7 +1186,6 @@ function makeExecutor(
     store: store as never,
     blobStore: {} as never,
     readTaskState: () => taskState,
-    manager: BackgroundJobManager.forStore(store as never),
     adaptor,
     clearFileStateCache,
     createChatKit: ({ taskId, store }) =>
