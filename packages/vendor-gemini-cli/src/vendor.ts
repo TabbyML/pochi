@@ -29,9 +29,11 @@ export class GeminiCli extends VendorBase {
     return {
       "gemini-3-pro-preview": {
         contextWindow: 1_000_000,
+        useReasoningMiddleware: false,
       },
       "gemini-3-flash-preview": {
         contextWindow: 1_000_000,
+        useReasoningMiddleware: false,
       },
     };
   }
