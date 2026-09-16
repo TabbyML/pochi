@@ -1,11 +1,11 @@
 /**
  * Host-agnostic event extraction layer for the startMonitor tool.
  *
- * A MonitorWatcher taps the raw output chunks of a background job
- * (VSCode TerminalJob / CLI CliRunningTaskAdaptor), turns them into
- * line events, and batches them before delivery:
+ * A MonitorWatcher receives background job output already cleaned by the
+ * host's PlainOutputSanitizer, turns it into line events, and batches them
+ * before delivery:
  *
- *   chunk -> strip ANSI -> partial-line buffer -> split lines
+ *   plain-text chunk -> partial-line buffer -> split lines
  *         -> batch (BatchIntervalMs) -> onEvents(lines)
  */
 
@@ -87,16 +87,6 @@ export interface MonitorWatcherOptions {
   batchIntervalMs?: number;
 }
 
-// CSI sequences (colors, cursor movement) and OSC sequences (titles,
-// hyperlinks) emitted by shells with terminal integration.
-const AnsiEscapePattern =
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape sequences requires control chars
-  /\x1b\[[0-9;?]*[0-9A-Za-z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
-
-function stripAnsi(text: string): string {
-  return text.replace(AnsiEscapePattern, "");
-}
-
 export class MonitorWatcher {
   private partialLine = "";
   private lineTruncated = false;
@@ -118,11 +108,11 @@ export class MonitorWatcher {
     }
   }
 
-  /** Feed a raw output chunk. Chunks may split lines at any position. */
+  /** Feed a sanitized plain-text chunk. Chunks may split lines at any position. */
   ingest(chunk: string): void {
     if (this.ended || this.rateLimited) return;
 
-    const segments = stripAnsi(chunk).split(/\r\n|\n|\r/);
+    const segments = chunk.split(/\r\n|\n|\r/);
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       const remaining = Math.max(

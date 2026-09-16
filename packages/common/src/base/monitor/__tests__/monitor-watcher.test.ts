@@ -80,17 +80,6 @@ describe("MonitorWatcher", () => {
     expect(onEvents).toHaveBeenCalledWith(["hello"]);
   });
 
-  it("strips ANSI escape sequences", () => {
-    const onEvents = vi.fn();
-    const watcher = new MonitorWatcher({ onEvents });
-
-    watcher.ingest("\x1b[31mERROR\x1b[0m something\n");
-    watcher.ingest("\x1b]633;C\x07visible\n");
-    vi.advanceTimersByTime(200);
-
-    expect(onEvents).toHaveBeenCalledWith(["ERROR something", "visible"]);
-  });
-
   it("skips blank lines", () => {
     const onEvents = vi.fn();
     const watcher = new MonitorWatcher({ onEvents });
