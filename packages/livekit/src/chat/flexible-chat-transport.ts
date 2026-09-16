@@ -267,7 +267,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       );
     }
 
-    if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
+    const reasoningMiddleware =
+      llm.useReasoningMiddleware ??
+      ("modelId" in llm && isWellKnownReasoningModel(llm.modelId));
+
+    if (reasoningMiddleware) {
       middlewares.push(createReasoningMiddleware());
     }
 
