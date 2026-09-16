@@ -30,6 +30,7 @@ import {
 import { defaultCatalog as catalog } from "../livestore";
 import { createBackgroundSubagentNotification } from "../task-utils";
 import type { LiveKitStore, Message } from "../types";
+import { MonitorDelivery } from "./monitor-delivery";
 import type { BackgroundJobEntry, JobStatus } from "./state";
 
 const logger = getLogger("BackgroundJobManager");
@@ -96,6 +97,7 @@ type TaskSubscription = {
   dispose?: () => void;
   acknowledge?: (id: string) => Promise<void>;
   acknowledging: Set<string>;
+  acknowledgeRetry?: ReturnType<typeof setTimeout>;
   listeners: Set<(notifications: BackgroundJobEvent[]) => void>;
 };
 
@@ -131,6 +133,7 @@ export class BackgroundJobManager {
   private readonly taskMemories = new Map<string, TaskMemoryAdaptor>();
   private readonly autoMemories = new Map<string, AutoMemoryAdaptor>();
   private readonly subscriptions = new Map<string, TaskSubscription>();
+  private readonly monitorDeliveries = new Map<string, MonitorDelivery>();
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribers: Array<() => void> = [];
   private backgroundTasksReady?: Promise<void>;
@@ -643,6 +646,32 @@ export class BackgroundJobManager {
     return this.readNotifications(taskId).pending;
   }
 
+  private monitorDelivery(taskId: string) {
+    let delivery = this.monitorDeliveries.get(taskId);
+    if (!delivery) {
+      delivery = new MonitorDelivery(() => {
+        if (this.disposed) return;
+        this.changedTasks.add(taskId);
+        this.changed();
+      });
+      this.monitorDeliveries.set(taskId, delivery);
+    }
+    return delivery;
+  }
+
+  getReadyNotifications(taskId: string): BackgroundJobEvent[] {
+    return this.monitorDelivery(taskId).ready(
+      this.getPendingNotifications(taskId),
+    );
+  }
+
+  takeReadyNotifications(
+    taskId: string,
+    notifications: readonly BackgroundJobEvent[],
+  ): BackgroundJobEvent[] {
+    return this.monitorDelivery(taskId).take(notifications);
+  }
+
   private readNotifications(taskId: string) {
     const messages = this.messages(taskId);
     const delivered = new Set(
@@ -707,10 +736,22 @@ export class BackgroundJobManager {
       )
         continue;
       subscription.acknowledging.add(id);
-      void subscription.acknowledge(id).catch((error) => {
-        subscription.acknowledging.delete(id);
-        logger.warn("Failed to acknowledge background job notification", error);
-      });
+      void subscription
+        .acknowledge(id)
+        .catch((error) => {
+          logger.warn(
+            "Failed to acknowledge background job notification",
+            error,
+          );
+          if (this.disposed || subscription.acknowledgeRetry) return;
+          subscription.acknowledgeRetry = setTimeout(() => {
+            subscription.acknowledgeRetry = undefined;
+            this.changedTasks.add(taskId);
+            this.changed();
+          }, 1000);
+          subscription.acknowledgeRetry.unref?.();
+        })
+        .finally(() => subscription.acknowledging.delete(id));
     }
     for (const listener of subscription.listeners) listener(pending);
   }
@@ -738,10 +779,17 @@ export class BackgroundJobManager {
     if (options.abortSignal?.aborted) return "aborted";
     if (
       options.wakeOnNotifications &&
-      this.getPendingNotifications(taskId).length
+      this.getReadyNotifications(taskId).length
     )
       return "notifications";
-    if (!this.hasPending(taskId)) return "completed";
+    if (
+      !this.hasPending(taskId) &&
+      !(
+        options.wakeOnNotifications &&
+        this.getPendingNotifications(taskId).length
+      )
+    )
+      return "completed";
     if (options.timeoutMs === 0) return "timeout";
     return new Promise((resolve) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -757,10 +805,17 @@ export class BackgroundJobManager {
         if (this.disposed || options.abortSignal?.aborted) finish("aborted");
         else if (
           options.wakeOnNotifications &&
-          this.getPendingNotifications(taskId).length
+          this.getReadyNotifications(taskId).length
         )
           finish("notifications");
-        else if (!this.hasPending(taskId)) finish("completed");
+        else if (
+          !this.hasPending(taskId) &&
+          !(
+            options.wakeOnNotifications &&
+            this.getPendingNotifications(taskId).length
+          )
+        )
+          finish("completed");
       };
       this.listeners.add(check);
       options.abortSignal?.addEventListener("abort", check, { once: true });
@@ -942,8 +997,11 @@ export class BackgroundJobManager {
     if (this.disposed) return;
     this.disposed = true;
     this.disposeCommands?.();
-    for (const subscription of this.subscriptions.values())
+    for (const delivery of this.monitorDeliveries.values()) delivery.dispose();
+    for (const subscription of this.subscriptions.values()) {
       subscription.dispose?.();
+      clearTimeout(subscription.acknowledgeRetry);
+    }
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
     this.changed();
     await this.executor?.dispose();

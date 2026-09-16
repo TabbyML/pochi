@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  MonitorMaxBatchesPerMinute,
   MonitorMaxLinesPerBatch,
   MonitorWatcher,
   formatMonitorNotifications,
@@ -15,18 +14,14 @@ describe("MonitorWatcher", () => {
     vi.useRealTimers();
   });
 
-  it("limits lifetime event volume even when batches arrive slowly", () => {
-    const onRateLimitExceeded = vi.fn();
-    const watcher = new MonitorWatcher({
-      onEvents: vi.fn(),
-      onRateLimitExceeded,
-    });
+  it.each([200, 10_000])("continues delivering beyond 256K characters with %ims between batches", (interval) => {
+    const onEvents = vi.fn();
+    const watcher = new MonitorWatcher({ onEvents });
     for (let i = 0; i < 200; i++) {
       watcher.ingest(`${"x".repeat(2000)}\n`);
-      vi.advanceTimersByTime(10_000);
+      vi.advanceTimersByTime(interval);
     }
-    expect(onRateLimitExceeded).toHaveBeenCalledOnce();
-    expect(onRateLimitExceeded.mock.calls[0][0]).toContain("total");
+    expect(onEvents).toHaveBeenCalledTimes(200);
     watcher.end();
   });
 
@@ -112,11 +107,10 @@ describe("MonitorWatcher", () => {
     vi.advanceTimersByTime(200);
 
     const delivered = onEvents.mock.calls[0][0] as string[];
-    expect(delivered).toHaveLength(MonitorMaxLinesPerBatch + 1);
-    expect(delivered.at(-1)).toContain("10 more monitor events omitted");
-    expect(delivered.at(-1)).toContain(
-      "narrow the monitor command's output filter",
-    );
+    expect(delivered).toHaveLength(MonitorMaxLinesPerBatch);
+    expect(delivered[0]).toBe("line 10");
+    expect(delivered.at(-1)).toBe("line 59");
+    expect(onEvents.mock.calls[0][1]).toBe(10);
   });
 
   it("flushes buffered content synchronously on end", () => {
@@ -148,41 +142,6 @@ describe("MonitorWatcher", () => {
     expect(onTimeout).toHaveBeenCalledTimes(1);
   });
 
-  it("stops ingesting and fires onRateLimitExceeded when batches flood", () => {
-    const onEvents = vi.fn();
-    const onRateLimitExceeded = vi.fn();
-    const watcher = new MonitorWatcher({ onEvents, onRateLimitExceeded });
-
-    // One batch every 2 seconds: exceeds the per-minute cap on batch N+1.
-    for (let i = 0; i <= MonitorMaxBatchesPerMinute; i++) {
-      watcher.ingest(`line ${i}\n`);
-      vi.advanceTimersByTime(2000);
-    }
-
-    expect(onRateLimitExceeded).toHaveBeenCalledTimes(1);
-    expect(onEvents).toHaveBeenCalledTimes(MonitorMaxBatchesPerMinute + 1);
-
-    // Rate-limited: further chunks are ignored.
-    watcher.ingest("late\n");
-    vi.advanceTimersByTime(2000);
-    expect(onEvents).toHaveBeenCalledTimes(MonitorMaxBatchesPerMinute + 1);
-  });
-
-  it("does not rate limit slow event streams", () => {
-    const onEvents = vi.fn();
-    const onRateLimitExceeded = vi.fn();
-    const watcher = new MonitorWatcher({ onEvents, onRateLimitExceeded });
-
-    // One batch every 10 seconds stays under the cap indefinitely.
-    for (let i = 0; i < MonitorMaxBatchesPerMinute * 3; i++) {
-      watcher.ingest(`line ${i}\n`);
-      vi.advanceTimersByTime(10_000);
-    }
-
-    expect(onRateLimitExceeded).not.toHaveBeenCalled();
-    expect(onEvents).toHaveBeenCalledTimes(MonitorMaxBatchesPerMinute * 3);
-  });
-
   it("does not set a timeout when timeoutMs is undefined", () => {
     const onEvents = vi.fn();
     const onTimeout = vi.fn();
@@ -200,6 +159,7 @@ describe("formatMonitorNotifications", () => {
         backgroundJobId: "bgjob-1",
         description: "errors in dev.log",
         lines: ["ERROR boom"],
+        omittedLines: 12,
       },
     ]);
 
@@ -208,6 +168,7 @@ describe("formatMonitorNotifications", () => {
     expect(text).toContain("bgjob-1");
     expect(text).toContain('"errors in dev.log"');
     expect(text).toContain("ERROR boom");
+    expect(text).toContain("12 monitor events omitted");
     expect(text).toContain("not user input");
   });
 

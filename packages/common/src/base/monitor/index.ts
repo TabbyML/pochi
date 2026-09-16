@@ -22,17 +22,6 @@ export const MonitorDefaultTimeoutMs = 300_000;
 export const MonitorMaxLinesPerBatch = 50;
 
 /**
- * A monitor delivering more batches than this within a rolling minute is
- * stopped automatically: each batch becomes a conversation message, so a
- * noisy monitor floods the context. The model is told to restart with a
- * stricter filter.
- */
-export const MonitorMaxBatchesPerMinute = 10;
-
-/** Ended reason used when a monitor is stopped for exceeding the rate limit. */
-export const MonitorRateLimitedReason = `stopped automatically: more than ${MonitorMaxBatchesPerMinute} event batches per minute. Restart the monitor with a stricter output filter that emits only the lines you would act on.`;
-
-/**
  * A single delivery of monitor events, ready to be injected into the
  * conversation between inference rounds.
  */
@@ -41,6 +30,8 @@ export interface MonitorEventBatch {
   description: string;
   outputFile?: string;
   lines: string[];
+  /** Older lines omitted from the notification; full output remains in the log. */
+  omittedLines?: number;
   /**
    * Present when the watch ended (job exit, timeout, kill). A batch with
    * `ended` may still carry final lines flushed from the buffer.
@@ -65,23 +56,16 @@ export interface MonitorJobOptions {
 }
 
 const MonitorMaxLineCharacters = 2048;
-const MonitorMaxBatchCharacters = 8192;
-const MonitorMaxTotalCharacters = 256 * 1024;
+export const MonitorMaxBatchCharacters = 8192;
 
 export interface MonitorWatcherOptions {
   /** Deliver a batch of event lines. Never called with an empty array. */
-  onEvents: (lines: string[]) => void;
+  onEvents: (lines: string[], omittedLines?: number) => void;
   /**
    * Called when `timeoutMs` elapses. The host is expected to kill the
    * underlying job, which in turn triggers `end()`.
    */
   onTimeout?: () => void;
-  /**
-   * Called once when the batch rate or total event volume exceeds its limit.
-   * The host is expected to kill the underlying job; the watcher stops
-   * ingesting further chunks on its own.
-   */
-  onRateLimitExceeded?: (reason: string) => void;
   /** Watch deadline. `undefined` means no timeout (persistent monitor). */
   timeoutMs?: number;
   batchIntervalMs?: number;
@@ -91,14 +75,11 @@ export class MonitorWatcher {
   private partialLine = "";
   private lineTruncated = false;
   private pendingCharacters = 0;
-  private totalCharacters = 0;
   private pendingLines: string[] = [];
   private droppedLines = 0;
   private flushTimer: ReturnType<typeof setTimeout> | undefined;
   private timeoutTimer: ReturnType<typeof setTimeout> | undefined;
   private ended = false;
-  private rateLimited = false;
-  private flushTimestamps: number[] = [];
 
   constructor(private readonly options: MonitorWatcherOptions) {
     if (options.timeoutMs !== undefined && options.onTimeout) {
@@ -110,7 +91,7 @@ export class MonitorWatcher {
 
   /** Feed a sanitized plain-text chunk. Chunks may split lines at any position. */
   ingest(chunk: string): void {
-    if (this.ended || this.rateLimited) return;
+    if (this.ended) return;
 
     const segments = chunk.split(/\r\n|\n|\r/);
     for (let i = 0; i < segments.length; i++) {
@@ -152,15 +133,15 @@ export class MonitorWatcher {
     this.partialLine = "";
     this.lineTruncated = false;
     if (!line.trim()) return;
-    if (
-      this.pendingLines.length >= MonitorMaxLinesPerBatch ||
-      this.pendingCharacters + line.length > MonitorMaxBatchCharacters
-    ) {
-      this.droppedLines++;
-      return;
-    }
     this.pendingLines.push(line);
     this.pendingCharacters += line.length;
+    while (
+      this.pendingLines.length > MonitorMaxLinesPerBatch ||
+      this.pendingCharacters > MonitorMaxBatchCharacters
+    ) {
+      this.pendingCharacters -= this.pendingLines.shift()?.length ?? 0;
+      this.droppedLines++;
+    }
   }
 
   dispose(): void {
@@ -177,43 +158,23 @@ export class MonitorWatcher {
   private flush(): void {
     if (this.pendingLines.length === 0) return;
     const lines = this.pendingLines;
-    if (this.droppedLines > 0) {
-      lines.push(
-        `[${this.droppedLines} more monitor events omitted; narrow the monitor command's output filter]`,
-      );
-    }
+    const omittedLines = this.droppedLines;
     this.pendingLines = [];
     this.pendingCharacters = 0;
     this.droppedLines = 0;
-    this.totalCharacters += lines.reduce(
-      (count, line) => count + line.length,
-      0,
-    );
-    this.options.onEvents(lines);
-    this.checkRateLimit();
-  }
-
-  private checkRateLimit(): void {
-    if (this.ended || this.rateLimited) return;
-    const now = Date.now();
-    this.flushTimestamps.push(now);
-    this.flushTimestamps = this.flushTimestamps.filter((t) => t > now - 60_000);
-    const reason =
-      this.totalCharacters >= MonitorMaxTotalCharacters
-        ? "stopped automatically: total monitor event volume exceeded 256K characters. Read the output file and restart with a stricter filter."
-        : this.flushTimestamps.length > MonitorMaxBatchesPerMinute
-          ? MonitorRateLimitedReason
-          : undefined;
-    if (reason) {
-      this.rateLimited = true;
-      this.options.onRateLimitExceeded?.(reason);
-    }
+    if (omittedLines) this.options.onEvents(lines, omittedLines);
+    else this.options.onEvents(lines);
   }
 }
 
 function renderMonitorEventBatch(batch: MonitorEventBatch): string {
   const header = `Monitor "${batch.description}" (backgroundJobId: ${batch.backgroundJobId}${batch.outputFile ? `, outputFile: ${batch.outputFile}` : ""}):`;
   const lines = [...batch.lines];
+  if (batch.omittedLines) {
+    lines.unshift(
+      `[${batch.omittedLines} monitor events omitted; read the output file for full output]`,
+    );
+  }
   if (batch.ended) {
     lines.push(`[monitor ended: ${batch.ended.reason}]`);
   }
@@ -238,3 +199,10 @@ export function formatMonitorNotifications(
 export type BackgroundJobEvent =
   | BackgroundJobNotification
   | MonitorEventEnvelope;
+
+export {
+  type MonitorEventQueueEntry,
+  acknowledgeMonitorEvent,
+  enqueueMonitorEvent,
+  getPendingMonitorEvents,
+} from "./queue";

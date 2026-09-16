@@ -52,6 +52,11 @@ export function BackgroundJobNotificationItems({
           notificationEvents={item.map((batch) => ({
             id: batch.notificationId,
             text: [
+              ...(batch.omittedLines
+                ? [
+                    `[${batch.omittedLines} monitor events omitted; read the output file for full output]`,
+                  ]
+                : []),
               ...batch.lines,
               ...(batch.ended ? [batch.ended.reason] : []),
             ].join("\n"),

@@ -492,7 +492,10 @@ export class TaskRunner {
     ).start();
     const result = await this.backgroundJobs.wait(this.taskId, {
       timeoutMs:
-        this.adaptor.getActiveMonitors(this.taskId).length > 0
+        this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
+        this.backgroundJobs
+          .getPendingNotifications(this.taskId)
+          .some((notice) => "lines" in notice)
           ? undefined
           : this.asyncWaitTimeoutInMs,
       abortSignal: this.abortSignal,
@@ -537,8 +540,12 @@ export class TaskRunner {
         if (this.chatKit.flushBackgroundJobNotifications()) return "next";
         if (
           (this.asyncWaitTimeoutInMs > 0 ||
-            this.adaptor.getActiveMonitors(this.taskId).length > 0) &&
-          this.backgroundJobs.hasPending(this.taskId)
+            this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
+            this.backgroundJobs
+              .getPendingNotifications(this.taskId)
+              .some((notice) => "lines" in notice)) &&
+          (this.backgroundJobs.hasPending(this.taskId) ||
+            this.backgroundJobs.getPendingNotifications(this.taskId).length > 0)
         ) {
           if (!(await this.waitForAsyncWork())) return "finished";
         }

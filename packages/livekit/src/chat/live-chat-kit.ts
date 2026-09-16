@@ -1,5 +1,6 @@
 import type {
   AutoMemoryTaskState,
+  BackgroundJobEvent,
   BackgroundJobNotification,
   ContextWindowUsage,
   MaybePromise,
@@ -359,6 +360,7 @@ export class LiveChatKit<
     | undefined;
   private pendingBackgroundJobNotificationParts: BackgroundJobNotificationPart[] =
     [];
+  private notificationSendInFlight = false;
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private currentToolsExecution:
@@ -741,16 +743,26 @@ export class LiveChatKit<
   private enqueueBackgroundJobNotificationParts(
     parts: readonly BackgroundJobNotificationPart[],
   ): void {
-    const added = dedupeBackgroundJobNotificationParts(parts, [
+    const delivered = [
       ...this.chat.messages.flatMap((message) => message.parts),
-      ...this.pendingBackgroundJobNotificationParts,
+      ...this.messages.flatMap((message) => message.parts),
+    ];
+    // Another chat instance may have consumed a source head while this view
+    // was idle. Prune that local copy before accepting the promoted head.
+    const pending = dedupeBackgroundJobNotificationParts(
+      this.pendingBackgroundJobNotificationParts,
+      delivered,
+    );
+    const added = dedupeBackgroundJobNotificationParts(parts, [
+      ...delivered,
+      ...pending,
     ]);
-    if (added.length === 0) return;
-
-    this.setPendingBackgroundJobNotifications([
-      ...this.pendingBackgroundJobNotificationParts,
-      ...added,
-    ]);
+    if (
+      added.length === 0 &&
+      pending.length === this.pendingBackgroundJobNotificationParts.length
+    )
+      return;
+    this.setPendingBackgroundJobNotifications([...pending, ...added]);
   }
 
   private setPendingBackgroundJobNotifications(
@@ -765,11 +777,30 @@ export class LiveChatKit<
   }
 
   private takePendingBackgroundJobNotifications() {
-    const parts = this.pendingBackgroundJobNotificationParts;
-    if (parts.length > 0) {
-      this.setPendingBackgroundJobNotifications([]);
+    const pending = dedupeBackgroundJobNotificationParts(
+      this.pendingBackgroundJobNotificationParts,
+      this.chat.messages.flatMap((message) => message.parts),
+    );
+    const notifications = pending.flatMap<BackgroundJobEvent>((part) =>
+      part.type === "data-monitor-events" ? part.data.batches : [part.data],
+    );
+    const ready = this.backgroundJobManager.takeReadyNotifications(
+      this.taskId,
+      notifications,
+    );
+    const ids = new Set(ready.map((notice) => notice.notificationId));
+    const remaining = notifications.filter(
+      (notice) => !ids.has(notice.notificationId),
+    );
+    if (
+      ready.length ||
+      pending.length !== this.pendingBackgroundJobNotificationParts.length
+    ) {
+      this.setPendingBackgroundJobNotifications(
+        toBackgroundJobNotificationParts(remaining),
+      );
     }
-    return parts;
+    return toBackgroundJobNotificationParts(ready);
   }
 
   /**
@@ -808,14 +839,30 @@ export class LiveChatKit<
     // would answer in the user's place and hide the question.
     if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return false;
 
-    const message = createBackgroundJobNotificationMessage(
-      this.takePendingBackgroundJobNotifications(),
-    );
+    if (this.notificationSendInFlight) return false;
+    const parts = this.takePendingBackgroundJobNotifications();
+    if (parts.length === 0) return false;
+    const message = createBackgroundJobNotificationMessage(parts);
     const startTurn = this.backgroundJobNotifications?.startTurn;
-    if (startTurn) {
-      void startTurn(message);
-    } else {
-      void this.chat.sendMessage({ parts: message.parts });
+    this.notificationSendInFlight = true;
+    const failed = (error: unknown) => {
+      // Only persistence in the conversation acknowledges the source queue.
+      this.enqueueBackgroundJobNotificationParts(parts);
+      logger.warn("Failed to send background job notifications", error);
+    };
+    try {
+      const sent = startTurn
+        ? startTurn(message)
+        : this.chat.sendMessage({ parts: message.parts });
+      if (sent && typeof sent.then === "function") {
+        void sent.catch(failed).finally(() => {
+          this.notificationSendInFlight = false;
+        });
+      } else this.notificationSendInFlight = false;
+    } catch (error) {
+      this.notificationSendInFlight = false;
+      failed(error);
+      return false;
     }
     return true;
   };
@@ -1174,7 +1221,17 @@ export class LiveChatKit<
   subscribeBackgroundJobs(): () => void {
     return this.backgroundJobManager.subscribeNotifications(
       this.taskId,
-      (notifications) => this.enqueueBackgroundJobNotifications(notifications),
+      (notifications) => {
+        const previous = this.pendingBackgroundJobNotificationParts;
+        this.enqueueBackgroundJobNotifications(notifications);
+        // A cooldown expiry changes eligibility without adding another ID.
+        if (
+          previous === this.pendingBackgroundJobNotificationParts &&
+          previous.length
+        ) {
+          this.setPendingBackgroundJobNotifications([...previous]);
+        }
+      },
     );
   }
 

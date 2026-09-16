@@ -27,8 +27,11 @@ export {
   MonitorBatchIntervalMs,
   MonitorDefaultTimeoutMs,
   MonitorMaxLinesPerBatch,
-  MonitorMaxBatchesPerMinute,
-  MonitorRateLimitedReason,
+  MonitorMaxBatchCharacters,
+  type MonitorEventQueueEntry,
+  acknowledgeMonitorEvent,
+  enqueueMonitorEvent,
+  getPendingMonitorEvents,
 } from "./monitor";
 export {
   createBackgroundSubAgentStartedResult,

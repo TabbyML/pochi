@@ -29,6 +29,23 @@ describe("monitor execution through the shared background job manager", () => {
     await manager.dispose();
     await rm(outputDir, { recursive: true, force: true });
   });
+  it("lets a noisy monitor finish and promotes its merged output after acknowledgement", async () => {
+    const job = adaptor.startBackgroundCommand(taskId,
+      'i=0; while [ "$i" -lt 14 ]; do printf "event-%s\\n" "$i"; i=$((i + 1)); sleep 0.25; done; printf "flood-finished\\n"',
+      ".", undefined, { description: "noisy monitor" },
+    );
+    await expect.poll(async () => readFile(job.outputFile, "utf8"), { timeout: 6000 }).toContain("flood-finished");
+    expect(await manager.wait(taskId, { timeoutMs: 2000 })).toBe("completed");
+    expect(events().at(-1)?.ended?.status).toBe("completed");
+    const first = events().slice(0, 1);
+    expect(first).toHaveLength(1);
+    expect(first[0].lines).toEqual(["event-0"]);
+    data.setMessages(taskId, [{ id: "first", role: "user", parts: [{ type: "data-monitor-events", data: { batches: first } }] }]);
+    await expect.poll(() => events().flatMap((event) => event.lines)).toContain("flood-finished");
+    expect(events()).toHaveLength(1);
+    expect(events()[0].lines).toContain("event-1");
+  });
+
   it("wakes before exit, retains stderr only in the transcript, and delivers one end event", async () => {
     const job = adaptor.startBackgroundCommand(taskId,
       "printf 'event\\n'; printf 'diagnostic\\n' >&2; sleep 1", ".", undefined,

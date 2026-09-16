@@ -1,10 +1,16 @@
-import { getLogger } from "@getpochi/common";
+import {
+  acknowledgeMonitorEvent,
+  enqueueMonitorEvent,
+  getLogger,
+  getPendingMonitorEvents,
+} from "@getpochi/common";
 import type {
   AutoMemoryTaskState,
   BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   MonitorEventEnvelope,
+  MonitorEventQueueEntry,
   TaskMemoryState,
 } from "@getpochi/common";
 import type {
@@ -26,7 +32,7 @@ type TaskStateData = {
   autoMemoryState?: AutoMemoryTaskState;
   backgroundTaskState?: BackgroundTaskState;
   backgroundJobNotifications?: BackgroundJobNotification[];
-  monitorEvents?: MonitorEventEnvelope[];
+  monitorEvents?: MonitorEventQueueEntry[];
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -115,23 +121,32 @@ export class TaskDataStore {
       const events = this.state.value[taskId]?.monitorEvents ?? [];
       if (events.some((item) => item.notificationId === event.notificationId))
         return;
-      await this.saveTaskState(taskId, { monitorEvents: [...events, event] });
+      await this.saveTaskState(taskId, {
+        monitorEvents: enqueueMonitorEvent(events, event),
+      });
     },
   );
 
   acknowledgeMonitorEvent = runExclusive.build(
     this.notificationGroup,
     async (taskId: string, notificationId: string): Promise<void> => {
+      const events = this.state.value[taskId]?.monitorEvents ?? [];
+      if (
+        !getPendingMonitorEvents(events).some(
+          (event) => event.notificationId === notificationId,
+        )
+      )
+        return;
       await this.saveTaskState(taskId, {
-        monitorEvents: (this.state.value[taskId]?.monitorEvents ?? []).filter(
-          (event) => event.notificationId !== notificationId,
-        ),
+        monitorEvents: acknowledgeMonitorEvent(events, notificationId),
       });
     },
   );
 
   getMonitorEventsSignal(taskId: string) {
-    return computed(() => this.state.value[taskId]?.monitorEvents ?? []);
+    return computed(() =>
+      getPendingMonitorEvents(this.state.value[taskId]?.monitorEvents ?? []),
+    );
   }
 
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {

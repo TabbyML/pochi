@@ -129,13 +129,10 @@ export class TerminalJob implements vscode.Disposable {
     try {
       if (config.monitor) {
         this.monitorWatcher = new MonitorWatcher({
-          onEvents: (lines) => this.emitMonitorEvent(lines),
+          onEvents: (lines, omittedLines) =>
+            this.emitMonitorEvent(lines, undefined, omittedLines),
           onTimeout: () => {
             this.monitorEndReason = "killed after timeout";
-            this.kill();
-          },
-          onRateLimitExceeded: (reason) => {
-            this.monitorEndReason = reason;
             this.kill();
           },
           timeoutMs: config.monitor.timeoutMs,
@@ -668,6 +665,7 @@ export class TerminalJob implements vscode.Disposable {
   private emitMonitorEvent(
     lines: string[],
     ended?: MonitorEventEnvelope["ended"],
+    omittedLines?: number,
   ): void {
     const description = this.config.monitor?.description;
     if (description === undefined) return;
@@ -681,6 +679,7 @@ export class TerminalJob implements vscode.Disposable {
         description,
         lines,
         ...(ended ? { ended } : {}),
+        ...(omittedLines ? { omittedLines } : {}),
       },
     });
   }

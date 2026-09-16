@@ -25,7 +25,7 @@ Script quality:
 
 Coverage and volume:
 - Silence is not success. When watching for an outcome, emit every terminal state you would act on, including failure, cancellation, timeout, crashes, and the expected success state.
-- Filter selectively to actionable signals; never stream raw logs. Excessive event volume causes the monitor to be stopped, in which case restart it with a tighter filter.
+- Filter selectively to actionable signals; never stream raw logs. Frequent events are merged and notifications are delivered at most once every 6 seconds per task. When events accumulate, notifications retain recent lines and report omissions; read outputFile for full output. The monitor continues running.
 
 After starting a monitor, continue with other work. If there is nothing else to do, use attemptCompletion to end the current turn; monitor events will resume the task. Do not keep the turn active by repeatedly checking process output.
 
