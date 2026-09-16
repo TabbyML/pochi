@@ -54,8 +54,6 @@ import {
 export type OnStartCallback = (options: {
   messages: Message[];
   environment?: Environment;
-  /** Historical user message repaired during environment injection. */
-  environmentMessage?: Message;
   abortSignal?: AbortSignal;
   getters: PrepareRequestGetters;
 }) => void;
@@ -233,17 +231,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
-    const lastUserMessage = messages.findLast(
-      (message) => message.role === "user",
-    );
-    const lastUserParts = lastUserMessage?.parts;
     messages = prompts.injectEnvironment(messages, environment) as Message[];
-    const environmentMessage =
-      lastUserMessage &&
-      lastUserMessage !== messages.at(-1) &&
-      lastUserMessage.parts !== lastUserParts
-        ? lastUserMessage
-        : undefined;
     messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
@@ -261,7 +249,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     await this.onStart?.({
       messages,
       environment,
-      environmentMessage,
       abortSignal,
       getters: this.getters,
     });

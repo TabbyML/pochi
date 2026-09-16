@@ -16,7 +16,6 @@ import {
   type RunningTaskAdaptor,
   type Task,
 } from "../..";
-import type { OnStartCallback } from "../flexible-chat-transport";
 import { LiveChatKit } from "../live-chat-kit";
 import type { TaskExecutor } from "../../background-task/task-executor/task-executor";
 import { resetTokenCalibration } from "../token-utils";
@@ -29,40 +28,6 @@ describe("LiveChatKit memory lifecycle", () => {
   // `LiveChatKit.onFinish`, so it is no longer exercised directly here.
   beforeEach(() => {
     resetTokenCalibration();
-  });
-
-  it("persists a repaired historical environment with the assistant continuation", async () => {
-    const store = new FakeStore([
-      makeTask({ id: "parent", status: "pending-model" }),
-    ]);
-    const commit = vi.spyOn(store, "commit").mockImplementation(() => {});
-    const getters = { getLLM: () => ({ id: "test-model" }) as never };
-    const chatKit = new LiveChatKit<FakeChat>({
-      taskId: "parent",
-      store: store as unknown as LiveKitStore,
-      blobStore: {} as BlobStore,
-      chatClass: FakeChat,
-      getters,
-    });
-    vi.spyOn(chatKit, "inited", "get").mockReturnValue(true);
-    const environmentMessage = userMessage();
-    const lastMessage = assistantMessage();
-
-    await (chatKit as unknown as { onStart: OnStartCallback }).onStart({
-      messages: [environmentMessage, lastMessage],
-      environmentMessage,
-      getters,
-    });
-
-    expect(commit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "v1.ChatStreamStarted",
-        args: expect.objectContaining({
-          data: lastMessage,
-          environmentMessage,
-        }),
-      }),
-    );
   });
 
   it("keeps background scheduling alive after a chat disconnects", async () => {

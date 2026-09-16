@@ -9,7 +9,6 @@ import type { BlobStore } from "../../blob-store";
 import type { LiveKitStore, Message } from "../../types";
 import {
   FlexibleChatTransport,
-  type OnStartCallback,
   convertDataPartToText,
   extractContentFilterMetadata,
   getNumCompacts,
@@ -20,7 +19,7 @@ type MessagePart = Message["parts"][number];
 
 describe("environment after compaction", () => {
   it.each(["llm", "task-memory"])(
-    "restores and reports the user environment on a %s compacted tool continuation",
+    "restores the environment on repeated and reloaded %s compacted tool continuations",
     async (summarySource) => {
       const environment: Environment = {
         currentTime: "2026-09-16",
@@ -117,11 +116,10 @@ describe("environment after compaction", () => {
           : {}),
       });
       const assistant = structuredClone(messages.at(-1));
-      const onStart = vi.fn<OnStartCallback>();
+      const savedMessages = structuredClone(messages);
       const transport = new FlexibleChatTransport({
         store,
         blobStore: {} as BlobStore,
-        onStart,
         getters: {
           getLLM: () => ({
             type: "vendor",
@@ -132,12 +130,16 @@ describe("environment after compaction", () => {
         },
       });
 
-      for (let attempt = 0; attempt < 2; attempt++) {
+      for (const [attempt, requestMessages] of [
+        messages,
+        messages,
+        savedMessages,
+      ].entries()) {
         const stream = await transport.sendMessages({
           trigger: "submit-message",
           chatId: "task-1",
           messageId: undefined,
-          messages,
+          messages: requestMessages,
           abortSignal: undefined,
         });
         for await (const chunk of stream) {
@@ -146,16 +148,10 @@ describe("environment after compaction", () => {
         expect(
           parseEnvironmentInfo(model.doStreamCalls[attempt].prompt),
         ).toEqual(environment.info);
+        expect(requestMessages.at(-1)).toEqual(assistant);
       }
 
-      expect(onStart.mock.calls[0][0]).toMatchObject({
-        environmentMessage: messages[2],
-      });
-      expect(onStart.mock.calls[1][0]).not.toHaveProperty(
-        "environmentMessage",
-        messages[2],
-      );
-      expect(messages.at(-1)).toEqual(assistant);
+      expect(model.doStreamCalls[1].prompt).toEqual(model.doStreamCalls[0].prompt);
     },
   );
 });

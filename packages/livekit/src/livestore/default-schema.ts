@@ -153,7 +153,6 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       data: DBMessage,
-      environmentMessage: Schema.optional(DBMessage),
       todos: Todos,
       title: Schema.optional(Schema.String).pipe(
         deprecated("use updateTitle instead"),
@@ -421,7 +420,6 @@ const materializers = State.SQLite.materializers(events, {
   "v1.ChatStreamStarted": ({
     id,
     data,
-    environmentMessage,
     todos,
     git,
     title,
@@ -448,13 +446,6 @@ const materializers = State.SQLite.materializers(events, {
         data,
       })
       .onConflict("id", "replace"),
-    ...(environmentMessage
-      ? [
-          tables.messages
-            .update({ data: environmentMessage })
-            .where({ id: environmentMessage.id, taskId: id }),
-        ]
-      : []),
   ],
   "v1.AttemptTodoCompletionFinished": ({
     id,
