@@ -88,6 +88,7 @@ describe("Model configuration types", () => {
           "gateway-model": {
             name: "Gateway Model",
             useToolCallMiddleware: true,
+            useReasoningMiddleware: true,
           },
         },
       });
@@ -96,6 +97,7 @@ describe("Model configuration types", () => {
         expect(config.apiKey).toBe("gateway-key");
       }
       expect(config.models["gateway-model"].useToolCallMiddleware).toBe(true);
+      expect(config.models["gateway-model"].useReasoningMiddleware).toBe(true);
     });
   });
 
