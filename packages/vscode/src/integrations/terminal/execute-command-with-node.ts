@@ -43,6 +43,7 @@ export const executeCommandWithNode = async ({
   timeout,
   abortSignal,
   onData,
+  allowBackground,
   color = true,
   envs,
 }: ExecuteCommandOptions) => {
@@ -78,7 +79,7 @@ export const executeCommandWithNode = async ({
       if (timeout > 0) {
         timeoutId = setTimeout(() => {
           child.kill("SIGTERM");
-          reject(ExecutionError.createTimeoutError(timeout));
+          reject(ExecutionError.createTimeoutError(timeout, allowBackground));
         }, timeout * 1000);
       }
 

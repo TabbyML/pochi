@@ -18,7 +18,7 @@ export const useTaskMemoryState = (
   taskId: string,
   options: { enabled?: boolean } = {},
 ) => {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["taskMemoryState", taskId],
     queryFn: () => fetchTaskMemoryState(taskId),
     enabled: options.enabled ?? true,
@@ -32,13 +32,21 @@ export const useTaskMemoryState = (
     taskMemoryState,
     setTaskMemoryState,
     isLoading,
+    error,
+    stateStore: data?.stateStore,
   };
 };
 
 async function fetchTaskMemoryState(taskId: string) {
   const result = await vscodeHost.readTaskMemoryState(taskId);
+  const value = threadSignal(result.value);
   return {
-    value: threadSignal(result.value),
+    value,
     setTaskMemoryState: result.setTaskMemoryState,
+    // These callbacks keep reading the host signal after the page unmounts.
+    stateStore: {
+      get: () => value.value,
+      set: (state: TaskMemoryState) => result.setTaskMemoryState(state),
+    },
   };
 }

@@ -4,6 +4,7 @@ import { defineClientTool } from "./types";
 const toolDef = {
   description: `- Kills a running background job by its ID
 - Takes a backgroundJobId parameter identifying the job to kill
+- Supports background commands (bgjob-cmd-...) and background subagents (bgjob-task-...)
 - Returns a success or failure status
 - Use this tool when you need to terminate a long-running background job
 - Also stops a monitor started with startMonitor (monitors are background jobs)`.trim(),

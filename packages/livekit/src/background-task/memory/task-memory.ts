@@ -8,6 +8,7 @@ import {
 } from "@getpochi/common";
 import type { ToolSpecInput } from "@getpochi/tools";
 import { type UIMessage, isStaticToolUIPart } from "ai";
+import { BackgroundJobManager } from "../../background-job/manager";
 import {
   makeMessagesQuery,
   makeStoreFileQuery,
@@ -236,7 +237,6 @@ type TaskMemoryAdaptorOptions = {
   parentTaskId: string;
   parentCwd: string | undefined | (() => string | undefined);
   isSubTask?: boolean;
-  getCompactThreshold?: () => number | undefined;
 };
 
 export class TaskMemoryAdaptor {
@@ -279,6 +279,8 @@ export class TaskMemoryAdaptor {
   update(data: {
     messages: Message[];
     contextWindowUsage?: ContextWindowUsage;
+    compactThreshold?: number;
+    systemPrompt?: string;
   }) {
     return this.enqueueTransition(() => this.updateInner(data));
   }
@@ -286,26 +288,32 @@ export class TaskMemoryAdaptor {
   private async updateInner(data: {
     messages: Message[];
     contextWindowUsage?: ContextWindowUsage;
+    compactThreshold?: number;
+    systemPrompt?: string;
   }) {
     if (this.options.isSubTask) return false;
     await this.settleInner();
 
     const state = this.getState();
     const metrics = getExtractionMetrics(data);
-    const trigger = resolveExtractionTrigger(
-      this.options.getCompactThreshold?.(),
-    );
+    const trigger = resolveExtractionTrigger(data.compactThreshold);
     if (!shouldExtractTaskMemory(state, metrics, trigger)) {
       return false;
     }
 
-    return this.startExtraction(state, metrics, data.messages);
+    return this.startExtraction(
+      state,
+      metrics,
+      data.messages,
+      data.systemPrompt,
+    );
   }
 
   private async startExtraction(
     state: TaskMemoryState,
     metrics: ExtractionMetrics,
     messages: Message[],
+    systemPrompt: string | undefined,
   ) {
     const task = this.options.store.query(
       makeTaskQuery(this.options.parentTaskId),
@@ -322,7 +330,10 @@ export class TaskMemoryAdaptor {
         metrics,
         setTaskMemoryState: (nextState) => this.setState(nextState),
         startForkAgent: (agent) =>
-          this.options.backgroundTask.startForkAgent(agent),
+          this.options.backgroundTask.startForkAgent({
+            ...agent,
+            systemPrompt,
+          }),
         parentTaskId: this.options.parentTaskId,
         parentMessages: messages,
         parentCwd,
@@ -345,6 +356,12 @@ export class TaskMemoryAdaptor {
     const state = this.getState();
     if (!state.activeTaskId || !state.isExtracting) return false;
 
+    if (
+      BackgroundJobManager.forStore(this.options.store).isTaskPending(
+        state.activeTaskId,
+      )
+    )
+      return false;
     const nextState = resolveTaskMemoryExtractionState({
       state,
       activeTask: this.options.store.query(makeTaskQuery(state.activeTaskId)),

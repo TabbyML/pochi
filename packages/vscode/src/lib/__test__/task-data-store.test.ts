@@ -87,6 +87,7 @@ describe("TaskDataStore background job notifications", () => {
 
 function notification(backgroundJobId: string): BackgroundJobNotification {
   return {
+    kind: "command",
     notificationId: `${backgroundJobId}:terminal`,
     backgroundJobId,
     outputFile: `/tmp/${backgroundJobId}.log`,

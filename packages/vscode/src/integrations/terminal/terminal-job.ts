@@ -95,6 +95,10 @@ export class TerminalJob implements vscode.Disposable {
     return this.outputManager.output;
   }
 
+  get taskId() {
+    return this.config.taskId;
+  }
+
   get command() {
     return this.config.command;
   }

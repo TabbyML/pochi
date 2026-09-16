@@ -91,14 +91,20 @@ export class TerminalState implements vscode.Disposable {
   }
 
   public closeBackgroundCommand(backgroundJobId: string): void {
-    this.getBackgroundCommand(backgroundJobId)?.closePtyProcess();
+    const job = this.getBackgroundCommand(backgroundJobId);
+    if (job?.isPtyTerminal) job.closePtyProcess();
+    else job?.kill();
   }
 
   private getBackgroundCommand(
     backgroundJobId: string,
   ): TerminalJob | undefined {
     const job = TerminalJob.get(backgroundJobId);
-    return job?.isPtyTerminal && !job.isFinished ? job : undefined;
+    return job &&
+      (job.isPtyTerminal || job.monitorDescription !== undefined) &&
+      !job.isFinished
+      ? job
+      : undefined;
   }
 
   /**
@@ -257,8 +263,21 @@ export class TerminalState implements vscode.Disposable {
   private listBackgroundCommands(): BackgroundCommands {
     return Object.fromEntries(
       TerminalJob.list()
-        .filter((job) => job.isPtyTerminal && !job.isFinished)
-        .map((job) => [job.id, { isVisible: job.isVisible }]),
+        .filter(
+          (job) =>
+            (job.isPtyTerminal || job.monitorDescription !== undefined) &&
+            !job.isFinished,
+        )
+        .map((job) => [
+          job.id,
+          {
+            isVisible: job.isVisible,
+            taskId: job.taskId,
+            command: job.command,
+            monitor: job.monitorDescription,
+            outputFile: job.outputFile,
+          },
+        ]),
     );
   }
 

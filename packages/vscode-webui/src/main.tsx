@@ -3,7 +3,9 @@ import "./resolve-worker-asset";
 import "./i18n/config";
 
 import {
-  RouterProvider,
+  CatchBoundary,
+  Matches,
+  RouterContextProvider,
   createHashHistory,
   createRouter,
 } from "@tanstack/react-router";
@@ -16,6 +18,7 @@ import { routeTree } from "./routeTree.gen";
 import "./styles.css";
 import { Loader2 } from "lucide-react";
 import { RouterErrorBoundary } from "./components/router-error-boundary";
+import { TaskPanel } from "./components/task-panel";
 import { useUserStorage } from "./lib/hooks/use-user-storage.ts";
 import { isVSCodeEnvironment, vscodeHost } from "./lib/vscode";
 import { Providers } from "./providers.tsx";
@@ -98,13 +101,24 @@ function InnerApp() {
     );
   }
 
-  return <RouterProvider router={router} context={{}} />;
+  return (
+    <RouterContextProvider router={router} context={{}}>
+      <TaskPanel>
+        <Matches />
+      </TaskPanel>
+    </RouterContextProvider>
+  );
 }
 
 function App() {
   return (
     <Providers>
-      <InnerApp />
+      <CatchBoundary
+        getResetKey={() => "app"}
+        errorComponent={RouterErrorBoundary}
+      >
+        <InnerApp />
+      </CatchBoundary>
     </Providers>
   );
 }

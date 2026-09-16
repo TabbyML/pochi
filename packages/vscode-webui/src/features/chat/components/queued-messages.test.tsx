@@ -179,6 +179,7 @@ describe("QueuedMessages", () => {
               {
                 type: "data-background-job-notification",
                 data: {
+                  kind: "command",
                   notificationId: "notification-1",
                   backgroundJobId: "bgjob-cmd-1",
                   outputFile: "/tmp/bgjob-cmd-1.log",
@@ -193,6 +194,7 @@ describe("QueuedMessages", () => {
               {
                 type: "data-background-job-notification",
                 data: {
+                  kind: "command",
                   notificationId: "notification-2",
                   backgroundJobId: "bgjob-cmd-2",
                   outputFile: "/tmp/bgjob-cmd-2.log",

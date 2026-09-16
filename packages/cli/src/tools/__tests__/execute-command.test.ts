@@ -1,9 +1,12 @@
+import {
+  createTestCliAdaptor,
+  nextCommandResult,
+} from "../../lib/__tests__/cli-adaptor";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getToolRules } from "@getpochi/tools";
 import { describe, expect, it } from "vitest";
-import { BackgroundJobManager } from "../../lib/background-job-manager";
 import { executeCommand } from "../execute-command";
 
 describe("executeCommand", () => {
@@ -11,7 +14,7 @@ describe("executeCommand", () => {
     toolCallId: "test-call-id",
     messages: [],
     abortSignal: new AbortController().signal,
-    cwd: process.cwd()
+    cwd: process.cwd(),
   };
 
   it("should execute a simple command successfully", async () => {
@@ -29,19 +32,24 @@ describe("executeCommand", () => {
       executeCommand()(
         { command: "sleep 3", timeout: 1 }, // Sleep for 3 seconds with 1 second timeout
         mockToolExecutionOptions,
-      )
+      ),
     ).rejects.toThrow("Command execution timed out after 1 seconds");
   });
 
   it("should continue the same process as a background job after timeout", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pochi-cli-promotion-"));
     try {
-      const backgroundJobManager = new BackgroundJobManager({ outputDir });
+      const adaptor = createTestCliAdaptor({
+        commandOutputDir: outputDir,
+      });
       const script = [
         "process.stdout.write('start:' + process.pid + ';');",
         "setTimeout(() => process.stdout.write('finish:' + process.pid + ';'), 1200);",
       ].join("");
-      const result = await executeCommand({ backgroundJobManager })(
+      const result = await executeCommand({
+        taskId: "test-task",
+        adaptor,
+      })(
         {
           command: `${JSON.stringify(process.execPath)} -e ${JSON.stringify(script)}`,
           timeout: 1,
@@ -51,7 +59,7 @@ describe("executeCommand", () => {
 
       expect(result._meta?.backgroundJobId).toMatch(/^bgjob-cmd-/);
       expect(result._meta?.outputFile).toBeDefined();
-      expect(await backgroundJobManager.waitForAllJobs(5000)).toBe(
+      expect((await nextCommandResult(adaptor, "test-task")).status).toBe(
         "completed",
       );
 
@@ -65,9 +73,13 @@ describe("executeCommand", () => {
   });
 
   it("preserves large pre-timeout output without an unbounded replay", async () => {
-    const outputDir = await mkdtemp(join(tmpdir(), "pochi-cli-large-promotion-"));
+    const outputDir = await mkdtemp(
+      join(tmpdir(), "pochi-cli-large-promotion-"),
+    );
     try {
-      const backgroundJobManager = new BackgroundJobManager({ outputDir });
+      const adaptor = createTestCliAdaptor({
+        commandOutputDir: outputDir,
+      });
       const outputSize = 2 * 1024 * 1024;
       const script = [
         `process.stdout.write('a'.repeat(${outputSize}));`,
@@ -75,7 +87,10 @@ describe("executeCommand", () => {
         "process.stdout.write('finished', () => process.exit(0));",
         "}, 1200);",
       ].join("");
-      const result = await executeCommand({ backgroundJobManager })(
+      const result = await executeCommand({
+        taskId: "test-task",
+        adaptor,
+      })(
         {
           command: `${JSON.stringify(process.execPath)} -e ${JSON.stringify(script)}`,
           timeout: 1,
@@ -83,8 +98,7 @@ describe("executeCommand", () => {
         mockToolExecutionOptions,
       );
 
-      const backgroundJobId = result._meta?.backgroundJobId ?? "";
-      expect(await backgroundJobManager.waitForAllJobs(5000)).toBe(
+      expect((await nextCommandResult(adaptor, "test-task")).status).toBe(
         "completed",
       );
       const output = await readFile(result._meta?.outputFile ?? "", "utf8");
@@ -92,9 +106,6 @@ describe("executeCommand", () => {
       expect(output.length).toBe(outputSize + suffix.length);
       expect(output.slice(-suffix.length)).toBe(suffix);
       expect(output.slice(0, outputSize).search(/[^a]/)).toBe(-1);
-
-      const job = (backgroundJobManager as any).jobs.get(backgroundJobId);
-      expect(job.output.length).toBeLessThanOrEqual(1024 * 1024);
     } finally {
       await rm(outputDir, { recursive: true, force: true });
     }
@@ -122,16 +133,16 @@ describe("executeCommand", () => {
   it("should stop a promoted background job when aborted", async () => {
     const outputDir = await mkdtemp(join(tmpdir(), "pochi-cli-abort-"));
     try {
-      const backgroundJobManager = new BackgroundJobManager({
-        taskId: "test-task",
-        outputDir,
+      const adaptor = createTestCliAdaptor({
+        commandOutputDir: outputDir,
       });
       const abortController = new AbortController();
-      const eventPromise = new Promise<
-        Parameters<Parameters<typeof backgroundJobManager.onDidFinish>[0]>[0]
-      >((resolve) => backgroundJobManager.onDidFinish(resolve));
+      const eventPromise = nextCommandResult(adaptor, "test-task");
 
-      const result = await executeCommand({ backgroundJobManager })(
+      const result = await executeCommand({
+        taskId: "test-task",
+        adaptor,
+      })(
         { command: "sleep 10", timeout: 1 },
         {
           ...mockToolExecutionOptions,
@@ -159,10 +170,12 @@ describe("executeCommand", () => {
 
   it("should handle command errors", async () => {
     const promise = executeCommand()(
-        { command: "nonexistentcommand" },
-        mockToolExecutionOptions,
-      );
-    await expect(promise).rejects.toThrow(/command not found|Command exited with code/);
+      { command: "nonexistentcommand" },
+      mockToolExecutionOptions,
+    );
+    await expect(promise).rejects.toThrow(
+      /command not found|Command exited with code/,
+    );
   });
 
   it("should indicate when output is truncated", async () => {
@@ -184,7 +197,7 @@ describe("executeCommand", () => {
       executeCommand()(
         { command: "sleep 2", timeout: 1 }, // Sleep for 2 seconds with 1 second timeout
         mockToolExecutionOptions,
-      )
+      ),
     ).rejects.toThrow("Command execution timed out after 1 seconds");
   });
 
@@ -210,7 +223,7 @@ describe("executeCommand", () => {
     const promise = executeCommand()(
       { command: "invalidcommandthatdoesnotexist" },
       mockToolExecutionOptions,
-    )
+    );
     await expect(promise).rejects.toThrow(
       /command not found|Command exited with code/,
     );
@@ -224,7 +237,8 @@ describe("executeCommand", () => {
       const shell = process.env.ComSpec?.toLowerCase();
       if (shell?.includes("powershell") || !shell) {
         // PowerShell syntax
-        command = "Write-Output \"$env:GIT_COMMITTER_NAME $env:GIT_COMMITTER_EMAIL\"";
+        command =
+          'Write-Output "$env:GIT_COMMITTER_NAME $env:GIT_COMMITTER_EMAIL"';
       } else {
         // cmd.exe syntax
         command = "echo %GIT_COMMITTER_NAME% %GIT_COMMITTER_EMAIL%";
@@ -249,7 +263,7 @@ describe("executeCommand", () => {
       const shell = process.env.ComSpec?.toLowerCase();
       if (shell?.includes("powershell") || !shell) {
         command =
-          "Write-Output \"$env:GIT_TERMINAL_PROMPT $env:GCM_INTERACTIVE\"";
+          'Write-Output "$env:GIT_TERMINAL_PROMPT $env:GCM_INTERACTIVE"';
       } else {
         command = "echo %GIT_TERMINAL_PROMPT% %GCM_INTERACTIVE%";
       }

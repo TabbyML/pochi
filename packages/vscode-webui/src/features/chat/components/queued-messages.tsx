@@ -14,11 +14,10 @@ import {
   languageIdFromExtension,
 } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import type { BackgroundJobNotification } from "@getpochi/common";
+import type { BackgroundJobEvent } from "@getpochi/common";
 import { parseTitle } from "@getpochi/common/message-utils";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
 import {
-  Activity,
   Bell,
   CornerDownRight,
   FileCode,
@@ -41,8 +40,7 @@ interface RenderMessage {
   title: string;
   details: string;
   isTodoMode?: boolean;
-  isMonitor?: boolean;
-  notifications?: BackgroundJobNotification[];
+  notifications?: BackgroundJobEvent[];
   activeSelection?: ActiveSelection;
   nonRemovable?: boolean;
 }
@@ -66,9 +64,12 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         isTodoMode,
         activeSelection,
       } = raw;
-      const notifications = parts.flatMap((part) =>
-        part.type === "data-background-job-notification" ? [part.data] : [],
-      );
+      const notifications = parts.flatMap<BackgroundJobEvent>((part) => {
+        if (part.type === "data-background-job-notification")
+          return [part.data];
+        if (part.type === "data-monitor-events") return part.data.batches;
+        return [];
+      });
       const isNotification = notifications.length > 0;
       const title = isNotification
         ? t("backgroundJobNotifications.title")
@@ -97,7 +98,6 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         title,
         details: details.join(" · "),
         isTodoMode,
-        isMonitor: parts.some((part) => part.type === "data-monitor-events"),
         notifications: isNotification ? notifications : undefined,
         activeSelection,
         nonRemovable: raw.nonRemovable,
@@ -115,8 +115,6 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
           <div className="flex h-6 w-full items-center gap-2">
             {message.notifications ? (
               <Bell className="size-3.5 shrink-0" />
-            ) : message.isMonitor ? (
-              <Activity className="size-3.5 shrink-0" />
             ) : message.isTodoMode ? (
               <Target className="size-3.5 shrink-0" />
             ) : (

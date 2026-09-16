@@ -20,6 +20,7 @@ type ForkAgentInput<TMessage extends UIMessage> = {
   parentTaskId?: string;
   parentMessages: TMessage[];
   parentCwd: string | undefined;
+  systemPrompt?: string;
   directive: string;
   tools?: readonly ToolSpecInput[];
   maxSteps: number;
@@ -27,6 +28,7 @@ type ForkAgentInput<TMessage extends UIMessage> = {
 
 export type ForkAgent<TMessage extends UIMessage> = {
   cwd: string | undefined;
+  systemPrompt?: string;
   label: ForkAgentUseCase;
   initMessages: TMessage[];
   initTitle: string | undefined;
@@ -104,6 +106,7 @@ export function createForkAgent<TMessage extends UIMessage>(
 
   return {
     cwd: input.parentCwd,
+    systemPrompt: input.systemPrompt,
     label: input.label,
     initMessages,
     initTitle: input.initTitle,

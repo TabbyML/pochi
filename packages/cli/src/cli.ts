@@ -387,7 +387,8 @@ const program = new Command()
       autoMemoryCache = cached;
       return cached;
     };
-    const backgroundTaskAdaptor = new CliRunningTaskAdaptor({
+    const taskAdaptor = new CliRunningTaskAdaptor({
+      store,
       blobStore,
       llm,
       cwd: process.cwd(),
@@ -400,6 +401,7 @@ const program = new Command()
       parentFileStateCache,
       autoMemoryManager,
       projectMemoryEnabled,
+      resolveSubTaskLLM,
     });
     const taskMemory = autoCompactEnabled ? {} : undefined;
     const projectMemory = projectMemoryEnabled
@@ -441,11 +443,7 @@ const program = new Command()
       filesystem,
       browserSessionStore,
       getAutoMemory: projectMemoryEnabled ? getAutoMemory : undefined,
-      backgroundTask: {
-        adaptor: backgroundTaskAdaptor,
-        clearFileStateCache: (taskId) =>
-          backgroundTaskAdaptor.clearFileStateCache(taskId),
-      },
+      adaptor: taskAdaptor,
       taskMemory,
       projectMemory,
       enableAutoCompact: autoCompactEnabled,

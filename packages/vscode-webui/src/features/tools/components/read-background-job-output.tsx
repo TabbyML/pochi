@@ -1,4 +1,5 @@
 import { getToolPartError } from "@/lib/tool-call-error";
+import { parseBackgroundJobId } from "@getpochi/common";
 import { useTranslation } from "react-i18next";
 import { BackgroundJobPanel } from "./command-execution-panel";
 import { StatusIcon } from "./status-icon";
@@ -10,7 +11,8 @@ export const ReadBackgroundJobOutputTool: React.FC<
 > = ({ tool, isExecuting }) => {
   const { t } = useTranslation();
   const { backgroundJobId } = tool.input || {};
-  const isUserTerminal = backgroundJobId?.startsWith("term-");
+  const isUserTerminal =
+    parseBackgroundJobId(backgroundJobId ?? "") === "terminal";
   const terminalName = isUserTerminal ? tool.output?.terminalName : undefined;
   const lastCommand = isUserTerminal ? tool.output?.lastCommand : undefined;
   const title = (

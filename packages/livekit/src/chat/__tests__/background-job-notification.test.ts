@@ -1,5 +1,6 @@
 import {
   type BackgroundJobTerminalEvent,
+  type BackgroundJobNotification,
   createBackgroundJobNotification,
 } from "@getpochi/common";
 import { describe, expect, it } from "vitest";
@@ -110,3 +111,10 @@ function assistantMessage(): Message {
     parts: [{ type: "text", text: "on it" }],
   };
 }
+
+it("normalizes persisted command notifications without a kind", () => {
+  const parts = toBackgroundJobNotificationParts([{
+    notificationId: "old:terminal", backgroundJobId: "old", outputFile: "/tmp/old.log", status: "completed", summary: "done", finishedAt: 1,
+  } as BackgroundJobNotification]);
+  expect(parts[0]).toMatchObject({ type: "data-background-job-notification", data: { kind: "command" } });
+});

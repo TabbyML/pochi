@@ -9,8 +9,8 @@ export const startMonitor =
     { command, description, cwd = ".", timeoutMs, persistent },
     { cwd: workspaceDir, envs },
   ) => {
-    const { backgroundJobManager } = context;
-    if (!backgroundJobManager) {
+    const { adaptor, taskId } = context;
+    if (!adaptor || !taskId) {
       throw new Error("Background job manager not available.");
     }
 
@@ -25,7 +25,8 @@ export const startMonitor =
       resolvedCwd = path.normalize(path.join(workspaceDir, cwd));
     }
 
-    const { backgroundJobId, outputFile } = backgroundJobManager.start(
+    const { backgroundJobId, outputFile } = adaptor.startBackgroundCommand(
+      taskId,
       command,
       resolvedCwd,
       envs,

@@ -1,0 +1,229 @@
+import { createTestCliAdaptor } from "./cli-adaptor";
+import {
+  BackgroundJobManager,
+  type Message,
+  type Task,
+} from "@getpochi/livekit";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { executeToolCall as executeCliToolCall } from "../../tools";
+import type { ToolCallOptions } from "../../types";
+import { describe, expect, it, vi } from "vitest";
+import { makeJobStore } from "@getpochi/livekit/testing";
+import { TaskRunner } from "../../task-runner";
+
+describe("CLI background job shutdown", () => {
+  it.each([0, 60_000])(
+    "releases the run with async wait %s when finishing or aborted",
+    async (timeoutMs) => {
+      const { store, tasks, messages } = makeJobStore();
+      tasks.set("parent", {
+        id: "parent",
+        cwd: "/repo",
+        status: "completed",
+        parentId: null,
+        background: false,
+      } as Task);
+      tasks.set("child", {
+        id: "child",
+        cwd: "/repo",
+        status: "pending-tool",
+        parentId: "parent",
+        background: true,
+      } as Task);
+      messages.set("parent", [
+        {
+          id: "parent-result",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-attemptCompletion",
+              toolCallId: "done",
+              state: "input-available",
+              input: { result: "Done" },
+            },
+          ],
+          metadata: { kind: "assistant", finishReason: "stop" },
+        },
+      ] as Message[]);
+      messages.set("child", [
+        {
+          id: "child-tools",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-readFile",
+              toolCallId: "read",
+              state: "input-available",
+              input: { path: "a.txt" },
+            },
+          ],
+          metadata: { kind: "assistant", finishReason: "stop" },
+        },
+      ] as Message[]);
+      const controller = new AbortController();
+      let started!: () => void;
+      const toolStarted = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      const executeToolCall = vi.fn(
+        async ({ abortSignal }: { abortSignal: AbortSignal }) => {
+          started();
+          return new Promise((resolve) => {
+            const done = () => resolve({ error: "aborted" });
+            if (abortSignal.aborted) done();
+            else abortSignal.addEventListener("abort", done, { once: true });
+          });
+        },
+      );
+      const adaptor = createTestCliAdaptor({ store });
+      vi.spyOn(adaptor, "executeToolCall").mockImplementation(executeToolCall);
+      const runner = new TaskRunner({
+        adaptor,
+        uid: "parent",
+        cwd: "/repo",
+        store,
+        blobStore: {} as never,
+        llm: { id: "test" } as never,
+        filesystem: {} as never,
+        rg: "rg",
+        maxSteps: 24,
+        maxRetries: 3,
+        abortSignal: controller.signal,
+        asyncWaitTimeoutInMs: timeoutMs,
+      });
+      let settled = false;
+      const run = runner.run().then(() => {
+        settled = true;
+      });
+      try {
+        if (timeoutMs > 0) {
+          await toolStarted;
+          controller.abort();
+        }
+        await vi.waitFor(() => expect(settled).toBe(true), { timeout: 1000 });
+        await run;
+      } finally {
+        controller.abort();
+        await run;
+      }
+    },
+  );
+});
+
+it("shares commands across main, foreground and background agents, and only cleans them all up on root exit", async () => {
+  const commandOutputDir = await mkdtemp(
+    join(tmpdir(), "pochi-shared-adaptor-"),
+  );
+  const { store, tasks, messages } = makeJobStore();
+  for (const id of ["parent", "front"]) {
+    tasks.set(id, {
+      id,
+      cwd: process.cwd(),
+      status: "completed",
+      background: false,
+      parentId: id === "front" ? "parent" : null,
+    } as Task);
+    messages.set(id, [
+      {
+        id: `${id}-result`,
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-attemptCompletion",
+            toolCallId: "done",
+            state: "input-available",
+            input: { result: "Done" },
+          },
+        ],
+        metadata: { kind: "assistant", finishReason: "stop" },
+      },
+    ] as Message[]);
+  }
+  const adaptor = createTestCliAdaptor({ store, commandOutputDir });
+  const manager = BackgroundJobManager.forStore(store);
+  const root = new TaskRunner({
+    adaptor,
+    store,
+    uid: "parent",
+    cwd: process.cwd(),
+    blobStore: {} as never,
+    llm: { id: "test" } as never,
+    filesystem: {} as never,
+    rg: "rg",
+    maxSteps: 24,
+    maxRetries: 3,
+    asyncWaitTimeoutInMs: 0,
+  });
+  const rootTools = (root as unknown as { toolCallOptions: ToolCallOptions })
+    .toolCallOptions;
+  const foreground = rootTools.createSubTaskRunner!("front");
+  const foregroundTools = (
+    foreground as unknown as { toolCallOptions: ToolCallOptions }
+  ).toolCallOptions;
+  let finishRoot!: () => void;
+  const rootStep = vi
+    .spyOn(root as unknown as { step(): Promise<"finished"> }, "step")
+    .mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishRoot = () => resolve("finished");
+        }),
+    );
+  const rootRun = root.run();
+  try {
+    await vi.waitFor(() => expect(rootStep).toHaveBeenCalledOnce());
+    await Promise.all(
+      ["parent", "front", "back"].map((id) => manager.watchTask(id)),
+    );
+    for (const options of [rootTools, foregroundTools]) {
+      const result = await executeCliToolCall(
+        {
+          type: "tool-executeCommand",
+          toolCallId: `${options.taskId}-command`,
+          state: "input-available",
+          input: { command: "sleep 10", background: true },
+        },
+        options,
+        process.cwd(),
+      );
+      expect(result).toMatchObject({
+        _meta: { backgroundJobId: expect.stringMatching(/^bgjob-cmd-/) },
+      });
+    }
+    await adaptor.executeToolCall({
+      taskId: "back",
+      parentTaskId: undefined,
+      storeId: store.storeId,
+      toolName: "executeCommand",
+      toolCallId: "back-command",
+      input: { command: "sleep 10", background: true },
+      abortSignal: new AbortController().signal,
+      toolPolicies: undefined,
+    });
+    await foreground.run();
+    for (const id of ["parent", "front", "back"])
+      expect(manager.hasPending(id)).toBe(true);
+    await manager.kill(
+      manager.getJobsForTask("back")[0].backgroundJobId,
+      "back",
+    );
+    expect(await manager.wait("back", { timeoutMs: 1000 })).toBe("completed");
+    expect(manager.hasPending("parent")).toBe(true);
+    expect(manager.hasPending("front")).toBe(true);
+    finishRoot();
+    await rootRun;
+    for (const id of ["parent", "front", "back"]) {
+      expect(manager.getJobsForTask(id)).toEqual([
+        expect.objectContaining({ status: "stopped" }),
+      ]);
+    }
+  } finally {
+    finishRoot?.();
+    await rootRun;
+    await adaptor.stopBackgroundCommands();
+    await manager.dispose();
+    await rm(commandOutputDir, { recursive: true, force: true });
+  }
+});

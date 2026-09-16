@@ -5,8 +5,10 @@ import type {
   BackgroundJobNotification,
   MonitorEventEnvelope,
 } from "@getpochi/common";
+import type { Message } from "@getpochi/livekit";
 import { Activity, Bell } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SubagentResultNotificationItem } from "./subagent-results";
 
 interface BackgroundJobNotificationsProps {
   notifications: (BackgroundJobNotification | MonitorEventEnvelope)[];
@@ -61,6 +63,13 @@ export function BackgroundJobNotificationItems({
       );
     }
     const notification = item;
+    if (notification.kind === "subagent")
+      return (
+        <SubagentResultNotificationItem
+          key={notification.notificationId}
+          result={notification}
+        />
+      );
     return (
       <BackgroundJobPanel
         key={notification.notificationId}
@@ -84,6 +93,7 @@ export function BackgroundJobNotifications({
 
   return (
     <CollapsibleSection
+      defaultOpen
       className="overflow-hidden"
       title={
         <>
@@ -104,4 +114,16 @@ export function BackgroundJobNotifications({
       <BackgroundJobNotificationItems notifications={notifications} />
     </CollapsibleSection>
   );
+}
+
+/** Keep monitor batches grouped across all notification parts in this message. */
+export function MessageNotifications({ parts }: { parts: Message["parts"] }) {
+  const notifications = parts.flatMap<
+    BackgroundJobNotification | MonitorEventEnvelope
+  >((part) => {
+    if (part.type === "data-background-job-notification") return [part.data];
+    if (part.type === "data-monitor-events") return part.data.batches;
+    return [];
+  });
+  return <BackgroundJobNotifications notifications={notifications} />;
 }

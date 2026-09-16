@@ -157,8 +157,9 @@ function filterTrailingAskFollowupQuestion(messages: Message[]): Message[] {
 }
 
 function prepareForRender(messages: Message[]): Message[] {
-  // Remove user messages.
-  const filteredMessages = messages.filter((x) => x.role !== "user");
+  const filteredMessages = messages.filter(
+    (message) => message.role !== "user",
+  );
   // Filter out trailing askFollowupQuestion tool calls
   const withoutTrailingAskFollowup =
     filterTrailingAskFollowupQuestion(filteredMessages);

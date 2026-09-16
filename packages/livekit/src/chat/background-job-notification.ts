@@ -1,6 +1,6 @@
-import type {
+import {
   BackgroundJobNotification,
-  MonitorEventEnvelope,
+  type MonitorEventEnvelope,
 } from "@getpochi/common";
 import type { Message } from "../types";
 
@@ -18,7 +18,10 @@ export function toBackgroundJobNotificationParts(
   return notifications.map((data) =>
     "lines" in data
       ? { type: "data-monitor-events", data: { batches: [data] } }
-      : { type: "data-background-job-notification", data },
+      : {
+          type: "data-background-job-notification",
+          data: BackgroundJobNotification.parse(data),
+        },
   );
 }
 
@@ -68,7 +71,10 @@ export function attachBackgroundJobNotificationParts(
   messages: readonly Message[],
   parts: readonly BackgroundJobNotificationPart[],
 ): Message[] | undefined {
-  const pending = dedupe(messages, parts);
+  const pending = dedupeBackgroundJobNotificationParts(
+    parts,
+    messages.flatMap((message) => message.parts),
+  );
   if (pending.length === 0) return undefined;
 
   const lastMessage = messages.at(-1);
@@ -83,17 +89,13 @@ export function attachBackgroundJobNotificationParts(
 }
 
 /** Drops notifications already present in the conversation. */
-function dedupe(
-  messages: readonly Message[],
+export function dedupeBackgroundJobNotificationParts(
   parts: readonly BackgroundJobNotificationPart[],
+  existing: readonly MessagePart[],
 ): BackgroundJobNotificationPart[] {
   if (parts.length === 0) return [];
 
-  const seen = new Set(
-    messages.flatMap((message) =>
-      getBackgroundJobNotificationIds(message.parts),
-    ),
-  );
+  const seen = new Set(getBackgroundJobNotificationIds(existing));
   return parts.flatMap((part): BackgroundJobNotificationPart[] => {
     if (part.type === "data-monitor-events") {
       const batches = part.data.batches.filter((batch) => {

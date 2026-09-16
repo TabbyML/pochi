@@ -6,4 +6,5 @@ export interface ExecuteCommandOptions {
   onData?: (data: { output: string; isTruncated: boolean }) => void;
   color?: boolean;
   envs?: Record<string, string>;
+  allowBackground?: boolean;
 }

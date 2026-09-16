@@ -239,8 +239,11 @@ export class ToolCallQueue {
         }
       },
       cancel: (reason) => {
-        item.cancel(reason);
-        removeFromQueue();
+        try {
+          return item.cancel(reason);
+        } finally {
+          removeFromQueue();
+        }
       },
     };
     this.queue.push(wrappedItem);

@@ -257,7 +257,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       getters: this.getters,
     });
 
-    const model = createModel({ llm });
+    const model = createModel({ llm, taskId: chatId });
     const middlewares = [];
 
     if (!this.isSubTask) {

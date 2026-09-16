@@ -118,6 +118,7 @@ import {
   getTaskDisplayTitle,
   resolveToolCallArgs,
 } from "@getpochi/common/vscode-webui-bridge";
+import { serializeThreadSignalWithSnapshot } from "@getpochi/common/vscode-webui-bridge/thread-signal";
 import type { CompiledToolPolicies, ToolFunctionType } from "@getpochi/tools";
 import { createClientTools, validateToolPolicy } from "@getpochi/tools";
 import { computed } from "@preact/signals-core";
@@ -469,7 +470,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readBackgroundCommands = async () => ({
-    backgroundCommands: ThreadSignal.serialize(
+    backgroundCommands: serializeThreadSignalWithSnapshot(
       this.terminalState.backgroundCommands,
     ),
     show: async (backgroundJobId: string) => {
@@ -484,7 +485,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   });
 
   readBackgroundJobNotifications = async (taskId: string) => ({
-    notifications: ThreadSignal.serialize(
+    notifications: serializeThreadSignalWithSnapshot(
       this.taskStateStore.getBackgroundJobNotificationsSignal(taskId),
     ),
     acknowledge: (notificationId: string) =>
@@ -605,6 +606,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       storeId: string;
       taskId: string;
       fileStateCacheSourceTaskId?: string;
+      allowBackground?: boolean;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -670,6 +672,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         envs,
         taskId,
         fileStateCache,
+        allowBackground: options.allowBackground,
       }),
     );
 

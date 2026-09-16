@@ -12,12 +12,13 @@ import {
   type ToolFunctionType,
   createBackgroundCommandResult,
 } from "@getpochi/tools";
-import type { BackgroundJobManager } from "../lib/background-job-manager";
 import { ForegroundOutputCapture } from "../lib/foreground-output-capture";
+import type { ToolCallOptions } from "../types";
 
-interface ExecuteCommandContext {
-  backgroundJobManager?: BackgroundJobManager;
-}
+type ExecuteCommandContext = Pick<
+  ToolCallOptions,
+  "taskId" | "adaptor" | "allowBackground"
+>;
 
 export class ExecuteCommandError extends Error {
   public code: number;
@@ -67,11 +68,19 @@ export const executeCommand =
     }
 
     if (background) {
-      if (!context?.backgroundJobManager) {
-        throw new Error("Background job manager not available.");
+      if (context?.allowBackground === false) {
+        throw new Error("Background commands are not available for this task.");
+      }
+      if (!context) {
+        throw new Error("Background command execution is not available.");
       }
       const { backgroundJobId, outputFile } =
-        context.backgroundJobManager.start(command, resolvedCwd, envs);
+        context.adaptor.startBackgroundCommand(
+          context.taskId,
+          command,
+          resolvedCwd,
+          envs,
+        );
       return createBackgroundCommandResult(backgroundJobId, outputFile);
     }
 
@@ -82,7 +91,7 @@ export const executeCommand =
         envs,
         timeout,
         abortSignal,
-        backgroundJobManager: context?.backgroundJobManager,
+        background: context?.allowBackground === false ? undefined : context,
       });
 
       if ("backgroundJobId" in result) {
@@ -114,7 +123,7 @@ interface ExecuteForegroundCommandOptions {
   envs?: Record<string, string>;
   timeout: number;
   abortSignal?: AbortSignal;
-  backgroundJobManager?: BackgroundJobManager;
+  background?: ExecuteCommandContext;
 }
 
 interface CompletedCommandResult {
@@ -133,7 +142,7 @@ function executeForegroundCommand({
   envs,
   timeout,
   abortSignal,
-  backgroundJobManager,
+  background,
 }: ExecuteForegroundCommandOptions): Promise<
   CompletedCommandResult | PromotedCommandResult
 > {
@@ -236,7 +245,7 @@ function executeForegroundCommand({
 
     const onTimeout = () => {
       if (state !== "foreground") return;
-      if (!backgroundJobManager) {
+      if (!background) {
         stopReason = "timeout";
         if (!child.kill()) void settleStoppedCommand();
         return;
@@ -249,7 +258,8 @@ function executeForegroundCommand({
       const initialOutput = outputCapture.promote();
       try {
         resolve(
-          backgroundJobManager.adopt(
+          background.adaptor.adoptBackgroundCommand(
+            background.taskId,
             child,
             command,
             initialOutput,

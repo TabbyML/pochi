@@ -9,7 +9,6 @@ import type { Todo } from "@getpochi/tools";
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatToolbar } from "./chat-toolbar";
-
 const chatSubmitMocks = vi.hoisted(() => {
   const handleSteerQueuedMessage = vi.fn();
   const handleSteerBackgroundJobNotifications = vi.fn();
@@ -22,18 +21,22 @@ const chatSubmitMocks = vi.hoisted(() => {
     handleSteerQueuedMessage,
     handleSteerBackgroundJobNotifications,
     setQueuedMessages,
-    useChatSubmit: vi.fn((props: { setQueuedMessages: unknown }) => {
-      setQueuedMessages.current = props.setQueuedMessages as React.Dispatch<
-        React.SetStateAction<unknown[]>
-      >;
-      return {
-        handleSubmit: vi.fn(),
-        handleSteerSubmit: vi.fn(),
-        handleSteerQueuedMessage,
-        handleSteerBackgroundJobNotifications,
-        handleStop: vi.fn(),
-      };
-    }),
+    useChatSubmit: vi.fn(
+      (props: {
+        setQueuedMessages: unknown;
+      }) => {
+        setQueuedMessages.current = props.setQueuedMessages as React.Dispatch<
+          React.SetStateAction<unknown[]>
+        >;
+        return {
+          handleSubmit: vi.fn(),
+          handleSteerSubmit: vi.fn(),
+          handleSteerQueuedMessage,
+          handleSteerBackgroundJobNotifications,
+          handleStop: vi.fn(),
+        };
+      },
+    ),
   };
 });
 const chatInputFormMocks = vi.hoisted(() => ({
@@ -41,7 +44,9 @@ const chatInputFormMocks = vi.hoisted(() => ({
     | {
         queuedMessages?: {
           parts: unknown[];
-          raw: { nonRemovable?: boolean };
+          raw: {
+            nonRemovable?: boolean;
+          };
         }[];
         onSteerQueuedMessage?: (index: number) => void;
       }
@@ -55,11 +60,9 @@ const userEditsMocks = vi.hoisted(() => ({
     removed: number;
   }>,
 }));
-
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-
 vi.mock("@/components/attachment-preview-list", () => ({
   AttachmentPreviewList: () => null,
 }));
@@ -86,18 +89,25 @@ vi.mock("@/components/ui/button", () => ({
   ),
 }));
 vi.mock("@/components/ui/hover-card", () => ({
-  HoverCard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  HoverCardContent: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
-  HoverCardTrigger: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
+  HoverCard: ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => <>{children}</>,
+  HoverCardContent: ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => <>{children}</>,
+  HoverCardTrigger: ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => <>{children}</>,
 }));
 vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: () => null,
 }));
-
 vi.mock("@/features/approval", () => ({
   ApprovalButton: () => null,
   FixWidgetButton: () => null,
@@ -120,9 +130,11 @@ vi.mock("@/features/settings", () => ({
 vi.mock("@/features/todo", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/todo")>();
   const TodoList = Object.assign(
-    ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="todo-list">{children}</div>
-    ),
+    ({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) => <div data-testid="todo-list">{children}</div>,
     {
       Header: () => null,
       Items: () => null,
@@ -154,7 +166,11 @@ vi.mock("@/lib/hooks/use-task-changed-files", () => ({
   }),
 }));
 vi.mock("@/lib/use-default-store", () => ({
-  useDefaultStore: () => ({ commit: vi.fn() }),
+  useDefaultStore: () => ({
+    commit: vi.fn(),
+    storeId: "store-1",
+    useQuery: () => [],
+  }),
 }));
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {},
@@ -198,7 +214,9 @@ vi.mock("./chat-input-form", () => ({
   ChatInputForm: ({
     children,
     ...props
-  }: { children: React.ReactNode } & Record<string, unknown>) => {
+  }: {
+    children: React.ReactNode;
+  } & Record<string, unknown>) => {
     chatInputFormMocks.props = props;
     return <form>{children}</form>;
   },
@@ -215,20 +233,17 @@ vi.mock("./submit-review-button", () => ({
 vi.mock("./subtask", () => ({
   CompleteSubtaskButton: () => null,
 }));
-
 const auditTodo: Todo = {
   id: "todo-1",
   content: "Audit this todo",
   status: "in-progress",
   priority: "medium",
 };
-
 interface RenderToolbarOptions {
   messages?: Message[];
   flushBackgroundJobNotifications?: () => boolean;
   pendingBackgroundJobNotifications?: BackgroundJobNotificationPart[];
 }
-
 function renderToolbar(
   isSubTask: boolean,
   lastCheckpointHash?: string,
@@ -282,7 +297,6 @@ function renderToolbar(
     />,
   );
 }
-
 function notificationPart(
   backgroundJobId: string,
 ): BackgroundJobNotificationPart {
@@ -291,9 +305,9 @@ function notificationPart(
     data: notification(backgroundJobId),
   };
 }
-
 function notification(backgroundJobId: string): BackgroundJobNotification {
   return {
+    kind: "command",
     notificationId: `${backgroundJobId}:terminal`,
     backgroundJobId,
     outputFile: `/tmp/${backgroundJobId}.log`,
@@ -304,7 +318,6 @@ function notification(backgroundJobId: string): BackgroundJobNotification {
     finishedAt: 1,
   };
 }
-
 function pendingFollowupQuestionMessages(
   state: "input-available" | "output-available",
 ): Message[] {
@@ -327,7 +340,6 @@ function pendingFollowupQuestionMessages(
     } as unknown as Message,
   ];
 }
-
 describe("ChatToolbar", () => {
   beforeEach(() => {
     chatSubmitMocks.useChatSubmit.mockClear();
@@ -337,39 +349,30 @@ describe("ChatToolbar", () => {
     chatInputFormMocks.props = undefined;
     userEditsMocks.userEdits = [];
   });
-
   it("renders todos in root task pages", () => {
     renderToolbar(false);
-
     expect(screen.getByTestId("todo-list")).toBeTruthy();
   });
-
   it("does not render audit todos in subtask pages", () => {
     renderToolbar(true);
-
     expect(screen.queryByTestId("todo-list")).toBeNull();
   });
-
   it("disables todo creation while active todos exist", () => {
     renderToolbar(false);
-
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         canCreateTodo: false,
       }),
     );
   });
-
   it("submits no user edits after they disappear from the input", () => {
     renderToolbar(false, "checkpoint-1");
-
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         userEdits: [],
       }),
     );
   });
-
   it("submits the user edits shown in the input", () => {
     const userEdits = [
       {
@@ -380,19 +383,15 @@ describe("ChatToolbar", () => {
       },
     ];
     userEditsMocks.userEdits = userEdits;
-
     renderToolbar(false, "checkpoint-1");
-
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         userEdits,
       }),
     );
   });
-
   it("passes the accumulated terminal context selections (empty by default) to useChatSubmit", () => {
     renderToolbar(false);
-
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         terminalContextSelections: [],
@@ -400,27 +399,46 @@ describe("ChatToolbar", () => {
       }),
     );
   });
-
   describe("background job notification delivery", () => {
+    it("delivers subagent results through the notification flush", async () => {
+      const flushBackgroundJobNotifications = vi.fn(() => true);
+      await act(async () => {
+        renderToolbar(false, undefined, {
+          flushBackgroundJobNotifications,
+          pendingBackgroundJobNotifications: [
+            {
+              type: "data-background-job-notification",
+              data: {
+                kind: "subagent",
+                notificationId: "bgjob-task-" + "child" + ":terminal:1",
+                backgroundJobId: "bgjob-task-" + "child",
+                taskId: "child",
+                title: "Review",
+                status: "completed",
+                result: "done",
+              },
+            },
+          ],
+        });
+      });
+      expect(flushBackgroundJobNotifications).toHaveBeenCalled();
+      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
+    });
     it("asks the chat kit to deliver a pending notification once idle", async () => {
       const flushBackgroundJobNotifications = vi.fn(() => true);
-
       await act(async () => {
         renderToolbar(false, undefined, {
           flushBackgroundJobNotifications,
           pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
         });
       });
-
       expect(flushBackgroundJobNotifications).toHaveBeenCalled();
       // Notifications are never sent as a steered user message: the kit
       // decides when they may take a turn of their own.
       expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
     });
-
     it("leaves a follow-up question to the chat kit", async () => {
       const flushBackgroundJobNotifications = vi.fn(() => false);
-
       await act(async () => {
         renderToolbar(false, undefined, {
           messages: pendingFollowupQuestionMessages("input-available"),
@@ -428,13 +446,10 @@ describe("ChatToolbar", () => {
           pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
         });
       });
-
       expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
     });
-
     it("auto dequeues a queued user message ahead of the notification", async () => {
       const flushBackgroundJobNotifications = vi.fn(() => true);
-
       await act(async () => {
         renderToolbar(false, undefined, {
           flushBackgroundJobNotifications,
@@ -442,18 +457,15 @@ describe("ChatToolbar", () => {
         });
       });
       flushBackgroundJobNotifications.mockClear();
-
       await act(async () => {
         chatSubmitMocks.setQueuedMessages.current?.((current) => [
           { parts: [{ type: "text", text: "hello" }], raw: { text: "hello" } },
           ...current,
         ]);
       });
-
       expect(chatSubmitMocks.handleSteerQueuedMessage).toHaveBeenCalledWith(0);
       expect(flushBackgroundJobNotifications).not.toHaveBeenCalled();
     });
-
     it("shows the pending notifications after the queued user messages", async () => {
       await act(async () => {
         renderToolbar(false, undefined, {
@@ -461,14 +473,12 @@ describe("ChatToolbar", () => {
           pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
         });
       });
-
       await act(async () => {
         chatSubmitMocks.setQueuedMessages.current?.((current) => [
           { parts: [{ type: "text", text: "hello" }], raw: { text: "hello" } },
           ...current,
         ]);
       });
-
       const queuedMessages = chatInputFormMocks.props?.queuedMessages ?? [];
       expect(queuedMessages).toHaveLength(2);
       expect(queuedMessages[1].parts).toEqual([
@@ -476,7 +486,6 @@ describe("ChatToolbar", () => {
       ]);
       expect(queuedMessages[1].raw.nonRemovable).toBe(true);
     });
-
     it("steers the notification entry through the chat kit", async () => {
       await act(async () => {
         renderToolbar(false, undefined, {
@@ -484,11 +493,9 @@ describe("ChatToolbar", () => {
           pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
         });
       });
-
       await act(async () => {
         chatInputFormMocks.props?.onSteerQueuedMessage?.(0);
       });
-
       expect(
         chatSubmitMocks.handleSteerBackgroundJobNotifications,
       ).toHaveBeenCalled();

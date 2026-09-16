@@ -1,3 +1,5 @@
+import { parseBackgroundJobId } from "@getpochi/common";
+import type { BackgroundJobEntry } from "@getpochi/livekit";
 // @vitest-environment jsdom
 import {
   act,
@@ -5,10 +7,10 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BackgroundJobEntry } from "../lib/build-background-job-list";
 import { BackgroundJobManagePanel } from "./background-job-manage-panel";
 
 const show = vi.fn();
@@ -31,6 +33,30 @@ vi.stubGlobal(
     disconnect() {}
   },
 );
+
+const stopSubagent = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/use-default-store", () => ({ useDefaultStore: () => ({}) }));
+vi.mock("@getpochi/livekit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@getpochi/livekit")>()),
+  BackgroundJobManager: {
+    forStore(store: unknown) {
+      return {
+        forTask: (taskId: string) => ({
+          kill: (id: string) =>
+            parseBackgroundJobId(id) === "task"
+              ? stopSubagent(store, taskId, id)
+              : close(id),
+        }),
+      };
+    },
+  },
+}));
+
+vi.mock("@/lib/hooks/use-background-task-state", () => ({
+  useBackgroundTaskState: () => ({
+    backgroundTaskState: { useCase: "auto-memory" },
+  }),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -56,7 +82,28 @@ vi.mock("@/components/ui/sheet", async (importOriginal) => {
 });
 
 vi.mock("../hooks/use-background-job-list", () => ({
-  useBackgroundJobList: () => backgroundJobs,
+  useBackgroundJobList: () => [
+    ...backgroundJobs,
+    ...backgroundTasks
+      .filter(
+        (task) =>
+          !backgroundJobs.some(
+            (job) => job.kind !== "command" && job.taskId === task.id,
+          ),
+      )
+      .map((task) => ({
+        backgroundJobId: `bgjob-task-${task.id}`,
+        taskId: task.id,
+        kind: "fork",
+        title: task.title,
+        status:
+          task.status === "completed"
+            ? "completed"
+            : task.status === "failed"
+              ? "failed"
+              : "running",
+      })),
+  ],
 }));
 
 vi.mock("@/lib/hooks/use-background-commands", () => ({
@@ -79,21 +126,6 @@ vi.mock("@/features/settings", () => ({
 }));
 
 vi.mock("./background-task-debug-panel", () => ({
-  BackgroundTasksLabel: "Background tasks",
-  useBackgroundTasks: () => backgroundTasks,
-  isBackgroundTaskRunning: (status: string) =>
-    status === "pending-model" || status === "pending-tool",
-  BackgroundTaskRow: ({
-    task,
-    onSelect,
-  }: {
-    task: { title: string };
-    onSelect: () => void;
-  }) => (
-    <button type="button" onClick={onSelect}>
-      {task.title}
-    </button>
-  ),
   BackgroundTaskDetail: ({
     taskId,
     onBack,
@@ -111,14 +143,17 @@ vi.mock("./background-task-debug-panel", () => ({
 }));
 
 const renderBackgroundJobManagePanel = () =>
-  render(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
+  render(<BackgroundJobManagePanel taskId="task-1" />);
 
 const rowTitles = () =>
-  screen.getAllByRole("listitem").map((row) => row.textContent);
+  screen
+    .getAllByRole("listitem")
+    .map((row) => row.querySelector("span.truncate")?.textContent);
 
 const runningJob = {
+  kind: "command" as const,
   backgroundJobId: "bgjob-cmd-1",
-  displayId: "%1",
+
   title: "bun run dev",
   command: "bun run dev",
   status: "running" as const,
@@ -126,7 +161,7 @@ const runningJob = {
 
 const runningRow = {
   ...runningJob,
-  displayId: undefined,
+
   title: "running",
 };
 const finishedRow = {
@@ -137,6 +172,78 @@ const finishedRow = {
 };
 
 describe("BackgroundJobManagePanel", () => {
+  it("groups agents separately from background commands", () => {
+    backgroundJobs = [
+      runningJob,
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        kind: "subagent",
+        title: "Review tests",
+        status: "running",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    const commands = screen.getByRole("button", {
+      name: /managePanel.pochiGroup/,
+    }).parentElement;
+    const agents = screen.getByRole("button", {
+      name: /backgroundTasks.title/,
+    }).parentElement;
+    if (!commands || !agents)
+      throw new Error("Background job sections are missing");
+    expect(commands).not.toBe(agents);
+    expect(within(commands).queryByText("Review tests")).toBeNull();
+    expect(within(agents).getByText("Review tests")).toBeTruthy();
+    expect(within(agents).queryByText(runningJob.title)).toBeNull();
+  });
+
+  it("shows subagents outside dev mode and routes stop to the subagent", () => {
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        kind: "subagent",
+        title: "Review tests",
+        agentType: "reviewer",
+        status: "running",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getByText("Review tests")).toBeTruthy();
+    expect(screen.queryByText("managePanel.pochiGroup")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "backgroundTasks.stop" }),
+    );
+    expect(stopSubagent).toHaveBeenCalledWith(
+      expect.anything(),
+      "task-1",
+      "bgjob-task-child",
+    );
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it("labels stopped subagents awaiting delivery without a kill action", () => {
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        kind: "subagent",
+        title: "Review tests",
+        status: "stopped",
+        notificationPending: true,
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getByTitle(/backgroundTasks.stopped/)).toBeTruthy();
+    expect(
+      screen.getByTitle(/backgroundTasks.pendingNotification/),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "backgroundTasks.stop" }),
+    ).toBeNull();
+  });
+
   beforeEach(() => {
     show.mockClear();
     hide.mockClear();
@@ -156,7 +263,6 @@ describe("BackgroundJobManagePanel", () => {
       {
         ...runningJob,
         backgroundJobId: "bgjob-monitor-1",
-        displayId: "%2",
         title: "CI checks",
         command: "watch CI",
         monitor: "CI checks",
@@ -254,7 +360,8 @@ describe("BackgroundJobManagePanel", () => {
   it("holds a long category back behind a see-more toggle", () => {
     backgroundJobs = Array.from({ length: 7 }, (_, index) => ({
       backgroundJobId: `bgjob-cmd-${index}`,
-      displayId: `%${index}`,
+      kind: "command" as const,
+
       title: `bun run dev ${index}`,
       status: "completed" as const,
     }));
@@ -310,40 +417,6 @@ describe("BackgroundJobManagePanel", () => {
     });
   });
 
-  it("numbers a row without asking to be clicked", () => {
-    backgroundJobs = [runningJob];
-
-    renderBackgroundJobManagePanel();
-
-    const displayId = screen.getByText("%1");
-    expect(displayId.tagName).toBe("SPAN");
-    expect(displayId.closest("button")).toBeNull();
-    expect(displayId.className).toContain("group-hover:opacity-0");
-  });
-
-  it("keeps the number for a row that has nothing to press", () => {
-    backgroundJobs = [
-      { ...runningJob, status: "stopped" as const, command: undefined },
-    ];
-
-    renderBackgroundJobManagePanel();
-
-    expect(screen.getByText("%1").className).not.toContain(
-      "group-hover:opacity-0",
-    );
-  });
-
-  it("lights the number only while the command terminal is visible", () => {
-    backgroundJobs = [runningJob];
-
-    const { rerender } = renderBackgroundJobManagePanel();
-    expect(screen.getByText("%1").className).toContain("ring-1");
-
-    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
-    rerender(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
-    expect(screen.getByText("%1").className).not.toContain("ring-1");
-  });
-
   it("puts a running command's terminal on screen by clicking its row", () => {
     backgroundJobs = [runningJob];
 
@@ -388,7 +461,7 @@ describe("BackgroundJobManagePanel", () => {
 
     renderBackgroundJobManagePanel();
 
-    fireEvent.click(screen.getByLabelText("managePanel.kill"));
+    fireEvent.click(screen.getByLabelText("backgroundTasks.stop"));
     expect(close).toHaveBeenCalledWith("bgjob-cmd-1");
     expect(show).not.toHaveBeenCalled();
   });
@@ -398,7 +471,7 @@ describe("BackgroundJobManagePanel", () => {
 
     renderBackgroundJobManagePanel();
 
-    fireEvent.keyDown(screen.getByLabelText("managePanel.kill"), {
+    fireEvent.keyDown(screen.getByLabelText("backgroundTasks.stop"), {
       key: "Enter",
     });
     expect(show).not.toHaveBeenCalled();
@@ -411,7 +484,7 @@ describe("BackgroundJobManagePanel", () => {
 
     fireEvent.click(screen.getByLabelText("managePanel.hideTerminal"));
     expect(hide).toHaveBeenCalledWith("bgjob-cmd-1");
-    expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
+    expect(screen.getByLabelText("backgroundTasks.stop")).toBeDefined();
     expect(
       screen.queryByLabelText("backgroundJobNotifications.openOutput"),
     ).toBeNull();
@@ -426,7 +499,7 @@ describe("BackgroundJobManagePanel", () => {
     fireEvent.click(screen.getByLabelText("managePanel.openTerminal"));
     expect(show).toHaveBeenCalledWith("bgjob-cmd-1");
     // The process outlives its tab, so it can still be stopped.
-    expect(screen.getByLabelText("managePanel.kill")).toBeDefined();
+    expect(screen.getByLabelText("backgroundTasks.stop")).toBeDefined();
   });
 
   it("offers a finished command its output file", () => {
@@ -452,7 +525,7 @@ describe("BackgroundJobManagePanel", () => {
 
     fireEvent.click(openOutput);
     expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
-    expect(screen.queryByLabelText("managePanel.kill")).toBeNull();
+    expect(screen.queryByLabelText("backgroundTasks.stop")).toBeNull();
     expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
   });
 
@@ -516,7 +589,7 @@ describe("BackgroundJobManagePanel", () => {
       finishedRow,
       { ...runningRow, status: "stopped" as const },
     ];
-    rerender(<BackgroundJobManagePanel taskId="task-1" messages={[]} />);
+    rerender(<BackgroundJobManagePanel taskId="task-1" />);
 
     expect(rowTitles()).toEqual(["running", "done"]);
   });
@@ -539,13 +612,42 @@ describe("BackgroundJobManagePanel", () => {
     expect(screen.getByText("managePanel.empty")).toBeDefined();
   });
 
+  it("merges system agents with subagents without duplicating rows or counts", () => {
+    isDevMode = true;
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        kind: "subagent",
+        title: "Review",
+        status: "running",
+      },
+    ];
+    backgroundTasks = [
+      { id: "child", title: "Review", status: "pending-tool" },
+      { id: "memory", title: "Extract memory", status: "pending-model" },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getAllByText("backgroundTasks.title")).toHaveLength(1);
+    expect(screen.getAllByText("Review")).toHaveLength(1);
+    expect(screen.getByText("Extract memory")).toBeDefined();
+    expect(screen.getByTitle(/auto-memory/)).toBeDefined();
+    expect(screen.queryByText("Background tasks")).toBeNull();
+    expect(
+      screen
+        .getByTestId("background-job-manage-panel-toggle")
+        .querySelector(".bg-blue-500")?.textContent,
+    ).toBe("2");
+  });
+
   it("lists background tasks in dev mode", () => {
     isDevMode = true;
     backgroundTasks = [{ id: "task-1", title: "A background task" }];
 
     renderBackgroundJobManagePanel();
 
-    expect(screen.getByText("Background tasks")).toBeDefined();
+    expect(screen.getByText("backgroundTasks.title")).toBeDefined();
+    expect(screen.queryByText("Background tasks")).toBeNull();
     expect(screen.getByText("A background task")).toBeDefined();
     expect(screen.queryByText("managePanel.empty")).toBeNull();
   });

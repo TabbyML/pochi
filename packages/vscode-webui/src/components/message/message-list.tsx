@@ -17,11 +17,7 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn, formatExecutionDuration } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import {
-  type BackgroundJobNotification,
-  type MonitorEventEnvelope,
-  prompts,
-} from "@getpochi/common";
+import { prompts } from "@getpochi/common";
 import type {
   ActiveSelection,
   TerminalTextSelection,
@@ -32,7 +28,7 @@ import { memo, useEffect, useMemo } from "react";
 import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
 import { ActiveSelectionPart, TerminalSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
-import { BackgroundJobNotifications } from "./background-job-notifications";
+import { MessageNotifications } from "./background-job-notifications";
 import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
@@ -250,7 +246,7 @@ export const MessageList: React.FC<{
                   {/* Display attachments at the bottom of the message */}
                   <UserAttachments message={m} />
                   <UserSelections message={m} />
-                  <MessageBackgroundJobNotifications message={m} />
+                  <MessageNotifications parts={m.parts} />
                 </div>
                 {messageIndex < renderMessages.length - 1 ? (
                   <SeparatorWithCheckpoint
@@ -368,18 +364,6 @@ function UserSelections({ message }: { message: Message }) {
       ))}
     </div>
   );
-}
-
-function MessageBackgroundJobNotifications({ message }: { message: Message }) {
-  if (message.role !== "user") return null;
-  const notifications = message.parts.flatMap<
-    BackgroundJobNotification | MonitorEventEnvelope
-  >((part) => {
-    if (part.type === "data-background-job-notification") return [part.data];
-    if (part.type === "data-monitor-events") return part.data.batches;
-    return [];
-  });
-  return <BackgroundJobNotifications notifications={notifications} />;
 }
 
 function EarlierMessagesEdge({

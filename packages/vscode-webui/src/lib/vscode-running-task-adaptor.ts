@@ -10,7 +10,10 @@ import {
   isValidCustomAgentFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { RunningTaskAdaptor } from "@getpochi/livekit";
+import type {
+  BackgroundCommandAdaptor,
+  RunningTaskAdaptor,
+} from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -55,7 +58,66 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return this.ready;
   }
 
-  getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
+  readonly commandAdaptor: BackgroundCommandAdaptor = {
+    kill: async (id) => (await vscodeHost.readBackgroundCommands()).close(id),
+    observeCommands: async (onChange) => {
+      const commands = await vscodeHost.readBackgroundCommands();
+      const controller = new AbortController();
+      try {
+        const running = await connectSignal(
+          commands.backgroundCommands,
+          controller.signal,
+        );
+        const unsubscribe = running.subscribe(onChange);
+        onChange(running.value);
+        return {
+          dispose: () => {
+            controller.abort();
+            unsubscribe();
+          },
+        };
+      } catch (error) {
+        controller.abort();
+        throw error;
+      }
+    },
+    observeNotifications: async (taskId, onChange) => {
+      const [notifications, monitors] = await Promise.all([
+        vscodeHost.readBackgroundJobNotifications(taskId),
+        vscodeHost.readMonitorEvents(taskId),
+      ]);
+      const controller = new AbortController();
+      try {
+        const [completed, events] = await Promise.all([
+          connectSignal(notifications.notifications, controller.signal),
+          connectSignal(monitors.events, controller.signal),
+        ]);
+        const update = () => onChange([...completed.value, ...events.value]);
+        const unsubscribeCompleted = completed.subscribe(update);
+        const unsubscribeMonitors = events.subscribe(update);
+        update();
+        return {
+          dispose: () => {
+            controller.abort();
+            unsubscribeCompleted();
+            unsubscribeMonitors();
+          },
+          acknowledge: async (id) => {
+            if (events.value.some((event) => event.notificationId === id))
+              await monitors.acknowledge(id);
+            else await notifications.acknowledge(id);
+          },
+        };
+      } catch (error) {
+        controller.abort();
+        throw error;
+      }
+    },
+  };
+
+  getRequestGetters(
+    context: Parameters<RunningTaskAdaptor["getRequestGetters"]>[0],
+  ) {
     return {
       getLLM: () => {
         const llm = this.getLLM();
@@ -69,6 +131,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
         vscodeHost.readEnvironment({
           webviewKind: globalThis.POCHI_WEBVIEW_KIND,
           taskId: context.taskId,
+          omitCustomRules: context.omitCustomRules,
         }),
       getAutoMemory: () => this.getAutoMemory(),
       getMcpInfo: () => ({
@@ -80,16 +143,56 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     };
   }
 
+  async resolveTaskLLM(
+    context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
+  ) {
+    const { taskState } = context;
+    if (!taskState.agentType) {
+      return undefined;
+    }
+    const agent = this.customAgents
+      .filter(isValidCustomAgentFile)
+      .find((a) => a.name === taskState.agentType);
+    if (!agent?.model) return undefined;
+
+    const resolvedModel = resolveModelFromId(agent.model, this.modelList);
+    if (resolvedModel) return displayModelToLLM(resolvedModel);
+
+    if (agent.isBuiltIn) {
+      // Built-in special models are currently served by the Pochi vendor.
+      const credentialSource = this.modelList.find(
+        (model) => model.type === "vendor" && model.vendorId === "pochi",
+      );
+      if (credentialSource?.type === "vendor") {
+        return displayModelToLLM({
+          type: "vendor",
+          id: agent.model,
+          name: agent.model,
+          vendorId: "pochi",
+          modelId: agent.model,
+          options: {},
+          getCredentials: credentialSource.getCredentials,
+        });
+      }
+    }
+
+    logger.warn(
+      `Model "${agent.model}" for agent ${agent.name} not found; falling back to the selected model.`,
+    );
+    return undefined;
+  }
+
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
-    const result = await vscodeHost.executeToolCall(args.toolName, args.input, {
+    let result = await vscodeHost.executeToolCall(args.toolName, args.input, {
       toolCallId: args.toolCallId,
       abortSignal: ThreadAbortSignal.serialize(args.abortSignal),
       toolPolicies: args.toolPolicies,
       storeId: args.storeId,
       taskId: args.taskId,
       fileStateCacheSourceTaskId: args.parentTaskId,
+      allowBackground: args.allowBackground,
     });
 
     if (
@@ -98,7 +201,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       result !== null &&
       "streamingOutput" in result
     ) {
-      return waitForExecuteCommandOutput(
+      result = await waitForExecuteCommandOutput(
         result.streamingOutput as ThreadSignalSerialization<ExecuteCommandResult>,
         args.abortSignal,
       );
@@ -289,4 +392,22 @@ function waitForSignal<T>(
       }
     });
   });
+}
+
+async function connectSignal<T>(
+  serialized: ThreadSignalSerialization<T>,
+  abortSignal: AbortSignal,
+) {
+  let started: unknown;
+  const connected = threadSignal(
+    {
+      ...serialized,
+      start(...args) {
+        started = serialized.start(...args);
+      },
+    },
+    { signal: abortSignal },
+  );
+  await started;
+  return connected;
 }

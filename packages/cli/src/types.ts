@@ -2,13 +2,20 @@ import type { BrowserSessionStore } from "@getpochi/common/browser";
 import type { McpHub } from "@getpochi/common/mcp-utils";
 import type { FileStateCache } from "@getpochi/common/tool-utils";
 import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
-import type { BlobStore, LLMRequestData } from "@getpochi/livekit";
+import type {
+  BackgroundJobManager,
+  BlobStore,
+  LLMRequestData,
+} from "@getpochi/livekit";
 import type { CustomAgent, Skill } from "@getpochi/tools";
-import type { BackgroundJobManager } from "./lib/background-job-manager";
 import type { FileSystem } from "./lib/file-system";
+import type { CliRunningTaskAdaptor } from "./running-task-adaptor";
 import type { TaskRunner } from "./task-runner";
 
 export interface ToolCallOptions {
+  taskId: string;
+  /** Host policy for command execution, including promotion on timeout. */
+  allowBackground?: boolean;
   /**
    * The path to the ripgrep executable.
    * This is used for searching files in the task runner.
@@ -56,15 +63,34 @@ export interface ToolCallOptions {
     overrideOptions?: CreateSubTaskRunnerOverrideOptions,
   ) => TaskRunner;
 
+  /** Unified command and subagent job control. */
+  backgroundJobManager: Pick<
+    ReturnType<BackgroundJobManager["forTask"]>,
+    "kill"
+  >;
+
+  /**
+   * Converts an already-inited subtask into a background subagent task
+   * executed by the TaskExecutor (optional, used by newTask tool with
+   * background).
+   */
+  backgroundSubTask?: (options: {
+    taskId: string;
+    agentType?: string;
+  }) => Promise<void>;
+
   /**
    * MCP Hub instance for accessing MCP server tools
    */
   mcpHub?: McpHub;
 
   /**
-   * Manager for handling background jobs in the CLI
+   * CLI command execution shared by the main task and its agents
    */
-  backgroundJobManager: BackgroundJobManager;
+  adaptor: Pick<
+    CliRunningTaskAdaptor,
+    "startBackgroundCommand" | "adoptBackgroundCommand"
+  >;
 
   /**
    * Store for managing browser sessions

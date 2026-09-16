@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  BackgroundTaskDetail,
-  BackgroundTaskRow,
-} from "./background-task-debug-panel";
+import { BackgroundTaskDetail } from "./background-task-debug-panel";
 
 const task = {
   id: "task-1",
@@ -85,20 +82,6 @@ function openTaskDetail() {
 function getDetailValue(label: string): string | null | undefined {
   return screen.getByText(label).parentElement?.lastElementChild?.textContent;
 }
-
-describe("BackgroundTaskRow", () => {
-  it("names the task and hands its id back when picked", () => {
-    const onSelect = vi.fn();
-    // biome-ignore lint/suspicious/noExplicitAny: the store rows are mocked.
-    render(<BackgroundTaskRow task={task as any} onSelect={onSelect} />);
-
-    fireEvent.click(screen.getByText("Background task"));
-    expect(onSelect).toHaveBeenCalled();
-    // A failed task rests on a dot, it does not spin.
-    expect(document.querySelector(".animate-spin")).toBeNull();
-    expect(document.querySelector(".bg-destructive")).not.toBeNull();
-  });
-});
 
 describe("BackgroundTaskDetail", () => {
   beforeEach(() => {
@@ -216,3 +199,7 @@ describe("BackgroundTaskDetail", () => {
     expect(getDetailValue("Input Tokens")).toBe("-");
   });
 });
+
+vi.mock("../hooks/use-background-job-list", () => ({
+  useBackgroundTaskStatus: () => undefined,
+}));

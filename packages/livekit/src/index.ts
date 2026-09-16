@@ -4,7 +4,6 @@ export { defaultCatalog as catalog } from "./livestore";
 export {
   LiveChatKit,
   type LiveChatKitBackgroundJobNotificationOptions,
-  type LiveChatKitBackgroundTaskOptions,
   type LiveChatKitOptions,
   type LiveChatKitProjectMemoryOptions,
   type LiveChatKitTaskMemoryOptions,
@@ -29,11 +28,13 @@ export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
+  createBackgroundSubagentNotification,
   extractAttemptCompletionResult,
   extractTaskResult,
   formatFollowupQuestions,
   getTaskErrorMessage,
   isAwaitingFollowupAnswer,
+  isResultMessage,
   mapTaskStatusToBackgroundStatus,
 } from "./task-utils";
 export type {
@@ -41,3 +42,14 @@ export type {
   TaskStatusLike,
 } from "./task-utils";
 export { toTaskStatus } from "./task";
+
+export {
+  BackgroundJobManager,
+  type BackgroundCommandAdaptor,
+  type BackgroundJobManagerOptions,
+  type BackgroundTaskStateStore,
+} from "./background-job/manager";
+export type {
+  BackgroundJobEntry,
+  JobStatus,
+} from "./background-job/state";

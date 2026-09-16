@@ -860,6 +860,7 @@ it("renders monitor batches only inside their message notification container", (
         {
           type: "data-background-job-notification",
           data: {
+            kind: "command",
             notificationId: "command",
             backgroundJobId: "bgjob-cmd-1",
             command: "echo done",
@@ -916,7 +917,8 @@ it("renders monitor batches only inside their message notification container", (
   for (const group of groups) {
     const triggers = group.querySelectorAll("[aria-expanded][aria-controls]");
     expect(triggers).toHaveLength(1);
-    fireEvent.click(triggers[0]);
+    if (triggers[0].getAttribute("aria-expanded") !== "true")
+      fireEvent.click(triggers[0]);
   }
   expect(
     screen.getAllByTestId("notification-row").map((row) => row.textContent),

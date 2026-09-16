@@ -2,13 +2,14 @@
  * Host-agnostic event extraction layer for the startMonitor tool.
  *
  * A MonitorWatcher taps the raw output chunks of a background job
- * (VSCode TerminalJob / CLI BackgroundJobManager), turns them into
+ * (VSCode TerminalJob / CLI CliRunningTaskAdaptor), turns them into
  * line events, and batches them before delivery:
  *
  *   chunk -> strip ANSI -> partial-line buffer -> split lines
  *         -> batch (BatchIntervalMs) -> onEvents(lines)
  */
 
+import type { BackgroundJobNotification } from "../message";
 import { prompts } from "../prompts";
 
 /** Lines arriving within this window are delivered as one batch. */
@@ -243,3 +244,7 @@ export function formatMonitorNotifications(
     `The following events were captured by background monitors started with startMonitor. This is an automated notification, not user input:\n${body}`,
   );
 }
+
+export type BackgroundJobEvent =
+  | BackgroundJobNotification
+  | MonitorEventEnvelope;

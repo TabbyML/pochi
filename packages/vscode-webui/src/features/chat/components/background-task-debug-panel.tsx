@@ -1,3 +1,4 @@
+import { useBackgroundTaskStatus } from "../hooks/use-background-job-list";
 /**
  * Dev-mode background tasks, rendered as one group of the manage panel. Being
  * developer-only, the strings here are not translated.
@@ -13,40 +14,6 @@ import { ArrowLeftIcon } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { formatTokens } from "../lib/format-tokens";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
-
-export const BackgroundTasksLabel = "Background tasks";
-
-export function useBackgroundTasks(): readonly Task[] {
-  const store = useDefaultStore();
-  return store.useQuery(catalog.queries.backgroundTasks$);
-}
-
-export function BackgroundTaskRow({
-  task,
-  onSelect,
-}: {
-  task: Task;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left transition-colors",
-        "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-      )}
-    >
-      <BackgroundTaskStatusIndicator status={task.status} />
-      <span className="min-w-0 flex-1 truncate text-sm">
-        {task.title || "(Untitled)"}
-      </span>
-      <span className="shrink-0 text-muted-foreground text-sm">
-        {formatRelative(task.updatedAt)}
-      </span>
-    </button>
-  );
-}
 
 export function isBackgroundTaskRunning(status: Task["status"]): boolean {
   return status === "pending-model" || status === "pending-tool";
@@ -69,17 +36,22 @@ function statusTone(status: Task["status"]): RowStatusTone {
 }
 
 export function BackgroundTaskDetail({
+  backgroundJobId,
+  showDiagnostics = !backgroundJobId,
   taskId,
   isOpen = true,
   onBack,
 }: {
   taskId: string;
+  backgroundJobId?: string;
+  showDiagnostics?: boolean;
   isOpen?: boolean;
   onBack: () => void;
 }) {
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
+  const jobStatus = useBackgroundTaskStatus(taskId);
   const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(taskId));
   const { backgroundTaskState } = useBackgroundTaskState(taskId);
 
@@ -87,10 +59,11 @@ export function BackgroundTaskDetail({
     () => ({
       messages: messageRows.map((row) => row.data as Message),
       todos: task?.todos ? [...task.todos] : [],
-      isLoading:
-        task?.status === "pending-model" || task?.status === "pending-tool",
+      isLoading: jobStatus
+        ? jobStatus === "running"
+        : task?.status === "pending-model" || task?.status === "pending-tool",
     }),
-    [messageRows, task?.todos, task?.status],
+    [messageRows, task?.todos, task?.status, jobStatus],
   );
   const latestAssistantMessage = source.messages.findLast(
     (message) =>
@@ -121,51 +94,66 @@ export function BackgroundTaskDetail({
           <ArrowLeftIcon className="size-4" />
         </Button>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {task && <BackgroundTaskStatusIndicator status={task.status} />}
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate font-medium text-sm">
-              {task?.title || "(Untitled)"}
-            </span>
-            <span className="truncate font-mono text-[10px] text-muted-foreground">
-              {taskId}
-            </span>
-          </div>
+          {task &&
+            (jobStatus ? (
+              <RowStatusIndicator
+                isRunning={jobStatus === "running"}
+                tone={
+                  jobStatus === "failed"
+                    ? "danger"
+                    : jobStatus === "completed"
+                      ? "success"
+                      : "muted"
+                }
+              />
+            ) : backgroundJobId && task.error?.kind === "AbortError" ? (
+              <RowStatusIndicator isRunning={false} tone="muted" />
+            ) : (
+              <BackgroundTaskStatusIndicator status={task.status} />
+            ))}
+          <span className="truncate font-medium text-sm">
+            {task?.title || "(Untitled)"}
+          </span>
         </div>
       </div>
-      <div className="grid shrink-0 grid-cols-2 gap-x-3 gap-y-1 border-b px-3 py-2 text-xs">
-        <DetailRow label="Status" value={task?.status} />
-        <DetailRow
-          label="Updated"
-          value={task ? formatRelative(task.updatedAt) : undefined}
-        />
-        <DetailRow
-          label="Cache Input Tokens"
-          value={formatDetailedTokens(latestAssistantMetadata?.cacheReadTokens)}
-        />
-        <DetailRow
-          label="Input Tokens"
-          value={formatDetailedTokens(latestAssistantMetadata?.inputTokens)}
-        />
-        {backgroundTaskState?.useCase && (
-          <DetailRow label="Use case" value={backgroundTaskState.useCase} />
-        )}
-        {backgroundTaskState?.parentTaskId && (
+      {showDiagnostics && (
+        <div className="grid shrink-0 grid-cols-2 gap-x-3 gap-y-1 border-b px-3 py-2 text-xs">
+          <DetailRow label="Status" value={task?.status} />
           <DetailRow
-            label="Parent"
-            value={backgroundTaskState.parentTaskId.slice(0, 8)}
-            mono
+            label="Updated"
+            value={task ? formatRelative(task.updatedAt) : undefined}
           />
-        )}
-        {backgroundTaskState?.tools?.length !== undefined && (
           <DetailRow
-            label="Tools"
-            value={`${backgroundTaskState.tools.length}`}
+            label="Cache Input Tokens"
+            value={formatDetailedTokens(
+              latestAssistantMetadata?.cacheReadTokens,
+            )}
           />
-        )}
-        {task?.error?.message && (
-          <DetailRow label="Error" value={task.error.message} fullWidth />
-        )}
-      </div>
+          <DetailRow
+            label="Input Tokens"
+            value={formatDetailedTokens(latestAssistantMetadata?.inputTokens)}
+          />
+          {backgroundTaskState?.useCase && (
+            <DetailRow label="Use case" value={backgroundTaskState.useCase} />
+          )}
+          {backgroundTaskState?.parentTaskId && (
+            <DetailRow
+              label="Parent"
+              value={backgroundTaskState.parentTaskId.slice(0, 8)}
+              mono
+            />
+          )}
+          {backgroundTaskState?.tools?.length !== undefined && (
+            <DetailRow
+              label="Tools"
+              value={`${backgroundTaskState.tools.length}`}
+            />
+          )}
+          {task?.error?.message && (
+            <DetailRow label="Error" value={task.error.message} fullWidth />
+          )}
+        </div>
+      )}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
         <TaskThread
           source={source}

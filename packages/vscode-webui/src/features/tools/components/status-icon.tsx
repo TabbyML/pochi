@@ -26,6 +26,11 @@ interface StatusIconProps {
   isExecuting: boolean;
   className?: string;
   iconClassName?: string;
+  /** Actual asynchronous task state, when the tool has already returned. */
+  statusOverride?: {
+    status: "running" | "completed" | "failed";
+    label: string;
+  };
 }
 
 export function StatusIcon({
@@ -33,6 +38,7 @@ export function StatusIcon({
   isExecuting,
   className,
   iconClassName,
+  statusOverride,
 }: StatusIconProps) {
   const { t } = useTranslation();
   const [isDevMode] = useIsDevMode();
@@ -106,6 +112,38 @@ export function StatusIcon({
         )}
       />
     );
+  }
+
+  if (statusOverride) {
+    const icons = {
+      running: Loader2,
+      completed: Check,
+      failed: X,
+    };
+    const Icon = icons[statusOverride.status];
+    statusIcon = (
+      <span
+        role="img"
+        aria-label={statusOverride.label}
+        className="inline-flex"
+      >
+        <Icon
+          className={cn(
+            "size-4",
+            {
+              "animate-spin text-zinc-500 dark:text-zinc-400":
+                statusOverride.status === "running",
+              "text-emerald-700 dark:text-emerald-300":
+                statusOverride.status === "completed",
+              "text-error": statusOverride.status === "failed",
+            },
+            iconClassName,
+          )}
+          aria-hidden="true"
+        />
+      </span>
+    );
+    tooltipContent.push(<p>{statusOverride.label}</p>);
   }
 
   if (tooltipContent.length > 0) {

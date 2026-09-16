@@ -17,6 +17,7 @@
     "./tool-utils": "./src/tool-utils/index.ts",
     "./mcp-utils": "./src/mcp-utils/index.ts",
     "./vscode-webui-bridge": "./src/vscode-webui-bridge/index.ts",
+    "./vscode-webui-bridge/thread-signal": "./src/vscode-webui-bridge/thread-signal.ts",
     "./store-id-utils": "./src/store-id-utils.ts",
     "./share-utils": "./src/share-utils.ts",
     "./fetch-utils": "./src/fetch-utils.ts",

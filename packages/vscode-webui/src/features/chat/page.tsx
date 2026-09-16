@@ -39,10 +39,7 @@ import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
 import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
-import {
-  useBackgroundJobNotificationDelivery,
-  useBackgroundJobNotificationSink,
-} from "./hooks/use-background-job-notification-delivery";
+import { useBackgroundJobNotificationSink } from "./hooks/use-background-job-notification-sink";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatMemory } from "./hooks/use-chat-memory";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
@@ -68,10 +65,19 @@ import {
 } from "./styles";
 
 export function ChatPage(props: ChatProps) {
+  const store = useDefaultStore();
+  const task = store.useQuery(catalog.queries.makeTaskQuery(props.uid));
+  const memory = useChatMemory({
+    taskId: props.uid,
+    isSubTask: !!task?.parentId,
+  });
+  if (memory.error) throw memory.error;
+  // Load the host-backed state before mounting any chat execution hooks.
+  if (!memory.isReady) return <ChatSkeleton />;
   return (
     <ChatContextProvider>
       <FilesProvider>
-        <Chat {...props} />
+        <Chat {...props} memory={memory} />
       </FilesProvider>
     </ChatContextProvider>
   );
@@ -83,7 +89,12 @@ interface ChatProps {
   info: PochiTaskInfo;
 }
 
-function Chat({ user, uid, info }: ChatProps) {
+function Chat({
+  user,
+  uid,
+  info,
+  memory,
+}: ChatProps & { memory: ReturnType<typeof useChatMemory> }) {
   const store = useDefaultStore();
   const storeRegistry = useStoreRegistry();
   const { jwt } = usePochiCredentials();
@@ -195,10 +206,7 @@ function Chat({ user, uid, info }: ChatProps) {
     autoApproveSettings,
   });
 
-  const { backgroundTask, taskMemory, projectMemory } = useChatMemory({
-    taskId: uid,
-    isSubTask,
-  });
+  const { taskMemory, projectMemory } = memory;
 
   const [isCompacting, setIsCompacting] = useState(false);
   const onCompactStart = useCallback(() => {
@@ -230,7 +238,6 @@ function Chat({ user, uid, info }: ChatProps) {
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
-    backgroundTask,
     backgroundJobNotifications,
     taskMemory,
     projectMemory,
@@ -306,12 +313,6 @@ function Chat({ user, uid, info }: ChatProps) {
   });
 
   const { messages, sendMessage, status } = chat;
-
-  useBackgroundJobNotificationDelivery({
-    taskId: uid,
-    messages,
-    enqueue: chatKit.enqueueBackgroundJobNotifications,
-  });
 
   const isLoading = status === "streaming" || status === "submitted";
   const todoModeActive =
