@@ -858,9 +858,12 @@ export class LiveChatKit<
 
   /** Save each returned tool result before the rest of the batch completes. */
   persistToolOutput = () => {
-    const message = this.chat.messages.find(
-      (message) => message.id === this.currentToolsExecution?.messageId,
-    );
+    const messages = this.chat.messages;
+    const message = this.currentToolsExecution
+      ? messages.find(
+          (message) => message.id === this.currentToolsExecution?.messageId,
+        )
+      : messages.findLast((message) => message.role === "assistant");
     if (message)
       this.store.commit(
         events.toolsExecutionFinished({

@@ -18,6 +18,7 @@ interface UseAddCompleteToolCallsProps {
   messages: Message[];
   enable: boolean;
   addToolOutput: Chat<Message>["addToolOutput"];
+  persistToolOutput: () => void;
   updateTodoCompletion?: (update: TodoCompletionUpdate) => void;
 }
 
@@ -38,8 +39,8 @@ function isToolStateCall(message: Message, toolCallId: string): boolean {
 export function useAddCompleteToolCalls({
   messages,
   enable,
-  // setMessages,
   addToolOutput,
+  persistToolOutput,
   updateTodoCompletion,
 }: UseAddCompleteToolCallsProps): void {
   const { completeToolCalls } = useToolCallLifeCycle();
@@ -91,12 +92,14 @@ export function useAddCompleteToolCalls({
         },
         "Tool call completed",
       );
-      addToolOutput({
-        // @ts-expect-error
-        tool: toolCall.toolName,
-        toolCallId: toolCall.toolCallId,
-        output: toolOutput,
-      });
+      void Promise.resolve(
+        addToolOutput({
+          // @ts-expect-error
+          tool: toolCall.toolName,
+          toolCallId: toolCall.toolCallId,
+          output: toolOutput,
+        }),
+      ).then(persistToolOutput);
       toolCall.dispose();
     }
   }, [
@@ -104,6 +107,7 @@ export function useAddCompleteToolCalls({
     completeToolCalls,
     messages,
     addToolOutput,
+    persistToolOutput,
     updateTodoCompletion,
   ]);
 }

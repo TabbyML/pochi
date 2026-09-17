@@ -294,6 +294,7 @@ function renderToolbar(
       taskId="task-1"
       flushBackgroundJobNotifications={flushBackgroundJobNotifications}
       pendingBackgroundJobNotifications={pendingBackgroundJobNotifications}
+      persistToolOutput={vi.fn()}
     />,
   );
 }

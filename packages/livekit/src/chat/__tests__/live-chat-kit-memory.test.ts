@@ -302,6 +302,52 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 
+  it("persists a tool result after remounting during manual execution", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+      }),
+    ]);
+    store.setTaskMessages("parent", [
+      userMessage(),
+      assistantReadFileMessage("input-available"),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+
+    chatKit.chat.messages = [
+      userMessage(),
+      {
+        ...assistantReadFileMessage("input-available"),
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "call-read-file",
+            state: "output-available",
+            input: { path: "README.md" },
+            output: { content: "README contents" },
+          },
+        ],
+      } as unknown as Message,
+    ];
+
+    chatKit.persistToolOutput();
+
+    expect(store.taskMessages("parent").at(-1)?.parts[0]).toMatchObject({
+      state: "output-available",
+      output: { content: "README contents" },
+    });
+  });
+
   it("persists tool results when recording execution duration", () => {
     vi.useFakeTimers();
     try {

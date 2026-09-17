@@ -159,7 +159,8 @@ describe("useAddCompleteToolCalls", () => {
   it("reports todo completion updates through one action", async () => {
     const resolvedTodos: Todo[] = [{ ...baseTodos[0], status: "completed" }];
     const dispose = vi.fn();
-    const addToolOutput = vi.fn();
+    const addToolOutput = vi.fn().mockResolvedValue(undefined);
+    const persistToolOutput = vi.fn();
     const updateTodoCompletion = vi.fn();
     mocks.completeToolCalls = [
       {
@@ -184,6 +185,7 @@ describe("useAddCompleteToolCalls", () => {
         messages: [makeAttemptTodoCompletionMessage()],
         enable: true,
         addToolOutput,
+        persistToolOutput,
         updateTodoCompletion,
       }),
     );
@@ -206,6 +208,46 @@ describe("useAddCompleteToolCalls", () => {
         },
       },
     });
+    await waitFor(() => expect(persistToolOutput).toHaveBeenCalledTimes(1));
     expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists a completed subtask result after adding its tool output", async () => {
+    let resolveToolOutput: (() => void) | undefined;
+    const addToolOutput = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveToolOutput = resolve;
+        }),
+    );
+    const persistToolOutput = vi.fn();
+    mocks.completeToolCalls = [
+      {
+        status: "complete",
+        toolName: "newTask",
+        toolCallId: "tool-1",
+        complete: {
+          reason: "execute-finish",
+          result: { result: "Done." },
+        },
+        dispose: vi.fn(),
+      },
+    ];
+
+    renderHook(() =>
+      useAddCompleteToolCalls({
+        messages: [makeAttemptTodoCompletionMessage()],
+        enable: true,
+        addToolOutput,
+        persistToolOutput,
+      }),
+    );
+
+    await waitFor(() => expect(addToolOutput).toHaveBeenCalledTimes(1));
+    expect(persistToolOutput).not.toHaveBeenCalled();
+
+    resolveToolOutput?.();
+
+    await waitFor(() => expect(persistToolOutput).toHaveBeenCalledTimes(1));
   });
 });
