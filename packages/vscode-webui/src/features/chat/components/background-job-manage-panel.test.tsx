@@ -223,6 +223,26 @@ describe("BackgroundJobManagePanel", () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it("matches the stop message icon and hover surface", () => {
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        kind: "subagent",
+        title: "Review tests",
+        status: "running",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+
+    const stopButton = screen.getByRole("button", {
+      name: "backgroundTasks.stop",
+    });
+    expect(stopButton.querySelector(".lucide-circle-stop")).not.toBeNull();
+    expect(stopButton.className).toContain("hover:bg-foreground/10");
+    expect(stopButton.className).toContain("dark:hover:bg-foreground/10");
+  });
+
   it("labels stopped subagents awaiting delivery without a kill action", () => {
     backgroundJobs = [
       {
@@ -583,7 +603,7 @@ describe("BackgroundJobManagePanel", () => {
     expect(screen.getByText("managePanel.empty")).toBeDefined();
   });
 
-  it("merges system agents with subagents without duplicating rows or counts", () => {
+  it("merges system agents with subagents without counting system agents", () => {
     isDevMode = true;
     backgroundJobs = [
       {
@@ -608,7 +628,7 @@ describe("BackgroundJobManagePanel", () => {
       screen
         .getByTestId("background-job-manage-panel-toggle")
         .querySelector(".bg-blue-500")?.textContent,
-    ).toBe("2");
+    ).toBe("1");
   });
 
   it("lists background tasks in dev mode", () => {
@@ -623,7 +643,7 @@ describe("BackgroundJobManagePanel", () => {
     expect(screen.queryByText("managePanel.empty")).toBeNull();
   });
 
-  it("counts running background tasks into the badge in dev mode", () => {
+  it("leaves running system agents out of the badge in dev mode", () => {
     isDevMode = true;
     backgroundJobs = [runningJob];
     backgroundTasks = [
@@ -637,7 +657,7 @@ describe("BackgroundJobManagePanel", () => {
       screen
         .getByTestId("background-job-manage-panel-toggle")
         .querySelector(".bg-blue-500")?.textContent,
-    ).toBe("2");
+    ).toBe("1");
   });
 
   it("leaves running background tasks out of the badge outside dev mode", () => {

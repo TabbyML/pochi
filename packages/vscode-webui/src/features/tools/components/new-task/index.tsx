@@ -15,7 +15,6 @@ import {
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import { constants } from "@getpochi/common";
 import { getStaticToolName } from "ai";
@@ -189,20 +188,10 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
           className="flex h-5 shrink-0 items-center self-start leading-none"
         />
       )}
-      <div
-        className={cn(
-          "min-w-0 flex-1 text-muted-foreground leading-5",
-          isBackground
-            ? "flex items-center gap-2 overflow-hidden whitespace-nowrap"
-            : "break-words",
-        )}
-      >
+      <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
         <Badge
           variant="secondary"
-          className={cn(
-            "inline-flex h-5 shrink-0 py-0 align-top",
-            !isBackground && "mr-2",
-          )}
+          className="mr-2 inline-flex h-5 shrink-0 py-0 align-top"
         >
           {uid && isBackground && isVSCodeEnvironment() ? (
             <BackgroundTaskButton taskId={uid}>
@@ -230,14 +219,7 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
           )}
         </Badge>
         {description && (
-          <span
-            className={
-              isBackground ? "min-w-0 truncate" : "break-words align-top"
-            }
-            title={isBackground ? description : undefined}
-          >
-            {description}
-          </span>
+          <span className="break-words align-top">{description}</span>
         )}
       </div>
       {onMoveToBackground && (
