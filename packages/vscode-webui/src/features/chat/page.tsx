@@ -523,6 +523,7 @@ function Chat({
           flushBackgroundJobNotifications={
             chatKit.flushBackgroundJobNotifications
           }
+          persistToolOutput={chatKit.persistToolOutput}
           onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}

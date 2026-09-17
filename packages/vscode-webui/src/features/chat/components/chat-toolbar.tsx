@@ -101,6 +101,7 @@ interface ChatToolbarProps {
   pendingBackgroundJobNotifications?: readonly BackgroundJobNotificationPart[];
   /** Asks the chat kit to deliver those notifications right away. */
   flushBackgroundJobNotifications?: () => boolean;
+  persistToolOutput: () => void;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
@@ -129,6 +130,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   getSystemPrompt,
   pendingBackgroundJobNotifications,
   flushBackgroundJobNotifications,
+  persistToolOutput,
   onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
@@ -422,6 +424,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
+    persistToolOutput,
     updateTodoCompletion,
   });
 
