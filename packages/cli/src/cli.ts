@@ -226,6 +226,11 @@ const program = new Command()
     "Specify the model to be used for the task.",
     "google/gemini-3-flash",
   )
+  .option(
+    "--use-reasoning-middleware",
+    "Enable reasoning middleware for the task.",
+    false,
+  )
   .optionsGroup("MCP:")
   .option(
     "--no-mcp",
@@ -631,7 +636,7 @@ async function createLLMConfig(
   options: ProgramOpts,
 ): Promise<LLMRequestData> {
   const model = options.model;
-  const llm = await resolveListedLLMConfig(model);
+  const llm = await resolveListedLLMConfig(model, options);
   if (llm) return llm;
 
   const separatorIndex = model.indexOf("/");
@@ -649,16 +654,17 @@ async function createLLMConfig(
 
 async function resolveListedLLMConfig(
   model: string,
+  options?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const separatorIndex = model.indexOf("/");
   const vendorId = model.slice(0, separatorIndex);
   if (vendorId in getVendors()) {
-    return createLLMConfigWithVendors(model);
+    return createLLMConfigWithVendors(model, options);
   }
 
   return (
-    (await createLLMConfigWithPochi(model)) ||
-    (await createLLMConfigWithProviders(model))
+    (await createLLMConfigWithPochi(model, options)) ||
+    (await createLLMConfigWithProviders(model, options))
   );
 }
 
@@ -686,6 +692,7 @@ async function resolveSubTaskLLM(
 
 async function createLLMConfigWithVendors(
   model: string,
+  options?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const sep = model.indexOf("/");
   const vendorId = model.slice(0, sep);
@@ -696,26 +703,29 @@ async function createLLMConfigWithVendors(
     const vendor = vendors[vendorId as keyof typeof vendors];
     const models =
       await vendors[vendorId as keyof typeof vendors].fetchModels();
-    const options = models[modelId];
-    if (!options) return;
+    const modelOptions = models[modelId];
+    if (!modelOptions) return;
     return {
       id: `${vendorId}/${modelId}`,
       type: "vendor",
-      contextWindow: options.contextWindow,
+      contextWindow: modelOptions.contextWindow,
 
-      useToolCallMiddleware: options.useToolCallMiddleware,
+      useToolCallMiddleware: modelOptions.useToolCallMiddleware,
+      useReasoningMiddleware:
+        options?.useReasoningMiddleware || modelOptions.useReasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId,
           getCredentials: vendor.getCredentials,
         }),
-      contentType: options.contentType,
+      contentType: modelOptions.contentType,
     } satisfies LLMRequestData;
   }
 }
 
 async function createLLMConfigWithPochi(
   model: string,
+  options?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const vendor = getVendor("pochi");
   const pochiModels = await vendor.fetchModels();
@@ -728,6 +738,9 @@ async function createLLMConfigWithPochi(
       contextWindow: pochiModelOptions.contextWindow,
 
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
+      useReasoningMiddleware:
+        options?.useReasoningMiddleware ||
+        pochiModelOptions.useReasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId: model,
@@ -740,6 +753,7 @@ async function createLLMConfigWithPochi(
 
 async function createLLMConfigWithProviders(
   model: string,
+  options?: ProgramOpts,
 ): Promise<LLMRequestData | undefined> {
   const sep = model.indexOf("/");
   const providerId = model.slice(0, sep);
@@ -762,6 +776,8 @@ async function createLLMConfigWithProviders(
 
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      useReasoningMiddleware:
+        options?.useReasoningMiddleware || modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -778,6 +794,8 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware:
+        options?.useReasoningMiddleware || modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -801,6 +819,8 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware:
+        options?.useReasoningMiddleware || modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }

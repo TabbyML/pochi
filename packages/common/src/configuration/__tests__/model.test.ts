@@ -14,6 +14,7 @@ describe("Model configuration types", () => {
             name: "GPT-4",
             maxTokens: 4096,
             contextWindow: 8192,
+            useReasoningMiddleware: true,
           },
         },
       });
@@ -51,6 +52,7 @@ describe("Model configuration types", () => {
         models: {
           "custom-model": {
             name: "Custom Model",
+            useReasoningMiddleware: false,
           },
         },
       });
@@ -70,6 +72,7 @@ describe("Model configuration types", () => {
           "claude-3": {
             name: "Claude 3",
             maxTokens: 100000,
+            useReasoningMiddleware: true,
           },
         },
       });
@@ -88,6 +91,7 @@ describe("Model configuration types", () => {
           "gateway-model": {
             name: "Gateway Model",
             useToolCallMiddleware: true,
+            useReasoningMiddleware: false,
           },
         },
       });
@@ -96,6 +100,7 @@ describe("Model configuration types", () => {
         expect(config.apiKey).toBe("gateway-key");
       }
       expect(config.models["gateway-model"].useToolCallMiddleware).toBe(true);
+      expect(config.models["gateway-model"].useReasoningMiddleware).toBe(false);
     });
   });
 
@@ -118,12 +123,14 @@ describe("Model configuration types", () => {
             maxTokens: 1000,
             contextWindow: 2000,
             useToolCallMiddleware: false,
+            useReasoningMiddleware: true,
           },
         },
       });
       expect(config.models.test.maxTokens).toBe(1000);
       expect(config.models.test.contextWindow).toBe(2000);
       expect(config.models.test.useToolCallMiddleware).toBe(false);
+      expect(config.models.test.useReasoningMiddleware).toBe(true);
     });
   });
 });

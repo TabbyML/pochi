@@ -18,6 +18,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
       type: "vendor",
       contextWindow: model.options.contextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
+      useReasoningMiddleware: model.options.useReasoningMiddleware,
       getModel: () =>
         createModel(model.vendorId, {
           modelId: model.modelId,
@@ -39,6 +40,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
       contextWindow:
         model.options.contextWindow ?? constants.DefaultContextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
+      useReasoningMiddleware: model.options.useReasoningMiddleware,
       contentType: model.contentType,
     };
   }
@@ -54,6 +56,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
       contextWindow:
         model.options.contextWindow ?? constants.DefaultContextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
+      useReasoningMiddleware: model.options.useReasoningMiddleware,
       contentType: model.contentType,
     };
   }
@@ -61,8 +64,8 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
   if (
     provider.kind === undefined ||
     provider.kind === "openai" ||
-    provider.kind === "anthropic" ||
     provider.kind === "openai-responses" ||
+    provider.kind === "anthropic" ||
     provider.kind === "minimax"
   ) {
     return {
@@ -76,6 +79,7 @@ export function displayModelToLLM(model: DisplayModel): LLMRequestData {
       contextWindow:
         model.options.contextWindow ?? constants.DefaultContextWindow,
       useToolCallMiddleware: model.options.useToolCallMiddleware,
+      useReasoningMiddleware: model.options.useReasoningMiddleware,
       contentType: model.contentType,
     };
   }

@@ -82,7 +82,7 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
       border: ["gray"],
       compact: false,
     },
-    colWidths: [40, 12, 15],
+    colWidths: [40, 12, 20],
     wordWrap: true,
   });
 
@@ -92,7 +92,14 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const enabledFeatures = [];
+    if (modelInfo.useToolCallMiddleware) {
+      enabledFeatures.push("ReAct ✓");
+    }
+    if (modelInfo.useReasoningMiddleware) {
+      enabledFeatures.push("Reas. ✓");
+    }
+    const features = enabledFeatures.join(", ") || "-";
 
     table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
@@ -135,7 +142,7 @@ function displayProviderModels(
       border: ["gray"],
       compact: false,
     },
-    colWidths: [40, 12, 15],
+    colWidths: [40, 12, 20],
     wordWrap: true,
   });
 
@@ -145,7 +152,14 @@ function displayProviderModels(
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const enabledFeatures = [];
+    if (modelInfo.useToolCallMiddleware) {
+      enabledFeatures.push("ReAct ✓");
+    }
+    if (modelInfo.useReasoningMiddleware) {
+      enabledFeatures.push("Reas. ✓");
+    }
+    const features = enabledFeatures.join(", ") || "-";
 
     table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }

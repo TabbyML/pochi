@@ -85,9 +85,20 @@ const RequestData = z.object({
 
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
+
         .boolean()
+
         .optional()
+
         .describe("Whether to use tool call middleware"),
+
+      useReasoningMiddleware: z
+
+        .boolean()
+
+        .optional()
+
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -103,9 +114,20 @@ const RequestData = z.object({
 
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
+
         .boolean()
+
         .optional()
+
         .describe("Whether to use tool call middleware"),
+
+      useReasoningMiddleware: z
+
+        .boolean()
+
+        .optional()
+
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -121,9 +143,20 @@ const RequestData = z.object({
 
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
+
         .boolean()
+
         .optional()
+
         .describe("Whether to use tool call middleware"),
+
+      useReasoningMiddleware: z
+
+        .boolean()
+
+        .optional()
+
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -138,9 +171,20 @@ const RequestData = z.object({
 
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
+
         .boolean()
+
         .optional()
+
         .describe("Whether to use tool call middleware"),
+
+      useReasoningMiddleware: z
+
+        .boolean()
+
+        .optional()
+
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -155,9 +199,20 @@ const RequestData = z.object({
 
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
+
         .boolean()
+
         .optional()
+
         .describe("Whether to use tool call middleware"),
+
+      useReasoningMiddleware: z
+
+        .boolean()
+
+        .optional()
+
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -172,9 +227,20 @@ const RequestData = z.object({
       contextWindow: z.number().describe("Context window of the model."),
       maxOutputTokens: z.number().describe("Max output tokens of the model."),
       useToolCallMiddleware: z
+
         .boolean()
+
         .optional()
+
         .describe("Whether to use tool call middleware"),
+
+      useReasoningMiddleware: z
+
+        .boolean()
+
+        .optional()
+
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -189,9 +255,20 @@ const RequestData = z.object({
         .describe("Context window of the model."),
 
       useToolCallMiddleware: z
+
         .boolean()
+
         .optional()
+
         .describe("Whether to use tool call middleware"),
+
+      useReasoningMiddleware: z
+
+        .boolean()
+
+        .optional()
+
+        .describe("Whether to use reasoning middleware"),
       getModel: z.custom<() => LanguageModelV3>(),
       contentType: z
         .array(z.string())
