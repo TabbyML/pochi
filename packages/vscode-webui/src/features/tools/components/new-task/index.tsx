@@ -17,7 +17,7 @@ import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
-import { constants } from "@getpochi/common";
+import { shouldRunSubAgentInBackground } from "@getpochi/common";
 import { getStaticToolName } from "ai";
 import { SendToBack } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
@@ -78,13 +78,13 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   const agentType =
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined;
   const parentId = taskSource?.parentId;
+  // A foreground subtask can still be handed off, unless its agent must stay
+  // in the foreground.
   const canMoveToBackground =
     isExecuting &&
     lifecycle.status === "execute:streaming" &&
     !!parentId &&
-    !tool.input?.background &&
-    agentType !== "browser" &&
-    agentType !== constants.AttemptTodoCompletionAgentName;
+    shouldRunSubAgentInBackground({ agentType });
 
   return (
     <NewTaskToolView

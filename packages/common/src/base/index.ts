@@ -21,6 +21,8 @@ export {
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
   getSubAgentNotificationId,
+  isBackgroundSubAgentRequested,
+  shouldRunSubAgentInBackground,
 } from "./subagent";
 
 export { SocialLinks } from "./social";

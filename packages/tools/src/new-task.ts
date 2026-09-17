@@ -76,7 +76,7 @@ export const inputSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      "Optional. Run the subagent in the background. The tool returns immediately with a backgroundJobId; the subagent's result arrives later as a system notification. Never assume or fabricate the result before that notification arrives.",
+      "Optional, defaults to true. Run the subagent in the background: the tool returns immediately with a backgroundJobId and the subagent's result arrives later as a system notification. Set to false to run the subagent inline and block until it finishes. Never assume or fabricate the result before that notification arrives.",
     ),
   _meta: z
     .object({
@@ -120,7 +120,7 @@ Usage notes:
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
-7. Set background to true to keep working while the subagent runs. The call returns immediately with a backgroundJobId, and the subagent's result is delivered later as a system notification. Until that notification arrives, never report, guess, or fabricate the subagent's result; if asked about it, say the subagent is still running.
+7. Subagents run in the background by default, so keep working while they run: the call returns immediately with a backgroundJobId, and the subagent's result is delivered later as a system notification. Until that notification arrives, never report, guess, or fabricate the subagent's result; if asked about it, say the subagent is still running. Set background to false only when the next step cannot start without the subagent's result.
       `.trim(),
     inputSchema,
     outputSchema: z.object({
