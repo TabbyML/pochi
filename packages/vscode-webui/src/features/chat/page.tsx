@@ -387,7 +387,7 @@ function Chat({
     }
   }, [pendingApproval, task]);
 
-  const { isInitializing } = useChatInitialization({
+  const { isInitializing, error: initializationError } = useChatInitialization({
     chatKit,
     info,
     storeRegistry,
@@ -465,6 +465,7 @@ function Chat({
     t,
   });
 
+  if (initializationError) throw initializationError;
   if (isInitializing) {
     return <ChatSkeleton />;
   }

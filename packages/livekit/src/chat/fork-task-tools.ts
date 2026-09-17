@@ -33,11 +33,10 @@ export const prepareForkTaskData = ({
 }) => {
   const now = new Date();
 
-  // Background tasks (e.g. fork-agent memory jobs) should not be copied when
-  // forking. They are currently independent root tasks, but we also defensively
-  // exclude any subtasks they might spawn in the future so a copied subtask
-  // never ends up referencing a removed parent. The task being forked
-  // (oldTaskId) is always kept even if it is a background task.
+  // Exclude independent background roots (e.g. fork-agent memory jobs) and
+  // their descendants. Background subagents with a parentId are part of the
+  // conversation and must be copied so tool-newTask references can be remapped.
+  // The task being forked (oldTaskId) is always kept.
   const taskById = new Map(tasks.map((task) => [task.id, task]));
   const isBackgroundDescendant = (task: (typeof tasks)[number]): boolean => {
     const visited = new Set<string>();
@@ -46,7 +45,7 @@ export const prepareForkTaskData = ({
       if (current.id === oldTaskId) {
         return false;
       }
-      if (current.background) {
+      if (current.background && !current.parentId) {
         return true;
       }
       if (!current.parentId || visited.has(current.id)) {

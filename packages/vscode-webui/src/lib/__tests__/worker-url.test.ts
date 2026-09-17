@@ -122,6 +122,25 @@ describe("revokeWorkerBootstrapBlobUrl", () => {
 });
 
 describe("makeSharedWorkerBootstrapUrl", () => {
+  it("reuses the same worker URL across different VS Code panels", () => {
+    const scriptUrl =
+      "http://localhost:4112/shared-worker.js?worker_file&type=module";
+    vi.stubGlobal("location", {
+      href: "vscode-webview://extension/index.html?id=source-panel",
+    });
+    const sourceUrl = makeSharedWorkerBootstrapUrl(scriptUrl, "module");
+    vi.stubGlobal("location", {
+      href: "vscode-webview://extension/index.html?id=fork-panel",
+    });
+    const forkUrl = makeSharedWorkerBootstrapUrl(scriptUrl, "module");
+
+    expect(forkUrl).toBe(sourceUrl);
+    expect(new URL(sourceUrl).search).toBe("");
+    expect(decodeURIComponent(sourceUrl.split(",")[1] ?? "")).toBe(
+      'import "http://localhost.:4112/shared-worker.js?worker_file&type=module"',
+    );
+  });
+
   it("returns a deterministic data URL", () => {
     const first = makeSharedWorkerBootstrapUrl(
       "https://example.com/shared-worker.js",
