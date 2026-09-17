@@ -455,6 +455,7 @@ const program = new Command()
 
     outputRenderer = new OutputRenderer(process.stdout, runner.state, {
       attemptCompletionSchemaOverride: !!options.attemptCompletionSchema,
+      hasPendingBackgroundJobs: () => runner.hasPendingBackgroundJobs,
     });
     let streamRenderer: StreamRenderer | undefined = undefined;
     if (jsonOutputStream) {

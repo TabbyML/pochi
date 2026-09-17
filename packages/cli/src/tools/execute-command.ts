@@ -1,10 +1,8 @@
-import { spawn } from "node:child_process";
 import * as path from "node:path";
 import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
   MaxTerminalOutputSize,
   fixExecuteCommandOutput,
-  getShellPath,
 } from "@getpochi/common/tool-utils";
 import {
   type ClientTools,
@@ -12,6 +10,7 @@ import {
   type ToolFunctionType,
   createBackgroundCommandResult,
 } from "@getpochi/tools";
+import { spawnCommand, stopCommand } from "../lib/command-process";
 import { ForegroundOutputCapture } from "../lib/foreground-output-capture";
 import type { ToolCallOptions } from "../types";
 
@@ -147,11 +146,9 @@ function executeForegroundCommand({
   CompletedCommandResult | PromotedCommandResult
 > {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, {
-      shell: getShellPath(),
+    const child = spawnCommand(command, {
       cwd,
       env: { ...process.env, ...envs, ...getTerminalEnv() },
-      stdio: ["ignore", "pipe", "pipe"],
     });
     const outputCapture = new ForegroundOutputCapture(
       child.stdout,
@@ -174,6 +171,7 @@ function executeForegroundCommand({
       removeForegroundListeners();
       let output: CompletedCommandResult;
       try {
+        await stopCommand(child);
         output = await outputCapture.finish();
       } catch (error) {
         reject(error);
@@ -240,14 +238,19 @@ function executeForegroundCommand({
     function onAbort() {
       if (state !== "foreground") return;
       stopReason = "abort";
-      if (!child.kill()) void settleStoppedCommand();
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      void stopCommand(child).then((stopped) => {
+        if (!stopped) void settleStoppedCommand();
+      }, reject);
     }
 
     const onTimeout = () => {
       if (state !== "foreground") return;
       if (!background) {
         stopReason = "timeout";
-        if (!child.kill()) void settleStoppedCommand();
+        void stopCommand(child).then((stopped) => {
+          if (!stopped) void settleStoppedCommand();
+        }, reject);
         return;
       }
 
@@ -268,7 +271,7 @@ function executeForegroundCommand({
         );
       } catch (error) {
         state = "settled";
-        child.kill();
+        void stopCommand(child).catch(() => undefined);
         void initialOutput.dispose?.();
         reject(error);
       }

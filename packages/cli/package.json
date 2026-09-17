@@ -50,7 +50,7 @@
     "start": "bun run src/cli.ts",
     "tsc": "tsc",
     "test": "bun run test:unit",
-    "test:unit": "bun vitest --run src/**/__tests__/",
+    "test:unit": "bun vitest --run src",
     "test:coverage": "bun run test:unit --coverage",
     "pretest:integration": "bun run build",
     "test:integration": "bun vitest --run tests/integration",
