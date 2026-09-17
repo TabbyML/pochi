@@ -259,8 +259,14 @@ test("injectEnvironment preserves a full environment when regenerating a request
   expect(countFullEnvironments(result)).toBe(1);
 });
 
-test("injectEnvironment does not modify history when the request ends with an assistant", () => {
+test("injectEnvironment restores a compacted environment before an assistant continuation", () => {
+  const environment = createTestEnvironment();
   const messages = [
+    createTextMessage(
+      "user-0",
+      "user",
+      createEnvironmentPrompt(environment, undefined),
+    ),
     createTextMessage(
       "user-1",
       "user",
@@ -268,11 +274,40 @@ test("injectEnvironment does not modify history when the request ends with an as
     ),
     createTextMessage("assistant-1", "assistant", "tool result"),
   ];
+  const original = structuredClone(messages);
 
-  const result = injectEnvironment(messages, createTestEnvironment());
+  const result = injectEnvironment(messages, environment);
+  const modelMessages = formatters.llm(result);
 
-  expect(countFullEnvironments(result)).toBe(0);
-  expect(getMessageText(result[0])).not.toContain("# System Information");
+  expect(countFullEnvironments(modelMessages)).toBe(1);
+  expect(result.map((message) => message.id)).toEqual(
+    original.map((message) => message.id),
+  );
+  expect(result[0]).toEqual(original[0]);
+  expect(result[2]).toEqual(original[2]);
+
+  const restored = structuredClone(result);
+  injectEnvironment(restored, { ...environment, currentTime: "later" });
+  expect(restored).toEqual(result);
+  expect(countFullEnvironments(formatters.llm(restored))).toBe(1);
+});
+
+test("injectEnvironment preserves assistant-ended history when a full environment remains visible", () => {
+  const messages = [
+    createTextMessage(
+      "user-1",
+      "user",
+      createEnvironmentPrompt(createTestEnvironment(), undefined),
+    ),
+    createTextMessage("assistant-1", "assistant", "answer"),
+    createTextMessage("user-2", "user", "follow-up"),
+    createTextMessage("assistant-2", "assistant", "tool result"),
+  ];
+  const original = structuredClone(messages);
+
+  injectEnvironment(messages, createTestEnvironment());
+
+  expect(messages).toEqual(original);
 });
 
 test("injectEnvironment uses a lite environment when a full one remains visible", () => {

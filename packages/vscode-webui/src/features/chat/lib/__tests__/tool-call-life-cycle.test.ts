@@ -45,7 +45,7 @@ async function makeStreamingNewTaskLifecycle(
     outerAbortSignal,
   );
 
-  lifecycle.execute({ _meta: { uid: "subtask-1" } });
+  lifecycle.execute({ background: false, _meta: { uid: "subtask-1" } });
   await vi.waitFor(() => expect(lifecycle.status).toBe("execute:streaming"));
 
   return lifecycle;
@@ -177,40 +177,43 @@ describe("ManagedToolCallLifeCycle", () => {
 });
 
 describe("background subagent job lifecycle", () => {
-  it("launches and registers a background subagent through the shared manager", async () => {
-    const { store, tasks } = makeJobStore();
-    tasks.set("child", {
-      id: "child",
-      parentId: "parent",
-      background: false,
-      status: "pending-model",
-    } as Task);
-    const manager = BackgroundJobManager.forStore(store);
-    const lifecycle = new ManagedToolCallLifeCycle(
-      store,
-      { toolName: "newTask", toolCallId: "start" },
-      new AbortController().signal,
-    );
-    try {
-      lifecycle.execute(
-        { background: true, agentType: "explore", _meta: { uid: "child" } },
-        { taskId: "parent" },
+  it.each([true, undefined])(
+    "launches and registers a background subagent through the shared manager (background: %s)",
+    async (background) => {
+      const { store, tasks } = makeJobStore();
+      tasks.set("child", {
+        id: "child",
+        parentId: "parent",
+        background: false,
+        status: "pending-model",
+      } as Task);
+      const manager = BackgroundJobManager.forStore(store);
+      const lifecycle = new ManagedToolCallLifeCycle(
+        store,
+        { toolName: "newTask", toolCallId: "start" },
+        new AbortController().signal,
       );
-      await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
-      expect(lifecycle.complete.result).toEqual(
-        expect.objectContaining({ backgroundJobId: "bgjob-task-child" }),
-      );
-      expect(manager.getJobsForTask("parent")).toEqual([
-        expect.objectContaining({
-          taskId: "child",
-          agentType: "explore",
-          status: "running",
-        }),
-      ]);
-    } finally {
-      await manager.dispose();
-    }
-  });
+      try {
+        lifecycle.execute(
+          { background, agentType: "explore", _meta: { uid: "child" } },
+          { taskId: "parent" },
+        );
+        await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+        expect(lifecycle.complete.result).toEqual(
+          expect.objectContaining({ backgroundJobId: "bgjob-task-child" }),
+        );
+        expect(manager.getJobsForTask("parent")).toEqual([
+          expect.objectContaining({
+            taskId: "child",
+            agentType: "explore",
+            status: "running",
+          }),
+        ]);
+      } finally {
+        await manager.dispose();
+      }
+    },
+  );
 
   it("does not launch after cancellation during shared state persistence", async () => {
     let release!: () => void;
@@ -319,7 +322,7 @@ describe("foreground background handoff", () => {
       { toolName: "newTask", toolCallId: "call" },
       new AbortController().signal,
     );
-    lifecycle.execute({ _meta: { uid: task.id } });
+    lifecycle.execute({ background: false, _meta: { uid: task.id } });
     await vi.waitFor(() => expect(lifecycle.status).toBe("execute:streaming"));
     return { lifecycle, store, task };
   }

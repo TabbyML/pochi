@@ -21,6 +21,8 @@ export {
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
   getSubAgentNotificationId,
+  isBackgroundSubAgentRequested,
+  shouldRunSubAgentInBackground,
 } from "./subagent";
 
 export { SocialLinks } from "./social";
@@ -40,8 +42,12 @@ export {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   AutoMemoryMaxManifestEntries,
+  AutoMemoryMaxTopicBytes,
+  AutoMemoryMaxTopicLines,
   AutoMemoryProjectInfoName,
   AutoMemoryTypeValues,
+  isOversizedTopic,
+  renderAutoMemoryIndex,
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
 

@@ -19,10 +19,10 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
+import { isBackgroundSubAgentRequested } from "@getpochi/common";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { compileToolPolicies } from "@getpochi/tools";
 import { getStaticToolName } from "ai";
-import { shouldRunSubtaskInBackground } from "../../chat/lib/background-subtask";
 import { createBatchedToolCallFromLifecycle } from "../../chat/lib/batched-tool-call-adapters";
 import type { PendingToolCallApproval } from "../hooks/use-pending-tool-call-approval";
 
@@ -135,10 +135,12 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
         (tool.type === "tool-newTask" &&
           (tool.input?.agentType === "planner" ||
             tool.input?.agentType === "guide"));
+      // Only an explicit background request overrides running the subtask
+      // manually; the background default yields to the user's choice.
       if (
         tool.type === "tool-newTask" &&
         runManually &&
-        !shouldRunSubtaskInBackground(tool.input)
+        !isBackgroundSubAgentRequested(tool.input)
       ) {
         const subtaskUid = tool.input?._meta?.uid;
         if (subtaskUid) {

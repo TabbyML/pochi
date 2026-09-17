@@ -11,20 +11,17 @@ import {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   type AutoMemoryManifestEntry,
-  AutoMemoryMaxManifestEntries,
   AutoMemoryProjectInfoName,
   type AutoMemoryReadContextOptions,
   AutoMemoryTypeValues,
   getLogger,
+  renderAutoMemoryIndex,
   toErrorMessage,
   truncateAutoMemoryIndex,
 } from "../base";
+import { parseMarkdownWithFrontmatter } from "../tool-utils/markdown-frontmatter";
 
 const logger = getLogger("AutoMemory");
-const DefaultIndexContent = `# Memory Index
-
-This file is an index for durable Pochi long-term memory topic files in this directory.
-`;
 const DreamIntervalMs = 24 * 60 * 60 * 1000;
 const DreamSessionThreshold = 5;
 const StaleDreamLockMs = 60 * 60 * 1000;
@@ -72,7 +69,6 @@ export class AutoMemoryManager {
     if (options?.ensure !== false) {
       await fs.mkdir(memoryDir, { recursive: true });
       await fs.mkdir(transcriptDir, { recursive: true });
-      await ensureIndexFile(indexPath);
       await writeProjectInfoFile({ projectRoot, repoKey, repoRoot }).catch(
         (error) => {
           logger.warn(
@@ -82,17 +78,23 @@ export class AutoMemoryManager {
       );
     }
 
-    const rawIndexContent = await fs
-      .readFile(indexPath, "utf8")
-      .catch(() => "");
-    const { content: indexContent, truncated: indexTruncated } =
-      truncateAutoMemoryIndex(rawIndexContent);
     const manifest = await scanAutoMemoryManifest(memoryDir).catch((error) => {
       logger.warn(
         `Failed to scan long-term memory manifest: ${toErrorMessage(error)}`,
       );
       return [];
     });
+
+    // MEMORY.md is a derived artifact: it is rendered from topic-file
+    // frontmatter instead of being written by the memory agents, so a topic
+    // file can never end up missing from the index, and per-turn extraction
+    // saves the index write entirely.
+    const generatedIndex = renderAutoMemoryIndex(manifest);
+    if (options?.ensure !== false) {
+      await syncIndexFile(indexPath, generatedIndex);
+    }
+    const { content: indexContent, truncated: indexTruncated } =
+      truncateAutoMemoryIndex(generatedIndex);
 
     return {
       enabled: true,
@@ -287,8 +289,8 @@ export class AutoMemoryManager {
           fs.rm(path.join(context.memoryDir, entry), { force: true }),
         ),
     );
-    // Re-create the default index file so the memory dir is still usable.
-    await ensureIndexFile(context.indexPath);
+    // Re-create the (now empty) generated index so the memory dir stays usable.
+    await syncIndexFile(context.indexPath, renderAutoMemoryIndex([]));
   }
 }
 
@@ -379,15 +381,23 @@ export async function removeTaskTranscripts(
   );
 }
 
-async function ensureIndexFile(indexPath: string): Promise<void> {
-  await fs
-    .writeFile(indexPath, DefaultIndexContent, { flag: "wx" })
-    .catch((error) => {
-      if (error && typeof error === "object" && "code" in error) {
-        if (error.code === "EEXIST") return;
-      }
-      throw error;
-    });
+/** Persist the generated index, skipping the write when nothing changed. */
+async function syncIndexFile(
+  indexPath: string,
+  content: string,
+): Promise<void> {
+  try {
+    const existing = await fs
+      .readFile(indexPath, "utf8")
+      .catch(() => undefined);
+    if (existing === content) return;
+    await fs.mkdir(path.dirname(indexPath), { recursive: true });
+    await fs.writeFile(indexPath, content);
+  } catch (error) {
+    logger.warn(
+      `Failed to write long-term memory index: ${toErrorMessage(error)}`,
+    );
+  }
 }
 
 type ProjectInfoFile = {
@@ -439,36 +449,38 @@ async function scanAutoMemoryManifest(
         return {
           filename: entry.name,
           updatedAt: stat.mtimeMs,
-          ...parseTopicFrontmatter(content),
+          bytes: stat.size,
+          ...(await parseTopicFrontmatter(filePath, content)),
         };
       }),
   );
 
-  return manifest
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
-    .slice(0, AutoMemoryMaxManifestEntries);
+  // Keep the full set for the on-disk index. Only prompt rendering is capped.
+  return manifest.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 }
 
-function parseTopicFrontmatter(
+async function parseTopicFrontmatter(
+  filePath: string,
   content: string,
-): Omit<AutoMemoryManifestEntry, "filename" | "updatedAt"> {
-  const header = content.split(/\r?\n/).slice(0, 30).join("\n");
-  const match = header.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return {};
+): Promise<Omit<AutoMemoryManifestEntry, "filename" | "updatedAt" | "bytes">> {
+  const parsed = await parseMarkdownWithFrontmatter(
+    filePath,
+    async () => content,
+  );
+  if (!parsed.ok) return {};
 
-  const data: Record<string, string> = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const pair = line.match(/^([A-Za-z][\w-]*):\s*(.*)$/);
-    if (!pair) continue;
-    data[pair[1]] = pair[2].replace(/^["']|["']$/g, "").trim();
-  }
-
+  const data = parsed.frontmatter;
   const type = AutoMemoryTypeValues.find((value) => value === data.type);
   return {
-    name: data.name || undefined,
-    description: data.description || undefined,
+    name: normalizeTopicMetadata(data.name),
+    description: normalizeTopicMetadata(data.description),
     type,
   };
+}
+
+function normalizeTopicMetadata(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  return value.replace(/\s+/g, " ").trim() || undefined;
 }
 
 async function readDreamLock(
