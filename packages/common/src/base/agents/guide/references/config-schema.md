@@ -86,6 +86,10 @@
                       "description": "Context window size for the model",
                       "type": "number"
                     },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
+                    },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
@@ -145,6 +149,10 @@
                     "contextWindow": {
                       "description": "Context window size for the model",
                       "type": "number"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
@@ -207,6 +215,10 @@
                       "description": "Context window size for the model",
                       "type": "number"
                     },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
+                    },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
                       "type": "boolean"
@@ -267,6 +279,10 @@
                     "contextWindow": {
                       "description": "Context window size for the model",
                       "type": "number"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",
@@ -397,6 +413,10 @@
                     "contextWindow": {
                       "description": "Context window size for the model",
                       "type": "number"
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     },
                     "useToolCallMiddleware": {
                       "description": "Whether to use tool call middleware",

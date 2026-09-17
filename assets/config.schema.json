@@ -91,6 +91,10 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -151,6 +155,10 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -212,6 +220,10 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -273,6 +285,10 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -403,6 +419,10 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -460,6 +480,10 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "useReasoningMiddleware": {
+                      "description": "Whether to use reasoning middleware",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
