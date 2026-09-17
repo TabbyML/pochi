@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AutoMemoryContext,
   type AutoMemoryManifestEntry,
+  AutoMemoryMaxManifestEntries,
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
   buildAutoMemoryExtractionDirective,
@@ -179,6 +180,22 @@ describe("long-term memory prompt helpers", () => {
     expect(formatted).toContain("[64.5KB, oversized]");
     // Entries without a known size keep the legacy shape.
     expect(formatted).toContain("- [user] bio.md (bio.md)");
+  });
+
+  it("points to the full index when the prompt manifest is truncated", () => {
+    const manifest = Array.from(
+      { length: AutoMemoryMaxManifestEntries + 1 },
+      (_, index) => ({ filename: `topic-${index}.md` }),
+    );
+    const formatted = formatAutoMemoryManifest(manifest);
+    expect(
+      formatted.split("\n").filter((line) => line.startsWith("- ")),
+    ).toHaveLength(AutoMemoryMaxManifestEntries);
+    expect(formatted).not.toContain(`topic-${AutoMemoryMaxManifestEntries}.md`);
+    expect(formatted).toContain(
+      "Showing 200 of 201 topic files. Read MEMORY.md for the complete index.",
+    );
+    expect(formatAutoMemoryManifest(sampleManifest)).not.toContain("Showing");
   });
 
   describe("renderAutoMemoryIndex", () => {

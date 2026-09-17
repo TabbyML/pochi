@@ -111,7 +111,7 @@ export function formatAutoMemoryManifest(
 ): string {
   if (manifest.length === 0) return "No topic files yet.";
 
-  return manifest
+  const entries = manifest
     .slice(0, AutoMemoryMaxManifestEntries)
     .map((entry) => {
       const type = entry.type ?? "reference";
@@ -121,6 +121,11 @@ export function formatAutoMemoryManifest(
       return `- [${type}] ${entry.filename} (${title})${size}${description}`;
     })
     .join("\n");
+
+  if (manifest.length > AutoMemoryMaxManifestEntries) {
+    return `${entries}\n\nShowing ${AutoMemoryMaxManifestEntries} of ${manifest.length} topic files. Read MEMORY.md for the complete index.`;
+  }
+  return entries;
 }
 
 function formatSize(entry: AutoMemoryManifestEntry): string {
@@ -200,7 +205,7 @@ Use this memory only for durable information that should carry across future ses
 
 Memory file rules:
 - MEMORY.md is a generated index. Never write to it: it is rebuilt automatically from the topic files' frontmatter, and manual edits are overwritten.
-- Topic files live in the memory directory as markdown files.
+- Topic files live directly in the memory directory as markdown files. Do not use subdirectories.
 - Every topic file must begin with YAML frontmatter containing name, description, and type. The index shows name and description, so keep them accurate.
 - type must be one of: user, feedback, project, reference.
 - Prefer updating an existing topic file over creating a duplicate.
@@ -326,12 +331,12 @@ Step budget: ${maxSteps} assistant turns. Every turn counts, whether it calls a 
 - nothing durable: attemptCompletion only (1 turn).
 
 Available tools — only these are permitted, and calling anything else wastes a turn:
-- readFile: read one existing topic file under the memory directory.
+- readFile: read one existing topic file under the memory directory, or MEMORY.md if the manifest is truncated.
 - writeToFile: create a new topic file (or fully replace a small one).
 - applyDiff: change part of an existing topic file.
 - attemptCompletion: end the run.
 
-Do not explore. The manifest below is the complete list of topic files, and the parent conversation is already in your context, so there is nothing to search for or list.
+Do not explore. Use the topic manifest below and the parent conversation already in your context. If the manifest says entries were omitted, you may spend one turn reading MEMORY.md for the complete index before choosing a topic.
 
 Existing topic manifest:
 ${formatAutoMemoryManifest(context.manifest)}
@@ -344,7 +349,7 @@ Required behavior:
 - When updating an existing topic, make exactly one applyDiff at one site. Do not rewrite the whole file.
 - Never rewrite a file the manifest marks as oversized. Append a minimal note with a single applyDiff, or start a new, narrower topic file instead.
 - Keep new topic files under ${AutoMemoryMaxTopicLines} lines.
-- Use markdown topic files under the memory directory only.
+- Use markdown topic files directly in the memory directory only; do not use subdirectories.
 - Every topic file must start with YAML frontmatter:
 ---
 name: Short stable name
@@ -412,6 +417,7 @@ Strategy:
 - Open transcripts selectively: skim the session titles listed below, then drill into the full transcripts of entries that look durable.
 - Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, split, and rewrite topic files as needed so future sessions see a concise and accurate set of topics.
 - Never create or edit MEMORY.md: the index is generated from each topic file's frontmatter. Keep every topic file's name/description accurate instead, and give split-out files their own frontmatter.
+- Keep topic files directly in the memory directory; do not use subdirectories.
 - Keep each topic file under ${AutoMemoryMaxTopicLines} lines. Splitting a file the manifest marks as oversized into focused topics is a valuable outcome on its own, even when no new memory is added.
 - Anchor every entry to direct user intent (explicit instructions, preferences, or feedback) — never promote assistant reasoning, plans, or speculation. When new user feedback contradicts an existing entry and you lack a confident read on the current state, proactively delete it rather than keep outdated guidance.
 - Never store ephemeral task status, raw logs, git history, temporary plans, or content already captured by project rules.

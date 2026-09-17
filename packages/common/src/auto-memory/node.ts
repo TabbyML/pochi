@@ -11,7 +11,6 @@ import {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   type AutoMemoryManifestEntry,
-  AutoMemoryMaxManifestEntries,
   AutoMemoryProjectInfoName,
   type AutoMemoryReadContextOptions,
   AutoMemoryTypeValues,
@@ -20,6 +19,7 @@ import {
   toErrorMessage,
   truncateAutoMemoryIndex,
 } from "../base";
+import { parseMarkdownWithFrontmatter } from "../tool-utils/markdown-frontmatter";
 
 const logger = getLogger("AutoMemory");
 const DreamIntervalMs = 24 * 60 * 60 * 1000;
@@ -450,36 +450,37 @@ async function scanAutoMemoryManifest(
           filename: entry.name,
           updatedAt: stat.mtimeMs,
           bytes: stat.size,
-          ...parseTopicFrontmatter(content),
+          ...(await parseTopicFrontmatter(filePath, content)),
         };
       }),
   );
 
-  return manifest
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
-    .slice(0, AutoMemoryMaxManifestEntries);
+  // Keep the full set for the on-disk index. Only prompt rendering is capped.
+  return manifest.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 }
 
-function parseTopicFrontmatter(
+async function parseTopicFrontmatter(
+  filePath: string,
   content: string,
-): Omit<AutoMemoryManifestEntry, "filename" | "updatedAt" | "bytes"> {
-  const header = content.split(/\r?\n/).slice(0, 30).join("\n");
-  const match = header.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return {};
+): Promise<Omit<AutoMemoryManifestEntry, "filename" | "updatedAt" | "bytes">> {
+  const parsed = await parseMarkdownWithFrontmatter(
+    filePath,
+    async () => content,
+  );
+  if (!parsed.ok) return {};
 
-  const data: Record<string, string> = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const pair = line.match(/^([A-Za-z][\w-]*):\s*(.*)$/);
-    if (!pair) continue;
-    data[pair[1]] = pair[2].replace(/^["']|["']$/g, "").trim();
-  }
-
+  const data = parsed.frontmatter;
   const type = AutoMemoryTypeValues.find((value) => value === data.type);
   return {
-    name: data.name || undefined,
-    description: data.description || undefined,
+    name: normalizeTopicMetadata(data.name),
+    description: normalizeTopicMetadata(data.description),
     type,
   };
+}
+
+function normalizeTopicMetadata(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  return value.replace(/\s+/g, " ").trim() || undefined;
 }
 
 async function readDreamLock(
