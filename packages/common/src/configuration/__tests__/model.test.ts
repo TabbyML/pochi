@@ -22,6 +22,8 @@ describe("Model configuration types", () => {
       if ("baseURL" in config) {
         expect(config.baseURL).toBe("https://api.openai.com/v1");
       }
+      expect(config.models["gpt-4"].useToolCallMiddleware).toBe(true);
+      expect(config.models["gpt-4"].useReasoningMiddleware).toBe(true);
     });
 
     it("should parse OpenAI model settings without kind (defaults to openai)", () => {
@@ -96,6 +98,7 @@ describe("Model configuration types", () => {
         expect(config.apiKey).toBe("gateway-key");
       }
       expect(config.models["gateway-model"].useToolCallMiddleware).toBe(true);
+      expect(config.models["gateway-model"].useReasoningMiddleware).toBe(true);
     });
   });
 
@@ -118,12 +121,29 @@ describe("Model configuration types", () => {
             maxTokens: 1000,
             contextWindow: 2000,
             useToolCallMiddleware: false,
+            useReasoningMiddleware: false,
           },
         },
       });
       expect(config.models.test.maxTokens).toBe(1000);
       expect(config.models.test.contextWindow).toBe(2000);
       expect(config.models.test.useToolCallMiddleware).toBe(false);
+      expect(config.models.test.useReasoningMiddleware).toBe(false);
+    });
+
+    it("should disable reasoning middleware but keep tool call middleware", () => {
+      const config = CustomModelSetting.parse({
+        kind: "openai",
+        models: {
+          test: {
+            name: "Test",
+            useToolCallMiddleware: true,
+            useReasoningMiddleware: false,
+          },
+        },
+      });
+      expect(config.models.test.useToolCallMiddleware).toBe(true);
+      expect(config.models.test.useReasoningMiddleware).toBe(false);
     });
   });
 });

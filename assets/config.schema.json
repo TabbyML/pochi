@@ -82,7 +82,13 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                      "default": true,
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "default": true,
+                      "description": "Whether to use reasoning middleware (for model <think> tags)",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -93,6 +99,10 @@
                       }
                     }
                   },
+                  "required": [
+                    "useToolCallMiddleware",
+                    "useReasoningMiddleware"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -142,7 +152,13 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                      "default": true,
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "default": true,
+                      "description": "Whether to use reasoning middleware (for model <think> tags)",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -153,6 +169,10 @@
                       }
                     }
                   },
+                  "required": [
+                    "useToolCallMiddleware",
+                    "useReasoningMiddleware"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -203,7 +223,13 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                      "default": true,
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "default": true,
+                      "description": "Whether to use reasoning middleware (for model <think> tags)",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -214,6 +240,10 @@
                       }
                     }
                   },
+                  "required": [
+                    "useToolCallMiddleware",
+                    "useReasoningMiddleware"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -264,7 +294,13 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                      "default": true,
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "default": true,
+                      "description": "Whether to use reasoning middleware (for model <think> tags)",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -275,6 +311,10 @@
                       }
                     }
                   },
+                  "required": [
+                    "useToolCallMiddleware",
+                    "useReasoningMiddleware"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -394,7 +434,13 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                      "default": true,
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "default": true,
+                      "description": "Whether to use reasoning middleware (for model <think> tags)",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -405,6 +451,10 @@
                       }
                     }
                   },
+                  "required": [
+                    "useToolCallMiddleware",
+                    "useReasoningMiddleware"
+                  ],
                   "additionalProperties": false
                 }
               },
@@ -451,7 +501,13 @@
                       "type": "number"
                     },
                     "useToolCallMiddleware": {
+                      "default": true,
                       "description": "Whether to use tool call middleware",
+                      "type": "boolean"
+                    },
+                    "useReasoningMiddleware": {
+                      "default": true,
+                      "description": "Whether to use reasoning middleware (for model <think> tags)",
                       "type": "boolean"
                     },
                     "contentType": {
@@ -462,6 +518,10 @@
                       }
                     }
                   },
+                  "required": [
+                    "useToolCallMiddleware",
+                    "useReasoningMiddleware"
+                  ],
                   "additionalProperties": false
                 }
               },

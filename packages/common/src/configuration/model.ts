@@ -25,7 +25,15 @@ const BaseModelSettings = z.object({
       useToolCallMiddleware: z
         .boolean()
         .optional()
+        .default(true)
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          "Whether to use reasoning middleware (for model <think> tags)",
+        ),
       contentType: z
         .array(z.string())
         .optional()
