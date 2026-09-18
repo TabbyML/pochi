@@ -32,6 +32,7 @@ import {
 } from "ai";
 import type z from "zod";
 import { BackgroundJobManager } from "../background-job/manager";
+import type { MonitorDeliveryOptions } from "../background-job/monitor-delivery";
 import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
 import type { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
 import type { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
@@ -776,7 +777,9 @@ export class LiveChatKit<
     }
   }
 
-  private takePendingBackgroundJobNotifications() {
+  private takePendingBackgroundJobNotifications(
+    options?: MonitorDeliveryOptions,
+  ) {
     const pending = dedupeBackgroundJobNotificationParts(
       this.pendingBackgroundJobNotificationParts,
       this.chat.messages.flatMap((message) => message.parts),
@@ -787,6 +790,7 @@ export class LiveChatKit<
     const ready = this.backgroundJobManager.takeReadyNotifications(
       this.taskId,
       notifications,
+      options,
     );
     const ids = new Set(ready.map((notice) => notice.notificationId));
     const remaining = notifications.filter(
@@ -829,7 +833,9 @@ export class LiveChatKit<
    *
    * @returns true when a turn was started for them.
    */
-  flushBackgroundJobNotifications = (): boolean => {
+  flushBackgroundJobNotifications = (
+    options?: MonitorDeliveryOptions,
+  ): boolean => {
     this.enqueueBackgroundJobNotifications(
       this.backgroundJobManager.getPendingNotifications(this.taskId),
     );
@@ -840,7 +846,7 @@ export class LiveChatKit<
     if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return false;
 
     if (this.notificationSendInFlight) return false;
-    const parts = this.takePendingBackgroundJobNotifications();
+    const parts = this.takePendingBackgroundJobNotifications(options);
     if (parts.length === 0) return false;
     const message = createBackgroundJobNotificationMessage(parts);
     const startTurn = this.backgroundJobNotifications?.startTurn;

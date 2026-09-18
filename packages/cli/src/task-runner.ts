@@ -491,13 +491,7 @@ export class TaskRunner {
       `Waiting for background jobs (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
     const result = await this.backgroundJobs.wait(this.taskId, {
-      timeoutMs:
-        this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
-        this.backgroundJobs
-          .getPendingNotifications(this.taskId)
-          .some((notice) => "lines" in notice)
-          ? undefined
-          : this.asyncWaitTimeoutInMs,
+      timeoutMs: this.asyncWaitTimeoutInMs,
       abortSignal: this.abortSignal,
       wakeOnNotifications: true,
     });
@@ -514,8 +508,10 @@ export class TaskRunner {
           : "Background job wait was aborted.",
       );
       await this.backgroundJobs.stopOwnedJobs(this.taskId);
+      // Bounded process cleanup must publish final output before we flush it.
+      await this.adaptor.stopBackgroundCommands(this.taskId);
     }
-    return result !== "aborted";
+    return result !== "aborted" && !this.abortSignal?.aborted;
   }
 
   /**
@@ -538,18 +534,28 @@ export class TaskRunner {
       // `flushBackgroundJobNotifications` enforces the same rule itself.
       if (!isAwaitingFollowupAnswer(lastMessage)) {
         if (this.chatKit.flushBackgroundJobNotifications()) return "next";
-        if (
-          (this.asyncWaitTimeoutInMs > 0 ||
-            this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
-            this.backgroundJobs
-              .getPendingNotifications(this.taskId)
-              .some((notice) => "lines" in notice)) &&
+        const pendingNotifications =
+          this.backgroundJobs.getPendingNotifications(this.taskId);
+        const hasMonitorWork =
+          this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
+          pendingNotifications.some((notice) => "lines" in notice);
+        // Zero skips waiting for new output, but monitors still need bounded
+        // cleanup and may trigger final notification turns.
+        const shouldWaitForBackgroundWork =
+          (this.asyncWaitTimeoutInMs > 0 || hasMonitorWork) &&
           (this.backgroundJobs.hasPending(this.taskId) ||
-            this.backgroundJobs.getPendingNotifications(this.taskId).length > 0)
-        ) {
+            pendingNotifications.length > 0);
+        if (shouldWaitForBackgroundWork) {
           if (!(await this.waitForAsyncWork())) return "finished";
         }
-        if (this.chatKit.flushBackgroundJobNotifications()) return "next";
+        if (
+          this.chatKit.flushBackgroundJobNotifications({
+            allowEndedDuringCooldown: !this.backgroundJobs.hasPending(
+              this.taskId,
+            ),
+          })
+        )
+          return "next";
       }
 
       if (this.attemptCompletionHook && isResultMessage(lastMessage)) {

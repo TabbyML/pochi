@@ -30,7 +30,10 @@ import {
 import { defaultCatalog as catalog } from "../livestore";
 import { createBackgroundSubagentNotification } from "../task-utils";
 import type { LiveKitStore, Message } from "../types";
-import { MonitorDelivery } from "./monitor-delivery";
+import {
+  MonitorDelivery,
+  type MonitorDeliveryOptions,
+} from "./monitor-delivery";
 import type { BackgroundJobEntry, JobStatus } from "./state";
 
 const logger = getLogger("BackgroundJobManager");
@@ -668,8 +671,9 @@ export class BackgroundJobManager {
   takeReadyNotifications(
     taskId: string,
     notifications: readonly BackgroundJobEvent[],
+    options?: MonitorDeliveryOptions,
   ): BackgroundJobEvent[] {
-    return this.monitorDelivery(taskId).take(notifications);
+    return this.monitorDelivery(taskId).take(notifications, options);
   }
 
   private readNotifications(taskId: string) {

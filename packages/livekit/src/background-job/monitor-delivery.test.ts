@@ -48,4 +48,44 @@ describe("monitor delivery budget", () => {
     expect(delivery.take([large("waiting"), terminal])).toEqual([large("waiting"), terminal]);
     delivery.dispose();
   });
+
+  it("flushes only ended monitors during cooldown and preserves their head ordering", () => {
+    const delivery = new MonitorDelivery(vi.fn());
+    delivery.take([event("previous")]);
+    const head = event("finished");
+    const end = {
+      ...event("finished", []),
+      notificationId: "end",
+      ended: { reason: "done" },
+    };
+    const running = event("running");
+    expect(delivery.take([head, end, running])).toEqual([]);
+    expect(
+      delivery.take([head, end, running], { allowEndedDuringCooldown: true }),
+    ).toEqual([head, end]);
+    expect(
+      delivery.take([running], { allowEndedDuringCooldown: true }),
+    ).toEqual([]);
+    delivery.dispose();
+  });
+
+  it("retains the delivery budget when flushing ended monitors", () => {
+    const delivery = new MonitorDelivery(vi.fn());
+    delivery.take([event("previous")]);
+    const ended = Array.from({ length: 6 }, (_, i) => ({
+      ...event(String(i), ["x".repeat(8192)]),
+      ended: { reason: "done" },
+    }));
+    expect(
+      delivery
+        .take(ended, { allowEndedDuringCooldown: true })
+        .map((notice) => notice.notificationId),
+    ).toEqual(ended.slice(0, 4).map((notice) => notice.notificationId));
+    expect(
+      delivery
+        .take(ended.slice(4), { allowEndedDuringCooldown: true })
+        .map((notice) => notice.notificationId),
+    ).toEqual(ended.slice(4).map((notice) => notice.notificationId));
+    delivery.dispose();
+  });
 });

@@ -725,13 +725,16 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     return signal("SIGTERM");
   }
 
-  /** Stop any remaining CLI processes and let their output files finish closing. */
-  async stopBackgroundCommands(): Promise<void> {
-    for (const command of this.commands.values())
-      this.killBackgroundCommand(command.id);
+  /** Stop CLI processes and let their output files finish closing, within five seconds. */
+  async stopBackgroundCommands(taskId?: string): Promise<void> {
+    const commands = [...this.commands.values()].filter(
+      (command) => taskId === undefined || command.taskId === taskId,
+    );
+    for (const command of commands)
+      if (!command.stopRequested) this.killBackgroundCommand(command.id);
     const deadline = Date.now() + 5000;
     while (
-      [...this.commands.values()].some(
+      commands.some(
         (command) => command.status === "running" || command.finalizing,
       )
     ) {

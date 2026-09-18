@@ -4,7 +4,7 @@ import {
   type Message,
   type Task,
 } from "@getpochi/livekit";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeToolCall as executeCliToolCall } from "../../tools";
@@ -107,6 +107,203 @@ describe("CLI background job shutdown", () => {
       } finally {
         controller.abort();
         await run;
+      }
+    },
+  );
+});
+
+describe("CLI monitor finalization", () => {
+  async function setup(asyncWaitTimeoutInMs: number) {
+    const commandOutputDir = await mkdtemp(
+      join(tmpdir(), "pochi-monitor-wait-"),
+    );
+    const { store, tasks } = makeJobStore();
+    tasks.set("parent", {
+      id: "parent",
+      cwd: process.cwd(),
+      status: "completed",
+      parentId: null,
+      background: false,
+    } as Task);
+    const adaptor = createTestCliAdaptor({ store, commandOutputDir });
+    const manager = BackgroundJobManager.forStore(store);
+    const controller = new AbortController();
+    const runner = new TaskRunner({
+      adaptor,
+      store,
+      uid: "parent",
+      cwd: process.cwd(),
+      blobStore: {} as never,
+      llm: { id: "test" } as never,
+      filesystem: {} as never,
+      rg: "rg",
+      maxSteps: 24,
+      maxRetries: 3,
+      asyncWaitTimeoutInMs,
+      abortSignal: controller.signal,
+    });
+    const internals = runner as unknown as {
+      waitForAsyncWork(): Promise<boolean>;
+      step(): Promise<"finished" | "next" | "retry">;
+      chat: { messages: Message[] };
+    };
+    // The task already exists, so initialize its conversation explicitly.
+    internals.chat.messages = [
+      {
+        id: "result",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-attemptCompletion",
+            toolCallId: "done",
+            state: "input-available",
+            input: { result: "Done" },
+          },
+        ],
+        metadata: { kind: "assistant", finishReason: "stop", totalTokens: 0 },
+      },
+    ];
+    manager.connect(adaptor.commandAdaptor);
+    await manager.watchTask("parent");
+    return {
+      adaptor,
+      manager,
+      controller,
+      internals,
+      async dispose() {
+        controller.abort();
+        await manager.wait("parent", { timeoutMs: 1000 });
+        await adaptor.stopBackgroundCommands();
+        await manager.dispose();
+        await rm(commandOutputDir, { recursive: true, force: true });
+      },
+    };
+  }
+
+  it.each([
+    { asyncWaitTimeoutInMs: 0, monitorTimeoutMs: undefined },
+    { asyncWaitTimeoutInMs: 50, monitorTimeoutMs: undefined },
+    { asyncWaitTimeoutInMs: 50, monitorTimeoutMs: 30_000 },
+  ])(
+    "honors the configured wait $asyncWaitTimeoutInMs with monitor timeout $monitorTimeoutMs",
+    async ({ asyncWaitTimeoutInMs, monitorTimeoutMs }) => {
+      const fixture = await setup(asyncWaitTimeoutInMs);
+      const { adaptor, manager, controller, internals } = fixture;
+      let waiting: Promise<boolean> | undefined;
+      try {
+        await manager.watchTask("sibling");
+        const sibling = adaptor.startBackgroundCommand(
+          "sibling",
+          "printf ready >&2; exec sleep 30",
+          ".",
+          undefined,
+          { description: "sibling" },
+        );
+        const parent = adaptor.startBackgroundCommand(
+          "parent",
+          "printf ready >&2; exec sleep 30",
+          ".",
+          undefined,
+          {
+            description: "monitor",
+            timeoutMs: monitorTimeoutMs,
+          },
+        );
+        await expect
+          .poll(() =>
+            Promise.all(
+              [parent, sibling].map((job) => readFile(job.outputFile, "utf8")),
+            ),
+          )
+          .toEqual(["ready", "ready"]);
+        const wait = vi.spyOn(manager, "wait");
+        waiting = internals.waitForAsyncWork();
+        expect(wait).toHaveBeenCalledWith(
+          "parent",
+          expect.objectContaining({ timeoutMs: asyncWaitTimeoutInMs }),
+        );
+        expect(await waiting).toBe(true);
+        // Cleanup must finish before the final notification is handed to the model.
+        expect(manager.hasPending("parent")).toBe(false);
+        expect(manager.getPendingNotifications("parent")).toContainEqual(
+          expect.objectContaining({
+            ended: expect.objectContaining({ status: "stopped" }),
+          }),
+        );
+        expect(manager.hasPending("sibling")).toBe(true);
+      } finally {
+        controller.abort();
+        await waiting;
+        await fixture.dispose();
+      }
+    },
+  );
+
+  it("delivers a finished monitor during cooldown without waiting when async wait is disabled", async () => {
+    const fixture = await setup(0);
+    const { adaptor, manager, internals } = fixture;
+    try {
+      adaptor.startBackgroundCommand(
+        "parent",
+        "printf 'finished\\n'",
+        ".",
+        undefined,
+        { description: "one event" },
+      );
+      expect(await manager.wait("parent", { timeoutMs: 1000 })).toBe(
+        "completed",
+      );
+      const first = manager.getPendingNotifications("parent")[0];
+      manager.takeReadyNotifications("parent", [
+        { ...first, notificationId: "previous-delivery" },
+      ]);
+      expect(manager.getReadyNotifications("parent")).toEqual([]);
+      expect(await internals.step()).toBe("next");
+      const batches =
+        internals.chat.messages
+          .at(-1)
+          ?.parts.flatMap((part) =>
+            part.type === "data-monitor-events" ? part.data.batches : [],
+          ) ?? [];
+      expect(batches.flatMap((batch) => batch.lines)).toEqual(["finished"]);
+      expect(batches.at(-1)?.ended?.status).toBe("completed");
+    } finally {
+      await fixture.dispose();
+    }
+  });
+
+  it.each(["before waiting", "during cleanup"])(
+    "does not start a notification turn after an abort %s",
+    async (abortAt) => {
+      const fixture = await setup(0);
+      const { adaptor, controller, internals } = fixture;
+      try {
+        const job = adaptor.startBackgroundCommand(
+          "parent",
+          "printf ready >&2; exec sleep 30",
+          ".",
+          undefined,
+          { description: "persistent" },
+        );
+        await expect.poll(() => readFile(job.outputFile, "utf8")).toBe("ready");
+        if (abortAt === "before waiting") controller.abort();
+        else {
+          const stop = adaptor.stopBackgroundCommands.bind(adaptor);
+          vi.spyOn(adaptor, "stopBackgroundCommands").mockImplementationOnce(
+            async (taskId) => {
+              controller.abort();
+              await stop(taskId);
+            },
+          );
+        }
+        expect(await internals.step()).toBe("finished");
+        expect(
+          internals.chat.messages
+            .flatMap((message) => message.parts)
+            .some((part) => part.type === "data-monitor-events"),
+        ).toBe(false);
+      } finally {
+        await fixture.dispose();
       }
     },
   );
