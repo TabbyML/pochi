@@ -231,6 +231,10 @@ const program = new Command()
     "--no-mcp",
     "Disable MCP (Model Context Protocol) integration completely.",
   )
+  .option(
+    "--reasoning-middleware",
+    "Whether to use reasoning middleware, enabled automatically for well-known reasoning models.",
+  )
   .action(async (options) => {
     // Load custom agents and skills
     const customAgents = await loadAgents(process.cwd());
@@ -704,6 +708,7 @@ async function createLLMConfigWithVendors(
       contextWindow: options.contextWindow,
 
       useToolCallMiddleware: options.useToolCallMiddleware,
+      useReasoningMiddleware: options.reasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId,
@@ -728,6 +733,7 @@ async function createLLMConfigWithPochi(
       contextWindow: pochiModelOptions.contextWindow,
 
       useToolCallMiddleware: pochiModelOptions.useToolCallMiddleware,
+      useReasoningMiddleware: options.reasoningMiddleware,
       getModel: () =>
         createModel(vendorId, {
           modelId: model,
@@ -778,6 +784,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: options.reasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -801,6 +808,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: options.reasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
