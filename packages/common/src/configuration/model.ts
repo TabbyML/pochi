@@ -26,8 +26,13 @@ const BaseModelSettings = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
+
         .optional()
         .describe("The supported mime types model can handle"),
     }),
