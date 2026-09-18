@@ -6,7 +6,7 @@ import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 const logger = getLogger("searchFiles");
 
 export const searchFiles: ToolFunctionType<ClientTools["searchFiles"]> = async (
-  { path, regex, filePattern },
+  { path, regex, filePattern, limit, case_sensitive: caseSensitive },
   { abortSignal, cwd },
 ) => {
   logger.debug(
@@ -23,6 +23,8 @@ export const searchFiles: ToolFunctionType<ClientTools["searchFiles"]> = async (
     vscodeRipgrepPath,
     cwd,
     filePattern,
+    limit,
+    caseSensitive,
     abortSignal,
   );
 };
