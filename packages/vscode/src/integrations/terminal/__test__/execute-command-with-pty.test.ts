@@ -31,6 +31,20 @@ describe("execute-command-with-pty", () => {
     assert.ok(!result.output.includes("\u001b]6339;"));
   });
 
+  it("delivers EOF to foreground commands instead of waiting for input", async function () {
+    if (process.platform === "win32") this.skip();
+
+    const result = await executeCommandWithPty({
+      command: "if read value; then printf unexpected; else printf stdin-closed; fi",
+      cwd: process.cwd(),
+      timeout: 5,
+    });
+
+    assert.strictEqual(result.type, "completed");
+    assert.ok(result.output.includes("stdin-closed"));
+    assert.ok(!result.output.includes("unexpected"));
+  });
+
   it("reports a spawn error when the shell binary cannot be executed", async function () {
     if (process.platform === "win32") this.skip();
 
@@ -58,6 +72,14 @@ describe("execute-command-with-pty", () => {
     assert.ok(shellCommand, "Expected a shell command to be built");
     assert.ok(shellCommand.args.at(-1)?.includes("echo hello"));
     assert.ok(!shellCommand.args.at(-1)?.includes("</dev/null"));
+  });
+
+  it("builds a foreground shell command with detached stdin", () => {
+    const shellCommand = buildPtyShellCommand("echo hello", "ignore");
+    assert.ok(shellCommand, "Expected a shell command to be built");
+    assert.ok(
+      shellCommand.args.at(-1)?.includes("exec </dev/null\necho hello"),
+    );
   });
 
   it("emits a launch marker before the command on posix shells", function () {
@@ -115,6 +137,13 @@ describe("execute-command-with-pty", () => {
         timeout: 1,
       });
       await Promise.resolve();
+      assert.deepStrictEqual(spawn.firstCall.args[0], {
+        command: "sleep 10",
+        cwd: "/tmp",
+        envs: undefined,
+        abortSignal: undefined,
+        stdin: "ignore",
+      });
       dataListener?.("started\n");
       await clock.tickAsync(1_000);
       const result = await resultPromise;
