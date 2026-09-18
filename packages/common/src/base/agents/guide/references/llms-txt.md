@@ -954,6 +954,21 @@ There are multiple ways to create a new Worktree,
   />
 </div>
 
+2. Create from VSCode Repository management
+   You can first create a new worktree in VSCode Source Control Panel. Then manually link this worktree to a branch, and open this worktree in Pochi.
+
+<div align="center">
+  ![Create Worktree](../assets/images/create-worktree.png)
+</div>
+
+<div align="center">
+  ![Open Worktree in Pochi](../assets/images/worktree-pochi.png)
+</div>
+
+3. Let Pochi create a worktree for a new coding task\
+   When you are submitting the message to create a new task, using `Cmd/Ctrl + Enter`, then Pochi will create a worktree for the new task. The worktree/branch name is generated according to the coding task.
+
+In all cases, Pochi will create and check out the branch at the specified disk path as a worktree. You can then perform any action as if it were a standard Git repository, as an independent dev environment in each worktree.
 
 ### Create Task in Pochi
 
