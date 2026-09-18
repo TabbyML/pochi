@@ -64,6 +64,15 @@ describe("buildShellCommand", () => {
     });
   });
 
+  it("should detach stdin when requested", () => {
+    vi.stubGlobal("process", { platform: "linux", env: { SHELL: "/bin/bash" } });
+    const command = buildShellCommand("echo 'hello'", { stdin: "ignore" });
+    expect(command).toEqual({
+      command: "/bin/bash",
+      args: ["-c", "exec </dev/null\necho 'hello'"],
+    });
+  });
+
   it("should use flatpak-spawn on Linux when running inside Flatpak", () => {
     vi.stubGlobal("process", {
       platform: "linux",

@@ -35,6 +35,7 @@ export const executeCommandWithPty = async ({
     cwd,
     envs,
     abortSignal,
+    stdin: "ignore",
   });
 
   return new Promise<PtyCommandResult>((resolve, reject) => {
