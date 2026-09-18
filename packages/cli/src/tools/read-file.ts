@@ -1,7 +1,9 @@
 import {
   FileUnchangedStub,
+  appendBackgroundCommandRunningHint,
   getFileModificationTime,
   isPlainText,
+  parseBackgroundCommandOutputFilePath,
   readMediaFile,
   resolveReadFileRange,
   selectFileContent,
@@ -18,6 +20,7 @@ export const readFile =
   ({
     fileSystem,
     fileStateCache,
+    adaptor,
   }: ToolCallOptions): ToolFunctionType<ClientTools["readFile"]> =>
   async ({ path, startLine, endLine, offset, limit }, { cwd, contentType }) => {
     const range = resolveReadFileRange({
@@ -70,12 +73,34 @@ export const readFile =
     });
 
     if (cacheResult.deduplicated) {
-      return {
+      return addRunningCommandHint(path, adaptor, {
         content: FileUnchangedStub,
         isTruncated: false,
         filePath: cacheResult.resolvedPath,
-      };
+      });
     }
 
-    return cacheResult.result;
+    return addRunningCommandHint(path, adaptor, cacheResult.result);
   };
+
+/**
+ * Reports liveness for a managed background command transcript. The job
+ * registry is the only status source; file content, size, or cache behavior
+ * never imply whether the process is still running.
+ */
+function addRunningCommandHint(
+  path: string,
+  adaptor: ToolCallOptions["adaptor"] | undefined,
+  result: ReadFileOutput,
+): ReadFileOutput {
+  if (result.type === "media") return result;
+
+  const backgroundJobId = parseBackgroundCommandOutputFilePath(path);
+  if (!backgroundJobId) return result;
+  if (!adaptor?.isBackgroundCommandRunning(backgroundJobId)) return result;
+
+  return {
+    ...result,
+    content: appendBackgroundCommandRunningHint(result.content),
+  };
+}
