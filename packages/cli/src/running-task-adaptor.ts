@@ -338,6 +338,11 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     );
   }
 
+  /** Authoritative liveness for a managed background command. */
+  isBackgroundCommandRunning(backgroundJobId: string): boolean {
+    return this.commands.get(backgroundJobId)?.status === "running";
+  }
+
   private commandsChanged() {
     const running = this.runningCommands();
     for (const listener of this.commandListeners) listener(running);

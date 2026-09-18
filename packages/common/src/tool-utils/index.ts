@@ -74,3 +74,8 @@ export {
   resolveReadFileRange,
   type ReadFileRangeInput,
 } from "./read-file-range";
+export {
+  BackgroundCommandRunningHint,
+  appendBackgroundCommandRunningHint,
+  parseBackgroundCommandOutputFilePath,
+} from "./background-command-status";

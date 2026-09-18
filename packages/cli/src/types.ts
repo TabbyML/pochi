@@ -89,7 +89,9 @@ export interface ToolCallOptions {
    */
   adaptor: Pick<
     CliRunningTaskAdaptor,
-    "startBackgroundCommand" | "adoptBackgroundCommand"
+    | "startBackgroundCommand"
+    | "adoptBackgroundCommand"
+    | "isBackgroundCommandRunning"
   >;
 
   /**
