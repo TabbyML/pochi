@@ -24,6 +24,8 @@ export async function onOverrideMessages({
     .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
+    // Select before appendCheckpoint adds a part to a pure notification message.
+    const fileEditMessage = getFileEditMessage(messages);
     const ckpt = await appendCheckpoint(lastMessage);
 
     const firstCheckpoint = checkpoints.at(0);
@@ -33,11 +35,29 @@ export async function onOverrideMessages({
     }
 
     const lastCheckpoint = checkpoints.at(-1);
-    if (ckpt && lastMessage.role === "assistant" && lastCheckpoint) {
+    if (ckpt && fileEditMessage && lastCheckpoint) {
       // diff summary in chat view
-      await updateChangedFiles(taskId, lastCheckpoint, lastMessage);
+      await updateChangedFiles(taskId, lastCheckpoint, fileEditMessage);
     }
   }
+}
+
+function getFileEditMessage(messages: Message[]) {
+  const lastMessage = messages.at(-1);
+  if (lastMessage?.role === "assistant") return lastMessage;
+  if (
+    lastMessage?.role !== "user" ||
+    lastMessage.parts.length === 0 ||
+    !lastMessage.parts.every(
+      (p) => p.type === "data-background-job-notification",
+    )
+  ) {
+    return;
+  }
+
+  // Background notifications can follow tool results before this hook runs.
+  const message = messages.at(-2);
+  return message?.role === "assistant" ? message : undefined;
 }
 
 export function writeRenderWidgetOutput(messages: Message[]) {
