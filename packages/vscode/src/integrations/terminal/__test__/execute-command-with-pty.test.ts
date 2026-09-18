@@ -35,7 +35,8 @@ describe("execute-command-with-pty", () => {
     if (process.platform === "win32") this.skip();
 
     const result = await executeCommandWithPty({
-      command: "if read value; then printf unexpected; else printf stdin-closed; fi",
+      command:
+        "if read value; then printf unexpected; else printf stdin-closed; fi",
       cwd: process.cwd(),
       timeout: 5,
     });
@@ -74,7 +75,9 @@ describe("execute-command-with-pty", () => {
     assert.ok(!shellCommand.args.at(-1)?.includes("</dev/null"));
   });
 
-  it("builds a foreground shell command with detached stdin", () => {
+  it("builds a foreground shell command with detached stdin", function () {
+    if (process.platform === "win32") this.skip();
+
     const shellCommand = buildPtyShellCommand("echo hello", "ignore");
     assert.ok(shellCommand, "Expected a shell command to be built");
     assert.ok(
@@ -90,7 +93,9 @@ describe("execute-command-with-pty", () => {
     assert.ok(
       shellCommand.args
         .at(-1)
-        ?.startsWith(`printf '\\033]6339;%s\\007' ${shellCommand.launchNonce}\n`),
+        ?.startsWith(
+          `printf '\\033]6339;%s\\007' ${shellCommand.launchNonce}\n`,
+        ),
     );
   });
 
