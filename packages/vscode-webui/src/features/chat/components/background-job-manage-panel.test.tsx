@@ -223,7 +223,7 @@ describe("BackgroundJobManagePanel", () => {
     expect(close).not.toHaveBeenCalled();
   });
 
-  it("matches the stop message icon and hover surface", () => {
+  it("renders a solid stop icon with the existing hover surface", () => {
     backgroundJobs = [
       {
         backgroundJobId: "bgjob-task-child",
@@ -238,7 +238,7 @@ describe("BackgroundJobManagePanel", () => {
     const stopButton = screen.getByRole("button", {
       name: "backgroundTasks.stop",
     });
-    expect(stopButton.querySelector(".lucide-circle-stop")).not.toBeNull();
+    expect(stopButton.querySelector(".lucide-square")).not.toBeNull();
     expect(stopButton.className).toContain("hover:bg-foreground/10");
     expect(stopButton.className).toContain("dark:hover:bg-foreground/10");
   });

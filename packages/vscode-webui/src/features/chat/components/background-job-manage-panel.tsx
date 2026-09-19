@@ -30,7 +30,7 @@ import {
   FileTextIcon,
   ListIcon,
   Loader2Icon,
-  StopCircleIcon,
+  SquareIcon,
 } from "lucide-react";
 import { Children, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -572,7 +572,11 @@ function StopJobAction({ onClick }: { onClick: () => Promise<void> }) {
           {pending ? (
             <Loader2Icon className="size-3 animate-spin" />
           ) : (
-            <StopCircleIcon className="size-4" aria-hidden="true" />
+            <SquareIcon
+              className="size-3.5 fill-current"
+              strokeWidth={0}
+              aria-hidden="true"
+            />
           )}
         </Button>
       </TooltipTrigger>
