@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
@@ -18,7 +18,6 @@ import {
   PlainOutputSanitizer,
   createBackgroundJobId,
   getBackgroundJobOutputPath,
-  getShellPath,
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import {
@@ -37,6 +36,7 @@ import {
 } from "@getpochi/livekit";
 import type { Skill } from "@getpochi/tools";
 import type { ToolUIPart } from "ai";
+import { spawnCommand, stopCommand } from "./lib/command-process";
 import type { FileSystem } from "./lib/file-system";
 import type {
   BackgroundJobInitialOutput,
@@ -57,6 +57,8 @@ interface BackgroundCommand {
   stopRequested?: boolean;
   finalizing?: boolean;
   disposeAbort?: () => void;
+  finished: Promise<void>;
+  resolveFinished: () => void;
 }
 
 const logger = getLogger("CliRunningTaskAdaptor");
@@ -110,7 +112,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   >();
   readonly commandAdaptor: BackgroundCommandAdaptor = {
     kill: async (id) => {
-      if (!this.killBackgroundCommand(id)) {
+      if (!(await this.killBackgroundCommand(id))) {
         throw new Error(`Failed to stop background command "${id}".`);
       }
     },
@@ -354,11 +356,9 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     cwd: string,
     envs?: Record<string, string>,
   ): { backgroundJobId: string; outputFile: string } {
-    const child = spawn(command, {
-      shell: getShellPath(),
+    const child = spawnCommand(command, {
       cwd,
       env: { ...process.env, ...getTerminalEnv(), ...envs },
-      stdio: ["ignore", "pipe", "pipe"],
     });
 
     return this.registerBackgroundCommand(taskId, child, command);
@@ -391,7 +391,22 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     const outputFile = this.options.commandOutputDir
       ? path.join(this.options.commandOutputDir, `${id}.log`)
       : getBackgroundJobOutputPath(taskId, id);
-    const outputWriter = new BackgroundJobOutputFile(outputFile);
+    let outputWriter: BackgroundJobOutputFile;
+    try {
+      outputWriter = new BackgroundJobOutputFile(outputFile);
+    } catch (error) {
+      // Registration can fail after spawn (for example, an unwritable log
+      // directory). This child is not in commands yet, so shutdown cannot find it.
+      child.once("error", () => {});
+      void stopCommand(child).catch((stopError) => {
+        logger.warn("Failed to stop unregistered command", stopError);
+      });
+      throw error;
+    }
+    let resolveFinished = () => {};
+    const finished = new Promise<void>((resolve) => {
+      resolveFinished = resolve;
+    });
     const job: BackgroundCommand = {
       taskId,
       id,
@@ -400,6 +415,8 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       outputFile,
       outputWriter,
       status: "running",
+      finished,
+      resolveFinished,
     };
 
     this.commands.set(id, job);
@@ -485,16 +502,18 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       consumeOutput(child.stderr, initialOutput.stderr),
     ])
       .finally(() => initialOutput.dispose?.())
-      .catch((error) => {
+      .catch(async (error) => {
         outputError = error;
-        child.kill();
+        await stopCommand(child);
       });
 
     if (abortSignal) {
       const onAbort = () => {
         if (job.status !== "running" || job.finalizing) return;
         job.stopRequested = true;
-        child.kill();
+        void stopCommand(child).catch((error) => {
+          logger.warn("Failed to stop aborted command", error);
+        });
       };
       abortSignal.addEventListener("abort", onAbort, { once: true });
       job.disposeAbort = () =>
@@ -548,6 +567,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     let finalError = error;
 
     try {
+      if (job.stopRequested) await stopCommand(job.process);
       await job.outputWriter.close();
     } catch (closeError) {
       finalStatus = "failed";
@@ -576,21 +596,29 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     this.commandsChanged();
     for (const update of this.notificationListeners.get(job.taskId) ?? [])
       update();
+    job.resolveFinished();
   }
 
-  private killBackgroundCommand(id: string): boolean {
+  private async killBackgroundCommand(id: string): Promise<boolean> {
     const job = this.commands.get(id);
     if (!job) return false;
-    if (job.status !== "running" || job.finalizing) return true;
-
-    job.stopRequested = true;
-    return job.process.kill();
+    if (job.status === "running" && !job.finalizing) {
+      job.stopRequested = true;
+      if (!(await stopCommand(job.process))) return false;
+    }
+    // Callers can flush notifications immediately after cancellation. Wait for
+    // output to close and the terminal notification to be published first.
+    await job.finished;
+    return true;
   }
 
   /** Stop any remaining CLI processes and let their output files finish closing. */
   async stopBackgroundCommands(): Promise<void> {
-    for (const command of this.commands.values())
-      this.killBackgroundCommand(command.id);
+    await Promise.all(
+      [...this.commands.values()].map((command) =>
+        this.killBackgroundCommand(command.id),
+      ),
+    );
     const deadline = Date.now() + 5000;
     while (
       [...this.commands.values()].some(

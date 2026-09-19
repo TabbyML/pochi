@@ -239,6 +239,14 @@ export class TaskRunner {
     return this.chatKit.chat.getState();
   }
 
+  get hasPendingBackgroundJobs() {
+    return (
+      this.backgroundJobs.hasPending(this.taskId) ||
+      this.backgroundJobs.getPendingNotifications(this.taskId).length > 0 ||
+      this.chatKit.pendingBackgroundJobNotifications.length > 0
+    );
+  }
+
   constructor(options: RunnerOptions) {
     this.cwd = options.cwd;
     this.llm = options.llm;
@@ -475,7 +483,7 @@ export class TaskRunner {
       abortSignal: this.abortSignal,
     });
     if (result === "completed")
-      spinner.succeed("All background jobs completed.");
+      spinner.succeed("All background jobs finished.");
     else {
       spinner.fail(
         result === "timeout"

@@ -1,12 +1,12 @@
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { getToolRules } from "@getpochi/tools";
+import { describe, expect, it, vi } from "vitest";
 import {
   createTestCliAdaptor,
   nextCommandResult,
 } from "../../lib/__tests__/cli-adaptor";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { getToolRules } from "@getpochi/tools";
-import { describe, expect, it } from "vitest";
 import { executeCommand } from "../execute-command";
 
 describe("executeCommand", () => {
@@ -26,6 +26,58 @@ describe("executeCommand", () => {
     expect(result.output).toContain("Hello World");
     expect(result.isTruncated).toBe(false);
   });
+
+  it.skipIf(process.platform === "win32").each([false, true])(
+    "aborts a resistant foreground process without promoting it (redirected: %s)",
+    async (redirectOutput) => {
+      const outputDir = await mkdtemp(join(tmpdir(), "pochi-abort-tree-"));
+      const adaptor = createTestCliAdaptor({ commandOutputDir: outputDir });
+      const adopted = vi.spyOn(adaptor, "adoptBackgroundCommand");
+      const controller = new AbortController();
+      const pidFile = join(outputDir, "pid");
+      const scriptFile = join(outputDir, "resistant.cjs");
+      await writeFile(
+        scriptFile,
+        [
+          "process.on('SIGTERM', () => {});",
+          `require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));`,
+          "setInterval(() => {}, 1000);",
+        ].join(""),
+      );
+      const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+      const running = executeCommand({ taskId: "abort-tree", adaptor })(
+        {
+          command: `${quote(process.execPath)} ${quote(scriptFile)} ${redirectOutput ? "> /dev/null 2>&1" : ""}; wait`,
+          timeout: 0.5,
+        },
+        { ...mockToolExecutionOptions, abortSignal: controller.signal },
+      );
+      const outcome = Promise.resolve(running).catch((error: Error) => error);
+      let pid: number | undefined;
+      try {
+        await expect.poll(() => readFile(pidFile, "utf8")).toMatch(/^\d+$/);
+        pid = Number.parseInt(await readFile(pidFile, "utf8"));
+        controller.abort();
+        expect(await outcome).toEqual(
+          expect.objectContaining({ message: "Command execution was aborted" }),
+        );
+        await vi.waitFor(() => expect(() => process.kill(pid!, 0)).toThrow());
+        expect(adopted).not.toHaveBeenCalled();
+      } finally {
+        controller.abort();
+        if (pid) {
+          try {
+            process.kill(pid, "SIGKILL");
+          } catch {
+            /* Already exited. */
+          }
+        }
+        await outcome;
+        await adaptor.stopBackgroundCommands();
+        await rm(outputDir, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("should handle command timeout", async () => {
     await expect(

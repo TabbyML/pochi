@@ -1,11 +1,11 @@
-import { createTestCliAdaptor, nextCommandResult } from "./cli-adaptor";
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestCliAdaptor, nextCommandResult } from "./cli-adaptor";
 
 describe("CliRunningTaskAdaptor background commands", () => {
   let testOutputDir: string;
@@ -43,6 +43,113 @@ describe("CliRunningTaskAdaptor background commands", () => {
     );
     expect(await readFile(outputFile, "utf8")).toContain("hello world");
     expect(backgroundJobId).toMatch(/^bgjob-cmd-/);
+  });
+
+  it.skipIf(process.platform === "win32").each([
+    { ignoreSigterm: false, redirectOutput: false },
+    { ignoreSigterm: true, redirectOutput: false },
+    { ignoreSigterm: true, redirectOutput: true },
+  ])(
+    "stops shell descendants ($ignoreSigterm, redirected: $redirectOutput)",
+    async ({ ignoreSigterm, redirectOutput }) => {
+      const adaptor = createTestCliAdaptor({ commandOutputDir: testOutputDir });
+      const script = [
+        ignoreSigterm ? "process.on('SIGTERM', () => {});" : "",
+        redirectOutput
+          ? `require('node:fs').writeFileSync(${JSON.stringify(join(testOutputDir, "pid"))}, String(process.pid));`
+          : "console.log(process.pid);",
+        "setInterval(() => {}, 1000);",
+      ].join("");
+      const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+      const { backgroundJobId, outputFile } = adaptor.startBackgroundCommand(
+        "task-tree",
+        `${quote(process.execPath)} -e ${quote(script)} ${redirectOutput ? "> /dev/null 2>&1" : ""}; wait`,
+        ".",
+      );
+      let pid: number | undefined;
+      let status: string | undefined;
+      const subscription = await adaptor.commandAdaptor.observeNotifications(
+        "task-tree",
+        (notices) => {
+          status = notices[0]?.status;
+        },
+      );
+      try {
+        const pidFile = redirectOutput
+          ? join(testOutputDir, "pid")
+          : outputFile;
+        await expect.poll(() => readFile(pidFile, "utf8")).toMatch(/^\d+\n?$/);
+        pid = Number.parseInt(await readFile(pidFile, "utf8"));
+        await adaptor.commandAdaptor.kill(backgroundJobId);
+        expect(status).toBe("stopped");
+        await vi.waitFor(
+          () => {
+            expect(() => process.kill(pid!, 0)).toThrow();
+          },
+          { timeout: 2500 },
+        );
+        expect((await nextCommandResult(adaptor, "task-tree")).status).toBe(
+          "stopped",
+        );
+      } finally {
+        subscription.dispose();
+        if (pid) {
+          try {
+            process.kill(pid, "SIGKILL");
+          } catch {
+            /* Already exited. */
+          }
+        }
+        await adaptor.stopBackgroundCommands();
+      }
+    },
+  );
+
+  it.each([
+    ["printf problem >&2; exit 7", ".", 7],
+    [
+      "printf unreachable",
+      "/pochi-regression-nonexistent-directory",
+      undefined,
+    ],
+  ] as const)(
+    "reports failed commands and spawn errors (%s)",
+    async (command, cwd, exitCode) => {
+      const adaptor = createTestCliAdaptor({ commandOutputDir: testOutputDir });
+      try {
+        const { outputFile } = adaptor.startBackgroundCommand(
+          "failure",
+          command,
+          cwd,
+        );
+        const event = await nextCommandResult(adaptor, "failure");
+        expect(event.status).toBe("failed");
+        expect(event.exitCode).toBe(exitCode);
+        expect(await readFile(outputFile, "utf8")).toBe(
+          exitCode ? "problem" : "",
+        );
+        if (exitCode === undefined) expect(event.summary).toContain("ENOENT");
+      } finally {
+        await adaptor.stopBackgroundCommands();
+      }
+    },
+  );
+
+  it("stops the process when its output file cannot be opened", async () => {
+    const invalidDir = join(testOutputDir, "not-a-directory");
+    const marker = join(testOutputDir, "leaked");
+    await writeFile(invalidDir, "file");
+    const adaptor = createTestCliAdaptor({ commandOutputDir: invalidDir });
+    const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+    expect(() =>
+      adaptor.startBackgroundCommand(
+        "unregistered",
+        `sleep 0.1; printf leaked > ${quote(marker)}`,
+        ".",
+      ),
+    ).toThrow();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect(readFile(marker)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("captures live adopted output while replaying initial output", async () => {

@@ -1,5 +1,9 @@
 import { homedir } from "node:os";
-import { formatters } from "@getpochi/common";
+import {
+  type BackgroundJobNotification,
+  formatters,
+  shouldRunSubAgentInBackground,
+} from "@getpochi/common";
 import { parseMarkdown } from "@getpochi/common/message-utils";
 import {
   formatPochiFileDisplayPath,
@@ -25,12 +29,14 @@ export class OutputRenderer {
   private subTaskQueue: Promise<void> = Promise.resolve();
   private pendingSubTasks = 0;
   private unsubscribe: (() => void) | undefined;
+  private readonly renderedNotifications = new Set<string>();
 
   constructor(
     private readonly stream: NodeJS.WritableStream,
     private readonly state: NodeChatState,
     private readonly options: {
       attemptCompletionSchemaOverride?: boolean;
+      hasPendingBackgroundJobs?: () => boolean;
     } = {},
   ) {
     this.unsubscribe = this.state.signal.messages.subscribe((messages) => {
@@ -44,7 +50,7 @@ export class OutputRenderer {
   private compactSpinner: Spinner | undefined = undefined;
 
   renderCompactStart() {
-    this.spinner?.stopAndPersist();
+    this.persistSpinner();
     this.compactSpinner = createSpinner({
       stream: this.stream,
       text: "🧹 Compacting context",
@@ -72,13 +78,32 @@ export class OutputRenderer {
     if (!lastMessage) {
       return;
     }
+    const notificationOnly =
+      lastMessage.parts.length > 0 &&
+      lastMessage.parts.every(
+        (part) => part.type === "data-background-job-notification",
+      );
+    if (
+      notificationOnly &&
+      lastMessage.parts.every(
+        (part) =>
+          part.type === "data-background-job-notification" &&
+          this.renderedNotifications.has(part.data.notificationId),
+      )
+    )
+      return;
 
     if (this.pendingMessageId !== lastMessage.id) {
       this.pendingMessageId = lastMessage.id;
-      this.spinner?.stopAndPersist();
+      this.persistSpinner();
       this.pendingPartIndex = 0;
 
-      const name = lastMessage.role === "assistant" ? "Pochi" : "You";
+      const name =
+        lastMessage.role === "assistant"
+          ? "Pochi"
+          : notificationOnly
+            ? "Background jobs"
+            : "You";
       if (messages.length > 1) {
         this.stream.write("\n");
       }
@@ -93,10 +118,12 @@ export class OutputRenderer {
       }
 
       if (
-        part.type === "tool-newTask" ||
+        (part.type === "tool-newTask" &&
+          !shouldRunSubAgentInBackground(part.input)) ||
         !(
           part.type === "text" ||
           part.type === "reasoning" ||
+          part.type === "data-background-job-notification" ||
           isStaticToolUIPart(part)
         )
       ) {
@@ -105,6 +132,25 @@ export class OutputRenderer {
       }
 
       if (!this.spinner) throw new Error("Spinner not initialized");
+
+      if (part.type === "data-background-job-notification") {
+        const notification = part.data;
+        if (this.renderedNotifications.has(notification.notificationId)) {
+          this.pendingPartIndex++;
+          continue;
+        }
+        this.renderedNotifications.add(notification.notificationId);
+        this.spinner.prefixText = renderBackgroundNotification(notification);
+        const stop =
+          notification.status === "completed"
+            ? "succeed"
+            : notification.status === "failed"
+              ? "fail"
+              : "stopAndPersist";
+        this.spinner[stop]();
+        this.nextSpinner(true);
+        continue;
+      }
 
       if (part.type === "reasoning") {
         this.spinner.prefixText = `💭 Thinking for ${part.text.length} characters`;
@@ -115,6 +161,7 @@ export class OutputRenderer {
         const { text, stop, error } = renderToolPart(
           part,
           this.options.attemptCompletionSchemaOverride,
+          this.options.hasPendingBackgroundJobs?.() ?? false,
         );
         this.spinner.prefixText = text;
 
@@ -133,8 +180,16 @@ export class OutputRenderer {
           this.nextSpinner(true);
           continue;
         }
+        this.spinner.start();
         break;
       }
+
+      if (lastMessage.role === "user") {
+        this.spinner.stopAndPersist();
+        this.nextSpinner(true);
+        continue;
+      }
+      this.spinner.start();
 
       if (this.pendingPartIndex < lastMessage.parts.length - 1) {
         this.spinner?.stopAndPersist();
@@ -171,10 +226,18 @@ export class OutputRenderer {
   }
 
   private nextSpinner(nextPendingPart = false) {
-    this.spinner = createSpinner({ stream: this.stream }).start();
+    // Start only when there is an active part to render. An idle spinner would
+    // fight the runner's background-wait spinner and keep animating after done.
+    this.spinner = createSpinner({ stream: this.stream });
     if (nextPendingPart) {
       this.pendingPartIndex++;
     }
+  }
+
+  private persistSpinner() {
+    if (this.spinner?.prefixText || this.spinner?.text)
+      this.spinner.stopAndPersist();
+    else this.spinner?.stop();
   }
 
   private async withoutSpinner(callback: () => Promise<void>) {
@@ -198,7 +261,7 @@ export class OutputRenderer {
       this.unsubscribe();
       this.unsubscribe = undefined;
     }
-    this.spinner?.stopAndPersist();
+    this.persistSpinner();
     this.spinner = undefined;
     this.compactSpinner?.stopAndPersist();
     this.compactSpinner = undefined;
@@ -208,6 +271,7 @@ export class OutputRenderer {
 export function renderToolPart(
   part: ToolUIPart<UITools>,
   attemptCompletionSchemaOverride = false,
+  hasPendingBackgroundJobs = false,
 ): {
   text: string;
   stop: "succeed" | "stopAndPersist" | "fail";
@@ -351,8 +415,40 @@ export function renderToolPart(
   // Command execution
   if (part.type === "tool-executeCommand") {
     const { command = "", background = false } = part.input || {};
+    const metadata =
+      part.state === "output-available" ? part.output._meta : undefined;
+    if (metadata?.backgroundJobId && !hasError) {
+      return {
+        text: `💫 Started background command ${chalk.bold(metadata.backgroundJobId)}\n${command}${metadata.outputFile ? `\nOutput: ${formatCliDisplayPath(metadata.outputFile)}` : ""}`,
+        stop: "stopAndPersist",
+      };
+    }
     return {
       text: `${background ? "💫 Running in background" : "💫 Executing"} ${chalk.bold(command)}`,
+      stop: hasError ? "fail" : "succeed",
+      error: errorText,
+    };
+  }
+
+  if (part.type === "tool-newTask") {
+    const description = part.input?.description ?? "Subagent";
+    const jobId =
+      part.state === "output-available"
+        ? part.output.backgroundJobId
+        : undefined;
+    return {
+      text: jobId
+        ? `🤖 Started background agent ${chalk.bold(description)} (${jobId})`
+        : `🤖 Starting background agent ${chalk.bold(description)}`,
+      stop: hasError ? "fail" : "stopAndPersist",
+      error: errorText,
+    };
+  }
+
+  if (part.type === "tool-killBackgroundJob") {
+    const stopped = part.state === "output-available" && !hasError;
+    return {
+      text: `🛑 ${stopped ? "Stopped" : "Stopping"} background job ${chalk.bold(part.input?.backgroundJobId ?? "")}`,
       stop: hasError ? "fail" : "succeed",
       error: errorText,
     };
@@ -374,7 +470,10 @@ export function renderToolPart(
     } else {
       content = input.result as string;
     }
-    const text = `${chalk.bold(chalk.green("🎉 Task Completed"))}\n${content}`;
+    const title = hasPendingBackgroundJobs
+      ? chalk.yellow("⏳ Background work pending")
+      : chalk.green("🎉 Task Completed");
+    const text = `${chalk.bold(title)}\n${content}`;
 
     return {
       text,
@@ -388,6 +487,14 @@ export function renderToolPart(
     stop: hasError ? "fail" : "succeed",
     error: errorText,
   };
+}
+
+function renderBackgroundNotification(notification: BackgroundJobNotification) {
+  if (notification.kind === "command") {
+    return `${notification.summary} (${notification.backgroundJobId})`;
+  }
+  const title = notification.title ?? notification.agentType ?? "Subagent";
+  return `🤖 Background agent ${notification.status}: ${title} (${notification.backgroundJobId})\n${notification.result}`;
 }
 
 function formatCliDisplayPath(path: string) {
