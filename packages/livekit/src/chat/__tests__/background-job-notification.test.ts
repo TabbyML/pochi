@@ -116,5 +116,5 @@ it("normalizes persisted command notifications without a kind", () => {
   const parts = toBackgroundJobNotificationParts([{
     notificationId: "old:terminal", backgroundJobId: "old", outputFile: "/tmp/old.log", status: "completed", summary: "done", finishedAt: 1,
   } as BackgroundJobNotification]);
-  expect(parts[0].data.kind).toBe("command");
+  expect(parts[0]).toMatchObject({ type: "data-background-job-notification", data: { kind: "command" } });
 });

@@ -1,27 +1,81 @@
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { BackgroundJobPanel } from "@/features/tools";
-import type { BackgroundJobNotification } from "@getpochi/common";
+import type {
+  BackgroundJobNotification,
+  MonitorEventEnvelope,
+} from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
-import { Bell } from "lucide-react";
-import type { ReactNode } from "react";
+import { Activity, Bell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SubagentResultNotificationItem } from "./subagent-results";
 
 interface BackgroundJobNotificationsProps {
-  notifications: BackgroundJobNotification[];
+  notifications: (BackgroundJobNotification | MonitorEventEnvelope)[];
 }
 
 export function BackgroundJobNotificationItems({
   notifications,
 }: BackgroundJobNotificationsProps) {
-  return notifications.map((notification) =>
-    notification.kind === "subagent" ? (
-      <SubagentResultNotificationItem
-        key={notification.notificationId}
-        result={notification}
-      />
-    ) : (
+  const items: (BackgroundJobNotification | MonitorEventEnvelope[])[] = [];
+  const monitors = new Map<string, MonitorEventEnvelope[]>();
+  for (const notification of notifications) {
+    if (!("lines" in notification)) {
+      items.push(notification);
+      continue;
+    }
+    let group = monitors.get(notification.backgroundJobId);
+    if (!group) {
+      group = [];
+      monitors.set(notification.backgroundJobId, group);
+      items.push(group);
+    }
+    group.push(notification);
+  }
+
+  return items.map((item) => {
+    if (Array.isArray(item)) {
+      const notification = item[0];
+      const ended = item.findLast((batch) => batch.ended)?.ended;
+      return (
+        <BackgroundJobPanel
+          key={notification.backgroundJobId}
+          backgroundJobId={notification.backgroundJobId}
+          appearance="notification"
+          command={notification.command}
+          notificationIcon={<Activity className="size-3" />}
+          notificationTitle={
+            notification.description?.trim() ||
+            notification.command?.trim() ||
+            notification.backgroundJobId
+          }
+          notificationEvents={item.map((batch) => ({
+            id: batch.notificationId,
+            text: [
+              ...(batch.omittedLines
+                ? [
+                    `[${batch.omittedLines} monitor events omitted; read the output file for full output]`,
+                  ]
+                : []),
+              ...batch.lines,
+              ...(batch.ended ? [batch.ended.reason] : []),
+            ].join("\n"),
+          }))}
+          status={ended?.status}
+          exitCode={ended?.exitCode}
+          outputFile={notification.outputFile}
+        />
+      );
+    }
+    const notification = item;
+    if (notification.kind === "subagent")
+      return (
+        <SubagentResultNotificationItem
+          key={notification.notificationId}
+          result={notification}
+        />
+      );
+    return (
       <BackgroundJobPanel
         key={notification.notificationId}
         backgroundJobId={notification.backgroundJobId}
@@ -32,32 +86,15 @@ export function BackgroundJobNotificationItems({
         exitCode={notification.exitCode}
         outputFile={notification.outputFile}
       />
-    ),
-  );
-}
-
-/** Collect all known notification types in their original message-part order. */
-export function MessageNotifications({ parts }: { parts: Message["parts"] }) {
-  const items = parts.flatMap((part, partIndex): ReactNode[] => {
-    if (part.type === "data-background-job-notification") {
-      return [
-        <BackgroundJobNotificationItems
-          key={`command:${partIndex}`}
-          notifications={[part.data]}
-        />,
-      ];
-    }
-    return [];
+    );
   });
-  return <NotificationGroup count={items.length}>{items}</NotificationGroup>;
 }
 
-function NotificationGroup({
-  count,
-  children,
-}: { count: number; children: ReactNode }) {
+export function BackgroundJobNotifications({
+  notifications,
+}: BackgroundJobNotificationsProps) {
   const { t } = useTranslation();
-  if (count === 0) return null;
+  if (notifications.length === 0) return null;
 
   return (
     <CollapsibleSection
@@ -74,12 +111,24 @@ function NotificationGroup({
           variant="secondary"
           className="h-5 min-w-5 rounded-full px-1.5 text-muted-foreground"
         >
-          {count}
+          {notifications.length}
         </Badge>
       }
       contentClassName="gap-0.5 border-t p-2"
     >
-      {children}
+      <BackgroundJobNotificationItems notifications={notifications} />
     </CollapsibleSection>
   );
+}
+
+/** Keep monitor batches grouped across all notification parts in this message. */
+export function MessageNotifications({ parts }: { parts: Message["parts"] }) {
+  const notifications = parts.flatMap<
+    BackgroundJobNotification | MonitorEventEnvelope
+  >((part) => {
+    if (part.type === "data-background-job-notification") return [part.data];
+    if (part.type === "data-monitor-events") return part.data.batches;
+    return [];
+  });
+  return <BackgroundJobNotifications notifications={notifications} />;
 }

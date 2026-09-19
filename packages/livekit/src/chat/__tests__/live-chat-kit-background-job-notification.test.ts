@@ -3,7 +3,7 @@ import {
   createBackgroundJobNotification,
 } from "@getpochi/common";
 import type { ChatInit } from "ai";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BlobStore, LiveKitStore, Message } from "../..";
 import {
   createBackgroundJobNotificationMessage,
@@ -13,7 +13,99 @@ import {
 import type { OnStartCallback } from "../flexible-chat-transport";
 import type { LiveChatKitBackgroundJobNotificationOptions } from "../live-chat-kit";
 import { LiveChatKit } from "../live-chat-kit";
+const kits = new Set<LiveChatKit<FakeChat>>();
+afterEach(async () => {
+  await Promise.all([...kits].map((kit) => kit.backgroundJobManager.dispose()));
+  kits.clear();
+});
 describe("LiveChatKit background job notification delivery", () => {
+  it("notifies an idle host when queued monitors become eligible, and defers piggyback delivery too", async () => {
+    vi.useFakeTimers();
+    const onPendingChange = vi.fn();
+    const chatKit = makeChatKit({ onPendingChange });
+    const unsubscribe = chatKit.subscribeBackgroundJobs();
+    try {
+      await chatKit.backgroundJobManager.watchTask("task-1");
+      chatKit.chat.messages = [userMessage("watch")];
+      const event = {
+        notificationId: "first", backgroundJobId: "bgjob-monitor-1", description: "CI",
+        command: "watch", outputFile: "/tmp/watch.log", lines: ["passed"],
+      };
+      chatKit.enqueueBackgroundJobNotifications([event]);
+      await makeRequest(chatKit);
+      const next = { ...event, notificationId: "next" };
+      chatKit.enqueueBackgroundJobNotifications([next]);
+      onPendingChange.mockClear();
+      await makeRequest(chatKit);
+      expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual(["next"]);
+      expect(onPendingChange).not.toHaveBeenCalled(); // No React render loop while cooling down.
+      expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(onPendingChange).toHaveBeenCalledOnce();
+      expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+      expect(idsOf(chatKit.chat.sentMessages[0].parts)).toEqual(["next"]);
+    } finally {
+      unsubscribe();
+      await chatKit.backgroundJobManager.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("retains the original notification ID after a failed send and prevents concurrent sends", async () => {
+    vi.useFakeTimers();
+    let reject: (error: Error) => void = () => {};
+    const startTurn = vi.fn((_message: Message) => new Promise<void>((_resolve, fail) => { reject = fail; }));
+    const chatKit = makeChatKit({ startTurn });
+    try {
+      chatKit.chat.messages = [userMessage("watch"), assistantMessage()];
+      const event = {
+        notificationId: "event", backgroundJobId: "bgjob-monitor-1", description: "CI",
+        command: "watch", outputFile: "/tmp/watch.log", lines: ["passed"],
+      };
+      chatKit.enqueueBackgroundJobNotifications([event]);
+      expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+      chatKit.enqueueBackgroundJobNotifications([event]);
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+      reject(new Error("send failed"));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual(["event"]);
+      startTurn.mockImplementation(async () => {});
+      expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+      expect(startTurn).toHaveBeenCalledTimes(2);
+      expect(idsOf(startTurn.mock.calls[1][0].parts)).toEqual(["event"]);
+    } finally {
+      await chatKit.backgroundJobManager.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps monitor events pending for a follow-up, then attaches and deduplicates them", async () => {
+    const chatKit = makeChatKit();
+    const event = {
+      notificationId: "monitor-1:event-1",
+      backgroundJobId: "bgjob-monitor-1",
+      description: "CI",
+      command: "watch",
+      outputFile: "/tmp/watch.log",
+      lines: ["check passed"],
+    };
+    chatKit.chat.messages = [
+      userMessage("watch CI"),
+      followupQuestionMessage(),
+    ];
+    chatKit.enqueueBackgroundJobNotifications([event]);
+    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    chatKit.chat.messages.push(userMessage("continue"));
+    await makeRequest(chatKit);
+    expect(chatKit.chat.messages.at(-1)?.parts).toEqual([
+      { type: "text", text: "continue" },
+      { type: "data-monitor-events", data: { batches: [event] } },
+    ]);
+    chatKit.enqueueBackgroundJobNotifications([event]);
+    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+  });
+
   it("delivers mixed subagent and command notifications with the next user request", async () => {
     const chatKit = makeChatKit();
     chatKit.chat.messages = [assistantMessage(), userMessage("continue")];
@@ -220,7 +312,7 @@ describe("LiveChatKit background job notification delivery", () => {
 function makeChatKit(
   backgroundJobNotifications?: LiveChatKitBackgroundJobNotificationOptions,
 ) {
-  return new LiveChatKit<FakeChat>({
+  const kit = new LiveChatKit<FakeChat>({
     taskId: "task-1",
     store: new FakeStore() as unknown as LiveKitStore,
     blobStore: {} as BlobStore,
@@ -230,6 +322,8 @@ function makeChatKit(
     },
     backgroundJobNotifications,
   });
+  kits.add(kit);
+  return kit;
 }
 /** Runs the hook the patched ai-sdk calls right before it snapshots. */
 async function makeRequest(chatKit: LiveChatKit<FakeChat>) {

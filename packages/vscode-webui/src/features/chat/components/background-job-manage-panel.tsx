@@ -163,7 +163,9 @@ function PanelBody({
 }) {
   const { t } = useTranslation();
   const jobs = useRunningFirst(backgroundJobs);
-  const commands = jobs.filter((job) => job.kind === "command");
+  const commandJobs = jobs.filter((job) => job.kind === "command");
+  const commands = commandJobs.filter((job) => job.monitor === undefined);
+  const monitors = commandJobs.filter((job) => job.monitor !== undefined);
   const agents = jobs.filter((job) => job.kind !== "command");
 
   if (backgroundJobs.length === 0) {
@@ -180,6 +182,15 @@ function PanelBody({
         {commands.length > 0 && (
           <PanelGroup label={t("managePanel.pochiGroup")}>
             {commands.map((job) => (
+              <li key={job.backgroundJobId}>
+                <JobRow job={job} parentTaskId={parentTaskId} />
+              </li>
+            ))}
+          </PanelGroup>
+        )}
+        {monitors.length > 0 && (
+          <PanelGroup label={t("managePanel.monitorsGroup")}>
+            {monitors.map((job) => (
               <li key={job.backgroundJobId}>
                 <JobRow job={job} parentTaskId={parentTaskId} />
               </li>
@@ -511,10 +522,15 @@ function JobRow({
         </span>
       )}
       <RowStatusIndicator isRunning={isRunning} tone={statusTone(job.status)} />
-      {job.command || statusLabel ? (
+      {job.command || job.monitor || statusLabel ? (
         <Tooltip>
           <TooltipTrigger asChild>{title}</TooltipTrigger>
           <TooltipContent>
+            {job.monitor && job.monitor !== job.command && (
+              <span className="mb-1 block max-w-sm whitespace-pre-wrap break-words text-sm">
+                {job.monitor}
+              </span>
+            )}
             {job.command && (
               <span className="block max-w-sm whitespace-pre-wrap break-words font-mono text-sm">
                 {job.command}

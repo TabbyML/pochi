@@ -9,6 +9,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  MonitorEventEnvelope,
   PastedTextFile,
   TaskMemoryState,
   TerminalTextSelection,
@@ -58,6 +59,7 @@ export type BackgroundCommands = Record<
     isVisible: boolean;
     taskId?: string;
     command?: string;
+    monitor?: string;
     outputFile?: string;
   }
 >;
@@ -209,6 +211,11 @@ export interface VSCodeHostApi {
 
   readBackgroundJobNotifications(taskId: string): Promise<{
     notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
+    acknowledge: (notificationId: string) => Promise<void>;
+  }>;
+
+  readMonitorEvents(taskId: string): Promise<{
+    events: ThreadSignalSerialization<MonitorEventEnvelope[]>;
     acknowledge: (notificationId: string) => Promise<void>;
   }>;
 

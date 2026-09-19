@@ -9,6 +9,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  MonitorEventEnvelope,
   TaskMemoryState,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
@@ -303,6 +304,10 @@ const VSCodeHostStub = {
         Promise.resolve(),
     });
   },
+  readMonitorEvents: async (_taskId: string) => ({
+    events: {} as ThreadSignalSerialization<MonitorEventEnvelope[]>,
+    acknowledge: async (_notificationId: string): Promise<void> => {},
+  }),
   readModelList: async () => {
     return Promise.resolve(
       {} as {

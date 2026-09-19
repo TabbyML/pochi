@@ -74,7 +74,22 @@ vi.mock("@/features/tools", () => ({
       )}
     />
   ),
-  BackgroundJobPanel: () => null,
+  BackgroundJobPanel: ({
+    notificationTitle,
+    command,
+    notificationEvents,
+  }: {
+    notificationTitle?: string;
+    command?: string;
+    notificationEvents?: { id: string; text: string }[];
+  }) => (
+    <span
+      data-testid="notification-row"
+      data-output={notificationEvents?.map((event) => event.text).join("\n")}
+    >
+      {notificationTitle ?? command}
+    </span>
+  ),
 }));
 
 vi.mock("../markdown", () => ({
@@ -825,4 +840,93 @@ describe("MessageList pasted text", () => {
     expect(screen.getByText("First streamed part")).toBeTruthy();
     expect(screen.getByText("Second streamed part")).toBeTruthy();
   });
+});
+
+it("renders monitor batches only inside their message notification container", () => {
+  const monitor = {
+    notificationId: "first",
+    backgroundJobId: "bgjob-monitor-1",
+    command: "watch",
+    description: "Simulated log entries",
+    outputFile: "/tmp/monitor.log",
+    lines: ["first log"],
+  };
+  const messages: Message[] = [
+    {
+      id: "notifications-1",
+      role: "user",
+      parts: [
+        { type: "data-monitor-events", data: { batches: [monitor] } },
+        {
+          type: "data-background-job-notification",
+          data: {
+            kind: "command",
+            notificationId: "command",
+            backgroundJobId: "bgjob-cmd-1",
+            command: "echo done",
+            status: "completed",
+            summary: "done",
+            outputFile: "/tmp/command.log",
+            finishedAt: 1,
+          },
+        },
+        {
+          type: "data-monitor-events",
+          data: {
+            batches: [
+              { ...monitor, notificationId: "second", lines: ["second log"] },
+            ],
+          },
+        },
+      ],
+    },
+    {
+      id: "assistant",
+      role: "assistant",
+      parts: [{ type: "text", text: "I saw two logs." }],
+    },
+    {
+      id: "notifications-2",
+      role: "user",
+      parts: [
+        {
+          type: "data-monitor-events",
+          data: {
+            batches: [
+              {
+                ...monitor,
+                notificationId: "ended",
+                lines: [],
+                ended: { reason: "kill requested", status: "stopped" },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  ];
+  const original = structuredClone(messages);
+  const { container } = render(
+    <MessageList messages={messages} isLoading={false} showLoader={false} />,
+  );
+  expect(screen.getAllByText("backgroundJobNotifications.title")).toHaveLength(
+    2,
+  );
+  const groups = container.querySelectorAll('[aria-label="chat-message-user"]');
+  expect(groups).toHaveLength(2);
+  for (const group of groups) {
+    const triggers = group.querySelectorAll("[aria-expanded][aria-controls]");
+    expect(triggers).toHaveLength(1);
+    if (triggers[0].getAttribute("aria-expanded") !== "true")
+      fireEvent.click(triggers[0]);
+  }
+  expect(
+    screen.getAllByTestId("notification-row").map((row) => row.textContent),
+  ).toEqual(["Simulated log entries", "echo done", "Simulated log entries"]);
+  expect(
+    screen
+      .getAllByTestId("notification-row")
+      .map((row) => row.getAttribute("data-output")),
+  ).toEqual(["first log\nsecond log", null, "kill requested"]);
+  expect(messages).toEqual(original);
 });

@@ -374,7 +374,9 @@
     "next": "다음",
     "askingQuestion_one": "질문 중",
     "askingQuestion_other": "질문 중",
-    "skipped": "건너뜀"
+    "skipped": "건너뜀",
+    "startMonitor": "모니터링합니다:",
+    "monitoring": "모니터링 중"
   },
   "reasoning": {
     "thinking": "생각 중 ...",
@@ -592,6 +594,7 @@
     "openOutput": "출력 파일 열기"
   },
   "managePanel": {
+    "monitorsGroup": "모니터",
     "title": "백그라운드 작업",
     "toggle": "백그라운드 작업 보기",
     "pochiGroup": "백그라운드 명령",

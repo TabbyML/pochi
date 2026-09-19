@@ -4,6 +4,7 @@ import type {
   BackgroundJobNotification,
   BashOutputs,
   MessageMetadata,
+  MonitorEventEnvelope,
   PastedTextFile,
   Review,
   TerminalTextSelection,
@@ -39,6 +40,7 @@ export type DataParts = {
     bashOutputs: BashOutputs;
   };
   "background-job-notification": BackgroundJobNotification;
+  "monitor-events": { batches: MonitorEventEnvelope[] };
 };
 
 /**

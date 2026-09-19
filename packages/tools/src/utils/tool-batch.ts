@@ -88,6 +88,8 @@ export function isSafeToBatchToolCall(
 
   if (isReadonlyToolCall(toolName, input)) return true;
 
+  if (toolName === "startMonitor") return true;
+
   return false;
 }
 

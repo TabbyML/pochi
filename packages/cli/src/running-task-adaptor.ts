@@ -3,10 +3,17 @@ import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
 import {
-  type BackgroundJobNotification,
+  type BackgroundJobEvent,
   type BackgroundJobTerminalEvent,
+  type MonitorEventEnvelope,
+  type MonitorEventQueueEntry,
+  type MonitorJobOptions,
+  MonitorWatcher,
+  acknowledgeMonitorEvent,
   createBackgroundJobNotification,
+  enqueueMonitorEvent,
   getLogger,
+  getPendingMonitorEvents,
 } from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { pochiConfig } from "@getpochi/common/configuration";
@@ -57,6 +64,12 @@ interface BackgroundCommand {
   stopRequested?: boolean;
   finalizing?: boolean;
   disposeAbort?: () => void;
+  monitor?: {
+    description: string;
+    watcher: MonitorWatcher;
+    endReason?: string;
+    killTimer?: ReturnType<typeof setTimeout>;
+  };
 }
 
 const logger = getLogger("CliRunningTaskAdaptor");
@@ -104,9 +117,10 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     Parameters<BackgroundCommandAdaptor["observeCommands"]>[0]
   >();
   private readonly notificationListeners = new Map<string, Set<() => void>>();
+  private readonly monitorEvents = new Map<string, MonitorEventQueueEntry[]>();
   private readonly notifications = new Map<
     string,
-    { taskId: string; notification: BackgroundJobNotification }
+    { taskId: string; notification: BackgroundJobEvent }
   >();
   readonly commandAdaptor: BackgroundCommandAdaptor = {
     kill: async (id) => {
@@ -125,11 +139,12 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     },
     observeNotifications: async (taskId, onChange) => {
       const update = () =>
-        onChange(
-          [...this.notifications.values()]
+        onChange([
+          ...[...this.notifications.values()]
             .filter((entry) => entry.taskId === taskId)
             .map((entry) => entry.notification),
-        );
+          ...getPendingMonitorEvents(this.monitorEvents.get(taskId) ?? []),
+        ]);
       let listeners = this.notificationListeners.get(taskId);
       if (!listeners) {
         listeners = new Set();
@@ -143,8 +158,20 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
           if (!listeners.size) this.notificationListeners.delete(taskId);
         },
         acknowledge: async (id) => {
-          if (this.notifications.get(id)?.taskId !== taskId) return;
-          this.notifications.delete(id);
+          if (this.notifications.get(id)?.taskId === taskId) {
+            this.notifications.delete(id);
+          } else {
+            const events = this.monitorEvents.get(taskId) ?? [];
+            if (
+              !getPendingMonitorEvents(events).some(
+                (event) => event.notificationId === id,
+              )
+            )
+              return;
+            const remaining = acknowledgeMonitorEvent(events, id);
+            if (remaining.length) this.monitorEvents.set(taskId, remaining);
+            else this.monitorEvents.delete(taskId);
+          }
           for (const notify of listeners) notify();
         },
       };
@@ -174,11 +201,27 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     return {
       getLLM: () => this.llm,
       getEffectiveContextWindow: () => pochiConfig.value.effectiveContextWindow,
-      getEnvironment: async () =>
-        readEnvironment({
+      getEnvironment: async () => {
+        const environment = await readEnvironment({
           cwd: context.cwd ?? this.cwd,
           omitCustomRules: context.omitCustomRules,
-        }),
+        });
+        return {
+          ...environment,
+          workspace: {
+            ...environment.workspace,
+            terminals: this.getActiveMonitors(context.taskId).map(
+              (monitor) => ({
+                name: monitor.description,
+                isActive: false,
+                backgroundJobId: monitor.backgroundJobId,
+                monitor: monitor.description,
+                outputFile: monitor.outputFile,
+              }),
+            ),
+          },
+        };
+      },
       ...(this.projectMemoryEnabled
         ? {
             getAutoMemory: async () =>
@@ -331,6 +374,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
           {
             taskId: job.taskId,
             command: job.command,
+            monitor: job.monitor?.description,
             outputFile: job.outputFile,
             isVisible: false,
           },
@@ -353,15 +397,24 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     command: string,
     cwd: string,
     envs?: Record<string, string>,
+    monitor?: MonitorJobOptions,
   ): { backgroundJobId: string; outputFile: string } {
     const child = spawn(command, {
       shell: getShellPath(),
       cwd,
       env: { ...process.env, ...getTerminalEnv(), ...envs },
       stdio: ["ignore", "pipe", "pipe"],
+      detached: monitor !== undefined && process.platform !== "win32",
     });
 
-    return this.registerBackgroundCommand(taskId, child, command);
+    return this.registerBackgroundCommand(
+      taskId,
+      child,
+      command,
+      undefined,
+      undefined,
+      monitor,
+    );
   }
 
   adoptBackgroundCommand(
@@ -386,8 +439,9 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     command: string,
     initialOutput: BackgroundJobInitialOutput = { stdout: [], stderr: [] },
     abortSignal?: AbortSignal,
+    monitor?: MonitorJobOptions,
   ): { backgroundJobId: string; outputFile: string } {
-    const id = createBackgroundJobId("command");
+    const id = createBackgroundJobId(monitor ? "monitor" : "command");
     const outputFile = this.options.commandOutputDir
       ? path.join(this.options.commandOutputDir, `${id}.log`)
       : getBackgroundJobOutputPath(taskId, id);
@@ -403,6 +457,20 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     };
 
     this.commands.set(id, job);
+    if (monitor) {
+      job.monitor = {
+        description: monitor.description,
+        watcher: new MonitorWatcher({
+          onEvents: (lines, omittedLines) =>
+            this.emitMonitorEvent(job, lines, undefined, omittedLines),
+          onTimeout: () => {
+            if (job.monitor) job.monitor.endReason = "killed after timeout";
+            this.killBackgroundCommand(id);
+          },
+          timeoutMs: monitor.timeoutMs,
+        }),
+      };
+    }
 
     let appendTail = Promise.resolve();
     const appendOutput = (chunk: string): Promise<void> => {
@@ -416,12 +484,17 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     const consumeOutput = async (
       stream: Readable | null,
       initialOutputStream: BackgroundJobInitialOutputStream,
+      isStdout: boolean,
     ) => {
+      const append = async (text: string) => {
+        await appendOutput(text);
+        if (isStdout) job.monitor?.watcher.ingest(text);
+      };
       const decoder = new StringDecoder("utf8");
       const sanitizer = new PlainOutputSanitizer();
       const initialOutputFinished = (async () => {
         for await (const chunk of initialOutputStream) {
-          await appendOutput(sanitizer.write(decoder.write(chunk)));
+          await append(sanitizer.write(decoder.write(chunk)));
         }
       })();
       const liveOutputFinished = stream
@@ -446,7 +519,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
             const onData = (chunk: Buffer | string) => {
               stream.pause();
               liveOutputTail = liveOutputTail
-                .then(() => appendOutput(sanitizer.write(decoder.write(chunk))))
+                .then(() => append(sanitizer.write(decoder.write(chunk))))
                 .then(() => {
                   if (!settled) stream.resume();
                 });
@@ -474,27 +547,27 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       // manually stopped process may end in the middle of a character, so
       // discard that partial sequence instead of flushing it as U+FFFD.
       if (!job.stopRequested) {
-        await appendOutput(sanitizer.write(decoder.end()));
+        await append(sanitizer.write(decoder.end()));
       }
-      await appendOutput(sanitizer.end());
+      await append(sanitizer.end());
     };
 
     let outputError: unknown;
     const outputFinished = Promise.all([
-      consumeOutput(child.stdout, initialOutput.stdout),
-      consumeOutput(child.stderr, initialOutput.stderr),
+      consumeOutput(child.stdout, initialOutput.stdout, true),
+      consumeOutput(child.stderr, initialOutput.stderr, false),
     ])
       .finally(() => initialOutput.dispose?.())
       .catch((error) => {
         outputError = error;
-        child.kill();
+        this.killBackgroundCommand(job.id);
       });
 
     if (abortSignal) {
       const onAbort = () => {
         if (job.status !== "running" || job.finalizing) return;
         job.stopRequested = true;
-        child.kill();
+        this.killBackgroundCommand(job.id);
       };
       abortSignal.addEventListener("abort", onAbort, { once: true });
       job.disposeAbort = () =>
@@ -544,6 +617,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   ): Promise<void> {
     if (job.status !== "running" || job.finalizing) return;
     job.finalizing = true;
+    clearTimeout(job.monitor?.killTimer);
     let finalStatus = status;
     let finalError = error;
 
@@ -558,6 +632,19 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     job.status = finalStatus;
     job.finalizing = false;
 
+    if (job.monitor) {
+      job.monitor.watcher.end();
+      this.emitMonitorEvent(job, [], {
+        reason:
+          job.monitor.endReason ??
+          finalError ??
+          `exited with code ${exitCode ?? "unknown"}`,
+        status: finalStatus,
+        ...(exitCode !== undefined ? { exitCode } : {}),
+      });
+      this.commandsChanged();
+      return;
+    }
     const event: BackgroundJobTerminalEvent = {
       taskId: job.taskId,
       backgroundJobId: job.id,
@@ -578,13 +665,69 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       update();
   }
 
+  private emitMonitorEvent(
+    job: BackgroundCommand,
+    lines: string[],
+    ended?: MonitorEventEnvelope["ended"],
+    omittedLines?: number,
+  ) {
+    if (!job.monitor) return;
+    const notification: MonitorEventEnvelope = {
+      notificationId: crypto.randomUUID(),
+      backgroundJobId: job.id,
+      description: job.monitor.description,
+      command: job.command,
+      outputFile: job.outputFile,
+      lines,
+      ...(ended ? { ended } : {}),
+      ...(omittedLines ? { omittedLines } : {}),
+    };
+    this.monitorEvents.set(
+      job.taskId,
+      enqueueMonitorEvent(
+        this.monitorEvents.get(job.taskId) ?? [],
+        notification,
+      ),
+    );
+    for (const update of this.notificationListeners.get(job.taskId) ?? [])
+      update();
+  }
+
+  getActiveMonitors(taskId: string) {
+    return [...this.commands.values()].flatMap((job) =>
+      job.taskId === taskId && job.monitor && job.status === "running"
+        ? [
+            {
+              backgroundJobId: job.id,
+              description: job.monitor.description,
+              outputFile: job.outputFile,
+            },
+          ]
+        : [],
+    );
+  }
+
   private killBackgroundCommand(id: string): boolean {
     const job = this.commands.get(id);
     if (!job) return false;
     if (job.status !== "running" || job.finalizing) return true;
 
     job.stopRequested = true;
-    return job.process.kill();
+    const signal = (name: NodeJS.Signals) => {
+      if (job.monitor && job.process.pid && process.platform !== "win32") {
+        try {
+          process.kill(-job.process.pid, name);
+          return true;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+        }
+      }
+      return job.process.kill(name);
+    };
+    if (job.monitor && !job.monitor.killTimer) {
+      job.monitor.killTimer = setTimeout(() => signal("SIGKILL"), 1000);
+    }
+    return signal("SIGTERM");
   }
 
   /** Stop any remaining CLI processes and let their output files finish closing. */

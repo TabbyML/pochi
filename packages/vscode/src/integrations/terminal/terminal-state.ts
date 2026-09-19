@@ -29,6 +29,7 @@ export interface TerminalInfo {
    *   these because they are not tracked by the `TerminalJob` registry.
    */
   backgroundJobId?: string;
+  monitor?: string;
   /** Absolute transcript path readable with readFile. */
   outputFile?: string;
 }
@@ -90,14 +91,20 @@ export class TerminalState implements vscode.Disposable {
   }
 
   public closeBackgroundCommand(backgroundJobId: string): void {
-    this.getBackgroundCommand(backgroundJobId)?.closePtyProcess();
+    const job = this.getBackgroundCommand(backgroundJobId);
+    if (job?.isPtyTerminal) job.closePtyProcess();
+    else job?.kill();
   }
 
   private getBackgroundCommand(
     backgroundJobId: string,
   ): TerminalJob | undefined {
     const job = TerminalJob.get(backgroundJobId);
-    return job?.isPtyTerminal && !job.isFinished ? job : undefined;
+    return job &&
+      (job.isPtyTerminal || job.monitorDescription !== undefined) &&
+      !job.isFinished
+      ? job
+      : undefined;
   }
 
   /**
@@ -112,6 +119,15 @@ export class TerminalState implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.window.onDidCloseTerminal(this.onTerminalClosed),
+    );
+    this.disposables.push(
+      TerminalJob.onDidMonitorEvent(({ taskId, event }) => {
+        void this.taskDataStore
+          .addMonitorEvent(taskId, event)
+          .catch((error) =>
+            logger.error("Failed to persist monitor event", error),
+          );
+      }),
     );
     this.disposables.push(TerminalJob.onDidCreate(this.onTerminalChanged));
     this.disposables.push(TerminalJob.onDidDispose(this.onTerminalChanged));
@@ -247,13 +263,18 @@ export class TerminalState implements vscode.Disposable {
   private listBackgroundCommands(): BackgroundCommands {
     return Object.fromEntries(
       TerminalJob.list()
-        .filter((job) => job.isPtyTerminal && !job.isFinished)
+        .filter(
+          (job) =>
+            (job.isPtyTerminal || job.monitorDescription !== undefined) &&
+            !job.isFinished,
+        )
         .map((job) => [
           job.id,
           {
             isVisible: job.isVisible,
             taskId: job.taskId,
             command: job.command,
+            monitor: job.monitorDescription,
             outputFile: job.outputFile,
           },
         ]),
@@ -282,6 +303,9 @@ export class TerminalState implements vscode.Disposable {
           isActive: terminal === vscode.window.activeTerminal,
           backgroundJobId: id,
           outputFile: this.getTerminalOutputFile(terminal),
+          ...(job?.monitorDescription !== undefined
+            ? { monitor: job.monitorDescription }
+            : {}),
         };
       });
 
@@ -292,6 +316,9 @@ export class TerminalState implements vscode.Disposable {
         isActive: false,
         backgroundJobId: job.id,
         outputFile: job.outputFile,
+        ...(job.monitorDescription !== undefined
+          ? { monitor: job.monitorDescription }
+          : {}),
       });
     }
     return terminals;

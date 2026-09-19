@@ -1,7 +1,9 @@
 import {
+  type BackgroundJobEvent,
   type BackgroundJobNotification,
   type BackgroundTaskState,
   type MaybePromise,
+  type MonitorEventEnvelope,
   getLogger,
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
@@ -28,6 +30,7 @@ import {
 import { defaultCatalog as catalog } from "../livestore";
 import { createBackgroundSubagentNotification } from "../task-utils";
 import type { LiveKitStore, Message } from "../types";
+import { MonitorDelivery } from "./monitor-delivery";
 import type { BackgroundJobEntry, JobStatus } from "./state";
 
 const logger = getLogger("BackgroundJobManager");
@@ -58,7 +61,7 @@ export interface BackgroundCommandAdaptor {
   }>;
   observeNotifications(
     taskId: string,
-    onChange: (notifications: readonly BackgroundJobNotification[]) => void,
+    onChange: (notifications: readonly BackgroundJobEvent[]) => void,
   ): Promise<{
     dispose(): void;
     acknowledge(notificationId: string): Promise<void>;
@@ -80,6 +83,9 @@ type Job = {
       outputFile?: string;
       status: JobStatus;
       notification?: CommandNotification;
+      monitor?: string;
+      command?: string;
+      exitCode?: number;
     }
   | { kind: "subagent"; taskId: string; agentType?: string }
   | { kind: "fork"; taskId: string }
@@ -87,11 +93,12 @@ type Job = {
 
 type TaskSubscription = {
   ready: Promise<void>;
-  notifications: readonly CommandNotification[];
+  notifications: readonly (CommandNotification | MonitorEventEnvelope)[];
   dispose?: () => void;
   acknowledge?: (id: string) => Promise<void>;
   acknowledging: Set<string>;
-  listeners: Set<(notifications: BackgroundJobNotification[]) => void>;
+  acknowledgeRetry?: ReturnType<typeof setTimeout>;
+  listeners: Set<(notifications: BackgroundJobEvent[]) => void>;
 };
 
 /** One manager per store. All task-scoped handles below delegate to this instance. */
@@ -126,6 +133,7 @@ export class BackgroundJobManager {
   private readonly taskMemories = new Map<string, TaskMemoryAdaptor>();
   private readonly autoMemories = new Map<string, AutoMemoryAdaptor>();
   private readonly subscriptions = new Map<string, TaskSubscription>();
+  private readonly monitorDeliveries = new Map<string, MonitorDelivery>();
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribers: Array<() => void> = [];
   private backgroundTasksReady?: Promise<void>;
@@ -176,7 +184,7 @@ export class BackgroundJobManager {
       shouldRunForkTask: (taskId) => this.forkSystemPrompts.has(taskId),
       clearFileStateCache: options.clearFileStateCache,
       waitForBackgroundJobs: async (taskId, abortSignal) => {
-        await this.wait(taskId, { abortSignal });
+        await this.wait(taskId, { abortSignal, wakeOnNotifications: true });
       },
       createChatKit: async ({
         taskId,
@@ -504,11 +512,36 @@ export class BackgroundJobManager {
         id,
         ownerTaskId: taskId,
         kind: "command",
-        title: command.command ?? "Command",
+        title: command.monitor?.trim() || command.command || "Command",
+        monitor: command.monitor,
+        command: command.command,
         outputFile: command.outputFile,
         status: "running",
       });
     }
+  }
+
+  private recordMonitor(taskId: string, event: MonitorEventEnvelope) {
+    const old = this.jobs.get(event.backgroundJobId);
+    if (old && (old.kind !== "command" || old.ownerTaskId !== taskId)) return;
+    // A delayed running batch must not undo a monitor's terminal state.
+    const terminal = old?.status !== undefined && old.status !== "running";
+    this.setJob({
+      id: event.backgroundJobId,
+      ownerTaskId: taskId,
+      kind: "command",
+      title:
+        event.description.trim() ||
+        event.command.trim() ||
+        event.backgroundJobId,
+      monitor: event.description,
+      command: event.command,
+      outputFile: event.outputFile,
+      status: terminal
+        ? old.status
+        : (event.ended?.status ?? (event.ended ? "completed" : "running")),
+      exitCode: terminal ? old.exitCode : event.ended?.exitCode,
+    });
   }
 
   async watchTask(taskId: string) {
@@ -539,10 +572,12 @@ export class BackgroundJobManager {
           if (this.disposed) return;
           this.batch(() => {
             const owned = notifications.filter(
-              (notice): notice is CommandNotification => {
+              (
+                notice,
+              ): notice is CommandNotification | MonitorEventEnvelope => {
                 const job = this.jobs.get(notice.backgroundJobId);
                 return (
-                  notice.kind === "command" &&
+                  ("lines" in notice || notice.kind === "command") &&
                   (!job || job.ownerTaskId === taskId)
                 );
               },
@@ -559,6 +594,10 @@ export class BackgroundJobManager {
               this.changedTasks.add(taskId);
             }
             for (const notice of owned) {
+              if ("lines" in notice) {
+                this.recordMonitor(taskId, notice);
+                continue;
+              }
               const old = this.jobs.get(notice.backgroundJobId);
               if (
                 old?.kind === "command" &&
@@ -603,8 +642,34 @@ export class BackgroundJobManager {
     return subscription.ready;
   }
 
-  getPendingNotifications(taskId: string): BackgroundJobNotification[] {
+  getPendingNotifications(taskId: string): BackgroundJobEvent[] {
     return this.readNotifications(taskId).pending;
+  }
+
+  private monitorDelivery(taskId: string) {
+    let delivery = this.monitorDeliveries.get(taskId);
+    if (!delivery) {
+      delivery = new MonitorDelivery(() => {
+        if (this.disposed) return;
+        this.changedTasks.add(taskId);
+        this.changed();
+      });
+      this.monitorDeliveries.set(taskId, delivery);
+    }
+    return delivery;
+  }
+
+  getReadyNotifications(taskId: string): BackgroundJobEvent[] {
+    return this.monitorDelivery(taskId).ready(
+      this.getPendingNotifications(taskId),
+    );
+  }
+
+  takeReadyNotifications(
+    taskId: string,
+    notifications: readonly BackgroundJobEvent[],
+  ): BackgroundJobEvent[] {
+    return this.monitorDelivery(taskId).take(notifications);
   }
 
   private readNotifications(taskId: string) {
@@ -614,7 +679,7 @@ export class BackgroundJobManager {
         getBackgroundJobNotificationIds(message.parts),
       ),
     );
-    const notifications: BackgroundJobNotification[] = [
+    const notifications: BackgroundJobEvent[] = [
       ...(this.subscriptions.get(taskId)?.notifications ?? []),
     ];
     for (const job of this.jobs.values()) {
@@ -640,7 +705,7 @@ export class BackgroundJobManager {
 
   subscribeNotifications(
     taskId: string,
-    listener: (notifications: BackgroundJobNotification[]) => void,
+    listener: (notifications: BackgroundJobEvent[]) => void,
   ) {
     void this.watchTask(taskId)
       .then(() => {
@@ -671,10 +736,22 @@ export class BackgroundJobManager {
       )
         continue;
       subscription.acknowledging.add(id);
-      void subscription.acknowledge(id).catch((error) => {
-        subscription.acknowledging.delete(id);
-        logger.warn("Failed to acknowledge background job notification", error);
-      });
+      void subscription
+        .acknowledge(id)
+        .catch((error) => {
+          logger.warn(
+            "Failed to acknowledge background job notification",
+            error,
+          );
+          if (this.disposed || subscription.acknowledgeRetry) return;
+          subscription.acknowledgeRetry = setTimeout(() => {
+            subscription.acknowledgeRetry = undefined;
+            this.changedTasks.add(taskId);
+            this.changed();
+          }, 1000);
+          subscription.acknowledgeRetry.unref?.();
+        })
+        .finally(() => subscription.acknowledging.delete(id));
     }
     for (const listener of subscription.listeners) listener(pending);
   }
@@ -696,14 +773,29 @@ export class BackgroundJobManager {
     options: {
       timeoutMs?: number;
       abortSignal?: AbortSignal;
+      wakeOnNotifications?: boolean;
     } = {},
-  ): Promise<"completed" | "timeout" | "aborted"> {
+  ): Promise<"completed" | "timeout" | "aborted" | "notifications"> {
     if (options.abortSignal?.aborted) return "aborted";
-    if (!this.hasPending(taskId)) return "completed";
+    if (
+      options.wakeOnNotifications &&
+      this.getReadyNotifications(taskId).length
+    )
+      return "notifications";
+    if (
+      !this.hasPending(taskId) &&
+      !(
+        options.wakeOnNotifications &&
+        this.getPendingNotifications(taskId).length
+      )
+    )
+      return "completed";
     if (options.timeoutMs === 0) return "timeout";
     return new Promise((resolve) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
-      const finish = (result: "completed" | "timeout" | "aborted") => {
+      const finish = (
+        result: "completed" | "timeout" | "aborted" | "notifications",
+      ) => {
         if (timer) clearTimeout(timer);
         this.listeners.delete(check);
         options.abortSignal?.removeEventListener("abort", check);
@@ -711,7 +803,19 @@ export class BackgroundJobManager {
       };
       const check = () => {
         if (this.disposed || options.abortSignal?.aborted) finish("aborted");
-        else if (!this.hasPending(taskId)) finish("completed");
+        else if (
+          options.wakeOnNotifications &&
+          this.getReadyNotifications(taskId).length
+        )
+          finish("notifications");
+        else if (
+          !this.hasPending(taskId) &&
+          !(
+            options.wakeOnNotifications &&
+            this.getPendingNotifications(taskId).length
+          )
+        )
+          finish("completed");
       };
       this.listeners.add(check);
       options.abortSignal?.addEventListener("abort", check, { once: true });
@@ -732,7 +836,7 @@ export class BackgroundJobManager {
     const pending = new Set(
       this.getPendingNotifications(taskId).map((n) => n.backgroundJobId),
     );
-    return [...this.jobs.values()]
+    const jobs = [...this.jobs.values()]
       .filter((job) => job.ownerTaskId === taskId)
       .flatMap((job): BackgroundJobEntry[] => {
         const entry = {
@@ -746,9 +850,10 @@ export class BackgroundJobManager {
               kind: job.kind,
               title: job.title,
               status: job.status,
-              command: job.title,
+              command: job.command ?? job.title,
+              monitor: job.monitor,
               outputFile: job.outputFile,
-              exitCode: job.notification?.exitCode,
+              exitCode: job.notification?.exitCode ?? job.exitCode,
             },
           ];
         const task = this.store.query(
@@ -772,6 +877,52 @@ export class BackgroundJobManager {
           },
         ];
       });
+    const known = new Set(jobs.map((job) => job.backgroundJobId));
+    const history = new Map<
+      string,
+      Extract<BackgroundJobEntry, { kind: "command" }>
+    >();
+    for (const message of this.messages(taskId)) {
+      for (const part of message.parts) {
+        if (
+          part.type === "tool-startMonitor" &&
+          part.state !== "input-streaming" &&
+          part.output?.backgroundJobId
+        ) {
+          const id = part.output.backgroundJobId;
+          if (!known.has(id) && !history.has(id))
+            history.set(id, {
+              backgroundJobId: id,
+              kind: "command",
+              monitor: part.input?.description ?? "",
+              title:
+                part.input?.description?.trim() || part.input?.command || id,
+              command: part.input?.command,
+              outputFile: part.output.outputFile,
+              status: "stopped",
+            });
+        } else if (part.type === "data-monitor-events") {
+          for (const event of part.data.batches) {
+            if (known.has(event.backgroundJobId)) continue;
+            const previous = history.get(event.backgroundJobId);
+            history.set(event.backgroundJobId, {
+              backgroundJobId: event.backgroundJobId,
+              kind: "command",
+              monitor: event.description,
+              title:
+                event.description.trim() ||
+                event.command.trim() ||
+                event.backgroundJobId,
+              command: event.command,
+              outputFile: event.outputFile,
+              status: event.ended?.status ?? previous?.status ?? "stopped",
+              exitCode: event.ended?.exitCode ?? previous?.exitCode,
+            });
+          }
+        }
+      }
+    }
+    return [...jobs, ...history.values()];
   }
 
   async kill(
@@ -846,8 +997,11 @@ export class BackgroundJobManager {
     if (this.disposed) return;
     this.disposed = true;
     this.disposeCommands?.();
-    for (const subscription of this.subscriptions.values())
+    for (const delivery of this.monitorDeliveries.values()) delivery.dispose();
+    for (const subscription of this.subscriptions.values()) {
       subscription.dispose?.();
+      clearTimeout(subscription.acknowledgeRetry);
+    }
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
     this.changed();
     await this.executor?.dispose();

@@ -87,22 +87,31 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       }
     },
     observeNotifications: async (taskId, onChange) => {
-      const notifications =
-        await vscodeHost.readBackgroundJobNotifications(taskId);
+      const [notifications, monitors] = await Promise.all([
+        vscodeHost.readBackgroundJobNotifications(taskId),
+        vscodeHost.readMonitorEvents(taskId),
+      ]);
       const controller = new AbortController();
       try {
-        const completed = await connectSignal(
-          notifications.notifications,
-          controller.signal,
-        );
-        const unsubscribe = completed.subscribe(onChange);
-        onChange(completed.value);
+        const [completed, events] = await Promise.all([
+          connectSignal(notifications.notifications, controller.signal),
+          connectSignal(monitors.events, controller.signal),
+        ]);
+        const update = () => onChange([...completed.value, ...events.value]);
+        const unsubscribeCompleted = completed.subscribe(update);
+        const unsubscribeMonitors = events.subscribe(update);
+        update();
         return {
           dispose: () => {
             controller.abort();
-            unsubscribe();
+            unsubscribeCompleted();
+            unsubscribeMonitors();
           },
-          acknowledge: notifications.acknowledge,
+          acknowledge: async (id) => {
+            if (events.value.some((event) => event.notificationId === id))
+              await monitors.acknowledge(id);
+            else await notifications.acknowledge(id);
+          },
         };
       } catch (error) {
         controller.abort();

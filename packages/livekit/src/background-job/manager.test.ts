@@ -1,4 +1,5 @@
-import type { BackgroundJobNotification } from "@getpochi/common";
+import { toBackgroundJobNotificationParts } from "../chat/background-job-notification";
+import type { BackgroundJobEvent } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import { createBackgroundJobNotification } from "@getpochi/common";
 import { describe, expect, it, vi } from "vitest";
@@ -9,16 +10,16 @@ import { BackgroundJobManager, type BackgroundCommandAdaptor } from "./manager";
 
 function setup() {
   const data = makeJobStore();
-  const pending = new Map<string, readonly BackgroundJobNotification[]>();
+  const pending = new Map<string, readonly BackgroundJobEvent[]>();
   const notificationObservers = new Map<
     string,
-    (notifications: readonly BackgroundJobNotification[]) => void
+    (notifications: readonly BackgroundJobEvent[]) => void
   >();
   const observers = new Map<
     string,
     (snapshot: {
       running: BackgroundCommands;
-      notifications: BackgroundJobNotification[];
+      notifications: BackgroundJobEvent[];
     }) => void
   >();
   let commandsChanged: Parameters<
@@ -81,6 +82,51 @@ const finished = (id = "bgjob-cmd-one") =>
   });
 
 describe("BackgroundJobManager", () => {
+  it("waits for cooldown expiry even after the last monitor exits", async () => {
+    vi.useFakeTimers();
+    const { manager, observers } = setup();
+    try {
+      await manager.watchTask("parent");
+      const ended = {
+        notificationId: "monitor:end", backgroundJobId: "bgjob-monitor-watch",
+        description: "watch", command: "watch", outputFile: "/tmp/watch.log",
+        lines: ["last output"], ended: { reason: "done", status: "completed" as const },
+      };
+      manager.takeReadyNotifications("parent", [{ ...ended, notificationId: "previous", ended: undefined }]);
+      observers.get("parent")!({ running: {}, notifications: [ended] });
+      expect(manager.hasPending("parent")).toBe(false);
+      const settled = vi.fn();
+      const waiting = manager.wait("parent", { wakeOnNotifications: true }).then(settled);
+      await vi.advanceTimersByTimeAsync(5999);
+      expect(settled).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await waiting;
+      expect(settled).toHaveBeenCalledExactlyOnceWith("notifications");
+      expect(manager.takeReadyNotifications("parent", manager.getPendingNotifications("parent"))).toEqual([ended]);
+    } finally {
+      await manager.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("retries a failed source acknowledgement without another event", async () => {
+    vi.useFakeTimers();
+    const { manager, observers, acknowledge, setMessages } = setup();
+    try {
+      await manager.watchTask("parent");
+      acknowledge.mockRejectedValueOnce(new Error("temporary storage failure"));
+      const notice = finished();
+      observers.get("parent")!({ running: {}, notifications: [notice] });
+      setMessages("parent", [{ id: "delivery", role: "user", parts: toBackgroundJobNotificationParts([notice]) }]);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(acknowledge).toHaveBeenCalledTimes(2);
+      expect(manager.getPendingNotifications("parent")).toEqual([]);
+    } finally {
+      await manager.dispose();
+      vi.useRealTimers();
+    }
+  });
+
   it("routes job cancellation through ownership checks and delegates other tools", async () => {
     const { manager, observers, source } = setup();
     const executeToolCall = vi.fn(async () => ({ output: "platform result" }));
@@ -390,7 +436,7 @@ describe("BackgroundJobManager", () => {
       {
         id: "delivered",
         role: "user",
-        parts: [{ type: "data-background-job-notification", data: notice }],
+        parts: toBackgroundJobNotificationParts([notice]),
       },
     ]);
     await manager.dispose();

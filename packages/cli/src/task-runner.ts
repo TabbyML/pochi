@@ -344,14 +344,34 @@ export class TaskRunner {
         getLLM: () => options.llm,
         getEffectiveContextWindow: () =>
           pochiConfig.value.effectiveContextWindow,
-        getEnvironment: async () => ({
-          ...(await readEnvironment({
+        getEnvironment: async () => {
+          const environment = await readEnvironment({
             cwd: options.cwd,
             omitCustomRules:
               options.isSubTask && options.customAgent?.omitAgentsMd === true,
-          })),
-          todos: this.todos,
-        }),
+          });
+          const monitors = this.adaptor.getActiveMonitors(this.taskId);
+          return {
+            ...environment,
+            workspace: {
+              ...environment.workspace,
+              ...(monitors.length > 0
+                ? {
+                    terminals: monitors.map(
+                      ({ backgroundJobId, description, outputFile }) => ({
+                        name: description,
+                        isActive: false,
+                        backgroundJobId,
+                        monitor: description,
+                        outputFile,
+                      }),
+                    ),
+                  }
+                : {}),
+            },
+            todos: this.todos,
+          };
+        },
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
         ...(options.getAutoMemory
@@ -471,9 +491,20 @@ export class TaskRunner {
       `Waiting for background jobs (timeout: ${this.asyncWaitTimeoutInMs}ms)...`,
     ).start();
     const result = await this.backgroundJobs.wait(this.taskId, {
-      timeoutMs: this.asyncWaitTimeoutInMs,
+      timeoutMs:
+        this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
+        this.backgroundJobs
+          .getPendingNotifications(this.taskId)
+          .some((notice) => "lines" in notice)
+          ? undefined
+          : this.asyncWaitTimeoutInMs,
       abortSignal: this.abortSignal,
+      wakeOnNotifications: true,
     });
+    if (result === "notifications") {
+      spinner.succeed("Background notifications arrived.");
+      return true;
+    }
     if (result === "completed")
       spinner.succeed("All background jobs completed.");
     else {
@@ -506,9 +537,15 @@ export class TaskRunner {
       // background jobs would only delay handing the turn back to the user.
       // `flushBackgroundJobNotifications` enforces the same rule itself.
       if (!isAwaitingFollowupAnswer(lastMessage)) {
+        if (this.chatKit.flushBackgroundJobNotifications()) return "next";
         if (
-          this.asyncWaitTimeoutInMs > 0 &&
-          this.backgroundJobs.hasPending(this.taskId)
+          (this.asyncWaitTimeoutInMs > 0 ||
+            this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
+            this.backgroundJobs
+              .getPendingNotifications(this.taskId)
+              .some((notice) => "lines" in notice)) &&
+          (this.backgroundJobs.hasPending(this.taskId) ||
+            this.backgroundJobs.getPendingNotifications(this.taskId).length > 0)
         ) {
           if (!(await this.waitForAsyncWork())) return "finished";
         }

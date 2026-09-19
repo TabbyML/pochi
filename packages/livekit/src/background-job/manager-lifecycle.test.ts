@@ -1,4 +1,5 @@
-import type { BackgroundJobNotification } from "@getpochi/common";
+import { toBackgroundJobNotificationParts } from "../chat/background-job-notification";
+import type { BackgroundJobEvent } from "@getpochi/common";
 import { describe, expect, it, vi } from "vitest";
 import { createForkAgent } from "../background-task/fork-agent";
 import { defaultCatalog as catalog } from "../livestore";
@@ -115,9 +116,7 @@ describe("background task registration and handoff", () => {
           {
             id: "delivered",
             role: "user",
-            parts: [
-              { type: "data-background-job-notification", data: notices[0] },
-            ],
+            parts: toBackgroundJobNotificationParts([notices[0]]),
           },
         ]);
         expect(manager.getPendingNotifications("parent")).toEqual([]);
@@ -136,7 +135,7 @@ describe("background task registration and handoff", () => {
     const manager = BackgroundJobManager.forStore(data.store);
     manager.start();
     await manager.watchTask("parent");
-    const published: BackgroundJobNotification[] = [];
+    const published: BackgroundJobEvent[] = [];
     const unsubscribe = manager.subscribeNotifications("parent", (notices) =>
       published.push(...notices),
     );

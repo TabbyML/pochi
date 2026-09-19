@@ -102,10 +102,7 @@ describe("CliRunningTaskAdaptor command ownership", () => {
         {
           id: "delivered",
           role: "user",
-          parts: notices.map((data) => ({
-            type: "data-background-job-notification",
-            data,
-          })),
+          parts: notices.filter((notice) => "kind" in notice).map((data) => ({ type: "data-background-job-notification", data })),
         },
       ]);
       // Compaction can remove the message after its notification is acknowledged.

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Activity } from "lucide-react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackgroundJobPanel } from "../command-execution-panel";
 
@@ -193,6 +194,46 @@ describe("BackgroundJobPanel job control", () => {
     expect(
       screen.queryByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
     ).toBeNull();
+  });
+
+  it("shows single-line monitor events with scrollable details on hover", async () => {
+    jobInfo = undefined;
+    const output = "first log\nsecond log\nkill requested";
+    const { container } = render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-monitor-1"
+        appearance="notification"
+        command="watch logs"
+        notificationTitle="Simulated log entries"
+        notificationIcon={<Activity className="size-3" />}
+        notificationEvents={[{ id: "event-1", text: output }]}
+        status="stopped"
+        outputFile="/tmp/monitor.log"
+      />,
+    );
+    const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
+    expect(row.textContent).toBe("Simulated log entries");
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(container.querySelector("[aria-expanded]")).toBeNull();
+    expect(row.querySelector(".lucide-activity")).not.toBeNull();
+    expect(row.querySelector(".lucide-circle-slash")).not.toBeNull();
+    expect(row.querySelector("code")?.classList.contains("truncate")).toBe(
+      true,
+    );
+    const event = screen.getByText(/first log/);
+    expect(event.textContent).toBe(output);
+    expect(event.classList.contains("truncate")).toBe(true);
+    fireEvent.pointerMove(event, { pointerType: "mouse" });
+    await waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.textContent).toContain(output);
+      expect(tooltip.querySelector(".overflow-y-auto")).not.toBeNull();
+    });
+    fireEvent.click(
+      screen.getByLabelText("backgroundJobNotifications.openOutput"),
+    );
+    expect(openFile).toHaveBeenCalledWith("/tmp/monitor.log");
+    expect(event.textContent).toBe(output);
   });
 
   it("opens the output file from the notification row and shows its summary tooltip", async () => {

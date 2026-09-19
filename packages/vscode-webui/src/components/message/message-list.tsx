@@ -486,7 +486,10 @@ function Part({
     return null;
   }
 
-  if (part.type === "data-background-job-notification") {
+  if (
+    part.type === "data-background-job-notification" ||
+    part.type === "data-monitor-events"
+  ) {
     return null;
   }
 

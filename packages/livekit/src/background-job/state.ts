@@ -9,6 +9,7 @@ export type BackgroundJobEntry = {
   | {
       kind: "command";
       command?: string;
+      monitor?: string;
       exitCode?: number;
       outputFile?: string;
     }
