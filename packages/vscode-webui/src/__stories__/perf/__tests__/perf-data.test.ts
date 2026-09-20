@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendTaskHistoryTurn,
   makeAddedFilePatch,
   makeFileMatches,
   makeReplaceFilePatch,
+  makeTaskHistoryMessages,
   makeWriteToFileTool,
+  summarizeMessageRange,
+  summarizeTaskHistory,
+  updateTaskHistoryStream,
 } from "../perf-data";
 
 describe("perf data", () => {
@@ -50,5 +55,118 @@ describe("perf data", () => {
     expect(input.content).toContain("| Area | Signal | Expected impact |");
     expect(input.content.split("\n")).toHaveLength(20);
     expect(output._meta.edit).toContain("```json");
+  });
+
+  it("creates task history with varied assistant parts", () => {
+    const messages = makeTaskHistoryMessages({
+      messageCount: 4,
+      assistantPartsPerMessage: 30,
+      partTextLength: 40,
+    });
+
+    expect(messages.map((message) => [message.role, message.parts.length]))
+      .toEqual([
+        ["user", 1],
+        ["assistant", 30],
+        ["user", 1],
+        ["assistant", 30],
+      ]);
+    const assistantParts = messages[1].parts;
+    expect(assistantParts.filter((part) => part.type === "reasoning"))
+      .toHaveLength(6);
+    expect(
+      new Set(
+        assistantParts
+          .filter((part) => part.type.startsWith("tool-"))
+          .map((part) => part.type),
+      ),
+    ).toEqual(
+      new Set([
+        "tool-readFile",
+        "tool-executeCommand",
+        "tool-searchFiles",
+        "tool-listFiles",
+        "tool-globFiles",
+        "tool-writeToFile",
+      ]),
+    );
+    expect(assistantParts.at(-1)?.type).toBe("text");
+  });
+
+  it("appends one deterministic user and assistant turn", () => {
+    const original = makeTaskHistoryMessages({
+      messageCount: 2,
+      assistantPartsPerMessage: 30,
+      partTextLength: 32,
+    });
+
+    const next = appendTaskHistoryTurn(original, {
+      assistantPartsPerMessage: 30,
+      partTextLength: 32,
+      turnIndex: 7,
+    });
+
+    expect(next.slice(0, 2)).toEqual(original);
+    expect(next.slice(2).map(({ id, role }) => ({ id, role }))).toEqual([
+      { id: "task-history-turn-7-user", role: "user" },
+      { id: "task-history-turn-7-assistant", role: "assistant" },
+    ]);
+  });
+
+  it("replaces only the streaming assistant message through one snapshot", () => {
+    const original = makeTaskHistoryMessages({
+      messageCount: 2,
+      assistantPartsPerMessage: 30,
+      partTextLength: 32,
+    });
+    const originalLastTextPart = original[1].parts.findLast(
+      (part) => part.type === "text",
+    );
+    if (!originalLastTextPart) {
+      throw new Error("Expected assistant text parts");
+    }
+    let snapshots = 0;
+
+    const next = updateTaskHistoryStream(original, {
+      updateIndex: 3,
+      chunkSize: 12,
+      snapshot: (message) => {
+        snapshots += 1;
+        return structuredClone(message);
+      },
+    });
+
+    const nextLastTextPart = next[1].parts.findLast(
+      (part) => part.type === "text",
+    );
+    if (!nextLastTextPart) {
+      throw new Error("Expected updated assistant text parts");
+    }
+    expect(snapshots).toBe(1);
+    expect(next[0]).toBe(original[0]);
+    expect(nextLastTextPart.state).toBe("streaming");
+    expect(nextLastTextPart.text).toHaveLength(
+      originalLastTextPart.text.length + 12,
+    );
+  });
+
+  it("summarizes full and mounted message data", () => {
+    const messages = makeTaskHistoryMessages({
+      messageCount: 4,
+      assistantPartsPerMessage: 30,
+      partTextLength: 40,
+    });
+
+    const summary = summarizeTaskHistory(messages);
+
+    expect(summary.messageCount).toBe(4);
+    expect(summary.partCount).toBe(62);
+    expect(summary.serializedBytes).toBeGreaterThan(0);
+    expect(summarizeMessageRange(messages, 2)).toEqual({
+      inputMessageCount: 4,
+      inputPartCount: 62,
+      mountedMessageCount: 2,
+      mountedPartCount: 31,
+    });
   });
 });

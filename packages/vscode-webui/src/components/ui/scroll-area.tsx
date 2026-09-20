@@ -17,8 +17,10 @@ const ScrollArea = React.forwardRef<
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
+        // `relative` makes the viewport the containing block for absolutely
+        // positioned content, so it scrolls and clips with the content.
         className={cn(
-          "[&>div]:!block h-full w-full rounded-[inherit]",
+          "[&>div]:!block relative h-full w-full rounded-[inherit]",
           viewportClassname,
         )}
         ref={ref}

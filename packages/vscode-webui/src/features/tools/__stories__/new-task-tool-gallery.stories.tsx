@@ -24,7 +24,6 @@ const ToolsGallery: React.FC<{
           key={tool.toolCallId + index}
           isExecuting={isExecuting ?? false}
           isLoading={false}
-          messages={[]}
           taskThreadSource={taskThreadSource}
         />
       ))}

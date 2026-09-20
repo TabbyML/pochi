@@ -3,7 +3,8 @@
     "disable": "禁用",
     "openFolder": "打开文件夹",
     "account": "账户",
-    "help": "帮助"
+    "help": "帮助",
+    "close": "关闭"
   },
   "error": {
     "somethingWentWrong": "出错了",
@@ -43,6 +44,7 @@
     "reviewCount": "{{count}} 条评审",
     "userEditCount": "{{count}} 处编辑",
     "terminalContextCount": "{{count}} 个终端选区",
+    "pastedTextCount": "{{count}} 段粘贴文本",
     "steer": "介入",
     "copyImage": "复制图片",
     "openImage": "打开图片",
@@ -316,7 +318,6 @@
     "requiresApproval": "需要批准",
     "taskCompleted": "任务完成",
     "reading": "正在读取 ",
-
     "writing": "正在写入 ",
     "continue": "继续",
     "retry": "重试",
@@ -334,6 +335,7 @@
     "imgAlt": "MCP工具响应快照",
     "renderWidget": "渲染组件",
     "widgetFrozen": "这个组件来自较早的消息。只有最新的组件仍可交互。",
+    "widgetExportFailed": "导出组件失败：{{message}}",
     "widgetInternalError": "组件配置错误。",
     "widgetRuntimeError": "组件运行时错误。",
     "fixWidget": "请修复",
@@ -343,6 +345,7 @@
     "in": "在",
     "executeCommand": "我将执行以下命令",
     "executingCommand": "正在执行命令",
+    "startedCommand": "已启动命令",
     "for": "匹配",
     "matching": "匹配",
     "searching": "搜索中",
@@ -359,6 +362,7 @@
     "readTerminal": "正在读取终端输出",
     "backgroundExecute": "我将在后台执行以下命令",
     "backgroundExecuting": "正在后台执行命令",
+    "promotedToBackground": "；随后转入后台",
     "updatingToDos": "更新待办事项中",
     "editing": "正在编辑 ",
     "moreTools": "，以及另外 {{count}} 个工具",
@@ -378,6 +382,10 @@
   "attachmentPreview": {
     "removeAttachment": "移除附件",
     "uploading": "上传中..."
+  },
+  "pastedText": {
+    "label": "粘贴的文本",
+    "remove": "移除粘贴的文本"
   },
   "checkpointUI": {
     "restoring": "恢复中...",
@@ -511,6 +519,8 @@
     "expand": "展开",
     "openJob": "打开任务 {{displayId}}",
     "openTerminal": "打开终端 {{name}}",
+    "terminalClosed": "该终端已关闭",
+    "terminalClosedOpenOutput": "该终端已关闭，点击打开输出日志",
     "userTerminal": "用户终端",
     "stop": "停止"
   },
@@ -577,14 +587,25 @@
     "diffTitle": "用户编辑"
   },
   "backgroundJobNotifications": {
-    "title": "后台任务通知",
-    "notificationCount_one": "{{count}} 条通知",
-    "notificationCount_other": "{{count}} 条通知",
+    "title": "通知",
     "completed": "已完成（退出码 {{exitCode}}）",
+    "completedNoExit": "已完成",
     "failed": "失败（退出码 {{exitCode}}）",
     "failedNoExit": "失败",
     "stopped": "已停止",
     "openOutput": "打开输出文件"
+  },
+  "managePanel": {
+    "title": "后台任务",
+    "toggle": "查看后台任务",
+    "pochiGroup": "后台命令",
+    "openTerminal": "打开终端",
+    "hideTerminal": "隐藏终端",
+    "copyCommand": "复制命令",
+    "kill": "终止进程",
+    "empty": "当前没有后台任务",
+    "seeMore": "查看更多",
+    "seeLess": "收起"
   },
   "forkTask": {
     "forkedTaskTitle": "任务分支自：{{taskTitle}}"
@@ -648,5 +669,29 @@
   "builtInAgentsSettings": {
     "title": "内置代理",
     "browser": "浏览器"
+  },
+  "backgroundTasks": {
+    "toggleResult": "展开或收起结果",
+    "waitingInput": "等待输入",
+    "statusUnavailable": "状态不可用",
+    "systemAgent": "系统 Agent",
+    "idle": "空闲",
+    "background": "后台",
+    "started": "已在后台启动",
+    "view": "查看子任务",
+    "running": "运行中",
+    "completed": "已完成",
+    "failed": "失败",
+    "stopped": "已停止",
+    "finished": "已结束",
+    "pendingNotification": "待发送通知",
+    "title": "后台代理",
+    "empty": "没有后台代理",
+    "untitled": "未命名",
+    "stop": "停止",
+    "moveToBackground": "移到后台",
+    "all": "全部",
+    "showAll": "显示所有后台任务",
+    "moveToBackgroundHint": "在后台继续运行，完成后通知你。"
   }
 }

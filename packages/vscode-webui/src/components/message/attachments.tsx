@@ -12,13 +12,17 @@ import { CopyableImage } from "../ui/copyable-image";
 
 interface MessageAttachmentsProps {
   attachments: FileUIPart[];
+  className?: string;
 }
 
-export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
+export function MessageAttachments({
+  attachments,
+  className,
+}: MessageAttachmentsProps) {
   if (!attachments || attachments.length === 0) return null;
 
   return (
-    <div className="my-2 flex flex-wrap gap-2">
+    <div className={cn("my-2 flex flex-wrap gap-2", className)}>
       {attachments.map((attachment, index) => {
         return (
           <MessageAttachmentView

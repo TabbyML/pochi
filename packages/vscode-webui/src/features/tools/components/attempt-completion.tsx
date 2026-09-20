@@ -6,9 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
-import { isStaticToolUIPart } from "ai";
 import { Check, CheckIcon, CopyIcon } from "lucide-react";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { CreatePrAction } from "./create-pr-action";
 import {
@@ -19,25 +17,10 @@ import type { ToolProps } from "./types";
 
 export const AttemptCompletionTool: React.FC<
   ToolProps<"attemptCompletion">
-> = ({ tool: toolCall, messages, isSubTask }) => {
+> = ({ tool: toolCall, isLastPart, isSubTask }) => {
   const { t } = useTranslation();
   const { result = "" } = toolCall.input || {};
   const resultContent = getAttemptCompletionResultDisplay(result);
-
-  const isLastPart = useMemo(() => {
-    if (!messages || messages.length === 0) return false;
-    const lastMessage = messages[messages.length - 1];
-
-    // Check if tool is in last message
-    const partIndex = lastMessage.parts.findIndex(
-      (p) => isStaticToolUIPart(p) && p.toolCallId === toolCall.toolCallId,
-    );
-
-    if (partIndex === -1) return false;
-
-    // Check if it is the last part
-    return partIndex === lastMessage.parts.length - 1;
-  }, [messages, toolCall.toolCallId]);
 
   // Return null if there's nothing to display
   if (!resultContent.content) {

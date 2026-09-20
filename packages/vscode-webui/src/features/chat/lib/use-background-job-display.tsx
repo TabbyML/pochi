@@ -15,7 +15,6 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
       if (
         p.type === "tool-executeCommand" &&
         p.state !== "input-streaming" &&
-        p.input?.background === true &&
         p.output?._meta?.backgroundJobId
       ) {
         ids.add(p.output._meta.backgroundJobId);
@@ -32,8 +31,7 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
       if (
         p.type === "tool-executeCommand" &&
         p.state !== "input-streaming" &&
-        p.input?.background === true &&
-        p.input.command &&
+        p.input?.command &&
         p.output?._meta?.backgroundJobId
       ) {
         map.set(p.output._meta.backgroundJobId, {

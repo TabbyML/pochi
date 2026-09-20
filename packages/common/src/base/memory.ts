@@ -1,9 +1,6 @@
 import type { AutoMemoryContext } from "./prompts/auto-memory";
 
 export interface TaskMemoryState {
-  initialized: boolean;
-  lastExtractionTokens: number;
-  lastExtractionToolCalls: number;
   /**
    * UUID of the last message incorporated into memory.md by the most recent
    * successful extraction. Compaction uses this as the boundary to know
@@ -17,6 +14,8 @@ export interface TaskMemoryState {
    * fork agent writes memory.md successfully.
    */
   pendingExtractionMessageId?: string;
+  extractionAttemptsSinceCompact: number;
+  extractedSinceCompact?: boolean;
   isExtracting: boolean;
   extractionCount: number;
   activeTaskId?: string;

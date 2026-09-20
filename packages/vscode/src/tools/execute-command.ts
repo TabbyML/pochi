@@ -26,6 +26,7 @@ import {
   PtySpawnError,
   executeCommandWithPty,
 } from "../integrations/terminal/execute-command-with-pty";
+import { ExecutionError } from "../integrations/terminal/utils";
 
 const logger = getLogger("ExecuteCommand");
 const ExecuteCommandStreamingThrottleMs = 300;
@@ -45,7 +46,7 @@ export const executeCommand: ToolFunctionType<
     background = false,
     timeout = ExecuteCommandDefaultTimeoutSec,
   },
-  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId },
+  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId, allowBackground },
 ) => {
   if (!command) {
     throw new Error("Command is required to execute.");
@@ -58,19 +59,23 @@ export const executeCommand: ToolFunctionType<
   }
 
   if (background) {
+    if (allowBackground === false) {
+      throw new Error("Background commands are not available for this task.");
+    }
     if (!taskId) {
       throw new Error("A task ID is required to start a background job.");
     }
 
     const viewColumn = getViewColumnForTerminal();
     const location = viewColumn ? { viewColumn } : undefined;
-    const job = TerminalJob.create({
+    const job = await TerminalJob.create({
       name: getBackgroundJobTerminalName(command),
       command,
       cwd,
       location,
       abortSignal,
       taskId,
+      ...(envs ? { envs } : {}),
     });
 
     return createBackgroundCommandResult(job.id, job.outputFile);
@@ -128,17 +133,50 @@ export const executeCommand: ToolFunctionType<
       timeout,
       abortSignal,
       envs,
+      allowBackground,
       onData: (data) => {
         pendingData = data;
         throttledFlush.call();
       },
     })
-      .then(async ({ output: commandOutput, isTruncated }) => {
+      .then(async (result) => {
         done = true;
         throttledFlush.cancel();
+
+        if (result.type === "timedOut") {
+          if (!taskId || allowBackground === false) {
+            result.ptyProcess.kill();
+            pendingData = result;
+            throw ExecutionError.createTimeoutError(timeout, allowBackground);
+          }
+
+          const viewColumn = getViewColumnForTerminal();
+          const location = viewColumn ? { viewColumn } : undefined;
+          const job = TerminalJob.adopt(result.ptyProcess, {
+            name: getBackgroundJobTerminalName(command),
+            command,
+            cwd,
+            location,
+            abortSignal,
+            taskId,
+            ...(envs ? { envs } : {}),
+          });
+          const backgroundResult = createBackgroundCommandResult(
+            job.id,
+            job.outputFile,
+          );
+          output.value = {
+            content: backgroundResult.output,
+            status: "completed",
+            isTruncated: backgroundResult.isTruncated,
+            _meta: backgroundResult._meta,
+          };
+          return;
+        }
+
         output.value = await persistCompletedOutput({
-          output: commandOutput,
-          isTruncated,
+          output: result.output,
+          isTruncated: result.isTruncated,
         });
       })
       .catch(async (error) => {
@@ -181,6 +219,7 @@ async function executeCommandImpl({
   abortSignal,
   envs,
   onData,
+  allowBackground,
 }: ExecuteCommandOptions) {
   const shell = getShellPath();
   // FIXME(zhiming): node-pty impl is not working on windows for now
@@ -208,12 +247,14 @@ async function executeCommandImpl({
     }
   }
 
-  return await executeCommandWithNode({
+  const result = await executeCommandWithNode({
     command,
     cwd,
     timeout,
     abortSignal,
     envs,
     onData,
+    allowBackground,
   });
+  return { type: "completed" as const, ...result };
 }

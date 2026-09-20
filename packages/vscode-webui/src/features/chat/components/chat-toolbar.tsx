@@ -21,20 +21,24 @@ import {
 import { type TodoCompletionUpdate, TodoList } from "@/features/todo";
 import { useAddCompleteToolCalls } from "@/lib/hooks/use-add-complete-tool-calls";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import { useBackgroundJobNotifications } from "@/lib/hooks/use-background-job-notifications";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
 import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { constants, type BackgroundJobNotification } from "@getpochi/common";
+import { constants } from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type {
   DisplayModel,
   McpConfigOverride,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Message, Task } from "@getpochi/livekit";
+import type {
+  BackgroundJobNotificationPart,
+  Message,
+  Task,
+} from "@getpochi/livekit";
 import { type Todo, initTodoModeTodos } from "@getpochi/tools";
 import {
   SendHorizonal,
@@ -57,10 +61,7 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { useTerminalContextState } from "../hooks/use-terminal-context-state";
-import {
-  enqueueBackgroundJobNotifications,
-  getBackgroundJobNotificationIds,
-} from "../lib/background-job-notification-queue";
+import { BackgroundJobManagePanel } from "./background-job-manage-panel";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
 import { SubmitReviewsButton } from "./submit-review-button";
@@ -68,7 +69,9 @@ import { CompleteSubtaskButton } from "./subtask";
 
 const PopupContainerClassName = tw`-translate-y-full -top-2 absolute left-0 w-full px-4 pt-1`;
 const PopupContentClassName = tw`flex w-full flex-col bg-background`;
-const FooterContainerClassName = tw`my-2 flex shrink-0 justify-between gap-5 overflow-x-hidden`;
+// `overflow-x-hidden` clips vertically too, so the row carries padding to keep
+// room for anything hanging outside a control, such as the manage panel badge.
+const FooterContainerClassName = tw`my-1 flex shrink-0 justify-between gap-5 overflow-x-hidden py-1`;
 const FooterLeftClassName = tw`flex items-center gap-2 overflow-x-hidden truncate`;
 const FooterRightClassName = tw`flex shrink-0 items-center gap-1`;
 
@@ -94,6 +97,11 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
+  /** Background job notifications the chat kit has not delivered yet. */
+  pendingBackgroundJobNotifications?: readonly BackgroundJobNotificationPart[];
+  /** Asks the chat kit to deliver those notifications right away. */
+  flushBackgroundJobNotifications?: () => boolean;
+  persistToolOutput: () => void;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
@@ -120,6 +128,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
+  pendingBackgroundJobNotifications,
+  flushBackgroundJobNotifications,
+  persistToolOutput,
   onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
@@ -140,33 +151,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const { input, setInput, clearInput } = useChatInputState();
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
+  const { customAgents, isLoading: isCustomAgentsLoading } =
+    useCustomAgents(true);
 
   const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
-  const { notifications: backgroundJobNotifications, acknowledge } =
-    useBackgroundJobNotifications(taskId);
 
-  useEffect(() => {
-    const deliveredIds = new Set(
-      messages.flatMap((message) =>
-        message.parts
-          .filter((part) => part.type === "data-background-job-notification")
-          .map((part) => part.data.notificationId),
-      ),
-    );
-    const notificationsToQueue: BackgroundJobNotification[] = [];
-    for (const notification of backgroundJobNotifications) {
-      if (deliveredIds.has(notification.notificationId)) {
-        void acknowledge?.(notification.notificationId);
-      } else {
-        notificationsToQueue.push(notification);
-      }
-    }
-    if (notificationsToQueue.length > 0) {
-      setQueuedMessages((current) =>
-        enqueueBackgroundJobNotifications(current, notificationsToQueue),
-      );
-    }
-  }, [acknowledge, backgroundJobNotifications, messages]);
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
   const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
@@ -284,7 +273,10 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   } = useChatStatus({
     isModelValid: !!selectedModel,
     isLoading,
-    isInputEmpty: !input.text.trim() && queuedMessages.length === 0,
+    isInputEmpty:
+      !input.text.trim() &&
+      (input.pastedTexts?.length ?? 0) === 0 &&
+      queuedMessages.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isTerminalContextEmpty: terminalContextSelections.length === 0,
@@ -293,8 +285,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     taskStatus: task?.status,
   });
 
-  const canSubmit = isSubmitEnabled && !isSkillsLoading;
-  const canSteer = allowSteer && !isSkillsLoading;
+  const canSubmit =
+    isSubmitEnabled && !isSkillsLoading && !isCustomAgentsLoading;
+  const canSteer = allowSteer && !isSkillsLoading && !isCustomAgentsLoading;
   const compactEnabled = !(
     isRunning || totalTokens < constants.CompactTaskMinTokens
   );
@@ -304,6 +297,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     handleSubmit,
     handleSteerSubmit,
     handleSteerQueuedMessage,
+    handleSteerBackgroundJobNotifications,
     handleStop,
   } = useChatSubmit({
     chat,
@@ -322,6 +316,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     reviews,
     userEdits: includedUserEdits,
     skills,
+    customAgents,
     terminalContextSelections,
     clearTerminalContextSelections,
     taskId,
@@ -329,14 +324,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     canCreateTodo: !todoModeDisabled,
     onTodoModeQueued: resetTodoMode,
     onBeforeSendText: createTodoBeforeSend,
-    onMessageSent: (message) => {
-      const notificationIds = getBackgroundJobNotificationIds(message);
-      if (notificationIds.length > 0 && acknowledge) {
-        return Promise.all(
-          notificationIds.map((notificationId) => acknowledge(notificationId)),
-        ).then(() => undefined);
-      }
-    },
+    flushBackgroundJobNotifications,
   });
 
   const chatInputFormRef = useRef<ChatInputFormHandle>(null);
@@ -347,26 +335,65 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   // Auto dequeue when ready
   const taskStatus = task?.status;
-  useEffect(() => {
-    const shouldAutoDequeue =
-      status === "ready" &&
-      allowSendMessage &&
-      !pendingApproval &&
-      (taskStatus === undefined ||
-        taskStatus === "pending-input" ||
-        taskStatus === "completed");
+  const isIdle =
+    status === "ready" &&
+    allowSendMessage &&
+    !pendingApproval &&
+    (taskStatus === undefined ||
+      taskStatus === "pending-input" ||
+      taskStatus === "completed");
 
-    if (shouldAutoDequeue && queuedMessages.length > 0) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pendingBackgroundJobNotifications wakes this effect up when a background job finishes while the agent is idle.
+  useEffect(() => {
+    if (!isIdle) return;
+
+    const head = queuedMessages[0];
+    if (head) {
+      // Queued user input goes first; the chat kit attaches the pending
+      // notifications to that very request, so they cost no extra turn.
       handleSteerQueuedMessage(0);
+      return;
     }
+
+    // The chat kit owns notification delivery, including deferring it while a
+    // follow-up question waits for its answer.
+    flushBackgroundJobNotifications?.();
   }, [
-    status,
-    allowSendMessage,
-    pendingApproval,
-    taskStatus,
+    isIdle,
+    messages,
     queuedMessages,
+    pendingBackgroundJobNotifications,
+    flushBackgroundJobNotifications,
     handleSteerQueuedMessage,
   ]);
+
+  // Notifications are rendered after the queued user messages, matching the
+  // order in which they reach the model.
+  const notificationEntry = useMemo<DraftMessage | undefined>(() => {
+    if (!pendingBackgroundJobNotifications?.length) return undefined;
+
+    return {
+      parts: [...pendingBackgroundJobNotifications],
+      raw: {
+        text: pendingBackgroundJobNotifications
+          .map((part) =>
+            part.data.kind === "subagent"
+              ? `Subagent ${part.data.status}: ${part.data.title || part.data.agentType || part.data.taskId}`
+              : part.data.summary,
+          )
+          .join("\n"),
+        nonRemovable: true,
+      },
+    };
+  }, [pendingBackgroundJobNotifications]);
+
+  const displayedQueuedMessages = useMemo(
+    () =>
+      notificationEntry
+        ? [...queuedMessages, notificationEntry]
+        : queuedMessages,
+    [notificationEntry, queuedMessages],
+  );
 
   // Remove a message from queue
   const handleRemoveQueuedMessage = useCallback(
@@ -377,11 +404,27 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [queuedMessages],
   );
 
+  const handleSteerDisplayedMessage = useCallback(
+    (index: number) => {
+      if (index < queuedMessages.length) {
+        void handleSteerQueuedMessage(index);
+        return;
+      }
+      void handleSteerBackgroundJobNotifications();
+    },
+    [
+      queuedMessages.length,
+      handleSteerQueuedMessage,
+      handleSteerBackgroundJobNotifications,
+    ],
+  );
+
   const allowAddToolResult = !blockingState.isBusy;
   useAddCompleteToolCalls({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
+    persistToolOutput,
     updateTodoCompletion,
   });
 
@@ -506,9 +549,9 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           }
           terminalContextSelections={terminalContextSelections}
           onRemoveTerminalContextSelection={removeTerminalContextSelection}
-          queuedMessages={queuedMessages}
+          queuedMessages={displayedQueuedMessages}
           onRemoveQueuedMessage={handleRemoveQueuedMessage}
-          onSteerQueuedMessage={handleSteerQueuedMessage}
+          onSteerQueuedMessage={handleSteerDisplayedMessage}
           allowSteer={allowSteer}
           onAttachFile={() => fileInputRef.current?.click()}
           onSelectTodoMode={
@@ -521,13 +564,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           })}
         >
           {files.length > 0 && (
-            <div className="px-3">
-              <AttachmentPreviewList
-                files={files}
-                onRemove={removeFile}
-                isUploading={isUploadingAttachments}
-              />
-            </div>
+            <AttachmentPreviewList
+              files={files}
+              onRemove={removeFile}
+              isUploading={isUploadingAttachments}
+              className="contents"
+            />
           )}
         </ChatInputForm>
       </div>
@@ -575,6 +617,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             todos={todos}
             getSystemPrompt={getSystemPrompt}
           />
+          <BackgroundJobManagePanel taskId={taskId} />
           <AutoApproveMenu
             isSubTask={isSubTask}
             mcpConfigOverride={mcpConfigOverride}

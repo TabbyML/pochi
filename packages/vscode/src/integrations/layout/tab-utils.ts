@@ -1,9 +1,14 @@
 import { container, injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
+import { WidgetPreviewViewType } from "../webview/widget-html-actions";
 
 const MainThreadWebviewPrefix = "mainThreadWebview-";
 const PochiPanelViewTypePrefix = "pochi.";
+// Pochi-owned webviews that are content rather than chrome: they belong in the
+// editor group, so they must not be moved into the Pochi panel group by the
+// layout manager even though their view type shares the `pochi.` prefix.
+const PochiContentViewTypes: readonly string[] = [WidgetPreviewViewType];
 
 export type PochiTaskTab = vscode.Tab & {
   input: vscode.TabInputCustom & {
@@ -20,14 +25,21 @@ export function isPochiTaskTab(tab: vscode.Tab): tab is PochiTaskTab {
 
 export function isPochiPanelTab(tab: vscode.Tab) {
   if (tab.input instanceof vscode.TabInputCustom) {
-    return tab.input.viewType.startsWith(PochiPanelViewTypePrefix);
+    return isPochiPanelViewType(tab.input.viewType);
   }
   if (tab.input instanceof vscode.TabInputWebview) {
-    return normalizeWebviewPanelViewType(tab.input.viewType).startsWith(
-      PochiPanelViewTypePrefix,
+    return isPochiPanelViewType(
+      normalizeWebviewPanelViewType(tab.input.viewType),
     );
   }
   return false;
+}
+
+function isPochiPanelViewType(viewType: string) {
+  return (
+    viewType.startsWith(PochiPanelViewTypePrefix) &&
+    !PochiContentViewTypes.includes(viewType)
+  );
 }
 
 function normalizeWebviewPanelViewType(viewType: string) {

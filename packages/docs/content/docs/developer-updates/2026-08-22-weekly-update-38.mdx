@@ -1,0 +1,24 @@
+---
+title: 'Weekly Update #38'
+---
+# Weekly Update #38
+
+### TL;DR
+
+Pochi 0.66 shipped on August 20 with the automatic background-job completion notifications and cleaner changed-files summary previewed in last week's update. With that release out, Pochi 0.68 is expected on August 31 and is shaping up to make agents better at exercising and verifying the software they build, while keeping very long task histories responsive and available instead of letting them overwhelm the chat view.
+
+More below!
+
+### 🚀 Features
+
+- **Run and verify software through its real interface:** Pochi is expected to gain built-in workflows for exercising CLI tools, servers, browser apps, desktop apps, terminal interfaces, libraries, and agent workflows. It will be able to run a project through the interface its users actually see, formally verify the result when asked, and create reusable project-specific run instructions for later tasks.
+
+  This will be most useful when tests alone cannot show whether an interactive workflow behaves correctly from end to end. [**#1904**](https://github.com/TabbyML/pochi/pull/1904)
+
+### 🐛 Bug Fixes
+
+- **Long task histories will stay responsive:** Pochi will render long conversations in manageable sections, keeping the newest work anchored in view while still letting you load earlier messages. This is expected to prevent large histories with many sub-agent steps from exhausting the chat view's memory or causing the page to collapse. [**#1900**](https://github.com/TabbyML/pochi/pull/1900)
+
+### 👀 Coming Up
+
+- **Save rendered widgets to a file:** Planned work for 0.68 will let you save generated widget content to a file instead of leaving it only in the chat.

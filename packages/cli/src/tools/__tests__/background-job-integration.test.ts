@@ -1,7 +1,7 @@
 import { describe, expect, it, afterEach } from "vitest";
 import { validateToolPolicy } from "@getpochi/tools";
 import { executeToolCall } from "../index";
-import { BackgroundJobManager } from "../../lib/background-job-manager";
+import { createTestCliAdaptor } from "../../lib/__tests__/cli-adaptor";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { NodeBlobStore } from "../../node-blob-store";
@@ -15,8 +15,10 @@ describe("executeToolCall with background jobs", () => {
     await fs.rm(testBlobStorage, { recursive: true, force: true });
   });
 
-  it("should pass backgroundJobManager to tool execution", async () => {
-    const manager = new BackgroundJobManager();
+  it("should pass adaptor to tool execution", async () => {
+    const adaptor = createTestCliAdaptor({
+      commandOutputDir: testBlobStorage,
+    });
     const cwd = path.resolve(".");
     const blobStore = new NodeBlobStore(testBlobStorage);
 
@@ -32,16 +34,22 @@ describe("executeToolCall with background jobs", () => {
       },
     };
 
-
     // We verified that executeToolCall calls the tool function with `options` first.
-    // executeCommand extracts backgroundJobManager from its tool context when
+    // executeCommand extracts adaptor from its tool context when
     // background execution is requested.
 
     const result = (await executeToolCall(
       toolCall,
       {
         rg: "rg",
-        backgroundJobManager: manager,
+        taskId: "test-task",
+        adaptor: adaptor,
+        backgroundJobManager: {
+          kill: async (id: string) => {
+            await adaptor.commandAdaptor.kill(id);
+            return { success: true as const };
+          },
+        },
         fileSystem: {
           readFile: async () => new Uint8Array(),
           writeFile: async () => {},
@@ -49,14 +57,15 @@ describe("executeToolCall with background jobs", () => {
         blobStore,
         fileStateCache: new FileStateCache(),
       },
-      cwd
+      cwd,
     )) as any;
-
 
     // If it failed with the specific error, result would contain error message
 
-    if ('error' in result) {
-        expect(result.error).not.toContain("Background job manager not available.");
+    if ("error" in result) {
+      expect(result.error).not.toContain(
+        "Background command execution is not available.",
+      );
     }
 
     // It should succeed and describe the background job in the public output.
@@ -64,7 +73,7 @@ describe("executeToolCall with background jobs", () => {
     expect(result.output).toContain(".log");
 
     // Clean up
-    manager.kill(result._meta.backgroundJobId);
+    await adaptor.stopBackgroundCommands();
   });
 
   it("returns a tool error when file path policy validation fails", async () => {
@@ -91,12 +100,11 @@ describe("executeToolCall with background jobs", () => {
         },
         { cwd },
       ),
-    ).toThrow(
-      "Path is not allowed by the configured path rules.",
-    );
+    ).toThrow("Path is not allowed by the configured path rules.");
   });
 
   it("allows file reads when the workspace path matches configured path rules", async () => {
+    const adaptor = createTestCliAdaptor();
     const cwd = path.resolve(".");
     const blobStore = new NodeBlobStore(testBlobStorage);
     const readFile = async () => new TextEncoder().encode("hello from src");
@@ -126,7 +134,14 @@ describe("executeToolCall with background jobs", () => {
       toolCall,
       {
         rg: "rg",
-        backgroundJobManager: new BackgroundJobManager(),
+        taskId: "test-task",
+        adaptor,
+        backgroundJobManager: {
+          kill: async (id: string) => {
+            await adaptor.commandAdaptor.kill(id);
+            return { success: true as const };
+          },
+        },
         fileSystem: {
           readFile,
           writeFile: async () => {},
@@ -148,6 +163,7 @@ describe("executeToolCall with background jobs", () => {
   });
 
   it("allows file reads when the virtual path matches configured path rules", async () => {
+    const adaptor = createTestCliAdaptor();
     const cwd = path.resolve(".");
     const blobStore = new NodeBlobStore(testBlobStorage);
     const readFile = async () => new TextEncoder().encode("hello from pochi");
@@ -177,7 +193,14 @@ describe("executeToolCall with background jobs", () => {
       toolCall,
       {
         rg: "rg",
-        backgroundJobManager: new BackgroundJobManager(),
+        taskId: "test-task",
+        adaptor,
+        backgroundJobManager: {
+          kill: async (id: string) => {
+            await adaptor.commandAdaptor.kill(id);
+            return { success: true as const };
+          },
+        },
         fileSystem: {
           readFile,
           writeFile: async () => {},

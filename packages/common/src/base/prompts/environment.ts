@@ -8,6 +8,16 @@ export type EnvironmentInfo = Pick<
   Environment["info"],
   "os" | "shell" | "homedir" | "cwd"
 >;
+type RequiredEnvironmentInfo = Omit<EnvironmentInfo, "shell">;
+
+type EnvironmentInfoField = keyof RequiredEnvironmentInfo;
+export type EnvironmentInfoParseResult =
+  | { success: true; value: EnvironmentInfo; missingFields?: never }
+  | {
+      success: false;
+      value?: never;
+      missingFields: EnvironmentInfoField[];
+    };
 
 export function createEnvironmentPrompt(
   environment: Environment,
@@ -41,7 +51,18 @@ export function createLiteEnvironmentPrompt(environment: Environment) {
 export function parseEnvironmentInfo(
   prompt: LanguageModelV3CallOptions["prompt"] | undefined,
 ): EnvironmentInfo | undefined {
-  if (!prompt) return;
+  const result = parseEnvironmentInfoResult(prompt);
+  return result?.value;
+}
+
+export function parseEnvironmentInfoResult(
+  prompt: LanguageModelV3CallOptions["prompt"] | undefined,
+): EnvironmentInfoParseResult {
+  let closestMissingFields: EnvironmentInfoField[] = ["os", "homedir", "cwd"];
+
+  if (!prompt) {
+    return { success: false, missingFields: closestMissingFields };
+  }
 
   for (const message of prompt) {
     const content = message.content;
@@ -61,16 +82,30 @@ export function parseEnvironmentInfo(
       const homedir = systemInfo["Home Directory"];
       const cwd = systemInfo["Current Working Directory"];
 
-      if (os && shell && homedir && cwd) {
+      if (os && homedir && cwd) {
         return {
-          os,
-          shell,
-          homedir,
-          cwd,
+          success: true,
+          value: {
+            os,
+            shell: shell ?? "",
+            homedir,
+            cwd,
+          },
         };
+      }
+
+      const missingFields: EnvironmentInfoField[] = [];
+      if (!os) missingFields.push("os");
+      if (!homedir) missingFields.push("homedir");
+      if (!cwd) missingFields.push("cwd");
+
+      if (missingFields.length < closestMissingFields.length) {
+        closestMissingFields = missingFields;
       }
     }
   }
+
+  return { success: false, missingFields: closestMissingFields };
 }
 
 function parseSystemInfoLines(text: string) {
@@ -192,12 +227,28 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
 export function injectEnvironment(
   messages: UIMessage[],
   environment: Environment | undefined,
-  options?: { forceFull?: boolean },
 ): UIMessage[] {
   if (environment === undefined) return messages;
-  const messageToInject = messages.at(-1);
+
+  // The LLM formatter discards every message before the latest compact block.
+  // Only inspect that visible suffix when deciding whether the request already
+  // contains a complete environment.
+  const compactIndex = messages.findLastIndex((message) =>
+    message.parts.some(
+      (part) => part.type === "text" && prompts.isCompact(part.text),
+    ),
+  );
+  const visibleMessages = messages.slice(Math.max(compactIndex, 0));
+  let messageToInject = visibleMessages.at(-1);
+  if (messageToInject?.role !== "user") {
+    // Tool continuations may compact away the full environment. Repair the
+    // visible user context only when needed, keeping normal continuations stable.
+    if (hasCompleteEnvironmentPrompt(visibleMessages)) return messages;
+    messageToInject = visibleMessages.findLast(
+      (message) => message.role === "user",
+    );
+  }
   if (!messageToInject) return messages;
-  if (messageToInject.role !== "user") return messages;
 
   const { gitStatus } = environment.workspace;
   const user =
@@ -208,32 +259,39 @@ export function injectEnvironment(
         }
       : undefined;
 
-  const environmentDetails =
-    messages.length === 1 || options?.forceFull
-      ? createEnvironmentPrompt(environment, user)
-      : createLiteEnvironmentPrompt(environment);
+  const parts = messageToInject.parts.filter(
+    (part) =>
+      part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
+  );
+  // Ignore the reminder being replaced when checking the outgoing request.
+  messageToInject.parts = parts;
+
+  const environmentDetails = !hasCompleteEnvironmentPrompt(visibleMessages)
+    ? createEnvironmentPrompt(environment, user)
+    : createLiteEnvironmentPrompt(environment);
 
   const reminderPart = {
     type: "text",
     text: prompts.createSystemReminder(environmentDetails),
   } satisfies TextUIPart;
 
-  const parts =
-    // Remove existing environment system reminders.
-    messageToInject.parts.filter(
-      (x) => x.type !== "text" || !prompts.isEnvironmentSystemReminder(x.text),
-    ) || [];
-  const lastTextPartIndex = parts.findLastIndex(
-    (parts) => parts.type === "text",
-  );
-  // Insert remainderPart before lastTextPartIndex
-  messageToInject.parts = [
-    ...parts.slice(0, lastTextPartIndex),
-    reminderPart,
-    ...parts.slice(lastTextPartIndex),
-  ];
+  messageToInject.parts = [reminderPart, ...parts];
 
   return messages;
+}
+
+function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
+  return messages.some((message) =>
+    message.parts.some((part) => {
+      if (part.type !== "text") return false;
+      const systemInfo = parseSystemInfoLines(part.text);
+      return Boolean(
+        systemInfo["Operating System"] &&
+          systemInfo["Home Directory"] &&
+          systemInfo["Current Working Directory"],
+      );
+    }),
+  );
 }
 
 function getTodos(todos: Environment["todos"]) {

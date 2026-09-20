@@ -1,25 +1,23 @@
+// @vitest-environment jsdom
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-// @vitest-environment jsdom
 import { renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAddSubtaskResult } from "./use-subtask-completed";
 
 const addResultMock = vi.hoisted(() => vi.fn());
 const autoApproveGuardMock = vi.hoisted(() => ({ current: "stop" }));
 const extractTaskResultMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/use-default-store", () => ({
-  useDefaultStore: () => ({ storeId: "store-1" }),
-}));
+const store = { storeId: "store-1" };
+const lifecycle = { status: "init", addResult: addResultMock };
+const getToolCallLifeCycle = () => lifecycle;
+vi.mock("@/lib/use-default-store", () => ({ useDefaultStore: () => store }));
 
 vi.mock("../lib/chat-state", () => ({
   useAutoApproveGuard: () => autoApproveGuardMock,
   useToolCallLifeCycle: () => ({
-    getToolCallLifeCycle: () => ({
-      status: "init",
-      addResult: addResultMock,
-    }),
+    getToolCallLifeCycle,
   }),
 }));
 
@@ -69,6 +67,27 @@ function makeParentMessage(): Message {
 }
 
 describe("useAddSubtaskResult", () => {
+  it("collects the manual result when the parent remounts", () => {
+    const messages = [makeParentMessage()];
+    extractTaskResultMock.mockReturnValue(undefined);
+    const { unmount } = renderHook(() => useAddSubtaskResult({ messages }));
+    expect(addResultMock).not.toHaveBeenCalled();
+    unmount();
+    extractTaskResultMock.mockReturnValue({
+      summary: "Done.",
+      todoUpdates: [{ id: "todo-1", status: "completed" }],
+    });
+    expect(addResultMock).not.toHaveBeenCalled();
+    renderHook(() => useAddSubtaskResult({ messages }));
+    expect(addResultMock).toHaveBeenCalledOnce();
+    expect(autoApproveGuardMock.current).toBe("auto");
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    autoApproveGuardMock.current = "stop";
+  });
+
   it("resolves attemptTodoCompletion subtask output before completing the parent tool call", async () => {
     extractTaskResultMock.mockReturnValue({
       summary: "Done.",
@@ -84,6 +103,46 @@ describe("useAddSubtaskResult", () => {
         todos: [{ ...auditTodo, status: "completed" }],
       },
     });
+    expect(autoApproveGuardMock.current).toBe("auto");
+  });
+
+  it("resolves a completed parallel subtask that is not the last message part", async () => {
+    const message = makeParentMessage();
+    message.parts.push({
+      type: "tool-newTask",
+      toolCallId: "tool-call-2",
+      state: "input-available",
+      input: {
+        description: "Second parallel subtask",
+        prompt: "Explore the second area",
+        agentType: "explore",
+        _meta: { uid: "subtask-2" },
+      },
+    });
+    extractTaskResultMock.mockImplementation(
+      (_store: unknown, subtaskUid: string) =>
+        subtaskUid === "subtask-1"
+          ? {
+              summary: "First parallel subtask completed.",
+              todoUpdates: [{ id: "todo-1", status: "completed" }],
+            }
+          : undefined,
+    );
+
+    renderHook(() => useAddSubtaskResult({ messages: [message] }));
+
+    await waitFor(() =>
+      expect(addResultMock).toHaveBeenCalledWith({
+        result: {
+          summary: "First parallel subtask completed.",
+          todos: [{ ...auditTodo, status: "completed" }],
+        },
+      }),
+    );
+    expect(extractTaskResultMock).toHaveBeenCalledWith(
+      { storeId: "store-1" },
+      "subtask-1",
+    );
     expect(autoApproveGuardMock.current).toBe("auto");
   });
 });

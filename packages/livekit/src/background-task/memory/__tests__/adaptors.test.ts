@@ -1,3 +1,4 @@
+import { BackgroundJobManager } from "../../../background-job/manager";
 import {
   TaskMemoryFileUri,
   type AutoMemoryContext,
@@ -12,7 +13,58 @@ import { AutoMemoryAdaptor, type AutoMemoryManager } from "../auto-memory";
 import { TaskMemoryAdaptor } from "../task-memory";
 import { describe, expect, it, vi } from "vitest";
 
+/** Pinned so extraction fires at 16k tokens. */
+const TestCompactThreshold = 20_000;
+
 describe("task-memory adaptor", () => {
+  it.each([false, true])(
+    "normalizes legacy state and enforces the retry limit (initialized: %s)",
+    async (initialized) => {
+      const store = new FakeStore([
+        makeTask({ id: "parent", status: "pending-tool", background: false }),
+      ]);
+      let persistedState = {
+        initialized,
+        lastExtractionTokens: 10_000,
+        lastExtractionToolCalls: 3,
+        isExtracting: false,
+        extractionCount: initialized ? 1 : 0,
+      } as unknown as TaskMemoryState;
+      const adaptor = new TaskMemoryAdaptor({
+        store: store as unknown as LiveKitStore,
+        backgroundTask: createTestBackgroundTask({
+          store: store as unknown as LiveKitStore,
+          stateStore: new BackgroundTaskStateStore(),
+        }),
+        taskMemoryStateStore: {
+          get: () => persistedState,
+          set: (state) => {
+            persistedState = state;
+          },
+        },
+        parentTaskId: "parent",
+        parentCwd: "/repo",
+      });
+      const update = {
+        messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
+        contextWindowUsage: usage(19_000),
+      };
+
+      for (const attempt of [1, 2]) {
+        await expect(adaptor.update(update)).resolves.toBe(true);
+        expect(persistedState).toMatchObject({
+          extractionAttemptsSinceCompact: attempt,
+          extractionCount: initialized ? 1 : 0,
+        });
+        store.updateTaskStatus(persistedState.activeTaskId ?? "", "failed");
+      }
+
+      await expect(adaptor.update(update)).resolves.toBe(false);
+      expect(store.backgroundTasks()).toHaveLength(2);
+    },
+  );
+
   it("starts extraction from stream-finish usage before the main task completes", async () => {
     const store = new FakeStore([
       makeTask({
@@ -37,6 +89,7 @@ describe("task-memory adaptor", () => {
     await expect(
       adaptor.update({
         messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
         contextWindowUsage: usage(20_000),
       }),
     ).resolves.toBe(true);
@@ -50,6 +103,7 @@ describe("task-memory adaptor", () => {
     expect(await stateStore.read(task.id)).toMatchObject({
       parentTaskId: "parent",
       useCase: "task-memory",
+      maxSteps: 3,
     });
   });
 
@@ -96,6 +150,7 @@ describe("task-memory adaptor", () => {
             ],
           },
         ] as Message[],
+        compactThreshold: TestCompactThreshold,
         contextWindowUsage: usage(20_000),
       }),
     ).resolves.toBe(true);
@@ -139,13 +194,21 @@ describe("task-memory adaptor", () => {
 
     await adaptor.update({
       messages: makeParentMessages(),
+      compactThreshold: TestCompactThreshold,
       contextWindowUsage: usage(20_000),
     });
 
     const [task] = store.backgroundTasks();
     expect(waitForBackgroundTask).toHaveBeenCalledWith(task.id);
 
+    const manager = BackgroundJobManager.forStore(
+      store as unknown as LiveKitStore,
+    );
+    const isPending = vi.spyOn(manager, "isTaskPending").mockReturnValue(true);
     store.updateTaskStatus(task.id, "failed");
+    await expect(adaptor.settle()).resolves.toBe(false);
+    expect(taskMemoryState?.isExtracting).toBe(true);
+    isPending.mockRestore();
     taskDone.resolve();
 
     await waitFor(() => taskMemoryState?.isExtracting === false);
@@ -155,7 +218,74 @@ describe("task-memory adaptor", () => {
     });
   });
 
-  it("marks extraction successful when the background task writes memory", async () => {
+  it.each([
+    { output: { success: true }, extracted: true },
+    { output: { error: "disk full" }, extracted: false },
+  ])(
+    "publishes the extraction boundary only after a successful memory write ($extracted)",
+    async ({ output, extracted }) => {
+      const store = new FakeStore([
+        makeTask({
+          id: "parent",
+          status: "pending-tool",
+          background: false,
+          title: "Build shared runner",
+        }),
+      ]);
+      const stateStore = new BackgroundTaskStateStore();
+      let taskMemoryState: TaskMemoryState | undefined;
+      const adaptor = new TaskMemoryAdaptor({
+        store: store as unknown as LiveKitStore,
+        backgroundTask: createTestBackgroundTask({
+          store: store as unknown as LiveKitStore,
+          stateStore,
+        }),
+        taskMemoryStateStore: {
+          get: () => taskMemoryState,
+          set: (state) => {
+            taskMemoryState = state;
+          },
+        },
+        parentTaskId: "parent",
+        parentCwd: "/repo",
+      });
+
+      await adaptor.update({
+        messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
+        contextWindowUsage: usage(20_000),
+      });
+
+      const activeTaskId = taskMemoryState?.activeTaskId;
+      store.setMessages(activeTaskId ?? "", [
+        {
+          id: "write-memory",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-writeToFile",
+              toolCallId: "write-1",
+              state: "output-available",
+              input: { path: TaskMemoryFileUri, content: "# Session Title" },
+              output: output as never,
+            },
+          ],
+        },
+      ] as Message[]);
+      store.updateTaskStatus(activeTaskId ?? "", "failed");
+
+      await expect(adaptor.settle()).resolves.toBe(true);
+      expect(taskMemoryState).toMatchObject({
+        isExtracting: false,
+        extractionCount: extracted ? 1 : 0,
+        extractedSinceCompact: extracted ? true : undefined,
+        lastExtractionMessageId: extracted ? "assistant-1" : undefined,
+        activeTaskId: undefined,
+      });
+    },
+  );
+
+  it("discards an extraction that finishes after compaction starts", async () => {
     const store = new FakeStore([
       makeTask({
         id: "parent",
@@ -164,13 +294,12 @@ describe("task-memory adaptor", () => {
         title: "Build shared runner",
       }),
     ]);
-    const stateStore = new BackgroundTaskStateStore();
     let taskMemoryState: TaskMemoryState | undefined;
     const adaptor = new TaskMemoryAdaptor({
       store: store as unknown as LiveKitStore,
       backgroundTask: createTestBackgroundTask({
         store: store as unknown as LiveKitStore,
-        stateStore,
+        stateStore: new BackgroundTaskStateStore(),
       }),
       taskMemoryStateStore: {
         get: () => taskMemoryState,
@@ -184,10 +313,20 @@ describe("task-memory adaptor", () => {
 
     await adaptor.update({
       messages: makeParentMessages(),
+      compactThreshold: TestCompactThreshold,
       contextWindowUsage: usage(20_000),
     });
-
     const activeTaskId = taskMemoryState?.activeTaskId;
+
+    await expect(adaptor.takeCompactionBoundaryMessageId()).resolves.toBe(
+      undefined,
+    );
+    expect(taskMemoryState).toMatchObject({
+      isExtracting: true,
+      pendingExtractionMessageId: undefined,
+      extractedSinceCompact: false,
+    });
+
     store.setMessages(activeTaskId ?? "", [
       {
         id: "write-memory",
@@ -197,23 +336,204 @@ describe("task-memory adaptor", () => {
             type: "tool-writeToFile",
             toolCallId: "write-1",
             state: "output-available",
-            input: { path: TaskMemoryFileUri, content: "# Session Title" },
+            input: { path: TaskMemoryFileUri, content: "stale memory" },
             output: { success: true },
           },
         ],
       },
     ] as Message[]);
+    store.updateTaskStatus(activeTaskId ?? "", "completed");
 
-    await expect(adaptor.settle()).resolves.toBe(true);
-    expect(taskMemoryState).toMatchObject({
+    await adaptor.settle();
+    expect(adaptor.getState()).toMatchObject({
+      isExtracting: false,
+      extractedSinceCompact: false,
+      lastExtractionMessageId: undefined,
+    });
+  });
+
+  it("waits until the context approaches the auto-compact threshold", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    const adaptor = new TaskMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+    });
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
+        contextWindowUsage: usage(10_000),
+      }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(0);
+  });
+
+  it("extracts only once per compaction cycle", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    let taskMemoryState: TaskMemoryState | undefined = {
+      extractionAttemptsSinceCompact: 1,
       isExtracting: false,
       extractionCount: 1,
-      activeTaskId: undefined,
+      extractedSinceCompact: true,
+      lastExtractionMessageId: "assistant-1",
+    };
+    const adaptor = new TaskMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      taskMemoryStateStore: {
+        get: () => taskMemoryState,
+        set: (state) => {
+          taskMemoryState = state;
+        },
+      },
+      parentTaskId: "parent",
+      parentCwd: "/repo",
     });
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
+        contextWindowUsage: usage(19_000),
+      }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(0);
+
+    await expect(adaptor.takeCompactionBoundaryMessageId()).resolves.toBe(
+      "assistant-1",
+    );
+    expect(taskMemoryState).toMatchObject({
+      extractionAttemptsSinceCompact: 0,
+      extractedSinceCompact: false,
+      lastExtractionMessageId: undefined,
+    });
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
+        contextWindowUsage: usage(19_000),
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it("retries a failed extraction once, then stops for the cycle", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    let taskMemoryState: TaskMemoryState | undefined = {
+      extractionAttemptsSinceCompact: 1,
+      isExtracting: false,
+      extractionCount: 0,
+    };
+    const adaptor = new TaskMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      taskMemoryStateStore: {
+        get: () => taskMemoryState,
+        set: (state) => {
+          taskMemoryState = state;
+        },
+      },
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+    });
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
+        contextWindowUsage: usage(17_000),
+      }),
+    ).resolves.toBe(true);
+
+    taskMemoryState = {
+      ...(taskMemoryState as TaskMemoryState),
+      isExtracting: false,
+      activeTaskId: undefined,
+    };
+
+    await expect(
+      adaptor.update({
+        messages: makeParentMessages(),
+        compactThreshold: TestCompactThreshold,
+        contextWindowUsage: usage(17_000),
+      }),
+    ).resolves.toBe(false);
   });
 });
 
 describe("auto-memory adaptor", () => {
+  it("serializes completion and uses its saved state before the host signal catches up", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const manager = makeAutoMemoryManager();
+    const set = vi.fn(async (_state: AutoMemoryTaskState) => {});
+    const adaptor = new AutoMemoryAdaptor({
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      autoMemoryStateStore: { get: () => undefined, set },
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      manager,
+    });
+    const update = {
+      messages: makeAutoMemoryParentMessages(),
+      status: "completed",
+      systemPrompt: "saved prompt",
+    };
+    await Promise.all([adaptor.update(update), adaptor.update(update)]);
+    expect(store.backgroundTasks()).toHaveLength(1);
+    const task = store.backgroundTasks()[0];
+    store.updateTaskStatus(task.id, "completed");
+    await Promise.all([
+      adaptor.settleAndMaybeContinue("saved prompt"),
+      adaptor.settleAndMaybeContinue("saved prompt"),
+    ]);
+    expect(adaptor.getState()).toMatchObject({
+      extractionCount: 1,
+      isExtracting: false,
+    });
+    expect(manager.beginDreamRun).toHaveBeenCalledOnce();
+    expect(
+      set.mock.calls.filter(([state]) => state.extractionCount === 1),
+    ).toHaveLength(1);
+  });
+
   it("starts an extraction background task after the main task completes", async () => {
     const store = new FakeStore([
       makeTask({
@@ -238,7 +558,7 @@ describe("auto-memory adaptor", () => {
 
     await expect(
       adaptor.update({
-        messages: makeParentMessages(),
+        messages: makeAutoMemoryParentMessages(),
         status: "completed",
       }),
     ).resolves.toBe(true);
@@ -252,20 +572,60 @@ describe("auto-memory adaptor", () => {
     expect(await stateStore.read(task.id)).toMatchObject({
       parentTaskId: "parent",
       useCase: "auto-memory",
+      maxSteps: 5,
+      // Extraction runs on a 5-step budget: it may read and write topic
+      // files, but exploration tools (and transcripts) are withheld so a
+      // turn cannot be burned on orientation.
       tools: [
         "readFile(/repo/.pochi/memory/**)",
-        "readFile(/repo/.pochi/transcripts/**)",
-        "listFiles(/repo/.pochi/memory/**)",
-        "listFiles(/repo/.pochi/transcripts/**)",
-        "globFiles(/repo/.pochi/memory/**)",
-        "globFiles(/repo/.pochi/transcripts/**)",
-        "searchFiles(/repo/.pochi/memory/**)",
-        "searchFiles(/repo/.pochi/transcripts/**)",
         "writeToFile(/repo/.pochi/memory/**)",
         "applyDiff(/repo/.pochi/memory/**)",
         "attemptCompletion",
       ],
     });
+  });
+
+  it("can create a fresh extraction after a reopened parent retires the old fork", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    let state: AutoMemoryTaskState | undefined;
+    const options = {
+      store: store as unknown as LiveKitStore,
+      backgroundTask: createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+      }),
+      parentTaskId: "parent",
+      parentCwd: "/repo",
+      manager: makeAutoMemoryManager(),
+      autoMemoryStateStore: {
+        get: () => state,
+        set: (next: AutoMemoryTaskState) => {
+          state = next;
+        },
+      },
+    };
+    const messages = makeAutoMemoryParentMessages();
+    await new AutoMemoryAdaptor(options).update({
+      messages,
+      status: "completed",
+    });
+    const oldTaskId = state?.activeExtractionTaskId;
+    expect(oldTaskId).toBeTruthy();
+    store.updateTaskStatus(oldTaskId ?? "", "failed");
+
+    const reopened = new AutoMemoryAdaptor(options);
+    const nextMessages = [
+      ...messages,
+      ...messages.map((message) => ({ ...message, id: `${message.id}-new` })),
+    ];
+    await expect(
+      reopened.update({ messages: nextMessages, status: "completed" }),
+    ).resolves.toBe(true);
+    expect(state?.activeExtractionTaskId).not.toBe(oldTaskId);
+    expect(state?.isExtracting).toBe(true);
+    expect(store.backgroundTasks()).toHaveLength(2);
   });
 
   it("reads context with force so extraction runs while injection is disabled", async () => {
@@ -300,7 +660,7 @@ describe("auto-memory adaptor", () => {
 
     await expect(
       adaptor.update({
-        messages: makeParentMessages(),
+        messages: makeAutoMemoryParentMessages(),
         status: "completed",
       }),
     ).resolves.toBe(true);
@@ -341,30 +701,21 @@ describe("auto-memory adaptor", () => {
       manager,
     });
 
+    const messages = [
+      ...makeAutoMemoryParentMessages(),
+      makeMemoryWriteMessage("write-memory"),
+    ];
+
     await expect(
       adaptor.update({
-        messages: [
-          {
-            id: "write-memory",
-            role: "assistant",
-            parts: [
-              {
-                type: "tool-writeToFile",
-                toolCallId: "write",
-                state: "output-available",
-                input: { path: ".pochi/memory/index.md" },
-                output: { success: true },
-              },
-            ],
-          },
-        ] as Message[],
+        messages,
         status: "completed",
       }),
     ).resolves.toBe(false);
 
     expect(store.backgroundTasks()).toHaveLength(0);
     expect(autoMemoryState).toMatchObject({
-      lastExtractionMessageCount: 1,
+      lastExtractionMessageCount: messages.length,
       isExtracting: false,
     });
     expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
@@ -419,7 +770,7 @@ describe("auto-memory adaptor", () => {
       .transcript;
     expect(transcript).toContain("### 1. user");
     expect(transcript).toContain("### 2. assistant");
-    expect(transcript).toContain("\"type\":\"tool-readFile\"");
+    expect(transcript).toContain('"type":"tool-readFile"');
     expect(transcript.length).toBeLessThan(24_000);
   });
 
@@ -456,12 +807,20 @@ describe("auto-memory adaptor", () => {
     });
 
     await adaptor.update({
-      messages: makeParentMessages(),
+      messages: makeAutoMemoryParentMessages(),
       status: "completed",
     });
     const [extractionTask] = store.backgroundTasks();
+    const jobManager = BackgroundJobManager.forStore(
+      store as unknown as LiveKitStore,
+    );
+    const isPending = vi
+      .spyOn(jobManager, "isTaskPending")
+      .mockReturnValue(true);
     store.updateTaskStatus(extractionTask.id, "completed");
-
+    await expect(adaptor.settleAndMaybeContinue()).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(1);
+    isPending.mockRestore();
     await expect(adaptor.settleAndMaybeContinue()).resolves.toBe(true);
 
     const tasksWithState = await Promise.all(
@@ -478,6 +837,25 @@ describe("auto-memory adaptor", () => {
       status: "pending-model",
       title: "[Auto Memory Dream]",
     });
+    expect(await stateStore.read(dreamTask?.id ?? "")).toMatchObject({
+      useCase: "auto-memory-dream",
+      maxSteps: 20,
+      // Unlike extraction, the dream agent keeps the exploration tools and
+      // read access to transcripts.
+      tools: [
+        "readFile(/repo/.pochi/memory/**)",
+        "readFile(/repo/.pochi/transcripts/**)",
+        "listFiles(/repo/.pochi/memory/**)",
+        "listFiles(/repo/.pochi/transcripts/**)",
+        "globFiles(/repo/.pochi/memory/**)",
+        "globFiles(/repo/.pochi/transcripts/**)",
+        "searchFiles(/repo/.pochi/memory/**)",
+        "searchFiles(/repo/.pochi/transcripts/**)",
+        "writeToFile(/repo/.pochi/memory/**)",
+        "applyDiff(/repo/.pochi/memory/**)",
+        "attemptCompletion",
+      ],
+    });
     expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
 
     store.updateTaskStatus(dreamTask?.id ?? "", "completed");
@@ -490,7 +868,126 @@ describe("auto-memory adaptor", () => {
       success: true,
     });
   });
+
+  it("waits for three new user turns before extracting", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const adaptor = makeAutoMemoryAdaptor({ store });
+
+    await expect(
+      adaptor.adaptor.update({
+        messages: makeAutoMemoryParentMessages(2),
+        status: "completed",
+      }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(0);
+
+    await expect(
+      adaptor.adaptor.update({
+        messages: makeAutoMemoryParentMessages(3),
+        status: "completed",
+      }),
+    ).resolves.toBe(true);
+    expect(store.backgroundTasks()).toHaveLength(1);
+  });
+
+  it("treats a memory write by the extraction fork as success", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const { adaptor, getState } = makeAutoMemoryAdaptor({ store });
+    const parentMessages = makeAutoMemoryParentMessages();
+
+    await adaptor.update({ messages: parentMessages, status: "completed" });
+
+    const [extractionTask] = store.backgroundTasks();
+    store.setMessages(extractionTask.id, [
+      ...parentMessages,
+      makeDirectiveMessage(),
+      makeMemoryWriteMessage("fork-write"),
+    ]);
+    // No attemptCompletion: the fork ran out of steps after writing memory.
+    store.updateTaskStatus(extractionTask.id, "failed");
+
+    await adaptor.settleAndMaybeContinue();
+
+    expect(getState()).toMatchObject({
+      isExtracting: false,
+      extractionCount: 1,
+      lastExtractionMessageCount: parentMessages.length,
+      activeExtractionTaskId: undefined,
+    });
+  });
+
+  it("advances the extraction mark after a failed extraction so it does not re-run", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const { adaptor, getState } = makeAutoMemoryAdaptor({ store });
+    // The parent wrote memory itself in the first stretch, so the cloned prefix
+    // carries a successful write that must not be credited to the fork.
+    const earlierMessages = [
+      ...makeAutoMemoryParentMessages(),
+      makeMemoryWriteMessage("parent-write"),
+    ];
+    await adaptor.update({ messages: earlierMessages, status: "completed" });
+    expect(store.backgroundTasks()).toHaveLength(0);
+
+    const parentMessages = [
+      ...earlierMessages,
+      ...makeAutoMemoryParentMessages(),
+    ];
+    await adaptor.update({ messages: parentMessages, status: "completed" });
+
+    const [extractionTask] = store.backgroundTasks();
+    store.setMessages(extractionTask.id, [
+      ...parentMessages,
+      makeDirectiveMessage(),
+    ]);
+    store.updateTaskStatus(extractionTask.id, "failed");
+
+    await adaptor.settleAndMaybeContinue();
+
+    expect(getState()).toMatchObject({
+      isExtracting: false,
+      extractionCount: 0,
+      lastExtractionMessageCount: parentMessages.length,
+    });
+
+    await expect(
+      adaptor.update({ messages: parentMessages, status: "completed" }),
+    ).resolves.toBe(false);
+    expect(store.backgroundTasks()).toHaveLength(1);
+  });
 });
+
+function makeAutoMemoryAdaptor({
+  store,
+  manager = makeAutoMemoryManager(),
+}: {
+  store: FakeStore;
+  manager?: AutoMemoryManager;
+}) {
+  let state: AutoMemoryTaskState | undefined;
+  const adaptor = new AutoMemoryAdaptor({
+    store: store as unknown as LiveKitStore,
+    backgroundTask: createTestBackgroundTask({
+      store: store as unknown as LiveKitStore,
+      stateStore: new BackgroundTaskStateStore(),
+    }),
+    autoMemoryStateStore: {
+      get: () => state,
+      set: (next) => {
+        state = next;
+      },
+    },
+    parentTaskId: "parent",
+    parentCwd: "/repo",
+    manager,
+  });
+  return { adaptor, getState: () => state };
+}
 
 const autoMemoryContext: AutoMemoryContext = {
   enabled: true,
@@ -547,6 +1044,7 @@ function createTestBackgroundTask({
         parentTaskId: agent.parentTaskId,
         tools: agent.tools,
         useCase: agent.label,
+        maxSteps: agent.maxSteps,
         baselineStepCount: agent.baselineStepCount,
       });
       store.commit(
@@ -699,6 +1197,46 @@ function makeParentMessages(): Message[] {
       parts: [{ type: "text", text: "done" }],
     },
   ] as Message[];
+}
+
+/** Auto-memory extraction only triggers once three new user turns exist. */
+function makeAutoMemoryParentMessages(userTurns = 3): Message[] {
+  return Array.from({ length: userTurns }, (_, index) => [
+    {
+      id: `user-${index + 1}`,
+      role: "user",
+      parts: [{ type: "text", text: `please implement step ${index + 1}` }],
+    },
+    {
+      id: `assistant-${index + 1}`,
+      role: "assistant",
+      parts: [{ type: "text", text: "done" }],
+    },
+  ]).flat() as Message[];
+}
+
+function makeDirectiveMessage(): Message {
+  return {
+    id: "directive",
+    role: "user",
+    parts: [{ type: "text", text: "Extract durable long-term memories." }],
+  } as Message;
+}
+
+function makeMemoryWriteMessage(id: string): Message {
+  return {
+    id,
+    role: "assistant",
+    parts: [
+      {
+        type: "tool-writeToFile",
+        toolCallId: `write-${id}`,
+        state: "output-available",
+        input: { path: ".pochi/memory/index.md" },
+        output: { success: true },
+      },
+    ],
+  } as Message;
 }
 
 function usage(tokens: number) {

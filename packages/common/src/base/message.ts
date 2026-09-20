@@ -33,19 +33,84 @@ export const MessageMetadata = z.discriminatedUnion("kind", [
 
 export type MessageMetadata = z.infer<typeof MessageMetadata>;
 
-export const BackgroundJobNotification = z.object({
+export interface PastedTextFile {
+  filePath: string;
+  title: string;
+}
+
+export function getPastedTextTitle(text: string): string {
+  const maxLength = 80;
+  const title: string[] = [];
+  let pendingSpace = false;
+
+  for (const character of text) {
+    if (character === "\n" || character === "\r") {
+      if (title.length > 0) break;
+      pendingSpace = false;
+      continue;
+    }
+    if (/\s/.test(character)) {
+      pendingSpace = title.length > 0;
+      continue;
+    }
+    if (pendingSpace) {
+      title.push(" ");
+      pendingSpace = false;
+    }
+    title.push(character);
+    if (title.length > maxLength) {
+      return `${title.slice(0, maxLength - 1).join("")}…`;
+    }
+  }
+
+  return title.join("");
+}
+
+const BackgroundNotificationFields = {
   notificationId: z.string(),
   backgroundJobId: z.string(),
+  status: z.enum(["completed", "failed", "stopped"]),
+};
+
+export const BackgroundCommandNotification = z.object({
+  ...BackgroundNotificationFields,
+  kind: z.literal("command"),
+  finishedAt: z.number(),
   outputFile: z.string(),
   command: z.string().optional(),
-  status: z.enum(["completed", "failed", "stopped"]),
   summary: z.string(),
   exitCode: z.number().optional(),
-  finishedAt: z.number(),
 });
 
+export const BackgroundSubagentNotification = z.object({
+  ...BackgroundNotificationFields,
+  kind: z.literal("subagent"),
+  taskId: z.string(),
+  agentType: z.string().optional(),
+  title: z.string().optional(),
+  result: z.string(),
+});
+
+const BackgroundNotification = z.discriminatedUnion("kind", [
+  BackgroundCommandNotification,
+  BackgroundSubagentNotification,
+]);
+// Older persisted command notifications predate the discriminator.
+export const BackgroundJobNotification = z.preprocess(
+  (value) =>
+    value && typeof value === "object" && !("kind" in value)
+      ? { ...value, kind: "command" }
+      : value,
+  BackgroundNotification,
+);
 export type BackgroundJobNotification = z.infer<
   typeof BackgroundJobNotification
+>;
+export type BackgroundCommandNotification = z.infer<
+  typeof BackgroundCommandNotification
+>;
+export type BackgroundSubagentNotification = z.infer<
+  typeof BackgroundSubagentNotification
 >;
 
 export const BackgroundJobTerminalEvent = z.object({
@@ -65,7 +130,7 @@ export type BackgroundJobTerminalEvent = z.infer<
 
 export function createBackgroundJobNotification(
   event: BackgroundJobTerminalEvent,
-): BackgroundJobNotification {
+): BackgroundCommandNotification {
   let summary: string;
   if (event.status === "completed") {
     summary = `Background command "${event.command}" completed with exit code ${event.exitCode ?? 0}`;
@@ -78,6 +143,7 @@ export function createBackgroundJobNotification(
   }
 
   return {
+    kind: "command",
     notificationId: `${event.backgroundJobId}:terminal`,
     backgroundJobId: event.backgroundJobId,
     outputFile: event.outputFile,

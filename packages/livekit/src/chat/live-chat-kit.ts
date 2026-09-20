@@ -1,6 +1,6 @@
 import type {
   AutoMemoryTaskState,
-  BackgroundTaskState,
+  BackgroundJobNotification,
   ContextWindowUsage,
   MaybePromise,
   PochiRequestUseCase,
@@ -24,20 +24,16 @@ import {
   type ChatInit,
   type ChatOnErrorCallback,
   type ChatOnFinishCallback,
+  type ChatRequestOptions,
   getToolName,
   isToolUIPart,
 } from "ai";
 import type z from "zod";
-import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
+import { BackgroundJobManager } from "../background-job/manager";
 import type { AutoMemoryManager } from "../background-task/memory/auto-memory";
-import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
-import { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
+import type { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
+import type { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
 import type { MemoryStateStore } from "../background-task/state-store";
-import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
-import {
-  type RunningTaskAdaptor,
-  TaskExecutor,
-} from "../background-task/task-executor/task-executor";
 import type { BlobStore } from "../blob-store";
 import {
   makeAllDataQuery,
@@ -46,12 +42,20 @@ import {
 } from "../livestore/default-queries";
 import { events, tables } from "../livestore/default-schema";
 import { toTaskError, toTaskGitInfo, toTaskStatus } from "../task";
+import { getSubAgentInvocation, isAwaitingFollowupAnswer } from "../task-utils";
 import type { LiveKitStore, Message, Task } from "../types";
 import {
   MaxConsecutiveAutoCompactFailures,
+  resolveAutoCompactThreshold,
   shouldAutoCompact,
 } from "./auto-compact-policy";
-import { scheduleGenerateTitleJob } from "./background-job";
+import {
+  type BackgroundJobNotificationPart,
+  attachBackgroundJobNotificationParts,
+  createBackgroundJobNotificationMessage,
+  dedupeBackgroundJobNotificationParts,
+  toBackgroundJobNotificationParts,
+} from "./background-job-notification";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
   type FinishedRequestSnapshot,
@@ -62,6 +66,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
+import { scheduleGenerateTitleJob } from "./title-generation";
 import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
 import {
   computeContextWindowUsage,
@@ -130,15 +135,6 @@ function getFailedToolCallErrorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export type LiveChatKitBackgroundTaskOptions = {
-  stateStore?: {
-    read(taskId: string): MaybePromise<BackgroundTaskState | undefined>;
-    set(taskId: string, state: BackgroundTaskState): MaybePromise<void>;
-  };
-  adaptor?: RunningTaskAdaptor & { dispose?: () => void };
-  clearFileStateCache?: (taskId: string) => MaybePromise<void>;
-};
-
 export type LiveChatKitTaskMemoryOptions = {
   stateStore?: MemoryStateStore<TaskMemoryState>;
 };
@@ -147,56 +143,6 @@ export type LiveChatKitProjectMemoryOptions = {
   stateStore?: MemoryStateStore<AutoMemoryTaskState>;
   manager: AutoMemoryManager;
 };
-
-function createBackgroundTaskStateStore(): NonNullable<
-  LiveChatKitBackgroundTaskOptions["stateStore"]
-> {
-  const states = new Map<string, BackgroundTaskState>();
-  return {
-    read: (taskId) => states.get(taskId),
-    set: (taskId, state) => {
-      states.set(taskId, state);
-    },
-  };
-}
-
-async function createBackgroundTaskFromForkAgent({
-  store,
-  stateStore,
-  agent,
-  taskId = crypto.randomUUID(),
-  createdAt = new Date(),
-}: {
-  store: LiveKitStore;
-  stateStore: NonNullable<LiveChatKitBackgroundTaskOptions["stateStore"]>;
-  agent: ForkAgent<Message>;
-  taskId?: string;
-  createdAt?: Date;
-}): Promise<ForkAgentHandle> {
-  await stateStore.set(taskId, {
-    parentTaskId: agent.parentTaskId,
-    tools: agent.tools,
-    useCase: agent.label,
-    baselineStepCount: agent.baselineStepCount,
-  });
-
-  store.commit(
-    events.taskInited({
-      id: taskId,
-      cwd: agent.cwd,
-      background: true,
-      createdAt,
-      initMessages: agent.initMessages,
-      initTitle: agent.initTitle,
-    }),
-  );
-
-  return {
-    taskId,
-    cwd: agent.cwd,
-    label: agent.label,
-  };
-}
 
 async function readRecentFilesForCompact(
   getRecentFilesForCompact: GetRecentFilesForCompact | undefined,
@@ -213,18 +159,20 @@ async function readRecentFilesForCompact(
 
 /** Polls until no extraction is in progress or `timeoutMs` elapses. */
 async function settleTaskMemoryExtraction(
-  readTaskMemoryState: (() => TaskMemoryState | undefined) | undefined,
+  adaptor: TaskMemoryAdaptor | undefined,
   timeoutMs: number,
 ): Promise<void> {
-  if (!readTaskMemoryState) return;
-  if (!readTaskMemoryState()?.isExtracting) return;
+  if (!adaptor?.getState().isExtracting) return;
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    if (!readTaskMemoryState()?.isExtracting) return;
+    // Hosts without `waitForTaskDone` have no other chance to call `settle()`.
+    await adaptor.settle();
+    if (!adaptor.getState().isExtracting) return;
     await new Promise<void>((resolve) =>
       setTimeout(resolve, TaskMemorySettlePollIntervalMs),
     );
   }
+  logger.debug("Timed out waiting for the task-memory extraction to settle.");
 }
 
 async function runSideEffectSafely({
@@ -290,7 +238,22 @@ async function runSideEffectSafely({
   }
 }
 
+export type LiveChatKitBackgroundJobNotificationOptions = {
+  /**
+   * Starts a turn carrying nothing but the given notifications. Defaults to
+   * sending the message on the kit's own chat; hosts that drive their own step
+   * loop (the CLI) append it instead and let the loop send it.
+   */
+  startTurn?: (message: Message) => MaybePromise<void>;
+  /**
+   * Called whenever the set of notifications waiting to be delivered changes,
+   * so a host can render them.
+   */
+  onPendingChange?: (parts: BackgroundJobNotificationPart[]) => void;
+};
+
 export type LiveChatKitOptions<T> = {
+  backgroundJobManager?: BackgroundJobManager;
   taskId: string;
 
   abortSignal?: AbortSignal;
@@ -337,7 +300,12 @@ export type LiveChatKitOptions<T> = {
    */
   getRecentFilesForCompact?: GetRecentFilesForCompact;
 
-  backgroundTask?: LiveChatKitBackgroundTaskOptions;
+  /**
+   * Delivery of finished background job notifications. The host pushes them in
+   * with `enqueueBackgroundJobNotifications`; the kit owns the pending set and
+   * when it reaches the model.
+   */
+  backgroundJobNotifications?: LiveChatKitBackgroundJobNotificationOptions;
 
   taskMemory?: LiveChatKitTaskMemoryOptions;
 
@@ -370,6 +338,10 @@ export class LiveChatKit<
   T extends {
     messages: Message[];
     stop: () => Promise<void>;
+    sendMessage: (
+      message: { parts: Message["parts"] },
+      options?: ChatRequestOptions,
+    ) => Promise<void>;
   },
 > {
   protected readonly taskId: string;
@@ -378,15 +350,16 @@ export class LiveChatKit<
   private readonly getters: PrepareRequestGetters;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
-  private readonly backgroundTaskExecutor: TaskExecutor | undefined;
-  private readonly backgroundTaskAdaptor:
-    | (RunningTaskAdaptor & { dispose?: () => void })
-    | undefined;
+  readonly backgroundJobManager: BackgroundJobManager;
   private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
   private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
+  private readonly backgroundJobNotifications:
+    | LiveChatKitBackgroundJobNotificationOptions
+    | undefined;
+  private pendingBackgroundJobNotificationParts: BackgroundJobNotificationPart[] =
+    [];
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
-  private backgroundTasksStarted = false;
   private currentToolsExecution:
     | { messageId: string; startedAt: Date }
     | undefined = undefined;
@@ -407,6 +380,16 @@ export class LiveChatKit<
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private consecutiveAutoCompactFailures = 0;
 
+  /**
+   * Converts an existing subtask (created by the newTask middleware) into a
+   * background subagent task: records its state and flips `background` so the
+   * TaskExecutor picks it up independently of this chat.
+   */
+  readonly backgroundSubTask: (options: {
+    taskId: string;
+    agentType?: string;
+  }) => Promise<void>;
+
   constructor({
     taskId,
     abortSignal,
@@ -425,7 +408,8 @@ export class LiveChatKit<
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact,
-    backgroundTask,
+    backgroundJobManager,
+    backgroundJobNotifications,
     taskMemory,
     projectMemory,
     systemPromptOverride,
@@ -435,87 +419,25 @@ export class LiveChatKit<
     this.store = store;
     this.blobStore = blobStore;
     this.getters = getters;
+    this.backgroundJobNotifications = backgroundJobNotifications;
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
-    this.backgroundTaskAdaptor = backgroundTask?.adaptor;
-    const backgroundTaskStateStore = backgroundTask
-      ? (backgroundTask.stateStore ?? createBackgroundTaskStateStore())
-      : undefined;
-    const startForkAgent = backgroundTaskStateStore
-      ? (agent: ForkAgent<Message>) =>
-          createBackgroundTaskFromForkAgent({
-            store,
-            stateStore: backgroundTaskStateStore,
-            agent,
-          })
-      : undefined;
-    const waitForTaskDone = backgroundTask?.adaptor
-      ? (taskId: string) =>
-          this.backgroundTaskExecutor?.waitForTaskDone(taskId) ??
-          Promise.resolve()
-      : undefined;
-    this.backgroundTaskExecutor =
-      backgroundTask?.adaptor && backgroundTaskStateStore
-        ? new TaskExecutor({
-            store,
-            blobStore,
-            readTaskState: (taskId) => backgroundTaskStateStore.read(taskId),
-            adaptor: backgroundTask.adaptor,
-            clearFileStateCache: backgroundTask.clearFileStateCache,
-            createChatKit: ({
-              taskId,
-              store,
-              blobStore,
-              abortSignal,
-              requestUseCase,
-              getters,
-            }) =>
-              new LiveChatKit<InMemoryChat>({
-                taskId,
-                store,
-                blobStore,
-                chatClass: InMemoryChat,
-                abortSignal,
-                isSubTask: false,
-                requestUseCase,
-                getters,
-                systemPromptOverride: this.latestRequestSnapshot?.systemPrompt,
-              }),
-          })
-        : undefined;
-    const defaultMemoryParentCwd = () => this.task?.cwd ?? undefined;
+    this.backgroundJobManager =
+      backgroundJobManager ?? BackgroundJobManager.forStore(store);
+    this.backgroundSubTask = (options) =>
+      this.backgroundJobManager.backgroundSubTask(
+        { ...options, parentTaskId: this.taskId },
+        abortSignal,
+      );
     this.taskMemoryAdaptor =
-      taskMemory && startForkAgent
-        ? new TaskMemoryAdaptor({
-            store,
-            backgroundTask: {
-              startForkAgent,
-              ...(waitForTaskDone ? { waitForTaskDone } : {}),
-            },
-            taskMemoryStateStore: taskMemory.stateStore,
-            parentTaskId: taskId,
-            parentCwd: defaultMemoryParentCwd,
-            isSubTask,
-          })
+      taskMemory && !isSubTask
+        ? this.backgroundJobManager.getTaskMemory(taskId, taskMemory)
         : undefined;
     this.autoMemoryAdaptor =
-      projectMemory && startForkAgent && !isForkAgentUseCase(requestUseCase)
-        ? new AutoMemoryAdaptor({
-            store,
-            backgroundTask: {
-              startForkAgent,
-              ...(waitForTaskDone ? { waitForTaskDone } : {}),
-            },
-            autoMemoryStateStore: projectMemory.stateStore,
-            parentTaskId: taskId,
-            parentCwd: defaultMemoryParentCwd,
-            isSubTask,
-            manager: projectMemory.manager,
-          })
+      projectMemory && !isSubTask && !isForkAgentUseCase(requestUseCase)
+        ? this.backgroundJobManager.getAutoMemory(taskId, projectMemory)
         : undefined;
 
-    const readEffectiveTaskMemoryState = () =>
-      this.taskMemoryAdaptor?.getState();
     this.transport = new FlexibleChatTransport({
       store,
       blobStore,
@@ -598,10 +520,15 @@ export class LiveChatKit<
         try {
           // Wait briefly so memory.md and boundary id are fresh.
           await settleTaskMemoryExtraction(
-            readEffectiveTaskMemoryState,
+            this.taskMemoryAdaptor,
             TaskMemorySettleTimeoutMs,
           );
-          const model = createModel({ llm: getters.getLLM() });
+          const model = createModel({
+            llm: getters.getLLM(),
+            taskId: this.taskId,
+          });
+          const taskMemoryBoundaryMessageId =
+            await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
           if (isAutoCompact) {
             logger.info(
               `Auto-compact triggered (totalTokens=${
@@ -618,14 +545,12 @@ export class LiveChatKit<
             recentFiles: await readRecentFilesForCompact(
               getRecentFilesForCompact,
             ),
-            taskMemoryBoundaryMessageId:
-              readEffectiveTaskMemoryState()?.lastExtractionMessageId,
+            taskMemoryBoundaryMessageId,
             abortSignal,
             inline: true,
             store: this.store,
             useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
-          this.transport.requestFullEnvironment();
           this.updateTotalTokensEstimate(messages);
           if (isAutoCompact) {
             this.consecutiveAutoCompactFailures = 0;
@@ -646,6 +571,10 @@ export class LiveChatKit<
           await this.handleCompactFinish(compactSucceeded, onCompactFinish);
         }
       }
+      // Attach after compaction, but before checkpoint hooks so they update
+      // the final message that this request will send and persist.
+      this.attachPendingBackgroundJobNotifications();
+
       if (onOverrideMessages) {
         await runSideEffectSafely({
           sideEffectName: "onOverrideMessages",
@@ -655,7 +584,7 @@ export class LiveChatKit<
             await onOverrideMessages({
               store: this.store,
               taskId: this.taskId,
-              messages,
+              messages: this.chat.messages,
               abortSignal,
             });
           },
@@ -674,10 +603,15 @@ export class LiveChatKit<
         const { messages } = this.chat;
         // Wait briefly so memory.md and boundary id are fresh.
         await settleTaskMemoryExtraction(
-          readEffectiveTaskMemoryState,
+          this.taskMemoryAdaptor,
           TaskMemorySettleTimeoutMs,
         );
-        const model = createModel({ llm: getters.getLLM() });
+        const model = createModel({
+          llm: getters.getLLM(),
+          taskId: this.taskId,
+        });
+        const taskMemoryBoundaryMessageId =
+          await this.taskMemoryAdaptor?.takeCompactionBoundaryMessageId();
         const summary = await compactTask({
           blobStore: this.blobStore,
           taskId: this.taskId,
@@ -687,8 +621,7 @@ export class LiveChatKit<
           recentFiles: await readRecentFilesForCompact(
             getRecentFilesForCompact,
           ),
-          taskMemoryBoundaryMessageId:
-            readEffectiveTaskMemoryState()?.lastExtractionMessageId,
+          taskMemoryBoundaryMessageId,
           store: this.store,
         });
 
@@ -703,7 +636,10 @@ export class LiveChatKit<
     };
 
     this.repairMermaid = async (chart: string, error: string) => {
-      const model = createModel({ llm: getters.getLLM() });
+      const model = createModel({
+        llm: getters.getLLM(),
+        taskId: this.taskId,
+      });
       await repairMermaid({
         store,
         taskId: this.taskId,
@@ -776,6 +712,110 @@ export class LiveChatKit<
     return this.latestRequestSnapshot?.systemPrompt;
   }
 
+  /** The notifications waiting to be delivered to the model. */
+  get pendingBackgroundJobNotifications(): readonly BackgroundJobNotificationPart[] {
+    return this.pendingBackgroundJobNotificationParts;
+  }
+
+  /**
+   * Hands finished background jobs to the kit. They are delivered with the
+   * next request that goes out anyway, or by `flushBackgroundJobNotifications`
+   * when the agent has nothing left to do.
+   *
+   * Notifications already pending or already part of the conversation are
+   * ignored, so a host may keep pushing the same ones until it observes them
+   * delivered.
+   */
+  enqueueBackgroundJobNotifications = (
+    notifications: readonly BackgroundJobNotification[],
+  ): void => {
+    this.enqueueBackgroundJobNotificationParts(
+      toBackgroundJobNotificationParts(notifications),
+    );
+  };
+
+  private enqueueBackgroundJobNotificationParts(
+    parts: readonly BackgroundJobNotificationPart[],
+  ): void {
+    const added = dedupeBackgroundJobNotificationParts(parts, [
+      ...this.chat.messages.flatMap((message) => message.parts),
+      ...this.pendingBackgroundJobNotificationParts,
+    ]);
+    if (added.length === 0) return;
+
+    this.setPendingBackgroundJobNotifications([
+      ...this.pendingBackgroundJobNotificationParts,
+      ...added,
+    ]);
+  }
+
+  private setPendingBackgroundJobNotifications(
+    parts: BackgroundJobNotificationPart[],
+  ) {
+    this.pendingBackgroundJobNotificationParts = parts;
+    try {
+      this.backgroundJobNotifications?.onPendingChange?.(parts);
+    } catch (err) {
+      logger.warn("onPendingChange callback threw", err);
+    }
+  }
+
+  private takePendingBackgroundJobNotifications() {
+    const parts = this.pendingBackgroundJobNotificationParts;
+    if (parts.length > 0) {
+      this.setPendingBackgroundJobNotifications([]);
+    }
+    return parts;
+  }
+
+  /**
+   * Rides the pending notifications along with the request that is about to
+   * go out, so a finished background job reaches the model without costing a
+   * turn of its own.
+   */
+  private attachPendingBackgroundJobNotifications() {
+    this.enqueueBackgroundJobNotifications(
+      this.backgroundJobManager.getPendingNotifications(this.taskId),
+    );
+    if (this.pendingBackgroundJobNotificationParts.length === 0) return;
+
+    const messages = attachBackgroundJobNotificationParts(
+      this.chat.messages,
+      this.takePendingBackgroundJobNotifications(),
+    );
+    if (messages) {
+      this.chat.messages = messages;
+    }
+  }
+
+  /**
+   * Delivers pending notifications when no request is going to carry them,
+   * for instance once the agent has stopped.
+   *
+   * @returns true when a turn was started for them.
+   */
+  flushBackgroundJobNotifications = (): boolean => {
+    this.enqueueBackgroundJobNotifications(
+      this.backgroundJobManager.getPendingNotifications(this.taskId),
+    );
+    if (this.pendingBackgroundJobNotificationParts.length === 0) return false;
+
+    // An unanswered follow-up question owns this turn: a notification sent now
+    // would answer in the user's place and hide the question.
+    if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return false;
+
+    const message = createBackgroundJobNotificationMessage(
+      this.takePendingBackgroundJobNotifications(),
+    );
+    const startTurn = this.backgroundJobNotifications?.startTurn;
+    if (startTurn) {
+      void startTurn(message);
+    } else {
+      void this.chat.sendMessage({ parts: message.parts });
+    }
+    return true;
+  };
+
   updateIsPublicShared = (isPublicShared: boolean) => {
     this.store.commit(
       events.updateIsPublicShared({
@@ -816,9 +856,25 @@ export class LiveChatKit<
     }
   };
 
-  /**
-   * Mark the end of a tool-calls execution.
-   */
+  /** Save each returned tool result before the rest of the batch completes. */
+  persistToolOutput = () => {
+    const messages = this.chat.messages;
+    const message = this.currentToolsExecution
+      ? messages.find(
+          (message) => message.id === this.currentToolsExecution?.messageId,
+        )
+      : messages.findLast((message) => message.role === "assistant");
+    if (message)
+      this.store.commit(
+        events.toolsExecutionFinished({
+          id: message.id,
+          parts: message.parts,
+          duration: Duration.millis(0),
+        }),
+      );
+  };
+
+  /** Record the duration once for the entire batch. */
   markEndToolsExecution = () => {
     const toolsExecution = this.currentToolsExecution;
     this.currentToolsExecution = undefined;
@@ -913,8 +969,26 @@ export class LiveChatKit<
       }
 
       const llm = getters.getLLM();
+      if (task.background && task.parentId && !task.title) {
+        const parentMessages = store
+          .query(makeMessagesQuery(task.parentId))
+          .map((row) => row.data as Message);
+        const description = getSubAgentInvocation(
+          this.taskId,
+          parentMessages,
+        )?.description;
+        if (description) {
+          store.commit(
+            events.updateTitle({
+              id: this.taskId,
+              title: description,
+              updatedAt: new Date(),
+            }),
+          );
+        }
+      }
       if (!task.background) {
-        const getModel = () => createModel({ llm });
+        const getModel = () => createModel({ llm, taskId: this.taskId });
         scheduleGenerateTitleJob({
           taskId: this.taskId,
           store,
@@ -1033,15 +1107,23 @@ export class LiveChatKit<
     };
 
     this.scheduleMemoryUpdate(finishData);
-    this.startBackgroundTasks();
 
     this.onStreamFinish?.(finishData);
   };
 
-  private async settleMemoryAndMaybeContinue(): Promise<boolean> {
+  private async settleMemoryAndMaybeContinue(
+    abortSignal?: AbortSignal,
+  ): Promise<boolean> {
     await this.waitForMemoryOperations();
     await this.taskMemoryAdaptor?.settle();
-    return (await this.autoMemoryAdaptor?.settleAndMaybeContinue()) ?? false;
+    // Continuing memory extraction may create a new fork. It needs a completed
+    // request from this parent instance to reuse, including when the CLI drains.
+    if (!this.latestRequestSnapshot || abortSignal?.aborted) return false;
+    return (
+      (await this.autoMemoryAdaptor?.settleAndMaybeContinue(
+        this.latestRequestSnapshot?.systemPrompt,
+      )) ?? false
+    );
   }
 
   private async waitForMemoryOperations(): Promise<void> {
@@ -1050,24 +1132,61 @@ export class LiveChatKit<
     }
   }
 
-  async drainBackgroundTasksAndSettleMemory(): Promise<void> {
-    await this.waitForMemoryOperations();
-    await this.backgroundTaskExecutor?.drain();
-    while (await this.settleMemoryAndMaybeContinue()) {
-      await this.backgroundTaskExecutor?.drain();
+  async drainBackgroundTasksAndSettleMemory(
+    options: { timeoutMs?: number; abortSignal?: AbortSignal } = {},
+  ): Promise<void> {
+    if (options.timeoutMs === 0 || options.abortSignal?.aborted) return;
+    const controller = new AbortController();
+    const signal = options.abortSignal
+      ? AbortSignal.any([controller.signal, options.abortSignal])
+      : controller.signal;
+    const timeout =
+      options.timeoutMs === undefined
+        ? undefined
+        : setTimeout(() => controller.abort(), options.timeoutMs);
+    let onAbort: () => void = () => {};
+    const aborted = new Promise<void>((resolve) => {
+      onAbort = resolve;
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+    const drain = async () => {
+      await this.waitForMemoryOperations();
+      if (signal.aborted) return;
+      await this.backgroundJobManager.drain(signal);
+      while (
+        !signal.aborted &&
+        (await this.settleMemoryAndMaybeContinue(signal))
+      ) {
+        await this.backgroundJobManager.drain(signal);
+      }
+      if (!signal.aborted) await this.settleMemoryAndMaybeContinue(signal);
+    };
+    try {
+      await Promise.race([drain(), aborted]);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      signal.removeEventListener("abort", onAbort);
     }
-    await this.settleMemoryAndMaybeContinue();
   }
 
-  async disposeBackgroundTasks(): Promise<void> {
-    await this.backgroundTaskExecutor?.dispose();
-    this.backgroundTaskAdaptor?.dispose?.();
+  /** Subscribing a chat never starts or owns the shared executor. */
+  subscribeBackgroundJobs(): () => void {
+    return this.backgroundJobManager.subscribeNotifications(
+      this.taskId,
+      (notifications) => this.enqueueBackgroundJobNotifications(notifications),
+    );
   }
 
-  private startBackgroundTasks(): void {
-    if (this.backgroundTasksStarted) return;
-    this.backgroundTasksStarted = true;
-    this.backgroundTaskExecutor?.start();
+  private getAutoCompactThreshold(): number | undefined {
+    try {
+      return resolveAutoCompactThreshold({
+        llm: this.getters.getLLM(),
+        effectiveContextWindow: this.getters.getEffectiveContextWindow?.(),
+      });
+    } catch (error) {
+      logger.debug("Failed to resolve the auto-compact threshold", error);
+      return undefined;
+    }
   }
 
   private scheduleMemoryUpdate(data: {
@@ -1081,10 +1200,13 @@ export class LiveChatKit<
       this.taskMemoryAdaptor?.update({
         messages: data.messages,
         contextWindowUsage: data.contextWindowUsage,
+        compactThreshold: this.getAutoCompactThreshold(),
+        systemPrompt: this.latestRequestSnapshot?.systemPrompt,
       }),
       this.autoMemoryAdaptor?.update({
         messages: data.messages,
         status: data.status,
+        systemPrompt: this.latestRequestSnapshot?.systemPrompt,
       }),
     ])
       .catch((error) => {
@@ -1117,10 +1239,6 @@ export class LiveChatKit<
     success: boolean,
     onCompactFinish: ((success: boolean) => MaybePromise<void>) | undefined,
   ) {
-    if (success) {
-      await this.taskMemoryAdaptor?.resetTokenBaseline();
-    }
-
     try {
       await onCompactFinish?.(success);
     } catch (notifyErr) {

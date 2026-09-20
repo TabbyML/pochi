@@ -27,6 +27,8 @@ export type { ToolCallLifeCycle } from "./lib/tool-call-life-cycle";
 
 export { ChatPage } from "./page";
 export { ChatSkeleton } from "./components/chat-skeleton";
+export { SubtaskPage } from "./components/subtask-page";
+export { BackgroundTaskButton } from "./components/background-task-button";
 
 export { CreateTaskInput } from "./components/create-task-input";
 
@@ -61,3 +63,5 @@ export type {
   RenderWidgetError,
   RenderWidgetErrorKind,
 } from "./lib/render-widget-error";
+
+export { useBackgroundTaskStatus } from "./hooks/use-background-job-list";

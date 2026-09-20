@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BackgroundTaskDebugPanel } from "./background-task-debug-panel";
+import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BackgroundTaskDetail } from "./background-task-debug-panel";
 
 const task = {
   id: "task-1",
@@ -45,16 +44,6 @@ vi.mock("@/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/hover-card", () => ({
-  HoverCard: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  HoverCardTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
-
-vi.mock("@/features/settings", () => ({
-  useIsDevMode: () => [true],
-}));
-
 vi.mock("@/lib/hooks/use-background-task-state", () => ({
   useBackgroundTaskState: () => ({
     backgroundTaskState: {
@@ -87,17 +76,31 @@ vi.mock("@/lib/use-default-store", () => ({
 }));
 
 function openTaskDetail() {
-  render(<BackgroundTaskDebugPanel />);
-  fireEvent.click(screen.getByText("Background task"));
+  render(<BackgroundTaskDetail taskId={task.id} onBack={() => {}} />);
 }
 
 function getDetailValue(label: string): string | null | undefined {
   return screen.getByText(label).parentElement?.lastElementChild?.textContent;
 }
 
-describe("BackgroundTaskDebugPanel", () => {
+describe("BackgroundTaskDetail", () => {
   beforeEach(() => {
     messageRows = [];
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("focuses the back button when the detail opens", () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+
+    openTaskDetail();
+
+    expect(document.activeElement).toBe(
+      screen.getByLabelText("Back to the background job list"),
+    );
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
   it("uses a single borderless scroll area that fills the remaining height", () => {
@@ -196,3 +199,7 @@ describe("BackgroundTaskDebugPanel", () => {
     expect(getDetailValue("Input Tokens")).toBe("-");
   });
 });
+
+vi.mock("../hooks/use-background-job-list", () => ({
+  useBackgroundTaskStatus: () => undefined,
+}));

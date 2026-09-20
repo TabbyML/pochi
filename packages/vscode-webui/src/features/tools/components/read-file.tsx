@@ -63,6 +63,7 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
             <BackgroundJobPanel
               backgroundJobId={finalJobId}
               output={output}
+              outputFile={path}
               terminalName={terminalName}
               lastCommand={lastCommand}
             />

@@ -9,24 +9,27 @@ import {
 import { useSelectedModels, useSettingsStore } from "@/features/settings";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
+import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useMcpConfigOverride } from "@/lib/hooks/use-mcp-config-override";
 import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
+import { buildTodoModeObjective } from "@/lib/message-utils";
+import { serializeCustomAgentMention } from "@/lib/serialize-custom-agent-mention";
 import { vscodeHost } from "@/lib/vscode";
-import { prompts } from "@getpochi/common";
+import { type PastedTextFile, getPastedTextTitle } from "@getpochi/common";
 import type {
   GitWorktree,
   Review,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import { type Todo, initTodoModeTodos } from "@getpochi/tools";
+import { initTodoModeTodos } from "@getpochi/tools";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveSlashMentions } from "../hooks/resolve-slash-mentions";
 import type { ChatInput } from "../hooks/use-chat-input-state";
 import { useTerminalContextState } from "../hooks/use-terminal-context-state";
-import { validateSkillInvocations } from "../hooks/validate-skill-invocations";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 
 interface CreateTaskInputProps {
@@ -56,6 +59,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   } = useTerminalContextState();
   const { draft: input, setDraft: setInput, clearDraft } = useTaskInputDraft();
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
+  const { customAgents, isLoading: isCustomAgentsLoading } =
+    useCustomAgents(true);
   const [planMode, setPlanMode] = useState(false);
   const [todoModeSelected, setTodoModeSelected] = useState(false);
   const togglePlanMode = useCallback(() => {
@@ -172,15 +177,19 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         name: string;
         url: string;
       }>;
-      todos?: Todo[];
+      shouldCreateTodo: boolean;
       invokedSkills?: ValidSkillFile[];
+      invokedCustomAgents?: string[];
+      pastedTexts?: string[];
     }): Promise<boolean> => {
       const {
         content,
         shouldCreateWorktree,
         uploadedFiles,
-        todos,
+        shouldCreateTodo,
         invokedSkills,
+        invokedCustomAgents,
+        pastedTexts,
       } = params;
 
       let worktree: typeof selectedWorktree | null = selectedWorktree;
@@ -188,7 +197,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         worktree = await vscodeHost.createWorktree({
           baseBranch: baseBranch || undefined,
           generateBranchName: {
-            prompt: content,
+            prompt: content || getPastedTextTitle(pastedTexts?.[0] ?? ""),
             files: uploadedFiles,
           },
         });
@@ -199,15 +208,34 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         }
       }
 
+      const uid = pastedTexts?.length ? crypto.randomUUID() : undefined;
+      let pastedTextFiles: PastedTextFile[] | undefined;
+      if (uid && pastedTexts) {
+        try {
+          pastedTextFiles = await vscodeHost.persistPastedTextFiles(
+            uid,
+            pastedTexts,
+          );
+        } catch {
+          return false;
+        }
+      }
+      const todoObjective = shouldCreateTodo
+        ? buildTodoModeObjective(content, pastedTextFiles)
+        : "";
+
       vscodeHost.openTaskInPanel(
         {
           type: "new-task",
+          uid,
           cwd: worktree && typeof worktree === "object" ? worktree.path : cwd,
           prompt: content,
-          todos,
+          pastedTextFiles,
+          todos: todoObjective ? initTodoModeTodos(todoObjective) : undefined,
           files: uploadedFiles,
           activeSelection: activeSelection ?? undefined,
           invokedSkills,
+          invokedCustomAgents,
           terminalContextSelections:
             terminalContextSelections.length > 0
               ? terminalContextSelections
@@ -261,7 +289,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
       const shouldCreateTodo = options?.shouldCreateTodo ?? todoModeSelected;
 
-      if (isCreatingTask || isSkillsLoading) return;
+      if (isCreatingTask || isSkillsLoading || isCustomAgentsLoading) return;
 
       // Uploading / Compacting is not allowed to be stopped.
       if (isUploadingAttachments) return;
@@ -270,7 +298,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       if (!selectedModel) return;
 
       const currentInput = options?.submittedInput ?? input;
-      const validationResult = validateSkillInvocations(currentInput, skills);
+      const validationResult = resolveSlashMentions(
+        currentInput,
+        skills,
+        customAgents,
+      );
       if (validationResult.status === "blocked") {
         await vscodeHost.showWarningMessage(validationResult.message, {
           modal: false,
@@ -278,10 +310,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         return;
       }
       let content = validationResult.text.trim();
+      const invokedCustomAgents = [...validationResult.invokedCustomAgents];
 
       // Disallow empty submissions
       if (
         content.length === 0 &&
+        (currentInput.pastedTexts?.length ?? 0) === 0 &&
         files.length === 0 &&
         terminalContextSelections.length === 0
       )
@@ -289,7 +323,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
 
       if (shouldCreatePlan) {
         // Use built-in planner agent
-        content = `${prompts.customAgent("planner")} ${content}`;
+        content = `${serializeCustomAgentMention("planner")} ${content}`;
+        if (!invokedCustomAgents.includes("planner")) {
+          invokedCustomAgents.push("planner");
+        }
       }
 
       // Set isCreatingTask state true
@@ -321,8 +358,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         shouldCreateWorktree:
           shouldCreateWorktree === true || selectedWorktree === "new-worktree",
         uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-        todos: shouldCreateTodo ? initTodoModeTodos(content) : undefined,
+        shouldCreateTodo,
         invokedSkills: validationResult.invokedSkills,
+        invokedCustomAgents,
+        pastedTexts: currentInput.pastedTexts,
       });
 
       // Set isCreatingTask state false
@@ -336,12 +375,14 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     [
       input,
       skills,
+      customAgents,
       files,
       upload,
       selectedModel,
       selectedWorktree,
       isCreatingTask,
       isSkillsLoading,
+      isCustomAgentsLoading,
       isUploadingAttachments,
       clearUploadError,
       setDebouncedIsCreatingTask,
@@ -408,13 +449,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         contextMenuSide="bottom"
       >
         {files.length > 0 && (
-          <div className="px-3">
-            <AttachmentPreviewList
-              files={files}
-              onRemove={removeFile}
-              isUploading={isUploadingAttachments}
-            />
-          </div>
+          <AttachmentPreviewList
+            files={files}
+            onRemove={removeFile}
+            isUploading={isUploadingAttachments}
+            className="contents"
+          />
         )}
       </ChatInputForm>
 

@@ -5,7 +5,8 @@
     "account": "Account",
     "help": "Help",
     "reset": "Reset",
-    "clear": "Clear"
+    "clear": "Clear",
+    "close": "Close"
   },
   "error": {
     "somethingWentWrong": "Something went wrong",
@@ -45,6 +46,7 @@
     "reviewCount": "{{count}} reviews",
     "userEditCount": "{{count}} edits",
     "terminalContextCount": "{{count}} terminal selections",
+    "pastedTextCount": "{{count}} pasted texts",
     "steer": "Steer",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
@@ -340,6 +342,7 @@
     "imgAlt": "MCP tool response snapshot",
     "renderWidget": "Render Widget",
     "widgetFrozen": "This widget is from an earlier message. Only the latest widget remains interactive.",
+    "widgetExportFailed": "Failed to export widget: {{message}}",
     "widgetInternalError": "Widget setup error.",
     "widgetRuntimeError": "Widget runtime error.",
     "fixWidget": "Please fix",
@@ -349,6 +352,7 @@
     "in": "in",
     "executeCommand": "I will execute the following command",
     "executingCommand": "Executing command",
+    "startedCommand": "Started command",
     "for": "for",
     "matching": "matching",
     "searching": "Searching",
@@ -365,6 +369,7 @@
     "readTerminal": "Reading terminal output",
     "backgroundExecute": "I will execute the following command in the background",
     "backgroundExecuting": "Executing command in background",
+    "promotedToBackground": "; continued in background",
     "updatingToDos": "Updating TODOs",
     "editing": "Editing ",
     "usingSkill": "Using Skill",
@@ -386,6 +391,10 @@
   "attachmentPreview": {
     "removeAttachment": "Remove Attachment",
     "uploading": "Uploading..."
+  },
+  "pastedText": {
+    "label": "Pasted text",
+    "remove": "Remove pasted text"
   },
   "checkpointUI": {
     "restoring": "Restoring...",
@@ -519,6 +528,8 @@
     "expand": "Expand",
     "openJob": "Open Job {{displayId}}",
     "openTerminal": "Open terminal {{name}}",
+    "terminalClosed": "The terminal has been closed",
+    "terminalClosedOpenOutput": "The terminal has been closed, open its output log",
     "userTerminal": "User terminal",
     "stop": "STOP"
   },
@@ -580,14 +591,25 @@
     "diffTitle": "User Edits"
   },
   "backgroundJobNotifications": {
-    "title": "Background job notifications",
-    "notificationCount_one": "{{count}} notification",
-    "notificationCount_other": "{{count}} notifications",
+    "title": "Notifications",
     "completed": "Completed (exit {{exitCode}})",
+    "completedNoExit": "Completed",
     "failed": "Failed (exit {{exitCode}})",
     "failedNoExit": "Failed",
     "stopped": "Stopped",
     "openOutput": "Open output file"
+  },
+  "managePanel": {
+    "title": "Background Jobs",
+    "toggle": "Show background jobs",
+    "pochiGroup": "Background commands",
+    "openTerminal": "Open terminal",
+    "hideTerminal": "Hide terminal",
+    "copyCommand": "Copy command",
+    "kill": "Kill process",
+    "empty": "Nothing running in the background",
+    "seeMore": "See more",
+    "seeLess": "See less"
   },
   "forkTask": {
     "forkedTaskTitle": "Forked from {{taskTitle}}"
@@ -653,5 +675,29 @@
   "builtInAgentsSettings": {
     "title": "Built-in Agents",
     "browser": "browser"
+  },
+  "backgroundTasks": {
+    "toggleResult": "Expand or collapse result",
+    "waitingInput": "Waiting for input",
+    "statusUnavailable": "Status unavailable",
+    "systemAgent": "System agent",
+    "idle": "Idle",
+    "background": "Background",
+    "started": "Started in background",
+    "view": "View subtask",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "stopped": "Stopped",
+    "finished": "Finished",
+    "pendingNotification": "Waiting to notify",
+    "title": "Background Agents",
+    "empty": "No background agents",
+    "untitled": "Untitled",
+    "stop": "Stop",
+    "moveToBackground": "Move to background",
+    "all": "All",
+    "showAll": "Show all background tasks",
+    "moveToBackgroundHint": "Continues in the background and notifies you when done."
   }
 }

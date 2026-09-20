@@ -14,7 +14,9 @@ export const attemptCompletionSchema = z.object({
 
 const toolDef = {
   description:
-    `Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user.
+    `Use this tool to end the current agent turn and present its result to the user. Normally, call it only after receiving all tool results and confirming the task is complete.
+
+Exception for background commands: if they are still running and no independent work remains, call this tool now instead of reading their output, polling, or waiting. Do not claim that a background command succeeded or failed before its completion notification arrives. The notification will resume the task with its final status.
 
 You MUST NOT generate any text before this tool call. All conclusion text must be included within the result parameter of the attemptCompletion tool.
 Never use this tool with a question or request to engage in further conversation! Formulate the end of your result in a way that is final and does not require further input from the user.

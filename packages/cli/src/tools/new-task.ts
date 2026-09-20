@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { getLogger } from "@getpochi/common";
+import {
+  createBackgroundSubAgentStartedResult,
+  getLogger,
+  getSubAgentBackgroundJobId,
+  shouldRunSubAgentInBackground,
+} from "@getpochi/common";
 import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { formatFollowupQuestions } from "@getpochi/livekit";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
@@ -27,7 +32,7 @@ const SubTaskBrowserAgentMaxSteps = 65535;
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType }, { toolCallId }) => {
+  async ({ _meta, agentType, background }, { toolCallId }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -45,6 +50,23 @@ export const newTask =
       if (!customAgent) {
         throw new Error(
           `Custom agent type "${agentType}" not found. Available agents: ${options.customAgents.map((a) => a.name).join(", ")}`,
+        );
+      }
+    }
+
+    if (shouldRunSubAgentInBackground({ background, agentType })) {
+      if (options.backgroundSubTask) {
+        await options.backgroundSubTask({ taskId, agentType });
+        return {
+          result: createBackgroundSubAgentStartedResult(taskId),
+          backgroundJobId: getSubAgentBackgroundJobId(taskId),
+        };
+      }
+      // Only an explicit request must fail loudly; the default falls back to
+      // running the subagent in the foreground.
+      if (background) {
+        throw new Error(
+          "Background subagent execution is not available in this context.",
         );
       }
     }

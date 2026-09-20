@@ -21,8 +21,8 @@ export const StartBackgroundJobTool: React.FC<
       ? tool.input.command
       : undefined;
 
-  const backgroundJobId =
-    tool.state === "output-available" ? tool.output.backgroundJobId : undefined;
+  const backgroundJob =
+    tool.state === "output-available" ? tool.output : undefined;
 
   const cwdNode = cwd ? (
     <span>
@@ -44,10 +44,11 @@ export const StartBackgroundJobTool: React.FC<
     <ExpandableToolContainer
       title={title}
       detail={
-        backgroundJobId ? (
+        backgroundJob ? (
           <BackgroundJobPanel
-            backgroundJobId={backgroundJobId}
+            backgroundJobId={backgroundJob.backgroundJobId}
             command={command}
+            outputFile={backgroundJob.outputFile}
           />
         ) : command ? (
           <CommandPanelContainer

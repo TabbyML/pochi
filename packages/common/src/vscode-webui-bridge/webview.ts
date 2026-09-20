@@ -9,6 +9,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  PastedTextFile,
   TaskMemoryState,
   TerminalTextSelection,
 } from "../base";
@@ -50,6 +51,16 @@ import type {
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { VSCodeSettings } from "./types/vscode-settings";
+
+export type BackgroundCommands = Record<
+  string,
+  {
+    isVisible: boolean;
+    taskId?: string;
+    command?: string;
+    outputFile?: string;
+  }
+>;
 
 export interface VSCodeHostApi {
   readResourceURI(): Promise<ResourceURI>;
@@ -105,6 +116,7 @@ export interface VSCodeHostApi {
       storeId: string;
       taskId: string;
       fileStateCacheSourceTaskId?: string;
+      allowBackground?: boolean;
     },
   ): Promise<unknown>;
 
@@ -188,10 +200,22 @@ export interface VSCodeHostApi {
     openBackgroundJobTerminal: (backgroundJobId: string) => Promise<void>;
   }>;
 
+  readBackgroundCommands(): Promise<{
+    backgroundCommands: ThreadSignalSerialization<BackgroundCommands>;
+    show: (backgroundJobId: string) => Promise<void>;
+    hide: (backgroundJobId: string) => Promise<void>;
+    close: (backgroundJobId: string) => Promise<void>;
+  }>;
+
   readBackgroundJobNotifications(taskId: string): Promise<{
     notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
     acknowledge: (notificationId: string) => Promise<void>;
   }>;
+
+  persistPastedTextFiles(
+    taskId: string,
+    texts: string[],
+  ): Promise<PastedTextFile[]>;
 
   /**
    * Opens a file at the specified file path.
@@ -218,6 +242,19 @@ export interface VSCodeHostApi {
       taskId?: string;
     },
   ): void;
+
+  /**
+   * Asks the user where to store a standalone widget document and writes it there.
+   *
+   * @returns `true` when the document was written, `false` when the user cancelled.
+   */
+  saveWidget(html: string, suggestedFilename: string): Promise<boolean>;
+
+  /**
+   * Opens a standalone widget document in a new editor tab. The document is
+   * rendered from the given string and is never written to disk.
+   */
+  openWidgetInPanel(html: string, title: string): Promise<void>;
 
   readCurrentWorkspace(): Promise<{
     cwd: string | null;

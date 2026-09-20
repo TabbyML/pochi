@@ -2,6 +2,23 @@ import { describe, expect, it } from "vitest";
 import { renderSlashMentionText } from "../slash-mention/extension";
 
 describe("renderSlashMentionText", () => {
+  it("renders a selected custom agent as a readable structured tag", () => {
+    const result = renderSlashMentionText({
+      type: "custom-agent",
+      id: "tester",
+      path: "/agents/tester.md",
+      rawData: {
+        name: "tester",
+        description: "Run test tasks",
+        systemPrompt: "Test the requested behavior.",
+      },
+    });
+
+    expect(result).toBe(
+      '<custom-agent id="tester" path="/agents/tester.md">/tester</custom-agent>',
+    );
+  });
+
   it("keeps a selected skill as concise user-visible text", () => {
     const result = renderSlashMentionText({
       type: "skill",

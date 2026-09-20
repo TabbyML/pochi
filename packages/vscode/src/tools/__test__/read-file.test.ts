@@ -1,10 +1,17 @@
 import * as assert from "assert";
 import * as os from "node:os";
 import * as _path from "node:path"; // Renamed to avoid conflict if 'path' is used as a var name
+import {
+  BackgroundCommandRunningHint,
+  FileStateCache,
+  FileUnchangedStub,
+} from "@getpochi/common/tool-utils";
 import { after, before, beforeEach, describe, it } from "mocha";
 import * as vscode from "vscode";
 import proxyquire from "proxyquire";
-import { readFile } from "../read-file";
+// Type-only: loading the real module would pull the terminal job graph into
+// this unit test, so the tool is always required through proxyquire below.
+import type { readFile } from "../read-file";
 
 // Helper to create a file
 async function createFile(uri: vscode.Uri, content = ""): Promise<void> {
@@ -21,6 +28,8 @@ describe("readFile Tool", () => {
   let currentTestTempDirUri: vscode.Uri;
   let currentTestTempDirRelativePath: string;
   let readFileWithMock: typeof readFile;
+  /** Stands in for the terminal job registry: id -> liveness. */
+  const backgroundCommands = new Map<string, { isFinished: boolean }>();
 
   before(async () => {
     const rootPath = _path.join(
@@ -43,6 +52,12 @@ describe("readFile Tool", () => {
 
     readFileWithMock = proxyquire("../read-file", {
       "@/lib/fs": fsMock,
+      "@/integrations/terminal/terminal-job": {
+        TerminalJob: {
+          get: (id: string) => backgroundCommands.get(id),
+        },
+        "@noCallThru": true,
+      },
     }).readFile;
   });
 
@@ -63,6 +78,7 @@ describe("readFile Tool", () => {
   });
 
   beforeEach(async () => {
+    backgroundCommands.clear();
     const testDirName = `test-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     currentTestTempDirRelativePath = testDirName;
     currentTestTempDirUri = vscode.Uri.joinPath(
@@ -211,6 +227,78 @@ describe("readFile Tool", () => {
     } catch (error: any) {
       assert.ok(error instanceof Error);
     }
+  });
+
+  it("should report liveness while a managed background command is running", async () => {
+    const transcriptPath = _path.join(
+      currentTestTempDirUri.fsPath,
+      "background-jobs",
+      "bgjob-cmd-running.log",
+    );
+    await createFile(vscode.Uri.file(transcriptPath), "$ tail -f app.log\ntick");
+    backgroundCommands.set("bgjob-cmd-running", { isFinished: false });
+
+    const fileStateCache = new FileStateCache();
+    const options = {
+      toolCallId: "test-call-id-123",
+      messages: [],
+      cwd: testSuiteRootTempDir.fsPath,
+      fileStateCache,
+    };
+
+    const fresh = await readFileWithMock({ path: transcriptPath }, options);
+    assert.ok(fresh.type !== "media");
+    assert.ok(fresh.content.includes("tick"));
+    assert.ok(fresh.content.endsWith(BackgroundCommandRunningHint));
+
+    // An unchanged transcript must still report that the command is active.
+    const unchanged = await readFileWithMock({ path: transcriptPath }, options);
+    assert.ok(unchanged.type !== "media");
+    assert.ok(unchanged.content.includes(FileUnchangedStub));
+    assert.ok(unchanged.content.endsWith(BackgroundCommandRunningHint));
+  });
+
+  it("should not report any status once the background command finished", async () => {
+    const transcriptPath = _path.join(
+      currentTestTempDirUri.fsPath,
+      "background-jobs",
+      "bgjob-cmd-finished.log",
+    );
+    await createFile(vscode.Uri.file(transcriptPath), "$ echo hi\nhi");
+    backgroundCommands.set("bgjob-cmd-finished", { isFinished: true });
+
+    const result = await readFileWithMock(
+      { path: transcriptPath },
+      {
+        toolCallId: "test-call-id-123",
+        messages: [],
+        cwd: testSuiteRootTempDir.fsPath,
+      },
+    );
+
+    assert.ok(result.type !== "media");
+    assert.ok(!result.content.includes(BackgroundCommandRunningHint));
+  });
+
+  it("should not report any status for an unknown background command", async () => {
+    const transcriptPath = _path.join(
+      currentTestTempDirUri.fsPath,
+      "background-jobs",
+      "bgjob-cmd-unknown.log",
+    );
+    await createFile(vscode.Uri.file(transcriptPath), "$ echo hi\nhi");
+
+    const result = await readFileWithMock(
+      { path: transcriptPath },
+      {
+        toolCallId: "test-call-id-123",
+        messages: [],
+        cwd: testSuiteRootTempDir.fsPath,
+      },
+    );
+
+    assert.ok(result.type !== "media");
+    assert.ok(!result.content.includes(BackgroundCommandRunningHint));
   });
 
   it("should reject a terminal transcript that is no longer tracked", async () => {

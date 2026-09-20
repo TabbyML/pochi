@@ -74,7 +74,6 @@ describe("listFilesTool", () => {
         }
         isExecuting={false}
         isLoading={false}
-        messages={[]}
       />,
     );
 

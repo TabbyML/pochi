@@ -2,6 +2,7 @@ import { useReplaceJobIdsInContent } from "@/features/chat";
 import { FileBadge, IssueBadge } from "@/features/tools";
 import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { parseFilePathLineRange } from "@/lib/utils/file";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import {
@@ -108,21 +109,35 @@ function InlineCodeComponent({
       );
     };
 
+    // a file path may carry a line range suffix, e.g. `src/main.ts:42-56`
+    const { path, startLine, endLine } = parseFilePathLineRange(children);
+
     // children may be file path, folder path, symbol or normal text, we need to handle each case
-    if (isFilePath(children)) {
-      const pathSeparatorCount = (children.match(/[\/\\]/g) || []).length;
+    if (isFilePath(path)) {
+      const pathSeparatorCount = (path.match(/[\/\\]/g) || []).length;
       return (
         <FileBadge
-          path={children}
+          path={path}
+          startLine={startLine}
+          endLine={endLine}
           fallbackGlobPattern={
             // glob pattern use `/` as path separator even on windows; when applied, glob pattern will match paths with both `/` and `\`
-            pathSeparatorCount >= 2 ? `**/${children}` : undefined
+            pathSeparatorCount >= 2 ? `**/${path}` : undefined
           }
         />
       );
     }
-    if (isFolderPath(children)) {
-      return <FileBadge path={children} isDirectory={true} />;
+    if (isFolderPath(path)) {
+      // a line range only makes sense for files
+      const isDirectory = startLine === undefined;
+      return (
+        <FileBadge
+          path={path}
+          startLine={startLine}
+          endLine={endLine}
+          isDirectory={isDirectory}
+        />
+      );
     }
   }
 
@@ -435,8 +450,12 @@ export function MessageMarkdown({
     return {
       file: (props: FileComponentProps) => {
         const { children } = props;
-        const filepath = String(children);
-        return <FileBadge path={filepath} />;
+        const { path, startLine, endLine } = parseFilePathLineRange(
+          String(children),
+        );
+        return (
+          <FileBadge path={path} startLine={startLine} endLine={endLine} />
+        );
       },
       "custom-agent": (props: CustomAgentComponentProps) => {
         const { id, path } = props;

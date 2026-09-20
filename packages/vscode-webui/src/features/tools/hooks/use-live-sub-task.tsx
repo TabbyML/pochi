@@ -19,7 +19,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { constants } from "@getpochi/common";
+import { constants, shouldRunSubAgentInBackground } from "@getpochi/common";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -40,7 +40,12 @@ import type { ToolProps } from "../components/types";
 export function useLiveSubTask(
   { tool, isExecuting }: Pick<ToolProps<"newTask">, "tool" | "isExecuting">,
   toolCallStatusRegistry: ToolCallStatusRegistry,
-): (TaskThreadSource & { parentId: string }) | undefined {
+):
+  | (TaskThreadSource & {
+      parentId: string;
+      moveToBackground: () => Promise<void>;
+    })
+  | undefined {
   const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
     toolName: getStaticToolName(tool),
     toolCallId: tool.toolCallId,
@@ -49,6 +54,12 @@ export function useLiveSubTask(
 
   const agentType =
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined;
+  // Background subtasks are driven by the TaskExecutor, not by this hook.
+  // Decided from the tool input alone, like the lifecycle does, so both sides
+  // agree without racing on task state.
+  const background =
+    tool.state !== "input-streaming" &&
+    shouldRunSubAgentInBackground(tool.input);
   const {
     customAgent,
     customAgentModel,
@@ -63,6 +74,7 @@ export function useLiveSubTask(
   // biome-ignore lint/style/noNonNullAssertion: uid must have been set.
   const uid = tool.input?._meta?.uid!;
   const abortController = useRef(new AbortController());
+  const streamStopped = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => {
     const streamingResult = ensureNewTaskStreamingResult(
@@ -163,6 +175,7 @@ export function useLiveSubTask(
       batchExecuteManager.enqueue(
         uid,
         createSubtaskBatchedToolCall({
+          store,
           toolCall,
           uid,
           storeId: store.storeId,
@@ -176,6 +189,8 @@ export function useLiveSubTask(
       );
     },
     onStreamFinish: () => {
+      streamStopped.current?.();
+      streamStopped.current = undefined;
       if (!abortController.current.signal.aborted) {
         batchExecuteManager.processQueue(uid);
       }
@@ -205,7 +220,11 @@ export function useLiveSubTask(
   });
   const retry = useCallback(
     (error?: Error) => {
-      if (isExecuting && (status === "ready" || status === "error")) {
+      if (
+        !abortController.current.signal.aborted &&
+        isExecuting &&
+        (status === "ready" || status === "error")
+      ) {
         retryImpl(error ?? new ReadyForRetryError());
       }
     },
@@ -305,6 +324,7 @@ export function useLiveSubTask(
   useInitAutoStart({
     start: retry,
     enabled:
+      !background &&
       tool.state === "input-available" &&
       isExecuting &&
       !(agentType && isCustomAgentLoading) &&
@@ -349,6 +369,21 @@ export function useLiveSubTask(
 
   return {
     parentId: task.parentId,
+    moveToBackground: () =>
+      lifecycle.moveToBackground(uid, agentType, async () => {
+        const finished = new Promise<void>((resolve) => {
+          if (
+            chatKit.chat.status === "streaming" ||
+            chatKit.chat.status === "submitted"
+          ) {
+            streamStopped.current = resolve;
+          } else resolve();
+        });
+        abortController.current.abort("detached");
+        await chatKit.chat.stop();
+        await batchExecuteManager.stop(uid, "user-abort");
+        await finished;
+      }),
     messages,
     todos: [],
     isLoading,

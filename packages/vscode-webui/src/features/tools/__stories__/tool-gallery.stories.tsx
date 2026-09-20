@@ -15,7 +15,6 @@ const ToolsGallery: React.FC<{
           // @ts-expect-error
           tool={tool}
           isLoading={false}
-          messages={[]}
         />
       ))}
     </div>
@@ -131,10 +130,11 @@ const executeCommandBackgroundProps: ExecuteCommandProp["tool"] = {
   },
   output: {
     output:
-      'Background command started with ID "bgjob-cmd-123". Output is being written to "/tmp/bgjob-cmd-123.log"; use readFile to read it.',
+      'Background command "bgjob-cmd-123" started. Its output is written to "/tmp/bgjob-cmd-123.log". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.',
     isTruncated: false,
     _meta: {
       backgroundJobId: "bgjob-cmd-123",
+      outputFile: "/tmp/bgjob-cmd-123.log",
     },
   },
 };

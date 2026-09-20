@@ -1,5 +1,6 @@
 import type {
   AutoMemoryContext,
+  AutoMemoryTaskState,
   BackgroundTaskState,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -7,13 +8,16 @@ import { Duration } from "@livestore/utils/effect";
 import type { ChatInit, ChatOnErrorCallback, ChatOnFinishCallback } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  BackgroundJobManager,
   type BlobStore,
+  type BackgroundTaskStateStore as BackgroundTaskStateStoreOptions,
   type LiveKitStore,
   type Message,
   type RunningTaskAdaptor,
   type Task,
 } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
+import type { TaskExecutor } from "../../background-task/task-executor/task-executor";
 import { resetTokenCalibration } from "../token-utils";
 
 describe("LiveChatKit memory lifecycle", () => {
@@ -26,34 +30,234 @@ describe("LiveChatKit memory lifecycle", () => {
     resetTokenCalibration();
   });
 
-  it("starts background task scheduling after the first stream finishes", async () => {
+  it("keeps background scheduling alive after a chat disconnects", async () => {
     const store = new FakeStore([
-      makeTask({
-        id: "parent",
-        status: "pending-model",
-        background: false,
-      }),
+      makeTask({ id: "parent", status: "pending-model", background: false }),
     ]);
+    const manager = makeBackgroundJobs(store, undefined, true);
+    const dispose = vi.spyOn(manager, "dispose");
     const chatKit = new LiveChatKit<FakeChat>({
       taskId: "parent",
       store: store as unknown as LiveKitStore,
       blobStore: {} as BlobStore,
       chatClass: FakeChat,
-      getters: {
-        getLLM: () => ({ id: "test-model" }) as never,
-      },
-      backgroundTask: {
-        adaptor: makeRunningTaskAdaptor(),
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+      backgroundJobManager: manager,
+    });
+    const unsubscribe = chatKit.subscribeBackgroundJobs();
+    unsubscribe();
+    expect(dispose).not.toHaveBeenCalled();
+    expect(store.subscriptions).toContain("runnableTasks");
+    await manager.dispose();
+  });
+
+  it("keeps the fork prompt fixed after its parent disconnects and handles a later request", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const send = vi.fn();
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+      backgroundJobManager: makeBackgroundJobs(store, undefined, true),
+      taskMemory: {},
+    });
+    const { executor } = chatKit.backgroundJobManager as unknown as {
+      executor: {
+        options: {
+          createChatKit: ConstructorParameters<typeof TaskExecutor>[0]["createChatKit"];
+        };
+      };
+    };
+    const createChatKit = executor.options.createChatKit;
+    const factory = vi
+      .spyOn(executor.options, "createChatKit")
+      .mockImplementation(async (options) => {
+        const running = await createChatKit(options);
+        // Exercise the real fork construction and scheduling; replace only its
+        // network request, while inspecting the system prompt passed to transport.
+        running.chat.sendMessage = async () => {
+          send();
+          const { transport } = running as unknown as {
+            transport: { systemPromptOverride: string };
+          };
+          expect(transport.systemPromptOverride).toBe(
+            "cached parent system prompt",
+          );
+          running.chat.appendOrReplaceMessage({
+            ...assistantMessage(),
+            id: "fork-complete",
+          });
+          store.setTaskMessages(options.taskId, running.chat.messages);
+          store.updateTaskStatus(options.taskId, "completed");
+        };
+        return running;
+      });
+    try {
+      expect(store.backgroundTasks()).toHaveLength(0);
+      expect(send).not.toHaveBeenCalled();
+      chatKit.chat.messages = [userMessage(), assistantMessage()];
+      setLatestRequestSnapshot(chatKit, 60_000, 0);
+      (
+        chatKit as unknown as {
+          latestRequestSnapshot: { systemPrompt: string };
+        }
+      ).latestRequestSnapshot.systemPrompt = "cached parent system prompt";
+      const unsubscribe = chatKit.subscribeBackgroundJobs();
+      chatKit.chat.finish(assistantMessage());
+      unsubscribe();
+      setLatestRequestSnapshot(chatKit, 0, 0);
+      // A later parent request must not change the already-scheduled fork.
+      (
+        chatKit as unknown as {
+          latestRequestSnapshot: { systemPrompt: string };
+        }
+      ).latestRequestSnapshot.systemPrompt = "later parent prompt";
+      await chatKit.drainBackgroundTasksAndSettleMemory();
+      expect(send).toHaveBeenCalledOnce();
+      expect(store.backgroundTasks()).toHaveLength(1);
+      expect(store.backgroundTasks()[0].status).toBe("completed");
+    } finally {
+      await chatKit.backgroundJobManager.dispose();
+      factory.mockRestore();
+    }
+  });
+
+  it("does not start a follow-on memory fork before this parent has completed a request", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+      makeTask({ id: "old", status: "completed" }),
+    ]);
+    let state: AutoMemoryTaskState = {
+      isExtracting: true,
+      activeExtractionTaskId: "old",
+      lastExtractionMessageCount: 0,
+      pendingExtractionMessageCount: 2,
+      extractionCount: 0,
+      isDreaming: false,
+    };
+    const manager = makeAutoMemoryManager();
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+      backgroundJobManager: makeBackgroundJobs(store),
+      projectMemory: {
+        manager,
+        stateStore: {
+          get: () => state,
+          set: (next) => {
+            state = next;
+          },
+        },
       },
     });
-
-    expect(store.subscriptions).not.toContain("runnableTasks");
-
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+    expect(manager.beginDreamRun).not.toHaveBeenCalled();
+    setLatestRequestSnapshot(chatKit, 0, 0);
     chatKit.chat.messages = [userMessage(), assistantMessage()];
     chatKit.chat.finish(assistantMessage());
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+    expect(manager.beginDreamRun).toHaveBeenCalledOnce();
+  });
 
-    expect(store.subscriptions).toContain("runnableTasks");
-    await chatKit.disposeBackgroundTasks();
+  it("does not background a subtask if its parent is aborted during state persistence", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "pending-tool", background: false }),
+      {
+        ...makeTask({ id: "child", status: "pending-model", background: false }),
+        parentId: "parent",
+      },
+    ]);
+    const commit = vi.spyOn(store, "commit");
+    const controller = new AbortController();
+    let finishWrite!: () => void;
+    const write = new Promise<void>((resolve) => {
+      finishWrite = resolve;
+    });
+    const set = vi.fn(() => write);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      abortSignal: controller.signal,
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+      backgroundJobManager: makeBackgroundJobs(store, {
+        read: async () => undefined,
+        set,
+      }),
+    });
+    const move = chatKit.backgroundSubTask?.({
+      taskId: "child",
+      agentType: "explore",
+    });
+    expect(set).toHaveBeenCalledOnce();
+    controller.abort();
+    finishWrite();
+    await expect(move).rejects.toMatchObject({ name: "AbortError" });
+    expect(commit).not.toHaveBeenCalled();
+    expect(store.subscriptions).not.toContain("runnableTasks");
+    await chatKit.backgroundJobManager.dispose();
+  });
+
+  it("settles a shared memory task after the parent disconnects and reopens", async () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "completed", background: false }),
+    ]);
+    const manager = makeBackgroundJobs(store);
+    let finishFork!: () => void;
+    vi.mocked(manager.waitForTaskDone).mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishFork = resolve;
+        }),
+    );
+    let state: TaskMemoryState | undefined;
+    const set = vi.fn((next: TaskMemoryState) => {
+      state = next;
+    });
+    const options = {
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+      backgroundJobManager: manager,
+      taskMemory: { stateStore: { get: () => state, set } },
+    };
+    const parent = new LiveChatKit<FakeChat>(options);
+    const unsubscribe = parent.subscribeBackgroundJobs();
+    parent.chat.messages = [userMessage(), assistantMessage()];
+    setLatestRequestSnapshot(parent, 60_000, 0);
+    parent.chat.finish(assistantMessage());
+    await parent.drainBackgroundTasksAndSettleMemory();
+    unsubscribe();
+    const taskId = state?.activeTaskId;
+    expect(taskId).toBeTruthy();
+    const reopened = new LiveChatKit<FakeChat>({
+      ...options,
+      taskMemory: { stateStore: { get: () => state, set } },
+    });
+    reopened.chat.messages = parent.chat.messages;
+    setLatestRequestSnapshot(reopened, 60_000, 0);
+    reopened.chat.finish(assistantMessage());
+    await reopened.drainBackgroundTasksAndSettleMemory();
+    expect(store.backgroundTasks()).toHaveLength(1);
+    store.updateTaskStatus(taskId ?? "", "failed");
+    // Completion writes back without any parent-page drain or update call.
+    finishFork();
+    await vi.waitFor(() => expect(state?.isExtracting).toBe(false));
+    expect(state?.activeTaskId).toBeUndefined();
+    expect(
+      set.mock.calls.filter(([state]) => !state.isExtracting),
+    ).toHaveLength(1);
+    await manager.dispose();
   });
 
   it("marks unfinished tool calls as errors when a stream fails", async () => {
@@ -95,6 +299,52 @@ describe("LiveChatKit memory lifecycle", () => {
       state: "output-error",
       input: { path: "README.md" },
       errorText: "User aborted the tool call",
+    });
+  });
+
+  it("persists a tool result after remounting during manual execution", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-tool",
+        background: false,
+      }),
+    ]);
+    store.setTaskMessages("parent", [
+      userMessage(),
+      assistantReadFileMessage("input-available"),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+
+    chatKit.chat.messages = [
+      userMessage(),
+      {
+        ...assistantReadFileMessage("input-available"),
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "call-read-file",
+            state: "output-available",
+            input: { path: "README.md" },
+            output: { content: "README contents" },
+          },
+        ],
+      } as unknown as Message,
+    ];
+
+    chatKit.persistToolOutput();
+
+    expect(store.taskMessages("parent").at(-1)?.parts[0]).toMatchObject({
+      state: "output-available",
+      output: { content: "README contents" },
     });
   });
 
@@ -383,18 +633,16 @@ describe("LiveChatKit memory lifecycle", () => {
       getters: {
         getLLM: () => ({ id: "test-model" }) as never,
       },
-      backgroundTask: {
-        stateStore: backgroundTaskStateStore,
-      },
-      taskMemory: {
-      },
+      backgroundJobManager: makeBackgroundJobs(store, backgroundTaskStateStore),
+      taskMemory: {},
       projectMemory: {
         manager: makeAutoMemoryManager(),
       },
     });
 
-    chatKit.chat.messages = [userMessage(), assistantMessage()];
-    setLatestRequestSnapshot(chatKit, 20_000, 0);
+    chatKit.chat.messages = threeUserTurns();
+    // Above 80% of the 67k auto-compact threshold.
+    setLatestRequestSnapshot(chatKit, 60_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -436,15 +684,13 @@ describe("LiveChatKit memory lifecycle", () => {
       getters: {
         getLLM: () => ({ id: "test-model" }) as never,
       },
-      backgroundTask: {
-        stateStore: backgroundTaskStateStore,
-      },
+      backgroundJobManager: makeBackgroundJobs(store, backgroundTaskStateStore),
       projectMemory: {
         manager: makeAutoMemoryManager(),
       },
     });
 
-    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.messages = threeUserTurns();
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -487,16 +733,15 @@ describe("LiveChatKit memory lifecycle", () => {
       getters: {
         getLLM: () => ({ id: "test-model" }) as never,
       },
-      backgroundTask: {
-        stateStore: backgroundTaskStateStore,
-      },
+      backgroundJobManager: makeBackgroundJobs(store, backgroundTaskStateStore),
       taskMemory: {
         stateStore: taskMemoryStateStore,
       },
     });
 
     chatKit.chat.messages = [userMessage(), assistantMessage()];
-    setLatestRequestSnapshot(chatKit, 20_000, 0);
+    // Above 80% of the 67k auto-compact threshold.
+    setLatestRequestSnapshot(chatKit, 60_000, 0);
     chatKit.chat.finish(assistantMessage());
     await chatKit.drainBackgroundTasksAndSettleMemory();
 
@@ -558,6 +803,8 @@ class FakeChat {
 
   async stop() {}
 
+  async sendMessage(_message: { parts: Message["parts"] }) {}
+
   finish(message: Message) {
     this.onFinish({
       message,
@@ -598,6 +845,30 @@ function makeAutoMemoryManager() {
   };
 }
 
+function makeBackgroundJobs(
+  store: FakeStore,
+  stateStore: BackgroundTaskStateStoreOptions = new BackgroundTaskStateStore(),
+  execute = false,
+) {
+  const manager = BackgroundJobManager.forStore(
+    store as unknown as LiveKitStore,
+  );
+  if (!execute) {
+    // Scheduling tests drive saved results directly; executor behavior is tested separately.
+    vi.spyOn(manager, "start").mockImplementation(() => {});
+    vi.spyOn(manager, "drain").mockResolvedValue(undefined);
+    vi.spyOn(manager, "waitForTaskDone").mockImplementation(
+      () => new Promise(() => {}),
+    );
+  }
+  manager.initialize({
+    blobStore: {} as BlobStore,
+    adaptor: makeRunningTaskAdaptor(),
+    stateStore,
+  });
+  return manager;
+}
+
 function makeRunningTaskAdaptor(): RunningTaskAdaptor {
   return {
     getRequestGetters: () => ({
@@ -620,6 +891,7 @@ class FakeStore {
   }
 
   query(query: { label?: string; hash?: string }) {
+    if (query.label === "backgroundTasks") return this.backgroundTasks();
     if (query.label === "task") {
       return this.tasks.get(this.extractTaskId(query));
     }
@@ -636,7 +908,8 @@ class FakeStore {
     }
     if (query.label === "runnableTasks") {
       return this.backgroundTasks().filter(
-        (task) => task.status === "pending-model" || task.status === "pending-tool",
+        (task) =>
+          task.status === "pending-model" || task.status === "pending-tool",
       );
     }
     throw new Error(`Unsupported query ${query.label ?? query.hash}`);
@@ -741,7 +1014,9 @@ class FakeStore {
     });
     if (message) {
       this.messages.set(id, [
-        ...(this.messages.get(id) ?? []).filter((item) => item.id !== message.id),
+        ...(this.messages.get(id) ?? []).filter(
+          (item) => item.id !== message.id,
+        ),
         message,
       ]);
     }
@@ -867,6 +1142,14 @@ function assistantMessage(): Message {
   } as unknown as Message;
 }
 
+/** Auto-memory extraction only triggers once three new user turns exist. */
+function threeUserTurns(): Message[] {
+  return [1, 2, 3].flatMap((index) => [
+    { ...userMessage(), id: `user-${index}` },
+    { ...assistantMessage(), id: `assistant-${index}` },
+  ]) as Message[];
+}
+
 function assistantUserInputToolMessage(
   type: string,
   toolCallId: string,
@@ -911,3 +1194,44 @@ function assistantReadFileMessage(
     ],
   } as unknown as Message;
 }
+
+describe("background command completion state", () => {
+  it("records text-only subagent responses as pending input for the executor to handle", () => {
+    const store = new FakeStore([
+      makeTask({ id: "child", status: "pending-model", background: true }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "child",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+      isSubTask: true,
+    });
+    const reply = {
+      ...assistantMessage(),
+      parts: [{ type: "text", text: "Here are the findings." }],
+    } as Message;
+    chatKit.chat.messages = [userMessage(), reply];
+    chatKit.chat.finish(reply);
+    expect(chatKit.task?.status).toBe("pending-input");
+    chatKit.chat.finish(assistantMessage());
+    expect(chatKit.task?.status).toBe("completed");
+  });
+
+  it("records the model completion without inventing a pending tool status", () => {
+    const store = new FakeStore([
+      makeTask({ id: "parent", status: "pending-model", background: true }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: { getLLM: () => ({ id: "test-model" }) as never },
+    });
+    chatKit.chat.messages = [userMessage(), assistantMessage()];
+    chatKit.chat.finish(assistantMessage());
+    expect(chatKit.task?.status).toBe("completed");
+  });
+});

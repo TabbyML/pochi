@@ -1,6 +1,7 @@
 import type { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { getOrLoadTaskStore } from "@/lib/use-default-store";
+import { toErrorMessage } from "@getpochi/common";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
 import type { StoreRegistry } from "@livestore/livestore";
@@ -29,8 +30,9 @@ export function useChatInitialization({
   isMcpConfigLoading,
 }: UseChatInitializationProps) {
   const [isInitializing, setIsInitializing] = useState(
-    info.type === "fork-task",
+    info.type === "fork-task" || info.type === "compact-task",
   );
+  const [error, setError] = useState<Error>();
 
   useEffect(() => {
     if (chatKit.inited) {
@@ -59,9 +61,11 @@ export function useChatInitialization({
       }));
       const shouldUseParts =
         (files?.length ?? 0) > 0 ||
+        (info.pastedTextFiles?.length ?? 0) > 0 ||
         !!activeSelection ||
         (terminalContextSelections?.length ?? 0) > 0 ||
-        (info.invokedSkills?.length ?? 0) > 0;
+        (info.invokedSkills?.length ?? 0) > 0 ||
+        (info.invokedCustomAgents?.length ?? 0) > 0;
 
       if (shouldUseParts) {
         chatKit.init(cwd, {
@@ -75,6 +79,8 @@ export function useChatInitialization({
             activeSelection,
             terminalContextSelections,
             info.invokedSkills,
+            info.invokedCustomAgents,
+            info.pastedTextFiles,
           ),
         });
       } else {
@@ -117,6 +123,14 @@ export function useChatInitialization({
             } finally {
               await sourceStore.shutdownPromise();
             }
+          } catch (error) {
+            if (cancelled === false) {
+              setError(
+                error instanceof Error
+                  ? error
+                  : new Error(toErrorMessage(error)),
+              );
+            }
           } finally {
             if (cancelled === false) {
               setIsInitializing(false);
@@ -145,7 +159,7 @@ export function useChatInitialization({
     isMcpConfigLoading,
   ]);
 
-  return { isInitializing };
+  return { isInitializing, error };
 }
 
 function assertUnreachable(x: never): never {

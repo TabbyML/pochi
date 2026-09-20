@@ -31,6 +31,8 @@ export {
   getShellPath,
   fixExecuteCommandOutput,
   buildShellCommand,
+  buildLaunchNonceMarker,
+  type ShellCommand,
 } from "./shell";
 export { parseAgentFile } from "./agent-parser";
 export { parseSkillFile } from "./skill-parser";
@@ -55,6 +57,7 @@ export {
   isVirtualPath,
 } from "./file-state-cache";
 export { maybePersistToolResult } from "./tool-result-persistence";
+export { persistPastedTextFiles } from "./pasted-text-files";
 export { getPochiDataDir, getTaskDataDir } from "./pochi-paths";
 export { PlainOutputSanitizer } from "./plain-output-sanitizer";
 export {
@@ -71,3 +74,8 @@ export {
   resolveReadFileRange,
   type ReadFileRangeInput,
 } from "./read-file-range";
+export {
+  BackgroundCommandRunningHint,
+  appendBackgroundCommandRunningHint,
+  parseBackgroundCommandOutputFilePath,
+} from "./background-command-status";

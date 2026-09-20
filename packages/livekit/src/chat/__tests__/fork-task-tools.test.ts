@@ -272,13 +272,22 @@ describe("prepareForkTaskData", () => {
     ).toBe(false);
   });
 
-  it("should replace taskId in tool-newTask parts", () => {
+  it.each([false, true])("should replace taskId in tool-newTask parts (background: %s)", (background) => {
     const subTaskId = "sub-task-id";
+    const nestedTaskId = "nested-task-id";
     const tasks = [
       mockTask,
       {
         id: subTaskId,
         parentId: oldTaskId,
+        background,
+        status: "completed",
+        createdAt: new Date(),
+      },
+      {
+        id: nestedTaskId,
+        parentId: subTaskId,
+        background: true,
         status: "completed",
         createdAt: new Date(),
       },
@@ -303,7 +312,30 @@ describe("prepareForkTaskData", () => {
 
     const result = prepareForkTaskData({
       tasks,
-      messages: [messageWithTool],
+      messages: [
+        messageWithTool,
+        {
+          ...messageWithTool,
+          id: "msg-subtask",
+          taskId: subTaskId,
+          data: {
+            ...messageWithTool.data,
+            id: "msg-subtask",
+            parts: [
+              { type: "tool-newTask", input: { _meta: { uid: nestedTaskId } } },
+            ],
+          },
+        },
+        {
+          id: "msg-nested",
+          taskId: nestedTaskId,
+          data: {
+            id: "msg-nested",
+            role: "user",
+            parts: [{ type: "text", text: "Nested subtask" }],
+          },
+        },
+      ] as any,
       files: [],
       oldTaskId,
       commitId: "none",
@@ -313,11 +345,22 @@ describe("prepareForkTaskData", () => {
     });
 
     const newMessage = result.messages[0];
-    const newSubTask = result.tasks.find(t => t.id !== newTaskId);
+    const newSubTask = result.tasks.find(t => t.parentId === newTaskId);
+    const newNestedTask = result.tasks.find(t => t.parentId === newSubTask?.id);
     const toolPart = newMessage.data.parts[0] as any;
 
     expect(toolPart.input._meta.uid).toBe(newSubTask?.id);
     expect(toolPart.input._meta.uid).not.toBe(subTaskId);
+    expect(result.tasks).toHaveLength(3);
+    expect(newNestedTask).toBeDefined();
+    expect(newNestedTask?.id).not.toBe(nestedTaskId);
+    expect(result.messages.find(m => m.id === "msg-subtask")).toMatchObject({
+      taskId: newSubTask?.id,
+      data: { parts: [{ input: { _meta: { uid: newNestedTask?.id } } }] },
+    });
+    expect(result.messages.find(m => m.id === "msg-nested")?.taskId).toBe(
+      newNestedTask?.id,
+    );
   });
 
   it("should not copy certain fields like todos, lineChanges, and totalTokens", () => {

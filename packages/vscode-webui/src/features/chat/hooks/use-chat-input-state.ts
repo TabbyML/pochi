@@ -4,6 +4,7 @@ import { create } from "zustand";
 export interface ChatInput {
   json: JSONContent | null;
   text: string;
+  pastedTexts?: string[];
 }
 
 export interface ChatInputState {
@@ -16,6 +17,7 @@ export const useChatInputState = create<ChatInputState>()((set) => ({
   input: {
     json: null,
     text: "",
+    pastedTexts: [],
   },
   setInput: (content: Partial<ChatInput>) =>
     set((state) => ({
@@ -23,6 +25,6 @@ export const useChatInputState = create<ChatInputState>()((set) => ({
     })),
   clearInput: () =>
     set(() => ({
-      input: { json: null, text: "" },
+      input: { json: null, text: "", pastedTexts: [] },
     })),
 }));

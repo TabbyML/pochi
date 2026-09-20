@@ -17,11 +17,10 @@ export function useLiveChatKit(
         chatClass: Chat,
       }),
     [
-      store.storeId,
+      store,
       rest.taskId,
       rest.isSubTask,
       rest.enableAutoCompact,
-      rest.backgroundTask,
       rest.taskMemory,
       rest.projectMemory,
       rest.customAgent,
@@ -29,11 +28,7 @@ export function useLiveChatKit(
     ],
   );
 
-  useEffect(() => {
-    return () => {
-      void chatKit.disposeBackgroundTasks();
-    };
-  }, [chatKit]);
+  useEffect(() => chatKit.subscribeBackgroundJobs(), [chatKit]);
 
   return chatKit;
 }

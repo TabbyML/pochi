@@ -3,7 +3,8 @@
     "disable": "無効化",
     "openFolder": "フォルダーを開く",
     "account": "アカウント",
-    "help": "ヘルプ"
+    "help": "ヘルプ",
+    "close": "閉じる"
   },
   "error": {
     "somethingWentWrong": "問題が発生しました",
@@ -16,7 +17,6 @@
       "attachments": "ファイルを送信",
       "context": "コンテキストを添付"
     },
-
     "autoSave": {
       "title": "自動保存が有効な場合、Pochi は正しく動作しません。",
       "description": "Pochi は保留中のファイル変更に依存して編集の差分を表示するため、自動保存を無効にする必要があります。"
@@ -44,6 +44,7 @@
     "reviewCount": "{{count}} 件のレビュー",
     "userEditCount": "{{count}} 件の編集",
     "terminalContextCount": "{{count}} 件のターミナル選択",
+    "pastedTextCount": "{{count}} 件の貼り付けテキスト",
     "steer": "介入",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
@@ -318,7 +319,6 @@
     "requiresApproval": "承認待ち",
     "taskCompleted": "タスク完了",
     "reading": "読み込み中 ",
-
     "writing": "書き込み中 ",
     "continue": "続行",
     "retry": "再試行",
@@ -336,6 +336,7 @@
     "imgAlt": "MCPツールレスポンススナップショット",
     "renderWidget": "ウィジェットを表示",
     "widgetFrozen": "このウィジェットは以前のメッセージのものです。最新のウィジェットのみ操作できます。",
+    "widgetExportFailed": "ウィジェットのエクスポートに失敗しました: {{message}}",
     "widgetInternalError": "ウィジェット設定エラーです。",
     "widgetRuntimeError": "ウィジェット実行時エラーです。",
     "fixWidget": "修正してください",
@@ -345,6 +346,7 @@
     "in": "の",
     "executeCommand": "以下のコマンドを実行します",
     "executingCommand": "コマンドを実行中",
+    "startedCommand": "コマンドを開始",
     "for": "で",
     "matching": "一致する",
     "searching": "検索中",
@@ -361,6 +363,7 @@
     "readTerminal": "ターミナル出力を読み込み中",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
+    "promotedToBackground": "、その後バックグラウンドで継続",
     "updatingToDos": "TODOを更新中",
     "editing": "編集しています ",
     "moreTools": "、他{{count}}個のツール",
@@ -380,6 +383,10 @@
   "attachmentPreview": {
     "removeAttachment": "添付ファイルを削除",
     "uploading": "アップロード中..."
+  },
+  "pastedText": {
+    "label": "貼り付けたテキスト",
+    "remove": "貼り付けたテキストを削除"
   },
   "checkpointUI": {
     "restoring": "復元中...",
@@ -513,6 +520,8 @@
     "expand": "展開",
     "openJob": "ジョブ {{displayId}} を開く",
     "openTerminal": "ターミナル {{name}} を開く",
+    "terminalClosed": "このターミナルは閉じられています",
+    "terminalClosedOpenOutput": "このターミナルは閉じられています。出力ログを開きます",
     "userTerminal": "ユーザーターミナル",
     "stop": "停止"
   },
@@ -579,14 +588,25 @@
     "diffTitle": "ユーザー編集"
   },
   "backgroundJobNotifications": {
-    "title": "バックグラウンドジョブ通知",
-    "notificationCount_one": "{{count}} 件の通知",
-    "notificationCount_other": "{{count}} 件の通知",
+    "title": "通知",
     "completed": "完了（終了コード {{exitCode}}）",
+    "completedNoExit": "完了",
     "failed": "失敗（終了コード {{exitCode}}）",
     "failedNoExit": "失敗",
     "stopped": "停止",
     "openOutput": "出力ファイルを開く"
+  },
+  "managePanel": {
+    "title": "バックグラウンドジョブ",
+    "toggle": "バックグラウンドジョブを表示",
+    "pochiGroup": "バックグラウンドコマンド",
+    "openTerminal": "ターミナルを開く",
+    "hideTerminal": "ターミナルを非表示",
+    "copyCommand": "コマンドをコピー",
+    "kill": "プロセスを終了",
+    "empty": "バックグラウンドで実行中のものはありません",
+    "seeMore": "もっと見る",
+    "seeLess": "折りたたむ"
   },
   "forkTask": {
     "forkedTaskTitle": "フォーク 元: {{taskTitle}}"
@@ -650,5 +670,29 @@
   "builtInAgentsSettings": {
     "title": "組み込みエージェント",
     "browser": "ブラウザー"
+  },
+  "backgroundTasks": {
+    "toggleResult": "結果を展開・折りたたむ",
+    "waitingInput": "入力待ち",
+    "statusUnavailable": "状態を取得できません",
+    "systemAgent": "システムエージェント",
+    "idle": "待機中",
+    "background": "バックグラウンド",
+    "started": "バックグラウンドで開始しました",
+    "view": "サブタスクを表示",
+    "running": "実行中",
+    "completed": "完了",
+    "failed": "失敗",
+    "stopped": "停止済み",
+    "finished": "終了",
+    "pendingNotification": "通知待ち",
+    "title": "バックグラウンドエージェント",
+    "empty": "バックグラウンドエージェントはありません",
+    "untitled": "無題",
+    "stop": "停止",
+    "moveToBackground": "バックグラウンドへ移動",
+    "all": "すべて",
+    "showAll": "すべてのバックグラウンドタスクを表示",
+    "moveToBackgroundHint": "バックグラウンドで実行を続け、完了したら通知します。"
   }
 }

@@ -10,7 +10,12 @@ import {
   isValidCustomAgentFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { RunningTaskAdaptor } from "@getpochi/livekit";
+import {
+  type BackgroundCommandAdaptor,
+  type LLMRequestData,
+  type RunningTaskAdaptor,
+  processContentOutput,
+} from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
   type ThreadSignalSerialization,
@@ -18,6 +23,7 @@ import {
 } from "@quilted/threads/signals";
 import { displayModelToLLM } from "../features/chat/lib/display-model-to-llm";
 import { useSettingsStore } from "../features/settings/store";
+import { blobStore } from "./remote-blob-store";
 
 const logger = getLogger("VscodeRunningTaskAdaptor");
 const ModelListLoadTimeoutMs = 10_000;
@@ -35,6 +41,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
   private readonly unsubscribers: Array<() => void> = [];
   private readonly ready: Promise<void>;
+  private readonly taskLLMs = new Map<string, LLMRequestData>();
   private disposed = false;
 
   constructor() {
@@ -46,6 +53,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.taskLLMs.clear();
     for (const unsubscribe of this.unsubscribers.splice(0)) {
       unsubscribe();
     }
@@ -55,7 +63,57 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return this.ready;
   }
 
-  getRequestGetters(context: { taskId: string; cwd: string | undefined }) {
+  readonly commandAdaptor: BackgroundCommandAdaptor = {
+    kill: async (id) => (await vscodeHost.readBackgroundCommands()).close(id),
+    observeCommands: async (onChange) => {
+      const commands = await vscodeHost.readBackgroundCommands();
+      const controller = new AbortController();
+      try {
+        const running = await connectSignal(
+          commands.backgroundCommands,
+          controller.signal,
+        );
+        const unsubscribe = running.subscribe(onChange);
+        onChange(running.value);
+        return {
+          dispose: () => {
+            controller.abort();
+            unsubscribe();
+          },
+        };
+      } catch (error) {
+        controller.abort();
+        throw error;
+      }
+    },
+    observeNotifications: async (taskId, onChange) => {
+      const notifications =
+        await vscodeHost.readBackgroundJobNotifications(taskId);
+      const controller = new AbortController();
+      try {
+        const completed = await connectSignal(
+          notifications.notifications,
+          controller.signal,
+        );
+        const unsubscribe = completed.subscribe(onChange);
+        onChange(completed.value);
+        return {
+          dispose: () => {
+            controller.abort();
+            unsubscribe();
+          },
+          acknowledge: notifications.acknowledge,
+        };
+      } catch (error) {
+        controller.abort();
+        throw error;
+      }
+    },
+  };
+
+  getRequestGetters(
+    context: Parameters<RunningTaskAdaptor["getRequestGetters"]>[0],
+  ) {
     return {
       getLLM: () => {
         const llm = this.getLLM();
@@ -69,6 +127,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
         vscodeHost.readEnvironment({
           webviewKind: globalThis.POCHI_WEBVIEW_KIND,
           taskId: context.taskId,
+          omitCustomRules: context.omitCustomRules,
         }),
       getAutoMemory: () => this.getAutoMemory(),
       getMcpInfo: () => ({
@@ -80,16 +139,67 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     };
   }
 
+  async resolveTaskLLM(
+    context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
+  ) {
+    const llm = this.resolveAgentLLM(context.taskState.agentType);
+    if (llm) {
+      this.taskLLMs.set(context.taskId, llm);
+    } else {
+      this.taskLLMs.delete(context.taskId);
+    }
+    return llm;
+  }
+
+  private resolveAgentLLM(agentType: string | undefined) {
+    if (!agentType) {
+      return undefined;
+    }
+    const agent = this.customAgents
+      .filter(isValidCustomAgentFile)
+      .find((a) => a.name === agentType);
+    if (!agent?.model) return undefined;
+
+    const resolvedModel = resolveModelFromId(agent.model, this.modelList);
+    if (resolvedModel) return displayModelToLLM(resolvedModel);
+
+    if (agent.isBuiltIn) {
+      // Built-in special models are currently served by the Pochi vendor.
+      const credentialSource = this.modelList.find(
+        (model) => model.type === "vendor" && model.vendorId === "pochi",
+      );
+      if (credentialSource?.type === "vendor") {
+        return displayModelToLLM({
+          type: "vendor",
+          id: agent.model,
+          name: agent.model,
+          vendorId: "pochi",
+          modelId: agent.model,
+          options: {},
+          getCredentials: credentialSource.getCredentials,
+        });
+      }
+    }
+
+    logger.warn(
+      `Model "${agent.model}" for agent ${agent.name} not found; falling back to the selected model.`,
+    );
+    return undefined;
+  }
+
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
-    const result = await vscodeHost.executeToolCall(args.toolName, args.input, {
+    const llm = this.taskLLMs.get(args.taskId) ?? this.getLLM();
+    let result = await vscodeHost.executeToolCall(args.toolName, args.input, {
       toolCallId: args.toolCallId,
       abortSignal: ThreadAbortSignal.serialize(args.abortSignal),
+      contentType: llm?.contentType,
       toolPolicies: args.toolPolicies,
       storeId: args.storeId,
       taskId: args.taskId,
       fileStateCacheSourceTaskId: args.parentTaskId,
+      allowBackground: args.allowBackground,
     });
 
     if (
@@ -98,13 +208,13 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       result !== null &&
       "streamingOutput" in result
     ) {
-      return waitForExecuteCommandOutput(
+      result = await waitForExecuteCommandOutput(
         result.streamingOutput as ThreadSignalSerialization<ExecuteCommandResult>,
         args.abortSignal,
       );
     }
 
-    return result;
+    return processContentOutput(blobStore, result, args.abortSignal);
   }
 
   onTaskError(taskId: string, error: Error) {
@@ -241,6 +351,9 @@ function waitForExecuteCommandOutput(
       } else if (reason === "aborted") {
         result.error = "Aborted by background task runner";
       }
+      if (value._meta) {
+        result._meta = value._meta;
+      }
       resolve(result);
     };
 
@@ -286,4 +399,22 @@ function waitForSignal<T>(
       }
     });
   });
+}
+
+async function connectSignal<T>(
+  serialized: ThreadSignalSerialization<T>,
+  abortSignal: AbortSignal,
+) {
+  let started: unknown;
+  const connected = threadSignal(
+    {
+      ...serialized,
+      start(...args) {
+        started = serialized.start(...args);
+      },
+    },
+    { signal: abortSignal },
+  );
+  await started;
+  return connected;
 }

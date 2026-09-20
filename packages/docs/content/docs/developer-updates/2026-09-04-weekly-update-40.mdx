@@ -1,0 +1,28 @@
+---
+title: 'Weekly Update #40'
+---
+# Weekly Update #40
+
+### TL;DR
+
+Pochi 0.70 is expected on September 9. It is shaping up to make long-running command work more continuous: commands that need more time will keep running in the background, completed jobs will reach Pochi sooner, and large pasted prompts will no longer make the chat input unresponsive. A unified place to manage background work is also on the way.
+
+More below!
+
+### 🚀 Features
+
+- **Long commands will keep running instead of timing out:** When a supported command reaches its foreground time limit, Pochi will move the same process into a background terminal instead of stopping or restarting it. Existing output and live updates will carry over, and the terminal will remain interactive while Pochi continues with other work.
+
+  This will be especially useful for builds, test suites, setup scripts, and other commands whose duration is difficult to predict. [**#1930**](https://github.com/TabbyML/pochi/pull/1930)
+
+### ✨ Enhancements
+
+- **Background-job results will reach Pochi sooner:** When a background command finishes during an active task, Pochi will receive the result at the next safe step instead of waiting until the turn ends. This will let it react to completed tests, builds, and other jobs while the result is still useful, without resuming a task you intentionally paused. [**#1932**](https://github.com/TabbyML/pochi/pull/1932)
+
+### 🐛 Bug Fixes
+
+- **Large pastes will keep the chat input responsive:** Work planned for Pochi 0.70 will prevent the composer from becoming unresponsive for several seconds when you paste a large block of text.
+
+### 👀 Coming Up
+
+- **Manage background work in one place:** A unified panel in the chat will bring background tasks and terminals together, with live status indicators and collapsible history for busy sessions. This will make it easier to see what is still running and reopen the work you need without searching across separate views. [**#1926**](https://github.com/TabbyML/pochi/pull/1926)

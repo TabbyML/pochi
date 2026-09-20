@@ -1,6 +1,7 @@
 import { renderActiveSelection } from "./active-selection";
 import { buildAttemptTodoCompletionPrompt } from "./attempt-todo-completion";
 export { assertBackgroundJobReadInterval } from "./background-job";
+import type { PastedTextFile } from "../message";
 import {
   buildAutoMemoryDreamDirective,
   buildAutoMemoryDynamicPrompt,
@@ -10,6 +11,7 @@ import {
   formatAutoMemoryManifest,
   injectAutoMemory,
   isAutoMemorySystemReminder,
+  renderAutoMemoryIndex,
   serializeMemoryMessage,
   truncateAutoMemoryIndex,
 } from "./auto-memory";
@@ -33,7 +35,10 @@ import {
 import { renderTerminalContext } from "./terminal-context";
 import { renderUserEdits } from "./user-edits";
 
-export { parseEnvironmentInfo } from "./environment";
+export {
+  parseEnvironmentInfo,
+  parseEnvironmentInfoResult,
+} from "./environment";
 
 export const prompts = {
   system: createSystemPrompt,
@@ -49,7 +54,7 @@ export const prompts = {
   inlineCompact,
   parseInlineCompact,
   generateTitle,
-  customAgent: createCustomAgentPrompt,
+  customAgentSystemReminder: createCustomAgentSystemReminder,
   skill: createSkillPrompt,
   skillSystemReminder: createSkillSystemReminder,
   renderReviewComments,
@@ -58,6 +63,7 @@ export const prompts = {
   renderUserEdits,
   renderBashOutputs,
   renderBackgroundJobNotification,
+  pastedTextFileReferences,
   fixMermaidError,
   createUseSkillResult,
   attemptTodoCompletion: {
@@ -74,16 +80,52 @@ export const prompts = {
     buildExtractionDirective: buildAutoMemoryExtractionDirective,
     buildDreamDirective: buildAutoMemoryDreamDirective,
     formatManifest: formatAutoMemoryManifest,
+    renderIndex: renderAutoMemoryIndex,
     truncateIndex: truncateAutoMemoryIndex,
     serializeMessage: serializeMemoryMessage,
   },
+  stepBudgetReminder: createStepBudgetReminder,
+  incompleteResponseReminder:
+    "The previous response was not received completely. Please continue using the conversation history and tool results available here. Complete any missing content or unfinished tool calls without repeating completed work.",
   toolCallsReminder: `You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.
 
 If you have already provided a response or explanation in your text above, do NOT repeat or copy that content into the \`result\` parameter of \`attemptCompletion\`. Instead, simply refer to your response above with a brief sentence (e.g., "See response above." or "The task is completed as described above.") to save output tokens.`,
 };
 
+function pastedTextFileReferences(files: readonly PastedTextFile[]) {
+  if (files.length === 0) return "";
+
+  return `Referenced pasted text files:\n${files
+    .map(
+      ({ filePath }) =>
+        `- pasted text file: ${filePath}. Read this file before continuing.`,
+    )
+    .join("\n")}`;
+}
+
 function createSystemReminder(content: string) {
   return `<system-reminder>${content}</system-reminder>`;
+}
+
+/**
+ * Warns a step-bounded task that it is about to run out of assistant turns.
+ *
+ * The budget is otherwise unobservable to the model: fork agents replay the
+ * parent conversation, so the model cannot infer its remaining turns from the
+ * message history.
+ */
+function createStepBudgetReminder({
+  remainingSteps,
+  maxSteps,
+}: {
+  remainingSteps: number;
+  maxSteps: number;
+}) {
+  if (remainingSteps <= 1) {
+    return `This is the LAST assistant turn available for this task (limit ${maxSteps} turns). Do not start new work and do not make further edits. Call attemptCompletion now, summarizing what was finished and what was left undone — otherwise the task is recorded as failed and the work already done is not reported.`;
+  }
+
+  return `Only ${remainingSteps} assistant turns remain for this task (limit ${maxSteps} turns). Finish up: emit any remaining tool calls together in a single turn, and keep the final turn for attemptCompletion.`;
 }
 
 function isSystemReminder(content: string) {
@@ -133,16 +175,12 @@ function parseInlineCompact(text: string) {
   };
 }
 
-function createCustomAgentPrompt(id: string, path?: string) {
-  // Remove extra newlines from the id
-  let processedAgentName = id.replace(/\n+/g, "\n");
-  // Escape '<' to avoid </custom-agent> being interpreted as a closing tag
-  const customAgentTagRegex = /<\/?custom-agent\b[^>]*>/g;
-  processedAgentName = processedAgentName.replace(
-    customAgentTagRegex,
-    (match) => {
-      return match.replace("<", "&lt;");
-    },
+function createCustomAgentSystemReminder(agentName: string) {
+  const escapedAgentName = agentName.replace(
+    /<\/?system-reminder\b[^>]*>/gi,
+    (match) => match.replace("<", "&lt;"),
   );
-  return `<custom-agent id="${id}" path="${path ?? ""}">Please use the newTask tool to run ${processedAgentName} to complete the following request:\n</custom-agent>`;
+  return createSystemReminder(
+    `The user explicitly invoked the "${escapedAgentName}" agent. You must use the newTask tool with agentType="${escapedAgentName}" to run it, passing the complete relevant request and context.`,
+  );
 }

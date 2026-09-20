@@ -83,10 +83,10 @@ export class ExecutionError extends Error {
     );
   }
 
-  static createTimeoutError(timeout: number) {
+  static createTimeoutError(timeout: number, allowBackground = true) {
     return new ExecutionError(
       false,
-      `Command execution timed out after ${timeout} seconds. For a long-running task, retry executeCommand with background set to true.`,
+      `Command execution timed out after ${timeout} seconds.${allowBackground ? " For a long-running task, retry executeCommand with background set to true." : ""}`,
     );
   }
 }

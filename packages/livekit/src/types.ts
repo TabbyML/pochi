@@ -4,6 +4,7 @@ import type {
   BackgroundJobNotification,
   BashOutputs,
   MessageMetadata,
+  PastedTextFile,
   Review,
   TerminalTextSelection,
   UserEdits,
@@ -18,6 +19,7 @@ import type { defaultCatalog } from "./livestore";
 import type { tables } from "./livestore/default-schema";
 
 export type DataParts = {
+  "pasted-text": PastedTextFile;
   checkpoint: {
     commit: string;
   };
@@ -88,6 +90,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -106,6 +112,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -124,6 +134,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -141,6 +155,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -158,6 +176,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -175,6 +197,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       contentType: z
         .array(z.string())
         .optional()
@@ -192,6 +218,10 @@ const RequestData = z.object({
         .boolean()
         .optional()
         .describe("Whether to use tool call middleware"),
+      useReasoningMiddleware: z
+        .boolean()
+        .optional()
+        .describe("Whether to use reasoning middleware"),
       getModel: z.custom<() => LanguageModelV3>(),
       contentType: z
         .array(z.string())

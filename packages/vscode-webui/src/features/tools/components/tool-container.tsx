@@ -86,6 +86,7 @@ export const ExpandableToolContainer: React.FC<{
   defaultExpanded?: boolean;
   onToggle?: (expand: boolean) => void;
   titleClassname?: string;
+  expandIconClassName?: string;
 }> = ({
   title,
   expandableDetail,
@@ -95,6 +96,7 @@ export const ExpandableToolContainer: React.FC<{
   defaultExpanded = false,
   onToggle,
   titleClassname,
+  expandIconClassName,
 }) => {
   const [internalShowDetails, setInternalShowDetails] =
     useState(defaultExpanded);
@@ -125,7 +127,7 @@ export const ExpandableToolContainer: React.FC<{
           <ExpandIcon
             isExpanded={showDetails}
             onClick={handleToggle}
-            className="cursor-pointer"
+            className={cn("cursor-pointer", expandIconClassName)}
           />
         )}
       </ToolTitle>

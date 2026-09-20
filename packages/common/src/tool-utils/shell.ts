@@ -16,14 +16,31 @@ export const getShellPath = () => {
   return undefined;
 };
 
+const LaunchNonceOscIdentifier = "6339";
+
+/**
+ * Sequence a shell emits before running the command, used to confirm the shell
+ * itself started. Unknown OSC sequences are swallowed by terminal emulators.
+ */
+export const buildLaunchNonceMarker = (nonce: string) =>
+  `\u001b]${LaunchNonceOscIdentifier};${nonce}\u0007`;
+
+export interface ShellCommand {
+  command: string;
+  args: string[];
+  /** Set when the built command emits the launch marker for this nonce. */
+  launchNonce?: string;
+}
+
 export const buildShellCommand = (
   commandString: string,
-):
-  | {
-      command: string;
-      args: string[];
-    }
-  | undefined => {
+  options?: {
+    /** Hex nonce to emit before the command runs. Ignored by shells without a POSIX printf. */
+    launchNonce?: string;
+    /** Permanently detach standard input before running the command. */
+    stdin?: "ignore" | "inherit";
+  },
+): ShellCommand | undefined => {
   const shellPath = getShellPath();
   const isFlatpak =
     process.platform === "linux" &&
@@ -57,15 +74,27 @@ export const buildShellCommand = (
     }
 
     if (/(bash|zsh)$/.test(shellName)) {
+      const launchNonce = options?.launchNonce;
+      const script = [
+        launchNonce
+          ? `printf '\\033]${LaunchNonceOscIdentifier};%s\\007' ${launchNonce}`
+          : undefined,
+        options?.stdin === "ignore" ? "exec </dev/null" : undefined,
+        commandString,
+      ]
+        .filter((line) => line !== undefined)
+        .join("\n");
       const shellCommand = {
         command: shellPath,
-        args: [loginArg, commandString],
+        args: [loginArg, script],
+        launchNonce,
       };
 
       if (isFlatpak) {
         return {
           command: "/usr/bin/flatpak-spawn",
           args: ["--host", shellCommand.command, ...shellCommand.args],
+          launchNonce,
         };
       }
 

@@ -1,7 +1,16 @@
-import type { AskFollowupQuestionInput, Question } from "@getpochi/tools";
+import {
+  type BackgroundSubagentNotification,
+  getSubAgentBackgroundJobId,
+  getSubAgentNotificationId,
+} from "@getpochi/common";
+import {
+  type AskFollowupQuestionInput,
+  type Question,
+  isUserInputToolPart,
+} from "@getpochi/tools";
 import type { z } from "zod";
 import { defaultCatalog as catalog } from "./livestore";
-import type { LiveKitStore, Message } from "./types";
+import type { LiveKitStore, Message, Task } from "./types";
 
 export type TaskStatusLike =
   | "completed"
@@ -11,6 +20,14 @@ export type TaskStatusLike =
   | "pending-model";
 
 export type BackgroundJobStatus = "idle" | "running" | "completed";
+
+/** A result or a request for user input ends the current agent turn. */
+export function isResultMessage(message: Message): boolean {
+  return (
+    message.role === "assistant" &&
+    (message.parts?.some(isUserInputToolPart) ?? false)
+  );
+}
 
 function formatQuestion({ question, header, options }: Question) {
   const title = header ? `[${header}] ${question}` : question;
@@ -55,6 +72,28 @@ export function getTaskErrorMessage(error: unknown): string | undefined {
 }
 
 /**
+ * True while the last step ends with an unanswered follow-up question, so the
+ * next turn belongs to the user.
+ */
+export function isAwaitingFollowupAnswer(
+  message: Message | undefined,
+): boolean {
+  if (!message) return false;
+
+  const lastStepStart = message.parts.findLastIndex(
+    (x) => x.type === "step-start",
+  );
+
+  return message.parts
+    .slice(lastStepStart + 1)
+    .some(
+      (part) =>
+        part.type === "tool-askFollowupQuestion" &&
+        part.state === "input-available",
+    );
+}
+
+/**
  * Extract the last step's attemptCompletion / askFollowupQuestion result.
  * Throws when no messages exist for the task.
  */
@@ -84,6 +123,76 @@ export function extractTaskResult(store: LiveKitStore, uid: string): unknown {
       return formatFollowupQuestions(part.input);
     }
   }
+}
+
+/** Resolves notification metadata from the original newTask call. */
+export function getSubAgentInvocation(
+  taskId: string,
+  parentMessages: readonly Message[],
+) {
+  const invocation = parentMessages
+    .flatMap((message) => message.parts)
+    .find(
+      (part) =>
+        part.type === "tool-newTask" &&
+        part.state !== "input-streaming" &&
+        part.input?._meta?.uid === taskId,
+    );
+  const input =
+    invocation?.type === "tool-newTask" &&
+    invocation.state !== "input-streaming"
+      ? invocation.input
+      : undefined;
+  return input;
+}
+
+/**
+ * Builds the notification for a finished background subagent task, injected
+ * into the parent conversation as a `data-background-job-notification` part.
+ */
+export function createBackgroundSubagentNotification(
+  store: LiveKitStore,
+  task: Pick<Task, "id" | "status" | "error" | "title">,
+  parentMessages: readonly Message[],
+): BackgroundSubagentNotification {
+  const base = {
+    kind: "subagent" as const,
+    notificationId: getSubAgentNotificationId(task),
+    backgroundJobId: getSubAgentBackgroundJobId(task.id),
+  };
+  const input = getSubAgentInvocation(task.id, parentMessages);
+  const agentType = input?.agentType;
+  const title = task.title || input?.description || undefined;
+  if (task.status === "failed") {
+    return {
+      ...base,
+      taskId: task.id,
+      agentType,
+      title,
+      status: task.error?.kind === "AbortError" ? "stopped" : "failed",
+      result: getTaskErrorMessage(task.error) ?? "Subagent failed.",
+    };
+  }
+
+  let result: unknown;
+  try {
+    result = extractTaskResult(store, task.id);
+  } catch {
+    result = undefined;
+  }
+  return {
+    ...base,
+    taskId: task.id,
+    agentType,
+    title,
+    status: "completed",
+    result:
+      result === undefined
+        ? "Subagent finished without an explicit result."
+        : typeof result === "string"
+          ? result
+          : JSON.stringify(result),
+  };
 }
 
 export function extractAttemptCompletionResult<T>(

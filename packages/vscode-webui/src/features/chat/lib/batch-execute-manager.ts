@@ -16,6 +16,8 @@ import {
  * `cancel()` adapter.
  */
 export class BatchExecuteManager {
+  private readonly active = new Map<string, Promise<void>>();
+
   private readonly queues = new Map<string, ToolCallQueue>();
 
   /** Enqueue a tool call into the queue for `taskId`. */
@@ -26,12 +28,28 @@ export class BatchExecuteManager {
 
   /** Start processing the queue for `taskId`. */
   processQueue(taskId: string) {
-    return this.queues.get(taskId)?.start();
+    const existing = this.active.get(taskId);
+    if (existing) return existing;
+    const run = this.queues.get(taskId)?.start();
+    if (!run) return;
+    this.active.set(taskId, run);
+    void run
+      .finally(() => {
+        if (this.active.get(taskId) === run) this.active.delete(taskId);
+      })
+      .catch(() => undefined);
+    return run;
   }
 
   /** Abort queued tool calls for `taskId` by clearing pending items that have not started yet. */
   abort(taskId: string, reason: ToolCallCancelReason = "user-abort") {
-    this.queues.get(taskId)?.abort(reason);
+    return this.queues.get(taskId)?.abort(reason);
+  }
+
+  async stop(taskId: string, reason: ToolCallCancelReason = "user-abort") {
+    const running = this.active.get(taskId);
+    await this.abort(taskId, reason);
+    await running;
   }
 
   private getOrCreateQueue(taskId: string): ToolCallQueue {

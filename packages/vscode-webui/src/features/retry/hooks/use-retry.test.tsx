@@ -1,3 +1,4 @@
+import { formatters, prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
@@ -6,6 +7,7 @@ import { isRetryableError } from "../lib/is-retryable-error";
 import {
   ReadyForRetryError,
   getReadyForRetryError,
+  useMixinReadyForRetryError,
 } from "./use-ready-for-retry-error";
 import { useRetry } from "./use-retry";
 
@@ -70,8 +72,130 @@ function createRetryMessageThatStripsReadFile(): Message {
 }
 
 describe("useRetry", () => {
+  it.each([
+    { type: "text", error: new Error("Network error") },
+    { type: "reasoning", error: new Error("Network error") },
+    { type: "text", error: new DOMException("Stopped", "AbortError") },
+    { type: "text", error: undefined },
+  ] as const)(
+    "adds a hidden system reminder when explicitly retrying unfinished $type with $error",
+    async ({ type, error }) => {
+      const message = {
+        id: "partial",
+        role: "assistant",
+        parts: [
+          ...createRetryableAssistantMessage().parts.slice(0, 2),
+          { type: "step-start" },
+          { type, text: "Partial answer", state: "streaming" },
+          { type: "data-checkpoint", data: { commit: "checkpoint" } },
+        ],
+        metadata: {
+          kind: "assistant",
+          totalTokens: 10,
+          finishReason: "tool-calls",
+        },
+      } as Message;
+      const sendMessage = vi.fn();
+      const setMessages = vi.fn();
+      const regenerate = vi.fn();
+      const { result } = renderHook(() => ({
+        error: useMixinReadyForRetryError([message], error),
+        retry: useRetry({
+          messages: [message],
+          sendMessage,
+          setMessages,
+          regenerate,
+        }),
+      }));
+
+      expect(getReadyForRetryError([message])).toMatchObject({
+        kind: "no-tool-calls",
+      });
+      if (error) expect(result.current.error).toBe(error);
+
+      await act(async () => {
+        await result.current.retry(result.current.error as Error);
+      });
+
+      expect(setMessages).toHaveBeenCalledWith([message]);
+      expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+        text: expect.stringContaining(
+          "The previous response was not received completely.",
+        ),
+      });
+      const reminder: Message = {
+        id: "retry-reminder",
+        role: "user",
+        parts: [{ type: "text", text: sendMessage.mock.calls[0][0].text }],
+      };
+      expect(formatters.ui([reminder])).toEqual([]);
+      expect(formatters.llm([reminder])).toMatchObject([
+        { role: "user", parts: [{ type: "text", text: expect.any(String) }] },
+      ]);
+      expect(regenerate).not.toHaveBeenCalled();
+    },
+  );
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it.each(["done", undefined] as const)(
+    "ignores earlier streaming parts when the retained last step has state %s",
+    async (state) => {
+      const message = {
+        id: "assistant",
+        role: "assistant",
+        parts: [
+          {
+            type: "text",
+            text: "An earlier stopped response",
+            state: "streaming",
+          },
+          { type: "step-start" },
+          { type: "text", text: "Current response", state },
+        ],
+      } as Message;
+      const sendMessage = vi.fn();
+      const { result } = renderHook(() =>
+        useRetry({
+          messages: [message],
+          sendMessage,
+          setMessages: vi.fn(),
+          regenerate: vi.fn(),
+        }),
+      );
+
+      await act(async () => {
+        await result.current(new Error("retry"));
+      });
+
+      expect(sendMessage).toHaveBeenCalledExactlyOnceWith(undefined);
+    },
+  );
+
+  it("keeps the tool-calls reminder for a completed text-only response", async () => {
+    const message = {
+      id: "assistant",
+      role: "assistant",
+      parts: [{ type: "text", text: "Done", state: "done" }],
+    } as Message;
+    const sendMessage = vi.fn();
+    const { result } = renderHook(() =>
+      useRetry({
+        messages: [message],
+        sendMessage,
+        setMessages: vi.fn(),
+        regenerate: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current(new ReadyForRetryError("no-tool-calls"));
+    });
+
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+      text: prompts.createSystemReminder(prompts.toolCallsReminder),
+    });
   });
 
   it("prepares the retry message before rewriting messages", async () => {
@@ -130,7 +254,7 @@ describe("useRetry", () => {
     );
   });
 
-  it("continues from a content-filtered assistant response", async () => {
+  it("preserves content-filter retry behavior even with unfinished text", async () => {
     const clearFileStateCache = vi.fn();
     const setMessages = vi.fn();
     const sendMessage = vi.fn();
@@ -148,7 +272,7 @@ describe("useRetry", () => {
           output: { content: "const answer = 42;", isTruncated: false },
         },
         { type: "step-start" },
-        { type: "text", text: "Request refused." },
+        { type: "text", text: "Request refused.", state: "streaming" },
       ],
       metadata: {
         kind: "assistant",

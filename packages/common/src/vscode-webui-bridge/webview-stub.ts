@@ -14,6 +14,7 @@ import type {
 import type { BrowserSession } from "../browser/types";
 import type { UserInfo } from "../configuration";
 import type {
+  BackgroundCommands,
   BuiltinSubAgentInfo,
   CaptureEvent,
   ChangedFileContent,
@@ -94,6 +95,7 @@ const VSCodeHostStub = {
       storeId: string;
       taskId: string;
       fileStateCacheSourceTaskId?: string;
+      allowBackground?: boolean;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
@@ -157,6 +159,7 @@ const VSCodeHostStub = {
       {} as ThreadSignalSerialization<ActiveSelection | undefined>,
     );
   },
+  persistPastedTextFiles: () => Promise.resolve([]),
   openFile: (
     _filePath: string,
     _options?: {
@@ -166,6 +169,12 @@ const VSCodeHostStub = {
       taskId?: string;
     },
   ): void => {},
+  saveWidget: (_html: string, _suggestedFilename: string): Promise<boolean> => {
+    return Promise.resolve(false);
+  },
+  openWidgetInPanel: (_html: string, _title: string): Promise<void> => {
+    return Promise.resolve();
+  },
   capture: (_e: CaptureEvent): Promise<void> => {
     return Promise.resolve();
   },
@@ -281,6 +290,17 @@ const VSCodeHostStub = {
       ): Promise<void> => {
         return Promise.resolve();
       },
+    });
+  },
+  readBackgroundCommands: async () => {
+    return Promise.resolve({
+      backgroundCommands: {} as ThreadSignalSerialization<BackgroundCommands>,
+      show: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
+      hide: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
+      close: async (_backgroundJobId: string): Promise<void> =>
+        Promise.resolve(),
     });
   },
   readModelList: async () => {

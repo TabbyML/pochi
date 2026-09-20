@@ -1,15 +1,26 @@
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  BackgroundTaskButton,
   FixedStateChatContextProvider,
   ToolCallStatusRegistry,
+  useToolCallLifeCycle,
 } from "@/features/chat";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
-import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
+import { shouldRunSubAgentInBackground } from "@getpochi/common";
+import { getStaticToolName } from "ai";
+import { SendToBack } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useThrottle } from "react-use";
 import { useInlinedSubTask } from "../../hooks/use-inlined-sub-task";
 import { useLiveSubTask } from "../../hooks/use-live-sub-task";
@@ -17,6 +28,7 @@ import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
 import { AttemptTodoCompletionView } from "./attempt-todo-completion-view";
+import { BackgroundSubagentStatusIcon } from "./background-status-icon";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
 import { hasNewTaskResult } from "./result";
@@ -58,12 +70,34 @@ function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
     subTaskToolCallStatusRegistry.current,
   );
 
+  const lifecycle = useToolCallLifeCycle().getToolCallLifeCycle({
+    toolName: getStaticToolName(tool),
+    toolCallId: tool.toolCallId,
+  });
+  const agentType =
+    tool.state !== "input-streaming" ? tool.input?.agentType : undefined;
+  const parentId = taskSource?.parentId;
+  // A foreground subtask can still be handed off, unless its agent must stay
+  // in the foreground.
+  const canMoveToBackground =
+    isExecuting &&
+    lifecycle.status === "execute:streaming" &&
+    !!parentId &&
+    shouldRunSubAgentInBackground({ agentType });
+
   return (
     <NewTaskToolView
       {...props}
       taskSource={taskSource}
       uid={uid}
       toolCallStatusRegistryRef={subTaskToolCallStatusRegistry}
+      onMoveToBackground={
+        canMoveToBackground
+          ? () => {
+              void taskSource?.moveToBackground().catch(() => undefined);
+            }
+          : undefined
+      }
     />
   );
 }
@@ -72,11 +106,19 @@ export interface NewTaskToolViewProps extends ToolProps<"newTask"> {
   taskSource?: (TaskThreadSource & { parentId?: string }) | undefined;
   uid: string | undefined;
   toolCallStatusRegistryRef?: RefObject<ToolCallStatusRegistry>;
+  onMoveToBackground?: () => void;
 }
 
 function NewTaskToolView(props: NewTaskToolViewProps) {
-  const { tool, isExecuting, taskSource, uid, toolCallStatusRegistryRef } =
-    props;
+  const {
+    tool,
+    isExecuting,
+    taskSource,
+    uid,
+    toolCallStatusRegistryRef,
+    onMoveToBackground,
+  } = props;
+  const { t } = useTranslation();
   const store = useDefaultStore();
   const navigate = useNavigate();
   const agent = tool.input?.agentType;
@@ -120,11 +162,14 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
     ) : undefined;
   }, [agent, showMessageList, taskThreadSource, toolCallStatusRegistryRef]);
 
+  const isBackground =
+    tool.state === "output-available" && !!tool.output.backgroundJobId;
+
   if (agentType === "browser") {
     return <BrowserView {...props} taskSource={previewSource} />;
   }
 
-  if (agentType === "planner") {
+  if (agentType === "planner" && !isBackground) {
     return <PlannerView {...props} taskSource={previewSource} />;
   }
 
@@ -134,17 +179,25 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
 
   const title = (
     <div className="flex min-w-0 items-start gap-2">
-      <StatusIcon
-        tool={tool}
-        isExecuting={isExecuting}
-        className="mt-1 self-start leading-none"
-      />
+      {isBackground && uid ? (
+        <BackgroundSubagentStatusIcon taskId={uid} tool={tool} />
+      ) : (
+        <StatusIcon
+          tool={tool}
+          isExecuting={isExecuting}
+          className="flex h-5 shrink-0 items-center self-start leading-none"
+        />
+      )}
       <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
         <Badge
           variant="secondary"
-          className={cn("mr-2 inline-flex py-0 align-middle")}
+          className="mr-2 inline-flex h-5 shrink-0 py-0 align-top"
         >
-          {uid && taskSource?.parentId && isVSCodeEnvironment() ? (
+          {uid && isBackground && isVSCodeEnvironment() ? (
+            <BackgroundTaskButton taskId={uid}>
+              {toolTitle}
+            </BackgroundTaskButton>
+          ) : uid && taskSource?.parentId && isVSCodeEnvironment() ? (
             <span
               onClick={() => {
                 navigate({
@@ -166,17 +219,47 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
           )}
         </Badge>
         {description && (
-          <span className="break-words align-middle">{description}</span>
+          <span className="break-words align-top">{description}</span>
         )}
       </div>
+      {onMoveToBackground && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 shrink-0 self-start text-muted-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveToBackground();
+              }}
+            >
+              <SendToBack className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-60">
+            <p className="font-medium">
+              {t("backgroundTasks.moveToBackground")}
+            </p>
+            <p className="text-muted-foreground">
+              {t("backgroundTasks.moveToBackgroundHint")}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 
   return (
     <ExpandableToolContainer
       title={title}
+      expandIconClassName="mt-0"
       expandableDetail={expandableDetail}
-      detail={<TodoDetail todos={taskSource?.todos ?? []} />}
+      detail={
+        isBackground ? undefined : (
+          <TodoDetail todos={taskSource?.todos ?? []} />
+        )
+      }
       expanded={showMessageList}
       onToggle={setShowMessageListImmediately}
     />

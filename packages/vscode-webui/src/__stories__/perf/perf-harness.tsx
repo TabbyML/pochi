@@ -16,6 +16,14 @@ export interface PerfRecord {
   updateActualDuration?: number;
   baseDuration?: number;
   actionMs?: number;
+  structuredCloneMs?: number;
+  formatterMs?: number;
+  jsHeapBeforeBytes?: number;
+  jsHeapAfterCloneBytes?: number;
+  jsHeapAfterFormatBytes?: number;
+  jsHeapAfterCommitBytes?: number;
+  jsHeapPeakBytes?: number;
+  jsHeapDeltaBytes?: number;
   expandMs?: number;
   collapseMs?: number;
   nodeCountBefore?: number;
@@ -51,7 +59,15 @@ interface PerfHarnessValue {
       variant?: string;
       comparisonKey?: string;
       target?: HTMLElement | null;
+      measureNodes?: boolean;
       afterAction?: () => unknown | Promise<unknown>;
+      metrics?: () => Pick<
+        PerfRecord,
+        | "structuredCloneMs"
+        | "formatterMs"
+        | "jsHeapAfterCloneBytes"
+        | "jsHeapAfterFormatBytes"
+      >;
     },
   ) => Promise<void>;
   sampleFrames: (label: string, durationMs?: number) => Promise<void>;
@@ -99,9 +115,12 @@ export function usePerfHarness(): PerfHarnessValue {
     options,
   ) => {
     const root = options?.target ?? rootRef.current ?? document.body;
+    const measureNodes = options?.measureNodes ?? true;
+    const nodeCountBefore = measureNodes ? countElements(root) : undefined;
+    const longTaskWindowStart = performance.now();
+    await waitForNextTask();
     const startedAt = performance.now();
-    const nodeCountBefore = countElements(root);
-    const longTaskStartIndex = longTasks.current.length;
+    const jsHeapBeforeBytes = readUsedJsHeapBytes();
 
     action();
     const settlePromise = Promise.resolve(
@@ -111,10 +130,24 @@ export function usePerfHarness(): PerfHarnessValue {
       settlePromise,
       startedAt,
     );
+    const jsHeapAfterCommitBytes = readUsedJsHeapBytes();
+    const pipelineMetrics = options?.metrics?.();
+    const jsHeapPeakBytes = maxDefined([
+      jsHeapBeforeBytes,
+      pipelineMetrics?.jsHeapAfterCloneBytes,
+      pipelineMetrics?.jsHeapAfterFormatBytes,
+      jsHeapAfterCommitBytes,
+    ]);
 
     const elapsed = performance.now() - startedAt;
-    const nodeCountAfter = countElements(root);
-    const actionLongTasks = longTasks.current.slice(longTaskStartIndex);
+    const longTaskWindowEnd = performance.now();
+    await waitForNextTask();
+    const nodeCountAfter = measureNodes ? countElements(root) : undefined;
+    const actionLongTasks = longTasks.current.filter(
+      (entry) =>
+        entry.startTime >= longTaskWindowStart &&
+        entry.startTime < longTaskWindowEnd,
+    );
     const longTaskTotalMs = actionLongTasks.reduce(
       (sum, entry) => sum + entry.duration,
       0,
@@ -129,6 +162,13 @@ export function usePerfHarness(): PerfHarnessValue {
       variant: options?.variant,
       comparisonKey: options?.comparisonKey,
       actionMs: elapsed,
+      jsHeapBeforeBytes,
+      jsHeapAfterCommitBytes,
+      jsHeapPeakBytes,
+      jsHeapDeltaBytes:
+        jsHeapBeforeBytes === undefined || jsHeapPeakBytes === undefined
+          ? undefined
+          : jsHeapPeakBytes - jsHeapBeforeBytes,
       nodeCountBefore,
       nodeCountAfter,
       longTaskCount: actionLongTasks.length,
@@ -138,6 +178,7 @@ export function usePerfHarness(): PerfHarnessValue {
       expandMs: options?.kind === "expand" ? elapsed : undefined,
       collapseMs: options?.kind === "collapse" ? elapsed : undefined,
       updateActualDuration: options?.kind === "update" ? elapsed : undefined,
+      ...pipelineMetrics,
     });
   };
 
@@ -209,39 +250,90 @@ export async function waitForStablePerfElementCount(
   },
 ) {
   const startedAt = performance.now();
-  let lastCount = -1;
+  let observedRoot = rootRef.current;
+  let hasMinimumCount = observedRoot
+    ? hasAtLeastElements(observedRoot, minCount)
+    : false;
   let lastChangedAt = startedAt;
   let stableFrameCount = 0;
+  const observer = new MutationObserver(() => {
+    hasMinimumCount = observedRoot
+      ? hasAtLeastElements(observedRoot, minCount)
+      : false;
+    lastChangedAt = performance.now();
+    stableFrameCount = 0;
+  });
 
-  while (performance.now() - startedAt < timeoutMs) {
-    const now = performance.now();
-    const root = rootRef.current;
-    const count = root ? countElements(root) : 0;
-
-    if (count !== lastCount) {
-      lastCount = count;
-      lastChangedAt = now;
-      stableFrameCount = 0;
-    } else {
-      stableFrameCount += 1;
-    }
-
-    if (
-      count >= minCount &&
-      stableFrameCount >= stableFrames &&
-      now - lastChangedAt >= stableMs
-    ) {
-      return true;
-    }
-
-    await waitForNextFrame();
+  if (observedRoot) {
+    observeStableRoot(observedRoot, observer);
   }
 
-  return false;
+  try {
+    while (performance.now() - startedAt < timeoutMs) {
+      const now = performance.now();
+      const root = rootRef.current;
+      if (root !== observedRoot) {
+        observer.disconnect();
+        observedRoot = root;
+        hasMinimumCount = root ? hasAtLeastElements(root, minCount) : false;
+        lastChangedAt = now;
+        stableFrameCount = 0;
+        if (root) {
+          observeStableRoot(root, observer);
+        }
+      } else {
+        stableFrameCount += 1;
+      }
+
+      if (
+        hasMinimumCount &&
+        stableFrameCount >= stableFrames &&
+        now - lastChangedAt >= stableMs
+      ) {
+        return true;
+      }
+
+      await waitForNextFrame();
+    }
+
+    return false;
+  } finally {
+    observer.disconnect();
+  }
+}
+
+function observeStableRoot(root: ParentNode, observer: MutationObserver) {
+  observer.observe(root as Node, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
 }
 
 export async function waitForNextFrame() {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+interface PerformanceMemorySource {
+  memory?: {
+    usedJSHeapSize?: unknown;
+  };
+}
+
+export function readUsedJsHeapBytes(
+  source: PerformanceMemorySource | undefined = typeof performance ===
+  "undefined"
+    ? undefined
+    : (performance as PerformanceMemorySource),
+) {
+  const value = source?.memory?.usedJSHeapSize;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
+}
+
+async function waitForNextTask() {
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 }
 
 export function ComparisonPanel({
@@ -370,14 +462,17 @@ export function PerfPanel({
           </button>
         </div>
       </div>
-      <div className="max-h-64 overflow-auto">
-        <table className="w-full table-fixed text-left">
+      <div className="max-h-32 overflow-auto">
+        <table className="w-full min-w-[1200px] table-fixed text-left">
           <thead className="sticky top-0 bg-[var(--vscode-editor-background)]">
             <tr>
               <th className="w-40 px-1">label</th>
               <th className="px-1">mount</th>
               <th className="px-1">update</th>
               <th className="px-1">action</th>
+              <th className="px-1">clone</th>
+              <th className="px-1">format</th>
+              <th className="w-80 px-1">heap stages MiB</th>
               <th className="px-1">expand</th>
               <th className="px-1">collapse</th>
               <th className="px-1">nodes</th>
@@ -394,6 +489,11 @@ export function PerfPanel({
                   {formatMs(record.updateActualDuration)}
                 </td>
                 <td className="px-1">{formatMs(record.actionMs)}</td>
+                <td className="px-1">{formatMs(record.structuredCloneMs)}</td>
+                <td className="px-1">{formatMs(record.formatterMs)}</td>
+                <td className="truncate px-1" title={formatHeapStages(record)}>
+                  {formatHeapStages(record)}
+                </td>
                 <td className="px-1">{formatMs(record.expandMs)}</td>
                 <td className="px-1">{formatMs(record.collapseMs)}</td>
                 <td className="px-1">
@@ -510,8 +610,59 @@ function countElements(root: ParentNode): number {
   return count;
 }
 
+function hasAtLeastElements(root: ParentNode, minCount: number): boolean {
+  if (minCount <= 0) return true;
+
+  let count = 0;
+  const roots: ParentNode[] = [root];
+
+  while (roots.length > 0) {
+    const currentRoot = roots.pop();
+    if (!currentRoot) continue;
+    const walker = document.createTreeWalker(
+      currentRoot as Node,
+      NodeFilter.SHOW_ELEMENT,
+    );
+    let current = walker.nextNode();
+
+    while (current) {
+      count += 1;
+      if (count >= minCount) return true;
+      if (current instanceof Element && current.shadowRoot) {
+        roots.push(current.shadowRoot);
+      }
+      current = walker.nextNode();
+    }
+  }
+
+  return false;
+}
+
 function formatMs(value: number | undefined) {
   return value === undefined ? "-" : value.toFixed(1);
+}
+
+function formatHeapStages(record: PerfRecord) {
+  if (record.jsHeapBeforeBytes === undefined) return "-";
+
+  return [
+    `b ${formatMiB(record.jsHeapBeforeBytes)}`,
+    `c ${formatMiB(record.jsHeapAfterCloneBytes)}`,
+    `f ${formatMiB(record.jsHeapAfterFormatBytes)}`,
+    `end ${formatMiB(record.jsHeapAfterCommitBytes)}`,
+    `peak +${formatMiB(record.jsHeapDeltaBytes)}`,
+  ].join(" / ");
+}
+
+function formatMiB(value: number | undefined) {
+  return value === undefined ? "-" : (value / (1024 * 1024)).toFixed(1);
+}
+
+function maxDefined(values: Array<number | undefined>) {
+  const definedValues = values.filter(
+    (value): value is number => value !== undefined,
+  );
+  return definedValues.length > 0 ? Math.max(...definedValues) : undefined;
 }
 
 interface ComparisonRowData {

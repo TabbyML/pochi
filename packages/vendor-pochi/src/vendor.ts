@@ -80,7 +80,9 @@ export class Pochi extends VendorBase {
       !this.cachedModels ||
       Object.keys(this.cachedModels).length === 0
     ) {
-      const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl());
+      const apiClient: PochiApiClient = hc<PochiApi>(getServerBaseUrl(), {
+        fetch: buildCustomFetchImpl(),
+      });
       const data = await withRetry(
         async () => {
           const response = await apiClient.api.models.$get();

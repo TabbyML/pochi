@@ -8,6 +8,7 @@ import {
 } from "@getpochi/common";
 import type { ToolSpecInput } from "@getpochi/tools";
 import { type UIMessage, isStaticToolUIPart } from "ai";
+import { BackgroundJobManager } from "../../background-job/manager";
 import {
   makeMessagesQuery,
   makeStoreFileQuery,
@@ -25,16 +26,13 @@ const logger = getLogger("TaskMemory");
 
 type ExtractionMetrics = {
   tokens: number;
-  toolCalls: number;
   trailingMessageId: string | undefined;
 };
 
 type TaskMemoryExtractionResult = "pending" | "succeeded" | "failed";
 
 const DefaultTaskMemoryState: TaskMemoryState = {
-  initialized: false,
-  lastExtractionTokens: 0,
-  lastExtractionToolCalls: 0,
+  extractionAttemptsSinceCompact: 0,
   isExtracting: false,
   extractionCount: 0,
 };
@@ -43,6 +41,7 @@ const TaskMemoryAllowedTools: readonly ToolSpecInput[] = [
   "readFile",
   `writeToFile(${TaskMemoryFileUri})`,
 ];
+const TaskMemoryMaxSteps = 3;
 
 const TaskMemoryStoreFilePath = new URL(TaskMemoryFileUri).pathname;
 
@@ -53,27 +52,32 @@ function getExtractionMetrics<TMessage extends UIMessage>(data: {
   const last = data.messages.at(-1);
   return {
     tokens: computeTotalTokens(data.contextWindowUsage),
-    toolCalls: countToolCalls(data.messages),
     trailingMessageId: last?.id,
   };
+}
+
+export function resolveExtractionTrigger(
+  compactThreshold: number | undefined,
+): number {
+  const base =
+    compactThreshold && compactThreshold > 0
+      ? compactThreshold
+      : constants.TaskMemoryFallbackCompactThreshold;
+  return Math.round(base * constants.TaskMemoryExtractionThresholdRatio);
 }
 
 function shouldExtractTaskMemory(
   state: TaskMemoryState,
   metrics: ExtractionMetrics,
+  trigger: number,
 ): boolean {
   if (state.isExtracting) return false;
-
-  if (!state.initialized) {
-    return metrics.tokens >= constants.TaskMemoryInitTokenThreshold;
-  }
-
-  const tokenDelta = metrics.tokens - state.lastExtractionTokens;
-  const toolCallDelta = metrics.toolCalls - state.lastExtractionToolCalls;
+  if (metrics.tokens < trigger) return false;
+  if (state.extractedSinceCompact) return false;
 
   return (
-    tokenDelta >= constants.TaskMemoryUpdateTokenIncrement &&
-    toolCallDelta >= constants.TaskMemoryUpdateToolCallThreshold
+    state.extractionAttemptsSinceCompact <
+    constants.MaxTaskMemoryExtractionAttemptsPerCycle
   );
 }
 
@@ -83,10 +87,8 @@ function toExtractingState(
 ): TaskMemoryState {
   return {
     ...state,
-    initialized: true,
     isExtracting: true,
-    lastExtractionTokens: metrics.tokens,
-    lastExtractionToolCalls: metrics.toolCalls,
+    extractionAttemptsSinceCompact: state.extractionAttemptsSinceCompact + 1,
     pendingExtractionMessageId: metrics.trailingMessageId,
   };
 }
@@ -124,6 +126,7 @@ async function startTaskMemoryExtraction<TMessage extends UIMessage>({
       parentCwd,
       directive: prompts.taskMemory.buildExtractionDirective(existingMemory),
       tools: TaskMemoryAllowedTools,
+      maxSteps: TaskMemoryMaxSteps,
     });
     const handle = await startForkAgent(agent);
 
@@ -163,14 +166,18 @@ function resolveTaskMemoryExtractionState({
   if (extractionResult === "pending") return undefined;
 
   const succeeded = extractionResult === "succeeded";
+  // Compaction clears the pending boundary. The background task may still
+  // finish, but its result belongs to the previous cycle and must be ignored.
+  const usable = succeeded && state.pendingExtractionMessageId !== undefined;
   return {
     ...state,
     isExtracting: false,
+    extractedSinceCompact: usable ? true : state.extractedSinceCompact,
     extractionCount: succeeded
       ? state.extractionCount + 1
       : state.extractionCount,
-    lastExtractionMessageId: succeeded
-      ? (state.pendingExtractionMessageId ?? state.lastExtractionMessageId)
+    lastExtractionMessageId: usable
+      ? state.pendingExtractionMessageId
       : state.lastExtractionMessageId,
     pendingExtractionMessageId: undefined,
     activeTaskId: undefined,
@@ -187,7 +194,14 @@ function getTaskMemoryExtractionResult(
         continue;
       }
       if (!part.input || typeof part.input !== "object") continue;
-      if ("path" in part.input && part.input.path === TaskMemoryFileUri) {
+      if (
+        "path" in part.input &&
+        part.input.path === TaskMemoryFileUri &&
+        typeof part.output === "object" &&
+        part.output !== null &&
+        "success" in part.output &&
+        part.output.success === true
+      ) {
         return "succeeded";
       }
     }
@@ -213,19 +227,6 @@ function computeTotalTokens(usage?: ContextWindowUsage) {
   );
 }
 
-function countToolCalls(messages: UIMessage[]): number {
-  let count = 0;
-  for (const message of messages) {
-    if (message.role !== "assistant") continue;
-    for (const part of message.parts) {
-      if (isStaticToolUIPart(part)) {
-        count++;
-      }
-    }
-  }
-  return count;
-}
-
 type TaskMemoryAdaptorOptions = {
   store: LiveKitStore;
   backgroundTask: {
@@ -240,6 +241,8 @@ type TaskMemoryAdaptorOptions = {
 
 export class TaskMemoryAdaptor {
   private readonly stateStore: MemoryStateStore<TaskMemoryState>;
+  private state: TaskMemoryState | undefined;
+  private transitionQueue = Promise.resolve();
 
   constructor(private readonly options: TaskMemoryAdaptorOptions) {
     this.stateStore =
@@ -248,33 +251,74 @@ export class TaskMemoryAdaptor {
   }
 
   getState() {
-    return this.stateStore.get() ?? { ...DefaultTaskMemoryState };
+    const state = this.state ?? this.stateStore.get() ?? DefaultTaskMemoryState;
+    return {
+      ...state,
+      // Persisted state from older versions does not have this counter.
+      extractionAttemptsSinceCompact: state.extractionAttemptsSinceCompact ?? 0,
+    };
   }
 
-  resetTokenBaseline() {
-    return this.stateStore.set({
-      ...this.getState(),
-      lastExtractionTokens: 0,
+  takeCompactionBoundaryMessageId() {
+    return this.enqueueTransition(async () => {
+      const state = this.getState();
+      const boundaryMessageId = state.extractedSinceCompact
+        ? state.lastExtractionMessageId
+        : undefined;
+      await this.setState({
+        ...state,
+        extractionAttemptsSinceCompact: 0,
+        extractedSinceCompact: false,
+        lastExtractionMessageId: undefined,
+        pendingExtractionMessageId: undefined,
+      });
+      return boundaryMessageId;
     });
   }
 
-  async update(data: {
+  update(data: {
     messages: Message[];
     contextWindowUsage?: ContextWindowUsage;
+    compactThreshold?: number;
+    systemPrompt?: string;
+  }) {
+    return this.enqueueTransition(() => this.updateInner(data));
+  }
+
+  private async updateInner(data: {
+    messages: Message[];
+    contextWindowUsage?: ContextWindowUsage;
+    compactThreshold?: number;
+    systemPrompt?: string;
   }) {
     if (this.options.isSubTask) return false;
-    await this.settle();
+    await this.settleInner();
 
     const state = this.getState();
+    const metrics = getExtractionMetrics(data);
+    const trigger = resolveExtractionTrigger(data.compactThreshold);
+    if (!shouldExtractTaskMemory(state, metrics, trigger)) {
+      return false;
+    }
+
+    return this.startExtraction(
+      state,
+      metrics,
+      data.messages,
+      data.systemPrompt,
+    );
+  }
+
+  private async startExtraction(
+    state: TaskMemoryState,
+    metrics: ExtractionMetrics,
+    messages: Message[],
+    systemPrompt: string | undefined,
+  ) {
     const task = this.options.store.query(
       makeTaskQuery(this.options.parentTaskId),
     );
     if (!task) return false;
-
-    const metrics = getExtractionMetrics(data);
-    if (!shouldExtractTaskMemory(state, metrics)) {
-      return false;
-    }
 
     try {
       const parentCwd = this.getParentCwd();
@@ -284,11 +328,14 @@ export class TaskMemoryAdaptor {
       const handle = await startTaskMemoryExtraction({
         state,
         metrics,
-        setTaskMemoryState: (nextState) => this.stateStore.set(nextState),
+        setTaskMemoryState: (nextState) => this.setState(nextState),
         startForkAgent: (agent) =>
-          this.options.backgroundTask.startForkAgent(agent),
+          this.options.backgroundTask.startForkAgent({
+            ...agent,
+            systemPrompt,
+          }),
         parentTaskId: this.options.parentTaskId,
-        parentMessages: data.messages,
+        parentMessages: messages,
         parentCwd,
         parentTaskTitle: task.title ?? undefined,
         existingMemory: memoryFile?.content ?? undefined,
@@ -302,9 +349,19 @@ export class TaskMemoryAdaptor {
   }
 
   async settle() {
+    return this.enqueueTransition(() => this.settleInner());
+  }
+
+  private async settleInner() {
     const state = this.getState();
     if (!state.activeTaskId || !state.isExtracting) return false;
 
+    if (
+      BackgroundJobManager.forStore(this.options.store).isTaskPending(
+        state.activeTaskId,
+      )
+    )
+      return false;
     const nextState = resolveTaskMemoryExtractionState({
       state,
       activeTask: this.options.store.query(makeTaskQuery(state.activeTaskId)),
@@ -314,8 +371,22 @@ export class TaskMemoryAdaptor {
     });
     if (!nextState) return false;
 
-    await this.stateStore.set(nextState);
+    await this.setState(nextState);
     return true;
+  }
+
+  private async setState(state: TaskMemoryState) {
+    await this.stateStore.set(state);
+    this.state = state;
+  }
+
+  private enqueueTransition<T>(run: () => T | PromiseLike<T>): Promise<T> {
+    const result = this.transitionQueue.then(run);
+    this.transitionQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private getParentCwd() {

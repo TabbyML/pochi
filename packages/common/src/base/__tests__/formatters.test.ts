@@ -1,7 +1,7 @@
 import type { UIMessage } from 'ai';
 import { clone } from 'remeda';
 import { describe, expect, it, vi } from 'vitest';
-import { formatters } from '../formatters';
+import { formatters, getUIUserMessageKind } from '../formatters';
 
 // Mock dependencies
 vi.mock('@getpochi/tools', async (importOriginal) => {
@@ -73,6 +73,51 @@ const baseMessages: UIMessage[] = [
 
 describe('formatters', () => {
   describe('formatters.ui', () => {
+    it.each([
+      ['content', [{ type: 'text', text: 'Visible prompt' }]],
+      [
+        'content',
+        [
+          {
+            type: 'data-pasted-text',
+            data: { filePath: '/tmp/pasted.txt', title: 'large pasted text' },
+          },
+        ],
+      ],
+      ['compact', [{ type: 'text', text: '<compact>Summary</compact>' }]],
+      [
+        'hidden',
+        [
+          {
+            type: 'data-active-selection',
+            data: { activeSelection: undefined },
+          },
+        ],
+      ],
+    ] as const)('classifies a user message as %s', (kind, parts) => {
+      expect(
+        getUIUserMessageKind({
+          id: 'user-message',
+          role: 'user',
+          parts: [...parts],
+        } as UIMessage),
+      ).toBe(kind);
+    });
+
+    it('does not increase the part count', () => {
+      const rawPartCount = baseMessages.reduce(
+        (total, message) => total + message.parts.length,
+        0,
+      );
+      const formatted = formatters.ui(clone(baseMessages));
+      const formattedPartCount = formatted.reduce(
+        (total, message) => total + message.parts.length,
+        0,
+      );
+
+      expect(formattedPartCount).toBeLessThanOrEqual(rawPartCount);
+    });
+
     it('should combine consecutive assistant messages', () => {
       const formatted = formatters.ui(clone(baseMessages));
       const assistantMessages = formatted.filter((m) => m.role === 'assistant');
@@ -587,10 +632,114 @@ describe('formatters', () => {
   });
 
   describe('formatters.llm', () => {
+    it('keeps the pasted text reminder and removes the UI-only data part', () => {
+      const messages = [
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+            },
+            {
+              type: 'data-pasted-text',
+              data: {
+                filePath: '/tmp/pasted.txt',
+                title: 'const answer = 42;',
+              },
+            },
+          ],
+        },
+      ] as UIMessage[];
+
+      expect(formatters.llm(messages)).toEqual([
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+            },
+          ],
+        },
+      ]);
+      expect(messages[0].parts).toEqual([
+        {
+          type: 'text',
+          text: '<system-reminder>Read /tmp/pasted.txt before continuing.</system-reminder>',
+        },
+        {
+          type: 'data-pasted-text',
+          data: {
+            filePath: '/tmp/pasted.txt',
+            title: 'const answer = 42;',
+          },
+        },
+      ]);
+    });
+
+    it('does not treat compact tags inside pasted text as a compaction boundary', () => {
+      const messages = [
+        {
+          id: 'old-assistant',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [{ type: 'text', text: 'old response' }],
+        },
+        {
+          id: 'user-pasted-text',
+          role: 'user',
+          parts: [
+            {
+              type: 'data-pasted-text',
+              data: {
+                filePath: '/tmp/pasted.txt',
+                title: '<compact>literal user content</compact>',
+              },
+            },
+          ],
+        },
+        {
+          id: 'new-assistant',
+          role: 'assistant',
+          metadata: { kind: 'assistant' },
+          parts: [{ type: 'text', text: 'new response' }],
+        },
+      ] as UIMessage[];
+
+      const formatted = formatters.llm(messages);
+
+      expect(formatted.map((message) => message.id)).toEqual([
+        'old-assistant',
+        'new-assistant',
+      ]);
+    });
+
     it('should keep reasoning parts by default', () => {
       const formatted = formatters.llm(clone(baseMessages));
       const assistantMsg = formatted.find((m) => m.id === 'assistant-1');
       expect(assistantMsg?.parts.some((p) => p.type === 'reasoning')).toBe(true);
+    });
+
+    it('should preserve readable custom-agent invocation text when stripping the marker', () => {
+      const messages: UIMessage[] = [
+        {
+          id: 'user-1',
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: '<custom-agent id="demo" path="/agents/demo.md">/demo</custom-agent> use this agent',
+            },
+          ],
+        },
+      ];
+
+      expect(formatters.llm(messages)[0].parts).toEqual([
+        { type: 'text', text: '/demo use this agent' },
+      ]);
     });
 
     it('should remove empty reasoning parts without providerMetadata', () => {
