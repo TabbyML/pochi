@@ -68,7 +68,7 @@ interface BackgroundCommand {
     description: string;
     watcher: MonitorWatcher;
     endReason?: string;
-    killTimer?: ReturnType<typeof setTimeout>;
+    termination?: Promise<void>;
   };
 }
 
@@ -612,9 +612,20 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   ): Promise<void> {
     if (job.status !== "running" || job.finalizing) return;
     job.finalizing = true;
-    clearTimeout(job.monitor?.killTimer);
     let finalStatus = status;
     let finalError = error;
+
+    try {
+      // Shell exit does not imply group exit. Keep its children's TERM grace
+      // period and finish escalation before publishing an end event or exiting.
+      await job.monitor?.termination;
+    } catch (terminationError) {
+      finalStatus = "failed";
+      finalError =
+        terminationError instanceof Error
+          ? terminationError.message
+          : String(terminationError);
+    }
 
     try {
       await job.outputWriter.close();
@@ -631,8 +642,8 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       job.monitor.watcher.end();
       this.emitMonitorEvent(job, [], {
         reason:
-          job.monitor.endReason ??
           finalError ??
+          job.monitor.endReason ??
           `exited with code ${exitCode ?? "unknown"}`,
         status: finalStatus,
         ...(exitCode !== undefined ? { exitCode } : {}),
@@ -706,23 +717,64 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     const job = this.commands.get(id);
     if (!job) return false;
     if (job.status !== "running" || job.finalizing) return true;
+    if (job.monitor?.termination) return true;
 
     job.stopRequested = true;
-    const signal = (name: NodeJS.Signals) => {
-      if (job.monitor && job.process.pid && process.platform !== "win32") {
+    if (!job.monitor) return job.process.kill("SIGTERM");
+
+    const signal = (name: NodeJS.Signals | 0) => {
+      if (job.process.pid && process.platform !== "win32") {
         try {
           process.kill(-job.process.pid, name);
           return true;
         } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+          const code = (error as NodeJS.ErrnoException).code;
+          if (code === "ESRCH") return false;
+          // EPERM still means the group exists; on macOS it can be a zombie
+          // awaiting reaping. Keep polling instead of abandoning cleanup.
+          if (name === 0 && code === "EPERM") return true;
+          throw error;
         }
       }
-      return job.process.kill(name);
+      if (job.process.exitCode !== null || job.process.signalCode !== null)
+        return false;
+      return name === 0 || job.process.kill(name);
     };
-    if (job.monitor && !job.monitor.killTimer) {
-      job.monitor.killTimer = setTimeout(() => signal("SIGKILL"), 1000);
+    const failed = (error: unknown) => {
+      logger.warn("Failed to terminate the monitor process group:", error);
+      return this.finalizeBackgroundCommand(
+        job,
+        "failed",
+        undefined,
+        error instanceof Error ? error.message : String(error),
+      );
+    };
+    try {
+      signal("SIGTERM");
+    } catch (error) {
+      void failed(error);
+      return false;
     }
-    return signal("SIGTERM");
+
+    // This operation belongs to the group, not to the shell's close event.
+    // Polling also avoids retaining a delayed signal after the group is gone.
+    job.monitor.termination = (async () => {
+      const deadline = Date.now() + 1000;
+      while (signal(0)) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+          signal("SIGKILL");
+          return;
+        }
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, Math.min(50, remaining)),
+        );
+      }
+    })();
+    // A failed signal may leave the shell alive, so do not rely on close to
+    // consume this rejection and report the failure.
+    void job.monitor.termination.catch(failed);
+    return true;
   }
 
   /** Stop CLI processes and let their output files finish closing, within five seconds. */
