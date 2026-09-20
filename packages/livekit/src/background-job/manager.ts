@@ -85,6 +85,8 @@ type Job = {
       title: string;
       outputFile?: string;
       status: JobStatus;
+      // A process snapshot or end event can override this fallback.
+      inferredStopped?: boolean;
       notification?: CommandNotification;
       monitor?: string;
       command?: string;
@@ -508,7 +510,7 @@ export class BackgroundJobManager {
         old &&
         (old.kind !== "command" ||
           old.ownerTaskId !== taskId ||
-          old.status !== "running")
+          (old.status !== "running" && !old.inferredStopped))
       )
         continue;
       this.setJob({
@@ -524,11 +526,29 @@ export class BackgroundJobManager {
     }
   }
 
+  // Requires both initial snapshots before ready; late replay is not reconciled.
+  // Later process snapshots or end events can correct inferred stops.
+  private stopVanishedMonitors(ownerTaskId: string) {
+    for (const job of this.jobs.values()) {
+      if (
+        job.ownerTaskId !== ownerTaskId ||
+        job.kind !== "command" ||
+        job.monitor === undefined ||
+        job.status !== "running" ||
+        this.runningCommands[job.id]
+      )
+        continue;
+      this.setJob({ ...job, status: "stopped", inferredStopped: true });
+    }
+  }
+
   private recordMonitor(taskId: string, event: MonitorEventEnvelope) {
     const old = this.jobs.get(event.backgroundJobId);
     if (old && (old.kind !== "command" || old.ownerTaskId !== taskId)) return;
     // A delayed running batch must not undo a monitor's terminal state.
-    const terminal = old?.status !== undefined && old.status !== "running";
+    // Real end events override inferred stops.
+    const keepStatus =
+      old && old.status !== "running" && (!old.inferredStopped || !event.ended);
     this.setJob({
       id: event.backgroundJobId,
       ownerTaskId: taskId,
@@ -540,10 +560,11 @@ export class BackgroundJobManager {
       monitor: event.description,
       command: event.command,
       outputFile: event.outputFile,
-      status: terminal
+      status: keepStatus
         ? old.status
         : (event.ended?.status ?? (event.ended ? "completed" : "running")),
-      exitCode: terminal ? old.exitCode : event.ended?.exitCode,
+      exitCode: keepStatus ? old.exitCode : event.ended?.exitCode,
+      ...(keepStatus && old.inferredStopped ? { inferredStopped: true } : {}),
     });
   }
 
@@ -634,6 +655,7 @@ export class BackgroundJobManager {
       if (this.disposed) return;
       this.batch(() => {
         this.updateCommands(taskId);
+        this.stopVanishedMonitors(taskId);
         this.deliver(taskId);
       });
     })().catch((error) => {

@@ -63,13 +63,21 @@ function setup() {
   });
   const manager = BackgroundJobManager.forStore(data.store);
   manager.connect(source);
-  return { ...data, manager, source, acknowledge, observers };
+  return { ...data, manager, source, acknowledge, observers, pending };
 }
 const running = (taskId: string) => ({
   taskId,
   command: "test",
   outputFile: "/tmp/output",
   isVisible: false,
+});
+const monitored = (id = "bgjob-monitor-one") => ({
+  notificationId: `monitor:${id}`,
+  backgroundJobId: id,
+  description: "watch",
+  command: "watch",
+  outputFile: "/tmp/watch.log",
+  lines: ["output from before the restart"],
 });
 const finished = (id = "bgjob-cmd-one") =>
   createBackgroundJobNotification({
@@ -329,6 +337,143 @@ describe("BackgroundJobManager", () => {
     await manager.watchTask("parent");
     expect(manager.hasPending("parent")).toBe(true);
     await manager.dispose();
+  });
+
+  it("stops a restored monitor whose process is gone and releases the wait", async () => {
+    const { manager, source } = setup();
+    source.observeNotifications.mockImplementationOnce(
+      async (_taskId, update) => {
+        update([monitored()]);
+        return { dispose: vi.fn(), acknowledge: vi.fn(async () => {}) };
+      },
+    );
+    await manager.watchTask("parent");
+    expect(manager.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({
+        backgroundJobId: "bgjob-monitor-one",
+        status: "stopped",
+      }),
+    ]);
+    expect(manager.hasPending("parent")).toBe(false);
+    expect(await manager.wait("parent")).toBe("completed");
+    // Preserve undelivered output.
+    expect(manager.getPendingNotifications("parent")).toEqual([monitored()]);
+    await manager.dispose();
+  });
+
+  it("keeps a restored monitor that still owns a live process", async () => {
+    const { manager, source } = setup();
+    source.observeNotifications.mockImplementationOnce(
+      async (_taskId, update) => {
+        update([monitored()]);
+        return { dispose: vi.fn(), acknowledge: vi.fn(async () => {}) };
+      },
+    );
+    source.observeCommands.mockImplementationOnce(async (update) => {
+      update({
+        "bgjob-monitor-one": { ...running("parent"), monitor: "watch" },
+      });
+      return { dispose: vi.fn(), acknowledge: vi.fn(async () => {}) };
+    });
+    await manager.watchTask("parent");
+    expect(manager.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({
+        backgroundJobId: "bgjob-monitor-one",
+        status: "running",
+      }),
+    ]);
+    expect(manager.hasPending("parent")).toBe(true);
+    expect(await manager.wait("parent", { timeoutMs: 0 })).toBe("timeout");
+    await manager.dispose();
+  });
+
+  it.each([
+    ["completed", 0],
+    ["failed", 7],
+    ["stopped", 130],
+  ] as const)(
+    "replaces an inferred stop with a real %s result without reviving it",
+    async (status, exitCode) => {
+      const { manager, pending, observers } = setup();
+      const notice = monitored();
+      pending.set("parent", [notice]);
+      try {
+        await manager.watchTask("parent");
+        expect(manager.getJobsForTask("parent")[0].status).toBe("stopped");
+        observers.get("parent")!({
+          running: {},
+          notifications: [
+            {
+              ...notice,
+              notificationId: "monitor:end",
+              ended: { status, exitCode, reason: "process exited" },
+            },
+          ],
+        });
+        expect(manager.getJobsForTask("parent")[0]).toMatchObject({
+          status,
+          exitCode,
+        });
+
+        // Stale updates cannot overwrite a real result.
+        observers.get("parent")!({
+          running: {
+            [notice.backgroundJobId]: {
+              ...running("parent"),
+              monitor: "watch",
+            },
+          },
+          notifications: [notice],
+        });
+        expect(manager.getJobsForTask("parent")[0]).toMatchObject({
+          status,
+          exitCode,
+        });
+        expect(manager.hasPending("parent")).toBe(false);
+      } finally {
+        await manager.dispose();
+      }
+    },
+  );
+
+  it("resumes an inferred stop when a live process snapshot arrives later", async () => {
+    const { manager, pending, observers } = setup();
+    const notice = monitored();
+    pending.set("parent", [notice]);
+    try {
+      await manager.watchTask("parent");
+      expect(manager.hasPending("parent")).toBe(false);
+      observers.get("parent")!({ running: {}, notifications: [notice] });
+      observers.get("parent")!({
+        running: {
+          [notice.backgroundJobId]: { ...running("parent"), monitor: "watch" },
+        },
+        notifications: [notice],
+      });
+      expect(manager.getJobsForTask("parent")[0]).toMatchObject({
+        status: "running",
+        monitor: "watch",
+      });
+      expect(manager.hasPending("parent")).toBe(true);
+      expect(await manager.wait("parent", { timeoutMs: 0 })).toBe("timeout");
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("keeps an inferred stop when only old monitor output is replayed", async () => {
+    const { manager, pending, observers } = setup();
+    const notice = monitored();
+    pending.set("parent", [notice]);
+    try {
+      await manager.watchTask("parent");
+      observers.get("parent")!({ running: {}, notifications: [notice] });
+      expect(manager.getJobsForTask("parent")[0].status).toBe("stopped");
+      expect(manager.hasPending("parent")).toBe(false);
+      expect(manager.getPendingNotifications("parent")).toEqual([notice]);
+    } finally {
+      await manager.dispose();
+    }
   });
 
   it("honors a zero timeout and abort without consuming a notification", async () => {
