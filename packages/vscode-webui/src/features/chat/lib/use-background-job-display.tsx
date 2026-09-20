@@ -7,6 +7,22 @@ import {
   useMemo,
 } from "react";
 
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * A job id used as the file name of its output transcript, e.g.
+ * `pochi://~/background-jobs/bgjob-cmd-abc.log`. Such ids must stay intact,
+ * otherwise the rendered path no longer points at a real file.
+ */
+const isOutputFilePathId = (text: string, start: number, length: number) => {
+  const charBefore = text[start - 1];
+  return (
+    (charBefore === "/" || charBefore === "\\") &&
+    text.startsWith(".log", start + length)
+  );
+};
+
 export const useBackgroundJobDisplay = (messages: Message[]) => {
   const jobids = useMemo(() => {
     const ids = new Set<string>();
@@ -53,11 +69,19 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
 
   const replaceJobIdsInContent = useCallback(
     (content: string) => {
-      let newContent = content;
-      for (const [jobId, { displayId }] of displayInfo) {
-        newContent = newContent.replace(new RegExp(jobId, "g"), displayId);
-      }
-      return newContent;
+      if (displayInfo.size === 0) return content;
+
+      const pattern = new RegExp(
+        Array.from(displayInfo.keys()).map(escapeRegExp).join("|"),
+        "g",
+      );
+      return content.replace(
+        pattern,
+        (jobId: string, offset: number, text: string) =>
+          isOutputFilePathId(text, offset, jobId.length)
+            ? jobId
+            : (displayInfo.get(jobId)?.displayId ?? jobId),
+      );
     },
     [displayInfo],
   );

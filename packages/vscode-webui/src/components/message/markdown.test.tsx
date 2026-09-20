@@ -10,6 +10,9 @@ vi.mock("@/features/chat", () => ({
 vi.mock("@/features/tools", () => ({
   FileBadge: ({ label }: { label: string }) => <span>{label}</span>,
   IssueBadge: () => null,
+  BackgroundJobOutputBadge: ({ path }: { path: string }) => (
+    <span data-testid="background-job-output-badge">{path}</span>
+  ),
 }));
 
 vi.mock("@/lib/vscode", () => ({
@@ -32,6 +35,17 @@ describe("MessageMarkdown", () => {
     expect(skillBadge).toBeTruthy();
     expect(skillBadge.parentElement?.textContent).toContain(
       "/find-skills这个干啥的",
+    );
+  });
+
+  it("renders a background job transcript path as a job output badge", () => {
+    const path =
+      "/Users/me/.pochi/tasks/task-1/background-jobs/bgjob-cmd-abc.log";
+
+    render(<MessageMarkdown>{`output at \`${path}\``}</MessageMarkdown>);
+
+    expect(screen.getByTestId("background-job-output-badge").textContent).toBe(
+      path,
     );
   });
 

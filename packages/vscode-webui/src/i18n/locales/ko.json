@@ -421,7 +421,9 @@
     "problemsDetectedTooltip": "변경 후 문제가 감지됨"
   },
   "fileBadge": {
-    "modifiedByPochi": "(Pochi에 의해 수정됨)"
+    "modifiedByPochi": "(Pochi에 의해 수정됨)",
+    "backgroundJobOutput": "{{displayId}} 출력",
+    "terminalOutput": "터미널 출력"
   },
   "codeBlock": {
     "showCode": "코드 보기",

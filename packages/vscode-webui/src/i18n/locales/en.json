@@ -429,7 +429,9 @@
     "problemsDetectedTooltip": "Problems detected after change"
   },
   "fileBadge": {
-    "modifiedByPochi": "(Modified by Pochi)"
+    "modifiedByPochi": "(Modified by Pochi)",
+    "backgroundJobOutput": "{{displayId}} output",
+    "terminalOutput": "terminal output"
   },
   "codeBlock": {
     "showCode": "Show Code",

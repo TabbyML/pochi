@@ -421,7 +421,9 @@
     "problemsDetectedTooltip": "変更後に問題が検出されました"
   },
   "fileBadge": {
-    "modifiedByPochi": "（Pochi により変更）"
+    "modifiedByPochi": "（Pochi により変更）",
+    "backgroundJobOutput": "{{displayId}} の出力",
+    "terminalOutput": "ターミナル出力"
   },
   "codeBlock": {
     "showCode": "コードを表示",
