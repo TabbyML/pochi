@@ -79,6 +79,15 @@ const finished = (id = "bgjob-cmd-one") =>
     status: "completed",
     finishedAt: 1,
   });
+const stopped = (id = "bgjob-cmd-one") =>
+  createBackgroundJobNotification({
+    taskId: "parent",
+    backgroundJobId: id,
+    command: "test",
+    outputFile: "/tmp/output",
+    status: "stopped",
+    finishedAt: 1,
+  });
 
 describe("BackgroundJobManager", () => {
   it("routes job cancellation through ownership checks and delegates other tools", async () => {
@@ -247,6 +256,42 @@ describe("BackgroundJobManager", () => {
     await reopened.watchTask("parent");
     expect(reopened.getPendingNotifications("parent")).toEqual([]);
     await reopened.dispose();
+  });
+
+  it("keeps a command the owner stopped itself out of its notification queue", async () => {
+    const { manager, observers, acknowledge, source } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
+    });
+    await manager.kill("bgjob-cmd-one", "parent", { notify: false });
+    expect(source.kill).toHaveBeenCalledExactlyOnceWith("bgjob-cmd-one");
+    observers.get("parent")!({ running: {}, notifications: [stopped()] });
+    expect(manager.getPendingNotifications("parent")).toEqual([]);
+    // Acknowledged right away, so a reopen cannot revive it either.
+    expect(acknowledge).toHaveBeenCalledWith(stopped().notificationId);
+    expect(manager.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({
+        status: "stopped",
+        notificationPending: false,
+      }),
+    ]);
+    await manager.dispose();
+  });
+
+  it("notifies the owner about a command stopped outside its own tool call", async () => {
+    const { manager, observers, acknowledge } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
+    });
+    await manager.forTask("parent").kill("bgjob-cmd-one");
+    observers.get("parent")!({ running: {}, notifications: [stopped()] });
+    expect(manager.getPendingNotifications("parent")).toEqual([stopped()]);
+    expect(acknowledge).not.toHaveBeenCalled();
+    await manager.dispose();
   });
 
   it("does not reconstruct a command from old tool messages when its process is gone", async () => {

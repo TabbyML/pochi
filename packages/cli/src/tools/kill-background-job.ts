@@ -6,4 +6,4 @@ export const killBackgroundJob =
     context: ToolCallOptions,
   ): ToolFunctionType<ClientTools["killBackgroundJob"]> =>
   async ({ backgroundJobId }) =>
-    context.backgroundJobManager.kill(backgroundJobId);
+    context.backgroundJobManager.kill(backgroundJobId, { notify: false });

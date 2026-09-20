@@ -1,4 +1,7 @@
-import type { BackgroundJobNotification } from "@getpochi/common";
+import type {
+  BackgroundJobNotification,
+  BackgroundTaskState,
+} from "@getpochi/common";
 import { describe, expect, it, vi } from "vitest";
 import { createForkAgent } from "../background-task/fork-agent";
 import { defaultCatalog as catalog } from "../livestore";
@@ -193,6 +196,65 @@ describe("background task registration and handoff", () => {
       expect(manager.getPendingNotifications("parent")).toHaveLength(2);
     } finally {
       await manager.dispose();
+    }
+  });
+
+  it("keeps a subagent the parent stopped itself silent across a reopen", async () => {
+    const data = makeJobStore();
+    // Its result landed while the parent was stopping it: the kill still wins,
+    // because the parent already read the outcome from its own tool result.
+    data.tasks.set("child", subtask("child", { status: "completed" }));
+    data.setMessages("child", [resultMessage("completed")]);
+    const states = new Map<string, BackgroundTaskState>();
+    const stateStore = {
+      read: (taskId: string) => states.get(taskId),
+      set: (taskId: string, state: BackgroundTaskState) => {
+        states.set(taskId, state);
+      },
+    };
+    const options = {
+      blobStore: {} as never,
+      stateStore,
+      adaptor: {
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall: vi.fn(),
+      },
+    };
+    const manager = BackgroundJobManager.forStore(data.store);
+    manager.initialize(options);
+    try {
+      await manager.watchTask("parent");
+      await manager.backgroundSubTask({
+        taskId: "child",
+        parentTaskId: "parent",
+        agentType: "explore",
+      });
+      expect(manager.getPendingNotifications("parent")).toHaveLength(1);
+      await manager.kill("bgjob-task-child", "parent", { notify: false });
+      expect(states.get("child")).toMatchObject({
+        parentTaskId: "parent",
+        stoppedByParent: true,
+      });
+      expect(manager.getPendingNotifications("parent")).toEqual([]);
+      expect(manager.getJobsForTask("parent")).toEqual([
+        expect.objectContaining({
+          kind: "subagent",
+          notificationPending: false,
+        }),
+      ]);
+    } finally {
+      await manager.dispose();
+    }
+
+    const reopened = BackgroundJobManager.forStore(data.store);
+    reopened.initialize({ ...options, adaptor: { ...options.adaptor } });
+    try {
+      await vi.waitFor(() =>
+        expect(reopened.getJobsForTask("parent")).toHaveLength(1),
+      );
+      expect(reopened.getPendingNotifications("parent")).toEqual([]);
+    } finally {
+      await reopened.dispose();
     }
   });
 

@@ -55,6 +55,7 @@ describe("kill background subagent", () => {
     expect(started.result).toContain("backgroundJobId: bgjob-task-0x123456");
     const stop = killBackgroundJob(context);
     expect(await stop({ backgroundJobId: started.backgroundJobId! }, {} as Parameters<typeof stop>[1])).toEqual({ success: true });
-    expect(kill).toHaveBeenCalledWith("bgjob-task-0x123456");
+    // Its own kill: the tool result already tells the agent what happened.
+    expect(kill).toHaveBeenCalledWith("bgjob-task-0x123456", { notify: false });
   });
 });

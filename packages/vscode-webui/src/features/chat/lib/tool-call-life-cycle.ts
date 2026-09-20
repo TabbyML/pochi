@@ -256,6 +256,7 @@ export class ManagedToolCallLifeCycle
       executePromise = BackgroundJobManager.forStore(this.store).kill(
         (args as { backgroundJobId: string }).backgroundJobId,
         options?.taskId ?? "",
+        { notify: false },
       );
     } else {
       executePromise = execute();

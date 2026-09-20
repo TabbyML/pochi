@@ -178,6 +178,7 @@ export function createSubtaskBatchedToolCall({
             ? await BackgroundJobManager.forStore(store).kill(
                 (toolCall.input as { backgroundJobId: string }).backgroundJobId,
                 uid,
+                { notify: false },
               )
             : await execute();
 
