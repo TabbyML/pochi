@@ -83,11 +83,14 @@ export function useChatInitialization({
             info.pastedTextFiles,
           ),
         });
-      } else {
+      } else if (info.prompt || (info.todos?.length ?? 0) > 0) {
         chatKit.init(cwd, {
           prompt: info.prompt ?? undefined,
         });
       }
+      // Otherwise the panel was opened without any seed content, so creating the
+      // task now would persist (and sync) an empty untitled task. The task is
+      // lazily created on the first message instead.
       setIsInitializing(false);
     } else if (info.type === "compact-task") {
       chatKit.init(cwd, {

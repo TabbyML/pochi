@@ -691,6 +691,24 @@ export class LiveChatKit<
     this.chat.messages = this.messages;
   }
 
+  /**
+   * Creates the task row if it does not exist yet.
+   *
+   * Tasks opened without any seed content are created lazily, so that an empty
+   * panel the user never sends a message in is not persisted (and synced).
+   */
+  ensureInited(cwd: string | undefined) {
+    if (this.inited) return;
+
+    this.store.commit(
+      events.taskInited({
+        id: this.taskId,
+        cwd,
+        createdAt: new Date(),
+      }),
+    );
+  }
+
   get task() {
     return this.store.query(makeTaskQuery(this.taskId));
   }
@@ -953,15 +971,7 @@ export class LiveChatKit<
     const { store } = this;
     const lastMessage = messages.at(-1);
     if (lastMessage) {
-      if (!this.inited) {
-        store.commit(
-          events.taskInited({
-            id: this.taskId,
-            cwd: environment?.info.cwd,
-            createdAt: new Date(),
-          }),
-        );
-      }
+      this.ensureInited(environment?.info.cwd);
 
       const { task } = this;
       if (!task) {

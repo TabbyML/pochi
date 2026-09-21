@@ -152,6 +152,87 @@ describe("useChatInitialization", () => {
     expect(init).not.toHaveBeenCalled();
   });
 
+  it("defers task creation for a new task opened without any seed content", () => {
+    const info: PochiTaskInfo = {
+      type: "new-task",
+      uid: "task-1",
+      cwd: "/workspace",
+    };
+    const init = vi.fn();
+
+    const { result } = renderHook(() =>
+      useChatInitialization({
+        chatKit: { inited: false, init } as never,
+        info,
+        storeRegistry: {} as never,
+        jwt: null,
+        t: ((key: string) => key) as TFunction,
+        setMcpConfigOverride: vi.fn() as never,
+        isMcpConfigLoading: false,
+      }),
+    );
+
+    expect(init).not.toHaveBeenCalled();
+    expect(result.current.isInitializing).toBe(false);
+  });
+
+  it("still applies the mcp config override for an empty new task", () => {
+    const info: PochiTaskInfo = {
+      type: "new-task",
+      uid: "task-1",
+      cwd: "/workspace",
+      mcpConfigOverride: { github: { disabledTools: [] } },
+    };
+    const init = vi.fn();
+    const setMcpConfigOverride = vi.fn();
+
+    renderHook(() =>
+      useChatInitialization({
+        chatKit: { inited: false, init } as never,
+        info,
+        storeRegistry: {} as never,
+        jwt: null,
+        t: ((key: string) => key) as TFunction,
+        setMcpConfigOverride: setMcpConfigOverride as never,
+        isMcpConfigLoading: false,
+      }),
+    );
+
+    expect(setMcpConfigOverride).toHaveBeenCalledWith(info.mcpConfigOverride);
+    expect(init).not.toHaveBeenCalled();
+  });
+
+  it("creates the task for a new task seeded with todos", () => {
+    const info: PochiTaskInfo = {
+      type: "new-task",
+      uid: "task-1",
+      cwd: "/workspace",
+      todos: [
+        {
+          id: "todo-1",
+          content: "Ship it",
+          status: "pending",
+          priority: "high",
+        },
+      ],
+    };
+    const init = vi.fn();
+
+    renderHook(() =>
+      useChatInitialization({
+        chatKit: { inited: false, init } as never,
+        info,
+        storeRegistry: {} as never,
+        jwt: null,
+        t: ((key: string) => key) as TFunction,
+        setMcpConfigOverride: vi.fn() as never,
+        isMcpConfigLoading: false,
+      }),
+    );
+
+    expect(init).toHaveBeenCalledWith("/workspace", { prompt: undefined });
+  });
+
   it("assembles invoked skills as reminder parts for a new task", () => {
     const skill: ValidSkillFile = {
       name: "deploy",
