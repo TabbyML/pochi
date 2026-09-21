@@ -26,4 +26,23 @@ describe("createBackgroundCommandResult", () => {
       outputFile: "/tmp/bgjob-cmd-test.log",
     });
   });
+
+  it("prevents retrying a foreground command promoted after timeout", () => {
+    const result = createBackgroundCommandResult(
+      "bgjob-cmd-test",
+      "/tmp/bgjob-cmd-test.log",
+      { origin: "foreground-timeout" },
+    );
+
+    expect(result.output).toContain("The foreground command timed out");
+    expect(result.output).toContain(
+      "its original process is still running in the background",
+    );
+    expect(result.output).toContain(
+      "Do not retry the command in the foreground",
+    );
+    expect(result.output).toContain(
+      "Wait for the completion notification instead",
+    );
+  });
 });

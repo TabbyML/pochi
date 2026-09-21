@@ -287,7 +287,7 @@ describe("executeCommand Tool", () => {
 
     assert.deepStrictEqual(result, {
       output:
-        'Background job started.\nJob ID: "bgjob-cmd-test"\nOutput file: "/tmp/bgjob-cmd-test.log"\n\nThis confirms only that the job started, not that it completed successfully. The output file contains command output only; it does not contain the job\'s status. Continue any independent work, and do not poll the file for completion. The completion notification is the authoritative status. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job\'s outcome.',
+        'Background job started.\nJob ID: "bgjob-cmd-test"\nOutput file: "/tmp/bgjob-cmd-test.log"\n\nThe output file contains command output only; it does not contain the job\'s status. This confirms only that the job started, not that it completed successfully. Continue any independent work, and do not poll the file for completion. The completion notification is the authoritative status. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job\'s outcome.',
       isTruncated: false,
       _meta: {
         backgroundJobId: "bgjob-cmd-test",
@@ -412,7 +412,7 @@ describe("executeCommand Tool", () => {
       assert.strictEqual(maybePersistToolResult.callCount, 0);
       assert.deepStrictEqual(values.at(-1), {
         content:
-          'Background job started.\nJob ID: "bgjob-cmd-promoted"\nOutput file: "/tmp/bgjob-cmd-promoted.log"\n\nThis confirms only that the job started, not that it completed successfully. The output file contains command output only; it does not contain the job\'s status. Continue any independent work, and do not poll the file for completion. The completion notification is the authoritative status. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job\'s outcome.',
+          'Background job started.\nJob ID: "bgjob-cmd-promoted"\nOutput file: "/tmp/bgjob-cmd-promoted.log"\n\nThe output file contains command output only; it does not contain the job\'s status. The foreground command timed out, but its original process is still running in the background. Do not retry the command in the foreground. Wait for the completion notification instead. Continue any independent work. If no independent work remains, call attemptCompletion to yield the current turn until the notification provides the authoritative status.',
         status: "completed",
         isTruncated: false,
         _meta: {
