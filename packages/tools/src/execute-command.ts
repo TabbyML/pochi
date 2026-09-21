@@ -227,7 +227,7 @@ export function createBackgroundCommandResult(
 Job ID: "${backgroundJobId}"
 Output file: "${outputFile}"
 
-This confirms only that the job started, not that it completed successfully. Continue any independent work. Do not poll for completion or infer the final status from the output file; the completion notification is authoritative. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job's outcome.`,
+This confirms only that the job started, not that it completed successfully. The output file contains command output only; it does not contain the job's status. Continue any independent work, and do not poll the file for completion. The completion notification is the authoritative status. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job's outcome.`,
     isTruncated: false,
     _meta: { backgroundJobId, outputFile },
   };
