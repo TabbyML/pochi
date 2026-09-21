@@ -20,7 +20,7 @@ import type {
 } from "@getpochi/common/vscode-webui-bridge";
 import type { FileUIPart } from "ai";
 import type React from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useAutoApproveGuard,
@@ -37,7 +37,7 @@ type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 type ResolvedChatInput = Extract<
   ReturnType<typeof resolveSlashMentions>,
   { status: "valid" }
-> & { pastedTexts: string[] };
+> & { json: ChatInput["json"]; pastedTexts: string[] };
 
 export interface DraftMessage {
   parts: Message["parts"];
@@ -51,6 +51,11 @@ export interface DraftMessage {
     isTodoMode?: boolean;
     activeSelection?: ActiveSelection;
     nonRemovable?: boolean;
+  };
+  /** Composer snapshot for re-editing. Consumed context is not restorable. */
+  draft?: {
+    input: ChatInput;
+    attachments: FileUIPart[];
   };
 }
 
@@ -77,7 +82,8 @@ interface UseChatSubmitProps {
   taskId: string;
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
-  onTodoModeQueued?: () => void;
+  /** Clears the consumed Todo selection once message preparation succeeds. */
+  onTodoModeSubmitted?: () => void;
   /**
    * Invoked with the final todo objective right before the message is sent.
    */
@@ -109,7 +115,7 @@ export function useChatSubmit({
   taskId,
   isTodoMode = false,
   canCreateTodo = true,
-  onTodoModeQueued,
+  onTodoModeSubmitted,
   onBeforeSendText,
   flushBackgroundJobNotifications,
 }: UseChatSubmitProps) {
@@ -117,6 +123,7 @@ export function useChatSubmit({
   const { isExecuting } = useToolCallLifeCycle();
   const batchExecuteManager = useBatchExecuteManager();
   const { t } = useTranslation();
+  const [isPreparingMessage, setIsPreparingMessage] = useState(false);
 
   const abortExecutingToolCalls = useCallback(() => {
     batchExecuteManager.abort(taskId, "user-abort");
@@ -159,6 +166,7 @@ export function useChatSubmit({
       if (result.status === "valid") {
         return {
           ...result,
+          json: submittedInput.json,
           pastedTexts: submittedInput.pastedTexts ?? [],
         };
       }
@@ -205,6 +213,7 @@ export function useChatSubmit({
         text: input.text,
         invokedSkills: [],
         invokedCustomAgents: [],
+        json: input.json,
         pastedTexts: input.pastedTexts ?? [],
       },
     ): Promise<DraftMessage | undefined> => {
@@ -289,12 +298,24 @@ export function useChatSubmit({
         resolvedInput.invokedCustomAgents,
         pastedTextFiles,
       );
+      const draft = {
+        input: {
+          json: resolvedInput.json,
+          text: resolvedInput.text,
+          pastedTexts: currentPastedTexts,
+        },
+        attachments: uploadedAttachments,
+      };
 
-      return { parts, raw };
+      if (isTodoMode) {
+        onTodoModeSubmitted?.();
+      }
+      return { parts, raw, draft };
     },
     [
       t,
       input.text,
+      input.json,
       input.pastedTexts,
       files,
       reviews,
@@ -307,6 +328,7 @@ export function useChatSubmit({
       clearUploadError,
       clearInput,
       isTodoMode,
+      onTodoModeSubmitted,
       taskId,
     ],
   );
@@ -363,16 +385,22 @@ export function useChatSubmit({
 
       logger.debug("handleSubmit");
 
-      if (!isSubmitEnabled) {
+      if (!isSubmitEnabled || isPreparingMessage) {
         return;
       }
 
-      const resolvedInput = await validateInput(submittedInput);
-      if (resolvedInput === undefined) {
-        return;
-      }
+      let message: DraftMessage | undefined;
+      setIsPreparingMessage(true);
+      try {
+        const resolvedInput = await validateInput(submittedInput);
+        if (resolvedInput === undefined) {
+          return;
+        }
 
-      const message = await createMessage(resolvedInput);
+        message = await createMessage(resolvedInput);
+      } finally {
+        setIsPreparingMessage(false);
+      }
       if (!message) {
         return;
       }
@@ -381,19 +409,16 @@ export function useChatSubmit({
         sendChatMessage(message);
       } else {
         setQueuedMessages((prev) => [...prev, message]);
-        if (message.raw.isTodoMode) {
-          onTodoModeQueued?.();
-        }
       }
     },
     [
       isSubmitEnabled,
+      isPreparingMessage,
       validateInput,
       allowSendMessage,
       sendChatMessage,
       createMessage,
       setQueuedMessages,
-      onTodoModeQueued,
     ],
   );
 
@@ -406,16 +431,22 @@ export function useChatSubmit({
 
       logger.debug("handleSteerSubmit");
 
-      if (!isSubmitEnabled) {
+      if (!isSubmitEnabled || isPreparingMessage) {
         return;
       }
 
-      const resolvedInput = await validateInput(submittedInput);
-      if (resolvedInput === undefined) {
-        return;
-      }
+      let message: DraftMessage | undefined;
+      setIsPreparingMessage(true);
+      try {
+        const resolvedInput = await validateInput(submittedInput);
+        if (resolvedInput === undefined) {
+          return;
+        }
 
-      const message = await createMessage(resolvedInput);
+        message = await createMessage(resolvedInput);
+      } finally {
+        setIsPreparingMessage(false);
+      }
       if (!message) {
         return;
       }
@@ -429,13 +460,11 @@ export function useChatSubmit({
         sendChatMessage(message);
       } else {
         setQueuedMessages((messages) => [...messages, message]);
-        if (message.raw.isTodoMode) {
-          onTodoModeQueued?.();
-        }
       }
     },
     [
       isSubmitEnabled,
+      isPreparingMessage,
       validateInput,
       isRunning,
       allowSendMessage,
@@ -444,7 +473,6 @@ export function useChatSubmit({
       handleStop,
       waitForReady,
       setQueuedMessages,
-      onTodoModeQueued,
     ],
   );
 
@@ -516,6 +544,7 @@ export function useChatSubmit({
   ]);
 
   return {
+    isPreparingMessage,
     handleSubmit,
     handleSteerSubmit,
     handleSteerQueuedMessage,

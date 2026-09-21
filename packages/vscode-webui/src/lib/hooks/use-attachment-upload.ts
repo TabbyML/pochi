@@ -10,9 +10,11 @@ interface UseAttachmentUploadOptions {
   maxAttachments?: number;
 }
 
+export type Attachment = File | FileUIPart;
+
 export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
   const maxAttachments = options?.maxAttachments ?? MaxAttachments;
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<Attachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,8 +63,12 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
       return false;
     }
 
-    // Check for duplicates (simple name+size check)
-    const existingFileIds = new Set(files.map((f) => `${f.name}-${f.size}`));
+    // Uploaded parts have no size, so only deduplicate local files.
+    const existingFileIds = new Set(
+      files
+        .filter((file) => file instanceof File)
+        .map((f) => `${f.name}-${f.size}`),
+    );
     const nonDuplicateFiles = validFiles.filter(
       (file) => !existingFileIds.has(`${file.name}-${file.size}`),
     );
@@ -86,6 +92,12 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 
   const clearFiles = () => {
     setFiles([]);
+    clearError();
+  };
+
+  /** Replaces the current attachments with previously uploaded ones. */
+  const restoreFiles = (attachments: FileUIPart[]) => {
+    setFiles(attachments);
     clearError();
   };
 
@@ -139,6 +151,9 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 
     try {
       const uploadPromises = files.map(async (file) => {
+        if (!(file instanceof File)) {
+          return file;
+        }
         return {
           type: "file",
           filename: file.name || "unnamed-file",
@@ -185,6 +200,7 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
     // Actions
     removeFile,
     clearFiles,
+    restoreFiles,
     clearError,
     upload,
     cancelUpload,

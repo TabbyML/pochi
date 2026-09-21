@@ -4,6 +4,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { FileIcon } from "@/features/tools";
+import type { Attachment } from "@/lib/hooks/use-attachment-upload";
 import { cn } from "@/lib/utils";
 import { Loader2, Play, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -11,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { CopyableImage } from "./ui/copyable-image";
 
 interface AttachmentPreviewListProps {
-  files: File[];
+  files: Attachment[];
   onRemove: (index: number) => void;
   isUploading: boolean;
   className?: string;
@@ -34,6 +35,9 @@ export function AttachmentPreviewList({
     const generatePreviews = async () => {
       const newPreviews = await Promise.all(
         files.map(async (file) => {
+          if (!(file instanceof File)) {
+            return file.mediaType.startsWith("image/") ? file.url : "";
+          }
           if (file.type.startsWith("image/")) {
             const url = URL.createObjectURL(file);
             generatedUrls.push(url);
@@ -111,10 +115,14 @@ export function AttachmentPreviewList({
   return (
     <div className={cn("mt-2 mb-3 flex flex-wrap gap-2", className)}>
       {files.map((file, index) => {
+        const name =
+          file instanceof File ? file.name : (file.filename ?? "unnamed-file");
+        const mediaType = file instanceof File ? file.type : file.mediaType;
+        const size = file instanceof File ? file.size : undefined;
         const previewUrl = previews[index];
-        const isImage = file.type.startsWith("image/");
-        const isVideo = file.type.startsWith("video/");
-        const isPdf = file.type === "application/pdf";
+        const isImage = mediaType.startsWith("image/");
+        const isVideo = mediaType.startsWith("video/");
+        const isPdf = mediaType === "application/pdf";
 
         return (
           <HoverCard key={index} openDelay={300} closeDelay={200}>
@@ -130,7 +138,7 @@ export function AttachmentPreviewList({
                     <>
                       <img
                         src={previewUrl}
-                        alt={file.name}
+                        alt={name}
                         className={cn(
                           "h-full w-full object-cover",
                           isUploading && "opacity-50",
@@ -149,7 +157,7 @@ export function AttachmentPreviewList({
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
                       <FileIcon
-                        path={file.name}
+                        path={name}
                         className="inline-flex size-8 items-center justify-between before:text-3xl"
                       />
                     </div>
@@ -180,14 +188,14 @@ export function AttachmentPreviewList({
             {isPdf ? (
               <HoverCardContent className="w-auto max-w-xs p-2">
                 <div className="flex items-center gap-2">
-                  <FileIcon path={file.name} className="size-8 flex-shrink-0" />
+                  <FileIcon path={name} className="size-8 flex-shrink-0" />
                   <div className="flex flex-col gap-1 overflow-hidden">
-                    <div className="truncate font-medium text-xs">
-                      {file.name}
-                    </div>
-                    <div className="text-[var(--vscode-descriptionForeground)] text-xs">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </div>
+                    <div className="truncate font-medium text-xs">{name}</div>
+                    {size !== undefined && (
+                      <div className="text-[var(--vscode-descriptionForeground)] text-xs">
+                        {(size / 1024).toFixed(1)} KB
+                      </div>
+                    )}
                   </div>
                 </div>
               </HoverCardContent>
@@ -196,7 +204,7 @@ export function AttachmentPreviewList({
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <div className="max-w-[300px] truncate font-medium text-xs">
-                      {file.name}
+                      {name}
                     </div>
                     {isUploading && (
                       <div className="flex items-center gap-1 text-xs">
@@ -211,7 +219,7 @@ export function AttachmentPreviewList({
                       {isImage && previewUrl && (
                         <CopyableImage
                           src={previewUrl}
-                          alt={file.name}
+                          alt={name}
                           className="h-auto max-w-[90vw] object-contain"
                           style={{
                             maxHeight: "calc(60vh - 1rem)",
@@ -221,7 +229,11 @@ export function AttachmentPreviewList({
                       )}
                       {isVideo && (
                         <video
-                          src={URL.createObjectURL(file)}
+                          src={
+                            file instanceof File
+                              ? URL.createObjectURL(file)
+                              : file.url
+                          }
                           controls
                           className="h-auto max-w-[90vw] object-contain"
                           style={{
@@ -237,15 +249,17 @@ export function AttachmentPreviewList({
                           className="flex h-48 w-full items-center justify-center"
                           style={{ minWidth: "200px" }}
                         >
-                          <FileIcon path={file.name} className="size-16" />
+                          <FileIcon path={name} className="size-16" />
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="text-[var(--vscode-descriptionForeground)] text-xs">
-                    {(file.size / 1024).toFixed(1)} KB
-                  </div>
+                  {size !== undefined && (
+                    <div className="text-[var(--vscode-descriptionForeground)] text-xs">
+                      {(size / 1024).toFixed(1)} KB
+                    </div>
+                  )}
                 </div>
               </HoverCardContent>
             )}

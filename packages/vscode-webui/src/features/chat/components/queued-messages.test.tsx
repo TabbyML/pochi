@@ -37,6 +37,29 @@ vi.mock("@/features/tools", () => ({
 }));
 
 describe("QueuedMessages", () => {
+  it("disables editing while preparation is pending and allows it afterwards", () => {
+    const onEdit = vi.fn();
+    const props = {
+      messages: [queuedMessage({ text: "queued text", editable: true })],
+      onRemove: vi.fn(),
+      onEdit,
+    };
+    const { getByLabelText, rerender } = render(
+      <QueuedMessages {...props} allowEdit={false} />,
+    );
+    const editButton = getByLabelText(
+      "chat.editQueuedMessage",
+    ) as HTMLButtonElement;
+    expect(editButton.disabled).toBe(true);
+    editButton.click();
+    expect(onEdit).not.toHaveBeenCalled();
+
+    rerender(<QueuedMessages {...props} allowEdit={true} />);
+    expect(editButton.disabled).toBe(false);
+    editButton.click();
+    expect(onEdit).toHaveBeenCalledWith(0);
+  });
+
   it("uses the todo icon for queued todo-mode messages", () => {
     const { container } = render(
       <QueuedMessages
@@ -170,6 +193,33 @@ describe("QueuedMessages", () => {
     );
   });
 
+  it("edits a queued message that still carries its composer snapshot", () => {
+    const onEdit = vi.fn();
+    const { getByLabelText } = render(
+      <QueuedMessages
+        messages={[queuedMessage({ text: "check this", editable: true })]}
+        onRemove={vi.fn()}
+        onEdit={onEdit}
+      />,
+    );
+
+    getByLabelText("chat.editQueuedMessage").click();
+
+    expect(onEdit).toHaveBeenCalledWith(0);
+  });
+
+  it("hides the edit button when the message has no composer snapshot", () => {
+    const { queryByLabelText } = render(
+      <QueuedMessages
+        messages={[queuedMessage({ text: "check this" })]}
+        onRemove={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    expect(queryByLabelText("chat.editQueuedMessage")).toBeNull();
+  });
+
   it("shows queued notification commands and statuses", () => {
     const { container, getAllByText, getByText, queryByLabelText } = render(
       <QueuedMessages
@@ -246,6 +296,7 @@ function queuedMessage({
   pastedTextCount = 0,
   activeSelection,
   nonRemovable,
+  editable = false,
 }: {
   text: string;
   isTodoMode?: boolean;
@@ -256,6 +307,7 @@ function queuedMessage({
   pastedTextCount?: number;
   activeSelection?: ActiveSelection;
   nonRemovable?: boolean;
+  editable?: boolean;
 }): DraftMessage {
   return {
     parts: [],
@@ -270,5 +322,8 @@ function queuedMessage({
       activeSelection,
       nonRemovable,
     },
+    draft: editable
+      ? { input: { json: null, text }, attachments: [] }
+      : undefined,
   };
 }

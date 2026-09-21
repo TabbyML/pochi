@@ -48,6 +48,7 @@
     "terminalContextCount": "{{count}} terminal selections",
     "pastedTextCount": "{{count}} pasted texts",
     "steer": "Steer",
+    "editQueuedMessage": "Edit queued message",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
     "contextLabelFiles": "files",

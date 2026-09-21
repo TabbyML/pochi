@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import type { PastedTextFile } from "@getpochi/common";
 import type {
   ActiveSelection,
@@ -6,9 +7,9 @@ import type {
   ValidCustomAgentFile,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-// @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import type { JSONContent } from "@tiptap/react";
+import type { FileUIPart } from "ai";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -97,7 +98,7 @@ describe("useChatSubmit", () => {
     chatStateMocks.isExecuting = false;
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
-    vscodeMocks.persistPastedTextFiles.mockClear();
+    vscodeMocks.persistPastedTextFiles.mockReset();
     vscodeMocks.persistPastedTextFiles.mockImplementation(
       async (_taskId: string, texts: string[]) =>
         texts.map((text, index) => ({
@@ -109,6 +110,100 @@ describe("useChatSubmit", () => {
     userEditsMocks.userEdits = [];
     activeSelectionMock.value = undefined;
   });
+
+  describe.each(["handleSubmit", "handleSteerSubmit"] as const)(
+    "%s preparation state",
+    (method) => {
+      it("stays busy through upload and text persistence, but not the response", async () => {
+        const context = setup({
+          isLoading: false,
+          files: [new File(["image"], "image.png", { type: "image/png" })],
+          pastedTexts: ["pasted text"],
+        });
+        let finishUpload!: (parts: FileUIPart[]) => void;
+        let finishPersistence!: (files: PastedTextFile[]) => void;
+        let finishResponse!: () => void;
+        context.upload.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishUpload = resolve;
+            }),
+        );
+        vscodeMocks.persistPastedTextFiles.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishPersistence = resolve;
+            }),
+        );
+        context.sendMessage.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishResponse = resolve;
+            }),
+        );
+
+        let submission!: Promise<void>;
+        await act(async () => {
+          submission = context.result.current[method]();
+        });
+        expect(context.result.current.isPreparingMessage).toBe(true);
+
+        await act(async () => {
+          finishUpload([]);
+        });
+        expect(vscodeMocks.persistPastedTextFiles).toHaveBeenCalledOnce();
+        expect(context.result.current.isPreparingMessage).toBe(true);
+
+        await act(async () => {
+          finishPersistence([]);
+          await submission;
+        });
+        expect(context.sendMessage).toHaveBeenCalledOnce();
+        expect(context.result.current.isPreparingMessage).toBe(false);
+        finishResponse();
+      });
+
+      it.each(["upload", "persistence"])(
+        "unlocks when %s fails",
+        async (stage) => {
+          const context = setup({
+            isLoading: true,
+            files: [new File(["image"], "image.png", { type: "image/png" })],
+            pastedTexts: ["pasted text"],
+          });
+          let fail!: (error: Error) => void;
+          if (stage === "upload") {
+            context.upload.mockImplementationOnce(
+              () =>
+                new Promise((_, reject) => {
+                  fail = reject;
+                }),
+            );
+          } else {
+            vscodeMocks.persistPastedTextFiles.mockImplementationOnce(
+              () =>
+                new Promise((_, reject) => {
+                  fail = reject;
+                }),
+            );
+          }
+          let submission!: Promise<void>;
+          await act(async () => {
+            submission = context.result.current[method]();
+          });
+          expect(context.result.current.isPreparingMessage).toBe(true);
+
+          await act(async () => {
+            fail(new Error("preparation failed"));
+            await submission;
+          });
+          expect(context.result.current.isPreparingMessage).toBe(false);
+          expect(context.clearInput).not.toHaveBeenCalled();
+          expect(context.queuedMessages).toEqual([]);
+        },
+      );
+    },
+  );
 
   describe("handleSubmit", () => {
     it("queues Enter submissions while the chat is busy without stopping", async () => {
@@ -472,10 +567,17 @@ describe("useChatSubmit", () => {
 
     it("queues files and reviews while the chat is busy", async () => {
       const file = new File(["image"], "queued.png", { type: "image/png" });
+      const uploadedPart: FileUIPart = {
+        type: "file",
+        filename: "queued.png",
+        mediaType: "image/png",
+        url: "https://blob/queued.png",
+      };
       const review = createReview("review-1");
       const context = setup({
         isLoading: true,
         files: [file],
+        uploadedAttachments: [uploadedPart],
         reviews: [review],
       });
 
@@ -484,7 +586,12 @@ describe("useChatSubmit", () => {
       });
 
       expect(context.queuedMessages).toEqual([
-        draftMessage({ text: "follow up", filesCount: 1, reviewsCount: 1 }),
+        draftMessage({
+          text: "follow up",
+          filesCount: 1,
+          reviewsCount: 1,
+          attachments: [uploadedPart],
+        }),
       ]);
       expect(context.upload).toHaveBeenCalledOnce();
       expect(context.clearInput).toHaveBeenCalledOnce();
@@ -493,12 +600,38 @@ describe("useChatSubmit", () => {
       expect(context.sendMessage).not.toHaveBeenCalled();
     });
 
+    it("captures the composer snapshot so a queued message can be edited", async () => {
+      const inputJson: JSONContent = {
+        type: "doc",
+        content: [{ type: "paragraph" }],
+      };
+      const context = setup({
+        isLoading: true,
+        inputText: "queued text",
+        inputJson,
+        pastedTexts: ["pasted"],
+      });
+
+      await act(async () => {
+        await context.result.current.handleSubmit();
+      });
+
+      expect(context.queuedMessages[0]?.draft).toEqual({
+        input: {
+          json: inputJson,
+          text: "queued text",
+          pastedTexts: ["pasted"],
+        },
+        attachments: [],
+      });
+    });
+
     it("captures todo mode on queued submissions and resets it", async () => {
-      const onTodoModeQueued = vi.fn();
+      const onTodoModeSubmitted = vi.fn();
       const context = setup({
         isLoading: true,
         isTodoMode: true,
-        onTodoModeQueued,
+        onTodoModeSubmitted,
       });
 
       await act(async () => {
@@ -508,7 +641,8 @@ describe("useChatSubmit", () => {
       expect(context.queuedMessages).toEqual([
         draftMessage({ text: "follow up", isTodoMode: true }),
       ]);
-      expect(onTodoModeQueued).toHaveBeenCalledOnce();
+      expect(onTodoModeSubmitted).toHaveBeenCalledOnce();
+      expect(context.result.current.isPreparingMessage).toBe(false);
     });
 
     it("triggers onBeforeSendText when sending an immediate todo-mode message", async () => {
@@ -584,6 +718,67 @@ describe("useChatSubmit", () => {
   });
 
   describe("handleSteerSubmit", () => {
+    it("allows another message to queue while readiness never arrives", async () => {
+      const context = setup({ isLoading: true });
+      let steering!: Promise<void>;
+      await act(async () => {
+        steering = context.result.current.handleSteerSubmit();
+      });
+
+      try {
+        await act(async () => {
+          await context.result.current.handleSubmit(undefined, {
+            json: null,
+            text: "new queued message",
+          });
+        });
+
+        expect(context.queuedMessages).toEqual([
+          draftMessage({
+            text: "new queued message",
+            inputText: "new queued message",
+          }),
+        ]);
+        expect(context.sendMessage).not.toHaveBeenCalled();
+        expect(context.result.current.isPreparingMessage).toBe(false);
+      } finally {
+        // End the pending operation after checking behavior without readiness.
+        await act(async () => context.rerender({ isLoading: false }));
+        await act(async () => {
+          await steering;
+        });
+      }
+    });
+
+    it("consumes Todo mode before waiting and does not clear it again afterwards", async () => {
+      const onTodoModeSubmitted = vi.fn();
+      const onBeforeSendText = vi.fn();
+      const context = setup({
+        isLoading: true,
+        isTodoMode: true,
+        onTodoModeSubmitted,
+        onBeforeSendText,
+      });
+      let steering!: Promise<void>;
+      await act(async () => {
+        steering = context.result.current.handleSteerSubmit();
+      });
+
+      try {
+        expect(onTodoModeSubmitted).toHaveBeenCalledOnce();
+        expect(context.result.current.isPreparingMessage).toBe(false);
+        expect(onBeforeSendText).not.toHaveBeenCalled();
+      } finally {
+        await act(async () => context.rerender({ isLoading: false }));
+        await act(async () => {
+          await steering;
+        });
+      }
+      expect(onTodoModeSubmitted).toHaveBeenCalledOnce();
+      expect(context.clearInput).toHaveBeenCalledOnce();
+      expect(onBeforeSendText).toHaveBeenCalledWith("follow up");
+    });
+
     it("stops the current stream and sends the message immediately", async () => {
       const context = setup({ isLoading: true });
 
@@ -1032,6 +1227,7 @@ function setup({
   pastedTexts = [],
   queuedMessages: initialQueuedMessages = [],
   files = [],
+  uploadedAttachments = [],
   reviews = [],
   skills = [],
   customAgents = [],
@@ -1039,7 +1235,7 @@ function setup({
   terminalContextSelections = [],
   isTodoMode = false,
   canCreateTodo = true,
-  onTodoModeQueued,
+  onTodoModeSubmitted,
   onBeforeSendText,
   flushBackgroundJobNotifications,
 }: {
@@ -1049,6 +1245,7 @@ function setup({
   pastedTexts?: string[];
   queuedMessages?: DraftMessage[];
   files?: File[];
+  uploadedAttachments?: FileUIPart[];
   reviews?: Review[];
   skills?: ValidSkillFile[];
   customAgents?: ValidCustomAgentFile[];
@@ -1056,7 +1253,7 @@ function setup({
   terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
   canCreateTodo?: boolean;
-  onTodoModeQueued?: () => void;
+  onTodoModeSubmitted?: () => void;
   onBeforeSendText?: (text: string) => void;
   flushBackgroundJobNotifications?: () => boolean;
 }) {
@@ -1066,7 +1263,7 @@ function setup({
   const clearFiles = vi.fn();
   const clearTerminalContextSelections = vi.fn();
 
-  const upload = vi.fn(() => Promise.resolve([]));
+  const upload = vi.fn(() => Promise.resolve(uploadedAttachments));
 
   const hook = renderHook(
     (props: {
@@ -1135,7 +1332,7 @@ function setup({
         taskId: "task-1",
         isTodoMode,
         canCreateTodo,
-        onTodoModeQueued,
+        onTodoModeSubmitted,
         onBeforeSendText,
         flushBackgroundJobNotifications,
       });
@@ -1179,6 +1376,9 @@ function setup({
 
 function draftMessage({
   text,
+  // `setup` submits the untrimmed editor text by default.
+  inputText = ` ${text} `,
+  attachments = [],
   filesCount = 0,
   reviewsCount = 0,
   userEditsCount = 0,
@@ -1187,6 +1387,8 @@ function draftMessage({
   activeSelection,
 }: {
   text: string;
+  inputText?: string;
+  attachments?: FileUIPart[];
   filesCount?: number;
   reviewsCount?: number;
   userEditsCount?: number;
@@ -1204,6 +1406,10 @@ function draftMessage({
       terminalContextCount,
       isTodoMode,
       activeSelection,
+    },
+    draft: {
+      input: { json: null, text: inputText, pastedTexts: [] },
+      attachments,
     },
   };
 }
