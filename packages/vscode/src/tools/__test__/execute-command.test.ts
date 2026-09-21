@@ -287,7 +287,7 @@ describe("executeCommand Tool", () => {
 
     assert.deepStrictEqual(result, {
       output:
-        'Background command "bgjob-cmd-test" started. Its output is written to "/tmp/bgjob-cmd-test.log". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.',
+        'Background job started.\nJob ID: "bgjob-cmd-test"\nOutput file: "/tmp/bgjob-cmd-test.log"\n\nThis confirms only that the job started, not that it completed successfully. Continue any independent work. Do not poll for completion or infer the final status from the output file; the completion notification is authoritative. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job\'s outcome.',
       isTruncated: false,
       _meta: {
         backgroundJobId: "bgjob-cmd-test",
@@ -412,7 +412,7 @@ describe("executeCommand Tool", () => {
       assert.strictEqual(maybePersistToolResult.callCount, 0);
       assert.deepStrictEqual(values.at(-1), {
         content:
-          'Background command "bgjob-cmd-promoted" started. Its output is written to "/tmp/bgjob-cmd-promoted.log". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.',
+          'Background job started.\nJob ID: "bgjob-cmd-promoted"\nOutput file: "/tmp/bgjob-cmd-promoted.log"\n\nThis confirms only that the job started, not that it completed successfully. Continue any independent work. Do not poll for completion or infer the final status from the output file; the completion notification is authoritative. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job\'s outcome.',
         status: "completed",
         isTruncated: false,
         _meta: {

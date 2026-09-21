@@ -130,7 +130,7 @@ const executeCommandBackgroundProps: ExecuteCommandProp["tool"] = {
   },
   output: {
     output:
-      'Background command "bgjob-cmd-123" started. Its output is written to "/tmp/bgjob-cmd-123.log". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.',
+      'Background job started.\nJob ID: "bgjob-cmd-123"\nOutput file: "/tmp/bgjob-cmd-123.log"\n\nThis confirms only that the job started, not that it completed successfully. Continue any independent work. Do not poll for completion or infer the final status from the output file; the completion notification is authoritative. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job\'s outcome.',
     isTruncated: false,
     _meta: {
       backgroundJobId: "bgjob-cmd-123",

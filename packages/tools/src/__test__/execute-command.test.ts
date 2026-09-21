@@ -8,10 +8,15 @@ describe("createBackgroundCommandResult", () => {
       "/tmp/bgjob-cmd-test.log",
     );
 
-    expect(result.output).toContain("bgjob-cmd-test");
-    expect(result.output).toContain("/tmp/bgjob-cmd-test.log");
-    expect(result.output).toContain("Do not infer job status");
-    expect(result.output).toContain("read the output file if needed");
+    expect(result.output).toContain('Job ID: "bgjob-cmd-test"');
+    expect(result.output).toContain(
+      'Output file: "/tmp/bgjob-cmd-test.log"',
+    );
+    expect(result.output).toContain(
+      "not that it completed successfully",
+    );
+    expect(result.output).toContain("Do not poll for completion");
+    expect(result.output).toContain("yield the current turn");
     expect(result._meta).toEqual({
       backgroundJobId: "bgjob-cmd-test",
       outputFile: "/tmp/bgjob-cmd-test.log",

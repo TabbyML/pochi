@@ -223,7 +223,11 @@ export function createBackgroundCommandResult(
   outputFile: string,
 ) {
   return {
-    output: `Background command "${backgroundJobId}" started. Its output is written to "${outputFile}". Do not infer job status from empty or partial output, and do not sleep or poll. Continue independent work, or use attemptCompletion if nothing else remains. After the completion notification resumes the task with its final status, read the output file if needed.`,
+    output: `Background job started.
+Job ID: "${backgroundJobId}"
+Output file: "${outputFile}"
+
+This confirms only that the job started, not that it completed successfully. Continue any independent work. Do not poll for completion or infer the final status from the output file; the completion notification is authoritative. If no independent work remains, call attemptCompletion to yield the current turn without claiming the job's outcome.`,
     isTruncated: false,
     _meta: { backgroundJobId, outputFile },
   };
