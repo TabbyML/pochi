@@ -1,9 +1,10 @@
 import assert from "assert";
 import { TaskHistoryStore } from "../task-history-store";
+import { taskUpdated } from "../task-events";
 import * as vscode from "vscode";
 import sinon from "sinon";
 import "reflect-metadata";
-import { TextEncoder } from "util";
+import { TextDecoder, TextEncoder } from "util";
 
 describe("TaskHistoryStore", () => {
   let context: vscode.ExtensionContext;
@@ -50,6 +51,9 @@ describe("TaskHistoryStore", () => {
   });
 
   afterEach(async () => {
+    // Listeners are registered on a module level emitter, so leaking a store
+    // would make it observe events fired by later tests.
+    taskStore?.dispose();
     clock.restore();
     sinon.restore();
     try {
@@ -183,5 +187,115 @@ describe("TaskHistoryStore", () => {
     const content = await vscode.workspace.fs.readFile(fileUri);
     const savedTasks = JSON.parse(content.toString());
     assert.strictEqual(Object.keys(savedTasks).length, 3);
+  });
+
+  it("should back up an unparsable file instead of dropping it", async () => {
+    const fileUri = vscode.Uri.joinPath(tempStorageUri, "tasks.json");
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      new TextEncoder().encode('{"task-1": {"id": "task-1", "updatedAt": 1')
+    );
+
+    taskStore = new TaskHistoryStore(context);
+    await taskStore.ready;
+
+    assert.strictEqual(Object.keys(taskStore.tasks.value).length, 0);
+
+    const entries = await vscode.workspace.fs.readDirectory(tempStorageUri);
+    const backups = entries.filter(([name]) =>
+      name.startsWith("tasks.corrupted-")
+    );
+    assert.strictEqual(backups.length, 1);
+
+    // The original file is moved away, not left behind truncated.
+    await assert.rejects(() => vscode.workspace.fs.stat(fileUri) as any);
+  });
+
+  it("should shrink oversized task errors before persisting", async () => {
+    taskStore = new TaskHistoryStore(context);
+    await taskStore.ready;
+
+    const requestBodyValues = { prompt: "x".repeat(200_000) };
+    taskUpdated.fire({
+      event: {
+        id: "task-huge",
+        parentId: null,
+        shareId: null,
+        updatedAt: Date.now(),
+        error: JSON.stringify({
+          kind: "APICallError",
+          isRetryable: false,
+          message: "string too long",
+          requestBodyValues,
+        }),
+      },
+    });
+
+    const stored = taskStore.tasks.value["task-huge"];
+    assert.ok(stored.error);
+    assert.ok(stored.error.length < 1024);
+    const parsed = JSON.parse(stored.error);
+    assert.strictEqual(parsed.kind, "APICallError");
+    assert.strictEqual(parsed.isRetryable, false);
+    assert.strictEqual(parsed.message, "string too long");
+    assert.strictEqual(
+      parsed.requestBodyValues.omitted,
+      "requestBodyValues too large"
+    );
+  });
+
+  it("should not overwrite tasks written by another window", async () => {
+    const now = Date.now();
+    const fileUri = vscode.Uri.joinPath(tempStorageUri, "tasks.json");
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      new TextEncoder().encode(
+        JSON.stringify({
+          "task-shared": { id: "task-shared", updatedAt: now },
+        })
+      )
+    );
+
+    taskStore = new TaskHistoryStore(context);
+    await taskStore.ready;
+
+    // Another window appends its own task to the shared file.
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      new TextEncoder().encode(
+        JSON.stringify({
+          "task-shared": { id: "task-shared", updatedAt: now },
+          "task-other-window": { id: "task-other-window", updatedAt: now + 1 },
+        })
+      )
+    );
+
+    taskUpdated.fire({
+      event: {
+        id: "task-mine",
+        parentId: null,
+        shareId: null,
+        updatedAt: now + 2,
+      },
+    });
+
+    // Closing the window must flush synchronously, and keep the other
+    // window's task.
+    taskStore.dispose();
+
+    const content = await vscode.workspace.fs.readFile(fileUri);
+    const savedTasks = JSON.parse(new TextDecoder().decode(content));
+    assert.deepStrictEqual(Object.keys(savedTasks).sort(), [
+      "task-mine",
+      "task-other-window",
+      "task-shared",
+    ]);
+
+    // No temp file is left behind.
+    const entries = await vscode.workspace.fs.readDirectory(tempStorageUri);
+    assert.strictEqual(
+      entries.filter(([name]) => name.includes(".tmp.json")).length,
+      0
+    );
   });
 });
