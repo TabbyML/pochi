@@ -4,6 +4,7 @@ import proxyquire from "proxyquire";
 import sinon from "sinon";
 
 interface FakePty {
+  pid: number;
   onData(listener: (data: string) => void): void;
   onExit(listener: (event: { exitCode: number }) => void): void;
   write(data: string): void;
@@ -15,6 +16,7 @@ function createHarness(kill = sinon.stub(), launchNonce?: string) {
   let dataListener: ((data: string) => void) | undefined;
   let exitListener: ((event: { exitCode: number }) => void) | undefined;
   const fakePty: FakePty = {
+    pid: 12345,
     onData: (listener) => {
       dataListener = listener;
     },
@@ -171,6 +173,96 @@ describe("PtyProcess", () => {
       clock.restore();
     }
   });
+
+  it("finishes group escalation after shell exit and shares repeated cancellation", async () => {
+    const clock = sinon.useFakeTimers();
+    const kill = sinon.stub(process, "kill").returns(true);
+    try {
+      const harness = createHarness();
+      const stopped = harness.ptyProcess.killProcessGroup();
+      assert.strictEqual(harness.ptyProcess.killProcessGroup(), stopped);
+      await clock.tickAsync(0);
+      assert.ok(kill.calledWithExactly(-12345, "SIGTERM"));
+      harness.exit(143);
+
+      await clock.tickAsync(1_999);
+      assert.ok(!kill.calledWithExactly(-12345, "SIGKILL"));
+      assert.strictEqual(harness.ptyProcess.killProcessGroup(), stopped);
+      await clock.tickAsync(1);
+      await stopped;
+      assert.ok(kill.calledWithExactly(-12345, "SIGKILL"));
+      assert.strictEqual(kill.withArgs(-12345, "SIGTERM").callCount, 1);
+      assert.strictEqual(kill.withArgs(-12345, "SIGKILL").callCount, 1);
+      assert.ok(harness.kill.notCalled);
+    } finally {
+      kill.restore();
+      clock.restore();
+    }
+  });
+
+  it("stops polling once the process group disappears", async () => {
+    const clock = sinon.useFakeTimers();
+    const kill = sinon.stub(process, "kill").returns(true);
+    try {
+      const harness = createHarness();
+      const stopped = harness.ptyProcess.killProcessGroup();
+      await clock.tickAsync(0);
+      kill
+        .withArgs(-12345, 0)
+        .throws(Object.assign(new Error("gone"), { code: "ESRCH" }));
+      await clock.tickAsync(50);
+      await stopped;
+      const calls = kill.callCount;
+      await clock.tickAsync(3_000);
+      assert.strictEqual(kill.callCount, calls);
+      assert.ok(!kill.calledWithExactly(-12345, "SIGKILL"));
+    } finally {
+      kill.restore();
+      clock.restore();
+    }
+  });
+
+  it("keeps cleaning up when a group existence probe returns EPERM", async () => {
+    const clock = sinon.useFakeTimers();
+    const kill = sinon.stub(process, "kill").returns(true);
+    try {
+      const harness = createHarness();
+      kill
+        .withArgs(-12345, 0)
+        .throws(Object.assign(new Error("zombie"), { code: "EPERM" }));
+      const stopped = harness.ptyProcess.killProcessGroup();
+      await clock.tickAsync(2_000);
+      await stopped;
+      assert.ok(kill.calledWithExactly(-12345, "SIGKILL"));
+      harness.exit(137);
+    } finally {
+      kill.restore();
+      clock.restore();
+    }
+  });
+
+  for (const signal of ["SIGTERM", "SIGKILL"] as const) {
+    it(`rejects a failed group ${signal} signal`, async () => {
+      const clock = sinon.useFakeTimers();
+      const kill = sinon.stub(process, "kill").returns(true);
+      try {
+        const harness = createHarness();
+        const error = Object.assign(new Error(`failed ${signal}`), {
+          code: "EPERM",
+        });
+        kill.withArgs(-12345, signal).throws(error);
+        const rejected = assert.rejects(
+          harness.ptyProcess.killProcessGroup(),
+          error,
+        );
+        await clock.tickAsync(2_000);
+        await rejected;
+      } finally {
+        kill.restore();
+        clock.restore();
+      }
+    });
+  }
 
   it("confirms the launch and hides the marker from the output stream", async () => {
     const harness = createHarness(sinon.stub(), LaunchNonce);

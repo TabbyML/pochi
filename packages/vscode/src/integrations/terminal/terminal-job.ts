@@ -61,6 +61,7 @@ export class TerminalJob implements vscode.Disposable {
     TerminalJob.onDidMonitorEventEmitter.event;
   private monitorWatcher: MonitorWatcher | undefined;
   private monitorEndReason: string | undefined;
+  private monitorTermination: Promise<void> | undefined;
 
   get monitorDescription() {
     return this.config.monitor?.description;
@@ -508,7 +509,14 @@ export class TerminalJob implements vscode.Disposable {
     this.stopRequested = true;
     logger.info(`Stopping terminal job ${this.id}: ${reason}`);
     if (this.ptyProcess) {
-      this.ptyProcess.kill();
+      if (this.monitorWatcher) {
+        this.monitorTermination = this.ptyProcess.killProcessGroup();
+        // A failed signal can leave the shell alive, so report the failure
+        // without relying on its exit callback to finalize the monitor.
+        void this.monitorTermination.catch(() => this.finalize(undefined));
+      } else {
+        this.ptyProcess.kill();
+      }
     } else {
       this.terminal?.dispose();
     }
@@ -597,6 +605,17 @@ export class TerminalJob implements vscode.Disposable {
     this.setVisible(false);
 
     let executionError = initialError ?? this.persistenceError;
+    let terminationFailed = false;
+    try {
+      // Shell exit does not imply group exit. Finish the monitor's TERM grace
+      // period and escalation before closing its transcript or reporting stop.
+      await this.monitorTermination;
+    } catch (error) {
+      terminationFailed = true;
+      executionError = ExecutionError.create(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     if (
       exitCode !== undefined &&
       exitCode !== 0 &&
@@ -629,8 +648,9 @@ export class TerminalJob implements vscode.Disposable {
     }
     this.outputManager.finalize(executionError);
 
-    const status =
-      this.stopRequested || executionError?.aborted
+    const status = terminationFailed
+      ? "failed"
+      : this.stopRequested || executionError?.aborted
         ? "stopped"
         : exitCode === 0 && !executionError
           ? "completed"
@@ -649,8 +669,8 @@ export class TerminalJob implements vscode.Disposable {
       this.monitorWatcher.end();
       this.emitMonitorEvent([], {
         reason:
-          this.monitorEndReason ??
           executionError?.message ??
+          this.monitorEndReason ??
           `exited with code ${exitCode ?? "unknown"}`,
         status,
         ...(exitCode !== undefined ? { exitCode } : {}),

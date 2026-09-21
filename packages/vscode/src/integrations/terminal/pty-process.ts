@@ -136,6 +136,7 @@ export class PtyProcess {
   private forceKillTimer: ReturnType<typeof setTimeout> | undefined;
   private hardKillExitTimer: ReturnType<typeof setTimeout> | undefined;
   private terminationRequested = false;
+  private groupTermination: Promise<void> | undefined;
   private readonly launchFilter: LaunchMarkerFilter | undefined;
   private readonly launchListeners = new Set<(error?: Error) => void>();
   private launchSettled = false;
@@ -376,6 +377,41 @@ export class PtyProcess {
       this.sendSignal("SIGKILL");
       this.scheduleSyntheticHardKillExit();
     }, TerminationGraceMs);
+  }
+
+  /** Stop a POSIX monitor's process group, even if its shell exits first. */
+  killProcessGroup(): Promise<void> {
+    // Assign the promise before sending signals, so exit callbacks and repeated
+    // cancellation share the same cleanup and cannot shorten the grace period.
+    this.groupTermination ??= Promise.resolve().then(async () => {
+      const signal = (name: NodeJS.Signals | 0) => {
+        try {
+          process.kill(-this.process.pid, name);
+          return true;
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (code === "ESRCH") return false;
+          // macOS may report EPERM for a group with zombies awaiting reaping.
+          if (name === 0 && code === "EPERM") return true;
+          throw error;
+        }
+      };
+
+      if (!signal("SIGTERM")) return;
+      const deadline = Date.now() + TerminationGraceMs;
+      while (signal(0)) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+          signal("SIGKILL");
+          this.scheduleSyntheticHardKillExit();
+          return;
+        }
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, Math.min(50, remaining)),
+        );
+      }
+    });
+    return this.groupTermination;
   }
 
   private sendSignal(signal: string): void {
