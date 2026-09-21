@@ -90,7 +90,7 @@ const finished = (id = "bgjob-cmd-one") =>
   });
 
 describe("BackgroundJobManager", () => {
-  it("waits for cooldown expiry even after the last monitor exits", async () => {
+  it("wakes immediately for the final monitor event after a previous delivery", async () => {
     vi.useFakeTimers();
     const { manager, observers } = setup();
     try {
@@ -103,13 +103,8 @@ describe("BackgroundJobManager", () => {
       manager.takeReadyNotifications("parent", [{ ...ended, notificationId: "previous", ended: undefined }]);
       observers.get("parent")!({ running: {}, notifications: [ended] });
       expect(manager.hasPending("parent")).toBe(false);
-      const settled = vi.fn();
-      const waiting = manager.wait("parent", { wakeOnNotifications: true }).then(settled);
-      await vi.advanceTimersByTimeAsync(5999);
-      expect(settled).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(1);
-      await waiting;
-      expect(settled).toHaveBeenCalledExactlyOnceWith("notifications");
+      expect(await manager.wait("parent", { wakeOnNotifications: true })).toBe("notifications");
+      expect(vi.getTimerCount()).toBe(0);
       expect(manager.takeReadyNotifications("parent", manager.getPendingNotifications("parent"))).toEqual([ended]);
     } finally {
       await manager.dispose();

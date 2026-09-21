@@ -30,10 +30,7 @@ import {
 import { defaultCatalog as catalog } from "../livestore";
 import { createBackgroundSubagentNotification } from "../task-utils";
 import type { LiveKitStore, Message } from "../types";
-import {
-  MonitorDelivery,
-  type MonitorDeliveryOptions,
-} from "./monitor-delivery";
+import { MonitorDelivery } from "./monitor-delivery";
 import type { BackgroundJobEntry, JobStatus } from "./state";
 
 const logger = getLogger("BackgroundJobManager");
@@ -674,11 +671,7 @@ export class BackgroundJobManager {
   private monitorDelivery(taskId: string) {
     let delivery = this.monitorDeliveries.get(taskId);
     if (!delivery) {
-      delivery = new MonitorDelivery(() => {
-        if (this.disposed) return;
-        this.changedTasks.add(taskId);
-        this.changed();
-      });
+      delivery = new MonitorDelivery();
       this.monitorDeliveries.set(taskId, delivery);
     }
     return delivery;
@@ -693,9 +686,12 @@ export class BackgroundJobManager {
   takeReadyNotifications(
     taskId: string,
     notifications: readonly BackgroundJobEvent[],
-    options?: MonitorDeliveryOptions,
+    maxMonitorCharacters?: number,
   ): BackgroundJobEvent[] {
-    return this.monitorDelivery(taskId).take(notifications, options);
+    return this.monitorDelivery(taskId).take(
+      notifications,
+      maxMonitorCharacters,
+    );
   }
 
   private readNotifications(taskId: string) {
@@ -1023,7 +1019,7 @@ export class BackgroundJobManager {
     if (this.disposed) return;
     this.disposed = true;
     this.disposeCommands?.();
-    for (const delivery of this.monitorDeliveries.values()) delivery.dispose();
+    this.monitorDeliveries.clear();
     for (const subscription of this.subscriptions.values()) {
       subscription.dispose?.();
       clearTimeout(subscription.acknowledgeRetry);

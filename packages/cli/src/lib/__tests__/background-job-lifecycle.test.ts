@@ -239,7 +239,7 @@ describe("CLI monitor finalization", () => {
     },
   );
 
-  it("delivers a finished monitor during cooldown without waiting when async wait is disabled", async () => {
+  it("delivers a finished monitor after a previous delivery when async wait is disabled", async () => {
     const fixture = await setup(0);
     const { adaptor, manager, internals } = fixture;
     try {
@@ -257,7 +257,7 @@ describe("CLI monitor finalization", () => {
       manager.takeReadyNotifications("parent", [
         { ...first, notificationId: "previous-delivery" },
       ]);
-      expect(manager.getReadyNotifications("parent")).toEqual([]);
+      expect(manager.getReadyNotifications("parent")).not.toEqual([]);
       expect(await internals.step()).toBe("next");
       const batches =
         internals.chat.messages

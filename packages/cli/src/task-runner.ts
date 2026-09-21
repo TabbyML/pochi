@@ -548,14 +548,7 @@ export class TaskRunner {
         if (shouldWaitForBackgroundWork) {
           if (!(await this.waitForAsyncWork())) return "finished";
         }
-        if (
-          this.chatKit.flushBackgroundJobNotifications({
-            allowEndedDuringCooldown: !this.backgroundJobs.hasPending(
-              this.taskId,
-            ),
-          })
-        )
-          return "next";
+        if (this.chatKit.flushBackgroundJobNotifications()) return "next";
       }
 
       if (this.attemptCompletionHook && isResultMessage(lastMessage)) {
