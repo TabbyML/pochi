@@ -229,6 +229,7 @@ function Chat({
     store,
     blobStore,
     taskId: uid,
+    cwd: info.cwd,
     getters,
     isSubTask,
     customAgent,

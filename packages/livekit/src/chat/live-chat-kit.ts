@@ -255,6 +255,8 @@ export type LiveChatKitBackgroundJobNotificationOptions = {
 export type LiveChatKitOptions<T> = {
   backgroundJobManager?: BackgroundJobManager;
   taskId: string;
+  /** Known working directory for creating a task before request preparation. */
+  cwd?: string;
 
   abortSignal?: AbortSignal;
 
@@ -392,6 +394,7 @@ export class LiveChatKit<
 
   constructor({
     taskId,
+    cwd,
     abortSignal,
     store,
     blobStore,
@@ -488,6 +491,11 @@ export class LiveChatKit<
       // Mark status to make async behaivor blocked based on status (e.g isLoading )
       const { messages } = this.chat;
       const lastMessage = messages.at(-1);
+      // Persist an actual submission before environment or memory loading can
+      // fail. Hosts without a known cwd still initialize in onStart.
+      if (lastMessage && cwd !== undefined) {
+        this.ensureInited(cwd);
+      }
       const isManualCompact =
         lastMessage?.role === "user" &&
         lastMessage.metadata?.kind === "user" &&
