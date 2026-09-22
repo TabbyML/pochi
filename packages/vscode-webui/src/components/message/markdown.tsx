@@ -118,7 +118,14 @@ function InlineCodeComponent({
     const { path, startLine, endLine } = parseFilePathLineRange(children);
 
     // children may be file path, folder path, symbol or normal text, we need to handle each case
-    const outputFile = parseBackgroundJobOutputFilePath(path);
+    // The parser matches a path suffix; only use it for standalone paths so
+    // shell commands and unrelated URLs stay readable as inline code.
+    const isStandalonePath =
+      !/\s/.test(path) &&
+      (!path.includes("://") || path.startsWith("pochi://"));
+    const outputFile = isStandalonePath
+      ? parseBackgroundJobOutputFilePath(path)
+      : undefined;
     if (outputFile) {
       return (
         <BackgroundJobOutputBadge
