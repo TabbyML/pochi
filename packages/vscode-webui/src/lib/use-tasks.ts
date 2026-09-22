@@ -1,9 +1,12 @@
 import { vscodeHost } from "@/lib/vscode";
+import { getLogger } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import { Schema } from "@livestore/livestore";
 import { computed } from "@preact/signals-core";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
+
+const logger = getLogger("useTasks");
 
 /** @useSignals */
 export const useTasks = () => {
@@ -19,11 +22,20 @@ export const useTasks = () => {
 async function readTasks() {
   const tasks = threadSignal(await vscodeHost.readTasks());
   return computed(() =>
-    Object.values(tasks.value).map((v) =>
-      Schema.decodeUnknownSync(catalog.tables.tasks.rowSchema)(
-        normalizeTaskRow(v),
-      ),
-    ),
+    // Decode row by row: a single incompatible row (e.g. written by another
+    // extension version) must not take down the whole task list.
+    Object.values(tasks.value).flatMap((v) => {
+      try {
+        return [
+          Schema.decodeUnknownSync(catalog.tables.tasks.rowSchema)(
+            normalizeTaskRow(v),
+          ),
+        ];
+      } catch (error) {
+        logger.warn("Skipping task that failed to decode", error);
+        return [];
+      }
+    }),
   );
 }
 

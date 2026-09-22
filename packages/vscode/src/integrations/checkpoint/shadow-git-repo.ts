@@ -3,11 +3,27 @@ import * as path from "node:path";
 import { constants, getLogger, toErrorMessage } from "@getpochi/common";
 import { isFileExists } from "@getpochi/common/tool-utils";
 import simpleGit, { type SimpleGit } from "simple-git";
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 import type { FileChange } from "../editor/diff-changes-editor";
 import { writeExcludesFile } from "./shadow-git-excludes";
 
 const logger = getLogger("ShadowGitRepo");
+
+let gitUnavailableNotified = false;
+
+function notifyGitUnavailable(errorMessage: string) {
+  if (gitUnavailableNotified) return;
+  gitUnavailableNotified = true;
+
+  // On macOS git is a shim that breaks after an Xcode update until the
+  // command line tools are reinstalled.
+  const hint = errorMessage.includes("xcrun")
+    ? 'Run "xcode-select --install" in a terminal, then reload the window.'
+    : "Install git and make sure it is available on your PATH, then reload the window.";
+  void vscode.window.showWarningMessage(
+    `Pochi checkpoints are unavailable because git cannot run: ${errorMessage}. ${hint}`,
+  );
+}
 
 export class ShadowGitRepo implements vscode.Disposable {
   private git: SimpleGit;
@@ -22,6 +38,7 @@ export class ShadowGitRepo implements vscode.Disposable {
       }).version();
     } catch (error) {
       const errorMessage = toErrorMessage(error);
+      notifyGitUnavailable(errorMessage);
       throw new Error(
         `Git must be installed to use checkpoints: ${errorMessage}`,
       );

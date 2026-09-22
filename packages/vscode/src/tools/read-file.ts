@@ -1,4 +1,5 @@
 import { TerminalHistoryManager } from "@/integrations/terminal/terminal-history";
+import { TerminalJob } from "@/integrations/terminal/terminal-job";
 import { getVscodeFileMtime } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { parseBackgroundJobOutputFilePath } from "@getpochi/common/pochi-file-system";
@@ -6,6 +7,8 @@ import {
   FileUnchangedStub,
   isPlainText,
   isVirtualPath,
+  parseBackgroundCommandOutputFilePath,
+  prependBackgroundCommandRunningHint,
   readMediaFile,
   resolveReadFileRange,
   selectFileContent,
@@ -87,15 +90,21 @@ export const readFile: ToolFunctionType<ClientTools["readFile"]> = async (
 
   if (cacheResult.deduplicated) {
     logger.debug(`readFile: returning FileUnchangedStub for "${path}"`);
-    return addTerminalMetadata(path, {
-      content: FileUnchangedStub,
-      isTruncated: false,
-      filePath: cacheResult.resolvedPath,
-    });
+    return addRunningCommandHint(
+      path,
+      addTerminalMetadata(path, {
+        content: FileUnchangedStub,
+        isTruncated: false,
+        filePath: cacheResult.resolvedPath,
+      }),
+    );
   }
 
   logger.debug(`readFile: returning fresh content for "${path}"`);
-  return addTerminalMetadata(path, cacheResult.result);
+  return addRunningCommandHint(
+    path,
+    addTerminalMetadata(path, cacheResult.result),
+  );
 };
 
 function assertTerminalTranscriptAvailable(path: string): void {
@@ -106,6 +115,29 @@ function assertTerminalTranscriptAvailable(path: string): void {
   if (!history?.hasCapturedCommand) {
     throw new Error("No terminal output is available to read.");
   }
+}
+
+/**
+ * Reports liveness for a managed background command transcript. The job
+ * registry is the only status source; file content, size, or cache behavior
+ * never imply whether the process is still running.
+ */
+function addRunningCommandHint(
+  path: string,
+  result: ReadFileOutput,
+): ReadFileOutput {
+  if (result.type === "media") return result;
+
+  const backgroundJobId = parseBackgroundCommandOutputFilePath(path);
+  if (!backgroundJobId) return result;
+
+  const job = TerminalJob.get(backgroundJobId);
+  if (!job || job.isFinished) return result;
+
+  return {
+    ...result,
+    content: prependBackgroundCommandRunningHint(result.content),
+  };
 }
 
 function addTerminalMetadata(

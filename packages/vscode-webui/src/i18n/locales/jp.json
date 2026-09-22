@@ -46,6 +46,7 @@
     "terminalContextCount": "{{count}} 件のターミナル選択",
     "pastedTextCount": "{{count}} 件の貼り付けテキスト",
     "steer": "介入",
+    "editQueuedMessage": "キュー内のメッセージを編集",
     "copyImage": "画像をコピー",
     "openImage": "画像を開く",
     "contextLabelFiles": "添付ファイル",
@@ -423,7 +424,9 @@
     "problemsDetectedTooltip": "変更後に問題が検出されました"
   },
   "fileBadge": {
-    "modifiedByPochi": "（Pochi により変更）"
+    "modifiedByPochi": "（Pochi により変更）",
+    "backgroundJobOutput": "{{displayId}} の出力",
+    "terminalOutput": "ターミナル出力"
   },
   "codeBlock": {
     "showCode": "コードを表示",

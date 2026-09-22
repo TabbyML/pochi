@@ -51,6 +51,51 @@ export function toTaskStatus(
   return "failed";
 }
 
+/**
+ * Task errors are persisted in the `tasks.error` column, which is synced as a
+ * single LiveStore event and mirrored into the task history file. Oversized
+ * payloads (e.g. `APICallError.requestBodyValues` holds the whole request body,
+ * which is huge exactly when the request was rejected for being too large)
+ * would exceed the sync transport limit and wedge the store, so both the
+ * message and the request body are capped here.
+ */
+const MaxTaskErrorMessageChars = 4_000;
+const MaxRequestBodyValuesChars = 4_000;
+
+export function truncateTaskErrorMessage(message: string): string {
+  if (message.length <= MaxTaskErrorMessageChars) {
+    return message;
+  }
+  const dropped = message.length - MaxTaskErrorMessageChars;
+  return `${message.slice(0, MaxTaskErrorMessageChars)}… [truncated ${dropped} characters]`;
+}
+
+export function compactRequestBodyValues(value: unknown): unknown {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  let serialized: string | undefined;
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    return { omitted: "requestBodyValues is not serializable" };
+  }
+
+  if (serialized === undefined) {
+    return null;
+  }
+
+  if (serialized.length <= MaxRequestBodyValuesChars) {
+    return value;
+  }
+
+  return {
+    omitted: "requestBodyValues too large",
+    size: serialized.length,
+  };
+}
+
 export function toTaskError(
   error: unknown,
 ): NonNullable<(typeof tables.tasks.Type)["error"]> {
@@ -58,15 +103,15 @@ export function toTaskError(
     return {
       kind: "APICallError",
       isRetryable: error.isRetryable,
-      message: error.message,
-      requestBodyValues: error.requestBodyValues,
+      message: truncateTaskErrorMessage(error.message),
+      requestBodyValues: compactRequestBodyValues(error.requestBodyValues),
     };
   }
 
   const internalError = (message: string) => {
     return {
       kind: "InternalError",
-      message,
+      message: truncateTaskErrorMessage(message),
     } as const;
   };
 
@@ -83,7 +128,7 @@ export function toTaskError(
   if (isAbortError(error)) {
     return {
       kind: "AbortError",
-      message: error.message,
+      message: truncateTaskErrorMessage(error.message),
     };
   }
 

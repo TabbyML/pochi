@@ -239,8 +239,16 @@ export function injectEnvironment(
     ),
   );
   const visibleMessages = messages.slice(Math.max(compactIndex, 0));
-  const messageToInject = visibleMessages.at(-1);
-  if (messageToInject?.role !== "user") return messages;
+  let messageToInject = visibleMessages.at(-1);
+  if (messageToInject?.role !== "user") {
+    // Tool continuations may compact away the full environment. Repair the
+    // visible user context only when needed, keeping normal continuations stable.
+    if (hasCompleteEnvironmentPrompt(visibleMessages)) return messages;
+    messageToInject = visibleMessages.findLast(
+      (message) => message.role === "user",
+    );
+  }
+  if (!messageToInject) return messages;
 
   const { gitStatus } = environment.workspace;
   const user =

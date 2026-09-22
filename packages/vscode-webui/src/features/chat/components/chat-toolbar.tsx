@@ -101,6 +101,7 @@ interface ChatToolbarProps {
   pendingBackgroundJobNotifications?: readonly BackgroundJobNotificationPart[];
   /** Asks the chat kit to deliver those notifications right away. */
   flushBackgroundJobNotifications?: () => boolean;
+  persistToolOutput: () => void;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
   onToolsExecutionEnded?: () => void;
@@ -129,6 +130,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   getSystemPrompt,
   pendingBackgroundJobNotifications,
   flushBackgroundJobNotifications,
+  persistToolOutput,
   onToolCallApprovalVisible,
   onToolsExecutionStarted,
   onToolsExecutionEnded,
@@ -200,12 +202,11 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 
   const createTodoBeforeSend = useCallback(
     (text: string) => {
-      resetTodoMode();
       if (hasActiveTodos(todos)) return;
 
       updateTodos(initTodoModeTodos(text));
     },
-    [resetTodoMode, todos, updateTodos],
+    [todos, updateTodos],
   );
 
   const {
@@ -226,6 +227,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isUploading: isUploadingAttachments,
     fileInputRef,
     removeFile,
+    restoreFiles,
     handleFileSelect,
     handlePaste: handlePasteAttachment,
     handleFileDrop,
@@ -292,6 +294,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const AutoApproveIcon = autoApproveActive ? ShieldCheck : ShieldOff;
 
   const {
+    isPreparingMessage,
     handleSubmit,
     handleSteerSubmit,
     handleSteerQueuedMessage,
@@ -320,7 +323,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     taskId,
     isTodoMode: todoModeSelected,
     canCreateTodo: !todoModeDisabled,
-    onTodoModeQueued: resetTodoMode,
+    onTodoModeSubmitted: resetTodoMode,
     onBeforeSendText: createTodoBeforeSend,
     flushBackgroundJobNotifications,
   });
@@ -404,6 +407,28 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [queuedMessages],
   );
 
+  // Put a queued message back into the composer, replacing its current content.
+  const handleEditQueuedMessage = useCallback(
+    (index: number) => {
+      const message = queuedMessages[index];
+      if (isPreparingMessage || !message?.draft) return;
+      const { draft } = message;
+      setQueuedMessages(queuedMessages.filter((_, i) => i !== index));
+      setInput(draft.input);
+      restoreFiles(draft.attachments);
+      setTodoModeSelected(canSelectTodoMode && !!message.raw.isTodoMode);
+      // Focus after the editor applied the restored content.
+      setTimeout(() => chatInputFormRef.current?.focusInput(), 0);
+    },
+    [
+      queuedMessages,
+      setInput,
+      restoreFiles,
+      canSelectTodoMode,
+      isPreparingMessage,
+    ],
+  );
+
   const handleSteerDisplayedMessage = useCallback(
     (index: number) => {
       if (index < queuedMessages.length) {
@@ -424,6 +449,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     messages,
     enable: allowAddToolResult,
     addToolOutput,
+    persistToolOutput,
     updateTodoCompletion,
   });
 
@@ -551,6 +577,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           queuedMessages={displayedQueuedMessages}
           onRemoveQueuedMessage={handleRemoveQueuedMessage}
           onSteerQueuedMessage={handleSteerDisplayedMessage}
+          onEditQueuedMessage={handleEditQueuedMessage}
+          allowEditQueuedMessage={!isPreparingMessage}
           allowSteer={allowSteer}
           onAttachFile={() => fileInputRef.current?.click()}
           onSelectTodoMode={

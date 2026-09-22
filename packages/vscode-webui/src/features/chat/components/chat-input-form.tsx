@@ -61,12 +61,16 @@ interface ChatInputFormProps {
   queuedMessages?: DraftMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
   onSteerQueuedMessage?: (index: number) => void;
+  onEditQueuedMessage?: (index: number) => void;
+  allowEditQueuedMessage?: boolean;
   allowSteer?: boolean;
 }
 
 export interface ChatInputFormHandle {
   addToSubmitHistory: () => void;
   getInputSnapshot: () => ChatInput | undefined;
+  /** Moves the caret to the end of the composer. */
+  focusInput: () => void;
 }
 
 export const ChatInputForm = forwardRef<
@@ -103,6 +107,8 @@ export const ChatInputForm = forwardRef<
     queuedMessages = [],
     onRemoveQueuedMessage,
     onSteerQueuedMessage,
+    onEditQueuedMessage,
+    allowEditQueuedMessage,
     allowSteer,
   },
   ref,
@@ -149,6 +155,12 @@ export const ChatInputForm = forwardRef<
         text: editor.getText({ blockSeparator: "\n" }),
         pastedTexts: input.pastedTexts,
       };
+    },
+    focusInput: () => {
+      const editor = editorRef.current;
+      if (editor && !editor.isDestroyed) {
+        editor.commands.focus("end");
+      }
     },
   }));
 
@@ -218,6 +230,8 @@ export const ChatInputForm = forwardRef<
               ? (index) => onSteerQueuedMessage(index)
               : undefined
           }
+          onEdit={onEditQueuedMessage}
+          allowEdit={allowEditQueuedMessage}
           allowSteer={allowSteer}
         />
       )}

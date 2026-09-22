@@ -2,10 +2,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
-  constants,
   createBackgroundSubAgentStartedResult,
   getLogger,
   getSubAgentBackgroundJobId,
+  shouldRunSubAgentInBackground,
 } from "@getpochi/common";
 import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { formatFollowupQuestions } from "@getpochi/livekit";
@@ -54,23 +54,21 @@ export const newTask =
       }
     }
 
-    // The browser agent needs a per-task browser session and recording,
-    // which are only wired up in the foreground path. The todo-completion
-    // agent resolves todos through the foreground result flow.
-    const supportsBackground =
-      customAgent?.name !== "browser" &&
-      agentType !== constants.AttemptTodoCompletionAgentName;
-    if (background && supportsBackground) {
-      if (!options.backgroundSubTask) {
+    if (shouldRunSubAgentInBackground({ background, agentType })) {
+      if (options.backgroundSubTask) {
+        await options.backgroundSubTask({ taskId, agentType });
+        return {
+          result: createBackgroundSubAgentStartedResult(taskId),
+          backgroundJobId: getSubAgentBackgroundJobId(taskId),
+        };
+      }
+      // Only an explicit request must fail loudly; the default falls back to
+      // running the subagent in the foreground.
+      if (background) {
         throw new Error(
           "Background subagent execution is not available in this context.",
         );
       }
-      await options.backgroundSubTask({ taskId, agentType });
-      return {
-        result: createBackgroundSubAgentStartedResult(taskId),
-        backgroundJobId: getSubAgentBackgroundJobId(taskId),
-      };
     }
 
     const subTaskLLM = customAgent?.model

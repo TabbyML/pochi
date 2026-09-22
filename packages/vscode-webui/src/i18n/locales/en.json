@@ -48,6 +48,7 @@
     "terminalContextCount": "{{count}} terminal selections",
     "pastedTextCount": "{{count}} pasted texts",
     "steer": "Steer",
+    "editQueuedMessage": "Edit queued message",
     "copyImage": "Copy Image",
     "openImage": "Open Image",
     "contextLabelFiles": "files",
@@ -431,7 +432,9 @@
     "problemsDetectedTooltip": "Problems detected after change"
   },
   "fileBadge": {
-    "modifiedByPochi": "(Modified by Pochi)"
+    "modifiedByPochi": "(Modified by Pochi)",
+    "backgroundJobOutput": "{{displayId}} output",
+    "terminalOutput": "terminal output"
   },
   "codeBlock": {
     "showCode": "Show Code",

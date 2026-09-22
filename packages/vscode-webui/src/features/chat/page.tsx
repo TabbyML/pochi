@@ -21,7 +21,7 @@ import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import { type Message, type Task, catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import { parseOutputSchema } from "@getpochi/tools";
+import { type Todo, parseOutputSchema } from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -229,6 +229,7 @@ function Chat({
     store,
     blobStore,
     taskId: uid,
+    cwd: info.cwd,
     getters,
     isSubTask,
     customAgent,
@@ -306,6 +307,16 @@ function Chat({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Use the unified image upload hook
   const attachmentUpload = useAttachmentUpload();
+
+  // Tasks started from an empty panel only exist once the first message is
+  // sent, so persist the task before committing todos against it.
+  const persistTodos = useCallback(
+    (nextTodos: Todo[]) => {
+      chatKit.ensureInited(info.cwd);
+      updateTodos(nextTodos);
+    },
+    [chatKit, info.cwd, updateTodos],
+  );
 
   const chat = useChat({
     chat: chatKit.chat,
@@ -387,7 +398,7 @@ function Chat({
     }
   }, [pendingApproval, task]);
 
-  const { isInitializing } = useChatInitialization({
+  const { isInitializing, error: initializationError } = useChatInitialization({
     chatKit,
     info,
     storeRegistry,
@@ -465,6 +476,7 @@ function Chat({
     t,
   });
 
+  if (initializationError) throw initializationError;
   if (isInitializing) {
     return <ChatSkeleton />;
   }
@@ -501,7 +513,7 @@ function Chat({
           chat={chat}
           task={task}
           todos={todos}
-          updateTodos={updateTodos}
+          updateTodos={persistTodos}
           updateTodoCompletion={updateTodoCompletion}
           todoPaused={todoPaused}
           onTodoPausedChange={handleTodoPausedChange}
@@ -522,6 +534,7 @@ function Chat({
           flushBackgroundJobNotifications={
             chatKit.flushBackgroundJobNotifications
           }
+          persistToolOutput={chatKit.persistToolOutput}
           onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
           onToolsExecutionEnded={chatKit.markEndToolsExecution}

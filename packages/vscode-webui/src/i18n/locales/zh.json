@@ -46,6 +46,7 @@
     "terminalContextCount": "{{count}} 个终端选区",
     "pastedTextCount": "{{count}} 段粘贴文本",
     "steer": "介入",
+    "editQueuedMessage": "编辑排队消息",
     "copyImage": "复制图片",
     "openImage": "打开图片",
     "contextLabelFiles": "附件",
@@ -422,7 +423,9 @@
     "problemsDetectedTooltip": "更改后检测到问题"
   },
   "fileBadge": {
-    "modifiedByPochi": "（由 Pochi 修改）"
+    "modifiedByPochi": "（由 Pochi 修改）",
+    "backgroundJobOutput": "{{displayId}} 输出",
+    "terminalOutput": "终端输出"
   },
   "codeBlock": {
     "showCode": "显示代码",

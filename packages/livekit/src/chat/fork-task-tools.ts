@@ -1,3 +1,7 @@
+import {
+  getSubAgentBackgroundJobId,
+  getSubAgentTaskId,
+} from "@getpochi/common";
 import type { UIMessagePart } from "ai";
 import type { tables } from "../livestore/default-schema";
 import type { DataParts, UITools } from "../types";
@@ -33,11 +37,10 @@ export const prepareForkTaskData = ({
 }) => {
   const now = new Date();
 
-  // Background tasks (e.g. fork-agent memory jobs) should not be copied when
-  // forking. They are currently independent root tasks, but we also defensively
-  // exclude any subtasks they might spawn in the future so a copied subtask
-  // never ends up referencing a removed parent. The task being forked
-  // (oldTaskId) is always kept even if it is a background task.
+  // Exclude independent background roots (e.g. fork-agent memory jobs) and
+  // their descendants. Background subagents with a parentId are part of the
+  // conversation and must be copied so tool-newTask references can be remapped.
+  // The task being forked (oldTaskId) is always kept.
   const taskById = new Map(tasks.map((task) => [task.id, task]));
   const isBackgroundDescendant = (task: (typeof tasks)[number]): boolean => {
     const visited = new Set<string>();
@@ -46,7 +49,7 @@ export const prepareForkTaskData = ({
       if (current.id === oldTaskId) {
         return false;
       }
-      if (current.background) {
+      if (current.background && !current.parentId) {
         return true;
       }
       if (!current.parentId || visited.has(current.id)) {
@@ -74,8 +77,13 @@ export const prepareForkTaskData = ({
     return newId;
   };
 
-  const newTasks = forkableTasks.map((task) =>
-    task.id === oldTaskId
+  const newTasks = forkableTasks.map((task) => {
+    // A fork copies the conversation, not the running executor or its tool
+    // state. Keep background jobs visible without replaying their side effects.
+    const interruptBackgroundTask =
+      task.background &&
+      (task.status === "pending-model" || task.status === "pending-tool");
+    return task.id === oldTaskId
       ? {
           id: newTaskId,
           cwd: task.cwd ?? undefined,
@@ -91,12 +99,20 @@ export const prepareForkTaskData = ({
           cwd: task.cwd ?? undefined,
           title: task.title ?? undefined,
           parentId: task.parentId ? getNewTaskId(task.parentId) : undefined,
+          background: task.background ?? undefined,
           modelId: task.modelId ?? undefined,
-          status: task.status,
+          status: interruptBackgroundTask ? ("failed" as const) : task.status,
+          error: interruptBackgroundTask
+            ? {
+                kind: "AbortError" as const,
+                message:
+                  "Background subtask was interrupted when the task was forked.",
+              }
+            : (task.error ?? undefined),
           git: task.git ?? undefined,
           createdAt: now,
-        },
-  );
+        };
+  });
 
   const mainTaskMessages: DBMessageShape[] = [];
   const subTaskMessages: DBMessageShape[] = [];
@@ -118,7 +134,7 @@ export const prepareForkTaskData = ({
     (message) => ({
       id: message.id,
       taskId: getNewTaskId(message.taskId),
-      data: replaceTaskIdInMessages(message.data, getNewTaskId),
+      data: replaceTaskIdInMessages(message.data, getNewTaskId, taskIdMap),
     }),
   );
 
@@ -182,19 +198,73 @@ const truncateMessages = (
 const replaceTaskIdInMessages = (
   message: DBMessageShape["data"],
   getNewTaskId: (id: string) => string,
+  taskIdMap: ReadonlyMap<string, string>,
 ) => {
+  const replaceBackgroundJobId = (id: string) => {
+    const taskId = getSubAgentTaskId(id);
+    const newTaskId = taskId ? taskIdMap.get(taskId) : undefined;
+    return newTaskId ? getSubAgentBackgroundJobId(newTaskId) : id;
+  };
+
   return {
     ...message,
     parts: message.parts.map((part) => {
-      if (part.type === "tool-newTask" && part.input?._meta?.uid) {
+      if (part.type === "tool-newTask") {
+        const input = part.input?._meta?.uid
+          ? {
+              ...part.input,
+              _meta: {
+                ...part.input._meta,
+                uid: getNewTaskId(part.input._meta.uid),
+              },
+            }
+          : part.input;
+        if (part.state === "output-available" && part.output.backgroundJobId) {
+          const oldJobId = part.output.backgroundJobId;
+          const newJobId = replaceBackgroundJobId(oldJobId);
+          return {
+            ...part,
+            input,
+            output: {
+              ...part.output,
+              backgroundJobId: newJobId,
+              result: part.output.result.replaceAll(oldJobId, newJobId),
+            },
+          };
+        }
+        return { ...part, input };
+      }
+      if (
+        part.type === "data-background-job-notification" &&
+        part.data.kind === "subagent"
+      ) {
+        const newTaskId = taskIdMap.get(part.data.taskId);
+        if (!newTaskId) return part;
+        const oldJobId = getSubAgentBackgroundJobId(part.data.taskId);
+        const newJobId = getSubAgentBackgroundJobId(newTaskId);
+        return {
+          ...part,
+          data: {
+            ...part.data,
+            taskId: newTaskId,
+            backgroundJobId: newJobId,
+            notificationId: part.data.notificationId.replace(
+              `${oldJobId}:`,
+              `${newJobId}:`,
+            ),
+          },
+        };
+      }
+      if (
+        (part.type === "tool-killBackgroundJob" ||
+          part.type === "tool-readBackgroundJobOutput") &&
+        part.input?.backgroundJobId
+      ) {
         return {
           ...part,
           input: {
             ...part.input,
-            _meta: {
-              ...part.input._meta,
-              uid: getNewTaskId(part.input._meta.uid),
-            },
+            backgroundJobId: replaceBackgroundJobId(part.input.backgroundJobId),
           },
         };
       }

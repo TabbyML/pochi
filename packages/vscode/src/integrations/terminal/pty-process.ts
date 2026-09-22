@@ -32,6 +32,7 @@ export interface PtyProcessOptions {
   cwd: string;
   envs?: Record<string, string>;
   abortSignal?: AbortSignal;
+  stdin?: "ignore" | "inherit";
 }
 
 export interface PtyProcessExit {
@@ -67,8 +68,14 @@ export const buildPtyEnv = (
   ...getTerminalEnv(),
 });
 
-export const buildPtyShellCommand = (command: string) =>
-  buildShellCommand(command, { launchNonce: randomBytes(8).toString("hex") });
+export const buildPtyShellCommand = (
+  command: string,
+  stdin: "ignore" | "inherit" = "inherit",
+) =>
+  buildShellCommand(command, {
+    launchNonce: randomBytes(8).toString("hex"),
+    stdin,
+  });
 
 /**
  * Removes the launch marker from the output stream and reports whether the
@@ -181,9 +188,15 @@ export class PtyProcess {
     });
   }
 
-  static async spawn({ command, cwd, envs, abortSignal }: PtyProcessOptions) {
+  static async spawn({
+    command,
+    cwd,
+    envs,
+    abortSignal,
+    stdin = "inherit",
+  }: PtyProcessOptions) {
     if (abortSignal?.aborted) throw ExecutionError.createAbortError();
-    const shellCommand = buildPtyShellCommand(command);
+    const shellCommand = buildPtyShellCommand(command, stdin);
     if (!shellCommand) {
       throw new PtySpawnError("Failed to get shell.");
     }

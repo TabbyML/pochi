@@ -1,7 +1,161 @@
-import { describe, expect, it } from "vitest";
-import type { Message } from "../../types";
-import { convertDataPartToText, extractContentFilterMetadata, getNumCompacts, } from "../flexible-chat-transport";
+import {
+  type Environment,
+  parseEnvironmentInfo,
+  prompts,
+} from "@getpochi/common";
+import { MockLanguageModelV3 } from "ai/test";
+import { describe, expect, it, vi } from "vitest";
+import type { BlobStore } from "../../blob-store";
+import type { LiveKitStore, Message } from "../../types";
+import {
+  FlexibleChatTransport,
+  convertDataPartToText,
+  extractContentFilterMetadata,
+  getNumCompacts,
+} from "../flexible-chat-transport";
+import { compactTask } from "../llm/compact-task";
+
 type MessagePart = Message["parts"][number];
+
+describe("environment after compaction", () => {
+  it.each(["llm", "task-memory"])(
+    "restores the environment on repeated and reloaded %s compacted tool continuations",
+    async (summarySource) => {
+      const environment: Environment = {
+        currentTime: "2026-09-16",
+        workspace: {},
+        info: {
+          os: "darwin",
+          shell: "zsh",
+          homedir: "/Users/pochi",
+          cwd: "/Users/pochi/project",
+        },
+      };
+      const usage = {
+        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 1, text: 1, reasoning: 0 },
+      };
+      const model = new MockLanguageModelV3({
+        doGenerate: {
+          content: [
+            { type: "text", text: "Summary without system information" },
+          ],
+          finishReason: { unified: "stop", raw: "stop" },
+          usage,
+          warnings: [],
+        },
+        doStream: async () => ({
+          stream: new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: "stream-start", warnings: [] });
+              controller.enqueue({ type: "text-start", id: "text-1" });
+              controller.enqueue({
+                type: "text-delta",
+                id: "text-1",
+                delta: "ok",
+              });
+              controller.enqueue({ type: "text-end", id: "text-1" });
+              controller.enqueue({
+                type: "finish",
+                finishReason: { unified: "stop", raw: "stop" },
+                usage,
+              });
+              controller.close();
+            },
+          }),
+        }),
+      });
+      const messages: Message[] = [
+        {
+          id: "user-1",
+          role: "user",
+          parts: [{ type: "text", text: "start" }],
+        },
+      ];
+      prompts.injectEnvironment(messages, environment);
+      messages.push(
+        {
+          id: "assistant-1",
+          role: "assistant",
+          parts: [{ type: "text", text: "done" }],
+        },
+        {
+          id: "user-2",
+          role: "user",
+          parts: [{ type: "text", text: "continue" }],
+        },
+      );
+      prompts.injectEnvironment(messages, environment);
+      messages.push({
+        id: "assistant-2",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "read-1",
+            state: "output-available",
+            input: { path: "README.md" },
+            output: { content: "contents" },
+          },
+        ],
+      } as Message);
+      const store = {
+        storeId: "store-1",
+        query: () => ({ content: "Task memory without system information" }),
+        commit: vi.fn(),
+      } as unknown as LiveKitStore;
+      await compactTask({
+        taskId: "task-1",
+        storeId: store.storeId,
+        blobStore: {} as BlobStore,
+        model,
+        messages,
+        inline: true,
+        ...(summarySource === "task-memory"
+          ? { store, taskMemoryBoundaryMessageId: "assistant-2" }
+          : {}),
+      });
+      const assistant = structuredClone(messages.at(-1));
+      const savedMessages = structuredClone(messages);
+      const transport = new FlexibleChatTransport({
+        store,
+        blobStore: {} as BlobStore,
+        getters: {
+          getLLM: () => ({
+            type: "vendor",
+            id: "test-model",
+            getModel: () => model,
+          }),
+          getEnvironment: async () => environment,
+        },
+      });
+
+      for (const [attempt, requestMessages] of [
+        messages,
+        messages,
+        savedMessages,
+      ].entries()) {
+        const stream = await transport.sendMessages({
+          trigger: "submit-message",
+          chatId: "task-1",
+          messageId: undefined,
+          messages: requestMessages,
+          abortSignal: undefined,
+        });
+        for await (const chunk of stream) {
+          expect(chunk.type).not.toBe("error");
+        }
+        expect(
+          parseEnvironmentInfo(model.doStreamCalls[attempt].prompt),
+        ).toEqual(environment.info);
+        expect(requestMessages.at(-1)).toEqual(assistant);
+      }
+
+      expect(model.doStreamCalls[1].prompt).toEqual(model.doStreamCalls[0].prompt);
+    },
+  );
+});
+
 describe("convertDataPartToText", () => {
     it("renders completed background subagent results for the model", () => {
         const result = convertDataPartToText({

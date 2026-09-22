@@ -10,6 +10,8 @@ import { FileIcon } from "./file-icon";
 
 interface FileBadgeProps {
   label?: string;
+  /** Hover text, useful when the label hides the underlying path. */
+  title?: string;
   path: string;
   startLine?: number;
   endLine?: number;
@@ -28,6 +30,7 @@ interface FileBadgeProps {
 
 export const FileBadge: React.FC<FileBadgeProps> = ({
   label,
+  title,
   path,
   startLine,
   endLine,
@@ -77,6 +80,7 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
 
   return (
     <span
+      title={title}
       onClick={(e) => {
         e.stopPropagation();
         onClick ? onClick() : defaultOnClick();

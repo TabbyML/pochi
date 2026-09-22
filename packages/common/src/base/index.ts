@@ -38,6 +38,8 @@ export {
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
   getSubAgentNotificationId,
+  isBackgroundSubAgentRequested,
+  shouldRunSubAgentInBackground,
 } from "./subagent";
 
 export { SocialLinks } from "./social";
@@ -57,8 +59,12 @@ export {
   AutoMemoryIndexName,
   AutoMemoryLockName,
   AutoMemoryMaxManifestEntries,
+  AutoMemoryMaxTopicBytes,
+  AutoMemoryMaxTopicLines,
   AutoMemoryProjectInfoName,
   AutoMemoryTypeValues,
+  isOversizedTopic,
+  renderAutoMemoryIndex,
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
 
@@ -137,6 +143,8 @@ export interface BackgroundTaskState {
   maxSteps?: number;
   /** Step-start count inherited from the parent, excluded from the max-step guard. */
   baselineStepCount?: number;
+  /** The parent stopped this task itself, so its result needs no notification. */
+  stoppedByParent?: boolean;
 }
 
 export {

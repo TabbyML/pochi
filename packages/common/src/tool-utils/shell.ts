@@ -37,6 +37,8 @@ export const buildShellCommand = (
   options?: {
     /** Hex nonce to emit before the command runs. Ignored by shells without a POSIX printf. */
     launchNonce?: string;
+    /** Permanently detach standard input before running the command. */
+    stdin?: "ignore" | "inherit";
   },
 ): ShellCommand | undefined => {
   const shellPath = getShellPath();
@@ -73,9 +75,15 @@ export const buildShellCommand = (
 
     if (/(bash|zsh)$/.test(shellName)) {
       const launchNonce = options?.launchNonce;
-      const script = launchNonce
-        ? `printf '\\033]${LaunchNonceOscIdentifier};%s\\007' ${launchNonce}\n${commandString}`
-        : commandString;
+      const script = [
+        launchNonce
+          ? `printf '\\033]${LaunchNonceOscIdentifier};%s\\007' ${launchNonce}`
+          : undefined,
+        options?.stdin === "ignore" ? "exec </dev/null" : undefined,
+        commandString,
+      ]
+        .filter((line) => line !== undefined)
+        .join("\n");
       const shellCommand = {
         command: shellPath,
         args: [loginArg, script],

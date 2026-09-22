@@ -53,7 +53,7 @@ export function BackgroundJobManagePanel({ taskId }: { taskId: string }) {
   useEffect(() => () => cancelDetailOpenRef.current?.(), []);
 
   const runningCount = backgroundJobs.filter(
-    (job) => job.status === "running",
+    (job) => job.status === "running" && job.kind !== "fork",
   ).length;
 
   return (
@@ -571,7 +571,7 @@ function StopJobAction({ onClick }: { onClick: () => Promise<void> }) {
           aria-label={t("backgroundTasks.stop")}
           aria-busy={pending}
           disabled={pending}
-          className="size-5 shrink-0 rounded-sm text-muted-foreground hover:text-foreground"
+          className="size-5 shrink-0 rounded-sm text-muted-foreground hover:bg-foreground/10 hover:text-foreground dark:hover:bg-foreground/10"
           onClick={async (event) => {
             event.stopPropagation();
             if (inFlight.current) return;
@@ -589,7 +589,7 @@ function StopJobAction({ onClick }: { onClick: () => Promise<void> }) {
             <Loader2Icon className="size-3 animate-spin" />
           ) : (
             <SquareIcon
-              className="size-2.5 fill-current"
+              className="size-3.5 fill-current"
               strokeWidth={0}
               aria-hidden="true"
             />

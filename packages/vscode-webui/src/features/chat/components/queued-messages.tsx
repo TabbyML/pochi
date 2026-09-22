@@ -22,6 +22,7 @@ import {
   CornerDownRight,
   FileCode,
   ListEnd,
+  Pencil,
   Target,
   Trash2,
 } from "lucide-react";
@@ -33,6 +34,8 @@ interface QueuedMessagesProps {
   messages: DraftMessage[];
   onRemove: (index: number) => void;
   onSteer?: (index: number) => void;
+  onEdit?: (index: number) => void;
+  allowEdit?: boolean;
   allowSteer?: boolean;
 }
 
@@ -43,17 +46,20 @@ interface RenderMessage {
   notifications?: BackgroundJobEvent[];
   activeSelection?: ActiveSelection;
   nonRemovable?: boolean;
+  editable?: boolean;
 }
 
 export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
   messages,
   onRemove,
   onSteer,
+  onEdit,
+  allowEdit = true,
   allowSteer = true,
 }) => {
   const { t } = useTranslation();
   const renderMessages = useMemo<RenderMessage[]>(() => {
-    return messages.map(({ parts, raw }) => {
+    return messages.map(({ parts, raw, draft }) => {
       const {
         text = "",
         filesCount = 0,
@@ -101,6 +107,7 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         notifications: isNotification ? notifications : undefined,
         activeSelection,
         nonRemovable: raw.nonRemovable,
+        editable: !!draft,
       };
     });
   }, [messages, t]);
@@ -167,6 +174,19 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
                 <CornerDownRight className="size-3.5" />
                 <span>{t("chat.steer")}</span>
               </Button>
+              {onEdit && message.editable && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  aria-label={t("chat.editQueuedMessage")}
+                  onClick={() => onEdit(index)}
+                  disabled={!allowEdit}
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              )}
               {!message.nonRemovable && (
                 <Button
                   variant="ghost"

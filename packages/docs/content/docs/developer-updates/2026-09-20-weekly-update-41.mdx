@@ -1,0 +1,36 @@
+---
+title: 'Weekly Update #41'
+---
+# Weekly Update #41
+
+### TL;DR
+
+Pochi 0.72 shipped on September 17 with background subagents that can tackle independent work in parallel while the main task keeps moving. Follow-up work is also making task forks and command execution more reliable, with clearer background-command tracking planned for 0.74.
+
+More below!
+
+### 🚀 Features
+
+- **Subagents can work in parallel in the background:** Pochi can now delegate independent parts of a task to multiple subagents, continue the main conversation immediately, and bring each result back when it finishes. Background subagents appear alongside other background work with live status, details, and stop controls, and supported subagents run this way by default.
+
+  This is most useful for research, codebase exploration, and other independent work that can happen concurrently instead of making the main task wait. [**#1873**](https://github.com/TabbyML/pochi/pull/1873), [**#1949**](https://github.com/TabbyML/pochi/pull/1949), [**#1950**](https://github.com/TabbyML/pochi/pull/1950)
+
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    }}
+  >
+    <source src="https://assets.docs.getpochi.com/parallel_subagents.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+### 👀 Coming Up
+
+- **Forked tasks will keep the copied conversation:** Follow-up work will make task forks open reliably with their conversation and related subagent work intact, while surfacing an error instead of silently showing a blank task when a fork cannot be created. [**#1951**](https://github.com/TabbyML/pochi/pull/1951)
+
+- **Commands will no longer hang on unexpected prompts:** Foreground commands that try to request input will receive a closed input stream instead of waiting indefinitely, while commands intentionally started in the background will remain interactive. [**#1955**](https://github.com/TabbyML/pochi/pull/1955)
+
+- **Pochi will know when a background command is still running:** Planned for 0.74, background-command output will carry a clear running signal so Pochi can distinguish a temporarily quiet command from one that has finished instead of acting on an incomplete result. [**#1956**](https://github.com/TabbyML/pochi/pull/1956)

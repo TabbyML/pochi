@@ -98,6 +98,7 @@ export const executeCommand =
         return createBackgroundCommandResult(
           result.backgroundJobId,
           result.outputFile,
+          { origin: "foreground-timeout" },
         );
       }
 

@@ -34,6 +34,12 @@ const MemoryReadToolNames = [
   "globFiles",
   "searchFiles",
 ] as const;
+/**
+ * Per-turn extraction gets a read tool for topic files only: its step budget
+ * cannot absorb an exploration turn, and the topic manifest in the directive
+ * already lists every file it could discover.
+ */
+const ExtractionReadToolNames = ["readFile"] as const;
 const MemoryAgentWriteToolNames = ["writeToFile", "applyDiff"] as const;
 const AutoMemoryMaxSteps = 5;
 const AutoMemoryDreamMaxSteps = 20;
@@ -81,8 +87,9 @@ async function startAutoMemoryExtraction<TMessage extends UIMessage>({
       directive: prompts.autoMemory.buildExtractionDirective({
         context,
         previousMessageCount,
+        maxSteps: AutoMemoryMaxSteps,
       }),
-      tools: buildMemoryTools(context),
+      tools: buildMemoryTools(context, "extraction"),
       maxSteps: AutoMemoryMaxSteps,
     });
     const handle = await startForkAgent(agent);
@@ -155,7 +162,7 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
         context: run.context,
         sessions,
       }),
-      tools: buildMemoryTools(run.context),
+      tools: buildMemoryTools(run.context, "dream"),
       maxSteps: AutoMemoryDreamMaxSteps,
     });
     const handle = await startForkAgent(agent);
@@ -266,13 +273,20 @@ function resolveAutoMemoryDreamState({
 
 function buildMemoryTools(
   context: AutoMemoryContext,
+  mode: "extraction" | "dream",
 ): readonly ToolSpecInput[] {
   const memoryGlob = `${normalizeDir(context.memoryDir)}/**`;
   const transcriptGlob = `${normalizeDir(context.transcriptDir)}/**`;
   const tools: ToolSpecInput[] = [];
-  for (const name of MemoryReadToolNames) {
-    tools.push(`${name}(${memoryGlob})`);
-    tools.push(`${name}(${transcriptGlob})`);
+  if (mode === "dream") {
+    for (const name of MemoryReadToolNames) {
+      tools.push(`${name}(${memoryGlob})`);
+      tools.push(`${name}(${transcriptGlob})`);
+    }
+  } else {
+    for (const name of ExtractionReadToolNames) {
+      tools.push(`${name}(${memoryGlob})`);
+    }
   }
   for (const name of MemoryAgentWriteToolNames) {
     tools.push(`${name}(${memoryGlob})`);

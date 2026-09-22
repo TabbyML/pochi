@@ -1,6 +1,7 @@
 import type { useTaskMcpConfigOverride } from "@/lib/hooks/use-task-mcp-config-override";
 import { prepareMessageParts } from "@/lib/message-utils";
 import { getOrLoadTaskStore } from "@/lib/use-default-store";
+import { toErrorMessage } from "@getpochi/common";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
 import type { useLiveChatKit } from "@getpochi/livekit/react";
 import type { StoreRegistry } from "@livestore/livestore";
@@ -31,6 +32,7 @@ export function useChatInitialization({
   const [isInitializing, setIsInitializing] = useState(
     info.type === "fork-task" || info.type === "compact-task",
   );
+  const [error, setError] = useState<Error>();
 
   useEffect(() => {
     if (chatKit.inited) {
@@ -81,11 +83,14 @@ export function useChatInitialization({
             info.pastedTextFiles,
           ),
         });
-      } else {
+      } else if (info.prompt || (info.todos?.length ?? 0) > 0) {
         chatKit.init(cwd, {
           prompt: info.prompt ?? undefined,
         });
       }
+      // Otherwise the panel was opened without any seed content, so creating the
+      // task now would persist (and sync) an empty untitled task. The task is
+      // lazily created on the first message instead.
       setIsInitializing(false);
     } else if (info.type === "compact-task") {
       chatKit.init(cwd, {
@@ -121,6 +126,14 @@ export function useChatInitialization({
             } finally {
               await sourceStore.shutdownPromise();
             }
+          } catch (error) {
+            if (cancelled === false) {
+              setError(
+                error instanceof Error
+                  ? error
+                  : new Error(toErrorMessage(error)),
+              );
+            }
           } finally {
             if (cancelled === false) {
               setIsInitializing(false);
@@ -149,7 +162,7 @@ export function useChatInitialization({
     isMcpConfigLoading,
   ]);
 
-  return { isInitializing };
+  return { isInitializing, error };
 }
 
 function assertUnreachable(x: never): never {

@@ -88,6 +88,15 @@ const finished = (id = "bgjob-cmd-one") =>
     status: "completed",
     finishedAt: 1,
   });
+const stopped = (id = "bgjob-cmd-one") =>
+  createBackgroundJobNotification({
+    taskId: "parent",
+    backgroundJobId: id,
+    command: "test",
+    outputFile: "/tmp/output",
+    status: "stopped",
+    finishedAt: 1,
+  });
 
 describe("BackgroundJobManager", () => {
   it("wakes immediately for the final monitor event after a previous delivery", async () => {
@@ -297,6 +306,86 @@ describe("BackgroundJobManager", () => {
     expect(reopened.getPendingNotifications("parent")).toEqual([]);
     await reopened.dispose();
   });
+
+  it("keeps a command the owner stopped itself out of its notification queue", async () => {
+    const { manager, observers, acknowledge, source } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
+    });
+    await manager.kill("bgjob-cmd-one", "parent", { notify: false });
+    expect(source.kill).toHaveBeenCalledExactlyOnceWith("bgjob-cmd-one");
+    observers.get("parent")!({ running: {}, notifications: [stopped()] });
+    expect(manager.getPendingNotifications("parent")).toEqual([]);
+    // Acknowledged right away, so a reopen cannot revive it either.
+    expect(acknowledge).toHaveBeenCalledWith(stopped().notificationId);
+    expect(manager.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({
+        status: "stopped",
+        notificationPending: false,
+      }),
+    ]);
+    await manager.dispose();
+  });
+
+  it("notifies the owner about a command stopped outside its own tool call", async () => {
+    const { manager, observers, acknowledge } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({
+      running: { "bgjob-cmd-one": running("parent") },
+      notifications: [],
+    });
+    await manager.forTask("parent").kill("bgjob-cmd-one");
+    observers.get("parent")!({ running: {}, notifications: [stopped()] });
+    expect(manager.getPendingNotifications("parent")).toEqual([stopped()]);
+    expect(acknowledge).not.toHaveBeenCalled();
+    await manager.dispose();
+  });
+
+  it.each([finished(), stopped()])(
+    "removes an already queued $status command notification before reopening",
+    async (notice) => {
+      const { manager, observers, acknowledge, source, store } = setup();
+      const other = finished("bgjob-cmd-other");
+      await manager.watchTask("parent");
+      observers.get("parent")!({ running: {}, notifications: [notice, other] });
+      const acknowledgeNow = acknowledge.getMockImplementation()!;
+      let release!: () => void;
+      const persisted = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      acknowledge.mockImplementationOnce(async (id) => {
+        await persisted;
+        await acknowledgeNow(id);
+      });
+      let settled = false;
+      const kill = manager
+        .kill(notice.backgroundJobId, "parent", { notify: false })
+        .then(() => {
+          settled = true;
+        });
+      try {
+        await vi.waitFor(() =>
+          expect(acknowledge).toHaveBeenCalledWith(notice.notificationId),
+        );
+        expect(settled).toBe(false);
+        expect(manager.getPendingNotifications("parent")).toEqual([other]);
+      } finally {
+        release();
+        await kill;
+        await manager.dispose();
+      }
+      const reopened = BackgroundJobManager.forStore(store);
+      reopened.connect(source);
+      try {
+        await reopened.watchTask("parent");
+        expect(reopened.getPendingNotifications("parent")).toEqual([other]);
+      } finally {
+        await reopened.dispose();
+      }
+    },
+  );
 
   it("does not reconstruct a command from old tool messages when its process is gone", async () => {
     const { manager, messages, source } = setup();

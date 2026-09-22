@@ -19,7 +19,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { constants } from "@getpochi/common";
+import { constants, shouldRunSubAgentInBackground } from "@getpochi/common";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { catalog } from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
@@ -55,13 +55,11 @@ export function useLiveSubTask(
   const agentType =
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined;
   // Background subtasks are driven by the TaskExecutor, not by this hook.
-  // Mirrors the lifecycle's forced-foreground exceptions so both sides make
-  // the same call from the tool input alone (no race on task state).
+  // Decided from the tool input alone, like the lifecycle does, so both sides
+  // agree without racing on task state.
   const background =
     tool.state !== "input-streaming" &&
-    !!tool.input?.background &&
-    agentType !== "browser" &&
-    agentType !== constants.AttemptTodoCompletionAgentName;
+    shouldRunSubAgentInBackground(tool.input);
   const {
     customAgent,
     customAgentModel,

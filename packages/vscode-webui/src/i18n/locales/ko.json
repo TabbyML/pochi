@@ -46,6 +46,7 @@
     "terminalContextCount": "터미널 선택 {{count}}개",
     "pastedTextCount": "붙여넣은 텍스트 {{count}}개",
     "steer": "개입",
+    "editQueuedMessage": "대기 중인 메시지 편집",
     "copyImage": "이미지 복사",
     "openImage": "이미지 열기",
     "contextLabelFiles": "첨부 파일",
@@ -423,7 +424,9 @@
     "problemsDetectedTooltip": "변경 후 문제가 감지됨"
   },
   "fileBadge": {
-    "modifiedByPochi": "(Pochi에 의해 수정됨)"
+    "modifiedByPochi": "(Pochi에 의해 수정됨)",
+    "backgroundJobOutput": "{{displayId}} 출력",
+    "terminalOutput": "터미널 출력"
   },
   "codeBlock": {
     "showCode": "코드 보기",

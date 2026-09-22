@@ -10,6 +10,7 @@ vi.mock("@/features/chat", () => ({
 vi.mock("@/features/tools", () => ({
   FileBadge: ({ path }: { path: string }) => <span>{path}</span>,
   IssueBadge: ({ id }: { id: string }) => <span>{id}</span>,
+  BackgroundJobOutputBadge: ({ path }: { path: string }) => <span>{path}</span>,
 }));
 
 vi.mock("react-i18next", () => ({

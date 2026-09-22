@@ -1,10 +1,15 @@
 import { useReplaceJobIdsInContent } from "@/features/chat";
-import { FileBadge, IssueBadge } from "@/features/tools";
+import {
+  BackgroundJobOutputBadge,
+  FileBadge,
+  IssueBadge,
+} from "@/features/tools";
 import { CustomHtmlTags } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { parseFilePathLineRange } from "@/lib/utils/file";
 import { isKnownProgrammingLanguage } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
+import { parseBackgroundJobOutputFilePath } from "@getpochi/common/pochi-file-system";
 import {
   type DetailedHTMLProps,
   type HTMLAttributes,
@@ -113,6 +118,24 @@ function InlineCodeComponent({
     const { path, startLine, endLine } = parseFilePathLineRange(children);
 
     // children may be file path, folder path, symbol or normal text, we need to handle each case
+    // The parser matches a path suffix; only use it for standalone paths so
+    // shell commands and unrelated URLs stay readable as inline code.
+    const isStandalonePath =
+      !/\s/.test(path) &&
+      (!path.includes("://") || path.startsWith("pochi://"));
+    const outputFile = isStandalonePath
+      ? parseBackgroundJobOutputFilePath(path)
+      : undefined;
+    if (outputFile) {
+      return (
+        <BackgroundJobOutputBadge
+          path={path}
+          outputFile={outputFile}
+          startLine={startLine}
+          endLine={endLine}
+        />
+      );
+    }
     if (isFilePath(path)) {
       const pathSeparatorCount = (path.match(/[\/\\]/g) || []).length;
       return (

@@ -93,12 +93,21 @@ type Job = {
   | { kind: "fork"; taskId: string }
 );
 
+export type KillOptions = {
+  /**
+   * Send the stop to the owner task as a notification. Off when the owner
+   * stopped the job with its own `killBackgroundJob` call: it already learns
+   * the outcome from the tool result, and a notification would cost a turn.
+   */
+  notify?: boolean;
+};
+
 type TaskSubscription = {
   ready: Promise<void>;
   notifications: readonly (CommandNotification | MonitorEventEnvelope)[];
   dispose?: () => void;
   acknowledge?: (id: string) => Promise<void>;
-  acknowledging: Set<string>;
+  acknowledging: Map<string, Promise<void>>;
   acknowledgeRetry?: ReturnType<typeof setTimeout>;
   listeners: Set<(notifications: BackgroundJobEvent[]) => void>;
 };
@@ -136,6 +145,8 @@ export class BackgroundJobManager {
   private readonly autoMemories = new Map<string, AutoMemoryAdaptor>();
   private readonly subscriptions = new Map<string, TaskSubscription>();
   private readonly monitorDeliveries = new Map<string, MonitorDelivery>();
+  /** Jobs whose owner stopped them itself; their notifications stay undelivered. */
+  private readonly silenced = new Set<string>();
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribers: Array<() => void> = [];
   private backgroundTasksReady?: Promise<void>;
@@ -179,6 +190,7 @@ export class BackgroundJobManager {
             ? this.kill(
                 (args.input as { backgroundJobId: string }).backgroundJobId,
                 args.taskId,
+                { notify: false },
               )
             : options.adaptor.executeToolCall(args),
       },
@@ -400,6 +412,7 @@ export class BackgroundJobManager {
     const ownerTaskId = state.parentTaskId ?? task?.parentId;
     if (!ownerTaskId) return;
     const id = getSubAgentBackgroundJobId(taskId);
+    if (state.stoppedByParent) this.silenced.add(id);
     const registered = this.jobs.has(id);
     this.setJob({
       id,
@@ -571,7 +584,7 @@ export class BackgroundJobManager {
     const subscription: TaskSubscription = {
       ready: Promise.resolve(),
       notifications: [],
-      acknowledging: new Set(),
+      acknowledging: new Map(),
       listeners: new Set(),
     };
     this.subscriptions.set(taskId, subscription);
@@ -694,6 +707,11 @@ export class BackgroundJobManager {
     );
   }
 
+  /** Chat queues may still contain a notice after the host acknowledges it. */
+  isNotificationSilenced(backgroundJobId: string): boolean {
+    return this.silenced.has(backgroundJobId);
+  }
+
   private readNotifications(taskId: string) {
     const messages = this.messages(taskId);
     const delivered = new Set(
@@ -708,6 +726,7 @@ export class BackgroundJobManager {
       if (
         job.ownerTaskId !== taskId ||
         job.kind !== "subagent" ||
+        this.silenced.has(job.id) ||
         this.isTaskPending(job.taskId)
       )
         continue;
@@ -720,7 +739,9 @@ export class BackgroundJobManager {
     return {
       delivered,
       pending: notifications.filter(
-        (notice) => !delivered.has(notice.notificationId),
+        (notice) =>
+          !delivered.has(notice.notificationId) &&
+          !this.silenced.has(notice.backgroundJobId),
       ),
     };
   }
@@ -751,29 +772,34 @@ export class BackgroundJobManager {
     const { delivered, pending } = this.readNotifications(taskId);
     for (const notice of subscription.notifications) {
       const id = notice.notificationId;
+      const silenced = this.silenced.has(notice.backgroundJobId);
       if (
-        !delivered.has(id) ||
+        (!delivered.has(id) && !silenced) ||
         !subscription.acknowledge ||
         subscription.acknowledging.has(id)
       )
         continue;
-      subscription.acknowledging.add(id);
-      void subscription
-        .acknowledge(id)
-        .catch((error) => {
-          logger.warn(
-            "Failed to acknowledge background job notification",
-            error,
-          );
-          if (this.disposed || subscription.acknowledgeRetry) return;
-          subscription.acknowledgeRetry = setTimeout(() => {
-            subscription.acknowledgeRetry = undefined;
-            this.changedTasks.add(taskId);
-            this.changed();
-          }, 1000);
-          subscription.acknowledgeRetry.unref?.();
-        })
-        .finally(() => subscription.acknowledging.delete(id));
+      // The host may synchronously publish its updated queue during this call.
+      subscription.acknowledging.set(id, Promise.resolve());
+      subscription.acknowledging.set(
+        id,
+        subscription
+          .acknowledge(id)
+          .catch((error) => {
+            logger.warn(
+              "Failed to acknowledge background job notification",
+              error,
+            );
+            if (this.disposed || subscription.acknowledgeRetry) return;
+            subscription.acknowledgeRetry = setTimeout(() => {
+              subscription.acknowledgeRetry = undefined;
+              this.changedTasks.add(taskId);
+              this.changed();
+            }, 1000);
+            subscription.acknowledgeRetry.unref?.();
+          })
+          .finally(() => subscription.acknowledging.delete(id)),
+      );
     }
     for (const listener of subscription.listeners) listener(pending);
   }
@@ -849,8 +875,8 @@ export class BackgroundJobManager {
 
   forTask(taskId: string) {
     return {
-      kill: (id: string) =>
-        BackgroundJobManager.forStore(this.store).kill(id, taskId),
+      kill: (id: string, options?: KillOptions) =>
+        BackgroundJobManager.forStore(this.store).kill(id, taskId, options),
     };
   }
 
@@ -950,6 +976,7 @@ export class BackgroundJobManager {
   async kill(
     backgroundJobId: string,
     taskId: string,
+    { notify = true }: KillOptions = {},
   ): Promise<{ success: true }> {
     const job = this.jobs.get(backgroundJobId);
     const childId = getSubAgentTaskId(backgroundJobId);
@@ -963,7 +990,18 @@ export class BackgroundJobManager {
     ) {
       throw new Error(`Background job with ID "${backgroundJobId}" not found.`);
     }
+    // Claimed before the job can finish, so its notification cannot slip out.
+    if (!notify) this.silenced.add(backgroundJobId);
     if (childId) {
+      // A subagent notification is derived from task state and never
+      // acknowledged, so the flag has to survive a reload.
+      if (!notify) {
+        const state = (await this.taskStateStore.read(childId)) ?? {};
+        await this.taskStateStore.set(childId, {
+          ...state,
+          stoppedByParent: true,
+        });
+      }
       await this.stopOwnedJobs(childId);
       if (this.executor) await this.executor.stopTask(childId);
       else if (
@@ -983,6 +1021,18 @@ export class BackgroundJobManager {
       if (!this.commandAdaptor)
         throw new Error("Background command adaptor is not connected.");
       await this.commandAdaptor.kill(backgroundJobId);
+    }
+    if (!notify) {
+      // An already finished job may emit no further update. Flush its queued
+      // notice now, and let subscribed chats retract their pending copy.
+      this.changedTasks.add(taskId);
+      this.changed();
+      const stopped = this.jobs.get(backgroundJobId);
+      if (stopped?.kind === "command" && stopped.notification) {
+        await this.subscriptions
+          .get(taskId)
+          ?.acknowledging.get(stopped.notification.notificationId);
+      }
     }
     return { success: true };
   }

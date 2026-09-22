@@ -10,9 +10,11 @@ import {
   isValidCustomAgentFile,
   isValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type {
-  BackgroundCommandAdaptor,
-  RunningTaskAdaptor,
+import {
+  type BackgroundCommandAdaptor,
+  type LLMRequestData,
+  type RunningTaskAdaptor,
+  processContentOutput,
 } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@quilted/threads/signals";
 import { displayModelToLLM } from "../features/chat/lib/display-model-to-llm";
 import { useSettingsStore } from "../features/settings/store";
+import { blobStore } from "./remote-blob-store";
 
 const logger = getLogger("VscodeRunningTaskAdaptor");
 const ModelListLoadTimeoutMs = 10_000;
@@ -38,6 +41,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
   private readonly unsubscribers: Array<() => void> = [];
   private readonly ready: Promise<void>;
+  private readonly taskLLMs = new Map<string, LLMRequestData>();
   private disposed = false;
 
   constructor() {
@@ -49,6 +53,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.taskLLMs.clear();
     for (const unsubscribe of this.unsubscribers.splice(0)) {
       unsubscribe();
     }
@@ -146,13 +151,22 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   async resolveTaskLLM(
     context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
   ) {
-    const { taskState } = context;
-    if (!taskState.agentType) {
+    const llm = this.resolveAgentLLM(context.taskState.agentType);
+    if (llm) {
+      this.taskLLMs.set(context.taskId, llm);
+    } else {
+      this.taskLLMs.delete(context.taskId);
+    }
+    return llm;
+  }
+
+  private resolveAgentLLM(agentType: string | undefined) {
+    if (!agentType) {
       return undefined;
     }
     const agent = this.customAgents
       .filter(isValidCustomAgentFile)
-      .find((a) => a.name === taskState.agentType);
+      .find((a) => a.name === agentType);
     if (!agent?.model) return undefined;
 
     const resolvedModel = resolveModelFromId(agent.model, this.modelList);
@@ -185,9 +199,11 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
+    const llm = this.taskLLMs.get(args.taskId) ?? this.getLLM();
     let result = await vscodeHost.executeToolCall(args.toolName, args.input, {
       toolCallId: args.toolCallId,
       abortSignal: ThreadAbortSignal.serialize(args.abortSignal),
+      contentType: llm?.contentType,
       toolPolicies: args.toolPolicies,
       storeId: args.storeId,
       taskId: args.taskId,
@@ -207,7 +223,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       );
     }
 
-    return result;
+    return processContentOutput(blobStore, result, args.abortSignal);
   }
 
   onTaskError(taskId: string, error: Error) {

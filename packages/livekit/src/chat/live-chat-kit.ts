@@ -58,6 +58,7 @@ import {
   attachBackgroundJobNotificationParts,
   createBackgroundJobNotificationMessage,
   dedupeBackgroundJobNotificationParts,
+  getBackgroundJobNotificationIds,
   toBackgroundJobNotificationParts,
 } from "./background-job-notification";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -259,6 +260,8 @@ export type LiveChatKitBackgroundJobNotificationOptions = {
 export type LiveChatKitOptions<T> = {
   backgroundJobManager?: BackgroundJobManager;
   taskId: string;
+  /** Known working directory for creating a task before request preparation. */
+  cwd?: string;
 
   abortSignal?: AbortSignal;
 
@@ -397,6 +400,7 @@ export class LiveChatKit<
 
   constructor({
     taskId,
+    cwd,
     abortSignal,
     store,
     blobStore,
@@ -493,6 +497,11 @@ export class LiveChatKit<
       // Mark status to make async behaivor blocked based on status (e.g isLoading )
       const { messages } = this.chat;
       const lastMessage = messages.at(-1);
+      // Persist an actual submission before environment or memory loading can
+      // fail. Hosts without a known cwd still initialize in onStart.
+      if (lastMessage && cwd !== undefined) {
+        this.ensureInited(cwd);
+      }
       const isManualCompact =
         lastMessage?.role === "user" &&
         lastMessage.metadata?.kind === "user" &&
@@ -696,6 +705,24 @@ export class LiveChatKit<
     this.chat.messages = this.messages;
   }
 
+  /**
+   * Creates the task row if it does not exist yet.
+   *
+   * Tasks opened without any seed content are created lazily, so that an empty
+   * panel the user never sends a message in is not persisted (and synced).
+   */
+  ensureInited(cwd: string | undefined) {
+    if (this.inited) return;
+
+    this.store.commit(
+      events.taskInited({
+        id: this.taskId,
+        cwd,
+        createdAt: new Date(),
+      }),
+    );
+  }
+
   get task() {
     return this.store.query(makeTaskQuery(this.taskId));
   }
@@ -745,6 +772,25 @@ export class LiveChatKit<
   private enqueueBackgroundJobNotificationParts(
     parts: readonly BackgroundJobNotificationPart[],
   ): void {
+    const filterSilenced = (
+      notifications: readonly BackgroundJobNotificationPart[],
+    ): BackgroundJobNotificationPart[] =>
+      notifications.flatMap((part): BackgroundJobNotificationPart[] => {
+        if (part.type === "data-monitor-events") {
+          const batches = part.data.batches.filter(
+            (batch) =>
+              !this.backgroundJobManager.isNotificationSilenced(
+                batch.backgroundJobId,
+              ),
+          );
+          return batches.length ? [{ ...part, data: { batches } }] : [];
+        }
+        return this.backgroundJobManager.isNotificationSilenced(
+          part.data.backgroundJobId,
+        )
+          ? []
+          : [part];
+      });
     const delivered = [
       ...this.chat.messages.flatMap((message) => message.parts),
       ...this.messages.flatMap((message) => message.parts),
@@ -752,18 +798,22 @@ export class LiveChatKit<
     // Another chat instance may have consumed a source head while this view
     // was idle. Prune that local copy before accepting the promoted head.
     const pending = dedupeBackgroundJobNotificationParts(
-      this.pendingBackgroundJobNotificationParts,
+      filterSilenced(this.pendingBackgroundJobNotificationParts),
       delivered,
     );
-    const added = dedupeBackgroundJobNotificationParts(parts, [
+    const added = dedupeBackgroundJobNotificationParts(filterSilenced(parts), [
       ...delivered,
       ...pending,
     ]);
     if (
       added.length === 0 &&
-      pending.length === this.pendingBackgroundJobNotificationParts.length
+      getBackgroundJobNotificationIds(pending).length ===
+        getBackgroundJobNotificationIds(
+          this.pendingBackgroundJobNotificationParts,
+        ).length
     )
       return;
+
     this.setPendingBackgroundJobNotifications([...pending, ...added]);
   }
 
@@ -920,9 +970,12 @@ export class LiveChatKit<
 
   /** Save each returned tool result before the rest of the batch completes. */
   persistToolOutput = () => {
-    const message = this.chat.messages.find(
-      (message) => message.id === this.currentToolsExecution?.messageId,
-    );
+    const messages = this.chat.messages;
+    const message = this.currentToolsExecution
+      ? messages.find(
+          (message) => message.id === this.currentToolsExecution?.messageId,
+        )
+      : messages.findLast((message) => message.role === "assistant");
     if (message)
       this.store.commit(
         events.toolsExecutionFinished({
@@ -1012,15 +1065,7 @@ export class LiveChatKit<
     const { store } = this;
     const lastMessage = messages.at(-1);
     if (lastMessage) {
-      if (!this.inited) {
-        store.commit(
-          events.taskInited({
-            id: this.taskId,
-            cwd: environment?.info.cwd,
-            createdAt: new Date(),
-          }),
-        );
-      }
+      this.ensureInited(environment?.info.cwd);
 
       const { task } = this;
       if (!task) {

@@ -64,6 +64,35 @@ afterEach(() => {
 });
 
 describe("background subtask details", () => {
+  it("wraps the description after moving to the background", () => {
+    const tool: ToolProps<"newTask">["tool"] = {
+      type: "tool-newTask",
+      toolCallId: "call",
+      state: "output-available",
+      input: {
+        description: "Inspect every file under packages/livekit/src/background",
+        prompt: "Research",
+        agentType: "explore",
+        background: true,
+        _meta: { uid: "child" },
+      },
+      output: { result: "Started", backgroundJobId: "bgjob-task-child" },
+    };
+
+    render(
+      <TooltipProvider>
+        <NewTaskTool tool={tool} isExecuting={false} isLoading={false} />
+      </TooltipProvider>,
+    );
+
+    const description = screen.getByText(tool.input.description);
+    expect(description.classList.contains("break-words")).toBe(true);
+    expect(description.classList.contains("truncate")).toBe(false);
+    expect(
+      description.parentElement?.classList.contains("whitespace-nowrap"),
+    ).toBe(false);
+  });
+
   it("keeps the parent mounted when a running subagent is inspected", () => {
     const disposeExecutor = vi.fn();
     const tool: ToolProps<"newTask">["tool"] = {

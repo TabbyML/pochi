@@ -69,7 +69,7 @@ function approve(agentType: string, background?: boolean) {
 }
 
 describe("background subtask approval with offhand disabled", () => {
-  it.each(["", "planner", "guide"])(
+  it.each(["", "explore"])(
     "enqueues an explicitly backgrounded %s agent without navigating",
     (agentType) => {
       approve(agentType, true);
@@ -89,6 +89,8 @@ describe("background subtask approval with offhand disabled", () => {
     ["", false],
     ["browser", true],
     ["attemptTodoCompletion", true],
+    ["planner", true],
+    ["guide", true],
   ] as const)(
     "keeps %s with background=%s on the manual path",
     (agentType, flag) => {

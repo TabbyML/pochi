@@ -82,7 +82,11 @@ export function revokeWorkerBootstrapBlobUrl(url: string): void {
 export function makeSharedWorkerBootstrapUrl(
   url: string,
   type: WorkerOptions["type"] | undefined,
-  webviewId = getWebviewId(),
 ): string {
-  return makeWorkerBootstrapUrl(url, type, webviewId);
+  // SharedWorker identity includes the script URL, so a panel-specific id
+  // would split clients that share the same LiveStore database lock. Bypass
+  // VS Code's localhost routing instead of attaching a webview id.
+  const importUrl = bypassVsCodeLocalhostWorkerRouting(url);
+  const source = makeWorkerBootstrapSource(importUrl, type);
+  return `data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`;
 }

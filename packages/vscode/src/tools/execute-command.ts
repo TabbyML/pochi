@@ -164,6 +164,7 @@ export const executeCommand: ToolFunctionType<
           const backgroundResult = createBackgroundCommandResult(
             job.id,
             job.outputFile,
+            { origin: "foreground-timeout" },
           );
           output.value = {
             content: backgroundResult.output,

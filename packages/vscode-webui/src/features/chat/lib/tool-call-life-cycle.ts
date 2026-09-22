@@ -5,6 +5,7 @@ import {
   createBackgroundSubAgentStartedResult,
   getLogger,
   getSubAgentBackgroundJobId,
+  shouldRunSubAgentInBackground,
   toErrorMessage,
 } from "@getpochi/common";
 import type {
@@ -34,7 +35,6 @@ import {
 } from "@quilted/threads/signals";
 import type { InferToolInput } from "ai";
 import Emittery from "emittery";
-import { shouldRunSubtaskInBackground } from "./background-subtask";
 import type { ToolCallLifeCycleKey } from "./chat-state/types";
 
 type ExecuteCommandReturnType = {
@@ -256,6 +256,7 @@ export class ManagedToolCallLifeCycle
       executePromise = BackgroundJobManager.forStore(this.store).kill(
         (args as { backgroundJobId: string }).backgroundJobId,
         options?.taskId ?? "",
+        { notify: false },
       );
     } else {
       executePromise = execute();
@@ -299,11 +300,7 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    // The browser agent needs a per-task browser session that only the
-    // foreground path sets up; the todo-completion agent resolves todos
-    // through the foreground result flow.
-    const background = shouldRunSubtaskInBackground(args);
-    if (background) {
+    if (shouldRunSubAgentInBackground(args)) {
       await BackgroundJobManager.forStore(this.store).backgroundSubTask(
         {
           taskId: uid,
