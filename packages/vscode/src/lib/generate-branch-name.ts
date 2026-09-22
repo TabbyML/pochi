@@ -83,14 +83,7 @@ export async function generateBranchName(params: {
     abortSignal: params.abortSignal,
   });
 
-  logger.info("Gen branch name response:", {
-    modelId: ModelId,
-    text: result.text,
-    finishReason: result.finishReason,
-    inputTokens: result.usage.inputTokens,
-    outputTokens: result.usage.outputTokens,
-    reasoningTokens: result.usage.outputTokenDetails.reasoningTokens,
-  });
+  logger.trace("Gen branch name response:", result);
 
   if (result.finishReason !== "stop") {
     return undefined;
