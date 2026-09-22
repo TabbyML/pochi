@@ -24,8 +24,10 @@ export async function onOverrideMessages({
     .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
-    // Select before appendCheckpoint adds a part to a pure notification message.
-    const fileEditMessage = getFileEditMessage(messages);
+    // Select before appendCheckpoint adds a part to a notification message.
+    const summaryMessage = isBackgroundJobNotificationMessage(lastMessage)
+      ? messages.at(-2)
+      : lastMessage;
     const ckpt = await appendCheckpoint(lastMessage);
 
     const firstCheckpoint = checkpoints.at(0);
@@ -35,29 +37,21 @@ export async function onOverrideMessages({
     }
 
     const lastCheckpoint = checkpoints.at(-1);
-    if (ckpt && fileEditMessage && lastCheckpoint) {
+    if (ckpt && summaryMessage?.role === "assistant" && lastCheckpoint) {
       // diff summary in chat view
-      await updateChangedFiles(taskId, lastCheckpoint, fileEditMessage);
+      await updateChangedFiles(taskId, lastCheckpoint, summaryMessage);
     }
   }
 }
 
-function getFileEditMessage(messages: Message[]) {
-  const lastMessage = messages.at(-1);
-  if (lastMessage?.role === "assistant") return lastMessage;
-  if (
-    lastMessage?.role !== "user" ||
-    lastMessage.parts.length === 0 ||
-    !lastMessage.parts.every(
-      (p) => p.type === "data-background-job-notification",
+function isBackgroundJobNotificationMessage(message: Message): boolean {
+  return (
+    message.role === "user" &&
+    message.parts.length > 0 &&
+    message.parts.every(
+      (part) => part.type === "data-background-job-notification",
     )
-  ) {
-    return;
-  }
-
-  // Background notifications can follow tool results before this hook runs.
-  const message = messages.at(-2);
-  return message?.role === "assistant" ? message : undefined;
+  );
 }
 
 export function writeRenderWidgetOutput(messages: Message[]) {
