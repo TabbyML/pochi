@@ -294,6 +294,50 @@ describe("BackgroundJobManager", () => {
     await manager.dispose();
   });
 
+  it.each([finished(), stopped()])(
+    "removes an already queued $status command notification before reopening",
+    async (notice) => {
+      const { manager, observers, acknowledge, source, store } = setup();
+      const other = finished("bgjob-cmd-other");
+      await manager.watchTask("parent");
+      observers.get("parent")!({ running: {}, notifications: [notice, other] });
+      const acknowledgeNow = acknowledge.getMockImplementation()!;
+      let release!: () => void;
+      const persisted = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      acknowledge.mockImplementationOnce(async (id) => {
+        await persisted;
+        await acknowledgeNow(id);
+      });
+      let settled = false;
+      const kill = manager
+        .kill(notice.backgroundJobId, "parent", { notify: false })
+        .then(() => {
+          settled = true;
+        });
+      try {
+        await vi.waitFor(() =>
+          expect(acknowledge).toHaveBeenCalledWith(notice.notificationId),
+        );
+        expect(settled).toBe(false);
+        expect(manager.getPendingNotifications("parent")).toEqual([other]);
+      } finally {
+        release();
+        await kill;
+        await manager.dispose();
+      }
+      const reopened = BackgroundJobManager.forStore(store);
+      reopened.connect(source);
+      try {
+        await reopened.watchTask("parent");
+        expect(reopened.getPendingNotifications("parent")).toEqual([other]);
+      } finally {
+        await reopened.dispose();
+      }
+    },
+  );
+
   it("does not reconstruct a command from old tool messages when its process is gone", async () => {
     const { manager, messages, source } = setup();
     messages.set("parent", [

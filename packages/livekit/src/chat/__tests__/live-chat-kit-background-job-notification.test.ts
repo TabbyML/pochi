@@ -4,7 +4,9 @@ import {
 } from "@getpochi/common";
 import type { ChatInit } from "ai";
 import { describe, expect, it, vi } from "vitest";
-import type { BlobStore, LiveKitStore, Message } from "../..";
+import type { BlobStore, LiveKitStore, Message, Task } from "../..";
+import { makeJobStore } from "../../background-job/__tests__/test-store";
+import { BackgroundJobManager } from "../../background-job/manager";
 import {
   createBackgroundJobNotificationMessage,
   getBackgroundJobNotificationIds,
@@ -14,6 +16,100 @@ import type { OnStartCallback } from "../flexible-chat-transport";
 import type { LiveChatKitBackgroundJobNotificationOptions } from "../live-chat-kit";
 import { LiveChatKit } from "../live-chat-kit";
 describe("LiveChatKit background job notification delivery", () => {
+  describe.each(["command", "subagent"] as const)(
+    "silenced %s notifications",
+    (kind) => {
+      it.each(["subscription", "flush", "next request"] as const)(
+        "removes an already queued notice through %s without dropping other results",
+        async (delivery) => {
+          const data = makeJobStore();
+          const manager = BackgroundJobManager.forStore(data.store);
+          const notice =
+            kind === "command" ? notifications("bgjob-cmd-1")[0] : subagentResult;
+          let queued = kind === "command" ? [notice] : [];
+          manager.connect({
+            kill: async () => {},
+            observeCommands: async (update) => {
+              update({});
+              return { dispose() {} };
+            },
+            observeNotifications: async (_taskId, update) => {
+              update(queued);
+              return {
+                dispose() {},
+                acknowledge: async (id) => {
+                  queued = queued.filter((item) => item.notificationId !== id);
+                  update(queued);
+                },
+              };
+            },
+          });
+          if (kind === "subagent") {
+            data.tasks.set("child-1", {
+              id: "child-1",
+              parentId: "task-1",
+              background: true,
+              status: "completed",
+            } as Task);
+            manager.registerTask("child-1", { parentTaskId: "task-1" });
+          }
+          const startTurn = vi.fn();
+          const onPendingChange = vi.fn();
+          const kit = new LiveChatKit<FakeChat>({
+            taskId: "task-1",
+            store: data.store,
+            blobStore: {} as BlobStore,
+            chatClass: FakeChat,
+            getters: { getLLM: () => ({ id: "test-model" }) as never },
+            backgroundJobManager: manager,
+            backgroundJobNotifications: { startTurn, onPendingChange },
+          });
+          kit.chat.messages = [userMessage("run it"), assistantMessage()];
+          await manager.watchTask("task-1");
+          const unsubscribe = kit.subscribeBackgroundJobs();
+          try {
+            await vi.waitFor(() =>
+              expect(kit.pendingBackgroundJobNotifications).toHaveLength(1),
+            );
+            if (delivery !== "subscription") unsubscribe();
+            await manager.kill(notice.backgroundJobId, "task-1", {
+              notify: false,
+            });
+            expect(manager.getPendingNotifications("task-1")).toEqual([]);
+            if (delivery === "next request") {
+              await makeRequest(kit);
+              expect(
+                kit.chat.messages.flatMap((message) =>
+                  getBackgroundJobNotificationIds(message.parts),
+                ),
+              ).toEqual([]);
+            } else if (delivery === "flush") {
+              expect(kit.flushBackgroundJobNotifications()).toBe(false);
+              expect(startTurn).not.toHaveBeenCalled();
+            }
+            expect(kit.pendingBackgroundJobNotifications).toEqual([]);
+            expect(onPendingChange).toHaveBeenLastCalledWith([]);
+
+            // A stale snapshot must not bring back the silenced result, while
+            // unrelated results still reach the model.
+            const other = notifications("bgjob-cmd-other")[0];
+            kit.enqueueBackgroundJobNotifications([notice, other]);
+            expect(idsOf(kit.pendingBackgroundJobNotifications)).toEqual([
+              other.notificationId,
+            ]);
+            expect(kit.flushBackgroundJobNotifications()).toBe(true);
+            expect(idsOf(startTurn.mock.calls[0][0].parts)).toEqual([
+              other.notificationId,
+            ]);
+          } finally {
+            unsubscribe();
+            await manager.dispose();
+          }
+        },
+      );
+    },
+  );
+
   it("delivers mixed subagent and command notifications with the next user request", async () => {
     const chatKit = makeChatKit();
     chatKit.chat.messages = [assistantMessage(), userMessage("continue")];

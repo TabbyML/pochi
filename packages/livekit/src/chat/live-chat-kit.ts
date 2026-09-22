@@ -737,16 +737,23 @@ export class LiveChatKit<
   private enqueueBackgroundJobNotificationParts(
     parts: readonly BackgroundJobNotificationPart[],
   ): void {
-    const added = dedupeBackgroundJobNotificationParts(parts, [
-      ...this.chat.messages.flatMap((message) => message.parts),
-      ...this.pendingBackgroundJobNotificationParts,
-    ]);
-    if (added.length === 0) return;
+    const canNotify = (part: BackgroundJobNotificationPart) =>
+      !this.backgroundJobManager.isNotificationSilenced(
+        part.data.backgroundJobId,
+      );
+    const pending =
+      this.pendingBackgroundJobNotificationParts.filter(canNotify);
+    const added = dedupeBackgroundJobNotificationParts(
+      parts.filter(canNotify),
+      [...this.chat.messages.flatMap((message) => message.parts), ...pending],
+    );
+    if (
+      added.length === 0 &&
+      pending.length === this.pendingBackgroundJobNotificationParts.length
+    )
+      return;
 
-    this.setPendingBackgroundJobNotifications([
-      ...this.pendingBackgroundJobNotificationParts,
-      ...added,
-    ]);
+    this.setPendingBackgroundJobNotifications([...pending, ...added]);
   }
 
   private setPendingBackgroundJobNotifications(

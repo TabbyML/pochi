@@ -99,7 +99,7 @@ type TaskSubscription = {
   notifications: readonly CommandNotification[];
   dispose?: () => void;
   acknowledge?: (id: string) => Promise<void>;
-  acknowledging: Set<string>;
+  acknowledging: Map<string, Promise<void>>;
   listeners: Set<(notifications: BackgroundJobNotification[]) => void>;
 };
 
@@ -530,7 +530,7 @@ export class BackgroundJobManager {
     const subscription: TaskSubscription = {
       ready: Promise.resolve(),
       notifications: [],
-      acknowledging: new Set(),
+      acknowledging: new Map(),
       listeners: new Set(),
     };
     this.subscriptions.set(taskId, subscription);
@@ -620,6 +620,11 @@ export class BackgroundJobManager {
     return this.readNotifications(taskId).pending;
   }
 
+  /** Chat queues may still contain a notice after the host acknowledges it. */
+  isNotificationSilenced(backgroundJobId: string): boolean {
+    return this.silenced.has(backgroundJobId);
+  }
+
   private readNotifications(taskId: string) {
     const messages = this.messages(taskId);
     const delivered = new Set(
@@ -687,17 +692,17 @@ export class BackgroundJobManager {
         subscription.acknowledging.has(id)
       )
         continue;
-      subscription.acknowledging.add(id);
-      void subscription.acknowledge(id).then(
-        // The host dropped it, so the flag no longer has to outlive the notice.
-        () => this.silenced.delete(notice.backgroundJobId),
-        (error) => {
+      // The host may synchronously publish its updated queue during this call.
+      subscription.acknowledging.set(id, Promise.resolve());
+      subscription.acknowledging.set(
+        id,
+        subscription.acknowledge(id).catch((error) => {
           subscription.acknowledging.delete(id);
           logger.warn(
             "Failed to acknowledge background job notification",
             error,
           );
-        },
+        }),
       );
     }
     for (const listener of subscription.listeners) listener(pending);
@@ -846,6 +851,18 @@ export class BackgroundJobManager {
       if (!this.commandAdaptor)
         throw new Error("Background command adaptor is not connected.");
       await this.commandAdaptor.kill(backgroundJobId);
+    }
+    if (!notify) {
+      // An already finished job may emit no further update. Flush its queued
+      // notice now, and let subscribed chats retract their pending copy.
+      this.changedTasks.add(taskId);
+      this.changed();
+      const stopped = this.jobs.get(backgroundJobId);
+      if (stopped?.kind === "command" && stopped.notification) {
+        await this.subscriptions
+          .get(taskId)
+          ?.acknowledging.get(stopped.notification.notificationId);
+      }
     }
     return { success: true };
   }
