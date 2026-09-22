@@ -1,6 +1,13 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import fs from "node:fs/promises";
-import { TextDecoder, TextEncoder } from "node:util";
+import { TextDecoder } from "node:util";
 import { isFileExists } from "@/lib/fs";
 import { taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
@@ -42,6 +49,8 @@ const MaxEncodedTaskErrorChars = 8 * 1024;
 export class TaskHistoryStore implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private storageKey: string;
+  private disposed = false;
+  private writeQueue: Promise<void> = Promise.resolve();
   tasks = signal<Record<string, EncodedTask>>({});
 
   constructor(
@@ -73,13 +82,13 @@ export class TaskHistoryStore implements vscode.Disposable {
   }
 
   /**
-   * Temp file used for atomic writes. Scoped to the process so that concurrent
-   * windows never write to the same temp file.
+   * Each write owns its temp file, including the final synchronous flush, so
+   * an in-flight write cannot modify a file that another write has published.
    */
-  private get tempFileUri(): vscode.Uri {
+  private createTempFileUri(): vscode.Uri {
     return vscode.Uri.joinPath(
       this.context.globalStorageUri,
-      `${this.storageKey}.${process.pid}.tmp.json`,
+      `${this.storageKey}.${process.pid}.${randomUUID()}.tmp.json`,
     );
   }
 
@@ -113,6 +122,8 @@ export class TaskHistoryStore implements vscode.Disposable {
         cwdExistsMap.set(cwd, exists);
       }),
     );
+
+    if (this.disposed) return;
 
     const validTasks: Record<string, EncodedTask> = {};
     let hasStaleTasks = false;
@@ -182,7 +193,7 @@ export class TaskHistoryStore implements vscode.Disposable {
         `Task history file is unreadable: ${this.fileUri.fsPath}`,
         error,
       );
-      await this.backupCorruptedFile();
+      if (!this.disposed) this.backupCorruptedFile();
       return { tasks: {}, corrupted: true };
     }
   }
@@ -191,15 +202,13 @@ export class TaskHistoryStore implements vscode.Disposable {
    * Keep a copy of an unparsable file instead of silently overwriting it, so
    * that the history can be recovered manually.
    */
-  private async backupCorruptedFile() {
+  private backupCorruptedFile() {
     const backupUri = vscode.Uri.joinPath(
       this.context.globalStorageUri,
       `${this.storageKey}.corrupted-${Date.now()}.json`,
     );
     try {
-      await vscode.workspace.fs.rename(this.fileUri, backupUri, {
-        overwrite: true,
-      });
+      renameSync(this.fileUri.fsPath, backupUri.fsPath);
       logger.info(`Corrupted task history moved to ${backupUri.fsPath}`);
     } catch (error) {
       logger.error("Failed to back up corrupted task history", error);
@@ -228,27 +237,40 @@ export class TaskHistoryStore implements vscode.Disposable {
     return this.tasks.value;
   }
 
-  private async writeTasksToDisk(options?: { merge?: boolean }) {
+  private writeTasksToDisk(options?: { merge?: boolean }) {
+    this.writeQueue = this.writeQueue.then(() => this.persistTasks(options));
+    return this.writeQueue;
+  }
+
+  private async persistTasks(options?: { merge?: boolean }) {
+    if (this.disposed) return;
+
+    const tempPath = this.createTempFileUri().fsPath;
     try {
-      await vscode.workspace.fs.createDirectory(this.context.globalStorageUri);
+      await fs.mkdir(this.context.globalStorageUri.fsPath, { recursive: true });
       if (options?.merge !== false) {
         const { tasks, corrupted } = await this.readTasksFromDisk();
+        if (this.disposed) return;
         if (!corrupted) {
           this.mergeWithDisk(tasks);
         }
       }
-      const content = new TextEncoder().encode(
-        JSON.stringify(this.tasks.value),
-      );
-      // Write to a temp file and rename: a truncated write (window closed
-      // mid-write, crash, full disk) would otherwise leave invalid JSON behind
-      // and drop the entire task history.
-      await vscode.workspace.fs.writeFile(this.tempFileUri, content);
-      await vscode.workspace.fs.rename(this.tempFileUri, this.fileUri, {
-        overwrite: true,
-      });
+      if (this.disposed) return;
+      await fs.writeFile(tempPath, JSON.stringify(this.tasks.value));
+      if (this.disposed) return;
+
+      // VS Code's overwrite rename deletes the destination first. Use the
+      // native atomic replacement, synchronously so dispose cannot publish a
+      // newer snapshot between this check and the rename completing.
+      renameSync(tempPath, this.fileUri.fsPath);
     } catch (err) {
       logger.error("Failed to save tasks", err);
+    } finally {
+      try {
+        await fs.rm(tempPath, { force: true });
+      } catch (err) {
+        logger.warn("Failed to remove task history temp file", err);
+      }
     }
   }
 
@@ -257,6 +279,7 @@ export class TaskHistoryStore implements vscode.Disposable {
    * otherwise the last batch of updates is lost when the window closes.
    */
   private writeTasksToDiskSync() {
+    const tempPath = this.createTempFileUri().fsPath;
     try {
       mkdirSync(this.context.globalStorageUri.fsPath, { recursive: true });
       try {
@@ -266,11 +289,16 @@ export class TaskHistoryStore implements vscode.Disposable {
       } catch {
         // Missing or unreadable file: keep the in-memory snapshot as is.
       }
-      const tempPath = this.tempFileUri.fsPath;
       writeFileSync(tempPath, JSON.stringify(this.tasks.value));
       renameSync(tempPath, this.fileUri.fsPath);
     } catch (err) {
       logger.error("Failed to save tasks", err);
+    } finally {
+      try {
+        rmSync(tempPath, { force: true });
+      } catch (err) {
+        logger.warn("Failed to remove task history temp file", err);
+      }
     }
   }
 
@@ -287,6 +315,8 @@ export class TaskHistoryStore implements vscode.Disposable {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.saveTasks.cancel();
     this.writeTasksToDiskSync();
     for (const disposable of this.disposables) {
