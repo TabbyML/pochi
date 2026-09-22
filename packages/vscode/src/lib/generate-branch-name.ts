@@ -1,6 +1,6 @@
-import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
 import { getVendor } from "@getpochi/common/vendor";
-import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
+import { createModel } from "@getpochi/common/vendor/edge";
+import "@getpochi/vendor-pochi/edge";
 import {
   type CallSettings,
   type ModelMessage,
@@ -24,7 +24,7 @@ export async function generateBranchName(params: {
   abortSignal?: AbortSignal | undefined;
 }): Promise<string | undefined> {
   if (!model) {
-    model = createModel();
+    model = createBranchNameModel();
   }
 
   const message: ModelMessage = {
@@ -66,19 +66,31 @@ export async function generateBranchName(params: {
   const request: CallSettings & Prompt = {
     system: SystemPrompt,
     messages: [message],
-    maxOutputTokens: 64,
+    maxOutputTokens: 1024,
     stopSequences: ["\n", " "],
   };
-
-  logger.trace("Gen branch name request:", request);
 
   const result = await generateText({
     ...request,
     model,
+    providerOptions: {
+      google: {
+        thinkingConfig: {
+          thinkingLevel: "minimal",
+        },
+      },
+    },
     abortSignal: params.abortSignal,
   });
 
-  logger.trace("Gen branch name response:", result.response.body);
+  logger.info("Gen branch name response:", {
+    modelId: ModelId,
+    text: result.text,
+    finishReason: result.finishReason,
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+    reasoningTokens: result.usage.outputTokenDetails.reasoningTokens,
+  });
 
   if (result.finishReason !== "stop") {
     return undefined;
@@ -103,47 +115,11 @@ function formatPlaceholders(
   });
 }
 
-const patchString = (str: string) => {
-  return str.replace("/publishers/google/models", "/endpoints");
-};
-
-function createModel() {
-  const vertexModel = createVertexWithoutCredentials({
-    project: "placeholder",
-    location: "placeholder",
-    baseURL:
-      "https://api-gateway.getpochi.com/https/us-central1-aiplatform.googleapis.com/v1/projects/gen-lang-client-0005535210/locations/us-central1/publishers/google",
-    fetch: async (
-      requestInfo: Request | URL | string,
-      requestInit?: RequestInit,
-    ) => {
-      const { jwt } = (await getVendor(
-        "pochi",
-      ).getCredentials()) as PochiCredentials;
-      const headers = new Headers(requestInit?.headers);
-      headers.append("Authorization", `Bearer ${jwt}`);
-      const patchedRequestInit = {
-        ...requestInit,
-        headers,
-      };
-
-      let finalUrl: URL;
-      if (requestInfo instanceof URL) {
-        finalUrl = new URL(requestInfo);
-        finalUrl.pathname = patchString(finalUrl.pathname);
-      } else if (requestInfo instanceof Request) {
-        const patchedUrl = patchString(requestInfo.url);
-        finalUrl = new URL(patchedUrl);
-      } else if (typeof requestInfo === "string") {
-        const patchedUrl = patchString(requestInfo);
-        finalUrl = new URL(patchedUrl);
-      } else {
-        throw new Error(`Unexpected requestInfo type: ${typeof requestInfo}`);
-      }
-      return fetch(finalUrl, patchedRequestInit);
-    },
-  })(ModelId);
-  return vertexModel;
+function createBranchNameModel() {
+  return createModel("pochi", {
+    modelId: ModelId,
+    getCredentials: () => getVendor("pochi").getCredentials(),
+  });
 }
 
 const MinChars = 5;
@@ -183,5 +159,4 @@ const UserPrompt = {
 `,
 };
 
-// FIXME(zhiming): This is the nes model, change this to a common model or a model tuned for branch name
-const ModelId = "654670113898758144";
+const ModelId = "google/gemini-3.5-flash";
