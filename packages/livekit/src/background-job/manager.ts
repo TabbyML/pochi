@@ -572,9 +572,7 @@ export class BackgroundJobManager {
       monitor: event.description,
       command: event.command,
       outputFile: event.outputFile,
-      status: keepStatus
-        ? old.status
-        : (event.ended?.status ?? (event.ended ? "completed" : "running")),
+      status: keepStatus ? old.status : (event.ended?.status ?? "running"),
       exitCode: keepStatus ? old.exitCode : event.ended?.exitCode,
       ...(keepStatus && old.inferredStopped ? { inferredStopped: true } : {}),
     });

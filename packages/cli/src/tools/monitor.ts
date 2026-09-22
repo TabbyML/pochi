@@ -13,6 +13,9 @@ export const startMonitor =
     if (!adaptor || !taskId) {
       throw new Error("Background job manager not available.");
     }
+    if (context.allowBackground === false) {
+      throw new Error("Background monitors are not available for this task.");
+    }
 
     if (!command) {
       throw new Error("Command is required to execute.");

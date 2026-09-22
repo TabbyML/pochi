@@ -8,6 +8,19 @@ export type BackgroundJobNotificationPart = Extract<
   { type: "data-background-job-notification" }
 >;
 
+export function dedupeBackgroundJobNotificationParts(
+  parts: readonly BackgroundJobNotificationPart[],
+  existing: readonly MessagePart[],
+): BackgroundJobNotificationPart[] {
+  const seen = new Set(getBackgroundJobNotificationIds(existing));
+  return parts.filter((part) => {
+    const id = part.data.notificationId;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 /** Wraps notifications into the message parts hosts queue and send. */
 export function toBackgroundJobNotificationParts(
   notifications: readonly BackgroundJobNotification[],
@@ -21,11 +34,10 @@ export function toBackgroundJobNotificationParts(
 export function getBackgroundJobNotificationParts(
   parts: readonly MessagePart[],
 ): BackgroundJobNotificationPart[] {
-  return parts.flatMap((part): BackgroundJobNotificationPart[] => {
-    if (part.type === "data-background-job-notification")
-      return toBackgroundJobNotificationParts([part.data]);
-    return [];
-  });
+  return parts.filter(
+    (part): part is BackgroundJobNotificationPart =>
+      part.type === "data-background-job-notification",
+  );
 }
 
 export function getBackgroundJobNotificationIds(
@@ -77,19 +89,4 @@ export function attachBackgroundJobNotificationParts(
   }
 
   return [...messages, createBackgroundJobNotificationMessage(pending)];
-}
-
-/** Drops notifications already present in the conversation. */
-export function dedupeBackgroundJobNotificationParts(
-  parts: readonly BackgroundJobNotificationPart[],
-  existing: readonly MessagePart[],
-): BackgroundJobNotificationPart[] {
-  if (parts.length === 0) return [];
-
-  const seen = new Set(getBackgroundJobNotificationIds(existing));
-  return parts.flatMap((part): BackgroundJobNotificationPart[] => {
-    if (seen.has(part.data.notificationId)) return [];
-    seen.add(part.data.notificationId);
-    return [part];
-  });
 }

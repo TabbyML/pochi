@@ -28,11 +28,8 @@ export function nextCommandResult(
   const subscription = adaptor.commandAdaptor.observeNotifications(
     taskId,
     (notices) => {
-      const notice = notices.find(
-        (notice) => "kind" in notice && notice.kind === "command",
-      );
-      if (notice && "kind" in notice && notice.kind === "command")
-        complete(notice);
+      const notice = notices.find((notice) => notice.kind === "command");
+      if (notice?.kind === "command") complete(notice);
     },
   );
   return result.finally(async () => {

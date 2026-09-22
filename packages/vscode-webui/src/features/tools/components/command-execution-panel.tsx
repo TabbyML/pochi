@@ -433,13 +433,7 @@ export const BackgroundJobPanel: FC<{
       <Tooltip>
         <TooltipTrigger asChild>{notificationRow}</TooltipTrigger>
         <TooltipContent>
-          <span
-            className={cn(
-              "block max-w-sm whitespace-pre-wrap break-words",
-              backgroundJobId.startsWith("bgjob-monitor-") &&
-                "max-h-[50vh] overflow-y-auto overscroll-y-contain",
-            )}
-          >
+          <span className="block max-w-sm whitespace-pre-wrap break-words">
             {summary}
           </span>
         </TooltipContent>

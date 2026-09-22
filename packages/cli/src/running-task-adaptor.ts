@@ -722,6 +722,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
 
     job.stopRequested = true;
     if (!job.monitor) return job.process.kill("SIGTERM");
+    job.monitor.endReason ??= "kill requested";
 
     const signal = (name: NodeJS.Signals | 0) => {
       if (job.process.pid && process.platform !== "win32") {

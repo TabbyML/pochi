@@ -9,7 +9,7 @@ export const startMonitor: ToolFunctionType<
   ClientTools["startMonitor"]
 > = async (
   { command, description, cwd = ".", timeoutMs, persistent },
-  { abortSignal, cwd: workspaceDir, taskId, envs },
+  { abortSignal, cwd: workspaceDir, taskId, envs, allowBackground },
 ) => {
   if (!command) {
     throw new Error("Command is required to execute.");
@@ -17,6 +17,9 @@ export const startMonitor: ToolFunctionType<
 
   if (!taskId) {
     throw new Error("Monitor requires a task context.");
+  }
+  if (allowBackground === false) {
+    throw new Error("Background monitors are not available for this task.");
   }
 
   if (path.isAbsolute(cwd)) {

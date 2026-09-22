@@ -107,7 +107,7 @@ export const BackgroundMonitorNotification = z.object({
   ended: z
     .object({
       reason: z.string(),
-      status: BackgroundJobTerminalStatus.optional(),
+      status: BackgroundJobTerminalStatus,
       exitCode: z.number().optional(),
     })
     .optional(),

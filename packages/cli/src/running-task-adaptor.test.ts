@@ -50,6 +50,15 @@ describe("CliRunningTaskAdaptor command ownership", () => {
       expect(rejected).toMatchObject({
         error: expect.stringContaining("not available"),
       });
+      const monitor = await adaptor.executeToolCall({
+        ...context,
+        toolName: "startMonitor",
+        toolCallId: randomUUID(),
+        input: { command: "echo forbidden", description: "fork monitor" },
+      });
+      expect(monitor).toMatchObject({
+        error: expect.stringContaining("Background monitors are not available"),
+      });
       const result = await adaptor.executeToolCall({
         ...context,
         toolCallId: randomUUID(),
@@ -102,7 +111,10 @@ describe("CliRunningTaskAdaptor command ownership", () => {
         {
           id: "delivered",
           role: "user",
-          parts: notices.filter((notice) => "kind" in notice).map((data) => ({ type: "data-background-job-notification", data })),
+          parts: notices.map((data) => ({
+            type: "data-background-job-notification",
+            data,
+          })),
         },
       ]);
       // Compaction can remove the message after its notification is acknowledged.

@@ -20,6 +20,24 @@ const { startMonitor } = proxyquire.noCallThru().load("../monitor", {
   "@/integrations/terminal/terminal-job": { TerminalJob },
 }) as typeof import("../monitor");
 
+describe("startMonitor host policy", () => {
+  it("rejects monitors for tasks that disallow background work before creating a terminal", async () => {
+    let started = false;
+    const { startMonitor: restrictedMonitor } = proxyquire.noCallThru().load("../monitor", {
+      "@/integrations/layout": { getViewColumnForTerminal: () => undefined },
+      "@/integrations/terminal/terminal-job": { TerminalJob: { create: async () => {
+        started = true;
+        return { id: "unexpected", outputFile: "/tmp/unexpected.log" };
+      } } },
+    }) as typeof import("../monitor");
+    await assert.rejects(async () => restrictedMonitor(
+      { command: "echo forbidden", description: "fork monitor" },
+      { cwd: process.cwd(), taskId: "fork", messages: [], toolCallId: "monitor", allowBackground: false },
+    ), /Background monitors are not available/);
+    assert.strictEqual(started, false);
+  });
+});
+
 describe("startMonitor real terminal", () => {
   for (const mode of ["timeout", "manual", "graceful"] as const) {
     it(`cleans up descendants after the shell exits during ${mode} cancellation`, async function () {

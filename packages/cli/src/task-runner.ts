@@ -362,7 +362,6 @@ export class TaskRunner {
                         name: description,
                         isActive: false,
                         backgroundJobId,
-                        monitor: description,
                         outputFile,
                       }),
                     ),

@@ -82,13 +82,4 @@ describe("monitor notification rendering", () => {
     },
   );
 
-  it("does not label a legacy end event without status as running", () => {
-    const text = renderBackgroundJobNotification({
-      ...monitor,
-      lines: [],
-      ended: { reason: "watch ended" },
-    });
-    expect(text).toContain("<status>ended</status>");
-    expect(text).toContain("The monitor has ended");
-  });
 });

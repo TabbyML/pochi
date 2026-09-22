@@ -17,9 +17,7 @@ export function renderBackgroundJobNotification(
   let status: string;
   switch (notification.kind) {
     case "monitor": {
-      status = notification.ended
-        ? (notification.ended.status ?? "ended")
-        : "running";
+      status = notification.ended?.status ?? "running";
       const lines = [
         ...(notification.omittedLines
           ? [

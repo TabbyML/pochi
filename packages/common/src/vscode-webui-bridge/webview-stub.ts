@@ -303,7 +303,6 @@ const VSCodeHostStub = {
         Promise.resolve(),
     });
   },
-
   readModelList: async () => {
     return Promise.resolve(
       {} as {

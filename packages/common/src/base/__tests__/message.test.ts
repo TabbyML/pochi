@@ -79,6 +79,7 @@ describe("BackgroundJobNotification", () => {
       { lines: "not an array" },
       { omittedLines: -1 },
       { ended: { reason: "done", status: "running" } },
+      { ended: { reason: "done" } },
     ]) {
       expect(BackgroundJobNotification.safeParse({ ...monitor, ...patch }).success).toBe(false);
     }

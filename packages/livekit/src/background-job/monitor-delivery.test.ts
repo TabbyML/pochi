@@ -59,7 +59,7 @@ describe("monitor delivery budget", () => {
     const terminal = {
       ...event("waiting", []),
       notificationId: "end",
-      ended: { reason: "done" },
+      ended: { reason: "done", status: "completed" as const },
     };
     const events = [
       large("a"),
@@ -86,7 +86,7 @@ describe("monitor delivery budget", () => {
     const end = {
       ...event("finished", []),
       notificationId: "end",
-      ended: { reason: "done" },
+      ended: { reason: "done", status: "completed" as const },
     };
     expect(delivery.take([head, end], 0)).toEqual([]);
     expect(delivery.take([head, end], head.lines[0].length)).toEqual([
@@ -100,7 +100,7 @@ describe("monitor delivery budget", () => {
     delivery.take([event("previous")]);
     const ended = Array.from({ length: 6 }, (_, i) => ({
       ...event(String(i), ["x".repeat(8192)]),
-      ended: { reason: "done" },
+      ended: { reason: "done", status: "completed" as const },
     }));
     expect(delivery.take(ended).map((notice) => notice.notificationId)).toEqual(
       ended.slice(0, 4).map((notice) => notice.notificationId),

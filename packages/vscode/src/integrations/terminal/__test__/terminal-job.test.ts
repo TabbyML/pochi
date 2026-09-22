@@ -266,6 +266,7 @@ describe("TerminalJob", () => {
     finishCleanup();
     await flushPromises();
     assert.strictEqual(harness.monitorEvents.at(-1)?.ended?.status, "stopped");
+    assert.strictEqual(harness.monitorEvents.at(-1)?.ended?.reason, "kill requested");
     assert.strictEqual(
       harness.monitorEvents.filter((event) => event.ended).length,
       1,

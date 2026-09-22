@@ -507,6 +507,7 @@ export class TerminalJob implements vscode.Disposable {
   private requestStop(reason: string): void {
     if (this.finished || this.stopRequested) return;
     this.stopRequested = true;
+    this.monitorEndReason ??= reason;
     logger.info(`Stopping terminal job ${this.id}: ${reason}`);
     if (this.ptyProcess) {
       if (this.monitorWatcher) {

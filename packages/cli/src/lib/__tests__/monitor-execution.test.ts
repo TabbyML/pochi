@@ -276,6 +276,7 @@ describe("monitor execution through the shared background job manager", () => {
     expect(await manager.wait(taskId, { timeoutMs: 2000 })).toBe("completed");
     expect(events()).toHaveLength(1);
     expect(events()[0].ended?.status).toBe("stopped");
+    expect(events()[0].ended?.reason).toBe("kill requested");
   });
   it("restores delivered history without granting a fork process ownership", async () => {
     data.setMessages("fork", [{ id: "copied", role: "user", parts: [{ type: "data-background-job-notification", data: {
