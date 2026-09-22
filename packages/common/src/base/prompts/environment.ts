@@ -195,7 +195,7 @@ function getVisibleTerminals(workspace: Environment["workspace"]) {
   return `${header}\n${terminals
     .map(
       (t) =>
-        `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (selected)" : ""}${t.backgroundJobId ? ` (id: ${t.backgroundJobId})` : ""}${t.outputFile ? ` (output: ${t.outputFile})` : ""}${t.monitor ? ` (monitoring: ${t.monitor})` : ""}`,
+        `${t.isActive ? "* " : "  "}${t.name}${t.isActive ? " (selected)" : ""}${t.backgroundJobId ? ` (id: ${t.backgroundJobId})` : ""}${t.outputFile ? ` (output: ${t.outputFile})` : ""}`,
     )
     .join("\n")}`;
 }

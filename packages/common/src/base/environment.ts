@@ -67,12 +67,6 @@ export const Environment = z.object({
               .describe(
                 "Absolute path to the terminal transcript. Read it with readFile using offset/limit.",
               ),
-            monitor: z
-              .string()
-              .optional()
-              .describe(
-                "Present when this terminal is an active monitor; the value is the monitor description.",
-              ),
           }),
         )
         .optional()

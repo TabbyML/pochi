@@ -29,7 +29,6 @@ export interface TerminalInfo {
    *   these because they are not tracked by the `TerminalJob` registry.
    */
   backgroundJobId?: string;
-  monitor?: string;
   /** Absolute transcript path readable with readFile. */
   outputFile?: string;
 }
@@ -299,26 +298,20 @@ export class TerminalState implements vscode.Disposable {
           TerminalHistoryManager.getOrCreate(id).terminalName = terminal.name;
         }
         return {
-          name: terminal.name,
+          name: job?.monitorDescription ?? terminal.name,
           isActive: terminal === vscode.window.activeTerminal,
           backgroundJobId: id,
           outputFile: this.getTerminalOutputFile(terminal),
-          ...(job?.monitorDescription !== undefined
-            ? { monitor: job.monitorDescription }
-            : {}),
         };
       });
 
     for (const job of TerminalJob.list()) {
       if (!job.isPtyTerminal || listedJobIds.has(job.id)) continue;
       terminals.push({
-        name: job.name,
+        name: job.monitorDescription ?? job.name,
         isActive: false,
         backgroundJobId: job.id,
         outputFile: job.outputFile,
-        ...(job.monitorDescription !== undefined
-          ? { monitor: job.monitorDescription }
-          : {}),
       });
     }
     return terminals;

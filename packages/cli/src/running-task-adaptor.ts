@@ -208,7 +208,6 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
                 name: monitor.description,
                 isActive: false,
                 backgroundJobId: monitor.backgroundJobId,
-                monitor: monitor.description,
                 outputFile: monitor.outputFile,
               }),
             ),
