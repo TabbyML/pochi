@@ -857,7 +857,7 @@ it("renders monitor batches only inside their message notification container", (
       id: "notifications-1",
       role: "user",
       parts: [
-        { type: "data-monitor-events", data: { batches: [monitor] } },
+        { type: "data-background-job-notification", data: monitor },
         {
           type: "data-background-job-notification",
           data: {
@@ -872,11 +872,11 @@ it("renders monitor batches only inside their message notification container", (
           },
         },
         {
-          type: "data-monitor-events",
+          type: "data-background-job-notification",
           data: {
-            batches: [
-              { ...monitor, notificationId: "second", lines: ["second log"] },
-            ],
+            ...monitor,
+            notificationId: "second",
+            lines: ["second log"],
           },
         },
       ],
@@ -891,16 +891,12 @@ it("renders monitor batches only inside their message notification container", (
       role: "user",
       parts: [
         {
-          type: "data-monitor-events",
+          type: "data-background-job-notification",
           data: {
-            batches: [
-              {
-                ...monitor,
-                notificationId: "ended",
-                lines: [],
-                ended: { reason: "kill requested", status: "stopped" },
-              },
-            ],
+            ...monitor,
+            notificationId: "ended",
+            lines: [],
+            ended: { reason: "kill requested", status: "stopped" },
           },
         },
       ],

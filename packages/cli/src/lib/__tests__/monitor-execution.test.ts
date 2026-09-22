@@ -278,9 +278,9 @@ describe("monitor execution through the shared background job manager", () => {
     expect(events()[0].ended?.status).toBe("stopped");
   });
   it("restores delivered history without granting a fork process ownership", async () => {
-    data.setMessages("fork", [{ id: "copied", role: "user", parts: [{ type: "data-monitor-events", data: { batches: [{
-      notificationId: "event", backgroundJobId: "bgjob-monitor-history", description: "CI", command: "watch", outputFile: "/tmp/watch.log", lines: [], ended: { status: "completed", exitCode: 0, reason: "done" },
-    }] } }] }]);
+    data.setMessages("fork", [{ id: "copied", role: "user", parts: [{ type: "data-background-job-notification", data: {
+      kind: "monitor", notificationId: "event", backgroundJobId: "bgjob-monitor-history", description: "CI", command: "watch", outputFile: "/tmp/watch.log", lines: [], ended: { status: "completed", exitCode: 0, reason: "done" },
+    } }] }]);
     await manager.watchTask("fork");
     expect(manager.getJobsForTask("fork")[0]).toMatchObject({ monitor: "CI", status: "completed", exitCode: 0 });
     expect(manager.hasPending("fork")).toBe(false);

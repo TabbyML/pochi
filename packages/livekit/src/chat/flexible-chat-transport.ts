@@ -7,7 +7,11 @@ import type {
   PochiProviderOptions,
   PochiRequestUseCase,
 } from "@getpochi/common";
-import { formatters, prompts } from "@getpochi/common";
+import {
+  BackgroundJobNotification,
+  formatters,
+  prompts,
+} from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import * as R from "remeda";
 
@@ -35,7 +39,6 @@ import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
 import type { LiveKitStore, Message, RequestData } from "../types";
-import { getBackgroundJobNotificationParts } from "./background-job-notification";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -567,15 +570,12 @@ export function convertDataPartToText(
       text: prompts.renderBashOutputs(part.data.bashOutputs),
     };
   }
-  if (
-    part.type === "data-background-job-notification" ||
-    part.type === "data-monitor-events"
-  ) {
+  if (part.type === "data-background-job-notification") {
     return {
       type: "text" as const,
-      text: getBackgroundJobNotificationParts([part])
-        .map(({ data }) => prompts.renderBackgroundJobNotification(data))
-        .join("\n\n"),
+      text: prompts.renderBackgroundJobNotification(
+        BackgroundJobNotification.parse(part.data),
+      ),
     };
   }
   return part;

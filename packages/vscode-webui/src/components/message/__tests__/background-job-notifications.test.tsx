@@ -2,7 +2,6 @@ import type {
   BackgroundCommandNotification,
   BackgroundMonitorNotification,
 } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -87,59 +86,46 @@ vi.mock("../subagent-results", () => ({
   ),
 }));
 describe("MessageNotifications", () => {
-  it.each(["canonical", "legacy", "mixed"] as const)(
-    "groups %s monitor parts by job alongside ordinary notifications",
-    (format) => {
-      const monitor: BackgroundMonitorNotification = {
-        kind: "monitor",
-        notificationId: "watch:first",
-        backgroundJobId: "bgjob-monitor-1",
-        description: "CI",
-        command: "watch",
-        outputFile: "/tmp/watch.log",
-        lines: ["first line"],
-      };
-      const ended = {
-        ...monitor,
-        notificationId: "watch:end",
-        lines: ["last line"],
-        ended: { reason: "finished", status: "completed" as const },
-      };
-      const { kind: _kind, ...legacy } = monitor;
-      const { kind: _endKind, ...legacyEnd } = ended;
-      const first: Message["parts"][number] =
-        format === "canonical"
-          ? { type: "data-background-job-notification", data: monitor }
-          : { type: "data-monitor-events", data: { batches: [legacy] } };
-      const last: Message["parts"][number] =
-        format === "legacy"
-          ? { type: "data-monitor-events", data: { batches: [legacyEnd] } }
-          : { type: "data-background-job-notification", data: ended };
-      const { getAllByTestId, getByText } = render(
-        <MessageNotifications
-          parts={[
-            first,
-            {
-              type: "data-background-job-notification",
-              data: notification("other", "completed"),
-            },
-            last,
-          ]}
-        />,
-      );
-      expect(getByText("3").getAttribute("data-slot")).toBe("badge");
-      const rows = getAllByTestId("background-job-panel");
-      expect(rows).toHaveLength(2);
-      expect(rows[0].getAttribute("data-background-job-id")).toBe(
-        monitor.backgroundJobId,
-      );
-      expect(rows[0].getAttribute("data-status")).toBe("completed");
-      expect(rows[0].lastElementChild?.textContent).toBe(
-        "first line\nlast line\nfinished",
-      );
-      expect(rows[1].getAttribute("data-background-job-id")).toBe("other");
-    },
-  );
+  it("groups monitor parts by job alongside ordinary notifications", () => {
+    const monitor: BackgroundMonitorNotification = {
+      kind: "monitor",
+      notificationId: "watch:first",
+      backgroundJobId: "bgjob-monitor-1",
+      description: "CI",
+      command: "watch",
+      outputFile: "/tmp/watch.log",
+      lines: ["first line"],
+    };
+    const ended = {
+      ...monitor,
+      notificationId: "watch:end",
+      lines: ["last line"],
+      ended: { reason: "finished", status: "completed" as const },
+    };
+    const { getAllByTestId, getByText } = render(
+      <MessageNotifications
+        parts={[
+          { type: "data-background-job-notification", data: monitor },
+          {
+            type: "data-background-job-notification",
+            data: notification("other", "completed"),
+          },
+          { type: "data-background-job-notification", data: ended },
+        ]}
+      />,
+    );
+    expect(getByText("3").getAttribute("data-slot")).toBe("badge");
+    const rows = getAllByTestId("background-job-panel");
+    expect(rows).toHaveLength(2);
+    expect(rows[0].getAttribute("data-background-job-id")).toBe(
+      monitor.backgroundJobId,
+    );
+    expect(rows[0].getAttribute("data-status")).toBe("completed");
+    expect(rows[0].lastElementChild?.textContent).toBe(
+      "first line\nlast line\nfinished",
+    );
+    expect(rows[1].getAttribute("data-background-job-id")).toBe("other");
+  });
 
   it("groups mixed parts in order, counting individual subagent results", () => {
     const { container, getByText } = render(

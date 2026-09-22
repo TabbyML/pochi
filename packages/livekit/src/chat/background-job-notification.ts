@@ -1,7 +1,4 @@
-import {
-  BackgroundJobNotification,
-  BackgroundMonitorNotification,
-} from "@getpochi/common";
+import { BackgroundJobNotification } from "@getpochi/common";
 import type { Message } from "../types";
 
 type MessagePart = Message["parts"][number];
@@ -27,16 +24,6 @@ export function getBackgroundJobNotificationParts(
   return parts.flatMap((part): BackgroundJobNotificationPart[] => {
     if (part.type === "data-background-job-notification")
       return toBackgroundJobNotificationParts([part.data]);
-    // Flatten historical multi-batch parts at the read boundary. Preserve IDs
-    // so queued notifications are still acknowledged and deduplicated.
-    if (part.type === "data-monitor-events")
-      return part.data.batches.map((batch) => ({
-        type: "data-background-job-notification",
-        data: BackgroundMonitorNotification.parse({
-          ...batch,
-          kind: "monitor",
-        }),
-      }));
     return [];
   });
 }

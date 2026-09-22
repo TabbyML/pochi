@@ -391,15 +391,13 @@ describe("monitor notification transport", () => {
     })).toEqual({ type: "text", text: prompts.renderBackgroundJobNotification(monitor) });
   });
 
-  it("renders every historical batch with the same envelope and preserves its identity", () => {
-    const { kind: _kind, ...legacy } = monitor;
-    const ended = { ...legacy, notificationId: "monitor:end", lines: ["last line"], ended: { reason: "done", status: "completed" as const } };
+  it("renders a final monitor batch through the shared prompt renderer", () => {
+    const ended = { ...monitor, notificationId: "monitor:end", lines: ["last line"], ended: { reason: "done", status: "completed" as const } };
     expect(convertDataPartToText({
-      type: "data-monitor-events", data: { batches: [legacy, ended] },
+      type: "data-background-job-notification", data: ended,
     })).toEqual({
       type: "text",
-      text: [monitor, { ...ended, kind: "monitor" as const }]
-        .map(prompts.renderBackgroundJobNotification).join("\n\n"),
+      text: prompts.renderBackgroundJobNotification(ended),
     });
   });
 });

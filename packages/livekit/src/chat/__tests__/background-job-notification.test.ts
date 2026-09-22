@@ -128,9 +128,7 @@ describe("monitor notification format", () => {
     description: "CI", command: "watch", outputFile: "/tmp/watch.log", lines: ["passed"],
   };
   const next = { ...monitor, notificationId: "watch:next", lines: ["finished"], ended: { reason: "done", status: "completed" as const } };
-  const { kind: _kind, ...legacy } = monitor;
-  const { kind: _nextKind, ...legacyNext } = next;
-  const legacyPart = { type: "data-monitor-events" as const, data: { batches: [legacy, legacyNext] } };
+  const history = toBackgroundJobNotificationParts([monitor, next]);
 
   it("writes one canonical notification part per monitor batch", () => {
     expect(toBackgroundJobNotificationParts([monitor, next])).toEqual([
@@ -139,19 +137,19 @@ describe("monitor notification format", () => {
     ]);
   });
 
-  it("normalizes historical multi-batch parts without mutating them or changing IDs", () => {
-    const snapshot = structuredClone(legacyPart);
-    const parts = getBackgroundJobNotificationParts([legacyPart]);
-    expect(parts).toEqual(toBackgroundJobNotificationParts([monitor, next]));
-    expect(getBackgroundJobNotificationIds([legacyPart])).toEqual(["watch:first", "watch:next"]);
-    expect(legacyPart).toEqual(snapshot);
+  it("selects notification parts without mutating the message or changing IDs", () => {
+    const messageParts: Message["parts"] = [history[0], { type: "text", text: "continue" }, history[1]];
+    const snapshot = structuredClone(messageParts);
+    expect(getBackgroundJobNotificationParts(messageParts)).toEqual(history);
+    expect(getBackgroundJobNotificationIds(messageParts)).toEqual(["watch:first", "watch:next"]);
+    expect(messageParts).toEqual(snapshot);
   });
 
-  it("deduplicates new batches against legacy history while retaining new output", () => {
+  it("deduplicates monitor batches against delivered history while retaining new output", () => {
     const newBatch = { ...monitor, notificationId: "watch:new" };
     expect(dedupeBackgroundJobNotificationParts(
       toBackgroundJobNotificationParts([monitor, next, newBatch, newBatch]),
-      [legacyPart],
+      history,
     )).toEqual(toBackgroundJobNotificationParts([newBatch]));
   });
 });

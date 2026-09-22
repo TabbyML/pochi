@@ -20,10 +20,7 @@ import {
   TaskExecutor,
 } from "../background-task/task-executor/task-executor";
 import type { BlobStore } from "../blob-store";
-import {
-  getBackgroundJobNotificationIds,
-  getBackgroundJobNotificationParts,
-} from "../chat/background-job-notification";
+import { getBackgroundJobNotificationIds } from "../chat/background-job-notification";
 import {
   LiveChatKit,
   type LiveChatKitProjectMemoryOptions,
@@ -956,27 +953,26 @@ export class BackgroundJobManager {
               outputFile: part.output.outputFile,
               status: "stopped",
             });
-        } else {
-          for (const { data: event } of getBackgroundJobNotificationParts([
-            part,
-          ])) {
-            if (event.kind !== "monitor" || known.has(event.backgroundJobId))
-              continue;
-            const previous = history.get(event.backgroundJobId);
-            history.set(event.backgroundJobId, {
-              backgroundJobId: event.backgroundJobId,
-              kind: "command",
-              monitor: event.description,
-              title:
-                event.description.trim() ||
-                event.command.trim() ||
-                event.backgroundJobId,
-              command: event.command,
-              outputFile: event.outputFile,
-              status: event.ended?.status ?? previous?.status ?? "stopped",
-              exitCode: event.ended?.exitCode ?? previous?.exitCode,
-            });
-          }
+        } else if (
+          part.type === "data-background-job-notification" &&
+          part.data.kind === "monitor" &&
+          !known.has(part.data.backgroundJobId)
+        ) {
+          const event = part.data;
+          const previous = history.get(event.backgroundJobId);
+          history.set(event.backgroundJobId, {
+            backgroundJobId: event.backgroundJobId,
+            kind: "command",
+            monitor: event.description,
+            title:
+              event.description.trim() ||
+              event.command.trim() ||
+              event.backgroundJobId,
+            command: event.command,
+            outputFile: event.outputFile,
+            status: event.ended?.status ?? previous?.status ?? "stopped",
+            exitCode: event.ended?.exitCode ?? previous?.exitCode,
+          });
         }
       }
     }
