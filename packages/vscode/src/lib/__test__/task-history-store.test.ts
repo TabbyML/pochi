@@ -5,11 +5,13 @@ import { TaskHistoryStore } from "../task-history-store";
 import { taskUpdated } from "../task-events";
 import * as vscode from "vscode";
 import sinon from "sinon";
+import proxyquire from "proxyquire";
 import "reflect-metadata";
 import { TextDecoder, TextEncoder } from "util";
 
 describe("TaskHistoryStore", () => {
   let context: vscode.ExtensionContext;
+  let Store: typeof TaskHistoryStore;
   let globalState: any;
   let taskStore: TaskHistoryStore;
   let clock: sinon.SinonFakeTimers;
@@ -49,6 +51,13 @@ describe("TaskHistoryStore", () => {
       globalStoragePath: "",
     } as unknown as vscode.ExtensionContext;
 
+    Store = proxyquire.noCallThru().load("../task-history-store", {
+      "@getpochi/common/tool-utils": {
+        getTaskDataDir: (id: string) => vscode.Uri.joinPath(tempStorageUri, "task-data", id).fsPath,
+      },
+      "@getpochi/common/auto-memory/node": { removeTaskTranscripts: async () => {} },
+    }).TaskHistoryStore;
+
     clock = sinon.useFakeTimers(new Date("2024-01-01T00:00:00Z").getTime());
   });
 
@@ -65,7 +74,7 @@ describe("TaskHistoryStore", () => {
   });
 
   it("should start with empty tasks if file does not exist", async () => {
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new Store(context);
     await taskStore.ready;
 
     const currentTasks = taskStore.tasks.value;
@@ -87,7 +96,7 @@ describe("TaskHistoryStore", () => {
         new TextEncoder().encode(JSON.stringify(tasks))
     );
 
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new Store(context);
     await taskStore.ready;
 
     const currentTasks = taskStore.tasks.value;
@@ -113,7 +122,7 @@ describe("TaskHistoryStore", () => {
         new TextEncoder().encode(JSON.stringify(tasks))
     );
 
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new Store(context);
     await taskStore.ready;
 
     // Verify only recent task remains
@@ -169,7 +178,7 @@ describe("TaskHistoryStore", () => {
         new TextEncoder().encode(JSON.stringify(tasks))
     );
 
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new Store(context);
     await taskStore.ready;
 
     const currentTasks = taskStore.tasks.value;
@@ -199,7 +208,7 @@ describe("TaskHistoryStore", () => {
       new TextEncoder().encode('{"task-1": {"id": "task-1", "updatedAt": 1')
     );
 
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new Store(context);
     await taskStore.ready;
 
     assert.strictEqual(Object.keys(taskStore.tasks.value).length, 0);
@@ -215,7 +224,7 @@ describe("TaskHistoryStore", () => {
   });
 
   it("should shrink oversized task errors before persisting", async () => {
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new Store(context);
     await taskStore.ready;
 
     const requestBodyValues = { prompt: "x".repeat(200_000) };
@@ -259,7 +268,7 @@ describe("TaskHistoryStore", () => {
       )
     );
 
-    taskStore = new TaskHistoryStore(context);
+    taskStore = new Store(context);
     await taskStore.ready;
 
     // Another window appends its own task to the shared file.
@@ -309,7 +318,7 @@ describe("TaskHistoryStore", () => {
         "task-existing": { id: "task-existing", updatedAt: Date.now() },
       };
       await fsAsync.writeFile(fileUri.fsPath, JSON.stringify(original));
-      taskStore = new TaskHistoryStore(context);
+      taskStore = new Store(context);
       await taskStore.ready;
 
       const rename = sinon.stub(fs, "renameSync").throws(
@@ -334,114 +343,110 @@ describe("TaskHistoryStore", () => {
     });
   }
 
-  it("should keep the final flush intact while an old write is open and another save is queued", async () => {
-    taskStore = new TaskHistoryStore(context);
+  it("flushes pending updates through the same commit when closed before the queued save", async () => {
+    taskStore = new Store(context);
     await taskStore.ready;
-
-    let notifyOpened!: () => void;
-    const opened = new Promise<void>((resolve) => {
-      notifyOpened = resolve;
-    });
-    let releaseWrite!: () => void;
-    const released = new Promise<void>((resolve) => {
-      releaseWrite = resolve;
-    });
-    const writeFile = fsAsync.writeFile.bind(fsAsync);
-    const write = sinon.stub(fsAsync, "writeFile");
-    write.callsFake(writeFile);
-    write.onFirstCall().callsFake(async (file, data) => {
-      assert.ok(typeof data === "string");
-      const handle = await fsAsync.open(file as string, "w");
-      notifyOpened();
-      try {
-        await released;
-        await handle.writeFile(data);
-      } finally {
-        await handle.close();
-      }
-    });
-    const save = sinon.spy(taskStore as any, "writeTasksToDisk");
-    taskUpdated.fire({
-      event: { id: "task-first", updatedAt: Date.now() },
-    });
-    try {
-      await opened;
-      taskUpdated.fire({
-        event: { id: "task-latest", updatedAt: Date.now() + 1 },
-      });
-      await clock.tickAsync(5000);
-      sinon.assert.calledTwice(save);
-
-      taskStore.dispose();
-      const filePath = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
-      const finalContent = fs.readFileSync(filePath, "utf8");
-      assert.deepStrictEqual(Object.keys(JSON.parse(finalContent)).sort(), [
-        "task-first",
-        "task-latest",
-      ]);
-
-      releaseWrite();
-      await save.secondCall.returnValue;
-      sinon.assert.calledOnce(write);
-      assert.strictEqual(await fsAsync.readFile(filePath, "utf8"), finalContent);
-      assert.deepStrictEqual(await fsAsync.readdir(tempStorageUri.fsPath), [
-        "tasks.json",
-      ]);
-    } finally {
-      releaseWrite();
-      taskStore.dispose();
-      await save.lastCall.returnValue;
-    }
+    taskUpdated.fire({ event: { id: "first", updatedAt: Date.now() } });
+    taskUpdated.fire({ event: { id: "last", updatedAt: Date.now() } });
+    taskStore.dispose();
+    await (taskStore as any).writeQueue;
+    const saved = JSON.parse(await fsAsync.readFile(vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath, "utf8"));
+    assert.deepStrictEqual(Object.keys(saved).sort(), ["first", "last"]);
   });
 
-  it("should serialize saves while a previous snapshot is still being written", async () => {
-    taskStore = new TaskHistoryStore(context);
+  it("accepts LiveStore updates even when their timestamps move backwards", async () => {
+    const file = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
+    await fsAsync.writeFile(file, JSON.stringify({ task: { id: "task", updatedAt: Date.now() + 60000, title: "Old", status: "pending-model" } }));
+    taskStore = new Store(context);
     await taskStore.ready;
+    taskUpdated.fire({ event: { id: "task", updatedAt: Date.now(), title: "New", status: "completed" } });
+    await (taskStore as any).writeQueue;
+    assert.strictEqual(taskStore.tasks.value.task.title, "New");
+    assert.strictEqual(JSON.parse(await fsAsync.readFile(file, "utf8")).task.status, "completed");
+  });
 
-    let notifyStarted!: () => void;
-    const started = new Promise<void>((resolve) => {
-      notifyStarted = resolve;
-    });
-    let releaseWrite!: () => void;
-    const released = new Promise<void>((resolve) => {
-      releaseWrite = resolve;
-    });
-    const writeFile = fsAsync.writeFile.bind(fsAsync);
-    const write = sinon.stub(fsAsync, "writeFile");
-    write.callsFake(writeFile);
-    write.onFirstCall().callsFake(async (...args) => {
-      notifyStarted();
-      await released;
-      await writeFile(...args);
-    });
-    const save = sinon.spy(taskStore as any, "writeTasksToDisk");
-    taskUpdated.fire({
-      event: { id: "task", updatedAt: Date.now(), title: "Old title" },
+  it("does not publish an idle window's old snapshot on close", async () => {
+    const file = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
+    await fsAsync.writeFile(file, JSON.stringify({ task: { id: "task", updatedAt: Date.now(), title: "Old" } }));
+    taskStore = new Store(context);
+    await taskStore.ready;
+    const latest = { task: { id: "task", updatedAt: Date.now() - 100, title: "Latest from SQLite" } };
+    await fsAsync.writeFile(file, JSON.stringify(latest));
+    taskStore.dispose();
+    assert.deepStrictEqual(JSON.parse(await fsAsync.readFile(file, "utf8")), latest);
+  });
+
+  it("does not restore cached rows that another window evicted", async () => {
+    const file = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
+    await fsAsync.writeFile(file, JSON.stringify({ old: { id: "old", updatedAt: Date.now() } }));
+    taskStore = new Store(context);
+    await taskStore.ready;
+    await fsAsync.writeFile(file, "{}");
+    taskUpdated.fire({ event: { id: "new", updatedAt: Date.now() } });
+    await (taskStore as any).writeQueue;
+    assert.deepStrictEqual(Object.keys(JSON.parse(await fsAsync.readFile(file, "utf8"))), ["new"]);
+  });
+
+  it("keeps updates received while the initial cache is being loaded", async () => {
+    const file = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
+    await fsAsync.writeFile(file, JSON.stringify({ cached: { id: "cached", updatedAt: Date.now() } }));
+    taskStore = new Store(context);
+    taskUpdated.fire({ event: { id: "incoming", updatedAt: Date.now() } });
+    await taskStore.ready;
+    await (taskStore as any).writeQueue;
+    assert.ok(taskStore.tasks.value.incoming);
+    assert.deepStrictEqual(Object.keys(JSON.parse(await fsAsync.readFile(file, "utf8"))).sort(), ["cached", "incoming"]);
+  });
+
+  it("retries failed cache evictions without restoring expired entries", async () => {
+    const file = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
+    await fsAsync.writeFile(file, JSON.stringify({ expired: { id: "expired", updatedAt: Date.now() - 120 * 86400000 } }));
+    const write = sinon.stub(fs, "writeFileSync").throws(new Error("Injected disk full"));
+    const remove = sinon.spy(fsAsync, "rm");
+    taskStore = new Store(context);
+    await taskStore.ready;
+    assert.ok(JSON.parse(await fsAsync.readFile(file, "utf8")).expired);
+    sinon.assert.notCalled(remove);
+    write.restore();
+    taskUpdated.fire({ event: { id: "new", updatedAt: Date.now() } });
+    await (taskStore as any).writeQueue;
+    assert.deepStrictEqual(Object.keys(JSON.parse(await fsAsync.readFile(file, "utf8"))), ["new"]);
+  });
+
+  it("keeps retention applied when closed before the queued cleanup commit", async () => {
+    const file = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
+    await fsAsync.writeFile(file, JSON.stringify({ expired: { id: "expired", updatedAt: Date.now() - 120 * 86400000 } }));
+    taskStore = new Store(context);
+    let notify!: () => void;
+    const queued = new Promise<void>(resolve => { notify = resolve; });
+    let release!: () => void;
+    const paused = new Promise<void>(resolve => { release = resolve; });
+    const original = (taskStore as any).writeTasksToDisk.bind(taskStore);
+    sinon.stub(taskStore as any, "writeTasksToDisk").callsFake(async () => {
+      notify();
+      await paused;
+      return original();
     });
     try {
-      await started;
-      taskUpdated.fire({
-        event: { id: "task", updatedAt: Date.now() + 1, title: "New title" },
-      });
-      await clock.tickAsync(5000);
-      sinon.assert.calledTwice(save);
-      sinon.assert.calledOnce(write);
-
-      releaseWrite();
-      await save.secondCall.returnValue;
-      sinon.assert.calledTwice(write);
-      const content = await fsAsync.readFile(
-        vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath,
-        "utf8"
-      );
-      assert.strictEqual(JSON.parse(content).task.title, "New title");
-      assert.deepStrictEqual(await fsAsync.readdir(tempStorageUri.fsPath), [
-        "tasks.json",
-      ]);
-    } finally {
-      releaseWrite();
+      await queued;
       taskStore.dispose();
-      await save.lastCall.returnValue;
-    }
+      release();
+      await taskStore.ready;
+      assert.deepStrictEqual(JSON.parse(await fsAsync.readFile(file, "utf8")), {});
+    } finally { release(); }
+  });
+
+  it("backs up a corrupt file before flushing pending updates at shutdown", async () => {
+    const file = vscode.Uri.joinPath(tempStorageUri, "tasks.json").fsPath;
+    taskStore = new Store(context);
+    await taskStore.ready;
+    const damaged = '{"partial":';
+    await fsAsync.writeFile(file, damaged);
+    taskUpdated.fire({ event: { id: "new", updatedAt: Date.now() } });
+    taskStore.dispose();
+    const backup = (await fsAsync.readdir(tempStorageUri.fsPath)).find(name => name.startsWith("tasks.corrupted-"));
+    assert.ok(backup);
+    assert.strictEqual(await fsAsync.readFile(vscode.Uri.joinPath(tempStorageUri, backup).fsPath, "utf8"), damaged);
+    assert.ok(JSON.parse(await fsAsync.readFile(file, "utf8")).new);
   });
 });
