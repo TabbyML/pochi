@@ -70,6 +70,8 @@ export async function generateBranchName(params: {
     stopSequences: ["\n", " "],
   };
 
+  logger.trace("Gen branch name request:", request);
+
   const result = await generateText({
     ...request,
     model,
