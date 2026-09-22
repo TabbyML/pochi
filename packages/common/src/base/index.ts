@@ -24,11 +24,13 @@ export {
   MonitorDefaultTimeoutMs,
   MonitorMaxLinesPerBatch,
   MonitorMaxBatchCharacters,
-  type MonitorEventQueueEntry,
-  acknowledgeMonitorEvent,
-  enqueueMonitorEvent,
-  getPendingMonitorEvents,
 } from "./monitor";
+export {
+  type BackgroundJobNotificationQueueEntry,
+  acknowledgeBackgroundJobNotification,
+  enqueueBackgroundJobNotification,
+  getPendingBackgroundJobNotifications,
+} from "./background-job-notification-queue";
 export {
   createBackgroundSubAgentStartedResult,
   getSubAgentBackgroundJobId,

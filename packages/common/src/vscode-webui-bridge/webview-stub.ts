@@ -6,7 +6,6 @@ import type {
   AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundJobNotification,
-  BackgroundMonitorNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
@@ -304,10 +303,7 @@ const VSCodeHostStub = {
         Promise.resolve(),
     });
   },
-  readMonitorEvents: async (_taskId: string) => ({
-    events: {} as ThreadSignalSerialization<BackgroundMonitorNotification[]>,
-    acknowledge: async (_notificationId: string): Promise<void> => {},
-  }),
+
   readModelList: async () => {
     return Promise.resolve(
       {} as {

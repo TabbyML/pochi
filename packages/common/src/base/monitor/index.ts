@@ -134,10 +134,3 @@ export class MonitorWatcher {
     else this.options.onEvents(lines);
   }
 }
-
-export {
-  type MonitorEventQueueEntry,
-  acknowledgeMonitorEvent,
-  enqueueMonitorEvent,
-  getPendingMonitorEvents,
-} from "./queue";

@@ -1,16 +1,15 @@
 import {
-  acknowledgeMonitorEvent,
-  enqueueMonitorEvent,
+  acknowledgeBackgroundJobNotification,
+  enqueueBackgroundJobNotification,
   getLogger,
-  getPendingMonitorEvents,
+  getPendingBackgroundJobNotifications,
 } from "@getpochi/common";
 import type {
   AutoMemoryTaskState,
   BackgroundJobNotification,
-  BackgroundMonitorNotification,
+  BackgroundJobNotificationQueueEntry,
   BackgroundTaskState,
   ContextWindowUsage,
-  MonitorEventQueueEntry,
   TaskMemoryState,
 } from "@getpochi/common";
 import type {
@@ -31,8 +30,7 @@ type TaskStateData = {
   taskMemoryState?: TaskMemoryState;
   autoMemoryState?: AutoMemoryTaskState;
   backgroundTaskState?: BackgroundTaskState;
-  backgroundJobNotifications?: BackgroundJobNotification[];
-  monitorEvents?: MonitorEventQueueEntry[];
+  backgroundJobNotifications?: BackgroundJobNotificationQueueEntry[];
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -115,43 +113,6 @@ export class TaskDataStore {
     },
   );
 
-  addMonitorEvent = runExclusive.build(
-    this.notificationGroup,
-    async (
-      taskId: string,
-      event: BackgroundMonitorNotification,
-    ): Promise<void> => {
-      const events = this.state.value[taskId]?.monitorEvents ?? [];
-      if (events.some((item) => item.notificationId === event.notificationId))
-        return;
-      await this.saveTaskState(taskId, {
-        monitorEvents: enqueueMonitorEvent(events, event),
-      });
-    },
-  );
-
-  acknowledgeMonitorEvent = runExclusive.build(
-    this.notificationGroup,
-    async (taskId: string, notificationId: string): Promise<void> => {
-      const events = this.state.value[taskId]?.monitorEvents ?? [];
-      if (
-        !getPendingMonitorEvents(events).some(
-          (event) => event.notificationId === notificationId,
-        )
-      )
-        return;
-      await this.saveTaskState(taskId, {
-        monitorEvents: acknowledgeMonitorEvent(events, notificationId),
-      });
-    },
-  );
-
-  getMonitorEventsSignal(taskId: string) {
-    return computed(() =>
-      getPendingMonitorEvents(this.state.value[taskId]?.monitorEvents ?? []),
-    );
-  }
-
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {
     return this.getTaskState(taskId)?.mcpConfigOverride;
   }
@@ -172,7 +133,10 @@ export class TaskDataStore {
         return;
       }
       await this.saveTaskState(taskId, {
-        backgroundJobNotifications: [...notifications, notification],
+        backgroundJobNotifications: enqueueBackgroundJobNotification(
+          notifications,
+          notification,
+        ),
       });
     },
   );
@@ -183,16 +147,19 @@ export class TaskDataStore {
       const notifications =
         this.state.value[taskId]?.backgroundJobNotifications ?? [];
       await this.saveTaskState(taskId, {
-        backgroundJobNotifications: notifications.filter(
-          (item) => item.notificationId !== notificationId,
+        backgroundJobNotifications: acknowledgeBackgroundJobNotification(
+          notifications,
+          notificationId,
         ),
       });
     },
   );
 
   getBackgroundJobNotificationsSignal(taskId: string) {
-    return computed(
-      () => this.state.value[taskId]?.backgroundJobNotifications ?? [],
+    return computed(() =>
+      getPendingBackgroundJobNotifications(
+        this.state.value[taskId]?.backgroundJobNotifications ?? [],
+      ),
     );
   }
 

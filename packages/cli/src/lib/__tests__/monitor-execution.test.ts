@@ -122,6 +122,29 @@ describe("monitor execution through the shared background job manager", () => {
     expect(await manager.wait(taskId, { timeoutMs: 1000, wakeOnNotifications: true })).toBe("notifications");
     expect(manager.hasPending(taskId)).toBe(true);
   });
+  it("keeps mixed notifications in one task queue and acknowledges each independently", async () => {
+    await manager.watchTask("sibling");
+    adaptor.startBackgroundCommand(taskId, "printf 'ready\\n'; sleep 30", ".", undefined, { description: "persistent" });
+    expect(await manager.wait(taskId, { timeoutMs: 1500, wakeOnNotifications: true })).toBe("notifications");
+    const [monitor] = events();
+    const command = adaptor.startBackgroundCommand(taskId, "printf 'done\\n'", ".");
+    await expect.poll(() => manager.getPendingNotifications(taskId)).toHaveLength(2);
+    const completed = manager.getPendingNotifications(taskId).find((item) => item.kind === "command")!;
+    expect(completed.backgroundJobId).toBe(command.backgroundJobId);
+    expect(manager.getPendingNotifications("sibling")).toEqual([]);
+    const sibling = await adaptor.commandAdaptor.observeNotifications("sibling", () => {});
+    try {
+      await sibling.acknowledge(monitor.notificationId);
+      expect(manager.getPendingNotifications(taskId)).toEqual([monitor, completed]);
+      data.setMessages(taskId, [{ id: "command", role: "user", parts: [{ type: "data-background-job-notification", data: completed }] }]);
+      await expect.poll(() => manager.getPendingNotifications(taskId)).toEqual([monitor]);
+      data.setMessages(taskId, [{ id: "both", role: "user", parts: [completed, monitor].map((data) => ({ type: "data-background-job-notification", data })) }]);
+      await expect.poll(() => manager.getPendingNotifications(taskId)).toEqual([]);
+      expect(manager.hasPending(taskId)).toBe(true);
+    } finally {
+      sibling.dispose();
+    }
+  });
   it.each([
     ["sleep 3 | cat", 30],
     ["trap '' TERM; exec sleep 5", 100],

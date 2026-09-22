@@ -495,14 +495,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       ),
   });
 
-  readMonitorEvents = async (taskId: string) => ({
-    events: ThreadSignal.serialize(
-      this.taskStateStore.getMonitorEventsSignal(taskId),
-    ),
-    acknowledge: (notificationId: string) =>
-      this.taskStateStore.acknowledgeMonitorEvent(taskId, notificationId),
-  });
-
   saveWidget = async (
     html: string,
     suggestedFilename: string,

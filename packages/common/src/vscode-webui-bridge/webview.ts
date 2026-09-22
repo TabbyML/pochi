@@ -6,7 +6,6 @@ import type {
   AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundJobNotification,
-  BackgroundMonitorNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
@@ -211,11 +210,6 @@ export interface VSCodeHostApi {
 
   readBackgroundJobNotifications(taskId: string): Promise<{
     notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
-    acknowledge: (notificationId: string) => Promise<void>;
-  }>;
-
-  readMonitorEvents(taskId: string): Promise<{
-    events: ThreadSignalSerialization<BackgroundMonitorNotification[]>;
     acknowledge: (notificationId: string) => Promise<void>;
   }>;
 

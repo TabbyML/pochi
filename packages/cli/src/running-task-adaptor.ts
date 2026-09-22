@@ -3,17 +3,16 @@ import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
 import {
-  type BackgroundJobNotification,
+  type BackgroundJobNotificationQueueEntry,
   type BackgroundJobTerminalEvent,
   type BackgroundMonitorNotification,
-  type MonitorEventQueueEntry,
   type MonitorJobOptions,
   MonitorWatcher,
-  acknowledgeMonitorEvent,
+  acknowledgeBackgroundJobNotification,
   createBackgroundJobNotification,
-  enqueueMonitorEvent,
+  enqueueBackgroundJobNotification,
   getLogger,
-  getPendingMonitorEvents,
+  getPendingBackgroundJobNotifications,
 } from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { pochiConfig } from "@getpochi/common/configuration";
@@ -117,10 +116,9 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     Parameters<BackgroundCommandAdaptor["observeCommands"]>[0]
   >();
   private readonly notificationListeners = new Map<string, Set<() => void>>();
-  private readonly monitorEvents = new Map<string, MonitorEventQueueEntry[]>();
   private readonly notifications = new Map<
     string,
-    { taskId: string; notification: BackgroundJobNotification }
+    BackgroundJobNotificationQueueEntry[]
   >();
   readonly commandAdaptor: BackgroundCommandAdaptor = {
     kill: async (id) => {
@@ -139,12 +137,11 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     },
     observeNotifications: async (taskId, onChange) => {
       const update = () =>
-        onChange([
-          ...[...this.notifications.values()]
-            .filter((entry) => entry.taskId === taskId)
-            .map((entry) => entry.notification),
-          ...getPendingMonitorEvents(this.monitorEvents.get(taskId) ?? []),
-        ]);
+        onChange(
+          getPendingBackgroundJobNotifications(
+            this.notifications.get(taskId) ?? [],
+          ),
+        );
       let listeners = this.notificationListeners.get(taskId);
       if (!listeners) {
         listeners = new Set();
@@ -158,20 +155,16 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
           if (!listeners.size) this.notificationListeners.delete(taskId);
         },
         acknowledge: async (id) => {
-          if (this.notifications.get(id)?.taskId === taskId) {
-            this.notifications.delete(id);
-          } else {
-            const events = this.monitorEvents.get(taskId) ?? [];
-            if (
-              !getPendingMonitorEvents(events).some(
-                (event) => event.notificationId === id,
-              )
+          const queue = this.notifications.get(taskId) ?? [];
+          if (
+            !getPendingBackgroundJobNotifications(queue).some(
+              (item) => item.notificationId === id,
             )
-              return;
-            const remaining = acknowledgeMonitorEvent(events, id);
-            if (remaining.length) this.monitorEvents.set(taskId, remaining);
-            else this.monitorEvents.delete(taskId);
-          }
+          )
+            return;
+          const remaining = acknowledgeBackgroundJobNotification(queue, id);
+          if (remaining.length) this.notifications.set(taskId, remaining);
+          else this.notifications.delete(taskId);
           for (const notify of listeners) notify();
         },
       };
@@ -667,10 +660,13 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       finishedAt: Date.now(),
     };
     const notification = createBackgroundJobNotification(event);
-    this.notifications.set(notification.notificationId, {
-      taskId: job.taskId,
-      notification,
-    });
+    this.notifications.set(
+      job.taskId,
+      enqueueBackgroundJobNotification(
+        this.notifications.get(job.taskId) ?? [],
+        notification,
+      ),
+    );
     this.commandsChanged();
     for (const update of this.notificationListeners.get(job.taskId) ?? [])
       update();
@@ -694,10 +690,10 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       ...(ended ? { ended } : {}),
       ...(omittedLines ? { omittedLines } : {}),
     };
-    this.monitorEvents.set(
+    this.notifications.set(
       job.taskId,
-      enqueueMonitorEvent(
-        this.monitorEvents.get(job.taskId) ?? [],
+      enqueueBackgroundJobNotification(
+        this.notifications.get(job.taskId) ?? [],
         notification,
       ),
     );

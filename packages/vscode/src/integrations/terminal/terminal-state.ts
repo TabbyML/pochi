@@ -123,7 +123,7 @@ export class TerminalState implements vscode.Disposable {
     this.disposables.push(
       TerminalJob.onDidMonitorEvent(({ taskId, event }) => {
         void this.taskDataStore
-          .addMonitorEvent(taskId, event)
+          .addBackgroundJobNotification(taskId, event)
           .catch((error) =>
             logger.error("Failed to persist monitor event", error),
           );
