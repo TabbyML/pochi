@@ -196,7 +196,7 @@ describe("BackgroundJobPanel job control", () => {
     ).toBeNull();
   });
 
-  it("shows single-line monitor events with scrollable details on hover", async () => {
+  it("collapses monitor events and keeps scrollable details on hover", async () => {
     jobInfo = undefined;
     const output = "first log\nsecond log\nkill requested";
     const { container } = render(
@@ -211,15 +211,21 @@ describe("BackgroundJobPanel job control", () => {
         outputFile="/tmp/monitor.log"
       />,
     );
-    const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
+    const row = screen.getByRole("button", {
+      name: "commandExecutionPanel.expand",
+    });
     expect(row.textContent).toBe("Simulated log entries");
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(container.querySelector("[aria-expanded]")).toBeNull();
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText(/first log/)).toBeNull();
     expect(row.querySelector(".lucide-activity")).not.toBeNull();
     expect(row.querySelector(".lucide-circle-slash")).not.toBeNull();
+    expect(row.querySelector(".lucide-chevron-left")).not.toBeNull();
     expect(row.querySelector("code")?.classList.contains("truncate")).toBe(
       true,
     );
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-expanded")).toBe("true");
     const event = screen.getByText(/first log/);
     expect(event.textContent).toBe(output);
     expect(event.classList.contains("truncate")).toBe(true);
@@ -230,10 +236,15 @@ describe("BackgroundJobPanel job control", () => {
       expect(tooltip.querySelector(".overflow-y-auto")).not.toBeNull();
     });
     fireEvent.click(
-      screen.getByLabelText("backgroundJobNotifications.openOutput"),
+      screen.getByRole("button", {
+        name: "commandExecutionPanel.collapse",
+      }),
     );
-    expect(openFile).toHaveBeenCalledWith("/tmp/monitor.log");
-    expect(event.textContent).toBe(output);
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+    expect(
+      container.querySelector("[data-slot='collapsible-content'] code"),
+    ).toBeNull();
+    expect(openFile).not.toHaveBeenCalled();
   });
 
   it("opens the output file from the notification row and shows its summary tooltip", async () => {

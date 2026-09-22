@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui/button";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   NotificationRowClassName,
   NotificationStatusIcon,
   NotificationTypeIconClassName,
@@ -22,6 +27,7 @@ import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { parseBackgroundJobId } from "@getpochi/common";
 import {
   CheckIcon,
+  ChevronLeft,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
   CircleCheck,
@@ -354,6 +360,57 @@ export const BackgroundJobPanel: FC<{
         <NotificationStatusIcon status={status} />
       </>
     );
+    if (notificationEvents) {
+      return (
+        <Collapsible
+          open={expanded}
+          onOpenChange={setExpanded}
+          className="min-w-0"
+        >
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              aria-label={t(
+                expanded
+                  ? "commandExecutionPanel.collapse"
+                  : "commandExecutionPanel.expand",
+              )}
+              className={cn(
+                notificationRowClassName,
+                "group/toggle cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              )}
+            >
+              {notificationRowContent}
+              <span className="flex size-5 shrink-0 items-center justify-center">
+                <ChevronLeft
+                  className="group-aria-expanded/toggle:-rotate-90 size-3.5 text-muted-foreground transition-transform"
+                  aria-hidden="true"
+                />
+              </span>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-1 mr-1 mb-2 ml-[16px] flex min-w-0 flex-col gap-1 pl-3">
+              {notificationEvents.map((event) => (
+                <Tooltip key={event.id}>
+                  <TooltipTrigger asChild>
+                    <code className="block truncate bg-transparent p-0 font-mono text-muted-foreground text-xs">
+                      {event.text}
+                    </code>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span className="block max-h-[50vh] max-w-sm overflow-y-auto overscroll-y-contain whitespace-pre-wrap break-words">
+                      {event.text}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
     const notificationRow = outputFile ? (
       <button
         type="button"
@@ -369,30 +426,6 @@ export const BackgroundJobPanel: FC<{
     ) : (
       <div className={notificationRowClassName}>{notificationRowContent}</div>
     );
-
-    if (notificationEvents) {
-      return (
-        <div className="min-w-0">
-          {notificationRow}
-          <div className="mt-1 mr-1 mb-2 ml-[16px] flex min-w-0 flex-col gap-1 pl-3">
-            {notificationEvents.map((event) => (
-              <Tooltip key={event.id}>
-                <TooltipTrigger asChild>
-                  <code className="block truncate bg-transparent p-0 font-mono text-muted-foreground text-xs">
-                    {event.text}
-                  </code>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <span className="block max-h-[50vh] max-w-sm overflow-y-auto overscroll-y-contain whitespace-pre-wrap break-words">
-                    {event.text}
-                  </span>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </div>
-      );
-    }
 
     if (!summary) return notificationRow;
 
