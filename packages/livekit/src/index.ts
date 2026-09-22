@@ -12,6 +12,7 @@ export { getAutoCompactThreshold } from "./chat/auto-compact-policy";
 export {
   type BackgroundJobNotificationPart,
   getBackgroundJobNotificationIds,
+  getBackgroundJobNotificationParts,
 } from "./chat/background-job-notification";
 export type { AutoMemoryManager } from "@getpochi/common";
 export type { RunningTaskAdaptor } from "./background-task/task-executor/task-executor";

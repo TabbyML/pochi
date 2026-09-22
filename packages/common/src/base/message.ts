@@ -69,12 +69,14 @@ export function getPastedTextTitle(text: string): string {
 const BackgroundNotificationFields = {
   notificationId: z.string(),
   backgroundJobId: z.string(),
-  status: z.enum(["completed", "failed", "stopped"]),
 };
+
+const BackgroundJobTerminalStatus = z.enum(["completed", "failed", "stopped"]);
 
 export const BackgroundCommandNotification = z.object({
   ...BackgroundNotificationFields,
   kind: z.literal("command"),
+  status: BackgroundJobTerminalStatus,
   finishedAt: z.number(),
   outputFile: z.string(),
   command: z.string().optional(),
@@ -85,15 +87,39 @@ export const BackgroundCommandNotification = z.object({
 export const BackgroundSubagentNotification = z.object({
   ...BackgroundNotificationFields,
   kind: z.literal("subagent"),
+  status: BackgroundJobTerminalStatus,
   taskId: z.string(),
   agentType: z.string().optional(),
   title: z.string().optional(),
   result: z.string(),
 });
 
+export const BackgroundMonitorNotification = z.object({
+  ...BackgroundNotificationFields,
+  kind: z.literal("monitor"),
+  description: z.string(),
+  command: z.string(),
+  outputFile: z.string(),
+  lines: z.array(z.string()),
+  /** Older lines omitted from this batch; the full output remains in the log. */
+  omittedLines: z.number().int().nonnegative().optional(),
+  /** A final batch may also contain the last buffered output lines. */
+  ended: z
+    .object({
+      reason: z.string(),
+      status: BackgroundJobTerminalStatus.optional(),
+      exitCode: z.number().optional(),
+    })
+    .optional(),
+});
+export type BackgroundMonitorNotification = z.infer<
+  typeof BackgroundMonitorNotification
+>;
+
 const BackgroundNotification = z.discriminatedUnion("kind", [
   BackgroundCommandNotification,
   BackgroundSubagentNotification,
+  BackgroundMonitorNotification,
 ]);
 // Older persisted command notifications predate the discriminator.
 export const BackgroundJobNotification = z.preprocess(

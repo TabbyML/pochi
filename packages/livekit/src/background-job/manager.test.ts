@@ -1,5 +1,5 @@
 import { toBackgroundJobNotificationParts } from "../chat/background-job-notification";
-import type { BackgroundJobEvent } from "@getpochi/common";
+import type { BackgroundJobNotification } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import { createBackgroundJobNotification } from "@getpochi/common";
 import { describe, expect, it, vi } from "vitest";
@@ -10,16 +10,16 @@ import { BackgroundJobManager, type BackgroundCommandAdaptor } from "./manager";
 
 function setup() {
   const data = makeJobStore();
-  const pending = new Map<string, readonly BackgroundJobEvent[]>();
+  const pending = new Map<string, readonly BackgroundJobNotification[]>();
   const notificationObservers = new Map<
     string,
-    (notifications: readonly BackgroundJobEvent[]) => void
+    (notifications: readonly BackgroundJobNotification[]) => void
   >();
   const observers = new Map<
     string,
     (snapshot: {
       running: BackgroundCommands;
-      notifications: BackgroundJobEvent[];
+      notifications: BackgroundJobNotification[];
     }) => void
   >();
   let commandsChanged: Parameters<
@@ -71,7 +71,7 @@ const running = (taskId: string) => ({
   outputFile: "/tmp/output",
   isVisible: false,
 });
-const monitored = (id = "bgjob-monitor-one") => ({
+const monitored = (id = "bgjob-monitor-one") => ({ kind: "monitor" as const,
   notificationId: `monitor:${id}`,
   backgroundJobId: id,
   description: "watch",
@@ -104,7 +104,7 @@ describe("BackgroundJobManager", () => {
     const { manager, observers } = setup();
     try {
       await manager.watchTask("parent");
-      const ended = {
+      const ended = { kind: "monitor" as const,
         notificationId: "monitor:end", backgroundJobId: "bgjob-monitor-watch",
         description: "watch", command: "watch", outputFile: "/tmp/watch.log",
         lines: ["last output"], ended: { reason: "done", status: "completed" as const },

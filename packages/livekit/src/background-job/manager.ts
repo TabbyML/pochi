@@ -1,9 +1,8 @@
 import {
-  type BackgroundJobEvent,
   type BackgroundJobNotification,
+  type BackgroundMonitorNotification,
   type BackgroundTaskState,
   type MaybePromise,
-  type MonitorEventEnvelope,
   getLogger,
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
@@ -21,7 +20,10 @@ import {
   TaskExecutor,
 } from "../background-task/task-executor/task-executor";
 import type { BlobStore } from "../blob-store";
-import { getBackgroundJobNotificationIds } from "../chat/background-job-notification";
+import {
+  getBackgroundJobNotificationIds,
+  getBackgroundJobNotificationParts,
+} from "../chat/background-job-notification";
 import {
   LiveChatKit,
   type LiveChatKitProjectMemoryOptions,
@@ -61,7 +63,7 @@ export interface BackgroundCommandAdaptor {
   }>;
   observeNotifications(
     taskId: string,
-    onChange: (notifications: readonly BackgroundJobEvent[]) => void,
+    onChange: (notifications: readonly BackgroundJobNotification[]) => void,
   ): Promise<{
     dispose(): void;
     acknowledge(notificationId: string): Promise<void>;
@@ -104,12 +106,15 @@ export type KillOptions = {
 
 type TaskSubscription = {
   ready: Promise<void>;
-  notifications: readonly (CommandNotification | MonitorEventEnvelope)[];
+  notifications: readonly (
+    | CommandNotification
+    | BackgroundMonitorNotification
+  )[];
   dispose?: () => void;
   acknowledge?: (id: string) => Promise<void>;
   acknowledging: Map<string, Promise<void>>;
   acknowledgeRetry?: ReturnType<typeof setTimeout>;
-  listeners: Set<(notifications: BackgroundJobEvent[]) => void>;
+  listeners: Set<(notifications: BackgroundJobNotification[]) => void>;
 };
 
 /** One manager per store. All task-scoped handles below delegate to this instance. */
@@ -552,7 +557,7 @@ export class BackgroundJobManager {
     }
   }
 
-  private recordMonitor(taskId: string, event: MonitorEventEnvelope) {
+  private recordMonitor(taskId: string, event: BackgroundMonitorNotification) {
     const old = this.jobs.get(event.backgroundJobId);
     if (old && (old.kind !== "command" || old.ownerTaskId !== taskId)) return;
     // A delayed running batch must not undo a monitor's terminal state.
@@ -608,10 +613,12 @@ export class BackgroundJobManager {
             const owned = notifications.filter(
               (
                 notice,
-              ): notice is CommandNotification | MonitorEventEnvelope => {
+              ): notice is
+                | CommandNotification
+                | BackgroundMonitorNotification => {
                 const job = this.jobs.get(notice.backgroundJobId);
                 return (
-                  ("lines" in notice || notice.kind === "command") &&
+                  (notice.kind === "monitor" || notice.kind === "command") &&
                   (!job || job.ownerTaskId === taskId)
                 );
               },
@@ -628,7 +635,7 @@ export class BackgroundJobManager {
               this.changedTasks.add(taskId);
             }
             for (const notice of owned) {
-              if ("lines" in notice) {
+              if (notice.kind === "monitor") {
                 this.recordMonitor(taskId, notice);
                 continue;
               }
@@ -677,7 +684,7 @@ export class BackgroundJobManager {
     return subscription.ready;
   }
 
-  getPendingNotifications(taskId: string): BackgroundJobEvent[] {
+  getPendingNotifications(taskId: string): BackgroundJobNotification[] {
     return this.readNotifications(taskId).pending;
   }
 
@@ -690,7 +697,7 @@ export class BackgroundJobManager {
     return delivery;
   }
 
-  getReadyNotifications(taskId: string): BackgroundJobEvent[] {
+  getReadyNotifications(taskId: string): BackgroundJobNotification[] {
     return this.monitorDelivery(taskId).ready(
       this.getPendingNotifications(taskId),
     );
@@ -698,9 +705,9 @@ export class BackgroundJobManager {
 
   takeReadyNotifications(
     taskId: string,
-    notifications: readonly BackgroundJobEvent[],
+    notifications: readonly BackgroundJobNotification[],
     maxMonitorCharacters?: number,
-  ): BackgroundJobEvent[] {
+  ): BackgroundJobNotification[] {
     return this.monitorDelivery(taskId).take(
       notifications,
       maxMonitorCharacters,
@@ -719,7 +726,7 @@ export class BackgroundJobManager {
         getBackgroundJobNotificationIds(message.parts),
       ),
     );
-    const notifications: BackgroundJobEvent[] = [
+    const notifications: BackgroundJobNotification[] = [
       ...(this.subscriptions.get(taskId)?.notifications ?? []),
     ];
     for (const job of this.jobs.values()) {
@@ -748,7 +755,7 @@ export class BackgroundJobManager {
 
   subscribeNotifications(
     taskId: string,
-    listener: (notifications: BackgroundJobEvent[]) => void,
+    listener: (notifications: BackgroundJobNotification[]) => void,
   ) {
     void this.watchTask(taskId)
       .then(() => {
@@ -949,9 +956,12 @@ export class BackgroundJobManager {
               outputFile: part.output.outputFile,
               status: "stopped",
             });
-        } else if (part.type === "data-monitor-events") {
-          for (const event of part.data.batches) {
-            if (known.has(event.backgroundJobId)) continue;
+        } else {
+          for (const { data: event } of getBackgroundJobNotificationParts([
+            part,
+          ])) {
+            if (event.kind !== "monitor" || known.has(event.backgroundJobId))
+              continue;
             const previous = history.get(event.backgroundJobId);
             history.set(event.backgroundJobId, {
               backgroundJobId: event.backgroundJobId,

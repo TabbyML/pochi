@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { MonitorEventEnvelope } from "@getpochi/common";
+import type { BackgroundMonitorNotification } from "@getpochi/common";
 import { BackgroundJobManager } from "@getpochi/livekit";
 import { makeJobStore } from "@getpochi/livekit/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -57,7 +57,7 @@ describe("monitor execution through the shared background job manager", () => {
     return { ...job, childPid, pgid, done };
   }
   const events = () => manager.getPendingNotifications(taskId).filter(
-    (event): event is MonitorEventEnvelope => "lines" in event,
+    (event): event is BackgroundMonitorNotification => event.kind === "monitor",
   );
   beforeEach(async () => {
     outputDir = await mkdtemp(join(tmpdir(), "pochi-monitor-test-"));
@@ -93,7 +93,7 @@ describe("monitor execution through the shared background job manager", () => {
     const first = events().slice(0, 1);
     expect(first).toHaveLength(1);
     expect(first[0].lines).toEqual(["event-0"]);
-    data.setMessages(taskId, [{ id: "first", role: "user", parts: [{ type: "data-monitor-events", data: { batches: first } }] }]);
+    data.setMessages(taskId, [{ id: "first", role: "user", parts: first.map((data) => ({ type: "data-background-job-notification", data })) }]);
     await expect.poll(() => events().flatMap((event) => event.lines)).toContain("flood-finished");
     expect(events()).toHaveLength(1);
     expect(events()[0].lines).toContain("event-1");
@@ -112,7 +112,7 @@ describe("monitor execution through the shared background job manager", () => {
     expect(events().filter((event) => event.ended)).toHaveLength(1);
     expect(events().at(-1)?.ended?.status).toBe("completed");
     expect(new Set(events().map((event) => event.notificationId)).size).toBe(events().length);
-    expect(manager.getPendingNotifications(taskId).every((event) => "lines" in event)).toBe(true);
+    expect(manager.getPendingNotifications(taskId).every((event) => event.kind === "monitor")).toBe(true);
     expect(await readFile(job.outputFile, "utf8")).toContain("diagnostic");
     expect(manager.getJobsForTask(taskId)[0]).toMatchObject({ monitor: "test monitor", status: "completed" });
   });
@@ -246,7 +246,7 @@ describe("monitor execution through the shared background job manager", () => {
     expect(delivered).toHaveLength(1);
     expect(manager.getPendingNotifications("sibling")).toEqual([]);
     await expect(manager.kill(job.backgroundJobId, "sibling")).rejects.toThrow("not found");
-    data.setMessages(taskId, [{ id: "delivery", role: "user", parts: [{ type: "data-monitor-events", data: { batches: delivered } }] }]);
+    data.setMessages(taskId, [{ id: "delivery", role: "user", parts: delivered.map((data) => ({ type: "data-background-job-notification", data })) }]);
     await expect.poll(() => manager.getPendingNotifications(taskId)).toEqual([]);
     expect(manager.hasPending(taskId)).toBe(true);
     await manager.kill(job.backgroundJobId, taskId);

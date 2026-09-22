@@ -17,7 +17,7 @@ describe("TaskDataStore background job notifications", () => {
       },
     } as unknown as vscode.ExtensionContext;
     const store = new TaskDataStore(context);
-    const event = {
+    const event = { kind: "monitor" as const,
       notificationId: "monitor:1",
       backgroundJobId: "bgjob-monitor-1",
       description: "watch",
@@ -67,7 +67,7 @@ describe("TaskDataStore background job notifications", () => {
       update: async (_key: string, value: Record<string, unknown>) => { persisted = value; },
     } } as unknown as vscode.ExtensionContext;
     const store = new TaskDataStore(context);
-    const event = {
+    const event = { kind: "monitor" as const,
       notificationId: "event-0", backgroundJobId: "bgjob-monitor-1", description: "CI",
       command: "watch", outputFile: "/tmp/watch.log", lines: ["line 0"],
     };

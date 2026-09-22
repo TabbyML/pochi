@@ -1,6 +1,6 @@
 import type {
-  BackgroundJobEvent,
-  MonitorEventEnvelope,
+  BackgroundJobNotification,
+  BackgroundMonitorNotification,
 } from "@getpochi/common";
 
 export const MonitorMaxDeliveryCharacters = 32 * 1024;
@@ -11,14 +11,14 @@ export class MonitorDelivery {
   private readonly lastServed = new Map<string, number>();
 
   ready(
-    notifications: readonly BackgroundJobEvent[],
+    notifications: readonly BackgroundJobNotification[],
     maxCharacters = MonitorMaxDeliveryCharacters,
-  ): BackgroundJobEvent[] {
-    const regular = notifications.filter((notice) => !("lines" in notice));
+  ): BackgroundJobNotification[] {
+    const regular = notifications.filter((notice) => notice.kind !== "monitor");
 
-    const groups = new Map<string, MonitorEventEnvelope[]>();
+    const groups = new Map<string, BackgroundMonitorNotification[]>();
     for (const notice of notifications) {
-      if (!("lines" in notice)) continue;
+      if (notice.kind !== "monitor") continue;
       const group = groups.get(notice.backgroundJobId) ?? [];
       group.push(notice);
       groups.set(notice.backgroundJobId, group);
@@ -31,7 +31,7 @@ export class MonitorDelivery {
       0,
       Math.min(maxCharacters, MonitorMaxDeliveryCharacters),
     );
-    const selected: BackgroundJobEvent[] = [...regular];
+    const selected: BackgroundJobNotification[] = [...regular];
     // Take one batch from each monitor before taking its final buffered batch.
     while (ordered.some(([, group]) => group.length)) {
       for (const [, group] of ordered) {
@@ -53,11 +53,11 @@ export class MonitorDelivery {
   }
 
   take(
-    notifications: readonly BackgroundJobEvent[],
+    notifications: readonly BackgroundJobNotification[],
     maxCharacters = MonitorMaxDeliveryCharacters,
-  ): BackgroundJobEvent[] {
+  ): BackgroundJobNotification[] {
     const ready = this.ready(notifications, maxCharacters);
-    const monitors = ready.filter((notice) => "lines" in notice);
+    const monitors = ready.filter((notice) => notice.kind === "monitor");
     if (monitors.length) {
       const order = ++this.order;
       for (const notice of monitors)

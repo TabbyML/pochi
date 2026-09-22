@@ -1,10 +1,8 @@
 import type {
   AutoMemoryTaskState,
-  BackgroundJobEvent,
   BackgroundJobNotification,
   ContextWindowUsage,
   MaybePromise,
-  MonitorEventEnvelope,
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -58,7 +56,7 @@ import {
   attachBackgroundJobNotificationParts,
   createBackgroundJobNotificationMessage,
   dedupeBackgroundJobNotificationParts,
-  getBackgroundJobNotificationIds,
+  getBackgroundJobNotificationParts,
   toBackgroundJobNotificationParts,
 } from "./background-job-notification";
 import { filterCompletionTools } from "./filter-completion-tools";
@@ -750,19 +748,16 @@ export class LiveChatKit<
   }
 
   /**
-   * Hands finished background jobs to the kit. They are delivered with the
-   * next request that goes out anyway, or by `flushBackgroundJobNotifications`
-   * when the agent has nothing left to do.
+   * Hands background job results and monitor batches to the kit. They are
+   * delivered with the next request that goes out anyway, or by
+   * `flushBackgroundJobNotifications` when the agent has nothing left to do.
    *
    * Notifications already pending or already part of the conversation are
    * ignored, so a host may keep pushing the same ones until it observes them
    * delivered.
    */
   enqueueBackgroundJobNotifications = (
-    notifications: readonly (
-      | BackgroundJobNotification
-      | MonitorEventEnvelope
-    )[],
+    notifications: readonly BackgroundJobNotification[],
   ): void => {
     this.enqueueBackgroundJobNotificationParts(
       toBackgroundJobNotificationParts(notifications),
@@ -772,25 +767,10 @@ export class LiveChatKit<
   private enqueueBackgroundJobNotificationParts(
     parts: readonly BackgroundJobNotificationPart[],
   ): void {
-    const filterSilenced = (
-      notifications: readonly BackgroundJobNotificationPart[],
-    ): BackgroundJobNotificationPart[] =>
-      notifications.flatMap((part): BackgroundJobNotificationPart[] => {
-        if (part.type === "data-monitor-events") {
-          const batches = part.data.batches.filter(
-            (batch) =>
-              !this.backgroundJobManager.isNotificationSilenced(
-                batch.backgroundJobId,
-              ),
-          );
-          return batches.length ? [{ ...part, data: { batches } }] : [];
-        }
-        return this.backgroundJobManager.isNotificationSilenced(
-          part.data.backgroundJobId,
-        )
-          ? []
-          : [part];
-      });
+    const canNotify = (part: BackgroundJobNotificationPart) =>
+      !this.backgroundJobManager.isNotificationSilenced(
+        part.data.backgroundJobId,
+      );
     const delivered = [
       ...this.chat.messages.flatMap((message) => message.parts),
       ...this.messages.flatMap((message) => message.parts),
@@ -798,19 +778,16 @@ export class LiveChatKit<
     // Another chat instance may have consumed a source head while this view
     // was idle. Prune that local copy before accepting the promoted head.
     const pending = dedupeBackgroundJobNotificationParts(
-      filterSilenced(this.pendingBackgroundJobNotificationParts),
+      this.pendingBackgroundJobNotificationParts.filter(canNotify),
       delivered,
     );
-    const added = dedupeBackgroundJobNotificationParts(filterSilenced(parts), [
-      ...delivered,
-      ...pending,
-    ]);
+    const added = dedupeBackgroundJobNotificationParts(
+      parts.filter(canNotify),
+      [...delivered, ...pending],
+    );
     if (
       added.length === 0 &&
-      getBackgroundJobNotificationIds(pending).length ===
-        getBackgroundJobNotificationIds(
-          this.pendingBackgroundJobNotificationParts,
-        ).length
+      pending.length === this.pendingBackgroundJobNotificationParts.length
     )
       return;
 
@@ -835,15 +812,11 @@ export class LiveChatKit<
       this.pendingBackgroundJobNotificationParts,
       this.chat.messages.flatMap((message) => message.parts),
     );
-    const notifications = pending.flatMap<BackgroundJobEvent>((part) =>
-      part.type === "data-monitor-events" ? part.data.batches : [part.data],
-    );
+    const notifications = pending.map((part) => part.data);
     // A notification-only turn already selected a batch before sendMessage.
     // Its request hook can add more events only within the same request budget.
-    const existingCharacters = existingParts
-      .flatMap((part) =>
-        part.type === "data-monitor-events" ? part.data.batches : [],
-      )
+    const existingCharacters = getBackgroundJobNotificationParts(existingParts)
+      .flatMap((part) => (part.data.kind === "monitor" ? [part.data] : []))
       .flatMap((batch) => batch.lines)
       .reduce((total, line) => total + line.length, 0);
     const ready = this.backgroundJobManager.takeReadyNotifications(

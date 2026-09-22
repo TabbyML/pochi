@@ -2,9 +2,9 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type {
   ActiveSelection,
   BackgroundJobNotification,
+  BackgroundMonitorNotification,
   BashOutputs,
   MessageMetadata,
-  MonitorEventEnvelope,
   PastedTextFile,
   Review,
   TerminalTextSelection,
@@ -40,7 +40,8 @@ export type DataParts = {
     bashOutputs: BashOutputs;
   };
   "background-job-notification": BackgroundJobNotification;
-  "monitor-events": { batches: MonitorEventEnvelope[] };
+  /** Read-only compatibility with monitor batches persisted by older clients. */
+  "monitor-events": { batches: Omit<BackgroundMonitorNotification, "kind">[] };
 };
 
 /**

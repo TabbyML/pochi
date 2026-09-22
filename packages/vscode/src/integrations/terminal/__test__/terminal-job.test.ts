@@ -1,7 +1,7 @@
 import * as assert from "node:assert";
 import type {
   BackgroundJobTerminalEvent,
-  MonitorEventEnvelope,
+  BackgroundMonitorNotification,
   MonitorJobOptions,
 } from "@getpochi/common";
 import { describe, it } from "mocha";
@@ -198,7 +198,7 @@ function createHarness(options?: {
       "./utils": { ExecutionError: TestExecutionError },
     }) as typeof import("../terminal-job");
 
-  const monitorEvents: MonitorEventEnvelope[] = [];
+  const monitorEvents: BackgroundMonitorNotification[] = [];
   TerminalJob.onDidMonitorEvent(({ event }) => monitorEvents.push(event));
   const finishEvents: BackgroundJobTerminalEvent[] = [];
   TerminalJob.onDidFinish((event) => {

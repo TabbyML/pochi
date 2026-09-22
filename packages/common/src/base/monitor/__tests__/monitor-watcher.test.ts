@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MonitorMaxLinesPerBatch,
   MonitorWatcher,
-  formatMonitorNotifications,
 } from "..";
 
 describe("MonitorWatcher", () => {
@@ -149,42 +148,5 @@ describe("MonitorWatcher", () => {
 
     vi.advanceTimersByTime(3_600_000);
     expect(onTimeout).not.toHaveBeenCalled();
-  });
-});
-
-describe("formatMonitorNotifications", () => {
-  it("wraps batches in a system reminder", () => {
-    const text = formatMonitorNotifications([
-      {
-        backgroundJobId: "bgjob-1",
-        description: "errors in dev.log",
-        lines: ["ERROR boom"],
-        omittedLines: 12,
-      },
-    ]);
-
-    expect(text.startsWith("<system-reminder>")).toBe(true);
-    expect(text.endsWith("</system-reminder>")).toBe(true);
-    expect(text).toContain("bgjob-1");
-    expect(text).toContain('"errors in dev.log"');
-    expect(text).toContain("ERROR boom");
-    expect(text).toContain("12 monitor events omitted");
-    expect(text).toContain("not user input");
-  });
-
-  it("merges multiple batches into one reminder", () => {
-    const text = formatMonitorNotifications([
-      { backgroundJobId: "bgjob-1", description: "a", lines: ["x"] },
-      {
-        backgroundJobId: "bgjob-2",
-        description: "b",
-        lines: [],
-        ended: { reason: "exited with code 0" },
-      },
-    ]);
-
-    expect(text.match(/<system-reminder>/g)).toHaveLength(1);
-    expect(text).toContain("bgjob-1");
-    expect(text).toContain("[monitor ended: exited with code 0]");
   });
 });

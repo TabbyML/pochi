@@ -6,10 +6,10 @@ import type {
   AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundJobNotification,
+  BackgroundMonitorNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
-  MonitorEventEnvelope,
   PastedTextFile,
   TaskMemoryState,
   TerminalTextSelection,
@@ -215,7 +215,7 @@ export interface VSCodeHostApi {
   }>;
 
   readMonitorEvents(taskId: string): Promise<{
-    events: ThreadSignalSerialization<MonitorEventEnvelope[]>;
+    events: ThreadSignalSerialization<BackgroundMonitorNotification[]>;
     acknowledge: (notificationId: string) => Promise<void>;
   }>;
 

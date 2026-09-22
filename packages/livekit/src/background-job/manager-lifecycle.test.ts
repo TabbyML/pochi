@@ -1,4 +1,4 @@
-import type { BackgroundJobEvent, BackgroundTaskState } from "@getpochi/common";
+import type { BackgroundJobNotification, BackgroundTaskState } from "@getpochi/common";
 import { toBackgroundJobNotificationParts } from "../chat/background-job-notification";
 import { describe, expect, it, vi } from "vitest";
 import { createForkAgent } from "../background-task/fork-agent";
@@ -135,7 +135,7 @@ describe("background task registration and handoff", () => {
     const manager = BackgroundJobManager.forStore(data.store);
     manager.start();
     await manager.watchTask("parent");
-    const published: BackgroundJobEvent[] = [];
+    const published: BackgroundJobNotification[] = [];
     const unsubscribe = manager.subscribeNotifications("parent", (notices) =>
       published.push(...notices),
     );

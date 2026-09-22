@@ -6,10 +6,10 @@ import type {
   AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundJobNotification,
+  BackgroundMonitorNotification,
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
-  MonitorEventEnvelope,
   TaskMemoryState,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
@@ -305,7 +305,7 @@ const VSCodeHostStub = {
     });
   },
   readMonitorEvents: async (_taskId: string) => ({
-    events: {} as ThreadSignalSerialization<MonitorEventEnvelope[]>,
+    events: {} as ThreadSignalSerialization<BackgroundMonitorNotification[]>,
     acknowledge: async (_notificationId: string): Promise<void> => {},
   }),
   readModelList: async () => {

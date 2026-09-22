@@ -3,9 +3,9 @@ import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
 import {
-  type BackgroundJobEvent,
+  type BackgroundJobNotification,
   type BackgroundJobTerminalEvent,
-  type MonitorEventEnvelope,
+  type BackgroundMonitorNotification,
   type MonitorEventQueueEntry,
   type MonitorJobOptions,
   MonitorWatcher,
@@ -120,7 +120,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly monitorEvents = new Map<string, MonitorEventQueueEntry[]>();
   private readonly notifications = new Map<
     string,
-    { taskId: string; notification: BackgroundJobEvent }
+    { taskId: string; notification: BackgroundJobNotification }
   >();
   readonly commandAdaptor: BackgroundCommandAdaptor = {
     kill: async (id) => {
@@ -679,11 +679,12 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   private emitMonitorEvent(
     job: BackgroundCommand,
     lines: string[],
-    ended?: MonitorEventEnvelope["ended"],
+    ended?: BackgroundMonitorNotification["ended"],
     omittedLines?: number,
   ) {
     if (!job.monitor) return;
-    const notification: MonitorEventEnvelope = {
+    const notification: BackgroundMonitorNotification = {
+      kind: "monitor",
       notificationId: crypto.randomUUID(),
       backgroundJobId: job.id,
       description: job.monitor.description,

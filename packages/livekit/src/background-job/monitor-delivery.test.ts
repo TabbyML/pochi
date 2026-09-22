@@ -1,8 +1,8 @@
-import type { MonitorEventEnvelope } from "@getpochi/common";
+import type { BackgroundMonitorNotification } from "@getpochi/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MonitorDelivery } from "./monitor-delivery";
 
-const event = (id: string, lines = ["ready"]): MonitorEventEnvelope => ({
+const event = (id: string, lines = ["ready"]): BackgroundMonitorNotification => ({ kind: "monitor" as const,
   notificationId: `${id}:event`,
   backgroundJobId: id,
   description: id,

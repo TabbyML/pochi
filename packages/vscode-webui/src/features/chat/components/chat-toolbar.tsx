@@ -378,8 +378,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       raw: {
         text: pendingBackgroundJobNotifications
           .map((part) =>
-            part.type === "data-monitor-events"
-              ? part.data.batches.map((batch) => batch.description).join(" · ")
+            part.data.kind === "monitor"
+              ? part.data.description
               : part.data.kind === "subagent"
                 ? `Subagent ${part.data.status}: ${part.data.title || part.data.agentType || part.data.taskId}`
                 : part.data.summary,

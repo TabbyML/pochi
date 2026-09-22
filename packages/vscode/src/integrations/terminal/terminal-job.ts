@@ -1,7 +1,7 @@
 import { getLogger } from "@/lib/logger";
 import {
   type BackgroundJobTerminalEvent,
-  type MonitorEventEnvelope,
+  type BackgroundMonitorNotification,
   type MonitorJobOptions,
   MonitorWatcher,
 } from "@getpochi/common";
@@ -55,7 +55,7 @@ export class TerminalJob implements vscode.Disposable {
 
   private static readonly onDidMonitorEventEmitter = new vscode.EventEmitter<{
     taskId: string;
-    event: MonitorEventEnvelope;
+    event: BackgroundMonitorNotification;
   }>();
   static readonly onDidMonitorEvent =
     TerminalJob.onDidMonitorEventEmitter.event;
@@ -684,7 +684,7 @@ export class TerminalJob implements vscode.Disposable {
 
   private emitMonitorEvent(
     lines: string[],
-    ended?: MonitorEventEnvelope["ended"],
+    ended?: BackgroundMonitorNotification["ended"],
     omittedLines?: number,
   ): void {
     const description = this.config.monitor?.description;
@@ -692,6 +692,7 @@ export class TerminalJob implements vscode.Disposable {
     TerminalJob.onDidMonitorEventEmitter.fire({
       taskId: this.config.taskId,
       event: {
+        kind: "monitor",
         notificationId: crypto.randomUUID(),
         backgroundJobId: this.id,
         command: this.command,

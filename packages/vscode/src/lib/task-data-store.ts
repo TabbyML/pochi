@@ -7,9 +7,9 @@ import {
 import type {
   AutoMemoryTaskState,
   BackgroundJobNotification,
+  BackgroundMonitorNotification,
   BackgroundTaskState,
   ContextWindowUsage,
-  MonitorEventEnvelope,
   MonitorEventQueueEntry,
   TaskMemoryState,
 } from "@getpochi/common";
@@ -117,7 +117,10 @@ export class TaskDataStore {
 
   addMonitorEvent = runExclusive.build(
     this.notificationGroup,
-    async (taskId: string, event: MonitorEventEnvelope): Promise<void> => {
+    async (
+      taskId: string,
+      event: BackgroundMonitorNotification,
+    ): Promise<void> => {
       const events = this.state.value[taskId]?.monitorEvents ?? [];
       if (events.some((item) => item.notificationId === event.notificationId))
         return;

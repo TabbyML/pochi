@@ -263,7 +263,7 @@ describe("CLI monitor finalization", () => {
         internals.chat.messages
           .at(-1)
           ?.parts.flatMap((part) =>
-            part.type === "data-monitor-events" ? part.data.batches : [],
+            part.type === "data-background-job-notification" && part.data.kind === "monitor" ? [part.data] : [],
           ) ?? [];
       expect(batches.flatMap((batch) => batch.lines)).toEqual(["finished"]);
       expect(batches.at(-1)?.ended?.status).toBe("completed");
@@ -300,7 +300,7 @@ describe("CLI monitor finalization", () => {
         expect(
           internals.chat.messages
             .flatMap((message) => message.parts)
-            .some((part) => part.type === "data-monitor-events"),
+            .some((part) => part.type === "data-background-job-notification" && part.data.kind === "monitor"),
         ).toBe(false);
       } finally {
         await fixture.dispose();

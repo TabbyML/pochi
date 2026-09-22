@@ -1,8 +1,9 @@
+import type { BackgroundMonitorNotification } from "../../message";
 import { describe, expect, it } from "vitest";
-import { type MonitorEventEnvelope, type MonitorEventQueueEntry, acknowledgeMonitorEvent, enqueueMonitorEvent, getPendingMonitorEvents } from "..";
+import { type MonitorEventQueueEntry, acknowledgeMonitorEvent, enqueueMonitorEvent, getPendingMonitorEvents } from "..";
 
-function event(id: number, job = "watch"): MonitorEventEnvelope {
-  return {
+function event(id: number, job = "watch"): BackgroundMonitorNotification {
+  return { kind: "monitor" as const,
     notificationId: `${job}:${id}`,
     backgroundJobId: job,
     description: job,
@@ -13,6 +14,18 @@ function event(id: number, job = "watch"): MonitorEventEnvelope {
 }
 
 describe("monitor source queue", () => {
+  it("normalizes persisted batches without a kind and preserves buffered IDs on acknowledgement", () => {
+    const { kind: _headKind, ...head } = event(0);
+    const { kind: _bufferKind, ...buffered } = event(1);
+    const persisted: MonitorEventQueueEntry[] = JSON.parse(JSON.stringify([
+      head, { ...buffered, buffered: true },
+    ]));
+    expect(getPendingMonitorEvents(persisted)).toEqual([event(0)]);
+    const promoted = acknowledgeMonitorEvent(persisted, head.notificationId);
+    expect(getPendingMonitorEvents(promoted)).toEqual([event(1)]);
+    expect(getPendingMonitorEvents(acknowledgeMonitorEvent(promoted, buffered.notificationId))).toEqual([]);
+  });
+
   it("keeps already published legacy IDs and contents intact across an upgrade", () => {
     const legacy = [event(0), event(1), event(2)];
     let queue = enqueueMonitorEvent(legacy, event(3));

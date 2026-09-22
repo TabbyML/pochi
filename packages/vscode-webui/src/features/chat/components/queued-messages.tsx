@@ -14,9 +14,10 @@ import {
   languageIdFromExtension,
 } from "@/lib/utils/languages";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
-import type { BackgroundJobEvent } from "@getpochi/common";
+import type { BackgroundJobNotification } from "@getpochi/common";
 import { parseTitle } from "@getpochi/common/message-utils";
 import type { ActiveSelection } from "@getpochi/common/vscode-webui-bridge";
+import { getBackgroundJobNotificationParts } from "@getpochi/livekit";
 import {
   Bell,
   CornerDownRight,
@@ -43,7 +44,7 @@ interface RenderMessage {
   title: string;
   details: string;
   isTodoMode?: boolean;
-  notifications?: BackgroundJobEvent[];
+  notifications?: BackgroundJobNotification[];
   activeSelection?: ActiveSelection;
   nonRemovable?: boolean;
   editable?: boolean;
@@ -70,12 +71,9 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         isTodoMode,
         activeSelection,
       } = raw;
-      const notifications = parts.flatMap<BackgroundJobEvent>((part) => {
-        if (part.type === "data-background-job-notification")
-          return [part.data];
-        if (part.type === "data-monitor-events") return part.data.batches;
-        return [];
-      });
+      const notifications = getBackgroundJobNotificationParts(parts).map(
+        (part) => part.data,
+      );
       const isNotification = notifications.length > 0;
       const title = isNotification
         ? t("backgroundJobNotifications.title")

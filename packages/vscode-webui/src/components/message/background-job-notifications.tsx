@@ -3,24 +3,30 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { BackgroundJobPanel } from "@/features/tools";
 import type {
   BackgroundJobNotification,
-  MonitorEventEnvelope,
+  BackgroundMonitorNotification,
 } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
+import {
+  type Message,
+  getBackgroundJobNotificationParts,
+} from "@getpochi/livekit";
 import { Activity, Bell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SubagentResultNotificationItem } from "./subagent-results";
 
 interface BackgroundJobNotificationsProps {
-  notifications: (BackgroundJobNotification | MonitorEventEnvelope)[];
+  notifications: BackgroundJobNotification[];
 }
 
 export function BackgroundJobNotificationItems({
   notifications,
 }: BackgroundJobNotificationsProps) {
-  const items: (BackgroundJobNotification | MonitorEventEnvelope[])[] = [];
-  const monitors = new Map<string, MonitorEventEnvelope[]>();
+  const items: (
+    | Exclude<BackgroundJobNotification, BackgroundMonitorNotification>
+    | BackgroundMonitorNotification[]
+  )[] = [];
+  const monitors = new Map<string, BackgroundMonitorNotification[]>();
   for (const notification of notifications) {
-    if (!("lines" in notification)) {
+    if (notification.kind !== "monitor") {
       items.push(notification);
       continue;
     }
@@ -123,12 +129,8 @@ export function BackgroundJobNotifications({
 
 /** Keep monitor batches grouped across all notification parts in this message. */
 export function MessageNotifications({ parts }: { parts: Message["parts"] }) {
-  const notifications = parts.flatMap<
-    BackgroundJobNotification | MonitorEventEnvelope
-  >((part) => {
-    if (part.type === "data-background-job-notification") return [part.data];
-    if (part.type === "data-monitor-events") return part.data.batches;
-    return [];
-  });
+  const notifications = getBackgroundJobNotificationParts(parts).map(
+    (part) => part.data,
+  );
   return <BackgroundJobNotifications notifications={notifications} />;
 }

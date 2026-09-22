@@ -1,11 +1,8 @@
-import {
-  type MonitorEventEnvelope,
-  MonitorMaxBatchCharacters,
-  MonitorMaxLinesPerBatch,
-} from ".";
+import { MonitorMaxBatchCharacters, MonitorMaxLinesPerBatch } from ".";
+import type { BackgroundMonitorNotification } from "../message";
 
 /** The unpublished accumulator is persisted explicitly so reloads preserve IDs. */
-export interface MonitorEventQueueEntry extends MonitorEventEnvelope {
+export interface MonitorEventQueueEntry extends BackgroundMonitorNotification {
   buffered?: true;
 }
 
@@ -16,7 +13,7 @@ export interface MonitorEventQueueEntry extends MonitorEventEnvelope {
  */
 export function enqueueMonitorEvent(
   events: readonly MonitorEventQueueEntry[],
-  event: MonitorEventEnvelope,
+  event: BackgroundMonitorNotification,
 ): MonitorEventQueueEntry[] {
   if (events.some((item) => item.notificationId === event.notificationId))
     return [...events];
@@ -81,6 +78,11 @@ function boundEvent(event: MonitorEventQueueEntry): MonitorEventQueueEntry {
 /** Mutable accumulators must never escape to the notification consumers. */
 export function getPendingMonitorEvents(
   events: readonly MonitorEventQueueEntry[],
-): MonitorEventEnvelope[] {
-  return events.filter((event) => !event.buffered);
+): BackgroundMonitorNotification[] {
+  // Persisted queues from before notification unification have no kind.
+  return events
+    .filter((event) => !event.buffered)
+    .map((event) =>
+      event.kind === "monitor" ? event : { ...event, kind: "monitor" },
+    );
 }

@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import type { MonitorEventEnvelope } from "@getpochi/common";
+import type { BackgroundMonitorNotification } from "@getpochi/common";
 import { describe, it } from "mocha";
 import * as vscode from "vscode";
 import proxyquire from "proxyquire";
@@ -41,7 +41,7 @@ describe("startMonitor real terminal", () => {
           "while :; do sleep 1; done",
         ].join("\n"),
       );
-      const events: MonitorEventEnvelope[] = [];
+      const events: BackgroundMonitorNotification[] = [];
       const subscription = TerminalJob.onDidMonitorEvent((item) => {
         if (item.taskId === taskId) events.push(item.event);
       });
@@ -123,7 +123,7 @@ describe("startMonitor real terminal", () => {
     if (process.platform === "win32") this.skip();
     this.timeout(15000);
     const taskId = `monitor-test-${crypto.randomUUID()}`;
-    const events: MonitorEventEnvelope[] = [];
+    const events: BackgroundMonitorNotification[] = [];
     let resolveFirst!: () => void;
     let resolveEnd!: () => void;
     const first = new Promise<void>((resolve) => {

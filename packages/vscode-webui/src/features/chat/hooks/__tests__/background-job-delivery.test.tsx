@@ -1,5 +1,5 @@
 import { Chat, useChat } from "@ai-sdk/react";
-import type { MonitorEventEnvelope } from "@getpochi/common";
+import type { BackgroundMonitorNotification } from "@getpochi/common";
 import {
   type BackgroundJobNotificationPart,
   type BlobStore,
@@ -95,7 +95,8 @@ it.each([0, 6100])(
       // Wrapping stream completion in act can hide the sendMessage promise race.
       flushSync(() => root.render(<Host />));
       await kit.backgroundJobManager.watchTask("task-1");
-      const event: MonitorEventEnvelope = {
+      const event: BackgroundMonitorNotification = {
+        kind: "monitor" as const,
         notificationId: "first",
         backgroundJobId: "bgjob-monitor-1",
         description: "CI",

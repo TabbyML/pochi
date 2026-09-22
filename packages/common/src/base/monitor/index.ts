@@ -9,9 +9,6 @@
  *         -> batch (BatchIntervalMs) -> onEvents(lines)
  */
 
-import type { BackgroundJobNotification } from "../message";
-import { prompts } from "../prompts";
-
 /** Lines arriving within this window are delivered as one batch. */
 export const MonitorBatchIntervalMs = 200;
 
@@ -20,35 +17,6 @@ export const MonitorDefaultTimeoutMs = 300_000;
 
 /** Hard cap of lines per delivered batch; the rest is summarized. */
 export const MonitorMaxLinesPerBatch = 50;
-
-/**
- * A single delivery of monitor events, ready to be injected into the
- * conversation between inference rounds.
- */
-export interface MonitorEventBatch {
-  backgroundJobId: string;
-  description: string;
-  outputFile?: string;
-  lines: string[];
-  /** Older lines omitted from the notification; full output remains in the log. */
-  omittedLines?: number;
-  /**
-   * Present when the watch ended (job exit, timeout, kill). A batch with
-   * `ended` may still carry final lines flushed from the buffer.
-   */
-  ended?: {
-    reason: string;
-    status?: "completed" | "failed" | "stopped";
-    exitCode?: number;
-  };
-}
-
-/** Stable identities are retained until the event reaches the conversation. */
-export interface MonitorEventEnvelope extends MonitorEventBatch {
-  notificationId: string;
-  command: string;
-  outputFile: string;
-}
 
 export interface MonitorJobOptions {
   description: string;
@@ -166,39 +134,6 @@ export class MonitorWatcher {
     else this.options.onEvents(lines);
   }
 }
-
-function renderMonitorEventBatch(batch: MonitorEventBatch): string {
-  const header = `Monitor "${batch.description}" (backgroundJobId: ${batch.backgroundJobId}${batch.outputFile ? `, outputFile: ${batch.outputFile}` : ""}):`;
-  const lines = [...batch.lines];
-  if (batch.omittedLines) {
-    lines.unshift(
-      `[${batch.omittedLines} monitor events omitted; read the output file for full output]`,
-    );
-  }
-  if (batch.ended) {
-    lines.push(`[monitor ended: ${batch.ended.reason}]`);
-  }
-  return `${header}\n${lines.join("\n")}`;
-}
-
-/**
- * Renders one delivery of monitor event batches as the system-reminder user
- * message injected into the conversation. Shared by the CLI task runner and
- * the VSCode webview so both hosts speak the same protocol. System reminders
- * are rendered as monitor event cards in the chat UI.
- */
-export function formatMonitorNotifications(
-  batches: MonitorEventBatch[],
-): string {
-  const body = batches.map(renderMonitorEventBatch).join("\n\n");
-  return prompts.createSystemReminder(
-    `The following events were captured by background monitors started with startMonitor. This is an automated notification, not user input:\n${body}`,
-  );
-}
-
-export type BackgroundJobEvent =
-  | BackgroundJobNotification
-  | MonitorEventEnvelope;
 
 export {
   type MonitorEventQueueEntry,

@@ -844,6 +844,7 @@ describe("MessageList pasted text", () => {
 
 it("renders monitor batches only inside their message notification container", () => {
   const monitor = {
+    kind: "monitor" as const,
     notificationId: "first",
     backgroundJobId: "bgjob-monitor-1",
     command: "watch",

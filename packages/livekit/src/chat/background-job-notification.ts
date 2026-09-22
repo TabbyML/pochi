@@ -1,6 +1,6 @@
 import {
   BackgroundJobNotification,
-  type MonitorEventEnvelope,
+  BackgroundMonitorNotification,
 } from "@getpochi/common";
 import type { Message } from "../types";
 
@@ -8,40 +8,44 @@ type MessagePart = Message["parts"][number];
 
 export type BackgroundJobNotificationPart = Extract<
   MessagePart,
-  { type: "data-background-job-notification" | "data-monitor-events" }
+  { type: "data-background-job-notification" }
 >;
 
 /** Wraps notifications into the message parts hosts queue and send. */
 export function toBackgroundJobNotificationParts(
-  notifications: readonly (BackgroundJobNotification | MonitorEventEnvelope)[],
+  notifications: readonly BackgroundJobNotification[],
 ): BackgroundJobNotificationPart[] {
-  return notifications.map((data) =>
-    "lines" in data
-      ? { type: "data-monitor-events", data: { batches: [data] } }
-      : {
-          type: "data-background-job-notification",
-          data: BackgroundJobNotification.parse(data),
-        },
-  );
+  return notifications.map((data) => ({
+    type: "data-background-job-notification",
+    data: BackgroundJobNotification.parse(data),
+  }));
 }
 
 export function getBackgroundJobNotificationParts(
   parts: readonly MessagePart[],
 ): BackgroundJobNotificationPart[] {
-  return parts.filter(
-    (part): part is BackgroundJobNotificationPart =>
-      part.type === "data-background-job-notification" ||
-      part.type === "data-monitor-events",
-  );
+  return parts.flatMap((part): BackgroundJobNotificationPart[] => {
+    if (part.type === "data-background-job-notification")
+      return toBackgroundJobNotificationParts([part.data]);
+    // Flatten historical multi-batch parts at the read boundary. Preserve IDs
+    // so queued notifications are still acknowledged and deduplicated.
+    if (part.type === "data-monitor-events")
+      return part.data.batches.map((batch) => ({
+        type: "data-background-job-notification",
+        data: BackgroundMonitorNotification.parse({
+          ...batch,
+          kind: "monitor",
+        }),
+      }));
+    return [];
+  });
 }
 
 export function getBackgroundJobNotificationIds(
   parts: readonly MessagePart[],
 ): string[] {
-  return getBackgroundJobNotificationParts(parts).flatMap((part) =>
-    part.type === "data-monitor-events"
-      ? part.data.batches.map((batch) => batch.notificationId)
-      : [part.data.notificationId],
+  return getBackgroundJobNotificationParts(parts).map(
+    (part) => part.data.notificationId,
   );
 }
 
@@ -97,14 +101,6 @@ export function dedupeBackgroundJobNotificationParts(
 
   const seen = new Set(getBackgroundJobNotificationIds(existing));
   return parts.flatMap((part): BackgroundJobNotificationPart[] => {
-    if (part.type === "data-monitor-events") {
-      const batches = part.data.batches.filter((batch) => {
-        if (seen.has(batch.notificationId)) return false;
-        seen.add(batch.notificationId);
-        return true;
-      });
-      return batches.length ? [{ ...part, data: { batches } }] : [];
-    }
     if (seen.has(part.data.notificationId)) return [];
     seen.add(part.data.notificationId);
     return [part];

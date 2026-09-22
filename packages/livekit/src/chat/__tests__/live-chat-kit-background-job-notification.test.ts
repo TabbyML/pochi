@@ -121,7 +121,7 @@ describe("LiveChatKit background job notification delivery", () => {
   });
   it("keeps monitor events pending for a follow-up, then attaches and deduplicates them", async () => {
     const chatKit = makeChatKit();
-    const event = {
+    const event = { kind: "monitor" as const,
       notificationId: "monitor-1:event-1",
       backgroundJobId: "bgjob-monitor-1",
       description: "CI",
@@ -139,7 +139,7 @@ describe("LiveChatKit background job notification delivery", () => {
     await makeRequest(chatKit);
     expect(chatKit.chat.messages.at(-1)?.parts).toEqual([
       { type: "text", text: "continue" },
-      { type: "data-monitor-events", data: { batches: [event] } },
+      { type: "data-background-job-notification", data: event },
     ]);
     chatKit.enqueueBackgroundJobNotifications([event]);
     expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
@@ -626,6 +626,6 @@ it("writes the original description before a background subagent sends its first
 });
 
 function monitorEvent(notificationId: string) {
-  return { notificationId, backgroundJobId: "bgjob-monitor-1", description: "CI",
+  return { kind: "monitor" as const, notificationId, backgroundJobId: "bgjob-monitor-1", description: "CI",
     command: "watch", outputFile: "/tmp/watch.log", lines: ["passed"] };
 }

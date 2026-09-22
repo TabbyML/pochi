@@ -1,4 +1,4 @@
-import type { BackgroundJobNotification, MonitorEventEnvelope } from "@getpochi/common";
+import type { BackgroundJobNotification, BackgroundMonitorNotification } from "@getpochi/common";
 import type {
   BackgroundCommands,
   ExecuteCommandResult,
@@ -122,12 +122,12 @@ describe("VS Code background command ownership", () => {
   function setup() {
     const running = signal<BackgroundCommands>({});
     const notifications = signal<BackgroundJobNotification[]>([]);
-    const monitorEvents = signal<MonitorEventEnvelope[]>([]);
+    const monitorEvents = signal<BackgroundMonitorNotification[]>([]);
     const acknowledgeMonitor = vi.fn(async (id: string) => {
       monitorEvents.value = monitorEvents.value.filter((event) => event.notificationId !== id);
     });
     vi.mocked(vscodeHost.readMonitorEvents).mockImplementation(async (taskId) => ({
-      events: serializeThreadSignalWithSnapshot(taskId === "child" ? monitorEvents : signal<MonitorEventEnvelope[]>([])),
+      events: serializeThreadSignalWithSnapshot(taskId === "child" ? monitorEvents : signal<BackgroundMonitorNotification[]>([])),
       acknowledge: acknowledgeMonitor,
     }));
     const close = vi.fn(async () => {});
@@ -156,7 +156,7 @@ describe("VS Code background command ownership", () => {
   it("delivers monitor batches through the manager and acknowledges their own queue", async () => {
     const { running, monitorEvents, acknowledgeMonitor, acknowledge, close } = setup();
     const store = makeStore();
-    const event: MonitorEventEnvelope = {
+    const event: BackgroundMonitorNotification = { kind: "monitor" as const,
       notificationId: "monitor-event", backgroundJobId: "bgjob-monitor-one", description: "CI", command: "watch CI", outputFile: "/tmp/monitor.log", lines: ["check passed"],
     };
     running.value = { [event.backgroundJobId]: { taskId: "child", command: event.command, monitor: event.description, outputFile: event.outputFile, isVisible: false } };
@@ -168,7 +168,7 @@ describe("VS Code background command ownership", () => {
       expect(store.manager.getPendingNotifications("child")).toEqual([event]);
       expect(store.manager.getJobsForTask("child")[0]).toMatchObject({ monitor: "CI", command: "watch CI", status: "running" });
       expect(acknowledgeMonitor).not.toHaveBeenCalled();
-      store.setMessages([{ id: "delivered", role: "user", parts: [{ type: "data-monitor-events", data: { batches: [event] } }] }]);
+      store.setMessages([{ id: "delivered", role: "user", parts: [{ type: "data-background-job-notification", data: event }] }]);
       await expect.poll(() => acknowledgeMonitor.mock.calls).toEqual([[event.notificationId]]);
       expect(acknowledge).not.toHaveBeenCalled();
       expect(store.manager.getPendingNotifications("child")).toEqual([]);

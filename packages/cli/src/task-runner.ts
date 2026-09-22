@@ -538,7 +538,7 @@ export class TaskRunner {
           this.backgroundJobs.getPendingNotifications(this.taskId);
         const hasMonitorWork =
           this.adaptor.getActiveMonitors(this.taskId).length > 0 ||
-          pendingNotifications.some((notice) => "lines" in notice);
+          pendingNotifications.some((notice) => notice.kind === "monitor");
         // Zero skips waiting for new output, but monitors still need bounded
         // cleanup and may trigger final notification turns.
         const shouldWaitForBackgroundWork =
