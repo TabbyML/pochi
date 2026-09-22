@@ -1,9 +1,9 @@
 import {
   FileUnchangedStub,
-  appendBackgroundCommandRunningHint,
   getFileModificationTime,
   isPlainText,
   parseBackgroundCommandOutputFilePath,
+  prependBackgroundCommandRunningHint,
   readMediaFile,
   resolveReadFileRange,
   selectFileContent,
@@ -101,6 +101,6 @@ function addRunningCommandHint(
 
   return {
     ...result,
-    content: appendBackgroundCommandRunningHint(result.content),
+    content: prependBackgroundCommandRunningHint(result.content),
   };
 }

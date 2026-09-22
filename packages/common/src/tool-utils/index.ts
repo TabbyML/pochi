@@ -76,6 +76,6 @@ export {
 } from "./read-file-range";
 export {
   BackgroundCommandRunningHint,
-  appendBackgroundCommandRunningHint,
+  prependBackgroundCommandRunningHint,
   parseBackgroundCommandOutputFilePath,
 } from "./background-command-status";

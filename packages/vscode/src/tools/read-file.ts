@@ -5,10 +5,10 @@ import { getLogger } from "@/lib/logger";
 import { parseBackgroundJobOutputFilePath } from "@getpochi/common/pochi-file-system";
 import {
   FileUnchangedStub,
-  appendBackgroundCommandRunningHint,
   isPlainText,
   isVirtualPath,
   parseBackgroundCommandOutputFilePath,
+  prependBackgroundCommandRunningHint,
   readMediaFile,
   resolveReadFileRange,
   selectFileContent,
@@ -136,7 +136,7 @@ function addRunningCommandHint(
 
   return {
     ...result,
-    content: appendBackgroundCommandRunningHint(result.content),
+    content: prependBackgroundCommandRunningHint(result.content),
   };
 }
 

@@ -249,13 +249,13 @@ describe("readFile Tool", () => {
     const fresh = await readFileWithMock({ path: transcriptPath }, options);
     assert.ok(fresh.type !== "media");
     assert.ok(fresh.content.includes("tick"));
-    assert.ok(fresh.content.endsWith(BackgroundCommandRunningHint));
+    assert.ok(fresh.content.startsWith(BackgroundCommandRunningHint));
 
     // An unchanged transcript must still report that the command is active.
     const unchanged = await readFileWithMock({ path: transcriptPath }, options);
     assert.ok(unchanged.type !== "media");
     assert.ok(unchanged.content.includes(FileUnchangedStub));
-    assert.ok(unchanged.content.endsWith(BackgroundCommandRunningHint));
+    assert.ok(unchanged.content.startsWith(BackgroundCommandRunningHint));
   });
 
   it("should not report any status once the background command finished", async () => {

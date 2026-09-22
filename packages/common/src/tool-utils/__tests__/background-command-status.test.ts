@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   BackgroundCommandRunningHint,
-  appendBackgroundCommandRunningHint,
   parseBackgroundCommandOutputFilePath,
+  prependBackgroundCommandRunningHint,
 } from "../background-command-status";
 
 describe("parseBackgroundCommandOutputFilePath", () => {
@@ -44,18 +44,18 @@ describe("parseBackgroundCommandOutputFilePath", () => {
   });
 });
 
-describe("appendBackgroundCommandRunningHint", () => {
-  it("separates the hint from the transcript", () => {
-    expect(appendBackgroundCommandRunningHint("tick")).toBe(
-      `tick\n\n${BackgroundCommandRunningHint}`,
+describe("prependBackgroundCommandRunningHint", () => {
+  it("puts the hint before the transcript", () => {
+    expect(prependBackgroundCommandRunningHint("tick")).toBe(
+      `${BackgroundCommandRunningHint}\n\ntick`,
     );
-    expect(appendBackgroundCommandRunningHint("tick\n")).toBe(
-      `tick\n\n${BackgroundCommandRunningHint}`,
+    expect(prependBackgroundCommandRunningHint("tick\n")).toBe(
+      `${BackgroundCommandRunningHint}\n\ntick\n`,
     );
   });
 
   it("reports liveness for an empty transcript", () => {
-    expect(appendBackgroundCommandRunningHint("")).toBe(
+    expect(prependBackgroundCommandRunningHint("")).toBe(
       BackgroundCommandRunningHint,
     );
   });

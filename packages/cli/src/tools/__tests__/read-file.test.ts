@@ -71,14 +71,14 @@ describe("readFile background command status", () => {
         await read({ path: outputFile }, toolExecutionOptions),
       );
       expect(running).toContain("tick");
-      expect(running.endsWith(BackgroundCommandRunningHint)).toBe(true);
+      expect(running.startsWith(BackgroundCommandRunningHint)).toBe(true);
 
       // An unchanged transcript must still report that the command is active.
       const unchanged = textContent(
         await read({ path: outputFile }, toolExecutionOptions),
       );
       expect(unchanged).toContain(FileUnchangedStub);
-      expect(unchanged.endsWith(BackgroundCommandRunningHint)).toBe(true);
+      expect(unchanged.startsWith(BackgroundCommandRunningHint)).toBe(true);
 
       const finished = nextCommandResult(adaptor, "test-task");
       await adaptor.commandAdaptor.kill(backgroundJobId);
