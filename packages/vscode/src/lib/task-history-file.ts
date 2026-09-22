@@ -7,8 +7,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
-import { performance } from "node:perf_hooks";
-import { lockSync } from "proper-lockfile";
 
 export type EncodedTask = {
   id: string;
@@ -29,49 +27,44 @@ export type EncodedTask = {
 const MaxEncodedTaskErrorChars = 8 * 1024;
 
 /** The JSON file is a cache. Only LiveStore updates, never cached snapshots,
- * may replace an existing row. All cooperating windows lock the whole update. */
+ * may replace an existing row. Atomic replacement protects file integrity,
+ * but does not serialize simultaneous updates from different windows. */
 export class TaskHistoryFile {
   constructor(private readonly filePath: string) {}
-
-  read(): Record<string, EncodedTask> {
-    return this.withLock(() => this.readLocked());
-  }
 
   update(
     updates: Record<string, EncodedTask>,
     evictions: Record<string, EncodedTask>,
-    waitForLock = false,
   ) {
-    return this.withLock(() => {
-      const tasks = this.readLocked();
-      const evicted: string[] = [];
-      for (const [id, expected] of Object.entries(evictions)) {
-        // A different window may have refreshed this cache entry meanwhile.
-        if (
-          !(id in updates) &&
-          JSON.stringify(tasks[id]) === JSON.stringify(expected)
-        ) {
-          delete tasks[id];
-          evicted.push(id);
-        }
+    mkdirSync(path.dirname(this.filePath), { recursive: true });
+    const tasks = this.read();
+    const evicted: string[] = [];
+    for (const [id, expected] of Object.entries(evictions)) {
+      // A different window may have refreshed this cache entry meanwhile.
+      if (
+        !(id in updates) &&
+        JSON.stringify(tasks[id]) === JSON.stringify(expected)
+      ) {
+        delete tasks[id];
+        evicted.push(id);
       }
-      Object.assign(tasks, updates);
-      const tempPath = `${this.filePath}.${process.pid}.${randomUUID()}.tmp.json`;
+    }
+    Object.assign(tasks, updates);
+    const tempPath = `${this.filePath}.${process.pid}.${randomUUID()}.tmp.json`;
+    try {
+      writeFileSync(tempPath, JSON.stringify(tasks));
+      renameSync(tempPath, this.filePath);
+    } finally {
+      // Cleanup failure must not turn a successful publication into a retry
+      // that could overwrite a subsequent update from another window.
       try {
-        writeFileSync(tempPath, JSON.stringify(tasks));
-        renameSync(tempPath, this.filePath);
-      } finally {
-        // Cleanup failure must not turn a successful publication into a retry
-        // that could overwrite a subsequent update from another window.
-        try {
-          rmSync(tempPath, { force: true });
-        } catch {}
-      }
-      return { tasks, evicted };
-    }, waitForLock);
+        rmSync(tempPath, { force: true });
+      } catch {}
+    }
+    return { tasks, evicted };
   }
 
-  private readLocked(): Record<string, EncodedTask> {
+  read(): Record<string, EncodedTask> {
     let content: string;
     try {
       content = readFileSync(this.filePath, "utf8");
@@ -95,32 +88,9 @@ export class TaskHistoryFile {
       return {};
     }
   }
-
-  private withLock<T>(action: () => T, wait = false): T {
-    mkdirSync(path.dirname(this.filePath), { recursive: true });
-    const deadline = performance.now() + (wait ? 1000 : 0);
-    let release: () => void;
-    while (true) {
-      try {
-        release = lockSync(this.filePath, { realpath: false, stale: 60_000 });
-        break;
-      } catch (error) {
-        if (!hasCode(error, "ELOCKED") || performance.now() >= deadline)
-          throw error;
-        // Shutdown cannot await. No holder in this process can be suspended:
-        // every critical section is synchronous and contains no await.
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
-      }
-    }
-    try {
-      return action();
-    } finally {
-      release();
-    }
-  }
 }
 
-export function hasCode(error: unknown, code: string): boolean {
+function hasCode(error: unknown, code: string): boolean {
   return (
     !!error &&
     typeof error === "object" &&

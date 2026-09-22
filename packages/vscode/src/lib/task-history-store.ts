@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import { setTimeout as delay } from "node:timers/promises";
 import { isFileExists } from "@/lib/fs";
 import { taskUpdated } from "@/lib/task-events";
 import { getLogger } from "@getpochi/common";
@@ -12,7 +11,6 @@ import * as vscode from "vscode";
 import {
   type EncodedTask,
   TaskHistoryFile,
-  hasCode,
   sanitizeTask,
 } from "./task-history-file";
 
@@ -53,21 +51,9 @@ export class TaskHistoryStore implements vscode.Disposable {
     return this.initPromise;
   }
 
-  private async retryBusy<T>(action: () => T): Promise<T | undefined> {
-    for (let attempt = 0; !this.disposed; attempt++) {
-      try {
-        return action();
-      } catch (error) {
-        if (!hasCode(error, "ELOCKED") || attempt >= 40) throw error;
-        await delay(25);
-      }
-    }
-  }
-
   private async loadTasks() {
     try {
-      const tasks = await this.retryBusy(() => this.file.read());
-      if (!tasks || this.disposed) return;
+      const tasks = this.file.read();
       const now = Date.now();
       const threeMonthsCutoff = now - 90 * 24 * 60 * 60 * 1000;
       const oneWeekCutoff = now - 7 * 24 * 60 * 60 * 1000;
@@ -120,7 +106,7 @@ export class TaskHistoryStore implements vscode.Disposable {
     }
   }
 
-  private commit(waitForLock = false): string[] {
+  private commit(): string[] {
     if (
       !Object.keys(this.pendingUpdates).length &&
       !Object.keys(this.pendingEvictions).length
@@ -129,7 +115,6 @@ export class TaskHistoryStore implements vscode.Disposable {
     const { tasks, evicted } = this.file.update(
       this.pendingUpdates,
       this.pendingEvictions,
-      waitForLock,
     );
     this.pendingUpdates = {};
     this.pendingEvictions = {};
@@ -139,11 +124,12 @@ export class TaskHistoryStore implements vscode.Disposable {
 
   private writeTasksToDisk() {
     this.writeQueue = this.writeQueue.then(async () => {
+      if (this.disposed) return;
       try {
-        const evicted = await this.retryBusy(() => this.commit());
+        const evicted = this.commit();
         // Retention of auxiliary data follows a successful cache eviction.
         // Failed or cancelled saves must not remove those files.
-        if (!evicted?.length || this.disposed) return;
+        if (!evicted.length || this.disposed) return;
         const inactive = evicted.filter((id) => !this.tasks.value[id]);
         await Promise.allSettled([
           ...inactive.map((id) =>
@@ -178,7 +164,7 @@ export class TaskHistoryStore implements vscode.Disposable {
     this.disposed = true;
     this.saveTasks.cancel();
     try {
-      this.commit(true);
+      this.commit();
     } catch (error) {
       logger.error("Failed to flush task history", error);
     }
