@@ -92,7 +92,14 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const Features = [];
+    if (modelInfo.useToolCallMiddleware) {
+      Features.push("ReAct ✓");
+    }
+    if (modelInfo.useReasoningMiddleware) {
+      Features.push("Reasoning ✓");
+    }
+    const features = Features.length > 0 ? Features.join(" ") : "-";
 
     table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
@@ -145,7 +152,14 @@ function displayProviderModels(
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const Features = [];
+    if (modelInfo.useToolCallMiddleware) {
+      Features.push("ReAct ✓");
+    }
+    if (modelInfo.useReasoningMiddleware) {
+      Features.push("Reasoning ✓");
+    }
+    const features = Features.length > 0 ? Features.join(" ") : "-";
 
     table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
   }
