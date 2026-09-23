@@ -11,6 +11,7 @@ import type { LiveKitStore, Message, Task } from "../../../types";
 import type { ForkAgent } from "../../fork-agent";
 import { AutoMemoryAdaptor, type AutoMemoryManager } from "../auto-memory";
 import { TaskMemoryAdaptor } from "../task-memory";
+import { compileToolPolicies, validateToolPolicy } from "@getpochi/tools";
 import { describe, expect, it, vi } from "vitest";
 
 /** Pinned so extraction fires at 16k tokens. */
@@ -845,10 +846,16 @@ describe("auto-memory adaptor", () => {
       tools: [
         "readFile(/repo/.pochi/memory/**)",
         "readFile(/repo/.pochi/transcripts/**)",
+        "listFiles(/repo/.pochi/memory)",
+        "listFiles(/repo/.pochi/transcripts)",
         "listFiles(/repo/.pochi/memory/**)",
         "listFiles(/repo/.pochi/transcripts/**)",
+        "globFiles(/repo/.pochi/memory)",
+        "globFiles(/repo/.pochi/transcripts)",
         "globFiles(/repo/.pochi/memory/**)",
         "globFiles(/repo/.pochi/transcripts/**)",
+        "searchFiles(/repo/.pochi/memory)",
+        "searchFiles(/repo/.pochi/transcripts)",
         "searchFiles(/repo/.pochi/memory/**)",
         "searchFiles(/repo/.pochi/transcripts/**)",
         "writeToFile(/repo/.pochi/memory/**)",
@@ -868,6 +875,94 @@ describe("auto-memory adaptor", () => {
       success: true,
     });
   });
+
+  it.each([
+    { name: "POSIX", cwd: "/repo", root: "/repo/.pochi", separator: "/" },
+    {
+      name: "Windows",
+      cwd: "C:\\repo",
+      root: "C:\\repo\\.pochi",
+      separator: "\\",
+    },
+  ])(
+    "allows Dream directory queries without expanding file permissions ($name)",
+    async ({ cwd, root, separator }) => {
+      const memoryDir = `${root}${separator}memory`;
+      const transcriptDir = `${root}${separator}transcripts`;
+      const context = {
+        ...autoMemoryContext,
+        memoryDir: `${memoryDir}${separator}`,
+        transcriptDir: `${transcriptDir}${separator}`,
+      };
+      const store = new FakeStore([
+        makeTask({ id: "parent", status: "completed", background: false, cwd }),
+      ]);
+      const manager = makeAutoMemoryManager({
+        readContext: vi.fn(async () => context),
+        beginDreamRun: vi.fn(async ({ currentTranscript }) => ({
+          context,
+          token: "dream-token",
+          previousLastDreamAt: 0,
+          sessionCount: 1,
+          reason: "sessions" as const,
+          candidates: currentTranscript ? [currentTranscript] : [],
+        })),
+      });
+      const { adaptor, stateStore } = makeAutoMemoryAdaptor({ store, manager });
+      await adaptor.update({
+        messages: makeAutoMemoryParentMessages(),
+        status: "completed",
+      });
+      store.updateTaskStatus(
+        adaptor.getState().activeExtractionTaskId ?? "",
+        "completed",
+      );
+      await adaptor.settleAndMaybeContinue();
+      const state = stateStore.read(adaptor.getState().activeDreamTaskId ?? "");
+      if (!state?.tools) throw new Error("expected Dream tool policies");
+      const policies = compileToolPolicies([...state.tools]);
+      const validate = (toolName: string, path: string) =>
+        validateToolPolicy(toolName, { path }, policies, { cwd });
+
+      for (const toolName of ["listFiles", "globFiles", "searchFiles"]) {
+        for (const dir of [memoryDir, transcriptDir]) {
+          for (const allowed of [
+            dir,
+            `${dir}${separator}`,
+            `${dir}${separator}nested`,
+          ]) {
+            expect(() => validate(toolName, allowed)).not.toThrow();
+          }
+          for (const denied of [
+            root,
+            `${dir}-other`,
+            `${dir}${separator}..${separator}outside`,
+          ]) {
+            expect(() => validate(toolName, denied)).toThrow("Path is not allowed");
+          }
+        }
+      }
+
+      for (const dir of [memoryDir, transcriptDir]) {
+        expect(() =>
+          validate("readFile", `${dir}${separator}topic.md`),
+        ).not.toThrow();
+        expect(() => validate("readFile", dir)).toThrow("Path is not allowed");
+      }
+      for (const toolName of ["writeToFile", "applyDiff"]) {
+        expect(() =>
+          validate(toolName, `${memoryDir}${separator}topic.md`),
+        ).not.toThrow();
+        expect(() => validate(toolName, memoryDir)).toThrow("Path is not allowed");
+        expect(() =>
+          validate(toolName, `${transcriptDir}${separator}task.md`),
+        ).toThrow("Path is not allowed");
+        expect(() =>
+          validate(toolName, `${memoryDir}${separator}..${separator}outside.md`),
+        ).toThrow("Path is not allowed");
+      }
+    },
+  );
 
   it("waits for three new user turns before extracting", async () => {
     const store = new FakeStore([
@@ -970,11 +1065,12 @@ function makeAutoMemoryAdaptor({
   manager?: AutoMemoryManager;
 }) {
   let state: AutoMemoryTaskState | undefined;
+  const stateStore = new BackgroundTaskStateStore();
   const adaptor = new AutoMemoryAdaptor({
     store: store as unknown as LiveKitStore,
     backgroundTask: createTestBackgroundTask({
       store: store as unknown as LiveKitStore,
-      stateStore: new BackgroundTaskStateStore(),
+      stateStore,
     }),
     autoMemoryStateStore: {
       get: () => state,
@@ -986,7 +1082,7 @@ function makeAutoMemoryAdaptor({
     parentCwd: "/repo",
     manager,
   });
-  return { adaptor, getState: () => state };
+  return { adaptor, getState: () => state, stateStore };
 }
 
 const autoMemoryContext: AutoMemoryContext = {

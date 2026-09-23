@@ -275,11 +275,19 @@ function buildMemoryTools(
   context: AutoMemoryContext,
   mode: "extraction" | "dream",
 ): readonly ToolSpecInput[] {
-  const memoryGlob = `${normalizeDir(context.memoryDir)}/**`;
-  const transcriptGlob = `${normalizeDir(context.transcriptDir)}/**`;
+  const memoryDir = normalizeDir(context.memoryDir);
+  const transcriptDir = normalizeDir(context.transcriptDir);
+  const memoryGlob = `${memoryDir}/**`;
+  const transcriptGlob = `${transcriptDir}/**`;
   const tools: ToolSpecInput[] = [];
   if (mode === "dream") {
     for (const name of MemoryReadToolNames) {
+      // Descendant globs do not match the directory itself. Directory queries
+      // need both roots, while file reads and writes keep descendant-only rules.
+      if (name !== "readFile") {
+        tools.push(`${name}(${memoryDir})`);
+        tools.push(`${name}(${transcriptDir})`);
+      }
       tools.push(`${name}(${memoryGlob})`);
       tools.push(`${name}(${transcriptGlob})`);
     }

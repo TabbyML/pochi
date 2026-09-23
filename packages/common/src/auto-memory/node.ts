@@ -449,7 +449,6 @@ async function scanAutoMemoryManifest(
         return {
           filename: entry.name,
           updatedAt: stat.mtimeMs,
-          bytes: stat.size,
           ...(await parseTopicFrontmatter(filePath, content)),
         };
       }),
@@ -462,7 +461,7 @@ async function scanAutoMemoryManifest(
 async function parseTopicFrontmatter(
   filePath: string,
   content: string,
-): Promise<Omit<AutoMemoryManifestEntry, "filename" | "updatedAt" | "bytes">> {
+): Promise<Omit<AutoMemoryManifestEntry, "filename" | "updatedAt">> {
   const parsed = await parseMarkdownWithFrontmatter(
     filePath,
     async () => content,

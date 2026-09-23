@@ -19,20 +19,6 @@ export const AutoMemoryProjectInfoName = "project.json";
 export const AutoMemoryMaxIndexLines = 200;
 export const AutoMemoryMaxIndexBytes = 25_000;
 export const AutoMemoryMaxManifestEntries = 200;
-/**
- * Host-side cap for a single topic file. Files above this size cannot be
- * rewritten (or even read and re-emitted) inside the extraction agent's small
- * step budget, so oversized files are flagged in the manifest: extraction
- * refuses to touch them wholesale and the dream agent is asked to split them.
- *
- * Deliberately never used as a write-time instruction — a model cannot measure
- * the byte size of output it has not produced yet, so the prompts express the
- * cap in lines ({@link AutoMemoryMaxTopicLines}) and mention bytes only when
- * reporting the observed size of a file that already exists.
- */
-export const AutoMemoryMaxTopicBytes = 8_000;
-/** Write-time cap handed to the model, since lines are roughly countable. */
-export const AutoMemoryMaxTopicLines = 200;
 
 export const AutoMemoryTypeValues = [
   "user",
@@ -49,8 +35,6 @@ export type AutoMemoryManifestEntry = {
   description?: string;
   type?: AutoMemoryType;
   updatedAt?: number;
-  /** File size in bytes, used to surface (and cap) oversized topic files. */
-  bytes?: number;
 };
 
 export type AutoMemoryContext = {
@@ -117,8 +101,7 @@ export function formatAutoMemoryManifest(
       const type = entry.type ?? "reference";
       const title = entry.name || entry.filename;
       const description = entry.description ? `: ${entry.description}` : "";
-      const size = entry.bytes === undefined ? "" : ` ${formatSize(entry)}`;
-      return `- [${type}] ${entry.filename} (${title})${size}${description}`;
+      return `- [${type}] ${entry.filename} (${title})${description}`;
     })
     .join("\n");
 
@@ -126,16 +109,6 @@ export function formatAutoMemoryManifest(
     return `${entries}\n\nShowing ${AutoMemoryMaxManifestEntries} of ${manifest.length} topic files. Read MEMORY.md for the complete index.`;
   }
   return entries;
-}
-
-function formatSize(entry: AutoMemoryManifestEntry): string {
-  const bytes = entry.bytes ?? 0;
-  const label = bytes < 1024 ? `${bytes}B` : `${(bytes / 1024).toFixed(1)}KB`;
-  return isOversizedTopic(entry) ? `[${label}, oversized]` : `[${label}]`;
-}
-
-export function isOversizedTopic(entry: AutoMemoryManifestEntry): boolean {
-  return (entry.bytes ?? 0) > AutoMemoryMaxTopicBytes;
 }
 
 const IndexTypeOrder: readonly (AutoMemoryType | "other")[] = [
@@ -209,7 +182,6 @@ Memory file rules:
 - Every topic file must begin with YAML frontmatter containing name, description, and type. The index shows name and description, so keep them accurate.
 - type must be one of: user, feedback, project, reference.
 - Prefer updating an existing topic file over creating a duplicate.
-- Keep a topic file under ${AutoMemoryMaxTopicLines} lines. Split a topic into a new file instead of growing one past that.
 
 A background memory agent automatically reviews completed tasks and updates long-term memory when it finds durable information. Leave proactive memory capture to that agent by default. If you independently identify something worth remembering, do not update memory unless you first ask the user and receive explicit confirmation.
 
@@ -332,7 +304,7 @@ Step budget: ${maxSteps} assistant turns. Every turn counts, whether it calls a 
 
 Available tools — only these are permitted, and calling anything else wastes a turn:
 - readFile: read one existing topic file under the memory directory, or MEMORY.md if the manifest is truncated.
-- writeToFile: create a new topic file (or fully replace a small one).
+- writeToFile: create a new topic file.
 - applyDiff: change part of an existing topic file.
 - attemptCompletion: end the run.
 
@@ -347,8 +319,6 @@ Required behavior:
 - Do NOT call attemptCompletion in the same turn as a file write: it is dropped when a turn also calls another tool, wasting the turn. Always leave attemptCompletion its own turn.
 - Prefer a brand new topic file over editing an existing one when the subject is new: writeToFile needs no prior readFile.
 - When updating an existing topic, make exactly one applyDiff at one site. Do not rewrite the whole file.
-- Never rewrite a file the manifest marks as oversized. Append a minimal note with a single applyDiff, or start a new, narrower topic file instead.
-- Keep new topic files under ${AutoMemoryMaxTopicLines} lines.
 - Use markdown topic files directly in the memory directory only; do not use subdirectories.
 - Every topic file must start with YAML frontmatter:
 ---
@@ -393,32 +363,21 @@ export function buildAutoMemoryDreamDirective({
           })
           .join("\n");
 
-  const oversized = context.manifest.filter(isOversizedTopic);
-  const oversizedText =
-    oversized.length === 0
-      ? ""
-      : `\n\nOversized topic files (over ${Math.round(
-          AutoMemoryMaxTopicBytes / 1000,
-        )}KB — split them into narrower topics or prune stale sections; per-turn extraction is not allowed to rewrite these):\n${oversized
-          .map((entry) => `- ${entry.filename} ${formatSize(entry)}`)
-          .join("\n")}`;
-
   return `Consolidate long-term memory for this repository.
 
 Memory directory: ${context.memoryDir}
 Transcripts directory: ${context.transcriptDir}
 
 Existing topic manifest:
-${formatAutoMemoryManifest(context.manifest)}${oversizedText}
+${formatAutoMemoryManifest(context.manifest)}
 
 Source material lives as markdown files in the transcripts directory above. Each file is one task session and starts with a YAML frontmatter block (taskId, cwd, updatedAt, title). The transcripts directory is read-only for this run — use readFile / listFiles / globFiles / searchFiles to inspect only the entries you need, and never edit them.
 
 Strategy:
 - Open transcripts selectively: skim the session titles listed below, then drill into the full transcripts of entries that look durable.
-- Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, split, and rewrite topic files as needed so future sessions see a concise and accurate set of topics.
-- Never create or edit MEMORY.md: the index is generated from each topic file's frontmatter. Keep every topic file's name/description accurate instead, and give split-out files their own frontmatter.
+- Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, and rewrite topic files as needed so future sessions see a concise and accurate set of topics.
+- Never create or edit MEMORY.md: the index is generated from each topic file's frontmatter. Keep every topic file's name/description accurate instead.
 - Keep topic files directly in the memory directory; do not use subdirectories.
-- Keep each topic file under ${AutoMemoryMaxTopicLines} lines. Splitting a file the manifest marks as oversized into focused topics is a valuable outcome on its own, even when no new memory is added.
 - Anchor every entry to direct user intent (explicit instructions, preferences, or feedback) — never promote assistant reasoning, plans, or speculation. When new user feedback contradicts an existing entry and you lack a confident read on the current state, proactively delete it rather than keep outdated guidance.
 - Never store ephemeral task status, raw logs, git history, temporary plans, or content already captured by project rules.
 

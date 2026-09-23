@@ -110,7 +110,6 @@ describe("AutoMemoryManager project info file", () => {
       filename: "conventions.md",
       type: "project",
     });
-    expect(second?.manifest[0].bytes).toBeGreaterThan(0);
   });
 
   it("leaves MEMORY.md untouched when the generated index is unchanged", async () => {
