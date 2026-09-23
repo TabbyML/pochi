@@ -42,10 +42,12 @@ export class GithubCopilot extends VendorBase {
       "gemini-2.5-pro": {
         contextWindow: 1e6,
         useToolCallMiddleware: true,
+        useReasoningMiddleware: false,
       },
       "claude-sonnet-4": {
         contextWindow: 200_000,
         useToolCallMiddleware: true,
+        useReasoningMiddleware: false,
       },
     };
   }

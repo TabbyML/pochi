@@ -30,10 +30,12 @@ export class Codex extends VendorBase {
       "gpt-5": {
         contextWindow: 200_000,
         useToolCallMiddleware: true,
+        useReasoningMiddleware: false,
       },
       "gpt-5-codex": {
         contextWindow: 200_000,
         useToolCallMiddleware: true,
+        useReasoningMiddleware: false,
       },
     };
   }
