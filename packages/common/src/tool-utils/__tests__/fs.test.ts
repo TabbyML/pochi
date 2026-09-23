@@ -9,6 +9,7 @@ import {
   validateRelativePath,
   validateTextFile,
 } from "../fs";
+import { MaxReadFileSize } from "../limits";
 
 describe("validateTextFile", () => {
   it("should not throw an error for a plain text file", () => {
@@ -41,7 +42,10 @@ describe("isPlainTextFile", () => {
   });
 
   it("should return false for a binary file", async () => {
-    await fs.writeFile(testFilePath, Buffer.from([0x00, 0xde, 0xad, 0xbe, 0xef]));
+    await fs.writeFile(
+      testFilePath,
+      Buffer.from([0x00, 0xde, 0xad, 0xbe, 0xef]),
+    );
     expect(await isPlainTextFile(testFilePath)).toBe(false);
   });
 });
@@ -70,13 +74,84 @@ describe("selectFileContent", () => {
   });
 
   it("should truncate content that exceeds max size", () => {
-    const largeContent = "a".repeat(30001);
+    const largeContent = "a".repeat(MaxReadFileSize + 1);
     const result = selectFileContent(largeContent, {});
-    expect(Buffer.byteLength(result.content, "utf-8")).toBe(30000);
+    expect(Buffer.byteLength(result.content, "utf-8")).toBe(MaxReadFileSize);
     expect(result.isTruncated).toBe(true);
     expect(result.numLines).toBe(1);
     expect(result.startLine).toBe(1);
     expect(result.totalLines).toBe(1);
+  });
+
+  it.each(["é", "中", "😀"])(
+    "should truncate repeated %s characters by UTF-8 byte size",
+    (character) => {
+      const result = selectFileContent(character.repeat(MaxReadFileSize));
+      const expectedLength = Math.floor(
+        MaxReadFileSize / Buffer.byteLength(character, "utf-8"),
+      );
+
+      expect(result.content).toBe(character.repeat(expectedLength));
+      expect(Buffer.byteLength(result.content, "utf-8")).toBeLessThanOrEqual(
+        MaxReadFileSize,
+      );
+      expect(result.isTruncated).toBe(true);
+    },
+  );
+
+  it.each([MaxReadFileSize - 1, MaxReadFileSize])(
+    "should preserve multibyte content of %i bytes within the limit",
+    (byteLength) => {
+      const content = `中😀${"a".repeat(byteLength - 7)}`;
+      const result = selectFileContent(content);
+
+      expect(result.content).toBe(content);
+      expect(result.isTruncated).toBe(false);
+    },
+  );
+
+  it.each([
+    { character: "é", remainingBytes: 1 },
+    { character: "中", remainingBytes: 1 },
+    { character: "中", remainingBytes: 2 },
+    { character: "😀", remainingBytes: 1 },
+    { character: "😀", remainingBytes: 2 },
+    { character: "😀", remainingBytes: 3 },
+  ])(
+    "should omit $character when only $remainingBytes bytes remain",
+    ({ character, remainingBytes }) => {
+      const prefix = "a".repeat(MaxReadFileSize - remainingBytes);
+      const result = selectFileContent(`${prefix}${character}tail`);
+
+      expect(result.content).toBe(prefix);
+      expect(Buffer.byteLength(result.content, "utf-8")).toBeLessThanOrEqual(
+        MaxReadFileSize,
+      );
+      expect(result.isTruncated).toBe(true);
+    },
+  );
+
+  it("should count line numbers toward the byte limit and report returned lines", () => {
+    const longLine = "😀".repeat(MaxReadFileSize / 4);
+    const content = `ignored\n中文\n${longLine}\nhidden\nlast`;
+    const prefix = "2 | 中文\n3 | ";
+    const expectedLength = Math.floor(
+      (MaxReadFileSize - Buffer.byteLength(prefix, "utf-8")) / 4,
+    );
+
+    expect(
+      selectFileContent(content, {
+        startLine: 2,
+        endLine: 4,
+        addLineNumbers: true,
+      }),
+    ).toEqual({
+      content: prefix + "😀".repeat(expectedLength),
+      isTruncated: true,
+      numLines: 2,
+      startLine: 2,
+      totalLines: 5,
+    });
   });
 
   it("should report zero returned lines when starting past EOF", () => {

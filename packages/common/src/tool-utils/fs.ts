@@ -188,7 +188,10 @@ export function selectFileContent(
   let isTruncated = false;
 
   if (Buffer.byteLength(content, "utf-8") > maxBytes) {
-    content = content.slice(0, maxBytes);
+    const buffer = Buffer.alloc(maxBytes);
+    // Buffer.write stops before a UTF-8 character that would exceed the limit.
+    const bytesWritten = buffer.write(content, "utf-8");
+    content = buffer.toString("utf-8", 0, bytesWritten);
     isTruncated = true;
   }
 
