@@ -1196,11 +1196,7 @@ export class LiveChatKit<
     // Continuing memory extraction may create a new fork. It needs a completed
     // request from this parent instance to reuse, including when the CLI drains.
     if (!this.latestRequestSnapshot || abortSignal?.aborted) return false;
-    return (
-      (await this.autoMemoryAdaptor?.settleAndMaybeContinue(
-        this.latestRequestSnapshot?.systemPrompt,
-      )) ?? false
-    );
+    return (await this.autoMemoryAdaptor?.settleAndMaybeContinue()) ?? false;
   }
 
   private async waitForMemoryOperations(): Promise<void> {

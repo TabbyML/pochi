@@ -1,6 +1,5 @@
 import {
   type AutoMemoryContext,
-  type AutoMemoryDreamCandidate,
   type AutoMemoryDreamRun,
   type AutoMemoryDreamSession,
   type AutoMemoryManager,
@@ -44,8 +43,6 @@ const MemoryAgentWriteToolNames = ["writeToFile", "applyDiff"] as const;
 const AutoMemoryMaxSteps = 5;
 const AutoMemoryDreamMaxSteps = 20;
 const MinNewUserTurnsPerExtraction = 3;
-const MaxSessionTranscriptChars = 24_000;
-const MaxPartChars = 4_000;
 
 async function startAutoMemoryExtraction<TMessage extends UIMessage>({
   state,
@@ -116,6 +113,7 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
   startForkAgent,
   finishAutoMemoryDream,
   parentTaskId,
+  parentMessages,
   parentCwd,
   parentTaskTitle,
   run,
@@ -125,6 +123,7 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
   startForkAgent: StartForkAgent<TMessage>;
   finishAutoMemoryDream: AutoMemoryManager["finishDreamRun"];
   parentTaskId: string;
+  parentMessages: TMessage[];
   parentCwd: string | undefined;
   parentTaskTitle?: string;
   run: AutoMemoryDreamRun;
@@ -156,7 +155,7 @@ async function startAutoMemoryDream<TMessage extends UIMessage>({
       label: "auto-memory-dream",
       initTitle: buildForkAgentInitTitle("auto-memory-dream", parentTaskTitle),
       parentTaskId,
-      parentMessages: [],
+      parentMessages,
       parentCwd,
       directive: prompts.autoMemory.buildDreamDirective({
         context: run.context,
@@ -356,13 +355,12 @@ function isUserTurn(message: UIMessage): boolean {
 }
 
 function serializeSessionTranscript(messages: readonly UIMessage[]): string {
-  const chunks = messages.map((message, index) => {
-    const parts = message.parts
-      .map((part) => truncate(JSON.stringify(sanitizePart(part)), MaxPartChars))
-      .join("\n");
-    return `### ${index + 1}. ${message.role}\n${parts}`;
-  });
-  return truncate(chunks.join("\n\n"), MaxSessionTranscriptChars);
+  return messages
+    .map(
+      (message, index) =>
+        `### ${index + 1}. ${message.role}\n${prompts.autoMemory.serializeMessage(message)}`,
+    )
+    .join("\n\n");
 }
 
 function isSuccessfulToolOutput(part: UIMessage["parts"][number]): boolean {
@@ -448,25 +446,6 @@ function isWindowsAbsolutePath(inputPath: string): boolean {
   return /^[A-Za-z]:\//.test(inputPath.replace(/\\/g, "/"));
 }
 
-function sanitizePart(part: UIMessage["parts"][number]) {
-  if (part.type === "text") return part;
-  if (part.type.startsWith("data-")) return { type: part.type };
-  if (isStaticToolUIPart(part)) {
-    return {
-      type: part.type,
-      state: "state" in part ? part.state : undefined,
-      input: "input" in part ? part.input : undefined,
-      output: "output" in part ? part.output : undefined,
-    };
-  }
-  return { type: part.type };
-}
-
-function truncate(value: string, maxChars: number): string {
-  if (value.length <= maxChars) return value;
-  return `${value.slice(0, maxChars)}\n[truncated]`;
-}
-
 const DefaultAutoMemoryState: AutoMemoryTaskState = {
   lastExtractionMessageCount: 0,
   isExtracting: false,
@@ -487,11 +466,16 @@ type AutoMemoryAdaptorOptions = {
   manager: AutoMemoryManager;
 };
 
+type ParentContext = {
+  messages: Message[];
+  systemPrompt?: string;
+};
+
 export class AutoMemoryAdaptor {
   private readonly stateStore: MemoryStateStore<AutoMemoryTaskState>;
   private state: AutoMemoryTaskState | undefined;
   private transitionQueue = Promise.resolve();
-  private currentTranscript: AutoMemoryDreamCandidate | undefined;
+  private parentContext: ParentContext | undefined;
 
   constructor(private readonly options: AutoMemoryAdaptorOptions) {
     this.stateStore =
@@ -505,19 +489,14 @@ export class AutoMemoryAdaptor {
     return this.state ?? this.stateStore.get() ?? { ...DefaultAutoMemoryState };
   }
 
-  update(data: {
-    messages: Message[];
-    status?: string;
-    systemPrompt?: string;
-  }) {
-    return this.enqueueTransition(() => this.updateInner(data));
+  update(data: ParentContext & { status?: string }) {
+    // Keep the completed messages and prompt together even if the parent starts
+    // another turn while this update or its extraction is still pending.
+    const snapshot = { ...data, messages: structuredClone(data.messages) };
+    return this.enqueueTransition(() => this.updateInner(snapshot));
   }
 
-  private async updateInner(data: {
-    messages: Message[];
-    status?: string;
-    systemPrompt?: string;
-  }) {
+  private async updateInner(data: ParentContext & { status?: string }) {
     if (this.options.isSubTask) return false;
     if (data.status && data.status !== "completed") return false;
 
@@ -525,6 +504,7 @@ export class AutoMemoryAdaptor {
       makeTaskQuery(this.options.parentTaskId),
     );
     if (!task || task.status !== "completed") return false;
+    this.parentContext = data;
 
     try {
       const parentCwd = this.getParentCwd();
@@ -543,25 +523,15 @@ export class AutoMemoryAdaptor {
       const messageCount = data.messages.length;
       const updatedAt = Date.now();
       const transcript = serializeSessionTranscript(data.messages);
-      const transcriptInfo = transcript
-        ? await this.options.manager.writeTaskTranscript({
-            taskId: this.options.parentTaskId,
-            cwd: parentCwd,
-            title: task.title ?? undefined,
-            updatedAt,
-            transcript,
-          })
-        : undefined;
-
-      this.currentTranscript = transcriptInfo
-        ? {
-            taskId: this.options.parentTaskId,
-            cwd: parentCwd,
-            updatedAt,
-            transcriptFilename: transcriptInfo.filename,
-            title: task.title ?? undefined,
-          }
-        : undefined;
+      if (transcript) {
+        await this.options.manager.writeTaskTranscript({
+          taskId: this.options.parentTaskId,
+          cwd: parentCwd,
+          title: task.title ?? undefined,
+          updatedAt,
+          transcript,
+        });
+      }
 
       const newUserTurns = countUserTurns(
         data.messages.slice(state.lastExtractionMessageCount),
@@ -579,7 +549,7 @@ export class AutoMemoryAdaptor {
             lastExtractionMessageCount: messageCount,
           };
           await this.setState(nextState);
-          return this.maybeStartDream(nextState, data.systemPrompt);
+          return this.maybeStartDream(nextState);
         }
 
         const handle = await startAutoMemoryExtraction({
@@ -598,26 +568,22 @@ export class AutoMemoryAdaptor {
           previousMessageCount: state.lastExtractionMessageCount,
           messageCount,
         });
-        this.watchTaskDone(
-          handle.taskId,
-          "auto-memory extraction",
-          data.systemPrompt,
-        );
+        this.watchTaskDone(handle.taskId, "auto-memory extraction");
         return true;
       }
 
-      return this.maybeStartDream(state, data.systemPrompt);
+      return this.maybeStartDream(state);
     } catch (error) {
       logger.warn("Failed to start long-term memory update", error);
       return false;
     }
   }
 
-  settleAndMaybeContinue(systemPrompt?: string) {
+  settleAndMaybeContinue() {
     return this.enqueueTransition(async () => {
       try {
         if (await this.settleCompletedTasks())
-          return await this.maybeStartDream(this.getState(), systemPrompt);
+          return await this.maybeStartDream(this.getState());
       } catch (error) {
         logger.warn("Failed to settle long-term memory update", error);
       }
@@ -672,17 +638,15 @@ export class AutoMemoryAdaptor {
 
   private async maybeStartDream(
     baseState: AutoMemoryTaskState,
-    systemPrompt: string | undefined,
   ): Promise<boolean> {
     if (baseState.isDreaming || baseState.isExtracting) return false;
+    const parentContext = this.parentContext;
+    if (!parentContext) return false;
 
     const parentCwd = this.getParentCwd();
     const run = await this.options.manager.beginDreamRun({
       cwd: parentCwd,
-      sessionUpdatedAts: this.currentTranscript
-        ? [this.currentTranscript.updatedAt]
-        : [],
-      currentTranscript: this.currentTranscript,
+      currentTaskId: this.options.parentTaskId,
     });
     if (!run) return false;
 
@@ -693,10 +657,14 @@ export class AutoMemoryAdaptor {
       state: baseState,
       setAutoMemoryState: (nextState) => this.setState(nextState),
       startForkAgent: (agent) =>
-        this.options.backgroundTask.startForkAgent({ ...agent, systemPrompt }),
+        this.options.backgroundTask.startForkAgent({
+          ...agent,
+          systemPrompt: parentContext.systemPrompt,
+        }),
       finishAutoMemoryDream: (finishOptions) =>
         this.options.manager.finishDreamRun(finishOptions),
       parentTaskId: this.options.parentTaskId,
+      parentMessages: parentContext.messages,
       parentCwd,
       parentTaskTitle: task?.title ?? undefined,
       run,
@@ -705,22 +673,17 @@ export class AutoMemoryAdaptor {
       this.watchTaskDone(
         this.getState().activeDreamTaskId,
         "auto-memory dream",
-        systemPrompt,
       );
     }
     return started;
   }
 
-  private watchTaskDone(
-    taskId: string | undefined,
-    label: string,
-    systemPrompt: string | undefined,
-  ) {
+  private watchTaskDone(taskId: string | undefined, label: string) {
     const { waitForTaskDone } = this.options.backgroundTask;
     if (!taskId || !waitForTaskDone) return;
 
     void waitForTaskDone(taskId)
-      .then(() => this.settleAndMaybeContinue(systemPrompt))
+      .then(() => this.settleAndMaybeContinue())
       .catch((error) => {
         logger.warn(`Failed to settle ${label}`, error);
       });

@@ -85,9 +85,7 @@ export interface AutoMemoryManager {
   }): Promise<AutoMemoryTranscriptInfo | undefined>;
   beginDreamRun(options: {
     cwd?: string;
-    candidates?: readonly AutoMemoryDreamCandidate[];
-    sessionUpdatedAts?: readonly number[];
-    currentTranscript?: AutoMemoryDreamCandidate;
+    currentTaskId?: string;
   }): Promise<AutoMemoryDreamRun | undefined>;
   finishDreamRun(options: {
     memoryDir: string;

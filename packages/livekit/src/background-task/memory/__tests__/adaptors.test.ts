@@ -495,6 +495,87 @@ describe("task-memory adaptor", () => {
 });
 
 describe("auto-memory adaptor", () => {
+  it.each(["directly", "after extraction"])(
+    "forks Dream %s with a matching parent message and prompt snapshot",
+    async (route) => {
+      const store = new FakeStore([
+        makeTask({ id: "parent", status: "completed", background: false }),
+      ]);
+      const extractionDone = deferred<void>();
+      const backgroundTask = createTestBackgroundTask({
+        store: store as unknown as LiveKitStore,
+        stateStore: new BackgroundTaskStateStore(),
+        waitForTaskDone: () => extractionDone.promise,
+      });
+      const startForkAgent = vi.spyOn(backgroundTask, "startForkAgent");
+      const manager = makeAutoMemoryManager({
+        beginDreamRun: vi.fn(async () => ({
+          context: autoMemoryContext,
+          token: "dream-token",
+          previousLastDreamAt: 0,
+          sessionCount: 5,
+          reason: "sessions" as const,
+          candidates: [dreamCandidate],
+        })),
+      });
+      const adaptor = new AutoMemoryAdaptor({
+        store: store as unknown as LiveKitStore,
+        backgroundTask,
+        parentTaskId: "parent",
+        parentCwd: "/repo",
+        manager,
+      });
+      const messages = makeAutoMemoryParentMessages(
+        route === "directly" ? 1 : 3,
+      );
+      messages[1].parts.unshift({ type: "step-start" });
+      const expectedMessages = structuredClone(messages);
+      const update = adaptor.update({
+        messages,
+        systemPrompt: "parent prompt before memory changes",
+        status: "completed",
+      });
+      // Mutation of the parent's live array must not change a queued fork.
+      messages[0].parts = [{ type: "text", text: "later parent turn" }];
+      await update;
+      if (route === "after extraction") {
+        expect(startForkAgent).toHaveBeenCalledTimes(1);
+        store.updateTaskStatus(store.backgroundTasks()[0].id, "completed");
+        extractionDone.resolve();
+      }
+      await vi.waitFor(() => {
+        expect(
+          startForkAgent.mock.calls.find(
+            ([agent]) => agent.label === "auto-memory-dream",
+          ),
+        ).toBeDefined();
+      });
+      const dream = startForkAgent.mock.calls.find(
+        ([agent]) => agent.label === "auto-memory-dream",
+      )?.[0];
+      expect(dream?.systemPrompt).toBe("parent prompt before memory changes");
+      expect(dream?.initMessages.slice(0, -1)).toEqual(
+        expectedMessages.map((message) => ({
+          ...message,
+          id: expect.any(String),
+        })),
+      );
+      expect(dream?.initMessages).toHaveLength(expectedMessages.length + 1);
+      expect(dream?.initMessages.at(-1)?.parts).toEqual([
+        {
+          type: "text",
+          text: expect.stringContaining("Consolidate long-term memory"),
+        },
+      ]);
+      expect(dream?.baselineStepCount).toBe(1);
+      expect(dream?.maxSteps).toBe(20);
+      expect(manager.beginDreamRun).toHaveBeenCalledWith({
+        cwd: "/repo",
+        currentTaskId: "parent",
+      });
+    },
+  );
+
   it("serializes completion and uses its saved state before the host signal catches up", async () => {
     const store = new FakeStore([
       makeTask({ id: "parent", status: "completed", background: false }),
@@ -522,8 +603,8 @@ describe("auto-memory adaptor", () => {
     const task = store.backgroundTasks()[0];
     store.updateTaskStatus(task.id, "completed");
     await Promise.all([
-      adaptor.settleAndMaybeContinue("saved prompt"),
-      adaptor.settleAndMaybeContinue("saved prompt"),
+      adaptor.settleAndMaybeContinue(),
+      adaptor.settleAndMaybeContinue(),
     ]);
     expect(adaptor.getState()).toMatchObject({
       extractionCount: 1,
@@ -722,7 +803,7 @@ describe("auto-memory adaptor", () => {
     expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
   });
 
-  it("writes a sanitized bounded transcript", async () => {
+  it("preserves long tool results and late corrections in the transcript", async () => {
     const store = new FakeStore([
       makeTask({
         id: "parent",
@@ -743,27 +824,41 @@ describe("auto-memory adaptor", () => {
       manager,
     });
 
+    const content = `${"source line\n".repeat(3_000)}END OF TOOL RESULT`;
+    const messages = [
+      {
+        id: "u1",
+        role: "user",
+        parts: [{ type: "text", text: "hello" }],
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "read",
+            state: "output-available",
+            input: { path: "a.ts" },
+            output: { content },
+          },
+        ],
+      },
+      {
+        id: "u2",
+        role: "user",
+        parts: [{ type: "text", text: "Correction: retain the old API." }],
+      },
+      {
+        id: "a2",
+        role: "assistant",
+        parts: [
+          { type: "text", text: "The old API is retained and verified." },
+        ],
+      },
+    ] as Message[];
     await adaptor.update({
-      messages: [
-        {
-          id: "u1",
-          role: "user",
-          parts: [{ type: "text", text: "hello" }],
-        },
-        {
-          id: "a1",
-          role: "assistant",
-          parts: [
-            {
-              type: "tool-readFile",
-              toolCallId: "read",
-              state: "output-available",
-              input: { path: "a.ts" },
-              output: { content: "source" },
-            },
-          ],
-        },
-      ] as Message[],
+      messages,
       status: "completed",
     });
 
@@ -772,7 +867,13 @@ describe("auto-memory adaptor", () => {
     expect(transcript).toContain("### 1. user");
     expect(transcript).toContain("### 2. assistant");
     expect(transcript).toContain('"type":"tool-readFile"');
-    expect(transcript.length).toBeLessThan(24_000);
+    expect(transcript.length).toBeGreaterThan(24_000);
+    expect(transcript).not.toContain("[truncated]");
+    const restored = transcript
+      .split(/### \d+\. \w+\n/)
+      .slice(1)
+      .map((message) => JSON.parse(message));
+    expect(restored).toEqual(messages);
   });
 
   it("starts a dream background task after extraction completes and finishes the dream lock", async () => {
@@ -786,13 +887,13 @@ describe("auto-memory adaptor", () => {
     ]);
     const stateStore = new BackgroundTaskStateStore();
     const manager = makeAutoMemoryManager({
-      beginDreamRun: vi.fn(async ({ currentTranscript }) => ({
+      beginDreamRun: vi.fn(async () => ({
         context: autoMemoryContext,
         token: "dream-token",
         previousLastDreamAt: 0,
         sessionCount: 1,
         reason: "sessions" as const,
-        candidates: currentTranscript ? [currentTranscript] : [],
+        candidates: [dreamCandidate],
       })),
     });
     const backgroundTask = createTestBackgroundTask({
@@ -899,13 +1000,13 @@ describe("auto-memory adaptor", () => {
       ]);
       const manager = makeAutoMemoryManager({
         readContext: vi.fn(async () => context),
-        beginDreamRun: vi.fn(async ({ currentTranscript }) => ({
+        beginDreamRun: vi.fn(async () => ({
           context,
           token: "dream-token",
           previousLastDreamAt: 0,
           sessionCount: 1,
           reason: "sessions" as const,
-          candidates: currentTranscript ? [currentTranscript] : [],
+          candidates: [dreamCandidate],
         })),
       });
       const { adaptor, stateStore } = makeAutoMemoryAdaptor({ store, manager });
@@ -938,7 +1039,9 @@ describe("auto-memory adaptor", () => {
             `${dir}-other`,
             `${dir}${separator}..${separator}outside`,
           ]) {
-            expect(() => validate(toolName, denied)).toThrow("Path is not allowed");
+            expect(() => validate(toolName, denied)).toThrow(
+              "Path is not allowed",
+            );
           }
         }
       }
@@ -953,12 +1056,17 @@ describe("auto-memory adaptor", () => {
         expect(() =>
           validate(toolName, `${memoryDir}${separator}topic.md`),
         ).not.toThrow();
-        expect(() => validate(toolName, memoryDir)).toThrow("Path is not allowed");
+        expect(() => validate(toolName, memoryDir)).toThrow(
+          "Path is not allowed",
+        );
         expect(() =>
           validate(toolName, `${transcriptDir}${separator}task.md`),
         ).toThrow("Path is not allowed");
         expect(() =>
-          validate(toolName, `${memoryDir}${separator}..${separator}outside.md`),
+          validate(
+            toolName,
+            `${memoryDir}${separator}..${separator}outside.md`,
+          ),
         ).toThrow("Path is not allowed");
       }
     },
@@ -1084,6 +1192,12 @@ function makeAutoMemoryAdaptor({
   });
   return { adaptor, getState: () => state, stateStore };
 }
+
+const dreamCandidate = {
+  taskId: "other-session",
+  updatedAt: 1_000,
+  transcriptFilename: "other-session.md",
+};
 
 const autoMemoryContext: AutoMemoryContext = {
   enabled: true,
