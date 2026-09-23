@@ -88,6 +88,7 @@ describe("Model configuration types", () => {
           "gateway-model": {
             name: "Gateway Model",
             useToolCallMiddleware: true,
+            useReasoningMiddleware: true,
           },
         },
       });
@@ -96,6 +97,7 @@ describe("Model configuration types", () => {
         expect(config.apiKey).toBe("gateway-key");
       }
       expect(config.models["gateway-model"].useToolCallMiddleware).toBe(true);
+      expect(config.models["gateway-model"].useReasoningMiddleware).toBe(true);
     });
   });
 
@@ -124,6 +126,22 @@ describe("Model configuration types", () => {
       expect(config.models.test.maxTokens).toBe(1000);
       expect(config.models.test.contextWindow).toBe(2000);
       expect(config.models.test.useToolCallMiddleware).toBe(false);
+      expect(config.models.test.useReasoningMiddleware).toBeUndefined();
+    });
+
+    it("should allow configuring useReasoningMiddleware", () => {
+      const config = CustomModelSetting.parse({
+        kind: "openai",
+        models: {
+          test: {
+            name: "Test",
+            useToolCallMiddleware: false,
+            useReasoningMiddleware: false,
+          },
+        },
+      });
+      expect(config.models.test.useToolCallMiddleware).toBe(false);
+      expect(config.models.test.useReasoningMiddleware).toBe(false);
     });
   });
 });

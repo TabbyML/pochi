@@ -267,7 +267,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       );
     }
 
-    if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
+    if (llm.useReasoningMiddleware) {
       middlewares.push(createReasoningMiddleware());
     }
 
@@ -453,19 +453,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
 function prepareMessages(inputMessages: Message[]): Message[] {
   return convertDataReviewsToText(inputMessages);
-}
-
-function isWellKnownReasoningModel(model?: string): boolean {
-  if (!model) return false;
-
-  const models = [/glm-4.*/, /qwen3.*thinking/];
-  const x = model.toLowerCase();
-  for (const m of models) {
-    if (x.match(m)?.length) {
-      return true;
-    }
-  }
-  return false;
 }
 
 async function resolvePromise(o: unknown): Promise<unknown> {

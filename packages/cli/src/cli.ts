@@ -762,6 +762,7 @@ async function createLLMConfigWithProviders(
 
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -778,6 +779,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
@@ -801,6 +803,7 @@ async function createLLMConfigWithProviders(
       maxOutputTokens:
         modelSetting.maxTokens ?? constants.DefaultMaxOutputTokens,
       useToolCallMiddleware: modelSetting.useToolCallMiddleware,
+      useReasoningMiddleware: modelSetting.useReasoningMiddleware,
       contentType: modelSetting.contentType,
     };
   }
