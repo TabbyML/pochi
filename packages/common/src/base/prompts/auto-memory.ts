@@ -374,7 +374,11 @@ ${formatAutoMemoryManifest(context.manifest)}
 Source material lives as markdown files in the transcripts directory above. Each file is one task session and starts with a YAML frontmatter block (taskId, cwd, updatedAt, title). The transcripts directory is read-only for this run — use readFile / listFiles / globFiles / searchFiles to inspect only the entries you need, and never edit them.
 
 Strategy:
-- Open transcripts selectively: skim the session titles listed below, then drill into the full transcripts of entries that look durable.
+- Use the preceding parent conversation as source material already in context. Select other sessions by their titles and relevance to durable memory; reviewing every transcript is unnecessary.
+- Prefer direct user evidence over large assistant/tool logs. To locate user turns cheaply, search a selected transcript with searchFiles (filePattern set to its filename) for the header pattern "^### [0-9]+[.] user$", then use the returned line numbers with readFile offset/limit to read small ranges around relevant turns. Expand into surrounding messages only when needed to interpret the user's intent or check later corrections.
+- Scope content searches to relevant files and specific topics. Search results contain matching lines, so a precise regex can still return a large JSON line. Narrow the files or select message headers if results are truncated.
+- If a read is truncated, narrow its range using message boundaries. A single serialized message line can exceed the read limit; line offsets cannot reach the unseen remainder of that same line. Do not repeatedly request its prefix. Seek corroborating user turns or another session, and report any evidence gap that prevents a justified memory change. Do not infer missing content.
+- Stop gathering evidence when it is sufficient to decide a memory change or that no durable change is needed; exhaustive transcript reading and reconstruction of large tool outputs are unnecessary.
 - Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, and rewrite topic files as needed so future sessions see a concise and accurate set of topics.
 - Never create or edit MEMORY.md: the index is generated from each topic file's frontmatter. Keep every topic file's name/description accurate instead.
 - Keep topic files directly in the memory directory; do not use subdirectories.
