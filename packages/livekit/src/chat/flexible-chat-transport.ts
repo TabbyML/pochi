@@ -267,11 +267,16 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       );
     }
 
-    if ("modelId" in llm && isWellKnownReasoningModel(llm.modelId)) {
+    if (
+      llm.useReasoningMiddleware === true ||
+      (llm.useReasoningMiddleware === undefined &&
+        "modelId" in llm &&
+        isWellKnownReasoningModel(llm.modelId))
+    ) {
       middlewares.push(createReasoningMiddleware());
     }
 
-    if (llm.useToolCallMiddleware) {
+    if (llm.useToolCallMiddleware === true) {
       middlewares.push(
         createToolCallMiddleware(llm.type !== "google-vertex-tuning"),
       );
