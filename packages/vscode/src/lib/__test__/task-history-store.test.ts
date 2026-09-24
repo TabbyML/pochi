@@ -58,7 +58,12 @@ describe("TaskHistoryStore", () => {
       "@getpochi/common/auto-memory/node": { removeTaskTranscripts: async () => {} },
     }).TaskHistoryStore;
 
-    clock = sinon.useFakeTimers(new Date("2024-01-01T00:00:00Z").getTime());
+    // Only the retention date needs freezing. Keep filesystem/VS Code timers
+    // running so awaited cleanup and workspace.fs requests can finish.
+    clock = sinon.useFakeTimers({
+      now: new Date("2024-01-01T00:00:00Z").getTime(),
+      toFake: ["Date"],
+    });
   });
 
   afterEach(async () => {

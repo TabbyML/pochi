@@ -34,14 +34,12 @@ const sampleManifest: AutoMemoryManifestEntry[] = [
     description: "Coding conventions and folder layout.",
     type: "project",
     updatedAt: 1_700_000_000_000,
-    bytes: 2_600,
   },
   {
     filename: "review-feedback.md",
     name: "Review feedback",
     description: "Prefer compact plans.",
     type: "feedback",
-    bytes: 512,
   },
   {
     filename: "bio.md",
@@ -52,7 +50,6 @@ const sampleManifest: AutoMemoryManifestEntry[] = [
     name: "Background job monitoring",
     description: "How background jobs are polled.",
     type: "reference",
-    bytes: 66_000,
   },
 ];
 
@@ -171,17 +168,6 @@ describe("long-term memory prompt helpers", () => {
     ).toBe("- [feedback] feedback.md (Review feedback): Prefer compact plans.");
   });
 
-  it("surfaces topic sizes and flags oversized files in the manifest", () => {
-    const formatted = formatAutoMemoryManifest(sampleManifest);
-
-    expect(formatted).toContain("conventions.md (Project conventions) [2.5KB]");
-    expect(formatted).toContain("review-feedback.md (Review feedback) [512B]");
-    // Files that cannot be rewritten inside the step budget are called out.
-    expect(formatted).toContain("[64.5KB, oversized]");
-    // Entries without a known size keep the legacy shape.
-    expect(formatted).toContain("- [user] bio.md (bio.md)");
-  });
-
   it("points to the full index when the prompt manifest is truncated", () => {
     const manifest = Array.from(
       { length: AutoMemoryMaxManifestEntries + 1 },
@@ -217,8 +203,6 @@ describe("long-term memory prompt helpers", () => {
         "- conventions.md (Project conventions): Coding conventions and folder layout.",
       );
       expect(index).toContain("- bio.md (bio.md)");
-      // Sizes and timestamps are deliberately not part of the index.
-      expect(index).not.toContain("2.5KB");
     });
 
     it("renders a placeholder when no topic files exist", () => {
@@ -251,17 +235,6 @@ describe("long-term memory prompt helpers", () => {
     expect(directive).not.toContain("listFiles");
     expect(directive).not.toContain("searchFiles");
     expect(directive).toContain("applyDiff");
-  });
-
-  it("dream directive lists oversized topics for splitting", () => {
-    const directive = buildAutoMemoryDreamDirective({
-      context: sampleContextWithManifest,
-      sessions: [],
-    });
-
-    expect(directive).toContain("Oversized topic files");
-    expect(directive).toContain("background-job-monitoring.md [64.5KB");
-    expect(directive).toContain("Never create or edit MEMORY.md");
   });
 
   const makeUserMessage = (text: string): UIMessage => ({

@@ -1,5 +1,4 @@
 import type {
-  AutoMemoryDreamCandidate,
   AutoMemoryManager as AutoMemoryManagerContract,
   AutoMemoryReadContextOptions,
 } from "@getpochi/common";
@@ -7,8 +6,6 @@ import { AutoMemoryManager as BaseAutoMemoryManager } from "@getpochi/common/aut
 import { Lifecycle, injectable, scoped } from "tsyringe";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../integrations/configuration";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { TaskHistoryStore } from "./task-history-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "./workspace-scoped";
 
@@ -18,7 +15,6 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
   constructor(
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly workspaceScope: WorkspaceScope,
-    private readonly taskHistoryStore: TaskHistoryStore,
   ) {
     super();
   }
@@ -73,70 +69,14 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
 
   async beginHostDreamRun(options: {
     cwd?: string;
-    candidates?: readonly AutoMemoryDreamCandidate[];
-    sessionUpdatedAts?: readonly number[];
-    currentTranscript?: AutoMemoryDreamCandidate;
+    currentTaskId?: string;
   }) {
     // Dreaming is part of extraction and keeps running even when injection is
     // disabled, so it is intentionally not gated by the enabled preference.
     const cwd = options.cwd ?? this.cwd;
-    const candidates = [
-      ...(await this.collectDreamCandidates(cwd)),
-      ...(options.candidates ?? []),
-    ];
-    const mergedCandidates = mergeDreamCandidates(
-      candidates,
-      options.currentTranscript,
-    );
-
     return this.beginDreamRun({
       cwd,
-      candidates: mergedCandidates,
-      sessionUpdatedAts: mergedCandidates.map((task) => task.updatedAt),
+      currentTaskId: options.currentTaskId,
     });
   }
-
-  private async collectDreamCandidates(
-    cwd: string | undefined,
-  ): Promise<AutoMemoryDreamCandidate[]> {
-    const baseContext = await this.readContext(cwd, { ensure: false });
-    if (!baseContext) return [];
-
-    const result: AutoMemoryDreamCandidate[] = [];
-    for (const task of Object.values(this.taskHistoryStore.tasks.value)) {
-      if (!task.id || task.parentId) continue;
-
-      const taskCwd = task.cwd ?? cwd;
-      if (!taskCwd) continue;
-
-      const taskContext = await this.readContext(taskCwd, {
-        ensure: false,
-      }).catch(() => undefined);
-      if (taskContext?.repoKey !== baseContext.repoKey) continue;
-
-      result.push({
-        taskId: task.id,
-        cwd: task.cwd,
-        updatedAt: task.updatedAt ?? 0,
-        transcriptFilename: `${task.id}.md`,
-        title: task.title ?? undefined,
-      });
-    }
-
-    return result;
-  }
-}
-
-function mergeDreamCandidates(
-  candidates: readonly AutoMemoryDreamCandidate[],
-  currentTranscript: AutoMemoryDreamCandidate | undefined,
-) {
-  const merged = new Map<string, AutoMemoryDreamCandidate>();
-  for (const candidate of candidates) {
-    merged.set(candidate.taskId, candidate);
-  }
-  if (currentTranscript) {
-    merged.set(currentTranscript.taskId, currentTranscript);
-  }
-  return [...merged.values()];
 }

@@ -3,10 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import {
   AutoMemoryMaxManifestEntries,
+  AutoMemoryLockName,
   AutoMemoryProjectInfoName,
 } from "../../base";
 import { AutoMemoryManager, sanitizeMemoryRepoKey } from "../node";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("long-term memory helpers", () => {
   it("creates stable filesystem-safe repo keys from the project basename", () => {
@@ -27,6 +28,142 @@ describe("long-term memory helpers", () => {
   });
 });
 
+describe("AutoMemoryManager Dream sources and thresholds", () => {
+  let projectsRoot: string;
+  let cwd: string;
+  const now = Date.UTC(2026, 8, 23, 12);
+  const day = 24 * 60 * 60 * 1_000;
+
+  beforeEach(async () => {
+    projectsRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "pochi-dream-projects-"),
+    );
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-dream-repo-"));
+    vi.spyOn(Date, "now").mockReturnValue(now);
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(projectsRoot, { recursive: true, force: true });
+    await fs.rm(cwd, { recursive: true, force: true });
+  });
+
+  async function prepare(lastDreamAt: number, sessions: number) {
+    const manager = new AutoMemoryManager({ projectsRoot });
+    const context = (await manager.readContext(cwd))!;
+    const lockPath = path.join(context.memoryDir, AutoMemoryLockName);
+    await fs.writeFile(lockPath, JSON.stringify({ status: "idle" }));
+    await fs.utimes(lockPath, lastDreamAt / 1_000, lastDreamAt / 1_000);
+    for (const taskId of [
+      "parent",
+      ...Array.from({ length: sessions }, (_, i) => `other-${i}`),
+    ]) {
+      await manager.writeTaskTranscript({
+        taskId,
+        cwd,
+        title: `Session ${taskId}`,
+        updatedAt: now,
+        transcript: "### 1. user\nA durable project preference.\n",
+      });
+    }
+    return { manager, context };
+  }
+
+  it.each([
+    { elapsed: day - 1, sessions: 5, starts: false },
+    { elapsed: day, sessions: 4, starts: false },
+    { elapsed: day, sessions: 5, starts: true },
+    { elapsed: day * 2, sessions: 0, starts: false },
+  ])(
+    "requires both gates: elapsed=$elapsed, other sessions=$sessions",
+    async ({ elapsed, sessions, starts }) => {
+      const { manager } = await prepare(now - elapsed, sessions);
+      const run = await manager.beginDreamRun({ cwd, currentTaskId: "parent" });
+      expect(Boolean(run)).toBe(starts);
+      if (starts) {
+        expect(run?.sessionCount).toBe(5);
+        expect(run?.candidates).toHaveLength(5);
+        expect(
+          run?.candidates.some((candidate) => candidate.taskId === "parent"),
+        ).toBe(false);
+      }
+    },
+  );
+
+  it("discovers existing sources across manager instances and ignores missing, invalid and duplicate sessions", async () => {
+    const { context } = await prepare(now - day, 5);
+    await fs.rename(
+      path.join(context.transcriptDir, "other-0.md"),
+      path.join(context.transcriptDir, "actual-source-name.md"),
+    );
+    await fs.copyFile(
+      path.join(context.transcriptDir, "other-1.md"),
+      path.join(context.transcriptDir, "duplicate.md"),
+    );
+    await fs.writeFile(
+      path.join(context.transcriptDir, "invalid.md"),
+      "No metadata\n",
+    );
+    await fs.writeFile(
+      path.join(context.transcriptDir, "invalid-date.md"),
+      "---\ntaskId: invalid\nupdatedAt: invalid\n---\n",
+    );
+    await fs.mkdir(path.join(context.transcriptDir, "directory.md"));
+    const manager = new AutoMemoryManager({ projectsRoot });
+    const run = await manager.beginDreamRun({ cwd, currentTaskId: "parent" });
+    expect(run?.sessionCount).toBe(5);
+    expect(
+      run?.candidates.find((candidate) => candidate.taskId === "other-0"),
+    ).toMatchObject({
+      transcriptFilename: "actual-source-name.md",
+      title: "Session other-0",
+      cwd,
+      updatedAt: now,
+    });
+    await manager.finishDreamRun({
+      ...run!,
+      success: false,
+      memoryDir: context.memoryDir,
+    });
+    await fs.rm(path.join(context.transcriptDir, "actual-source-name.md"));
+    expect(
+      await manager.beginDreamRun({ cwd, currentTaskId: "parent" }),
+    ).toBeUndefined();
+  });
+
+  it("counts only sessions updated since the previous Dream and holds the lock until completion", async () => {
+    const { manager, context } = await prepare(now - day, 5);
+    await manager.writeTaskTranscript({
+      taskId: "old",
+      cwd,
+      updatedAt: now - day,
+      transcript: "Old session",
+    });
+    const run = await manager.beginDreamRun({ cwd, currentTaskId: "parent" });
+    expect(run?.candidates).toHaveLength(5);
+    const otherManager = new AutoMemoryManager({ projectsRoot });
+    expect(
+      await otherManager.beginDreamRun({ cwd, currentTaskId: "parent" }),
+    ).toBeUndefined();
+    await manager.finishDreamRun({
+      ...run!,
+      success: true,
+      memoryDir: context.memoryDir,
+    });
+    expect(
+      await otherManager.beginDreamRun({ cwd, currentTaskId: "parent" }),
+    ).toBeUndefined();
+  });
+
+  it("initializes the first Dream interval without immediately running", async () => {
+    const { manager, context } = await prepare(now - day, 5);
+    await fs.rm(path.join(context.memoryDir, AutoMemoryLockName));
+    expect(
+      await manager.beginDreamRun({ cwd, currentTaskId: "parent" }),
+    ).toBeUndefined();
+  });
+});
+
 describe("AutoMemoryManager project info file", () => {
   let projectsRoot: string;
   let cwd: string;
@@ -36,9 +173,7 @@ describe("AutoMemoryManager project info file", () => {
     projectsRoot = await fs.mkdtemp(
       path.join(os.tmpdir(), "pochi-auto-memory-projects-"),
     );
-    cwd = await fs.mkdtemp(
-      path.join(os.tmpdir(), "pochi-auto-memory-repo-"),
-    );
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-auto-memory-repo-"));
     worktreeCwd = await fs.mkdtemp(
       path.join(os.tmpdir(), "pochi-auto-memory-worktree-"),
     );
@@ -110,7 +245,6 @@ describe("AutoMemoryManager project info file", () => {
       filename: "conventions.md",
       type: "project",
     });
-    expect(second?.manifest[0].bytes).toBeGreaterThan(0);
   });
 
   it("leaves MEMORY.md untouched when the generated index is unchanged", async () => {

@@ -2,6 +2,8 @@ import type { PochiRequestUseCase } from "@getpochi/common";
 import { asSchema, streamText } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import { FlexibleChatTransport } from "../flexible-chat-transport";
+import { createForkAgent } from "../../background-task/fork-agent";
+import type { Message } from "../../types";
 
 vi.mock("../models", () => ({
   createModel: () => ({
@@ -19,28 +21,37 @@ vi.mock("ai", async (importOriginal) => ({
   })),
 }));
 
-async function getToolDefinitions(requestUseCase: PochiRequestUseCase) {
+async function getRequest(
+  requestUseCase: PochiRequestUseCase,
+  messages: Message[] = [
+    {
+      id: "prompt",
+      role: "user",
+      parts: [{ type: "text", text: "Work" }],
+    },
+  ],
+  systemPromptOverride?: string,
+) {
   const transport = new FlexibleChatTransport({
     store: { storeId: "test" } as never,
     blobStore: {} as never,
     getters: { getLLM: () => ({ id: "test" }) as never },
     requestUseCase,
     isSubTask: false,
+    systemPromptOverride,
   });
   await transport.sendMessages({
     trigger: "submit-message",
     chatId: "task",
     messageId: undefined,
-    messages: [
-      {
-        id: "prompt",
-        role: "user",
-        parts: [{ type: "text", text: "Work" }],
-      },
-    ],
+    messages,
     abortSignal: undefined,
   });
-  const tools = vi.mocked(streamText).mock.calls.at(-1)?.[0].tools;
+  return vi.mocked(streamText).mock.calls.at(-1)![0];
+}
+
+async function getToolDefinitions(requestUseCase: PochiRequestUseCase) {
+  const { tools } = await getRequest(requestUseCase);
   expect(tools?.executeCommand).toBeDefined();
   return Promise.all(
     Object.entries(tools ?? {}).map(async ([name, definition]) => ({
@@ -52,6 +63,49 @@ async function getToolDefinitions(requestUseCase: PochiRequestUseCase) {
 }
 
 describe("fork agent tool cache", () => {
+  it("preserves the parent model-message prefix when Dream appends its directive", async () => {
+    const messages = [
+      {
+        id: "parent-user",
+        role: "user",
+        parts: [{ type: "text", text: "Keep the existing API." }],
+      },
+      {
+        id: "parent-assistant",
+        role: "assistant",
+        parts: [
+          { type: "step-start" },
+          {
+            type: "tool-writeToFile",
+            toolCallId: "write",
+            state: "output-available",
+            input: { path: "api.ts", content: "export const api = 1;" },
+            output: { success: true },
+          },
+          { type: "text", text: "Implemented." },
+        ],
+      },
+    ] as Message[];
+    const parent = await getRequest("agent", messages);
+    const agent = createForkAgent({
+      label: "auto-memory-dream",
+      parentMessages: messages,
+      parentCwd: "/repo",
+      directive: "Consolidate long-term memory.",
+      maxSteps: 20,
+    });
+    const dream = await getRequest(
+      "auto-memory-dream",
+      agent.initMessages,
+      parent.system as string,
+    );
+    expect(dream.system).toEqual(parent.system);
+    expect(JSON.stringify(dream.messages?.slice(0, -1))).toBe(
+      JSON.stringify(parent.messages),
+    );
+    expect(dream.messages?.at(-1)).toMatchObject({ role: "user" });
+  });
+
   it.each(["task-memory", "auto-memory", "auto-memory-dream"] as const)(
     "%s preserves parent tool schemas and descriptions",
     async (requestUseCase) => {
