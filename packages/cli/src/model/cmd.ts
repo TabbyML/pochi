@@ -92,9 +92,18 @@ function displayModels(vendorId: string, models: Record<string, ModelOptions>) {
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const features = [
+      modelInfo.useToolCallMiddleware ? "ReAct ✓" : undefined,
+      modelInfo.useReasoningMiddleware ? "Reasoning ✓" : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-    table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
+    table.push([
+      modelId,
+      chalk.cyan(contextWindow),
+      chalk.green(features || "-"),
+    ]);
   }
 
   // Display the table
@@ -145,9 +154,18 @@ function displayProviderModels(
       ? formatContextWindow(modelInfo.contextWindow)
       : "-";
 
-    const features = modelInfo.useToolCallMiddleware ? "ReAct ✓" : "-";
+    const features = [
+      modelInfo.useToolCallMiddleware ? "ReAct ✓" : undefined,
+      modelInfo.useReasoningMiddleware ? "Reasoning ✓" : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-    table.push([modelId, chalk.cyan(contextWindow), chalk.green(features)]);
+    table.push([
+      modelId,
+      chalk.cyan(contextWindow),
+      chalk.green(features || "-"),
+    ]);
   }
 
   // Display the table
