@@ -868,6 +868,10 @@ Mistral AI provides a range of powerful language models available through their 
 
 Ollama is a tool that allows you to run large language models locally on your machine with a simple API.
 
+To use Ollama from Pochi you must enable CORS. You can check if CORS is enabled with:<br />
+`curl -X OPTIONS http://localhost:11434 -H "Origin: http://example.com" -H "Access-Control-Request-Method: GET" -I`<br />
+If you get a 403 forbidden response then CORS is not enabled. To enable CORS you must set the environment variable `OLLAMA_ORIGINS` to `*`. WARNING, if you have Ollama exposed to a public network you should use a specific allow list rather than \*.
+
 ```json
 {
   "$schema": "https://getpochi.com/config.schema.json",
