@@ -34,6 +34,7 @@ export function createReasoningMiddleware(
     | undefined = undefined;
   let isFirstReasoning = true;
   let isReasoning = false;
+  let hasReasoning = false;
 
   function getReasoningId() {
     return `reasoning-${countReasoning}`;
@@ -78,6 +79,7 @@ export function createReasoningMiddleware(
               }
               if (isReasoning) {
                 isReasoning = false;
+                hasReasoning = true;
                 controller.enqueue({
                   type: "reasoning-end",
                   id: getReasoningId(),
@@ -115,6 +117,7 @@ export function createReasoningMiddleware(
                 if (foundFullEndMatch) {
                   buffer = buffer.slice(endIndex + tagEnd.length);
                   isReasoning = false;
+                  hasReasoning = true;
                   controller.enqueue({
                     type: "reasoning-end",
                     id: getReasoningId(),
@@ -154,6 +157,14 @@ export function createReasoningMiddleware(
                 const match = tagStart.match(tagStartRegex);
                 if (!match) {
                   // A different tag sharing the same prefix, e.g. `<thinking>`.
+                  publish(controller, buffer.slice(0, tagEndIndex + 1));
+                  buffer = buffer.slice(tagEndIndex + 1);
+                  continue;
+                }
+
+                // At most one reasoning block per lifecycle. A second opening
+                // tag starts a regular text section, not another reasoning block.
+                if (hasReasoning) {
                   publish(controller, buffer.slice(0, tagEndIndex + 1));
                   buffer = buffer.slice(tagEndIndex + 1);
                   continue;
