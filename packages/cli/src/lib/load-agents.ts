@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { getLogger } from "@getpochi/common";
+import { ModelRegistry, getLogger } from "@getpochi/common";
 import { isFileExists, parseAgentFile } from "@getpochi/common/tool-utils";
 import type {
   CustomAgentFile,
@@ -54,7 +54,11 @@ export async function loadBuiltInAgents(): Promise<ValidCustomAgentFile[]> {
     .filter((agent): agent is ValidCustomAgentFile =>
       isValidCustomAgentFile(agent),
     )
-    .map((agent) => ({ ...agent, isBuiltIn: true }));
+    .map((agent) => ({
+      ...agent,
+      model: agent.model ?? ModelRegistry.builtinAgents[agent.name],
+      isBuiltIn: true,
+    }));
 }
 
 export async function loadAgents(

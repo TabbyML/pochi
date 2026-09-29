@@ -81,6 +81,7 @@ export type {
   TaskMemoryState,
 } from "./memory";
 export { TaskMemoryFileUri } from "./prompts/task-memory";
+export { ModelRegistry } from "./model-registry";
 
 export const ForkAgentUseCase = z.enum([
   "task-memory",

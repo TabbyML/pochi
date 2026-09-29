@@ -1,3 +1,4 @@
+import { ModelRegistry } from "@getpochi/common";
 import { getVendor } from "@getpochi/common/vendor";
 import { createModel } from "@getpochi/common/vendor/edge";
 import "@getpochi/vendor-pochi/edge";
@@ -161,4 +162,4 @@ const UserPrompt = {
 `,
 };
 
-const ModelId = "google/gemini-3.5-flash";
+const ModelId = ModelRegistry.generateBranchName;

@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { ModelRegistry } from "@getpochi/common";
 import { compileToolPolicies, validateToolPolicy } from "@getpochi/tools";
 import { describe, expect, it } from "vitest";
 import { loadAgents, loadBuiltInAgents } from "../load-agents";
@@ -100,6 +101,13 @@ Project agent instructions.`,
     const builtInAgents = await loadBuiltInAgents();
     const agents = await loadAgents("/non/existent/path", false);
     expect(agents).toEqual(builtInAgents);
+  });
+
+  it("should pin built-in agent models from the model registry", async () => {
+    const exploreAgent = (await loadBuiltInAgents()).find(
+      (agent) => agent.name === "explore",
+    );
+    expect(exploreAgent?.model).toBe(ModelRegistry.builtinAgents.explore);
   });
 
   it("should keep browser agent command restrictions active", async () => {
