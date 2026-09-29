@@ -173,7 +173,7 @@ describe('createReasoningMiddleware', () => {
     });
   });
 
-  it('supports multiple reasoning sections with different attributes', async () => {
+  it('only accepts at most one reasoning section', async () => {
     const parts = await streamParts([
       '<think signature="one">first</think>a',
       '<think signature="two">second</think>b',
@@ -192,18 +192,8 @@ describe('createReasoningMiddleware', () => {
           },
         },
       },
-      {
-        type: 'reasoning-start',
-        id: 'reasoning-2',
-        providerMetadata: {
-          [ReasoningTagMetadataKey]: {
-            tag: 'think',
-            attributes: ' signature="two"',
-          },
-        },
-      },
     ]);
-    expect(text(parts)).toBe('ab');
+    expect(text(parts)).toBe('a<think signature="two">second</think>b');
   });
 
   it('does not treat tags sharing the prefix as reasoning', async () => {
