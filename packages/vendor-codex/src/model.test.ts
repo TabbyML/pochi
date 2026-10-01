@@ -1,5 +1,19 @@
+import { ModelRegistry } from "@getpochi/common";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createProxyFetch } from "./model";
+import { createCodexModel, createEdgeCodexModel, createProxyFetch } from "./model";
+
+describe("Codex default model", () => {
+  it.each([createCodexModel, createEdgeCodexModel])(
+    "%o falls back to the registry model",
+    (createModel) => {
+      const model = createModel({
+        modelId: undefined,
+        getCredentials: async () => ({}),
+      } as unknown as Parameters<typeof createModel>[0]);
+      expect(model.modelId).toBe(ModelRegistry.codex);
+    },
+  );
+});
 
 describe("Codex proxy fetch", () => {
   afterEach(() => {
