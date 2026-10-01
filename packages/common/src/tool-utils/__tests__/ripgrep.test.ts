@@ -83,7 +83,7 @@ describe("searchFilesWithRipgrep", () => {
 
   const baseArgs = [
     "--json",
-    "--case-sensitive",
+    "--ignore-case",
     "--binary",
     "--sortr",
     "modified",
@@ -172,6 +172,81 @@ describe("searchFilesWithRipgrep", () => {
       [...baseArgs, "--glob", "**/*.ts", "hello", workspacePath],
       { signal: undefined },
     );
+  });
+
+  it("should search case-insensitively by default", async () => {
+    mockSpawnResult({ stdout: "" });
+
+    await searchFilesWithRipgrep(".", "hello", rgPath, workspacePath);
+
+    expect(spawnMock).toHaveBeenCalledWith(
+      rgPath,
+      [
+        "--json",
+        "--ignore-case",
+        "--binary",
+        "--sortr",
+        "modified",
+        "hello",
+        workspacePath,
+      ],
+      { signal: undefined },
+    );
+  });
+
+  it("should search case-sensitively when requested", async () => {
+    mockSpawnResult({ stdout: "" });
+
+    await searchFilesWithRipgrep(
+      ".",
+      "hello",
+      rgPath,
+      workspacePath,
+      undefined,
+      undefined,
+      true,
+    );
+
+    expect(spawnMock).toHaveBeenCalledWith(
+      rgPath,
+      [
+        "--json",
+        "--case-sensitive",
+        "--binary",
+        "--sortr",
+        "modified",
+        "hello",
+        workspacePath,
+      ],
+      { signal: undefined },
+    );
+  });
+
+  it("should stop at an explicit limit without marking the result truncated", async () => {
+    const mockRgOutput = Array.from({ length: 3 }, (_, i) => ({
+      type: "match",
+      data: {
+        path: { text: join(workspacePath, `file${i}.ts`) },
+        lines: { text: `line ${i}\n` },
+        line_number: i + 1,
+      },
+    }))
+      .map((o) => JSON.stringify(o))
+      .join("\n");
+    const child = mockSpawnResult({ stdout: mockRgOutput });
+
+    const result = await searchFilesWithRipgrep(
+      ".",
+      "hello",
+      rgPath,
+      workspacePath,
+      undefined,
+      2,
+    );
+
+    expect(result.matches).toHaveLength(2);
+    expect(result.isTruncated).toBe(false);
+    expect(child.kill).toHaveBeenCalled();
   });
 
   it("should stop rg as soon as the global match limit is exceeded", async () => {

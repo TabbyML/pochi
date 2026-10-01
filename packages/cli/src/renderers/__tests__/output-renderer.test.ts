@@ -74,6 +74,56 @@ describe("renderToolPart", () => {
     expect(text).toContain("Listing files in pochi://skills/widget-guidelines");
   });
 
+  it("renders the search limit independently from the match count", () => {
+    const executingText = renderText({
+      type: "tool-searchFiles",
+      toolCallId: "call-1",
+      state: "input-available",
+      input: {
+        path: ".",
+        regex: "store",
+        limit: 20,
+      },
+    } as ToolUIPart<UITools>);
+    const completedText = renderText({
+      type: "tool-searchFiles",
+      toolCallId: "call-1",
+      state: "output-available",
+      input: {
+        path: ".",
+        regex: "store",
+        limit: 20,
+      },
+      output: {
+        matches: [{ file: "store.ts", line: 1, context: "const store = {};" }],
+        isTruncated: false,
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(executingText).toContain("Searching for store in . (limit: 20)");
+    expect(completedText).toContain(
+      "Searching for store in . (limit: 20), 1 matched",
+    );
+  });
+
+  it("preserves completed search output when no limit is provided", () => {
+    const text = renderText({
+      type: "tool-searchFiles",
+      toolCallId: "call-1",
+      state: "output-available",
+      input: {
+        path: ".",
+        regex: "store",
+      },
+      output: {
+        matches: [{ file: "store.ts", line: 1, context: "const store = {};" }],
+        isTruncated: false,
+      },
+    } as ToolUIPart<UITools>);
+
+    expect(text).toBe("🔍 Searching for store in .");
+  });
+
   it("renders project memory paths in file operation output", () => {
     const memoryPath = pochiHomePath(
       "projects",
