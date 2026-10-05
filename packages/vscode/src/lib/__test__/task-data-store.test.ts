@@ -147,6 +147,43 @@ describe("TaskDataStore background job notifications", () => {
       ["job-1", "job-2"],
     );
   });
+
+  it("does not drop notifications or flags when pin/archive race with notification writes", async () => {
+    let persisted: Record<string, unknown> = {};
+    const context = {
+      globalState: {
+        get: (_key: string, defaultValue: unknown) => persisted || defaultValue,
+        update: async (_key: string, value: Record<string, unknown>) => {
+          await new Promise<void>((resolve) => setImmediate(resolve));
+          persisted = value;
+        },
+      },
+    } as unknown as vscode.ExtensionContext;
+    const store = new TaskDataStore(context);
+
+    await Promise.all([
+      store.addBackgroundJobNotification("task-1", notification("job-1")),
+      store.setPinned({ "task-1": true }),
+      store.addBackgroundJobNotification("task-1", notification("job-2")),
+      store.setArchived({ "task-1": true, "task-2": true }),
+    ]);
+
+    const check = (reloaded: TaskDataStore) => {
+      assert.deepStrictEqual(
+        reloaded
+          .getBackgroundJobNotificationsSignal("task-1")
+          .value.map((item) => item.backgroundJobId),
+        ["job-1", "job-2"],
+      );
+      assert.deepStrictEqual(reloaded.getPinnedSignal().value, { "task-1": true });
+      assert.deepStrictEqual(reloaded.getArchivedSignal().value, {
+        "task-1": true,
+        "task-2": true,
+      });
+    };
+    check(store);
+    check(new TaskDataStore(context));
+  });
 });
 
 function notification(backgroundJobId: string): BackgroundJobNotification {
