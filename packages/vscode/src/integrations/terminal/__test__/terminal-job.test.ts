@@ -100,6 +100,7 @@ function createHarness(options?: {
   appendError?: Error;
   closeError?: Error;
   createTerminalError?: Error;
+  abortSignal?: AbortSignal;
 }) {
   const closeEmitter = new TestEventEmitter<FakeTerminal>();
   let terminalDisposeCalls = 0;
@@ -214,6 +215,7 @@ function createHarness(options?: {
       cwd: "/tmp",
       taskId: "task-test",
       monitor: options?.monitor,
+      abortSignal: options?.abortSignal,
     });
   } catch (error) {
     adoptionError = error;
@@ -317,6 +319,28 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
     assert.ok(harness.lifecycle.includes("file-closed"));
   });
+
+  for (const monitor of [undefined, { description: "watch" }]) {
+    it(`keeps a started ${monitor ? "monitor" : "command"} running after its tool call aborts`, async () => {
+      const abortController = new AbortController();
+      const harness = createHarness({
+        monitor,
+        abortSignal: abortController.signal,
+      });
+
+      abortController.abort();
+      await flushPromises();
+
+      assert.strictEqual(harness.ptyProcess.killCalls, 0);
+      assert.strictEqual(harness.ptyProcess.groupKillCalls, 0);
+      assert.strictEqual(harness.job.isFinished, false);
+      assert.strictEqual(harness.TerminalJob.get(harness.job.id), harness.job);
+
+      harness.job.kill();
+      harness.ptyProcess.emitExit(143);
+      await flushPromises();
+    });
+  }
 
   it("does not launch shell integration for an already-aborted job", async () => {
     const closeEmitter = new TestEventEmitter<FakeTerminal>();
