@@ -1,5 +1,8 @@
 import * as path from "node:path";
-import { MonitorDefaultTimeoutMs } from "@getpochi/common";
+import {
+  MonitorDefaultTimeoutMs,
+  assertMonitorCommandAllowed,
+} from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import type { ToolCallOptions } from "../types";
 
@@ -20,6 +23,7 @@ export const startMonitor =
     if (!command) {
       throw new Error("Command is required to execute.");
     }
+    assertMonitorCommandAllowed(command);
 
     let resolvedCwd: string;
     if (path.isAbsolute(cwd)) {

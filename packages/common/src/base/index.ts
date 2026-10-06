@@ -17,6 +17,7 @@ export {
 } from "./prompts";
 
 export {
+  assertMonitorCommandAllowed,
   MonitorWatcher,
   type MonitorWatcherOptions,
   type MonitorJobOptions,

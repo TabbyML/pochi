@@ -18,6 +18,18 @@ export const MonitorDefaultTimeoutMs = 300_000;
 /** Hard cap of lines per delivered batch; the rest is summarized. */
 export const MonitorMaxLinesPerBatch = 50;
 
+/** Rejects monitors that watch a Pochi-managed job; its completion is already notified. */
+export function assertMonitorCommandAllowed(command: string): void {
+  const backgroundJobId = command.match(
+    /bgjob-(?:cmd|monitor|task)-[\w-]+/,
+  )?.[0];
+  if (backgroundJobId) {
+    throw new Error(
+      `A monitor cannot watch the background job "${backgroundJobId}". You are notified automatically when it finishes; read its output file with readFile if you need its output.`,
+    );
+  }
+}
+
 export interface MonitorJobOptions {
   description: string;
   timeoutMs?: number;
