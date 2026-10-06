@@ -1,4 +1,4 @@
-import { formatters } from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Profiler, type ReactNode, useRef } from "react";
@@ -747,6 +747,51 @@ describe("MessageList pagination", () => {
           tool.dataset.hasChanges === "true",
       ),
     ).toBe(true);
+  });
+
+  it("keeps the assistant row mounted when a retry reminder starts a new assistant message", () => {
+    const user = {
+      id: "user-1",
+      role: "user",
+      parts: [{ type: "text", text: "task" }],
+    } as Message;
+    const stopped = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [
+        { type: "step-start" },
+        { type: "text", text: "partial answer", state: "streaming" },
+      ],
+    } as Message;
+    const reminder = {
+      id: "user-reminder",
+      role: "user",
+      parts: [{ type: "text", text: prompts.createSystemReminder("continue") }],
+    } as Message;
+    const continued = {
+      id: "assistant-2",
+      role: "assistant",
+      parts: [{ type: "step-start" }, { type: "text", text: "continued" }],
+    } as Message;
+
+    const { container, rerender } = render(
+      <MessageListProbe
+        messages={[user, stopped]}
+        formatMessages={formatters.ui}
+      />,
+    );
+    const partialNode = screen.getByText("partial answer");
+
+    rerender(
+      <MessageListProbe
+        messages={[user, stopped, reminder, continued]}
+        formatMessages={formatters.ui}
+      />,
+    );
+
+    expect(mountedCount(container)).toBe(2);
+    expect(screen.getByText("partial answer")).toBe(partialNode);
+    expect(screen.getByText("continued")).toBeTruthy();
   });
 });
 
