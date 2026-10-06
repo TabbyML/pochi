@@ -284,6 +284,72 @@ describe("BackgroundJobManager", () => {
     await manager.dispose();
   });
 
+  it("does not restore acknowledged commands or monitors from retained messages", async () => {
+    const { manager, store, source, observers, setMessages, messages, pending } =
+      setup();
+    const monitor = {
+      ...monitored(),
+      ended: {
+        status: "completed" as const,
+        exitCode: 0,
+        reason: "process exited",
+      },
+    };
+    const notifications = [finished(), monitor];
+    const history: Message[] = [
+      {
+        id: "start-monitor",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-startMonitor",
+            toolCallId: "start-monitor",
+            state: "output-available",
+            input: { command: monitor.command, description: monitor.description },
+            output: {
+              backgroundJobId: monitor.backgroundJobId,
+              outputFile: monitor.outputFile,
+            },
+          },
+        ],
+      },
+      {
+        id: "results",
+        role: "user",
+        parts: toBackgroundJobNotificationParts(notifications),
+      },
+    ];
+    try {
+      await manager.watchTask("parent");
+      observers.get("parent")!({ running: {}, notifications });
+      setMessages("parent", history);
+      expect(pending.get("parent")).toEqual([]);
+      expect(manager.getPendingNotifications("parent")).toEqual([]);
+      expect(manager.getJobsForTask("parent")).toEqual(
+        notifications.map((notice) =>
+          expect.objectContaining({
+            backgroundJobId: notice.backgroundJobId,
+            status: "completed",
+            notificationPending: false,
+          }),
+        ),
+      );
+    } finally {
+      await manager.dispose();
+    }
+
+    const reopened = BackgroundJobManager.forStore(store);
+    reopened.connect(source);
+    try {
+      await reopened.watchTask("parent");
+      expect(reopened.getJobsForTask("parent")).toEqual([]);
+      expect(reopened.getPendingNotifications("parent")).toEqual([]);
+      expect(messages.get("parent")).toEqual(history);
+    } finally {
+      await reopened.dispose();
+    }
+  });
+
   it("removes delivered results from the native queue before reopening", async () => {
     const { manager, store, source, observers, setMessages, acknowledge } =
       setup();
