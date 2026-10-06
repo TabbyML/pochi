@@ -19,12 +19,7 @@ export class FileStateCacheRegistry implements vscode.Disposable {
     return cache;
   }
 
-  copyIfAbsent(sourceTaskId: string, targetTaskId: string): void {
-    const existingTarget = this.caches.get(targetTaskId);
-    if (existingTarget && existingTarget.size > 0) {
-      return;
-    }
-
+  fork(sourceTaskId: string, targetTaskId: string): void {
     const source = this.caches.get(sourceTaskId);
     const target = new FileStateCache();
     if (source) {

@@ -54,7 +54,6 @@ const TaskExecutorStepBudgetReminderThreshold = 2;
 
 interface TaskExecutorToolCallExecution {
   taskId: string;
-  parentTaskId: string | undefined;
   storeId: string;
   toolName: string;
   toolCallId: string;
@@ -664,7 +663,7 @@ class RunningTask {
     try {
       const result = await this.options.adaptor.executeToolCall({
         taskId: this.options.taskId,
-        parentTaskId: this.taskState.parentTaskId,
+
         storeId: this.options.store.storeId,
         toolName,
         toolCallId: toolCall.toolCallId,

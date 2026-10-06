@@ -198,7 +198,6 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       toolPolicies: args.toolPolicies,
       storeId: args.storeId,
       taskId: args.taskId,
-      fileStateCacheSourceTaskId: args.parentTaskId,
       allowBackground: args.allowBackground,
     });
 
