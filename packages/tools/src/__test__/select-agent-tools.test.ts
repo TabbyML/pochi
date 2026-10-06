@@ -220,6 +220,28 @@ describe("selectAgentTools", () => {
     );
   });
 
+  it.each([
+    ["generic", undefined],
+    ["unrestricted custom", createAgent()],
+    ["empty tool list", createAgent({ tools: [] })],
+  ])("does not expose nested delegation to %s subtasks", (_, agent) => {
+    const mcpSearch = createTool("MCP search");
+    const tools = selectAgentTools({
+      agent,
+      isSubTask: true,
+      customAgents: [createAgent({ name: "explore" })],
+      mcpTools: { mcpSearch },
+    });
+
+    expect(toolNames(tools)).toEqual(
+      [
+        ...ClientToolNames.filter((name) => name !== "newTask"),
+        "mcpSearch",
+      ].sort(),
+    );
+    expect(tools.mcpSearch).toBe(mcpSearch);
+  });
+
   it("exposes declared review source tools to reviewer agents", () => {
     const reviewerTools = selectAgentTools({
       agent: createAgent({
