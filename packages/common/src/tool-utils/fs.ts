@@ -247,7 +247,7 @@ export async function isFileExists(filePath: string): Promise<boolean> {
 
 /**
  * Gets the modification time of a file in milliseconds (floored to integer).
- * Returns undefined if the file does not exist or cannot be stat'd.
+ * Returns undefined only if the file does not exist; other stat errors propagate.
  */
 export async function getFileModificationTime(
   filePath: string,
@@ -255,7 +255,10 @@ export async function getFileModificationTime(
   try {
     const stat = await fs.stat(filePath);
     return Math.floor(stat.mtimeMs);
-  } catch {
-    return undefined;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return undefined;
+    }
+    throw error;
   }
 }
