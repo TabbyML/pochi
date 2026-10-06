@@ -3,8 +3,8 @@ import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import { describe, it } from "mocha";
 import proxyquire from "proxyquire";
 
-describe("TerminalState monitor control", () => {
-  it("lists and stops shell monitors while retaining PTY close behavior", () => {
+describe("TerminalState background command control", () => {
+  it("lists and stops every running job, retaining PTY close behavior", () => {
     const stopped: string[] = [];
     const jobs = [
       { id: "shell-monitor", isPtyTerminal: false, monitorDescription: "CI", isFinished: false },
@@ -21,10 +21,16 @@ describe("TerminalState monitor control", () => {
     }) as typeof import("../terminal-state");
     const state = Object.create(TerminalState.prototype) as InstanceType<typeof TerminalState>;
     const snapshot = (state as unknown as { listBackgroundCommands(): BackgroundCommands }).listBackgroundCommands();
-    assert.deepStrictEqual(Object.keys(snapshot), ["shell-monitor", "pty-command"]);
+    assert.deepStrictEqual(Object.keys(snapshot), ["shell-monitor", "pty-command", "shell-command"]);
     assert.strictEqual(snapshot["shell-monitor"].monitor, "CI");
     assert.strictEqual(snapshot["shell-monitor"].taskId, "owner");
+    assert.strictEqual(snapshot["shell-command"].detachable, false);
+    assert.strictEqual(snapshot["pty-command"].detachable, true);
     for (const job of jobs) state.closeBackgroundCommand(job.id);
-    assert.deepStrictEqual(stopped, ["kill:shell-monitor", "close:pty-command"]);
+    assert.deepStrictEqual(stopped, [
+      "kill:shell-monitor",
+      "close:pty-command",
+      "kill:shell-command",
+    ]);
   });
 });

@@ -1,4 +1,6 @@
 import * as assert from "node:assert";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import type {
   BackgroundJobTerminalEvent,
   BackgroundMonitorNotification,
@@ -318,104 +320,6 @@ describe("TerminalJob", () => {
     assert.ok(harness.lifecycle.includes("file-closed"));
   });
 
-  it("does not launch shell integration for an already-aborted job", async () => {
-    const closeEmitter = new TestEventEmitter<FakeTerminal>();
-    const executeCommandCalls: string[] = [];
-    const terminal: FakeTerminal & {
-      shellIntegration: { executeCommand(command: string): never };
-    } = {
-      show: () => {
-        throw new Error("aborted terminal should not be shown");
-      },
-      dispose: () => closeEmitter.fire(terminal),
-      shellIntegration: {
-        executeCommand: (command: string) => {
-          executeCommandCalls.push(command);
-          throw new Error("aborted command should not execute");
-        },
-      },
-    };
-    class TestPtySpawnError extends Error {
-      cause = new Error("pty unavailable");
-    }
-    const finishEvents: BackgroundJobTerminalEvent[] = [];
-    const vscode = {
-      EventEmitter: TestEventEmitter,
-      ThemeIcon: class {
-        constructor(readonly id: string) {}
-      },
-      window: { onDidCloseTerminal: closeEmitter.event },
-    };
-    const outputManager = {
-      output: { value: undefined },
-      addChunk: () => {},
-      finalize: () => {},
-    };
-    const { TerminalJob } = proxyquire
-      .noCallThru()
-      .noPreserveCache()
-      .load("../terminal-job", {
-        vscode,
-        "../layout": { createTerminal: () => terminal },
-        "@/lib/logger": {
-          getLogger: () => ({
-            debug: () => {},
-            info: () => {},
-            warn: () => {},
-          }),
-        },
-        "@getpochi/common/env-utils": { getTerminalEnv: () => ({}) },
-        "@getpochi/common/tool-utils": {
-          BackgroundJobOutputFile: class {
-            async append() {}
-            async close() {}
-          },
-          PlainOutputSanitizer: class {
-            write(chunk: string) {
-              return chunk;
-            }
-            end() {
-              return "";
-            }
-          },
-          createBackgroundJobId: () => "bgjob-cmd-aborted",
-          getBackgroundJobOutputPath: () => "/tmp/bgjob-cmd-aborted.log",
-          getShellPath: () => "/bin/zsh",
-        },
-        "./output": {
-          OutputManager: {
-            create: () => outputManager,
-            delete: () => {},
-          },
-        },
-        "./pty-process": {
-          PtyProcess: {
-            spawn: async () => {
-              throw new TestPtySpawnError();
-            },
-          },
-          PtySpawnError: TestPtySpawnError,
-        },
-        "./pty-terminal": { PtyTerminal: class {} },
-        "./utils": { ExecutionError: TestExecutionError },
-      }) as typeof import("../terminal-job");
-    TerminalJob.onDidFinish((event) => finishEvents.push(event));
-    const abortController = new AbortController();
-    abortController.abort();
-
-    await TerminalJob.create({
-      name: "aborted shell job",
-      command: "echo should-not-run",
-      cwd: "/tmp",
-      taskId: "task-test",
-      abortSignal: abortController.signal,
-    });
-    await flushPromises();
-
-    assert.deepStrictEqual(executeCommandCalls, []);
-    assert.strictEqual(finishEvents[0]?.status, "stopped");
-  });
-
   it("keeps an adopted pty running when terminal view creation fails", async () => {
     const initializationError = new Error("terminal creation failed");
     const harness = createHarness({ createTerminalError: initializationError });
@@ -608,5 +512,265 @@ describe("TerminalJob", () => {
     await flushPromises();
 
     assert.ok(harness.lifecycle.includes("output:\uFFFD"));
+  });
+});
+
+class TestChildProcess extends EventEmitter {
+  readonly stdout = new PassThrough();
+  readonly stderr = new PassThrough();
+  exitCode: number | null = null;
+  signalCode: NodeJS.Signals | null = null;
+}
+
+async function createChildHarness(options?: {
+  monitor?: MonitorJobOptions;
+  aborted?: boolean;
+}) {
+  class TestPtySpawnError extends Error {
+    cause = new Error("pty unavailable");
+  }
+  const child = new TestChildProcess();
+  const lifecycle: string[] = [];
+  const spawnCalls: Array<{ command: string; cwd: string }> = [];
+  const shownDocuments: string[] = [];
+  let terminateCalls = 0;
+  let termination: Promise<void> = Promise.resolve();
+  const vscode = {
+    EventEmitter: TestEventEmitter,
+    ThemeIcon: class {
+      constructor(readonly id: string) {}
+    },
+    Uri: { file: (fsPath: string) => ({ fsPath }) },
+    window: {
+      onDidCloseTerminal: new TestEventEmitter<FakeTerminal>().event,
+      showTextDocument: async (uri: { fsPath: string }) => {
+        shownDocuments.push(uri.fsPath);
+      },
+    },
+  };
+  const { TerminalJob } = proxyquire
+    .noCallThru()
+    .noPreserveCache()
+    .load("../terminal-job", {
+      vscode,
+      "../layout": {
+        createTerminal: () => {
+          throw new Error("child process jobs have no terminal");
+        },
+      },
+      "@/lib/logger": {
+        getLogger: () => ({ debug: () => {}, info: () => {}, warn: () => {} }),
+      },
+      "@getpochi/common/tool-utils": {
+        BackgroundJobOutputFile: class {
+          async append(chunk: string) {
+            lifecycle.push(`output:${chunk}`);
+          }
+          async close() {
+            lifecycle.push("file-closed");
+          }
+        },
+        PlainOutputSanitizer: class {
+          write(chunk: string) {
+            return chunk;
+          }
+          end() {
+            return "";
+          }
+        },
+        createBackgroundJobId: (kind: string) =>
+          `bgjob-${kind === "monitor" ? "monitor" : "cmd"}-child`,
+        getBackgroundJobOutputPath: () => "/tmp/bgjob-cmd-child.log",
+      },
+      "./background-child-process": {
+        spawnBackgroundChildProcess: (config: {
+          command: string;
+          cwd: string;
+        }) => {
+          spawnCalls.push(config);
+          return child;
+        },
+        terminateChildProcessTree: () => {
+          terminateCalls++;
+          return termination;
+        },
+      },
+      "./output": {
+        OutputManager: {
+          create: () => ({
+            output: { value: undefined },
+            addChunk: () => {},
+            finalize: () => {},
+          }),
+          delete: () => {},
+        },
+      },
+      "./pty-process": {
+        PtyProcess: {
+          spawn: async () => {
+            throw new TestPtySpawnError();
+          },
+        },
+        PtySpawnError: TestPtySpawnError,
+      },
+      "./pty-terminal": { PtyTerminal: class {} },
+      "./utils": { ExecutionError: TestExecutionError },
+    }) as typeof import("../terminal-job");
+
+  const finishEvents: BackgroundJobTerminalEvent[] = [];
+  TerminalJob.onDidFinish((event) => finishEvents.push(event));
+  const monitorEvents: BackgroundMonitorNotification[] = [];
+  TerminalJob.onDidMonitorEvent(({ event }) => monitorEvents.push(event));
+  const abortController = new AbortController();
+  if (options?.aborted) abortController.abort();
+  const job = await TerminalJob.create({
+    name: "child job",
+    command: "npm run dev",
+    cwd: "/tmp",
+    taskId: "task-test",
+    abortSignal: abortController.signal,
+    monitor: options?.monitor,
+  });
+
+  return {
+    TerminalJob,
+    child,
+    finishEvents,
+    job,
+    lifecycle,
+    monitorEvents,
+    shownDocuments,
+    spawnCalls,
+    get terminateCalls() {
+      return terminateCalls;
+    },
+    set termination(value: Promise<void>) {
+      termination = value;
+    },
+  };
+}
+
+describe("TerminalJob child process backend", () => {
+  it("does not spawn a command for an already-aborted job", async () => {
+    const harness = await createChildHarness({ aborted: true });
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.spawnCalls, []);
+    assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+  });
+
+  it("runs without a terminal and persists decoded output", async () => {
+    const harness = await createChildHarness();
+    assert.deepStrictEqual(harness.spawnCalls[0], {
+      command: "npm run dev",
+      cwd: "/tmp",
+      envs: undefined,
+    });
+    assert.strictEqual(harness.job.isPtyTerminal, false);
+
+    const text = Buffer.from("你好\n");
+    harness.child.stdout.emit("data", text.subarray(0, 2));
+    harness.child.stdout.emit("data", text.subarray(2));
+    harness.child.stderr.emit("data", Buffer.from("warning\n"));
+    harness.child.emit("close", 0, null);
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.lifecycle, [
+      "output:$ npm run dev\n",
+      "output:你好\n",
+      "output:warning\n",
+      "file-closed",
+    ]);
+    assert.strictEqual(harness.finishEvents[0]?.status, "completed");
+    assert.strictEqual(harness.finishEvents[0]?.exitCode, 0);
+    assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+  });
+
+  it("opens the output file instead of a terminal view", async () => {
+    const harness = await createChildHarness();
+    harness.job.show();
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.shownDocuments, [
+      "/tmp/bgjob-cmd-child.log",
+    ]);
+    assert.strictEqual(harness.job.isVisible, false);
+
+    harness.child.emit("close", 0, null);
+    await flushPromises();
+  });
+
+  it("stops the process tree and waits for it before reporting", async () => {
+    const harness = await createChildHarness();
+    let finishTermination!: () => void;
+    harness.termination = new Promise<void>((resolve) => {
+      finishTermination = resolve;
+    });
+    harness.job.kill();
+    harness.job.kill();
+    harness.child.emit("close", 1, null);
+    await flushPromises();
+
+    assert.strictEqual(harness.terminateCalls, 1);
+    assert.strictEqual(harness.finishEvents.length, 0);
+
+    finishTermination();
+    await flushPromises();
+    assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+  });
+
+  it("reports a failed process-tree stop even when the process never exits", async () => {
+    const harness = await createChildHarness({
+      monitor: { description: "watch" },
+    });
+    harness.termination = Promise.reject(new Error("Access is denied."));
+    harness.job.kill();
+    await flushPromises();
+
+    assert.strictEqual(harness.monitorEvents.at(-1)?.ended?.status, "failed");
+    assert.match(
+      harness.monitorEvents.at(-1)?.ended?.reason ?? "",
+      /Access is denied/,
+    );
+    assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+  });
+
+  it("marks a natural signal exit as failed", async () => {
+    const harness = await createChildHarness();
+    harness.child.emit("close", null, "SIGTERM");
+    await flushPromises();
+
+    assert.strictEqual(harness.finishEvents[0]?.status, "failed");
+    assert.strictEqual(harness.finishEvents[0]?.exitCode, 143);
+    assert.match(harness.finishEvents[0]?.error ?? "", /signal SIGTERM/);
+  });
+
+  it("marks a spawn error as failed", async () => {
+    const harness = await createChildHarness();
+    harness.child.emit("error", new Error("spawn cmd.exe ENOENT"));
+    await flushPromises();
+
+    assert.strictEqual(harness.finishEvents[0]?.status, "failed");
+    assert.match(
+      harness.finishEvents[0]?.error ?? "",
+      /Command execution failed: spawn cmd.exe ENOENT/,
+    );
+  });
+
+  it("applies backpressure to the child pipes while output is queued", async () => {
+    const harness = await createChildHarness();
+    const chunk = Buffer.from("x".repeat(600 * 1024));
+
+    harness.child.stdout.emit("data", chunk);
+    harness.child.stdout.emit("data", chunk);
+    assert.strictEqual(harness.child.stdout.isPaused(), true);
+    assert.strictEqual(harness.child.stderr.isPaused(), true);
+
+    await flushPromises();
+    assert.strictEqual(harness.child.stdout.isPaused(), false);
+    assert.strictEqual(harness.child.stderr.isPaused(), false);
+
+    harness.child.emit("close", 0, null);
+    await flushPromises();
   });
 });

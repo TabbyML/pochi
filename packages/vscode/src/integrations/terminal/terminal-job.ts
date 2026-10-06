@@ -1,3 +1,6 @@
+import type { ChildProcess } from "node:child_process";
+import { constants as osConstants } from "node:os";
+import { StringDecoder } from "node:string_decoder";
 import { getLogger } from "@/lib/logger";
 import {
   type BackgroundJobTerminalEvent,
@@ -5,26 +8,27 @@ import {
   type MonitorJobOptions,
   MonitorWatcher,
 } from "@getpochi/common";
-import { getTerminalEnv } from "@getpochi/common/env-utils";
 import {
   BackgroundJobOutputFile,
   PlainOutputSanitizer,
   createBackgroundJobId,
   getBackgroundJobOutputPath,
-  getShellPath,
 } from "@getpochi/common/tool-utils";
 import { signal } from "@preact/signals-core";
 import * as vscode from "vscode";
 import { createTerminal } from "../layout";
+import {
+  spawnBackgroundChildProcess,
+  terminateChildProcessTree,
+} from "./background-child-process";
 import { OutputManager } from "./output";
 import { PtyProcess, PtySpawnError } from "./pty-process";
 import { PtyTerminal } from "./pty-terminal";
 import { ExecutionError } from "./utils";
 
 const logger = getLogger("TerminalJob");
-const PtyOutputPauseThresholdCharacters = 1024 * 1024;
-const PtyOutputResumeThresholdCharacters =
-  PtyOutputPauseThresholdCharacters / 2;
+const OutputPauseThresholdCharacters = 1024 * 1024;
+const OutputResumeThresholdCharacters = OutputPauseThresholdCharacters / 2;
 
 export interface TerminalJobConfig {
   name: string;
@@ -61,7 +65,8 @@ export class TerminalJob implements vscode.Disposable {
     TerminalJob.onDidMonitorEventEmitter.event;
   private monitorWatcher: MonitorWatcher | undefined;
   private monitorEndReason: string | undefined;
-  private monitorTermination: Promise<void> | undefined;
+  /** Process group/tree cleanup that must finish before the job reports. */
+  private termination: Promise<void> | undefined;
 
   get monitorDescription() {
     return this.config.monitor?.description;
@@ -75,18 +80,13 @@ export class TerminalJob implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private outputQueue: Promise<void> = Promise.resolve();
   private pendingOutputCharacters = 0;
-  private ptyOutputPaused = false;
+  private outputPaused = false;
   private pendingTerminalSuffix = "";
   private persistenceError: ExecutionError | undefined;
   private stopRequested = false;
   private ptyExited = false;
   private finished = false;
   private disposed = false;
-  private shellExecution: vscode.TerminalShellExecution | undefined;
-  private terminalCloseError: ExecutionError | undefined;
-  private readonly terminalCloseRejectors = new Set<
-    (error: ExecutionError) => void
-  >();
 
   readonly id: string;
   readonly outputFile: string;
@@ -120,9 +120,15 @@ export class TerminalJob implements vscode.Disposable {
     return this.terminalVisibility.value;
   }
 
+  /**
+   * A job runs on either a pty (detachable terminal view) or a plain child
+   * process (output file only). With neither, the job was aborted before
+   * anything started and finishes as stopped.
+   */
   private constructor(
     private readonly config: TerminalJobConfig,
     private readonly ptyProcess?: PtyProcess,
+    private readonly childProcess?: ChildProcess,
   ) {
     this.id = createBackgroundJobId(config.monitor ? "monitor" : "command");
     this.outputFile = getBackgroundJobOutputPath(config.taskId, this.id);
@@ -150,15 +156,11 @@ export class TerminalJob implements vscode.Disposable {
       this.enqueueOutput(`$ ${config.command}\n`, false);
       if (ptyProcess) {
         this.initializePtyTerminal(ptyProcess);
-      } else {
-        this.initializeShellTerminal();
+      } else if (childProcess) {
+        this.initializeChildProcess(childProcess);
       }
       this.initializeLifecycle();
-      if (!this.stopRequested) {
-        if (!ptyProcess) {
-          void this.executeWithShellIntegration();
-        }
-      } else if (!ptyProcess) {
+      if (!ptyProcess && !childProcess) {
         void this.finalize(undefined, ExecutionError.createAbortError());
       }
     } catch (error) {
@@ -173,8 +175,8 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   static async create(config: TerminalJobConfig): Promise<TerminalJob> {
-    // Preserve the shell-integration implementation on Windows, where the
-    // extension's node-pty foreground implementation is not supported yet.
+    // The extension's node-pty implementation is not supported on Windows yet,
+    // so commands there run as a plain child process without a terminal view.
     if (process.platform !== "win32") {
       try {
         const ptyProcess = await PtyProcess.spawn({
@@ -187,12 +189,26 @@ export class TerminalJob implements vscode.Disposable {
       } catch (error) {
         if (!(error instanceof PtySpawnError)) throw error;
         logger.warn(
-          "Failed to spawn background pty; falling back to shell integration",
+          "Failed to spawn background pty; falling back to child_process",
           error.cause,
         );
       }
     }
-    return new TerminalJob(config);
+    if (config.abortSignal?.aborted) return new TerminalJob(config);
+
+    const childProcess = spawnBackgroundChildProcess({
+      command: config.command,
+      cwd: config.cwd,
+      envs: config.envs,
+    });
+    try {
+      return new TerminalJob(config, undefined, childProcess);
+    } catch (error) {
+      void terminateChildProcessTree(childProcess).catch((killError) => {
+        logger.warn("Failed to stop background child process", killError);
+      });
+      throw error;
+    }
   }
 
   static adopt(ptyProcess: PtyProcess, config: TerminalJobConfig): TerminalJob {
@@ -218,7 +234,19 @@ export class TerminalJob implements vscode.Disposable {
 
   show(): void {
     if (this.finished || this.stopRequested) return;
-    if (this.ptyProcess && !this.terminal) {
+    if (!this.ptyProcess) {
+      // Without a pty there is no terminal view; show the live output file.
+      vscode.window
+        .showTextDocument(vscode.Uri.file(this.outputFile), { preview: false })
+        .then(undefined, (error) => {
+          logger.warn(
+            `Failed to open output of terminal job ${this.id}`,
+            error,
+          );
+        });
+      return;
+    }
+    if (!this.terminal) {
       this.createPtyTerminalView();
     }
     this.terminal?.show(false);
@@ -337,39 +365,53 @@ export class TerminalJob implements vscode.Disposable {
     TerminalJob.onDidChangeVisibilityEmitter.fire(this);
   }
 
-  private initializeShellTerminal(): void {
-    this.terminal = createTerminal({
-      name: this.config.name,
-      cwd: this.config.cwd,
-      location: this.config.location,
-      shellPath: getShellPath(),
-      env: {
-        ...this.config.envs,
-        ...getTerminalEnv(),
-      },
-      iconPath: new vscode.ThemeIcon("piano"),
-      hideFromUser: false,
-      isTransient: false,
+  private initializeChildProcess(childProcess: ChildProcess): void {
+    // Decode each stream separately so a multi-byte character split across
+    // chunks is not corrupted.
+    const stdoutDecoder = new StringDecoder("utf8");
+    const stderrDecoder = new StringDecoder("utf8");
+    childProcess.stdout?.on("data", (chunk: Buffer) => {
+      this.enqueueRawOutput(stdoutDecoder.write(chunk));
+    });
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      this.enqueueRawOutput(stderrDecoder.write(chunk));
+    });
+
+    // "close" fires after both pipes have ended, so all output was delivered.
+    childProcess.once("close", (code, signal) => {
+      // A stopped process may end in the middle of a character. Discard that
+      // partial sequence instead of flushing it as U+FFFD.
+      if (!this.stopRequested) {
+        this.enqueueRawOutput(stdoutDecoder.end() + stderrDecoder.end());
+      }
+      const signalNumber = signal ? osConstants.signals[signal] : undefined;
+      const exitCode =
+        code ?? (signalNumber !== undefined ? 128 + signalNumber : undefined);
+      const signalError =
+        signal && !this.stopRequested
+          ? ExecutionError.create(
+              `Background job execution terminated by signal ${signal}.`,
+            )
+          : undefined;
+      void this.finalize(exitCode, signalError);
+    });
+    childProcess.once("error", (error) => {
+      void this.finalize(
+        undefined,
+        ExecutionError.create(`Command execution failed: ${error.message}`),
+      );
     });
   }
 
   private initializeLifecycle(): void {
     this.disposables.push(
       vscode.window.onDidCloseTerminal((terminal) => {
-        if (terminal !== this.terminal || this.finished) return;
-        if (this.ptyProcess) {
-          if (!this.ptyExited) this.detachPtyTerminalView();
+        // Only pty jobs have a terminal. Closing it detaches the view and
+        // keeps the command running.
+        if (terminal !== this.terminal || this.finished || this.ptyExited) {
           return;
         }
-
-        this.stopRequested = true;
-        this.terminalCloseError = ExecutionError.create(
-          "Background job finished as user closed terminal.",
-        );
-        for (const reject of this.terminalCloseRejectors) {
-          reject(this.terminalCloseError);
-        }
-        this.terminalCloseRejectors.clear();
+        this.detachPtyTerminalView();
       }),
     );
 
@@ -387,123 +429,6 @@ export class TerminalJob implements vscode.Disposable {
     }
   }
 
-  private async executeWithShellIntegration(): Promise<void> {
-    let executionError: ExecutionError | undefined;
-    let outputError: ExecutionError | undefined;
-    let outputFinished: Promise<void> | undefined;
-    let exitCode: number | undefined;
-    try {
-      const shellIntegration = await Promise.race([
-        this.waitForShellIntegration(),
-        this.waitForTerminalClose(),
-      ]);
-      if (this.stopRequested) {
-        throw ExecutionError.createAbortError();
-      }
-      this.shellExecution = shellIntegration.executeCommand(
-        this.config.command,
-      );
-      outputFinished = this.processShellOutput(
-        this.shellExecution.read(),
-      ).catch((error) => {
-        outputError =
-          error instanceof ExecutionError
-            ? error
-            : ExecutionError.create(`Failed to read command output: ${error}`);
-      });
-      exitCode = await Promise.race([
-        this.waitForShellExecutionFinish(),
-        this.waitForAbort(),
-        this.waitForTerminalClose(),
-      ]);
-    } catch (error) {
-      executionError =
-        error instanceof ExecutionError
-          ? error
-          : ExecutionError.create(`Command execution failed: ${error}`);
-    } finally {
-      await outputFinished;
-    }
-    executionError ??= outputError;
-    await this.finalize(exitCode, executionError);
-  }
-
-  private async processShellOutput(
-    output: AsyncIterable<string>,
-  ): Promise<void> {
-    for await (const chunk of output) {
-      this.enqueueRawOutput(chunk);
-    }
-  }
-
-  private waitForShellIntegration(
-    timeoutMs = 15_000,
-  ): Promise<vscode.TerminalShellIntegration> {
-    if (this.terminal?.shellIntegration) {
-      return Promise.resolve(this.terminal.shellIntegration);
-    }
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        listener.dispose();
-        reject(new Error("Timeout waiting for shell integration"));
-      }, timeoutMs);
-      const listener = vscode.window.onDidChangeTerminalShellIntegration(
-        ({ terminal, shellIntegration }) => {
-          if (terminal !== this.terminal) return;
-          clearTimeout(timeout);
-          listener.dispose();
-          resolve(shellIntegration);
-        },
-      );
-      this.disposables.push({ dispose: () => clearTimeout(timeout) }, listener);
-    });
-  }
-
-  private waitForShellExecutionFinish(): Promise<number> {
-    return new Promise((resolve, reject) => {
-      this.disposables.push(
-        vscode.window.onDidEndTerminalShellExecution((event) => {
-          if (event.execution !== this.shellExecution) return;
-          if (event.exitCode === undefined) {
-            reject(
-              ExecutionError.create(
-                "Background job execution finished with unknown exit code.",
-              ),
-            );
-          } else {
-            resolve(event.exitCode);
-          }
-        }),
-      );
-    });
-  }
-
-  private waitForAbort(): Promise<never> {
-    return new Promise((_, reject) => {
-      const onAbort = () => reject(ExecutionError.createAbortError());
-      if (this.config.abortSignal?.aborted) {
-        onAbort();
-        return;
-      }
-      this.config.abortSignal?.addEventListener("abort", onAbort, {
-        once: true,
-      });
-      this.disposables.push({
-        dispose: () =>
-          this.config.abortSignal?.removeEventListener("abort", onAbort),
-      });
-    });
-  }
-
-  private waitForTerminalClose(): Promise<never> {
-    if (this.terminalCloseError) {
-      return Promise.reject(this.terminalCloseError);
-    }
-    return new Promise((_, reject) => {
-      this.terminalCloseRejectors.add(reject);
-    });
-  }
-
   private requestStop(reason: string): void {
     if (this.finished || this.stopRequested) return;
     this.stopRequested = true;
@@ -511,16 +436,18 @@ export class TerminalJob implements vscode.Disposable {
     logger.info(`Stopping terminal job ${this.id}: ${reason}`);
     if (this.ptyProcess) {
       if (this.monitorWatcher) {
-        this.monitorTermination = this.ptyProcess.killProcessGroup();
-        // A failed signal can leave the shell alive, so report the failure
-        // without relying on its exit callback to finalize the monitor.
-        void this.monitorTermination.catch(() => this.finalize(undefined));
+        this.termination = this.ptyProcess.killProcessGroup();
       } else {
         this.ptyProcess.kill();
       }
-    } else {
-      this.terminal?.dispose();
+    } else if (this.childProcess) {
+      // Stopping only the shell would orphan the command's descendants, which
+      // is common on Windows where cmd.exe does not forward termination.
+      this.termination = terminateChildProcessTree(this.childProcess);
     }
+    // A failed signal can leave the shell alive, so report the failure
+    // without relying on its exit callback to finalize the job.
+    void this.termination?.catch(() => this.finalize(undefined));
   }
 
   private enqueueRawOutput(data: string): void {
@@ -544,7 +471,7 @@ export class TerminalJob implements vscode.Disposable {
   private enqueueOutput(text: string, monitorOutput = true): void {
     if (text.length === 0 || this.persistenceError) return;
     this.pendingOutputCharacters += text.length;
-    this.updatePtyOutputFlowControl();
+    this.updateOutputFlowControl();
     const write = this.outputQueue.then(async () => {
       await this.outputWriter.append(text);
       this.outputManager.addChunk(text);
@@ -563,29 +490,33 @@ export class TerminalJob implements vscode.Disposable {
           0,
           this.pendingOutputCharacters - text.length,
         );
-        this.updatePtyOutputFlowControl();
+        this.updateOutputFlowControl();
       });
   }
 
-  private updatePtyOutputFlowControl(): void {
-    if (!this.ptyProcess) return;
+  private updateOutputFlowControl(): void {
     if (
-      !this.ptyOutputPaused &&
-      this.pendingOutputCharacters >= PtyOutputPauseThresholdCharacters
+      !this.outputPaused &&
+      this.pendingOutputCharacters >= OutputPauseThresholdCharacters
     ) {
-      this.ptyOutputPaused = true;
-      this.ptyProcess.pauseOutput();
+      this.outputPaused = true;
+      this.ptyProcess?.pauseOutput();
+      this.childProcess?.stdout?.pause();
+      this.childProcess?.stderr?.pause();
       return;
     }
     if (
-      this.ptyOutputPaused &&
-      this.pendingOutputCharacters <= PtyOutputResumeThresholdCharacters &&
-      !this.stopRequested &&
-      !this.finished &&
-      !this.persistenceError
+      this.outputPaused &&
+      this.pendingOutputCharacters <= OutputResumeThresholdCharacters &&
+      // A child process only emits "close" once its pipes are drained, so
+      // keep draining them after a stop or persistence failure.
+      (this.childProcess ||
+        (!this.stopRequested && !this.finished && !this.persistenceError))
     ) {
-      this.ptyOutputPaused = false;
-      this.ptyProcess.resumeOutput();
+      this.outputPaused = false;
+      this.ptyProcess?.resumeOutput();
+      this.childProcess?.stdout?.resume();
+      this.childProcess?.stderr?.resume();
     }
   }
 
@@ -598,7 +529,6 @@ export class TerminalJob implements vscode.Disposable {
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
     }
-    this.terminalCloseRejectors.clear();
     this.terminal?.dispose();
     this.terminal = undefined;
     this.ptyTerminal?.dispose();
@@ -608,9 +538,9 @@ export class TerminalJob implements vscode.Disposable {
     let executionError = initialError ?? this.persistenceError;
     let terminationFailed = false;
     try {
-      // Shell exit does not imply group exit. Finish the monitor's TERM grace
+      // Shell exit does not imply group exit. Finish the group's TERM grace
       // period and escalation before closing its transcript or reporting stop.
-      await this.monitorTermination;
+      await this.termination;
     } catch (error) {
       terminationFailed = true;
       executionError = ExecutionError.create(
@@ -713,7 +643,6 @@ export class TerminalJob implements vscode.Disposable {
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
     }
-    this.terminalCloseRejectors.clear();
     this.terminal?.dispose();
     this.ptyTerminal?.dispose();
     if (this.outputWriter) {

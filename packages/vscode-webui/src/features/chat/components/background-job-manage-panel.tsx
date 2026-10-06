@@ -431,15 +431,19 @@ function JobRow({
   const { t } = useTranslation();
   const { backgroundCommands, show, hide } = useBackgroundCommands();
   const isRunning = job.status === "running";
-  const isVisible = backgroundCommands?.[job.backgroundJobId]?.isVisible;
+  const backgroundCommand = backgroundCommands?.[job.backgroundJobId];
+  const isVisible = backgroundCommand?.isVisible;
+  // Commands without a terminal view (e.g. on Windows) only have output.
+  const hasTerminal = backgroundCommand?.detachable !== false;
   const openOutputFile = () => {
     if (job.outputFile) vscodeHost.openFile(job.outputFile);
   };
-  const open = isRunning
-    ? () => show?.(job.backgroundJobId)
-    : job.outputFile
-      ? openOutputFile
-      : undefined;
+  const open =
+    isRunning && hasTerminal
+      ? () => show?.(job.backgroundJobId)
+      : job.outputFile
+        ? openOutputFile
+        : undefined;
 
   const statusLabel =
     job.status === "running"
@@ -450,24 +454,39 @@ function JobRow({
     <span className="min-w-0 flex-1 truncate text-sm">{job.title}</span>
   );
 
+  const openOutputAction = job.outputFile && (
+    <JobAction
+      label={t("backgroundJobNotifications.openOutput")}
+      onClick={openOutputFile}
+    >
+      <FileTextIcon className="size-4" />
+    </JobAction>
+  );
+
   const actions = isRunning ? (
     <>
-      <JobAction
-        label={
-          isVisible
-            ? t("managePanel.hideTerminal")
-            : t("managePanel.openTerminal")
-        }
-        onClick={() =>
-          isVisible ? hide?.(job.backgroundJobId) : show?.(job.backgroundJobId)
-        }
-      >
-        {isVisible ? (
-          <EyeOffIcon className="size-4" />
-        ) : (
-          <EyeIcon className="size-4" />
-        )}
-      </JobAction>
+      {hasTerminal ? (
+        <JobAction
+          label={
+            isVisible
+              ? t("managePanel.hideTerminal")
+              : t("managePanel.openTerminal")
+          }
+          onClick={() =>
+            isVisible
+              ? hide?.(job.backgroundJobId)
+              : show?.(job.backgroundJobId)
+          }
+        >
+          {isVisible ? (
+            <EyeOffIcon className="size-4" />
+          ) : (
+            <EyeIcon className="size-4" />
+          )}
+        </JobAction>
+      ) : (
+        openOutputAction
+      )}
       <StopJobAction
         onClick={async () => {
           try {
@@ -481,14 +500,7 @@ function JobRow({
     </>
   ) : (
     <>
-      {job.outputFile && (
-        <JobAction
-          label={t("backgroundJobNotifications.openOutput")}
-          onClick={openOutputFile}
-        >
-          <FileTextIcon className="size-4" />
-        </JobAction>
-      )}
+      {openOutputAction}
       {job.command && <CopyCommandAction command={job.command} />}
     </>
   );

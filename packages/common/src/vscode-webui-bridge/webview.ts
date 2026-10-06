@@ -56,6 +56,11 @@ export type BackgroundCommands = Record<
   string,
   {
     isVisible: boolean;
+    /**
+     * `false` when the command has no terminal view (e.g. on Windows) and
+     * only exposes its output file. Omitted means detachable.
+     */
+    detachable?: boolean;
     taskId?: string;
     command?: string;
     monitor?: string;
