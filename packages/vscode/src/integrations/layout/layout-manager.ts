@@ -374,6 +374,12 @@ export class LayoutManager implements vscode.Disposable {
     if (this.enabled && this.fsm.state.value === "pochi-layout") {
       return vscode.ViewColumn.One;
     }
+    if (this.enabled && this.fsm.state.value === "non-pochi-layout") {
+      // Resizing can invalidate the layout without changing the task group.
+      return this.allTabGroups.find(
+        (group) => getTabGroupType(group.tabs) === "pochi-panel",
+      )?.viewColumn;
+    }
     return undefined;
   }
 
