@@ -17,6 +17,79 @@ import { compactTask } from "../llm/compact-task";
 
 type MessagePart = Message["parts"][number];
 
+describe("subtask delegation", () => {
+  it.each([false, true])(
+    "only offers supported delegation in the model request (isSubTask: %s)",
+    async (isSubTask) => {
+      const model = new MockLanguageModelV3({
+        doStream: {
+          stream: new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: "stream-start", warnings: [] });
+              controller.enqueue({
+                type: "finish",
+                finishReason: { unified: "stop", raw: "stop" },
+                usage: {
+                  inputTokens: {
+                    total: 1,
+                    noCache: 1,
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                  },
+                  outputTokens: { total: 0, text: 0, reasoning: 0 },
+                },
+              });
+              controller.close();
+            },
+          }),
+        },
+      });
+      const transport = new FlexibleChatTransport({
+        store: {
+          storeId: "store-1",
+          commit: vi.fn(),
+        } as unknown as LiveKitStore,
+        blobStore: {} as BlobStore,
+        isSubTask,
+        getters: {
+          getLLM: () => ({
+            type: "vendor",
+            id: "test-model",
+            getModel: () => model,
+          }),
+        },
+      });
+      const stream = await transport.sendMessages({
+        trigger: "submit-message",
+        chatId: "task-1",
+        messageId: undefined,
+        messages: [
+          {
+            id: "user-1",
+            role: "user",
+            parts: [{ type: "text", text: "Analyze baseline failures" }],
+          },
+        ],
+        abortSignal: undefined,
+      });
+      for await (const chunk of stream) {
+        expect(chunk.type).not.toBe("error");
+      }
+
+      const request = model.doStreamCalls[0];
+      expect(request.tools?.some((tool) => tool.name === "newTask")).toBe(
+        !isSubTask,
+      );
+      const system = request.prompt.find(
+        (message) => message.role === "system",
+      );
+      expect(
+        system?.content.includes('use the newTask tool with agentType="explore"'),
+      ).toBe(!isSubTask);
+    },
+  );
+});
+
 describe("environment after compaction", () => {
   it.each(["llm", "task-memory"])(
     "restores the environment on repeated and reloaded %s compacted tool continuations",

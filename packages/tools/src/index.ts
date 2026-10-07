@@ -198,13 +198,7 @@ type SelectAgentToolsOptions = {
 
 const RequiredAgentTools = ["attemptCompletion", "useSkill"];
 
-function isAgentToolDisabled(
-  agentName: string,
-  toolName: string,
-  isSubTask: boolean,
-): boolean {
-  if (isSubTask && toolName === "newTask") return true;
-
+function isAgentToolDisabled(agentName: string, toolName: string): boolean {
   const canAskFollowupQuestion =
     agentName === "planner" || agentName === "guide";
   return toolName === "askFollowupQuestion" && !canAskFollowupQuestion;
@@ -212,7 +206,6 @@ function isAgentToolDisabled(
 
 function getAgentToolAllowList(
   agent: CustomAgent | undefined,
-  isSubTask: boolean,
 ): Set<string> | undefined {
   /**
    * if no agent or no tools specified, we don't filter any tools.
@@ -226,7 +219,7 @@ function getAgentToolAllowList(
 
   for (const tool of agent.tools) {
     const { name } = parseToolSpec(tool);
-    if (isAgentToolDisabled(agent.name, name, isSubTask)) {
+    if (isAgentToolDisabled(agent.name, name)) {
       continue;
     }
     if (RequiredAgentTools.includes(name)) continue;
@@ -243,11 +236,15 @@ function getAgentToolAllowList(
 function filterTools(
   tools: AgentTools,
   allowList: Set<string> | undefined,
+  isSubTask: boolean,
 ): AgentTools {
-  if (!allowList) return tools;
-
   return Object.fromEntries(
-    Object.entries(tools).filter(([name]) => allowList.has(name)),
+    Object.entries(tools).filter(
+      ([name]) =>
+        // Nested tasks have no newTask initialization or execution support.
+        (!isSubTask || name !== "newTask") &&
+        (!allowList || allowList.has(name)),
+    ),
   ) as AgentTools;
 }
 
@@ -255,7 +252,7 @@ export const selectAgentTools = (
   options: SelectAgentToolsOptions,
 ): AgentTools => {
   const { agent, mcpTools, isSubTask, ...toolOptions } = options;
-  const allowList = getAgentToolAllowList(agent, isSubTask);
+  const allowList = getAgentToolAllowList(agent);
 
   const avaliableTools: AgentTools = {
     ...createClientTools({ ...toolOptions, isSubTask }),
@@ -266,5 +263,5 @@ export const selectAgentTools = (
     avaliableTools.createReview = createReview;
   }
 
-  return filterTools(avaliableTools, allowList);
+  return filterTools(avaliableTools, allowList, isSubTask);
 };
