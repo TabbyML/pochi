@@ -381,11 +381,17 @@ export class TerminalJob implements vscode.Disposable {
   }
 
   private async executeWithShellIntegration(): Promise<void> {
+    const { abortSignal } = this.config;
+    const onAbort = () => this.requestStop("abort signal");
+    const stopListeningForAbort = () =>
+      abortSignal?.removeEventListener("abort", onAbort);
+    this.disposables.push({ dispose: stopListeningForAbort });
     let executionError: ExecutionError | undefined;
     let outputError: ExecutionError | undefined;
     let outputFinished: Promise<void> | undefined;
     let exitCode: number | undefined;
     try {
+      abortSignal?.addEventListener("abort", onAbort, { once: true });
       const shellIntegration = await Promise.race([
         this.waitForShellIntegration(),
         this.waitForTerminalClose(),
@@ -396,6 +402,8 @@ export class TerminalJob implements vscode.Disposable {
       this.shellExecution = shellIntegration.executeCommand(
         this.config.command,
       );
+      // Navigation only cancels startup, never a command that is running.
+      stopListeningForAbort();
       outputFinished = this.processShellOutput(
         this.shellExecution.read(),
       ).catch((error) => {
@@ -414,6 +422,7 @@ export class TerminalJob implements vscode.Disposable {
           ? error
           : ExecutionError.create(`Command execution failed: ${error}`);
     } finally {
+      stopListeningForAbort();
       await outputFinished;
     }
     executionError ??= outputError;

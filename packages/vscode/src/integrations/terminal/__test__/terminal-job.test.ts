@@ -179,13 +179,14 @@ function createHarness(options?: {
           delete: () => lifecycle.push("manager-deleted"),
         },
       },
+      "./pty-process": {
+        PtyProcess: TestPtyProcess,
+        PtySpawnError: class extends Error {},
+      },
       "./pty-terminal": {
         PtyTerminal: class {
           private readonly exitSubscription: Disposable;
-          constructor(
-            process: TestPtyProcess,
-            onCloseRequested: () => void,
-          ) {
+          constructor(process: TestPtyProcess, onCloseRequested: () => void) {
             ptyTerminalCloseCallbacks.push(onCloseRequested);
             this.exitSubscription = process.onExit(() => {
               closeEmitter.fire(terminal);
@@ -247,6 +248,134 @@ interface FakeTerminal {
   dispose(): void;
 }
 
+async function createShellHarness(options: {
+  abortSignal: AbortSignal;
+  monitor?: MonitorJobOptions;
+  shellIntegrationReady?: boolean;
+}) {
+  const closeEmitter = new TestEventEmitter<FakeTerminal>();
+  const executeCommandCalls: string[] = [];
+  const integrationEmitter = new TestEventEmitter<{
+    terminal: FakeTerminal;
+    shellIntegration: typeof shellIntegration;
+  }>();
+  const executionEndEmitter = new TestEventEmitter<{
+    execution: typeof execution;
+    exitCode: number;
+  }>();
+  const execution = { async *read() {} };
+  const shellIntegration = {
+    executeCommand: (command: string) => {
+      executeCommandCalls.push(command);
+      return execution;
+    },
+  };
+  let terminalDisposeCalls = 0;
+  const terminal: FakeTerminal & {
+    shellIntegration?: typeof shellIntegration;
+  } = {
+    show: () => {},
+    dispose: () => {
+      terminalDisposeCalls++;
+      closeEmitter.fire(terminal);
+    },
+    shellIntegration: options.shellIntegrationReady
+      ? shellIntegration
+      : undefined,
+  };
+  class TestPtySpawnError extends Error {
+    cause = new Error("pty unavailable");
+  }
+  const finishEvents: BackgroundJobTerminalEvent[] = [];
+  const vscode = {
+    EventEmitter: TestEventEmitter,
+    ThemeIcon: class {
+      constructor(readonly id: string) {}
+    },
+    window: {
+      onDidCloseTerminal: closeEmitter.event,
+      onDidChangeTerminalShellIntegration: integrationEmitter.event,
+      onDidEndTerminalShellExecution: executionEndEmitter.event,
+    },
+  };
+  const outputManager = {
+    output: { value: undefined },
+    addChunk: () => {},
+    finalize: () => {},
+  };
+  const { TerminalJob } = proxyquire
+    .noCallThru()
+    .noPreserveCache()
+    .load("../terminal-job", {
+      vscode,
+      "../layout": { createTerminal: () => terminal },
+      "@/lib/logger": {
+        getLogger: () => ({
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+        }),
+      },
+      "@getpochi/common/env-utils": { getTerminalEnv: () => ({}) },
+      "@getpochi/common/tool-utils": {
+        BackgroundJobOutputFile: class {
+          async append() {}
+          async close() {}
+        },
+        PlainOutputSanitizer: class {
+          write(chunk: string) {
+            return chunk;
+          }
+          end() {
+            return "";
+          }
+        },
+        createBackgroundJobId: () => "bgjob-cmd-aborted",
+        getBackgroundJobOutputPath: () => "/tmp/bgjob-cmd-aborted.log",
+        getShellPath: () => "/bin/zsh",
+      },
+      "./output": {
+        OutputManager: {
+          create: () => outputManager,
+          delete: () => {},
+        },
+      },
+      "./pty-process": {
+        PtyProcess: {
+          spawn: async () => {
+            throw new TestPtySpawnError();
+          },
+        },
+        PtySpawnError: TestPtySpawnError,
+      },
+      "./pty-terminal": { PtyTerminal: class {} },
+      "./utils": { ExecutionError: TestExecutionError },
+    }) as typeof import("../terminal-job");
+  TerminalJob.onDidFinish((event) => finishEvents.push(event));
+  const job = await TerminalJob.create({
+    name: "shell job",
+    command: "echo test",
+    cwd: "/tmp",
+    taskId: "task-test",
+    abortSignal: options.abortSignal,
+    monitor: options.monitor,
+  });
+  return {
+    TerminalJob,
+    job,
+    executeCommandCalls,
+    finishEvents,
+    enableShellIntegration: () => {
+      terminal.shellIntegration = shellIntegration;
+      integrationEmitter.fire({ terminal, shellIntegration });
+    },
+    finishExecution: () => executionEndEmitter.fire({ execution, exitCode: 0 }),
+    get terminalDisposeCalls() {
+      return terminalDisposeCalls;
+    },
+  };
+}
+
 describe("TerminalJob", () => {
   it("waits for monitor group cleanup before publishing the end or releasing its transcript", async () => {
     const harness = createHarness({ monitor: { description: "watch" } });
@@ -268,7 +397,10 @@ describe("TerminalJob", () => {
     finishCleanup();
     await flushPromises();
     assert.strictEqual(harness.monitorEvents.at(-1)?.ended?.status, "stopped");
-    assert.strictEqual(harness.monitorEvents.at(-1)?.ended?.reason, "kill requested");
+    assert.strictEqual(
+      harness.monitorEvents.at(-1)?.ended?.reason,
+      "kill requested",
+    );
     assert.strictEqual(
       harness.monitorEvents.filter((event) => event.ended).length,
       1,
@@ -343,101 +475,88 @@ describe("TerminalJob", () => {
   }
 
   it("does not launch shell integration for an already-aborted job", async () => {
-    const closeEmitter = new TestEventEmitter<FakeTerminal>();
-    const executeCommandCalls: string[] = [];
-    const terminal: FakeTerminal & {
-      shellIntegration: { executeCommand(command: string): never };
-    } = {
-      show: () => {
-        throw new Error("aborted terminal should not be shown");
-      },
-      dispose: () => closeEmitter.fire(terminal),
-      shellIntegration: {
-        executeCommand: (command: string) => {
-          executeCommandCalls.push(command);
-          throw new Error("aborted command should not execute");
-        },
-      },
-    };
-    class TestPtySpawnError extends Error {
-      cause = new Error("pty unavailable");
-    }
-    const finishEvents: BackgroundJobTerminalEvent[] = [];
-    const vscode = {
-      EventEmitter: TestEventEmitter,
-      ThemeIcon: class {
-        constructor(readonly id: string) {}
-      },
-      window: { onDidCloseTerminal: closeEmitter.event },
-    };
-    const outputManager = {
-      output: { value: undefined },
-      addChunk: () => {},
-      finalize: () => {},
-    };
-    const { TerminalJob } = proxyquire
-      .noCallThru()
-      .noPreserveCache()
-      .load("../terminal-job", {
-        vscode,
-        "../layout": { createTerminal: () => terminal },
-        "@/lib/logger": {
-          getLogger: () => ({
-            debug: () => {},
-            info: () => {},
-            warn: () => {},
-          }),
-        },
-        "@getpochi/common/env-utils": { getTerminalEnv: () => ({}) },
-        "@getpochi/common/tool-utils": {
-          BackgroundJobOutputFile: class {
-            async append() {}
-            async close() {}
-          },
-          PlainOutputSanitizer: class {
-            write(chunk: string) {
-              return chunk;
-            }
-            end() {
-              return "";
-            }
-          },
-          createBackgroundJobId: () => "bgjob-cmd-aborted",
-          getBackgroundJobOutputPath: () => "/tmp/bgjob-cmd-aborted.log",
-          getShellPath: () => "/bin/zsh",
-        },
-        "./output": {
-          OutputManager: {
-            create: () => outputManager,
-            delete: () => {},
-          },
-        },
-        "./pty-process": {
-          PtyProcess: {
-            spawn: async () => {
-              throw new TestPtySpawnError();
-            },
-          },
-          PtySpawnError: TestPtySpawnError,
-        },
-        "./pty-terminal": { PtyTerminal: class {} },
-        "./utils": { ExecutionError: TestExecutionError },
-      }) as typeof import("../terminal-job");
-    TerminalJob.onDidFinish((event) => finishEvents.push(event));
     const abortController = new AbortController();
     abortController.abort();
-
-    await TerminalJob.create({
-      name: "aborted shell job",
-      command: "echo should-not-run",
-      cwd: "/tmp",
-      taskId: "task-test",
+    const harness = await createShellHarness({
       abortSignal: abortController.signal,
+      shellIntegrationReady: true,
     });
     await flushPromises();
 
-    assert.deepStrictEqual(executeCommandCalls, []);
-    assert.strictEqual(finishEvents[0]?.status, "stopped");
+    assert.deepStrictEqual(harness.executeCommandCalls, []);
+    assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+  });
+
+  for (const monitor of [undefined, { description: "watch" }]) {
+    it(`cancels a shell ${monitor ? "monitor" : "command"} while waiting for integration`, async () => {
+      const abortController = new AbortController();
+      const harness = await createShellHarness({
+        abortSignal: abortController.signal,
+        monitor,
+      });
+      try {
+        abortController.abort();
+        await flushPromises();
+
+        assert.ok(harness.terminalDisposeCalls > 0);
+        assert.strictEqual(harness.job.isFinished, true);
+        assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+        harness.enableShellIntegration();
+        await flushPromises();
+        assert.deepStrictEqual(harness.executeCommandCalls, []);
+      } finally {
+        harness.job.kill();
+        await flushPromises();
+      }
+    });
+
+    it(`keeps a started shell ${monitor ? "monitor" : "command"} running after its tool call aborts`, async () => {
+      const abortController = new AbortController();
+      const harness = await createShellHarness({
+        abortSignal: abortController.signal,
+        monitor,
+      });
+      try {
+        harness.enableShellIntegration();
+        await flushPromises();
+        assert.deepStrictEqual(harness.executeCommandCalls, ["echo test"]);
+
+        abortController.abort();
+        await flushPromises();
+        assert.strictEqual(harness.terminalDisposeCalls, 0);
+        assert.strictEqual(harness.job.isFinished, false);
+        assert.strictEqual(
+          harness.TerminalJob.get(harness.job.id),
+          harness.job,
+        );
+
+        harness.finishExecution();
+        await flushPromises();
+        assert.strictEqual(harness.job.isFinished, true);
+      } finally {
+        harness.job.kill();
+        await flushPromises();
+      }
+    });
+  }
+
+  it("does not launch when aborted just after shell integration becomes ready", async () => {
+    const abortController = new AbortController();
+    const harness = await createShellHarness({
+      abortSignal: abortController.signal,
+    });
+    try {
+      harness.enableShellIntegration();
+      abortController.abort();
+      await flushPromises();
+
+      assert.deepStrictEqual(harness.executeCommandCalls, []);
+      assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+      assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+    } finally {
+      harness.job.kill();
+      await flushPromises();
+    }
   });
 
   it("keeps an adopted pty running when terminal view creation fails", async () => {
@@ -448,10 +567,7 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.adoptionError, undefined);
     assert.strictEqual(harness.job.isVisible, false);
     assert.strictEqual(harness.ptyProcess.killCalls, 0);
-    assert.strictEqual(
-      harness.TerminalJob.get("bgjob-cmd-test"),
-      harness.job,
-    );
+    assert.strictEqual(harness.TerminalJob.get("bgjob-cmd-test"), harness.job);
 
     harness.ptyProcess.emitExit(0);
     await flushPromises();
