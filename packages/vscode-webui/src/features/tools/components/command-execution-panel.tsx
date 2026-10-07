@@ -263,8 +263,9 @@ export const BackgroundJobPanel: FC<{
     (tm) => tm.backgroundJobId === backgroundJobId,
   );
   const isUserTerminal = parseBackgroundJobId(backgroundJobId) === "terminal";
-  // A background command runs on a pty, so it outlives its terminal tab: the
-  // host lists it for exactly as long as the process lives.
+  // A background command outlives its terminal tab (if any): the host lists it
+  // for exactly as long as the process lives. Showing a command without a
+  // terminal opens its output file.
   const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
   const canOpenTerminal = isRunning || liveTerminal !== undefined;
   const hasResolvedControlState =

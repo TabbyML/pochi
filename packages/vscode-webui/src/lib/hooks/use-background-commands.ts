@@ -20,8 +20,9 @@ export type UseBackgroundCommandsResult =
     };
 
 /**
- * Returns all running detachable background commands and controls their
- * terminal views by id. Hiding a terminal does not stop its command.
+ * Returns all running background commands and controls their terminal views
+ * by id. Hiding a terminal does not stop its command. Commands marked
+ * `detachable: false` have no terminal; showing them opens their output.
  * @useSignals this comment is needed to enable signals in this hook
  */
 export const useBackgroundCommands = (): UseBackgroundCommandsResult => {

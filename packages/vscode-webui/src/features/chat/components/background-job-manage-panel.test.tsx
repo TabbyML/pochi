@@ -19,7 +19,9 @@ const close = vi.fn();
 const openFile = vi.fn();
 const copyToClipboard = vi.fn();
 let backgroundJobs: BackgroundJobEntry[] = [];
-let backgroundCommands: Record<string, { isVisible: boolean }> | undefined = {};
+let backgroundCommands:
+  | Record<string, { isVisible: boolean; detachable?: boolean }>
+  | undefined = {};
 let isDevMode = false;
 let useRealSheet = false;
 let backgroundTasks: Array<{ id: string; title: string; status?: string }> = [];
@@ -520,6 +522,26 @@ describe("BackgroundJobManagePanel", () => {
     expect(show).toHaveBeenCalledWith("bgjob-cmd-1");
     // The process outlives its tab, so it can still be stopped.
     expect(screen.getByLabelText("backgroundTasks.stop")).toBeDefined();
+  });
+
+  it("offers a running command without a terminal its output file and stop", () => {
+    backgroundCommands = {
+      "bgjob-cmd-1": { isVisible: false, detachable: false },
+    };
+    backgroundJobs = [{ ...runningJob, outputFile: "/tmp/bgjob-cmd-1.log" }];
+
+    renderBackgroundJobManagePanel();
+
+    expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
+    expect(screen.queryByLabelText("managePanel.hideTerminal")).toBeNull();
+    fireEvent.click(
+      screen.getByLabelText("backgroundJobNotifications.openOutput"),
+    );
+    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    expect(show).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("backgroundTasks.stop"));
+    expect(close).toHaveBeenCalledWith("bgjob-cmd-1");
   });
 
   it("offers a finished command its output file", () => {

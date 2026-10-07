@@ -56,7 +56,7 @@ export class TerminalState implements vscode.Disposable {
     }
   >();
 
-  // Signals containing the current terminals and detachable background commands.
+  // Signals containing the current terminals and running background commands.
   visibleTerminals = signal<TerminalInfo[]>([]);
   backgroundCommands = signal<BackgroundCommands>({});
 
@@ -99,11 +99,7 @@ export class TerminalState implements vscode.Disposable {
     backgroundJobId: string,
   ): TerminalJob | undefined {
     const job = TerminalJob.get(backgroundJobId);
-    return job &&
-      (job.isPtyTerminal || job.monitorDescription !== undefined) &&
-      !job.isFinished
-      ? job
-      : undefined;
+    return job && !job.isFinished ? job : undefined;
   }
 
   /**
@@ -260,17 +256,16 @@ export class TerminalState implements vscode.Disposable {
   }
 
   private listBackgroundCommands(): BackgroundCommands {
+    // Every running job is listed, with or without a terminal view: the WebUI
+    // treats this as the source of truth for liveness and stopping.
     return Object.fromEntries(
       TerminalJob.list()
-        .filter(
-          (job) =>
-            (job.isPtyTerminal || job.monitorDescription !== undefined) &&
-            !job.isFinished,
-        )
+        .filter((job) => !job.isFinished)
         .map((job) => [
           job.id,
           {
             isVisible: job.isVisible,
+            detachable: job.isPtyTerminal,
             taskId: job.taskId,
             command: job.command,
             monitor: job.monitorDescription,
@@ -306,7 +301,7 @@ export class TerminalState implements vscode.Disposable {
       });
 
     for (const job of TerminalJob.list()) {
-      if (!job.isPtyTerminal || listedJobIds.has(job.id)) continue;
+      if (listedJobIds.has(job.id)) continue;
       terminals.push({
         name: job.monitorDescription ?? job.name,
         isActive: false,
