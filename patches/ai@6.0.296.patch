@@ -1,72 +1,28 @@
 diff --git a/dist/index.js b/dist/index.js
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -14805,15 +14805,19 @@
+@@ -14805,6 +14805,10 @@
        }
      }
      this.setStatus({ status: "submitted", error: void 0 });
--    const lastMessage = this.lastMessage;
--    const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
--    const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
--    const usesEarlierAssistantMessage = responseMessageIndex !== -1 && responseMessageIndex < this.state.messages.length - 1 && (responseMessage == null ? void 0 : responseMessage.role) === "assistant";
-     let isAbort = false;
-     let isDisconnect = false;
-     let isError = false;
-     let activeResponse;
-+    const preparationResponse = { abortController };
-     try {
-+      this.activeResponse = preparationResponse;
-+      await this.onBeforeSnapshotInMakeRequest?.({ abortSignal: abortController.signal });
-+      abortController.signal.throwIfAborted();
-+      const lastMessage = this.lastMessage;
-+      const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
-+      const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
-+      const usesEarlierAssistantMessage = responseMessageIndex !== -1 && responseMessageIndex < this.state.messages.length - 1 && (responseMessage == null ? void 0 : responseMessage.role) === "assistant";
-       const response = {
-         state: trigger === "resume-stream" && this.resumableStreamState != null ? this.resumableStreamState : createStreamingUIMessageState({
-           lastMessage: trigger === "resume-stream" || trigger === "regenerate-message" ? void 0 : this.state.snapshot(responseMessage),
-@@ -14946,7 +14950,7 @@
-           });
-         }
-       } finally {
--        if (this.activeResponse === activeResponse) {
-+        if (this.activeResponse === activeResponse || this.activeResponse === preparationResponse) {
-           this.activeResponse = void 0;
-         }
-         clearActiveResumeRequest();
++    this.activeResponse = { abortController };
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal
++    });
+     const lastMessage = this.lastMessage;
+     const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
+     const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
 diff --git a/dist/index.mjs b/dist/index.mjs
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -14795,15 +14795,19 @@
+@@ -14795,6 +14795,10 @@
        }
      }
      this.setStatus({ status: "submitted", error: void 0 });
--    const lastMessage = this.lastMessage;
--    const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
--    const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
--    const usesEarlierAssistantMessage = responseMessageIndex !== -1 && responseMessageIndex < this.state.messages.length - 1 && (responseMessage == null ? void 0 : responseMessage.role) === "assistant";
-     let isAbort = false;
-     let isDisconnect = false;
-     let isError = false;
-     let activeResponse;
-+    const preparationResponse = { abortController };
-     try {
-+      this.activeResponse = preparationResponse;
-+      await this.onBeforeSnapshotInMakeRequest?.({ abortSignal: abortController.signal });
-+      abortController.signal.throwIfAborted();
-+      const lastMessage = this.lastMessage;
-+      const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
-+      const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
-+      const usesEarlierAssistantMessage = responseMessageIndex !== -1 && responseMessageIndex < this.state.messages.length - 1 && (responseMessage == null ? void 0 : responseMessage.role) === "assistant";
-       const response = {
-         state: trigger === "resume-stream" && this.resumableStreamState != null ? this.resumableStreamState : createStreamingUIMessageState({
-           lastMessage: trigger === "resume-stream" || trigger === "regenerate-message" ? void 0 : this.state.snapshot(responseMessage),
-@@ -14936,7 +14940,7 @@
-           });
-         }
-       } finally {
--        if (this.activeResponse === activeResponse) {
-+        if (this.activeResponse === activeResponse || this.activeResponse === preparationResponse) {
-           this.activeResponse = void 0;
-         }
-         clearActiveResumeRequest();
++    this.activeResponse = { abortController };
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal
++    });
+     const lastMessage = this.lastMessage;
+     const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
+     const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];

@@ -6,7 +6,7 @@ import {
   type ChatState,
   type ChatStatus,
 } from "ai";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Message } from "../../types";
 
 class TestChatState implements ChatState<Message> {
@@ -54,71 +54,6 @@ describe("ai sdk patch", () => {
         },
       },
     });
-  });
-
-  it("handles preparation errors and allows the next request", async () => {
-    const onError = vi.fn();
-    const sendMessages = vi.fn(
-      async () =>
-        new ReadableStream({
-          start(controller) {
-            controller.close();
-          },
-        }),
-    );
-    const chat = new TestChat({
-      transport: { sendMessages, reconnectToStream: async () => null },
-      onError,
-    });
-    const error = new Error("preparation failed");
-    chat.onBeforeSnapshotInMakeRequest = async () => {
-      throw error;
-    };
-
-    await expect(chat.sendMessage({ text: "hello" })).resolves.toBeUndefined();
-    expect(chat.status).toBe("error");
-    expect(onError).toHaveBeenCalledWith(error);
-    expect(sendMessages).not.toHaveBeenCalled();
-
-    chat.onBeforeSnapshotInMakeRequest = undefined;
-    await chat.sendMessage({ text: "retry" });
-    expect(chat.status).toBe("ready");
-    expect(sendMessages).toHaveBeenCalledOnce();
-  });
-
-  it("stops during preparation without sending the request", async () => {
-    const sendMessages = vi.fn(
-      async () =>
-        new ReadableStream({
-          start(controller) {
-            controller.close();
-          },
-        }),
-    );
-    const chat = new TestChat({
-      transport: { sendMessages, reconnectToStream: async () => null },
-    });
-    let started!: () => void;
-    const preparing = new Promise<void>((resolve) => {
-      started = resolve;
-    });
-    let signal: AbortSignal | undefined;
-    chat.onBeforeSnapshotInMakeRequest = async ({ abortSignal }) => {
-      signal = abortSignal;
-      started();
-      await new Promise<void>((resolve) => {
-        abortSignal.addEventListener("abort", () => resolve(), { once: true });
-      });
-    };
-
-    const request = chat.sendMessage({ text: "hello" });
-    await preparing;
-    await chat.stop();
-    await request;
-
-    expect(signal?.aborted).toBe(true);
-    expect(sendMessages).not.toHaveBeenCalled();
-    expect(chat.status).toBe("ready");
   });
 
   it("snapshots messages after preparation replaces the history", async () => {
