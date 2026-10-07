@@ -35,6 +35,8 @@ type TaskStateData = {
   updatedAt: number;
 };
 
+type TaskStatePatch = Partial<Omit<TaskStateData, "updatedAt">>;
+
 const logger = getLogger("TaskDataStore");
 
 // 36 days in milliseconds
@@ -47,11 +49,8 @@ export class TaskDataStore {
 
   state = signal<Record<string, TaskStateData>>({});
 
-  /** Serializes task state writes. */
+  /** Serializes all task state writes. */
   private writeGroup = runExclusive.createGroupRef();
-
-  /** Serializes notification read-modify-write operations. */
-  private notificationGroup = runExclusive.createGroupRef();
 
   constructor(
     @inject("vscode.ExtensionContext")
@@ -95,36 +94,44 @@ export class TaskDataStore {
     return this.state.value[taskId];
   }
 
-  private saveTaskState = runExclusive.build(
+  /**
+   * The only write path. Patches are computed from the latest state inside the
+   * lock, so concurrent writers never overwrite each other's changes.
+   * Returning undefined skips the write.
+   */
+  private updateTasks = runExclusive.build(
     this.writeGroup,
     async (
-      taskId: string,
-      patch: Partial<Omit<TaskStateData, "updatedAt">>,
+      getPatches: (
+        state: Record<string, TaskStateData>,
+      ) => Record<string, TaskStatePatch> | undefined,
     ): Promise<void> => {
-      const current = this.state.value[taskId] ?? ({} as TaskStateData);
-      const merged: TaskStateData = {
-        ...current,
-        ...patch,
-        updatedAt: Date.now(),
-      };
-      const newState = { ...this.state.value, [taskId]: merged };
+      const patches = getPatches(this.state.value);
+      if (!patches) return;
+      const now = Date.now();
+      const newState = { ...this.state.value };
+      for (const [taskId, patch] of Object.entries(patches)) {
+        newState[taskId] = { ...newState[taskId], ...patch, updatedAt: now };
+      }
       await this.context.globalState.update(this.storageKey, newState);
       this.state.value = newState;
     },
   );
 
+  private saveTaskState(taskId: string, patch: TaskStatePatch) {
+    return this.updateTasks(() => ({ [taskId]: patch }));
+  }
+
   getMcpConfigOverride(taskId: string): McpConfigOverride | undefined {
     return this.getTaskState(taskId)?.mcpConfigOverride;
   }
 
-  addBackgroundJobNotification = runExclusive.build(
-    this.notificationGroup,
-    async (
-      taskId: string,
-      notification: BackgroundJobNotification,
-    ): Promise<void> => {
-      const notifications =
-        this.state.value[taskId]?.backgroundJobNotifications ?? [];
+  async addBackgroundJobNotification(
+    taskId: string,
+    notification: BackgroundJobNotification,
+  ): Promise<void> {
+    await this.updateTasks((state) => {
+      const notifications = state[taskId]?.backgroundJobNotifications ?? [];
       if (
         notifications.some(
           (item) => item.notificationId === notification.notificationId,
@@ -132,28 +139,30 @@ export class TaskDataStore {
       ) {
         return;
       }
-      await this.saveTaskState(taskId, {
-        backgroundJobNotifications: enqueueBackgroundJobNotification(
-          notifications,
-          notification,
-        ),
-      });
-    },
-  );
+      return {
+        [taskId]: {
+          backgroundJobNotifications: enqueueBackgroundJobNotification(
+            notifications,
+            notification,
+          ),
+        },
+      };
+    });
+  }
 
-  acknowledgeBackgroundJobNotification = runExclusive.build(
-    this.notificationGroup,
-    async (taskId: string, notificationId: string): Promise<void> => {
-      const notifications =
-        this.state.value[taskId]?.backgroundJobNotifications ?? [];
-      await this.saveTaskState(taskId, {
+  async acknowledgeBackgroundJobNotification(
+    taskId: string,
+    notificationId: string,
+  ): Promise<void> {
+    await this.updateTasks((state) => ({
+      [taskId]: {
         backgroundJobNotifications: acknowledgeBackgroundJobNotification(
-          notifications,
+          state[taskId]?.backgroundJobNotifications ?? [],
           notificationId,
         ),
-      });
-    },
-  );
+      },
+    }));
+  }
 
   getBackgroundJobNotificationsSignal(taskId: string) {
     return computed(() =>
@@ -185,14 +194,14 @@ export class TaskDataStore {
   }
 
   async setArchived(updates: Record<string, boolean>): Promise<void> {
-    const newState = { ...this.state.value };
-    const now = Date.now();
-    for (const [taskId, archived] of Object.entries(updates)) {
-      const existing = newState[taskId] || { updatedAt: now };
-      newState[taskId] = { ...existing, archived, updatedAt: now };
-    }
-    await this.context.globalState.update(this.storageKey, newState);
-    this.state.value = newState;
+    await this.updateTasks(() =>
+      Object.fromEntries(
+        Object.entries(updates).map(([taskId, archived]) => [
+          taskId,
+          { archived },
+        ]),
+      ),
+    );
   }
 
   /**
@@ -214,14 +223,11 @@ export class TaskDataStore {
   }
 
   async setPinned(updates: Record<string, boolean>): Promise<void> {
-    const newState = { ...this.state.value };
-    const now = Date.now();
-    for (const [taskId, pinned] of Object.entries(updates)) {
-      const existing = newState[taskId] || { updatedAt: now };
-      newState[taskId] = { ...existing, pinned, updatedAt: now };
-    }
-    await this.context.globalState.update(this.storageKey, newState);
-    this.state.value = newState;
+    await this.updateTasks(() =>
+      Object.fromEntries(
+        Object.entries(updates).map(([taskId, pinned]) => [taskId, { pinned }]),
+      ),
+    );
   }
 
   /**
