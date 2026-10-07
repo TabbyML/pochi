@@ -1,4 +1,5 @@
 import { createVertexWithoutCredentials } from "@ai-sdk/google-vertex/edge";
+import { createRequire } from "node:module";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createVertexModel } from "../google-vertex-utils";
 
@@ -12,6 +13,14 @@ vi.mock("@ai-sdk/google-vertex/edge", () => ({
 }));
 
 describe("Google Vertex utils", () => {
+  it("exports the credential-free provider from both module entry points", async () => {
+    const esm = await vi.importActual<
+      typeof import("@ai-sdk/google-vertex/edge")
+    >("@ai-sdk/google-vertex/edge");
+    const cjs = createRequire(import.meta.url)("@ai-sdk/google-vertex/edge");
+    expect(typeof esm.createVertexWithoutCredentials).toBe("function");
+    expect(typeof cjs.createVertexWithoutCredentials).toBe("function");
+  });
   afterEach(() => {
     vi.resetAllMocks();
     vi.unstubAllGlobals();

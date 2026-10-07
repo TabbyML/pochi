@@ -1,0 +1,28 @@
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -14805,6 +14805,10 @@
+       }
+     }
+     this.setStatus({ status: "submitted", error: void 0 });
++    this.activeResponse = { abortController };
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal
++    });
+     const lastMessage = this.lastMessage;
+     const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
+     const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
+diff --git a/dist/index.mjs b/dist/index.mjs
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -14795,6 +14795,10 @@
+       }
+     }
+     this.setStatus({ status: "submitted", error: void 0 });
++    this.activeResponse = { abortController };
++    await this.onBeforeSnapshotInMakeRequest?.({
++      abortSignal: abortController.signal
++    });
+     const lastMessage = this.lastMessage;
+     const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
+     const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];

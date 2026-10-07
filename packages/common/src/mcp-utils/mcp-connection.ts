@@ -28,10 +28,6 @@ type Disposable = { dispose(): void };
 type McpClient = Awaited<ReturnType<typeof createClient>>;
 type McpToolSet = Awaited<ReturnType<McpClient["tools"]>>;
 
-interface McpClientWithInstructions extends McpClient {
-  instructions?: string;
-}
-
 type FsmContext = {
   startingAbortController?: AbortController;
   client?: McpClient;
@@ -365,7 +361,7 @@ export class McpConnection implements Disposable {
         throw AbortedError;
       }
 
-      const instructions = (client as McpClientWithInstructions).instructions;
+      const instructions = client.instructions;
       if (signal?.aborted) {
         throw AbortedError;
       }

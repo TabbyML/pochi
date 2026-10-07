@@ -1,3 +1,5 @@
+import { zodSchema } from "@ai-sdk/provider-utils";
+import { newTaskInputSchema } from "@getpochi/tools";
 import {
   AbstractChat,
   type ChatInit,
@@ -32,12 +34,72 @@ class TestChatState implements ChatState<Message> {
 }
 
 class TestChat extends AbstractChat<Message> {
+  onBeforeSnapshotInMakeRequest?: (options: {
+    abortSignal: AbortSignal;
+  }) => Promise<void>;
+
   constructor(init: ChatInit<Message>) {
     super({ ...init, state: new TestChatState() });
   }
 }
 
 describe("ai sdk patch", () => {
+  it("converts the newTask schema with its transient custom type", () => {
+    expect(zodSchema(newTaskInputSchema).jsonSchema).toMatchObject({
+      properties: {
+        _transient: {
+          properties: {
+            task: { description: "The inlined subtask result." },
+          },
+        },
+      },
+    });
+  });
+
+  it("snapshots messages after preparation replaces the history", async () => {
+    const chat = new TestChat({
+      transport: {
+        reconnectToStream: async () => null,
+        sendMessages: async ({ messages }) => {
+          expect(messages.at(-1)?.parts).toEqual([
+            { type: "text", text: "prepared" },
+          ]);
+          return new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: "start" });
+              controller.enqueue({ type: "text-start", id: "text" });
+              controller.enqueue({
+                type: "text-delta",
+                id: "text",
+                delta: " response",
+              });
+              controller.enqueue({ type: "text-end", id: "text" });
+              controller.enqueue({ type: "finish" });
+              controller.close();
+            },
+          });
+        },
+      },
+    });
+    chat.onBeforeSnapshotInMakeRequest = async () => {
+      chat.messages = [
+        {
+          id: "prepared",
+          role: "assistant",
+          parts: [{ type: "text", text: "prepared" }],
+        },
+      ];
+    };
+    await chat.sendMessage({ text: "hello" });
+    expect(
+      chat.messages
+        .at(-1)
+        ?.parts.filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join(""),
+    ).toBe("prepared response");
+  });
+
   it("calls onBeforeSnapshotInMakeRequest before transport send", async () => {
     let hookCalled = false;
 
