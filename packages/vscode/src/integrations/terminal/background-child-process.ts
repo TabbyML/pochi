@@ -33,9 +33,23 @@ export function spawnBackgroundChildProcess({
     detached: process.platform !== "win32",
   };
   const shellCommand = buildShellCommand(command);
-  return shellCommand
-    ? spawn(shellCommand.command, shellCommand.args, options)
-    : spawn(command, { ...options, shell: true });
+  if (!shellCommand) return spawn(command, { ...options, shell: true });
+
+  if (
+    process.platform === "win32" &&
+    /cmd(\.exe)?$/i.test(shellCommand.command)
+  ) {
+    // Like Node's shell mode, wrap the CMD script and pass it verbatim: CMD
+    // does not understand the backslash escaping used for normal argv values.
+    const args = shellCommand.args;
+    return spawn(
+      shellCommand.command,
+      [...args.slice(0, -1), `"${args[args.length - 1]}"`],
+      { ...options, windowsVerbatimArguments: true },
+    );
+  }
+
+  return spawn(shellCommand.command, shellCommand.args, options);
 }
 
 /**
@@ -45,10 +59,14 @@ export function spawnBackgroundChildProcess({
  */
 export function terminateChildProcessTree(child: ChildProcess): Promise<void> {
   const pid = child.pid;
-  if (pid === undefined || hasExited(child)) return Promise.resolve();
-  return process.platform === "win32"
-    ? killWindowsProcessTree(child, pid)
-    : killPosixProcessGroup(pid);
+  if (pid === undefined) return Promise.resolve();
+  if (process.platform === "win32") {
+    return hasExited(child)
+      ? Promise.resolve()
+      : killWindowsProcessTree(child, pid);
+  }
+  // Descendants can retain the group's output pipes after its shell exits.
+  return killPosixProcessGroup(pid);
 }
 
 function hasExited(child: ChildProcess): boolean {
