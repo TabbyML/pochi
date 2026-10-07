@@ -204,11 +204,14 @@ export class FileStateCache {
 /**
  * Check if a file has been modified externally since the model last read it.
  * Throws an error if the file is stale, preventing silent data loss during
- * edit/write operations.
+ * edit/write operations. Missing files are allowed so they can be re-created;
+ * their cached baseline is retained until a successful read or write refreshes
+ * or invalidates it.
  *
  * @param cache - The FileStateCache to check against
  * @param resolvedPath - Absolute path of the file
- * @param getMtime - Platform-specific function to get current file mtime
+ * @param getMtime - Returns the current mtime, undefined only for missing files,
+ *                  and throws on other stat errors
  * @param operation - "editing" or "writing" — used in error message
  */
 export async function checkStaleness(
@@ -226,10 +229,15 @@ export async function checkStaleness(
   const currentMtime = await getMtime(resolvedPath);
   if (currentMtime === cachedState.timestamp) return;
 
-  const actualMtime =
-    currentMtime === undefined ? "missing" : String(currentMtime);
+  // A deleted file cannot be re-read to refresh the baseline, so rejecting
+  // here would block every later write. Keep the baseline so that a failed
+  // operation followed by external re-creation still triggers the guard.
+  if (currentMtime === undefined) {
+    return;
+  }
+
   throw new Error(
-    `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${actualMtime}). Please read the file again before ${operation}.`,
+    `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${currentMtime}). Please read the file again before ${operation}.`,
   );
 }
 
@@ -249,7 +257,8 @@ async function updateCacheAfterWrite(
   content: string,
   getMtime: (path: string) => Promise<number | undefined>,
 ): Promise<void> {
-  const newMtime = await getMtime(resolvedPath);
+  // Cache updates are best-effort and must not fail a completed write.
+  const newMtime = await getMtime(resolvedPath).catch(() => undefined);
   if (newMtime !== undefined) {
     cache.set(resolvedPath, {
       content,
@@ -258,6 +267,9 @@ async function updateCacheAfterWrite(
       endLine: undefined,
       fromWrite: true,
     });
+  } else {
+    // The completed write supersedes the old content and staleness baseline.
+    cache.delete(resolvedPath);
   }
 }
 
@@ -385,7 +397,8 @@ export async function withReadFileCache<T>(opts: {
       existingState.startLine === startLine &&
       existingState.endLine === endLine
     ) {
-      const mtimeMs = await getMtime(resolvedPath);
+      // If metadata is unavailable, fall back to reading the file normally.
+      const mtimeMs = await getMtime(resolvedPath).catch(() => undefined);
       logger.debug(
         `withReadFileCache: range match, currentMtime=${mtimeMs} cachedMtime=${existingState.timestamp} match=${mtimeMs === existingState.timestamp}`,
       );
@@ -405,7 +418,8 @@ export async function withReadFileCache<T>(opts: {
   // fileCacheContent === null means the doRead served actual binary content —
   // nothing the model "sees" as text, so skip caching.
   if (shouldCache && fileCacheContent !== null) {
-    const mtimeMs = await getMtime(resolvedPath);
+    // Cache population must not fail a successful read.
+    const mtimeMs = await getMtime(resolvedPath).catch(() => undefined);
     logger.debug(
       `withReadFileCache: populating cache for "${resolvedPath}" mtime=${mtimeMs} contentLen=${fileCacheContent.length}`,
     );
@@ -417,6 +431,9 @@ export async function withReadFileCache<T>(opts: {
         endLine,
         isTruncated: fileCacheIsTruncated,
       });
+    } else {
+      // Do not retain an older snapshot after returning fresh content.
+      cache.delete(resolvedPath);
     }
   }
 

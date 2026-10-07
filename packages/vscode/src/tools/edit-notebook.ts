@@ -1,25 +1,13 @@
 import * as fs from "node:fs/promises";
 import {
   editNotebookCell,
+  getFileModificationTime,
   parseNotebook,
   serializeNotebook,
   validateNotebookPath,
   withFileStateCacheGuard,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
-
-/**
- * Get the modification time of a file via node:fs.
- * Returns Math.floor(mtimeMs) or undefined if the file doesn't exist.
- */
-async function getNodeFileMtime(filePath: string): Promise<number | undefined> {
-  try {
-    const stat = await fs.stat(filePath);
-    return Math.floor(stat.mtimeMs);
-  } catch {
-    return undefined;
-  }
-}
 
 export const editNotebook: ToolFunctionType<
   ClientTools["editNotebook"]
@@ -33,7 +21,7 @@ export const editNotebook: ToolFunctionType<
       cache: options.fileStateCache,
       path: filePath,
       cwd,
-      getMtime: getNodeFileMtime,
+      getMtime: getFileModificationTime,
       operation: "editing",
       doWork: async (resolvedPath) => {
         const fileContent = await fs.readFile(resolvedPath, "utf-8");

@@ -1,7 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  getFileModificationTime,
   isFileExists,
   isPlainTextFile,
   resolvePath,
@@ -10,6 +11,39 @@ import {
   validateTextFile,
 } from "../fs";
 import { MaxReadFileSize } from "../limits";
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof fs>();
+  return { ...actual, stat: vi.fn(actual.stat) };
+});
+
+describe("getFileModificationTime", () => {
+  afterEach(() => {
+    vi.mocked(fs.stat).mockReset();
+  });
+
+  it("returns undefined for a missing file", async () => {
+    vi.mocked(fs.stat).mockRejectedValueOnce(
+      Object.assign(new Error("File not found"), { code: "ENOENT" }),
+    );
+
+    await expect(
+      getFileModificationTime("/tmp/missing.txt"),
+    ).resolves.toBeUndefined();
+  });
+
+  it.each(["EACCES", "EIO", "ENOTDIR"])(
+    "propagates %s instead of treating the file as missing",
+    async (code) => {
+      const error = Object.assign(new Error("Stat failed"), { code });
+      vi.mocked(fs.stat).mockRejectedValueOnce(error);
+
+      await expect(getFileModificationTime("/tmp/file.txt")).rejects.toBe(
+        error,
+      );
+    },
+  );
+});
 
 describe("validateTextFile", () => {
   it("should not throw an error for a plain text file", () => {
