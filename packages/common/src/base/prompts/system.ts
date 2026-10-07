@@ -9,6 +9,7 @@ type CustomRules = Environment["info"]["customRules"];
 export interface SystemPromptOptions {
   todoModeEnabled?: boolean;
   todos?: readonly Todo[];
+  newTaskEnabled?: boolean;
 }
 
 const TodosPlaceholder = "{{TODOS}}";
@@ -45,7 +46,7 @@ IMPORTANT: You must NEVER generate or guess URLs for the user unless you are con
 
   const sections = [
     getTodoListPrompt(options),
-    getRulesPrompt(),
+    getRulesPrompt(options),
     autoMemoryPrompt,
     customRulesPrompt,
     mcpInstructionsPrompt,
@@ -70,15 +71,18 @@ function replaceTodoAuditTodosPlaceholder(
   );
 }
 
-function getRulesPrompt() {
+function getRulesPrompt(options?: SystemPromptOptions) {
+  const explorationPrompt =
+    options?.newTaskEnabled === false
+      ? ""
+      : '- For broader codebase exploration and deep research, use the newTask tool with agentType="explore". Use this only when simple, directed searches prove insufficient or when your task will clearly require more than three queries.\n';
   const prompt = `====
 
 RULES
 
 - User messages may include <system-reminder> tags. <system-reminder> tags contain useful information and reminders. They are NOT part of the user's provided input or the tool result. You shall pay close attention to information in these tags and use it to inform you actions.
 - For simple, directed codebase searches (project structure, specific files/classes/functions), use the listFiles tool. If you pass 'true' for the recursive parameter, it will list files recursively. Use globFiles when you need to match files by pattern.
-- For broader codebase exploration and deep research, use the newTask tool with agentType="explore". Use this only when simple, directed searches prove insufficient or when your task will clearly require more than three queries.
-- Use paths relative to the current working directory for files inside the workspace. Preserve paths supplied by tools or context when passing them to subsequent tools; do not rewrite them between absolute, relative, or URI forms. Do not use the ~ character or $HOME to construct paths.
+${explorationPrompt}- Use paths relative to the current working directory for files inside the workspace. Preserve paths supplied by tools or context when passing them to subsequent tools; do not rewrite them between absolute, relative, or URI forms. Do not use the ~ character or $HOME to construct paths.
 - You can use \`pochi://\` URI schema to access the Pochi virtual file system. This allows you to read and write files that are stored in Pochi's internal storage.
 - Be sure to consider the type of project (e.g. Python, JavaScript, web application) when determining the appropriate structure and files to include. Also consider what files may be most relevant to accomplishing the task, for example looking at a project's manifest file would help you understand the project's dependencies, which you could incorporate into any code you write.
 - Do not ask for more information than necessary. Use the tools provided to accomplish the user's request efficiently and effectively. When you've completed your task, you must use the attemptCompletion tool to present the result to the user. The user may provide feedback, which you can use to make improvements and try again.

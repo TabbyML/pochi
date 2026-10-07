@@ -19,7 +19,9 @@ describe("createBackgroundCommandResult", () => {
       "The output file contains command output only",
     );
     expect(result.output).toContain("does not contain the job's status");
-    expect(result.output).toContain("do not poll the file for completion");
+    expect(result.output).toContain(
+      "do not poll the file or start a monitor to detect completion",
+    );
     expect(result.output).toContain("yield the current turn");
     expect(result._meta).toEqual({
       backgroundJobId: "bgjob-cmd-test",
@@ -38,11 +40,7 @@ describe("createBackgroundCommandResult", () => {
     expect(result.output).toContain(
       "its original process is still running in the background",
     );
-    expect(result.output).toContain(
-      "Do not retry the command in the foreground",
-    );
-    expect(result.output).toContain(
-      "Wait for the completion notification instead",
-    );
+    expect(result.output).toContain("Do not retry the command");
+    expect(result.output).toContain("do not start a monitor");
   });
 });

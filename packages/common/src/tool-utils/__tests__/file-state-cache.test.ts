@@ -45,9 +45,8 @@ describe("FileStateCache", () => {
     expect(cache.sizeBytes).toBe(0);
   });
 
-  // The staleness guard treats a file whose mtime no longer matches (including
-  // a deleted file) as stale and requires a re-read.
-  it("treats deleted files as stale", async () => {
+  // A deleted file cannot be re-read, so rejecting would block re-creating it.
+  it("allows writing a deleted file and retains its baseline", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/file.txt", {
       content: "hello",
@@ -58,7 +57,11 @@ describe("FileStateCache", () => {
 
     await expect(
       checkStaleness(cache, "/tmp/file.txt", async () => undefined, "writing"),
-    ).rejects.toThrow("File has been modified since it was last read");
+    ).resolves.toBeUndefined();
+    expect(cache.get("/tmp/file.txt")).toMatchObject({
+      content: "hello",
+      timestamp: 1,
+    });
   });
 
   it("allows edits when the mtime still matches the cached state", async () => {
@@ -95,7 +98,12 @@ describe("FileStateCache", () => {
     const cache = new FileStateCache();
 
     await expect(
-      checkStaleness(cache, "/tmp/new-file.txt", async () => undefined, "writing"),
+      checkStaleness(
+        cache,
+        "/tmp/new-file.txt",
+        async () => undefined,
+        "writing",
+      ),
     ).resolves.toBeUndefined();
   });
 
@@ -202,6 +210,133 @@ describe("FileStateCache", () => {
 });
 
 describe("withFileStateCacheGuard", () => {
+  it("preserves the baseline after a missing-file edit fails and blocks external recreation", async () => {
+    const cache = new FileStateCache();
+    const baseline = {
+      content: "old content",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    };
+    cache.set("/tmp/file.txt", baseline);
+    const missingError = Object.assign(new Error("File not found"), {
+      code: "ENOENT",
+    });
+    const getMtime = vi
+      .fn<() => Promise<number | undefined>>()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValue(2000);
+    const edit = vi.fn().mockRejectedValue(missingError);
+    const opts = { cache, path: "/tmp/file.txt", cwd: "/tmp", getMtime };
+
+    await expect(
+      withFileStateCacheGuard({ ...opts, operation: "editing", doWork: edit }),
+    ).rejects.toBe(missingError);
+    expect(edit).toHaveBeenCalledOnce();
+    expect(cache.get("/tmp/file.txt")).toEqual(baseline);
+
+    // Another process re-creates the file before the next write.
+    const write = vi.fn(async () => ({
+      result: { success: true as const },
+      fileCacheContent: "replacement",
+    }));
+    await expect(
+      withFileStateCacheGuard({ ...opts, operation: "writing", doWork: write }),
+    ).rejects.toThrow("File has been modified since it was last read");
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("preserves the baseline after a stat error and checks it again on retry", async () => {
+    const cache = new FileStateCache();
+    const baseline = {
+      content: "old content",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    };
+    cache.set("/tmp/file.txt", baseline);
+    const permissionError = Object.assign(new Error("Permission denied"), {
+      code: "EACCES",
+    });
+    const getMtime = vi
+      .fn<() => Promise<number | undefined>>()
+      .mockRejectedValueOnce(permissionError)
+      .mockResolvedValue(2000);
+    const doWork = vi.fn(async () => ({
+      result: { success: true as const },
+      fileCacheContent: "replacement",
+    }));
+    const opts = {
+      cache,
+      path: "/tmp/file.txt",
+      cwd: "/tmp",
+      getMtime,
+      operation: "writing" as const,
+      doWork,
+    };
+
+    await expect(withFileStateCacheGuard(opts)).rejects.toBe(permissionError);
+    expect(doWork).not.toHaveBeenCalled();
+    expect(cache.get("/tmp/file.txt")).toEqual(baseline);
+
+    await expect(withFileStateCacheGuard(opts)).rejects.toThrow(
+      "File has been modified since it was last read",
+    );
+    expect(doWork).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing", "error"] as const)(
+    "drops the old baseline after a successful write when its mtime is unavailable (%s)",
+    async (failure) => {
+      const cache = new FileStateCache();
+      cache.set("/tmp/file.txt", {
+        content: "old content",
+        timestamp: 1,
+        startLine: 1,
+        endLine: 1,
+      });
+      const getMtime = vi
+        .fn<() => Promise<number | undefined>>()
+        .mockResolvedValueOnce(1);
+      if (failure === "error") {
+        getMtime.mockRejectedValueOnce(new Error("File system unavailable"));
+      } else {
+        getMtime.mockResolvedValueOnce(undefined);
+      }
+      getMtime.mockResolvedValue(2000);
+      const doWork = vi.fn(async () => ({
+        result: { success: true as const },
+        fileCacheContent: "new content",
+      }));
+      const opts = {
+        cache,
+        path: "/tmp/file.txt",
+        cwd: "/tmp",
+        getMtime,
+        operation: "writing" as const,
+        doWork,
+      };
+
+      await expect(withFileStateCacheGuard(opts)).resolves.toEqual({
+        success: true,
+      });
+      expect(doWork).toHaveBeenCalledOnce();
+      expect(cache.has("/tmp/file.txt")).toBe(false);
+      expect(cache.getRecentFiles()).toEqual([]);
+
+      // A subsequent write must not be blocked by the superseded baseline.
+      await expect(withFileStateCacheGuard(opts)).resolves.toEqual({
+        success: true,
+      });
+      expect(doWork).toHaveBeenCalledTimes(2);
+      expect(cache.get("/tmp/file.txt")).toMatchObject({
+        content: "new content",
+        timestamp: 2000,
+        fromWrite: true,
+      });
+    },
+  );
+
   it("rejects editing a file that changed from its cached baseline", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/existing.txt", {
@@ -284,6 +419,41 @@ describe("withFileStateCacheGuard", () => {
     ).resolves.toEqual({ success: true });
   });
 
+  it("re-creates a file deleted after it was cached", async () => {
+    const cache = new FileStateCache();
+    cache.set("/tmp/deleted.txt", {
+      content: "old content",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    });
+    let mtime: number | undefined;
+    const doWork = vi.fn(async () => {
+      mtime = 2000;
+      return {
+        result: { success: true as const },
+        fileCacheContent: "new content",
+      };
+    });
+
+    await expect(
+      withFileStateCacheGuard({
+        cache,
+        path: "/tmp/deleted.txt",
+        cwd: "/tmp",
+        getMtime: async () => mtime,
+        operation: "writing",
+        doWork,
+      }),
+    ).resolves.toEqual({ success: true });
+    expect(doWork).toHaveBeenCalledOnce();
+    expect(cache.get("/tmp/deleted.txt")).toMatchObject({
+      content: "new content",
+      timestamp: 2000,
+      fromWrite: true,
+    });
+  });
+
   it("allows writing a brand-new file that does not yet exist on disk", async () => {
     const cache = new FileStateCache();
     // getMtime returns undefined => file does not exist
@@ -302,5 +472,103 @@ describe("withFileStateCacheGuard", () => {
         }),
       }),
     ).resolves.toEqual({ success: true });
+  });
+});
+
+describe("withReadFileCache", () => {
+  it.each(["missing", "error"] as const)(
+    "returns fresh content and drops the old baseline when mtime is unavailable (%s)",
+    async (failure) => {
+      const cache = new FileStateCache();
+      cache.set("/tmp/file.txt", {
+        content: "old content",
+        timestamp: 1,
+        startLine: 1,
+        endLine: 1,
+      });
+      const getMtime = vi.fn<() => Promise<number | undefined>>();
+      if (failure === "error") {
+        getMtime.mockRejectedValue(new Error("Stat failed"));
+      } else {
+        getMtime.mockResolvedValue(undefined);
+      }
+      const doRead = vi.fn(async () => ({
+        result: { content: "new content" },
+        fileCacheContent: "new content",
+      }));
+
+      await expect(
+        withReadFileCache({
+          cache,
+          path: "/tmp/file.txt",
+          cwd: "/tmp",
+          startLine: 1,
+          endLine: 1,
+          getMtime,
+          doRead,
+        }),
+      ).resolves.toEqual({
+        result: { content: "new content" },
+        deduplicated: false,
+        resolvedPath: "/tmp/file.txt",
+      });
+      expect(doRead).toHaveBeenCalledOnce();
+      expect(getMtime).toHaveBeenCalledTimes(2);
+      expect(cache.has("/tmp/file.txt")).toBe(false);
+      expect(cache.getRecentFiles()).toEqual([]);
+
+      getMtime.mockResolvedValue(2000);
+      const doWork = vi.fn(async () => ({
+        result: { success: true as const },
+        fileCacheContent: "edited content",
+      }));
+      await expect(
+        withFileStateCacheGuard({
+          cache,
+          path: "/tmp/file.txt",
+          cwd: "/tmp",
+          getMtime,
+          operation: "editing",
+          doWork,
+        }),
+      ).resolves.toEqual({ success: true });
+      expect(doWork).toHaveBeenCalledOnce();
+      expect(cache.get("/tmp/file.txt")).toMatchObject({
+        content: "edited content",
+        timestamp: 2000,
+        fromWrite: true,
+      });
+    },
+  );
+
+  it("retains the baseline when both stat and the actual read fail", async () => {
+    const cache = new FileStateCache();
+    const baseline = {
+      content: "old content",
+      timestamp: 1,
+      startLine: 1,
+      endLine: 1,
+    };
+    cache.set("/tmp/file.txt", baseline);
+    const getMtime = vi.fn().mockRejectedValue(new Error("Stat failed"));
+    const readError = Object.assign(new Error("Permission denied"), {
+      code: "EACCES",
+    });
+    const doRead = vi.fn().mockRejectedValue(readError);
+
+    await expect(
+      withReadFileCache({
+        cache,
+        path: "/tmp/file.txt",
+        cwd: "/tmp",
+        startLine: 1,
+        endLine: 1,
+        getMtime,
+        doRead,
+      }),
+    ).rejects.toBe(readError);
+    expect(doRead).toHaveBeenCalledOnce();
+    expect(getMtime).toHaveBeenCalledOnce();
+    expect(cache.get("/tmp/file.txt")).toEqual(baseline);
   });
 });

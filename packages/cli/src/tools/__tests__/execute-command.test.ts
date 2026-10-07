@@ -60,12 +60,8 @@ describe("executeCommand", () => {
       expect(result._meta?.backgroundJobId).toMatch(/^bgjob-cmd-/);
       expect(result._meta?.outputFile).toBeDefined();
       expect(result.output).toContain("The foreground command timed out");
-      expect(result.output).toContain(
-        "Do not retry the command in the foreground",
-      );
-      expect(result.output).toContain(
-        "Wait for the completion notification instead",
-      );
+      expect(result.output).toContain("Do not retry the command");
+      expect(result.output).toContain("do not start a monitor");
       expect((await nextCommandResult(adaptor, "test-task")).status).toBe(
         "completed",
       );

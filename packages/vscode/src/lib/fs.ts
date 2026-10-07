@@ -134,8 +134,8 @@ export const asRelativePath = (
 
 /**
  * Get the modification time of a file via vscode.workspace.fs.
- * Returns Math.floor(mtime) or undefined if the file doesn't exist.
- *
+ * Returns Math.floor(mtime) or undefined only if the file doesn't exist.
+ * Other stat errors propagate so the staleness guard cannot bypass them.
  */
 export async function getVscodeFileMtime(
   resolvedPath: string,
@@ -143,7 +143,13 @@ export async function getVscodeFileMtime(
   try {
     const stat = await vscode.workspace.fs.stat(vscode.Uri.file(resolvedPath));
     return Math.floor(stat.mtime);
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (
+      error instanceof vscode.FileSystemError &&
+      error.code === "FileNotFound"
+    ) {
+      return undefined;
+    }
+    throw error;
   }
 }

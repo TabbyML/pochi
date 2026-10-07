@@ -430,6 +430,8 @@ export class TaskRunner {
           adaptor: this.adaptor,
           clearFileStateCache: (taskId) =>
             this.adaptor.clearFileStateCache(taskId),
+          forkFileStateCache: (sourceTaskId, targetTaskId) =>
+            this.adaptor.forkFileStateCache(sourceTaskId, targetTaskId),
         });
       }
       await this.backgroundJobs.watchTask(this.taskId);

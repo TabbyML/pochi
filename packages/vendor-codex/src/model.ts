@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import { ModelRegistry } from "@getpochi/common";
 import { withCorsProxy } from "@getpochi/common/fetch-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
 import { wrapLanguageModel } from "ai";
@@ -94,7 +95,7 @@ function createCodexResponsesModel(
     fetch: customFetch as typeof fetch,
   });
 
-  return openai.responses(modelId || "gpt-5");
+  return openai.responses(modelId || ModelRegistry.codex);
 }
 
 export function createProxyFetch(getCredentials: () => Promise<unknown>) {
@@ -127,7 +128,7 @@ export function createEdgeCodexModel({
       baseURL: "https://chatgpt.com/backend-api/codex",
       apiKey: "placeholder",
       fetch: customFetch as typeof fetch,
-    }).responses(modelId || "gpt-5"),
+    }).responses(modelId || ModelRegistry.codex),
     middleware: {
       specificationVersion: "v3",
       async transformParams({ params }) {

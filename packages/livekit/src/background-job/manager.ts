@@ -47,6 +47,10 @@ export type BackgroundJobManagerOptions = {
   };
   stateStore?: BackgroundTaskStateStore;
   clearFileStateCache?: (taskId: string) => MaybePromise<void>;
+  forkFileStateCache?: (
+    sourceTaskId: string,
+    targetTaskId: string,
+  ) => MaybePromise<void>;
 };
 
 /**
@@ -134,6 +138,7 @@ export class BackgroundJobManager {
   private commandAdaptor?: BackgroundCommandAdaptor;
   private executor?: TaskExecutor;
   private adaptor?: BackgroundJobManagerOptions["adaptor"];
+  private forkFileStateCache?: BackgroundJobManagerOptions["forkFileStateCache"];
   private readonly taskStates = new Map<string, BackgroundTaskState>();
   private taskStateStore: BackgroundTaskStateStore = {
     read: (taskId) => this.taskStates.get(taskId),
@@ -170,6 +175,7 @@ export class BackgroundJobManager {
     if (this.executor)
       throw new Error("Background task executor is already connected.");
     this.adaptor = options.adaptor;
+    this.forkFileStateCache = options.forkFileStateCache;
     if (options.stateStore) this.taskStateStore = options.stateStore;
     if (options.adaptor.commandAdaptor)
       this.connect(options.adaptor.commandAdaptor);
@@ -319,6 +325,15 @@ export class BackgroundJobManager {
     const taskId = crypto.randomUUID();
     this.forkSystemPrompts.set(taskId, agent.systemPrompt);
     try {
+      // Forks inherit the parent's messages, so they inherit its read cache
+      // at the same moment; other tasks start empty.
+      if (agent.parentTaskId) {
+        try {
+          await this.forkFileStateCache?.(agent.parentTaskId, taskId);
+        } catch (error) {
+          logger.warn("Failed to fork file state cache", error);
+        }
+      }
       const state: BackgroundTaskState = {
         parentTaskId: agent.parentTaskId,
         tools: agent.tools,
@@ -886,7 +901,7 @@ export class BackgroundJobManager {
     const pending = new Set(
       this.getPendingNotifications(taskId).map((n) => n.backgroundJobId),
     );
-    const jobs = [...this.jobs.values()]
+    return [...this.jobs.values()]
       .filter((job) => job.ownerTaskId === taskId)
       .flatMap((job): BackgroundJobEntry[] => {
         const entry = {
@@ -927,54 +942,6 @@ export class BackgroundJobManager {
           },
         ];
       });
-    const known = new Set(jobs.map((job) => job.backgroundJobId));
-    const history = new Map<
-      string,
-      Extract<BackgroundJobEntry, { kind: "command" }>
-    >();
-    for (const message of this.messages(taskId)) {
-      for (const part of message.parts) {
-        if (
-          part.type === "tool-startMonitor" &&
-          part.state !== "input-streaming" &&
-          part.output?.backgroundJobId
-        ) {
-          const id = part.output.backgroundJobId;
-          if (!known.has(id) && !history.has(id))
-            history.set(id, {
-              backgroundJobId: id,
-              kind: "command",
-              monitor: part.input?.description ?? "",
-              title:
-                part.input?.description?.trim() || part.input?.command || id,
-              command: part.input?.command,
-              outputFile: part.output.outputFile,
-              status: "stopped",
-            });
-        } else if (
-          part.type === "data-background-job-notification" &&
-          part.data.kind === "monitor" &&
-          !known.has(part.data.backgroundJobId)
-        ) {
-          const event = part.data;
-          const previous = history.get(event.backgroundJobId);
-          history.set(event.backgroundJobId, {
-            backgroundJobId: event.backgroundJobId,
-            kind: "command",
-            monitor: event.description,
-            title:
-              event.description.trim() ||
-              event.command.trim() ||
-              event.backgroundJobId,
-            command: event.command,
-            outputFile: event.outputFile,
-            status: event.ended?.status ?? previous?.status ?? "stopped",
-            exitCode: event.ended?.exitCode ?? previous?.exitCode,
-          });
-        }
-      }
-    }
-    return [...jobs, ...history.values()];
   }
 
   async kill(

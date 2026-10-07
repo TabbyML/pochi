@@ -35,6 +35,8 @@ export interface TerminalJobConfig {
   command: string;
   cwd: string;
   location?: vscode.TerminalEditorLocationOptions;
+  // Cancels startup only: a started job outlives its tool call, whose signal
+  // also fires on chat navigation.
   abortSignal?: AbortSignal;
   taskId: string;
   envs?: Record<string, string>;
@@ -415,17 +417,8 @@ export class TerminalJob implements vscode.Disposable {
       }),
     );
 
-    const onAbort = () => this.requestStop("abort signal");
     if (this.config.abortSignal?.aborted) {
-      onAbort();
-    } else if (this.config.abortSignal) {
-      this.config.abortSignal.addEventListener("abort", onAbort, {
-        once: true,
-      });
-      this.disposables.push({
-        dispose: () =>
-          this.config.abortSignal?.removeEventListener("abort", onAbort),
-      });
+      this.requestStop("abort signal");
     }
   }
 

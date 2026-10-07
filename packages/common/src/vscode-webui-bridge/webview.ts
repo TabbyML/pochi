@@ -121,7 +121,6 @@ export interface VSCodeHostApi {
       toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
-      fileStateCacheSourceTaskId?: string;
       allowBackground?: boolean;
     },
   ): Promise<unknown>;
@@ -187,6 +186,13 @@ export interface VSCodeHostApi {
    * from being returned for content that was compacted away.
    */
   clearFileStateCache(taskId: string): Promise<void>;
+
+  /**
+   * Copy a parent task's file state cache to a fork task. Only forks inherit
+   * the parent conversation, so only they can resolve "file unchanged" stubs
+   * that point at the parent's read results.
+   */
+  forkFileStateCache(sourceTaskId: string, targetTaskId: string): Promise<void>;
 
   /**
    * Read recent file state cache entries for the given task ID.

@@ -156,6 +156,10 @@ export const MessageList: React.FC<{
       formatMessages ? formatMessages(visibleRawMessages) : visibleRawMessages,
     [formatMessages, visibleRawMessages],
   );
+  const renderKeys = useMemo(
+    () => buildRenderKeys(visibleRawMessages, renderMessages),
+    [visibleRawMessages, renderMessages],
+  );
 
   return (
     <BackgroundJobContextProvider messages={messages}>
@@ -172,7 +176,7 @@ export const MessageList: React.FC<{
           {renderMessages.map((m, messageIndex) => {
             return (
               <div
-                key={m.id}
+                key={renderKeys[messageIndex]}
                 className="message-list-item flex flex-col"
                 aria-label={`chat-message-${m.role}`}
               >
@@ -710,6 +714,29 @@ function buildToolCallCheckpoints(messages: Message[]) {
   }
 
   return toolCallCheckpoints;
+}
+
+// The UI formatter merges consecutive assistant messages under the latest id,
+// so a hidden reminder followed by a new assistant message would change the
+// row id. Key each row by the first raw assistant message it merged instead,
+// so appending to the group does not remount the rendered row.
+function buildRenderKeys(rawMessages: Message[], renderMessages: Message[]) {
+  const rawIndexById = new Map(
+    rawMessages.map((message, index) => [message.id, index]),
+  );
+  let prevRawIndex = -1;
+  return renderMessages.map((message) => {
+    const rawIndex = rawIndexById.get(message.id);
+    if (rawIndex === undefined) return message.id;
+    const groupStart =
+      message.role === "assistant"
+        ? rawMessages
+            .slice(prevRawIndex + 1, rawIndex + 1)
+            .find((raw) => raw.role === "assistant")
+        : undefined;
+    prevRawIndex = rawIndex;
+    return groupStart?.id ?? message.id;
+  });
 }
 
 function findCompactPart(message: Message): TextUIPart | undefined {

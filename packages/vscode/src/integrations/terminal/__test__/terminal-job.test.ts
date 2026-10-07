@@ -102,6 +102,7 @@ function createHarness(options?: {
   appendError?: Error;
   closeError?: Error;
   createTerminalError?: Error;
+  abortSignal?: AbortSignal;
 }) {
   const closeEmitter = new TestEventEmitter<FakeTerminal>();
   let terminalDisposeCalls = 0;
@@ -180,13 +181,14 @@ function createHarness(options?: {
           delete: () => lifecycle.push("manager-deleted"),
         },
       },
+      "./pty-process": {
+        PtyProcess: TestPtyProcess,
+        PtySpawnError: class extends Error {},
+      },
       "./pty-terminal": {
         PtyTerminal: class {
           private readonly exitSubscription: Disposable;
-          constructor(
-            process: TestPtyProcess,
-            onCloseRequested: () => void,
-          ) {
+          constructor(process: TestPtyProcess, onCloseRequested: () => void) {
             ptyTerminalCloseCallbacks.push(onCloseRequested);
             this.exitSubscription = process.onExit(() => {
               closeEmitter.fire(terminal);
@@ -216,6 +218,7 @@ function createHarness(options?: {
       cwd: "/tmp",
       taskId: "task-test",
       monitor: options?.monitor,
+      abortSignal: options?.abortSignal,
     });
   } catch (error) {
     adoptionError = error;
@@ -268,7 +271,10 @@ describe("TerminalJob", () => {
     finishCleanup();
     await flushPromises();
     assert.strictEqual(harness.monitorEvents.at(-1)?.ended?.status, "stopped");
-    assert.strictEqual(harness.monitorEvents.at(-1)?.ended?.reason, "kill requested");
+    assert.strictEqual(
+      harness.monitorEvents.at(-1)?.ended?.reason,
+      "kill requested",
+    );
     assert.strictEqual(
       harness.monitorEvents.filter((event) => event.ended).length,
       1,
@@ -320,6 +326,28 @@ describe("TerminalJob", () => {
     assert.ok(harness.lifecycle.includes("file-closed"));
   });
 
+  for (const monitor of [undefined, { description: "watch" }]) {
+    it(`keeps a started ${monitor ? "monitor" : "command"} running after its tool call aborts`, async () => {
+      const abortController = new AbortController();
+      const harness = createHarness({
+        monitor,
+        abortSignal: abortController.signal,
+      });
+
+      abortController.abort();
+      await flushPromises();
+
+      assert.strictEqual(harness.ptyProcess.killCalls, 0);
+      assert.strictEqual(harness.ptyProcess.groupKillCalls, 0);
+      assert.strictEqual(harness.job.isFinished, false);
+      assert.strictEqual(harness.TerminalJob.get(harness.job.id), harness.job);
+
+      harness.job.kill();
+      harness.ptyProcess.emitExit(143);
+      await flushPromises();
+    });
+  }
+
   it("keeps an adopted pty running when terminal view creation fails", async () => {
     const initializationError = new Error("terminal creation failed");
     const harness = createHarness({ createTerminalError: initializationError });
@@ -328,10 +356,7 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.adoptionError, undefined);
     assert.strictEqual(harness.job.isVisible, false);
     assert.strictEqual(harness.ptyProcess.killCalls, 0);
-    assert.strictEqual(
-      harness.TerminalJob.get("bgjob-cmd-test"),
-      harness.job,
-    );
+    assert.strictEqual(harness.TerminalJob.get("bgjob-cmd-test"), harness.job);
 
     harness.ptyProcess.emitExit(0);
     await flushPromises();
@@ -525,11 +550,13 @@ class TestChildProcess extends EventEmitter {
 async function createChildHarness(options?: {
   monitor?: MonitorJobOptions;
   aborted?: boolean;
+  abortDuringPtySpawn?: boolean;
 }) {
   class TestPtySpawnError extends Error {
     cause = new Error("pty unavailable");
   }
   const child = new TestChildProcess();
+  const abortController = new AbortController();
   const lifecycle: string[] = [];
   const spawnCalls: Array<{ command: string; cwd: string }> = [];
   const shownDocuments: string[] = [];
@@ -608,6 +635,7 @@ async function createChildHarness(options?: {
       "./pty-process": {
         PtyProcess: {
           spawn: async () => {
+            if (options?.abortDuringPtySpawn) abortController.abort();
             throw new TestPtySpawnError();
           },
         },
@@ -621,7 +649,6 @@ async function createChildHarness(options?: {
   TerminalJob.onDidFinish((event) => finishEvents.push(event));
   const monitorEvents: BackgroundMonitorNotification[] = [];
   TerminalJob.onDidMonitorEvent(({ event }) => monitorEvents.push(event));
-  const abortController = new AbortController();
   if (options?.aborted) abortController.abort();
   const job = await TerminalJob.create({
     name: "child job",
@@ -634,6 +661,7 @@ async function createChildHarness(options?: {
 
   return {
     TerminalJob,
+    abortController,
     child,
     finishEvents,
     job,
@@ -658,6 +686,36 @@ describe("TerminalJob child process backend", () => {
     assert.deepStrictEqual(harness.spawnCalls, []);
     assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
   });
+
+  it("does not spawn a fallback command when aborted during PTY startup", async function () {
+    if (process.platform === "win32") this.skip();
+    const harness = await createChildHarness({ abortDuringPtySpawn: true });
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.spawnCalls, []);
+    assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+    assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+  });
+
+  for (const monitor of [undefined, { description: "watch" }]) {
+    it(`keeps a started child-process ${monitor ? "monitor" : "command"} running after its tool call aborts`, async () => {
+      const harness = await createChildHarness({ monitor });
+
+      harness.abortController.abort();
+      await flushPromises();
+
+      assert.strictEqual(harness.terminateCalls, 0);
+      assert.strictEqual(harness.job.isFinished, false);
+      assert.strictEqual(harness.TerminalJob.get(harness.job.id), harness.job);
+
+      harness.job.kill();
+      assert.strictEqual(harness.terminateCalls, 1);
+      harness.child.emit("close", 1, null);
+      await flushPromises();
+      assert.strictEqual(harness.job.isFinished, true);
+      assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+    });
+  }
 
   it("runs without a terminal and persists decoded output", async () => {
     const harness = await createChildHarness();

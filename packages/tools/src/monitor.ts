@@ -9,6 +9,7 @@ Use a monitor for repeated occurrences or a sequence of results:
 - Ongoing occurrences ("tell me every time an ERROR appears"): use an unbounded command such as \`tail -f\`, \`fswatch\`, or a polling loop.
 - Occurrences with a known end ("report each CI check until the run completes"): emit each result and exit after the terminal state.
 - A command that exits after one event is valid, but do not use an unbounded command when only one notification is needed. It remains armed after the event until timeout or cancellation.
+- Do not use a monitor to wait for a background command or subagent you started; you are notified when it finishes.
 
 Your command's stdout is the event stream. Each line becomes an event; lines produced within 200ms may be delivered as one batch. Command exit ends the monitor and its exit status is reported.
 
