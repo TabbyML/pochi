@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { getLogger } from "@getpochi/common";
+import { ModelRegistry, getLogger } from "@getpochi/common";
 import { parseAgentFile } from "@getpochi/common/tool-utils";
 import {
   type CustomAgentFile,
@@ -179,7 +179,13 @@ export class CustomAgentManager implements vscode.Disposable {
           }
           return true;
         })
-        .map((agent) => ({ ...agent, isBuiltIn: true }));
+        .map((agent) => ({
+          ...agent,
+          model:
+            agent.model ??
+            (agent.name ? ModelRegistry.builtinAgents[agent.name] : undefined),
+          isBuiltIn: true,
+        }));
 
       if (this.cwd) {
         const projectAgentsDir = path.join(this.cwd, ".pochi", "agents");

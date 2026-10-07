@@ -28,6 +28,7 @@ import "@getpochi/vendor-qwen-code/edge";
 import {
   constants,
   type AutoMemoryContext,
+  ModelRegistry,
   getLogger,
   prompts,
 } from "@getpochi/common";
@@ -224,7 +225,7 @@ const program = new Command()
   .option(
     "-m, --model <model>",
     "Specify the model to be used for the task.",
-    "google/gemini-3-flash",
+    ModelRegistry.cli,
   )
   .optionsGroup("MCP:")
   .option(
