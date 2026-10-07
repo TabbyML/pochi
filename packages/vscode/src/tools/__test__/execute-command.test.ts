@@ -404,7 +404,6 @@ describe("executeCommand Tool", () => {
           command: "sleep 10",
           cwd: "/workspace",
           location: { viewColumn: 3 },
-          abortSignal,
           taskId: "task-1",
         }),
       );

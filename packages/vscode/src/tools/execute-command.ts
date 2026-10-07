@@ -157,7 +157,6 @@ export const executeCommand: ToolFunctionType<
             command,
             cwd,
             location,
-            abortSignal,
             taskId,
             ...(envs ? { envs } : {}),
           });
