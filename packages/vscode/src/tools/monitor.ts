@@ -2,7 +2,10 @@ import * as path from "node:path";
 import { getViewColumnForTerminal } from "@/integrations/layout";
 import { TerminalJob } from "@/integrations/terminal/terminal-job";
 import { getBackgroundJobTerminalName } from "@/lib/background-job-terminal-name";
-import { MonitorDefaultTimeoutMs } from "@getpochi/common";
+import {
+  MonitorDefaultTimeoutMs,
+  assertMonitorCommandAllowed,
+} from "@getpochi/common";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 export const startMonitor: ToolFunctionType<
@@ -21,6 +24,7 @@ export const startMonitor: ToolFunctionType<
   if (allowBackground === false) {
     throw new Error("Background monitors are not available for this task.");
   }
+  assertMonitorCommandAllowed(command);
 
   if (path.isAbsolute(cwd)) {
     cwd = path.normalize(cwd);
