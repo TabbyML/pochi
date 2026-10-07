@@ -88,6 +88,7 @@ export function TaskRow({
   return (
     <div
       aria-label="task-row"
+      data-task-id={task.id}
       className={cn(
         "group relative rounded-lg border border-border/50 bg-card/60 transition-all duration-200 hover:bg-card hover:shadow-md",
         {
