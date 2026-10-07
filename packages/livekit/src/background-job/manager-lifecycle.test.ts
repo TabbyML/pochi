@@ -72,6 +72,47 @@ describe("background task registration and handoff", () => {
     }
   });
 
+  it("copies the parent's file state cache only into forks", async () => {
+    const data = makeJobStore();
+    data.tasks.set("child", subtask());
+    const manager = BackgroundJobManager.forStore(data.store);
+    const forkFileStateCache = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("copy failed"));
+    manager.initialize({
+      blobStore: {} as never,
+      adaptor: {
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall: vi.fn(),
+      },
+      forkFileStateCache,
+    });
+    try {
+      const forkAgent = createForkAgent<Message>({
+        label: "task-memory",
+        parentTaskId: "parent",
+        parentMessages: [],
+        parentCwd: "/repo",
+        directive: "Extract memory",
+        maxSteps: 2,
+      });
+      const failed = await manager.startForkAgent(forkAgent);
+      const fork = await manager.startForkAgent(forkAgent);
+      await manager.backgroundSubTask({
+        taskId: "child",
+        parentTaskId: "parent",
+        stopForeground: async () => {},
+      });
+      expect(forkFileStateCache.mock.calls).toEqual([
+        ["parent", failed.taskId],
+        ["parent", fork.taskId],
+      ]);
+      expect(manager.getJobsForTask("parent")).toHaveLength(3);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
   it.each(["completed", "pending-input"] as const)(
     "delivers a task that reaches %s while the foreground is stopping",
     async (status) => {

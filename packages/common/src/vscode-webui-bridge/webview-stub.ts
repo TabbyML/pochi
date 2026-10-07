@@ -94,7 +94,6 @@ const VSCodeHostStub = {
       toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
-      fileStateCacheSourceTaskId?: string;
       allowBackground?: boolean;
     },
   ): Promise<unknown> => {
@@ -147,6 +146,12 @@ const VSCodeHostStub = {
     return Promise.resolve();
   },
   clearFileStateCache: (_taskId: string): Promise<void> => {
+    return Promise.resolve();
+  },
+  forkFileStateCache: (
+    _sourceTaskId: string,
+    _targetTaskId: string,
+  ): Promise<void> => {
     return Promise.resolve();
   },
   readRecentFilesForCompact: (_taskId: string) => {

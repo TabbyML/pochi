@@ -103,7 +103,6 @@ describe("VscodeRunningTaskAdaptor media", () => {
   ) {
     return adaptor.executeToolCall({
       taskId,
-      parentTaskId: "parent",
       storeId: "store",
       toolName: "readFile",
       toolCallId: `${taskId}-read`,

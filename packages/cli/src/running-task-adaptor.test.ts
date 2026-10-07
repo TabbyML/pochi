@@ -35,7 +35,7 @@ describe("CliRunningTaskAdaptor command ownership", () => {
     try {
       const context = {
         taskId: randomUUID(),
-        parentTaskId: undefined,
+
         storeId: "test",
         toolName: "executeCommand",
         toolCallId: randomUUID(),
@@ -90,7 +90,7 @@ describe("CliRunningTaskAdaptor command ownership", () => {
     try {
       const result = await adaptor.executeToolCall({
         taskId,
-        parentTaskId: undefined,
+
         storeId: "test",
         toolName: "executeCommand",
         toolCallId: randomUUID(),

@@ -47,6 +47,10 @@ export type BackgroundJobManagerOptions = {
   };
   stateStore?: BackgroundTaskStateStore;
   clearFileStateCache?: (taskId: string) => MaybePromise<void>;
+  forkFileStateCache?: (
+    sourceTaskId: string,
+    targetTaskId: string,
+  ) => MaybePromise<void>;
 };
 
 /**
@@ -134,6 +138,7 @@ export class BackgroundJobManager {
   private commandAdaptor?: BackgroundCommandAdaptor;
   private executor?: TaskExecutor;
   private adaptor?: BackgroundJobManagerOptions["adaptor"];
+  private forkFileStateCache?: BackgroundJobManagerOptions["forkFileStateCache"];
   private readonly taskStates = new Map<string, BackgroundTaskState>();
   private taskStateStore: BackgroundTaskStateStore = {
     read: (taskId) => this.taskStates.get(taskId),
@@ -170,6 +175,7 @@ export class BackgroundJobManager {
     if (this.executor)
       throw new Error("Background task executor is already connected.");
     this.adaptor = options.adaptor;
+    this.forkFileStateCache = options.forkFileStateCache;
     if (options.stateStore) this.taskStateStore = options.stateStore;
     if (options.adaptor.commandAdaptor)
       this.connect(options.adaptor.commandAdaptor);
@@ -319,6 +325,15 @@ export class BackgroundJobManager {
     const taskId = crypto.randomUUID();
     this.forkSystemPrompts.set(taskId, agent.systemPrompt);
     try {
+      // Forks inherit the parent's messages, so they inherit its read cache
+      // at the same moment; other tasks start empty.
+      if (agent.parentTaskId) {
+        try {
+          await this.forkFileStateCache?.(agent.parentTaskId, taskId);
+        } catch (error) {
+          logger.warn("Failed to fork file state cache", error);
+        }
+      }
       const state: BackgroundTaskState = {
         parentTaskId: agent.parentTaskId,
         tools: agent.tools,

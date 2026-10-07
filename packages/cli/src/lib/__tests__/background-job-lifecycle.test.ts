@@ -391,7 +391,6 @@ it("shares commands across main, foreground and background agents, and only clea
     }
     await adaptor.executeToolCall({
       taskId: "back",
-      parentTaskId: undefined,
       storeId: store.storeId,
       toolName: "executeCommand",
       toolCallId: "back-command",

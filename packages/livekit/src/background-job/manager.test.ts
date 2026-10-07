@@ -154,7 +154,6 @@ describe("BackgroundJobManager", () => {
     };
     const call = {
       taskId: "parent",
-      parentTaskId: undefined,
       storeId: "test",
       toolName: "killBackgroundJob",
       toolCallId: "stop-command",

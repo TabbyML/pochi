@@ -446,6 +446,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     this.fileStateCacheRegistry.markAllAsWritten(taskId);
   };
 
+  forkFileStateCache = async (
+    sourceTaskId: string,
+    targetTaskId: string,
+  ): Promise<void> => {
+    this.fileStateCacheRegistry.fork(sourceTaskId, targetTaskId);
+  };
+
   readRecentFilesForCompact = async (taskId: string) => {
     return this.fileStateCacheRegistry.getRecentFiles(taskId);
   };
@@ -597,7 +604,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       toolPolicies?: CompiledToolPolicies;
       storeId: string;
       taskId: string;
-      fileStateCacheSourceTaskId?: string;
       allowBackground?: boolean;
     },
   ) => {
@@ -644,16 +650,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       options.builtinSubAgentInfo,
     );
     const taskId = options.taskId;
-    if (options.fileStateCacheSourceTaskId) {
-      this.fileStateCacheRegistry.copyIfAbsent(
-        options.fileStateCacheSourceTaskId,
-        taskId,
-      );
-    }
     const fileStateCache = this.fileStateCacheRegistry.get(taskId);
-    logger.debug(
-      `executeToolCall: ${toolName} taskId=${options.taskId} fileStateCacheSourceTaskId=${options.fileStateCacheSourceTaskId ?? "none"} fileStateCache=${fileStateCache ? "present" : "MISSING"}`,
-    );
     const rawResult = await safeCall(
       tool(resolvedArgs, {
         abortSignal,

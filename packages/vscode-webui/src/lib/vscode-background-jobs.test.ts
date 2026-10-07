@@ -98,7 +98,6 @@ describe("VS Code background command ownership", () => {
         toolCallId: "fork-command",
         input: { command: "echo test" },
         taskId: "fork",
-        parentTaskId: "parent",
         storeId: "store",
         allowBackground: false,
         abortSignal: new AbortController().signal,
@@ -374,7 +373,6 @@ describe("VS Code background command ownership", () => {
         input: { command: "test" },
         storeId: "store",
         taskId: "child",
-        parentTaskId: "parent",
         abortSignal: new AbortController().signal,
         toolPolicies: undefined,
       });

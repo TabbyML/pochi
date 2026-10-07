@@ -267,10 +267,6 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
   async executeToolCall(
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
-    if (args.parentTaskId) {
-      this.copyFileStateCacheIfAbsent(args.parentTaskId, args.taskId);
-    }
-
     const tool = {
       type: `tool-${args.toolName}`,
       toolCallId: args.toolCallId,
@@ -305,6 +301,21 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
     this.fileStateCaches.get(taskId)?.markAllAsWritten();
   }
 
+  forkFileStateCache(sourceTaskId: string, targetTaskId: string) {
+    const source =
+      this.fileStateCaches.get(sourceTaskId) ??
+      (sourceTaskId === this.parentTaskId
+        ? this.parentFileStateCache
+        : undefined);
+    const target = new FileStateCache();
+    if (source) {
+      for (const [key, value] of source) {
+        target.set(key, { ...value });
+      }
+    }
+    this.fileStateCaches.set(targetTaskId, target);
+  }
+
   private createToolCallOptions(
     taskId: string,
     allowBackground?: boolean,
@@ -324,29 +335,6 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
         this.options.store,
       ).forTask(taskId),
     };
-  }
-
-  private copyFileStateCacheIfAbsent(
-    sourceTaskId: string,
-    targetTaskId: string,
-  ) {
-    const existingTarget = this.fileStateCaches.get(targetTaskId);
-    if (existingTarget && existingTarget.size > 0) {
-      return;
-    }
-
-    const source =
-      this.fileStateCaches.get(sourceTaskId) ??
-      (sourceTaskId === this.parentTaskId
-        ? this.parentFileStateCache
-        : undefined);
-    const target = new FileStateCache();
-    if (source) {
-      for (const [key, value] of source) {
-        target.set(key, { ...value });
-      }
-    }
-    this.fileStateCaches.set(targetTaskId, target);
   }
 
   private getFileStateCache(taskId: string) {

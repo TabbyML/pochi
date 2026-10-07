@@ -84,6 +84,8 @@ function TaskPanelStore({
           adaptor: new VscodeRunningTaskAdaptor(),
           stateStore: createVscodeBackgroundTaskStateStore(),
           clearFileStateCache: (id) => vscodeHost.clearFileStateCache(id),
+          forkFileStateCache: (sourceId, targetId) =>
+            vscodeHost.forkFileStateCache(sourceId, targetId),
         });
         await manager.watchTask(taskId);
         if (active) setReadyStore(store);
