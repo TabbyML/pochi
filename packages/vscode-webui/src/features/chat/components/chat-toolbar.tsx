@@ -61,6 +61,7 @@ import { useNewCompactTask } from "../hooks/use-new-compact-task";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { useTerminalContextState } from "../hooks/use-terminal-context-state";
+import { BackgroundJobContextProvider } from "../lib/use-background-job-display";
 import { BackgroundJobManagePanel } from "./background-job-manage-panel";
 import { ChatInputForm, type ChatInputFormHandle } from "./chat-input-form";
 import { ErrorMessageView } from "./error-message-view";
@@ -498,7 +499,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const hasVisibleContextPanel = hasVisibleTodos || hasVisibleChangedFiles;
 
   return (
-    <>
+    <BackgroundJobContextProvider messages={messages}>
       <div className={PopupContainerClassName}>
         <div className={PopupContentClassName}>
           <ErrorMessageView error={displayError} />
@@ -685,7 +686,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-    </>
+    </BackgroundJobContextProvider>
   );
 };
 

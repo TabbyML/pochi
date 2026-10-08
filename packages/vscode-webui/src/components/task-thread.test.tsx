@@ -2,6 +2,7 @@ import type { Message } from "@getpochi/livekit";
 // @vitest-environment jsdom
 import { act, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { TaskThread, type TaskThreadSource } from "./task-thread";
 
 const mocks = vi.hoisted(() => ({
@@ -105,5 +106,28 @@ describe("TaskThread scrolling", () => {
     act(() => mocks.resizeCallback?.([], {} as ResizeObserver));
 
     expect(mocks.scrollToBottom).toHaveBeenCalledWith(true);
+  });
+
+  it("passes the complete raw child task history to MessageList", () => {
+    const jobMessage = (backgroundJobId: string): Message => ({
+      id: backgroundJobId,
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-executeCommand",
+          toolCallId: backgroundJobId,
+          state: "output-available",
+          input: { command: "bun run test" },
+          output: { output: "", _meta: { backgroundJobId } },
+        },
+      ],
+    });
+    const childMessages = [
+      jobMessage("bgjob-cmd-earlier"),
+      jobMessage("bgjob-cmd-latest"),
+    ];
+
+    render(<TaskThread source={makeSource(childMessages)} />);
+    expect(mocks.messageListProps.at(-1)?.messages).toBe(childMessages);
   });
 });

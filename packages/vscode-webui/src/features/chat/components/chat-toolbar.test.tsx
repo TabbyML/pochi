@@ -8,7 +8,9 @@ import type { Todo } from "@getpochi/tools";
 // @vitest-environment jsdom
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DraftMessage } from "../hooks/use-chat-submit";
 import { ChatToolbar } from "./chat-toolbar";
+import { QueuedMessages } from "./queued-messages";
 const chatSubmitMocks = vi.hoisted(() => {
   const preparing = { current: false };
   const handleSteerQueuedMessage = vi.fn();
@@ -79,6 +81,24 @@ const attachmentUploadMocks = vi.hoisted(() => ({
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+vi.mock("@/lib/hooks/use-background-commands", () => ({
+  useBackgroundCommands: () => ({ backgroundCommands: {}, show: vi.fn() }),
+}));
+vi.mock("@/lib/hooks/use-visible-terminals", () => ({
+  useVisibleTerminals: () => ({
+    terminals: [],
+    openBackgroundJobTerminal: vi.fn(),
+  }),
+}));
+vi.mock("@/features/tools", async () => {
+  const { BackgroundJobPanel } = await import(
+    "../../tools/components/command-execution-panel"
+  );
+  return { BackgroundJobPanel };
+});
+vi.mock("../../tools/components/xterm", () => ({
+  XTerm: () => null,
 }));
 vi.mock("@/components/attachment-preview-list", () => ({
   AttachmentPreviewList: () => null,
@@ -242,7 +262,15 @@ vi.mock("./chat-input-form", () => ({
     if (ref) {
       ref.current = { focusInput: chatInputFormMocks.focusInput };
     }
-    return <form>{children}</form>;
+    return (
+      <form>
+        {children}
+        <QueuedMessages
+          messages={(props.queuedMessages as DraftMessage[]) ?? []}
+          onRemove={vi.fn()}
+        />
+      </form>
+    );
   },
 }));
 vi.mock("./error-message-view", () => ({
@@ -263,6 +291,7 @@ const auditTodo: Todo = {
   status: "in-progress",
   priority: "medium",
 };
+
 interface RenderToolbarOptions {
   messages?: Message[];
   todos?: Todo[];
@@ -333,7 +362,9 @@ function notificationPart(
     data: notification(backgroundJobId),
   };
 }
-function notification(backgroundJobId: string): BackgroundJobNotification {
+function notification(
+  backgroundJobId: string,
+): Extract<BackgroundJobNotification, { kind: "command" }> {
   return {
     kind: "command",
     notificationId: `${backgroundJobId}:terminal`,
@@ -380,6 +411,50 @@ describe("ChatToolbar", () => {
     userEditsMocks.userEdits = [];
     chatInputStateMocks.setInput.mockReset();
     attachmentUploadMocks.restoreFiles.mockReset();
+  });
+  it("provides job display context to pending notifications in the composer", () => {
+    const backgroundJobId = "bgjob-cmd-pending";
+    const consoleError = vi.spyOn(console, "error");
+    try {
+      renderToolbar(false, undefined, {
+        messages: [
+          {
+            id: "assistant-1",
+            role: "assistant",
+            parts: [
+              {
+                type: "tool-executeCommand",
+                toolCallId: "command-1",
+                state: "output-available",
+                input: { command: "bun run test", cwd: "/workspace" },
+                output: {
+                  output: "started",
+                  _meta: { backgroundJobId },
+                },
+              },
+            ],
+          } as Message,
+        ],
+        pendingBackgroundJobNotifications: [
+          {
+            type: "data-background-job-notification",
+            data: {
+              ...notification(backgroundJobId),
+              command: "fallback command",
+              summary: "Completed",
+            },
+          },
+        ],
+      });
+
+      expect(screen.getByText("bun run test")).toBeTruthy();
+      expect(screen.queryByText("fallback command")).toBeNull();
+      expect(consoleError).not.toHaveBeenCalledWith(
+        "useBackgroundJobContext must be used within a BackgroundJobContextProvider",
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
   it("restores a queued message into the composer when it is edited", async () => {
     const draft = {
