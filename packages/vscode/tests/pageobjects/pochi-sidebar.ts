@@ -152,7 +152,23 @@ export class PochiSidebar {
     return titles;
   }
 
-  async waitForTaskToAppear(timeout = 30000) {
+  getTaskById(taskId: string) {
+    return $(`[aria-label="task-row"][data-task-id="${taskId}"]`);
+  }
+
+  async getTaskIds(): Promise<string[]> {
+    const tasks = await this.getTaskListItems();
+    const ids: string[] = [];
+    for (const task of tasks) {
+      const id = await task.getAttribute("data-task-id");
+      if (id) ids.push(id);
+    }
+    return ids;
+  }
+
+  async waitForTaskToAppear(timeout = 30000, existingTaskIds: string[] = []) {
+    const existingIds = new Set(existingTaskIds);
+    let taskId = "";
     await browser.waitUntil(
       async () => {
         // Ensure we're in the correct frame before checking
@@ -162,45 +178,31 @@ export class PochiSidebar {
           return false;
         }
 
-        const tasks = await this.getTaskListItems();
-        const count = await tasks.length;
-        console.log(`[Test Debug] Current task count: ${count}`);
-        return count > 0;
+        const ids = await this.getTaskIds();
+        console.log("[Test Debug] Current task IDs:", ids);
+        taskId = ids.find((id) => !existingIds.has(id)) ?? "";
+        return !!taskId;
       },
       {
         timeout,
-        timeoutMsg: "No tasks appeared in the sidebar task list",
+        timeoutMsg: `No new task appeared in the sidebar task list (existing IDs: ${existingTaskIds.join(", ")})`,
         interval: 500, // Check every 500ms
       },
     );
+    return taskId;
   }
 
-  async archiveTask(index: number) {
-    const tasks = await this.getTaskListItems();
-    if (index >= (await tasks.length)) {
-      throw new Error(`Task at index ${index} not found`);
-    }
-    const task = tasks[index];
+  async archiveTask(taskId: string) {
+    const task = this.getTaskById(taskId);
+    await task.waitForDisplayed();
 
     // Hover to show the archive button
     await task.moveTo();
 
     // Click the archive button
     const archiveButton = await task.$('[aria-label="archive-task-button"]');
-    await archiveButton.waitForDisplayed();
+    await archiveButton.waitForClickable();
     await archiveButton.click();
-  }
-
-  async isTaskArchived(index: number): Promise<boolean> {
-    const tasks = await this.getTaskListItems();
-    if (index >= (await tasks.length)) {
-      return false;
-    }
-    const task = tasks[index];
-    const className = await task.getAttribute("class");
-    return (
-      className.includes("border-dashed") && className.includes("opacity-60")
-    );
   }
 
   async toggleArchivedTasksVisibility() {
@@ -213,16 +215,12 @@ export class PochiSidebar {
     await filterButton.waitForClickable();
     await filterButton.click();
 
-    // Wait for dropdown to open
-    await browser.pause(300);
-
     // Click the archived tasks checkbox
     const archivedCheckbox = $('[data-testid="filter-archived-tasks"]');
     await archivedCheckbox.waitForClickable();
     await archivedCheckbox.click();
 
-    // Wait for UI to update
-    await browser.pause(500);
+    await archivedCheckbox.waitForDisplayed({ reverse: true });
   }
 
   async archiveOldTasks() {
