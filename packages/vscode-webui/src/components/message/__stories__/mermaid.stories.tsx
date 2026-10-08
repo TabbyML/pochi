@@ -1,9 +1,17 @@
+import { BackgroundJobContextProvider } from "@/features/chat";
 import type { Meta, StoryObj } from "@storybook/react";
 import { MessageMarkdown } from "../markdown";
 
 const meta: Meta<typeof MessageMarkdown> = {
   title: "Message/Mermaid",
   component: MessageMarkdown,
+  decorators: [
+    (Story) => (
+      <BackgroundJobContextProvider messages={[]}>
+        <Story />
+      </BackgroundJobContextProvider>
+    ),
+  ],
   parameters: {
     layout: "padded",
   },

@@ -3,6 +3,7 @@ import type { Message } from "@getpochi/livekit";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Profiler, type ReactNode, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BackgroundJobContextProvider } from "../../../features/chat/lib/use-background-job-display";
 import { MessageListPaginationConfig } from "../use-message-list-pagination";
 
 const vscodeMock = vi.hoisted(() => ({
@@ -39,12 +40,8 @@ vi.mock("@/lib/hooks/use-latest-checkpoint", () => ({
   useLatestCheckpoint: () => null,
 }));
 
-vi.mock("@/features/chat", () => ({
-  BackgroundJobContextProvider: ({
-    children,
-  }: {
-    children: React.ReactNode;
-  }) => <>{children}</>,
+vi.mock("@/features/chat", async () => ({
+  ...(await import("../../../features/chat/lib/use-background-job-display")),
   useAutoApproveGuard: () => ({ current: "manual" }),
   useToolCallLifeCycle: () => ({
     executingToolCalls: [],
@@ -92,11 +89,17 @@ vi.mock("@/features/tools", () => ({
   ),
 }));
 
-vi.mock("../markdown", () => ({
-  MessageMarkdown: ({ children }: { children: string }) => (
-    <div data-testid="markdown">{children}</div>
-  ),
-}));
+vi.mock("../markdown", async () => {
+  const { useReplaceJobIdsInContent } = await import(
+    "../../../features/chat/lib/use-background-job-display"
+  );
+  return {
+    MessageMarkdown: ({ children }: { children: string }) => {
+      const replaceJobIds = useReplaceJobIdsInContent();
+      return <div data-testid="markdown">{replaceJobIds(children)}</div>;
+    },
+  };
+});
 
 vi.mock("../user-edits", () => ({
   UserEditsPart: ({
@@ -266,6 +269,62 @@ function renderList(messages: Message[], renderAllMessages = false) {
 }
 
 describe("MessageList pagination", () => {
+  it.each([false, true])(
+    "owns its full-history job scope with parent provider=%s",
+    (hasParentProvider) => {
+      const jobPart = (backgroundJobId: string) => ({
+        type: "tool-executeCommand" as const,
+        toolCallId: backgroundJobId,
+        state: "output-available" as const,
+        input: { command: "bun run test", cwd: "/workspace" },
+        output: { output: "started", _meta: { backgroundJobId } },
+      });
+      const messages = makeMessages(200);
+      messages[1].parts.push(jobPart("bgjob-cmd-earlier"));
+      messages[199].parts.push(jobPart("bgjob-cmd-latest"), {
+        type: "text",
+        text: "jobs bgjob-cmd-parent bgjob-cmd-earlier bgjob-cmd-latest",
+      });
+      const formatMessages = (visible: Message[]) =>
+        visible.map((message) => ({
+          ...message,
+          parts: message.parts.filter((part) => part.type === "text"),
+        }));
+      const list = (
+        <MessageListProbe messages={messages} formatMessages={formatMessages} />
+      );
+      const consoleError = vi.spyOn(console, "error");
+      try {
+        render(
+          hasParentProvider ? (
+            <BackgroundJobContextProvider
+              messages={[
+                {
+                  id: "parent",
+                  role: "assistant",
+                  parts: [jobPart("bgjob-cmd-parent")],
+                },
+              ]}
+            >
+              {list}
+            </BackgroundJobContextProvider>
+          ) : (
+            list
+          ),
+        );
+
+        expect(screen.getByText("jobs bgjob-cmd-parent %1 %2")).toBeTruthy();
+        expect(screen.queryByText("assistant 1 intro")).toBeNull();
+        expect(screen.queryAllByTestId("tool-part")).toHaveLength(0);
+        expect(consoleError).not.toHaveBeenCalledWith(
+          "useBackgroundJobContext must be used within a BackgroundJobContextProvider",
+        );
+      } finally {
+        consoleError.mockRestore();
+      }
+    },
+  );
+
   it("formats only the raw tail page", () => {
     const messages = makeMessages(200);
     const formatMessages = vi.fn((visible: Message[]) => visible);
