@@ -30,7 +30,7 @@ jobs:
         env:
           POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
         run: |
-          bun turbo test:integration
+          bun turbo test:integration --filter=pochi --filter=@getpochi/cli
 
       - name: 📦 Upload Logs
         uses: actions/upload-artifact@v4

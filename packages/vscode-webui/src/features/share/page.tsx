@@ -9,7 +9,7 @@ import type { Message } from "@getpochi/livekit";
 import { toTaskStatus } from "@getpochi/livekit";
 import { createChannel } from "bidc";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorMessageView } from "../chat/components/error-message-view";
 import { TodoList } from "../todo";
 
@@ -150,9 +150,9 @@ export function SharePage() {
     error,
   } = shareData || {};
 
-  const renderMessages = useMemo(
-    () => formatters.shareUI(messages as Message[]),
-    [messages],
+  const formatRenderMessages = useCallback(
+    (messages: Message[]) => formatters.shareUI(messages),
+    [],
   );
 
   const todos = shareData?.todos ?? [];
@@ -193,7 +193,8 @@ export function SharePage() {
                   <MessageList
                     user={user}
                     assistant={assistant}
-                    messages={renderMessages}
+                    messages={messages as Message[]}
+                    formatMessages={formatRenderMessages}
                     isLoading={isLoading}
                     renderAllMessages
                     hideUserEditsActions

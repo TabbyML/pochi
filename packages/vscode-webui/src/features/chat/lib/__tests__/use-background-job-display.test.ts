@@ -1,7 +1,13 @@
 import type { Message } from "@getpochi/livekit";
 import { renderHook } from "@testing-library/react";
+import { type ReactNode, createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { useBackgroundJobDisplay } from "../use-background-job-display";
+import {
+  BackgroundJobContextProvider,
+  useBackgroundJobDisplay,
+  useBackgroundJobInfo,
+  useReplaceJobIdsInContent,
+} from "../use-background-job-display";
 
 function messagesWithJob(backgroundJobId: string, command: string): Message[] {
   return [
@@ -66,5 +72,61 @@ describe("replaceJobIdsInContent", () => {
 
   it("leaves content untouched when there are no background jobs", () => {
     expect(replaceIn("nothing to replace", [])).toBe("nothing to replace");
+  });
+});
+
+describe("BackgroundJobContextProvider task scope", () => {
+  it("uses the complete task history for job info and text replacement", () => {
+    const messages = [
+      ...messagesWithJob("bgjob-cmd-earlier", "bun run dev"),
+      ...messagesWithJob("bgjob-cmd-latest", "bun run test"),
+    ];
+    const { result } = renderHook(
+      () => ({
+        info: useBackgroundJobInfo("bgjob-cmd-latest"),
+        replace: useReplaceJobIdsInContent(),
+      }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) =>
+          createElement(BackgroundJobContextProvider, { messages, children }),
+      },
+    );
+
+    expect(result.current.info).toEqual({
+      command: "bun run test",
+      displayId: "%2",
+    });
+    expect(result.current.replace("bgjob-cmd-earlier bgjob-cmd-latest")).toBe(
+      "%1 %2",
+    );
+  });
+
+  it("does not inherit the parent task's job mapping in a child task", () => {
+    const parentMessages = messagesWithJob("bgjob-cmd-parent", "parent command");
+    const childMessages = messagesWithJob("bgjob-cmd-child", "child command");
+    const { result } = renderHook(
+      () => ({
+        info: useBackgroundJobInfo("bgjob-cmd-child"),
+        replace: useReplaceJobIdsInContent(),
+      }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) =>
+          createElement(BackgroundJobContextProvider, {
+            messages: parentMessages,
+            children: createElement(BackgroundJobContextProvider, {
+              messages: childMessages,
+              children,
+            }),
+          }),
+      },
+    );
+
+    expect(result.current.info).toEqual({
+      command: "child command",
+      displayId: "%1",
+    });
+    expect(result.current.replace("bgjob-cmd-parent bgjob-cmd-child")).toBe(
+      "bgjob-cmd-parent %1",
+    );
   });
 });

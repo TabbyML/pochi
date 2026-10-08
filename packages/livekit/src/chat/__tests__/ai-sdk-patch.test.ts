@@ -100,6 +100,64 @@ describe("ai sdk patch", () => {
     ).toBe("prepared response");
   });
 
+  it("streams a continuation after a message appended by preparation", async () => {
+    const chat = new TestChat({
+      transport: {
+        reconnectToStream: async () => null,
+        sendMessages: async () =>
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: "start" });
+              controller.enqueue({ type: "text-start", id: "text" });
+              controller.enqueue({
+                type: "text-delta",
+                id: "text",
+                delta: "continued",
+              });
+              controller.enqueue({ type: "text-end", id: "text" });
+              controller.enqueue({ type: "finish" });
+              controller.close();
+            },
+          }),
+      },
+    });
+    chat.messages = [
+      { id: "user", role: "user", parts: [{ type: "text", text: "hi" }] },
+      {
+        id: "assistant",
+        role: "assistant",
+        parts: [{ type: "text", text: "first step" }],
+      },
+    ];
+    chat.onBeforeSnapshotInMakeRequest = async () => {
+      chat.messages = [
+        ...chat.messages,
+        {
+          id: "notification",
+          role: "user",
+          parts: [{ type: "text", text: "job finished" }],
+        },
+      ];
+    };
+
+    // A continuation targets the last message id captured before preparation.
+    await chat.sendMessage();
+
+    expect(chat.messages.map((message) => message.id)).toEqual([
+      "user",
+      "assistant",
+      "notification",
+      expect.any(String),
+    ]);
+    expect(chat.messages[1].parts).toEqual([
+      { type: "text", text: "first step" },
+    ]);
+    expect(chat.messages.at(-1)).toMatchObject({
+      role: "assistant",
+      parts: [{ type: "text", text: "continued", state: "done" }],
+    });
+  });
+
   it("calls onBeforeSnapshotInMakeRequest before transport send", async () => {
     let hookCalled = false;
 
