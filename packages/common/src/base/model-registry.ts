@@ -18,6 +18,6 @@ export const ModelRegistry = {
    * agent file doesn't declare a `model` in its frontmatter.
    */
   builtinAgents: {
-    explore: "openai/gpt-6-luna",
+    explore: "google/gemini-3.1-flash-lite",
   } as Partial<Record<string, string>>,
 } as const;
