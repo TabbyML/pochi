@@ -1,0 +1,32 @@
+---
+title: 'Weekly Update #42'
+---
+# Weekly Update #42
+
+### TL;DR
+
+Pochi 0.74 shipped on September 24 with proactive monitors that bring ongoing events back into your task and the ability to revise queued messages before they run. This week's development work focuses on keeping background commands and conversations moving reliably, including when you open a subagent or work on Windows. Pochi 0.76 was scheduled for October 8, but its stable release is not yet confirmed; the upcoming fixes below are included in the 0.75.1 prerelease.
+
+More below!
+
+### 🚀 Features
+
+- **Watch ongoing work without repeatedly checking it:** Pochi can monitor a stream of events—such as matching log messages or changes in CI checks—and receive updates while it continues other work. New events can also resume an idle task, so Pochi can react without repeatedly asking whether anything has changed.
+
+  This is most useful when you want Pochi to watch for errors or follow a sequence of results, rather than wait for a single command to finish. Monitors have a time limit by default and can be stopped from the background-work controls. [**#1894**](https://github.com/TabbyML/pochi/pull/1894)
+
+### ✨ Enhancements
+
+- **Revise a queued message before it runs:** You can bring a queued message back into the composer to edit it, with its attachments, pasted content, and Todo mode restored. This lets you correct or refine your next instruction without rebuilding it from scratch. Restoring a queued message replaces the current composer contents. [**#1964**](https://github.com/TabbyML/pochi/pull/1964)
+
+### 🐛 Bug Fixes
+
+- **Background work will keep moving when you open a subagent:** Upcoming fixes will prevent opening a subagent's details from stopping the parent task's background commands and monitors. Replies to background notifications will also appear after the event they answer, with their tool calls able to run instead of remaining stuck pending until you reopen the task. [**#1978**](https://github.com/TabbyML/pochi/pull/1978), [**#1990**](https://github.com/TabbyML/pochi/pull/1990)
+
+- **Windows background commands will appear in the manager:** Commands explicitly started in the background on Windows will be listed with controls to open their recorded output and stop them, including their child processes. This does not add automatic background continuation for Windows foreground commands that time out. [**#1985**](https://github.com/TabbyML/pochi/pull/1985)
+
+- **Changed-file summaries keep up with background notifications:** File edits remain reflected in the chat's changed-files summary when a background-job notification arrives immediately afterward. Previously, that timing could leave an edited file missing from the summary. [**#1958**](https://github.com/TabbyML/pochi/pull/1958)
+
+### 👀 Coming Up
+
+- **Configurable isolated workspaces for subagents:** Roadmap work will add configuration for running subagents in separate Git worktrees, keeping their file changes apart from the main workspace.
