@@ -48,5 +48,8 @@ export function getSubAgentNotificationId(task: {
 
 /** Tool result returned by newTask when the subagent starts in the background. */
 export function createBackgroundSubAgentStartedResult(taskId: string): string {
-  return `Subagent started in the background (backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive as a system notification. Meanwhile, do only work that neither overlaps with nor depends on it; if none remains, call attemptCompletion stating the result is pending. Do not poll, sleep, or guess the result. Stop it with killBackgroundJob.`;
+  return `Subagent started in the background (backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.
+Next step: call attemptCompletion now and say the result is pending.
+Exception: you may first do work that is unrelated to this subagent's assignment and does not need its result.
+Never do any part of its assignment yourself, and do not poll, sleep, or guess its result.`;
 }
