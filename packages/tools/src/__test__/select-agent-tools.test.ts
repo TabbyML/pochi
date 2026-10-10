@@ -216,7 +216,7 @@ describe("selectAgentTools", () => {
       "background command",
     );
     expect(topLevelTools.attemptCompletion?.description).toContain(
-      "if they are still running and no independent work remains",
+      "if you are only waiting on background commands or subagents",
     );
   });
 

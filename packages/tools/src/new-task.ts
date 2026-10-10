@@ -120,8 +120,7 @@ Usage notes:
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
-7. Subagents run in the background by default; the result arrives later as a system notification. Set background to false when your next step depends on the result and you have nothing independent to do meanwhile.
-8. While a background subagent runs, do only work that neither overlaps with nor depends on its assignment (e.g. don't re-explore what you delegated). Never guess its result before the notification arrives.
+7. Subagents run in the background by default; the result arrives later in a system notification. Set background to false when your next step depends on the result and you have nothing else to do meanwhile.
       `.trim(),
     inputSchema,
     outputSchema: z.object({
