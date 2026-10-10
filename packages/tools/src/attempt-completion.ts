@@ -16,7 +16,7 @@ const toolDef = {
   description:
     `Use this tool to end the current agent turn and present its result to the user. Normally, call it only after receiving all tool results and confirming the task is complete.
 
-Exception for background commands and subagents: if they are still running and no independent work remains, call this tool now to yield the current turn instead of reading their output, polling, sleeping, or repeating delegated work. Briefly state which results are pending without claiming the overall task is complete. Do not assume or fabricate outcomes before their completion notifications arrive. Those notifications will resume the task with the results.
+Exception: if you are only waiting on background commands or subagents, call this tool now to end the turn and say which results are pending, without guessing them. Their completion notifications will resume the task.
 
 You MUST NOT generate any text before this tool call. All conclusion text must be included within the result parameter of the attemptCompletion tool.
 Never use this tool to ask a question or request further conversation.
