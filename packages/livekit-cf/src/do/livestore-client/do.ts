@@ -105,7 +105,7 @@ export class LiveStoreClientDO
     await this.getStore();
     // // Make sure to only subscribe once
     // if (this.storeSubscription === undefined) {
-    //   this.storeSubscription = store.subscribe(catalog.queries.tasks$, {
+    //   this.storeSubscription = store.subscribe(catalog.queries.allTasks$, {
     //     // FIXME(meng): implement this with store.events stream when it's ready
     //     onUpdate: (tasks) => this.onTasksUpdateThrottled.call(tasks),
     //   });
@@ -126,7 +126,7 @@ export class LiveStoreClientDO
 
   private onTasksUpdate = async (force?: boolean) => {
     const store = await this.getStore();
-    const tasks = store.query(catalog.queries.tasks$);
+    const tasks = store.query(catalog.queries.allTasks$);
     const oneMinuteAgo = moment().subtract(1, "minute");
 
     const updatedTasks = tasks.filter(
