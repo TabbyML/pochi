@@ -31,6 +31,20 @@ const toolDef = {
       .describe(
         'File pattern to include in the search (e.g. "*.js", "*.{ts,tsx}"). If not provided, it will search all files.',
       ),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe(
+        "Limit output to the first N matching lines. The host already applies an internal safety limit when omitted, so only specify this when a smaller result set is necessary.",
+      ),
+    case_sensitive: z
+      .boolean()
+      .optional()
+      .describe(
+        "Make the match case-sensitive. Defaults to false (case-insensitive).",
+      ),
   }),
   outputSchema: z.object({
     matches: z

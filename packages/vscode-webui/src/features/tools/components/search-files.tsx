@@ -12,7 +12,7 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
   isExecuting,
 }) => {
   const { t } = useTranslation();
-  const { path, regex, filePattern } = tool.input || {};
+  const { path, regex, filePattern, limit } = tool.input || {};
 
   let resultEl: React.ReactNode;
   let matches: { file: string; line: number; context: string }[] = [];
@@ -41,6 +41,7 @@ export const searchFilesTool: React.FC<ToolProps<"searchFiles">> = ({
           <HighlightedText>{filePattern}</HighlightedText>
         </>
       )}
+      {limit !== undefined ? ` (limit: ${limit})` : null}
     </>
   );
 

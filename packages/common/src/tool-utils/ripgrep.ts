@@ -119,13 +119,16 @@ export async function searchFilesWithRipgrep(
   rgPath: string,
   workspacePath: string,
   filePattern?: string,
+  limit?: number,
+  caseSensitive = false,
   abortSignal?: AbortSignal,
 ): Promise<{
   matches: RipgrepMatch[];
   isTruncated: boolean;
 }> {
-  logger.debug("searchFiles", path, regex, filePattern);
+  logger.debug("searchFiles", path, regex, filePattern, limit, caseSensitive);
   const matches: RipgrepMatch[] = [];
+  const matchLimit = limit ?? MaxRipgrepItems;
   let isTruncated = false;
   let serializedLength = JSON.stringify({
     matches: [],
@@ -137,11 +140,10 @@ export async function searchFilesWithRipgrep(
   // quoting with single quotes breaks on Windows because the default shell
   // (cmd.exe) does not strip single quotes, so rg would receive literal
   // quotes around the path and fail with "path not found".
-  // - --case-sensitive matches the original implementation's RegExp usage.
   // - --binary skips binary files, similar to the original file-type check.
   const args = [
     "--json",
-    "--case-sensitive",
+    caseSensitive ? "--case-sensitive" : "--ignore-case",
     "--binary",
     "--sortr",
     "modified",
@@ -177,8 +179,8 @@ export async function searchFilesWithRipgrep(
         return;
       }
 
-      if (matches.length >= MaxRipgrepItems) {
-        isTruncated = true;
+      if (matches.length >= matchLimit) {
+        isTruncated = limit === undefined;
         stopAfterLimit();
         return;
       }
@@ -191,7 +193,7 @@ export async function searchFilesWithRipgrep(
         remainingLength,
       );
       if (!fittedMatch) {
-        isTruncated = true;
+        isTruncated = limit === undefined;
         stopAfterLimit();
         return;
       }
@@ -199,7 +201,12 @@ export async function searchFilesWithRipgrep(
       matches.push(fittedMatch);
       serializedLength += separatorLength + JSON.stringify(fittedMatch).length;
       if (fittedMatch !== match) {
-        isTruncated = true;
+        isTruncated = limit === undefined;
+        stopAfterLimit();
+        return;
+      }
+
+      if (limit !== undefined && matches.length >= matchLimit) {
         stopAfterLimit();
       }
     };
