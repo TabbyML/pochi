@@ -50,6 +50,7 @@ export const startMonitor: ToolFunctionType<
         : (timeoutMs ?? MonitorDefaultTimeoutMs),
     },
   });
+  job.revealTerminal();
 
   return {
     backgroundJobId: job.id,

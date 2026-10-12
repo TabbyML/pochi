@@ -77,6 +77,7 @@ export const executeCommand: ToolFunctionType<
       taskId,
       ...(envs ? { envs } : {}),
     });
+    job.revealTerminal();
 
     return createBackgroundCommandResult(job.id, job.outputFile);
   }
@@ -160,6 +161,7 @@ export const executeCommand: ToolFunctionType<
             taskId,
             ...(envs ? { envs } : {}),
           });
+          job.revealTerminal();
           const backgroundResult = createBackgroundCommandResult(
             job.id,
             job.outputFile,
