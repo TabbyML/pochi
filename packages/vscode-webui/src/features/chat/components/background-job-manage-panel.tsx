@@ -419,7 +419,8 @@ function AgentJobRow({
   );
 }
 
-function JobRow({
+/** Exported for the background job UI proposal stories. */
+export function JobRow({
   job,
   parentTaskId,
 }: {
