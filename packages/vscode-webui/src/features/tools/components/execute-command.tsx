@@ -13,6 +13,7 @@ import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
+import { useBackgroundJobRunningStatus } from "./use-background-job-running-status";
 
 export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   tool,
@@ -31,6 +32,9 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   const backgroundJobMetadata =
     tool.state === "output-available" ? tool.output._meta : undefined;
   const isPromoted = !background && Boolean(backgroundJobMetadata);
+  const runningStatus = useBackgroundJobRunningStatus(
+    backgroundJobMetadata?.backgroundJobId,
+  );
   const cwdNode = cwd ? (
     <span>
       {" "}
@@ -44,7 +48,11 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
       : t("toolInvocation.executeCommand");
   const title = (
     <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <StatusIcon
+        isExecuting={isExecuting}
+        tool={tool}
+        statusOverride={runningStatus}
+      />
       <span className="ml-2">
         {text}
         {cwdNode}

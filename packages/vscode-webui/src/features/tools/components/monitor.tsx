@@ -9,6 +9,7 @@ import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
+import { useBackgroundJobRunningStatus } from "./use-background-job-running-status";
 
 export const StartMonitorTool: React.FC<ToolProps<"startMonitor">> = ({
   tool,
@@ -23,10 +24,15 @@ export const StartMonitorTool: React.FC<ToolProps<"startMonitor">> = ({
 
   const backgroundJobId =
     tool.state === "output-available" ? tool.output.backgroundJobId : undefined;
+  const runningStatus = useBackgroundJobRunningStatus(backgroundJobId);
 
   const title = (
     <>
-      <StatusIcon isExecuting={isExecuting} tool={tool} />
+      <StatusIcon
+        isExecuting={isExecuting}
+        tool={tool}
+        statusOverride={runningStatus}
+      />
       <span className="ml-2">
         {t("toolInvocation.startMonitor")}{" "}
         <HighlightedText>{description}</HighlightedText>

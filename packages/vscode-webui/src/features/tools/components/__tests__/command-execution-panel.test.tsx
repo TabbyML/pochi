@@ -10,8 +10,12 @@ const openFile = vi.fn();
 let terminals:
   | { backgroundJobId: string; name: string; isActive: boolean }[]
   | undefined = [];
-let backgroundCommands: Record<string, { isVisible: boolean }> | undefined = {};
-let jobInfo: { command: string | undefined; displayId: string } | undefined;
+let backgroundCommands:
+  | Record<string, { isVisible: boolean; detachable?: boolean }>
+  | undefined = {};
+let jobInfo:
+  | { command: string | undefined; displayId: string; outputFile?: string }
+  | undefined;
 
 vi.stubGlobal(
   "ResizeObserver",
@@ -146,10 +150,63 @@ describe("BackgroundJobPanel job control", () => {
     expect(openBackgroundJobTerminal).not.toHaveBeenCalled();
   });
 
-  it("top-aligns the display ID with a multi-line command", () => {
+  it("opens the output file of a finished job even if its terminal tab is still open", () => {
     terminals = [
       { backgroundJobId: "bgjob-cmd-1", name: "zsh", isActive: false },
     ];
+
+    renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    fireEvent.click(
+      screen.getByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
+    );
+    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    expect(showBackgroundCommand).not.toHaveBeenCalled();
+    expect(openBackgroundJobTerminal).not.toHaveBeenCalled();
+  });
+
+  it("opens the output file of a running job that has no terminal view", () => {
+    backgroundCommands = {
+      "bgjob-cmd-1": { isVisible: false, detachable: false },
+    };
+
+    renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    fireEvent.click(
+      screen.getByLabelText("backgroundJobNotifications.openOutput"),
+    );
+    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    expect(showBackgroundCommand).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the output file recorded by the start card", () => {
+    jobInfo = {
+      command: "bun run dev",
+      displayId: "%1",
+      outputFile: "/tmp/recorded.log",
+    };
+
+    renderBackgroundJobPanel();
+
+    fireEvent.click(
+      screen.getByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
+    );
+    expect(openFile).toHaveBeenCalledWith("/tmp/recorded.log");
+  });
+
+  it("leaves the badge as the only way to open the job", () => {
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
+
+    renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    expect(
+      screen.queryByLabelText("backgroundJobNotifications.openOutput"),
+    ).toBeNull();
+    expect(document.querySelector(".lucide-file-text")).toBeNull();
+  });
+
+  it("top-aligns the display ID with a multi-line command", () => {
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
     jobInfo = {
       command: `bun run build ${"--filter package ".repeat(20)}`,
       displayId: "%1",
@@ -310,6 +367,26 @@ describe("BackgroundJobPanel job control", () => {
     );
     expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
     expect(openBackgroundJobTerminal).not.toHaveBeenCalled();
+  });
+
+  it("shows the job number of a tracked job in place of the type icon", () => {
+    jobInfo = { command: "echo 123", displayId: "%2" };
+
+    const { container } = render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-cmd-1"
+        appearance="notification"
+        summary={'Background command "echo 123" completed with exit code 0'}
+        status="completed"
+        outputFile="/tmp/bgjob-cmd-1.log"
+      />,
+    );
+
+    const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
+    expect(row.firstElementChild?.textContent).toBe("%2");
+    expect(container.querySelector(".lucide-terminal")).toBeNull();
+    fireEvent.click(row);
+    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
   });
 
   it("truncates a long notification command", () => {

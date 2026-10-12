@@ -47,7 +47,10 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: only recompute when we start new background job
   const displayInfo = useMemo(() => {
-    const map = new Map<string, { displayId: string; command: string }>();
+    const map = new Map<
+      string,
+      { displayId: string; command: string; outputFile?: string }
+    >();
     const parts = messages.flatMap((msg) => msg.parts);
     for (const p of parts) {
       if (
@@ -59,6 +62,7 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
         map.set(p.output._meta.backgroundJobId, {
           displayId: `%${map.size + 1}`,
           command: p.input.command,
+          outputFile: p.output._meta.outputFile,
         });
       } else if (
         p.type === "tool-startMonitor" &&
@@ -69,6 +73,7 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
         map.set(p.output.backgroundJobId, {
           displayId: `%${map.size + 1}`,
           command: p.input.command,
+          outputFile: p.output.outputFile,
         });
       }
     }
@@ -109,13 +114,26 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
     [displayInfo],
   );
 
-  return { getJobDisplayId, replaceJobIdsInContent, getJobCommand };
+  const getJobOutputFile = useCallback(
+    (jobId: string) => {
+      return displayInfo.get(jobId)?.outputFile;
+    },
+    [displayInfo],
+  );
+
+  return {
+    getJobDisplayId,
+    replaceJobIdsInContent,
+    getJobCommand,
+    getJobOutputFile,
+  };
 };
 
 interface BackgroundJobContext {
   getJobDisplayId: (jobId: string) => string;
   replaceJobIdsInContent: (content: string) => string;
   getJobCommand: (jobId: string) => string | undefined;
+  getJobOutputFile: (jobId: string) => string | undefined;
 }
 
 const BackgroundJobContext = createContext<BackgroundJobContext | undefined>(
@@ -126,12 +144,21 @@ export const BackgroundJobContextProvider = ({
   children,
   messages,
 }: { children: ReactNode; messages: Message[] }) => {
-  const { getJobDisplayId, replaceJobIdsInContent, getJobCommand } =
-    useBackgroundJobDisplay(messages);
+  const {
+    getJobDisplayId,
+    replaceJobIdsInContent,
+    getJobCommand,
+    getJobOutputFile,
+  } = useBackgroundJobDisplay(messages);
 
   return (
     <BackgroundJobContext.Provider
-      value={{ getJobDisplayId, replaceJobIdsInContent, getJobCommand }}
+      value={{
+        getJobDisplayId,
+        replaceJobIdsInContent,
+        getJobCommand,
+        getJobOutputFile,
+      }}
     >
       {children}
     </BackgroundJobContext.Provider>
@@ -148,6 +175,7 @@ const useBackgroundJobContext = () => {
       getJobDisplayId: () => "",
       replaceJobIdsInContent: (content: string) => content,
       getJobCommand: (jobId: string) => jobId,
+      getJobOutputFile: () => undefined,
     };
   }
   return context;
@@ -164,12 +192,18 @@ export const useReplaceJobIdsInContent = () => {
 
 export const useBackgroundJobInfo = (
   backgroundJobId?: string,
-): { command: string | undefined; displayId: string } | undefined => {
-  const { getJobDisplayId, getJobCommand } = useBackgroundJobContext();
+):
+  | { command: string | undefined; displayId: string; outputFile?: string }
+  | undefined => {
+  const { getJobDisplayId, getJobCommand, getJobOutputFile } =
+    useBackgroundJobContext();
   if (!backgroundJobId) return;
 
   return {
     command: getJobCommand(backgroundJobId),
     displayId: getJobDisplayId(backgroundJobId),
+    // Recorded by the start card, so cards that only carry the id (e.g. the
+    // kill card) can still open the transcript.
+    outputFile: getJobOutputFile(backgroundJobId),
   };
 };
