@@ -479,6 +479,7 @@
     "@ast-grep/cli",
   ],
   "patchedDependencies": {
+    "@ai-sdk/google@3.0.129": "patches/@ai-sdk%2Fgoogle@3.0.129.patch",
     "tslog@4.9.3": "patches/tslog@4.9.3.patch",
     "better-auth@1.2.9": "patches/better-auth@1.2.9.patch",
     "silver-fleece@1.2.1": "patches/silver-fleece@1.2.1.patch",
