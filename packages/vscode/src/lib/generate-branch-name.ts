@@ -76,13 +76,6 @@ export async function generateBranchName(params: {
   const result = await generateText({
     ...request,
     model,
-    providerOptions: {
-      google: {
-        thinkingConfig: {
-          thinkingLevel: "minimal",
-        },
-      },
-    },
     abortSignal: params.abortSignal,
   });
 
