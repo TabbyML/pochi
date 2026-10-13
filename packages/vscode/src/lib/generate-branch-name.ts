@@ -79,7 +79,7 @@ export async function generateBranchName(params: {
     providerOptions: {
       google: {
         thinkingConfig: {
-          thinkingLevel: "minimal",
+          thinkingLevel: "low",
         },
       },
     },
