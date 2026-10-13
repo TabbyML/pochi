@@ -344,7 +344,11 @@ test("injectEnvironment returns a history repair that remains stable after persi
 
   // The in-memory chat state must stay identical to what is persisted.
   expect(inMemory).toEqual(persisted);
-  expect(first[2]?.parts.slice(1)).toEqual(persisted[2]?.parts);
+  expect(first[2]?.parts).toEqual([
+    { type: "text", text: fullReminder },
+    persisted[2]?.parts[0],
+    persisted[2]?.parts[2],
+  ]);
   expect(countFullEnvironments(formatters.llm(first))).toBe(1);
 
   // The transport persists the returned repair before updating chat state.
@@ -377,12 +381,17 @@ test("injectEnvironment returns a history repair that remains stable after persi
 });
 
 test.each([false, true])(
-  "injectEnvironment preserves the latest workspace snapshot when repairing compaction (continuation: %s)",
+  "injectEnvironment replaces lite with a current full snapshot after compaction (continuation: %s)",
   (continuation) => {
     const environment = createTestEnvironment();
     const messages: UIMessage[] = [
       createTextMessage("user-0", "user", "start"),
     ];
+    injectEnvironment(messages, environment);
+    messages.push(
+      createTextMessage("assistant-0", "assistant", "done"),
+      createTextMessage("user-1", "user", "inspect this file"),
+    );
     injectEnvironment(messages, environment);
     environment.workspace.activeTabs = [
       { filepath: "current.ts", isActive: true },
@@ -400,24 +409,31 @@ test.each([false, true])(
       status: "M current.ts",
       recentCommits: [],
     };
-    messages.push(
-      createTextMessage("assistant-0", "assistant", "done"),
-      createTextMessage("user-1", "user", "inspect this file"),
-    );
-    injectEnvironment(messages, environment);
+    const agentReminder = prompts.customAgentSystemReminder("demo");
     messages[2].parts.unshift({
       type: "text",
       text: "<compact>Summary</compact>",
     });
+    messages[2].parts.push({ type: "text", text: agentReminder });
     if (continuation)
       messages.push(
         createTextMessage("assistant-1", "assistant", "tool result"),
       );
     const originalParts = structuredClone(messages[2].parts);
 
-    const repaired = injectEnvironment(messages, createTestEnvironment());
+    const repaired = injectEnvironment(messages, environment);
 
-    expect(repaired[2].parts.slice(1)).toEqual(originalParts);
+    expect(repaired[2].parts).toEqual([
+      {
+        type: "text",
+        text: prompts.createSystemReminder(
+          createEnvironmentPrompt(environment, undefined),
+        ),
+      },
+      originalParts[0],
+      originalParts[2],
+      originalParts[3],
+    ]);
     const text = getMessageText(repaired[2]);
     expect(text).toContain("current.ts (active)");
     expect(text).toContain("term-current");
@@ -444,7 +460,7 @@ test("injectEnvironment preserves assistant-ended history when a full environmen
   expect(messages).toEqual(original);
 });
 
-test("injectEnvironment uses a lite environment when a full one remains visible", () => {
+test("injectEnvironment uses a lite environment and preserves it on retry when full remains visible", () => {
   const messages = [
     createTextMessage(
       "user-1",
@@ -460,6 +476,14 @@ test("injectEnvironment uses a lite environment when a full one remains visible"
   expect(countFullEnvironments(result)).toBe(1);
   expect(getMessageText(result.at(-1))).not.toContain("# System Information");
   expect(getMessageText(result.at(-1))).toContain("# GIT STATUS");
+
+  const original = structuredClone(result);
+  const laterEnvironment = createTestEnvironment();
+  laterEnvironment.currentTime = "2030-01-01T00:00:00.000Z";
+  laterEnvironment.workspace.terminals = [
+    { name: "New terminal", isActive: true, backgroundJobId: "term-new" },
+  ];
+  expect(injectEnvironment(result, laterEnvironment)).toEqual(original);
 });
 
 test("injectEnvironment places environment before invocation reminders and the prompt", () => {
