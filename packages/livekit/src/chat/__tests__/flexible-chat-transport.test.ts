@@ -190,6 +190,7 @@ describe("environment after compaction", () => {
       });
       const assistant = structuredClone(messages.at(-1));
       const savedMessages = structuredClone(messages);
+      let requestEnvironment = environment;
       const transport = new FlexibleChatTransport({
         store,
         blobStore: {} as BlobStore,
@@ -199,7 +200,7 @@ describe("environment after compaction", () => {
             id: "test-model",
             getModel: () => model,
           }),
-          getEnvironment: async () => environment,
+          getEnvironment: async () => requestEnvironment,
         },
       });
 
@@ -208,6 +209,11 @@ describe("environment after compaction", () => {
         messages,
         savedMessages,
       ].entries()) {
+        // Volatile fields change between requests; the prompt must not.
+        requestEnvironment = {
+          ...environment,
+          currentTime: `2026-09-16T00:00:0${attempt}.000Z`,
+        };
         const stream = await transport.sendMessages({
           trigger: "submit-message",
           chatId: "task-1",
@@ -225,6 +231,11 @@ describe("environment after compaction", () => {
       }
 
       expect(model.doStreamCalls[1].prompt).toEqual(model.doStreamCalls[0].prompt);
+      // Reloading from the store must not change the cached prompt prefix.
+      expect(model.doStreamCalls[2].prompt).toEqual(model.doStreamCalls[0].prompt);
+      // The repair is never written into the chat state, so it cannot diverge
+      // from the persisted history.
+      expect(messages).toEqual(savedMessages);
     },
   );
 });

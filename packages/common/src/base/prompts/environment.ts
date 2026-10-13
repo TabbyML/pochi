@@ -239,17 +239,72 @@ export function injectEnvironment(
     ),
   );
   const visibleMessages = messages.slice(Math.max(compactIndex, 0));
-  let messageToInject = visibleMessages.at(-1);
-  if (messageToInject?.role !== "user") {
-    // Tool continuations may compact away the full environment. Repair the
-    // visible user context only when needed, keeping normal continuations stable.
-    if (hasCompleteEnvironmentPrompt(visibleMessages)) return messages;
-    messageToInject = visibleMessages.findLast(
-      (message) => message.role === "user",
-    );
-  }
-  if (!messageToInject) return messages;
+  const completeEnvironmentVisible =
+    hasCompleteEnvironmentPrompt(visibleMessages);
+  const lastMessage = visibleMessages.at(-1);
 
+  if (lastMessage?.role !== "user") {
+    // Tool continuation: every message has already been sent to the model.
+    if (completeEnvironmentVisible) return messages;
+    return repairCompactedEnvironment(messages, visibleMessages, environment);
+  }
+
+  // A reminder already attached to the latest user message was sent before
+  // (retry / regenerate / resume). Keep it byte-for-byte stable so volatile
+  // fields (time, terminals, git status) do not invalidate the prompt cache.
+  const hasEnvironmentReminder = lastMessage.parts.some(
+    (part) =>
+      part.type === "text" && prompts.isEnvironmentSystemReminder(part.text),
+  );
+  if (completeEnvironmentVisible && hasEnvironmentReminder) return messages;
+
+  // The latest user message is persisted together with the request
+  // (`chatStreamStarted`), so mutating it keeps the in-memory chat state and
+  // the store in sync.
+  lastMessage.parts = [
+    createEnvironmentReminderPart(
+      environment,
+      completeEnvironmentVisible ? "lite" : "full",
+    ),
+    ...withoutEnvironmentReminders(lastMessage.parts),
+  ];
+
+  return messages;
+}
+
+/**
+ * Compaction can hide the complete environment from a tool continuation. The
+ * repaired user message is an earlier message that is NOT persisted with the
+ * request, so the repair must be:
+ * - non-mutating: otherwise the in-memory chat state diverges from the store,
+ *   and the next request after a reload (or a later lite reminder chosen
+ *   because of the in-memory full one) sends a different prefix.
+ * - deterministic: reuse the latest persisted complete environment reminder
+ *   instead of rebuilding it from volatile state, so every continuation (also
+ *   after reloads) produces the exact same bytes.
+ */
+function repairCompactedEnvironment(
+  messages: UIMessage[],
+  visibleMessages: UIMessage[],
+  environment: Environment,
+): UIMessage[] {
+  const target = visibleMessages.findLast((message) => message.role === "user");
+  if (!target) return messages;
+
+  const reminderPart =
+    findCompleteEnvironmentPart(messages) ??
+    createEnvironmentReminderPart(environment, "full");
+  const repaired: UIMessage = {
+    ...target,
+    parts: [reminderPart, ...withoutEnvironmentReminders(target.parts)],
+  };
+  return messages.map((message) => (message === target ? repaired : message));
+}
+
+function createEnvironmentReminderPart(
+  environment: Environment,
+  kind: "full" | "lite",
+): TextUIPart {
   const { gitStatus } = environment.workspace;
   const user =
     gitStatus?.userEmail && gitStatus?.userName
@@ -258,39 +313,65 @@ export function injectEnvironment(
           email: gitStatus.userEmail,
         }
       : undefined;
+  return {
+    type: "text",
+    text: prompts.createSystemReminder(
+      kind === "full"
+        ? createEnvironmentPrompt(environment, user)
+        : createLiteEnvironmentPrompt(environment),
+    ),
+  };
+}
 
-  const parts = messageToInject.parts.filter(
+function withoutEnvironmentReminders(parts: UIMessage["parts"]) {
+  return parts.filter(
     (part) =>
       part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
   );
-  // Ignore the reminder being replaced when checking the outgoing request.
-  messageToInject.parts = parts;
+}
 
-  const environmentDetails = !hasCompleteEnvironmentPrompt(visibleMessages)
-    ? createEnvironmentPrompt(environment, user)
-    : createLiteEnvironmentPrompt(environment);
-
-  const reminderPart = {
-    type: "text",
-    text: prompts.createSystemReminder(environmentDetails),
-  } satisfies TextUIPart;
-
-  messageToInject.parts = [reminderPart, ...parts];
-
-  return messages;
+function findCompleteEnvironmentPart(
+  messages: UIMessage[],
+): TextUIPart | undefined {
+  for (
+    let messageIndex = messages.length - 1;
+    messageIndex >= 0;
+    messageIndex--
+  ) {
+    const message = messages[messageIndex];
+    if (!message) continue;
+    for (
+      let partIndex = message.parts.length - 1;
+      partIndex >= 0;
+      partIndex--
+    ) {
+      const part = message.parts[partIndex];
+      if (
+        part?.type === "text" &&
+        prompts.isEnvironmentSystemReminder(part.text) &&
+        hasCompleteEnvironmentText(part.text)
+      ) {
+        return part;
+      }
+    }
+  }
+  return undefined;
 }
 
 function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
   return messages.some((message) =>
-    message.parts.some((part) => {
-      if (part.type !== "text") return false;
-      const systemInfo = parseSystemInfoLines(part.text);
-      return Boolean(
-        systemInfo["Operating System"] &&
-          systemInfo["Home Directory"] &&
-          systemInfo["Current Working Directory"],
-      );
-    }),
+    message.parts.some(
+      (part) => part.type === "text" && hasCompleteEnvironmentText(part.text),
+    ),
+  );
+}
+
+function hasCompleteEnvironmentText(text: string): boolean {
+  const systemInfo = parseSystemInfoLines(text);
+  return Boolean(
+    systemInfo["Operating System"] &&
+      systemInfo["Home Directory"] &&
+      systemInfo["Current Working Directory"],
   );
 }
 

@@ -235,6 +235,18 @@ test("injectEnvironment adds a full environment when compaction hides the histor
 });
 
 test("injectEnvironment preserves a full environment when regenerating a request", () => {
+  const originalEnvironment = createTestEnvironment();
+  originalEnvironment.workspace.terminals = [
+    {
+      name: "Original terminal",
+      isActive: true,
+      backgroundJobId: "term-original",
+    },
+  ];
+  const originalReminder = `<system-reminder>${createEnvironmentPrompt(
+    originalEnvironment,
+    undefined,
+  )}</system-reminder>`;
   const messages = [
     createTextMessage("user-1", "user", "legacy question"),
     createTextMessage("assistant-1", "assistant", "legacy answer"),
@@ -242,21 +254,28 @@ test("injectEnvironment preserves a full environment when regenerating a request
       id: "user-2",
       role: "user" as const,
       parts: [
-        {
-          type: "text" as const,
-          text: `<system-reminder>${createEnvironmentPrompt(
-            createTestEnvironment(),
-            undefined,
-          )}</system-reminder>`,
-        },
+        { type: "text" as const, text: originalReminder },
         { type: "text" as const, text: "follow-up" },
       ],
     },
   ];
+  const reloadedEnvironment = createTestEnvironment();
+  reloadedEnvironment.currentTime = "2026-06-24T00:00:00.000Z";
+  reloadedEnvironment.workspace.terminals = [
+    {
+      name: "Reloaded terminal",
+      isActive: true,
+      backgroundJobId: "term-reloaded",
+    },
+  ];
 
-  const result = injectEnvironment(messages, createTestEnvironment());
+  const result = injectEnvironment(messages, reloadedEnvironment);
 
   expect(countFullEnvironments(result)).toBe(1);
+  expect(result[2]?.parts[0]).toEqual({
+    type: "text",
+    text: originalReminder,
+  });
 });
 
 test("injectEnvironment restores a compacted environment before an assistant continuation", () => {
@@ -265,7 +284,9 @@ test("injectEnvironment restores a compacted environment before an assistant con
     createTextMessage(
       "user-0",
       "user",
-      createEnvironmentPrompt(environment, undefined),
+      prompts.createSystemReminder(
+        createEnvironmentPrompt(environment, undefined),
+      ),
     ),
     createTextMessage(
       "user-1",
@@ -290,6 +311,67 @@ test("injectEnvironment restores a compacted environment before an assistant con
   injectEnvironment(restored, { ...environment, currentTime: "later" });
   expect(restored).toEqual(result);
   expect(countFullEnvironments(formatters.llm(restored))).toBe(1);
+});
+
+test("injectEnvironment repairs compacted continuations without mutating the persisted history", () => {
+  const environment = createTestEnvironment();
+  const fullReminder = prompts.createSystemReminder(
+    createEnvironmentPrompt(environment, undefined),
+  );
+  const liteReminder = prompts.createSystemReminder(
+    "# GIT STATUS\nThis workspace is not managed by git",
+  );
+  const persisted: UIMessage[] = [
+    createTextMessage("user-0", "user", fullReminder),
+    createTextMessage("assistant-0", "assistant", "old answer"),
+    {
+      id: "user-1",
+      role: "user",
+      parts: [
+        {
+          type: "text",
+          text: "<compact>Previous conversation summary</compact>",
+        },
+        { type: "text", text: liteReminder },
+        { type: "text", text: "follow-up" },
+      ],
+    },
+    createTextMessage("assistant-1", "assistant", "tool result"),
+  ];
+  const inMemory = structuredClone(persisted);
+
+  const first = injectEnvironment(inMemory, environment);
+
+  // The in-memory chat state must stay identical to what is persisted.
+  expect(inMemory).toEqual(persisted);
+  expect(first[2]?.parts[0]).toEqual({ type: "text", text: fullReminder });
+  expect(countFullEnvironments(formatters.llm(first))).toBe(1);
+
+  // Later continuations, including after reloading from the store with a
+  // changed environment, produce the exact same prefix.
+  const laterEnvironment = createTestEnvironment();
+  laterEnvironment.currentTime = "2030-01-01T00:00:00.000Z";
+  laterEnvironment.workspace.terminals = [
+    { name: "New terminal", isActive: true, backgroundJobId: "term-new" },
+  ];
+  expect(
+    formatters.llm(injectEnvironment(inMemory, laterEnvironment)),
+  ).toEqual(formatters.llm(first));
+  expect(
+    formatters.llm(
+      injectEnvironment(structuredClone(persisted), laterEnvironment),
+    ),
+  ).toEqual(formatters.llm(first));
+
+  // A new user turn still sees no persisted full environment after the
+  // compact block, so it receives a complete one that is persisted with it.
+  const nextTurn = [
+    ...inMemory,
+    createTextMessage("user-2", "user", "next question"),
+  ];
+  injectEnvironment(nextTurn, laterEnvironment);
+  expect(getMessageText(nextTurn.at(-1))).toContain("# System Information");
+  expect(nextTurn[2]).toEqual(persisted[2]);
 });
 
 test("injectEnvironment preserves assistant-ended history when a full environment remains visible", () => {
