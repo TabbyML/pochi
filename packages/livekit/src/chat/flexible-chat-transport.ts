@@ -57,6 +57,8 @@ import {
 
 export type OnStartCallback = (options: {
   messages: Message[];
+  /** Historical environment repairs to persist with the last message. */
+  repairedMessages?: Message[];
   environment?: Environment;
   abortSignal?: AbortSignal;
   getters: PrepareRequestGetters;
@@ -235,7 +237,11 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
+    const originalMessages = messages;
     messages = prompts.injectEnvironment(messages, environment) as Message[];
+    const repairedMessages = messages.filter(
+      (message, index) => message !== originalMessages[index],
+    );
     messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
@@ -252,10 +258,20 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     await this.onStart?.({
       messages,
+      repairedMessages:
+        repairedMessages.length > 0 ? repairedMessages : undefined,
       environment,
       abortSignal,
       getters: this.getters,
     });
+
+    // onStart persists historical repairs atomically with chatStreamStarted.
+    // Only then update the chat's shared message objects, so continuations and
+    // new user turns keep exactly the same prefix as a reload from the store.
+    for (const repaired of repairedMessages) {
+      const original = originalMessages.find(({ id }) => id === repaired.id);
+      if (original) original.parts = repaired.parts;
+    }
 
     const model = createModel({ llm, taskId: chatId });
     const middlewares = [];

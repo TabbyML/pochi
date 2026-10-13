@@ -1032,6 +1032,7 @@ export class LiveChatKit<
 
   private readonly onStart: OnStartCallback = async ({
     messages,
+    repairedMessages,
     environment,
     getters,
   }) => {
@@ -1079,6 +1080,7 @@ export class LiveChatKit<
         events.chatStreamStarted({
           id: this.taskId,
           data: lastMessage,
+          repairedMessages,
           todos: environment?.todos || [],
           git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),

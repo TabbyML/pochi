@@ -264,9 +264,13 @@ export function injectEnvironment(
   lastMessage.parts = [
     createEnvironmentReminderPart(
       environment,
-      completeEnvironmentVisible ? "lite" : "full",
+      hasEnvironmentReminder
+        ? "system"
+        : completeEnvironmentVisible
+          ? "lite"
+          : "full",
     ),
-    ...withoutEnvironmentReminders(lastMessage.parts),
+    ...lastMessage.parts,
   ];
 
   return messages;
@@ -274,14 +278,9 @@ export function injectEnvironment(
 
 /**
  * Compaction can hide the complete environment from a tool continuation. The
- * repaired user message is an earlier message that is NOT persisted with the
- * request, so the repair must be:
- * - non-mutating: otherwise the in-memory chat state diverges from the store,
- *   and the next request after a reload (or a later lite reminder chosen
- *   because of the in-memory full one) sends a different prefix.
- * - deterministic: reuse the latest persisted complete environment reminder
- *   instead of rebuilding it from volatile state, so every continuation (also
- *   after reloads) produces the exact same bytes.
+ * repaired user message is returned as a copy so the transport can persist it
+ * with the request before updating the in-memory history. Keep its existing
+ * workspace snapshot and only add the missing system information.
  */
 function repairCompactedEnvironment(
   messages: UIMessage[],
@@ -291,19 +290,24 @@ function repairCompactedEnvironment(
   const target = visibleMessages.findLast((message) => message.role === "user");
   if (!target) return messages;
 
-  const reminderPart =
-    findCompleteEnvironmentPart(messages) ??
-    createEnvironmentReminderPart(environment, "full");
+  const hasWorkspaceReminder = target.parts.some(
+    (part) =>
+      part.type === "text" && prompts.isEnvironmentSystemReminder(part.text),
+  );
+  const reminderPart = createEnvironmentReminderPart(
+    environment,
+    hasWorkspaceReminder ? "system" : "full",
+  );
   const repaired: UIMessage = {
     ...target,
-    parts: [reminderPart, ...withoutEnvironmentReminders(target.parts)],
+    parts: [reminderPart, ...target.parts],
   };
   return messages.map((message) => (message === target ? repaired : message));
 }
 
 function createEnvironmentReminderPart(
   environment: Environment,
-  kind: "full" | "lite",
+  kind: "full" | "lite" | "system",
 ): TextUIPart {
   const { gitStatus } = environment.workspace;
   const user =
@@ -318,44 +322,13 @@ function createEnvironmentReminderPart(
     text: prompts.createSystemReminder(
       kind === "full"
         ? createEnvironmentPrompt(environment, user)
-        : createLiteEnvironmentPrompt(environment),
+        : kind === "system"
+          ? [getSystemInfo(environment), getUserInfo(user)]
+              .filter(Boolean)
+              .join("\n\n")
+          : createLiteEnvironmentPrompt(environment),
     ),
   };
-}
-
-function withoutEnvironmentReminders(parts: UIMessage["parts"]) {
-  return parts.filter(
-    (part) =>
-      part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
-  );
-}
-
-function findCompleteEnvironmentPart(
-  messages: UIMessage[],
-): TextUIPart | undefined {
-  for (
-    let messageIndex = messages.length - 1;
-    messageIndex >= 0;
-    messageIndex--
-  ) {
-    const message = messages[messageIndex];
-    if (!message) continue;
-    for (
-      let partIndex = message.parts.length - 1;
-      partIndex >= 0;
-      partIndex--
-    ) {
-      const part = message.parts[partIndex];
-      if (
-        part?.type === "text" &&
-        prompts.isEnvironmentSystemReminder(part.text) &&
-        hasCompleteEnvironmentText(part.text)
-      ) {
-        return part;
-      }
-    }
-  }
-  return undefined;
 }
 
 function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {

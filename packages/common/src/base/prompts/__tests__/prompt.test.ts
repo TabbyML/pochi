@@ -313,7 +313,7 @@ test("injectEnvironment restores a compacted environment before an assistant con
   expect(countFullEnvironments(formatters.llm(restored))).toBe(1);
 });
 
-test("injectEnvironment repairs compacted continuations without mutating the persisted history", () => {
+test("injectEnvironment returns a history repair that remains stable after persistence", () => {
   const environment = createTestEnvironment();
   const fullReminder = prompts.createSystemReminder(
     createEnvironmentPrompt(environment, undefined),
@@ -344,8 +344,11 @@ test("injectEnvironment repairs compacted continuations without mutating the per
 
   // The in-memory chat state must stay identical to what is persisted.
   expect(inMemory).toEqual(persisted);
-  expect(first[2]?.parts[0]).toEqual({ type: "text", text: fullReminder });
+  expect(first[2]?.parts.slice(1)).toEqual(persisted[2]?.parts);
   expect(countFullEnvironments(formatters.llm(first))).toBe(1);
+
+  // The transport persists the returned repair before updating chat state.
+  const saved = structuredClone(first);
 
   // Later continuations, including after reloading from the store with a
   // changed environment, produce the exact same prefix.
@@ -355,24 +358,73 @@ test("injectEnvironment repairs compacted continuations without mutating the per
     { name: "New terminal", isActive: true, backgroundJobId: "term-new" },
   ];
   expect(
-    formatters.llm(injectEnvironment(inMemory, laterEnvironment)),
+    formatters.llm(injectEnvironment(first, laterEnvironment)),
   ).toEqual(formatters.llm(first));
   expect(
     formatters.llm(
-      injectEnvironment(structuredClone(persisted), laterEnvironment),
+      injectEnvironment(structuredClone(saved), laterEnvironment),
     ),
   ).toEqual(formatters.llm(first));
 
-  // A new user turn still sees no persisted full environment after the
-  // compact block, so it receives a complete one that is persisted with it.
+  // New user turns retain the same repaired prefix and receive a lite reminder.
   const nextTurn = [
-    ...inMemory,
+    ...first,
     createTextMessage("user-2", "user", "next question"),
   ];
   injectEnvironment(nextTurn, laterEnvironment);
-  expect(getMessageText(nextTurn.at(-1))).toContain("# System Information");
-  expect(nextTurn[2]).toEqual(persisted[2]);
+  expect(getMessageText(nextTurn.at(-1))).not.toContain("# System Information");
+  expect(formatters.llm(nextTurn).slice(0, 2)).toEqual(formatters.llm(first));
 });
+
+test.each([false, true])(
+  "injectEnvironment preserves the latest workspace snapshot when repairing compaction (continuation: %s)",
+  (continuation) => {
+    const environment = createTestEnvironment();
+    const messages: UIMessage[] = [
+      createTextMessage("user-0", "user", "start"),
+    ];
+    injectEnvironment(messages, environment);
+    environment.workspace.activeTabs = [
+      { filepath: "current.ts", isActive: true },
+    ];
+    environment.workspace.terminals = [
+      {
+        name: "Current terminal",
+        isActive: true,
+        backgroundJobId: "term-current",
+      },
+    ];
+    environment.workspace.gitStatus = {
+      currentBranch: "current",
+      mainBranch: "main",
+      status: "M current.ts",
+      recentCommits: [],
+    };
+    messages.push(
+      createTextMessage("assistant-0", "assistant", "done"),
+      createTextMessage("user-1", "user", "inspect this file"),
+    );
+    injectEnvironment(messages, environment);
+    messages[2].parts.unshift({
+      type: "text",
+      text: "<compact>Summary</compact>",
+    });
+    if (continuation)
+      messages.push(
+        createTextMessage("assistant-1", "assistant", "tool result"),
+      );
+    const originalParts = structuredClone(messages[2].parts);
+
+    const repaired = injectEnvironment(messages, createTestEnvironment());
+
+    expect(repaired[2].parts.slice(1)).toEqual(originalParts);
+    const text = getMessageText(repaired[2]);
+    expect(text).toContain("current.ts (active)");
+    expect(text).toContain("term-current");
+    expect(text).toContain("Current branch: current");
+    expect(countFullEnvironments(formatters.llm(repaired))).toBe(1);
+  },
+);
 
 test("injectEnvironment preserves assistant-ended history when a full environment remains visible", () => {
   const messages = [
