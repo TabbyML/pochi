@@ -93,6 +93,7 @@ export const newTask =
           `pochi-browser-agent-video-${taskId}.mp4`,
         );
         const rec = startMjpegToMp4Converter(tmpFile);
+        let frameWrites = Promise.resolve();
 
         const rws = new ReconnectingWebSocket(streamUrl, [], {
           WebSocket,
@@ -113,11 +114,24 @@ export const newTask =
             try {
               const data = JSON.parse(e.data);
               if (data.type === "frame") {
-                const now = Date.now() / 1000;
-                rec.handleFrame({
+                const timestamp = data.metadata?.timestamp;
+                const frame = {
                   data: data.data,
-                  ts: data.metadata.timestamp || now,
-                });
+                  // Official agent-browser streams epoch milliseconds.
+                  ts:
+                    typeof timestamp === "number" &&
+                    Number.isFinite(timestamp) &&
+                    timestamp > 0
+                      ? timestamp / 1000
+                      : Date.now() / 1000,
+                };
+                // Disk-based recording allocates filenames from the frame count.
+                // Serialize writes so simultaneous frames cannot overwrite one another.
+                frameWrites = frameWrites
+                  .then(() => rec.handleFrame(frame))
+                  .catch((error) => {
+                    logger.error("Failed to record browser frame", error);
+                  });
               }
             } catch (e) {
               // ignore error
@@ -128,6 +142,7 @@ export const newTask =
         finalize = async () => {
           rws.close();
           try {
+            await frameWrites;
             await rec.stop();
             const buffer = await fs.readFile(tmpFile);
             const url = await options.blobStore.put(buffer, "video/mp4");

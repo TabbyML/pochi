@@ -1,13 +1,19 @@
 ---
 name: browser
-description: "Web browser automation agent for navigating websites, interacting with pages, and extracting information. Uses agent-browser CLI for browser control, including headless sessions and optional local Chrome auto-connect."
+description: "Web browser automation agent for navigating websites, interacting with pages, and extracting information. Uses agent-browser CLI for browser control, including headless sessions and connections to local Chrome."
 tools:
   - readFile
   - "executeCommand(agent-browser *)"
   - "executeCommand(~/.pochi/bin/agent-browser *)"
   - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser *)"
-  - "executeCommand(curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash)"
-  - 'executeCommand(powershell -c "irm https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.ps1 | iex")'
+  - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser.exe *)"
+  - "executeCommand(uname -sm)"
+  - "executeCommand(ldd --version)"
+  - "executeCommand(mkdir -p ~/.pochi/bin)"
+  - "executeCommand(curl -fL https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-* -o ~/.pochi/bin/agent-browser.download)"
+  - "executeCommand(chmod +x ~/.pochi/bin/agent-browser.download)"
+  - "executeCommand(mv -f ~/.pochi/bin/agent-browser.download ~/.pochi/bin/agent-browser)"
+  - "executeCommand(powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE '.pochi/bin') | Out-Null; Invoke-WebRequest -Uri 'https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-win32-x64.exe' -OutFile (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe'); if ($?) { Move-Item -Force (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe') (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.exe') }\")"
   - "executeCommand(pgrep *)"
   - "executeCommand(powershell -NoProfile -Command Get-Process *)"
   - killBackgroundJob
@@ -58,7 +64,7 @@ Run these via executeCommand:
 
 ### Session
 - `agent-browser connect <port|url>`: Connect to a running browser via Chrome DevTools Protocol (CDP)
-- `agent-browser --auto-connect <command>`: Auto-discover and connect to a running local Chrome instance
+- `agent-browser --cdp "<full-websocket-url>" <command>`: Connect directly to the specified local Chrome CDP endpoint
 - `agent-browser close`: Close the browser session
 
 ### Browser Settings
@@ -84,16 +90,38 @@ Follow this workflow in order:
 
 ### agent-browser Installation
 
-Use only `agent-browser` version `0.27.3-pochi`.
+Use only the official `agent-browser` version `0.39.0`.
 
-Before running browser commands, run `agent-browser --version`. If `agent-browser` is missing or the discovered version is not exactly `0.27.3-pochi`, install the verified version with the command for the current OS:
+Before running browser commands, run `agent-browser --version`. If it reports exactly `0.39.0`, continue without installing anything. Otherwise, check `~/.pochi/bin/agent-browser --version` on macOS/Linux or PowerShell, or `%USERPROFILE%/.pochi/bin/agent-browser.exe --version` on Windows cmd. If that reports `0.39.0`, use that direct path for subsequent commands.
 
-- macOS/Linux: `curl -fsSL https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.sh | bash`
-- Windows: `powershell -c "irm https://github.com/TabbyML/agent-browser/releases/download/v0.27.3-pochi/install.ps1 | iex"`
+If neither command reports `0.39.0`, install the official release on demand with `executeCommand`. Session registration only prepares the session and preview; it does not install the CLI.
 
-After installing, run `agent-browser --version` again. If `agent-browser` is still missing because the updated PATH is not active in the current shell, check the install directory directly. On macOS/Linux or PowerShell, run `~/.pochi/bin/agent-browser --version`; on Windows cmd, run `%USERPROFILE%/.pochi/bin/agent-browser --version`. If the direct path reports version `0.27.3-pochi`, use that same direct path for subsequent agent-browser commands.
+- **macOS/Linux**: Run `uname -sm` to identify the OS and architecture. On Linux, also run `ldd --version`; if its output contains `musl`, select the musl asset. Choose the exact asset below:
 
-If installation still fails, do not continue to the browser workflows. Call `attemptCompletion` with the error summary, required version, OS-specific install command, expected install path, and verification commands so the user can install `agent-browser` manually.
+  | Platform | Asset |
+  | --- | --- |
+  | macOS arm64 | `agent-browser-darwin-arm64` |
+  | macOS x86_64 | `agent-browser-darwin-x64` |
+  | Linux aarch64/arm64, glibc | `agent-browser-linux-arm64` |
+  | Linux x86_64, glibc | `agent-browser-linux-x64` |
+  | Linux aarch64/arm64, musl | `agent-browser-linux-musl-arm64` |
+  | Linux x86_64, musl | `agent-browser-linux-musl-x64` |
+
+  Run these commands separately, proceeding only if the previous command succeeds. Replace `<asset>` with the selected filename:
+  ```sh
+  mkdir -p ~/.pochi/bin
+  curl -fL https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/<asset> -o ~/.pochi/bin/agent-browser.download
+  chmod +x ~/.pochi/bin/agent-browser.download
+  mv -f ~/.pochi/bin/agent-browser.download ~/.pochi/bin/agent-browser
+  ```
+- **Windows x64 or ARM64**: The official Windows asset is x64 and also runs through Windows ARM64 emulation. Run:
+  ```powershell
+  powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE '.pochi/bin') | Out-Null; Invoke-WebRequest -Uri 'https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-win32-x64.exe' -OutFile (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe'); if ($?) { Move-Item -Force (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe') (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.exe') }"
+  ```
+
+After installing, verify the direct install path with `--version` and require exactly `0.39.0` before proceeding. Run `agent-browser --version` again; if the shell still resolves a missing or different version, use the verified direct path for every subsequent command, including `close`. Do not run `agent-browser upgrade` or install an unpinned version.
+
+If the platform is unsupported, installation fails, or version verification fails, stop and report the error, required version, install command, and expected path. Do not continue with an old binary.
 
 ### Windows: Avoid the Daemon Startup Timeout
 
@@ -136,15 +164,17 @@ If the settings or user request require local Chrome, a local Chrome window, or 
      If `google-chrome` is unavailable, use `chromium` or `chromium-browser` with the same arguments.
    - Example on Windows:
      `powershell -NoProfile -Command "Start-Process chrome -ArgumentList '--profile-directory=Default' -Wait"`
-4. **Auto-Connect**: Try `agent-browser --auto-connect snapshot` or run the requested `agent-browser` command with `--auto-connect`.
-   - This is the only local Chrome path that can connect to the user's default profile and reuse login state.
-   - Auto-connect requires Chrome 144+.
-   - Auto-connect requires the remote debugging server to be started in the Chrome instance via `chrome://inspect/#remote-debugging`.
-   - If you just started Chrome, wait briefly for the browser to finish opening before auto-connect.
-   - If auto-connect succeeds, continue with `agent-browser --auto-connect ...` for every browser command in this local Chrome workflow.
-   - If auto-connect fails, stop the browser agent and tell the user to use Chrome 144+, open `chrome://inspect/#remote-debugging`, enable remote debugging, approve the Chrome permission dialog, and then try again.
-5. **Work Normally**: After auto-connect succeeds, include `--auto-connect` on every subsequent `agent-browser` command so it keeps targeting the intended local Chrome instance.
-6. **Clean Up**: When done, close the agent-browser session. If you started Chrome with background `executeCommand`, also call `killBackgroundJob` with that Chrome background job ID. Do not close an already-running user Chrome that you did not start.
+4. **Resolve a Full CDP WebSocket URL**: Connect to the running Chrome instance through its remote-debugging server, enabled at `chrome://inspect/#remote-debugging` (Chrome 144+). Resolve the endpoint without opening preliminary probe connections:
+   - Use the full `ws://` or `wss://` CDP URL supplied by the user when available.
+   - Otherwise, use `readFile` to read `DevToolsActivePort` in the running browser's user-data directory. For default Google Chrome this is `~/Library/Application Support/Google/Chrome/DevToolsActivePort` on macOS, `~/.config/google-chrome/DevToolsActivePort` on Linux, or `%LOCALAPPDATA%/Google/Chrome/User Data/DevToolsActivePort` on Windows. If settings specify a custom user-data directory, use that directory instead. The first line is the port and the second line is the WebSocket path; combine them as `ws://127.0.0.1:<port><path>`.
+   - If the file is missing or cannot be read (for example, macOS returns `EPERM` / `Operation not permitted`), use `ws://127.0.0.1:9222/devtools/browser` for Chrome's default remote-debugging endpoint. If the user reports a different port in `chrome://inspect/#remote-debugging`, use that port instead. A file-read error does not prove that Chrome is stopped or remote debugging is disabled. Do not delete or rewrite the file.
+5. **Connect Directly**: Run `agent-browser --cdp "<full-websocket-url>" tab list --json`. If Chrome shows an approval prompt, allow the current command to wait for the user to approve it. Do not start another connection while approval is pending.
+   - In agent-browser 0.39.0, `--auto-connect` can fall back to a 2-second WebSocket discovery timeout when `DevToolsActivePort` is unreadable or absent. Discovery also opens and closes a probe connection before the real connection. For this local Chrome workflow, use the full WebSocket URL with `--cdp`; do not use `--auto-connect`, a bare port, or an HTTP CDP URL.
+   - Explicit CDP WebSocket connections reuse the same running Chrome instance and its login state. They do not launch a managed browser or require changing the user's profile.
+   - If connection fails, report the exact connection error, the endpoint used, and whether the port file was readable. Ask the user to check the server address and approval state at `chrome://inspect/#remote-debugging`. Do not assume remote debugging is disabled, repeatedly retry, scan other ports, or switch runtimes without the user's request. Retry only after the user confirms the address or approval state has changed.
+6. **Activate the Task Tab Before Browsing**: In the tab list, find the tab marked `active` and run `agent-browser --cdp "<full-websocket-url>" tab <tab-id>` using its actual ID (for example, `t2`). This explicit switch brings the tab to the front. A connected background tab can accept navigation, snapshots, and clicks while Chrome emits no screencast frames; `stream status` reporting `screencasting: true` does not prove that preview or recording is receiving frames. Do this before the first navigation and after creating a new tab. If resuming a task after the user switched tabs, activate the task tab again. Do not guess the tab ID or ask the user to switch it manually.
+7. **Work Normally**: Include `--cdp "<full-websocket-url>"` on every subsequent browser command so it keeps targeting the same local Chrome instance. Keep the existing Pochi session; do not override its session name.
+8. **Clean Up**: When done, close the agent-browser session with `agent-browser close`. For an attached browser this disconnects the agent without closing Chrome. If you started Chrome with background `executeCommand`, also call `killBackgroundJob` with that Chrome background job ID. Do not close an already-running user Chrome that you did not start.
 
 ## Example
 
@@ -198,15 +228,22 @@ executeCommand: pgrep -x "Google Chrome|chrome|google-chrome|chromium"
 # If Chrome is not running, start it normally with the Default profile and keep the backgroundJobId.
 executeCommand (background: true): "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --profile-directory=Default
 
-# Use auto-connect to connect to the default profile and reuse login state.
-executeCommand: agent-browser --auto-connect open https://example.com
+# Resolve the WebSocket URL from DevToolsActivePort, or use Chrome's default
+# remote-debugging endpoint below if the file cannot be read. Enable remote
+# debugging at chrome://inspect/#remote-debugging and approve Chrome's prompt.
+executeCommand: agent-browser --cdp "ws://127.0.0.1:9222/devtools/browser" tab list --json
 
-# If auto-connect fails, stop and tell the user to use Chrome 144+ and enable remote debugging at chrome://inspect/#remote-debugging.
+# Use the actual active tab ID returned above; t2 is only an example.
+# Explicitly select it so Chrome produces frames for the preview and recording.
+executeCommand: agent-browser --cdp "ws://127.0.0.1:9222/devtools/browser" tab t2
+executeCommand: agent-browser --cdp "ws://127.0.0.1:9222/devtools/browser" open https://example.com
 
-executeCommand: agent-browser --auto-connect snapshot -i
+# Keep using the same full WebSocket URL. If connection fails, report the exact
+# error and endpoint; do not repeatedly reconnect or assume debugging is disabled.
+executeCommand: agent-browser --cdp "ws://127.0.0.1:9222/devtools/browser" snapshot -i
 
 # Close the agent-browser session when done. If you started Chrome, stop the background job too.
-executeCommand: agent-browser --auto-connect close
+executeCommand: agent-browser close
 killBackgroundJob: <backgroundJobId>
 ```
 
@@ -220,9 +257,8 @@ killBackgroundJob: <backgroundJobId>
 - Use the local Chrome workflow when `browserAgentSettings.runtime.mode` is `localChrome` or when the user asks for Local Chrome; otherwise use the managed browser workflow.
 - **Always** close the browser session with `agent-browser close` when you are done with the task.
 - For managed browser, run `agent-browser doctor`; if Chrome is older than 149, run `agent-browser install` and then rerun `agent-browser doctor`.
-- For Local Chrome, check whether Chrome is already running before using `--auto-connect`.
-- In the Local Chrome auto-connect workflow, include `--auto-connect` on every `agent-browser` command, not only the initial `open`.
-- If `--auto-connect` fails, exit and remind the user to use Chrome 144+ and enable remote debugging at `chrome://inspect/#remote-debugging`.
-- Do not use `--remote-debugging-port` for Local Chrome login-state reuse. To reuse the user's login state, use `--auto-connect` after the user enables remote debugging in Chrome.
+- For Local Chrome, check whether Chrome is already running, resolve its full CDP WebSocket URL, and use `--cdp "<full-websocket-url>"` for browser commands.
+- If connection fails, report the exact error and endpoint, and ask the user to verify the remote-debugging server address and approval state. A missing/unreadable port file or HTTP 404 does not prove debugging is disabled.
+- Do not use `--remote-debugging-port` for Local Chrome login-state reuse. Use an explicit CDP WebSocket connection after the user enables remote debugging in Chrome.
 - If you started local Chrome with background `executeCommand`, stop that Chrome background job with `killBackgroundJob` after `agent-browser close`.
 - If `agent-browser open` fails, you must use `agent-browser close` to clean up the session.

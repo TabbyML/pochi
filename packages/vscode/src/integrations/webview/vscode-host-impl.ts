@@ -80,6 +80,7 @@ import {
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -572,9 +573,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     );
   };
 
-  resolveToolCallEnvs = (
+  resolveToolCallEnvs = async (
     toolName: string,
     builtInSubAgentInfo?: BuiltinSubAgentInfo,
+    storeId?: string,
   ) => {
     let envs: Record<string, string> | undefined;
 
@@ -586,6 +588,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       return envs;
     }
 
+    // Session preparation must finish before commands
+    // run, even if the Webview has not registered its preview yet.
+    await this.browserSessionStore.registerBrowserSession(
+      builtInSubAgentInfo.sessionId,
+      storeId ? decodeStoreId(storeId).taskId : undefined,
+    );
     envs = this.browserSessionStore.getAgentBrowserEnvs(
       builtInSubAgentInfo.sessionId,
     );
@@ -629,15 +637,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     }
 
     const abortSignal = new ThreadAbortSignal(options.abortSignal);
-    const envs = this.resolveToolCallEnvs(
-      toolName,
-      options.builtinSubAgentInfo,
-    );
+    let envs: Record<string, string> | undefined;
     const toolCallStart = Date.now();
     try {
       validateToolPolicy(toolName, args, options.toolPolicies, {
         cwd: this.cwd,
       });
+      envs = await this.resolveToolCallEnvs(
+        toolName,
+        options.builtinSubAgentInfo,
+        options.storeId,
+      );
+      if (abortSignal.aborted) return { error: "Tool call aborted." };
     } catch (error) {
       return {
         error: toErrorMessage(error),

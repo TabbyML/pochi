@@ -5,5 +5,5 @@ import { BrowserSessionStore } from "@getpochi/common/browser";
  * @returns Configured BrowserSessionStore instance
  */
 export function createBrowserSessionStore(): BrowserSessionStore {
-  return new BrowserSessionStore();
+  return new BrowserSessionStore({ proxyStreams: true });
 }

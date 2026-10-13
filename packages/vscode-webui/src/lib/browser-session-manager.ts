@@ -15,6 +15,7 @@ import { vscodeHost } from "./vscode";
 const logger = getLogger("BrowserRecordingManager");
 
 const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
+const latestFrames = new Map<string, string>();
 
 const WebsocketRetryInterval = 2500;
 
@@ -79,6 +80,7 @@ export class BrowserRecordingSession {
   private videoEncoder: VideoEncoder | null = null;
   private startTime = 0;
   private recordingUnavailable = false;
+  private stopped = false;
 
   // WebSocket related
   private ws: WebSocket | null = null;
@@ -90,16 +92,18 @@ export class BrowserRecordingSession {
   ) {}
 
   startStreaming(streamUrl: string) {
-    if (this.ws) return; // Already started
+    if (this.ws || this.stopped) return;
 
     const connect = () => {
+      if (this.stopped) return;
       if (this.ws) {
         this.ws.onclose = null;
         this.ws.close();
         this.ws = null;
       }
       try {
-        this.ws = new WebSocket(streamUrl);
+        const ws = new WebSocket(streamUrl);
+        this.ws = ws;
         this.ws.onclose = () => {
           this.retryTimeout = setTimeout(connect, WebsocketRetryInterval);
         };
@@ -107,14 +111,24 @@ export class BrowserRecordingSession {
           logger.error("Browser stream error", event);
           this.ws?.close();
         };
-        this.ws.onmessage = (event) => {
+        this.ws.onmessage = async (event) => {
+          if (this.stopped) return;
           try {
             const data = JSON.parse(event.data);
             if (data.type === "frame") {
               const frame = data.data;
-              void this.addFrame(frame);
-              if (this.muxer) {
+              try {
+                // Preview must not depend on recording codec availability.
                 this.notifyFrame(frame);
+                await this.addFrame(frame);
+              } finally {
+                // Acknowledge consumption at the renderer, not at the proxy.
+                if (
+                  ws.readyState === WebSocket.OPEN &&
+                  typeof data.seq === "number"
+                ) {
+                  ws.send(JSON.stringify({ type: "ack", seq: data.seq }));
+                }
               }
             } else if (data.type === "error") {
               logger.error("Browser message error", event);
@@ -134,6 +148,7 @@ export class BrowserRecordingSession {
   }
 
   private notifyFrame(frame: string) {
+    latestFrames.set(this.taskId, frame);
     const subscriptions = frameSubscriptions.get(this.taskId);
     if (subscriptions) {
       for (const callback of subscriptions) {
@@ -180,7 +195,7 @@ export class BrowserRecordingSession {
           const muxer = new Muxer({
             target: new ArrayBufferTarget(),
             video: {
-              codec: "avc",
+              codec: videoConfig.codec.startsWith("vp09.") ? "vp9" : "avc",
               width,
               height,
             },
@@ -216,6 +231,7 @@ export class BrowserRecordingSession {
 
   stopStreaming = runExclusive.buildMethod(
     async (toolCallId: string, store: ReturnType<typeof useDefaultStore>) => {
+      this.stopped = true;
       // Stop WebSocket
       clearTimeout(this.retryTimeout);
       if (this.ws) {
@@ -226,6 +242,9 @@ export class BrowserRecordingSession {
         this.ws = null;
       }
 
+      // addFrame and stopStreaming have separate exclusive queues. Drain every
+      // accepted frame before flushing/finalizing, including codec initialization.
+      await runExclusive.getPrComplete(this.addFrame, this);
       if (!this.muxer) return;
 
       try {
@@ -251,6 +270,9 @@ export class BrowserRecordingSession {
         logger.error("Failed to stop recording", e);
       } finally {
         this.muxer = null;
+        if (this.videoEncoder?.state !== "closed") {
+          this.videoEncoder?.close();
+        }
         this.videoEncoder = null;
       }
     },
@@ -259,6 +281,7 @@ export class BrowserRecordingSession {
 
 export class BrowserSessionManager {
   private browserSessions = new Map<string, BrowserRecordingSession>();
+  private stopping = new Map<string, Promise<void>>();
 
   isRegistered(taskId: string) {
     return this.browserSessions.has(taskId);
@@ -269,17 +292,29 @@ export class BrowserSessionManager {
     parentId: string,
     recordingOptions: BrowserRecordingOptions,
   ) {
+    if (this.browserSessions.has(taskId)) return;
     const recordingSession = new BrowserRecordingSession(
       taskId,
       recordingOptions,
     );
     this.browserSessions.set(taskId, recordingSession);
-    const { streamUrl } = await vscodeHost.registerBrowserSession(
-      taskId,
-      parentId,
-    );
-    if (streamUrl) {
-      recordingSession.startStreaming(streamUrl);
+    try {
+      const { streamUrl } = await vscodeHost.registerBrowserSession(
+        taskId,
+        parentId,
+      );
+      // Registration can finish after the task/view has already been closed.
+      if (
+        this.browserSessions.get(taskId) !== recordingSession ||
+        this.stopping.has(taskId)
+      )
+        return;
+      if (streamUrl) recordingSession.startStreaming(streamUrl);
+    } catch (error) {
+      if (this.browserSessions.get(taskId) === recordingSession) {
+        this.browserSessions.delete(taskId);
+      }
+      logger.error("Failed to prepare browser session", error);
     }
   }
 
@@ -288,8 +323,12 @@ export class BrowserSessionManager {
       frameSubscriptions.set(taskId, new Set());
     }
     frameSubscriptions.get(taskId)?.add(callback);
+    const frame = latestFrames.get(taskId);
+    if (frame) callback(frame);
     return () => {
-      frameSubscriptions.get(taskId)?.delete(callback);
+      const subscriptions = frameSubscriptions.get(taskId);
+      subscriptions?.delete(callback);
+      if (subscriptions?.size === 0) frameSubscriptions.delete(taskId);
     };
   }
 
@@ -298,13 +337,29 @@ export class BrowserSessionManager {
     toolCallId: string,
     store: ReturnType<typeof useDefaultStore>,
   ) {
+    const pending = this.stopping.get(taskId);
+    if (pending) return pending;
     const recordingSession = this.browserSessions.get(taskId);
-    if (recordingSession) {
-      await recordingSession.stopStreaming(toolCallId, store);
-      this.browserSessions.delete(taskId);
-    }
-    frameSubscriptions.delete(taskId);
-    vscodeHost.unregisterBrowserSession(taskId);
+    const stopping = (async () => {
+      try {
+        await recordingSession?.stopStreaming(toolCallId, store);
+      } catch (error) {
+        logger.error("Failed to stop browser recording", error);
+      }
+      try {
+        // Tools can create a host session before the preview creates a recorder.
+        // Always release it, even if recording was unavailable or failed to flush.
+        await vscodeHost.unregisterBrowserSession(taskId);
+      } catch (error) {
+        logger.error("Failed to release browser session", error);
+      } finally {
+        this.browserSessions.delete(taskId);
+        this.stopping.delete(taskId);
+        latestFrames.delete(taskId);
+      }
+    })();
+    this.stopping.set(taskId, stopping);
+    return stopping;
   }
 }
 
