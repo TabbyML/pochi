@@ -31,6 +31,11 @@ export const ListModelsResponse = z.array(
 );
 export type ListModelsResponse = z.infer<typeof ListModelsResponse>;
 
+export const ModelAccessResponse = z.object({
+  superModels: z.boolean(),
+});
+export type ModelAccessResponse = z.infer<typeof ModelAccessResponse>;
+
 /**
  * Webhook event payload for task.updated event
  * The task field uses the Task type from @getpochi/livekit package
@@ -56,7 +61,10 @@ const stub = new Hono()
   .post("/api/chat", zValidator("json", z.any()))
   .post("/api/chat/v6/stream", zValidator("json", ModelGatewayRequest))
   .post("/api/chat/v6", zValidator("json", z.any()))
-  .get("/api/models", async (c) => c.json([] as ListModelsResponse));
+  .get("/api/models", async (c) => c.json([] as ListModelsResponse))
+  .get("/api/billing/model-access", async (c) =>
+    c.json({ superModels: false } as ModelAccessResponse),
+  );
 
 export type PochiApi = typeof stub;
 export type PochiApiClient = ReturnType<typeof hc<PochiApi>>;

@@ -1,7 +1,9 @@
 import { ErrorMessage } from "@/components/error-message";
 import { ReadyForRetryError } from "@/features/retry";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
+import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import { PochiApiErrors } from "@getpochi/vendor-pochi/edge";
+import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLinkIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
@@ -11,43 +13,58 @@ export function ErrorMessageView({
   error,
 }: { error: { message: string } | undefined }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [debouncedError, setDebouncedError] = useDebounceState(error, 300);
+  const errorMessage = error?.message;
 
   useEffect(() => {
     setDebouncedError(error);
   }, [error, setDebouncedError]);
 
-  // Handle subscription-related messages as CTAs instead of errors
+  useEffect(() => {
+    if (
+      errorMessage &&
+      [
+        PochiApiErrors.RequireSubscription,
+        PochiApiErrors.RequireSubscriptionForSuperModels,
+        PochiApiErrors.RequireOrgSubscription,
+      ].includes(errorMessage)
+    ) {
+      void queryClient.invalidateQueries({ queryKey: ["modelAccess"] });
+    }
+  }, [errorMessage, queryClient]);
+
+  // The server retains these error codes for older clients.
   if (debouncedError) {
     if (
       debouncedError.message ===
       PochiApiErrors.RequireSubscriptionForSuperModels
     ) {
       return (
-        <SubscriptionAlert
-          message={t("errorMessageView.requireSubscriptionForSuperModels")}
-          href="https://app.getpochi.com/profile"
-          buttonText={t("errorMessageView.subscribe")}
+        <CreditAlert
+          message={t("errorMessageView.superModelsRequireCredits")}
+          href={`${getServerBaseUrl()}/profile`}
+          buttonText={t("errorMessageView.topUp")}
         />
       );
     }
 
     if (debouncedError.message === PochiApiErrors.RequireSubscription) {
       return (
-        <SubscriptionAlert
-          message={t("errorMessageView.requireSubscription")}
-          href="https://app.getpochi.com/profile"
-          buttonText={t("errorMessageView.subscribe")}
+        <CreditAlert
+          message={t("errorMessageView.insufficientCredits")}
+          href={`${getServerBaseUrl()}/profile`}
+          buttonText={t("errorMessageView.topUp")}
         />
       );
     }
 
     if (debouncedError.message === PochiApiErrors.RequireOrgSubscription) {
       return (
-        <SubscriptionAlert
-          message={t("errorMessageView.requireOrgSubscription")}
-          href="https://app.getpochi.com/team"
-          buttonText={t("errorMessageView.subscribe")}
+        <CreditAlert
+          message={t("errorMessageView.insufficientOrgCredits")}
+          href={`${getServerBaseUrl()}/team`}
+          buttonText={t("errorMessageView.topUp")}
         />
       );
     }
@@ -139,7 +156,7 @@ export function ErrorMessageView({
   );
 }
 
-function SubscriptionAlert({
+function CreditAlert({
   message,
   href,
   buttonText,

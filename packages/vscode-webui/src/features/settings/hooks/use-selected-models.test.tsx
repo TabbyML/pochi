@@ -1,11 +1,24 @@
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSelectedModels } from "./use-selected-models";
 
 const mocks = vi.hoisted(() => ({
   updateSubtaskSelectedModel: vi.fn(),
+  updateSelectedModel: vi.fn(),
+  selectedModel: { id: "public-model", name: "Public model" } as
+    | { id: string; name: string }
+    | undefined,
+  modelAccess: { superModels: true, isLoading: false },
+  superModel: {
+    id: "super-model",
+    name: "Super model",
+    type: "vendor",
+    vendorId: "pochi",
+    modelId: "super-model",
+    options: { label: "super" },
+  } as DisplayModel,
   publicModel: {
     id: "public-model",
     name: "Public model",
@@ -21,30 +34,72 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@/lib/hooks/use-model-list", () => ({
   useModelList: () => ({
-    modelList: [mocks.publicModel],
+    modelList: [mocks.superModel, mocks.publicModel],
     isLoading: false,
     isFetching: false,
   }),
 }));
-vi.mock("@/lib/hooks/use-paying-plan", () => ({
-  usePayingPlan: () => ({
-    plan: "pro",
-    isFreebieWhitelistedForSuperModel: true,
-  }),
+vi.mock("@/lib/hooks/use-model-access", () => ({
+  useModelAccess: () => mocks.modelAccess,
 }));
 vi.mock("../store", () => ({
   useSettingsStore: () => ({
-    selectedModel: { id: mocks.publicModel.id, name: mocks.publicModel.name },
+    selectedModel: mocks.selectedModel,
     subtaskSelectedModel: {
       id: "internal-explore",
       name: "internal-explore",
     },
-    updateSelectedModel: vi.fn(),
+    updateSelectedModel: mocks.updateSelectedModel,
     updateSubtaskSelectedModel: mocks.updateSubtaskSelectedModel,
   }),
 }));
 
 describe("useSelectedModels", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.selectedModel = {
+      id: mocks.publicModel.id,
+      name: mocks.publicModel.name,
+    };
+    mocks.modelAccess = { superModels: true, isLoading: false };
+  });
+
+  it("waits for model access before choosing an initial model", () => {
+    mocks.selectedModel = undefined;
+    mocks.modelAccess.isLoading = true;
+    renderHook(() => useSelectedModels());
+    expect(mocks.updateSelectedModel).not.toHaveBeenCalled();
+  });
+
+  it("uses server access to choose an initial Super model", () => {
+    mocks.selectedModel = undefined;
+    renderHook(() => useSelectedModels());
+    expect(mocks.updateSelectedModel).toHaveBeenCalledWith({
+      id: mocks.superModel.id,
+      name: mocks.superModel.name,
+    });
+  });
+
+  it("chooses a Swift model when the server denies Super access", () => {
+    mocks.selectedModel = undefined;
+    mocks.modelAccess.superModels = false;
+    renderHook(() => useSelectedModels());
+    expect(mocks.updateSelectedModel).toHaveBeenCalledWith({
+      id: mocks.publicModel.id,
+      name: mocks.publicModel.name,
+    });
+  });
+
+  it("preserves an existing selection when access changes", () => {
+    mocks.selectedModel = {
+      id: mocks.superModel.id,
+      name: mocks.superModel.name,
+    };
+    mocks.modelAccess.superModels = false;
+    renderHook(() => useSelectedModels());
+    expect(mocks.updateSelectedModel).not.toHaveBeenCalled();
+  });
+
   it("resolves modelOverride without adding it to the selectable list", () => {
     const modelOverride = {
       id: "internal-explore",

@@ -307,6 +307,11 @@ function createVSCodeHost(): VSCodeHostApi {
   void vscodeHostApi.notifyFocusChanged(window.document.hasFocus());
   window.addEventListener("focus", () => {
     void vscodeHostApi.notifyFocusChanged(true);
+    void queryClient.refetchQueries({
+      queryKey: ["modelAccess"],
+      type: "active",
+      stale: true,
+    });
   });
   window.addEventListener("blur", () => {
     void vscodeHostApi.notifyFocusChanged(false);

@@ -1,5 +1,5 @@
+import { useModelAccess } from "@/lib/hooks/use-model-access";
 import { useModelList } from "@/lib/hooks/use-model-list";
-import { usePayingPlan } from "@/lib/hooks/use-paying-plan";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -101,16 +101,18 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     [models, modelOverride, updateSelectedModel],
   );
 
-  const payingInfo = usePayingPlan();
+  const { superModels, isLoading: isAccessLoading } = useModelAccess();
 
   // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
-    if (!isLoading && !selectedModelFromStore && models?.length) {
+    if (
+      !isLoading &&
+      !isAccessLoading &&
+      !storedSelectedModel &&
+      models?.length
+    ) {
       let initialModel = models[0];
-      if (
-        payingInfo.plan === "freebie" &&
-        !payingInfo.isFreebieWhitelistedForSuperModel
-      ) {
+      if (!superModels) {
         initialModel =
           models.find((x) => x.options.label !== "super") || models[0];
       }
@@ -118,10 +120,11 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     }
   }, [
     isLoading,
+    isAccessLoading,
     models,
-    selectedModelFromStore,
+    storedSelectedModel,
     updateSelectedModel,
-    payingInfo,
+    superModels,
   ]);
 
   return {

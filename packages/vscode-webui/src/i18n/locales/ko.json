@@ -111,7 +111,7 @@
     "super": "가강",
     "swift": "극속",
     "reload": "새로고침",
-    "subscriptionRequired": "Super 모델을 사용하려면 구독하세요"
+    "topUpRequired": "Super 모델을 사용하려면 충전하세요"
   },
   "worktreeSelect": {
     "selectWorktree": "워크트리 선택",
@@ -492,14 +492,14 @@
     "reachedCreditLimit": "지출 한도에 도달했습니다.",
     "seeMore": "더 보기",
     "teamReachedCreditLimit": "팀이 지출 한도에 도달했습니다.",
-    "requireSubscription": "모든 무료 크레딧을 사용했습니다. 계속하려면 Pochi를 구독하세요.",
-    "subscribe": "구독",
-    "requireOrgSubscription": "팀이 아직 구독하지 않았습니다. 계속하려면 Pochi를 구독하세요.",
+    "insufficientCredits": "크레딧 잔액이 부족합니다. Pochi를 계속 사용하려면 충전하세요.",
+    "topUp": "충전",
+    "insufficientOrgCredits": "팀의 크레딧 잔액이 부족합니다. 소유자 또는 관리자에게 충전을 요청하세요.",
     "requirePayment": "미지불 청구서가 있습니다.",
     "makePayment": "결제하기",
     "toContinueUsingPochi": "Pochi를 계속 사용하려면",
     "requireOrgPayment": "팀에 미지불 청구서가 있습니다.",
-    "requireSubscriptionForSuperModels": "가강 모델을 사용하려면 Pochi를 구독하세요."
+    "superModelsRequireCredits": "Super 모델을 사용하려면 잔액을 충전하세요."
   },
   "chatPage": {
     "defaultUserName": "당신"
