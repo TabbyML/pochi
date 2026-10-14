@@ -150,7 +150,7 @@ function createHarness(options?: {
         },
       },
       "@/lib/logger": {
-        getLogger: () => ({ debug: () => {}, info: () => {} }),
+        getLogger: () => ({ debug: () => {}, info: () => {}, warn: () => {} }),
       },
       "@getpochi/common/tool-utils": {
         BackgroundJobOutputFile: class {
@@ -432,6 +432,45 @@ describe("TerminalJob", () => {
     assert.strictEqual(harness.job.isVisible, true);
 
     harness.ptyProcess.emitExit(0);
+    await flushPromises();
+  });
+
+  it("reveals a started job's terminal without taking focus", async () => {
+    const harness = createHarness();
+
+    harness.job.revealTerminal();
+
+    assert.strictEqual(harness.job.isVisible, true);
+    assert.deepStrictEqual(harness.terminalShowPreserveFocus, [true]);
+
+    harness.ptyProcess.emitExit(0);
+    await flushPromises();
+  });
+
+  it("keeps the job running when revealing its terminal fails", async () => {
+    const harness = createHarness({
+      createTerminalError: new Error("terminal creation failed"),
+    });
+
+    assert.doesNotThrow(() => harness.job.revealTerminal());
+    assert.strictEqual(harness.job.isVisible, false);
+    assert.strictEqual(harness.ptyProcess.killCalls, 0);
+    assert.strictEqual(harness.TerminalJob.get(harness.job.id), harness.job);
+
+    harness.ptyProcess.emitExit(0);
+    await flushPromises();
+  });
+
+  it("does not reveal the terminal of a job that is stopping", async () => {
+    const harness = createHarness();
+    harness.job.kill();
+
+    harness.job.revealTerminal();
+
+    assert.strictEqual(harness.terminalShowCalls, 0);
+    assert.strictEqual(harness.job.isVisible, false);
+
+    harness.ptyProcess.emitExit(143);
     await flushPromises();
   });
 
@@ -742,6 +781,18 @@ describe("TerminalJob child process backend", () => {
     assert.strictEqual(harness.finishEvents[0]?.status, "completed");
     assert.strictEqual(harness.finishEvents[0]?.exitCode, 0);
     assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+  });
+
+  it("opens nothing when a job without a terminal starts", async () => {
+    const harness = await createChildHarness();
+    harness.job.revealTerminal();
+    await flushPromises();
+
+    assert.deepStrictEqual(harness.shownDocuments, []);
+    assert.strictEqual(harness.job.isVisible, false);
+
+    harness.child.emit("close", 0, null);
+    await flushPromises();
   });
 
   it("opens the output file instead of a terminal view", async () => {

@@ -248,11 +248,21 @@ export class TerminalJob implements vscode.Disposable {
         });
       return;
     }
-    if (!this.terminal) {
-      this.createPtyTerminalView();
+    this.showPtyTerminalView(false);
+  }
+
+  /**
+   * Brings up the terminal of a job that just started, leaving keyboard focus
+   * where the user is. Jobs without a pty have no terminal and stay quiet, and
+   * a failure here never affects the job itself.
+   */
+  revealTerminal(): void {
+    if (!this.ptyProcess || this.finished || this.stopRequested) return;
+    try {
+      this.showPtyTerminalView(true);
+    } catch (error) {
+      logger.warn(`Failed to reveal terminal of job ${this.id}`, error);
     }
-    this.terminal?.show(false);
-    this.setVisible(true);
   }
 
   hide(): void {
@@ -319,6 +329,14 @@ export class TerminalJob implements vscode.Disposable {
         void this.finalize(effectiveExitCode, signalError);
       }),
     );
+  }
+
+  private showPtyTerminalView(preserveFocus: boolean): void {
+    if (!this.terminal) {
+      this.createPtyTerminalView();
+    }
+    this.terminal?.show(preserveFocus);
+    this.setVisible(true);
   }
 
   private createPtyTerminalView(): void {

@@ -18,8 +18,22 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+const runningStatus = vi.hoisted(() => ({
+  current: undefined as { status: "running"; label: string } | undefined,
+  jobIds: [] as (string | undefined)[],
+}));
+
+vi.mock("../use-background-job-running-status", () => ({
+  useBackgroundJobRunningStatus: (backgroundJobId?: string) => {
+    runningStatus.jobIds.push(backgroundJobId);
+    return runningStatus.current;
+  },
+}));
+
 vi.mock("../status-icon", () => ({
-  StatusIcon: () => <div data-testid="status-icon" />,
+  StatusIcon: ({ statusOverride }: { statusOverride?: { status: string } }) => (
+    <div data-testid="status-icon" data-status={statusOverride?.status} />
+  ),
 }));
 
 vi.mock("../tool-container", () => ({
@@ -136,5 +150,42 @@ describe("executeCommandTool", () => {
     const panel = screen.getByTestId("background-job-panel");
     expect(panel.dataset.jobId).toBe("bgjob-cmd-promoted");
     expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-promoted.log");
+  });
+
+  it("spins the status icon while the started job is running", () => {
+    runningStatus.current = { status: "running", label: "running" };
+    runningStatus.jobIds = [];
+    try {
+      render(
+        <ExecuteCommandTool
+          tool={{
+            type: "tool-executeCommand",
+            toolCallId: "running-call",
+            state: "output-available",
+            input: {
+              command: "bun run dev",
+              cwd: "/workspace",
+              background: true,
+              timeout: 60,
+            },
+            output: {
+              output: "Background command started",
+              isTruncated: false,
+              _meta: {
+                backgroundJobId: "bgjob-cmd-running",
+                outputFile: "/tmp/bgjob-cmd-running.log",
+              },
+            },
+          }}
+          isExecuting={false}
+          isLoading={false}
+        />,
+      );
+
+      expect(runningStatus.jobIds).toContain("bgjob-cmd-running");
+      expect(screen.getByTestId("status-icon").dataset.status).toBe("running");
+    } finally {
+      runningStatus.current = undefined;
+    }
   });
 });

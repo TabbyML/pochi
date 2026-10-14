@@ -221,9 +221,11 @@ describe("executeCommand Tool", () => {
   });
 
   it("starts a TerminalJob and returns its output file in background mode", async () => {
+    const revealTerminal = sinon.stub();
     const create = sinon.stub().returns({
       id: "bgjob-cmd-test",
       outputFile: "/tmp/bgjob-cmd-test.log",
+      revealTerminal,
     });
     const getViewColumnForTerminal = sinon.stub().returns(2);
     const getBackgroundJobTerminalName = sinon.stub().returns("Background");
@@ -304,6 +306,7 @@ describe("executeCommand Tool", () => {
         taskId: "task-1",
       }),
     );
+    assert.ok(revealTerminal.calledOnceWithExactly());
   });
 
   for (const allowBackground of [true, false]) {
@@ -315,9 +318,11 @@ describe("executeCommand Tool", () => {
         output: "still running",
         isTruncated: false,
       });
+      const revealTerminal = sinon.stub();
       const adopt = sinon.stub().returns({
         id: "bgjob-cmd-promoted",
         outputFile: "/tmp/bgjob-cmd-promoted.log",
+        revealTerminal,
       });
       const maybePersistToolResult = sinon
         .stub()
@@ -407,6 +412,7 @@ describe("executeCommand Tool", () => {
           taskId: "task-1",
         }),
       );
+      assert.ok(revealTerminal.calledOnceWithExactly());
       assert.strictEqual(ptyProcess.kill.callCount, 0);
       assert.strictEqual(maybePersistToolResult.callCount, 0);
       assert.deepStrictEqual(values.at(-1), {

@@ -33,7 +33,6 @@ import {
   CircleCheck,
   CircleStop,
   CopyIcon,
-  FileText,
   TerminalIcon,
   XCircle,
 } from "lucide-react";
@@ -264,23 +263,31 @@ export const BackgroundJobPanel: FC<{
   );
   const isUserTerminal = parseBackgroundJobId(backgroundJobId) === "terminal";
   // A background command outlives its terminal tab (if any): the host lists it
-  // for exactly as long as the process lives. Showing a command without a
-  // terminal opens its output file.
-  const isRunning = backgroundCommands?.[backgroundJobId] !== undefined;
-  const canOpenTerminal = isRunning || liveTerminal !== undefined;
+  // for exactly as long as the process lives.
+  const backgroundCommand = backgroundCommands?.[backgroundJobId];
+  const isRunning = backgroundCommand !== undefined;
+  // One rule for every surface: a running job with a terminal view (or a user
+  // terminal that is still open) opens that terminal; anything else opens the
+  // output file. Cards that only carry the job id fall back to the output file
+  // recorded by the start card.
+  const resolvedOutputFile = outputFile ?? info?.outputFile;
+  const canOpenTerminal = isUserTerminal
+    ? liveTerminal !== undefined
+    : isRunning && backgroundCommand.detachable !== false;
   const hasResolvedControlState =
-    canOpenTerminal ||
+    isRunning ||
+    liveTerminal !== undefined ||
     (terminals !== undefined &&
       (isUserTerminal || backgroundCommands !== undefined));
   const canOpenOutputFile =
-    hasResolvedControlState && !canOpenTerminal && outputFile !== undefined;
+    hasResolvedControlState && !canOpenTerminal && Boolean(resolvedOutputFile);
   const openTerminalOrOutputFile = () => {
     if (!canOpenTerminal) {
-      if (outputFile) vscodeHost.openFile(outputFile);
+      if (resolvedOutputFile) vscodeHost.openFile(resolvedOutputFile);
       return;
     }
-    if (isRunning) show?.(backgroundJobId);
-    else openBackgroundJobTerminal?.(backgroundJobId);
+    if (isUserTerminal) openBackgroundJobTerminal?.(backgroundJobId);
+    else show?.(backgroundJobId);
   };
   const isNotification = appearance === "notification";
   const recoveredNotificationCommand = isNotification
@@ -303,9 +310,12 @@ export const BackgroundJobPanel: FC<{
     : (resolvedCommand ?? backgroundJobId);
   const isActive = liveTerminal?.isActive ?? false;
 
-  const closedLabel = canOpenOutputFile
-    ? t("commandExecutionPanel.terminalClosedOpenOutput")
-    : t("commandExecutionPanel.terminalClosed");
+  const closedLabel = !canOpenOutputFile
+    ? t("commandExecutionPanel.terminalClosed")
+    : isRunning
+      ? // Still running, but without a terminal view (e.g. on Windows).
+        t("backgroundJobNotifications.openOutput")
+      : t("commandExecutionPanel.terminalClosedOpenOutput");
   const jobControl = isUserTerminal
     ? hasResolvedControlState && (
         <JobControlButton
@@ -350,7 +360,15 @@ export const BackgroundJobPanel: FC<{
     const notificationRowContent = (
       <>
         <span className={NotificationTypeIconClassName}>
-          {notificationIcon ?? <TerminalIcon className="size-3" />}
+          {/* The job number ties the notification to the card that started
+              it; jobs started elsewhere keep the type icon. */}
+          {hasTrackedJob && info?.displayId ? (
+            <span className="font-bold font-mono text-[10px]">
+              {info.displayId}
+            </span>
+          ) : (
+            (notificationIcon ?? <TerminalIcon className="size-3" />)
+          )}
         </span>
         <code
           className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
@@ -465,7 +483,7 @@ export const BackgroundJobPanel: FC<{
           {output && (
             <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
           )}
-          {outputFile && <OpenOutputFileButton outputFile={outputFile} />}
+
           {copyCommand && <CopyCommandButton command={copyCommand} />}
         </>
       }
@@ -519,26 +537,6 @@ const BackgroundJobStatus: FC<{
       <Icon className="size-3.5" />
       {label}
     </span>
-  );
-};
-
-const OpenOutputFileButton: FC<{ outputFile: string }> = ({ outputFile }) => {
-  const { t } = useTranslation();
-  const label = t("backgroundJobNotifications.openOutput");
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          size="xs"
-          variant="ghost"
-          aria-label={label}
-          onClick={() => vscodeHost.openFile(outputFile)}
-        >
-          <FileText className="size-4" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
   );
 };
 

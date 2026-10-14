@@ -11,6 +11,10 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+vi.mock("../use-background-job-running-status", () => ({
+  useBackgroundJobRunningStatus: () => undefined,
+}));
+
 vi.mock("../status-icon", () => ({
   StatusIcon: () => <div data-testid="status-icon" />,
 }));

@@ -23,6 +23,7 @@ let backgroundCommands:
   | Record<string, { isVisible: boolean; detachable?: boolean }>
   | undefined = {};
 let isDevMode = false;
+let jobDisplayIds: Record<string, string> = {};
 let useRealSheet = false;
 let backgroundTasks: Array<{ id: string; title: string; status?: string }> = [];
 
@@ -110,6 +111,15 @@ vi.mock("../hooks/use-background-job-list", () => ({
 
 vi.mock("@/lib/hooks/use-background-commands", () => ({
   useBackgroundCommands: () => ({ backgroundCommands, show, hide, close }),
+}));
+
+vi.mock("../lib/use-background-job-display", () => ({
+  useBackgroundJobInfo: (backgroundJobId: string) => {
+    const displayId = jobDisplayIds[backgroundJobId];
+    return displayId
+      ? { command: "tracked", displayId }
+      : { command: undefined, displayId: `job id: ${backgroundJobId}` };
+  },
 }));
 
 vi.mock("@/lib/vscode", () => ({
@@ -245,6 +255,49 @@ describe("BackgroundJobManagePanel", () => {
     expect(stopButton.className).toContain("dark:hover:bg-foreground/10");
   });
 
+  it("keeps an agent row's status trailing, swapping with its action", () => {
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-running",
+        taskId: "running",
+        kind: "subagent",
+        title: "Review tests",
+        status: "running",
+      },
+      {
+        backgroundJobId: "bgjob-task-done",
+        taskId: "done",
+        kind: "subagent",
+        title: "Write docs",
+        status: "completed",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+
+    const running = screen.getByText("Review tests").closest('[role="button"]');
+    // Nothing leads the row any more; the status sits in the trailing slot.
+    expect(
+      running?.firstElementChild?.querySelector(".animate-spin"),
+    ).toBeNull();
+    const stop = screen.getByLabelText("backgroundTasks.stop");
+    expect(stop.parentElement?.className).toContain("group-hover:inline-flex");
+    const statusSlot = stop.parentElement?.previousElementSibling;
+    expect(statusSlot?.className).toContain("group-hover:hidden");
+    expect(statusSlot?.querySelector(".animate-spin")).not.toBeNull();
+    expect(running?.querySelector(".lucide-chevron-right")).toBeNull();
+
+    const done = screen.getByText("Write docs").closest('[role="button"]');
+    const chevron = done?.querySelector(".lucide-chevron-right");
+    expect(chevron?.parentElement?.className).toContain(
+      "group-hover:inline-flex",
+    );
+    expect(
+      chevron?.parentElement?.previousElementSibling?.querySelector(
+        ".bg-green-500",
+      ),
+    ).not.toBeNull();
+  });
+
   it("labels stopped subagents awaiting delivery without a kill action", () => {
     backgroundJobs = [
       {
@@ -275,6 +328,7 @@ describe("BackgroundJobManagePanel", () => {
     backgroundJobs = [];
     backgroundCommands = { "bgjob-cmd-1": { isVisible: true } };
     isDevMode = false;
+    jobDisplayIds = {};
     useRealSheet = false;
     backgroundTasks = [];
   });
@@ -499,32 +553,39 @@ describe("BackgroundJobManagePanel", () => {
     expect(show).not.toHaveBeenCalled();
   });
 
-  it("offers a running command a way to put its terminal away and to stop it", () => {
+  it("swaps a running command's spinner for its stop control in place", () => {
     backgroundJobs = [runningJob];
 
     renderBackgroundJobManagePanel();
 
-    fireEvent.click(screen.getByLabelText("managePanel.hideTerminal"));
-    expect(hide).toHaveBeenCalledWith("bgjob-cmd-1");
-    expect(screen.getByLabelText("backgroundTasks.stop")).toBeDefined();
+    const stop = screen.getByLabelText("backgroundTasks.stop");
+    // jsdom has no `:hover`; the swap is asserted through its classes.
+    const actionSlot = stop.parentElement;
+    expect(actionSlot?.className).toContain("hidden");
+    expect(actionSlot?.className).toContain("group-hover:inline-flex");
+    const statusSlot = actionSlot?.previousElementSibling;
+    expect(statusSlot?.className).toContain("group-hover:hidden");
+    expect(statusSlot?.querySelector(".animate-spin")).not.toBeNull();
+    // The row is the only way to open the job.
+    expect(screen.queryByLabelText("managePanel.hideTerminal")).toBeNull();
+    expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
     expect(
       screen.queryByLabelText("backgroundJobNotifications.openOutput"),
     ).toBeNull();
   });
 
-  it("offers back the terminal of a running command whose tab was put away", () => {
+  it("puts back the terminal of a running command whose tab was put away", () => {
     backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
     backgroundJobs = [runningJob];
 
     renderBackgroundJobManagePanel();
 
-    fireEvent.click(screen.getByLabelText("managePanel.openTerminal"));
+    const row = screen.getByText("bun run dev").closest('[role="button"]');
+    if (row) fireEvent.click(row);
     expect(show).toHaveBeenCalledWith("bgjob-cmd-1");
-    // The process outlives its tab, so it can still be stopped.
-    expect(screen.getByLabelText("backgroundTasks.stop")).toBeDefined();
   });
 
-  it("offers a running command without a terminal its output file and stop", () => {
+  it("opens the output file of a running command without a terminal", () => {
     backgroundCommands = {
       "bgjob-cmd-1": { isVisible: false, detachable: false },
     };
@@ -532,11 +593,8 @@ describe("BackgroundJobManagePanel", () => {
 
     renderBackgroundJobManagePanel();
 
-    expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
-    expect(screen.queryByLabelText("managePanel.hideTerminal")).toBeNull();
-    fireEvent.click(
-      screen.getByLabelText("backgroundJobNotifications.openOutput"),
-    );
+    const row = screen.getByText("bun run dev").closest('[role="button"]');
+    if (row) fireEvent.click(row);
     expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
     expect(show).not.toHaveBeenCalled();
 
@@ -544,7 +602,7 @@ describe("BackgroundJobManagePanel", () => {
     expect(close).toHaveBeenCalledWith("bgjob-cmd-1");
   });
 
-  it("offers a finished command its output file", () => {
+  it("swaps a finished command's status dot for its copy control", () => {
     backgroundJobs = [
       {
         ...runningJob,
@@ -555,20 +613,12 @@ describe("BackgroundJobManagePanel", () => {
 
     renderBackgroundJobManagePanel();
 
-    const openOutput = screen.getByLabelText(
-      "backgroundJobNotifications.openOutput",
-    );
-    // Only the pointer brings the controls out, and they hold their place in
-    // the row while hidden. jsdom has no `:hover`, so the reveal itself cannot
-    // be observed here — that they start hidden, and are still clickable, can.
-    const controls = openOutput.parentElement;
-    expect(controls?.className).toContain("opacity-0");
-    expect(controls?.className).toContain("group-hover:opacity-100");
-
-    fireEvent.click(openOutput);
-    expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    const copy = screen.getByLabelText("managePanel.copyCommand");
+    expect(copy.parentElement?.className).toContain("group-hover:inline-flex");
+    expect(
+      screen.queryByLabelText("backgroundJobNotifications.openOutput"),
+    ).toBeNull();
     expect(screen.queryByLabelText("backgroundTasks.stop")).toBeNull();
-    expect(screen.queryByLabelText("managePanel.openTerminal")).toBeNull();
   });
 
   it("hands a finished command back to the clipboard", () => {
@@ -582,14 +632,44 @@ describe("BackgroundJobManagePanel", () => {
 
     renderBackgroundJobManagePanel();
 
-    // Beside the transcript, not instead of it.
-    expect(
-      screen.getByLabelText("backgroundJobNotifications.openOutput"),
-    ).toBeDefined();
     fireEvent.click(screen.getByLabelText("managePanel.copyCommand"));
     expect(copyToClipboard).toHaveBeenCalledWith("bun run dev");
     // The control speaks for itself; the row's own action must not fire too.
     expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("numbers a command after the card that started it", () => {
+    jobDisplayIds = { "bgjob-cmd-1": "%3" };
+    backgroundJobs = [runningJob];
+
+    renderBackgroundJobManagePanel();
+
+    const row = screen.getByText("bun run dev").closest('[role="button"]');
+    expect(row?.firstElementChild?.textContent).toBe("%3");
+  });
+
+  it("keeps the type icon for a job started elsewhere", () => {
+    backgroundJobs = [
+      runningJob,
+      {
+        ...runningJob,
+        backgroundJobId: "bgjob-monitor-1",
+        title: "CI checks",
+        monitor: "CI checks",
+      },
+    ];
+
+    renderBackgroundJobManagePanel();
+
+    const command = screen.getByText("bun run dev").closest('[role="button"]');
+
+    expect(
+      command?.firstElementChild?.querySelector(".lucide-terminal"),
+    ).not.toBeNull();
+    const monitor = screen.getByText("CI checks").closest('[role="button"]');
+    expect(
+      monitor?.firstElementChild?.querySelector(".lucide-activity"),
+    ).not.toBeNull();
   });
 
   it("keeps the clipboard control away from a running command", () => {

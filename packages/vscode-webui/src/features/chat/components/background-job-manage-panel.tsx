@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NotificationTypeIconClassName } from "@/components/ui/notification-row";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -22,20 +23,20 @@ import { vscodeHost } from "@/lib/vscode";
 import { getSubAgentBackgroundJobId } from "@getpochi/common";
 import type { BackgroundJobEntry, JobStatus } from "@getpochi/livekit";
 import {
+  Activity,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
-  EyeIcon,
-  EyeOffIcon,
-  FileTextIcon,
   ListIcon,
   Loader2Icon,
   SquareIcon,
+  TerminalIcon,
 } from "lucide-react";
 import { Children, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBackgroundJobList } from "../hooks/use-background-job-list";
 import { useBackgroundJobManager } from "../hooks/use-background-job-manager";
+import { useBackgroundJobInfo } from "../lib/use-background-job-display";
 import { BackgroundTaskDetail } from "./background-task-debug-panel";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
 
@@ -367,10 +368,6 @@ function AgentJobRow({
         }}
         className="group flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <RowStatusIndicator
-          isRunning={job.status === "running"}
-          tone={statusTone(job.status)}
-        />
         {badgeLabel && (
           <Badge variant="secondary" className="h-5 shrink-0 py-0">
             {badgeLabel}
@@ -389,26 +386,32 @@ function AgentJobRow({
             <span className="mt-1 block text-sm opacity-80">{summary}</span>
           </TooltipContent>
         </Tooltip>
-        <span className="flex min-h-5 shrink-0 items-center gap-1">
-          {job.status === "running" && parentTaskId && (
-            <StopJobAction
-              onClick={async () => {
-                try {
-                  await manager.kill(job.backgroundJobId);
-                  setError(undefined);
-                } catch (error) {
-                  setError(
-                    error instanceof Error ? error.message : String(error),
-                  );
-                }
-              }}
-            />
-          )}
-          <ChevronRightIcon
-            className="size-4 text-muted-foreground"
-            aria-hidden="true"
-          />
-        </span>
+        {/* Like a command row: a running subagent swaps to stop; anything
+            else hints that the row drills into its details. */}
+        <RowStateSlot
+          status={job.status}
+          action={
+            job.status === "running" && parentTaskId ? (
+              <StopJobAction
+                onClick={async () => {
+                  try {
+                    await manager.kill(job.backgroundJobId);
+                    setError(undefined);
+                  } catch (error) {
+                    setError(
+                      error instanceof Error ? error.message : String(error),
+                    );
+                  }
+                }}
+              />
+            ) : (
+              <ChevronRightIcon
+                className="size-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+            )
+          }
+        />
       </div>
       {error && (
         <p role="alert" className="text-destructive text-xs">
@@ -419,7 +422,8 @@ function AgentJobRow({
   );
 }
 
-function JobRow({
+/** Exported for the background job UI proposal stories. */
+export function JobRow({
   job,
   parentTaskId,
 }: {
@@ -429,21 +433,25 @@ function JobRow({
   const manager = useBackgroundJobManager(parentTaskId ?? "");
   const [error, setError] = useState<string>();
   const { t } = useTranslation();
-  const { backgroundCommands, show, hide } = useBackgroundCommands();
+  const info = useBackgroundJobInfo(job.backgroundJobId);
+  const { backgroundCommands, show } = useBackgroundCommands();
   const isRunning = job.status === "running";
-  const backgroundCommand = backgroundCommands?.[job.backgroundJobId];
-  const isVisible = backgroundCommand?.isVisible;
   // Commands without a terminal view (e.g. on Windows) only have output.
-  const hasTerminal = backgroundCommand?.detachable !== false;
-  const openOutputFile = () => {
-    if (job.outputFile) vscodeHost.openFile(job.outputFile);
-  };
+  const hasTerminal =
+    backgroundCommands?.[job.backgroundJobId]?.detachable !== false;
+  // The row is the only open entry: a running job opens its terminal, anything
+  // else its output file.
   const open =
     isRunning && hasTerminal
       ? () => show?.(job.backgroundJobId)
       : job.outputFile
-        ? openOutputFile
+        ? () => {
+            if (job.outputFile) vscodeHost.openFile(job.outputFile);
+          }
         : undefined;
+  // Jobs started in this conversation carry the number of their start card;
+  // others keep the type icon so the rows stay aligned.
+  const displayId = info?.command ? info.displayId : undefined;
 
   const statusLabel =
     job.status === "running"
@@ -454,58 +462,20 @@ function JobRow({
     <span className="min-w-0 flex-1 truncate text-sm">{job.title}</span>
   );
 
-  const openOutputAction = job.outputFile && (
-    <JobAction
-      label={t("backgroundJobNotifications.openOutput")}
-      onClick={openOutputFile}
-    >
-      <FileTextIcon className="size-4" />
-    </JobAction>
-  );
-
-  const actions = isRunning ? (
-    <>
-      {hasTerminal ? (
-        <JobAction
-          label={
-            isVisible
-              ? t("managePanel.hideTerminal")
-              : t("managePanel.openTerminal")
-          }
-          onClick={() =>
-            isVisible
-              ? hide?.(job.backgroundJobId)
-              : show?.(job.backgroundJobId)
-          }
-        >
-          {isVisible ? (
-            <EyeOffIcon className="size-4" />
-          ) : (
-            <EyeIcon className="size-4" />
-          )}
-        </JobAction>
-      ) : (
-        openOutputAction
-      )}
-      <StopJobAction
-        onClick={async () => {
-          try {
-            await manager.kill(job.backgroundJobId);
-            setError(undefined);
-          } catch (error) {
-            setError(error instanceof Error ? error.message : String(error));
-          }
-        }}
-      />
-    </>
-  ) : (
-    <>
-      {openOutputAction}
-      {job.command && <CopyCommandAction command={job.command} />}
-    </>
-  );
-  const hasActions =
-    isRunning || job.outputFile !== undefined || job.command !== undefined;
+  const action = isRunning ? (
+    <StopJobAction
+      onClick={async () => {
+        try {
+          await manager.kill(job.backgroundJobId);
+          setError(undefined);
+        } catch (error) {
+          setError(error instanceof Error ? error.message : String(error));
+        }
+      }}
+    />
+  ) : job.command ? (
+    <CopyCommandAction command={job.command} />
+  ) : undefined;
 
   return (
     <div
@@ -533,7 +503,15 @@ function JobRow({
           {error}
         </span>
       )}
-      <RowStatusIndicator isRunning={isRunning} tone={statusTone(job.status)} />
+      <span className={NotificationTypeIconClassName}>
+        {displayId ? (
+          <span className="font-bold font-mono text-[10px]">{displayId}</span>
+        ) : job.monitor !== undefined ? (
+          <Activity className="size-3" aria-hidden="true" />
+        ) : (
+          <TerminalIcon className="size-3" aria-hidden="true" />
+        )}
+      </span>
       {job.command || job.monitor || statusLabel ? (
         <Tooltip>
           <TooltipTrigger asChild>{title}</TooltipTrigger>
@@ -558,14 +536,41 @@ function JobRow({
       ) : (
         title
       )}
-      <span className="grid min-h-5 shrink-0 items-center justify-items-end">
-        {hasActions && (
-          <span className="col-start-1 row-start-1 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-            {actions}
-          </span>
-        )}
-      </span>
+      <RowStateSlot status={job.status} action={action} />
     </div>
+  );
+}
+
+/**
+ * The trailing slot of a row: it shows the status at rest and swaps in place
+ * to the row's action (stop / copy / drill-in) on hover or keyboard focus.
+ */
+function RowStateSlot({
+  status,
+  action,
+}: {
+  status: JobStatus;
+  action?: ReactNode;
+}) {
+  return (
+    <span className="inline-flex size-5 shrink-0 items-center justify-center">
+      <span
+        className={cn(
+          "inline-flex",
+          action && "group-focus-within:hidden group-hover:hidden",
+        )}
+      >
+        <RowStatusIndicator
+          isRunning={status === "running"}
+          tone={statusTone(status)}
+        />
+      </span>
+      {action && (
+        <span className="hidden group-focus-within:inline-flex group-hover:inline-flex">
+          {action}
+        </span>
+      )}
+    </span>
   );
 }
 
