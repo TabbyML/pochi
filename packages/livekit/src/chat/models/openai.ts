@@ -3,6 +3,7 @@ import { getLogger } from "@getpochi/common";
 import { wrapLanguageModel } from "ai";
 import { z } from "zod";
 import type { RequestData } from "../../types";
+import { createToolResultMediaMiddleware } from "../middlewares";
 
 const logger = getLogger("openai");
 
@@ -34,13 +35,16 @@ export function createOpenAIModel(
   });
   return wrapLanguageModel({
     model: openai(llm.modelId),
-    middleware: {
-      specificationVersion: "v3",
-      async transformParams({ params }) {
-        params.maxOutputTokens = llm.maxOutputTokens;
-        return params;
+    middleware: [
+      {
+        specificationVersion: "v3",
+        async transformParams({ params }) {
+          params.maxOutputTokens = llm.maxOutputTokens;
+          return params;
+        },
       },
-    },
+      createToolResultMediaMiddleware(),
+    ],
   });
 }
 

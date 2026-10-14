@@ -140,11 +140,61 @@ export function estimateTotalTokens(
       } else if (part.type === "file") {
         totalTokens += ImageEstimatedTokens;
       } else if (isStaticToolUIPart(part)) {
-        totalTokens += estimateTokens(JSON.stringify(part), calibrationFactor);
+        const { output, ...rest } = part as unknown as {
+          output?: unknown;
+          [key: string]: unknown;
+        };
+        totalTokens += estimateTokens(JSON.stringify(rest), calibrationFactor);
+        if (output !== undefined) {
+          totalTokens += estimateToolOutputTokens(output, calibrationFactor);
+        }
       }
     }
   }
   return totalTokens;
+}
+
+function estimateToolOutputTokens(
+  output: unknown,
+  calibrationFactor: number,
+): number {
+  if (output instanceof Uint8Array) {
+    return ImageEstimatedTokens;
+  }
+  if (typeof output === "string") {
+    return estimateTokens(output, calibrationFactor);
+  }
+  if (typeof output === "object" && output !== null) {
+    const obj = output as {
+      type?: unknown;
+      content?: unknown;
+    };
+    if (obj.type === "media") {
+      return ImageEstimatedTokens;
+    }
+    if (Array.isArray(obj.content)) {
+      let total = 0;
+      for (const item of obj.content) {
+        if (typeof item === "object" && item !== null) {
+          const contentItem = item as { type?: unknown; text?: unknown };
+          if (contentItem.type === "image" || contentItem.type === "media") {
+            total += ImageEstimatedTokens;
+            continue;
+          }
+          if (
+            contentItem.type === "text" &&
+            typeof contentItem.text === "string"
+          ) {
+            total += estimateTokens(contentItem.text, calibrationFactor);
+            continue;
+          }
+        }
+        total += estimateTokens(JSON.stringify(item), calibrationFactor);
+      }
+      return total;
+    }
+  }
+  return estimateTokens(JSON.stringify(output), calibrationFactor);
 }
 
 export type TokenBreakdown = {
@@ -198,15 +248,10 @@ export function estimateTokenBreakdown(
         );
         if (part.state === "output-available" && part.output) {
           const output = (part as unknown as { output: unknown }).output;
-          let outputTokens = 0;
-
-          if (output instanceof Uint8Array) {
-            outputTokens = ImageEstimatedTokens;
-          } else {
-            const resultStr =
-              typeof output === "string" ? output : JSON.stringify(output);
-            outputTokens = estimateTokens(resultStr, calibrationFactor);
-          }
+          const outputTokens = estimateToolOutputTokens(
+            output,
+            calibrationFactor,
+          );
 
           const toolName = part.type.replace(/^tool-/, "");
           if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {

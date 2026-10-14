@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { Message } from "../../types";
 import {
   DefaultCjkCharsPerToken,
   DefaultOtherCharsPerToken,
+  ImageEstimatedTokens,
+  estimateTokenBreakdown,
   estimateTokens,
+  estimateTotalTokens,
   getModelCalibrationFactor,
   getModelCalibrationKey,
   resetTokenCalibration,
@@ -137,5 +141,51 @@ describe("per-model token calibration", () => {
     resetTokenCalibration();
     expect(getModelCalibrationFactor("model-a")).toBe(1);
     expect(getModelCalibrationFactor("model-b")).toBe(1);
+  });
+});
+
+describe("tool media token estimation", () => {
+  it("counts MCP image tool results and readFile media outputs as ImageEstimatedTokens", () => {
+    const messages: Message[] = [
+      {
+        id: "a-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-look",
+            toolCallId: "call-look",
+            state: "output-available",
+            input: {},
+            output: {
+              content: [
+                {
+                  type: "image",
+                  mimeType: "image/png",
+                  data: "store-blob:abc",
+                },
+              ],
+            },
+          },
+          {
+            type: "tool-readFile",
+            toolCallId: "call-read",
+            state: "output-available",
+            input: { path: "img.png" },
+            output: {
+              type: "media",
+              mimeType: "image/png",
+              data: "store-blob:def",
+            },
+          },
+        ],
+      } as unknown as Message,
+    ];
+
+    const breakdown = estimateTokenBreakdown(messages);
+    expect(breakdown.toolResultsTokens).toBe(ImageEstimatedTokens);
+    expect(breakdown.filesTokens).toBe(ImageEstimatedTokens);
+    expect(estimateTotalTokens(messages)).toBeGreaterThanOrEqual(
+      ImageEstimatedTokens * 2,
+    );
   });
 });
