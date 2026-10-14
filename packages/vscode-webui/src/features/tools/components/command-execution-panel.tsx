@@ -356,20 +356,27 @@ export const BackgroundJobPanel: FC<{
 
   if (isNotification) {
     const text = notificationTitle ?? resolvedCommand ?? backgroundJobId;
-    const notificationRowClassName = NotificationRowClassName;
+    // The job number ties the notification to the card that started it and
+    // opens the job like that card's badge does; jobs started elsewhere keep
+    // the type icon. It sits beside the row's own button, never inside it.
+    const notificationMarker = (hasTrackedJob &&
+      info?.displayId &&
+      jobControl) || (
+      <span className={NotificationTypeIconClassName}>
+        {hasTrackedJob && info?.displayId ? (
+          <span className="font-bold font-mono text-[10px]">
+            {info.displayId}
+          </span>
+        ) : (
+          (notificationIcon ?? <TerminalIcon className="size-3" />)
+        )}
+      </span>
+    );
+    const notificationRowClassName = cn(NotificationRowClassName, "py-0");
+    const notificationBodyClassName =
+      "flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left";
     const notificationRowContent = (
       <>
-        <span className={NotificationTypeIconClassName}>
-          {/* The job number ties the notification to the card that started
-              it; jobs started elsewhere keep the type icon. */}
-          {hasTrackedJob && info?.displayId ? (
-            <span className="font-bold font-mono text-[10px]">
-              {info.displayId}
-            </span>
-          ) : (
-            (notificationIcon ?? <TerminalIcon className="size-3" />)
-          )}
-        </span>
         <code
           className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
           title={text}
@@ -386,28 +393,31 @@ export const BackgroundJobPanel: FC<{
           onOpenChange={setExpanded}
           className="min-w-0"
         >
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              aria-label={t(
-                expanded
-                  ? "commandExecutionPanel.collapse"
-                  : "commandExecutionPanel.expand",
-              )}
-              className={cn(
-                notificationRowClassName,
-                "group/toggle cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              )}
-            >
-              {notificationRowContent}
-              <span className="flex size-5 shrink-0 items-center justify-center">
-                <ChevronLeft
-                  className="group-aria-expanded/toggle:-rotate-90 size-3.5 text-muted-foreground transition-transform"
-                  aria-hidden="true"
-                />
-              </span>
-            </button>
-          </CollapsibleTrigger>
+          <div className={notificationRowClassName}>
+            {notificationMarker}
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                aria-label={t(
+                  expanded
+                    ? "commandExecutionPanel.collapse"
+                    : "commandExecutionPanel.expand",
+                )}
+                className={cn(
+                  notificationBodyClassName,
+                  "group/toggle cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                )}
+              >
+                {notificationRowContent}
+                <span className="flex size-5 shrink-0 items-center justify-center">
+                  <ChevronLeft
+                    className="group-aria-expanded/toggle:-rotate-90 size-3.5 text-muted-foreground transition-transform"
+                    aria-hidden="true"
+                  />
+                </span>
+              </button>
+            </CollapsibleTrigger>
+          </div>
           <CollapsibleContent>
             <div className="mt-1 mr-1 mb-2 ml-[16px] flex min-w-0 flex-col gap-1 pl-3">
               {notificationEvents.map((event) => (
@@ -430,33 +440,38 @@ export const BackgroundJobPanel: FC<{
       );
     }
 
-    const notificationRow = outputFile ? (
+    const notificationBody = outputFile ? (
       <button
         type="button"
         aria-label={t("backgroundJobNotifications.openOutput")}
         className={cn(
-          notificationRowClassName,
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          notificationBodyClassName,
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         )}
         onClick={() => vscodeHost.openFile(outputFile)}
       >
         {notificationRowContent}
       </button>
     ) : (
-      <div className={notificationRowClassName}>{notificationRowContent}</div>
+      <div className={notificationBodyClassName}>{notificationRowContent}</div>
     );
 
-    if (!summary) return notificationRow;
-
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>{notificationRow}</TooltipTrigger>
-        <TooltipContent>
-          <span className="block max-w-sm whitespace-pre-wrap break-words">
-            {summary}
-          </span>
-        </TooltipContent>
-      </Tooltip>
+      <div className={notificationRowClassName}>
+        {notificationMarker}
+        {summary ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{notificationBody}</TooltipTrigger>
+            <TooltipContent>
+              <span className="block max-w-sm whitespace-pre-wrap break-words">
+                {summary}
+              </span>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          notificationBody
+        )}
+      </div>
     );
   }
 
