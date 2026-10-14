@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { GoogleGenerativeAILanguageModel } from "@ai-sdk/google/internal";
@@ -11,6 +12,19 @@ const cjsGoogle: { createGoogleGenerativeAI: typeof createGoogleGenerativeAI } =
 const cjsInternal: {
   GoogleGenerativeAILanguageModel: typeof GoogleGenerativeAILanguageModel;
 } = require("@ai-sdk/google/internal");
+
+// Captured from Val Town's public, live tools/list documentation feed.
+// See fixtures/val-town-update-val.md for provenance and reproduction details.
+const valTownUpdateVal: {
+  name: string;
+  description: string;
+  inputSchema: JSONSchema7;
+} = JSON.parse(
+  readFileSync(
+    new URL("./fixtures/val-town-update-val.json", import.meta.url),
+    "utf8",
+  ),
+);
 
 const providers: [string, (fetch: FetchFunction) => LanguageModelV3][] = [
   [
@@ -95,7 +109,14 @@ const imageSchemas: [string, JSONSchema7][] = [
 ];
 
 describe.each(providers)("Google schema patch: %s", (_name, createModel) => {
-  async function getDeclarations(inputSchema: JSONSchema7, stream = false) {
+  async function getDeclarations(
+    inputSchema: JSONSchema7,
+    stream = false,
+    tool = {
+      name: "createModel",
+      description: "Create a model from an image.",
+    },
+  ) {
     const fetch = vi.fn<FetchFunction>(async () => {
       const response = {
         candidates: [
@@ -122,8 +143,8 @@ describe.each(providers)("Google schema patch: %s", (_name, createModel) => {
       tools: [
         {
           type: "function" as const,
-          name: "createModel",
-          description: "Create a model from an image.",
+          name: tool.name,
+          description: tool.description,
           inputSchema,
         },
         {
@@ -176,6 +197,27 @@ describe.each(providers)("Google schema patch: %s", (_name, createModel) => {
     expect(declaration.parametersJsonSchema).toEqual(inputSchema);
     expect(declaration).not.toHaveProperty("parameters");
   });
+
+  it.each(["generate", "stream"] as const)(
+    "preserves the captured Val Town update_val schema for %s",
+    async (method) => {
+      const original = structuredClone(valTownUpdateVal.inputSchema);
+      const [declaration, ordinary] = await getDeclarations(
+        valTownUpdateVal.inputSchema,
+        method === "stream",
+        valTownUpdateVal,
+      );
+
+      expect(declaration).toEqual({
+        name: valTownUpdateVal.name,
+        description: valTownUpdateVal.description,
+        parametersJsonSchema: original,
+      });
+      expect(valTownUpdateVal.inputSchema).toEqual(original);
+      expect(ordinary).toHaveProperty("parameters");
+      expect(ordinary).not.toHaveProperty("parametersJsonSchema");
+    },
+  );
 
   it("keeps ordinary schemas with empty defaults and descriptions on parameters", async () => {
     const [declaration] = await getDeclarations({
