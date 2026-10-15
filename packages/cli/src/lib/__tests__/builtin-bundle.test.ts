@@ -31,7 +31,7 @@ describe("built-in bundle", () => {
       "browser instructions",
     );
     const powershell = createEmbeddedBlob(
-      "/app/assets/agents/browser/scripts/install.ps1",
+      "/app/assets/agents/browser/scripts/install-windows.ps1",
       "Write-Output installed\n",
     );
     const bundleDirs: string[] = [];
@@ -48,6 +48,10 @@ describe("built-in bundle", () => {
             script,
           ),
           createEmbeddedBlob("/app/assets/unrelated.sh", "ignored"),
+          createEmbeddedBlob(
+            "/app/assets/agents/browser/scripts/unrelated.js",
+            "ignored",
+          ),
         ],
       });
       const { ensureBuiltInBundle } = await import("../builtin-bundle");
@@ -67,11 +71,14 @@ describe("built-in bundle", () => {
       ).resolves.toBe(script);
       await expect(
         readFile(
-          path.join(bundle.agentsDir, "browser/scripts/install.ps1"),
+          path.join(bundle.agentsDir, "browser/scripts/install-windows.ps1"),
           "utf8",
         ),
       ).resolves.toBe("Write-Output installed\n");
       await expect(readdir(bundle.agentsDir)).resolves.toEqual(["browser"]);
+      expect(
+        (await readdir(path.join(bundle.agentsDir, "browser/scripts"))).sort(),
+      ).toEqual(["install-windows.ps1", "install.sh"]);
     }
 
     expect(bundleDirs[0]).not.toBe(bundleDirs[1]);

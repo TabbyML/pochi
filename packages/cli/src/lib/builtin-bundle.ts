@@ -42,6 +42,8 @@ function classifyBlob(blob: EmbeddedBlob): ClassifiedBlob | undefined {
     };
   }
 
+  if (!/\.(md|sh|ps1)$/i.test(name)) return undefined;
+
   if (agentIdx !== -1) {
     return {
       blob,

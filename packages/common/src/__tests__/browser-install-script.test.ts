@@ -200,7 +200,12 @@ exit $LASTEXITCODE
   );
   return spawnSync(
     powershell,
-    ["-NoProfile", "-File", wrapper, path.join(scriptsDir, "install.ps1")],
+    [
+      "-NoProfile",
+      "-File",
+      wrapper,
+      path.join(scriptsDir, "install-windows.ps1"),
+    ],
     {
       env: {
         ...fixture.env,

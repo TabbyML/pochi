@@ -116,7 +116,7 @@ Project agent instructions.`,
     );
     expect(browserAgent).toBeDefined();
     expect(browserAgent?.filePath).toMatch(/browser[/\\]AGENT\.md$/);
-    for (const script of ["install.sh", "install.ps1"]) {
+    for (const script of ["install.sh", "install-windows.ps1"]) {
       await expect(
         fs.access(
           path.join(path.dirname(browserAgent!.filePath), "scripts", script),
@@ -147,7 +147,7 @@ Project agent instructions.`,
 
     for (const command of [
       'bash "/tmp/Pochi Resources/agents/browser/scripts/install.sh"',
-      'powershell -NoProfile -ExecutionPolicy Bypass -File "C:/Program Files/Pochi/agents/browser/scripts/install.ps1"',
+      'powershell -NoProfile -ExecutionPolicy Bypass -File "C:/Program Files/Pochi/agents/browser/scripts/install-windows.ps1"',
     ]) {
       expect(() =>
         validateToolPolicy("executeCommand", { command }, policies, {

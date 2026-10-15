@@ -8,7 +8,7 @@ tools:
   - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser *)"
   - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser.exe *)"
   - "executeCommand(bash */browser/scripts/install.sh)"
-  - "executeCommand(powershell -NoProfile -ExecutionPolicy Bypass -File */browser/scripts/install.ps1)"
+  - "executeCommand(powershell -NoProfile -ExecutionPolicy Bypass -File */browser/scripts/install-windows.ps1)"
   - "executeCommand(pgrep *)"
   - "executeCommand(powershell -NoProfile -Command Get-Process *)"
   - killBackgroundJob
@@ -92,7 +92,7 @@ Before running browser commands, run `agent-browser --version`. If it reports ex
 If neither command reports `0.39.0`, run the bundled installer with `executeCommand`:
 
 - **macOS/Linux**: `bash "<agent-directory>/scripts/install.sh"`
-- **Windows**: `powershell -NoProfile -ExecutionPolicy Bypass -File "<agent-directory>/scripts/install.ps1"`
+- **Windows**: `powershell -NoProfile -ExecutionPolicy Bypass -File "<agent-directory>/scripts/install-windows.ps1"`
 
 Resolve `<agent-directory>` from the directory containing the `[Agent location: <path>]` supplied in this system prompt. Use an absolute path, forward slashes (including on Windows), and quote it as shown. The scripts select the platform, download the official `0.39.0` binary into `~/.pochi/bin`, and verify its version before replacing an existing install.
 
