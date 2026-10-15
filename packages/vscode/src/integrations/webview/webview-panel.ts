@@ -17,6 +17,7 @@ import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { z } from "zod";
 import { PochiConfiguration } from "../configuration";
+import { TaskActivityTracker } from "../editor/task-activity-tracker";
 import { WorktreeManager } from "../git/worktree";
 import { getViewColumnForPochiPanel } from "../layout";
 import { TerminalJob } from "../terminal/terminal-job";
@@ -201,44 +202,21 @@ export class PochiTaskEditorProvider
       ),
     );
 
+    const taskActivityTracker = container.resolve(TaskActivityTracker);
+    const stopIfTaskClosed = (job: TerminalJob) => {
+      if (job.rootTaskId && !taskActivityTracker.state.value[job.rootTaskId])
+        job.kill();
+    };
     disposables.push(
-      vscode.window.tabGroups.onDidChangeTabs(({ closed }) => {
-        for (const tab of closed) {
-          const task = PochiTaskEditorProvider.getTabTask(tab);
-          if (!task || PochiTaskEditorProvider.isTaskOpen(task.uid)) continue;
-          for (const job of TerminalJob.list()) {
-            if (job.rootTaskId === task.uid) job.kill();
-          }
-        }
-      }),
+      {
+        dispose: taskActivityTracker.state.subscribe(() => {
+          for (const job of TerminalJob.list()) stopIfTaskClosed(job);
+        }),
+      },
       // A command may finish startup or become background after its tab closed.
-      TerminalJob.onDidCreate((job) => {
-        if (
-          job.rootTaskId &&
-          !PochiTaskEditorProvider.isTaskOpen(job.rootTaskId)
-        )
-          job.kill();
-      }),
+      TerminalJob.onDidCreate(stopIfTaskClosed),
     );
     return vscode.Disposable.from(...disposables);
-  }
-
-  private static getTabTask(tab: vscode.Tab): TaskUri | undefined {
-    const input = tab.input;
-    if (
-      !(input instanceof vscode.TabInputCustom) ||
-      input.viewType !== PochiTaskEditorProvider.viewType
-    )
-      return;
-    return PochiTaskEditorProvider.parseTaskUri(input.uri) ?? undefined;
-  }
-
-  private static isTaskOpen(uid: string): boolean {
-    return vscode.window.tabGroups.all.some((group) =>
-      group.tabs.some(
-        (tab) => PochiTaskEditorProvider.getTabTask(tab)?.uid === uid,
-      ),
-    );
   }
 
   public static createTaskUri(params: TaskUri): vscode.Uri {
