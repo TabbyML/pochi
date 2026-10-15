@@ -127,13 +127,14 @@ describe("BackgroundJobManager", () => {
   });
 
   it("still stops other jobs and disposes when one command fails to stop", async () => {
-    const { manager, observers, source } = setup();
+    const { manager, observers, source, tasks } = setup();
+    tasks.set("parent", { id: "parent", status: "pending-tool" } as Task);
     await manager.watchTask("parent");
     observers.get("parent")!({ running: {
       "bgjob-cmd-one": running("parent"), "bgjob-cmd-two": running("parent"),
     }, notifications: [] });
     source.kill.mockRejectedValueOnce(new Error("failed to kill"));
-    await expect(manager.dispose()).rejects.toThrow("Failed to dispose background jobs");
+    await expect(manager.dispose()).rejects.toThrow("failed to kill");
     expect(source.kill).toHaveBeenCalledTimes(2);
     await expect(manager.backgroundSubTask({ taskId: "late", parentTaskId: "parent" })).rejects.toThrow("disposed");
   });
@@ -258,7 +259,8 @@ describe("BackgroundJobManager", () => {
   });
 
   it("uses process ownership even when a fork copied its parent's tool messages", async () => {
-    const { manager, observers, messages, source } = setup();
+    const { manager, observers, messages, source, tasks } = setup();
+    tasks.set("parent", { id: "parent", status: "pending-tool" } as Task);
     messages.set("fork", [
       {
         id: "copied",
