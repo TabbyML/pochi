@@ -219,75 +219,84 @@ exit $LASTEXITCODE
   );
 }
 
-describe.skipIf(!canRunPowerShell)("browser PowerShell installer", () => {
-  it.each([
-    ["AMD64", ""],
-    ["ARM64", ""],
-    ["x86", "AMD64"],
-  ])(
-    "installs the x64 asset for %s (native: %s)",
-    async (architecture, nativeArchitecture) => {
-      const fixture = await createFixture(true);
-      const result = await runPowerShell(fixture, {
-        PROCESSOR_ARCHITECTURE: architecture,
-        PROCESSOR_ARCHITEW6432: nativeArchitecture,
-      });
-      expect(result.status, result.stderr).toBe(0);
-      await expect(readFile(fixture.downloadLog, "utf8")).resolves.toBe(
-        "https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-win32-x64.exe",
-      );
-      await expect(readFile(fixture.binary, "utf8")).resolves.toBe(
-        currentBinary,
-      );
-      await expect(readdir(fixture.installDir)).resolves.toEqual([
-        "agent-browser.exe",
-      ]);
-    },
-  );
-
-  it("skips downloading when the required version is installed", async () => {
-    const fixture = await createFixture(true);
-    await writeFile(fixture.binary, currentBinary);
-    const result = await runPowerShell(fixture);
-    expect(result.status, result.stderr).toBe(0);
-    await expect(readFile(fixture.downloadLog)).rejects.toMatchObject({
-      code: "ENOENT",
-    });
-  });
-
-  it.each(["download", "version", "execution"])(
-    "preserves the old binary and removes temporary files on %s failure",
-    async (failure) => {
-      const fixture = await createFixture(true);
-      if (failure === "version") {
-        await writeFile(
-          fixture.payload,
-          "#!/bin/sh\necho 'agent-browser 0.40.0'\n",
+describe(
+  "browser PowerShell installer",
+  {
+    skip: !canRunPowerShell,
+    // A cold PowerShell process can exceed Vitest's default 5s on busy CI
+    // runners. Cover the 10s process timeout plus fixture setup and assertions.
+    timeout: 15_000,
+  },
+  () => {
+    it.each([
+      ["AMD64", ""],
+      ["ARM64", ""],
+      ["x86", "AMD64"],
+    ])(
+      "installs the x64 asset for %s (native: %s)",
+      async (architecture, nativeArchitecture) => {
+        const fixture = await createFixture(true);
+        const result = await runPowerShell(fixture, {
+          PROCESSOR_ARCHITECTURE: architecture,
+          PROCESSOR_ARCHITEW6432: nativeArchitecture,
+        });
+        expect(result.status, result.stderr).toBe(0);
+        await expect(readFile(fixture.downloadLog, "utf8")).resolves.toBe(
+          "https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-win32-x64.exe",
         );
-      } else if (failure === "execution") {
-        await writeFile(fixture.payload, `${currentBinary}exit 1\n`);
-      }
+        await expect(readFile(fixture.binary, "utf8")).resolves.toBe(
+          currentBinary,
+        );
+        await expect(readdir(fixture.installDir)).resolves.toEqual([
+          "agent-browser.exe",
+        ]);
+      },
+    );
+
+    it("skips downloading when the required version is installed", async () => {
+      const fixture = await createFixture(true);
+      await writeFile(fixture.binary, currentBinary);
+      const result = await runPowerShell(fixture);
+      expect(result.status, result.stderr).toBe(0);
+      await expect(readFile(fixture.downloadLog)).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    });
+
+    it.each(["download", "version", "execution"])(
+      "preserves the old binary and removes temporary files on %s failure",
+      async (failure) => {
+        const fixture = await createFixture(true);
+        if (failure === "version") {
+          await writeFile(
+            fixture.payload,
+            "#!/bin/sh\necho 'agent-browser 0.40.0'\n",
+          );
+        } else if (failure === "execution") {
+          await writeFile(fixture.payload, `${currentBinary}exit 1\n`);
+        }
+        const result = await runPowerShell(fixture, {
+          BROWSER_TEST_DOWNLOAD_EXIT: failure === "download" ? "22" : "0",
+        });
+        expect(result.status).toBe(1);
+        await expect(readFile(fixture.binary, "utf8")).resolves.toBe(oldBinary);
+        await expect(readdir(fixture.installDir)).resolves.toEqual([
+          "agent-browser.exe",
+        ]);
+      },
+    );
+
+    it("rejects unsupported architectures without downloading", async () => {
+      const fixture = await createFixture(true);
       const result = await runPowerShell(fixture, {
-        BROWSER_TEST_DOWNLOAD_EXIT: failure === "download" ? "22" : "0",
+        PROCESSOR_ARCHITECTURE: "x86",
       });
       expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Unsupported architecture");
+      await expect(readFile(fixture.downloadLog)).rejects.toMatchObject({
+        code: "ENOENT",
+      });
       await expect(readFile(fixture.binary, "utf8")).resolves.toBe(oldBinary);
-      await expect(readdir(fixture.installDir)).resolves.toEqual([
-        "agent-browser.exe",
-      ]);
-    },
-  );
-
-  it("rejects unsupported architectures without downloading", async () => {
-    const fixture = await createFixture(true);
-    const result = await runPowerShell(fixture, {
-      PROCESSOR_ARCHITECTURE: "x86",
     });
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("Unsupported architecture");
-    await expect(readFile(fixture.downloadLog)).rejects.toMatchObject({
-      code: "ENOENT",
-    });
-    await expect(readFile(fixture.binary, "utf8")).resolves.toBe(oldBinary);
-  });
-});
+  },
+);
