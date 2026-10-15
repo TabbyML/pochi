@@ -20,7 +20,7 @@ export function parseMcpToolSet(
     : undefined;
 }
 
-const ContentOutput = z.union([
+export const McpToolOutput = z.union([
   z.object({
     content: z.array(
       z.discriminatedUnion("type", [
@@ -57,7 +57,7 @@ function parseMcpTool(
         };
       }
 
-      const parsed = ContentOutput.safeParse(output);
+      const parsed = McpToolOutput.safeParse(output);
       if (!parsed.success) {
         return {
           type: "json",
