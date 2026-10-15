@@ -17,10 +17,8 @@ import { container } from "tsyringe";
 import * as vscode from "vscode";
 import { z } from "zod";
 import { PochiConfiguration } from "../configuration";
-import { TaskActivityTracker } from "../editor/task-activity-tracker";
 import { WorktreeManager } from "../git/worktree";
 import { getViewColumnForPochiPanel } from "../layout";
-import { TerminalJob } from "../terminal/terminal-job";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -202,20 +200,6 @@ export class PochiTaskEditorProvider
       ),
     );
 
-    const taskActivityTracker = container.resolve(TaskActivityTracker);
-    const stopIfTaskClosed = (job: TerminalJob) => {
-      if (job.rootTaskId && !taskActivityTracker.state.value[job.rootTaskId])
-        job.kill();
-    };
-    disposables.push(
-      {
-        dispose: taskActivityTracker.state.subscribe(() => {
-          for (const job of TerminalJob.list()) stopIfTaskClosed(job);
-        }),
-      },
-      // A command may finish startup or become background after its tab closed.
-      TerminalJob.onDidCreate(stopIfTaskClosed),
-    );
     return vscode.Disposable.from(...disposables);
   }
 
