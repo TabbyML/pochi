@@ -2,6 +2,7 @@ import type {
   LanguageModelV3FilePart,
   LanguageModelV3Middleware,
   LanguageModelV3Prompt,
+  LanguageModelV3TextPart,
   LanguageModelV3ToolResultOutput,
 } from "@ai-sdk/provider";
 
@@ -72,7 +73,10 @@ export function hoistToolResultMedia(
       continue;
     }
 
-    const extractedFiles: LanguageModelV3FilePart[] = [];
+    const extractedContent: (
+      | LanguageModelV3TextPart
+      | LanguageModelV3FilePart
+    )[] = [];
     const nextContent = message.content.map((part) => {
       if (part.type !== "tool-result" || part.output.type !== "content") {
         return part;
@@ -80,13 +84,12 @@ export function hoistToolResultMedia(
 
       const textItems: string[] = [];
       const remainingItems: ContentOutputItem[] = [];
-      let extractedFromPart = false;
+      const extractedFiles: LanguageModelV3FilePart[] = [];
 
       for (const item of part.output.value) {
         const filePart = toUserFilePart(item);
         if (filePart) {
           extractedFiles.push(filePart);
-          extractedFromPart = true;
         } else if (item.type === "text") {
           textItems.push(item.text);
           remainingItems.push(item);
@@ -95,9 +98,18 @@ export function hoistToolResultMedia(
         }
       }
 
-      if (!extractedFromPart) {
+      if (extractedFiles.length === 0) {
         return part;
       }
+
+      // Keep each call's media together so parallel results remain attributable.
+      extractedContent.push(
+        {
+          type: "text",
+          text: `${ExtractedMediaUserPrompt} ${part.toolName} (toolCallId: ${part.toolCallId})`,
+        },
+        ...extractedFiles,
+      );
 
       if (remainingItems.length === textItems.length) {
         return {
@@ -126,13 +138,10 @@ export function hoistToolResultMedia(
       content: nextContent,
     });
 
-    if (extractedFiles.length > 0) {
+    if (extractedContent.length > 0) {
       result.push({
         role: "user",
-        content: [
-          { type: "text", text: ExtractedMediaUserPrompt },
-          ...extractedFiles,
-        ],
+        content: extractedContent,
       });
     }
   }

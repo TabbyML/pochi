@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { BlobStore } from "../../blob-store";
 import type { Message } from "../../types";
+import { shouldAutoCompact } from "../auto-compact-policy";
+import { parseMcpToolSet } from "../mcp-utils";
 import {
   DefaultCjkCharsPerToken,
   DefaultOtherCharsPerToken,
@@ -187,5 +190,134 @@ describe("tool media token estimation", () => {
     expect(estimateTotalTokens(messages)).toBeGreaterThanOrEqual(
       ImageEstimatedTokens * 2,
     );
+  });
+});
+
+describe("MCP output token estimation matches model conversion", () => {
+  const tools = parseMcpToolSet({} as BlobStore, {
+    inspect: {
+      description: "Inspect a resource",
+      inputSchema: { jsonSchema: { type: "object", properties: {} } },
+    },
+  })!;
+
+  function messagesForOutput(output: unknown): Message[] {
+    return [
+      {
+        id: "user-1",
+        role: "user",
+        parts: [{ type: "text", text: "Inspect" }],
+      },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-inspect",
+            toolCallId: "call-1",
+            input: {},
+            state: "output-available",
+            output,
+          },
+        ],
+      } as unknown as Message,
+    ];
+  }
+
+  it.each([
+    {
+      type: "resource_link",
+      uri: "file:///report.txt",
+      name: "report.txt",
+      mimeType: "text/plain",
+    },
+    {
+      type: "resource",
+      resource: {
+        uri: "file:///report.txt",
+        mimeType: "text/plain",
+        text: "Report",
+      },
+    },
+    { type: "image", data: "store-blob:missing-mime-type" },
+  ])("counts the entire JSON fallback for $type content", async (item) => {
+    const output = {
+      content: [{ type: "text", text: "Report available" }, item],
+      structuredContent: { report: "x".repeat(400_000) },
+    };
+    const converted = await tools.inspect.toModelOutput!({
+      toolCallId: "call-1",
+      input: {},
+      output,
+    });
+    expect(converted).toEqual({ type: "json", value: output });
+    const messages = messagesForOutput(output);
+
+    for (const calibrationFactor of [1, 1.5]) {
+      const expected = estimateTokens(
+        JSON.stringify(output),
+        calibrationFactor,
+      );
+      expect(
+        estimateTokenBreakdown(messages, calibrationFactor).toolResultsTokens,
+      ).toBe(expected);
+      expect(
+        estimateTotalTokens(messages, calibrationFactor),
+      ).toBeGreaterThanOrEqual(expected);
+    }
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm: {
+          id: "test",
+          type: "openai",
+          modelId: "test",
+          contextWindow: 128_000,
+          maxOutputTokens: 4096,
+        },
+        task: null,
+        estimatedTotalTokens: estimateTotalTokens(messages),
+      }),
+    ).toBe(true);
+  });
+
+  it("only counts supported text content that is actually sent to the model", async () => {
+    const output = {
+      content: [{ type: "text", text: "A short report" }],
+      structuredContent: { report: "x".repeat(400_000) },
+    };
+    expect(
+      await tools.inspect.toModelOutput!({
+        toolCallId: "call-1",
+        input: {},
+        output,
+      }),
+    ).toEqual({
+      type: "content",
+      value: output.content,
+    });
+    expect(
+      estimateTokenBreakdown(messagesForOutput(output)).toolResultsTokens,
+    ).toBe(estimateTokens("A short report"));
+  });
+
+  it("counts the error text selected by the MCP converter", async () => {
+    const output = {
+      error: "Request failed",
+      content: [{ type: "unsupported" }],
+    };
+    expect(
+      await tools.inspect.toModelOutput!({
+        toolCallId: "call-1",
+        input: {},
+        output,
+      }),
+    ).toEqual({
+      type: "error-text",
+      value: output.error,
+    });
+    expect(
+      estimateTokenBreakdown(messagesForOutput(output)).toolResultsTokens,
+    ).toBe(estimateTokens(output.error));
   });
 });

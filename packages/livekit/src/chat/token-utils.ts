@@ -2,6 +2,7 @@ import type { ContextWindowUsage } from "@getpochi/common";
 import { prompts } from "@getpochi/common";
 import { isStaticToolUIPart } from "ai";
 import type { Message } from "../types";
+import { McpToolOutput } from "./mcp-utils";
 
 export const ImageEstimatedTokens = 1000;
 
@@ -165,33 +166,24 @@ function estimateToolOutputTokens(
     return estimateTokens(output, calibrationFactor);
   }
   if (typeof output === "object" && output !== null) {
-    const obj = output as {
-      type?: unknown;
-      content?: unknown;
-    };
-    if (obj.type === "media") {
+    if ("type" in output && output.type === "media") {
       return ImageEstimatedTokens;
     }
-    if (Array.isArray(obj.content)) {
-      let total = 0;
-      for (const item of obj.content) {
-        if (typeof item === "object" && item !== null) {
-          const contentItem = item as { type?: unknown; text?: unknown };
-          if (contentItem.type === "image" || contentItem.type === "media") {
-            total += ImageEstimatedTokens;
-            continue;
-          }
-          if (
-            contentItem.type === "text" &&
-            typeof contentItem.text === "string"
-          ) {
-            total += estimateTokens(contentItem.text, calibrationFactor);
-            continue;
-          }
-        }
-        total += estimateTokens(JSON.stringify(item), calibrationFactor);
+    // Match the MCP conversion path: unsupported content is sent as the
+    // complete JSON output, including fields such as structuredContent.
+    const parsed = McpToolOutput.safeParse(output);
+    if (parsed.success) {
+      if ("error" in parsed.data) {
+        return estimateTokens(parsed.data.error, calibrationFactor);
       }
-      return total;
+      return parsed.data.content.reduce(
+        (total, item) =>
+          total +
+          (item.type === "image"
+            ? ImageEstimatedTokens
+            : estimateTokens(item.text, calibrationFactor)),
+        0,
+      );
     }
   }
   return estimateTokens(JSON.stringify(output), calibrationFactor);

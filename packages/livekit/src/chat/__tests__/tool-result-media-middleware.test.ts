@@ -68,7 +68,10 @@ describe("hoistToolResultMedia", () => {
       {
         role: "user",
         content: [
-          { type: "text", text: "Attached media from tool result:" },
+          {
+            type: "text",
+            text: "Attached media from tool result: look (toolCallId: call-look)",
+          },
           {
             type: "file",
             mediaType: "image/png",
@@ -128,7 +131,10 @@ describe("hoistToolResultMedia", () => {
       {
         role: "user",
         content: [
-          { type: "text", text: "Attached media from tool result:" },
+          {
+            type: "text",
+            text: "Attached media from tool result: look (toolCallId: call-1)",
+          },
           {
             type: "file",
             mediaType: "image/png",
@@ -144,6 +150,69 @@ describe("hoistToolResultMedia", () => {
       },
     ]);
   });
+
+  it.each([1, 2])(
+    "preserves parallel result boundaries when the first call returns %i images",
+    (firstImageCount) => {
+      const images = ["image-1", "image-2", "image-3"].map((data) => ({
+        type: "image-data" as const,
+        mediaType: "image/png",
+        data,
+      }));
+      const imageGroups = [
+        images.slice(0, firstImageCount),
+        images.slice(firstImageCount),
+      ];
+      const prompt: LanguageModelV3Prompt = [
+        {
+          role: "assistant",
+          content: imageGroups.map((_, index) => ({
+            type: "tool-call",
+            toolCallId: `call-${index}`,
+            toolName: "look",
+            input: { target: index },
+          })),
+        },
+        {
+          role: "tool",
+          content: imageGroups.map((value, index) => ({
+            type: "tool-result",
+            toolCallId: `call-${index}`,
+            toolName: "look",
+            output: { type: "content", value },
+          })),
+        },
+      ];
+
+      const result = hoistToolResultMedia(prompt);
+      expect(result.map((message) => message.role)).toEqual([
+        "assistant",
+        "tool",
+        "user",
+      ]);
+      expect(result.at(-1)).toEqual({
+        role: "user",
+        content: imageGroups.flatMap((group, index) => [
+          {
+            type: "text",
+            text: `Attached media from tool result: look (toolCallId: call-${index})`,
+          },
+          ...group.map(({ data, mediaType }) => ({
+            type: "file",
+            data,
+            mediaType,
+          })),
+        ]),
+      });
+      // Reprocessing a request must not duplicate the media or labels.
+      expect(hoistToolResultMedia(result)).toEqual(result);
+      expect(prompt[1]).toMatchObject({
+        content: imageGroups.map((value) => ({
+          output: { type: "content", value },
+        })),
+      });
+    },
+  );
 
   it(" sends image_url in a user message instead of stringified base64 in tool message for openai-compatible models", async () => {
     let capturedBody: Record<string, unknown> | undefined;
@@ -242,7 +311,10 @@ describe("hoistToolResultMedia", () => {
       expect(lastUserMsg).toEqual({
         role: "user",
         content: [
-          { type: "text", text: "Attached media from tool result:" },
+          {
+            type: "text",
+            text: "Attached media from tool result: look (toolCallId: call-look)",
+          },
           {
             type: "image_url",
             image_url: {
