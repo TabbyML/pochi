@@ -1047,10 +1047,35 @@ export class BackgroundJobManager {
     }
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
     this.changed();
-    await this.executor?.dispose();
-    this.adaptor?.dispose?.();
-    if (BackgroundJobManager.stores.get(this.store) === this)
-      BackgroundJobManager.stores.delete(this.store);
+    // The command snapshot also includes jobs owned by completed children that
+    // no longer have a notification subscription.
+    const commandIds = new Set([
+      ...[...this.jobs.values()]
+        .filter((job) => job.kind === "command" && this.isJobPending(job))
+        .map((job) => job.id),
+      ...Object.entries(this.runningCommands)
+        .filter(
+          ([, command]) =>
+            command.taskId &&
+            this.store.query(catalog.queries.makeTaskQuery(command.taskId)),
+        )
+        .map(([id]) => id),
+    ]);
+    try {
+      const results = await Promise.allSettled([
+        this.executor?.dispose(),
+        ...[...commandIds].map((id) => this.commandAdaptor?.kill(id)),
+      ]);
+      const errors = results.flatMap((result) =>
+        result.status === "rejected" ? [result.reason] : [],
+      );
+      if (errors.length)
+        throw new AggregateError(errors, "Failed to dispose background jobs");
+    } finally {
+      this.adaptor?.dispose?.();
+      if (BackgroundJobManager.stores.get(this.store) === this)
+        BackgroundJobManager.stores.delete(this.store);
+    }
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);

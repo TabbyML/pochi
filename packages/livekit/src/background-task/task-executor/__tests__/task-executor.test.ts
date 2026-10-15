@@ -130,6 +130,36 @@ type TestTask = {
 };
 
 describe("TaskExecutor", () => {
+  it("disposes running and queued agents using the existing user abort state", async () => {
+    const store = new FakeLiveKitStore([
+      ...Array.from({ length: 11 }, (_, i) => makeTask({ id: `task${i}`, status: "pending-model" })),
+      makeTask({ id: "completed", status: "completed" }),
+    ]);
+    const ready = deferred<void>();
+    const executeToolCall = vi.fn();
+    const executor = makeExecutor(store, {
+      ...makeAdaptor({ executeToolCall }),
+      waitUntilReady: () => ready.promise,
+    }, {});
+    executor.start();
+    expect(executor.isTaskRunning("task0")).toBe(true);
+    expect(executor.isTaskRunning("task10")).toBe(false);
+    const disposing = executor.dispose();
+    for (let i = 0; i < 11; i++) {
+      expect(store.readTask(`task${i}`)).toMatchObject({
+        status: "failed", error: { kind: "AbortError", message: "Stopped by user." },
+      });
+    }
+    ready.resolve();
+    await disposing;
+    expect(store.readTask("completed")?.status).toBe("completed");
+    const reopened = makeExecutor(store, makeAdaptor({ executeToolCall }), {});
+    await reopened.drain();
+    expect(executeToolCall).not.toHaveBeenCalled();
+    expect(mockState.instances).toHaveLength(0);
+    await reopened.dispose();
+  });
+
 
   it.each(["executor", "persisted cancellation"])(
     "settles a queued task's waiter after %s without waiting for an execution slot",

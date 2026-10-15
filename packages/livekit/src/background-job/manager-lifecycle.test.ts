@@ -338,6 +338,11 @@ describe("background task registration and handoff", () => {
       ).toHaveLength(10);
     } finally {
       const disposed = manager.dispose();
+      for (let i = 0; i < 11; i++) {
+        expect(data.tasks.get(`child-${i}`)).toMatchObject({
+          status: "failed", error: { kind: "AbortError", message: "Stopped by user." },
+        });
+      }
       release();
       await disposed;
     }

@@ -6,8 +6,8 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import type { BackgroundMonitorNotification } from "@getpochi/common";
 import { describe, it } from "mocha";
-import * as vscode from "vscode";
 import proxyquire from "proxyquire";
+import * as vscode from "vscode";
 
 // Keep the command, PTY, transcript and monitor pipeline real; isolate editor layout.
 const { TerminalJob } = proxyquire
@@ -23,23 +23,44 @@ const { startMonitor } = proxyquire.noCallThru().load("../monitor", {
 describe("startMonitor host policy", () => {
   it("rejects monitors for tasks that disallow background work before creating a terminal", async () => {
     let started = false;
-    const { startMonitor: restrictedMonitor } = proxyquire.noCallThru().load("../monitor", {
-      "@/integrations/layout": { getViewColumnForTerminal: () => undefined },
-      "@/integrations/terminal/terminal-job": { TerminalJob: { create: async () => {
-        started = true;
-        return { id: "unexpected", outputFile: "/tmp/unexpected.log" };
-      } } },
-    }) as typeof import("../monitor");
-    await assert.rejects(async () => restrictedMonitor(
-      { command: "echo forbidden", description: "fork monitor" },
-      { cwd: process.cwd(), taskId: "fork", messages: [], toolCallId: "monitor", allowBackground: false },
-    ), /Background monitors are not available/);
+    const { startMonitor: restrictedMonitor } = proxyquire
+      .noCallThru()
+      .load("../monitor", {
+        "@/integrations/layout": { getViewColumnForTerminal: () => undefined },
+        "@/integrations/terminal/terminal-job": {
+          TerminalJob: {
+            create: async () => {
+              started = true;
+              return { id: "unexpected", outputFile: "/tmp/unexpected.log" };
+            },
+          },
+        },
+      }) as typeof import("../monitor");
+    await assert.rejects(
+      async () =>
+        restrictedMonitor(
+          { command: "echo forbidden", description: "fork monitor" },
+          {
+            cwd: process.cwd(),
+            taskId: "fork",
+            messages: [],
+            toolCallId: "monitor",
+            allowBackground: false,
+          },
+        ),
+      /Background monitors are not available/,
+    );
     assert.strictEqual(started, false);
   });
 });
 
 describe("startMonitor real terminal", () => {
-  for (const mode of ["timeout", "manual", "graceful"] as const) {
+  for (const mode of [
+    "timeout",
+    "manual",
+    "graceful",
+    "command-manual",
+  ] as const) {
     it(`cleans up descendants after the shell exits during ${mode} cancellation`, async function () {
       if (process.platform === "win32") this.skip();
       this.timeout(15000);
@@ -60,31 +81,54 @@ describe("startMonitor real terminal", () => {
         ].join("\n"),
       );
       const events: BackgroundMonitorNotification[] = [];
+      const statuses: string[] = [];
       const subscription = TerminalJob.onDidMonitorEvent((item) => {
-        if (item.taskId === taskId) events.push(item.event);
+        if (item.taskId === taskId) {
+          events.push(item.event);
+          if (item.event.ended) statuses.push(item.event.ended.status);
+        }
+      });
+      const commandSubscription = TerminalJob.onDidFinish((event) => {
+        if (event.taskId === taskId) statuses.push(event.status);
       });
       let result: Awaited<ReturnType<typeof startMonitor>> | undefined;
       let groupId: number | undefined;
       try {
-        result = await startMonitor(
-          {
-            command: 'sh "$POCHI_MONITOR_SCRIPT" >/dev/null 2>&1 & wait',
-            description: `${mode} cleanup`,
-            timeoutMs: 1000,
-            persistent: mode !== "timeout",
-          },
-          {
-            cwd: dir,
+        const envs = {
+          POCHI_MONITOR_SCRIPT: script,
+          POCHI_MONITOR_PID: pidFile,
+          POCHI_MONITOR_CLEANED: cleanedFile,
+        };
+        if (mode === "command-manual") {
+          const job = await TerminalJob.create({
+            name: "task command",
             taskId,
-            toolCallId: "monitor",
-            messages: [],
-            envs: {
-              POCHI_MONITOR_SCRIPT: script,
-              POCHI_MONITOR_PID: pidFile,
-              POCHI_MONITOR_CLEANED: cleanedFile,
+            cwd: dir,
+            envs,
+            command: 'sh "$POCHI_MONITOR_SCRIPT" >/dev/null 2>&1 & wait',
+            rootTaskId: taskId,
+          });
+          result = { backgroundJobId: job.id, outputFile: job.outputFile };
+          job.revealTerminal();
+          job.hide();
+          assert.strictEqual(job.isFinished, false);
+        } else
+          result = await startMonitor(
+            {
+              command: 'sh "$POCHI_MONITOR_SCRIPT" >/dev/null 2>&1 & wait',
+              description: `${mode} cleanup`,
+              timeoutMs: 1000,
+              persistent: mode !== "timeout",
             },
-          },
-        );
+            {
+              cwd: dir,
+              taskId,
+              rootTaskId: taskId,
+              toolCallId: "monitor",
+              messages: [],
+              envs,
+            },
+          );
         let childPid = 0;
         await waitUntil(async () => {
           childPid = Number(await readFile(pidFile, "utf8").catch(() => "0"));
@@ -103,10 +147,9 @@ describe("startMonitor real terminal", () => {
           job.kill();
           job.kill();
         }
-        await waitUntil(() => events.some((event) => !!event.ended));
+        await waitUntil(() => statuses.length > 0);
         await waitUntil(() => !isRunning(childPid));
-        assert.strictEqual(events.filter((event) => event.ended).length, 1);
-        assert.strictEqual(events.at(-1)?.ended?.status, "stopped");
+        assert.deepStrictEqual(statuses, ["stopped"]);
         assert.strictEqual(TerminalJob.get(result.backgroundJobId), undefined);
         if (mode === "graceful") {
           assert.strictEqual(
@@ -132,6 +175,7 @@ describe("startMonitor real terminal", () => {
           });
         }
         subscription.dispose();
+        commandSubscription.dispose();
         await rm(dir, { recursive: true, force: true });
       }
     });

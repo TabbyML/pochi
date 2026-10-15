@@ -98,6 +98,8 @@ export type ToolFunctionType<T extends Tool> = (
     contentType?: string[];
     envs?: Record<string, string>;
     taskId?: string;
+    /** Root chat owning this tool call, including calls made by descendants. */
+    rootTaskId?: string;
     /** Host policy; this is not a model-supplied tool parameter. */
     allowBackground?: boolean;
     fileStateCache?: IFileStateCache;

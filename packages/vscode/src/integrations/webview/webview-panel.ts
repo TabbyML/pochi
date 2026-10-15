@@ -19,6 +19,7 @@ import { z } from "zod";
 import { PochiConfiguration } from "../configuration";
 import { WorktreeManager } from "../git/worktree";
 import { getViewColumnForPochiPanel } from "../layout";
+import { TerminalJob } from "../terminal/terminal-job";
 import { WebviewBase } from "./base";
 import { VSCodeHostImpl } from "./vscode-host-impl";
 
@@ -200,7 +201,44 @@ export class PochiTaskEditorProvider
       ),
     );
 
+    disposables.push(
+      vscode.window.tabGroups.onDidChangeTabs(({ closed }) => {
+        for (const tab of closed) {
+          const task = PochiTaskEditorProvider.getTabTask(tab);
+          if (!task || PochiTaskEditorProvider.isTaskOpen(task.uid)) continue;
+          for (const job of TerminalJob.list()) {
+            if (job.rootTaskId === task.uid) job.kill();
+          }
+        }
+      }),
+      // A command may finish startup or become background after its tab closed.
+      TerminalJob.onDidCreate((job) => {
+        if (
+          job.rootTaskId &&
+          !PochiTaskEditorProvider.isTaskOpen(job.rootTaskId)
+        )
+          job.kill();
+      }),
+    );
     return vscode.Disposable.from(...disposables);
+  }
+
+  private static getTabTask(tab: vscode.Tab): TaskUri | undefined {
+    const input = tab.input;
+    if (
+      !(input instanceof vscode.TabInputCustom) ||
+      input.viewType !== PochiTaskEditorProvider.viewType
+    )
+      return;
+    return PochiTaskEditorProvider.parseTaskUri(input.uri) ?? undefined;
+  }
+
+  private static isTaskOpen(uid: string): boolean {
+    return vscode.window.tabGroups.all.some((group) =>
+      group.tabs.some(
+        (tab) => PochiTaskEditorProvider.getTabTask(tab)?.uid === uid,
+      ),
+    );
   }
 
   public static createTaskUri(params: TaskUri): vscode.Uri {

@@ -228,11 +228,14 @@ export class PtyProcess {
       throw new PtySpawnError(error);
     }
 
+    let termination: Promise<void> | undefined;
     const onAbort = () => {
       // Settle before killing: a resulting exit must not become a spawn error
       // that retries the cancelled command through a fallback.
       ptyProcess.settleLaunch(ExecutionError.createAbortError());
-      ptyProcess.kill();
+      // An aborted startup has no TerminalJob owner yet. Stop descendants
+      // before returning, otherwise cancelling the tool can orphan them.
+      termination ??= ptyProcess.killProcessGroup();
     };
     abortSignal?.addEventListener("abort", onAbort, { once: true });
     try {
@@ -245,6 +248,7 @@ export class PtyProcess {
       throw error;
     } finally {
       abortSignal?.removeEventListener("abort", onAbort);
+      await termination;
     }
   }
 
@@ -392,7 +396,7 @@ export class PtyProcess {
     }, TerminationGraceMs);
   }
 
-  /** Stop a POSIX monitor's process group, even if its shell exits first. */
+  /** Stop a POSIX process group, even if its shell exits first. */
   killProcessGroup(): Promise<void> {
     // Assign the promise before sending signals, so exit callbacks and repeated
     // cancellation share the same cleanup and cannot shorten the grace period.
