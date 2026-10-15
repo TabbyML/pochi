@@ -103,6 +103,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
             unsubscribe();
           },
           acknowledge: notifications.acknowledge,
+          snapshotPending: notifications.snapshotPending,
         };
       } catch (error) {
         controller.abort();

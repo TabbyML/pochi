@@ -496,6 +496,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     notifications: serializeThreadSignalWithSnapshot(
       this.taskStateStore.getBackgroundJobNotificationsSignal(taskId),
     ),
+    snapshotPending: () =>
+      this.taskStateStore.snapshotPendingBackgroundJobNotifications(taskId),
     acknowledge: (notificationId: string) =>
       this.taskStateStore.acknowledgeBackgroundJobNotification(
         taskId,

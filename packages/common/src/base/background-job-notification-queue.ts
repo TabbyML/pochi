@@ -13,7 +13,8 @@ export type BackgroundJobNotificationQueueEntry =
 
 /**
  * All job notifications share one queue. Each monitor retains an immutable
- * published head and one bounded accumulator, sealed when the monitor ends.
+ * published head and one bounded accumulator. Request snapshots may seal one
+ * extra batch without acknowledging either snapshot.
  */
 export function enqueueBackgroundJobNotification(
   queue: readonly BackgroundJobNotificationQueueEntry[],
@@ -47,6 +48,44 @@ export function enqueueBackgroundJobNotification(
   return buffered
     ? queue.map((item) => (item === buffered ? next : item))
     : [...queue, next];
+}
+
+/**
+ * Read a stable request snapshot, including accumulated monitor output.
+ * Return the updated queue for the source to store before exposing notifications.
+ * At most two unacknowledged snapshots per monitor are retained; retries reuse
+ * them while later output stays buffered. Only acknowledgement consumes output.
+ * A terminal event can still seal the buffer so completion is always visible.
+ */
+export function snapshotPendingBackgroundJobNotifications(
+  queue: readonly BackgroundJobNotificationQueueEntry[],
+): {
+  queue: BackgroundJobNotificationQueueEntry[];
+  notifications: BackgroundJobNotification[];
+} {
+  const published = new Map<string, number>();
+  for (const item of queue) {
+    if (item.kind === "monitor" && !item.buffered) {
+      published.set(
+        item.backgroundJobId,
+        (published.get(item.backgroundJobId) ?? 0) + 1,
+      );
+    }
+  }
+  const snapshot = queue.map((item) => {
+    if (
+      item.kind !== "monitor" ||
+      !item.buffered ||
+      (published.get(item.backgroundJobId) ?? 0) >= 2
+    )
+      return item;
+    const { buffered, ...snapshot } = item;
+    return snapshot;
+  });
+  return {
+    queue: snapshot,
+    notifications: getPendingBackgroundJobNotifications(snapshot),
+  };
 }
 
 /** Acknowledging a published monitor head promotes its accumulator with the same ID. */

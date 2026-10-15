@@ -13,6 +13,7 @@ import {
   enqueueBackgroundJobNotification,
   getLogger,
   getPendingBackgroundJobNotifications,
+  snapshotPendingBackgroundJobNotifications,
 } from "@getpochi/common";
 import { AutoMemoryManager } from "@getpochi/common/auto-memory/node";
 import { pochiConfig } from "@getpochi/common/configuration";
@@ -150,6 +151,14 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       listeners.add(update);
       update();
       return {
+        snapshotPending: async () => {
+          const snapshot = snapshotPendingBackgroundJobNotifications(
+            this.notifications.get(taskId) ?? [],
+          );
+          this.notifications.set(taskId, snapshot.queue);
+          for (const notify of listeners) notify();
+          return snapshot.notifications;
+        },
         dispose: () => {
           listeners.delete(update);
           if (!listeners.size) this.notificationListeners.delete(taskId);

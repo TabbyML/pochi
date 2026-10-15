@@ -221,6 +221,7 @@ export interface VSCodeHostApi {
 
   readBackgroundJobNotifications(taskId: string): Promise<{
     notifications: ThreadSignalSerialization<BackgroundJobNotification[]>;
+    snapshotPending: () => Promise<BackgroundJobNotification[]>;
     acknowledge: (notificationId: string) => Promise<void>;
   }>;
 

@@ -119,6 +119,7 @@ describe("VS Code background command ownership", () => {
     const notifications = signal<BackgroundJobNotification[]>([]);
     const close = vi.fn(async () => {});
     const acknowledge = vi.fn(async (_id: string) => {});
+    const snapshotPending = vi.fn(async () => notifications.value);
     vi.mocked(vscodeHost.readBackgroundCommands).mockImplementation(
       async () => ({
         backgroundCommands: serializeThreadSignalWithSnapshot(running),
@@ -135,10 +136,31 @@ describe("VS Code background command ownership", () => {
             : signal<BackgroundJobNotification[]>([]),
         ),
         acknowledge,
+        snapshotPending,
       }),
     );
-    return { running, notifications, close, acknowledge };
+    return { running, notifications, close, acknowledge, snapshotPending };
   }
+
+  it.each([true, false])("reads request snapshots through the host RPC when an initial observable exists: %s", async (hasInitialNotification) => {
+    const { notifications, snapshotPending, acknowledge } = setup();
+    const head: BackgroundMonitorNotification = {
+      kind: "monitor", notificationId: "head", backgroundJobId: "bgjob-monitor-one",
+      description: "CI", command: "watch", outputFile: "/tmp/watch.log", lines: ["first"],
+    };
+    const buffered = { ...head, notificationId: "buffered", lines: ["second", "third"] };
+    notifications.value = hasInitialNotification ? [head] : [];
+    snapshotPending.mockResolvedValue([head, buffered]);
+    const { manager, dispose } = makeStore();
+    try {
+      await manager.watchTask("child");
+      expect(await manager.snapshotPendingNotifications("child")).toContainEqual(buffered);
+      expect(snapshotPending).toHaveBeenCalledExactlyOnceWith();
+      expect(acknowledge).not.toHaveBeenCalled();
+    } finally {
+      await dispose();
+    }
+  });
 
   it("delivers and acknowledges monitor batches and command completions through one subscription", async () => {
     const { running, notifications, acknowledge, close } = setup();
@@ -431,6 +453,7 @@ describe("notifications changing during collector initialization", () => {
     vi.mocked(vscodeHost.readBackgroundJobNotifications).mockResolvedValue({
       notifications: { ...serialized, start },
       acknowledge: vi.fn(async () => {}),
+      snapshotPending: vi.fn(async () => notifications.value),
     });
     let initialized = false;
     const creation = createCommands(makeStore()).then((commands) => {
@@ -480,6 +503,7 @@ describe("notifications changing during collector initialization", () => {
     vi.mocked(vscodeHost.readBackgroundJobNotifications).mockResolvedValue({
       notifications: serializeThreadSignalWithSnapshot(notifications),
       acknowledge: vi.fn(async () => {}),
+      snapshotPending: vi.fn(async () => notifications.value),
     });
     const store = makeStore([
       {

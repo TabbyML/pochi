@@ -99,6 +99,94 @@ const stopped = (id = "bgjob-cmd-one") =>
   });
 
 describe("BackgroundJobManager", () => {
+  it("does not postpone a burst's deadline and keeps independent task wakeups separate", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const { manager, observers } = setup();
+    try {
+      await manager.watchTask("parent");
+      await manager.watchTask("other");
+      const event = monitored();
+      observers.get("parent")!({ running: {}, notifications: [event] });
+      for (let index = 0; index < 4; index++) {
+        await vi.advanceTimersByTimeAsync(200);
+        observers.get("parent")!({ running: {}, notifications: [event, { ...event, notificationId: String(index) }] });
+        expect(manager.getReadyNotifications("parent")).toEqual([]);
+      }
+      await vi.advanceTimersByTimeAsync(200);
+      expect(manager.getReadyNotifications("parent")).toHaveLength(2);
+      manager.startNotificationTurn("parent");
+      observers.get("other")!({ running: {}, notifications: [monitored("bgjob-monitor-other")] });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(manager.getReadyNotifications("parent")).toEqual([]);
+      expect(manager.getReadyNotifications("other")).toHaveLength(1);
+      // Command completion remains urgent even during progress cooldown.
+      observers.get("parent")!({ running: {}, notifications: [event, finished()] });
+      expect(manager.getReadyNotifications("parent")).toEqual([finished(), event]);
+    } finally {
+      await manager.dispose();
+      expect(vi.getTimerCount()).toBe(0);
+      vi.useRealTimers();
+    }
+  });
+
+  it("wakes subscribers and waiters for a lone progress event, then shares the cooldown across senders", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const { manager, observers, setMessages } = setup();
+    try {
+      await manager.watchTask("parent");
+      const listener = vi.fn();
+      const unsubscribe = manager.subscribeNotifications("parent", listener);
+      await Promise.resolve();
+      const event = monitored();
+      observers.get("parent")!({ running: {}, notifications: [event] });
+      const waiting = manager.wait("parent", { wakeOnNotifications: true });
+      expect(manager.getReadyNotifications("parent")).toEqual([]);
+      await vi.advanceTimersByTimeAsync(999);
+      expect(manager.getReadyNotifications("parent")).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await waiting).toBe("notifications");
+      expect(listener).toHaveBeenLastCalledWith([event], true);
+      manager.startNotificationTurn("parent");
+      setMessages("parent", [{ id: "delivered", role: "user", parts: toBackgroundJobNotificationParts([event]) }]);
+      const next = { ...event, notificationId: "next" };
+      observers.get("parent")!({ running: {}, notifications: [next] });
+      expect(manager.takeReadyNotifications("parent", [next], undefined, true)).toEqual([]);
+      await vi.advanceTimersByTimeAsync(9_999);
+      expect(manager.getReadyNotifications("parent")).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(manager.takeReadyNotifications("parent", [next], undefined, true)).toEqual([next]);
+      unsubscribe();
+    } finally {
+      await manager.dispose();
+      expect(vi.getTimerCount()).toBe(0);
+      vi.useRealTimers();
+    }
+  });
+
+  it("lets user requests and endings bypass the automatic progress delay", async () => {
+    vi.useFakeTimers();
+    const { manager, observers } = setup();
+    try {
+      await manager.watchTask("parent");
+      const event = monitored();
+      observers.get("parent")!({ running: {}, notifications: [event] });
+      expect(manager.takeReadyNotifications("parent", [event], undefined, true)).toEqual([]);
+      expect(manager.takeReadyNotifications("parent", [event])).toEqual([event]);
+      expect(vi.getTimerCount()).toBe(0);
+      manager.startNotificationTurn("parent");
+      const ended = { ...event, notificationId: "ended", ended: { reason: "done", status: "completed" as const } };
+      observers.get("parent")!({ running: {}, notifications: [event, ended] });
+      expect(await manager.wait("parent", { wakeOnNotifications: true })).toBe("notifications");
+      expect(manager.takeReadyNotifications("parent", [event, ended], undefined, true)).toEqual([event, ended]);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      await manager.dispose();
+      vi.useRealTimers();
+    }
+  });
+
   it("disposes commands and monitors throughout the store, including jobs owned by completed children", async () => {
     const { manager, tasks, observers, source, store } = setup();
     for (const [id, parentId, background, status] of [
@@ -824,7 +912,7 @@ it("batches a snapshot and only delivers to the affected task", async () => {
   };
   observers.get("parent")!(snapshot);
   expect(parent).toHaveBeenCalledOnce();
-  expect(parent).toHaveBeenCalledWith(snapshot.notifications);
+  expect(parent).toHaveBeenCalledWith(snapshot.notifications, false);
   expect(sibling).not.toHaveBeenCalled();
   expect(changed).toHaveBeenCalledOnce();
   // Replaying an identical native snapshot makes no extra work.

@@ -1,6 +1,7 @@
 import type { BackgroundJobNotification, BackgroundMonitorNotification } from "../message";
 import { describe, expect, it } from "vitest";
 import { type BackgroundJobNotificationQueueEntry, acknowledgeBackgroundJobNotification, enqueueBackgroundJobNotification, getPendingBackgroundJobNotifications } from "../background-job-notification-queue";
+import { snapshotPendingBackgroundJobNotifications } from "../background-job-notification-queue";
 
 function event(id: number, job = "watch"): BackgroundMonitorNotification {
   return { kind: "monitor" as const,
@@ -14,6 +15,40 @@ function event(id: number, job = "watch"): BackgroundMonitorNotification {
 }
 
 describe("background job notification queue", () => {
+  it("snapshots accumulated output with its head and keeps retry snapshots immutable and bounded", () => {
+    let queue: BackgroundJobNotificationQueueEntry[] = [];
+    for (const id of [0, 1, 2]) queue = enqueueBackgroundJobNotification(queue, event(id));
+    const result = snapshotPendingBackgroundJobNotifications(queue);
+    queue = result.queue;
+    const snapshot = result.notifications;
+    expect(snapshot.map((item) => item.kind === "monitor" ? item.lines : [])).toEqual([["line 0"], ["line 1", "line 2"]]);
+    for (let id = 3; id < 100; id++) {
+      queue = enqueueBackgroundJobNotification(queue, event(id));
+      queue = snapshotPendingBackgroundJobNotifications(queue).queue;
+    }
+    expect(queue).toHaveLength(3);
+    expect(getPendingBackgroundJobNotifications(queue)).toEqual(snapshot);
+    // ACK can arrive in either order, and only deletes the frozen snapshots.
+    queue = acknowledgeBackgroundJobNotification(queue, "watch:1");
+    expect(getPendingBackgroundJobNotifications(queue)).toEqual([event(0)]);
+    queue = acknowledgeBackgroundJobNotification(queue, "watch:0");
+    expect(getPendingBackgroundJobNotifications(queue)).toEqual([
+      { ...event(3), lines: Array.from({ length: 50 }, (_, i) => `line ${i + 50}`), omittedLines: 47 },
+    ]);
+  });
+
+  it("snapshots all monitors in one read and exposes a terminal accumulator even during retry", () => {
+    let queue: BackgroundJobNotificationQueueEntry[] = [];
+    for (const job of ["a", "b"]) for (const id of [0, 1]) queue = enqueueBackgroundJobNotification(queue, event(id, job));
+    const snapshot = snapshotPendingBackgroundJobNotifications(queue);
+    queue = snapshot.queue;
+    expect(snapshot.notifications.map((item) => item.notificationId)).toEqual(["a:0", "a:1", "b:0", "b:1"]);
+    queue = enqueueBackgroundJobNotification(queue, event(2, "a"));
+    const ended = { status: "completed" as const, reason: "done" };
+    queue = enqueueBackgroundJobNotification(queue, { ...event(3, "a"), lines: [], ended });
+    expect(getPendingBackgroundJobNotifications(queue).at(-1)).toMatchObject({ notificationId: "a:2", lines: ["line 2"], ended });
+  });
+
   it("shares storage across job kinds without buffering or consuming other jobs", () => {
     const command: BackgroundJobNotification = {
       kind: "command", notificationId: "command:terminal", backgroundJobId: "command",
@@ -39,6 +74,26 @@ describe("background job notification queue", () => {
     ]);
     queue = acknowledgeBackgroundJobNotification(queue, subagent.notificationId);
     expect(getPendingBackgroundJobNotifications(queue)).toHaveLength(1);
+  });
+
+  it("returns command completions and all buffered monitor output without consuming the queue", () => {
+    const command: BackgroundJobNotification = {
+      kind: "command", notificationId: "command:terminal", backgroundJobId: "command",
+      status: "completed", summary: "done", outputFile: "/tmp/command.log", finishedAt: 1,
+    };
+    let queue: BackgroundJobNotificationQueueEntry[] = [];
+    for (const item of [event(0), event(1), command, event(2)]) {
+      queue = enqueueBackgroundJobNotification(queue, item);
+    }
+    const snapshot = snapshotPendingBackgroundJobNotifications(queue);
+    expect(snapshot.notifications).toEqual([
+      event(0), { ...event(1), lines: ["line 1", "line 2"], omittedLines: 0 }, command,
+    ]);
+    expect(getPendingBackgroundJobNotifications(queue)).toEqual([event(0), command]);
+    expect(snapshotPendingBackgroundJobNotifications(snapshot.queue).notifications).toEqual(snapshot.notifications);
+    queue = snapshot.queue;
+    for (const notice of snapshot.notifications) queue = acknowledgeBackgroundJobNotification(queue, notice.notificationId);
+    expect(snapshotPendingBackgroundJobNotifications(queue).notifications).toEqual([]);
   });
 
   it("bounds prolonged unconsumed output and exposes only immutable notifications", () => {

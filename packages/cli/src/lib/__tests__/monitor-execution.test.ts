@@ -99,9 +99,30 @@ describe("monitor execution through the shared background job manager", () => {
     expect(events()[0].lines).toContain("event-1");
   });
 
+  it("reads all accumulated watcher batches in one snapshot before acknowledgement through the CLI adaptor", async () => {
+    adaptor.startBackgroundCommand(taskId,
+      "printf 'first\\n'; sleep 0.25; printf 'second\\n'; sleep 0.25; printf 'third\\n'; sleep 30",
+      ".", undefined, { description: "batched monitor" },
+    );
+    expect(await manager.wait(taskId, { timeoutMs: 2500, wakeOnNotifications: true })).toBe("notifications");
+    expect(events().flatMap((event) => event.lines)).toEqual(["first"]);
+    const subscription = await adaptor.commandAdaptor.observeNotifications(taskId, () => {});
+    try {
+      const snapshot = await subscription.snapshotPending!();
+      expect(snapshot.filter((item) => item.kind === "monitor").map((item) => item.lines)).toEqual([["first"], ["second", "third"]]);
+      expect(await subscription.snapshotPending!()).toEqual(snapshot);
+      expect(events()).toEqual(snapshot);
+      data.setMessages(taskId, [{ id: "delivered", role: "user", parts: snapshot.map((data) => ({ type: "data-background-job-notification", data })) }]);
+      await expect.poll(() => events()).toEqual([]);
+      expect(manager.hasPending(taskId)).toBe(true);
+    } finally {
+      subscription.dispose();
+    }
+  });
+
   it("wakes before exit, retains stderr only in the transcript, and delivers one end event", async () => {
     const job = adaptor.startBackgroundCommand(taskId,
-      "printf 'event\\n'; printf 'diagnostic\\n' >&2; sleep 1", ".", undefined,
+      "printf 'event\\n'; printf 'diagnostic\\n' >&2; sleep 2", ".", undefined,
       { description: "test monitor" },
     );
     expect(job.backgroundJobId).toMatch(/^bgjob-monitor-/);

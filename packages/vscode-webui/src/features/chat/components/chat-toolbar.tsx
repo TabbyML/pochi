@@ -101,7 +101,9 @@ interface ChatToolbarProps {
   /** Background job notifications the chat kit has not delivered yet. */
   pendingBackgroundJobNotifications?: readonly BackgroundJobNotificationPart[];
   /** Asks the chat kit to deliver those notifications right away. */
-  flushBackgroundJobNotifications?: () => boolean;
+  flushBackgroundJobNotifications?: (options?: {
+    automatic?: boolean;
+  }) => boolean;
   persistToolOutput: () => void;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;

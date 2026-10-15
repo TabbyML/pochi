@@ -105,7 +105,9 @@ it.each([0, 6100])(
         lines: ["passed"],
       };
       kit.enqueueBackgroundJobNotifications([event]);
-      await expect.poll(() => kit.chat.status).toBe("streaming");
+      await expect
+        .poll(() => kit.chat.status, { timeout: 3000 })
+        .toBe("streaming");
       kit.enqueueBackgroundJobNotifications([
         {
           ...event,

@@ -585,7 +585,7 @@ export class LiveChatKit<
       }
       // Attach after compaction, but before checkpoint hooks so they update
       // the final message that this request will send and persist.
-      this.attachPendingBackgroundJobNotifications();
+      await this.attachPendingBackgroundJobNotifications(abortSignal);
 
       if (onOverrideMessages) {
         await runSideEffectSafely({
@@ -807,6 +807,7 @@ export class LiveChatKit<
 
   private takePendingBackgroundJobNotifications(
     existingParts: readonly Message["parts"][number][] = [],
+    automatic = false,
   ) {
     const pending = dedupeBackgroundJobNotificationParts(
       this.pendingBackgroundJobNotificationParts,
@@ -823,6 +824,7 @@ export class LiveChatKit<
       this.taskId,
       notifications,
       MonitorMaxDeliveryCharacters - existingCharacters,
+      automatic,
     );
     const ids = new Set(ready.map((notice) => notice.notificationId));
     const remaining = notifications.filter(
@@ -844,18 +846,20 @@ export class LiveChatKit<
    * go out, so a finished background job reaches the model without costing a
    * turn of its own.
    */
-  private attachPendingBackgroundJobNotifications() {
-    this.enqueueBackgroundJobNotifications(
-      this.backgroundJobManager.getPendingNotifications(this.taskId),
-    );
+  private async attachPendingBackgroundJobNotifications(
+    abortSignal: AbortSignal,
+  ) {
+    const notifications =
+      await this.backgroundJobManager.snapshotPendingNotifications(this.taskId);
+    abortSignal.throwIfAborted();
+    this.enqueueBackgroundJobNotifications(notifications);
     if (this.pendingBackgroundJobNotificationParts.length === 0) return;
 
     const lastMessage = this.chat.messages.at(-1);
+    const existingParts = lastMessage?.role === "user" ? lastMessage.parts : [];
     const messages = attachBackgroundJobNotificationParts(
       this.chat.messages,
-      this.takePendingBackgroundJobNotifications(
-        lastMessage?.role === "user" ? lastMessage.parts : [],
-      ),
+      this.takePendingBackgroundJobNotifications(existingParts),
     );
     if (messages) {
       this.chat.messages = messages;
@@ -868,7 +872,9 @@ export class LiveChatKit<
    *
    * @returns true when a turn was started for them.
    */
-  flushBackgroundJobNotifications = (): boolean => {
+  flushBackgroundJobNotifications = ({
+    automatic = true,
+  }: { automatic?: boolean } = {}): boolean => {
     this.enqueueBackgroundJobNotifications(
       this.backgroundJobManager.getPendingNotifications(this.taskId),
     );
@@ -882,12 +888,17 @@ export class LiveChatKit<
     // before another sender synchronously started a request.
     if (this.chat.status === "submitted" || this.chat.status === "streaming")
       return false;
-    const parts = this.takePendingBackgroundJobNotifications();
+    const parts = this.takePendingBackgroundJobNotifications([], automatic);
     if (parts.length === 0) return false;
+    const undoWakeup =
+      automatic && parts.some((part) => part.data.kind === "monitor")
+        ? this.backgroundJobManager.startNotificationTurn(this.taskId)
+        : () => {};
     const message = createBackgroundJobNotificationMessage(parts);
     const startTurn = this.backgroundJobNotifications?.startTurn;
     const failed = (error: unknown) => {
       // Only persistence in the conversation acknowledges the source queue.
+      undoWakeup();
       this.enqueueBackgroundJobNotificationParts(parts);
       logger.warn("Failed to send background job notifications", error);
     };
@@ -1246,8 +1257,15 @@ export class LiveChatKit<
   subscribeBackgroundJobs(): () => void {
     return this.backgroundJobManager.subscribeNotifications(
       this.taskId,
-      (notifications) => {
+      (notifications, wakeup) => {
         this.enqueueBackgroundJobNotifications(notifications);
+        if (wakeup) {
+          // The timer changed readiness, not the notification IDs. Publish a
+          // fresh pending array so the host retries its guarded idle flush.
+          this.setPendingBackgroundJobNotifications([
+            ...this.pendingBackgroundJobNotificationParts,
+          ]);
+        }
       },
     );
   }
