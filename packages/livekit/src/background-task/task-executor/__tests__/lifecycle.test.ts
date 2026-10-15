@@ -233,7 +233,7 @@ it.each(["completed", "failed", "pending-input"] as const)(
   },
 );
 
-it("preserves the saved task status when its Webview is disposed during a response", async () => {
+it("stops the task when its Webview is disposed during a response", async () => {
   const data = makeJobStore();
   data.tasks.set("child", {
     id: "child",
@@ -295,10 +295,10 @@ it("preserves the saved task status when its Webview is disposed during a respon
   executor.start();
   await responseStarted;
   await manager.dispose();
-  expect(data.tasks.get("child")).toMatchObject({ status: "pending-input" });
-  expect(
-    data.commit.mock.calls.some(([event]) => event.name === "v1.TaskFailed"),
-  ).toBe(false);
+  expect(data.tasks.get("child")).toMatchObject({
+    status: "failed",
+    error: { kind: "AbortError", message: "Stopped by user." },
+  });
 });
 
 function backgroundAgent(initialMessage: Message) {
