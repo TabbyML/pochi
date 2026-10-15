@@ -1,8 +1,7 @@
 import { vscodeHost } from "@/lib/vscode";
 import { threadSignal } from "@quilted/threads/signals";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
-import { useModelAccess } from "./use-model-access";
+import { useMemo } from "react";
 import { useUserStorage } from "./use-user-storage";
 
 /** @useSignals this comment is needed to enable signals in this hook */
@@ -14,11 +13,6 @@ export const useModelList = (filterPochiModels: boolean) => {
   });
 
   const { users } = useUserStorage();
-  const { refetch: refreshAccess, isFetching: isAccessFetching } =
-    useModelAccess();
-  const reload = useCallback(async () => {
-    await Promise.all([data?.reload(), refreshAccess()]);
-  }, [data?.reload, refreshAccess]);
 
   const modelList = useMemo(() => {
     return filterPochiModels
@@ -34,8 +28,8 @@ export const useModelList = (filterPochiModels: boolean) => {
   return {
     modelList,
     isLoading,
-    isFetching: !!data?.isLoading.value || isAccessFetching,
-    reload,
+    isFetching: !!data?.isLoading.value,
+    reload: data?.reload,
   };
 };
 

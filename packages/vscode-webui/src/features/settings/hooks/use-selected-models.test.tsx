@@ -10,7 +10,13 @@ const mocks = vi.hoisted(() => ({
   selectedModel: { id: "public-model", name: "Public model" } as
     | { id: string; name: string }
     | undefined,
-  modelAccess: { superModels: true, isLoading: false },
+  modelAccess: {
+    superModels: true,
+    isLoading: false,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  },
   superModel: {
     id: "super-model",
     name: "Super model",
@@ -61,12 +67,26 @@ describe("useSelectedModels", () => {
       id: mocks.publicModel.id,
       name: mocks.publicModel.name,
     };
-    mocks.modelAccess = { superModels: true, isLoading: false };
+    mocks.modelAccess = {
+      superModels: true,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
   });
 
   it("waits for model access before choosing an initial model", () => {
     mocks.selectedModel = undefined;
     mocks.modelAccess.isLoading = true;
+    renderHook(() => useSelectedModels());
+    expect(mocks.updateSelectedModel).not.toHaveBeenCalled();
+  });
+
+  it("does not choose an initial model when model access failed to load", () => {
+    mocks.selectedModel = undefined;
+    mocks.modelAccess.superModels = false;
+    mocks.modelAccess.isError = true;
     renderHook(() => useSelectedModels());
     expect(mocks.updateSelectedModel).not.toHaveBeenCalled();
   });

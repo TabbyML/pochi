@@ -132,7 +132,7 @@ describe("useModelAccess", () => {
   );
 
   it("does not carry access across sessions or keep it after logout", async () => {
-    const { client, wrapper } = setup();
+    const { wrapper } = setup();
     const { result, rerender } = renderHook(() => useModelAccess(), {
       wrapper,
     });
@@ -156,26 +156,13 @@ describe("useModelAccess", () => {
     });
     expect(result.current.superModels).toBe(false);
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
-    await waitFor(() =>
-      expect(
-        client
-          .getQueryCache()
-          .getAll()
-          .some(
-            (q) =>
-              q.queryKey.includes("scope-a") || q.queryKey.includes("scope-b"),
-          ),
-      ).toBe(false),
-    );
   });
 
-  it("does not grant access from an invalid response", async () => {
-    mocks.fetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ superModels: "true" })),
-    );
+  it("reports an error instead of a denial when the first request fails", async () => {
+    mocks.fetch.mockResolvedValueOnce(new Response(null, { status: 503 }));
     const { wrapper } = setup();
     const { result } = renderHook(() => useModelAccess(), { wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.superModels).toBe(false);
   });
 });

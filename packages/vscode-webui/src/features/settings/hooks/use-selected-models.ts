@@ -43,8 +43,8 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
   const {
     modelList: models,
     isLoading,
-    isFetching,
-    reload,
+    isFetching: isModelListFetching,
+    reload: reloadModelList,
   } = useModelList(true);
   const { selectedModel: selectedModelFromStore } = useSettingsStore();
   const { updateSelectedModel, selectedModel: storedSelectedModel } =
@@ -101,14 +101,25 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
     [models, modelOverride, updateSelectedModel],
   );
 
-  const { superModels, isLoading: isAccessLoading } = useModelAccess();
+  const {
+    superModels,
+    isLoading: isAccessLoading,
+    isError: isAccessError,
+    isFetching: isAccessFetching,
+    refetch: reloadAccess,
+  } = useModelAccess();
+  const isFetching = isModelListFetching || isAccessFetching;
+  const reload = useCallback(async () => {
+    await Promise.all([reloadModelList?.(), reloadAccess()]);
+  }, [reloadModelList, reloadAccess]);
 
   // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
     if (
       !isLoading &&
       !isAccessLoading &&
-      !storedSelectedModel &&
+      !isAccessError &&
+      !selectedModelFromStore &&
       models?.length
     ) {
       let initialModel = models[0];
@@ -121,8 +132,9 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
   }, [
     isLoading,
     isAccessLoading,
+    isAccessError,
     models,
-    storedSelectedModel,
+    selectedModelFromStore,
     updateSelectedModel,
     superModels,
   ]);

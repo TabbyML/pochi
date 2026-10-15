@@ -63,8 +63,13 @@ export function ModelSelect({
     onChange(v.id);
   };
 
-  const { superModels, isLoading: isAccessLoading } = useModelAccess();
-  const isSuperModelsDisabled = !superModels;
+  const {
+    superModels,
+    isLoading: isAccessLoading,
+    isError: isAccessError,
+  } = useModelAccess();
+  // Only an explicit server denial disables Super models.
+  const isSuperModelsDisabled = !superModels && !isAccessError;
 
   return (
     <LoadingWrapper
@@ -153,7 +158,7 @@ export function ModelSelect({
                             !isAccessLoading && (
                               <span className="ml-4 font-normal text-xs">
                                 <a
-                                  href={`${getServerBaseUrl()}/profile`}
+                                  href={`${getServerBaseUrl()}/team`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-[var(--vscode-textLink-foreground)] hover:underline"

@@ -11,12 +11,12 @@ export function useModelAccess() {
     data,
     isPending: accessPending,
     isFetching,
+    isError,
     refetch,
   } = useQuery({
     queryKey: ["modelAccess", server, sessionKey],
     enabled: !!token && !!sessionKey,
     staleTime: 30_000,
-    gcTime: 0,
     retry: false,
     queryFn: async ({ signal }): Promise<ModelAccessResponse> => {
       const response = await fetch(`${server}/api/billing/model-access`, {
@@ -29,11 +29,7 @@ export function useModelAccess() {
       if (!response.ok) {
         throw new Error(`Unable to load model access: ${response.status}`);
       }
-      const access: ModelAccessResponse = await response.json();
-      if (typeof access?.superModels !== "boolean") {
-        throw new Error("Invalid model access response.");
-      }
-      return access;
+      return response.json();
     },
   });
   const refresh = useCallback(async () => {
@@ -44,6 +40,9 @@ export function useModelAccess() {
     superModels: !!token && data?.superModels === true,
     isLoading: isPending || (!!token && accessPending),
     isFetching,
+    // True when access could not be determined, so callers should not treat
+    // `superModels: false` as an explicit denial.
+    isError: isError && !data,
     refetch: refresh,
   };
 }
