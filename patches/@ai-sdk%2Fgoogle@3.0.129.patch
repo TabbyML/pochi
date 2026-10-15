@@ -1,0 +1,200 @@
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1675,9 +1675,18 @@
+     description: (_a2 = tool.description) != null ? _a2 : ""
+   };
+   try {
++    const parameters = convertJSONSchemaToOpenAPISchema(tool.inputSchema);
++    // Google's Schema rejects empty string enum members, including const: ''.
++    // Use JSON Schema to preserve these constraints without dropping valid values.
++    if (hasEmptyStringEnum(parameters)) {
++      return {
++        ...declaration,
++        parametersJsonSchema: tool.inputSchema
++      };
++    }
+     return {
+       ...declaration,
+-      parameters: convertJSONSchemaToOpenAPISchema(tool.inputSchema)
++      parameters
+     };
+   } catch (error) {
+     if (!isRecursiveJSONSchemaReferenceError(error)) {
+@@ -1688,6 +1697,16 @@
+       parametersJsonSchema: tool.inputSchema
+     };
+   }
++}
++
++function hasEmptyStringEnum(schema) {
++  if (schema == null || typeof schema !== "object") {
++    return false;
++  }
++  if (Array.isArray(schema)) {
++    return schema.some(hasEmptyStringEnum);
++  }
++  return "enum" in schema && Array.isArray(schema.enum) && schema.enum.includes("") || Object.values(schema).some(hasEmptyStringEnum);
+ }
+
+ // src/google-json-accumulator.ts
+diff --git a/dist/index.mjs b/dist/index.mjs
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1705,9 +1705,18 @@
+     description: (_a2 = tool.description) != null ? _a2 : ""
+   };
+   try {
++    const parameters = convertJSONSchemaToOpenAPISchema(tool.inputSchema);
++    // Google's Schema rejects empty string enum members, including const: ''.
++    // Use JSON Schema to preserve these constraints without dropping valid values.
++    if (hasEmptyStringEnum(parameters)) {
++      return {
++        ...declaration,
++        parametersJsonSchema: tool.inputSchema
++      };
++    }
+     return {
+       ...declaration,
+-      parameters: convertJSONSchemaToOpenAPISchema(tool.inputSchema)
++      parameters
+     };
+   } catch (error) {
+     if (!isRecursiveJSONSchemaReferenceError(error)) {
+@@ -1718,6 +1727,16 @@
+       parametersJsonSchema: tool.inputSchema
+     };
+   }
++}
++
++function hasEmptyStringEnum(schema) {
++  if (schema == null || typeof schema !== "object") {
++    return false;
++  }
++  if (Array.isArray(schema)) {
++    return schema.some(hasEmptyStringEnum);
++  }
++  return "enum" in schema && Array.isArray(schema.enum) && schema.enum.includes("") || Object.values(schema).some(hasEmptyStringEnum);
+ }
+
+ // src/google-json-accumulator.ts
+diff --git a/dist/internal/index.js b/dist/internal/index.js
+--- a/dist/internal/index.js
++++ b/dist/internal/index.js
+@@ -1267,9 +1267,18 @@
+     description: (_a = tool.description) != null ? _a : ""
+   };
+   try {
++    const parameters = convertJSONSchemaToOpenAPISchema(tool.inputSchema);
++    // Google's Schema rejects empty string enum members, including const: ''.
++    // Use JSON Schema to preserve these constraints without dropping valid values.
++    if (hasEmptyStringEnum(parameters)) {
++      return {
++        ...declaration,
++        parametersJsonSchema: tool.inputSchema
++      };
++    }
+     return {
+       ...declaration,
+-      parameters: convertJSONSchemaToOpenAPISchema(tool.inputSchema)
++      parameters
+     };
+   } catch (error) {
+     if (!isRecursiveJSONSchemaReferenceError(error)) {
+@@ -1280,6 +1289,16 @@
+       parametersJsonSchema: tool.inputSchema
+     };
+   }
++}
++
++function hasEmptyStringEnum(schema) {
++  if (schema == null || typeof schema !== "object") {
++    return false;
++  }
++  if (Array.isArray(schema)) {
++    return schema.some(hasEmptyStringEnum);
++  }
++  return "enum" in schema && Array.isArray(schema.enum) && schema.enum.includes("") || Object.values(schema).some(hasEmptyStringEnum);
+ }
+
+ // src/google-json-accumulator.ts
+diff --git a/dist/internal/index.mjs b/dist/internal/index.mjs
+--- a/dist/internal/index.mjs
++++ b/dist/internal/index.mjs
+@@ -1268,9 +1268,18 @@
+     description: (_a = tool.description) != null ? _a : ""
+   };
+   try {
++    const parameters = convertJSONSchemaToOpenAPISchema(tool.inputSchema);
++    // Google's Schema rejects empty string enum members, including const: ''.
++    // Use JSON Schema to preserve these constraints without dropping valid values.
++    if (hasEmptyStringEnum(parameters)) {
++      return {
++        ...declaration,
++        parametersJsonSchema: tool.inputSchema
++      };
++    }
+     return {
+       ...declaration,
+-      parameters: convertJSONSchemaToOpenAPISchema(tool.inputSchema)
++      parameters
+     };
+   } catch (error) {
+     if (!isRecursiveJSONSchemaReferenceError(error)) {
+@@ -1281,6 +1290,16 @@
+       parametersJsonSchema: tool.inputSchema
+     };
+   }
++}
++
++function hasEmptyStringEnum(schema) {
++  if (schema == null || typeof schema !== "object") {
++    return false;
++  }
++  if (Array.isArray(schema)) {
++    return schema.some(hasEmptyStringEnum);
++  }
++  return "enum" in schema && Array.isArray(schema.enum) && schema.enum.includes("") || Object.values(schema).some(hasEmptyStringEnum);
+ }
+
+ // src/google-json-accumulator.ts
+diff --git a/src/google-prepare-tools.ts b/src/google-prepare-tools.ts
+--- a/src/google-prepare-tools.ts
++++ b/src/google-prepare-tools.ts
+@@ -323,9 +323,18 @@
+   };
+
+   try {
++    const parameters = convertJSONSchemaToOpenAPISchema(tool.inputSchema);
++    // Google's Schema rejects empty string enum members, including const: ''.
++    // Use JSON Schema to preserve these constraints without dropping valid values.
++    if (hasEmptyStringEnum(parameters)) {
++      return {
++        ...declaration,
++        parametersJsonSchema: tool.inputSchema,
++      };
++    }
+     return {
+       ...declaration,
+-      parameters: convertJSONSchemaToOpenAPISchema(tool.inputSchema),
++      parameters,
+     };
+   } catch (error) {
+     if (!isRecursiveJSONSchemaReferenceError(error)) {
+@@ -338,3 +347,16 @@
+     };
+   }
+ }
++
++function hasEmptyStringEnum(schema: unknown): boolean {
++  if (schema == null || typeof schema !== 'object') {
++    return false;
++  }
++  if (Array.isArray(schema)) {
++    return schema.some(hasEmptyStringEnum);
++  }
++  return (
++    ('enum' in schema && Array.isArray(schema.enum) && schema.enum.includes('')) ||
++    Object.values(schema).some(hasEmptyStringEnum)
++  );
++}

@@ -2,6 +2,7 @@ import type { ContextWindowUsage } from "@getpochi/common";
 import { prompts } from "@getpochi/common";
 import { isStaticToolUIPart } from "ai";
 import type { Message } from "../types";
+import { McpToolOutput } from "./mcp-utils";
 
 export const ImageEstimatedTokens = 1000;
 
@@ -140,11 +141,51 @@ export function estimateTotalTokens(
       } else if (part.type === "file") {
         totalTokens += ImageEstimatedTokens;
       } else if (isStaticToolUIPart(part)) {
-        totalTokens += estimateTokens(JSON.stringify(part), calibrationFactor);
+        const { output, ...rest } = part as unknown as {
+          output?: unknown;
+          [key: string]: unknown;
+        };
+        totalTokens += estimateTokens(JSON.stringify(rest), calibrationFactor);
+        if (output !== undefined) {
+          totalTokens += estimateToolOutputTokens(output, calibrationFactor);
+        }
       }
     }
   }
   return totalTokens;
+}
+
+function estimateToolOutputTokens(
+  output: unknown,
+  calibrationFactor: number,
+): number {
+  if (output instanceof Uint8Array) {
+    return ImageEstimatedTokens;
+  }
+  if (typeof output === "string") {
+    return estimateTokens(output, calibrationFactor);
+  }
+  if (typeof output === "object" && output !== null) {
+    if ("type" in output && output.type === "media") {
+      return ImageEstimatedTokens;
+    }
+    // Only estimate supported MCP content separately. An `error` field alone
+    // does not identify an MCP result: built-in tools such as executeCommand
+    // send their entire output as JSON, including diagnostics alongside errors.
+    // Without tool-converter metadata, conservatively count those full objects.
+    const parsed = McpToolOutput.safeParse(output);
+    if (parsed.success && "content" in parsed.data) {
+      return parsed.data.content.reduce(
+        (total, item) =>
+          total +
+          (item.type === "image"
+            ? ImageEstimatedTokens
+            : estimateTokens(item.text, calibrationFactor)),
+        0,
+      );
+    }
+  }
+  return estimateTokens(JSON.stringify(output), calibrationFactor);
 }
 
 export type TokenBreakdown = {
@@ -198,15 +239,10 @@ export function estimateTokenBreakdown(
         );
         if (part.state === "output-available" && part.output) {
           const output = (part as unknown as { output: unknown }).output;
-          let outputTokens = 0;
-
-          if (output instanceof Uint8Array) {
-            outputTokens = ImageEstimatedTokens;
-          } else {
-            const resultStr =
-              typeof output === "string" ? output : JSON.stringify(output);
-            outputTokens = estimateTokens(resultStr, calibrationFactor);
-          }
+          const outputTokens = estimateToolOutputTokens(
+            output,
+            calibrationFactor,
+          );
 
           const toolName = part.type.replace(/^tool-/, "");
           if (["readFile", "searchFiles", "globFiles"].includes(toolName)) {

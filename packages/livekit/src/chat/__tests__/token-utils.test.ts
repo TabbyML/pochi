@@ -1,8 +1,17 @@
+import { createClientTools } from "@getpochi/tools";
+import { convertToModelMessages } from "ai";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { BlobStore } from "../../blob-store";
+import type { Message } from "../../types";
+import { shouldAutoCompact } from "../auto-compact-policy";
+import { parseMcpToolSet } from "../mcp-utils";
 import {
   DefaultCjkCharsPerToken,
   DefaultOtherCharsPerToken,
+  ImageEstimatedTokens,
+  estimateTokenBreakdown,
   estimateTokens,
+  estimateTotalTokens,
   getModelCalibrationFactor,
   getModelCalibrationKey,
   resetTokenCalibration,
@@ -137,5 +146,266 @@ describe("per-model token calibration", () => {
     resetTokenCalibration();
     expect(getModelCalibrationFactor("model-a")).toBe(1);
     expect(getModelCalibrationFactor("model-b")).toBe(1);
+  });
+});
+
+describe("tool media token estimation", () => {
+  it("counts MCP image tool results and readFile media outputs as ImageEstimatedTokens", () => {
+    const messages: Message[] = [
+      {
+        id: "a-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-look",
+            toolCallId: "call-look",
+            state: "output-available",
+            input: {},
+            output: {
+              content: [
+                {
+                  type: "image",
+                  mimeType: "image/png",
+                  data: "store-blob:abc",
+                },
+              ],
+            },
+          },
+          {
+            type: "tool-readFile",
+            toolCallId: "call-read",
+            state: "output-available",
+            input: { path: "img.png" },
+            output: {
+              type: "media",
+              mimeType: "image/png",
+              data: "store-blob:def",
+            },
+          },
+        ],
+      } as unknown as Message,
+    ];
+
+    const breakdown = estimateTokenBreakdown(messages);
+    expect(breakdown.toolResultsTokens).toBe(ImageEstimatedTokens);
+    expect(breakdown.filesTokens).toBe(ImageEstimatedTokens);
+    expect(estimateTotalTokens(messages)).toBeGreaterThanOrEqual(
+      ImageEstimatedTokens * 2,
+    );
+  });
+});
+
+describe("MCP output token estimation", () => {
+  const tools = parseMcpToolSet({} as BlobStore, {
+    inspect: {
+      description: "Inspect a resource",
+      inputSchema: { jsonSchema: { type: "object", properties: {} } },
+    },
+  })!;
+
+  function messagesForOutput(output: unknown): Message[] {
+    return [
+      {
+        id: "user-1",
+        role: "user",
+        parts: [{ type: "text", text: "Inspect" }],
+      },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-inspect",
+            toolCallId: "call-1",
+            input: {},
+            state: "output-available",
+            output,
+          },
+        ],
+      } as unknown as Message,
+    ];
+  }
+
+  it.each([
+    {
+      type: "resource_link",
+      uri: "file:///report.txt",
+      name: "report.txt",
+      mimeType: "text/plain",
+    },
+    {
+      type: "resource",
+      resource: {
+        uri: "file:///report.txt",
+        mimeType: "text/plain",
+        text: "Report",
+      },
+    },
+    { type: "image", data: "store-blob:missing-mime-type" },
+  ])("counts the entire JSON fallback for $type content", async (item) => {
+    const output = {
+      content: [{ type: "text", text: "Report available" }, item],
+      structuredContent: { report: "x".repeat(400_000) },
+    };
+    const converted = await tools.inspect.toModelOutput!({
+      toolCallId: "call-1",
+      input: {},
+      output,
+    });
+    expect(converted).toEqual({ type: "json", value: output });
+    const messages = messagesForOutput(output);
+
+    for (const calibrationFactor of [1, 1.5]) {
+      const expected = estimateTokens(
+        JSON.stringify(output),
+        calibrationFactor,
+      );
+      expect(
+        estimateTokenBreakdown(messages, calibrationFactor).toolResultsTokens,
+      ).toBe(expected);
+      expect(
+        estimateTotalTokens(messages, calibrationFactor),
+      ).toBeGreaterThanOrEqual(expected);
+    }
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm: {
+          id: "test",
+          type: "openai",
+          modelId: "test",
+          contextWindow: 128_000,
+          maxOutputTokens: 4096,
+        },
+        task: null,
+        estimatedTotalTokens: estimateTotalTokens(messages),
+      }),
+    ).toBe(true);
+  });
+
+  it("only counts supported text content that is actually sent to the model", async () => {
+    const output = {
+      content: [{ type: "text", text: "A short report" }],
+      structuredContent: { report: "x".repeat(400_000) },
+    };
+    expect(
+      await tools.inspect.toModelOutput!({
+        toolCallId: "call-1",
+        input: {},
+        output,
+      }),
+    ).toEqual({
+      type: "content",
+      value: output.content,
+    });
+    expect(
+      estimateTokenBreakdown(messagesForOutput(output)).toolResultsTokens,
+    ).toBe(estimateTokens("A short report"));
+  });
+
+  it("conservatively counts the full error output without converter metadata", async () => {
+    const output = {
+      error: "Request failed",
+      content: [{ type: "unsupported" }],
+    };
+    expect(
+      await tools.inspect.toModelOutput!({
+        toolCallId: "call-1",
+        input: {},
+        output,
+      }),
+    ).toEqual({
+      type: "error-text",
+      value: output.error,
+    });
+    expect(
+      estimateTokenBreakdown(messagesForOutput(output)).toolResultsTokens,
+    ).toBe(estimateTokens(JSON.stringify(output)));
+  });
+});
+
+describe("built-in tool error output token estimation", () => {
+  const output = {
+    output: "build diagnostic\n".repeat(2_000),
+    isTruncated: false,
+    error: "Command exited with code 1",
+  };
+  const messages: Message[] = [
+    {
+      id: "user-1",
+      role: "user",
+      parts: [{ type: "text", text: "x".repeat(350_000) }],
+    },
+    {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-executeCommand",
+          toolCallId: "call-command",
+          state: "output-available",
+          input: { command: "bun run build" },
+          output,
+        },
+      ],
+    } as Message,
+  ];
+
+  it.each([1, 1.5])(
+    "counts the full JSON sent by executeCommand with calibration factor %s",
+    async (calibrationFactor) => {
+      // Keep the result below the tool-output persistence threshold so the
+      // whole diagnostic reaches the model in the normal execution path.
+      expect(JSON.stringify(output).length).toBeLessThan(50_000);
+      const converted = await convertToModelMessages(messages, {
+        tools: createClientTools(),
+      });
+      const toolMessage = converted.find((message) => message.role === "tool");
+      expect(toolMessage?.content).toEqual([
+        expect.objectContaining({
+          type: "tool-result",
+          toolName: "executeCommand",
+          output: { type: "json", value: output },
+        }),
+      ]);
+      const expected = estimateTokens(
+        JSON.stringify(output),
+        calibrationFactor,
+      );
+      expect(
+        estimateTokenBreakdown(messages, calibrationFactor).toolResultsTokens,
+      ).toBe(expected);
+      expect(
+        estimateTotalTokens(messages, calibrationFactor) -
+          estimateTotalTokens(messages.slice(0, 1), calibrationFactor),
+      ).toBeGreaterThanOrEqual(expected);
+    },
+  );
+
+  it("includes failed-command diagnostics when deciding to compact", () => {
+    const llm = {
+      id: "test",
+      type: "openai" as const,
+      modelId: "test",
+      contextWindow: 128_000,
+      maxOutputTokens: 4096,
+    };
+    const history = messages.slice(0, 1);
+    expect(
+      shouldAutoCompact({
+        messages: history,
+        llm,
+        task: null,
+        estimatedTotalTokens: estimateTotalTokens(history),
+      }),
+    ).toBe(false);
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm,
+        task: null,
+        estimatedTotalTokens: estimateTotalTokens(messages),
+      }),
+    ).toBe(true);
   });
 });

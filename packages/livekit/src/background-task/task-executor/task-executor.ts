@@ -162,10 +162,12 @@ export class TaskExecutor {
     this.unsubscribe = undefined;
     this.started = false;
     await Promise.all(
-      [...this.runningTasks.values()].map(async (runningTask) => {
-        await runningTask.dispose();
-        await runningTask.done.catch(() => undefined);
-      }),
+      [
+        ...new Set([
+          ...this.readRunnableTasks().map((task) => task.id),
+          ...this.runningTasks.keys(),
+        ]),
+      ].map((taskId) => this.stopTask(taskId)),
     );
     this.runningTasks.clear();
     this.resolveAllTaskDoneWaiters();

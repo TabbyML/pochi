@@ -68,6 +68,45 @@ const LaunchNonce = "0123456789abcdef";
 const LaunchMarker = `\u001b]6339;${LaunchNonce}\u0007`;
 
 describe("PtyProcess", () => {
+  it("cleans up descendants when tool cancellation races startup", async () => {
+    const clock = sinon.useFakeTimers();
+    const kill = sinon.stub(process, "kill").returns(true);
+    const originalShell = process.env.SHELL;
+    process.env.SHELL = "/bin/bash";
+    try {
+      const harness = createHarness();
+      const tool = new AbortController();
+      const launched = harness.spawnProcess({
+        command: "sleep 60",
+        cwd: "/tmp",
+        abortSignal: tool.signal,
+      });
+      let rejected = false;
+      const rejection = assert
+        .rejects(launched, {
+          name: "ExecutionError",
+          aborted: true,
+        })
+        .then(() => {
+          rejected = true;
+        });
+      tool.abort();
+      await clock.tickAsync(0);
+      assert.ok(kill.calledWithExactly(-12345, "SIGTERM"));
+      harness.exit(143);
+      assert.strictEqual(rejected, false);
+      await clock.tickAsync(2_000);
+      await rejection;
+      assert.ok(kill.calledWithExactly(-12345, "SIGKILL"));
+      assert.ok(harness.kill.notCalled);
+    } finally {
+      if (originalShell === undefined) delete process.env.SHELL;
+      else process.env.SHELL = originalShell;
+      kill.restore();
+      clock.restore();
+    }
+  });
+
   it("does not spawn an already cancelled command", async () => {
     const harness = createHarness();
     const controller = new AbortController();
@@ -84,8 +123,9 @@ describe("PtyProcess", () => {
     assert.strictEqual(harness.spawn.callCount, 0);
   });
 
-  it("kills immediately during launch and rejects cancellation without a spawn error", async () => {
+  it("stops the group during launch and rejects cancellation without a spawn error", async () => {
     const clock = sinon.useFakeTimers();
+    const kill = sinon.stub(process, "kill");
     const originalShell = process.env.SHELL;
     process.env.SHELL = "/bin/bash";
     try {
@@ -105,16 +145,25 @@ describe("PtyProcess", () => {
         aborted: true,
       });
       // Exercise synchronous exit delivery during kill as well as cancellation.
-      harness.kill.callsFake(() => harness.exit(143));
+      kill.callsFake((_pid, signal) => {
+        if (signal === "SIGTERM") {
+          harness.exit(143);
+          return true;
+        }
+        throw Object.assign(new Error("gone"), { code: "ESRCH" });
+      });
       controller.abort();
-      assert.deepStrictEqual(harness.kill.args, [["SIGTERM"]]);
+      await clock.tickAsync(0);
+      assert.ok(kill.calledWithExactly(-12345, "SIGTERM"));
       await rejected;
       assert.ok(removeListener.calledOnce);
       await clock.tickAsync(3_000);
-      assert.strictEqual(harness.kill.callCount, 1);
+      assert.ok(harness.kill.notCalled);
+      assert.strictEqual(kill.withArgs(-12345, "SIGTERM").callCount, 1);
     } finally {
       if (originalShell === undefined) delete process.env.SHELL;
       else process.env.SHELL = originalShell;
+      kill.restore();
       clock.restore();
     }
   });

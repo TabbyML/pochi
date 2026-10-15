@@ -21,17 +21,19 @@ describe("executeCommand Tool", () => {
       isTruncated: true,
       error: "Command exited with code 1",
     });
-    const executeCommandWithNode = sinon.stub().callsFake(async ({ onData }) => {
-      onData?.({
-        output: "raw noisy output",
-        isTruncated: true,
+    const executeCommandWithNode = sinon
+      .stub()
+      .callsFake(async ({ onData }) => {
+        onData?.({
+          output: "raw noisy output",
+          isTruncated: true,
+        });
+        throw new Error("Command exited with code 1");
       });
-      throw new Error("Command exited with code 1");
-    });
 
-    const { executeCommand } = proxyquire.noCallThru().load(
-      "../execute-command",
-      {
+    const { executeCommand } = proxyquire
+      .noCallThru()
+      .load("../execute-command", {
         "@/integrations/layout": {
           getViewColumnForTerminal: sinon.stub(),
         },
@@ -57,7 +59,9 @@ describe("executeCommand Tool", () => {
           ThreadSignal: {
             serialize: (signal: {
               value: SignalValue;
-              subscribe: (subscriber: (value: SignalValue) => void) => () => void;
+              subscribe: (
+                subscriber: (value: SignalValue) => void,
+              ) => () => void;
             }) => ({
               get value() {
                 return signal.value;
@@ -75,8 +79,7 @@ describe("executeCommand Tool", () => {
           PtySpawnError: class PtySpawnError extends Error {},
           executeCommandWithPty: sinon.stub(),
         },
-      },
-    ) as typeof import("../execute-command");
+      }) as typeof import("../execute-command");
 
     const resultPromise = executeCommand(
       { command: "false" },
@@ -86,6 +89,7 @@ describe("executeCommand Tool", () => {
         messages: [],
         toolCallId: "call-1",
         taskId: "task-1",
+        rootTaskId: "root-task",
       },
     );
 
@@ -134,20 +138,22 @@ describe("executeCommand Tool", () => {
       isIdle: false,
     });
 
-    const executeCommandWithNode = sinon.stub().callsFake(async ({ onData }) => {
-      onData?.({
-        output: "first output",
-        isTruncated: false,
+    const executeCommandWithNode = sinon
+      .stub()
+      .callsFake(async ({ onData }) => {
+        onData?.({
+          output: "first output",
+          isTruncated: false,
+        });
+        return {
+          output: "completed output",
+          isTruncated: false,
+        };
       });
-      return {
-        output: "completed output",
-        isTruncated: false,
-      };
-    });
 
-    const { executeCommand } = proxyquire.noCallThru().load(
-      "../execute-command",
-      {
+    const { executeCommand } = proxyquire
+      .noCallThru()
+      .load("../execute-command", {
         "@/integrations/layout": {
           getViewColumnForTerminal: sinon.stub(),
         },
@@ -173,7 +179,9 @@ describe("executeCommand Tool", () => {
           ThreadSignal: {
             serialize: (signal: {
               value: SignalValue;
-              subscribe: (subscriber: (value: SignalValue) => void) => () => void;
+              subscribe: (
+                subscriber: (value: SignalValue) => void,
+              ) => () => void;
             }) => ({
               get value() {
                 return signal.value;
@@ -194,8 +202,7 @@ describe("executeCommand Tool", () => {
           PtySpawnError: class PtySpawnError extends Error {},
           executeCommandWithPty: sinon.stub(),
         },
-      },
-    ) as typeof import("../execute-command");
+      }) as typeof import("../execute-command");
 
     const result = await executeCommand(
       { command: "echo ok" },
@@ -205,6 +212,7 @@ describe("executeCommand Tool", () => {
         messages: [],
         toolCallId: "call-1",
         taskId: "task-1",
+        rootTaskId: "root-task",
       },
     );
 
@@ -284,6 +292,7 @@ describe("executeCommand Tool", () => {
         messages: [],
         toolCallId: "call-bg",
         taskId: "task-1",
+        rootTaskId: "root-task",
       },
     );
 
@@ -304,6 +313,7 @@ describe("executeCommand Tool", () => {
         location: { viewColumn: 2 },
         abortSignal,
         taskId: "task-1",
+        rootTaskId: "root-task",
       }),
     );
     assert.ok(revealTerminal.calledOnceWithExactly());
@@ -379,6 +389,7 @@ describe("executeCommand Tool", () => {
           messages: [],
           toolCallId: "call-promoted",
           taskId: "task-1",
+          rootTaskId: "root-task",
           allowBackground,
         },
       );
@@ -409,7 +420,9 @@ describe("executeCommand Tool", () => {
           command: "sleep 10",
           cwd: "/workspace",
           location: { viewColumn: 3 },
+          abortSignal,
           taskId: "task-1",
+          rootTaskId: "root-task",
         }),
       );
       assert.ok(revealTerminal.calledOnceWithExactly());

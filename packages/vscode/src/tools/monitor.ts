@@ -12,7 +12,7 @@ export const startMonitor: ToolFunctionType<
   ClientTools["startMonitor"]
 > = async (
   { command, description, cwd = ".", timeoutMs, persistent },
-  { abortSignal, cwd: workspaceDir, taskId, envs, allowBackground },
+  { abortSignal, cwd: workspaceDir, taskId, rootTaskId, envs, allowBackground },
 ) => {
   if (!command) {
     throw new Error("Command is required to execute.");
@@ -42,6 +42,7 @@ export const startMonitor: ToolFunctionType<
     location,
     abortSignal,
     taskId,
+    rootTaskId,
     envs,
     monitor: {
       description,

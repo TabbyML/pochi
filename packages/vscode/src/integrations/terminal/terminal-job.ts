@@ -38,6 +38,7 @@ export interface TerminalJobConfig {
   // Cancels startup only: a started job outlives its tool call, whose signal
   // also fires on chat navigation.
   abortSignal?: AbortSignal;
+  rootTaskId?: string;
   taskId: string;
   envs?: Record<string, string>;
   monitor?: MonitorJobOptions;
@@ -100,6 +101,10 @@ export class TerminalJob implements vscode.Disposable {
 
   get taskId() {
     return this.config.taskId;
+  }
+
+  get rootTaskId() {
+    return this.config.rootTaskId;
   }
 
   get command() {
@@ -446,11 +451,9 @@ export class TerminalJob implements vscode.Disposable {
     this.monitorEndReason ??= reason;
     logger.info(`Stopping terminal job ${this.id}: ${reason}`);
     if (this.ptyProcess) {
-      if (this.monitorWatcher) {
-        this.termination = this.ptyProcess.killProcessGroup();
-      } else {
-        this.ptyProcess.kill();
-      }
+      // Wait for descendants too: killing only the shell can unregister the
+      // job while its child processes are still running.
+      this.termination = this.ptyProcess.killProcessGroup();
     } else if (this.childProcess) {
       // Stopping only the shell would orphan the command's descendants, which
       // is common on Windows where cmd.exe does not forward termination.
