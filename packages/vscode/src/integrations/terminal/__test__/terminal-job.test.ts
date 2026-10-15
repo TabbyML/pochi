@@ -251,6 +251,25 @@ interface FakeTerminal {
 }
 
 describe("TerminalJob", () => {
+  it("keeps a stopped command registered until its descendants exit", async () => {
+    const harness = createHarness();
+    let finishCleanup!: () => void;
+    harness.ptyProcess.groupTermination = new Promise<void>((resolve) => {
+      finishCleanup = resolve;
+    });
+    harness.job.kill();
+    harness.job.kill();
+    harness.ptyProcess.emitExit(143);
+    await flushPromises();
+    assert.strictEqual(harness.ptyProcess.groupKillCalls, 1);
+    assert.strictEqual(harness.finishEvents.length, 0);
+    assert.ok(harness.TerminalJob.get(harness.job.id));
+    finishCleanup();
+    await flushPromises();
+    assert.strictEqual(harness.finishEvents[0]?.status, "stopped");
+    assert.strictEqual(harness.TerminalJob.get(harness.job.id), undefined);
+  });
+
   it("waits for monitor group cleanup before publishing the end or releasing its transcript", async () => {
     const harness = createHarness({ monitor: { description: "watch" } });
     let finishCleanup!: () => void;
@@ -495,7 +514,7 @@ describe("TerminalJob", () => {
 
     assert.strictEqual(harness.job.isVisible, false);
     assert.strictEqual(harness.terminalDisposeCalls, 1);
-    assert.strictEqual(harness.ptyProcess.killCalls, 1);
+    assert.strictEqual(harness.ptyProcess.groupKillCalls, 1);
 
     harness.ptyProcess.emitExit(143);
     await flushPromises();
@@ -505,7 +524,7 @@ describe("TerminalJob", () => {
   it("marks a killed command as stopped", async () => {
     const harness = createHarness();
     harness.job.kill();
-    assert.strictEqual(harness.ptyProcess.killCalls, 1);
+    assert.strictEqual(harness.ptyProcess.groupKillCalls, 1);
 
     harness.ptyProcess.emitExit(143);
     await flushPromises();
@@ -549,7 +568,7 @@ describe("TerminalJob", () => {
     });
     await flushPromises();
 
-    assert.strictEqual(harness.ptyProcess.killCalls, 1);
+    assert.strictEqual(harness.ptyProcess.groupKillCalls, 1);
     assert.strictEqual(harness.finishEvents.length, 0);
 
     harness.ptyProcess.emitExit(143);

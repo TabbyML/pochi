@@ -1047,10 +1047,24 @@ export class BackgroundJobManager {
     }
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
     this.changed();
-    await this.executor?.dispose();
+    // Kill every running command started by a task in this store, including
+    // commands of subtasks that have already completed.
+    const commandIds = Object.entries(this.runningCommands)
+      .filter(([, { taskId }]) =>
+        taskId
+          ? this.store.query(catalog.queries.makeTaskQuery(taskId))
+          : false,
+      )
+      .map(([id]) => id);
+    const results = await Promise.allSettled([
+      this.executor?.dispose(),
+      ...commandIds.map((id) => this.commandAdaptor?.kill(id)),
+    ]);
     this.adaptor?.dispose?.();
     if (BackgroundJobManager.stores.get(this.store) === this)
       BackgroundJobManager.stores.delete(this.store);
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed) throw failed.reason;
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);

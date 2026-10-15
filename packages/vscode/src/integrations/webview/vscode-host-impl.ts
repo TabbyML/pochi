@@ -80,6 +80,7 @@ import {
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
   GitStatusReader,
   ignoreWalk,
@@ -660,6 +661,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         contentType: options.contentType,
         envs,
         taskId,
+        rootTaskId: decodeStoreId(options.storeId).taskId,
         fileStateCache,
         allowBackground: options.allowBackground,
       }),

@@ -26,7 +26,7 @@ function setup() {
     BackgroundCommandAdaptor["observeCommands"]
   >[0];
   const source = {
-    kill: vi.fn(async () => {}),
+    kill: vi.fn(async (_id: string) => {}),
     observeCommands: vi.fn(
       async (
         update: Parameters<BackgroundCommandAdaptor["observeCommands"]>[0],
@@ -99,6 +99,46 @@ const stopped = (id = "bgjob-cmd-one") =>
   });
 
 describe("BackgroundJobManager", () => {
+  it("disposes commands and monitors throughout the store, including jobs owned by completed children", async () => {
+    const { manager, tasks, observers, source, store } = setup();
+    for (const [id, parentId, background, status] of [
+      ["parent", null, false, "pending-tool"],
+      ["child", "parent", true, "completed"],
+      ["grandchild", "child", true, "pending-model"],
+      ["fork", null, true, "pending-tool"],
+    ] as const) tasks.set(id, { id, parentId, background, status } as Task);
+    manager.registerTask("child", { parentTaskId: "parent" });
+    manager.registerTask("grandchild", { parentTaskId: "child" });
+    manager.registerTask("fork", { parentTaskId: "parent", useCase: "task-memory" });
+    await manager.watchTask("parent");
+    observers.get("parent")!({ running: {
+      "bgjob-cmd-root": running("parent"),
+      "bgjob-cmd-child": running("child"),
+      "bgjob-monitor-grandchild": { ...running("grandchild"), monitor: "watch" },
+      "bgjob-cmd-unrelated": running("other-tab"),
+    }, notifications: [] });
+    await manager.dispose();
+    await manager.dispose();
+    expect(source.kill.mock.calls.map(([id]) => id).sort()).toEqual([
+      "bgjob-cmd-child", "bgjob-cmd-root", "bgjob-monitor-grandchild",
+    ]);
+    expect(tasks.get("child")?.status).toBe("completed");
+    expect(BackgroundJobManager.forStore(store)).not.toBe(manager);
+  });
+
+  it("still stops other jobs and disposes when one command fails to stop", async () => {
+    const { manager, observers, source, tasks } = setup();
+    tasks.set("parent", { id: "parent", status: "pending-tool" } as Task);
+    await manager.watchTask("parent");
+    observers.get("parent")!({ running: {
+      "bgjob-cmd-one": running("parent"), "bgjob-cmd-two": running("parent"),
+    }, notifications: [] });
+    source.kill.mockRejectedValueOnce(new Error("failed to kill"));
+    await expect(manager.dispose()).rejects.toThrow("failed to kill");
+    expect(source.kill).toHaveBeenCalledTimes(2);
+    await expect(manager.backgroundSubTask({ taskId: "late", parentTaskId: "parent" })).rejects.toThrow("disposed");
+  });
+
   it("wakes immediately for the final monitor event after a previous delivery", async () => {
     vi.useFakeTimers();
     const { manager, observers } = setup();
@@ -219,7 +259,8 @@ describe("BackgroundJobManager", () => {
   });
 
   it("uses process ownership even when a fork copied its parent's tool messages", async () => {
-    const { manager, observers, messages, source } = setup();
+    const { manager, observers, messages, source, tasks } = setup();
+    tasks.set("parent", { id: "parent", status: "pending-tool" } as Task);
     messages.set("fork", [
       {
         id: "copied",
@@ -249,8 +290,9 @@ describe("BackgroundJobManager", () => {
     await expect(manager.kill("bgjob-cmd-one", "fork")).rejects.toThrow(
       "not found",
     );
-    await manager.dispose();
     expect(source.kill).not.toHaveBeenCalled();
+    await manager.dispose();
+    expect(source.kill).toHaveBeenCalledExactlyOnceWith("bgjob-cmd-one");
   });
 
   it("waits through the exit-to-notification gap and acknowledges after persisted delivery", async () => {
