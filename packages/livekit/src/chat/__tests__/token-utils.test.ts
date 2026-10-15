@@ -1,3 +1,5 @@
+import { createClientTools } from "@getpochi/tools";
+import { convertToModelMessages } from "ai";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { BlobStore } from "../../blob-store";
 import type { Message } from "../../types";
@@ -193,7 +195,7 @@ describe("tool media token estimation", () => {
   });
 });
 
-describe("MCP output token estimation matches model conversion", () => {
+describe("MCP output token estimation", () => {
   const tools = parseMcpToolSet({} as BlobStore, {
     inspect: {
       description: "Inspect a resource",
@@ -301,7 +303,7 @@ describe("MCP output token estimation matches model conversion", () => {
     ).toBe(estimateTokens("A short report"));
   });
 
-  it("counts the error text selected by the MCP converter", async () => {
+  it("conservatively counts the full error output without converter metadata", async () => {
     const output = {
       error: "Request failed",
       content: [{ type: "unsupported" }],
@@ -318,6 +320,92 @@ describe("MCP output token estimation matches model conversion", () => {
     });
     expect(
       estimateTokenBreakdown(messagesForOutput(output)).toolResultsTokens,
-    ).toBe(estimateTokens(output.error));
+    ).toBe(estimateTokens(JSON.stringify(output)));
+  });
+});
+
+describe("built-in tool error output token estimation", () => {
+  const output = {
+    output: "build diagnostic\n".repeat(2_000),
+    isTruncated: false,
+    error: "Command exited with code 1",
+  };
+  const messages: Message[] = [
+    {
+      id: "user-1",
+      role: "user",
+      parts: [{ type: "text", text: "x".repeat(350_000) }],
+    },
+    {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-executeCommand",
+          toolCallId: "call-command",
+          state: "output-available",
+          input: { command: "bun run build" },
+          output,
+        },
+      ],
+    } as Message,
+  ];
+
+  it.each([1, 1.5])(
+    "counts the full JSON sent by executeCommand with calibration factor %s",
+    async (calibrationFactor) => {
+      // Keep the result below the tool-output persistence threshold so the
+      // whole diagnostic reaches the model in the normal execution path.
+      expect(JSON.stringify(output).length).toBeLessThan(50_000);
+      const converted = await convertToModelMessages(messages, {
+        tools: createClientTools(),
+      });
+      const toolMessage = converted.find((message) => message.role === "tool");
+      expect(toolMessage?.content).toEqual([
+        expect.objectContaining({
+          type: "tool-result",
+          toolName: "executeCommand",
+          output: { type: "json", value: output },
+        }),
+      ]);
+      const expected = estimateTokens(
+        JSON.stringify(output),
+        calibrationFactor,
+      );
+      expect(
+        estimateTokenBreakdown(messages, calibrationFactor).toolResultsTokens,
+      ).toBe(expected);
+      expect(
+        estimateTotalTokens(messages, calibrationFactor) -
+          estimateTotalTokens(messages.slice(0, 1), calibrationFactor),
+      ).toBeGreaterThanOrEqual(expected);
+    },
+  );
+
+  it("includes failed-command diagnostics when deciding to compact", () => {
+    const llm = {
+      id: "test",
+      type: "openai" as const,
+      modelId: "test",
+      contextWindow: 128_000,
+      maxOutputTokens: 4096,
+    };
+    const history = messages.slice(0, 1);
+    expect(
+      shouldAutoCompact({
+        messages: history,
+        llm,
+        task: null,
+        estimatedTotalTokens: estimateTotalTokens(history),
+      }),
+    ).toBe(false);
+    expect(
+      shouldAutoCompact({
+        messages,
+        llm,
+        task: null,
+        estimatedTotalTokens: estimateTotalTokens(messages),
+      }),
+    ).toBe(true);
   });
 });

@@ -169,13 +169,12 @@ function estimateToolOutputTokens(
     if ("type" in output && output.type === "media") {
       return ImageEstimatedTokens;
     }
-    // Match the MCP conversion path: unsupported content is sent as the
-    // complete JSON output, including fields such as structuredContent.
+    // Only estimate supported MCP content separately. An `error` field alone
+    // does not identify an MCP result: built-in tools such as executeCommand
+    // send their entire output as JSON, including diagnostics alongside errors.
+    // Without tool-converter metadata, conservatively count those full objects.
     const parsed = McpToolOutput.safeParse(output);
-    if (parsed.success) {
-      if ("error" in parsed.data) {
-        return estimateTokens(parsed.data.error, calibrationFactor);
-      }
+    if (parsed.success && "content" in parsed.data) {
       return parsed.data.content.reduce(
         (total, item) =>
           total +
