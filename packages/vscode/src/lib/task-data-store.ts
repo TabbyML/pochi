@@ -3,6 +3,7 @@ import {
   enqueueBackgroundJobNotification,
   getLogger,
   getPendingBackgroundJobNotifications,
+  snapshotPendingBackgroundJobNotifications,
 } from "@getpochi/common";
 import type {
   AutoMemoryTaskState,
@@ -148,6 +149,18 @@ export class TaskDataStore {
         },
       };
     });
+  }
+
+  async snapshotPendingBackgroundJobNotifications(taskId: string) {
+    let notifications: BackgroundJobNotification[] = [];
+    await this.updateTasks((state) => {
+      const queue = state[taskId]?.backgroundJobNotifications ?? [];
+      const snapshot = snapshotPendingBackgroundJobNotifications(queue);
+      notifications = snapshot.notifications;
+      if (snapshot.queue.every((item, index) => item === queue[index])) return;
+      return { [taskId]: { backgroundJobNotifications: snapshot.queue } };
+    });
+    return notifications;
   }
 
   async acknowledgeBackgroundJobNotification(

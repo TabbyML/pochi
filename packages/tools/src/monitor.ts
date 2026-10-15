@@ -26,7 +26,7 @@ Script quality:
 
 Coverage and volume:
 - Silence is not success. When watching for an outcome, emit every terminal state you would act on, including failure, cancellation, timeout, crashes, and the expected success state.
-- Filter selectively to actionable signals; never stream raw logs. Frequent events are merged and delivered with the next model request, or resume an idle task when it can accept notifications. When events accumulate, notifications retain recent lines and report omissions; read outputFile for full output. The monitor continues running.
+- Filter selectively to actionable signals; never stream raw logs. Accumulated events are delivered with the next model request. When only monitor progress would resume an idle task, events are collected for 1 second and automatic progress turns start at most once every 10 seconds per task. Monitor endings bypass this delay. Notifications retain recent lines and report omissions; read outputFile for full output. The monitor continues running.
 
 After starting a monitor, continue with other work. If there is nothing else to do, use attemptCompletion to end the current turn; monitor events will resume the task. Do not keep the turn active by repeatedly checking process output.
 

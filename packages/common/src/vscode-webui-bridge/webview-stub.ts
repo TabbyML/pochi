@@ -141,6 +141,7 @@ const VSCodeHostStub = {
         BackgroundJobNotification[]
       >,
       acknowledge: async (_notificationId: string) => {},
+      snapshotPending: async () => [],
     }),
   closePochiTabs: (_uid?: string): Promise<void> => {
     return Promise.resolve();
