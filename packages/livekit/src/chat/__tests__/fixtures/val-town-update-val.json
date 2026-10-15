@@ -1,0 +1,92 @@
+{
+  "name": "update_val",
+  "title": "update_val",
+  "description": "Update a val's metadata including name, privacy, description, tags, image, and HTTP preview settings. All fields are optional - only provide the fields you want to update. Note that 'tags' replaces the val's whole tag list rather than adding to it. Provide the val in 'handle/valName' format (use the 'identifier' field from list_vals or get_val_detail responses). To pin an HTTP preview on the val's homepage, set pinnedFileId to the file ID of an HTTP file (from list_files). To remove the preview, set pinnedFileId to null. Changing privacy to 'private' or 'unlisted' requires the val's org (not the caller) to be on pro or business tier; if the val belongs to a free-tier org, privacy can only be set to 'public'. Use list_orgs to look up an org's tier. Note that `privacy` here is code visibility only — it does not control who can call the val's HTTP endpoints. That is the separate `httpPrivacy` (app access) axis, changed with set_http_privacy; making a val's code private does not make its endpoints unreachable.",
+  "inputSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "val": {
+        "type": "string",
+        "description": "The val identifier in 'handle/valName' format"
+      },
+      "name": {
+        "description": "New name for the val (alphanumeric, hyphens, underscores allowed)",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 48
+      },
+      "privacy": {
+        "description": "Privacy level: 'public' (discoverable), 'private' (only you), or 'unlisted' (accessible via link). The val's org tier (not the caller's) determines what's allowed: vals in free-tier orgs can only be 'public', while pro/business orgs can use any value.",
+        "type": "string",
+        "enum": ["public", "private", "unlisted"]
+      },
+      "description": {
+        "description": "Description for the val (max 64 characters, supports markdown)",
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 64
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "imageUrl": {
+        "description": "URL to an image for the val's preview. Must be an https://imagedelivery.net/ URL from our image upload pipeline. Pass null to remove the current image.",
+        "anyOf": [
+          {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024,
+                "format": "starts_with",
+                "pattern": "^https:\\/\\/imagedelivery\\.net\\/.*"
+              },
+              {
+                "type": "string",
+                "const": ""
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "tags": {
+        "description": "Replaces the val's ENTIRE tag list — this is not additive, so include the tags you want to keep (get_val_detail returns the current ones) and pass [] to clear them all. Max 10 tags, each 1-32 characters of lowercase letters, digits and hyphens (e.g. \"slack\", \"web-scraper\"). Reuse the tags the org already uses — call list_tags first — instead of coining near-duplicates.",
+        "maxItems": 10,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        }
+      },
+      "pinnedFileId": {
+        "description": "File ID of an HTTP file to pin as the homepage preview. Set to a file ID to enable preview, set to null to disable it. File IDs are available from the list_files tool.",
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": ["val"]
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "openWorldHint": true,
+    "destructiveHint": true
+  },
+  "execution": {
+    "taskSupport": "forbidden"
+  }
+}

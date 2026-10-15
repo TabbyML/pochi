@@ -85,6 +85,7 @@
   "packageManager": "bun@1.3.14",
   "trustedDependencies": ["@ast-grep/cli"],
   "patchedDependencies": {
+    "@ai-sdk/google@3.0.129": "patches/@ai-sdk%2Fgoogle@3.0.129.patch",
     "@ai-sdk/provider-utils@4.0.56": "patches/@ai-sdk%2Fprovider-utils@4.0.56.patch",
     "@ai-sdk/google-vertex@4.0.208": "patches/@ai-sdk%2Fgoogle-vertex@4.0.208.patch",
     "ai@6.0.296": "patches/ai@6.0.296.patch",
