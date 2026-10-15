@@ -436,13 +436,6 @@ export class TaskRunner {
       }
       await this.backgroundJobs.watchTask(this.taskId);
       unsubscribeBackgroundJobs = this.chatKit.subscribeBackgroundJobs();
-      // Direct CLI browser agents do not pass through the newTask tool.
-      if (this.customAgent?.name === "browser") {
-        this.abortSignal?.throwIfAborted();
-        await this.toolCallOptions.browserSessionStore?.registerBrowserSession(
-          this.taskId,
-        );
-      }
       logger.trace("Start step loop.");
       this.stepCount.reset();
       while (true) {
