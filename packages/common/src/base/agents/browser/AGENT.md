@@ -7,13 +7,8 @@ tools:
   - "executeCommand(~/.pochi/bin/agent-browser *)"
   - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser *)"
   - "executeCommand(%USERPROFILE%/.pochi/bin/agent-browser.exe *)"
-  - "executeCommand(uname -sm)"
-  - "executeCommand(ldd --version)"
-  - "executeCommand(mkdir -p ~/.pochi/bin)"
-  - "executeCommand(curl -fL https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-* -o ~/.pochi/bin/agent-browser.download)"
-  - "executeCommand(chmod +x ~/.pochi/bin/agent-browser.download)"
-  - "executeCommand(mv -f ~/.pochi/bin/agent-browser.download ~/.pochi/bin/agent-browser)"
-  - "executeCommand(powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE '.pochi/bin') | Out-Null; Invoke-WebRequest -Uri 'https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-win32-x64.exe' -OutFile (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe'); if ($?) { Move-Item -Force (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe') (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.exe') }\")"
+  - "executeCommand(bash */browser/scripts/install.sh)"
+  - "executeCommand(powershell -NoProfile -ExecutionPolicy Bypass -File */browser/scripts/install.ps1)"
   - "executeCommand(pgrep *)"
   - "executeCommand(powershell -NoProfile -Command Get-Process *)"
   - killBackgroundJob
@@ -94,34 +89,14 @@ Use only the official `agent-browser` version `0.39.0`.
 
 Before running browser commands, run `agent-browser --version`. If it reports exactly `0.39.0`, continue without installing anything. Otherwise, check `~/.pochi/bin/agent-browser --version` on macOS/Linux or PowerShell, or `%USERPROFILE%/.pochi/bin/agent-browser.exe --version` on Windows cmd. If that reports `0.39.0`, use that direct path for subsequent commands.
 
-If neither command reports `0.39.0`, install the official release on demand with `executeCommand`. Session registration only prepares the session and preview; it does not install the CLI.
+If neither command reports `0.39.0`, run the bundled installer with `executeCommand`:
 
-- **macOS/Linux**: Run `uname -sm` to identify the OS and architecture. On Linux, also run `ldd --version`; if its output contains `musl`, select the musl asset. Choose the exact asset below:
+- **macOS/Linux**: `bash "<agent-directory>/scripts/install.sh"`
+- **Windows**: `powershell -NoProfile -ExecutionPolicy Bypass -File "<agent-directory>/scripts/install.ps1"`
 
-  | Platform | Asset |
-  | --- | --- |
-  | macOS arm64 | `agent-browser-darwin-arm64` |
-  | macOS x86_64 | `agent-browser-darwin-x64` |
-  | Linux aarch64/arm64, glibc | `agent-browser-linux-arm64` |
-  | Linux x86_64, glibc | `agent-browser-linux-x64` |
-  | Linux aarch64/arm64, musl | `agent-browser-linux-musl-arm64` |
-  | Linux x86_64, musl | `agent-browser-linux-musl-x64` |
+Resolve `<agent-directory>` from the directory containing the `[Agent location: <path>]` supplied in this system prompt. Use an absolute path, forward slashes (including on Windows), and quote it as shown. The scripts select the platform, download the official `0.39.0` binary into `~/.pochi/bin`, and verify its version before replacing an existing install.
 
-  Run these commands separately, proceeding only if the previous command succeeds. Replace `<asset>` with the selected filename:
-  ```sh
-  mkdir -p ~/.pochi/bin
-  curl -fL https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/<asset> -o ~/.pochi/bin/agent-browser.download
-  chmod +x ~/.pochi/bin/agent-browser.download
-  mv -f ~/.pochi/bin/agent-browser.download ~/.pochi/bin/agent-browser
-  ```
-- **Windows x64 or ARM64**: The official Windows asset is x64 and also runs through Windows ARM64 emulation. Run:
-  ```powershell
-  powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE '.pochi/bin') | Out-Null; Invoke-WebRequest -Uri 'https://github.com/vercel-labs/agent-browser/releases/download/v0.39.0/agent-browser-win32-x64.exe' -OutFile (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe'); if ($?) { Move-Item -Force (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.download.exe') (Join-Path $env:USERPROFILE '.pochi/bin/agent-browser.exe') }"
-  ```
-
-After installing, verify the direct install path with `--version` and require exactly `0.39.0` before proceeding. Run `agent-browser --version` again; if the shell still resolves a missing or different version, use the verified direct path for every subsequent command, including `close`. Do not run `agent-browser upgrade` or install an unpinned version.
-
-If the platform is unsupported, installation fails, or version verification fails, stop and report the error, required version, install command, and expected path. Do not continue with an old binary.
+After success, run `agent-browser --version` again. If the shell still resolves a missing or different version, use the direct install path for subsequent commands, including `close`. If installation fails, stop and report the error; do not continue with an old binary, run `agent-browser upgrade`, or install an unpinned version.
 
 ### Windows: Avoid the Daemon Startup Timeout
 

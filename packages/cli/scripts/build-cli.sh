@@ -125,8 +125,10 @@ build_exe() {
                 input_files+=("$input_file")
         done < <(build_exe_collect_inputs)
 
+        # File-loader entrypoints such as install.sh and install.ps1 share a JS basename.
         bun build "${input_files[@]}" \
                 --banner='import * as undici from "undici";' \
+                --entry-naming="[dir]/[name]-[hash].[ext]" \
                 --asset-naming="[dir]/[name].[ext]" \
                 --loader .md:file \
                 --loader .ps1:file \

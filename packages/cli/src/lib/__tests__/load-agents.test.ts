@@ -115,6 +115,14 @@ Project agent instructions.`,
       (agent) => agent.name === "browser",
     );
     expect(browserAgent).toBeDefined();
+    expect(browserAgent?.filePath).toMatch(/browser[/\\]AGENT\.md$/);
+    for (const script of ["install.sh", "install.ps1"]) {
+      await expect(
+        fs.access(
+          path.join(path.dirname(browserAgent!.filePath), "scripts", script),
+        ),
+      ).resolves.toBeUndefined();
+    }
 
     const policies = compileToolPolicies(browserAgent?.tools);
     expect(policies?.executeCommand).toBeDefined();
@@ -136,5 +144,28 @@ Project agent instructions.`,
         { cwd: process.cwd() },
       ),
     ).not.toThrow();
+
+    for (const command of [
+      'bash "/tmp/Pochi Resources/agents/browser/scripts/install.sh"',
+      'powershell -NoProfile -ExecutionPolicy Bypass -File "C:/Program Files/Pochi/agents/browser/scripts/install.ps1"',
+    ]) {
+      expect(() =>
+        validateToolPolicy("executeCommand", { command }, policies, {
+          cwd: process.cwd(),
+        }),
+      ).not.toThrow();
+    }
+
+    for (const command of [
+      "bash /tmp/unrelated.sh",
+      'powershell -NoProfile -Command "Write-Output unrestricted"',
+      "curl -fL https://example.com/binary -o /tmp/binary",
+    ]) {
+      expect(() =>
+        validateToolPolicy("executeCommand", { command }, policies, {
+          cwd: process.cwd(),
+        }),
+      ).toThrow("Command is not allowed by the configured command rules.");
+    }
   });
 });

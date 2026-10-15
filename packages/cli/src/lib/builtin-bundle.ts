@@ -42,8 +42,6 @@ function classifyBlob(blob: EmbeddedBlob): ClassifiedBlob | undefined {
     };
   }
 
-  if (!name.toLowerCase().endsWith(".md")) return undefined;
-
   if (agentIdx !== -1) {
     return {
       blob,
